@@ -86,8 +86,21 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: 8px; background: var(--c); color: var(--c-texte); }
 .bcarac__sigle { font-size: 0.7rem; font-weight: 700; }
 .bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 0.35rem; }
-.bcapacites .commune { opacity: 0.85; }
+/* Capacités : une tuile chacune, comme les dons de classe (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière
+   que le font les dons de classe » ; lib/monstre-rendu.mjs#htmlDeCapacite) : filet de la couleur à gauche, pastilles pleines ([EP3], NPM 2, commune),
+   nom en gras ; sur une colonne */
+.bcapacites { list-style: none; padding-left: 0 !important; margin: 0.15rem 0 0; display: grid; gap: 0.45rem; }
+.bcapacite { min-width: 0; padding: 0.45rem 0.75rem 0.55rem; border: 1px solid var(--border); border-left: 4px solid var(--bes); border-radius: 10px; background: var(--bg);
+  break-inside: avoid; }
+.bcarte .bcapacite__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.4rem; margin: 0 0 0.2rem; }
+.bcapacite__nom { font-size: 1rem; color: var(--bes); }
+.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--bes); color: var(--surface); font-size: 0.7rem; font-weight: 700; }
+.bcapacite__texte { font-size: 0.92rem; }
+/* une capacité commune à toutes les créatures d'une invocation : le filet en pointillés */
+.bcapacite--commune { border-left-style: dashed; }
+/* dans l'infobulle d'une page de magie : la couleur de la magie */
+.bulle--carte .bcapacite { border-left-color: var(--mag, var(--bes)); }
+@media print { .bcapacite .prefixe { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 .varie-note { font-style: italic; color: var(--muted); }
 .bbloc { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 0.3rem; }
 .bbloc > summary { cursor: pointer; padding: 0.35rem 0.7rem; font-weight: 600; }

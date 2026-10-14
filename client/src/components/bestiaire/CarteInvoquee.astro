@@ -6,7 +6,7 @@
 // dans leur correspondance dans les tableaux des magies et leurs sorts associés » ; components/Infobulles.astro) : dans une bulle `role="tooltip"`
 // cachée, sans identifiant interne ni élément interactif (ni « Fermer », ni liens : une infobulle n'en a pas), le nom en titre simple. CSS :
 // styles/bestiaire/carte.css.
-import { htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
+import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
 import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
 import { url } from '../../lib/wiki';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
@@ -92,25 +92,12 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
       <div class="brubrique brubrique--capacites">
         <dt>Capacité(s)</dt>
         <dd>
-          <ul class="bcapacites" role="list">
-            {
-              l.capacites.map((x) => (
-                <li>
-                  {x.npm && <span class="prefixe">NPM {x.npm}</span>} {x.etiquette && <span class="prefixe">[{x.etiquette}]</span>} <strong>{x.nom}.</strong> <span class="texte">{x.texte}</span>
-                </li>
-              ))
-            }
-            {
-              l.communes.map((x) => (
-                <li class="commune">
-                  <span class="prefixe" title={`Commune à toutes les créatures de « ${l.invocation.nom} »`}>
-                    commune
-                  </span>{' '}
-                  <strong>{x.nom}.</strong> <span class="texte">{x.texte}</span>
-                </li>
-              ))
-            }
-          </ul>
+          <Fragment
+            set:html={htmlDesCapacites([
+              ...l.capacites.map((x) => ({ prefixes: [...(x.npm ? [{ texte: `NPM ${x.npm}` }] : []), ...(x.etiquette ? [{ texte: `[${x.etiquette}]` }] : [])], nom: x.nom, texte: x.texte })),
+              ...l.communes.map((x) => ({ prefixes: [{ texte: 'commune', titre: `Commune à toutes les créatures de « ${l.invocation.nom} »` }], nom: x.nom, texte: x.texte, commune: true })),
+            ])}
+          />
         </dd>
       </div>
       {

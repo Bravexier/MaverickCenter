@@ -27,7 +27,7 @@ import {
   texteParEchelle,
   valeurALEchelle,
 } from '../src/lib/monstre-champs.mjs';
-import { htmlDAttention, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
+import { htmlDAttention, htmlDeCapacite, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const cartes = db.prepare('SELECT * FROM monstre ORDER BY espece_id, rang').all();
@@ -380,7 +380,7 @@ test('un trait du doc dans une rubrique : ce qui le suit va dans un panneau « A
 test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP N ; le curseur la cache en dessous', () => {
   const html = htmlDeRubrique('capacites', '[EP3] Nuage rapide. Texte.\n\n(Neige) [EP5] Neige permanente. Texte.\n\n[Gauche] Téméraire. Texte.\n\nSans préfixe. Texte.');
   const lis = [...html.matchAll(/<li([^>]*)>/g)].map((m) => m[1]);
-  assert.deepEqual(lis, [' data-eps="3 4 5 6 7 8 9 10"', ' data-eps="5 6 7 8 9 10"', '', '']);
+  assert.deepEqual(lis, [' class="bcapacite" data-eps="3 4 5 6 7 8 9 10"', ' class="bcapacite" data-eps="5 6 7 8 9 10"', ' class="bcapacite"', ' class="bcapacite"']);
   assert.match(html, /<span class="prefixe" title="Gagnée à partir de l’EP 3">\[EP3\]<\/span>/);
   assert.match(html, /<span class="prefixe">\[Gauche\]<\/span>/);
   assert.equal(echelleDuPrefixe('(Neige/Cristal) [EP7]'), 7);
@@ -397,7 +397,31 @@ test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP 
     const importee = cartesDImport.find((x) => x.id === id);
     if (importee && importee.echelle_brut === c.echelle_brut) for (const x of marquees) assert.ok(x.ep_min >= c.ep_min && x.ep_min <= c.ep_max, `${id} : ${x.nom}`);
     const html = r.map((x) => htmlDeRubrique('capacites', x.texte)).join('');
-    assert.equal((html.match(/<li data-eps=/g) ?? []).length, n, id);
+    assert.equal((html.match(/<li class="bcapacite" data-eps=/g) ?? []).length, n, id);
+  }
+});
+
+test('capacités en tuiles (demande du propriétaire : « de la même manière que le font les dons de classe ») : pastilles, nom, texte ; une tuile par capacité', () => {
+  assert.equal(
+    htmlDeRubrique('capacites', '[EP3] Nuage rapide. Un <texte>.\n\nSans préfixe. Autre texte.'),
+    '<ul class="bcapacites" role="list">'
+      + '<li class="bcapacite" data-eps="3 4 5 6 7 8 9 10"><p class="bcapacite__tete"><span class="prefixe" title="Gagnée à partir de l’EP 3">[EP3]</span> <strong class="bcapacite__nom">Nuage rapide</strong></p>'
+      + '<div class="bcapacite__texte"><span class="texte">Un &lt;texte&gt;.</span></div></li>'
+      + '<li class="bcapacite"><p class="bcapacite__tete"><strong class="bcapacite__nom">Sans préfixe</strong></p><div class="bcapacite__texte"><span class="texte">Autre texte.</span></div></li></ul>',
+  );
+  // une capacité commune (créature invoquée) : sa pastille et sa classe
+  assert.equal(
+    htmlDeCapacite({ prefixes: [{ texte: 'commune', titre: 'Commune à toutes les créatures de « X »' }], nom: 'Inerte', texte: 'T.', commune: true }),
+    '<li class="bcapacite bcapacite--commune"><p class="bcapacite__tete"><span class="prefixe" title="Commune à toutes les créatures de « X »">commune</span> <strong class="bcapacite__nom">Inerte</strong></p><div class="bcapacite__texte"><span class="texte">T.</span></div></li>',
+  );
+  // toute la base : autant de tuiles que de capacités, chacune avec son nom, sans titre hN ni lien (la carte d'une créature invoquée sert d'infobulle)
+  for (const r of rubriques.filter((x) => x.rubrique === 'capacites')) {
+    const caps = capacitesDe(r.texte).filter((x) => x.nom);
+    const html = htmlDeRubrique('capacites', r.texte);
+    if (apresUnTrait(r.texte)) continue;
+    assert.equal((html.match(/<li class="bcapacite[ "]/g) ?? []).length, capacitesDe(r.texte).length, r.monstre_id);
+    for (const c of caps) assert.ok(html.includes(`<strong class="bcapacite__nom">${c.nom.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}</strong>`), `${r.monstre_id} : ${c.nom}`);
+    assert.doesNotMatch(html, /<h\d|<a /, r.monstre_id);
   }
 });
 
