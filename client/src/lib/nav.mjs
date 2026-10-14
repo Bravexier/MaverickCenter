@@ -27,6 +27,7 @@ export const NAV = [
       { label: 'Armes', path: 'ressources/armes/' },
       { label: 'Armures', path: 'ressources/armures/' },
       { label: 'Accessoires', path: 'ressources/accessoires/' },
+      { label: 'Composants', path: 'ressources/composants/' },
       { label: 'Objets à la ceinture' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
       { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },

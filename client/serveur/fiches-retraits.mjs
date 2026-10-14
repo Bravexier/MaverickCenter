@@ -146,6 +146,30 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
 }
 
 /**
+ * Les tables des fiches dont un objet peut citer une ressource du catalogue (« INVENTAIRE | SAC », la ceinture : `ressource_id` quand l'objet est au
+ * catalogue, sinon le nom seul). Un composant supprimé des règles (page « Composants ») n'y est pas retiré : l'objet reste dans la fiche, sous son nom,
+ * seul son lien au catalogue part (`ressource_id` = NULL) ; rien n'est perdu, aucune note n'est ajoutée.
+ */
+export const OBJETS_AU_CATALOGUE = Object.freeze(['personnage_inventaire', 'personnage_ceinture']);
+
+/** Site de dev : détache des fiches les ressources données, qui vont être supprimées des règles (à appeler AVANT leur suppression). */
+export function detacherDesFiches(db, ressources = []) {
+  for (const t of OBJETS_AU_CATALOGUE) {
+    if (!aLaTable(db, t)) continue;
+    for (const id of ressources) db.prepare(`UPDATE main."${t}" SET ressource_id = NULL WHERE ressource_id = ?`).run(id);
+  }
+}
+
+/** Reconstruction de la base vivante : détache des fiches les ressources absentes des nouvelles règles (voir OBJETS_AU_CATALOGUE). */
+function detacherLesManquantes(db) {
+  for (const t of OBJETS_AU_CATALOGUE) {
+    if (!aLaTable(db, t)) continue;
+    db.exec(`UPDATE main."${t}" SET ressource_id = NULL
+      WHERE ressource_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.ressource r WHERE r.id = main."${t}".ressource_id)`);
+  }
+}
+
+/**
  * Reconstruction de la base vivante (base-vivante.mjs#transferer, l'ancienne base attachée sous `ancienne`, clés étrangères coupées) : retire de `main`
  * les lignes de fiche dont le métier, la spécialité (couple spécialité, classe), le don ou le sort manque dans les nouvelles règles. Une spécialité ou un
  * don dont la classe a disparu, un sort dont la magie a disparu (classe et magie lues dans l'ancienne base) ne sont pas touchés : la classe ou la magie
@@ -218,6 +242,8 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ORDER BY p.id, pa.rang`).all()) {
     aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }
+  // composants : l'objet reste sous son nom, sans lien au catalogue (OBJETS_AU_CATALOGUE)
+  detacherLesManquantes(db);
   return appliquer(db, aRetirer, acc);
 }
 

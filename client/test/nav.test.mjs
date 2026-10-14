@@ -10,7 +10,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`)).join(', ')}`);
   assert.deepEqual(plan, [
     'Règles : Guide, Races, Magies, Classes, Métiers',
-    'Ressources : Armes, Armures, Accessoires, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
+    'Ressources : Armes, Armures, Accessoires, Composants, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives',
@@ -23,7 +23,8 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
   for (const path of navPaths()) {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (m && TYPE_KEYS.includes(m[1])) {
-      if (m[2]) assert.ok(existsSync(new URL(`${m[1]}/${m[2]}.md`, content)), `page absente : ${path}`);
+      // une page du wiki, ou une page du site sous la rubrique (/ressources/composants/ : src/pages/ressources/composants.astro)
+      if (m[2]) assert.ok(existsSync(new URL(`${m[1]}/${m[2]}.md`, content)) || existsSync(new URL(`${m[1]}/${m[2]}.astro`, pages)), `page absente : ${path}`);
     } else {
       const nom = path.replace(/\/$/, '');
       assert.ok(existsSync(new URL(`${nom}.astro`, pages)) || existsSync(new URL(`${nom}/index.astro`, pages)), `page absente : ${path}`);

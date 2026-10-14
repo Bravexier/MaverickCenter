@@ -99,7 +99,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants']);
 });
 
 test('armes (migration 0034) : une arme sous sa famille, un matériau, une amélioration d’arme ; « Oui/Non », mains et type en toutes lettres', () => {
@@ -122,6 +122,31 @@ test('armes (migration 0034) : une arme sous sa famille, un matériau, une amél
   assert.equal(lignes.find((l) => l.table_nom === 'materiau_arme').entite, 'Titane');
   // seule l'amélioration d'arme est listée
   assert.deepEqual(lignes.filter((l) => l.table_nom === 'amelioration_equipement').map((l) => [l.entite, l.apres]), [['Amélioration +5', '210 RO']]);
+});
+
+test('composants (migration 0040) : monnaie, objet de l’onglet sous son tableau, prix d’une gemme ; une gemme créée en une ligne ; pas les potions', () => {
+  const r = (id, genre, nom, valeurs = {}) => ({ id, genre, section: null, nom, description: null, prix_brut: null, ordre: 1, ...valeurs });
+  const gemme = (id, prix) => ({ ressource_id: id, magie_id: 'magies/magie-du-feu', prix_commune_brut: prix, prix_raffinee_brut: null, prix_parfaite_brut: null,
+    quart_commune_brut: null, quart_raffinee_brut: null, quart_parfaite_brut: null });
+  const ref = { tables: {
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse', abreviation: 'PP', valeur_rf: 100000 }],
+    ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '10 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
+      r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '1 RO' })],
+    gemme: [gemme('x#gemme:rubis', '40 RO')],
+  } };
+  const dev = { tables: {
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse', abreviation: 'PP', valeur_rf: 200000 }],
+    ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '12 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
+      r('x#gemme:quartz', 'gemme', 'Quartz'), r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '2 RO' })],
+    gemme: [gemme('x#gemme:rubis', '45 RO'), gemme('x#gemme:quartz', '1 RO')],
+  } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'composants');
+  const de = (entite, champ = null) => lignes.find((l) => l.entite === entite && l.champ === champ);
+  assert.deepEqual([de('Pierre précieuse', 'Valeur en RF').avant, de('Pierre précieuse', 'Valeur en RF').apres], ['100000', '200000']);
+  assert.equal(de('Briquet', 'Prix (« 2 RO », « 100 RF / 1 RO »)').groupe, 'Matos › MATOS AVENTURES');
+  assert.equal(de('Rubis', 'Prix de la gemme commune (« 50 RO »)').apres, '45 RO');
+  assert.equal(lignes.filter((l) => l.entite === 'Quartz').length, 1, 'la gemme créée : une ligne (sa ressource), pas une de plus pour ses prix');
+  assert.ok(!lignes.some((l) => l.entite === 'Petite fiole rouge'), 'une potion n’est pas un composant');
 });
 
 test('Codex et bestiaire : champs modifiés, carte ajoutée ou retirée (pas ses rubriques), contenu entièrement nouveau en une ligne', () => {

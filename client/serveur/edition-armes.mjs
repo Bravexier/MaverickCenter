@@ -1,6 +1,6 @@
 // Édition de la page « Armes » depuis le site de dev (demande du propriétaire, 2026-10-13 : « tout peut être éditable à l'instar des autres pages qui
-// peuvent l'être ») : les domaines des tables arme, ressource (nom d'un matériau d'arme), materiau_arme et amelioration_equipement pour
-// serveur/edition.mjs (DOMAINES). Ce que la base tire des
+// peuvent l'être ») : les domaines des tables arme, materiau_arme et amelioration_equipement pour serveur/edition.mjs (DOMAINES) ; le nom d'un matériau
+// (table ressource) est du domaine des composants (serveur/edition-composants.mjs), qui fait suivre cette page par suivreLeMateriauRenomme. Ce que la base tire des
 // cellules (colonnes typées de l'arme, types de dégâts, minimums de caractéristique, bonus et crans d'un matériau, coût et effet d'une amélioration, ligne
 // TOTAL) est recalculé par les découpages de l'importeur (lib/arme-champs.mjs, rejoués sur toute la base par test/arme-champs.test.mjs), jamais saisi ; le
 // corps de la page suit (lib/corps-armes.mjs). Ni création ni suppression : la fiche de personnage cite les armes, matériaux et améliorations.
@@ -22,6 +22,31 @@ export const contexteDuCorpsDesArmes = (db) => ({
   armes: () => db.prepare('SELECT * FROM arme').all(),
   nomDuMateriau: (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id,
 });
+
+/**
+ * Un matériau renommé (la ressource, que les armures et les boucliers partagent : « comme c'est le même pour armure et bouclier, ça le changera
+ * aussi ») : sa ligne du tableau des matériaux de la page des armes et les cases des tableaux des pages des armures et des boucliers. Appelé par
+ * l'édition des composants (serveur/edition-composants.mjs, qui modifie la table ressource) ; un corps des armes sans la forme de l'importeur refuse le lot.
+ */
+export function suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition) {
+  if (avant.nom === apres.nom) return;
+  const page = lireLigne(ctx.db, 'page', { id: PAGE_DES_ARMES });
+  if (page) {
+    let corps;
+    try {
+      corps = corpsDesArmesApres(page.corps_md, 'ressource', avant, apres, contexteDuCorpsDesArmes(ctx.db));
+    } catch (e) {
+      if (e instanceof ErreurCorpsArmes) throw new ErreurEdition(500, `Page ${PAGE_DES_ARMES} : corps illisible (${e.message}) ; rien n’est enregistré.`);
+      throw e;
+    }
+    if (corps !== page.corps_md) ctx.w.modifier('page', { id: PAGE_DES_ARMES }, { corps_md: corps });
+  }
+  for (const id of PAGES_DES_MATERIAUX) {
+    const p = lireLigne(ctx.db, 'page', { id });
+    const corps = p && corpsAvecMateriauRenomme(p.corps_md, avant.nom, apres.nom);
+    if (p && corps !== p.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
+  }
+}
 
 /** La page dont les armes sont des entités (page_entite) : celle des armes. */
 const ORIGINE = 'equipement';
@@ -125,23 +150,6 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     },
   };
 
-  // le nom d'un matériau d'arme : la ressource, que les armures et les boucliers partagent ; leurs pages suivent aussi (cases de leurs tableaux)
-  const RESSOURCE = {
-    colonnes(ctx, ligne) {
-      if (!lireLigne(ctx.db, 'materiau_arme', { ressource_id: ligne.id })) throw refus(`${ligne.nom} : seuls les matériaux d’arme se renomment ici.`);
-      return {};
-    },
-    deriver(ctx, avant, apres) {
-      if (avant.nom === apres.nom) return;
-      suivreLeCorps(ctx, 'ressource', avant, apres);
-      for (const id of PAGES_DES_MATERIAUX) {
-        const page = lireLigne(ctx.db, 'page', { id });
-        const corps = page && corpsAvecMateriauRenomme(page.corps_md, avant.nom, apres.nom);
-        if (page && corps !== page.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
-      }
-    },
-  };
-
   const MATERIAU_ARME = {
     colonnes: (_ctx, ligne) => ({ ...analyserEffetDeMateriau(ligne.effet_brut), prix_rf: prixEnRf(ligne.prix_brut) }),
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'materiau_arme', avant, apres),
@@ -168,5 +176,5 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     },
   };
 
-  return { arme: ARME, ressource: RESSOURCE, materiau_arme: MATERIAU_ARME, amelioration_equipement: AMELIORATION_EQUIPEMENT };
+  return { arme: ARME, materiau_arme: MATERIAU_ARME, amelioration_equipement: AMELIORATION_EQUIPEMENT };
 }

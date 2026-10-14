@@ -1,9 +1,9 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme ; supprimables : métier,
-// spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52, annonceDesFiches), espèce et
-// carte de monstre.
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme, composant, gemme, bois, ingrédient, monnaie ;
+// supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52,
+// annonceDesFiches), espèce et carte de monstre, composant, gemme, bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -54,6 +54,29 @@ export const STATS_VARIABLES = [
 export const OUI_NON = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui' },
+];
+
+/**
+ * Les tableaux de la page « Composants » où un composant peut être créé (champ « Tableau » du formulaire) : les matériaux, puis ceux de l'onglet
+ * « Équipement inventaire » (genre:section de la ressource : lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE).
+ */
+export const TABLEAUX_DE_COMPOSANTS = [
+  { valeur: 'materiau', libelle: 'Matériaux' },
+  { valeur: 'produit:VÉGÉTAUX', libelle: 'Produits non monétaires › Végétaux' },
+  { valeur: 'produit:ANIMAUX', libelle: 'Produits non monétaires › Animaux' },
+  { valeur: 'produit:AUTRES', libelle: 'Produits non monétaires › Autres' },
+  { valeur: 'materiel:MATOS AVENTURES', libelle: 'Matos aventures' },
+  { valeur: 'materiel:MATOS FABRICATION', libelle: 'Matos fabrication' },
+  { valeur: 'materiel:MATOS PROJECTILE', libelle: 'Matos projectile' },
+];
+
+/** Catégories d'un ingrédient d'alchimie (ingredient_alchimie.categorie), dans l'ordre de la recette (lib/corps-composants.mjs#CATEGORIES_D_INGREDIENTS). */
+export const CATEGORIES_D_INGREDIENTS = [
+  { valeur: 'solvant', libelle: 'Solvant' },
+  { valeur: 'essence', libelle: 'Essence' },
+  { valeur: 'amplificateur', libelle: 'Amplificateur' },
+  { valeur: 'catalyseur', libelle: 'Catalyseur' },
+  { valeur: 'stabilisateur', libelle: 'Stabilisateur' },
 ];
 
 export const TABLES = {
@@ -249,11 +272,47 @@ export const TABLES = {
       depart_possible: { type: 'choix', libelle: 'Arme de départ', requis: true, choix: OUI_NON },
     },
   },
-  // nom d'un matériau d'arme : la ressource, partagée avec les armures et les boucliers (« comme c'est le même pour armure et bouclier, ça le changera
-  // aussi ») ; le service refuse les autres ressources
+  // Composants (/ressources/composants/, demande du propriétaire, 2026-10-14 : « chaque élément est modifiable en édition, supprimable, ajoutable ») :
+  // une ressource du catalogue — matériau, bois, ingrédient d'alchimie (son nom est aussi celui des armes, des armures et des boucliers : « comme c'est le même pour armure et
+  // bouclier, ça le changera aussi »), gemme (nom, description ; ses prix : table gemme), objet de l'onglet « Équipement inventaire » ; le service
+  // refuse les autres ressources (alchimie, livres…) et recalcule le prix en RF (lib/composants-champs.mjs)
   ressource: {
-    libelle: 'Matériau',
-    colonnes: { nom: { type: 'ligne', libelle: 'Nom du matériau (aussi pour les armures et les boucliers)', requis: true } },
+    libelle: 'Composant',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom (le même partout où il est écrit : armes, armures, boucliers…)', requis: true },
+      prix_brut: { type: 'ligne', libelle: 'Prix (« 2 RO », « 100 RF / 1 RO »)' },
+      description: { type: 'texte', libelle: 'Description' },
+    },
+  },
+  // les prix d'une gemme : la gemme entière (onglet Bâton magique) et le quart de gemme (onglet Accessoires), par qualité
+  gemme: {
+    libelle: 'Gemme',
+    colonnes: {
+      prix_commune_brut: { type: 'ligne', libelle: 'Prix de la gemme commune (« 50 RO »)' },
+      prix_raffinee_brut: { type: 'ligne', libelle: 'Prix de la gemme raffinée' },
+      prix_parfaite_brut: { type: 'ligne', libelle: 'Prix de la gemme parfaite' },
+      quart_commune_brut: { type: 'ligne', libelle: 'Prix du quart de gemme commune (« 12 Ro »)' },
+      quart_raffinee_brut: { type: 'ligne', libelle: 'Prix du quart de gemme raffinée' },
+      quart_parfaite_brut: { type: 'ligne', libelle: 'Prix du quart de gemme parfaite' },
+    },
+  },
+  // un ingrédient d'alchimie (Google Doc « Alchimie » › Liste d'ingrédients) : son type (« Fruit (majeur) » : un amplificateur majeur) et son affinité
+  // (« Santé + Chakra ») ; le service en tire le type sans « (majeur) », la marque majeur et l'affinité (créée si elle est nouvelle)
+  ingredient_alchimie: {
+    libelle: 'Ingrédient d’alchimie',
+    colonnes: {
+      type_brut: { type: 'ligne', libelle: 'Type (« Fruit », « Fruit (majeur) » pour un amplificateur majeur)', requis: true },
+      affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
+    },
+  },
+  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : la ligne du convertisseur est tirée de la valeur en RF ; l'unité (le RF) vaut 1
+  monnaie: {
+    libelle: 'Monnaie',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
+      valeur_rf: { type: 'entier', libelle: 'Valeur en RF', requis: true, min: 1 },
+    },
   },
   // matériaux d'arme (tableau MATERIAUX de l'onglet) : prix et effets
   materiau_arme: {
@@ -373,6 +432,61 @@ export const ENTITES = {
     champs: {
       famille_id: { type: 'choix', libelle: 'Famille (le tableau où l’arme s’ajoute)', requis: true, liste: 'famillesDArmes' },
       ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible']),
+    },
+  },
+  // Composants : un composant dans un tableau de la page (les matériaux, ou un tableau de l'onglet « Équipement inventaire »), une gemme ou un bois liés à
+  // une magie qui n'en a pas, un ingrédient d'alchimie, une monnaie ; supprimés seulement s'ils ne sont cités par aucune autre règle (le service le dit : armure, recette, accessoire…), un
+  // objet d'une fiche de personnage restant dans la fiche sous son nom (serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE)
+  composant: {
+    table: 'ressource',
+    libelle: 'composant',
+    suppression: true,
+    champs: {
+      tableau: { type: 'choix', libelle: 'Tableau (où le composant s’ajoute)', requis: true, choix: TABLEAUX_DE_COMPOSANTS },
+      ...champsDe('ressource', ['nom', 'prix_brut', 'description']),
+    },
+  },
+  gemme: {
+    table: 'gemme',
+    libelle: 'gemme',
+    nouveau: 'Nouvelle gemme',
+    suppression: true,
+    champs: {
+      magie_id: { type: 'choix', libelle: 'Magie (une gemme par magie)', requis: true, liste: 'magiesSansGemme' },
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      ...champsDe('gemme', ['prix_commune_brut', 'prix_raffinee_brut', 'prix_parfaite_brut', 'quart_commune_brut', 'quart_raffinee_brut', 'quart_parfaite_brut']),
+    },
+  },
+  // un ingrédient d'alchimie dans le tableau de sa catégorie (un fruit va dans le tableau des fruits par son type)
+  ingredient: {
+    table: 'ingredient_alchimie',
+    libelle: 'ingrédient',
+    suppression: true,
+    champs: {
+      categorie: { type: 'choix', libelle: 'Catégorie', requis: true, choix: CATEGORIES_D_INGREDIENTS },
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      ...champsDe('ingredient_alchimie', ['type_brut', 'affinite_brut']),
+    },
+  },
+  // un bois de bâton magique, lié à une magie qui n'en a pas (« un par magie »)
+  bois: {
+    table: 'bois',
+    libelle: 'bois',
+    suppression: true,
+    champs: {
+      magie_id: { type: 'choix', libelle: 'Magie (un bois par magie)', requis: true, liste: 'magiesSansBois' },
+      ...champsDe('ressource', ['nom', 'prix_brut', 'description']),
+    },
+  },
+  monnaie: {
+    table: 'monnaie',
+    libelle: 'monnaie',
+    nouveau: 'Nouvelle monnaie',
+    suppression: true,
+    champs: {
+      ...champsDe('monnaie', ['nom', 'abreviation']),
+      valeur_rf: { type: 'entier', libelle: 'Valeur en RF', requis: true, min: 2 },
     },
   },
   // une spécialité d'une classe (D11) : créée avec son don de spécialité du niveau 10 (sans lui elle n'aurait ni colonne ni bannière) ; supprimée avec tous
