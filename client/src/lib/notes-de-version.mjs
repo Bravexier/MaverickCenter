@@ -237,7 +237,7 @@ const DEFINITIONS = [
     groupe: () => GROUPES_DE_COMPOSANT.ingredient_alchimie, entite: (r, x) => x.nom('ressource', r.ressource_id),
     ordre: (r, x) => [1, 3, x.ligne('ressource', r.ressource_id)?.section ?? '', x.ordre('ressource', r.ressource_id)],
   },
-  // la chronologie (migration 0042) : un événement (date, titre, Impact, lieu) ; ses blocs de description sous lui (un bloc d'un événement ajouté ou retiré est
+  // la chronologie (migration 0043) : un événement (date, titre, Impact, lieu) ; ses blocs de description sous lui (un bloc d'un événement ajouté ou retiré est
   // dit par l'événement : `suit`) ; ses catégories en ensemble (comparerCategoriesDesEvenements)
   {
     table: 'evenement', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('evenement'), genre: 'Événement',
@@ -251,12 +251,12 @@ const DEFINITIONS = [
     ordre: (r, x) => [...ordreDEvenement(x.ligne('evenement', r.evenement_id) ?? {}), 1, r.rang], resume: (n) => `${n} descriptions d’événements`,
     valeur: (colonne, v, x) => (colonne === 'page_id' && v ? x.ligne('page', v)?.titre ?? v : v),
   },
-  // les catégories de la chronologie (migration 0042, bouton « Catégories » sur le site de dev) : ajoutée, renommée, retirée (de tous ses événements)
+  // les catégories de la chronologie (migration 0043, bouton « Catégories » sur le site de dev) : ajoutée, renommée, retirée (de tous ses événements)
   {
     table: 'categorie_chronologie', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('categorie_chronologie'), genre: 'Catégorie',
     groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
   },
-  // le vocabulaire des mots-clés (migration 0042, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
+  // le vocabulaire des mots-clés (migration 0043, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
     groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.libelle_cle], resume: (n) => `${n} mots-clés`,
@@ -406,7 +406,7 @@ function comparerMagiesInnees(ref, dev, x) {
 }
 
 /**
- * Les catégories d'un événement de la chronologie (migration 0042), dites en ensemble : « Catégories : Guerre → Guerre, Fondation » (aucune : sans
+ * Les catégories d'un événement de la chronologie (migration 0043), dites en ensemble : « Catégories : Guerre → Guerre, Fondation » (aucune : sans
  * catégorie). Un événement ajouté ou retiré est dit par la table evenement, une catégorie supprimée par la sienne (ses événements la perdent aussi :
  * dit ici) ; tant que la production n'a pas la chronologie, rien.
  */

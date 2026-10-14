@@ -20,8 +20,8 @@
 | `type_page` | Registre des catégories du wiki : reprend client/src/lib/types.mjs (aujourd'hui une constante JavaScript). | **id**, libelle, singulier, salon_discord, description, ordre |
 | `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, +provenance |
 | `alias` | Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. | **page_id**→page, **ordre**, texte, cle |
-| `mot_cle` | Vocabulaire des mots-clés (migration 0042, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les endroits qui le citent). | **id**, libelle, libelle_cle |
-| `page_tag` | Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0042, chaque page gardait la sienne). | **page_id**→page, **ordre**, tag_id→mot_cle |
+| `mot_cle` | Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les endroits qui le citent). | **id**, libelle, libelle_cle |
+| `page_tag` | Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page gardait la sienne). | **page_id**→page, **ordre**, tag_id→mot_cle |
 | `source` | Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact). | **id**, nature, texte, url?, genre?, google_id?, fichier?, onglets? |
 | `page_source` |  | **page_id**→page, **ordre**, source_id→source |
 | `page_entite` | Lien page -> entité typée. | **entite_table**, **entite_id**, page_id→page, principale, origine→famille |
@@ -109,7 +109,7 @@
 | --- | --- | --- |
 | `evenement` | Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois premières races), les « Date inconnue » de la | **id**, rang, titre, titre_cle, epoque, annee?, annee_fin?, portee?, lieu?, +provenance |
 | `evenement_extrait` | Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page). | **evenement_id**→evenement, **rang**, page_id→page?, section?, texte, date_brut?, +provenance |
-| `categorie_chronologie` | Les catégories de la chronologie (migration 0042, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies catégories stables. | **id**, libelle, libelle_cle |
+| `categorie_chronologie` | Les catégories de la chronologie (migration 0043, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies catégories stables. | **id**, libelle, libelle_cle |
 | `evenement_categorie` | Les catégories d'un événement (plusieurs au choix). | **evenement_id**→evenement, **categorie_id**→categorie_chronologie |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)

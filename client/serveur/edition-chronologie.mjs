@@ -1,4 +1,4 @@
-// Édition de la chronologie et du vocabulaire des mots-clés depuis le site de dev (migration 0042 ; demandes du propriétaire, 2026-10-14 : « J'aimerais que
+// Édition de la chronologie et du vocabulaire des mots-clés depuis le site de dev (migration 0043 ; demandes du propriétaire, 2026-10-14 : « J'aimerais que
 // la page puisse être modifiée. Comme pour le guide ou les autres pages modifiables. Il faut pouvoir supprimer une page, ou en créer une nouvelle, lui
 // attribuant une date » ; chaque entrée a une date, un titre, une description et un lien ; « Les mots clés sont trop nombreux et trop libres pour faire de
 // vraies catégories stables. […] On peut choisir plusieurs catégories pour chaque entrée, mais pas pour le filtre. Le mode édition ajoute un bouton pour

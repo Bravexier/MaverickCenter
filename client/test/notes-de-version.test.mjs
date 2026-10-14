@@ -426,7 +426,7 @@ test('TABLES_DES_NOTES : exactement les tables de la section 15 de data/schema.s
   assert.deepEqual([...TABLES_DES_NOTES], [...section.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]));
 });
 
-test('chronologie et mots-clés (migration 0042) : en une ligne tant que la production ne les a pas ; puis date, Impact, lien d’une description, catégories d’un événement et de la chronologie, vocabulaire', () => {
+test('chronologie et mots-clés (migration 0043) : en une ligne tant que la production ne les a pas ; puis date, Impact, lien d’une description, catégories d’un événement et de la chronologie, vocabulaire', () => {
   const evenement = (id, valeurs = {}) => ({ id, rang: 1, titre: 'La Chute', titre_cle: 'la-chute', epoque: 'datee', annee: 12, annee_fin: null, portee: null, lieu: null, ...valeurs });
   const bloc = (evenement_id, rang, valeurs = {}) => ({ evenement_id, rang, page_id: 'lore/erisia', section: null, texte: 'Il tombe.', date_brut: null, ...valeurs });
   const page = [{ id: 'lore/erisia', titre: 'Erisia' }, { id: 'lore/mrode', titre: 'Mrode' }];

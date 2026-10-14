@@ -974,7 +974,7 @@ describe('fonctions pures', () => {
     assert.deepEqual(tablesDuLot(JSON.parse(LOT_JSON)), ['metier']);
     assert.throws(() => tablesDuLot({ journal: { lots: [{ modifications: [{ table: 'x; DROP' }] }] } }));
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
-    // d'une ligne page_tag notée avant la migration 0042
+    // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);

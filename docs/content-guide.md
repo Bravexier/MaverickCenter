@@ -509,7 +509,7 @@ coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : 
 
 ## Mots-clés
 
-Les mots-clés forment un **vocabulaire** (table `mot_cle`, migration `0042`) que portent les pages (`tags:` du frontmatter, écrits par leur libellé).
+Les mots-clés forment un **vocabulaire** (table `mot_cle`, migration `0043`) que portent les pages (`tags:` du frontmatter, écrits par leur libellé).
 Chacun a un identifiant figé, tiré de son premier libellé : son adresse est `/recherche/?mot-cle=<id>`, qui liste les pages qui le portent ; renommé, il
 garde son adresse. Sur le site de dev, la page Recherche en mode modification crée, renomme, fusionne et supprime un mot-clé (supprimé, il est retiré de
 toutes les pages) ; les mots-clés dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité

@@ -61,7 +61,7 @@ note de version (domaine « Chronologie ») et dans `data/rows` à la livraison.
 
 Tables `evenement`, `evenement_extrait` (les blocs de description), `categorie_chronologie` (les catégories : id figé, libellé, écriture unique ; jamais
 `sans-categorie`) et `evenement_categorie` (`data/schema.sql`, section **5 bis** ; famille `chronologie` ; migrations `0035-chronologie` et
-`0042-chronologie-modifiable-mots-cles`). L'ordre de lecture : époque, puis année (événements datés), puis `rang` (l'ordre à date égale ; un événement créé
+`0043-chronologie-modifiable-mots-cles`). L'ordre de lecture : époque, puis année (événements datés), puis `rang` (l'ordre à date égale ; un événement créé
 prend le plus grand + 1). Un bloc a un texte et un lien facultatif (`page_id`). À l'import, il n'y a aucune catégorie : rien dans les sources ne range les
 événements ; ils sont tous « Sans catégorie (à trier) » jusqu'à ce que le propriétaire
 les range.
@@ -71,7 +71,7 @@ les range.
   (texte tel qu'écrit) et l'expression de date à surligner.
 - **L'outil** `tools/chronologie/chronologie.mjs` résout le registre contre le texte des pages de la base : un extrait est le texte de la page **copié** de
   son début à sa fin (`page.corps_md`, Markdown compris), jamais réécrit ; `--sql` a écrit les INSERT de la migration 0035, `--verifier` compare le registre
-  aux pages et aux lignes **telles que l'import les a laissées**. Depuis la migration 0042, le site de dev est la source de la chronologie : le registre
+  aux pages et aux lignes **telles que l'import les a laissées**. Depuis la migration 0043, le site de dev est la source de la chronologie : le registre
   n'est plus que la trace de l'import, on ne s'en sert plus pour la réécrire.
 - **Les contrôles** (`test/chronologie.test.mjs`) rejouent la résolution sur les pages **telles que l'import les a laissées** (`lib/historique-site.mjs`) et
   la comparent aux lignes ; la liste « Les Impacts mineur et majeur » doit être reprise en entier (un événement par ligne, titre, année, portée et lieu tels

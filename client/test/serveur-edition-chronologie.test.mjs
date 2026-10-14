@@ -1,4 +1,4 @@
-// Édition de la chronologie et du vocabulaire des mots-clés depuis le site de dev (serveur/edition-chronologie.mjs, migration 0042 ; demandes du
+// Édition de la chronologie et du vocabulaire des mots-clés depuis le site de dev (serveur/edition-chronologie.mjs, migration 0043 ; demandes du
 // propriétaire : modifier, créer avec une date et supprimer un événement ; « Date, Titre, Description, Lien » ; plusieurs catégories par événement, « créer,
 // modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, ajouter, renommer et supprimer un mot-clé, « une
 // suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Les tests lisent l'état avant d'écrire et prennent des noms absents
@@ -468,14 +468,14 @@ test('rejeu : une ligne créée puis supprimée, que cite une ligne existante, d
   base.close();
 });
 
-test('lot d’avant la migration 0042 : le mot-clé que le rejeu crée garde son id, même renommé ensuite sur le site (pas de « -2 »)', () => {
+test('lot d’avant la migration 0043 : le mot-clé que le rejeu crée garde son id, même renommé ensuite sur le site (pas de « -2 »)', () => {
   const base = vivante();
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1 OFFSET 3").get().id;
   const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
   let libelle = 'Voie oubliée';
   for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(libelle)); i += 1) libelle = `Voie oubliée ${i}`;
   const id = normalize(libelle);
-  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', NULL, 'x', 'avant 0042')").run();
+  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', NULL, 'x', 'avant 0043')").run();
   base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES ('2026-10-01T09:00:00.000Z-v', 1, 'page_tag', ?, 'inserer', NULL, ?, 'en_attente')")
     .run(JSON.stringify({ page_id: page, ordre }), JSON.stringify({ page_id: page, ordre, tag_id: id, libelle }));
   // 1re reconstruction : le mot-clé est créé par le rejeu ; puis renommé sur le site
@@ -491,7 +491,7 @@ test('lot d’avant la migration 0042 : le mot-clé que le rejeu crée garde son
   for (const b of [base, premiere.base, seconde.base]) b.close();
 });
 
-test('lots notés avant la migration 0042 (page_tag avec `libelle`, mot-clé neuf) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
+test('lots notés avant la migration 0043 (page_tag avec `libelle`, mot-clé neuf) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
   const base = vivante();
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1").get().id;
   const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
@@ -500,7 +500,7 @@ test('lots notés avant la migration 0042 (page_tag avec `libelle`, mot-clé neu
   let nouveau = 'Voie ancienne';
   for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(nouveau)); i += 1) nouveau = `Voie ancienne ${i}`;
   const lot = (id, fait_le, modifications) => {
-    base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, 'x', 'avant 0042')").run(id, fait_le);
+    base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, 'x', 'avant 0043')").run(id, fait_le);
     modifications.forEach(([table, cle, operation, avant, apres], i) => base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')")
       .run(id, i + 1, table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres)));
   };

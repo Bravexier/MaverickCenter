@@ -53,7 +53,7 @@ export function verifierLot(lot) {
   // ni HTML brut ni lien non sûr ajouté au Markdown d'une page (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
   for (const l of lot.journal.lots) {
     for (const m of l.modifications ?? []) {
-      // le texte d'une page (guide, Codex) ou d'un bloc de description de la chronologie (migration 0042) : du Markdown que le build rend tel quel
+      // le texte d'une page (guide, Codex) ou d'un bloc de description de la chronologie (migration 0043) : du Markdown que le build rend tel quel
       const colonne = { page: 'corps_md', evenement_extrait: 'texte' }[m.table];
       if (!colonne || typeof m.apres?.[colonne] !== 'string') continue;
       const ajoutes = fragmentsAjoutes(typeof m.avant?.[colonne] === 'string' ? m.avant[colonne] : '', m.apres[colonne]);

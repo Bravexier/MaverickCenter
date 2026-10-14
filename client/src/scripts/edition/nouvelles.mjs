@@ -25,7 +25,7 @@ const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.l
 
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
 /**
- * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0042) ;
+ * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043) ;
  * son écriture et sa clé viennent d'une ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ libelle, cle }]
  */
 function motsClesDeLaPage(lignes, id, vocabulaire = []) {

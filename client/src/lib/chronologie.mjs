@@ -22,7 +22,7 @@ export const EPOQUES = [
 export const PORTEES = { majeur: 'Impact majeur', mineur: 'Impact mineur' };
 
 /**
- * « Sans catégorie (à trier) » : le choix du filtre de la frise pour les événements qui n'ont aucune catégorie (table categorie_chronologie, migration 0042),
+ * « Sans catégorie (à trier) » : le choix du filtre de la frise pour les événements qui n'ont aucune catégorie (table categorie_chronologie, migration 0043),
  * sur le site de dev seulement (demande du propriétaire : « pour pouvoir voir rapidement les entrées à trier ») ; aucune catégorie ne prend cet id.
  */
 export const SANS_CATEGORIE = 'sans-categorie';
@@ -75,7 +75,7 @@ export function libelleDeDate(evenement) {
 /**
  * Les événements dans l'ordre de lecture : par époque (ordre de EPOQUES), puis par année parmi les événements datés, puis par `rang` (l'ordre à date égale :
  * celui du registre de l'import ; un événement créé sur le site de dev prend le plus grand rang + 1, il vient donc après ceux de sa date ; changer sa
- * date le déplace sans renuméroter les autres : migration 0042). Vérifie les rangs (entiers ≥ 1, uniques) et la date (une année pour les événements
+ * date le déplace sans renuméroter les autres : migration 0043). Vérifie les rangs (entiers ≥ 1, uniques) et la date (une année pour les événements
  * datés, et pour eux seuls) ; sinon une erreur : le build s'arrête plutôt que de montrer une frise fausse.
  */
 export function ordonner(evenements) {

@@ -12,8 +12,8 @@ const tableExiste = (db, nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master
  * Les événements dans l'ordre de lecture : [{ id, rang, titre, epoque, annee, annee_fin, portee, lieu, lieu_page_id, extraits: [{ rang, page_id,
  * page_titre, section, texte, date_brut }], categories: [{ id, libelle }] }]. `lieu_page_id` : la page du Codex qui porte exactement le nom du lieu
  * (« Erisia », « Mrode »), sinon null. Un bloc de description sans lien (écrit sur le site de dev) a page_id et page_titre null. Les catégories (table
- * categorie_chronologie, migration 0042) sont triées par libellé ; aucune : « Sans catégorie (à trier) ». Une base sans table `evenement` (antérieure à la
- * migration 0035) donne une liste vide ; sans `evenement_categorie` (antérieure à 0042), aucune catégorie.
+ * categorie_chronologie, migration 0043) sont triées par libellé ; aucune : « Sans catégorie (à trier) ». Une base sans table `evenement` (antérieure à la
+ * migration 0035) donne une liste vide ; sans `evenement_categorie` (antérieure à 0043), aucune catégorie.
  */
 export function chargerChronologie(db) {
   if (caches.has(db)) return caches.get(db);

@@ -1,7 +1,7 @@
 // La chronologie (/chronologie/, docs/chronologie.md) : le registre tools/chronologie/evenements.json (un événement par entrée, dans l'ordre de lecture ;
 // chaque extrait repéré par son début et sa fin dans une page du wiki) résolu contre le texte des pages de la base -> les lignes des tables `evenement`
 // et `evenement_extrait` (data/schema.sql, section 5 bis ; migration 0035). Le texte d'un extrait est COPIÉ de page.corps_md, jamais réécrit.
-// Depuis la migration 0042, la chronologie se modifie sur le site de dev (il en est la source) : le registre n'est plus que la trace de l'import ; on
+// Depuis la migration 0043, la chronologie se modifie sur le site de dev (il en est la source) : le registre n'est plus que la trace de l'import ; on
 // ne s'en sert plus pour réécrire la chronologie (une migration écrite par --sql écraserait les modifications du site).
 //
 //   node tools/chronologie/chronologie.mjs --sql         -> les INSERT de la migration 0035 (sortie standard), résolus contre la base de data/rows

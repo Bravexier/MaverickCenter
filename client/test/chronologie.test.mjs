@@ -33,7 +33,7 @@ test('dateCourte : la colonne des dates de la frise, sans « An » ; le nom de l
   assert.equal(dateCourte(ev(1, 'aujourdhui')), 'Aujourd’hui');
 });
 
-test('ordonner : par époque, puis année (datés), puis rang (l’ordre à date égale, plus forcément contigu : migration 0042) ; rangs uniques, une année pour les datés seulement', () => {
+test('ordonner : par époque, puis année (datés), puis rang (l’ordre à date égale, plus forcément contigu : migration 0043) ; rangs uniques, une année pour les datés seulement', () => {
   const bons = [ev(1, 'debut'), ev(2, 'datee', -30), ev(3, 'datee', -30), ev(4, 'datee', 20), ev(5, 'inconnue'), ev(6, 'aujourdhui')];
   assert.deepEqual(ordonner([...bons].reverse()).map((e) => e.id), bons.map((e) => e.id));
   // un événement créé sur le site prend le plus grand rang + 1 : il vient après ceux de sa date, à sa place parmi les années ; un trou de rang est permis
@@ -178,7 +178,7 @@ const historique = historiqueSite(db);
 const registre = lireRegistre();
 const evenements = chargerChronologie(db);
 const IMPACTS = 'lore/les-impacts-mineur-et-majeur';
-// la chronologie telle que l'import l'a écrite (le site de dev la modifie depuis la migration 0042 : historique_modification), dans l'ordre de lecture,
+// la chronologie telle que l'import l'a écrite (le site de dev la modifie depuis la migration 0043 : historique_modification), dans l'ordre de lecture,
 // chaque événement avec ses extraits d'import
 const extraitsDImport = historique.lignesDImport('evenement_extrait');
 const evenementsDImport = ordonner(historique.lignesDImport('evenement').map((e) => ({

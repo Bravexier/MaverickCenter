@@ -365,7 +365,7 @@ const decodee = (m) => ({
  * et le contrôle d'un lot antérieur qui touche la même table (capacite, specialite, classe) la verrait rompue et mettrait ce lot sans rapport en conflit.
  * L'appelant les contrôle toutes après le rejeu complet.
  * `adapter(m)` : lit une modification notée sous une forme ancienne dans la forme des règles (une ligne de la table modification, rendue modifiée ou
- * telle quelle) ; appelé sur chacune avant tout rejeu (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0042).
+ * telle quelle) ; appelé sur chacune avant tout rejeu (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043).
  * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, adapter?: (m: object) => object }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */

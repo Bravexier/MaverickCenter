@@ -182,7 +182,7 @@ def pages_differentes(rows, wiki):
     liens = {}
     for pid, v in db.execute('SELECT page_id, texte FROM alias ORDER BY page_id, ordre'):
         liens.setdefault(('alias', pid), []).append(v)
-    # un mot-clé se compare par sa clé : son écriture vit dans le vocabulaire (mot_cle, migration 0042), elle se change sur /recherche/ du site de dev
+    # un mot-clé se compare par sa clé : son écriture vit dans le vocabulaire (mot_cle, migration 0043), elle se change sur /recherche/ du site de dev
     for pid, v in db.execute('SELECT t.page_id, m.libelle_cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre'):
         liens.setdefault(('page_tag', pid), []).append(v)
     for pid, texte in db.execute('SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre'):

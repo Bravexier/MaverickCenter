@@ -159,7 +159,7 @@ function supprimerPage(ctx, pageId) {
 }
 
 /**
- * L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps » ; vocabulaire `mot_cle`, migration 0042), créé s'il manque
+ * L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps » ; vocabulaire `mot_cle`, migration 0043), créé s'il manque
  * (noté au journal avant la ligne qui le cite) : un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris
  * ou a déjà servi (historique, journal : un id de mot-clé n'est jamais réutilisé). L'écriture d'un mot-clé existant ne change pas. Même règle que
  * tools/db/maverick.py#mot_cle (sans l'historique).
@@ -1445,7 +1445,7 @@ export function recalculerLesPages(db, modifications) {
  */
 export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
   const appliquees = [];
-  const anciens = new Set(); // mots-clés créés pour des lots d'avant la migration 0042 (ancienneEcritureDesMotsCles ; refaits à chaque passe du rejeu)
+  const anciens = new Set(); // mots-clés créés pour des lots d'avant la migration 0043 (ancienneEcritureDesMotsCles ; refaits à chaque passe du rejeu)
   const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, adapter: ancienneEcritureDesMotsCles(db, anciens) });
   // un mot-clé créé pour un lot que le rejeu n'a pas gardé (en conflit) : retiré ; ceux qui restent partent avec les règles (mise à jour, rapatriement)
   const gardes = [];
@@ -1464,7 +1464,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
 }
 
 /**
- * Les modifications de page_tag notées avant la migration 0042 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
+ * Les modifications de page_tag notées avant la migration 0043 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
  * exporté) : leur colonne `libelle` n'existe plus (l'écriture vit dans le vocabulaire mot_cle) et leur `tag_id` peut viser un mot-clé que le vocabulaire
  * n'a pas (une spécialité créée ou renommée sur le site) — sans quoi tout le lot passait « conflit » et ses créations disparaissaient. Rend l'adaptateur
  * de edition-journal.mjs#rejouer : la modification lue sans `libelle` (le journal stocké ne change pas : un autre rejeu, celui de la mise à jour sur
@@ -1733,7 +1733,7 @@ export function listes(db) {
     // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
     magiesSansGemme: magiesSansGemme(db),
     magiesSansBois: magiesSansBois(db),
-    // le vocabulaire des mots-clés (migration 0042) : leur écriture (pages créées, /recherche/), triés par libellé
+    // le vocabulaire des mots-clés (migration 0043) : leur écriture (pages créées, /recherche/), triés par libellé
     motsCles: db.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => ({ ...m })).sort(parLibelle),
     // les catégories de la chronologie (cases du formulaire « Nouvel événement » ; la page les relit avec la chronologie vivante)
     categoriesChronologie: categoriesDeLaChronologie(db),

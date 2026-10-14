@@ -481,7 +481,7 @@ def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
     """Pages du Codex que le site de dev a modifiées (modifications rapatriées ou livrées : table historique_modification) -> slug -> leur état
     d'import : 'titre' et 'corps' (corps_md) = la valeur « avant » de la première modification de la colonne (absents : jamais modifiés), 'alias'
     = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs.
-    Les mots-clés (vocabulaire mot_cle, migration 0042) : une page dont le site a retiré, fusionné (page_tag) ou renommé (mot_cle : son écriture est
+    Les mots-clés (vocabulaire mot_cle, migration 0043) : une page dont le site a retiré, fusionné (page_tag) ou renommé (mot_cle : son écriture est
     dans `tags:` des pages sur disque, `sur_disque` = slug -> texte) un mot-clé est aussi « modifiée par le site » ('mots_cles' : True) ; ses mots-clés
     ne sont pas comparés au document, et une nouvelle écriture la garde telle quelle (sinon elle remettrait l'ancienne écriture, et db:sync-pages en
     ferait un second mot-clé)."""

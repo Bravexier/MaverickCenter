@@ -39,7 +39,7 @@ const versImport = (e) => {
 };
 // les pages que le site a supprimées (D11 : un don, une spécialité et ses dons), telles que l'import les a écrites
 const tagsImport = historique.lignesDImport('page_tag');
-// l'écriture d'un mot-clé vit dans le vocabulaire (mot_cle, migration 0042) ; une ligne de page_tag notée avant gardait la sienne (`libelle`)
+// l'écriture d'un mot-clé vit dans le vocabulaire (mot_cle, migration 0043) ; une ligne de page_tag notée avant gardait la sienne (`libelle`)
 const motsClesImport = new Map(historique.lignesDImport('mot_cle').map((m) => [m.id, m.libelle]));
 const pagesSupprimees = historique.lignesDImport('page')
   .filter((p) => historique.supprimee('page', { id: p.id }) && p.statut !== 'example' && ['classes', 'capacites'].includes(p.type))

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 42;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 43;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -108,7 +108,7 @@ CREATE INDEX alias_cle   ON alias (cle);
 
 CREATE INDEX alias_texte ON alias (texte);
 
--- Vocabulaire des mots-clés (migration 0042, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots
+-- Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots
 -- clés » ; une suppression le retire de tous les endroits qui le citent). Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé
 -- sur les pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis FIGÉ : un
 -- renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site). libelle_cle = normalize(libelle) :
@@ -123,7 +123,7 @@ CREATE TABLE mot_cle (
                                                                  -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
 ) STRICT;
 
--- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0042, chaque page
+-- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
 -- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
 -- cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev).
 CREATE TABLE page_tag (
@@ -1019,7 +1019,7 @@ CREATE TABLE evenement (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
                                                      -- adresse /chronologie/<id>/ ; court, choisi dans tools/chronologie/evenements.json, puis figé
   rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre à date égale (la frise trie par époque, année, rang : lib/chronologie.mjs#ordonner) ;
-                                                               -- un événement créé sur le site prend le plus grand + 1 (migration 0042 : plus forcément contigu)
+                                                               -- un événement créé sur le site prend le plus grand + 1 (migration 0043 : plus forcément contigu)
   titre      TEXT    NOT NULL CHECK (length(titre) > 0),
   titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
   epoque     TEXT    NOT NULL CHECK (epoque IN ('debut', 'datee', 'inconnue', 'aujourdhui')),   -- place dans la frise (EPOQUES de lib/chronologie.mjs)
@@ -1037,7 +1037,7 @@ CREATE INDEX evenement_titre ON evenement (titre_cle);
 
 -- Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page).
 -- À l'import, un bloc est un extrait : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import ; une modification de la
--- page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import). Depuis la migration 0042, un bloc se
+-- page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import). Depuis la migration 0043, un bloc se
 -- modifie, s'ajoute et se retire sur le site de dev (serveur/edition-chronologie.mjs) : son texte, et son lien vers une page du wiki (ou aucun).
 CREATE TABLE evenement_extrait (
   evenement_id TEXT    NOT NULL REFERENCES evenement(id),
@@ -1055,7 +1055,7 @@ CREATE TABLE evenement_extrait (
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX evenement_extrait_page_fk ON evenement_extrait (page_id);
 
--- Les catégories de la chronologie (migration 0042, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies
+-- Les catégories de la chronologie (migration 0043, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies
 -- catégories stables. Le filtre sera donc sous forme de liste déroulante sur un champ catégorie. On peut choisir plusieurs catégories pour chaque entrée,
 -- mais pas pour le filtre. Le mode édition ajoute un bouton pour pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de
 -- l'entrée. ») : un vocabulaire à part, créé sur le site de dev (aucune à l'import : rien dans les sources ne range les événements). id = normalize(libelle)
@@ -4403,7 +4403,7 @@ CREATE TABLE note_version (
 ) STRICT;
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
--- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0042), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.

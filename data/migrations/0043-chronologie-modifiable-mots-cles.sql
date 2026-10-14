@@ -1,4 +1,4 @@
--- 0042-chronologie-modifiable-mots-cles : la chronologie se modifie sur le site de dev, ses événements se rangent dans des catégories, et les mots-clés
+-- 0043-chronologie-modifiable-mots-cles : la chronologie se modifie sur le site de dev, ses événements se rangent dans des catégories, et les mots-clés
 -- deviennent un vocabulaire géré depuis /recherche/ (demandes du propriétaire, 2026-10-14 : « J'aimerais que la page puisse être modifiée […] supprimer une
 -- page, ou en créer une nouvelle, lui attribuant une date », « supprimer / ajouter / modifier des mots clés. Une suppression d'un mot clé le supprimera de
 -- tous les endroits qui le référencent », puis « Les mots clés sont trop nombreux et trop libres pour faire de vraies catégories stables. Le filtre sera donc
@@ -28,19 +28,19 @@ SELECT DISTINCT
   pt.tag_id
 FROM page_tag pt JOIN page p ON p.id = pt.page_id;
 
-CREATE TABLE page_tag_0042 (
+CREATE TABLE page_tag_0043 (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
   ordre   INTEGER NOT NULL CHECK (ordre >= 0),
   tag_id  TEXT    NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
   PRIMARY KEY (page_id, ordre),
   UNIQUE (page_id, tag_id)
 ) STRICT;
-INSERT INTO page_tag_0042 (page_id, ordre, tag_id) SELECT page_id, ordre, tag_id FROM page_tag;
+INSERT INTO page_tag_0043 (page_id, ordre, tag_id) SELECT page_id, ordre, tag_id FROM page_tag;
 DROP TABLE page_tag;
-ALTER TABLE page_tag_0042 RENAME TO page_tag;
+ALTER TABLE page_tag_0043 RENAME TO page_tag;
 CREATE INDEX page_tag_tag ON page_tag (tag_id);
 
-CREATE TABLE evenement_extrait_0042 (
+CREATE TABLE evenement_extrait_0043 (
   evenement_id TEXT    NOT NULL REFERENCES evenement(id),
   rang         INTEGER NOT NULL CHECK (rang >= 1),
   page_id      TEXT    REFERENCES page(id),
@@ -52,9 +52,9 @@ CREATE TABLE evenement_extrait_0042 (
   PRIMARY KEY (evenement_id, rang),
   CHECK (page_id IS NOT NULL OR section IS NULL)
 ) STRICT, WITHOUT ROWID;
-INSERT INTO evenement_extrait_0042 SELECT * FROM evenement_extrait;
+INSERT INTO evenement_extrait_0043 SELECT * FROM evenement_extrait;
 DROP TABLE evenement_extrait;
-ALTER TABLE evenement_extrait_0042 RENAME TO evenement_extrait;
+ALTER TABLE evenement_extrait_0043 RENAME TO evenement_extrait;
 CREATE INDEX evenement_extrait_page_fk ON evenement_extrait (page_id);
 
 CREATE TABLE categorie_chronologie (
@@ -70,7 +70,7 @@ CREATE TABLE evenement_categorie (
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX evenement_categorie_categorie ON evenement_categorie (categorie_id);
 
-CREATE TABLE note_version_ligne_0042 (
+CREATE TABLE note_version_ligne_0043 (
   version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
   rang        INTEGER NOT NULL CHECK (rang >= 1),
   domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles')),
@@ -90,9 +90,9 @@ CREATE TABLE note_version_ligne_0042 (
   CHECK (nature <> 'retire' OR apres IS NULL),
   CHECK (nature <> 'modifie' OR champ IS NOT NULL)
 ) STRICT;
-INSERT INTO note_version_ligne_0042 SELECT * FROM note_version_ligne;
+INSERT INTO note_version_ligne_0043 SELECT * FROM note_version_ligne;
 DROP TABLE note_version_ligne;
-ALTER TABLE note_version_ligne_0042 RENAME TO note_version_ligne;
+ALTER TABLE note_version_ligne_0043 RENAME TO note_version_ligne;
 
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,

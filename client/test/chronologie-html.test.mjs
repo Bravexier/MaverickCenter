@@ -182,7 +182,7 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   }
 });
 
-test('catégories (migration 0042) : chaque ligne de la frise porte les siennes et son étiquette ; le filtre (liste déroulante, un choix) propose celles des événements et, hors de la production, « Sans catégorie (à trier) » ; la page d’un événement les montre, chacune mène à la frise filtrée', options, () => {
+test('catégories (migration 0043) : chaque ligne de la frise porte les siennes et son étiquette ; le filtre (liste déroulante, un choix) propose celles des événements et, hors de la production, « Sans catégorie (à trier) » ; la page d’un événement les montre, chacune mène à la frise filtrée', options, () => {
   const filtre = choixDuFiltre(evenements);
   const aTrier = process.env.SITE_MODE !== 'prod';
   const sans = aTrier ? filtre.sansCategorie : 0;

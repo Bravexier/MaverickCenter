@@ -10,7 +10,7 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 // Recherche (menu Outils) : plus de barre de recherche dans l'en-tête, la recherche est cette page, mêlée aux mots-clés (demande du propriétaire).
 // Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture correspond puis les pages et les événements trouvés (lib/search.mjs ; un
 // événement de la chronologie se trouve par son texte et par les libellés de ses catégories : lib/recherche-index.ts).
-// Les mots-clés sont le vocabulaire de la base (table mot_cle, migration 0042), avec le nombre de pages visibles de chacun (pages du wiki de l'index) ; un
+// Les mots-clés sont le vocabulaire de la base (table mot_cle, migration 0043), avec le nombre de pages visibles de chacun (pages du wiki de l'index) ; un
 // mot-clé qu'aucune page visible ne porte n'est pas listé. Les événements de la chronologie n'ont pas de mot-clé : ils ont des catégories, filtre de la
 // frise (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<id> (son id, figé) : le script de la page (src/scripts/recherche.mjs) y affiche les
 // pages qui le portent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et liste les éléments qui ont ce mot clé ») ;

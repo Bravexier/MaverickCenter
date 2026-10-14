@@ -59,7 +59,7 @@ Un ancien titre devient un alias ; HTML brut et liens non sûrs sont refusés, c
 Le site est la source de ce qu'il modifie : une page qu'il a modifiée est contrôlée par `--verifier` **dans son état d'import** (titre, texte et alias
 d'avant toute édition, relus dans `data/rows/historique_modification.sql` : `pages_du_site`) ; une nouvelle écriture des pages (`codex.py`) la **garde**
 telle que le site l'a laissée, et `--verifier` signale alors si le document a changé depuis pour elle (à reprendre à la main). Les mots-clés sont un
-vocabulaire géré sur le site (migration 0042, page Recherche) : une page dont un mot-clé a été renommé, fusionné ou retiré sur le site compte aussi comme
+vocabulaire géré sur le site (migration 0043, page Recherche) : une page dont un mot-clé a été renommé, fusionné ou retiré sur le site compte aussi comme
 modifiée (gardée telle quelle à l'écriture, ses mots-clés non comparés au document : sinon l'ancienne écriture reviendrait et `db:sync-pages` en ferait un
 second mot-clé).
 

@@ -77,7 +77,7 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   assert.equal(readFileSync(fichier, 'utf8'), modifiee);
 });
 
-test('un mot-clé renommé, fusionné ou retiré par le site (vocabulaire, migration 0042) : ses pages du Codex comptent comme modifiées, sans comparer leurs mots-clés', () => {
+test('un mot-clé renommé, fusionné ou retiré par le site (vocabulaire, migration 0043) : ses pages du Codex comptent comme modifiées, sans comparer leurs mots-clés', () => {
   const tmp = mkdtempSync(join(tmpdir(), 'maverick-codex-mots-'));
   after(() => rmSync(tmp, { recursive: true, force: true }));
   cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });

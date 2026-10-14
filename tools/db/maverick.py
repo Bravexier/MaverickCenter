@@ -88,7 +88,7 @@ def _vocabulaire_du_site(db):
 
 
 def mot_cle(db, libelle):
-    """L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), créé s'il manque (migration 0042 : vocabulaire
+    """L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), créé s'il manque (migration 0043 : vocabulaire
     `mot_cle`) ; un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi (historique du site : un id ne resert jamais).
     Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
     mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé ne

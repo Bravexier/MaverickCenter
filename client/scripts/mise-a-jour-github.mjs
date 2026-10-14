@@ -231,7 +231,7 @@ export function verifierSimulation(donnees, essai) {
  * Les tables que le journal du lot modifie (la liste blanche, avec TABLES_DE_LA_NOTE), et celles que son rejeu écrit au-delà du journal — la même
  * règle que serveur/edition.mjs#rejouerLeJournal, recopiée ici (ce job n'importe rien d'autre) : un mot-clé supprimé ou fusionné retire aussi, par la
  * cascade de son schéma, ses lignes page_tag des pages d'exemple (absentes du site de dev, donc du journal) ; une ligne page_tag notée avant la
- * migration 0042 (avec sa colonne `libelle`) peut faire créer son mot-clé.
+ * migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé.
  */
 export function tablesDuLot(donnees) {
   const tables = new Set();

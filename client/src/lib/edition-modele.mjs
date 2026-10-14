@@ -358,7 +358,7 @@ export const TABLES = {
       effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité »)', requis: true },
     },
   },
-  // Chronologie (migration 0042, demande du propriétaire : « que la page puisse être modifiée […] supprimer une page, ou en créer une nouvelle, lui attribuant
+  // Chronologie (migration 0043, demande du propriétaire : « que la page puisse être modifiée […] supprimer une page, ou en créer une nouvelle, lui attribuant
   // une date ») : la date (époque, année, année de fin), le titre, la portée et le lieu d'un Impact (serveur/edition-chronologie.mjs) ; les blocs de
   // description (« Description » : le texte, « Lien » : la page du wiki) ; les catégories d'un événement ont leur opération (`categories`)
   evenement: {
