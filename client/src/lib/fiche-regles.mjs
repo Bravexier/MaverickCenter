@@ -217,14 +217,17 @@ export function chargerReglesDeFiche(db) {
       };
     });
 
-  // Sorts : coût, portée, dégâts/soins/barrière, effets et remarque tels qu'écrits, avec leurs expressions de NM (sort_bonus_maitrise) : la page les
-  // montre à la valeur du NM du sort (lib/sort-maitrise.mjs#valeurAuNm, demande du propriétaire).
-  const champsAuNm = new Set(['cout', 'portee', 'dsb', 'effets']);
+  // Sorts : coût, portée, zone, dégâts/soins/barrière, effets et remarque tels qu'écrits, avec leurs expressions de NM (sort_bonus_maitrise) : la page les
+  // montre à la valeur du NM du sort (lib/sort-maitrise.mjs#valeurAuNm, demande du propriétaire). Le mode (IC, imparable, inesquivable : sort_mode, valeur
+  // de base) et l'expression de NM du type (« IC pour 3 NM ») donnent l'indication IC au NM du sort (lib/sort-maitrise.mjs#modesAuNm).
+  const champsAuNm = new Set(['type', 'cout', 'portee', 'zone', 'dsb', 'effets']);
+  const modesDesSorts = parCle(lignes(db, 'SELECT sort_id, mode, libelle, fois FROM sort_mode ORDER BY sort_id, rang'), 'sort_id', (m) => ({ mode: m.mode, libelle: m.libelle, fois: m.fois }));
   const bonusDesSorts = parCle(lignes(db, 'SELECT sort_id, champ, nature, texte_brut, increment_brut, pas_nm, seuil_nm FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang'),
     'sort_id', (b) => ({ champ: b.champ, nature: b.nature, texteBrut: b.texte_brut, incrementBrut: b.increment_brut, pasNm: b.pas_nm, seuilNm: b.seuil_nm }));
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
-      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      modes: modesDesSorts.get(s.id) ?? [],
       bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
     }));
 

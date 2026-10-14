@@ -194,3 +194,39 @@ export function valeurAuNm(brut, bonus, champ, nm) {
   }
   return texte === brut ? brut : nettoyer(texte);
 }
+
+/**
+ * Les modes d'un sort à N NM (tableau des sorts de la fiche, demande du propriétaire : l'indication IC) : ceux de sort_mode, valeur de base (« IC »,
+ * « IC x 2 », « Imparable », « Inesquivable »), puis ce que le type écrit avec une condition de NM (sort_bonus_maitrise, champ 'type') : un palier
+ * « IC pour 3 NM » donne « IC » une fois le seuil atteint, « IC x 2 si 3NM » met « IC x 2 » à la place de l'IC de base ; « IC x 1/NM » donne « IC x N »
+ * à N NM. Une condition pas encore atteinte, ou une écriture qui n'est pas qu'un calcul, reste telle qu'écrite (`atteint: false`).
+ * @param {{ mode: string, libelle: string }[]} modes modes de base du sort, dans l'ordre de la cellule
+ * @param {{ champ: string, nature: string, texteBrut: string, incrementBrut?: string | null, pasNm?: number | null, seuilNm?: number | null }[]} bonus bonus du sort
+ * @param {number} nm niveau de maîtrise du sort (ramené entre 0 et NM_MAX)
+ * @returns {{ texte: string, mode: string | null, atteint: boolean }[]}
+ */
+export function modesAuNm(modes, bonus, nm) {
+  const n = Math.max(0, Math.min(NM_MAX, Math.trunc(Number(nm) || 0)));
+  const liste = (modes ?? []).map((m) => ({ texte: m.libelle, mode: m.mode, atteint: true }));
+  for (const b of bonus ?? []) {
+    if (b.champ !== 'type') continue;
+    const ic = /^\s*IC\b/i.test(b.texteBrut);
+    const fois = applications(b, n);
+    let texte = null;
+    if (ic && b.nature === 'palier' && fois) {
+      const x = /IC\s*x\s*(\d+)/i.exec(b.texteBrut);
+      texte = x ? `IC x ${x[1]}` : 'IC';
+    } else if (ic && b.nature === 'par_nm' && fois) {
+      const x = /^\s*IC\s*x\s*(\d+)\s*$/i.exec(b.incrementBrut ?? '');
+      if (x) texte = `IC x ${Number(x[1]) * fois}`;
+    }
+    if (texte === null) {
+      liste.push({ texte: b.texteBrut, mode: ic ? 'ic' : null, atteint: false });
+      continue;
+    }
+    const base = liste.findIndex((m) => m.mode === 'ic' && m.atteint);
+    if (base >= 0) liste[base] = { texte, mode: 'ic', atteint: true };
+    else liste.unshift({ texte, mode: 'ic', atteint: true });
+  }
+  return liste;
+}

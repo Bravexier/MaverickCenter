@@ -49,10 +49,13 @@ test('choix à faire : spécialité au niveau de classe 10, dons à choisir, bon
   const avecSpecialite = archer(5, { classes: [{ rang: 1, classe_id: 'classes/archer', specialite_id: specialite }] });
   assert.deepEqual(choixEnAttente(regles, avecSpecialite).map((c) => c.nature), ['don'], 'puis le don de niveau 10 de la spécialité');
   assert.match(choixEnAttente(regles, avecSpecialite)[0].libelle, /Archer niv\. 10 : Archer monté ou Coup inéluctable/);
+  assert.match(choixEnAttente(regles, avecSpecialite)[0].cle, /^don:1:capacites\/archer-/);
+  assert.equal(choixEnAttente(regles, archer(5))[0].cle, 'specialite:1');
   assert.deepEqual(choixEnAttente(regles, { ...avecSpecialite, capacites: [{ capacite_id: 'capacites/archer-coup-ineluctable' }] }), []);
   // le Chasseur : « +2% Arc OU Arbalète » et « Arc en acier (Arme) » ou « Arbalète en acier (Arme) »
   const chasseur = archer(1, { metier_id: 'metiers/chasseur' });
   assert.deepEqual(choixEnAttente(regles, chasseur).map((c) => c.nature), ['metier_bonus', 'metier_objet']);
+  assert.deepEqual(choixEnAttente(regles, chasseur).map((c) => c.cle), ['metier_bonus:1', 'metier_objet:1'], 'la clé de la tuile de chaque choix (infobulle du tiroir)');
   assert.deepEqual(choixEnAttente(regles, { ...chasseur, metier_bonus: [{ rang: 1, competence_id: 'arc' }], inventaire: [{ rang: 1, nom: 'Arc en acier (Arme)', quantite: 1 }] }), []);
   // le Potentiel Illimité laisse son +1 au choix
   const potentiel = { ...ficheVide('PI'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/potentiel-illimite' };
