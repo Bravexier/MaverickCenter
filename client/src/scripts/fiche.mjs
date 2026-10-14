@@ -5,7 +5,7 @@
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe } from '../lib/portrait.mjs';
@@ -1637,10 +1637,6 @@ async function enregistrer() {
       const avertissement = n ? `Les règles ont changé : ${n} élément(s) retiré(s) de cette fiche depuis son ouverture (voir les notes après rechargement). ` : '';
       message(`${avertissement}${donnees.erreur} `, 'erreur');
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
-    } else if (reponse.status === 422) {
-      controles = donnees.controles ?? [];
-      construireControles();
-      message(donnees.erreur, 'erreur');
     } else if (donnees.erreur) {
       message(`${donnees.erreur}${donnees.problemes ? ` ${donnees.problemes.map(avecNoms).join(' ; ')}` : ''}`, 'erreur');
     } else {
@@ -1742,7 +1738,7 @@ async function importer(fichier) {
     const objet = JSON.parse(await fichier.text());
     if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
     if (modifie && !confirm('Remplacer la fiche en cours par celle du fichier ?')) return;
-    for (const c of [...COLONNES_DU_SERVICE, CHAMP_VERSION]) delete objet[c];
+    for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
     fiche = { ...ficheVide(''), ...objet };
     versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
     for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];

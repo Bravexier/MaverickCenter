@@ -1,75 +1,88 @@
-// Page /personnages/ (pages/personnages.astro) : charge les résumés des prétirés auprès du service (GET /api/personnages/), puis filtre et trie le
-// tableau dans le navigateur (lib/personnages-liste.mjs) ; filtres et tri sont gardés dans l'adresse de la page.
+// Page /personnages/ (pages/personnages.astro) : charge les résumés des prétirés auprès du service (GET /api/personnages/), puis filtre et trie la
+// liste dans le navigateur (lib/personnages-liste.mjs) ; filtres et tri sont gardés dans l'adresse de la page. Chaque ligne est un lien vers la fiche
+// (toute la ligne, pas le nom seul : demande du propriétaire), bordée de la couleur de sa magie (couleursDeBordure) ; le portrait vient de
+// GET /api/personnages/<id>/portrait/ (la liste n'en a que l'empreinte et le cadrage), le logo en attendant une image.
 // Script de page (navigateur) : il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé).
-import { COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, filtrer, filtresDepuisAdresse, trier } from '../lib/personnages-liste.mjs';
+import {
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, couleursDeBordure, filtrer, filtresDepuisAdresse, trier,
+} from '../lib/personnages-liste.mjs';
 
 const racine = document.getElementById('personnages');
 const formulaire = document.getElementById('filtres');
 const lignes = document.getElementById('lignes');
 const compte = document.getElementById('compte');
+const couleurs = JSON.parse(racine.dataset.couleurs || '{}');
 let personnages = [];
+let charge = false; // la liste reçue du service : avant (ou s'il ne répond pas), ni tri ni filtre n'affichent quoi que ce soit
 let filtres = filtresDepuisAdresse(location.search);
 
-const cellule = (contenu, classe) => {
-  const td = document.createElement('td');
-  if (classe) td.className = classe;
-  td.append(contenu);
-  return td;
+const element = (balise, classe, contenu) => {
+  const e = document.createElement(balise);
+  if (classe) e.className = classe;
+  if (contenu !== undefined) e.append(contenu);
+  return e;
 };
-const dateCourte = (iso) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** Le portrait d'une ligne : le carré cadré de l'image (style calculé par le service, lib/portrait.mjs#styleDuCadrage), ou le logo. */
+function portrait(p) {
+  const cadre = element('span', 'perso__portrait');
+  const img = document.createElement('img');
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  const adresse = adresseDuPortrait(racine.dataset.api, p);
+  if (adresse) {
+    img.src = adresse;
+    img.setAttribute('style', p.portrait.style);
+    img.addEventListener('error', () => {
+      img.removeAttribute('style');
+      img.src = racine.dataset.logo;
+      cadre.toggleAttribute('data-vide', true);
+    }, { once: true });
+  } else {
+    img.src = racine.dataset.logo;
+    cadre.toggleAttribute('data-vide', true);
+  }
+  cadre.append(img);
+  return cadre;
+}
+
+function ligne(p) {
+  const a = element('a', 'perso');
+  a.href = `${racine.dataset.fiche}?id=${encodeURIComponent(p.id)}`;
+  const bordure = couleursDeBordure(p, couleurs);
+  if (bordure) for (const [variable, couleur] of Object.entries(bordure)) a.style.setProperty(variable, couleur);
+  for (const c of COLONNES) {
+    if (c.cle === 'portrait') {
+      a.append(portrait(p));
+    } else if (c.cle === 'niveau') {
+      const n = element('span', 'col col--niveau', element('span', 'hors-ecran', `${c.titre} `));
+      n.append(String(p.niveau_global));
+      n.title = `${p.xp} XP`;
+      a.append(n);
+    } else {
+      a.append(element('span', `col col--${c.cle}`, String(c.texte(p) ?? '')));
+    }
+  }
+  return element('li', null, a);
+}
 
 function afficher() {
+  if (!charge) return;
   const liste = trier(filtrer(personnages, filtres), filtres.tri, filtres.sens);
   compte.textContent = personnages.length === 0
-    ? 'Aucun personnage pour l’instant : créez le premier prétiré.'
+    ? 'Aucun personnage pour l’instant.'
     : `${liste.length} personnage${liste.length > 1 ? 's' : ''}${liste.length !== personnages.length ? ` sur ${personnages.length}` : ''}`;
-  lignes.replaceChildren(...liste.map((p) => {
-    const tr = document.createElement('tr');
-    for (const c of COLONNES) {
-      if (c.cle === 'nom') {
-        const a = document.createElement('a');
-        a.href = `${racine.dataset.fiche}?id=${encodeURIComponent(p.id)}`;
-        a.textContent = p.nom;
-        const td = cellule(a);
-        if (p.surnom) td.append(` « ${p.surnom} »`);
-        tr.append(td);
-      } else if (c.cle === 'statut') {
-        const s = document.createElement('span');
-        s.className = 'statut';
-        s.dataset.statut = p.statut;
-        s.textContent = c.texte(p);
-        tr.append(cellule(s));
-      } else if (c.cle === 'anomalies') {
-        const s = document.createElement('span');
-        s.className = 'regles-a-revoir';
-        s.toggleAttribute('data-zero', !p.anomalies);
-        s.textContent = p.anomalies ? String(p.anomalies) : '✓';
-        s.title = p.anomalies ? 'Règles de la base enfreintes : voir le bas de la fiche' : 'Aucune règle enfreinte';
-        tr.append(cellule(s, 'nombre'));
-      } else if (c.cle === 'modifie_le') {
-        tr.append(cellule(dateCourte(p.modifie_le), 'nombre'));
-      } else if (c.cle === 'niveau') {
-        const td = cellule(String(p.niveau_global), 'nombre');
-        td.title = `${p.xp} XP`;
-        tr.append(td);
-      } else {
-        tr.append(cellule(String(c.texte(p) ?? ''), c.nature === 'nombre' ? 'nombre' : c.cle === 'classes' || c.cle === 'magies' || c.cle === 'race' ? 'long' : undefined));
-      }
-    }
-    return tr;
-  }));
-  if (personnages.length && !liste.length) {
-    const tr = document.createElement('tr');
-    const td = cellule('Aucun personnage ne correspond à ces filtres.', 'personnages-vide');
-    td.colSpan = COLONNES.length;
-    tr.append(td);
-    lignes.append(tr);
-  }
-  for (const th of racine.querySelectorAll('th[data-cle]')) {
-    const actif = th.dataset.cle === filtres.tri;
-    if (actif) th.setAttribute('aria-sort', filtres.sens === 'desc' ? 'descending' : 'ascending');
-    else th.removeAttribute('aria-sort');
-    th.querySelector('.fleche').textContent = actif ? (filtres.sens === 'desc' ? '▼' : '▲') : '↕';
+  lignes.replaceChildren(...liste.map(ligne));
+  if (personnages.length && !liste.length) lignes.append(element('li', 'personnages-vide', 'Aucun personnage ne correspond à ces filtres.'));
+  for (const bouton of racine.querySelectorAll('#tete button[data-cle]')) {
+    const actif = bouton.dataset.cle === filtres.tri;
+    const titre = COLONNES.find((c) => c.cle === bouton.dataset.cle).titre;
+    bouton.toggleAttribute('data-actif', actif);
+    bouton.setAttribute('aria-label', actif
+      ? `${titre} : trié par ordre ${filtres.sens === 'desc' ? 'décroissant' : 'croissant'} (cliquer pour inverser)`
+      : `Trier par ${titre.toLowerCase()}`);
+    bouton.querySelector('.fleche').textContent = actif ? (filtres.sens === 'desc' ? '▼' : '▲') : '↕';
   }
   history.replaceState(null, '', `${location.pathname}${adresseDesFiltres(filtres)}`);
 }
@@ -101,9 +114,9 @@ formulaire.addEventListener('reset', () => {
     afficher();
   });
 });
-for (const th of racine.querySelectorAll('th[data-cle]')) {
-  th.querySelector('button').addEventListener('click', () => {
-    filtres = { ...filtres, sens: filtres.tri === th.dataset.cle && filtres.sens === 'asc' ? 'desc' : 'asc', tri: th.dataset.cle };
+for (const bouton of racine.querySelectorAll('#tete button[data-cle]')) {
+  bouton.addEventListener('click', () => {
+    filtres = { ...filtres, sens: filtres.tri === bouton.dataset.cle && filtres.sens === 'asc' ? 'desc' : 'asc', tri: bouton.dataset.cle };
     afficher();
   });
 }
@@ -113,6 +126,7 @@ async function charger() {
     const reponse = await fetch(`${racine.dataset.api}personnages/`);
     if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
     personnages = (await reponse.json()).personnages;
+    charge = true;
   } catch {
     const b = document.getElementById('indisponible');
     b.textContent = 'Le service des personnages n’est pas joignable : la liste ne peut pas être chargée pour le moment.';

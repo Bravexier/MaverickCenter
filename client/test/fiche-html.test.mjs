@@ -22,9 +22,13 @@ test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les donné
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
   const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
-  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'statut', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
+  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }
+  // plus de statut (brouillon, validé, archivé : demande du propriétaire, migration 0038) : les contrôles signalent, n'empêchent jamais d'enregistrer
+  assert.ok(!html.includes('data-champ="statut"') && !html.includes('id="fiche-statut"'), 'plus de sélecteur « Statut » dans la barre');
+  assert.ok(!/brouillon|« validée »/i.test(html), 'ni brouillon ni fiche « validée » dans les textes de la page (aide de l’onglet « Contrôle »)');
+  assert.match(html, /Toute fiche est contrôlée, même inachevée : une règle enfreinte est signalée, elle n’empêche pas d’enregistrer\./);
   assert.ok(!html.includes('data-champ="ambidextrie"'), 'plus de case « Ambidextrie » : l’attaque à deux armes est calculée (décision R46)');
   assert.match(html, /<style>[^<]*\.fiche-etape/, 'feuille de style de la fiche insérée dans la page');
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
@@ -152,14 +156,34 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   assert.ok(regles.magies.some((m) => m.resistances.length) && regles.etats.length > 0);
 });
 
-test('/personnages/ : filtres et tableau dont chaque colonne se trie (un bouton par en-tête)', options, () => {
+test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
   const html = lire('personnages/index.html');
-  assert.match(html, /<div class="personnages" id="personnages" data-api="\/api\/" data-fiche="\/fiche\/">/);
-  const entetes = [...html.matchAll(/<th scope="col" data-cle="([a-z_]+)"[^>]*><button type="button">([^<]+)<span class="fleche" aria-hidden="true">/g)];
-  assert.deepEqual(entetes.map((m) => m[1]), COLONNES.map((c) => c.cle));
-  assert.deepEqual(entetes.map((m) => m[2]), COLONNES.map((c) => c.titre));
+  // les adresses du service, de la fiche et du logo (portrait par défaut), et les couleurs des magies pour la bordure des lignes (data-couleurs : du
+  // JSON, guillemets échappés par Astro)
+  const racine = html.match(/<div class="personnages" id="personnages" data-api="\/api\/" data-fiche="\/fiche\/" data-logo="\/logo\.webp" data-couleurs="([^"]+)">/);
+  assert.ok(racine, 'racine de la page et ses données');
+  const couleurs = JSON.parse(racine[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&'));
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  assert.deepEqual(couleurs, Object.fromEntries(regles.magies.map((m) => [m.id, m.couleur])), 'une couleur par magie de la base, celle des pages de magie (comme la fiche)');
+  assert.ok(Object.values(couleurs).every((c) => /^#[0-9a-f]{6}$/i.test(c)));
+  // le titre, puis directement les filtres : plus de phrase d'introduction ni de bouton de création
+  assert.match(html, /<h1>Personnages<\/h1>\s*<form class="personnages-filtres" id="filtres" role="search" aria-label="Filtres">/);
+  assert.ok(!html.includes('personnages-nouveau') && !html.includes('Nouveau prétiré'), 'plus de bouton « + Nouveau prétiré »');
+  assert.ok(!html.includes('Cliquez sur un en-tête') && !html.includes('des personnages qui ne sont à personne'), 'plus de phrase d’introduction');
+  // filtres : ceux de lib/personnages-liste.mjs, plus de statut
   for (const cle of Object.keys(FILTRES_PAR_DEFAUT).filter((c) => !['tri', 'sens'].includes(c))) assert.match(html, new RegExp(`name="${cle}"`), `filtre ${cle}`);
-  assert.match(html, /<a class="personnages-nouveau" href="\/fiche\/">/);
+  assert.ok(!html.includes('name="statut"'), 'plus de filtre de statut');
+  // l'en-tête de la liste : un bouton par colonne triable, le portrait en simple libellé, dans l'ordre de COLONNES ; plus de tableau
+  const tete = html.match(/<div class="personnages-tete" id="tete">([\s\S]*?)<\/div>/);
+  assert.ok(tete, 'en-tête de la liste');
+  const entetes = [...tete[1].matchAll(/<button type="button" class="col col--([a-z_]+)" data-cle="([a-z_]+)">([^<]+)<span class="fleche" aria-hidden="true">[^<]*<\/span><\/button>|<span class="col col--([a-z_]+)">([^<]+)<\/span>/g)]
+    .map((m) => (m[1] ? { cle: m[2], titre: m[3], triable: true, classe: m[1] } : { cle: m[4], titre: m[5], triable: false, classe: m[4] }));
+  assert.deepEqual(entetes.map(({ classe, ...e }) => e), COLONNES.map((c) => ({ cle: c.cle, titre: c.titre, triable: Boolean(c.tri) })));
+  assert.ok(entetes.every((e) => e.classe === e.cle), 'la classe de chaque en-tête suit sa clé');
+  assert.deepEqual(entetes.filter((e) => !e.triable).map((e) => e.cle), ['portrait'], 'seul le portrait ne se trie pas');
+  assert.ok(!/data-cle="statut"/.test(html) && !/<th scope="col"/.test(html), 'ni colonne de statut ni tableau');
+  // les lignes, remplies par le script de la page (chacune tout entière un lien vers la fiche)
+  assert.match(html, /<ol class="personnages-lignes" id="lignes" aria-label="Personnages"><\/ol>/);
 });
 
 test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Personnages du menu', options, () => {

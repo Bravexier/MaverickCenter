@@ -54,7 +54,7 @@ test('niveau global et niveaux de classe : mêmes valeurs que v_personnage_nivea
 });
 
 test('une fiche que le moteur dit dans ses budgets n’a aucune ligne de contrôle dans la base ; hors budget, la base dit la même chose', () => {
-  const fiche = ficheConforme({ statut: 'valide' });
+  const fiche = ficheConforme();
   assert.deepEqual(budgetCaracteristiques(regles, fiche), { total: 14, attendu: 14 });
   assert.deepEqual(budgetCompetences(regles, fiche), { total: 100, attendu: 100 });
   const { controles } = enregistrerFiche(vivante, fiche);

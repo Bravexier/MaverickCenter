@@ -1,18 +1,26 @@
 // API du service des personnages (client/serveur/api.mjs, fiches.mjs, service.mjs ; docs/serveur.md) : prétirés créés, lus, modifiés au format
-// de src/lib/fiche-format.mjs, contrôles de la base rendus, écritures refusées pour la bonne raison, rien d'écrit en cas de refus ; puis le
-// serveur HTTP réel (port au hasard) et sa surveillance des fichiers (nouvelles règles, base remplacée, nouvelle version du service).
+// de src/lib/fiche-format.mjs, contrôles de la base rendus (ils signalent, ils n'empêchent jamais d'enregistrer : plus de statut, migration 0038),
+// écritures refusées pour la bonne raison, rien d'écrit en cas de refus ; la liste (portrait : empreinte et cadrage) et l'image d'un portrait ; puis
+// le serveur HTTP réel (port au hasard) et sa surveillance des fichiers (nouvelles règles, base remplacée, nouvelle version du service).
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { expliquer, LIGNES_MAX } from '../serveur/fiches.mjs';
+import { enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { COLONNES_DU_SERVICE, HORS_FICHE, PARTIES_DE_FICHE, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
+import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
+import { adresseDuPortrait } from '../src/lib/personnages-liste.mjs';
+import { empreinte } from '../src/lib/portrait.mjs';
+
+/** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
+const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
+/** Les octets d'une data URL, décodés à part (pas par lib/portrait.mjs, que le service utilise). */
+const octetsDe = (dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-api-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -34,7 +42,7 @@ const lire = (id) => appel('GET', `/api/personnages/${id}`).corps;
 function ficheConforme(nom = 'Aldric') {
   return {
     ...ficheVide(nom),
-    statut: 'valide', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', bourse_ro: 12,
+    race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', bourse_ro: 12,
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }],
     caracteristiques: Object.entries({ force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 })
       .map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 })),
@@ -51,6 +59,13 @@ test('format : chaque table qui cite une fiche est une partie de la fiche ou exp
   }
   for (const c of colonnes.filter((x) => x.notnull && !COLONNES_DU_SERVICE.includes(x.name))) assert.ok(c.name in ficheVide(), `${c.name} : obligatoire, absent de ficheVide`);
   for (const c of COLONNES_DU_SERVICE) assert.ok(colonnes.some((x) => x.name === c), c);
+  // une colonne que les règles ont retirée (le statut, migration 0038) : plus dans sa table, ni dans une fiche vide
+  for (const [table, retirees] of Object.entries(COLONNES_RETIREES)) {
+    assert.ok(TABLES_VIVANTES.includes(table), table);
+    const presentes = db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name);
+    for (const c of retirees) assert.ok(!presentes.includes(c), `${table}.${c} : retirée des règles, encore dans la table`);
+  }
+  for (const c of COLONNES_RETIREES.personnage) assert.ok(!(c in ficheVide()), `${c} : retirée des règles, encore dans ficheVide`);
 });
 
 test('un choix que les règles n’ont plus (don ou spécialité supprimé depuis le site de dev, D11) : message en français, rien n’est écrit', () => {
@@ -62,39 +77,49 @@ test('un choix que les règles n’ont plus (don ou spécialité supprimé depui
   assert.equal(db.prepare('SELECT count(*) AS n FROM personnage').get().n, avant);
 });
 
-test('création : un prétiré (à personne, visible de tous), brouillon par défaut ; lu, listé, avec son niveau et ses contrôles', () => {
+test('création : un prétiré (à personne, visible de tous), sans statut ; inachevé, il est enregistré et ce qui lui manque signalé ; lu, listé, avec son niveau', () => {
   const r = appel('POST', '/api/personnages', { nom: 'Brune', surnom: '', lieu_origine: 'Valbrume', id: 'ignore', nature: 'joueur', visibilite: 'privee' });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
   assert.equal(r.entetes.Location, `/api/personnages/${p.id}/`);
   assert.match(p.id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-  assert.deepEqual({ nature: p.nature, proprietaire_id: p.proprietaire_id, visibilite: p.visibilite, statut: p.statut, nom: p.nom, surnom: p.surnom, lieu_origine: p.lieu_origine, mode_classe: p.mode_classe, xp: p.xp },
-    { nature: 'pretire', proprietaire_id: null, visibilite: 'tous', statut: 'brouillon', nom: 'Brune', surnom: null, lieu_origine: 'Valbrume', mode_classe: 'mono', xp: 0 });
+  assert.deepEqual({ nature: p.nature, proprietaire_id: p.proprietaire_id, visibilite: p.visibilite, nom: p.nom, surnom: p.surnom, lieu_origine: p.lieu_origine, mode_classe: p.mode_classe, xp: p.xp },
+    { nature: 'pretire', proprietaire_id: null, visibilite: 'tous', nom: 'Brune', surnom: null, lieu_origine: 'Valbrume', mode_classe: 'mono', xp: 0 });
+  assert.ok(!('statut' in p), 'plus de statut (migration 0038)');
   assert.match(p.cree_le, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   assert.equal(p.modifie_le, p.cree_le);
   assert.match(p.version, /^[0-9a-f]{16}$/);
   for (const cle of Object.keys(PARTIES_DE_FICHE)) assert.deepEqual(p[cle], [], cle);
   assert.deepEqual(r.corps.niveau, { niveau_global: 1, niveau_classe_1: 2, niveau_classe_2: 0 });
-  assert.deepEqual(r.corps.controles, [], 'un brouillon vide n’enfreint rien de ce que la base contrôle');
+  // toute fiche est contrôlée, même inachevée (avant la migration 0038, un brouillon échappait à ces règles) : ses manques sont signalés, elle est
+  // enregistrée quand même ; race et magie innée sont deux contrôles (jusque-là une contrainte de la table, hors brouillon)
+  const points = db.prepare('SELECT points_competences_cumul AS n FROM v_niveau WHERE niveau = 1').get().n;
+  assert.deepEqual(r.corps.controles, [
+    ...db.prepare('SELECT id FROM caracteristique ORDER BY id').all().map((c) => ({ regle: 'caracteristique_manquante', detail: c.id })),
+    { regle: 'classe_1_manquante', detail: null },
+    { regle: 'competences_total', detail: `0 / ${points}` },
+    { regle: 'magie_innee_manquante', detail: null },
+    { regle: 'race_manquante', detail: null },
+  ]);
 
   assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
   const liste = appel('GET', '/api/personnages/').corps.personnages;
   const resume = liste.find((f) => f.id === p.id);
-  assert.deepEqual({ nom: resume.nom, statut: resume.statut, niveau_global: resume.niveau_global, classes: resume.classes, anomalies: resume.anomalies },
-    { nom: 'Brune', statut: 'brouillon', niveau_global: 1, classes: [], anomalies: 0 });
+  assert.deepEqual({ nom: resume.nom, niveau_global: resume.niveau_global, classes: resume.classes, anomalies: resume.anomalies, portrait: resume.portrait },
+    { nom: 'Brune', niveau_global: 1, classes: [], anomalies: r.corps.controles.length, portrait: null });
+  assert.ok(!('statut' in resume));
   assert.match(journal.at(-1), new RegExp(`création du prétiré ${p.id}`));
 });
 
-test('une fiche conforme se crée « valide » ; le résumé donne les noms des règles', () => {
+test('une fiche conforme n’enfreint aucune règle ; le résumé donne les noms des règles', () => {
   const r = appel('POST', '/api/personnages', ficheConforme('Cyrielle'));
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   assert.deepEqual(r.corps.controles, []);
-  assert.equal(r.corps.personnage.statut, 'valide');
   assert.equal(r.corps.personnage.caracteristiques.length, 6);
   assert.deepEqual(r.corps.personnage.classes, [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }]);
   const resume = appel('GET', '/api/personnages').corps.personnages.find((f) => f.id === r.corps.personnage.id);
-  assert.deepEqual({ race: resume.race, ethnie: resume.ethnie, magie_innee: resume.magie_innee, classes: resume.classes.map((c) => c.classe) },
-    { race: 'Humain', ethnie: db.prepare("SELECT nom FROM ethnie WHERE id = 'races/humain#ethnie:humain-central'").get().nom, magie_innee: db.prepare("SELECT nom FROM magie WHERE id = 'magies/magie-du-feu'").get().nom, classes: ['Guerrier'] });
+  assert.deepEqual({ race: resume.race, ethnie: resume.ethnie, magie_innee: resume.magie_innee, classes: resume.classes.map((c) => c.classe), anomalies: resume.anomalies },
+    { race: 'Humain', ethnie: db.prepare("SELECT nom FROM ethnie WHERE id = 'races/humain#ethnie:humain-central'").get().nom, magie_innee: db.prepare("SELECT nom FROM magie WHERE id = 'magies/magie-du-feu'").get().nom, classes: ['Guerrier'], anomalies: 0 });
 });
 
 test('modification : avec la version lue ; colonne absente gardée, liste présente remplacée ; version ancienne ou absente refusée (409)', () => {
@@ -154,26 +179,125 @@ test('refus d’écrire : bornes, types, références inconnues, champs inconnus
   assert.equal(appel('POST', '/api/personnages', [1, 2]).statut, 400);
 });
 
-test('« valide » refusé tant que la fiche enfreint une règle de la base (422), avec la liste ; un brouillon les montre sans bloquer', () => {
+test('les contrôles signalent sans bloquer : une fiche qui enfreint des règles s’enregistre (plus de 422) ; un « statut » reçu (fichier exporté avant la migration 0038) est ignoré', () => {
   const { personnage: p } = appel('POST', '/api/personnages', { nom: 'Fanny', race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu' }).corps;
-  const r = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, statut: 'valide' });
-  assert.equal(r.statut, 422);
-  assert.ok(r.corps.controles.some((c) => c.regle === 'ethnie_manquante'), JSON.stringify(r.corps.controles));
-  assert.ok(r.corps.controles.some((c) => c.regle === 'classe_1_manquante'));
-  assert.equal(lire(p.id).personnage.statut, 'brouillon');
-  const b = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, classes: [{ rang: 1, classe_id: 'classes/guerrier' }, { rang: 2, classe_id: 'classes/archimage' }] });
+  // l'ancien passage en « valide », refusé (422) tant qu'une règle était enfreinte : la clé est ignorée, le reste du corps enregistré
+  const r = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, statut: 'valide', surnom: 'la Rousse' });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const regles = r.corps.controles.map((c) => c.regle);
+  assert.ok(regles.includes('ethnie_manquante'), JSON.stringify(r.corps.controles));
+  assert.ok(regles.includes('classe_1_manquante'));
+  assert.ok(!regles.includes('race_manquante') && !regles.includes('magie_innee_manquante'), 'race et magie innée choisies');
+  const relue = lire(p.id);
+  assert.equal(relue.personnage.surnom, 'la Rousse');
+  assert.ok(!('statut' in relue.personnage), 'la clé reçue n’est ni écrite ni rendue');
+  assert.deepEqual(relue.controles, r.corps.controles, 'relue : les mêmes contrôles');
+
+  const b = appel('PUT', `/api/personnages/${p.id}`, { version: r.corps.personnage.version, classes: [{ rang: 1, classe_id: 'classes/guerrier' }, { rang: 2, classe_id: 'classes/archimage' }] });
   assert.equal(b.statut, 200);
   assert.deepEqual(b.corps.controles.map((c) => c.regle).filter((x) => x.startsWith('classe')), ['classe_2_en_trop', 'classe_reservee'],
-    'brouillon : contrôles rendus (dont l’Archimage sans Potentiel Illimité, R23), fiche enregistrée');
+    'contrôles rendus (dont l’Archimage sans Potentiel Illimité, R23), fiche enregistrée');
+  assert.deepEqual(lire(p.id).personnage.classes.map((c) => c.classe_id), ['classes/guerrier', 'classes/archimage']);
+
+  // une fiche exportée avant, quel que soit son ancien statut, se crée comme les autres et reste listée (plus de fiches archivées à part)
+  for (const statut of ['brouillon', 'valide', 'archive']) {
+    const c = appel('POST', '/api/personnages', { ...ficheConforme(`Importée (${statut})`), statut });
+    assert.equal(c.statut, 201, JSON.stringify(c.corps));
+    assert.ok(!('statut' in c.corps.personnage), statut);
+    assert.deepEqual(c.corps.controles, [], statut);
+    assert.ok(appel('GET', '/api/personnages/').corps.personnages.some((f) => f.id === c.corps.personnage.id), statut);
+  }
 });
 
-test('fiche de joueur : ni listée, ni lue, ni modifiable sans comptes (avant la 1.0)', () => {
-  db.exec(`INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('alice', 'Alice', '2026-10-10T00:00:00Z');
-    INSERT INTO personnage (id, nature, proprietaire_id, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
-      alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le)
-    VALUES ('fiche-alice', 'joueur', 'alice', 'privee', 'brouillon', 'Secret', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, '2026-10-10T00:00:00Z', '2026-10-10T00:00:00Z');`);
+test('liste : plus de statut ; du portrait, l’empreinte de l’image et le style de son cadrage, jamais l’image ; null sans image lisible (le logo)', () => {
+  const creer = (corps) => {
+    const r = appel('POST', '/api/personnages', corps);
+    assert.equal(r.statut, 201, JSON.stringify(r.corps));
+    return r.corps.personnage;
+  };
+  const sans = creer({ nom: 'Iseult' });
+  const centre = creer({ nom: 'Joris', portrait: IMAGES.webp });
+  const cadre = creer({ nom: 'Kalia', portrait: IMAGES.webp, portrait_x: 0.8333, portrait_y: 0.25, portrait_zoom: 2 });
+  const jpeg = creer({ nom: 'Lothaire', portrait: IMAGES.jpeg });
+  // la base accepte toute data URL « data:image/… » (data/schema.sql) ; la liste n'en montre que ce que la page sait écrire et qui se décode
+  const svg = creer({ nom: 'Maëlle', portrait: 'data:image/svg+xml;base64,PHN2Zz4=' });
+  const tronquee = creer({ nom: 'Nils', portrait: 'data:image/png;base64,AAAAA' });
+  const liste = appel('GET', '/api/personnages/').corps.personnages;
+  for (const f of liste) assert.ok(!('statut' in f), f.nom);
+  const portrait = (p) => liste.find((f) => f.id === p.id).portrait;
+  assert.equal(portrait(sans), null);
+  // l'image fait 3 × 2 pixels : sans cadrage, le carré du centre ; cadrée (zoom 2, à droite), son carré à elle (lib/portrait.mjs#styleDuCadrage)
+  assert.deepEqual(portrait(centre), { empreinte: empreinte(IMAGES.webp), style: 'width:150%;height:100%;left:-25%;top:0%' });
+  assert.deepEqual(portrait(cadre), { empreinte: empreinte(IMAGES.webp), style: 'width:300%;height:200%;left:-199.99%;top:0%' });
+  assert.equal(portrait(jpeg).empreinte, empreinte(IMAGES.jpeg));
+  assert.equal(portrait(svg), null, 'un SVG n’est pas un portrait');
+  assert.equal(portrait(tronquee), null, 'une image qui ne se décode pas non plus');
+  assert.ok(!JSON.stringify(liste).includes('base64'), 'la liste ne recopie aucune image');
+});
+
+test('GET /api/personnages/<id>/portrait/ : les octets de l’image, son type et son empreinte (ETag) ; 304 si le navigateur l’a déjà ; 404 sans portrait lisible', () => {
+  const { personnage: p } = appel('POST', '/api/personnages', { nom: 'Octave', portrait: IMAGES.webp, portrait_x: 0.4, portrait_zoom: 1.5 }).corps;
+  const adresse = `/api/personnages/${p.id}/portrait/`;
+  let r = appel('GET', adresse, undefined, {});
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(r.corps, null, 'pas du JSON');
+  assert.ok(Buffer.from(r.brut).equals(octetsDe(IMAGES.webp)), 'les octets exacts de l’image');
+  const etiquette = `"${empreinte(IMAGES.webp)}"`;
+  assert.deepEqual(r.entetes, { ETag: etiquette, 'Cache-Control': 'private, no-cache', 'Content-Type': 'image/webp' });
+  const resume = appel('GET', '/api/personnages/').corps.personnages.find((f) => f.id === p.id);
+  assert.equal(`"${resume.portrait.empreinte}"`, etiquette, 'l’empreinte de la liste est l’ETag de l’image');
+  // l'adresse que la page /personnages/ en tire (lib/personnages-liste.mjs#adresseDuPortrait) mène à cette route, l'empreinte en paramètre
+  const deLaPage = new URL(adresseDuPortrait('/api/', resume), 'http://site');
+  assert.deepEqual([deLaPage.pathname, deLaPage.searchParams.get('v')], [adresse, resume.portrait.empreinte]);
+  assert.ok(Buffer.from(appel('GET', deLaPage.pathname, undefined, {}).brut).equals(octetsDe(IMAGES.webp)), 'l’image, par l’adresse de la page');
+  assert.ok(Buffer.from(appel('GET', adresse.slice(0, -1), undefined, {}).brut).equals(octetsDe(IMAGES.webp)), 'sans « / » final aussi');
+
+  // le navigateur la redemande avec l'empreinte qu'il a (aussi en ETag faible, ou dans une liste) : 304, sans corps ; une autre empreinte : l'image
+  for (const connue of [etiquette, `W/${etiquette}`, `"0123456789abcdef", ${etiquette}`]) {
+    r = appel('GET', adresse, undefined, { 'if-none-match': connue });
+    assert.equal(r.statut, 304, connue);
+    assert.equal(r.brut.length, 0, connue);
+    assert.deepEqual(r.entetes, { ETag: etiquette, 'Cache-Control': 'private, no-cache' }, connue);
+  }
+  assert.equal(appel('GET', adresse, undefined, { 'if-none-match': '"0123456789abcdef"' }).statut, 200);
+
+  // l'image change : nouvelle empreinte, l'ancienne ne vaut plus 304 ; le type suit l'image
+  for (const image of [IMAGES.png, IMAGES.jpeg]) {
+    const avant = lire(p.id).personnage.version;
+    assert.equal(appel('PUT', `/api/personnages/${p.id}`, { version: avant, portrait: image }).statut, 200);
+    r = appel('GET', adresse, undefined, { 'if-none-match': etiquette });
+    assert.equal(r.statut, 200);
+    assert.ok(Buffer.from(r.brut).equals(octetsDe(image)));
+    assert.deepEqual([r.entetes.ETag, r.entetes['Content-Type']], [`"${empreinte(image)}"`, `image/${image === IMAGES.png ? 'png' : 'jpeg'}`]);
+  }
+
+  // 404 : sans portrait, portrait qui n'en est pas un (un SVG n'est jamais servi), fiche inconnue, sans id (« /api/personnages/portrait/ » est la
+  // fiche « portrait », inconnue) ; la fiche d'un joueur : test suivant
+  const sans = appel('POST', '/api/personnages', { nom: 'Pernelle' }).corps.personnage;
+  const svg = appel('POST', '/api/personnages', { nom: 'Quentin', portrait: 'data:image/svg+xml;base64,PHN2Zz4=' }).corps.personnage;
+  for (const chemin_ of [`/api/personnages/${sans.id}/portrait/`, `/api/personnages/${svg.id}/portrait/`, '/api/personnages/fiche-inconnue/portrait/',
+    '/api/personnages//portrait/', '/api/personnages/portrait/', '/api/personnages/%E0%A4%A/portrait/']) {
+    assert.equal(appel('GET', chemin_, undefined, {}).statut, 404, chemin_);
+  }
+  // une autre adresse sous une fiche n'existe pas
+  for (const chemin_ of [`/api/personnages/${p.id}/autre/`, `/api/personnages/${p.id}/portrait/x/`]) assert.equal(appel('GET', chemin_, undefined, {}).statut, 404, chemin_);
+  // en lecture seule ; base indisponible : 503
+  for (const methode of ['POST', 'PUT', 'DELETE']) {
+    r = appel(methode, adresse, {});
+    assert.deepEqual([r.statut, r.entetes.Allow], [405, 'GET'], methode);
+  }
+  assert.ok(lire(p.id).personnage.portrait, 'rien n’a été effacé');
+  assert.equal(traiter({ methode: 'GET', chemin: adresse, entetes: {} }, { base: () => null, etat: () => ({}) }).statut, 503);
+});
+
+test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes (avant la 1.0)', () => {
+  db.exec("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('alice', 'Alice', '2026-10-10T00:00:00Z')");
+  db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
+      alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, portrait)
+    VALUES ('fiche-alice', 'joueur', 'alice', 'privee', 'Secret', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, '2026-10-10T00:00:00Z', '2026-10-10T00:00:00Z', ?)`).run(IMAGES.webp);
   assert.ok(!appel('GET', '/api/personnages').corps.personnages.some((f) => f.id === 'fiche-alice'));
   assert.equal(appel('GET', '/api/personnages/fiche-alice').statut, 404);
+  assert.equal(appel('GET', '/api/personnages/fiche-alice/portrait/').statut, 404, 'son portrait, une image lisible, n’est pas servi');
   assert.equal(appel('PUT', '/api/personnages/fiche-alice', { version: 'x', nom: 'Pris' }).statut, 404);
   assert.equal(appel('DELETE', '/api/personnages/fiche-alice', { version: 'x' }).statut, 404);
   assert.equal(db.prepare("SELECT nom FROM personnage WHERE id = 'fiche-alice'").get().nom, 'Secret');
@@ -247,11 +371,24 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     const lues = new DatabaseSync(REGLES, { readOnly: true });
     const metier = { ...lues.prepare('SELECT id, nom FROM metier ORDER BY id LIMIT 1').get() };
     lues.close();
-    const reponse = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Hugo', metier_id: metier.id }) });
+    const reponse = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Hugo', metier_id: metier.id, portrait: IMAGES.jpeg }) });
     assert.equal(reponse.status, 201);
     assert.equal(reponse.headers.get('cache-control'), 'no-store');
     assert.match(reponse.headers.get('content-type'), /^application\/json/);
     const hugo = (await reponse.json()).personnage;
+    // son portrait : des octets servis tels quels (`brut`), avec le type de l'image à la place de celui du JSON ; puis 304 sans corps
+    let image = await fetch(`${s.url}/api/personnages/${hugo.id}/portrait/`);
+    assert.deepEqual([image.status, image.headers.get('content-type'), image.headers.get('cache-control'), image.headers.get('x-content-type-options')],
+      [200, 'image/jpeg', 'private, no-cache', 'nosniff']);
+    assert.ok(Buffer.from(await image.arrayBuffer()).equals(octetsDe(IMAGES.jpeg)));
+    const etiquette = image.headers.get('etag');
+    assert.equal(etiquette, `"${empreinte(IMAGES.jpeg)}"`);
+    image = await fetch(`${s.url}/api/personnages/${hugo.id}/portrait/`, { headers: { 'If-None-Match': etiquette } });
+    assert.equal(image.status, 304);
+    assert.equal((await image.arrayBuffer()).byteLength, 0);
+    // un 304 n'a pas de corps : ni type (JSON) ni longueur, que le navigateur recopierait sur l'image gardée ; son ETag et son cache, si
+    assert.deepEqual([image.headers.get('content-type'), image.headers.get('content-length'), image.headers.get('etag'), image.headers.get('cache-control')],
+      [null, null, etiquette, 'private, no-cache']);
     const gros = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(1024 * 1024 + 10) }).catch((e) => e);
     if (!(gros instanceof Error)) assert.equal(gros.status, 413);
 
@@ -293,5 +430,35 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     await assert.rejects(fetch(`${s.url}/api/etat`), 'serveur arrêté');
   } finally {
     await s.arreter();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0038 (sa reconstruction a échoué, docs/serveur.md) : le statut, encore là et obligatoire, reçoit sa valeur de départ ; la fiche se crée, se lit, se liste et se modifie', () => {
+  // les règles d'aujourd'hui, la table des fiches telle qu'avant 0038 (colonne et contrainte de data/schema.sql d'alors)
+  const schema = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
+  const debut = schema.indexOf('CREATE TABLE personnage (');
+  const fin = schema.indexOf(') STRICT;', debut);
+  const nom = '\n  nom                   TEXT    NOT NULL CHECK (length(nom) > 0),';
+  const table = schema.slice(debut, fin);
+  assert.equal(table.split(nom).length, 2, 'la colonne nom de personnage, une fois');
+  const ancienne = table
+    .replace(nom, `\n  statut                TEXT    NOT NULL CHECK (statut IN ('brouillon', 'valide', 'archive')),${nom}`)
+    .replace('  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)\n',
+      "  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),\n  CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL))\n");
+  assert.notEqual(ancienne, table);
+  const ancien = schema.slice(0, debut) + ancienne + schema.slice(fin);
+  const base = new DatabaseSync(':memory:');
+  try {
+    base.exec(ancien);
+    const colonne = base.prepare("SELECT \"notnull\" AS obligatoire, dflt_value AS defaut FROM pragma_table_info('personnage') WHERE name = 'statut'").get();
+    assert.deepEqual({ ...colonne }, { obligatoire: 1, defaut: null }, 'la colonne d’avant : obligatoire, sans valeur par défaut');
+    const cree = enregistrerFiche(base, { nom: 'Repli' });
+    assert.equal(cree.personnage.statut, 'brouillon', 'sa valeur de départ d’avant 0038');
+    assert.ok(cree.controles.some((c) => c.regle === 'race_manquante'), 'les contrôles d’aujourd’hui');
+    assert.deepEqual(listerFiches(base).map((f) => f.nom), ['Repli']);
+    const modifiee = enregistrerFiche(base, { version: cree.personnage.version, surnom: 'de secours' }, { id: cree.personnage.id });
+    assert.deepEqual([modifiee.personnage.surnom, lireFiche(base, cree.personnage.id).statut], ['de secours', 'brouillon']);
+  } finally {
+    base.close();
   }
 });

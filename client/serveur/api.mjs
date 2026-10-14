@@ -4,11 +4,12 @@
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
 //   POST /api/maintenance/lever/    { lot } → lève la maintenance des deux serveurs (site de dev seulement : il tient le lancement)
-//   GET  /api/personnages/          résumé de chaque prétiré (recherche)
+//   GET  /api/personnages/          résumé de chaque prétiré (recherche ; du portrait, son empreinte et son cadrage seulement)
 //   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau }
 //   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau }
 //   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau } ; 409 si elle a changé entre-temps
 //   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
+//   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag)
 // Édition des règles, sur le site de dev seulement (service lancé avec MAVERICK_EDITION=1 ; ailleurs 403) — serveur/edition.mjs :
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
@@ -43,7 +44,7 @@ import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot, lireReference,
   noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
-import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, supprimerFiche } from './fiches.mjs';
+import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 
 export const PREFIXE = '/api/';
@@ -87,7 +88,8 @@ export function traiter(requete, service) {
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
-  if (ressource !== 'personnages' || reste.length) return erreur(404, 'Adresse inconnue.');
+  if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
+  if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
 
   let id = null;
   if (brut !== undefined) {
@@ -129,6 +131,33 @@ export function traiter(requete, service) {
     if (e instanceof ErreurFiche) return erreur(e.statut, e.message, e.details);
     throw e;
   }
+}
+
+/**
+ * GET /api/personnages/<id>/portrait/ : l'image du portrait d'un prétiré, telle quelle (la liste des personnages n'en reçoit que l'empreinte). Le
+ * navigateur la garde et la redemande avec son empreinte (ETag, If-None-Match) : 304 tant qu'elle n'a pas changé. 404 sans fiche ou sans portrait.
+ */
+function traiterPortrait(requete, service, brut, permis) {
+  const refus = permis('GET');
+  if (refus) return refus;
+  let id;
+  try {
+    id = decodeURIComponent(brut);
+  } catch {
+    return erreur(404, 'Fiche introuvable.');
+  }
+  if (!id || id.length > 200) return erreur(404, 'Fiche introuvable.');
+  const db = service.base();
+  if (!db) return erreur(503, 'La base des fiches n’est pas disponible pour le moment.', { etat: service.etat() });
+  const portrait = portraitDeFiche(db, id);
+  if (!portrait) return erreur(404, 'Pas de portrait pour cette fiche.');
+  const etiquette = `"${portrait.empreinte}"`;
+  const cache = { ETag: etiquette, 'Cache-Control': 'private, no-cache' };
+  const connue = String(requete.entetes?.['if-none-match'] ?? '').split(',').map((v) => v.trim().replace(/^W\//, ''));
+  if (connue.includes(etiquette)) return { statut: 304, corps: null, brut: '', entetes: cache };
+  const octets = portrait.octets();
+  if (!octets) return erreur(404, 'Pas de portrait pour cette fiche.');
+  return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
 }
 
 /** Les routes /api/edition/… (site de dev seulement). */
