@@ -1,11 +1,12 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme, composant, gemme, bois, ingrédient, monnaie,
-// événement de la chronologie et bloc de description, catégorie de la chronologie, mot-clé ; supprimables : métier, spécialité, don de classe, arme
-// (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, composant, gemme,
-// bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé
-// (retiré de tout ce qui le porte).
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, capacité de monstre (commune, et sa place
+// sur une carte), arme, composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
+// mot-clé ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42,
+// R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme, bois, ingrédient et monnaie
+// (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé (retiré de tout ce qui
+// le porte).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -260,10 +261,38 @@ export const TABLES = {
       ...COLONNES_DU_PORTRAIT,
     },
   },
+  // la rubrique « Capacité(s) » n'est qu'un repère (texte vide, décision R66) : ses capacités sont les trois tables suivantes
   monstre_rubrique: {
     libelle: 'Rubrique de la carte',
     colonnes: {
       texte: { type: 'texte', libelle: 'Texte de la rubrique', vide: '' },
+    },
+  },
+  // une capacité de monstre commune (décision R66 : « Elle change pour tous ») : son nom et sa description valent pour toutes les cartes qui l'ont ;
+  // « {N} » dans la description = un emplacement de valeur commune N, qu'une carte peut changer (décision R69 : monstre_capacite_valeur)
+  monstre_capacite_commune: {
+    libelle: 'Capacité de monstre',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom de la capacité (sur toutes ses cartes)', requis: true },
+      description: { type: 'texte', libelle: 'Description (sur toutes ses cartes ; « {10} » : une valeur que chaque carte peut changer)', requis: true },
+    },
+  },
+  // sa place sur une carte : préfixe (« [EP3] » : à partir de l'EP 3, décision R56 ; ep_min en est recalculé), la capacité commune, la liste de sorts
+  // de la carte (« Lanceur de sorts » seulement)
+  monstre_capacite: {
+    libelle: 'Capacité de la carte',
+    colonnes: {
+      prefixe: { type: 'ligne', libelle: 'Préfixe (« [EP3] », « [Gauche] »)' },
+      capacite_commune_id: { type: 'choix', libelle: 'Capacité', requis: true, liste: 'capacitesDeMonstre' },
+      sorts: { type: 'ligne', libelle: 'Sorts de cette carte (séparés par des virgules)' },
+    },
+  },
+  // la valeur d'un emplacement « {N} » pour une carte, quand ce n'est pas la valeur commune (décision R69 ; réglée au curseur : opération
+  // valeurs_de_capacite)
+  monstre_capacite_valeur: {
+    libelle: 'Valeur d’une capacité',
+    colonnes: {
+      valeur: { type: 'entier', libelle: 'Valeur pour cette carte', requis: true, min: 0 },
     },
   },
   monstre_espece_bloc: {
@@ -485,6 +514,27 @@ export const ENTITES = {
     champs: {
       espece_id: { type: 'choix', libelle: 'Espèce', requis: true, liste: 'especesDeMonstres' },
       ...champsDe('monstre', ['nom', 'echelle_brut', 'categorie', 'type_brut', 'alignement_brut']),
+    },
+  },
+  // une capacité de monstre commune (décision R66) : identifiant tiré du nom une fois, puis figé et jamais réutilisé ; supprimée seulement quand plus
+  // aucune carte ne l'a
+  monstre_capacite_commune: {
+    table: 'monstre_capacite_commune',
+    libelle: 'capacité de monstre',
+    nouveau: 'Nouvelle capacité de monstre',
+    suppression: true,
+    champs: champsDe('monstre_capacite_commune', ['nom', 'description']),
+  },
+  // une capacité placée sur une carte, à la fin de ses capacités : une capacité commune existante, ou celle créée plus haut dans le lot (« @i »)
+  monstre_capacite: {
+    table: 'monstre_capacite',
+    libelle: 'capacité de la carte',
+    nouveau: 'Ajouter une capacité',
+    suppression: true,
+    champs: {
+      monstre_id: { type: 'ligne', libelle: 'Monstre', requis: true },
+      capacite_commune_id: { type: 'ligne', libelle: 'Capacité (identifiant, ou « @i » : créée plus haut dans le lot)', requis: true },
+      ...champsDe('monstre_capacite', ['prefixe', 'sorts']),
     },
   },
   // une arme dans une famille de la page des armes (demande du propriétaire : « Fais donc la possibilité de créer / supprimer des armes ») ; supprimée,

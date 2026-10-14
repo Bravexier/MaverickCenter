@@ -5,6 +5,10 @@
 //     (lib/monstre-champs.mjs, comme tools/bestiaire/extraire.mjs), jamais saisi ; création et suppression d'une espèce et d'une carte ;
 //   - les lignes du tableau et les cartes que la page n'a pas (monstre créé depuis la construction du site : POST /api/edition/bestiaire/), rendues
 //     par lib/bestiaire-rendu.mjs comme la page construite ;
+//   - les capacités (décisions R66 à R69) : une capacité commune (nom, description à emplacements « {N} ») se modifie pour toutes ses cartes, se crée et
+//     se supprime quand plus aucune carte ne l'a ; sur une carte, une capacité s'ajoute (à la fin), se retire (son rang reste libre), change de préfixe
+//     (« [EP3] » : ep_min recalculé) ou de liste de sorts ; la valeur d'un emplacement pour une carte se règle au curseur (opération valeurs_de_capacite :
+//     seule une valeur qui n'est pas la valeur commune s'écrit) ;
 //   - le portrait d'une carte, ou d'une espèce sans carte (« il sera possible d'enregistrer le portrait de la même manière que dans la feuille de
 //     personnage », migration 0033) : l'image et son cadrage vont ensemble (suiviDuPortrait) ; l'image entière ne sort que par POST /api/edition/portrait/.
 //     Le portrait suit la tuile : la première carte d'une espèce prend celui de l'espèce, et une espèce qui perd sa dernière carte reprend le sien (sans
@@ -12,8 +16,8 @@
 // Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
-import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../src/lib/bestiaire-rendu.mjs';
-import { bornes, CATEGORIES, GABARIT_DE_CARTE, lieux, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
+import { bornes, CATEGORIES, echelleDuPrefixe, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, dimensionsDuPortrait, empreinte, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -22,11 +26,25 @@ const ORIGINE = 'monstres';
 /** Colonnes de `monstre` tirées du texte des rubriques (valeursDeLaCarte). */
 const VALEURS_TYPEES = ['sante', 'chakra', 'barriere', 'armure_physique', 'armure_magique', 'vitesse_sol', 'vitesse_nage'];
 /** Tables de détail d'une carte, puis d'une espèce : vidées (au journal) avant de supprimer la ligne qu'elles citent. */
-const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
+const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite_valeur', 'monstre_capacite', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
 const DETAILS_D_UNE_ESPECE = ['monstre_butin', 'monstre_espece_bloc', 'monstre_espece_lieu'];
 /** Le portrait et son cadrage (lib/portrait.mjs), comme personnage.portrait : mêmes colonnes dans monstre et monstre_espece. */
 export const COLONNES_DU_PORTRAIT = ['portrait', 'portrait_x', 'portrait_y', 'portrait_zoom'];
 const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) => [c, ligne?.[c] ?? null]));
+
+/**
+ * Ce qu'une description de capacité commune peut écrire (décision R69) : des accolades seulement autour d'un entier, « {10} » (un emplacement de valeur
+ * commune 10) ; renvoie le message du refus, ou null.
+ */
+export function refusDeDescription(description) {
+  const reste = String(description ?? '').replace(/\{\d+\}/g, '');
+  if (/[{}]/.test(reste)) return 'une accolade ne s’écrit qu’autour d’un nombre entier : « {10} » est une valeur que chaque carte peut changer (curseur).';
+  if (emplacements(description).length > 20) return 'au plus 20 valeurs « {N} » par description.';
+  return null;
+}
+
+/** L'identifiant d'une capacité commune : normalize(nom), « + » écrit « plus » (« Science du critique+ » -> science-du-critique-plus). */
+export const cleDeCapacite = (nom) => normalize(String(nom ?? '').replace(/\+/g, ' plus '));
 const SANS_PORTRAIT = portraitDe(null);
 
 /**
@@ -49,9 +67,9 @@ export function suiviDuPortrait(ligne, valeurs) {
 
 /**
  * Les domaines du bestiaire ({ table: { colonnes?, deriver?, creer?, supprimer? } }, voir serveur/edition.mjs#DOMAINES).
- * @param {{ refus: Function, ErreurEdition: Function, synchroniser: Function, provenance: Function, idDejaEmploye: Function, ordreSuivant: Function }} outils
+ * @param {{ refus: Function, ErreurEdition: Function, synchroniser: Function, provenance: Function, idDejaEmploye: Function, ordreSuivant: Function, reference: Function }} outils
  */
-export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant }) {
+export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant, reference }) {
   /** Échelles de puissance d'une écriture (« EP1 - 10 », « 2 ») : [min, max] ; aucun nombre : NULL (le texte fait foi) ; hors de 1 à 10 : refus. */
   function echelles(texte, quoi) {
     const [ep_min, ep_max] = bornes(texte);
@@ -73,7 +91,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
     const communes = (quoi) => ({ origine: ORIGINE, source_ref: sourceDuSite(ctx, quoi) });
     synchroniser(ctx, 'monstre_caracteristique', filtre, v.caracteristiques, communes(RUBRIQUES.caracteristiques));
     synchroniser(ctx, 'monstre_attaque', filtre, v.attaques, communes(RUBRIQUES.degats));
-    synchroniser(ctx, 'monstre_capacite', filtre, v.capacites, communes(RUBRIQUES.capacites));
+    // pas les capacités : elles ne sont plus le texte d'une rubrique (décision R66 : monstre_capacite, monstre_capacite_commune)
     synchroniser(ctx, 'monstre_defense', filtre, v.defenses, communes('Vulnérabilités, résistances, immunités'));
   }
 
@@ -179,12 +197,208 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
   };
 
   const MONSTRE_RUBRIQUE = {
+    colonnes(_ctx, ligne, valeurs, avant) {
+      // la rubrique « Capacité(s) » n'est qu'un repère : ses capacités se modifient tuile par tuile (décision R66)
+      if (avant.rubrique === 'capacites' && 'texte' in valeurs && ligne.texte !== '') {
+        throw refus('La rubrique « Capacité(s) » n’a pas de texte : ses capacités se modifient une à une (capacités communes, décision R66).');
+      }
+      return {};
+    },
     deriver(ctx, avant, apres) {
       if (avant.texte !== apres.texte) suivreLaCarte(ctx, apres.monstre_id);
     },
   };
 
-  return { monstre_espece: MONSTRE_ESPECE, monstre: MONSTRE, monstre_rubrique: MONSTRE_RUBRIQUE };
+  /** Les valeurs propres d'un placement (monstre_capacite_valeur), dans l'ordre de leurs emplacements. */
+  const valeursDuPlacement = (db, cle) => db.prepare('SELECT * FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ? ORDER BY numero').all(cle.monstre_id, cle.rang);
+  const communeDe = (db, id) => {
+    const c = typeof id === 'string' && id ? lireLigne(db, 'monstre_capacite_commune', { id }) : null;
+    if (!c) throw new ErreurEdition(404, `Capacité de monstre introuvable : ${id}`);
+    return c;
+  };
+  const placementDe = (db, cle) => {
+    const p = typeof cle?.monstre_id === 'string' && Number.isInteger(cle?.rang) ? lireLigne(db, 'monstre_capacite', { monstre_id: cle.monstre_id, rang: cle.rang }) : null;
+    if (!p) throw new ErreurEdition(404, `Capacité de la carte introuvable : ${JSON.stringify(cle)}`);
+    return p;
+  };
+  /** Les cartes qui ont une capacité commune (leurs noms), pour un refus. */
+  const cartesDe = (db, id) => db.prepare('SELECT DISTINCT m.nom FROM monstre_capacite c JOIN monstre m ON m.id = c.monstre_id WHERE c.capacite_commune_id = ? ORDER BY m.nom').all(id).map((r) => r.nom);
+  /** Le préfixe d'une capacité -> son échelle (décision R56) ; « [EP12] » : refus. */
+  const echelleDe = (prefixe) => {
+    const n = echelleDuPrefixe(prefixe);
+    if (n !== null && (n < 1 || n > 10)) throw refus(`Préfixe « ${prefixe} » : les échelles de puissance vont de 1 à 10.`);
+    return n;
+  };
+  /** Un rang libre à la fin des capacités d'une carte : jamais un rang déjà employé (l'historique et le journal comptent, comme les identifiants). */
+  function rangSuivant(db, monstreId) {
+    const enPlace = db.prepare('SELECT max(rang) AS m FROM monstre_capacite WHERE monstre_id = ?').get(monstreId).m ?? 0;
+    const employes = ['historique_modification', 'modification']
+      .filter((t) => db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t))
+      .map((t) => db.prepare(`SELECT max(json_extract(cle, '$.rang')) AS m FROM "${t}" WHERE table_nom IN ('monstre_capacite', 'monstre_capacite_valeur') AND json_extract(cle, '$.monstre_id') = ?`).get(monstreId).m ?? 0);
+    return Math.max(enPlace, ...employes) + 1;
+  }
+
+  const MONSTRE_CAPACITE_COMMUNE = {
+    colonnes(_ctx, ligne, valeurs) {
+      if ('nom' in valeurs && !cleDeCapacite(ligne.nom)) throw refus(`« ${ligne.nom} » : le nom doit contenir au moins une lettre ou un chiffre.`);
+      if ('description' in valeurs) {
+        const r = refusDeDescription(ligne.description);
+        if (r) throw refus(`Capacité « ${ligne.nom} » : ${r}`);
+      }
+      return {};
+    },
+    /** Une description changée : les valeurs propres des cartes suivent ses emplacements (un emplacement retiré emporte les siennes ; une valeur devenue la valeur commune ne s'écrit plus). */
+    deriver(ctx, avant, apres) {
+      if (avant.description === apres.description) return;
+      const communes = emplacements(apres.description);
+      const propres = ctx.db.prepare(`SELECT v.monstre_id, v.rang, v.numero, v.valeur FROM monstre_capacite_valeur v
+        JOIN monstre_capacite c ON c.monstre_id = v.monstre_id AND c.rang = v.rang WHERE c.capacite_commune_id = ?`).all(apres.id);
+      for (const v of propres) {
+        if (v.numero > communes.length || v.valeur === communes[v.numero - 1]) ctx.w.supprimer('monstre_capacite_valeur', { monstre_id: v.monstre_id, rang: v.rang, numero: v.numero });
+      }
+    },
+    /** Une capacité commune : id tiré du nom une fois (suffixe -2… si l'id est pris ou a déjà servi), puis figé ; même nom et même description : refus. */
+    creer(ctx, valeurs) {
+      const { db, w } = ctx;
+      const cle = cleDeCapacite(valeurs.nom);
+      if (!cle) throw refus(`« ${valeurs.nom} » : le nom doit contenir au moins une lettre ou un chiffre.`);
+      const r = refusDeDescription(valeurs.description);
+      if (r) throw refus(`Capacité « ${valeurs.nom} » : ${r}`);
+      const meme = db.prepare('SELECT id FROM monstre_capacite_commune WHERE nom_cle = ? AND description = ?').get(normalize(valeurs.nom), valeurs.description);
+      if (meme) throw new ErreurEdition(409, `La capacité « ${valeurs.nom} » existe déjà avec cette description (${meme.id}).`);
+      let id = cle;
+      for (let n = 2; lireLigne(db, 'monstre_capacite_commune', { id }) || idDejaEmploye(db, ['monstre_capacite_commune'], id); n += 1) id = `${cle}-${n}`;
+      w.inserer('monstre_capacite_commune', {
+        id, nom: valeurs.nom, nom_cle: normalize(valeurs.nom), description: valeurs.description, liste_de_sorts: 0, origine: ORIGINE, source_ref: provenance(ctx.instant),
+      });
+      return { id, resume: `Capacité de monstre créée : ${valeurs.nom}` };
+    },
+    /** Seulement quand plus aucune carte ne l'a (le refus nomme les cartes). */
+    supprimer(ctx, cle) {
+      const { db, w } = ctx;
+      const c = communeDe(db, cle?.id);
+      const cartes = cartesDe(db, c.id);
+      if (cartes.length) {
+        const liste = `${cartes.slice(0, 5).join(', ')}${cartes.length > 5 ? ` et ${cartes.length - 5} autre${cartes.length > 6 ? 's' : ''}` : ''}`;
+        throw new ErreurEdition(409, `La capacité « ${c.nom} » est encore sur ${cartes.length} carte${cartes.length > 1 ? 's' : ''} (${liste}) : retirez-la d’abord.`);
+      }
+      w.supprimer('monstre_capacite_commune', { id: c.id });
+      return { resume: `Capacité de monstre supprimée : ${c.nom}` };
+    },
+  };
+
+  const MONSTRE_CAPACITE = {
+    colonnes(ctx, ligne, valeurs) {
+      const sortie = {};
+      if ('prefixe' in valeurs) sortie.ep_min = echelleDe(ligne.prefixe);
+      const commune = communeDe(ctx.db, ligne.capacite_commune_id);
+      if (!commune.liste_de_sorts && ligne.sorts !== null && ligne.sorts !== undefined) {
+        if ('sorts' in valeurs) throw refus(`« ${commune.nom} » n’a pas de liste de sorts par carte (seulement « Lanceur de sorts », décision R66).`);
+        sortie.sorts = null; // une autre capacité, sans liste : la liste de l'ancienne part
+      }
+      return sortie;
+    },
+    /** Une autre capacité sur la même place : les valeurs propres de l'ancienne partent (ses emplacements ne sont pas ceux de la nouvelle). */
+    deriver(ctx, avant, apres) {
+      if (avant.capacite_commune_id === apres.capacite_commune_id) return;
+      synchroniser(ctx, 'monstre_capacite_valeur', { monstre_id: apres.monstre_id, rang: apres.rang }, []);
+    },
+    /** Une capacité à la fin des capacités d'une carte : une capacité commune existante, ou créée plus haut dans le lot (« @i »). */
+    creer(ctx, valeurs) {
+      const { db, w } = ctx;
+      const monstre = lireLigne(db, 'monstre', { id: valeurs.monstre_id });
+      if (!monstre) throw new ErreurEdition(404, `Monstre introuvable : ${valeurs.monstre_id}`);
+      const commune = communeDe(db, reference(ctx, valeurs.capacite_commune_id, 'monstre_capacite_commune'));
+      if (valeurs.sorts && !commune.liste_de_sorts) throw refus(`« ${commune.nom} » n’a pas de liste de sorts par carte (seulement « Lanceur de sorts », décision R66).`);
+      const rang = rangSuivant(db, monstre.id);
+      const prefixe = valeurs.prefixe ?? null;
+      w.inserer('monstre_capacite', {
+        monstre_id: monstre.id, rang, prefixe, ep_min: echelleDe(prefixe), capacite_commune_id: commune.id, sorts: valeurs.sorts ?? null,
+        origine: ORIGINE, source_ref: sourceDuSite(ctx, RUBRIQUES.capacites),
+      });
+      return { id: JSON.stringify({ monstre_id: monstre.id, rang }), resume: `Capacité ajoutée à ${monstre.nom} : ${commune.nom}` };
+    },
+    /** Une capacité retirée d'une carte, avec ses valeurs propres ; son rang reste libre (pas de renumérotation : les autres tuiles gardent leur clé). */
+    supprimer(ctx, cle) {
+      const { db, w } = ctx;
+      const p = placementDe(db, cle);
+      const commune = lireLigne(db, 'monstre_capacite_commune', { id: p.capacite_commune_id });
+      const monstre = lireLigne(db, 'monstre', { id: p.monstre_id });
+      synchroniser(ctx, 'monstre_capacite_valeur', { monstre_id: p.monstre_id, rang: p.rang }, []);
+      w.supprimer('monstre_capacite', { monstre_id: p.monstre_id, rang: p.rang });
+      return { resume: `Capacité retirée de ${monstre?.nom ?? p.monstre_id} : ${commune?.nom ?? p.capacite_commune_id}` };
+    },
+  };
+
+  const MONSTRE_CAPACITE_VALEUR = {
+    colonnes(ctx, ligne) {
+      const p = placementDe(ctx.db, ligne);
+      if (ligne.numero > emplacements(communeDe(ctx.db, p.capacite_commune_id).description).length) throw refus(`Emplacement ${ligne.numero} : absent de la description.`);
+      return {};
+    },
+  };
+
+  return {
+    monstre_espece: MONSTRE_ESPECE, monstre: MONSTRE, monstre_rubrique: MONSTRE_RUBRIQUE, monstre_capacite_commune: MONSTRE_CAPACITE_COMMUNE,
+    monstre_capacite: MONSTRE_CAPACITE, monstre_capacite_valeur: MONSTRE_CAPACITE_VALEUR,
+  };
+}
+
+/**
+ * Les valeurs d'une capacité pour une carte, réglées au curseur (décision R69) : { op: 'valeurs_de_capacite', monstre_id, rang, valeurs: { numéro: valeur
+ * ou null } }. Seule une valeur qui n'est pas la valeur commune de l'emplacement s'écrit (monstre_capacite_valeur) ; la valeur commune, ou null, l'efface.
+ * @param {{ refus: Function, ErreurEdition: Function, provenance: Function }} outils
+ */
+export function operationsDuBestiaire({ refus, ErreurEdition, provenance }) {
+  function valeursDeCapacite(ctx, op) {
+    const { db, w } = ctx;
+    const p = typeof op?.monstre_id === 'string' && Number.isInteger(op?.rang) ? lireLigne(db, 'monstre_capacite', { monstre_id: op.monstre_id, rang: op.rang }) : null;
+    if (!p) throw new ErreurEdition(404, `Capacité de la carte introuvable : ${JSON.stringify({ monstre_id: op?.monstre_id, rang: op?.rang })}`);
+    if (!op.valeurs || typeof op.valeurs !== 'object' || Array.isArray(op.valeurs)) throw refus('Valeurs d’une capacité : { numéro: valeur } attendu.');
+    const commune = lireLigne(db, 'monstre_capacite_commune', { id: p.capacite_commune_id });
+    const monstre = lireLigne(db, 'monstre', { id: p.monstre_id });
+    const communes = emplacements(commune.description);
+    const dites = [];
+    for (const [cle, brute] of Object.entries(op.valeurs)) {
+      const numero = Number(cle);
+      if (!Number.isInteger(numero) || numero < 1 || numero > communes.length) throw refus(`« ${commune.nom} » : pas d’emplacement ${cle} (la description en a ${communes.length}).`);
+      const valeur = brute === null || brute === '' ? null : Number(brute);
+      if (valeur !== null && (!Number.isInteger(valeur) || valeur < 0)) throw refus(`« ${commune.nom} » : la valeur ${cle} doit être un entier positif ou nul.`);
+      const k = { monstre_id: p.monstre_id, rang: p.rang, numero };
+      const enPlace = lireLigne(db, 'monstre_capacite_valeur', k);
+      const propre = valeur !== null && valeur !== communes[numero - 1];
+      if (!propre) {
+        if (enPlace) w.supprimer('monstre_capacite_valeur', k);
+      } else if (!enPlace) w.inserer('monstre_capacite_valeur', { ...k, valeur, origine: 'monstres', source_ref: `${provenance(ctx.instant)} › ${RUBRIQUES.capacites}` });
+      else if (enPlace.valeur !== valeur) w.modifier('monstre_capacite_valeur', k, { valeur });
+      dites.push(`${numero} : ${valeur ?? communes[numero - 1]}${propre ? '' : ' (valeur commune)'}`);
+    }
+    return `Valeurs de « ${commune.nom} » (${monstre?.nom ?? p.monstre_id}) : ${dites.join(', ') || 'aucune'}`;
+  }
+  return { valeurs_de_capacite: valeursDeCapacite };
+}
+
+/**
+ * Les capacités de monstre communes, pour le choix « Capacité » (liste `capacitesDeMonstre` de GET /api/edition/listes/) : par nom ; deux capacités du
+ * même nom (« Les textes doivent rester différents », R68) se distinguent par le début de leur description. `description`, `listeDeSorts`, `cartes` :
+ * ce que le mode modification montre de chacune.
+ */
+export function capacitesDeMonstre(db) {
+  const lignes = db.prepare(`SELECT c.id, c.nom, c.nom_cle, c.description, c.liste_de_sorts, (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = c.id) AS cartes
+    FROM monstre_capacite_commune c ORDER BY c.nom_cle, c.id`).all();
+  const homonymes = new Map();
+  for (const l of lignes) homonymes.set(l.nom_cle, (homonymes.get(l.nom_cle) ?? 0) + 1);
+  const debut = (t) => {
+    const s = String(t).replace(/\s+/g, ' ').trim();
+    return s.length > 60 ? `${s.slice(0, 59)}…` : s;
+  };
+  return lignes.map((l) => ({
+    valeur: l.id,
+    libelle: homonymes.get(l.nom_cle) > 1 ? `${l.nom} — ${debut(l.description)}` : l.nom,
+    description: l.description,
+    listeDeSorts: l.liste_de_sorts === 1,
+    cartes: l.cartes,
+  }));
 }
 
 /** Les groupes d'espèces (décision R64), pour le formulaire « Nouvelle espèce » (liste `groupesDeMonstres` de GET /api/edition/listes/). */
@@ -197,11 +411,17 @@ export const especesDeMonstres = (db) =>
 /**
  * L'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants, carte ou espèce sans carte) et, pour celles que la page n'a pas (`connues` :
  * les identifiants de ses lignes), la ligne et la carte en HTML (lib/bestiaire-rendu.mjs ; `logo` : l'adresse du logo, à la place du portrait) et ce
- * que dit son portrait (`portrait` : { empreinte, x, y, zoom } ou null), que la page charge à l'ouverture de la carte.
+ * que dit son portrait (`portrait` : { empreinte, x, y, zoom } ou null), que la page charge à l'ouverture de la carte. Avec `capacites` (identifiants de
+ * cartes) : seulement le bloc des capacités de ces cartes ({ capacites: { id: html } }), tel que la page construite l'écrit.
  */
-export function lignesDuBestiaire(db, { connues, logo }) {
+export function lignesDuBestiaire(db, { connues, logo, capacites }) {
   const deja = new Set(connues);
   const { lignes, echelles, glossaire, elements, magiesDesCibles } = chargerMonstres(db);
+  // le bloc des capacités de ces cartes (après une modification de leurs capacités, ou d'une capacité commune qu'elles ont : décision R66)
+  if (capacites) {
+    const voulues = new Set(capacites);
+    return { capacites: Object.fromEntries(lignes.filter((l) => l.carte && voulues.has(l.id)).map((l) => [l.id, htmlDesCapacitesDeLaCarte(l)])) };
+  }
   const vu = (p) => (p ? { empreinte: empreinte(p.donnees), ...cadrageDe(p) } : null);
   return {
     ordre: lignes.map((l) => l.id),

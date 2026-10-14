@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { compacter, CORRECTIONS, extraireBestiaire, lignesDuDoc, lignesSql } from '../../tools/bestiaire/extraire.mjs';
+import { compacter, CORRECTIONS, ecartsDuRegistre, extraireBestiaire, lignesDuDoc, lignesSql, lireRegistre } from '../../tools/bestiaire/extraire.mjs';
+import { avecLesValeurs, emplacements } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -16,8 +17,9 @@ const texte = readFileSync(new URL('sources/raw/bestiaire-2-0.txt', racine), 'ut
 const b = extraireBestiaire(texte);
 const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });
-const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre_espece_bloc', 'monstre_butin', 'monstre',
-  'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
+const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_capacite_commune', 'monstre_espece', 'monstre_espece_lieu',
+  'monstre_espece_bloc', 'monstre_butin', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense'];
+const registre = lireRegistre();
 
 test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base, telles que l’import les a laissées', () => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'monstre%' ORDER BY name").all().map((r) => r.name);
@@ -75,6 +77,7 @@ test('chaque carte : une catégorie, des rubriques, un nom remis en minuscules q
     assert.equal(normalize(c.nom), normalize(c.nom_brut), c.id);
     assert.equal(c.nom_brut, c.nom_brut.toUpperCase(), `${c.id} : écrit en capitales dans le doc`);
     assert.ok(c.rubriques.some((r) => r.rubrique === 'capacites'), `${c.id} : rubrique Capacité(s)`);
+    assert.ok(c.capacites.length >= 1, `${c.id} : au moins une capacité`);
   }
   assert.deepEqual(Object.fromEntries(categories), { ennemi_simple: 113, mini_boss: 90, boss: 108 });
   const nom = (brut) => cartes.find((c) => c.nom_brut === brut)?.nom;
@@ -96,6 +99,8 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
     for (const x of e.butin) verifier(x.texte, `${e.id} butin ${x.score_brut}`);
   }
   for (const c of cartes) for (const r of c.rubriques) verifier(r.texte, `${c.id} ${r.rubrique}`);
+  // les capacités telles que le doc les écrit (la rubrique « Capacité(s) » n'est plus en base qu'un repère vide : décision R66)
+  for (const c of cartes) verifier(c.texteDesCapacites, `${c.id} capacités`);
   for (const g of b.glossaire) assert.ok(doc.has(`${g.nom}. ${g.texte}`), g.nom);
   for (const r of b.regles) assert.ok(doc.has(`* ${r.texte}`), r.texte);
 });
@@ -134,4 +139,73 @@ test('le manifeste des sources cite la copie du doc, l’original en second', ()
   assert.equal(doc.id, '1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE');
   assert.match(doc.original, /\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\//);
   assert.equal(db.prepare("SELECT importeur FROM famille WHERE id = 'monstres'").get().importeur, 'tools/bestiaire/extraire.mjs');
+});
+
+// ---------------------------------------------------------------- capacités communes (décisions R66 à R69)
+const parId = new Map(registre.capacites.map((x) => [x.id, x]));
+const parEcriture = new Map(registre.ecritures.map((e) => [`${e.nom}\u0000${e.texte}`, e]));
+/** Une capacité placée, telle que la carte l'affiche : nom, description aux valeurs de la carte, liste de sorts. */
+const affichee = (p) => {
+  const x = parId.get(p.capacite_commune_id);
+  return { nom: x.nom, texte: [avecLesValeurs(x.description, Object.fromEntries(p.valeurs.map((v) => [v.numero, v.valeur]))), p.sorts].filter(Boolean).join(' ') };
+};
+
+test('registre des capacités : cohérent, et chaque capacité écrite sur une carte du doc y est rangée une fois', () => {
+  assert.deepEqual(ecartsDuRegistre(registre), []);
+  const ecrites = cartes.flatMap((c) => c.capacitesEcrites.map((x) => `${x.nom}\u0000${x.texte}`));
+  assert.deepEqual([...new Set(ecrites)].sort(), [...parEcriture.keys()].sort(), 'les écritures du registre sont exactement celles du doc');
+  assert.equal(new Set(registre.capacites.map((x) => x.id)).size, registre.capacites.length);
+  for (const x of registre.capacites) assert.match(x.id, /^[a-z0-9]+(-[a-z0-9]+)*$/, x.id);
+});
+
+test('capacités : une carte affiche le texte du doc, sauf décision écrite au registre (fautes, texte retenu, découpage)', () => {
+  let exactes = 0;
+  for (const c of cartes) {
+    let k = 0;
+    for (const x of c.capacitesEcrites) {
+      const e = parEcriture.get(`${x.nom}\u0000${x.texte}`);
+      const places = c.capacites.slice(k, k + e.placements.length);
+      k += e.placements.length;
+      assert.equal(places[0].prefixe, x.prefixe, `${c.id} : préfixe de « ${x.nom} »`);
+      assert.equal(places[0].ep_min, x.ep_min, `${c.id} : échelle de « ${x.nom} »`);
+      const a = affichee(places[0]);
+      if (e.decision) assert.match(e.decision, /^(R6[6-9]|découpage|nom et texte)/, `${x.nom} : décision citée`);
+      else {
+        assert.deepEqual([a.nom, a.texte], [x.nom, x.texte], `${c.id} : « ${x.nom} » affiche le texte du doc`);
+        exactes++;
+      }
+    }
+    assert.equal(k, c.capacites.length, c.id);
+    assert.deepEqual(c.capacites.map((p) => p.rang), c.capacites.map((_, i) => i + 1), `${c.id} : rangs à la suite`);
+  }
+  assert.equal(exactes, 1416, `capacités qui affichent exactement le texte du doc (les 345 autres : une décision du registre)`);
+});
+
+test('capacités : les textes retenus par le chef (R68), les gabarits à curseur (R69), « Lanceur de sorts » (R66)', () => {
+  const de = (id) => cartes.find((c) => c.id === id);
+  const capacite = (carte, nom) => de(carte).capacites.map(affichee).find((a) => a.nom === nom);
+  // Minus : la rédaction du texte 4, la valeur de chaque carte gardée
+  assert.equal(parId.get('minus').description, 'Cette créature est petite, elle impose un malus de {10}% aux jets des adversaires qui tentent de la toucher.');
+  assert.deepEqual(['nouveau-ne', 'demi-vie', 'obsolete'].map((n) => capacite(`monstres/gobelin#carte:gobelin-${n}`, 'Minus').texte.match(/(\d+)%/)[1]), ['10', '15', '20']);
+  // Haine mutuelle : le texte écrit par le propriétaire, pour ses 18 cartes
+  const haine = cartes.flatMap((c) => c.capacites).filter((p) => p.capacite_commune_id === 'haine-mutuelle');
+  assert.equal(haine.length, 18);
+  assert.match(parId.get('haine-mutuelle').description, /contre la race dont elle est issue/);
+  // « Charge sans peur+ » renommée « Initiative extrême », +10 à l'initiative
+  assert.ok(!registre.capacites.some((x) => x.nom === 'Charge sans peur+'));
+  for (const n of ['demi-vie', 'obsolete']) assert.equal(capacite(`monstres/gobelin#carte:gobelin-${n}`, 'Initiative extrême').texte, "Permet d'avoir un bonus de +10 au jet d'initiative.");
+  // Vraiment sournois (texte 2), Crache spore (texte 3), Fragilité tranchante (texte 2)
+  assert.match(capacite('monstres/orc#carte:orc', 'Vraiment sournois').texte, /bonus de 4d4 dégâts en plus des dégâts de l'arme/);
+  // gabarits : seuls les nombres diffèrent, chaque carte garde le sien
+  assert.equal(registre.capacites.filter((x) => emplacements(x.description).length).length, 10);
+  assert.deepEqual(['i', 'ii', 'iii'].map((n) => capacite(`monstres/golem-de-chair#carte:golem-de-chair-${n}`, 'Forme changeante').texte.match(/Régénère (\d+)/)?.[1]), ['20', '40', '60']);
+  // Lanceur de sorts : une description commune, une liste par carte ; le Jeune Amphilactrus au maximum, comme les autres
+  const lanceur = parId.get('lanceur-de-sorts');
+  assert.equal(lanceur.liste_de_sorts, true);
+  assert.equal(capacite('monstres/amphilactrus#carte:jeune-amphilactrus', 'Lanceur de sorts').texte,
+    'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau, Nerveux, Eau soignante.');
+  assert.equal(cartes.flatMap((c) => c.capacites).filter((p) => p.sorts).length, 21);
+  // le Gobelin mage obsolète : « Tome de la corruption niv.1. », collé dans le doc à la capacité qui le précède, est une capacité à part
+  assert.deepEqual(de('monstres/gobelin-mage#carte:gobelin-mage-obsolete').capacites.map(affichee).map((a) => a.nom).filter((n) => /^Tome de l/.test(n)),
+    ['Tome de l’ombre niv. 1', 'Tome de la corruption niv. 1']);
 });

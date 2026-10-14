@@ -154,9 +154,37 @@ avec ses pastilles pleines (« [EP3] », R56 ; « NPM 2 », « [Gauche] », « c
 don de classe), puis son texte ; une capacité écrite sans nom n'a pas d'en-tête. Une colonne : sur les pages de classe, deux dons côte à côte sont un
 choix, ce qui n'existe pas ici. Une capacité commune à toutes les créatures d'une invocation a un fond teinté ; dans l'infobulle d'une page de
 magie, tout l'encadré (filet, noms, pastilles) prend la couleur de la magie, et ses tailles suivent celles de la carte (en `em`). La recherche lit le nom
-et le texte comme deux mots (une espace les sépare dans le HTML). En mode modification, la rubrique « Capacité(s) » reste un seul champ texte, dont
-les tuiles sont le rendu. À l'impression, une tuile ne se coupe pas (comme un don de classe) : la seule plus haute qu'une page, « Cuisson absolue »
-(Golem de pain d'or), laisse un blanc avant elle.
+et le texte comme deux mots (une espace les sépare dans le HTML). À l'impression, une tuile ne se coupe pas (comme un don de classe) : la seule plus
+haute qu'une page, « Cuisson absolue » (Golem de pain d'or), laisse un blanc avant elle.
+
+### Capacités communes et gabarits (décisions R66 à R69)
+
+Demandes du propriétaire : les noter « dans tes tables à part ( Pour l'instant juste "Nom" et "Description") histoire de mutualiser les capacitées
+communes » ; « Elle change pour tous » ; « corrige les tous et fusionne » ; « Tout doit être unifié, sauf "Lanceur de sort" ». Puis les réponses du chef
+(2026-10-14) aux capacités qui avaient plusieurs textes, dont « Pour les capacités des invocations et du mage bleu, les laisser complètement à part » et
+« si l'effet ne diffère que d'un chiffre, le mettre modifiable par un slider ».
+
+- **Une capacité commune** (`monstre_capacite_commune` : identifiant figé, nom, description) est citée par chaque carte qui l'a ; la carte n'en garde que
+  la place (`monstre_capacite` : rang, préfixe « [EPN] » et son échelle `ep_min`, R56). La rubrique « Capacité(s) » de la carte n'est plus qu'un repère
+  (texte vide, même place, même titre) : le bloc des tuiles s'affiche à sa place (`lib/bestiaire-rendu.mjs#htmlDesCapacitesDeLaCarte`).
+- **Le registre** `tools/bestiaire/capacites.json` range chaque capacité telle que le doc l'écrit sur une carte (« nom » et « texte ») sous sa capacité
+  commune ; l'extracteur le lit, et une écriture inconnue l'arrête (un nouvel export du doc demande de la ranger). Une écriture dont la carte n'affiche
+  pas le texte du doc porte sa `decision` : faute corrigée, rédaction majoritaire, texte retenu par le chef (R68), découpage (« Tome de la corruption
+  niv.1. », collé faute d'espace au « Tome de l'ombre niv. 1 » du Gobelin mage obsolète, redevient une capacité à part). À l'import : 469 capacités
+  communes, 1 762 capacités sur les cartes, dont 1 416 qui affichent exactement le texte du doc.
+- **Deux textes d'une même capacité** que le chef garde différents (R68 : Racine, Anti-mal, les « Élément … »…) sont deux capacités communes de même
+  nom ; le mode modification les distingue par le début de leur description.
+- **« Lanceur de sorts »** (R66) : une description commune (« Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : ») et la liste
+  de sorts de chaque carte (`monstre_capacite.sorts`, seule capacité à `liste_de_sorts`).
+- **Gabarits** (R69) : un nombre qui change d'une carte à l'autre s'écrit « {N} » dans la description, N étant la valeur commune ; une carte qui en a
+  une autre l'écrit dans `monstre_capacite_valeur` (sans ligne, elle suit la valeur commune). Dix gabarits à l'import : Minus (« {10}% », 15 et 20 pour
+  les Gobelins demi-vie et obsolètes), Racine (« {3} santé », 6 pour le Garrestre sage), Verre pilé (3d{6}, 3d10 pour le Golem de vitrail II et III),
+  Arme mal faite, Arc mal fait, Encrier, Morsure aspirante bleue, Puissance magique supérieure, Forme changeante, Chargement bleu. Le rendu remplace
+  chaque « {N} » avant tout le reste (`lib/monstre-champs.mjs#avecLesValeurs`) : un texte écrit par échelle (« Fondu ») garde ses lignes.
+- **Les créatures invoquées et le Mage Bleu** restent à part (R67) : leurs capacités ne changent pas, et leur tuile non plus (même HTML).
+- **Questions déjà tranchées par la même réponse** (« Le reste on suis ta proposition ») : une page des capacités (`/bestiaire/capacites/`, menu Codex)
+  pour les créer, les renommer et les supprimer, à venir ; une capacité encore sur une carte ne se supprime pas (le service le refuse déjà) ; les
+  « Dons » du Presque-Ottar restent du texte.
 
 ### Vulnérabilités et résistances
 
@@ -226,7 +254,11 @@ Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre
 
 - **Modifier** : les champs de la **carte ouverte** deviennent des saisies (`data-ed-sur-demande` : une carte à la fois, il y en a plus de 300 dans la
   page ; `src/scripts/edition/bestiaire.mjs`) : nom, catégorie, type, alignement, échelle, « varie selon l'échelle », le texte de chaque rubrique ; de
-  l'espèce : nom, échelle(s), description, lieu de rencontre, complément, texte des blocs ; le texte d'une case de butin. Dans l'en-tête, la
+  l'espèce : nom, échelle(s), description, lieu de rencontre, complément, texte des blocs ; le texte d'une case de butin ; et chaque capacité (voir
+  « Capacités communes et gabarits ») : sous sa tuile, le nom et la description de sa capacité commune (« elle change pour tous » : toutes les cartes
+  qui l'ont suivent), son préfixe, la liste de sorts d'un « Lanceur de sorts », un curseur par valeur « {N} » (la valeur de cette carte ; le bouton
+  « valeur commune » y revient) et « Retirer cette capacité » ; « + Ajouter une capacité » (une capacité commune existante, ou une nouvelle), enregistré
+  tout de suite. Dans l'en-tête, la
   « Description » s'ouvre avec ses deux champs à la suite, chacun avec son intitulé (demande du propriétaire : « il faut bien qu'on ait les deux champs
   description espèce et description créature à la suite l'un de l'autre ») : « Description de l'espèce » (celle du groupe pour un Ottar) puis
   « Description de la créature » (celle de l'Ottar lui-même, sinon de la carte, vide à l'import), décision R65. À l'enregistrement, la ligne du
@@ -250,7 +282,9 @@ Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre
 Ce que la base tire du texte est **recalculé par le service** avec les fonctions de l'extraction (`lib/monstre-champs.mjs`), jamais saisi
 (`serveur/edition-bestiaire.mjs`) : les bornes d'une échelle (« EP2 - 4 » → 2 et 4 ; hors de 1 à 10 : refusé), l'écriture de la catégorie, les lieux de
 rencontre (découpés aux virgules), et, pour une rubrique modifiée, les valeurs typées de sa carte (santé, chakra, barrière, armures, vitesses) et ses
-tables de détail (caractéristiques, attaques, capacités, cibles des défenses). Les identifiants sont tirés du nom une fois (`monstres/<nom>`,
+tables de détail (caractéristiques, attaques, cibles des défenses ; plus les capacités, qui ne sont plus le texte d'une rubrique : la rubrique
+« Capacité(s) » n'a pas de texte à modifier). Pour une capacité : l'échelle de son préfixe (`ep_min`), et, quand une description commune change, les
+valeurs propres des cartes (un emplacement retiré emporte les siennes ; une valeur devenue la valeur commune ne s'écrit plus). Les identifiants sont tirés du nom une fois (`monstres/<nom>`,
 `<espèce>#carte:<nom>`), puis figés : un monstre renommé garde le sien, et un identifiant supprimé ne resert jamais (suffixe `-2`). Une rubrique ne
 s'ajoute ni ne se retire seule (elle vient avec sa carte) ; une case de butin vide ne se remplit pas encore. Aucune fiche de personnage ne cite un monstre.
 
@@ -267,8 +301,9 @@ jour la portent en entier (rejouée sur `data/rows`) ; l'historique des modifica
 
 Une page construite avant la création ou la suppression d'un monstre demande au service l'ordre de ses lignes et le HTML de celles qu'elle n'a pas
 (`POST /api/edition/bestiaire/`). Les modifications partent dans le journal, puis dans `data/rows` par la mise à jour, et sont listées dans la note de
-version (domaine « Bestiaire » : un champ modifié par ligne, une carte ajoutée ou retirée ; à sa première livraison, le bestiaire tient en deux lignes,
-« N espèces » et « N monstres »). Le site étant la source de ce qu'il modifie, `client/test/bestiaire-extraction.test.mjs` compare l'extraction du doc à
+version (domaine « Bestiaire » : un champ modifié par ligne, une carte ou une capacité ajoutée ou retirée ; à sa première livraison, le bestiaire tient
+en quelques lignes : « N espèces », « N monstres », « N capacités de monstre », « N capacités sur les cartes », « N valeurs de capacité propres à une
+carte »). Le site étant la source de ce qu'il modifie, `client/test/bestiaire-extraction.test.mjs` compare l'extraction du doc à
 l'état d'**import** des tables (`lib/historique-site.mjs`), et les autres tests du bestiaire contrôlent la cohérence de l'état courant.
 
 ## La source et l'extraction
@@ -283,8 +318,11 @@ que chaque ligne de texte gardée est écrite dans le doc.
 - `monstre_groupe` (un groupe d'espèces, « Ottar », titre « Ottar (explication) » : décision R64, migration 0042) ;
 - `monstre_espece` (144 titres « Nom (EPx) », dont les 22 du groupe Ottar), `monstre_espece_lieu`, `monstre_espece_bloc` (les 15 tableaux par magie du Presque-Ottar),
   `monstre_butin` (tableaux « Score (3d100) ») et `monstre_butin_objet` (glossaire, 102 objets : les infobulles des cases de butin) ;
-- `monstre` (311 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique : rien n'est perdu),
-  `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`.
+- `monstre` (311 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique, sauf ses capacités : la rubrique
+  « Capacité(s) » n'est plus qu'un repère), `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite` (la place de chaque capacité commune sur la
+  carte) et `monstre_capacite_valeur` (ses valeurs propres), `monstre_defense` ;
+- `monstre_capacite_commune` (469 capacités communes, rangées par le registre `tools/bestiaire/capacites.json` : décisions R66 à R69, migration
+  `0044-capacites-communes`).
 
 Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambiguïté (sinon `NULL`, le texte de la rubrique fait foi). Deux transformations :
 le nom d'une carte, écrit en capitales, est remis en minuscules avec la casse que le doc donne à chaque mot ailleurs (`nom_brut` garde l'original) ; et

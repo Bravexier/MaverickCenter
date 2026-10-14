@@ -3,7 +3,9 @@
 // bornes, une catégorie son écriture, un lieu de rencontre les lieux de l'espèce ; une espèce et une carte se créent (identifiant tiré du nom une fois,
 // jamais réutilisé ; rubriques de la carte : GABARIT_DE_CARTE) et se suppriment avec tout ce qui en vient ; le rejeu du journal redonne les mêmes
 // tables ; POST /api/edition/bestiaire/ rend la ligne et la carte qu'une page construite avant n'a pas ; le portrait d'une carte ou d'une espèce
-// (« de la même manière que dans la feuille de personnage ») garde son cadrage dans l'image, et ne sort en entier que par POST /api/edition/portrait/.
+// (« de la même manière que dans la feuille de personnage ») garde son cadrage dans l'image, et ne sort en entier que par POST /api/edition/portrait/ ;
+// les capacités (décisions R66 à R69) : une capacité commune se modifie pour toutes ses cartes, se crée, ne se supprime plus portée ; sur une carte, une
+// capacité s'ajoute à la fin, se retire, change de préfixe (ep_min) ; une valeur propre à une carte se règle (valeurs_de_capacite), la valeur commune l'efface.
 // Le test lit l'état avant d'écrire et crée des noms absents de la base (docs/serveur.md, « Mise à jour »).
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -20,7 +22,7 @@ import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin } from '../src/lib/monstre-rendu.mjs';
 import { chargerMonstres, echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
-import { htmlDeLigneMonstre } from '../src/lib/bestiaire-rendu.mjs';
+import { htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -44,10 +46,10 @@ const carte = un('SELECT * FROM monstre WHERE sante IS NOT NULL AND armure_physi
 const rubrique = (cle) => un('SELECT * FROM monstre_rubrique WHERE monstre_id = ? AND rubrique = ? ORDER BY rang LIMIT 1', carte.id, cle);
 
 test('modèle : tables et entités du bestiaire, catégories de lib/monstre-champs.mjs, rendus des champs', () => {
-  for (const t of ['monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin']) assert.ok(TABLES[t], t);
+  for (const t of ['monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin', 'monstre_capacite_commune', 'monstre_capacite',
+    'monstre_capacite_valeur']) assert.ok(TABLES[t], t);
   assert.deepEqual(Object.fromEntries(CATEGORIES_DE_MONSTRE.map((c) => [c.valeur, c.libelle])), CATEGORIES);
-  assert.equal(ENTITES.monstre.suppression, true);
-  assert.equal(ENTITES.monstre_espece.suppression, true);
+  for (const e of ['monstre', 'monstre_espece', 'monstre_capacite_commune', 'monstre_capacite']) assert.equal(ENTITES[e].suppression, true, e);
   for (const r of ['monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle']) assert.ok(RENDUS[r], r);
   assert.equal(rendreChamp('monstre-rubrique', 'F : 1 / P : 2 / V : 3 / S : 4 / I : 5 / A : 6', { rubrique: 'caracteristiques' }), htmlDeRubrique('caracteristiques', 'F : 1 / P : 2 / V : 3 / S : 4 / I : 5 / A : 6'));
   assert.equal(rendreChamp('monstre-lieux', 'Marais, Forêt , '), 'Marais, Forêt');
@@ -56,20 +58,23 @@ test('modèle : tables et entités du bestiaire, catégories de lib/monstre-cham
 });
 
 test('rubrique modifiée : valeurs typées de la carte et tables de détail refaites depuis son texte, comme l’extraction', () => {
+  const capacitesAvant = tous('SELECT * FROM monstre_capacite WHERE monstre_id = ? ORDER BY rang', carte.id);
+  assert.ok(capacitesAvant.length > 0);
   const r = enregistrer(
     { op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: carte.id, rang: rubrique('attributs').rang }, valeurs: { texte: 'Santé : 999 Chakra : 12 Barrière : 3' } },
     { op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: carte.id, rang: rubrique('caracteristiques').rang }, valeurs: { texte: 'F : 1 / P : 2 / V : 3 / S : 4 / I : 5 / A : 6' } },
     { op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: carte.id, rang: rubrique('defense').rang }, valeurs: { texte: '9 AP / 8 AM' } },
-    { op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: carte.id, rang: rubrique('capacites').rang }, valeurs: { texte: 'Première. Un effet.\n\nSuite du premier.\n\n[EP3] Seconde. Autre effet.' } },
   );
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const m = un('SELECT * FROM monstre WHERE id = ?', carte.id);
   assert.deepEqual([m.sante, m.chakra, m.barriere, m.armure_physique, m.armure_magique], [999, 12, 3, 9, 8]);
   assert.deepEqual(tous('SELECT caracteristique_id, valeur FROM monstre_caracteristique WHERE monstre_id = ? ORDER BY rang', carte.id).map((c) => c.valeur), [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(tous('SELECT prefixe, ep_min, nom, texte FROM monstre_capacite WHERE monstre_id = ? ORDER BY rang', carte.id), [
-    { prefixe: null, ep_min: null, nom: 'Première', texte: 'Un effet.\n\nSuite du premier.' },
-    { prefixe: '[EP3]', ep_min: 3, nom: 'Seconde', texte: 'Autre effet.' },
-  ]);
+  // les capacités ne sont plus le texte d'une rubrique (décision R66) : modifier les autres rubriques ne les touche pas, la rubrique « Capacité(s) »
+  // n'a pas de texte à modifier
+  assert.deepEqual(tous('SELECT * FROM monstre_capacite WHERE monstre_id = ? ORDER BY rang', carte.id), capacitesAvant);
+  const x = enregistrer({ op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: carte.id, rang: rubrique('capacites').rang }, valeurs: { texte: 'Première. Un effet.' } });
+  assert.equal(x.statut, 400);
+  assert.match(x.corps.erreur, /se modifient une à une/);
   // la même lecture que l'extraction, sur toutes les rubriques de la carte
   const v = valeursDeLaCarte(tous('SELECT rubrique, texte FROM monstre_rubrique WHERE monstre_id = ? ORDER BY rang', carte.id));
   assert.deepEqual(tous('SELECT sens, rang, cible, cible_cle FROM monstre_defense WHERE monstre_id = ? ORDER BY sens, rang', carte.id),
@@ -215,7 +220,7 @@ test('créer une espèce, puis un monstre dedans ; supprimer le monstre, puis l�
   assert.match(r.corps.erreur, /supprimez-les d’abord/);
   r = enregistrer({ op: 'supprimer', entite: 'monstre', cle: { id: monstreId } });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  for (const t of ['monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense']) {
+  for (const t of ['monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense']) {
     assert.equal(un(`SELECT count(*) AS n FROM ${t} WHERE monstre_id = ?`, monstreId).n, 0, t);
   }
   assert.equal(un('SELECT 1 AS x FROM monstre WHERE id = ?', monstreId), undefined);
@@ -382,8 +387,98 @@ test('le portrait suit la tuile : la première carte d’une espèce prend le si
   assert.deepEqual(portraitDe('monstre_espece', especeId), { portrait: IMAGES.webpAlpha, portrait_x: 0.5, portrait_y: 0.5, portrait_zoom: 1 });
 });
 
+test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs cartes, valeurs propres réglées, ajoutées et retirées d’une carte ; refus', () => {
+  const html = (id) => appel('POST', '/api/edition/bestiaire/', { capacites: [id] }).corps.capacites[id];
+  // une capacité à emplacement (« Minus », {10}) portée par plusieurs cartes, dont une à sa valeur propre
+  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description LIKE '%{%}%' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
+  assert.ok(gabarit, 'une capacité à emplacement');
+  const porteurs = tous('SELECT * FROM monstre_capacite WHERE capacite_commune_id = ? ORDER BY monstre_id, rang', gabarit.id);
+  const [p] = porteurs;
+  const commune = Number(gabarit.description.match(/\{(\d+)\}/)[1]);
+  // une valeur propre : écrite ; la valeur commune : effacée ; la réponse dit les deux
+  let r = enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs: { 1: commune + 7 } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(un('SELECT valeur FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ? AND numero = 1', p.monstre_id, p.rang).valeur, commune + 7);
+  assert.ok(html(p.monstre_id).includes(String(commune + 7)));
+  r = enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs: { 1: commune } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(un('SELECT count(*) AS n FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ? AND numero = 1', p.monstre_id, p.rang).n, 0);
+  for (const [valeurs, statut] of [[{ 9: 1 }, 400], [{ 1: -2 }, 400], [{ 1: 1.5 }, 400], [[], 400]]) {
+    assert.equal(enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs }).statut, statut, JSON.stringify(valeurs));
+  }
+  assert.equal(enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: 999, valeurs: { 1: 3 } }).statut, 404);
+
+  // la description commune changée : toutes les cartes qui l'ont suivent ; une valeur propre égale à la nouvelle valeur commune n'est plus écrite
+  assert.equal(enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs: { 1: commune + 3 } }).statut, 200);
+  const autre = porteurs.find((x) => x.monstre_id !== p.monstre_id && !un('SELECT 1 AS x FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ?', x.monstre_id, x.rang));
+  const description = `${gabarit.description} Ajout du test {${commune + 3}}.`.replace(`{${commune}}`, `{${commune + 3}}`);
+  r = enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(un('SELECT count(*) AS n FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ?', p.monstre_id, p.rang).n, 0, 'devenue la valeur commune');
+  for (const x of [p, autre]) assert.match(html(x.monstre_id), /Ajout du test \d+\./, x.monstre_id);
+  // une description qui retire un emplacement emporte ses valeurs propres
+  assert.equal(enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs: { 2: 41 } }).statut, 200);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description: gabarit.description } }).statut, 200);
+  assert.equal(un('SELECT count(*) AS n FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ? AND numero = 2', p.monstre_id, p.rang).n, 0);
+  for (const description of ['Accolade { seule.', 'Pas {x}.', '']) {
+    assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description } }).statut, 400, description);
+  }
+
+  // une nouvelle capacité commune, ajoutée à une carte dans le même lot (« @0 »), à la fin de ses capacités ; identifiant tiré du nom, figé
+  const nom = nomLibre('Souffle d’essai+');
+  const rangAvant = un('SELECT max(rang) AS m FROM monstre_capacite WHERE monstre_id = ?', carte.id).m;
+  r = enregistrer(
+    { op: 'creer', entite: 'monstre_capacite_commune', valeurs: { nom, description: 'Souffle de {3} cases.' } },
+    { op: 'creer', entite: 'monstre_capacite', valeurs: { monstre_id: carte.id, capacite_commune_id: '@0', prefixe: '[EP4]' } },
+  );
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const id = r.corps.crees[0].id;
+  assert.equal(id, normalize(nom.replace(/\+/g, ' plus ')));
+  const place = un('SELECT * FROM monstre_capacite WHERE monstre_id = ? AND capacite_commune_id = ?', carte.id, id);
+  assert.deepEqual([place.rang, place.prefixe, place.ep_min, place.sorts], [rangAvant + 1, '[EP4]', 4, null]);
+  assert.match(place.source_ref, /^Site de dev › édition du \d{4}-\d{2}-\d{2} › Capacité\(s\)$/);
+  assert.match(html(carte.id), new RegExp(`data-eps="4 5 6 7 8 9 10" data-capacite="${id}" data-rang="${place.rang}">.*Souffle de 3 cases\\.`));
+  // le même nom et la même description : refus ; le préfixe donne l'échelle ; une liste de sorts sur une capacité qui n'en a pas : refus
+  assert.equal(enregistrer({ op: 'creer', entite: 'monstre_capacite_commune', valeurs: { nom, description: 'Souffle de {3} cases.' } }).statut, 409);
+  const cle = { monstre_id: carte.id, rang: place.rang };
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle, valeurs: { prefixe: '(Neige) [EP7]' } }).statut, 200);
+  assert.equal(un('SELECT ep_min FROM monstre_capacite WHERE monstre_id = ? AND rang = ?', carte.id, place.rang).ep_min, 7);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle, valeurs: { prefixe: '[EP12]' } }).statut, 400);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle, valeurs: { sorts: 'Boule de feu.' } }).statut, 400);
+  const lanceur = un("SELECT * FROM monstre_capacite WHERE capacite_commune_id = 'lanceur-de-sorts' ORDER BY monstre_id LIMIT 1");
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle: { monstre_id: lanceur.monstre_id, rang: lanceur.rang }, valeurs: { sorts: 'Éclair, Soin.' } }).statut, 200);
+  assert.match(html(lanceur.monstre_id), /niveaux de maîtrise maximum : Éclair, Soin\./);
+  // une capacité commune encore portée ne se supprime pas (le refus nomme la carte) ; retirée de sa carte, si
+  r = enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id } });
+  assert.equal(r.statut, 409);
+  assert.ok(r.corps.erreur.includes(un('SELECT nom FROM monstre WHERE id = ?', carte.id).nom), r.corps.erreur);
+  assert.equal(enregistrer({ op: 'valeurs_de_capacite', ...cle, valeurs: { 1: 5 } }).statut, 200);
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite', cle }).statut, 200);
+  assert.equal(un('SELECT count(*) AS n FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ?', carte.id, place.rang).n, 0, 'ses valeurs avec elle');
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id } }).statut, 200);
+  // recréée : un autre identifiant ; ajoutée de nouveau à la carte : un rang jamais employé (le journal se souvient)
+  r = enregistrer(
+    { op: 'creer', entite: 'monstre_capacite_commune', valeurs: { nom, description: 'Autre souffle.' } },
+    { op: 'creer', entite: 'monstre_capacite', valeurs: { monstre_id: carte.id, capacite_commune_id: '@0' } },
+  );
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(r.corps.crees[0].id, `${id}-2`);
+  assert.equal(JSON.parse(r.corps.crees[1].id).rang, place.rang + 1);
+  assert.equal(enregistrer({ op: 'creer', entite: 'monstre_capacite', valeurs: { monstre_id: carte.id, capacite_commune_id: '@0' } }).statut, 400, '« @0 » sans création');
+  // la liste du choix « Capacité » : deux capacités du même nom se distinguent par leur description
+  const liste = appel('GET', '/api/edition/listes/').corps.capacitesDeMonstre;
+  assert.equal(liste.length, un('SELECT count(*) AS n FROM monstre_capacite_commune').n);
+  const homonymes = liste.filter((c) => c.libelle.startsWith('Élément Feu'));
+  assert.ok(homonymes.length >= 2 && homonymes.every((c) => c.libelle.includes(' — ')), JSON.stringify(homonymes));
+  // le bloc rendu par le service est celui de la page construite
+  const l = chargerMonstres(db).lignes.find((x) => x.id === carte.id);
+  assert.equal(html(carte.id), htmlDesCapacitesDeLaCarte(l));
+  assert.equal(appel('POST', '/api/edition/bestiaire/', { capacites: 'x' }).statut, 400);
+});
+
 test('rejeu du journal sur les règles : les mêmes tables du bestiaire que la base vivante', () => {
-  const tables = ['monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
+  const tables = ['monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite_commune',
+    'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense'];
   const lire = (base) => Object.fromEntries(tables.map((t) => [t, base.prepare(`SELECT * FROM ${t} ORDER BY 1, 2, 3`).all().map((l) => JSON.stringify(l))]));
   const journal = journalExporte(db);
   const neuve = baseNeuve();

@@ -120,6 +120,9 @@ export function chargerMonstres(db) {
   const caracs = regrouper(all('SELECT * FROM monstre_caracteristique ORDER BY monstre_id, rang'), 'monstre_id');
   const attaques = regrouper(all('SELECT * FROM monstre_attaque ORDER BY monstre_id, rang'), 'monstre_id');
   const capacites = regrouper(all('SELECT * FROM monstre_capacite ORDER BY monstre_id, rang'), 'monstre_id');
+  // capacités communes (décision R66) et valeurs propres à une carte (R69)
+  const communes = new Map(all('SELECT * FROM monstre_capacite_commune').map((x) => [x.id, x]));
+  const valeurs = regrouper(all('SELECT * FROM monstre_capacite_valeur ORDER BY monstre_id, rang, numero'), 'monstre_id');
   const defenses = regrouper(all('SELECT * FROM monstre_defense ORDER BY monstre_id, sens, rang'), 'monstre_id');
 
   // filtres : les colonnes du tableau seulement (demande du propriétaire : « Inutile de filtrer par les colonnes non affichées ») ; le nom passe par la recherche
@@ -170,7 +173,20 @@ export function chargerMonstres(db) {
         return d.filter((x) => sens.includes(x.sens)).map((x) => ({ cible: x.cible, sens: x.sens }));
       };
       const fpvsia = new Map((caracs.get(c.id) ?? []).map((x) => [x.caracteristique_id, x.valeur]));
-      const caps = (capacites.get(c.id) ?? []).map((x) => ({ prefixe: x.prefixe, nom: x.nom, texte: x.texte }));
+      const sesValeurs = valeurs.get(c.id) ?? [];
+      const caps = (capacites.get(c.id) ?? []).map((x) => {
+        const cm = communes.get(x.capacite_commune_id);
+        return {
+          rang: x.rang,
+          prefixe: x.prefixe,
+          id: cm.id,
+          nom: cm.nom,
+          description: cm.description,
+          listeDeSorts: cm.liste_de_sorts === 1,
+          sorts: x.sorts,
+          valeurs: Object.fromEntries(sesValeurs.filter((v) => v.rang === x.rang).map((v) => [v.numero, v.valeur])),
+        };
+      });
       // ancre : le nom de la carte (« monstre-amblypyge-de-brai ») ; un nom déjà pris (une carte écrite dans deux espèces) : « -2 »
       let slug = c.nom_cle;
       for (let n = 2; ancres.has(slug); n++) slug = `${c.nom_cle}-${n}`;

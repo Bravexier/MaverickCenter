@@ -223,6 +223,44 @@ test('bestiaire : un groupe d’espèces (décision R64) renommé est listé ava
   assert.deepEqual(Object.keys(TABLES).filter((t) => !TABLES_LUES.includes(t)), []);
 });
 
+test('capacités de monstre (décisions R66, R69) : description commune modifiée, capacité ajoutée à une carte ou retirée, valeur propre ; première livraison en une ligne par table', () => {
+  const espece = { id: 'monstres/gobelin', nom: 'Gobelin', ordre: 1, ep_brut: 'EP1', description: null, lieu_brut: null, complement: null };
+  const monstre = { id: 'monstres/gobelin#carte:chef', espece_id: 'monstres/gobelin', rang: 1, nom: 'Gobelin chef', echelle_brut: '1', categorie: 'boss', type_brut: null, alignement_brut: null, variable: 0 };
+  const commune = (id, nom, description) => ({ id, nom, nom_cle: id, description, liste_de_sorts: 0 });
+  const place = (rang, capacite_commune_id, valeurs = {}) => ({ monstre_id: monstre.id, rang, prefixe: null, ep_min: null, capacite_commune_id, sorts: null, ...valeurs });
+  const ref = {
+    tables: {
+      monstre_espece: [espece],
+      monstre: [monstre],
+      monstre_capacite_commune: [commune('minus', 'Minus', 'Malus de {10}%.'), commune('vol', 'Vol', 'Vole.'), commune('nage', 'Nage', 'Nage.')],
+      monstre_capacite: [place(1, 'minus'), place(2, 'vol')],
+      monstre_capacite_valeur: [],
+    },
+  };
+  const dev = structuredClone(ref);
+  const t = dev.tables;
+  t.monstre_capacite_commune[0].description = 'Malus de {12}%.';
+  t.monstre_capacite.splice(1, 1);
+  t.monstre_capacite.push(place(3, 'nage', { prefixe: '[EP2]', ep_min: 2 }));
+  t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 1, numero: 1, valeur: 20 });
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  // dans l'ordre de la carte (rang, puis emplacement), la capacité commune après les espèces
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'bestiaire | Gobelin | Gobelin chef › Minus › valeur 1 (20) | (entité) | ajoute |  → Gobelin chef › Minus › valeur 1 (20)',
+    'bestiaire | Gobelin | Gobelin chef › Vol | (entité) | retire | Gobelin chef › Vol → ',
+    'bestiaire | Gobelin | Gobelin chef › Nage | (entité) | ajoute |  → Gobelin chef › Nage',
+    'bestiaire | Capacités de monstre | Minus | Description (sur toutes ses cartes ; « {10} » : une valeur que chaque carte peut changer) | modifie | Malus de {10}%. → Malus de {12}%.',
+  ]);
+  // la première livraison (la production n'a pas ces tables) : une ligne par table, pas une par capacité
+  t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 3, numero: 1, valeur: 4 });
+  const avant = { tables: { monstre_espece: [espece], monstre: [monstre] } };
+  assert.deepEqual(comparerBases(avant, dev).map(cle), [
+    'bestiaire |  | 3 capacités de monstre | (entité) | ajoute |  → 3 capacités de monstre',
+    'bestiaire |  | 2 capacités sur les cartes | (entité) | ajoute |  → 2 capacités sur les cartes',
+    'bestiaire |  | 2 valeurs de capacité propres à une carte | (entité) | ajoute |  → 2 valeurs de capacité propres à une carte',
+  ]);
+});
+
 test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne comptent pas', () => {
   const { ref } = bases();
   assert.deepEqual(comparerBases(ref, structuredClone(ref)), []);
