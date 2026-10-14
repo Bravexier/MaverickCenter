@@ -409,7 +409,7 @@ journal). Les tests s'en servent ainsi :
   chaque PR.
 
 **Simulation en CI** (job `simulation-de-mise-a-jour` de `.github/workflows/ci.yml`, parallèle au job `client`, sur chaque PR et après chaque
-fusion) : `client/scripts/mise-a-jour-simulation.mjs` fabrique un **lot synthétique** — le service fait de vraies modifications dans une base
+fusion dans `master`) : `client/scripts/mise-a-jour-simulation.mjs` fabrique un **lot synthétique** — le service fait de vraies modifications dans une base
 vivante tirée de `data/rows` (texte des chapitres 1 et 2 du guide, description et bonus d'un métier, coût d'un sort, un don créé et gardé, un
 autre créé puis supprimé ; valeurs lues avant d'écrire, noms libres), écrit le champ libre et fige le lot par `POST /api/mise-a-jour/lancer/`
 en simulation —, puis le job le rejoue comme `preparer` (`mise-a-jour-regles.mjs`, production `origin/master`), indexe `data/rows` et lance

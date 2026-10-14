@@ -1,10 +1,17 @@
 name: CI
 
-# Sur chaque PR, et sur master et dev après chaque fusion (les livraisons : livraison.yml ; les règles de branches : garde-branches.yml).
+# Sur chaque PR, et sur master après chaque fusion (les livraisons : livraison.yml ; les règles de branches : garde-branches.yml).
+# Pas sur dev après une fusion (demande du propriétaire, économie de minutes GitHub Actions : environ 40 par PR) : la PR vient d'être testée
+# (branche rebasée sur dev avant chaque push, docs/flux-git.md), et le commit de version de livraison.yml ne change que des numéros.
 on:
   push:
-    branches: [master, dev]
+    branches: [master]
   pull_request:
+
+# Un nouveau push sur une PR annule le passage en cours sur l'ancien commit (inutile, il serait refait) ; jamais sur master.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   client:

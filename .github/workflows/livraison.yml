@@ -182,11 +182,11 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
-      - name: Installer et tester
+      # Pas de npm test ici (demande du propriétaire, économie de minutes GitHub Actions) : la CI de la PR fusionnée vient de tout tester, et le
+      # build, puis la vérification de l'installateur, échouent encore si quelque chose casse la publication.
+      - name: Installer
         working-directory: client
-        run: |
-          npm ci
-          npm test
+        run: npm ci
 
       - name: Construire le site (sans les pages d'exemple ; bandeau TEST en mode test)
         working-directory: client

@@ -214,3 +214,15 @@ de branche que l'environnement propose parfois (`claude/…`, `dev/…`) sont re
 (Git ne peut pas avoir à la fois `dev` et `dev/xxx`), et `claude/…` serait supprimée par la garde. Le `<nom>` décrit l'évolution ou le correctif
 demandé (`feature/npm5-info-apres-titre`), jamais un nom aléatoire proposé par l'environnement (`feature/awesome-pascal-…`) : la session renomme
 sa branche avant le premier push (demande du propriétaire).
+
+## Minutes GitHub Actions
+
+Le dépôt est privé : chaque job consomme des minutes du compte (quota de l'abonnement, puis budget payant ; un job est arrondi à la minute
+supérieure). Le 2026-10-14, quota épuisé et budget à 0 $, toute la CI a été bloquée. Demande du propriétaire : économiser. Depuis :
+
+- `ci.yml` tourne sur chaque PR et sur `master` après une fusion, **plus sur `dev`** (la PR vient d'être testée ; le commit de version ne change
+  que des numéros) ; un nouveau push sur une PR annule le passage en cours de l'ancien commit ;
+- l'installateur de `livraison.yml` ne relance plus `npm test` (build et `--verifier` de l'installateur seulement).
+
+Une PR avec un seul push coûte ainsi environ 25 minutes au lieu de 75. Le risque accepté : deux PR vertes chacune, fusionnées l'une après
+l'autre, peuvent se casser ensemble sans que `dev` le signale ; la PR suivante (rebasée sur `dev`) le montre alors.
