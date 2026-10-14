@@ -104,6 +104,16 @@ test('groupe d’espèces (décision R64, « Ottar ») : son nom dans la colonne
   assert.doesNotMatch(bloc, /espèces sans carte/);
 });
 
+test('capacités : toutes celles d’une carte dans le même encadré (demande du propriétaire), une tuile chacune, séparées par la grille', () => {
+  // « il faudrait que les capacités de chaque monstre soient contenues dans le même encadré » : l'encadré (filet de couleur à gauche) est la liste, ses
+  // tuiles n'ont plus de cadre à elles ; le trait entre deux tuiles est l'espace de la grille (une capacité cachée par le curseur d'échelle n'en laisse pas)
+  const css = readFileSync(new URL('../src/styles/bestiaire/carte.css', import.meta.url), 'utf8');
+  const regle = (selecteur) => css.match(new RegExp(`^${selecteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`, 'm'))?.[1] ?? '';
+  assert.match(regle('.bcapacites'), /border-left: 4px solid var\(--bes\)/);
+  assert.match(regle('.bcapacites'), /gap: 1px/);
+  assert.doesNotMatch(regle('.bcapacite'), /border/);
+});
+
 test('mode modification : les deux descriptions à la suite, chacune avec son intitulé (« Description de l’espèce », puis « de la créature »)', () => {
   // demande du propriétaire : « il faut bien qu'on ait les deux champs description espèce et description créature à la suite l'un de l'autre » ; la saisie
   // n'a qu'un texte indicatif, qui s'efface une fois remplie : l'intitulé est un pseudo-élément (hors du texte que lit la recherche), en mode modification
