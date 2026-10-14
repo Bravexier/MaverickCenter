@@ -415,10 +415,11 @@ export function ancienneEcritureDesCapacites(db) {
     const avant = lire(m.avant);
     const apres = lire(m.apres);
     if (m.table_nom === 'monstre_capacite') return ancienne(avant) || ancienne(apres) ? { ...m, conflit: SANS_EQUIVALENT } : m;
-    if (!(avant?.texte || apres?.texte)) return m;
     const cle = JSON.parse(m.cle);
     const k = `${cle.monstre_id}\u0000${cle.rang}`;
+    // une carte créée par le journal : sa rubrique « Capacité(s) » est insérée vide, puis modifiée sans redire `rubrique`
     if (m.operation === 'inserer' && apres?.rubrique === 'capacites') capacitesDuJournal.add(k);
+    if (!(avant?.texte || apres?.texte)) return m;
     const rubrique = apres?.rubrique ?? avant?.rubrique ?? lireLigne(db, 'monstre_rubrique', cle)?.rubrique ?? (capacitesDuJournal.has(k) ? 'capacites' : null);
     return rubrique === 'capacites' ? { ...m, conflit: SANS_EQUIVALENT } : m;
   };

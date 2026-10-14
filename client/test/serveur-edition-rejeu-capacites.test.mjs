@@ -112,6 +112,26 @@ test('capacités réécrites ou retirées par le texte de la rubrique avant 0044
   assert.equal(base.prepare('SELECT texte FROM monstre_rubrique WHERE monstre_id = ? AND rang = ?').get(autre, r2.rang).texte, '');
 });
 
+test('une carte créée par le journal, puis ses capacités écrites avant 0044 (rubrique modifiée sans redire `rubrique`) : la carte est rejouée, le lot des capacités passe en conflit explicite', () => {
+  const source = vivante();
+  const { id: espece } = source.prepare('SELECT id FROM monstre_espece ORDER BY ordre LIMIT 1').get();
+  let nom = 'Carte du rejeu d’avant 0044';
+  for (let i = 2; source.prepare('SELECT 1 FROM monstre WHERE nom = ?').get(nom); i += 1) nom = `Carte du rejeu d’avant 0044 ${i}`;
+  const id = enregistrer(source, [{ op: 'creer', entite: 'monstre', valeurs: { espece_id: espece, nom, echelle_brut: 'EP1', categorie: 'ennemi_simple' } }]).crees[0].id;
+  const { rang } = source.prepare("SELECT rang FROM monstre_rubrique WHERE monstre_id = ? AND rubrique = 'capacites'").get(id);
+  // la v43 notait la rubrique (texte seulement : la ligne n'est pas dans les règles quand l'adaptateur la lit), puis la capacité tirée de son texte
+  const lot = noterUnLot(source, '2026-10-14T23:00:00.000Z-capacites-de-la-carte-creee');
+  lot(1, 'monstre_rubrique', { monstre_id: id, rang }, 'modifier', { texte: '' }, { texte: 'Vol. Vole.' });
+  lot(2, 'monstre_capacite', { monstre_id: id, rang: 1 }, 'inserer', null, { monstre_id: id, rang: 1, prefixe: null, ep_min: null, nom: 'Vol', texte: 'Vole.', origine: 'monstres', source_ref: 'Site de dev' });
+  const { base } = rebatir(source);
+  const details = conflits(base);
+  assert.equal(details.length, 1, JSON.stringify(details));
+  assert.match(details[0], SANS_EQUIVALENT);
+  assert.equal(base.prepare('SELECT count(*) AS n FROM monstre WHERE id = ?').get(id).n, 1, 'la création, lot à part, est rejouée');
+  assert.equal(base.prepare('SELECT texte FROM monstre_rubrique WHERE monstre_id = ? AND rang = ?').get(id, rang).texte, '');
+  assert.equal(base.prepare('SELECT count(*) AS n FROM monstre_capacite WHERE monstre_id = ?').get(id).n, 0);
+});
+
 test('une autre rubrique d’une carte notée avant 0044 (la tactique de l’Os du blizzard, en attente sur le site de dev) se rejoue toujours', () => {
   const source = vivante();
   const r = source.prepare("SELECT * FROM monstre_rubrique WHERE rubrique NOT IN ('capacites', 'attributs') AND texte <> '' ORDER BY monstre_id, rang LIMIT 1").get();

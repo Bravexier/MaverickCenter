@@ -405,7 +405,8 @@ function dessinerLesValeurs(ed, panneau) {
   if (bloque(ed, r)) {
     if (zone.dataset.signature !== 'attente') {
       zone.dataset.signature = 'attente';
-      const reglees = Object.keys(valeursAEnvoyer(descriptionDeLaBase(ed, r.commune), r.valeurs, r.propres)).length > 0 || r.invalides.size > 0;
+      // la règle d'envoi (operationsDeValeurs), sur la description pour laquelle les curseurs ont été réglés
+      const reglees = Object.keys(valeursAEnvoyer(r.dessinee ?? descriptionDeLaBase(ed, r.commune), r.valeurs, r.propres)).length > 0 || r.invalides.size > 0;
       const note = document.createElement('p');
       note.className = 'ed-capacite__portee';
       note.textContent = `Le nombre de valeurs « {N} » de la description change : enregistrez-la d’abord, puis réglez les valeurs de cette carte.${
@@ -415,6 +416,7 @@ function dessinerLesValeurs(ed, panneau) {
     zone.hidden = false;
     return;
   }
+  r.dessinee = descriptionDe(ed, r.commune); // la description de ces curseurs (la note d'un panneau bloqué en part)
   const apercu = () => {
     const sortie = zone.querySelector('.ed-capacite__apercu');
     const valeurs = Object.fromEntries(places.map((p) => [p.numero, valeurDe(r, p)]));

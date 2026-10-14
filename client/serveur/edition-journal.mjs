@@ -428,7 +428,8 @@ const decodee = (m) => ({
  * ancienne dans la forme des règles : elle rend la modification à rejouer à sa place, modifiée ou non, avec au besoin `aCreer` : des lignes
  * ([{ table, valeurs }]) créées juste avant elle si elles manquent — dans son lot, annulées avec lui, jamais notées ni comptées
  * (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043 et son mot-clé) — ou avec `conflit` : le message d'une forme
- * ancienne qui n'a pas d'équivalent, qui met son lot en conflit (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant la migration 0044).
+ * ancienne qui n'a pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant
+ * la migration 0044).
  * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
@@ -525,20 +526,20 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
     db.exec('SAVEPOINT rejeu_lot');
     const resultats = [];
     const creees = []; // lignes créées à la demande de l'adaptateur (`aCreer`)
-    let conflit = null;
-    for (const m of modifications) {
+    // une forme ancienne sans équivalent (l'adaptateur dit pourquoi) : le lot en conflit avec son explication, avant qu'une autre de ses modifications
+    // n'échoue sans rien expliquer
+    const signalee = modifications.find((m) => m.conflit);
+    let conflit = signalee ? `${signalee.table_nom} ${signalee.cle} : ${signalee.conflit}` : null;
+    for (const m of signalee ? [] : modifications) {
       let r;
       try {
-        if (m.conflit) r = m.conflit; // une forme ancienne sans équivalent (l'adaptateur dit pourquoi)
-        else {
-          for (const { table, valeurs } of m.aCreer ?? []) {
-            const cle = cleDe(db, table, valeurs);
-            if (lireLigne(db, table, cle)) continue;
-            insererBrut(db, table, valeurs);
-            creees.push({ lot: m.lot_id, rang: m.rang, table, cle, operation: 'inserer', avant: null, apres: valeurs, synthetique: true });
-          }
-          r = rejouerUne(db, m, derivee, suivantesDe(m), fantomes.has(cleDeFantome(m)), orphelines);
+        for (const { table, valeurs } of m.aCreer ?? []) {
+          const cle = cleDe(db, table, valeurs);
+          if (lireLigne(db, table, cle)) continue;
+          insererBrut(db, table, valeurs);
+          creees.push({ lot: m.lot_id, rang: m.rang, table, cle, operation: 'inserer', avant: null, apres: valeurs, synthetique: true });
         }
+        r = rejouerUne(db, m, derivee, suivantesDe(m), fantomes.has(cleDeFantome(m)), orphelines);
       } catch (e) {
         r = `écriture refusée : ${e.message}`;
       }
