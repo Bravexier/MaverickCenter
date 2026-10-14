@@ -5,7 +5,8 @@
 // en attente du journal sont rejouées sur les nouvelles règles (serveur/edition-journal.mjs). Un don, une spécialité (avec les dons choisis qui en
 // dépendent), un sort ou un métier que les nouvelles règles n'ont plus est retiré des fiches qui l'utilisent, avec une note datée dans chacune (décision
 // R42 : serveur/fiches-retraits.mjs ; la liste dans vivante.json, rendue par /api/etat). Toute autre ligne qui ne passe pas (une fiche cite une race, une
-// classe, une magie… disparue, une colonne remplie n'existe plus, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
+// classe, une magie… disparue, une colonne remplie n'existe plus — sauf une colonne que les règles retirent exprès, COLONNES_RETIREES de
+// src/lib/fiche-format.mjs : le statut des fiches, migration 0038, perdu sans bloquer —, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
 // pourquoi. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières) : l'archive garde donc la base
 // d'avant les retraits.
 // Node seulement (node:sqlite), sans dépendance.
@@ -13,7 +14,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { COLONNES_RETIREES, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
 
@@ -144,7 +145,8 @@ function transferer(db, ancienne, instant) {
         const lignes = compter(db, 'ancienne', t);
         if (!lignes) continue;
         const apres = colonnes(db, 'main', t);
-        const perdues = avant.filter((c) => !apres.includes(c))
+        // une colonne que les règles ont retirée exprès (COLONNES_RETIREES : le statut des fiches, migration 0038) se perd sans bloquer
+        const perdues = avant.filter((c) => !apres.includes(c) && !(COLONNES_RETIREES[t] ?? []).includes(c))
           .filter((c) => db.prepare(`SELECT count(*) AS n FROM ancienne."${t}" WHERE "${c}" IS NOT NULL`).get().n > 0);
         if (perdues.length) {
           problemes.push(`${t} : ${perdues.join(', ')} rempli(e)s mais absente(s) des nouvelles règles`);

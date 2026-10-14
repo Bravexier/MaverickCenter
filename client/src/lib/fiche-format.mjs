@@ -44,13 +44,19 @@ export const COLONNES_DU_SERVICE = Object.freeze(['id', 'nature', 'proprietaire_
 export const CHAMP_VERSION = 'version';
 
 /**
- * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (brouillon,
- * mono-classe, 0 XP, alignement, bourse et ambidextrie à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
+ * Colonnes que les règles ont retirées d'une table de la section 13, par table : la base vivante les perd à sa reconstruction sans bloquer
+ * (serveur/base-vivante.mjs), et une fiche qui en porte encore une (fichier exporté avant, page restée ouverte) se lit sans elle (page /fiche/, service).
+ * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038).
+ */
+export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']) });
+
+/**
+ * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (mono-classe, 0 XP,
+ * alignement, bourse et ambidextrie à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
  */
 export function ficheVide(nom = '') {
   return {
     nom,
-    statut: 'brouillon',
     mode_classe: 'mono',
     xp: 0,
     alignement_loyal: 0,

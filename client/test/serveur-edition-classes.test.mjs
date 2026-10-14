@@ -423,8 +423,8 @@ function ficheDeJoueur(id, { classe = C1.id, specialite = null, capacites = [], 
   if (!ligne("SELECT 1 FROM utilisateur WHERE id = 'utilisateur-d11'")) {
     db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
   }
-  db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
-    alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', 'utilisateur-d11', 'privee', 'brouillon', 'Secret du joueur',
+  db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
+    alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', 'utilisateur-d11', 'privee', 'Secret du joueur',
     'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, ?, ?)`).run(id, creeLe, creeLe);
   db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(id, classe, specialite);
   for (const k of capacites) db.prepare('INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES (?, ?)').run(id, k);

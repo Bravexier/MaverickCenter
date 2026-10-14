@@ -3,6 +3,8 @@
 // Sans dépendance : importé par le navigateur.
 
 export const LIBELLES_DES_CONTROLES = Object.freeze({
+  race_manquante: 'Race à choisir',
+  magie_innee_manquante: 'Magie innée à choisir',
   classe_inaccessible: 'Classe que la race ne permet pas',
   classe_reservee: 'Classe réservée à une autre magie innée',
   classe_imposee: 'Classe 1 imposée par la magie innée',

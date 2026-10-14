@@ -1,23 +1,12 @@
-/* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, tableau dont chaque colonne se trie
-   (bouton dans l'en-tête, flèche du sens), nom en lien vers la fiche, statut et règles à revoir en pastilles. Couleurs de la partie « Créer son
-   personnage » du guide, comme la fiche. */
+/* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, puis la liste : un en-tête dont chaque
+   colonne, sauf le portrait, se trie (bouton, flèche du sens), et une ligne par personnage (portrait, nom, race, magies, niveau : demande du
+   propriétaire), tout entière un lien vers la fiche (le nom n'a pas l'air d'un lien), bordée de la couleur de la magie innée, en dégradé vers l'acquise
+   en bi-magie (--magie-1, --magie-2, posées par src/scripts/personnages.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
+   sans piste qui dépende du contenu) et la même largeur de contenu (marge de l'en-tête = bordure + marge d'une ligne) : leurs colonnes s'alignent.
+   Pas de sous-grille : elle reporterait la bordure et la marge de la ligne sur ses colonnes extrêmes (le portrait déborderait de la sienne).
+   Couleurs de la partie « Créer son personnage » du guide, comme la fiche. */
 .personnages { --vert: #2e7d4f; display: grid; gap: 1rem; }
-.personnages-entete { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem; }
-.personnages-entete h1 { margin: 0; }
-.personnages-entete p { margin: 0.25rem 0 0; color: var(--muted); }
-.personnages-nouveau {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 1rem;
-  border-radius: 999px;
-  background: var(--vert);
-  color: #fff;
-  font-weight: 700;
-  text-decoration: none;
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--vert) 35%, transparent);
-}
-.personnages-nouveau:hover { filter: brightness(1.1); }
+.personnages h1 { margin: 0; }
 .personnages-filtres {
   display: grid;
   gap: 0.6rem 0.8rem;
@@ -34,39 +23,103 @@
 .personnages-filtres .actions { display: flex; align-items: end; }
 .personnages-compte { margin: 0; color: var(--muted); }
 
-.personnages-tableau { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.personnages-tableau table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.personnages-tableau th, .personnages-tableau td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-.personnages-tableau td.nombre, .personnages-tableau td:first-child { white-space: nowrap; }
-.personnages-tableau td.long { min-width: 8rem; }
-.personnages-tableau th { position: sticky; top: 0; background: color-mix(in srgb, var(--vert) 10%, var(--surface)); padding: 0; }
-.personnages-tableau th button {
-  white-space: nowrap;
+/* La liste : 5 colonnes, le même gabarit pour l'en-tête et chaque ligne */
+.personnages-liste {
+  --portrait: 3.5rem;
+  --bord: 3px;
+  --marge: 0.55rem;
+  --colonnes: var(--portrait) minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) 4.5rem;
+  display: grid;
+  row-gap: 0.45rem;
+}
+.personnages-tete, .perso { display: grid; grid-template-columns: var(--colonnes); column-gap: 0.9rem; }
+.personnages-tete {
+  align-items: end;
+  padding: 0 calc(var(--marge) + var(--bord));
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.personnages-tete span.col { padding: 0.35rem 0; }
+.personnages-tete button {
   display: flex;
-  width: 100%;
   align-items: center;
-  justify-content: space-between;
   gap: 0.3rem;
-  padding: 0.5rem 0.45rem;
+  margin: 0;
+  padding: 0.35rem 0.3rem;
+  margin-inline: -0.3rem;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius);
   background: none;
   color: var(--text);
-  font-weight: 700;
+  font: inherit;
   text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
 }
-.personnages-tableau th button:hover, .personnages-tableau th button:focus-visible { background: color-mix(in srgb, var(--vert) 18%, var(--surface)); }
-.personnages-tableau th .fleche { color: var(--muted); font-size: 0.75rem; }
-.personnages-tableau th[aria-sort] .fleche { color: var(--vert); }
-.personnages-tableau th.nombre button { justify-content: flex-end; flex-direction: row-reverse; }
-.personnages-tableau td.nombre { text-align: right; font-variant-numeric: tabular-nums; }
-.personnages-tableau tbody tr:hover { background: color-mix(in srgb, var(--vert) 5%, var(--surface)); }
-.personnages-tableau a { font-weight: 700; }
+.personnages-tete button:hover, .personnages-tete button:focus-visible { background: color-mix(in srgb, var(--vert) 14%, var(--surface)); }
+.personnages-tete .fleche { color: var(--muted); font-size: 0.75rem; }
+.personnages-tete button[data-actif] .fleche { color: var(--vert); }
+.personnages-tete .col--niveau { justify-self: end; flex-direction: row-reverse; text-align: right; }
+.personnages-tete .col--portrait { color: var(--muted); font-weight: normal; }
+
+.personnages-lignes { display: grid; row-gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+.personnages-lignes > li { margin: 0; }
+
+/* Une ligne : un lien, bordure de la couleur de la magie (dégradé en bi-magie : bordure en deux couches, fond sur la boîte de remplissage) */
+.perso {
+  align-items: center;
+  padding: 0.4rem var(--marge);
+  border: var(--bord) solid transparent;
+  border-radius: calc(var(--radius) + 4px);
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(90deg, var(--magie-1, var(--border)), var(--magie-2, var(--magie-1, var(--border)))) border-box;
+  color: var(--text);
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.perso:hover, .perso:focus-visible {
+  color: var(--text);
+  text-decoration: none;
+  background:
+    linear-gradient(color-mix(in srgb, var(--magie-1, var(--vert)) 7%, var(--surface)), color-mix(in srgb, var(--magie-2, var(--magie-1, var(--vert))) 7%, var(--surface))) padding-box,
+    linear-gradient(90deg, var(--magie-1, var(--border)), var(--magie-2, var(--magie-1, var(--border)))) border-box;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--magie-1, var(--text)) 25%, transparent);
+}
+.perso:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.perso .col { min-width: 0; overflow-wrap: anywhere; }
+.perso .col--nom { font-weight: 700; font-size: 1.02rem; }
+.perso .col--race, .perso .col--magies { color: var(--muted); }
+.perso .col--niveau { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* « Niveau » devant le nombre, pour qui lit la ligne sans la voir (nom du lien) */
+.perso .hors-ecran { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Le portrait : le carré cadré de l'image (style posé par le service : image en absolu, en pourcentages du cadre), ou le logo */
+.perso__portrait {
+  position: relative;
+  display: block;
+  width: var(--portrait);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--magie-1, var(--border)) 18%, var(--surface));
+}
+.perso__portrait img { position: absolute; display: block; max-width: none; }
+.perso__portrait[data-vide] img { inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 12%; opacity: 0.8; }
+
 .personnages-vide { padding: 1rem; color: var(--muted); }
 
-.statut { display: inline-block; padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--border); }
-.statut[data-statut='valide'] { color: var(--good); border-color: color-mix(in srgb, var(--good) 55%, var(--border)); background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
-.statut[data-statut='brouillon'] { color: #b45309; border-color: color-mix(in srgb, #b45309 50%, var(--border)); background: color-mix(in srgb, #b45309 8%, var(--surface)); }
-.statut[data-statut='archive'] { color: var(--muted); }
-.regles-a-revoir { font-weight: 700; color: var(--danger); }
-.regles-a-revoir[data-zero] { color: var(--good); font-weight: normal; }
+/* Petit écran : les boutons de tri en une rangée (tous gardés) ; une ligne : portrait à gauche, puis le nom, la race et les magies l'un sous
+   l'autre, le niveau à droite */
+@media (max-width: 40rem) {
+  .personnages-tete { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; }
+  .personnages-tete .col--portrait { display: none; }
+  .personnages-tete .col--niveau { flex-direction: row; text-align: left; }
+  .perso { grid-template-columns: var(--portrait) minmax(0, 1fr) auto; grid-template-rows: auto auto auto; column-gap: 0.7rem; row-gap: 0.05rem; }
+  .perso__portrait { grid-column: 1; grid-row: 1 / span 3; }
+  .perso .col--nom { grid-column: 2; grid-row: 1; }
+  .perso .col--race { grid-column: 2; grid-row: 2; font-size: 0.85rem; }
+  .perso .col--magies { grid-column: 2; grid-row: 3; font-size: 0.85rem; }
+  .perso .col--niveau { grid-column: 3; grid-row: 1 / span 3; }
+}

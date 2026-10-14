@@ -34,13 +34,6 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
 
     <div class="fiche-barre" role="toolbar" aria-label="Enregistrement">
       <span class="fiche-niveau-badge" id="fiche-niveau">Niveau 1</span>
-      <label>Statut
-        <select id="fiche-statut" data-champ="statut">
-          <option value="brouillon">Brouillon</option>
-          <option value="valide">Validé</option>
-          <option value="archive">Archivé</option>
-        </select>
-      </label>
       <button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer</button>
       <p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p>
       <span class="fiche-barre__outils">
@@ -331,7 +324,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
         <section class="fiche-etape parametres__panneau" id="etape-controles">
           <h3 class="parametres__titre">Contrôle des règles</h3>
           <div class="fiche-etape__corps">
-            <p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Un brouillon peut enfreindre des règles ; une fiche ne passe « validée » que sans aucune.</p>
+            <p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Toute fiche est contrôlée, même inachevée : une règle enfreinte est signalée, elle n’empêche pas d’enregistrer.</p>
             <ul class="controles" id="controles"><li>La fiche n’a pas encore été enregistrée.</li></ul>
           </div>
         </section>

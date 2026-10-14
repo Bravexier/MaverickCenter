@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 37;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 38;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3704,11 +3704,10 @@ CREATE TABLE personnage (
                                                     -- qui la voit EN PLUS du propriétaire, des administrateurs, des membres des groupes où elle est inscrite
                                                     -- et des utilisateurs désignés (personnage_partage) : 'privee' personne d'autre, 'mj' tous les MJ,
                                                     -- 'tous' tout utilisateur connecté (toujours le cas d'un prétiré) ; calcul : v_personnage_visible
-  statut                TEXT    NOT NULL CHECK (statut IN ('brouillon', 'valide', 'archive')),   -- 'valide' : v_personnage_controle doit être vide pour elle
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),   -- « NOM » (F1)
   surnom                TEXT,                         -- « Surnom » (P1)
   lieu_origine          TEXT,                         -- « Lieu origine » (F3)
-  race_id               TEXT    REFERENCES race(id),  -- « RACE » (I2) ; NULL tant que le brouillon ne l'a pas choisie
+  race_id               TEXT    REFERENCES race(id),  -- « RACE » (I2) ; NULL tant que la fiche ne l'a pas choisie (contrôle race_manquante)
   ethnie_id             TEXT    REFERENCES ethnie(id),   -- don racial de la ligne « R » (C40, onglet « Bonus Race ») : l'ethnie, de la race choisie
   magie_innee_id        TEXT    REFERENCES magie(id), -- « Magie inn » (S2)
   magie_acquise_id      TEXT    REFERENCES magie(id), -- « Magie acq » (S3) ; NULL = pas de magie acquise (facultative, guide « Personnage »)
@@ -3748,8 +3747,7 @@ CREATE TABLE personnage (
   portrait_zoom         REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
-  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
-  CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL))
+  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
 ) STRICT;
 
 CREATE INDEX personnage_proprietaire ON personnage (proprietaire_id) WHERE proprietaire_id IS NOT NULL;   -- « mes personnages »
@@ -4010,14 +4008,23 @@ CREATE VIEW v_groupe_controle AS
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45) ; ce qui
--- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
--- avoir des lignes, une fiche 'valide' non (test).
+-- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
+-- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
   SELECT pc.personnage_id, 'classe_inaccessible' AS regle, pc.classe_id AS detail
   FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
   WHERE p.race_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM race_classe rc WHERE rc.race_id = p.race_id AND rc.classe_id = pc.classe_id AND rc.accessible = 1)
+  UNION ALL
+  -- Race et magie innée : toute fiche en a une (jusqu'à la migration 0038, une contrainte de la table pour toute fiche hors brouillon)
+  SELECT p.id, 'race_manquante', NULL
+  FROM personnage p
+  WHERE p.race_id IS NULL
+  UNION ALL
+  SELECT p.id, 'magie_innee_manquante', NULL
+  FROM personnage p
+  WHERE p.magie_innee_id IS NULL
   UNION ALL
   -- Classe réservée à une magie innée, qui l'impose en classe 1 (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décision R23)
   SELECT pc.personnage_id, 'classe_reservee', pc.classe_id
@@ -4062,10 +4069,11 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p JOIN race r ON r.id = p.race_id
   WHERE r.mono_magie = 1 AND p.magie_acquise_id IS NOT NULL
   UNION ALL
-  -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2)
+  -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2). Sans race ou sans magie
+  -- innée, rien à comparer : race_manquante, magie_innee_manquante le disent (migration 0038)
   SELECT p.id, 'ethnie_hors_race', p.ethnie_id
   FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
-  WHERE p.race_id IS NULL OR e.race_id <> p.race_id
+  WHERE e.race_id <> p.race_id
   UNION ALL
   SELECT p.id, 'ethnie_manquante', p.race_id
   FROM personnage p
@@ -4073,7 +4081,7 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT p.id, 'ethnie_magie', p.ethnie_id
   FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
-  WHERE e.magie_id IS NOT NULL AND (p.magie_innee_id IS NULL OR e.magie_id <> p.magie_innee_id)
+  WHERE e.magie_id <> p.magie_innee_id
   UNION ALL
   -- Point de caractéristique de la magie innée : à choisir seulement quand la magie ne le fixe pas
   SELECT p.id, 'caracteristique_magie', COALESCE(p.caracteristique_magie_id, '(absente)')
@@ -4083,8 +4091,7 @@ CREATE VIEW v_personnage_controle AS
   -- Caractéristiques : les six, dans les bornes de la race, total exact du niveau (seuil 'caracteristiques_total', décision R3)
   SELECT p.id, 'caracteristique_manquante', c.id
   FROM personnage p CROSS JOIN caracteristique c
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = p.id AND pc.caracteristique_id = c.id)
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = p.id AND pc.caracteristique_id = c.id)
   UNION ALL
   SELECT pc.personnage_id, 'caracteristique_hors_bornes', pc.caracteristique_id || ' = ' || pc.base
   FROM personnage_caracteristique pc
@@ -4108,10 +4115,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT n.personnage_id, 'competences_total', COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) || ' / ' || v.points_competences_cumul
   FROM v_personnage_niveau n
-  JOIN personnage p ON p.id = n.personnage_id
   JOIN v_niveau v ON v.niveau = n.niveau_global
-  WHERE p.statut <> 'brouillon'
-    AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
+  WHERE COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
   -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
   -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur). Plafond : 5 par point de la caractéristique totale, le +1 de la magie innée
@@ -4131,7 +4136,7 @@ CREATE VIEW v_personnage_controle AS
              GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pl.personnage_id AND mb.competence_id = co.id
   WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond) > pl.plafond
   UNION ALL
-  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)
+  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien
   SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id
   FROM personnage_metier_bonus c JOIN personnage p ON p.id = c.personnage_id
   WHERE NOT EXISTS (SELECT 1 FROM metier_bonus b WHERE b.metier_id = p.metier_id AND b.rang = c.rang AND b.competence_id = c.competence_id
@@ -4139,8 +4144,7 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT p.id, 'metier_bonus_manquant', b.texte
   FROM personnage p JOIN metier_bonus b ON b.metier_id = p.metier_id AND b.option = 1
-  WHERE p.statut <> 'brouillon'
-    AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
+  WHERE (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
     AND NOT EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang)
   UNION ALL
   -- Progression : un gain par niveau atteint (2 à niveau global), points d'attributs exacts (R3), dé seulement aux niveaux qui en donnent un
@@ -4150,10 +4154,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT n.personnage_id, 'progression_manquante', CAST(g.niveau AS TEXT)
   FROM v_personnage_niveau n
-  JOIN personnage p ON p.id = n.personnage_id
   JOIN niveau_global g ON g.niveau BETWEEN 2 AND n.niveau_global
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
   UNION ALL
   SELECT pp.personnage_id, 'progression_points', pp.niveau || ' : ' || (pp.points_sante + pp.points_chakra) || ' / ' || COALESCE(g.points_attributs, 0)
   FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
@@ -4165,8 +4167,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
   SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)
-  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
-  WHERE p.statut <> 'brouillon' AND n.niveau_classe_2 > 0
+  FROM v_personnage_niveau n
+  WHERE n.niveau_classe_2 > 0
     AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 2)
   UNION ALL
   SELECT n.personnage_id, 'classe_2_en_trop', pc.classe_id
@@ -4174,9 +4176,8 @@ CREATE VIEW v_personnage_controle AS
   WHERE n.niveau_classe_2 = 0
   UNION ALL
   SELECT n.personnage_id, 'classe_1_manquante', NULL
-  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 1)
+  FROM v_personnage_niveau n
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 1)
   UNION ALL
   SELECT pc.personnage_id, 'specialite_trop_tot', pc.specialite_id
   FROM personnage_classe pc JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id

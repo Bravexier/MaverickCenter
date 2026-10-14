@@ -209,8 +209,8 @@ test('R42 — supprimer un métier cité par une fiche : retiré de la fiche ave
   // un métier créé ici (METIER_B, que lit le test suivant, reste en place)
   const id = creerMetier({ nom: 'Métier d’une fiche', description: 'Un métier d’essai.' });
   const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
-  db.prepare(`INSERT INTO personnage (id, nature, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
-    bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'brouillon', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  db.prepare(`INSERT INTO personnage (id, nature, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
+    bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
     '2026-10-10T12:00:00Z', '2026-10-10T12:00:00Z', ?)`).run(id);
   // le choix d'un bonus « A OU B » du métier (personnage_metier_bonus, rang dans metier_bonus) part avec lui
   db.prepare("INSERT INTO personnage_metier_bonus (personnage_id, rang, competence_id) VALUES ('p-ed', 1, 'esquive')").run();

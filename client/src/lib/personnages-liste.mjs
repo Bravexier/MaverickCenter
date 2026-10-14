@@ -1,34 +1,34 @@
-// Recherche des personnages (page /personnages/, demande du propriétaire) : filtres et tri du tableau, sur les résumés que rend le service
-// (GET /api/personnages/, client/serveur/fiches.mjs#listerFiches). Chaque colonne se trie dans les deux sens. Les filtres et le tri vivent dans
-// l'adresse de la page (une recherche se garde et se partage). Sans dépendance : importé par le navigateur et par les tests.
-
-export const STATUTS = Object.freeze({ brouillon: 'Brouillon', valide: 'Validé', archive: 'Archivé' });
+// Recherche des personnages (page /personnages/, demande du propriétaire) : filtres et tri de la liste, sur les résumés que rend le service
+// (GET /api/personnages/, client/serveur/fiches.mjs#listerFiches). Chaque colonne, sauf le portrait, se trie dans les deux sens. Les filtres et le
+// tri vivent dans l'adresse de la page (une recherche se garde et se partage). Sans dépendance : importé par le navigateur et par les tests.
 
 /** Texte comparable : minuscules, sans accents, espaces réduits. */
 export const normaliser = (texte) => String(texte ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-const classes = (p) => p.classes.map((c) => (c.specialite ? `${c.classe} (${c.specialite})` : c.classe)).join(' / ');
-
-/** Colonnes du tableau, dans l'ordre : clé (tri, adresse), titre, valeur affichée, valeur de tri, nature (texte, nombre, date). */
-export const COLONNES = Object.freeze([
-  { cle: 'nom', titre: 'Nom', texte: (p) => p.nom, tri: (p) => p.nom, nature: 'texte' },
-  { cle: 'statut', titre: 'Statut', texte: (p) => STATUTS[p.statut] ?? p.statut, tri: (p) => STATUTS[p.statut] ?? p.statut, nature: 'texte' },
-  { cle: 'race', titre: 'Race', texte: (p) => [p.race, p.ethnie && p.ethnie !== p.race ? p.ethnie : null].filter(Boolean).join(' · '), tri: (p) => p.race, nature: 'texte' },
-  { cle: 'magies', titre: 'Magies', texte: (p) => [p.magie_innee, p.magie_acquise].filter(Boolean).join(' + '), tri: (p) => p.magie_innee, nature: 'texte' },
-  { cle: 'classes', titre: 'Classes', texte: classes, tri: (p) => classes(p) || null, nature: 'texte' },
-  // niveau, puis XP à niveau égal
-  { cle: 'niveau', titre: 'Niveau', texte: (p) => p.niveau_global, tri: (p) => p.xp, nature: 'nombre' },
-  { cle: 'metier', titre: 'Métier', texte: (p) => p.metier ?? '', tri: (p) => p.metier, nature: 'texte' },
-  { cle: 'anomalies', titre: 'À revoir', texte: (p) => p.anomalies, tri: (p) => p.anomalies, nature: 'nombre' },
-  { cle: 'modifie_le', titre: 'Modifié', texte: (p) => p.modifie_le, tri: (p) => p.modifie_le, nature: 'date' },
-]);
-
-/** Filtres par défaut : tout sauf les fiches archivées, triées par nom. */
-export const FILTRES_PAR_DEFAUT = Object.freeze({ texte: '', statut: '', race: '', magie: '', classe: '', niveauMin: '', niveauMax: '', regles: '', tri: 'nom', sens: 'asc' });
+/** Les magies d'un personnage dans une case : l'innée, puis l'acquise (toujours dans cet ordre, demande du propriétaire) ; '' sans magie. */
+export const magiesDe = (p) => [p.magie_innee, p.magie_acquise].filter(Boolean).join(', ');
 
 /**
- * Personnages qui passent les filtres. `statut` : '' = tous sauf les archivés, 'tous' = tous, sinon ce statut ; `magie` : innée ou acquise ;
- * `classe` : l'une ou l'autre classe ; `regles` : 'avec' ou 'sans' règle à revoir ; `texte` : dans le nom, le surnom ou le lieu d'origine.
+ * Colonnes de la liste, dans l'ordre (demande du propriétaire : portrait, nom, race, magies, niveau, rien d'autre) : clé (tri, adresse), titre, valeur
+ * affichée, valeur de tri, nature (texte, nombre). Le portrait ne se trie pas (`tri` absent).
+ */
+export const COLONNES = Object.freeze([
+  { cle: 'portrait', titre: 'Portrait' },
+  { cle: 'nom', titre: 'Nom', texte: (p) => p.nom, tri: (p) => p.nom, nature: 'texte' },
+  { cle: 'race', titre: 'Race', texte: (p) => p.race ?? '', tri: (p) => p.race, nature: 'texte' },
+  { cle: 'magies', titre: 'Magies', texte: magiesDe, tri: (p) => magiesDe(p) || null, nature: 'texte' },
+  // niveau, puis XP à niveau égal
+  { cle: 'niveau', titre: 'Niveau', texte: (p) => p.niveau_global, tri: (p) => p.xp, nature: 'nombre' },
+]);
+
+const colonneTriable = (cle) => COLONNES.find((c) => c.cle === cle && c.tri);
+
+/** Filtres par défaut : tous les personnages, triés par nom. */
+export const FILTRES_PAR_DEFAUT = Object.freeze({ texte: '', race: '', magie: '', classe: '', niveauMin: '', niveauMax: '', regles: '', tri: 'nom', sens: 'asc' });
+
+/**
+ * Personnages qui passent les filtres. `magie` : innée ou acquise ; `classe` : l'une ou l'autre classe ; `regles` : 'avec' ou 'sans' règle à revoir ;
+ * `texte` : dans le nom, le surnom ou le lieu d'origine.
  */
 export function filtrer(personnages, filtres) {
   const f = { ...FILTRES_PAR_DEFAUT, ...filtres };
@@ -36,7 +36,6 @@ export function filtrer(personnages, filtres) {
   const min = f.niveauMin === '' ? -Infinity : Number(f.niveauMin);
   const max = f.niveauMax === '' ? Infinity : Number(f.niveauMax);
   return personnages.filter((p) => {
-    if (f.statut === '' ? p.statut === 'archive' : f.statut !== 'tous' && p.statut !== f.statut) return false;
     if (f.race && p.race_id !== f.race) return false;
     if (f.magie && p.magie_innee_id !== f.magie && p.magie_acquise_id !== f.magie) return false;
     if (f.classe && !p.classes.some((c) => c.classe_id === f.classe)) return false;
@@ -48,9 +47,9 @@ export function filtrer(personnages, filtres) {
   });
 }
 
-/** Tri stable par une colonne, dans un sens ('asc' ou 'desc') ; les cases vides vont à la fin dans les deux sens. */
+/** Tri stable par une colonne, dans un sens ('asc' ou 'desc') ; les cases vides vont à la fin dans les deux sens. Colonne inconnue ou portrait : le nom. */
 export function trier(personnages, cle, sens = 'asc') {
-  const colonne = COLONNES.find((c) => c.cle === cle) ?? COLONNES[0];
+  const colonne = colonneTriable(cle) ?? colonneTriable('nom');
   const signe = sens === 'desc' ? -1 : 1;
   return personnages
     .map((p, i) => ({ p, i, v: colonne.tri(p) }))
@@ -76,10 +75,33 @@ export function choixDeFiltres(personnages) {
   };
 }
 
-/** Filtres ↔ paramètres de l'adresse (seuls ceux qui diffèrent du défaut y figurent). */
+/**
+ * Les couleurs de la bordure d'un personnage (demande du propriétaire) : celle de sa magie innée, en dégradé vers celle de son acquise en bi-magie
+ * (`couleurs` : identifiant de magie → couleur des pages de magie, lib/sort-format.mjs#couleurDeMagie, posées par la page au build). Rend les
+ * variables CSS `--magie-1` et `--magie-2` (la même couleur deux fois pour une seule magie), ou null sans magie connue (bordure neutre).
+ */
+export function couleursDeBordure(p, couleurs) {
+  const [premiere, seconde] = [p.magie_innee_id, p.magie_acquise_id].map((id) => (id ? couleurs[id] : undefined)).filter(Boolean);
+  if (!premiere) return null;
+  return { '--magie-1': premiere, '--magie-2': seconde ?? premiere };
+}
+
+/**
+ * L'adresse de l'image du portrait d'un personnage (`api` : l'adresse du service, « …/api/ ») : la route GET /api/personnages/<id>/portrait/
+ * (serveur/api.mjs), suivie de l'empreinte de l'image, qui change avec elle (le navigateur ne garde pas une image remplacée) ; null sans portrait.
+ */
+export function adresseDuPortrait(api, p) {
+  if (!p.portrait?.empreinte) return null;
+  return `${api}personnages/${encodeURIComponent(p.id)}/portrait/?v=${encodeURIComponent(p.portrait.empreinte)}`;
+}
+
+/** Filtres ↔ paramètres de l'adresse (seuls ceux qui diffèrent du défaut y figurent ; un tri par une colonne qui n'existe plus redevient le défaut). */
 export function filtresDepuisAdresse(recherche) {
   const params = new URLSearchParams(recherche);
-  return Object.fromEntries(Object.entries(FILTRES_PAR_DEFAUT).map(([cle, defaut]) => [cle, params.get(cle) ?? defaut]));
+  const filtres = Object.fromEntries(Object.entries(FILTRES_PAR_DEFAUT).map(([cle, defaut]) => [cle, params.get(cle) ?? defaut]));
+  if (!colonneTriable(filtres.tri)) filtres.tri = FILTRES_PAR_DEFAUT.tri;
+  if (!['asc', 'desc'].includes(filtres.sens)) filtres.sens = FILTRES_PAR_DEFAUT.sens;
+  return filtres;
 }
 export function adresseDesFiltres(filtres) {
   const params = new URLSearchParams();

@@ -211,7 +211,14 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
 
   const serveur = createServer((req, res) => {
     const envoyer = ({ statut, corps, brut, entetes = {} }) => {
-      const texte = brut ?? JSON.stringify(corps); // `brut` : un document servi tel quel (lot figé de la mise à jour, dont l'empreinte se vérifie)
+      // un 304 n'a pas de corps : ni Content-Type ni Content-Length (RFC 9110 § 15.4.5 ; un cache recopierait le type sur l'image qu'il garde)
+      if (statut === 304) {
+        res.writeHead(304, { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...entetes });
+        res.end();
+        return;
+      }
+      // `brut` : un document servi tel quel (lot figé de la mise à jour, dont l'empreinte se vérifie ; image d'un portrait, dont `entetes` donne le type)
+      const texte = brut ?? JSON.stringify(corps);
       res.writeHead(statut, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(texte),

@@ -1,7 +1,8 @@
 // Base vivante du service (client/serveur/base-vivante.mjs, docs/serveur.md) : copie de la base des règles publiée par le site, où le service
 // écrit les fiches (section 13 de data/schema.sql). Quand les règles changent, elle est refaite et ses lignes reprises ; un don, une spécialité, un
-// sort ou un métier disparu est retiré des fiches avec une note datée (décision R42) ; si une autre ligne ne passe pas (race, classe, magie…, colonne,
-// contrainte), rien ne change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
+// sort ou un métier disparu est retiré des fiches avec une note datée (décision R42) ; une colonne que les règles ont retirée exprès (COLONNES_RETIREES :
+// le statut des fiches, migration 0038) se perd ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne change et l'erreur
+// dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,6 +16,7 @@ import {
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { COLONNES_RETIREES } from '../src/lib/fiche-format.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -51,7 +53,7 @@ function remplir(chemin) {
   const db = new DatabaseSync(chemin);
   db.exec('PRAGMA foreign_keys = ON');
   const inserer = (t, l) => db.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
-  const fiche = { visibilite: 'tous', statut: 'brouillon', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
+  const fiche = { visibilite: 'tous', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
     mode_classe: 'mono', xp: 250, alignement_loyal: 1, alignement_chaotique: 0, alignement_bon: 2, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 12, bourse_rf: 3,
     ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT };
   inserer('utilisateur', { id: 'u1', discord_id: '123456789', nom_affichage: 'Alice', cree_le: INSTANT });
@@ -164,7 +166,7 @@ test('une page qui a des [[liens]] supprimée sur le site, puis la base refaite 
 /** Un prétiré écrit directement dans la base vivante (comme le service), qui a la classe `classe` (spécialité `specialite`) et les dons `capacites`. */
 function pretire(db, id, { classe, specialite = null, capacites = [] }) {
   const inserer = (t, l) => db.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
-  inserer('personnage', { id, nature: 'pretire', nom: `Prétiré ${id}`, visibilite: 'tous', statut: 'brouillon', mode_classe: 'mono', xp: 0, alignement_loyal: 0,
+  inserer('personnage', { id, nature: 'pretire', nom: `Prétiré ${id}`, visibilite: 'tous', mode_classe: 'mono', xp: 0, alignement_loyal: 0,
     alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT });
   inserer('personnage_classe', { personnage_id: id, rang: 1, classe_id: classe, specialite_id: specialite });
   for (const c of capacites) inserer('personnage_capacite', { personnage_id: id, capacite_id: c });
@@ -357,7 +359,7 @@ test('hors R42 — un sort d’une magie disparue (prétiré au Potentiel Illimi
       probleme: `personnage_sort.sort_id = « ${UN_SORT_DE_FEU} » absent de sort (1 ligne(s))`,
     },
     {
-      // une fiche brouillon qui a le don sans avoir sa classe
+      // une fiche inachevée qui a le don sans avoir sa classe
       fiche: (db) => db.prepare("INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES ('p-hors', ?)").run(don.id),
       livraison: `DELETE FROM capacite WHERE classe_id = '${don.classe_id}'; DELETE FROM specialite WHERE classe_id = '${don.classe_id}';
         DELETE FROM classe WHERE id = '${don.classe_id}'`,
@@ -369,8 +371,8 @@ test('hors R42 — un sort d’une magie disparue (prétiré au Potentiel Illimi
     const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
     const db = new DatabaseSync(chemin);
     db.exec('PRAGMA foreign_keys = ON');
-    db.prepare(`INSERT INTO personnage (id, nature, nom, visibilite, statut, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
-      alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, notes, cree_le, modifie_le) VALUES ('p-hors', 'pretire', 'Témoin hors R42', 'tous', 'brouillon',
+    db.prepare(`INSERT INTO personnage (id, nature, nom, visibilite, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
+      alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, notes, cree_le, modifie_le) VALUES ('p-hors', 'pretire', 'Témoin hors R42', 'tous',
       'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Note du joueur.', ?, ?)`).run(INSTANT, INSTANT);
     c.fiche(db);
     db.close();
@@ -479,11 +481,12 @@ test('R42 — un don retiré d’un prétiré sur le site de dev, puis la base r
   assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_capacite WHERE personnage_id = 'p-note'").n, 0);
 });
 
-test('schéma changé : une colonne remplie qui disparaît est refusée ; une colonne ajoutée ou une colonne vide retirée passent', () => {
+test('schéma changé : une colonne remplie qui disparaît (hors COLONNES_RETIREES) est refusée ; une colonne ajoutée ou une colonne vide retirée passent', () => {
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
   remplir(chemin);
   const avant = lignesVivantes(chemin);
+  assert.ok(!(COLONNES_RETIREES.personnage ?? []).includes('surnom'), 'surnom n’est pas une colonne retirée exprès : sa disparition doit bloquer');
 
   assert.throws(() => preparerBaseVivante({ regles: regles('ALTER TABLE personnage DROP COLUMN surnom'), dossier }), (e) => {
     assert.deepEqual(e.problemes, ['personnage : surnom rempli(e)s mais absente(s) des nouvelles règles']);
@@ -502,6 +505,68 @@ test('schéma changé : une colonne remplie qui disparaît est refusée ; une co
   assert.deepEqual(db.prepare('SELECT id, titre, surnom FROM personnage ORDER BY id').all().map((l) => ({ ...l })),
     [{ id: 'p1', titre: null, surnom: 'le Brave' }, { id: 'p2', titre: null, surnom: null }]);
   db.close();
+});
+
+test('migration 0038 : une base vivante d’avant, dont les fiches ont encore leur statut rempli, est reprise sans blocage, la colonne perdue ; une autre colonne remplie disparue bloque toujours', () => {
+  assert.deepEqual(COLONNES_RETIREES, { personnage: ['statut'] });
+  const aStatut = (f, t) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = 'statut'`).n === 1;
+  assert.equal(aStatut(REGLES, 'personnage'), false, 'les règles d’aujourd’hui n’ont plus de statut');
+  // les règles d'avant 0038 : la colonne et ses contraintes (data/schema.sql d'alors ; une valeur par défaut, qu'ALTER TABLE exige pour NOT NULL) ;
+  // pour l'essai, une colonne du même nom dans une autre table, qui n'est pas retirée exprès
+  const anciennes = regles(`ALTER TABLE personnage ADD COLUMN statut TEXT NOT NULL DEFAULT 'brouillon' CHECK (statut IN ('brouillon', 'valide', 'archive'))
+      CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL));
+    ALTER TABLE groupe ADD COLUMN statut TEXT`);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: anciennes, dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  // p1, prétiré « archivé » (que l'ancienne liste cachait), p2 « validé » ; le groupe a son statut d'essai
+  ecrire.exec("UPDATE personnage SET statut = 'archive' WHERE id = 'p1'; UPDATE personnage SET statut = 'valide' WHERE id = 'p2'; UPDATE groupe SET statut = 'ouvert'");
+  ecrire.close();
+  const avant = lignesVivantes(chemin);
+
+  // une colonne remplie qui disparaît bloque toujours, dans la même table (surnom) comme ailleurs (groupe.statut) ; personnage.statut n'est pas relevé
+  assert.throws(() => preparerBaseVivante({ regles: regles('ALTER TABLE personnage DROP COLUMN surnom'), dossier }), (e) => {
+    assert.ok(e instanceof ErreurBaseVivante, e.message);
+    assert.deepEqual(e.problemes, [
+      'personnage : surnom rempli(e)s mais absente(s) des nouvelles règles',
+      'groupe : statut rempli(e)s mais absente(s) des nouvelles règles',
+    ]);
+    return true;
+  });
+  assert.deepEqual(lignesVivantes(chemin), avant, 'la base en place est gardée telle quelle');
+  assert.ok(!existsSync(join(dossier, DOSSIER_ARCHIVES)), 'rien archivé');
+
+  // le groupe n'a plus de statut d'essai : les règles d'aujourd'hui reprennent tout, le statut des fiches est perdu sans bloquer
+  const vider = new DatabaseSync(chemin);
+  vider.exec('UPDATE groupe SET statut = NULL');
+  vider.close();
+  const sansStatut = Object.fromEntries(Object.entries(lignesVivantes(chemin)).map(([t, lignes]) => [t, lignes.map((l) => {
+    const { statut, ...reste } = JSON.parse(l);
+    return JSON.stringify(reste);
+  }).sort()]));
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-14T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches, [], 'rien de retiré des fiches (R42), aucune note');
+  assert.equal(r.rejeu.conflits, 0, JSON.stringify(r.rejeu));
+  assert.deepEqual(lignesVivantes(chemin), sansStatut, 'fiches, utilisateurs, groupes et inscriptions repris, sans le statut');
+  assert.equal(aStatut(chemin, 'personnage'), false, 'la colonne est perdue');
+  assert.equal(aStatut(chemin, 'groupe'), false);
+  // l'archive garde la base d'avant, statuts compris
+  assert.deepEqual(valeur(r.archive, "SELECT group_concat(id || '=' || statut, ' ') AS s FROM (SELECT id, statut FROM personnage ORDER BY id)").s, 'p1=archive p2=valide');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    // le prétiré « archivé » se liste et se lit comme les autres, sans statut
+    const liste = listerFiches(db);
+    assert.deepEqual(liste.map((f) => f.id), ['p1']);
+    assert.equal('statut' in liste[0], false);
+    const aldric = lireFiche(db, 'p1');
+    assert.equal(aldric.nom, 'Aldric');
+    assert.equal('statut' in aldric, false);
+  } finally {
+    db.close();
+  }
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {
