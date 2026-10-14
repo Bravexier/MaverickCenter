@@ -713,13 +713,13 @@ function construireSorts() {
 // ------------------------------------------------------------------ rappel des dons
 const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
 
-/** Un don de la liste : son niveau (s'il en a un), son nom, son type, et son texte. */
-function elementDeDon({ niveau = null, nom, type = null, texte }) {
+/** Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), et son texte. */
+function elementDeDon({ niveau = null, nom, type = null, precision = null, texte }) {
   return el('li', { class: 'don' },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
-      type ? el('span', { class: 'don__type', dataset: { type } }, TYPES_DE_DON[type] ?? type) : null),
+      type || precision ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' ')) : null),
     texte ? el('span', { class: 'don__texte' }, texte) : null);
 }
 
@@ -749,7 +749,7 @@ function construireDons() {
     : classes.map((c) => el('div', { class: 'dons-classe', style: `--c: ${c.classe.couleur}` },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, texte: d.effet })))
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet })))
         : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
 }
 

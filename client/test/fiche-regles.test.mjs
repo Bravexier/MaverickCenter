@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
+import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -134,6 +135,20 @@ test('dons à choix : chaque don « choix » qui a une alternative est dans un s
   }
   const choixAvecAlternative = db.prepare("SELECT count(*) AS n FROM capacite c WHERE nature = 'choix' AND EXISTS (SELECT 1 FROM v_capacite_exclusive x WHERE x.capacite_id = c.id)").get().n;
   assert.equal(vus.size, choixAvecAlternative);
+});
+
+test('dons de classe : la précision de la cellule de type (limite d’usage « N fois/période »…), telle qu’écrite, comme la page de la classe', () => {
+  const dons = new Map(regles.classes.flatMap((c) => c.dons.map((d) => [d.id, d])));
+  const lignes = db.prepare('SELECT id, type_brut, limite_nombre, limite_periode FROM capacite').all();
+  assert.ok(lignes.some((k) => k.limite_nombre !== null), 'des dons ont un nombre d’usages limité');
+  for (const k of lignes) {
+    const d = dons.get(k.id);
+    assert.equal(d.precision, typeDeDon(k.type_brut).precision, k.id);
+    if (k.limite_nombre !== null) {
+      assert.ok(d.precision?.includes(String(k.limite_nombre)), `${k.id} : ${d.precision}`);
+      assert.ok(d.precision.toLowerCase().includes(k.limite_periode), `${k.id} : ${d.precision}`);
+    }
+  }
 });
 
 test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R20), caractéristique au choix du Potentiel Illimité', () => {
