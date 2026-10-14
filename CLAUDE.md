@@ -14,8 +14,20 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, quota de maîtrise d'arme des classes et de leurs dons, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose, Mage Bleu fermé au Potentiel Illimité, NM de livre ou du MJ et 3 NM au plus sur un sort, pas d'emplacement de sort en plus, Lamia à une seule magie, couleurs des notes de version, 3 magies innées des hybrides = simple constat, liste des magies innées qui fait foi sur la phrase des inconvénients, quota de maîtrise d'arme, bonus de métier en Acquis (rogné au plafond) ou à l'initiative et aux vitesses avec choix dans la fiche, artisanat = 10 × ses 2 caractéristiques (−20 par croix), équipement du métier = objets de départ aux options écrites en entier, acquis au plus 5 par point de caractéristique totale, fiches : élément supprimé retiré avec une note datée, élément modifié suivi (R42), deux spécialités au plus (R43), dons aux niveaux 1, 5, 10, 15 ou 20 (R44), pas de maîtrise sur les armes de monstres (R45), attaque à deux armes −20 %/−40 % moitié dague, moitié Bimane (R46), avantages et inconvénients des postures (R47), compétence d'une arme en couleur, Arc et Arbalète comprises (R48), arme forgée : dégâts, coût cumulé des améliorations, fer par défaut (R49), portée 1 par défaut (R50), durabilité cumulée et au moins 1 (R51), armes créées et supprimées depuis le site, retirées des fiches comme R42, nom de matériau partagé avec armures et boucliers (R52), créatures invoquées sans échelle de puissance : le « EP » des marionnettes est leur NPM (R53), accessoires sur la fiche : caractéristique +1 plafonnée à 4, compétence au choix, actions et usages comptés sous les dons de race, dégâts physiques sur les armes et magie sur les sorts d'attaque (R54), défense « N (+k/mEP) » d'un monstre : +k toutes les m échelles depuis l'EP 1 (R55), capacité « [EPN] » gagnée à partir de l'EP N (R56), butin : fautes corrigées et écritures d'un objet rapprochées, fruits « de <élément> » compris (R57), brouillons du Bestiaire retirés (R58)…).
+`docs/decisions-regles.md` (R1 à R58, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
 Les suivre ; ne jamais en déduire d'autres.
+
+## Équipe d'agents (`.claude/agents/`)
+
+Chaque agent a un rôle distinct ; ne pas cumuler. Détail et consignes dans leur fichier.
+
+| Agent | Rôle |
+| --- | --- |
+| `ingenieur-site` | Code du site (`client/`) : pages, composants, scripts, fiche, service `/api/` |
+| `ingenieur-donnees` | Base SQLite, migrations, `data/rows`, importeurs, orthographe |
+| `gardien-des-regles` | Lecture seule : contenu sourcé, conforme à `docs/decisions-regles.md` |
+| `relecteur-critique` | Lecture seule : revue indépendante du diff avant PR |
+| `chef-de-flux-git` | Branches, rebase, PR, CI, fusion (`docs/flux-git.md`) |
 
 ## Vision à long terme
 
