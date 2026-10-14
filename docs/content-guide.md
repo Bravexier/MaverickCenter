@@ -286,6 +286,32 @@ modification (`lib/corps-armes.mjs`).
   construit : filtre, seconde ligne des effets, panneau, règles mises en forme).
 
 
+## Accessoires (`/ressources/accessoires/`) : le générateur d'accessoire
+
+Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
+un bloc d'explication, plusieurs tableaux et, sur le côté, un encart qui décrit l'accessoire créé d'après ce qui a été sélectionné. La page est rendue
+depuis les tables (`lib/accessoires-db.mjs`, `components/accessoires/AccessoiresPage.astro`, `styles/accessoires/`), jamais depuis son Markdown, dont
+seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge »,
+« Ne peut dépasser 4 »…) s'affichent ; le reste (tableaux) ne sert qu'à la recherche et aux `[[liens]]`. La page n'est pas modifiable sur le site de dev.
+
+- **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
+  repliable par propriété (`accessoire_effet`), la Compétence en grille (une ligne par caractéristique, une colonne par niveau : « 1 % à 5 % »…),
+  la Malédiction sans tableau —, puis la Monture (`accessoire_monture`). Le dé de chaque table est son plus grand jet écrit (1d4, 1d100, 1d6, 1d20).
+- **Dé** (« dans chaque tableau une case avec un icône de dé ») : l'en-tête de la première colonne ; un clic tire une ligne au hasard et affiche le jet ;
+  la Compétence tire 1d6 (la ligne) puis 1d20 (le bonus d'acquis, donc la colonne), le bonus tiré est écrit dans l'encart. « Tirer un accessoire » suit
+  les étapes 1 à 3 ; une malédiction (propriété 96-100 ou ligne MALÉDICTION d'un tableau d'effets) rend l'accessoire maudit et fait relancer depuis
+  l'étape 1 (« on relance les dés au début des étapes et l'effet sera le contraire de ce qui est indiqué »). Rien n'est inversé ni calculé : l'encart le dit.
+- **Encart** (`src/scripts/accessoires.mjs`) : identité, propriété, effet (et sa remarque), niveau, gemmes avec la qualité de leur niveau (phrase des règles :
+  classique aux niveaux 1 et 2, raffinée aux 3 et 4, parfaite au 5) et le prix d'un quart de chacune, monture, prix écrit dans le tableau, case « Maudit ».
+  Choisir un effet choisit d'office la monture de son niveau tant qu'on n'en a pas choisi une (le prix écrit d'un effet compte les quarts de gemme de la
+  qualité de son niveau et la monture de ce niveau : vrai pour 115 des 116 effets à prix ; « Grenat + Onyx » au niveau 4, 179 Ro, fait exception).
+  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&maudit=1`).
+- **Couleurs** : les lignes d'effet, les cases des compétences, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
+  « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
+  (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
+- Sans JavaScript : tous les tableaux, ouverts, sans encart ni dé. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
+  chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche

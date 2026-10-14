@@ -10,6 +10,7 @@ import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import GuideChapitre from '../../components/guide/GuideChapitre.astro';
 import ArmesPage from '../../components/armes/ArmesPage.astro';
+import AccessoiresPage from '../../components/accessoires/AccessoiresPage.astro';
 import { TYPES } from '../../lib/types.mjs';
 import { normalize } from '../../lib/text.mjs';
 import { classCategory } from '../../lib/class-groups.mjs';
@@ -23,6 +24,7 @@ import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
+import { chargerAccessoires, PAGE_DES_ACCESSOIRES, reglesDeLaPage as reglesDesAccessoires } from '../../lib/accessoires-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 
@@ -63,7 +65,11 @@ const reglesArmes = armes?.page ? reglesDeLaPage(armes.page.corps_md) : null;
 const reglesArmesHtml = reglesArmes
   ? { introduction: avecPhraseDesArmesDeDepart(await rendreMarkdown(reglesArmes.introduction, entry.id)), prix: reglesArmes.prix ? await rendreMarkdown(reglesArmes.prix, entry.id) : '' }
   : null;
-const gabarit = Boolean(magie || race || classe || chapitre || armes);
+// Page des accessoires (demande du propriétaire) : un générateur d'accessoire, depuis les tables (components/accessoires/AccessoiresPage.astro,
+// lib/accessoires-db.mjs) ; de son Markdown, seules les règles de l'onglet (avant la création) sont rendues.
+const accessoires = entry.id === PAGE_DES_ACCESSOIRES ? chargerAccessoires(ouvrirBase()) : null;
+const reglesAccessoiresHtml = accessoires?.page ? await rendreMarkdown(reglesDesAccessoires(accessoires.page.corps_md), entry.id) : null;
+const gabarit = Boolean(magie || race || classe || chapitre || armes || accessoires);
 const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races, des classes et du guide ne rendent pas le Markdown
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
@@ -113,6 +119,8 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
       <GuideChapitre entry={entry} entries={entries} />
     ) : armes && contexteArmes && reglesArmesHtml ? (
       <ArmesPage armes={armes} contexte={contexteArmes} regles={reglesArmesHtml} resume={entry.data.summary} />
+    ) : accessoires && reglesAccessoiresHtml !== null ? (
+      <AccessoiresPage accessoires={accessoires} regles={reglesAccessoiresHtml} resume={entry.data.summary} />
     ) : (
       <>
         <h1>
