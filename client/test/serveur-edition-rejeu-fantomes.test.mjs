@@ -228,3 +228,112 @@ test('lot d’avant la migration 0043 en conflit : le mot-clé qu’il faisait c
   }
   assert.deepEqual(etats(b3.base), etats(b2.base));
 });
+
+const rapatrier = (base) => {
+  const rows = join(mkdtempSync(join(racine, 'rows-')), 'rows');
+  cpSync(ROWS, rows, { recursive: true });
+  return { ...appliquerJournal(journalExporte(base), { rows }), rows };
+};
+const etatsParLot = (b) => {
+  const parLot = new Map();
+  for (const e of b.prepare('SELECT m.lot_id, m.etat FROM modification m JOIN modification_lot l ON l.id = m.lot_id ORDER BY l.fait_le, l.id, m.rang').all()) {
+    if (!parLot.has(e.lot_id)) parLot.set(e.lot_id, new Set());
+    parLot.get(e.lot_id).add(e.etat);
+  }
+  return [...parLot.values()].map((s) => [...s].sort().join('+'));
+};
+/** Un lot d'avant la migration 0043 : une ligne de page_tag avec son `libelle` (l'écriture du mot-clé, que le vocabulaire n'avait pas encore). */
+const lotDAvant0043 = (base, id, fait, rang, operation, ligne) => {
+  if (!base.prepare('SELECT 1 FROM modification_lot WHERE id = ?').get(id)) {
+    base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, 'x', 'avant 0043')").run(id, fait);
+  }
+  base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, 'page_tag', ?, ?, ?, ?, 'en_attente')")
+    .run(id, rang, JSON.stringify({ page_id: ligne.page_id, ordre: ligne.ordre }), operation, operation === 'inserer' ? null : JSON.stringify(ligne), operation === 'supprimer' ? null : JSON.stringify(ligne));
+};
+const ordreLibre = (base, page) => base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
+
+test('un fantôme dont la CRÉATION part en conflit n’en est plus un : le lien posé vers lui et sa suppression partent en conflit dès la 1re reconstruction, comme à la 2e ; rapatriement sans conflit', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const metiers = serviceDe(base, 'metiers/');
+  const chrono = serviceDe(base);
+  const a = base.prepare('SELECT id, description FROM metier WHERE description IS NOT NULL ORDER BY id LIMIT 1').get();
+  const nom = libre(base, 'metier', 'nom', 'Métier fantôme création');
+  const id = metiers([{ op: 'creer', entite: 'metier', valeurs: { nom } }, { op: 'modifier', table: 'metier', cle: { id: a.id }, valeurs: { description: `${a.description} Retouche du site.` } }]).crees[0].id;
+  const page = base.prepare("SELECT id FROM page WHERE type = 'metiers' AND titre = ?").get(nom).id;
+  const [bloc] = blocs(base, 1);
+  chrono([{ op: 'modifier', table: 'evenement_extrait', cle: bloc, valeurs: { page_id: page } }]);
+  metiers([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
+  const livraison = (db) => db.prepare('UPDATE metier SET description = description || ? WHERE id = ?').run(' (corrigé)', a.id);
+  const p1 = rebatir(base, livraison);
+  const p2 = rebatir(p1.base, livraison);
+  assert.deepEqual(etatsParLot(p1.base), ['conflit', 'conflit', 'conflit']);
+  assert.deepEqual(etatsParLot(p2.base), etatsParLot(p1.base));
+  assert.deepEqual(rompues(p1.base), []);
+  assert.deepEqual(rapatrier(p1.base).conflits, []);
+});
+
+test('clé étrangère composite capacite(specialite_id, classe_id) → specialite(id, classe_id) : un don créé dans une spécialité créée puis supprimée, dont la suppression part en conflit, existe avec sa spécialité', () => {
+  const C = 'classes/guerrier';
+  const base = vivante();
+  ouvertes.push(base);
+  const lot = serviceDe(base, C);
+  // une place libre pour une spécialité
+  const ancienne = base.prepare("SELECT s.id FROM specialite s WHERE s.classe_id = ? AND EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite') ORDER BY s.rang DESC LIMIT 1").get(C).id;
+  lot([{ op: 'supprimer', entite: 'specialite', cle: { id: ancienne } }]);
+  const nomS = libre(base, 'specialite', 'nom', 'Essai fantôme S');
+  const [s, d] = lot([
+    { op: 'creer', entite: 'specialite', valeurs: { classe_id: C, nom: nomS, don_nom: `${nomS} cartouche`, don_type: 'Passif' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: C, specialite_id: '@0', niveau: 15, nom: `${nomS} don D`, type: 'Passif' } },
+  ]).crees.map((c) => c.id);
+  const e = base.prepare("SELECT id, effet FROM capacite WHERE classe_id = ? AND nature = 'classe' AND effet IS NOT NULL ORDER BY id LIMIT 1").get(C);
+  lot([{ op: 'supprimer', entite: 'capacite', cle: { id: d } }, { op: 'modifier', table: 'capacite', cle: { id: e.id }, valeurs: { effet: `${e.effet} Précision du site.` } }]);
+  lot([{ op: 'supprimer', entite: 'specialite', cle: { id: s } }]);
+  const r = rebatir(base, (db) => db.prepare('UPDATE capacite SET effet = effet || ? WHERE id = ?').run(' (corrigé)', e.id));
+  assert.deepEqual(rompues(r.base), []);
+  assert.equal(existe(r.base, 'SELECT 1 FROM capacite WHERE id = ?', d), true, 'sa suppression est en conflit : le don existe');
+  assert.equal(existe(r.base, 'SELECT 1 FROM specialite WHERE id = ?', s), true, 'le don la cite : la suppression de la spécialité part en conflit');
+  assert.deepEqual(etatsParLot(r.base), ['en_attente', 'en_attente', 'conflit', 'conflit'], 'la création (L2) passe, comme sur dev');
+});
+
+test('mot-clé d’un lot d’avant 0043 posé puis retiré par le journal : il n’est pas créé, et celui que le site crée ensuite sous la même écriture est gardé, à chaque reconstruction et au rapatriement', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1 OFFSET 5").get().id;
+  const libelle = libre(base, 'mot_cle', 'libelle_cle', 'zz fantome pose retire');
+  const ligne = { page_id: page, ordre: ordreLibre(base, page), tag_id: normalize(libelle), libelle };
+  lotDAvant0043(base, '2026-10-01T09:00:00.000Z-l1', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
+  lotDAvant0043(base, '2026-10-01T10:00:00.000Z-l2', '2026-10-01T10:00:00Z', 1, 'supprimer', ligne);
+  const r1 = rebatir(base);
+  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE libelle_cle = ?', normalize(libelle)), false, 'posé puis retiré : jamais créé');
+  const cree = serviceDe(r1.base, 'recherche/')([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }]).crees[0].id;
+  const r2 = rebatir(r1.base);
+  assert.equal(existe(r2.base, 'SELECT 1 FROM mot_cle WHERE id = ?', cree), true);
+  assert.deepEqual(etatsParLot(r2.base), ['en_attente', 'en_attente', 'en_attente']);
+  const res = rapatrier(r1.base);
+  assert.deepEqual(res.conflits, []);
+  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`'${cree}'`), 'data/rows a le mot-clé créé sur le site');
+});
+
+test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre (le renommage fait entre-temps tient)', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const [p1, p2] = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 2 OFFSET 7").all().map((p) => p.id);
+  const ecrit = libre(base, 'mot_cle', 'libelle_cle', 'Élan fantôme');
+  const id = normalize(ecrit);
+  const l1 = { page_id: p1, ordre: ordreLibre(base, p1), tag_id: id, libelle: ecrit };
+  const l2 = { page_id: p2, ordre: ordreLibre(base, p2), tag_id: id, libelle: ecrit.toLowerCase().replace('é', 'e') };
+  lotDAvant0043(base, '2026-10-01T09:00:00.000Z-e1', '2026-10-01T09:00:00Z', 1, 'inserer', l1);
+  lotDAvant0043(base, '2026-10-01T10:00:00.000Z-e2', '2026-10-01T10:00:00Z', 1, 'inserer', l2);
+  const autre = base.prepare('SELECT id FROM mot_cle WHERE id NOT IN (SELECT tag_id FROM page_tag WHERE page_id = ?) ORDER BY id LIMIT 1').get(p1).id;
+  // les règles neuves occupent la place de la première ligne : son lot part en conflit
+  const regles = (db) => db.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(p1, l1.ordre, autre);
+  const r1 = rebatir(base, regles);
+  const motCle = (b) => ({ ...b.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get(id) });
+  assert.deepEqual(motCle(r1.base), { id, libelle: l2.libelle }, 'l’écriture du lot qui le pose');
+  serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${l2.libelle} renommé` }, avant: { libelle: l2.libelle } }]);
+  const r2 = rebatir(r1.base, regles);
+  assert.deepEqual(motCle(r2.base), { id, libelle: `${l2.libelle} renommé` });
+  assert.deepEqual(etatsParLot(r2.base), ['conflit', 'en_attente', 'en_attente']);
+  assert.deepEqual(rapatrier(r1.base).conflits, []);
+});

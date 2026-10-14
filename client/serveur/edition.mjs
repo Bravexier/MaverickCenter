@@ -1447,20 +1447,12 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   const appliquees = [];
   const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, adapter: ancienneEcritureDesMotsCles(db) });
   const reelles = appliquees.filter((m) => !m.synthetique);
-  // un mot-clé que le rejeu a créé pour des lots d'avant la migration 0043 (ancienneEcritureDesMotsCles), qu'ils ont posé puis retiré et qu'aucune
-  // modification d'après ne vise (renommé, fusionné, posé sur une page) : avant 0043, un mot-clé sans page n'existait plus — il est retiré
-  const vises = new Set(reelles.filter((m) => !m.adapte).flatMap((m) => (m.table === 'mot_cle' ? [m.cle.id] : m.table === 'page_tag' ? [m.avant?.tag_id, m.apres?.tag_id] : [])));
-  let crees = 0;
-  for (const m of appliquees.filter((x) => x.synthetique && x.table === 'mot_cle')) {
-    if (motCleOrphelin(db, m.cle.id) && !vises.has(m.cle.id)) db.prepare('DELETE FROM mot_cle WHERE id = ?').run(m.cle.id);
-    else crees += 1;
-  }
   const metiers = new Set(reelles.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
   const completees = completerLesMetiers(db, metiers);
   // un mot-clé supprimé (ou fusionné) : rejoué clés coupées, la cascade de son schéma retire aussi ses lignes que le lot n'a pas notées (les pages
   // d'exemple, absentes de la base du site de dev) — page_tag peut donc changer au-delà du journal ; un mot-clé créé pour un lot d'avant 0043 : mot_cle
   if (reelles.some((m) => m.table === 'mot_cle' && m.operation === 'supprimer')) completees.add('page_tag');
-  if (crees) completees.add('mot_cle');
+  if (appliquees.some((m) => m.synthetique && m.table === 'mot_cle')) completees.add('mot_cle');
   Object.assign(sortie, recalculerLesPages(db, reelles), { tablesCompletees: [...completees] });
   return bilan;
 }
@@ -1469,51 +1461,48 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
  * Les modifications de page_tag notées avant la migration 0043 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
  * exporté) : leur colonne `libelle` n'existe plus (l'écriture vit dans le vocabulaire mot_cle) et leur `tag_id` peut viser un mot-clé que le vocabulaire
  * n'a pas (une spécialité créée ou renommée sur le site) — sans quoi tout le lot passait « conflit » et ses créations disparaissaient. Rend l'adaptateur
- * de edition-journal.mjs#rejouer, appelé au début de chaque passe (base dans l'état des règles) : la modification lue sans `libelle` (`adapte` ; le
- * journal stocké ne change pas : un autre rejeu, celui de la mise à jour sur data/rows, en a besoin), et le mot-clé manquant retrouvé par son écriture
- * ou à créer, comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà servi dans l'historique ; le journal en attente ne cite cet id que parce que
- * ce mot-clé y est créé ici : un renommage, une fusion notés depuis visent cette création). Sa création est une modification `synthetique` placée
- * juste avant, dans le même lot : annulée avec lui s'il est en conflit (les lots suivants qui s'en servent le sont alors aussi), refaite à chaque
- * rejeu tant que le lot attend, jamais notée au journal. Tous les lots qui l'emploient la portent, avec les mêmes valeurs.
+ * de edition-journal.mjs#rejouer, appelé au début de chaque passe (base dans l'état des règles) : la modification lue sans `libelle` (le journal stocké
+ * ne change pas : un autre rejeu, celui de la mise à jour sur data/rows, en a besoin), et le mot-clé manquant retrouvé par son écriture ou à créer,
+ * comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà servi dans l'historique ; le journal en attente ne cite cet id que parce que ce mot-clé
+ * y est créé ici : un renommage, une fusion notés depuis visent cette création). Il n'est créé (`aCreer`) que si la ligne de page_tag l'est vraiment
+ * (pas pour une ligne posée puis retirée par le journal, « fantôme ») : dans le lot, annulé avec lui s'il est en conflit (les lots suivants qui s'en
+ * servent le sont alors aussi), jamais noté au journal, et gardé ensuite même si plus aucune page ne le porte (le site de dev l'a : son id et son
+ * écriture ne resservent pas à un autre mot-clé). Son écriture est celle du premier lot qui le pose effectivement, jamais celle d'un lot en conflit.
  */
 function ancienneEcritureDesMotsCles(db) {
-  const prevus = new Map(); // libelle_cle → { id, libelle } : le mot-clé à créer
+  const ids = new Map(); // libelle_cle → id du mot-clé à créer
   const parTag = new Map(); // tag_id noté → id prévu (une modification suivante de la même ligne de page_tag le cite dans `avant`)
   const employe = (x) => tableExiste(db, 'historique_modification')
     && Boolean(db.prepare("SELECT 1 FROM historique_modification WHERE table_nom = 'mot_cle' AND json_extract(cle, '$.id') = ?").get(x));
   return (m) => {
-    if (m.table_nom !== 'page_tag') return [m];
+    if (m.table_nom !== 'page_tag') return m;
     const avant = m.avant === null ? null : JSON.parse(m.avant);
     const apres = m.apres === null ? null : JSON.parse(m.apres);
-    if (!(avant && 'libelle' in avant) && !(apres && 'libelle' in apres)) return [m];
+    if (!(avant && 'libelle' in avant) && !(apres && 'libelle' in apres)) return m;
     const libelle = typeof apres?.libelle === 'string' ? apres.libelle : null;
     if (avant) delete avant.libelle;
     if (apres) delete apres.libelle;
     if (typeof avant?.tag_id === 'string' && parTag.has(avant.tag_id) && !lireLigne(db, 'mot_cle', { id: avant.tag_id })) avant.tag_id = parTag.get(avant.tag_id);
-    const sortie = [];
+    let aCreer = null;
     if (typeof apres?.tag_id === 'string' && !lireLigne(db, 'mot_cle', { id: apres.tag_id })) {
       const texte = libelle ?? apres.tag_id;
       const cle = normalize(texte);
       const ecrit = db.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle);
       if (ecrit) apres.tag_id = ecrit.id;
       else {
-        if (!prevus.has(cle)) {
-          const pris = new Set([...prevus.values()].map((p) => p.id));
+        if (!ids.has(cle)) {
+          const pris = new Set(ids.values());
           let id = apres.tag_id;
           for (let n = 2; lireLigne(db, 'mot_cle', { id }) || employe(id) || pris.has(id); n += 1) id = `${apres.tag_id}-${n}`;
-          prevus.set(cle, { id, libelle: texte });
+          ids.set(cle, id);
         }
-        const prevu = prevus.get(cle);
-        parTag.set(apres.tag_id, prevu.id);
-        apres.tag_id = prevu.id;
-        sortie.push({
-          lot_id: m.lot_id, rang: m.rang, table_nom: 'mot_cle', cle: JSON.stringify({ id: prevu.id }), operation: 'inserer', avant: null,
-          apres: JSON.stringify({ id: prevu.id, libelle: prevu.libelle, libelle_cle: cle }), etat: m.etat, synthetique: true,
-        });
+        const id = ids.get(cle);
+        parTag.set(apres.tag_id, id);
+        apres.tag_id = id;
+        aCreer = [{ table: 'mot_cle', valeurs: { id, libelle: texte, libelle_cle: cle } }];
       }
     }
-    sortie.push({ ...m, avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres), adapte: true });
-    return sortie;
+    return { ...m, avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres), ...(aCreer ? { aCreer } : {}) };
   };
 }
 

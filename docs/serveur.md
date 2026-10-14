@@ -246,16 +246,19 @@ elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compt
 les lots déjà livrés, eux, ne sont jamais rejoués). Une ligne créée puis supprimée par le journal en attente est « fantôme » : elle n'est pas
 insérée (ses modifications non plus), et une ligne qui la citait entre-temps (un bloc de la chronologie lié à la page d'un métier créé puis supprimé)
 ne met pas son lot en conflit. Rien n'en est noté : ses modifications restent en attente jusqu'à la livraison et sont réévaluées à chaque rejeu, le
-résultat ne dépend donc pas d'une reconstruction précédente. À la fin d'une passe, un fantôme dont une suppression est tombée avec son lot en conflit,
-ou qu'une référence cite encore (le lot qui retirait la citation est en conflit), est écarté et le rejeu reprend du début (`rejouer`, passes
-successives) : la ligne est alors rejouée comme une autre — créée, modifiée, et supprimée seulement si son lot passe, ce qui exige que plus rien ne la
-cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière, dans la base vivante comme dans
+résultat ne dépend donc pas d'une reconstruction précédente. À la fin d'une passe, un fantôme dont la création ou une suppression est tombée avec
+son lot en conflit (un lot en conflit le reste et n'est plus relu : la reconstruction suivante ne le verrait plus fantôme), ou qu'une référence cite
+encore (le lot qui retirait la citation est en conflit ; une clé étrangère qui ne vise pas la clé primaire, comme `capacite(specialite_id, classe_id)`,
+est comparée aux valeurs de ses insertions), est écarté et le rejeu reprend du début (`rejouer`, passes successives) : la ligne est alors rejouée comme
+une autre — créée, modifiée, et supprimée seulement si son lot passe, ce qui exige que plus rien ne la cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière, dans la base vivante comme dans
 `data/rows` (`test/serveur-edition-rejeu-fantomes.test.mjs`). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`,
 que la mise à jour des règles a donc le droit d'écrire. Un lot noté avant la migration 0043 (page_tag avec sa colonne `libelle`, un mot-clé que le
 vocabulaire n'a pas) est lu dans la forme nouvelle au rejeu (`adapter` de `rejouer` : `ancienneEcritureDesMotsCles`) : le mot-clé manquant est
 retrouvé par son écriture, ou créé sous l'id noté (`-2`… seulement si l'historique l'a déjà employé : un renommage noté depuis vise cette création)
-par une modification ajoutée au lot qui l'emploie, juste avant lui — annulée avec ce lot s'il est en conflit (les lots qui s'en servent ensuite le sont
-alors aussi), jamais notée au journal ; table `mot_cle` alors écrite par la mise à jour. Le journal stocké garde sa forme. Le
+dans le lot qui l'emploie, et seulement si sa ligne de `page_tag` est vraiment écrite (pas pour une ligne posée puis retirée par le journal) — annulé
+avec ce lot s'il est en conflit (les lots qui s'en servent ensuite le sont alors aussi), jamais noté au journal, avec l'écriture du premier lot qui le
+pose effectivement, et gardé même si plus aucune page ne le porte (le site de dev l'a : son id et son écriture ne resservent pas) ; table `mot_cle`
+alors écrite par la mise à jour. Le journal stocké garde sa forme. Le
 **corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
