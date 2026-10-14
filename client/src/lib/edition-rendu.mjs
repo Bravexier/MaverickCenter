@@ -2,6 +2,8 @@
 // construite avant une modification, ou juste après l'enregistrement, le script réécrit l'élément `data-ed` avec ces fonctions : elles produisent le
 // même HTML que les gabarits Astro (components/magie/Texte.astro, components/metier/MetiersTableau.astro…), à partir des mêmes fonctions pures.
 // Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance navigateur : testées dans test/edition-rendu.test.mjs.
+import { dateCourte, libelleDeDate } from './chronologie.mjs';
+import { htmlDeLaPortee } from './chronologie-rendu.mjs';
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
 import { styleDeCouleur, couleurDeCaracteristique } from './caracteristiques-postures.mjs';
@@ -218,6 +220,10 @@ export const RENDUS = {
   'sort-dsb': valeurDeCase('dsb', true),
   // Bestiaire (lib/bestiaire-rendu.mjs : la ligne du tableau et la carte d'un monstre) : rubrique d'une carte, catégorie, cellules, lieux…
   ...RENDUS_DU_BESTIAIRE,
+  // Chronologie (components/chronologie/ : la page d'un événement et sa ligne de la frise) : la date d'après l'époque et les années de la ligne, la portée
+  'evenement-date': (_valeur, ligne) => echapperHtml(libelleDeDate(ligne)),
+  'evenement-date-courte': (_valeur, ligne) => echapperHtml(dateCourte(ligne)),
+  'evenement-portee': (valeur) => htmlDeLaPortee(valeur),
   // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,

@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 187 tables, 2 tables de recherche, 35 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 190 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -13,14 +13,15 @@
 
 ## 1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)
 
-**Relations dans cette section** : `alias→page`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→page`, `page→type_page`
+**Relations dans cette section** : `alias→page`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→mot_cle`, `page_tag→page`, `page→type_page`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `type_page` | Registre des catégories du wiki : reprend client/src/lib/types.mjs (aujourd'hui une constante JavaScript). | **id**, libelle, singulier, salon_discord, description, ordre |
 | `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, +provenance |
 | `alias` | Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. | **page_id**→page, **ordre**, texte, cle |
-| `page_tag` | Mots-clés d'une page (frontmatter `tags`). | **page_id**→page, **ordre**, tag_id, libelle |
+| `mot_cle` | Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les endroits qui le citent). | **id**, libelle, libelle_cle |
+| `page_tag` | Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page gardait la sienne). | **page_id**→page, **ordre**, tag_id→mot_cle |
 | `source` | Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact). | **id**, nature, texte, url?, genre?, google_id?, fichier?, onglets? |
 | `page_source` |  | **page_id**→page, **ordre**, source_id→source |
 | `page_entite` | Lien page -> entité typée. | **entite_table**, **entite_id**, page_id→page, principale, origine→famille |
@@ -100,14 +101,16 @@
 
 ## 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
 
-**Relations dans cette section** : `evenement_extrait→evenement`
+**Relations dans cette section** : `evenement_categorie→categorie_chronologie`, `evenement_categorie→evenement`, `evenement_extrait→evenement`
 
 **Vers d'autres sections** : `evenement_extrait→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `evenement` | Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois premières races), les « Date inconnue » de la | **id**, rang, titre, titre_cle, epoque, annee?, annee_fin?, portee?, lieu?, +provenance |
-| `evenement_extrait` | Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. | **evenement_id**→evenement, **rang**, page_id→page, section?, texte, date_brut?, +provenance |
+| `evenement_extrait` | Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page). | **evenement_id**→evenement, **rang**, page_id→page?, section?, texte, date_brut?, +provenance |
+| `categorie_chronologie` | Les catégories de la chronologie (migration 0043, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies catégories stables. | **id**, libelle, libelle_cle |
+| `evenement_categorie` | Les catégories d'un événement (plusieurs au choix). | **evenement_id**→evenement, **categorie_id**→categorie_chronologie |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 
@@ -289,7 +292,7 @@
 | `cle_page` *(vue)* | Index de résolution des [[liens]] = buildIndex() de wikilinks.mjs : toute clé normalisée -> pages qui la portent (slug, titre ou alias). |  |
 | `lien_page` *(vue)* | Graphe de pages tel que le calcule wiki.ts : paires (depuis, vers) distinctes, liens résolus, sans lien d'une page vers elle-même. |  |
 | `lien_a_creer` *(vue)* | « Pages à créer » : [[liens]] sans page (introuvables) ou ambigus. |  |
-| `tag` *(vue)* | Dictionnaire des mots-clés, déduit de page_tag. |  |
+| `v_mot_cle` *(vue)* | Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages). |  |
 | `v_magie_incompatible` *(vue)* | Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre. |  |
 | `v_sort_bonus_au_nm` *(vue)* | Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). |  |
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |

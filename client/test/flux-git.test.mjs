@@ -138,10 +138,10 @@ describe('règles pures', () => {
     assert.equal(new Set(noms.map((n) => n.toLowerCase())).size, noms.length, noms.join(' '));
   });
 
-  test('mode du site construit : serveur de test marqué, étiquette de la livraison', () => {
-    assert.deepEqual(modeDuSite({}, '0.1.75'), { test: false, etiquette: 'V0.1.75' }, 'sans livraison : l\'étiquette de version de dev');
-    assert.deepEqual(modeDuSite({ SITE_MODE: 'prod', SITE_TAG: 'V0.2-hotfix.1' }, '0.2.0'), { test: false, etiquette: 'V0.2-hotfix.1' });
-    assert.deepEqual(modeDuSite({ SITE_MODE: 'test', SITE_TAG: 'V0.2.3' }, '0.2.3'), { test: true, etiquette: 'V0.2.3' });
+  test('mode du site construit : serveur de test marqué, production (sans ce qui ne sert qu’au site de dev), étiquette de la livraison', () => {
+    assert.deepEqual(modeDuSite({}, '0.1.75'), { test: false, prod: false, etiquette: 'V0.1.75' }, 'sans livraison : l\'étiquette de version de dev');
+    assert.deepEqual(modeDuSite({ SITE_MODE: 'prod', SITE_TAG: 'V0.2-hotfix.1' }, '0.2.0'), { test: false, prod: true, etiquette: 'V0.2-hotfix.1' });
+    assert.deepEqual(modeDuSite({ SITE_MODE: 'test', SITE_TAG: 'V0.2.3' }, '0.2.3'), { test: true, prod: false, etiquette: 'V0.2.3' });
   });
 
   test('pose de la version dans package.json et package-lock.json (texte conservé)', () => {

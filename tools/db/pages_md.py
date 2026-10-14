@@ -180,9 +180,11 @@ def pages_differentes(rows, wiki):
     db = T.reconstruire(':memory:', rows)
     base = {r[0]: r[1:] for r in db.execute('SELECT id, titre, resume, corps_md, statut, donnees FROM page')}
     liens = {}
-    for table, col in (('alias', 'texte'), ('page_tag', 'libelle')):
-        for pid, v in db.execute(f'SELECT page_id, {col} FROM {table} ORDER BY page_id, ordre'):
-            liens.setdefault((table, pid), []).append(v)
+    for pid, v in db.execute('SELECT page_id, texte FROM alias ORDER BY page_id, ordre'):
+        liens.setdefault(('alias', pid), []).append(v)
+    # un mot-clé se compare par sa clé : son écriture vit dans le vocabulaire (mot_cle, migration 0043), elle se change sur /recherche/ du site de dev
+    for pid, v in db.execute('SELECT t.page_id, m.libelle_cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre'):
+        liens.setdefault(('page_tag', pid), []).append(v)
     for pid, texte in db.execute('SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre'):
         liens.setdefault(('source', pid), []).append(texte)
     md = {p['id']: p for p in lire_pages_md(wiki)}
@@ -191,7 +193,7 @@ def pages_differentes(rows, wiki):
         p = md[pid]
         donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
         if (p['titre'], p['resume'], p['corps_md'], p['statut'], donnees) != base[pid] \
-           or [p['aliases'], p['tags'], p['sources']] != [liens.get((t, pid), []) for t in ('alias', 'page_tag', 'source')]:
+           or [p['aliases'], [T.normalize(t) for t in p['tags']], p['sources']] != [liens.get((t, pid), []) for t in ('alias', 'page_tag', 'source')]:
             diff.append(pid)
     return diff, sorted(set(md) - set(base)), sorted(set(base) - set(md))
 
@@ -243,8 +245,7 @@ def rafraichir_pages(rows, wiki=None):
             db.execute(f'DELETE FROM {table} WHERE page_id = ?', (pid,))
         for i, texte in enumerate(p.get('aliases', [])):
             db.execute('INSERT INTO alias (page_id, ordre, texte, cle) VALUES (?,?,?,?)', (pid, i, texte, T.normalize(texte)))
-        for i, libelle in enumerate(p.get('tags', [])):
-            db.execute('INSERT INTO page_tag (page_id, ordre, tag_id, libelle) VALUES (?,?,?,?)', (pid, i, T.normalize(libelle), libelle))
+        T.poser_les_mots_cles(db, pid, p.get('tags', []))
         for i, texte in enumerate(p.get('sources', [])):
             s = T.decouper_source(texte)
             db.execute('INSERT OR IGNORE INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) '

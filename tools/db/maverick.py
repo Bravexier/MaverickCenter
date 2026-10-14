@@ -55,6 +55,77 @@ def normalize(value):
     return s.strip('-')
 
 
+def _vocabulaire_du_site(db):
+    """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes, employes).
+    ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé) -> son id ; supprimes : id d'un mot-clé supprimé -> l'id du
+    mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None ; employes : tous les ids qu'il a créés ou supprimés.
+    Le journal ne note d'une fusion que ce qu'elle change : quand aucune page n'est passée de l'un à l'autre (toutes portaient déjà le second, ou le
+    premier n'en avait aucune sur le site de dev), elle ne se distingue pas d'une suppression (None)."""
+    ecritures, supprimes, employes = {}, {}, set()
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").fetchone():
+        return ecritures, supprimes, employes
+    lignes = db.execute("SELECT lot_id, table_nom, cle, operation, avant, apres FROM historique_modification "
+                        "WHERE table_nom IN ('mot_cle', 'page_tag') ORDER BY fait_le, lot_id, rang").fetchall()
+    for lot, table, cle, operation, avant, apres in lignes:
+        if table != 'mot_cle':
+            continue
+        ident = json.loads(cle).get('id')
+        avant, apres = json.loads(avant or 'null'), json.loads(apres or 'null')
+        employes.add(ident)
+        if operation == 'modifier' and avant and 'libelle' in avant:
+            ecritures[normalize(avant['libelle'])] = ident
+        elif operation == 'supprimer':
+            if avant and avant.get('libelle'):
+                ecritures.setdefault(normalize(avant['libelle']), ident)
+            cible = None
+            for lot2, table2, _, operation2, avant2, apres2 in lignes:
+                if lot2 == lot and table2 == 'page_tag' and operation2 == 'modifier':
+                    a, b = json.loads(avant2 or 'null') or {}, json.loads(apres2 or 'null') or {}
+                    if a.get('tag_id') == ident and b.get('tag_id'):
+                        cible = b['tag_id']
+            supprimes[ident] = cible
+    return ecritures, supprimes, employes
+
+
+def mot_cle(db, libelle):
+    """L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), créé s'il manque (migration 0043 : vocabulaire
+    `mot_cle`) ; un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi (historique du site : un id ne resert jamais).
+    Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
+    mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé ne
+    revient pas : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ; l'écriture d'un mot-clé existant ne change pas
+    (elle se change sur /recherche/ du site de dev)."""
+    cle = normalize(libelle)
+    if not cle:
+        raise ValueError(f'mot-clé sans lettre ni chiffre : {libelle!r}')
+    trouve = db.execute('SELECT id FROM mot_cle WHERE libelle_cle = ?', (cle,)).fetchone()
+    if trouve:
+        return trouve[0]
+    ecritures, supprimes, employes = _vocabulaire_du_site(db)
+    if cle in ecritures:
+        ident, vus = ecritures[cle], set()
+        while ident is not None and ident not in vus and not db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
+            vus.add(ident)
+            ident = supprimes.get(ident)
+        return ident
+    ident, n = cle, 2
+    while ident in employes or db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
+        ident, n = f'{cle}-{n}', n + 1
+    db.execute('INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES (?,?,?)', (ident, libelle, cle))
+    return ident
+
+
+def poser_les_mots_cles(db, page_id, libelles):
+    """Les lignes page_tag d'une page, dans l'ordre de `libelles` (mot_cle : un mot-clé que le site a supprimé n'est pas posé, une écriture qui mène
+    à un mot-clé déjà posé non plus ; l'ordre garde sa place)."""
+    poses = set()
+    for i, libelle in enumerate(libelles):
+        ident = mot_cle(db, libelle)
+        if ident is None or ident in poses:
+            continue
+        poses.add(ident)
+        db.execute('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?,?,?)', (page_id, i, ident))
+
+
 def lire_schema(chemin=SCHEMA):
     """-> (texte, tables, derivees) ; tables = noms des tables de BASE dans l'ordre du schéma (hors FTS et tables d'ombre)."""
     texte = open(chemin, encoding='utf-8').read()
@@ -280,7 +351,7 @@ class Famille:
         self.db.execute(f'INSERT INTO "{table}" ({", ".join(noms)}) VALUES ({", ".join("?" for _ in noms)})', [ligne[n] for n in noms])
 
     def page(self, p):
-        """Une page et ses lignes liées (alias, mots-clés, sources). Les clés (titre_cle, alias.cle, tag_id) sont calculées ici."""
+        """Une page et ses lignes liées (alias, mots-clés, sources). Les clés (titre_cle, alias.cle) sont calculées ici, le mot-clé d'un libellé est trouvé (ou créé) par mot_cle()."""
         if not p['corps_md'].endswith('\n'):
             raise ValueError(f"{p['id']} : le corps doit finir par un retour à la ligne")
         donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
@@ -289,8 +360,7 @@ class Famille:
                      source_ref=p.get('source_ref'), origine=p.get('origine'))
         for i, texte in enumerate(p.get('aliases', [])):
             self.db.execute('INSERT INTO alias (page_id, ordre, texte, cle) VALUES (?,?,?,?)', (p['id'], i, texte, normalize(texte)))
-        for i, libelle in enumerate(p.get('tags', [])):
-            self.db.execute('INSERT INTO page_tag (page_id, ordre, tag_id, libelle) VALUES (?,?,?,?)', (p['id'], i, normalize(libelle), libelle))
+        poser_les_mots_cles(self.db, p['id'], p.get('tags', []))
         for i, texte in enumerate(p.get('sources', [])):
             s = decouper_source(texte)
             self.db.execute('INSERT OR IGNORE INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) '

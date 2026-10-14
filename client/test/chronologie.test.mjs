@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  adresseDEvenement, contraste, couleursDesEvenements, dateCourte, extraitsParPage, libelleDeDate, marquerLaDate, ordonner, surlignerLaDate, voisins,
+  adresseDEvenement, contraste, couleursDesEvenements, dateCourte, dateDansLeTexte, erreurDeDate, extraitsParPage, libelleDeDate, marquerLaDate, ordonner,
+  operationsDesCategories, surlignerLaDate, voisins,
 } from '../src/lib/chronologie.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -32,15 +33,35 @@ test('dateCourte : la colonne des dates de la frise, sans « An » ; le nom de l
   assert.equal(dateCourte(ev(1, 'aujourdhui')), 'Aujourd’hui');
 });
 
-test('ordonner : rangs sans trou, époques dans l’ordre, années croissantes au sens large, une année pour les datés seulement', () => {
+test('ordonner : par époque, puis année (datés), puis rang (l’ordre à date égale, plus forcément contigu : migration 0043) ; rangs uniques, une année pour les datés seulement', () => {
   const bons = [ev(1, 'debut'), ev(2, 'datee', -30), ev(3, 'datee', -30), ev(4, 'datee', 20), ev(5, 'inconnue'), ev(6, 'aujourdhui')];
   assert.deepEqual(ordonner([...bons].reverse()).map((e) => e.id), bons.map((e) => e.id));
-  assert.throws(() => ordonner([ev(1, 'debut'), ev(3, 'datee', 1)]), /rang 2 attendu/);
-  assert.throws(() => ordonner([ev(1, 'datee', 10), ev(2, 'debut')]), /vient après/);
-  assert.throws(() => ordonner([ev(1, 'datee', 10), ev(2, 'datee', 5)]), /an 5\) vient après/);
+  // un événement créé sur le site prend le plus grand rang + 1 : il vient après ceux de sa date, à sa place parmi les années ; un trou de rang est permis
+  const cree = { ...ev(9, 'datee', -30), id: 'cree' };
+  assert.deepEqual(ordonner([...bons, cree]).map((e) => e.id), ['e1', 'e2', 'e3', 'cree', 'e4', 'e5', 'e6']);
+  assert.deepEqual(ordonner([ev(1, 'debut'), ev(3, 'datee', 1)]).map((e) => e.id), ['e1', 'e3']);
+  // une date changée déplace l'événement sans renuméroter les autres
+  assert.deepEqual(ordonner([ev(1, 'datee', 10), ev(2, 'debut')]).map((e) => e.id), ['e2', 'e1']);
+  assert.deepEqual(ordonner([ev(1, 'datee', 10), ev(2, 'datee', 5)]).map((e) => e.id), ['e2', 'e1']);
+  assert.throws(() => ordonner([ev(1, 'debut'), { ...ev(1, 'debut'), id: 'double' }]), /rang 1 invalide ou déjà pris/);
+  assert.throws(() => ordonner([ev(0, 'debut')]), /rang 0 invalide/);
   assert.throws(() => ordonner([ev(1, 'debut', 3)]), /une année pour les événements datés/);
   assert.throws(() => ordonner([ev(1, 'datee')]), /une année pour les événements datés/);
   assert.throws(() => ordonner([ev(1, 'plus-tard')]), /époque inconnue/);
+});
+
+test('erreurDeDate et dateDansLeTexte (site de dev : la date d’un événement modifié, la date surlignée d’une description retouchée)', () => {
+  assert.equal(erreurDeDate({ epoque: 'datee', annee: -112 }), null);
+  assert.equal(erreurDeDate({ epoque: 'datee', annee: -400, annee_fin: -350 }), null);
+  assert.match(erreurDeDate({ epoque: 'datee', annee: null }), /un événement daté a une année/);
+  assert.match(erreurDeDate({ epoque: 'debut', annee: 3 }), /n’a pas d’année/);
+  assert.match(erreurDeDate({ epoque: 'datee', annee: 5, annee_fin: 5 }), /vient après/);
+  assert.match(erreurDeDate({ epoque: 'plus-tard' }), /époque inconnue/);
+  assert.equal(dateDansLeTexte('* **Date de création :** \\-112', '\\-112'), '\\-112', 'telle quelle');
+  assert.equal(dateDansLeTexte('* **Date de création :** -112', '\\-112'), '-112', 'l’éditeur en place a retiré l’échappement');
+  assert.equal(dateDansLeTexte('Âge de fer (An 150)', '150\\)'), '150)');
+  assert.equal(dateDansLeTexte('Plus de date.', '\\-112'), null);
+  assert.equal(dateDansLeTexte('Texte.', null), null);
 });
 
 test('voisins et adresses : chaque événement à /chronologie/<id>/ (le premier aussi : /chronologie/ est la frise seule), chevrons grisés aux bords', () => {
@@ -103,6 +124,11 @@ test('date surlignée : marquée dans le Markdown, devenue <mark> si elle reste 
   const coupee = surlignerLaDate(`<p>a${''}b <strong>c${''}d</strong></p>`);
   assert.equal(coupee, '<p>ab <strong>cd</strong></p>');
   assert.equal(surlignerLaDate('<p>rien</p>'), '<p>rien</p>');
+  // la date dans un attribut (texte d'une image, titre d'un lien) : jamais de balise insérée là (elle sortirait de l'attribut), les marqueurs partent
+  const [d, f] = [marquerLaDate('505', '505').at(0), marquerLaDate('505', '505').at(-1)];
+  assert.equal(surlignerLaDate(`<p><img src="x" alt="${d}505${f} onerror=alert(1)"></p>`), '<p><img src="x" alt="505 onerror=alert(1)"></p>');
+  assert.equal(surlignerLaDate(`<p><a title="x > ${d}505${f}">z</a></p>`), '<p><a title="x > 505">z</a></p>', 'un « > » dans un attribut n’ouvre pas le texte');
+  assert.equal(surlignerLaDate(`<p><a title="x > y">z</a> En ${d}505${f}.</p>`), '<p><a title="x > y">z</a> En <mark class="chrono-surligne">505</mark>.</p>');
 });
 
 test('sectionA : le dernier titre Markdown avant le passage', () => {
@@ -152,6 +178,12 @@ const historique = historiqueSite(db);
 const registre = lireRegistre();
 const evenements = chargerChronologie(db);
 const IMPACTS = 'lore/les-impacts-mineur-et-majeur';
+// la chronologie telle que l'import l'a écrite (le site de dev la modifie depuis la migration 0043 : historique_modification), dans l'ordre de lecture,
+// chaque événement avec ses extraits d'import
+const extraitsDImport = historique.lignesDImport('evenement_extrait');
+const evenementsDImport = ordonner(historique.lignesDImport('evenement').map((e) => ({
+  ...e, extraits: extraitsDImport.filter((x) => x.evenement_id === e.id).sort((a, b) => a.rang - b.rang),
+})));
 
 /** Le site de dev a réécrit le texte de cette page (une page du Codex, ou l'onglet d'une race dont la page est tirée) : son extrait n'est plus comparable. */
 const sourceRetouchee = (pageId) =>
@@ -177,17 +209,21 @@ test('la base : le registre résolu sur les pages telles que l’import les a la
   );
 });
 
-test('la base : les événements se lisent dans l’ordre (époques, puis années croissantes), chacun avec au moins un extrait', () => {
+test('la base : les événements se lisent dans l’ordre (époques, puis années croissantes), chacun avec au moins une description ; à l’import, de « Au début » à « Aujourd’hui »', () => {
   assert.ok(evenements.length > 0);
-  assert.equal(evenements[0].epoque, 'debut');
-  assert.equal(evenements.at(-1).epoque, 'aujourdhui');
-  for (const e of evenements) {
-    assert.ok(e.extraits.length > 0, `${e.id} : au moins un extrait`);
+  const rang = (e) => ['debut', 'datee', 'inconnue', 'aujourdhui'].indexOf(e.epoque);
+  evenements.forEach((e, i) => {
+    const avant = evenements[i - 1];
+    if (avant) assert.ok(rang(avant) < rang(e) || (rang(avant) === rang(e) && (avant.annee ?? 0) <= (e.annee ?? 0)), `${e.id} après ${avant.id}`);
+    assert.ok(e.extraits.length > 0, `${e.id} : au moins une description (le service refuse de retirer la dernière)`);
     for (const x of e.extraits) {
-      assert.ok(x.page_titre, `${e.id} : la page de l’extrait existe`);
-      if (x.date_brut !== null) assert.ok(x.texte.includes(x.date_brut), `${e.id} : date dans l’extrait`);
+      if (x.page_id) assert.ok(x.page_titre, `${e.id} : la page du lien existe`);
+      if (x.date_brut !== null) assert.ok(x.texte.includes(x.date_brut), `${e.id} : date dans la description`);
     }
-  }
+  });
+  assert.equal(evenementsDImport[0].epoque, 'debut');
+  assert.equal(evenementsDImport.at(-1).epoque, 'aujourdhui');
+  assert.ok(evenementsDImport.every((e) => e.extraits.length > 0 && e.extraits.every((x) => x.page_id)), 'à l’import, chaque événement a un extrait, chaque extrait sa page');
 });
 
 test('la liste « Les Impacts mineur et majeur » du Codex est reprise en entier : un événement par ligne, titre, année, portée et lieu tels qu’écrits', () => {
@@ -203,7 +239,7 @@ test('la liste « Les Impacts mineur et majeur » du Codex est reprise en entier
   for (const { portee: p, texte } of lignes) {
     const m = texte.match(/^(.+?) \((An (-?\d+)\\|\?\?\?)\)(?: \(([^()]+)\))?$/);
     assert.ok(m, `ligne lisible : ${texte}`);
-    const e = evenements.find((x) => x.extraits.some((y) => y.page_id === IMPACTS && y.texte === texte));
+    const e = evenementsDImport.find((x) => x.extraits.some((y) => y.page_id === IMPACTS && y.texte === texte));
     assert.ok(e, `événement de la ligne « ${texte} »`);
     assert.equal(e.titre, m[1], 'titre tel qu’écrit');
     assert.equal(e.portee, p);
@@ -211,7 +247,7 @@ test('la liste « Les Impacts mineur et majeur » du Codex est reprise en entier
     assert.equal(e.annee, m[3] === undefined ? null : Number(m[3]));
     assert.equal(e.epoque, m[3] === undefined ? 'inconnue' : 'datee');
   }
-  assert.equal(evenements.filter((e) => e.portee).length, 17, 'aucune autre portée');
+  assert.equal(evenementsDImport.filter((e) => e.portee).length, 17, 'aucune autre portée (à l’import : le site de dev peut en poser)');
 });
 
 test('le lieu d’un Impact mène à la page du Codex qui porte exactement son nom, sinon à rien', () => {
@@ -220,13 +256,35 @@ test('le lieu d’un Impact mène à la page du Codex qui porte exactement son n
   assert.ok(avecLieu.length > 0);
   for (const e of avecLieu) assert.equal(e.lieu_page_id, pagesDuCodex.find((p) => p.titre_cle === normalize(e.lieu))?.id ?? null, `${e.id} : ${e.lieu}`);
   // à l'import, « Erisia » et « Mrode » sont des pages du Codex, « Ici et là » n'en est pas une
-  if (!historique.touchee('page', { id: 'lore/erisia' }, 'titre')) assert.ok(avecLieu.some((e) => e.lieu === 'Erisia' && e.lieu_page_id === 'lore/erisia'));
-  assert.ok(avecLieu.some((e) => e.lieu === 'Ici et là' && e.lieu_page_id === null));
+  const lieux = new Set(evenementsDImport.map((e) => e.lieu).filter(Boolean));
+  assert.ok(lieux.has('Erisia') && lieux.has('Ici et là'));
+  if (!historique.touchee('page', { id: 'lore/erisia' }, 'titre')) assert.ok(pagesDuCodex.some((p) => p.id === 'lore/erisia' && p.titre_cle === normalize('Erisia')));
+  assert.ok(!pagesDuCodex.some((p) => p.titre_cle === normalize('Ici et là')));
 });
 
 test('Au début, Date inconnue, Aujourd’hui : l’ouverture et la fin de la frise viennent du Codex (« Au début … » : Origine du monde, Situation actuelle)', () => {
-  assert.equal(evenements[0].id, 'origine-du-monde');
-  assert.equal(evenements[0].extraits[0].page_id, 'lore/origine-du-monde');
-  assert.equal(evenements.at(-1).extraits[0].page_id, 'lore/situation-actuelle');
-  assert.ok(evenements.filter((e) => e.epoque === 'inconnue').every((e) => e.extraits[0].page_id === IMPACTS), 'Date inconnue : les « ??? » de la liste des Impacts');
+  // à l'import (le site de dev peut ajouter un événement « Au début » ou « Aujourd'hui »)
+  assert.equal(evenementsDImport[0].id, 'origine-du-monde');
+  assert.equal(evenementsDImport[0].extraits[0].page_id, 'lore/origine-du-monde');
+  assert.equal(evenementsDImport.at(-1).extraits[0].page_id, 'lore/situation-actuelle');
+  assert.ok(evenementsDImport.filter((e) => e.epoque === 'inconnue').every((e) => e.extraits[0].page_id === IMPACTS), 'Date inconnue : les « ??? » de la liste des Impacts');
+});
+
+test('gestion des catégories : suppressions, puis chaque renommage quand son nom est libre, puis créations ; noms vides, doublons et échanges refusés', () => {
+  const ligne = (id, libelle, nom, supprimee = false) => ({ id, libelle, nom, supprimee });
+  const ops = (lignes) => operationsDesCategories(lignes).map((o) => (o.op === 'creer' ? `+${o.valeurs.libelle}` : o.op === 'supprimer' ? `-${o.cle.id}` : `${o.cle.id}→${o.valeurs.libelle}`));
+  // rien à faire
+  assert.deepEqual(ops([ligne('a', 'A', 'A')]), []);
+  // « B » prend le nom « C », puis « A » prend celui de « B » ; « D » supprimée, son nom repris par une création
+  assert.deepEqual(ops([ligne('a', 'A', 'B'), ligne('b', 'B', 'C'), ligne('d', 'D', 'D', true), ligne(null, null, ' D ')]), ['-d', 'b→C', 'a→B', '+D']);
+  // la casse seule change : son propre nom
+  assert.deepEqual(ops([ligne('a', 'Guerre', 'GUERRE')]), ['a→GUERRE']);
+  assert.throws(() => operationsDesCategories([ligne('a', 'A', 'B'), ligne('b', 'B', 'A')]), /échangent leurs noms/);
+  assert.throws(() => operationsDesCategories([ligne('a', 'A', 'X'), ligne(null, null, 'x')]), /de la même façon/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, ' !! ')]), /lettre ou un chiffre/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, 'Sans catégorie')]), /aucune catégorie/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, 'Sans catégorie (à trier)')]), /aucune catégorie/, 'ni le libellé réservé');
+  assert.deepEqual(ops([ligne(null, null, 'Sanscatégorie')]), ['+Sanscatégorie'], 'une autre écriture reste permise');
+  // une catégorie supprimée ne tient plus son nom
+  assert.deepEqual(ops([ligne('a', 'A', 'B'), ligne('b', 'B', 'B', true)]), ['-b', 'a→B']);
 });

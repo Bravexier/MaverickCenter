@@ -79,13 +79,13 @@ JSON seulement pour une structure irrégulière : `page.donnees`, `source.onglet
 | `ecart_source.nature` | 12 valeurs (`valeur_differente`, `texte_different`, `nom_different`, `valeur_absente`, `calcul_different`, `coquille_rapprochee`, `prix_incoherent`, `doublon_de_nom`, `ecart_entre_onglets`, `ecart_avec_fiche`, `forme_non_reconnue`, `conflit_entre_sources`) |
 
 **Provenance.** Toute table importée (125 tables) a `origine` (FK vers `famille`) et `source_ref` : « classeur › onglet › plage » (ex. `Classe Maverick V7 › Mercenaire › AA22:AG27`).
-Exceptions : `famille`, `type_page`, `source`, les enfants d'une page (`alias`, `page_tag`, `page_source`) et les tables dérivées.
+Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`mot_cle`, migration 0043 : il vit sur le site de dev), les enfants d'une page (`alias`, `page_tag`, `page_source`), les catégories de la chronologie et celles d'un événement (`categorie_chronologie`, `evenement_categorie`) et les tables dérivées.
 
 **Absent = NULL.** Une valeur typée n'est écrite que si la forme est sans ambiguïté ; sinon `NULL` et la colonne `*_brut` fait foi. Les faits « constatés mais non tranchés »
 (deux sources qui se contredisent, une coquille, un prix incohérent) vont dans `ecart_source`, **sans rien corriger**. Les corrections voulues par le propriétaire passent par le registre (§4.4).
 
 **Index, clés étrangères.** `PRAGMA foreign_keys = ON` à **chaque** connexion (SQLite ne le mémorise pas). Index sur toute colonne servant de filtre ; index partiel `WHERE col IS NOT NULL`
-pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas). Plus de 300 index.
+pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas) et les porteurs d'un mot-clé ou d'une catégorie (`page_tag`, `evenement_categorie` : en supprimer un le retire de partout, migration 0043). Plus de 300 index.
 
 **Tables dérivées et vues.** Une table dérivée est précédée d'une ligne `-- @derivee <commande>` : l'export l'ignore, `db:build` la remplit (§4.3). Quatre tables dérivées, 26 vues (toujours à jour).
 
@@ -105,7 +105,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 | § | Domaine (famille) | Tables | Lignes | Pièces principales |
 | --- | --- | ---: | ---: | --- |
 | 0 | Registre des importeurs | 1 | 10 | `famille` |
-| 1 | Pages, liens, mots-clés, sources | 7 | 9 684 | `type_page`, `page` (991), `alias`, `page_tag`, `source`, `page_source`, `page_entite` |
+| 1 | Pages, liens, mots-clés, sources | 8 | 9 684 | `type_page`, `page` (991), `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite` |
 | 2 | Règles de la fiche (`fiche`) | 11 | 202 | `caracteristique`, `competence` (30), `niveau_global`, `seuil_niveau`, `regle_constante`, `posture`, `posture_effet` |
 | 3 | Magies et sorts (`magies`) | 14 | 1 276 | `magie` (15), `sort` (322), `sort_type`, `sort_etat`, `magie_resistance`, `magie_incompatibilite`, `amelioration_cadaverique`, `regle_magie` |
 | 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (20), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
@@ -178,7 +178,7 @@ un réimport incomplet est refusé et rien ne bouge.
 | `page_fts` | `db-derive.mjs` | titre, alias, mots-clés, résumé, corps |
 | `entite_fts` | `data/derive.sql` (SQL pur, idempotent) | 33 types d'entités typées |
 
-`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `page_tag.tag_id`, les `*_cle` des entités typées) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
+`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `mot_cle.libelle_cle`, les `*_cle` des entités typées) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
 
 ### 4.4 Corrections orthographiques
 

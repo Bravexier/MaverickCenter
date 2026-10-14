@@ -1,6 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { buildIndex, extractLinks, resolve } from './wikilinks.mjs';
-import { normalize } from './text.mjs';
 import { TYPES } from './types.mjs';
 import { cheminDePage } from './metiers.mjs';
 
@@ -44,17 +43,8 @@ async function compute() {
     }
   }
 
-  const tags = new Map<string, { label: string; entries: WikiEntry[] }>();
-  for (const entry of entries) {
-    for (const label of entry.data.tags) {
-      const key = normalize(label);
-      const tag = tags.get(key) ?? { label, entries: [] };
-      tag.entries.push(entry);
-      tags.set(key, tag);
-    }
-  }
-
-  return { entries, outgoing, incoming, unresolved, tags };
+  // les mots-clés ne sont plus regroupés ici : leur vocabulaire est dans la base (lib/mots-cles-db.mjs), leurs éléments dans l'index de la recherche
+  return { entries, outgoing, incoming, unresolved };
 }
 
 /** Pages du wiki + graphe de liens (mis en cache pour tout le build). */

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { NAV, activeGroup, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { NAV, activeGroup, adresseComplete, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { PARAMETRE_MOT_CLE } from '../src/lib/recherche-mots-cles.mjs';
 import { TYPE_KEYS } from '../src/lib/types.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
@@ -53,7 +54,6 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première pa
   assert.equal(activeGroup('/chronologie/grande-croisade/').key, 'codex', 'un événement de la chronologie ouvre le Codex');
   assert.equal(activeGroup('/capacites/clerc-zelote/').key, 'regles', 'un don de classe va avec les classes');
   assert.equal(activeGroup('/recherche/').key, 'outils');
-  assert.equal(activeGroup('/tags/feu/').key, 'outils');
   assert.equal(activeGroup('/donnees/').key, 'outils');
   assert.equal(activeGroup('/').key, 'regles');
 });
@@ -63,6 +63,14 @@ test('les pages ne sont plus sous /wiki/ : une ancienne adresse mène à la nouv
   assert.equal(legacyWikiRedirect('/wiki/magies/'), '/magies/');
   assert.equal(legacyWikiRedirect('/wiki/'), '/pages/', 'l’index du wiki');
   assert.equal(legacyWikiRedirect('/wiki'), '/pages/');
+  // jamais hors du site : « /wiki//autre.site/ » ne devient pas « //autre.site/ » (adresse d'un autre site)
+  assert.equal(legacyWikiRedirect('/wiki//evil.example/'), '/evil.example/');
+  assert.equal(legacyWikiRedirect('/wiki///evil.example/x/', '/MaverickCenter/'), null, 'hors du sous-chemin : rien');
+  assert.equal(legacyWikiRedirect('/MaverickCenter/wiki//evil.example/', '/MaverickCenter/'), '/MaverickCenter/evil.example/');
+  for (const chemin of ['/wiki//evil.example/', '/wiki////evil.example', '/tags//evil.example/', '/tags/%2F%2Fevil.example/']) {
+    const cible = nouvelleAdresse(chemin);
+    if (cible) assert.equal(new URL(adresseComplete(cible, '?q=1', '#h'), 'https://maverick-jdr.com/x/').origin, 'https://maverick-jdr.com', chemin);
+  }
   assert.equal(legacyWikiRedirect('/MaverickCenter/wiki/races/nain/', '/MaverickCenter/'), '/MaverickCenter/races/nain/');
   assert.equal(legacyWikiRedirect('/MaverickCenter/wiki/', '/MaverickCenter'), '/MaverickCenter/pages/');
   assert.equal(legacyWikiRedirect('/races/inconnue/'), null, 'une vraie page absente reste introuvable');
@@ -77,7 +85,21 @@ test('/generateur/ est devenu /fiche/ : l’ancienne adresse mène à la nouvell
   assert.equal(nouvelleAdresse('/wiki/races/nain/'), '/races/nain/');
   assert.equal(nouvelleAdresse('/generateurs/'), null);
   assert.equal(nouvelleAdresse('/tags/'), '/recherche/', 'la liste des mots-clés est dans la recherche');
-  assert.equal(nouvelleAdresse('/tags/feu/'), null, 'la page d’un mot-clé existe toujours');
   assert.equal(nouvelleAdresse('/races/inconnue/'), null);
   assert.equal(nouvelleAdresse('/autre/generateur/', '/MaverickCenter/'), null);
+});
+
+test('/tags/<clé>/ n’existe plus : la page 404 mène aux éléments du mot-clé dans la recherche (son id = l’ancienne clé), la requête fusionnée', () => {
+  assert.equal(PARAMETRE_MOT_CLE, 'mot-cle', 'le paramètre que lit la page Recherche (nav.mjs ne l’importe pas : la page 404 n’emporte que lui)');
+  assert.equal(nouvelleAdresse('/tags/feu/'), '/recherche/?mot-cle=feu');
+  assert.equal(nouvelleAdresse('/tags/magie-du-feu'), '/recherche/?mot-cle=magie-du-feu');
+  assert.equal(nouvelleAdresse('/MaverickCenter/tags/feu/', '/MaverickCenter/'), '/MaverickCenter/recherche/?mot-cle=feu');
+  assert.equal(nouvelleAdresse('/tags/feu/autre/'), null);
+  assert.ok(!NAV.flatMap((g) => g.autres ?? []).includes('tags/'), 'plus de pages /tags/ dans le menu');
+  // la page 404 ajoute la requête et l'ancre d'origine : jamais deux « ? »
+  assert.equal(adresseComplete('/recherche/?mot-cle=feu', '', ''), '/recherche/?mot-cle=feu');
+  assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?q=elfe', '#x'), '/recherche/?mot-cle=feu&q=elfe#x');
+  assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?mot-cle=glace'), '/recherche/?mot-cle=feu', 'le mot-clé de l’adresse l’emporte');
+  assert.equal(adresseComplete('/fiche/', '?id=12', '#notes'), '/fiche/?id=12#notes');
+  assert.equal(adresseComplete('/races/nain/', '', ''), '/races/nain/');
 });

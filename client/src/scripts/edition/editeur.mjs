@@ -10,6 +10,7 @@ import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
+import { libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const CRAYON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const COCHE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -107,6 +108,8 @@ export function demarrer(racine, etatService) {
     monterChamps,
     rendre: (el, ligne) => rendreElement(el, ligne),
     formulaire: ouvrirFormulaire,
+    // un champ de formulaire à part (mots-clés, page du wiki), pour une extension qui le pose dans la page : { element, lire() }
+    champ: (c) => champAPart(c),
   };
   const actives = () => EXTENSIONS.filter((x) => x.actif(document));
 
@@ -320,7 +323,10 @@ export function demarrer(racine, etatService) {
       annoncer(fiches ? `${message} ${fiches}` : message, fiches ? 'avis' : 'info');
       afficherJournal(await appel('GET', 'etat/').catch(() => null));
     } catch (e) {
-      const conflit = e.statut === 409 && e.corps?.ligne ? '\nLa valeur actuelle a été remise dans la saisie : vérifiez-la puis enregistrez de nouveau.' : '';
+      // une extension qui tient ses propres saisies (descriptions de la chronologie) y reprend la ligne actuelle (`conflit`) et dit ce qu'elle en a fait
+      const parUneExtension = e.statut === 409 && e.corps?.ligne ? actives().map((x) => x.conflit?.(ed, e)).find(Boolean) : null;
+      const conflit = parUneExtension ? `\n${parUneExtension}`
+        : e.statut === 409 && e.corps?.ligne ? '\nLa valeur actuelle a été remise dans la saisie : vérifiez-la puis enregistrez de nouveau.' : '';
       if (conflit) {
         const k = cleDeLigne(e.corps.table, e.corps.cle);
         lignesChargees.set(k, e.corps.ligne);
@@ -357,8 +363,73 @@ export function demarrer(racine, etatService) {
 
   // --- Formulaire de création (dialog) ---------------------------------------------------------------------------------------------------------
   /**
-   * Ouvre un formulaire : `champs` = [{ nom, libelle, type ('ligne' | 'texte' | 'entier' | 'choix'), requis, choix: [{ valeur, libelle }], aide, valeur }].
-   * `valider(valeurs)` est appelé à l'envoi ; s'il lève une erreur, son message s'affiche et le formulaire reste ouvert.
+   * Les champs de formulaire à part (lib/edition-modele.mjs) : { element, lire() } ; `lire` rend la valeur à envoyer, ou lève une erreur (affichée).
+   *   categories plusieurs catégories de la chronologie (`c.choix`, sinon `ed.listes.categoriesChronologie`) : une case à cocher chacune ; une catégorie
+   *              se crée par le bouton « Catégories » de la chronologie ; rend la liste des ids cochés
+   *   page       une page du wiki (GET /api/edition/pages/, lue à la première saisie), saisie à suggestions ; rend son id, ou '' (aucune)
+   */
+  function champAPart(c) {
+    const id = `ed-champ-${Math.random().toString(36).slice(2)}`;
+    if (c.type === 'page') {
+      const saisie = document.createElement('input');
+      saisie.className = 'ed-saisie';
+      saisie.autocomplete = 'off';
+      saisie.placeholder = 'Quelques lettres du titre…';
+      saisie.value = c.valeur ?? '';
+      const liste = document.createElement('datalist');
+      liste.id = id;
+      saisie.setAttribute('list', id);
+      let pages = null;
+      const charger = async () => {
+        if (pages) return pages;
+        pages = await pagesDuWiki(ed);
+        liste.replaceChildren(...pages.map((p) => new Option(libelleDePage(p))));
+        return pages;
+      };
+      saisie.addEventListener('focus', () => charger().catch(() => {}), { once: true });
+      const element = document.createElement('span');
+      element.append(saisie, liste);
+      return {
+        element,
+        async lire() {
+          const texte = saisie.value.trim();
+          if (!texte) return '';
+          const page = pageChoisie(await charger(), texte);
+          if (!page) throw new Error(`« ${c.libelle} » : page introuvable, choisissez-la dans la liste.`);
+          return page.id;
+        },
+      };
+    }
+    // categories : une case à cocher par catégorie de la chronologie (`c.choix`, sinon ed.listes.categoriesChronologie : [{ id, libelle }])
+    const categories = c.choix ?? ed.listes.categoriesChronologie ?? [];
+    const choisies = new Set(Array.isArray(c.valeur) ? c.valeur : []);
+    const element = document.createElement('fieldset');
+    element.className = 'ed-categories';
+    element.setAttribute('aria-label', c.libelle);
+    for (const cat of categories) {
+      const label = document.createElement('label');
+      label.className = 'ed-categorie';
+      const caseACocher = document.createElement('input');
+      caseACocher.type = 'checkbox';
+      caseACocher.value = cat.id;
+      caseACocher.checked = choisies.has(cat.id);
+      label.append(caseACocher, ` ${cat.libelle}`);
+      element.append(label);
+    }
+    // une catégorie cochée qui n'existe plus (supprimée entre-temps) n'est pas renvoyée : la case a disparu
+    if (!categories.length) {
+      const p = document.createElement('p');
+      p.className = 'ed-aide';
+      p.textContent = 'Aucune catégorie pour l’instant : bouton « Catégories » de la chronologie.';
+      element.append(p);
+    }
+    return { element, lire: () => [...element.querySelectorAll('input[type="checkbox"]:checked')].map((i) => i.value) };
+  }
+
+  /**
+   * Ouvre un formulaire : `champs` = [{ nom, libelle, type ('ligne' | 'texte' | 'markdown' | 'entier' | 'choix' | 'categories' | 'page'), requis,
+   * choix: [{ valeur, libelle }], aide, valeur }]. `valider(valeurs)` est appelé à l'envoi ; s'il lève une erreur, son message s'affiche et le
+   * formulaire reste ouvert.
    */
   function ouvrirFormulaire({ titre, aide, champs, bouton = 'Créer', valider }) {
     const dialogue = document.createElement('dialog');
@@ -374,15 +445,23 @@ export function demarrer(racine, etatService) {
       p.textContent = aide;
       form.append(p);
     }
+    const aPart = new Map(); // nom -> lire() des champs à part (mots-clés, page)
     for (const c of champs) {
-      const label = document.createElement('label');
+      const label = document.createElement(c.type === 'categories' ? 'div' : 'label');
+      label.className = c.type === 'categories' ? 'ed-champ' : '';
       const span = document.createElement('span');
       span.className = 'ed-libelle';
       span.textContent = `${c.libelle}${c.requis ? ' *' : ''}`;
-      const controle = controleDe({ champ: { ...c, libelle: c.libelle } }, c.valeur ?? '', { suivi: false });
-      controle.name = c.nom;
-      if (c.requis) controle.required = true;
-      label.append(span, controle);
+      if (c.type === 'categories' || c.type === 'page') {
+        const { element, lire } = champAPart(c);
+        aPart.set(c.nom, lire);
+        label.append(span, element);
+      } else {
+        const controle = controleDe({ champ: { ...c, libelle: c.libelle } }, c.valeur ?? '', { suivi: false });
+        controle.name = c.nom;
+        if (c.requis) controle.required = true;
+        label.append(span, controle);
+      }
       if (c.aide) {
         const p = document.createElement('small');
         p.className = 'ed-aide';
@@ -405,11 +484,12 @@ export function demarrer(racine, etatService) {
     dialogue.addEventListener('close', () => dialogue.remove());
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const valeurs = Object.fromEntries(champs.map((c) => [c.nom, form.elements.namedItem(c.nom).value]));
       const envoyer = boutons.querySelector('[type="submit"]');
       envoyer.disabled = true;
       erreur.hidden = true;
       try {
+        const valeurs = {};
+        for (const c of champs) valeurs[c.nom] = aPart.has(c.nom) ? await aPart.get(c.nom)() : form.elements.namedItem(c.nom).value;
         await valider(valeurs);
         dialogue.close();
       } catch (err) {

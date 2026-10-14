@@ -5,7 +5,7 @@
 // d'avant toute édition (lib/historique-site.mjs, et pages_du_site pour le vérificateur) ; le reste contrôle l'état courant.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -75,6 +75,39 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /gardée telle que le site de dev l'a modifiée : lore\/les-divinites/);
   assert.equal(readFileSync(fichier, 'utf8'), modifiee);
+});
+
+test('un mot-clé renommé, fusionné ou retiré par le site (vocabulaire, migration 0043) : ses pages du Codex comptent comme modifiées, sans comparer leurs mots-clés', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'maverick-codex-mots-'));
+  after(() => rmSync(tmp, { recursive: true, force: true }));
+  cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
+  const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
+  const ligne = (rang, table, cle, operation, avant, apres) =>
+    `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES ('lot-mots', ${rang}, '2026-10-14T20:00:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
+  // « feu » renommé « Flammes » : les pages qui le portent l'écrivent désormais ainsi
+  const porteuses = readdirSync(join(tmp, 'lore')).filter((f) => /^tags: \[.*"feu".*\]$/m.test(readFileSync(join(tmp, 'lore', f), 'utf8')));
+  assert.ok(porteuses.length >= 2, porteuses.join(', '));
+  for (const f of porteuses) writeFileSync(join(tmp, 'lore', f), readFileSync(join(tmp, 'lore', f), 'utf8').replace(/^(tags: \[.*)"feu"(.*\])$/m, '$1"Flammes"$2'));
+  // et un mot-clé retiré d'une autre page (page_tag supprimé : suppression ou fusion)
+  const autre = 'les-divinites.md';
+  const avantRetrait = readFileSync(join(tmp, 'lore', autre), 'utf8');
+  writeFileSync(join(tmp, 'lore', autre), avantRetrait.replace(/^tags: \[("codex")(?:, [^\]]*)?\]$/m, 'tags: [$1]'));
+  const historique = join(tmp, 'historique.sql');
+  writeFileSync(historique, [
+    ligne(1, 'mot_cle', { id: 'feu' }, 'modifier', { libelle: 'feu' }, { libelle: 'Flammes' }),
+    ligne(2, 'page_tag', { page_id: 'lore/les-divinites', ordre: 1 }, 'supprimer', { page_id: 'lore/les-divinites', ordre: 1, tag_id: 'x' }, null),
+  ].join('\n'));
+  let r = codexPy('--verifier', '--out', tmp, '--historique', historique);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const comptees = new Set([...porteuses, autre]).size;
+  assert.match(r.stdout, new RegExp(`116 pages du Codex conformes au document \\(${comptees} modifiées depuis par le site de dev`));
+  // sans l'historique : les pages diffèrent du découpage
+  r = codexPy('--verifier', '--out', tmp, '--historique', join(tmp, 'absent.sql'));
+  assert.equal(r.status, 1);
+  // une nouvelle écriture les garde telles quelles (sinon « feu » reviendrait, et db:sync-pages en ferait un second mot-clé)
+  r = codexPy('--out', tmp, '--historique', historique);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  for (const f of porteuses) assert.match(readFileSync(join(tmp, 'lore', f), 'utf8'), /"Flammes"/, f);
 });
 
 test('pages du Codex : type lore, famille docs, brouillon, la copie du propriétaire en seconde source, le mot-clé « codex »', () => {

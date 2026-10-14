@@ -9,10 +9,13 @@ import { url } from '../lib/wiki';
 </Base>
 
 <script>
-  import { nouvelleAdresse } from '../lib/nav.mjs';
+  import { adresseComplete, nouvelleAdresse } from '../lib/nav.mjs';
 
-  // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/) : renvoi vers la nouvelle adresse.
+  // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/ ; /tags/<clé>/, devenu
+  // /recherche/?mot-cle=<clé>) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée avec la sienne (adresseComplete : jamais deux « ? »).
   const base = document.querySelector<HTMLElement>('#introuvable')!.dataset.base!;
   const target = nouvelleAdresse(location.pathname, base);
-  if (target) location.replace(target + location.search + location.hash);
+  // jamais hors du site, quelle que soit l'adresse demandée
+  const cible = target ? new URL(adresseComplete(target, location.search, location.hash), location.href) : null;
+  if (cible && cible.origin === location.origin) location.replace(cible.href);
 </script>

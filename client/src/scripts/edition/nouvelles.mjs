@@ -24,14 +24,26 @@ const estPage404 = () => Boolean(document.querySelector('#introuvable'));
 const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.length - 1)).replace(/^\/|\/$/g, '');
 
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
+/**
+ * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043) ;
+ * son écriture et sa clé viennent d'une ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ libelle, cle }]
+ */
+function motsClesDeLaPage(lignes, id, vocabulaire = []) {
+  const connus = new Map([...vocabulaire.map((m) => [m.id, m]), ...lignesDe(lignes, 'mot_cle').map((l) => [l.cle.id, l.ligne])]);
+  return lignesDe(lignes, 'page_tag')
+    .filter((l) => l.ligne.page_id === id)
+    .sort((a, b) => a.ligne.ordre - b.ligne.ordre)
+    .map((l) => connus.get(l.ligne.tag_id) ?? { libelle: l.ligne.tag_id, libelle_cle: l.ligne.tag_id })
+    .map((m) => ({ libelle: m.libelle, cle: m.libelle_cle }));
+}
 const champsDe = (entite) => Object.entries(ENTITES[entite].champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis, choix: c.choix, liste: c.liste }));
 
 // --- Page d'une race créée --------------------------------------------------------------------------------------------------------------------
-function pageDeRace(lignes, id) {
+function pageDeRace(lignes, id, vocabulaire) {
   const race = lignesDe(lignes, 'race').find((l) => l.cle.id === id)?.ligne;
   const onglet = lignesDe(lignes, 'race_onglet').find((l) => l.cle.race_id === id)?.ligne;
   if (!race) return null;
-  const hybride = lignes.some((l) => l.table === 'page_tag' && l.ligne?.page_id === id && l.ligne.tag_id === TAG_RACE_HYBRIDE);
+  const hybride = motsClesDeLaPage(lignes, id, vocabulaire).some((m) => m.cle === TAG_RACE_HYBRIDE);
   const r = (c) => ed_('race', { id }, c);
   const o = (c) => ed_('race_onglet', { race_id: id }, c);
   const stat = (libelle, c) => `<div class="race-stat"><dt>${libelle}</dt><dd data-ed="${o(c)}"></dd></div>`;
@@ -62,10 +74,10 @@ function pageDeRace(lignes, id) {
 }
 
 // --- Page d'une classe créée -------------------------------------------------------------------------------------------------------------------
-function pageDeClasse(lignes, id) {
+function pageDeClasse(lignes, id, vocabulaire) {
   const classe = lignesDe(lignes, 'classe').find((l) => l.cle.id === id)?.ligne;
   if (!classe) return null;
-  const tags = lignes.filter((l) => l.table === 'page_tag' && l.ligne?.page_id === id).map((l) => l.ligne.libelle);
+  const tags = motsClesDeLaPage(lignes, id, vocabulaire).map((m) => m.libelle);
   const couleur = classColor({ id, data: { tags } });
   const c = (col) => ed_('classe', { id }, col);
   const stat = (libelle, col) => `<div class="classe-stat"><dt>${libelle}</dt><dd data-ed="${c(col)}"></dd></div>`;
@@ -106,9 +118,15 @@ function dessinerPage(ed, lignes) {
     location.replace(`${ed.base}${don.ligne.classe_id}/#don-${id.slice(id.indexOf('/') + 1)}`);
     return true;
   }
+  // un événement de la chronologie créé : sa page sera construite à la prochaine version ; d'ici là, la chronologie le montre (edition/chronologie.mjs)
+  const evenement = type === 'chronologie' && lignes.find((l) => l.table === 'evenement' && `chronologie/${l.cle.id}` === id && l.ligne);
+  if (evenement) {
+    location.replace(`${ed.base}chronologie/?evenement=${encodeURIComponent(evenement.cle.id)}`);
+    return true;
+  }
   const page = lignes.find((l) => l.table === 'page' && l.cle.id === id && l.ligne);
   if (!page || !PAGES[type]) return false;
-  const rendu = PAGES[type](lignes, id);
+  const rendu = PAGES[type](lignes, id, ed.listes.motsCles);
   if (!rendu) return false;
   const style = document.createElement('style');
   style.textContent = rendu.css;
@@ -178,13 +196,13 @@ export const nouvelles = {
     if (document.querySelector('.classes-pastilles')) {
       for (const l of lignesDe(lignes, 'classe')) {
         if (!l.creee) continue;
-        pastilleDeClasse(ed, l.ligne, lignes.filter((t) => t.table === 'page_tag' && t.ligne?.page_id === l.cle.id).map((t) => t.ligne.libelle));
+        pastilleDeClasse(ed, l.ligne, motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).map((m) => m.libelle));
       }
     }
     if (document.querySelector('.races-pastilles')) {
       for (const l of lignesDe(lignes, 'race')) {
         if (!l.creee) continue;
-        const hybride = lignes.some((t) => t.table === 'page_tag' && t.ligne?.page_id === l.cle.id && t.ligne.tag_id === TAG_RACE_HYBRIDE);
+        const hybride = motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).some((m) => m.cle === TAG_RACE_HYBRIDE);
         pastilleDeRace(ed, l.ligne, hybride);
       }
     }

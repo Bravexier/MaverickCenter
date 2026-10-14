@@ -13,7 +13,7 @@ Les catégories sont définies dans `client/src/lib/types.mjs` (`races`, `classe
 ---
 title: Elfe sylvestre          # obligatoire
 aliases: [Elfes des bois]       # autres noms, utilisables dans [[ ]]
-tags: [peuple, forêt]           # pages /tags/<mot-clé>/
+tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<id>
 summary: Une phrase de résumé.  # affichée dans les listes et la recherche
 sources: [Discord #lien-pour-races, https://docs.google.com/document/d/…]
 status: draft                   # example | draft | verified
@@ -239,8 +239,10 @@ La page, l'extraction du doc et les questions en attente : [`bestiaire.md`](best
 ## Chronologie (`/chronologie/`) : une page par événement daté
 
 Les événements que datent le Codex et les pages de race, une page chacun, ouverte à droite d'une frise verticale en dégradé (date à gauche de la barre, titre à droite) ; deux chevrons, Haut et Bas, passent au précédent ou au suivant ; rendus depuis les tables
-`evenement` et `evenement_extrait` (`lib/chronologie-db.mjs`), jamais depuis un Markdown : un événement n'a pas de page du wiki. Ses extraits sont **copiés**
-des pages (registre `tools/chronologie/evenements.json`) : une page du Codex ou d'une race se corrige à sa place, puis le registre est relu (`--verifier`).
+`evenement`, `evenement_extrait`, `categorie_chronologie` et `evenement_categorie` (`lib/chronologie-db.mjs`), jamais depuis un Markdown : un événement n'a pas de page du wiki. À l'import,
+ses descriptions ont été **copiées** des pages (registre `tools/chronologie/evenements.json`, aujourd'hui la trace de l'import) ; depuis, elles se modifient
+sur le site de dev, avec la date, le titre, le lien de chaque description et les catégories (plusieurs par événement ; sans catégorie, « Sans catégorie
+(à trier) », sur le site de dev seulement) ; la frise se filtre par catégorie (une à la fois).
 Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
 ## Armes (`/ressources/armes/`) : un tableau par famille, la fiche de l'arme forgée
 
@@ -504,6 +506,15 @@ sens le plus probable, graphie majoritaire pour un nom propre ; le nom change pa
 refaire la correction par une migration. Les citations « telles quelles » de la fiche (tableaux des écarts des races) gardent leurs fautes. Les points qui demandent une décision
 (mot manquant, accord douteux) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
+
+## Mots-clés
+
+Les mots-clés forment un **vocabulaire** (table `mot_cle`, migration `0043`) que portent les pages (`tags:` du frontmatter, écrits par leur libellé).
+Chacun a un identifiant figé, tiré de son premier libellé : son adresse est `/recherche/?mot-cle=<id>`, qui liste les pages qui le portent ; renommé, il
+garde son adresse. Sur le site de dev, la page Recherche en mode modification crée, renomme, fusionne et supprime un mot-clé (supprimé, il est retiré de
+toutes les pages) ; les mots-clés dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité
+de classe », « métier », « codex ») ne bougent pas. Les événements de la chronologie n'ont pas de mots-clés (« trop nombreux et trop libres », demande du
+propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie »).
 
 ## Liens entre pages
 

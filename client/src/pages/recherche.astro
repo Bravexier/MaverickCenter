@@ -1,120 +1,69 @@
 ---
 import Base from '../layouts/Base.astro';
 import rechercheCss from '../styles/recherche/recherche.css?raw';
-import { loadWiki, url } from '../lib/wiki';
+import { url } from '../lib/wiki';
+import { indexDeRecherche } from '../lib/recherche-index';
+import { comptesDesMotsCles, PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
+import { chargerVocabulaire } from '../lib/mots-cles-db.mjs';
+import { ouvrirBase } from '../lib/donnees.mjs';
 
 // Recherche (menu Outils) : plus de barre de recherche dans l'en-tête, la recherche est cette page, mêlée aux mots-clés (demande du propriétaire).
-// Sans recherche, tous les mots-clés ; en tapant, les mots-clés qui correspondent (lib/search.mjs#filtrerMotsCles) puis les pages (searchIndex).
-// L'ancienne liste /tags/ y mène (page 404, lib/nav.mjs#PAGES_RENOMMEES). CSS : styles/recherche/, inséré ici (?raw).
-const { tags } = await loadWiki();
-const motsCles = [...tags.entries()].sort(([, a], [, b]) => a.label.localeCompare(b.label, 'fr'));
+// Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture correspond puis les pages et les événements trouvés (lib/search.mjs ; un
+// événement de la chronologie se trouve par son texte et par les libellés de ses catégories : lib/recherche-index.ts).
+// Les mots-clés sont le vocabulaire de la base (table mot_cle, migration 0043), avec le nombre de pages visibles de chacun (pages du wiki de l'index) ; un
+// mot-clé qu'aucune page visible ne porte n'est pas listé. Les événements de la chronologie n'ont pas de mot-clé : ils ont des catégories, filtre de la
+// frise (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<id> (son id, figé) : le script de la page (src/scripts/recherche.mjs) y affiche les
+// pages qui le portent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et liste les éléments qui ont ce mot clé ») ;
+// les pastilles des pages du wiki y mènent, et les anciennes adresses /tags/<clé>/ aussi (page 404, lib/nav.mjs#nouvelleAdresse).
+// Sur le site de dev, le vocabulaire se modifie ici (src/scripts/edition/mots-cles.mjs). CSS : styles/recherche/, inséré ici (?raw).
+const index = await indexDeRecherche();
+const comptes = comptesDesMotsCles(index);
+const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({ id: m.id, libelle: m.libelle, cle: m.libelle_cle, n: comptes.get(m.id) ?? 0 }));
+const affiches = motsCles.filter((m) => m.n > 0).length;
+const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
 
-<Base title="Recherche" description="Rechercher dans le site : les pages et les mots-clés">
+<Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et les mots-clés" edition="recherche/">
   <style is:inline set:html={rechercheCss}></style>
-  <h1>Recherche</h1>
-  <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} data-base={url()} data-suffix="" role="search">
-    <input id="q" type="search" name="q" placeholder="Nom, mot-clé, texte…" aria-label="Rechercher dans le site" autocomplete="off" autofocus />
-    <button type="submit">Chercher</button>
-  </form>
-  <p id="status" class="muted" aria-live="polite"></p>
+  <div class="recherche" data-recherche data-lien-mot-cle={lienDuMotCle}>
+    <h1>Recherche</h1>
+    <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} data-base={url()} data-suffix="" role="search">
+      <input id="q" type="search" name="q" placeholder="Nom, mot-clé, texte…" aria-label="Rechercher dans le site" autocomplete="off" autofocus />
+      <button type="submit">Chercher</button>
+    </form>
+    <noscript><p class="banner">La recherche et la liste des pages d’un mot-clé demandent JavaScript. Sans lui, voyez l’<a href={url('pages/')}>index de toutes les pages</a>.</p></noscript>
+    <p id="status" class="muted" aria-live="polite"></p>
 
-  <section class="recherche-mots-cles" id="mots-cles" aria-labelledby="titre-mots-cles">
-    <h2 id="titre-mots-cles">Mots-clés <small id="nombre-mots-cles" class="muted">({motsCles.length})</small></h2>
-    {
-      motsCles.length ? (
-        <ul class="tags" id="liste-mots-cles">
-          {motsCles.map(([key, tag]) => <li data-cle={key}><a class="badge" href={url(`tags/${key}/`)}>{tag.label} ({tag.entries.length})</a></li>)}
-        </ul>
-      ) : (
-        <p>Aucun mot-clé pour l’instant : ajoutez <code>tags: [...]</code> dans l’en-tête d’une page.</p>
-      )
-    }
-    <p id="aucun-mot-cle" class="muted" hidden>Aucun mot-clé ne correspond.</p>
-  </section>
+    <section class="recherche-mots-cles" id="mots-cles" aria-labelledby="titre-mots-cles">
+      <h2 id="titre-mots-cles">Mots-clés <small id="nombre-mots-cles" class="muted">({affiches})</small></h2>
+      <ul class="tags" id="liste-mots-cles">
+        {
+          motsCles.map((m) => (
+            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} hidden={m.n === 0}>
+              <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.id)}`}>{m.libelle} ({m.n})</a>
+            </li>
+          ))
+        }
+      </ul>
+      <p id="aucun-mot-cle" class="muted" hidden>Aucun mot-clé ne correspond.</p>
+    </section>
 
-  <section class="recherche-pages" id="pages-trouvees" aria-labelledby="titre-pages" hidden>
-    <h2 id="titre-pages">Pages</h2>
-    <ul id="results" class="entry-list"></ul>
-  </section>
+    <section class="recherche-mot-cle" id="mot-cle-choisi" aria-labelledby="titre-mot-cle" hidden>
+      <p class="muted"><a id="tous-les-mots-cles" href={url('recherche/')}>Tous les mots-clés</a></p>
+      <h2 id="titre-mot-cle"></h2>
+      <p id="mot-cle-compte" class="muted"></p>
+      <ul id="mot-cle-pages" class="entry-list" hidden></ul>
+    </section>
 
-  <p class="muted recherche-voir-aussi">Voir aussi l’<a href={url('pages/')}>index alphabétique de toutes les pages</a> et la <a href={url('donnees/')}>base de données</a>.</p>
+    <section class="recherche-pages" id="pages-trouvees" aria-labelledby="titre-pages" hidden>
+      <h2 id="titre-pages">Pages</h2>
+      <ul id="results" class="entry-list"></ul>
+    </section>
+
+    <p class="muted recherche-voir-aussi">Voir aussi l’<a href={url('pages/')}>index alphabétique de toutes les pages</a> et la <a href={url('donnees/')}>base de données</a>.</p>
+  </div>
 </Base>
 
 <script>
-  import { filtrerMotsCles, searchIndex } from '../lib/search.mjs';
-
-  interface Doc {
-    title: string;
-    type: string;
-    path: string;
-    ancre?: string;
-    summary: string;
-    aliases: string[];
-    tags: string[];
-    text: string;
-  }
-
-  const form = document.querySelector<HTMLFormElement>('#search-form')!;
-  const input = document.querySelector<HTMLInputElement>('#q')!;
-  const status = document.querySelector<HTMLElement>('#status')!;
-  const list = document.querySelector<HTMLElement>('#results')!;
-  const sectionPages = document.querySelector<HTMLElement>('#pages-trouvees')!;
-  const motsCles = [...document.querySelectorAll<HTMLElement>('#liste-mots-cles > li')];
-  const nombreMotsCles = document.querySelector<HTMLElement>('#nombre-mots-cles')!;
-  const aucunMotCle = document.querySelector<HTMLElement>('#aucun-mot-cle')!;
-
-  // data-base : préfixe des pages du site (absolu, ou relatif dans la version portable) ; data-suffix : « index.html » si requis.
-  const base = form.dataset.base!.replace(/\/?$/, '/');
-  const suffix = form.dataset.suffix ?? '';
-
-  let index: Doc[] | undefined;
-
-  /** Mots-clés : tous sans recherche, ceux qui correspondent sinon. Rend leur nombre. */
-  function filtrer(query: string) {
-    const gardes = new Set(filtrerMotsCles(motsCles.map((li) => li.dataset.cle!), query));
-    for (const li of motsCles) li.hidden = !gardes.has(li.dataset.cle!);
-    nombreMotsCles.textContent = `(${gardes.size})`;
-    aucunMotCle.hidden = gardes.size > 0 || motsCles.length === 0;
-    return gardes.size;
-  }
-
-  async function run() {
-    const query = input.value.trim();
-    const nbMotsCles = filtrer(query);
-    list.replaceChildren();
-    if (!query) {
-      status.textContent = '';
-      sectionPages.hidden = true;
-      return;
-    }
-    try {
-      index ??= (await (await fetch(form.dataset.indexUrl!)).json()) as Doc[];
-    } catch {
-      status.textContent = 'Impossible de charger l’index de recherche.';
-      return;
-    }
-    if (input.value.trim() !== query) return; // une frappe plus récente a pris la main pendant le chargement
-    const hits = searchIndex(index, query) as Doc[];
-    status.textContent = `${hits.length} page(s), ${nbMotsCles} mot(s)-clé(s)`;
-    sectionPages.hidden = hits.length === 0;
-    for (const hit of hits) {
-      const li = document.createElement('li');
-      const a = Object.assign(document.createElement('a'), { href: `${base}${hit.path}${suffix}${hit.ancre ? `#${hit.ancre}` : ''}`, textContent: hit.title });
-      const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: hit.type });
-      li.append(a, ' ', badge);
-      if (hit.summary) {
-        li.append(Object.assign(document.createElement('div'), { className: 'muted', textContent: hit.summary }));
-      }
-      list.append(li);
-    }
-  }
-
-  input.value = new URLSearchParams(location.search).get('q') ?? '';
-  input.addEventListener('input', run);
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    run();
-  });
-  run();
+  import '../scripts/recherche.mjs';
 </script>

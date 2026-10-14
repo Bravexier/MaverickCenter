@@ -131,9 +131,9 @@ const ligneDe = (table, cle) => {
   return lignes.get(k);
 };
 
-test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes et du bestiaire redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
+test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire et de la chronologie redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const sousPages = (type) => readdirSync(join(dist, type), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('exemple')).map((d) => `${type}/${d.name}`);
-  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes')];
+  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie')];
   const parRendu = new Map();
   for (const p of pages) {
     const arbre = fromHtml(readFileSync(join(dist, p, 'index.html'), 'utf8'));
@@ -154,7 +154,8 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
     }
   }
   for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
-    'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle']) {
+    'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle',
+    'evenement-date', 'evenement-date-courte', 'evenement-portee']) {
     assert.ok(parRendu.get(r) > 0, `rendu ${r} vérifié au moins une fois`);
   }
 });

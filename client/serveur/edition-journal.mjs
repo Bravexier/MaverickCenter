@@ -257,51 +257,134 @@ const clesCoupees = (db) => Number(Object.values(db.prepare('PRAGMA foreign_keys
 const correspond = (ligne, valeurs) => Object.entries(valeurs).every(([c, v]) => egal(ligne[c], v));
 
 /**
+ * La ligne `ligne` de `table` est-elle citée par une autre (une clé étrangère d'une table qui la cite) ?
+ */
+function estCitee(db, table, ligne) {
+  for (const enfant of tablesQuiCitent(db, table)) {
+    const parId = new Map();
+    for (const f of db.prepare(`PRAGMA foreign_key_list("${enfant}")`).all()) {
+      if (f.table !== table) continue;
+      if (!parId.has(f.id)) parId.set(f.id, { de: [], vers: [] });
+      parId.get(f.id).de.push(f.from);
+      parId.get(f.id).vers.push(f.to);
+    }
+    for (const { de, vers: versBrut } of parId.values()) {
+      const vers = versBrut.some((c) => c === null) ? structure(db, table).cle : versBrut;
+      if (vers.some((c) => ligne[c] === null || ligne[c] === undefined)) continue;
+      if (db.prepare(`SELECT 1 FROM "${enfant}" WHERE ${de.map((c) => `${guillemets(c)} = ?`).join(' AND ')}`).get(...vers.map((c) => ligne[c]))) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Rejoue une modification en attente sur la base (règles neuves) : rend 'applique' (réécrite), 'integree' (déjà là), 'derivee' (elle ne note que des
- * colonnes dérivées, voir rejouer) ou un message de conflit. Les colonnes dérivées (`derivee(table, cle, colonne)`) ne sont ni comparées ni écrites.
- * `suivantes` : les modifications en attente plus récentes de la même ligne ({ operation, apres }) ; une colonne qui vaut déjà ce que l'une d'elles y
- * écrit est « déjà là » (règles qui contiennent une partie du journal, ou tout : le site de dev après la livraison de ses propres modifications).
+ * colonnes dérivées, voir rejouer), 'fantome' (sa ligne est « fantôme » : créée puis supprimée par le journal, `fantome` vrai, voir rejouer ; rien à
+ * écrire, et rien n'est noté : elle est réévaluée à chaque rejeu) ou un message de conflit. Les colonnes dérivées (`derivee(table, cle, colonne)`) ne
+ * sont ni comparées ni écrites. `suivantes` : les modifications en attente plus récentes de la même ligne ({ operation, apres }) ; une colonne qui vaut
+ * déjà ce que l'une d'elles y écrit est « déjà là » (règles qui contiennent une partie du journal, ou tout : le site de dev après la livraison de ses
+ * propres modifications). `siOrphelines` : tables dont le service ne supprime une ligne que si plus rien ne la cite (le dictionnaire des sources :
+ * serveur/edition.mjs#supprimerPage) ; une telle suppression, rejouée alors qu'une ligne la cite encore, n'est pas faite (« integree »).
  * Lève une erreur SQLite si l'écriture est refusée (contrainte) : l'appelant en fait un conflit.
  */
-function rejouerUne(db, m, derivee, suivantes = []) {
+function rejouerUne(db, m, derivee, suivantes = [], fantome = false, siOrphelines = new Set()) {
   const cle = JSON.parse(m.cle);
   const avant = m.avant === null ? null : JSON.parse(m.avant);
   const apres = m.apres === null ? null : JSON.parse(m.apres);
   structure(db, m.table_nom); // table disparue : erreur
   const sansDerivees = (valeurs) => Object.fromEntries(Object.entries(valeurs).filter(([c]) => !derivee(m.table_nom, cle, c)));
   const ligne = lireLigne(db, m.table_nom, cle);
-  /** La colonne vaut déjà `valeur`, ou ce qu'une modification plus récente de la ligne y écrit. */
-  const deja = (c, valeur) => egal(ligne[c], valeur) || suivantes.some((s) => s.apres && c in s.apres && egal(ligne[c], s.apres[c]));
-  const supprimeePlusTard = suivantes.some((s) => s.operation === 'supprimer');
+  /**
+   * La colonne vaut déjà `valeur`, ou ce qu'une modification plus récente de la ligne y écrit — sauf si elle vaut encore ce que cette modification a
+   * trouvé (`avant`) : elle n'est alors pas faite, et se fait (A → B → A : un lot suivant peut compter sur B, un nom libéré, une date intermédiaire). Les
+   * lots déjà livrés ne sont jamais rejoués (historique_modification : base-vivante.mjs, mise-a-jour-regles.mjs, db-appliquer-edition.mjs).
+   */
+  const encoreAvant = (c) => Boolean(avant && c in avant && egal(ligne[c], avant[c]));
+  const deja = (c, valeur) => egal(ligne[c], valeur) || (!encoreAvant(c) && suivantes.some((s) => s.apres && c in s.apres && egal(ligne[c], s.apres[c])));
+  // la vie de la ligne finit-elle par une suppression (avant qu'une insertion ne la recrée) ?
+  const prochaine = suivantes.find((s) => s.operation === 'inserer' || s.operation === 'supprimer');
+  const supprimeePlusTard = prochaine?.operation === 'supprimer';
   if (m.operation === 'inserer') {
     if (!ligne) {
-      if (supprimeePlusTard) return 'integree'; // créée puis supprimée par le journal : rien à rejouer (ses modifications non plus)
+      if (fantome && supprimeePlusTard) return 'fantome'; // créée puis supprimée par le journal : rien à rejouer (ses modifications non plus)
       insererBrut(db, m.table_nom, apres);
       return 'applique';
     }
     return Object.entries(sansDerivees(apres)).every(([c, v]) => deja(c, v)) ? 'integree' : 'la ligne existe déjà dans les règles, avec d’autres valeurs';
   }
   if (m.operation === 'supprimer') {
-    if (!ligne) return 'integree';
+    if (!ligne) return fantome ? 'fantome' : 'integree';
     if (!correspond(ligne, sansDerivees(avant))) {
       // supprimée puis recréée par le journal : la ligne des règles est déjà la nouvelle
       const recreee = suivantes.find((s) => s.operation === 'inserer');
       if (recreee && Object.entries(sansDerivees(recreee.apres)).every(([c, v]) => deja(c, v))) return 'integree';
       return 'la ligne a changé dans les règles depuis sa suppression';
     }
+    if (siOrphelines.has(m.table_nom) && estCitee(db, m.table_nom, ligne)) return 'integree'; // le service ne l'aurait pas supprimée
     if (clesCoupees(db)) supprimerLesCascades(db, m.table_nom, ligne);
     supprimerBrut(db, m.table_nom, cle);
     return 'applique';
   }
   const voulues = sansDerivees(apres);
   if (!Object.keys(voulues).length) return 'derivee';
-  if (!ligne) return supprimeePlusTard ? 'integree' : 'la ligne n’existe plus dans les règles';
+  if (!ligne) {
+    if (!supprimeePlusTard) return 'la ligne n’existe plus dans les règles';
+    return fantome ? 'fantome' : 'integree';
+  }
   const aEcrire = Object.keys(voulues).filter((c) => !deja(c, voulues[c]));
   if (!aEcrire.length) return 'integree';
   const changees = aEcrire.filter((c) => !egal(ligne[c], avant[c]));
   if (changees.length) return `les règles ont changé ${changees.join(', ')} autrement`;
   modifierBrut(db, m.table_nom, cle, sous(voulues, aEcrire));
   return 'applique';
+}
+
+/** La clé d'une ligne pour les fantômes : « table\u0000clé » (clé en JSON, colonnes triées). */
+const cleDeLigne = (table, cle) => `${table}\u0000${JSON.stringify(Object.fromEntries(Object.entries(cle).sort(([a], [b]) => a.localeCompare(b))))}`;
+const cleDeFantome = (m) => cleDeLigne(m.table_nom, JSON.parse(m.cle));
+
+/**
+ * Les références rompues de la table `table` : `rompue` = la première qui ne vise pas une ligne « fantôme » ({ parent }, null s'il n'y en a pas),
+ * `cites` = les fantômes visés (« table\u0000clé »). `fantomes` : Map table → Map clé (cleDeLigne) → les valeurs de ses insertions ; une référence
+ * qui vise d'autres colonnes que la clé de sa table parente (capacite(specialite_id, classe_id) → specialite(id, classe_id)) vise le fantôme dont une
+ * insertion a ces valeurs.
+ */
+function referencesRompues(db, table, fantomes) {
+  const sortie = { rompue: null, cites: [] };
+  if (!db.prepare(`PRAGMA foreign_key_check("${table}")`).get()) return sortie;
+  const parId = new Map();
+  for (const f of db.prepare(`PRAGMA foreign_key_list("${table}")`).all()) {
+    if (!parId.has(f.id)) parId.set(f.id, { parent: f.table, de: [], vers: [] });
+    parId.get(f.id).de.push(f.from);
+    parId.get(f.id).vers.push(f.to);
+  }
+  for (const { parent, de, vers: versBrut } of parId.values()) {
+    const cleParent = structure(db, parent).cle;
+    const vers = versBrut.some((c) => c === null) ? cleParent : versBrut;
+    const parCle = vers.length === cleParent.length && vers.every((c) => cleParent.includes(c));
+    const duParent = fantomes.get(parent);
+    const non = de.map((c) => `e.${guillemets(c)} IS NOT NULL`).join(' AND ');
+    const egalite = de.map((c, i) => `p.${guillemets(vers[i])} = e.${guillemets(c)}`).join(' AND ');
+    const rompues = db.prepare(`SELECT ${de.map((c) => `e.${guillemets(c)}`).join(', ')} FROM "${table}" e WHERE ${non}
+      AND NOT EXISTS (SELECT 1 FROM "${parent}" p WHERE ${egalite})`).all();
+    for (const r of rompues) {
+      let k = null;
+      if (parCle) {
+        const cle = cleDeLigne(parent, Object.fromEntries(vers.map((c, i) => [c, r[de[i]]])));
+        if (duParent?.has(cle)) k = cle;
+      } else {
+        for (const [cle, valeurs] of duParent ?? []) {
+          if (valeurs.some((v) => vers.every((c, i) => egal(v[c], r[de[i]])))) {
+            k = cle;
+            break;
+          }
+        }
+      }
+      if (k) sortie.cites.push(k);
+      else sortie.rompue ??= { parent };
+    }
+  }
+  return sortie;
 }
 
 /** Une modification du journal telle que la reçoit `applique` (rejouer) : valeurs décodées. */
@@ -317,29 +400,105 @@ const decodee = (m) => ({
  * Une colonne qui vaut déjà ce qu'une modification en attente plus récente de la même ligne y écrit est « déjà là » : le journal rejoué sur des
  * règles qui en contiennent une partie ou le tout (deux lots qui modifient la même colonne, une ligne créée puis modifiée) n'est pas en conflit.
  *
+ * Point fixe : un lot en conflit le reste (il n'est plus relu par la reconstruction suivante, ni emporté par le journal exporté, ni rejoué par la mise
+ * à jour). Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté, et la passe recommence sans lui — sans ses modifications parmi
+ * les « plus récentes » d'une ligne, ni parmi les lignes fantômes —, jusqu'à ce qu'une passe n'en écarte plus. Le résultat est celui des seuls lots qui
+ * passent : la reconstruction suivante et le rejeu du journal exporté (mise à jour, db:appliquer-edition) le redonnent, sans conflit nouveau.
+ *
+ * Lignes « fantômes » : une ligne que le journal crée puis supprime n'est pas insérée (ses modifications non plus) le temps de cette vie, et une
+ * référence vers elle n'est pas rompue tant que la ligne existerait (un bloc de la chronologie lié à la page d'un métier créé puis supprimé : la
+ * suppression le détache). Rien n'en est noté (« fantome ») : réévaluées à chaque rejeu. À la fin d'une passe, un fantôme qu'une référence cite encore
+ * (le lot qui retirait la citation est en conflit ; une clé étrangère qui ne vise pas la clé primaire, comme capacite(specialite_id, classe_id), est
+ * comparée aux valeurs de ses insertions) est écarté : la passe recommence avec sa ligne rejouée comme une autre (créée, modifiée, et supprimée
+ * seulement si plus rien ne la cite). Aucune référence ne reste rompue vers une ligne absente.
+ *
  * Colonnes dérivées (`derivee(table, cle, colonne)` vrai ; aucune par défaut) : des valeurs que l'édition a calculées depuis d'autres lignes (le corps
  * des pages typées : serveur/edition.mjs#colonneDerivee). Notées comme une valeur figée, elles mettraient en conflit tout lot rejoué sur des règles
  * qui ont changé la page autrement (une autre modification de la même page, une livraison, une création insérée puis modifiée dans le même lot) :
  * elles ne sont ni comparées ni écrites, et l'appelant les refait depuis les lignes rejouées (serveur/edition.mjs#rejouerLeJournal). Une
  * modification qui ne note que des colonnes dérivées suit son lot : « intégrée » quand toutes ses autres modifications le sont, en attente sinon.
- * `applique(m)` est appelée, une fois un lot écrit, pour chacune de ses modifications réappliquées (dérivées comprises), décodée : { lot, rang,
- * table, cle, operation, avant, apres }.
+ * `applique(m)` est appelée, le rejeu fini, pour chaque modification réappliquée (dérivées comprises), décodée : { lot, rang, table, cle, operation,
+ * avant, apres }, et pour chaque ligne créée à la demande d'`adapter` ({ …, operation: 'inserer', synthetique: true }).
  * `horsControleParLot` : des tables dont les clés étrangères ne sont pas contrôlées lot par lot. Ce sont les fiches de personnage (section 13), que la
  * base vivante recopie AVANT le rejeu (base-vivante.mjs#transferer) : une fiche peut citer un don, une spécialité ou une classe qu'un lot SUIVANT crée,
  * et le contrôle d'un lot antérieur qui touche la même table (capacite, specialite, classe) la verrait rompue et mettrait ce lot sans rapport en conflit.
  * L'appelant les contrôle toutes après le rejeu complet.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string> }} [options]
+ * `siOrphelines` : voir rejouerUne (serveur/edition.mjs#rejouerLeJournal : ['source']).
+ * `adapter()` : fabrique, appelée au début de chaque passe (base dans l'état des règles), d'une fonction qui lit une modification notée sous une forme
+ * ancienne dans la forme des règles : elle rend la modification à rejouer à sa place, modifiée ou non, avec au besoin `aCreer` : des lignes
+ * ([{ table, valeurs }]) créées juste avant elle si elles manquent — dans son lot, annulées avec lui, jamais notées ni comptées
+ * (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043 et son mot-clé).
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
-export function rejouer(db, { derivee = () => false, applique = null, horsControleParLot = [] } = {}) {
+export function rejouer(db, options = {}) {
+  const ecartes = new Map(); // lots en conflit d'une passe précédente → leur conflit : la passe suivante les marque sans les rejouer
+  const exclus = new Set(); // fantômes écartés (« table\u0000clé ») : rejoués comme des lignes ordinaires
+  for (;;) {
+    db.exec('SAVEPOINT rejeu_complet');
+    const passe = rejouerUneFois(db, options, ecartes, exclus);
+    const lots = [...passe.conflits].filter(([lot]) => !ecartes.has(lot));
+    const fantomes = passe.aExclure.filter((k) => !exclus.has(k));
+    if (!lots.length && !fantomes.length) {
+      db.exec('RELEASE rejeu_complet');
+      for (const m of passe.appliquees) options.applique?.(m);
+      return passe.bilan;
+    }
+    db.exec('ROLLBACK TO rejeu_complet');
+    db.exec('RELEASE rejeu_complet');
+    for (const [lot, conflit] of lots) ecartes.set(lot, conflit);
+    for (const k of fantomes) exclus.add(k);
+  }
+}
+
+/**
+ * Les lignes fantômes des modifications en attente `modifications` (dans l'ordre), hors `exclus` : Map « table\u0000clé » → { valeurs : celles des
+ * insertions dont la vie finit par une suppression } (une ligne créée, supprimée puis recréée est fantôme le temps de sa première vie).
+ */
+function fantomesDe(modifications, exclus) {
+  const parLigne = new Map();
+  for (const m of modifications) {
+    const k = cleDeFantome(m);
+    if (exclus.has(k)) continue;
+    if (!parLigne.has(k)) parLigne.set(k, { creation: null, valeurs: [] });
+    const l = parLigne.get(k);
+    if (m.operation === 'inserer') l.creation = m;
+    else if (m.operation === 'supprimer' && l.creation) {
+      l.valeurs.push(JSON.parse(l.creation.apres));
+      l.creation = null;
+    }
+  }
+  return new Map([...parLigne].filter(([, l]) => l.valeurs.length).map(([k, { valeurs }]) => [k, valeurs]));
+}
+
+/**
+ * Une passe du rejeu (voir rejouer), sans les lots `ecartes` (marqués « conflit », avec leur conflit) : { bilan, appliquees (décodées, pour
+ * `applique`), conflits (Map lot → conflit, ceux d'avant compris), aExclure (fantômes encore cités en fin de passe) }.
+ */
+function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], siOrphelines = [], adapter = null } = {}, ecartes = new Map(), exclus = new Set()) {
   const horsControle = new Set(horsControleParLot);
+  const orphelines = new Set(siOrphelines);
+  const appliquees = [];
   const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
-  const enAttente = db
+  const marquer = db.prepare('UPDATE modification SET etat = ?, detail = ? WHERE lot_id = ? AND rang = ?');
+  const conflits = new Map();
+  const toutes = db
     .prepare(
       `SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id
        WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
     .all();
+  const lotsEcartes = new Set();
+  for (const m of toutes) {
+    if (!ecartes.has(m.lot_id)) continue;
+    marquer.run('conflit', `lot ${m.lot_id} : ${ecartes.get(m.lot_id)}`, m.lot_id, m.rang);
+    bilan.conflits += 1;
+    lotsEcartes.add(m.lot_id);
+    conflits.set(m.lot_id, ecartes.get(m.lot_id));
+  }
+  bilan.lots += lotsEcartes.size;
+  const adapte = adapter ? adapter() : null;
+  const enAttente = toutes.filter((m) => !ecartes.has(m.lot_id)).map((m) => (adapte ? adapte(m) : m));
   const parLot = new Map();
   const parLigne = new Map(); // ligne (table, clé) -> ses modifications en attente, dans l'ordre : { operation, apres }
   const ligneDe = (m) => `${m.table_nom}\u0000${m.cle}`;
@@ -350,24 +509,37 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
     parLigne.get(ligneDe(m)).push({ m, operation: m.operation, apres: m.apres === null ? null : JSON.parse(m.apres) });
   }
   const suivantesDe = (m) => {
-    const toutes = parLigne.get(ligneDe(m));
-    return toutes.slice(toutes.findIndex((s) => s.m === m) + 1);
+    const lignes = parLigne.get(ligneDe(m));
+    return lignes.slice(lignes.findIndex((s) => s.m === m) + 1);
   };
-  const marquer = db.prepare('UPDATE modification SET etat = ?, detail = ? WHERE lot_id = ? AND rang = ?');
+  const fantomes = fantomesDe(enAttente, exclus);
+  const fantomesParTable = new Map();
+  for (const [k, valeurs] of fantomes) {
+    const table = k.slice(0, k.indexOf('\u0000'));
+    if (!fantomesParTable.has(table)) fantomesParTable.set(table, new Map());
+    fantomesParTable.get(table).set(k, valeurs);
+  }
   for (const [lot, modifications] of parLot) {
     bilan.lots += 1;
     db.exec('SAVEPOINT rejeu_lot');
     const resultats = [];
+    const creees = []; // lignes créées à la demande de l'adaptateur (`aCreer`)
     let conflit = null;
     for (const m of modifications) {
       let r;
       try {
-        r = rejouerUne(db, m, derivee, suivantesDe(m));
+        for (const { table, valeurs } of m.aCreer ?? []) {
+          const cle = cleDe(db, table, valeurs);
+          if (lireLigne(db, table, cle)) continue;
+          insererBrut(db, table, valeurs);
+          creees.push({ lot: m.lot_id, rang: m.rang, table, cle, operation: 'inserer', avant: null, apres: valeurs, synthetique: true });
+        }
+        r = rejouerUne(db, m, derivee, suivantesDe(m), fantomes.has(cleDeFantome(m)), orphelines);
       } catch (e) {
         r = `écriture refusée : ${e.message}`;
       }
       resultats.push(r);
-      if (r !== 'applique' && r !== 'integree' && r !== 'derivee') {
+      if (r !== 'applique' && r !== 'integree' && r !== 'derivee' && r !== 'fantome') {
         conflit = `${m.table_nom} ${m.cle} : ${r}`;
         break;
       }
@@ -380,7 +552,7 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
         for (const t of tablesQuiCitent(db, m.table_nom)) if (!horsControle.has(t)) tables.add(t);
       }
       for (const t of tables) {
-        const rompue = db.prepare(`PRAGMA foreign_key_check("${t}")`).get();
+        const { rompue } = referencesRompues(db, t, fantomesParTable);
         if (rompue) {
           conflit = `${t} : clé étrangère rompue vers ${rompue.parent}`;
           break;
@@ -390,25 +562,34 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
     if (conflit) {
       db.exec('ROLLBACK TO rejeu_lot');
       db.exec('RELEASE rejeu_lot');
+      conflits.set(lot, conflit);
       for (const m of modifications) marquer.run('conflit', `lot ${lot} : ${conflit}`, m.lot_id, m.rang);
       bilan.conflits += modifications.length;
       continue;
     }
     db.exec('RELEASE rejeu_lot');
     const autres = resultats.filter((r) => r !== 'derivee');
-    const derivees = autres.some((r) => r !== 'integree') ? 'applique' : 'integree';
+    const derivees = autres.some((r) => r !== 'integree' && r !== 'fantome') ? 'applique' : 'integree';
+    appliquees.push(...creees);
     modifications.forEach((m, i) => {
       const r = resultats[i] === 'derivee' ? derivees : resultats[i];
       if (r === 'integree') {
         marquer.run('integree', null, m.lot_id, m.rang);
         bilan.integrees += 1;
+      } else if (r === 'fantome') {
+        bilan.integrees += 1; // rien à écrire, rien de noté : réévaluée au prochain rejeu
       } else {
         bilan.appliquees += 1;
-        applique?.(decodee(m));
+        appliquees.push(decodee(m));
       }
     });
   }
-  return bilan;
+  // fin de passe : un fantôme qu'une référence cite encore est écarté (rejoué comme une ligne ordinaire à la passe suivante)
+  const aExclure = new Set();
+  const aVerifier = new Set();
+  for (const t of fantomesParTable.keys()) for (const c of [t, ...tablesQuiCitent(db, t)]) if (!horsControle.has(c)) aVerifier.add(c);
+  for (const c of aVerifier) for (const k of referencesRompues(db, c, fantomesParTable).cites) aExclure.add(k);
+  return { bilan, appliquees, conflits, aExclure: [...aExclure] };
 }
 
 /**

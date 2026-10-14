@@ -204,6 +204,30 @@ test('rejouer : une insertion dont le parent a disparu des règles rompt une cl�
   db.close();
 });
 
+test('rejouer : une ligne créée puis supprimée par le journal mais que les règles ont déjà (livrée) n’est pas « fantôme » : la référence des règles rompue par sa suppression est un conflit', () => {
+  const { chemin } = vivante();
+  const PAGE = { id: 'lore/essai-journal-livree', type: 'lore', slug: 'essai-journal-livree', titre: 'Essai journal livrée', titre_cle: 'essai-journal-livree', resume: null, donnees: null, corps_md: 'Texte.', statut: 'draft', origine: 'docs', source_ref: null };
+  lot(chemin, 'L1', (w) => w.inserer('page', PAGE));
+  lot(chemin, 'L2', (w) => w.supprimer('page', { id: PAGE.id }), '2026-10-10T12:01:00Z');
+  const source = new DatabaseSync(chemin, { readOnly: true });
+  const journal = journalExporte(source);
+  source.close();
+  // les règles ont la page (livrée avec la création), et un bloc de la chronologie la cite depuis
+  const colonnes = Object.keys(PAGE);
+  const valeurs = colonnes.map((c) => (PAGE[c] === null ? 'NULL' : `'${PAGE[c]}'`)).join(', ');
+  const db = new DatabaseSync(regles(`INSERT INTO page (${colonnes.join(', ')}) VALUES (${valeurs});
+    UPDATE evenement_extrait SET page_id = '${PAGE.id}', section = NULL WHERE (evenement_id, rang) = (SELECT evenement_id, rang FROM evenement_extrait ORDER BY evenement_id, rang LIMIT 1);`));
+  db.exec('PRAGMA foreign_keys = OFF');
+  db.exec('BEGIN');
+  chargerJournal(db, journal);
+  const bilan = rejouer(db);
+  db.exec('COMMIT');
+  assert.deepEqual(bilan, { appliquees: 0, integrees: 1, conflits: 1, lots: 2 });
+  assert.match(db.prepare("SELECT detail FROM modification WHERE etat = 'conflit'").get().detail, /evenement_extrait : clé étrangère rompue vers page/);
+  assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(PAGE.id), 'la page des règles reste');
+  db.close();
+});
+
 test('journal exporté puis rechargé ailleurs : mêmes lots, prêts à être rejoués', () => {
   const { chemin } = vivante();
   lot(chemin, 'L1', (w) => w.modifier('metier', FORGERON, { description: 'Exportée.' }));

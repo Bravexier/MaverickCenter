@@ -28,7 +28,7 @@ export function lirePages(db) {
     return m;
   };
   const aliases = regrouper('SELECT page_id, texte AS v FROM alias ORDER BY page_id, ordre');
-  const tags = regrouper('SELECT page_id, libelle AS v FROM page_tag ORDER BY page_id, ordre');
+  const tags = regrouper('SELECT t.page_id, m.libelle AS v FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre');
   const sources = regrouper('SELECT ps.page_id, s.texte AS v FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre');
   return db.prepare('SELECT id, type, slug, titre, resume, donnees, corps_md, statut, origine FROM page ORDER BY id').all().map((r) => ({
     ...r,

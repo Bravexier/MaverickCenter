@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 42;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 43;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -108,20 +108,33 @@ CREATE INDEX alias_cle   ON alias (cle);
 
 CREATE INDEX alias_texte ON alias (texte);
 
--- Mots-clés d'une page (frontmatter `tags`). tag_id = normalize(libelle) : c'est la clé de l'URL /tags/<tag_id>/ (les
--- écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé). Il n'y a pas de table `tag` :
--- les mots-clés n'ont aucun attribut dans les sources, ils se déduisent de page_tag (voir la vue `tag` plus bas),
--- donc ni orphelin à nettoyer après une réimportation, ni règle d'écriture à maintenir.
+-- Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots
+-- clés » ; une suppression le retire de tous les endroits qui le citent). Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé
+-- sur les pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis FIGÉ : un
+-- renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site). libelle_cle = normalize(libelle) :
+-- les écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
+-- Les importeurs (tools/db/maverick.py, pages_md.py) et le service (serveur/edition.mjs#motCleDe) cherchent un libellé par libelle_cle et ne créent un
+-- mot-clé que s'il manque (jamais sur un id déjà employé) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
+-- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
+CREATE TABLE mot_cle (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/)
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                                 -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
+-- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
+-- cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev).
 CREATE TABLE page_tag (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
-  ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:`
-  tag_id  TEXT    NOT NULL CHECK (length(tag_id) > 0),   -- normalize(libelle), calculé par l'importeur ; client/scripts/db-derive.mjs le vérifie
-  libelle TEXT    NOT NULL,                          -- écriture sur CETTE page (conserve la source sans perte)
+  ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas)
+  tag_id  TEXT    NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
   PRIMARY KEY (page_id, ordre),
   UNIQUE (page_id, tag_id)
 ) STRICT;
 
-CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /tags/<id>/ : toutes les pages d'un mot-clé
+CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<id> : toutes les pages d'un mot-clé
 
 -- Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact).
 -- Deux natures : une URL (https://docs.google.com/…) ou un libellé (« Google Sheet « Invocation », onglet « Appel aux golems » »).
@@ -1005,7 +1018,8 @@ CREATE TABLE dieu (
 CREATE TABLE evenement (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
                                                      -- adresse /chronologie/<id>/ ; court, choisi dans tools/chronologie/evenements.json, puis figé
-  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre de lecture : frise, chevrons Haut / Bas ; chaque événement à /chronologie/<id>/
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre à date égale (la frise trie par époque, année, rang : lib/chronologie.mjs#ordonner) ;
+                                                               -- un événement créé sur le site prend le plus grand + 1 (migration 0043 : plus forcément contigu)
   titre      TEXT    NOT NULL CHECK (length(titre) > 0),
   titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
   epoque     TEXT    NOT NULL CHECK (epoque IN ('debut', 'datee', 'inconnue', 'aujourdhui')),   -- place dans la frise (EPOQUES de lib/chronologie.mjs)
@@ -1021,20 +1035,48 @@ CREATE TABLE evenement (
 ) STRICT;
 CREATE INDEX evenement_titre ON evenement (titre_cle);
 
--- Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification
--- de la page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import).
+-- Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page).
+-- À l'import, un bloc est un extrait : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import ; une modification de la
+-- page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import). Depuis la migration 0043, un bloc se
+-- modifie, s'ajoute et se retire sur le site de dev (serveur/edition-chronologie.mjs) : son texte, et son lien vers une page du wiki (ou aucun).
 CREATE TABLE evenement_extrait (
   evenement_id TEXT    NOT NULL REFERENCES evenement(id),
   rang         INTEGER NOT NULL CHECK (rang >= 1),
-  page_id      TEXT    NOT NULL REFERENCES page(id),         -- la page d'où vient le passage (lien sous l'extrait)
-  section      TEXT    CHECK (section IS NULL OR length(section) > 0),   -- titre de la section de la page où commence le passage ; NULL = avant tout titre
+  page_id      TEXT    REFERENCES page(id),                -- le lien du bloc (légende sous le texte) ; NULL : aucun (bloc écrit sur le site de dev)
+  section      TEXT    CHECK (section IS NULL OR length(section) > 0),   -- titre de la section de la page où commence le passage ; NULL = avant tout titre,
+                                                                         -- ou lien changé sur le site de dev
   texte        TEXT    NOT NULL CHECK (length(texte) > 0),
   date_brut    TEXT    CHECK (date_brut IS NULL OR instr(texte, date_brut) > 0),   -- l'expression de date du passage, surlignée ; NULL = aucune
   origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'chronologie'),
-  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> »
-  PRIMARY KEY (evenement_id, rang)
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> »,
+                                                                  -- « Site de dev › édition du AAAA-MM-JJ »
+  PRIMARY KEY (evenement_id, rang),
+  CHECK (page_id IS NOT NULL OR section IS NULL)
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX evenement_extrait_page_fk ON evenement_extrait (page_id);
+
+-- Les catégories de la chronologie (migration 0043, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies
+-- catégories stables. Le filtre sera donc sous forme de liste déroulante sur un champ catégorie. On peut choisir plusieurs catégories pour chaque entrée,
+-- mais pas pour le filtre. Le mode édition ajoute un bouton pour pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de
+-- l'entrée. ») : un vocabulaire à part, créé sur le site de dev (aucune à l'import : rien dans les sources ne range les événements). id = normalize(libelle)
+-- à la création, puis FIGÉ (adresse /chronologie/?filtre=<id>) ; jamais « sans-categorie », la valeur du filtre « Sans catégorie (à trier) » (site de dev
+-- seulement) ; un id n'est jamais réutilisé (historique du site). Deux catégories n'ont jamais la même écriture (libelle_cle). Affichées dans l'ordre de
+-- leur libellé.
+CREATE TABLE categorie_chronologie (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-' AND id <> 'sans-categorie'),
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Les catégories d'un événement (plusieurs au choix). Un événement sans catégorie est « Sans catégorie (à trier) ». Supprimer une catégorie retire ses
+-- lignes (ON DELETE CASCADE : le service les note une à une).
+CREATE TABLE evenement_categorie (
+  evenement_id TEXT    NOT NULL REFERENCES evenement(id),
+  categorie_id TEXT    NOT NULL REFERENCES categorie_chronologie(id) ON DELETE CASCADE,
+  PRIMARY KEY (evenement_id, categorie_id)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX evenement_categorie_categorie ON evenement_categorie (categorie_id);
 
 -- ====================================================================================================================
 -- 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
@@ -3339,14 +3381,11 @@ CREATE VIEW lien_page AS
 CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
--- Dictionnaire des mots-clés, déduit de page_tag. Libellé d'affichage = écriture de la page de plus petit (titre_cle, id)
--- qui porte le mot-clé : une règle fixe, reproductible par n'importe quel importeur ou client.
-CREATE VIEW tag AS
-  SELECT DISTINCT
-    pt.tag_id AS id,
-    first_value(pt.libelle) OVER (PARTITION BY pt.tag_id ORDER BY p.titre_cle, p.id, pt.ordre) AS libelle,
-    count(*) OVER (PARTITION BY pt.tag_id) AS nb_pages
-  FROM page_tag pt JOIN page p ON p.id = pt.page_id;
+-- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages).
+CREATE VIEW v_mot_cle AS
+  SELECT m.id, m.libelle, m.libelle_cle,
+    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
+  FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
 CREATE VIEW v_magie_incompatible AS
@@ -4364,14 +4403,14 @@ CREATE TABLE note_version (
 ) STRICT;
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
--- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
 CREATE TABLE note_version_ligne (
   version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
   rang        INTEGER NOT NULL CHECK (rang >= 1),                    -- ordre d'affichage
-  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants')),
+  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles')),
   groupe      TEXT    CHECK (groupe IS NULL OR length(groupe) > 0),
   entite      TEXT    NOT NULL CHECK (length(entite) > 0),
   champ       TEXT    CHECK (champ IS NULL OR length(champ) > 0),    -- libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée)
