@@ -296,23 +296,28 @@ test('clé étrangère composite capacite(specialite_id, classe_id) → speciali
   assert.deepEqual(etatsParLot(r.base), ['en_attente', 'en_attente', 'conflit', 'conflit'], 'la création (L2) passe, comme sur dev');
 });
 
-test('mot-clé d’un lot d’avant 0043 posé puis retiré par le journal : il n’est pas créé, et celui que le site crée ensuite sous la même écriture est gardé, à chaque reconstruction et au rapatriement', () => {
+test('mot-clé d’un lot d’avant 0043 posé puis retiré par le journal : créé quand même (le site de dev l’a eu) et gardé — pas de second mot-clé de même écriture, un renommage tient à chaque reconstruction et au rapatriement', () => {
   const base = vivante();
   ouvertes.push(base);
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1 OFFSET 5").get().id;
   const libelle = libre(base, 'mot_cle', 'libelle_cle', 'zz fantome pose retire');
-  const ligne = { page_id: page, ordre: ordreLibre(base, page), tag_id: normalize(libelle), libelle };
+  const id = normalize(libelle);
+  const ligne = { page_id: page, ordre: ordreLibre(base, page), tag_id: id, libelle };
   lotDAvant0043(base, '2026-10-01T09:00:00.000Z-l1', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
   lotDAvant0043(base, '2026-10-01T10:00:00.000Z-l2', '2026-10-01T10:00:00Z', 1, 'supprimer', ligne);
   const r1 = rebatir(base);
-  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE libelle_cle = ?', normalize(libelle)), false, 'posé puis retiré : jamais créé');
-  const cree = serviceDe(r1.base, 'recherche/')([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }]).crees[0].id;
+  assert.deepEqual({ ...r1.base.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get(id) }, { id, libelle });
+  assert.equal(existe(r1.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?', page, ligne.ordre), false, 'la ligne posée puis retirée n’existe pas');
+  const doublon = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }] }) }, { base: () => r1.base, etat: () => ({}), edition: true });
+  assert.notEqual(doublon.statut, 200, 'le site ne crée pas un second mot-clé de même écriture');
+  serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} renommé` }, avant: { libelle } }]);
   const r2 = rebatir(r1.base);
-  assert.equal(existe(r2.base, 'SELECT 1 FROM mot_cle WHERE id = ?', cree), true);
+  assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id).libelle, `${libelle} renommé`);
   assert.deepEqual(etatsParLot(r2.base), ['en_attente', 'en_attente', 'en_attente']);
   const res = rapatrier(r1.base);
   assert.deepEqual(res.conflits, []);
-  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`'${cree}'`), 'data/rows a le mot-clé créé sur le site');
+  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`'${id}'`), 'data/rows a le mot-clé');
 });
 
 test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre (le renommage fait entre-temps tient)', () => {
@@ -335,5 +340,71 @@ test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, l
   const r2 = rebatir(r1.base, regles);
   assert.deepEqual(motCle(r2.base), { id, libelle: `${l2.libelle} renommé` });
   assert.deepEqual(etatsParLot(r2.base), ['conflit', 'en_attente', 'en_attente']);
+  assert.deepEqual(rapatrier(r1.base).conflits, []);
+});
+
+test('modification d’une ligne qui ne vaut « déjà faite » que par une suppression plus tardive dont le lot est en conflit : en conflit dès la 1re reconstruction (point fixe), et le journal exporté se rejoue', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const metiers = serviceDe(base, 'metiers/');
+  const [p1, p2] = blocs(base, 2);
+  const nom = libre(base, 'metier', 'nom', 'Métier fantôme point fixe');
+  const id = metiers([{ op: 'creer', entite: 'metier', valeurs: { nom } }, { op: 'modifier', table: 'evenement_extrait', cle: p1, valeurs: { texte: 'Réécrit 1.' } }]).crees[0].id;
+  metiers([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { description: 'Décrit sur le site.' } }]);
+  metiers([{ op: 'supprimer', entite: 'metier', cle: { id } }, { op: 'modifier', table: 'evenement_extrait', cle: p2, valeurs: { texte: 'Réécrit 2.' } }]);
+  const livraison = (db) => { corrigerLeBloc(p1)(db); corrigerLeBloc(p2)(db); };
+  const r1 = rebatir(base, livraison);
+  assert.deepEqual(etatsParLot(r1.base), ['conflit', 'conflit', 'conflit'], 'la création et la suppression en conflit : la description du métier n’a plus de ligne');
+  assert.deepEqual(etatsParLot(rebatir(r1.base, livraison).base), etatsParLot(r1.base));
+  assert.deepEqual(rapatrier(r1.base).conflits, []);
+});
+
+test('source du jour partagée : une suppression de page en conflit garde sa page et sa source, et une suppression suivante du même jour passe (la source encore citée reste)', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const lot = serviceDe(base, 'metiers/');
+  const m1 = creerUnMetier(base, lot, 'Métier fantôme M1');
+  const a = base.prepare('SELECT id, description FROM metier WHERE description IS NOT NULL AND id <> ? ORDER BY id LIMIT 1').get(m1.id);
+  lot([{ op: 'supprimer', entite: 'metier', cle: { id: m1.id } }, { op: 'modifier', table: 'metier', cle: { id: a.id }, valeurs: { description: `${a.description} Retouche.` } }]);
+  const m3 = creerUnMetier(base, lot, 'Métier fantôme M3');
+  lot([{ op: 'supprimer', entite: 'metier', cle: { id: m3.id } }]);
+  const r = rebatir(base, (db) => db.prepare('UPDATE metier SET description = description || ? WHERE id = ?').run(' (corrigé)', a.id));
+  assert.deepEqual(rompues(r.base), []);
+  assert.equal(existe(r.base, 'SELECT 1 FROM metier WHERE id = ?', m1.id), true, 'sa suppression est en conflit');
+  assert.equal(existe(r.base, 'SELECT 1 FROM metier WHERE id = ?', m3.id), false, 'supprimé dans un lot sans conflit');
+  assert.deepEqual(etatsParLot(r.base).map((e) => e.includes('conflit')), [false, true, false, false], 'seul le lot qui touchait la description corrigée est en conflit');
+});
+
+test('rang d’un bloc de description : jamais redonné ; un bloc supprimé dont la suppression est en conflit revient sans heurter le bloc ajouté ensuite', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const lot = serviceDe(base);
+  const [autre] = blocs(base, 1);
+  const evenement = base.prepare('SELECT evenement_id AS id FROM evenement_extrait WHERE evenement_id <> ? GROUP BY evenement_id HAVING count(*) >= 1 ORDER BY evenement_id LIMIT 1').get(autre.evenement_id).id;
+  const premier = Number(lot([{ op: 'creer', entite: 'evenement_extrait', valeurs: { evenement_id: evenement, texte: 'Bloc A.' } }]).crees[0].id.split('#')[1]);
+  lot([{ op: 'modifier', table: 'evenement_extrait', cle: autre, valeurs: { texte: 'Réécrit.' } }, { op: 'supprimer', entite: 'evenement_extrait', cle: { evenement_id: evenement, rang: premier } }]);
+  const second = Number(lot([{ op: 'creer', entite: 'evenement_extrait', valeurs: { evenement_id: evenement, texte: 'Bloc B.' } }]).crees[0].id.split('#')[1]);
+  assert.ok(second > premier, `rang ${second} après ${premier} : un rang supprimé n’est pas redonné`);
+  const r = rebatir(base, corrigerLeBloc(autre));
+  const textes = r.base.prepare('SELECT rang, texte FROM evenement_extrait WHERE evenement_id = ? AND rang IN (?, ?) ORDER BY rang').all(evenement, premier, second).map((b) => b.texte);
+  assert.deepEqual(textes, ['Bloc A.', 'Bloc B.']);
+  assert.deepEqual(etatsParLot(r.base), ['en_attente', 'conflit', 'en_attente']);
+});
+
+test('mot-clé d’un lot d’avant 0043 sur une page que le site supprime ensuite, puis renommé : il reste (renommé) à la reconstruction suivante, rapatriement sans conflit', () => {
+  const base = vivante();
+  ouvertes.push(base);
+  const metier = base.prepare("SELECT m.id, pe.page_id AS page FROM metier m JOIN page_entite pe ON pe.entite_id = m.id JOIN page p ON p.id = pe.page_id WHERE p.statut <> 'example' ORDER BY m.id LIMIT 1").get();
+  const libelle = libre(base, 'mot_cle', 'libelle_cle', 'Voie fantôme métier');
+  const id = normalize(libelle);
+  lotDAvant0043(base, '2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', 1, 'inserer', { page_id: metier.page, ordre: ordreLibre(base, metier.page), tag_id: id, libelle });
+  const r1 = rebatir(base);
+  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE id = ?', id), true);
+  const lot = serviceDe(r1.base, 'metiers/');
+  lot([{ op: 'supprimer', entite: 'metier', cle: { id: metier.id } }]);
+  lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
+  const r2 = rebatir(r1.base);
+  assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, `${libelle} renommée`);
+  assert.deepEqual(rompues(r2.base), []);
   assert.deepEqual(rapatrier(r1.base).conflits, []);
 });

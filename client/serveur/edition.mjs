@@ -1445,7 +1445,12 @@ export function recalculerLesPages(db, modifications) {
  */
 export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
   const appliquees = [];
-  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, adapter: ancienneEcritureDesMotsCles(db) });
+  const bilan = rejouer(db, {
+    derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
+    // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
+    siOrphelines: ['source'],
+    adapter: () => ancienneEcritureDesMotsCles(db),
+  });
   const reelles = appliquees.filter((m) => !m.synthetique);
   const metiers = new Set(reelles.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
   const completees = completerLesMetiers(db, metiers);
@@ -1461,13 +1466,14 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
  * Les modifications de page_tag notées avant la migration 0043 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
  * exporté) : leur colonne `libelle` n'existe plus (l'écriture vit dans le vocabulaire mot_cle) et leur `tag_id` peut viser un mot-clé que le vocabulaire
  * n'a pas (une spécialité créée ou renommée sur le site) — sans quoi tout le lot passait « conflit » et ses créations disparaissaient. Rend l'adaptateur
- * de edition-journal.mjs#rejouer, appelé au début de chaque passe (base dans l'état des règles) : la modification lue sans `libelle` (le journal stocké
- * ne change pas : un autre rejeu, celui de la mise à jour sur data/rows, en a besoin), et le mot-clé manquant retrouvé par son écriture ou à créer,
- * comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà servi dans l'historique ; le journal en attente ne cite cet id que parce que ce mot-clé
- * y est créé ici : un renommage, une fusion notés depuis visent cette création). Il n'est créé (`aCreer`) que si la ligne de page_tag l'est vraiment
- * (pas pour une ligne posée puis retirée par le journal, « fantôme ») : dans le lot, annulé avec lui s'il est en conflit (les lots suivants qui s'en
- * servent le sont alors aussi), jamais noté au journal, et gardé ensuite même si plus aucune page ne le porte (le site de dev l'a : son id et son
- * écriture ne resservent pas à un autre mot-clé). Son écriture est celle du premier lot qui le pose effectivement, jamais celle d'un lot en conflit.
+ * de edition-journal.mjs#rejouer, fabriqué au début de chaque passe (base dans l'état des règles, sans les lots en conflit) : la modification lue
+ * sans `libelle` (le journal stocké ne change pas : un autre rejeu, celui de la mise à jour sur data/rows, en a besoin), et le mot-clé manquant
+ * retrouvé par son écriture ou à créer, comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà servi dans l'historique ; le journal en attente
+ * ne cite cet id que parce que ce mot-clé y est créé ici : un renommage, une fusion notés depuis visent cette création). Il est créé (`aCreer`) dans
+ * chaque lot qui le pose, s'il manque : par le premier qui passe, avec son écriture — même si la ligne de page_tag est retirée ensuite (le site de
+ * dev l'a eu : un mot-clé, une fiche de don créés depuis s'en servent) —, annulé avec un lot en conflit, jamais noté au journal, et jamais retiré
+ * ensuite (son id et son écriture ne resservent pas à un autre mot-clé). Un lot en conflit est écarté du rejeu (point fixe de rejouer) : l'écriture
+ * et l'id ne dépendent que des lots qui passent, comme à la reconstruction suivante.
  */
 function ancienneEcritureDesMotsCles(db) {
   const ids = new Map(); // libelle_cle → id du mot-clé à créer

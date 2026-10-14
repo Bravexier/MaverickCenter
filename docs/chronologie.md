@@ -62,7 +62,8 @@ note de version (domaine « Chronologie ») et dans `data/rows` à la livraison.
 Tables `evenement`, `evenement_extrait` (les blocs de description), `categorie_chronologie` (les catégories : id figé, libellé, écriture unique ; jamais
 `sans-categorie`) et `evenement_categorie` (`data/schema.sql`, section **5 bis** ; famille `chronologie` ; migrations `0035-chronologie` et
 `0043-chronologie-modifiable-mots-cles`). L'ordre de lecture : époque, puis année (événements datés), puis `rang` (l'ordre à date égale ; un événement créé
-prend le plus grand + 1). Un bloc a un texte et un lien facultatif (`page_id`). À l'import, il n'y a aucune catégorie : rien dans les sources ne range les
+prend le plus grand + 1). Un bloc a un texte et un lien facultatif (`page_id`) ; un bloc ajouté prend un rang jamais employé (ni dans la table, ni dans le
+journal, ni dans l'historique : un bloc supprimé dont la suppression part en conflit au rejeu revient sous son rang). À l'import, il n'y a aucune catégorie : rien dans les sources ne range les
 événements ; ils sont tous « Sans catégorie (à trier) » jusqu'à ce que le propriétaire
 les range.
 

@@ -75,6 +75,20 @@ export function vocabulaire(db) {
 }
 
 /**
+ * Le rang d'un nouveau bloc de description de l'événement `evenementId` : après le plus grand de la table, du journal et de l'historique (un rang n'est
+ * jamais redonné, comme un identifiant : un bloc supprimé dont la suppression part en conflit au rejeu revient sous son rang, sans en heurter un autre).
+ */
+function rangLibre(db, evenementId) {
+  let plus = db.prepare('SELECT max(rang) AS m FROM evenement_extrait WHERE evenement_id = ?').get(evenementId).m ?? 0;
+  for (const t of ['modification', 'historique_modification']) {
+    if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t)) continue;
+    const m = db.prepare(`SELECT max(json_extract(cle, '$.rang')) AS m FROM "${t}" WHERE table_nom = 'evenement_extrait' AND json_extract(cle, '$.evenement_id') = ?`).get(evenementId).m;
+    if (m > plus) plus = m;
+  }
+  return plus + 1;
+}
+
+/**
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, motCleDe: Function }} outils
@@ -198,7 +212,7 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
       const evenement = lireLigne(db, 'evenement', { id: valeurs.evenement_id });
       if (!evenement) throw new ErreurEdition(404, `Événement introuvable : ${valeurs.evenement_id}`);
       verifierLeTexte('', valeurs.texte, nomDe(evenement));
-      const rang = (db.prepare('SELECT max(rang) AS m FROM evenement_extrait WHERE evenement_id = ?').get(evenement.id).m ?? 0) + 1;
+      const rang = rangLibre(db, evenement.id);
       w.inserer('evenement_extrait', {
         evenement_id: evenement.id, rang, page_id: pageDuLien(db, valeurs.lien, nomDe(evenement)), section: null, texte: valeurs.texte, date_brut: null,
         origine: ORIGINE, source_ref: `${provenance(instant)} › ${evenement.titre}`,
