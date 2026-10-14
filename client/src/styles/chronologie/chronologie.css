@@ -160,8 +160,8 @@ main { overflow-x: clip; }
 .frise__lien:hover { background: color-mix(in srgb, var(--trait) 9%, transparent); }
 .frise__lien:hover .frise__repere { scale: 1.2; }
 .frise__lien:focus-visible { outline: 2px solid var(--trait); outline-offset: -2px; }
-/* L'événement affiché : sa ligne teintée, un filet du côté de sa page, le point plein. De même pour la ligne où mène « Toute la chronologie » (petit
-   écran : /chronologie/#evenement-<id>), arrêtée vers le milieu de l'écran. */
+/* L'événement affiché : sa ligne teintée, un filet du côté de sa page, le point plein. De même pour la ligne où mène le milieu de la barre du bas du
+   téléphone sans JavaScript (/chronologie/#evenement-<id>), arrêtée vers le milieu de l'écran. */
 .frise__lien[aria-current='page'],
 .frise__evenement:target > .frise__lien {
   background: color-mix(in srgb, var(--trait) 15%, var(--surface));
@@ -297,6 +297,8 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
    les remet à la même place à l'écran). */
 @view-transition { navigation: auto; }
 .chrono-page { view-transition-name: chrono-page; }
+/* depuis le tiroir du téléphone (ouvert par-dessus la page) : pas d'article à part, sinon l'ancien passerait par-dessus le tiroir pendant la transition */
+html.frise-ouverte .chrono-page { view-transition-name: none; }
 ::view-transition-group(chrono-page) { animation: none; }
 ::view-transition-old(chrono-page) { animation: chrono-sortie 0.14s ease-in both; }
 ::view-transition-new(chrono-page) { animation: chrono-entree 0.24s ease-out both; }
@@ -340,12 +342,15 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
     border-bottom: 1px solid var(--border);
     background: var(--bg);
   }
-  .chrono--accueil .frise__evenement { scroll-margin-top: 3rem; }
+  /* le défilement vers un lien qui prend le focus (Maj+Tab) ou vers une ancre s'arrête sous la légende collante */
+  html:has(.chrono--accueil) { scroll-padding-top: 3rem; }
   .chrono--accueil .chrono-chevrons { display: none; }
 
   /* ---------- Page d'un événement : la barre du bas ---------- */
   /* la page réserve la place de la barre : plus rien n'est recouvert, pied de page compris */
   body:has(.chrono--evenement) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+  /* … et le défilement vers un lien qui prend le focus s'arrête au-dessus d'elle (WCAG 2.4.11) */
+  html:has(.chrono--evenement) { scroll-padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
   .chrono--evenement .frise { display: none; }
   .chrono--evenement .chrono-chevrons {
     top: auto;
@@ -396,8 +401,8 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
   .chrono-barre__frise:active { background: color-mix(in srgb, var(--chrono) 24%, var(--surface)); }
   .chrono-barre__frise:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }
   .chrono-barre__icone { flex: none; width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--chrono-texte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .chrono-barre__texte { display: grid; min-width: 0; line-height: 1.2; }
-  .chrono-barre__date { color: var(--chrono-texte); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chrono-barre__texte { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; line-height: 1.2; }
+  .chrono-barre__date { overflow: hidden; color: var(--chrono-texte); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
   .chrono-barre__rang { color: var(--muted); font-weight: 400; }
   .chrono-barre__titre { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -406,9 +411,12 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
     grid-template-columns: 2.25rem minmax(0, 1fr);
     grid-template-areas: 'frise page';
     column-gap: 0.85rem;
-    /* collée au bord gauche de l'écran et sous l'en-tête (marges de <main> reprises) */
+    /* collée au bord gauche de l'écran et sous l'en-tête (marges de <main> reprises) ; au moins jusqu'à la barre du bas : la mini-frise va jusque-là
+       même à côté d'un article court (--frise-haut : la place au-dessus de la grille, mesurée par le script de Frise.astro) */
     margin: -1.5rem -1rem 0;
     padding: 0 max(1rem, env(safe-area-inset-right)) 0 env(safe-area-inset-left);
+    min-height: calc(100vh - 4.25rem - var(--frise-haut, 0px));
+    min-height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom) - var(--frise-haut, 0px));
     align-items: stretch;
   }
   /* la page, sans cadre : toute la largeur à côté de la mini-frise va au texte */
@@ -416,13 +424,16 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
   html.js .chrono--evenement .chrono-date { margin-top: 0.3rem; font-size: 1.45rem; }
   html.js .chrono--evenement .chrono-page h1 { font-size: 1.55rem; }
   html.js .chrono--evenement .chrono-extrait { padding-inline: 0.8rem; }
-  /* la mini-frise et le bouton posé dessus : collés en haut de l'écran pendant la lecture, jusqu'à la barre du bas */
+  /* la mini-frise et le bouton posé dessus : fixés au bord gauche de l'écran (la première colonne de la grille leur garde la place), du haut de la
+     grille (sous l'en-tête, tant qu'il est visible) jusqu'à la barre du bas ou au bas de la grille (--mini-haut, --mini-bas : le script de
+     Chronologie.astro, à chaque défilement) */
   html.js .chrono--evenement :is(.frise, .frise-ouvrir) {
-    grid-area: frise;
-    position: sticky;
-    top: 0;
-    height: calc(100vh - 4.25rem);
-    height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom));
+    position: fixed;
+    top: var(--mini-haut, var(--frise-haut, 0px));
+    bottom: var(--mini-bas, calc(4.25rem + env(safe-area-inset-bottom)));
+    left: env(safe-area-inset-left, 0px);
+    width: 2.25rem;
+    height: auto;
   }
   html.js .chrono--evenement .frise {
     z-index: 1;
@@ -477,7 +488,6 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
     margin: 0;
     padding: 0.55rem 0 0;
     border: 0;
@@ -561,8 +571,9 @@ a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
   .chrono--evenement .chrono-chevrons { grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem; padding-block: 0.3rem calc(0.3rem + env(safe-area-inset-bottom)); }
   .chrono--evenement .chrono-chevron { width: 2.75rem; height: 2.75rem; }
   .chrono-barre__frise { min-height: 2.75rem; }
-  .chrono-barre__texte { display: flex; gap: 0.5rem; align-items: baseline; }
-  html.js .chrono--evenement :is(.frise, .frise-ouvrir) { height: calc(100vh - 3.5rem); height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom)); }
+  html:has(.chrono--evenement) { scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  html.js .chrono--evenement { min-height: calc(100vh - 3.5rem - var(--frise-haut, 0px)); min-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom) - var(--frise-haut, 0px)); }
+  .chrono-barre__texte { grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
 }
 @media (max-width: 56rem) and (prefers-reduced-motion: reduce) {
   html.js .chrono--evenement .frise.est-ouverte, html.js .frise-voile:not([hidden]) { animation: none; }

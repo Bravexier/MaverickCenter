@@ -82,7 +82,7 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
 
   {/* Chaque chevron dit l'événement visé dans l'infobulle du site (`title`), placée à sa gauche (`data-placement="cote"` : dessous, la bulle du
        chevron Haut couvrirait le chevron Bas) ; son nom, pour un lecteur d'écran : « Précédent » ou « Suivant », la bulle en description. */}
-  <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant" style={`--progression: ${progression}`}>
+  <nav class="chrono-chevrons" aria-label="Parcourir la chronologie" style={`--progression: ${progression}`}>
     {
       precedent ? (
         <a class="chrono-chevron" href={href(precedent)} rel="prev" title={etiquette(precedent)} data-placement="cote" data-chrono-precedent>
@@ -134,11 +134,12 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
 </div>
 {evenement && <div class="frise-voile" data-frise-voile hidden />}
 <script is:inline>
-  // Téléphone, page d'un événement : la mini-frise (la frise réduite à sa barre et à ses points, collée à gauche) montre où l'on est, l'événement
-  // affiché au milieu de sa partie visible ; un appui sur elle (le bouton posé dessus) ou sur le milieu de la barre du bas l'ouvre en grand par-dessus
-  // la page (le tiroir : dates et titres), centrée sur l'événement ; un appui sur un événement y mène (lien ordinaire) ; la croix, le voile ou Échap
-  // la referment. Réduite, la liste est inerte (le bouton la remplace au clavier et pour un lecteur d'écran) ; ouverte, c'est le reste de la page.
-  // Retour sur grand écran (rotation d'une tablette) : le tiroir se ferme.
+  // Téléphone, page d'un événement : la mini-frise (la frise réduite à sa barre et à ses points) est fixée au bord gauche de l'écran, de l'en-tête du
+  // site (tant qu'il est visible) à la barre du bas ; l'événement affiché est au milieu de sa partie visible, à chaque défilement et changement de
+  // taille. Un appui sur elle (le bouton posé dessus) ou sur le milieu de la barre du bas l'ouvre en grand par-dessus la page (le tiroir : dates et
+  // titres), centrée sur l'événement ; un appui sur un événement y mène (lien ordinaire) ; la croix, le voile ou Échap la referment. Réduite, la liste
+  // est inerte (le bouton la remplace au clavier et pour un lecteur d'écran) ; ouverte, c'est le reste de la page. Retour sur grand écran (rotation
+  // d'une tablette) : le tiroir se ferme et la frise d'ordinateur revient sur l'événement affiché.
   (function () {
     var chrono = document.querySelector('.chrono--evenement');
     var frise = document.querySelector('[data-frise]');
@@ -147,33 +148,64 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
     var voile = document.querySelector('[data-frise-voile]');
     if (!chrono || !frise || !ouvrir) return;
     var liste = frise.querySelector('.frise__liste');
+    var legende = frise.querySelector('.frise__legende');
     var actuel = frise.querySelector('[aria-current="page"]');
     var barre = document.querySelector('.chrono-chevrons');
+    var poignee = ouvrir.querySelector('.frise-ouvrir__poignee');
     var petit = matchMedia('(max-width: 56rem)');
-    var autour = [chrono.querySelector('.chrono-page'), barre, ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test')];
     var ouverte = false;
     var retour = ouvrir;
+    var image = 0;
     if (milieu) {
       milieu.setAttribute('role', 'button');
       milieu.setAttribute('aria-expanded', 'false');
     }
-    var poignee = ouvrir.querySelector('.frise-ouvrir__poignee');
-    // l'événement au milieu de la partie visible de la liste : sous l'en-tête du site au départ et sous la poignée de la mini-frise, au-dessus de la
-    // barre du bas
+    // ce que le tiroir rend inerte : cherché à l'ouverture (le pied de page n'est pas encore lu quand ce script tourne)
+    function autour() {
+      return [chrono.querySelector('.chrono-page'), barre, ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test')];
+    }
+    // la place de la mini-frise : du haut de la grille (sous l'en-tête) ou du haut de l'écran, jusqu'au bas de la grille ou à la barre du bas
+    function placer() {
+      var c = chrono.getBoundingClientRect();
+      var bas = Math.min(c.bottom, barre ? barre.getBoundingClientRect().top : window.innerHeight);
+      chrono.style.setProperty('--mini-haut', Math.max(c.top, 0) + 'px');
+      chrono.style.setProperty('--mini-bas', Math.max(window.innerHeight - bas, 0) + 'px');
+    }
+    // l'événement au milieu de la partie visible : la mini-frise sous sa poignée (sa liste peut dépasser de son cadre), ou la liste du tiroir
     function centrer() {
       if (!actuel || !liste) return;
-      var f = liste.getBoundingClientRect();
+      var f = (ouverte ? liste : frise).getBoundingClientRect();
       var haut = Math.max(f.top, 0, !ouverte && poignee ? poignee.getBoundingClientRect().bottom + 6 : 0);
-      var bas = Math.min(f.bottom, ouverte || !barre ? window.innerHeight : barre.getBoundingClientRect().top);
+      var bas = Math.min(f.bottom, window.innerHeight);
       var r = actuel.getBoundingClientRect();
       liste.scrollTop += r.top + r.height / 2 - (haut + bas) / 2;
+    }
+    // grand écran : la frise d'ordinateur défile seule ; l'événement au milieu de sa partie visible, sous sa légende (comme au chargement, Frise.astro)
+    function centrerOrdinateur() {
+      if (!actuel) return;
+      var f = frise.getBoundingClientRect();
+      var haut = Math.max(f.top, 0) + (legende ? legende.offsetHeight : 0) + 8;
+      var bas = Math.min(f.bottom, window.innerHeight) - 16;
+      var r = actuel.getBoundingClientRect();
+      frise.scrollTop += r.top - (haut + bas - r.height) / 2;
+    }
+    function suivre() {
+      cancelAnimationFrame(image);
+      image = requestAnimationFrame(function () {
+        if (!petit.matches || ouverte) return;
+        placer();
+        centrer();
+      });
     }
     function etat() {
       var reduite = petit.matches && !ouverte;
       frise.inert = reduite;
       ouvrir.setAttribute('aria-expanded', String(ouverte));
       if (milieu) milieu.setAttribute('aria-expanded', String(ouverte));
-      if (reduite) centrer();
+      if (reduite) {
+        placer();
+        centrer();
+      }
     }
     function basculer(oui, depuis) {
       if (oui === ouverte) return;
@@ -182,7 +214,7 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
       frise.classList.toggle('est-ouverte', oui);
       document.documentElement.classList.toggle('frise-ouverte', oui);
       if (voile) voile.hidden = !oui;
-      autour.forEach(function (el) { if (el) el.inert = oui; });
+      autour().forEach(function (el) { if (el) el.inert = oui; });
       etat();
       if (oui) {
         centrer();
@@ -198,6 +230,12 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
         e.preventDefault();
         basculer(true, milieu);
       });
+      // annoncé comme un bouton : Espace l'ouvre aussi (sur un lien, Espace ferait défiler la page)
+      milieu.addEventListener('keydown', function (e) {
+        if (e.key !== ' ' || !petit.matches) return;
+        e.preventDefault();
+        basculer(true, milieu);
+      });
     }
     if (voile) voile.addEventListener('click', function () { basculer(false); });
     frise.addEventListener('click', function (e) {
@@ -207,9 +245,14 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
       if (e.key === 'Escape' && ouverte) basculer(false);
     });
     petit.addEventListener('change', function () {
-      if (!petit.matches) basculer(false);
+      if (!petit.matches) {
+        basculer(false);
+        requestAnimationFrame(centrerOrdinateur);
+      }
       etat();
     });
+    addEventListener('scroll', suivre, { passive: true });
+    addEventListener('resize', suivre);
     // retour arrière vers une page gardée en mémoire (bfcache) : le tiroir fermé
     window.addEventListener('pageshow', function () {
       basculer(false);
@@ -224,6 +267,7 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
   document.addEventListener('keydown', function (e) {
     var sens = { ArrowLeft: '[data-chrono-precedent]', ArrowRight: '[data-chrono-suivant]' }[e.key];
     if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (document.documentElement.classList.contains('frise-ouverte')) return; // tiroir ouvert (téléphone) : la page derrière est inerte
     var cible = e.target;
     if (cible && cible.closest && cible.closest('input, textarea, select, [contenteditable]')) return;
     var lien = document.querySelector(sens);

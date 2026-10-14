@@ -147,7 +147,7 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regle('.frise'), /scroll-padding-block: 3\.25rem/, 'la ligne qui reçoit le focus n’est pas cachée par la légende');
   assert.match(regle('.frise__barre::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
   assert.match(regle('.chrono-chevrons'), /position: fixed;[\s\S]*top: 50%;[\s\S]*right: max\(0\.75rem/, 'les chevrons, fixés tout à droite');
-  assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène « Toute la chronologie » est marquée');
+  assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène le milieu de la barre du bas sans JavaScript est marquée');
   // téléphone (demande du propriétaire : « la mini-frise, en plus du tiroir ») : les règles du bloc @media (max-width: 56rem)
   const telephone = html.slice(html.indexOf('@media (max-width: 56rem) {'), html.indexOf('@media (max-width: 56rem) and (max-height: 30rem)'));
   const regleTel = (selecteur) => {
@@ -156,7 +156,9 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
     return telephone.slice(i, telephone.indexOf('}', i));
   };
   assert.match(regleTel('html.js .chrono--evenement'), /grid-template-columns: 2\.25rem minmax\(0, 1fr\);[\s\S]*grid-template-areas: 'frise page';/, 'la mini-frise à gauche, la page à côté');
-  assert.match(regleTel('html.js .chrono--evenement :is(.frise, .frise-ouvrir)'), /position: sticky;/, 'la mini-frise reste à l’écran pendant la lecture');
+  assert.match(regleTel('html.js .chrono--evenement :is(.frise, .frise-ouvrir)'), /position: fixed;[\s\S]*top: var\(--mini-haut[\s\S]*bottom: var\(--mini-bas/, 'la mini-frise reste à l’écran pendant la lecture, de l’en-tête à la barre du bas');
+  assert.match(regleTel('html:has(.chrono--evenement)'), /scroll-padding-bottom:/, 'le focus clavier ne passe pas sous la barre du bas');
+  assert.ok(!/width: 100%/.test(regleTel('html.js .chrono--evenement .frise-ouvrir')), 'le bouton de la mini-frise garde sa largeur (fixé : 100 % serait tout l’écran)');
   assert.match(regleTel('html.js .chrono--evenement .frise.est-ouverte'), /position: fixed;[\s\S]*inset: 0 auto 0 0;/, 'le tiroir, par-dessus la page, depuis la gauche');
   assert.match(regleTel('.chrono--evenement .chrono-chevrons'), /bottom: 0;[\s\S]*grid-template-columns: 3rem minmax\(0, 1fr\) 3rem;/, 'la barre du bas : chevron, événement, chevron');
   assert.match(regleTel('body:has(.chrono--evenement)'), /padding-bottom: calc\(4\.25rem/, 'la page réserve la place de la barre du bas');

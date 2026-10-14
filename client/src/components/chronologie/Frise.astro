@@ -75,8 +75,9 @@ const style = (e: any, i: number) => {
   (function () {
     var frise = document.querySelector('[data-frise]');
     if (!frise) return;
+    // posée sur .chrono : la frise d'ordinateur et, sur téléphone, la mini-frise et son bouton la lisent
     function mesurer() {
-      frise.style.setProperty('--frise-haut', Math.max(0, frise.parentElement.getBoundingClientRect().top + window.scrollY) + 'px');
+      frise.parentElement.style.setProperty('--frise-haut', Math.max(0, frise.parentElement.getBoundingClientRect().top + window.scrollY) + 'px');
     }
     mesurer();
     addEventListener('resize', mesurer);
