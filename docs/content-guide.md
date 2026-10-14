@@ -236,7 +236,7 @@ La page, l'extraction du doc et les questions en attente : [`bestiaire.md`](best
 
 ## Chronologie (`/chronologie/`) : une page par événement daté
 
-Les événements que datent le Codex et les pages de race, une page chacun, lus comme le guide mais avec une frise en haut et en bas ; rendus depuis les tables
+Les événements que datent le Codex et les pages de race, une page chacun, ouverte à droite d'une frise verticale en dégradé (date à gauche de la barre, titre à droite) ; deux chevrons, Haut et Bas, passent au précédent ou au suivant ; rendus depuis les tables
 `evenement` et `evenement_extrait` (`lib/chronologie-db.mjs`), jamais depuis un Markdown : un événement n'a pas de page du wiki. Ses extraits sont **copiés**
 des pages (registre `tools/chronologie/evenements.json`) : une page du Codex ou d'une race se corrige à sa place, puis le registre est relu (`--verifier`).
 Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).

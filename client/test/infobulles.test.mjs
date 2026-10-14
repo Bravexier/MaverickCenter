@@ -285,6 +285,25 @@ test('la carte d’une créature (`data-placement="cote"`, `data-fermer-au-touch
   assert.ok(carte.hidden);
 });
 
+test('un `title` dont le déclencheur porte `data-placement="cote"` : la bulle partagée à côté de lui, pointe de côté (chevrons de la chronologie) ; le suivant, sans l’attribut, dessous', () => {
+  const n = navigateur();
+  const chevron = n.body.appendChild(new n.Element('a', { title: 'An 500 : Quatrième porteur d’Excalibur : Dreya', 'data-placement': 'cote' }));
+  n.emettre('pointerover', { target: chevron });
+  n.avancer();
+  assert.ok(ouverte(n.bulle));
+  assert.equal(n.bulle.textContent, 'An 500 : Quatrième porteur d’Excalibur : Dreya');
+  // le faux navigateur donne à tout élément le rectangle 100–200 × 100–120 dans une fenêtre de 1000 × 800 : la place est à droite
+  assert.equal(n.bulle.style.left, '209px', 'à côté du déclencheur, pas dessous');
+  assert.equal(n.fleche.getAttribute('data-cote'), 'droite');
+  n.emettre('pointerout', { target: chevron, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(!ouverte(n.bulle));
+  const autre = n.body.appendChild(new n.Element('span', { title: 'Portée' }));
+  n.emettre('pointerover', { target: autre });
+  assert.ok(ouverte(n.bulle));
+  assert.equal(n.fleche.getAttribute('data-cote'), 'dessous', 'la bulle partagée ne garde pas le placement du déclencheur précédent');
+});
+
 // ---- site construit -------------------------------------------------------------------------------------------------------------------------
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const options = existsSync(join(dist, 'index.html')) ? {} : { skip: 'site non construit (npm run build)' };

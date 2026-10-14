@@ -15,7 +15,9 @@
 // La bulle est en position fixe près du déclencheur (un tableau qui défile couperait une bulle absolue), du côté qui a le plus de place, bornée à
 // l'écran, avec une pointe vers le déclencheur (un élément à part : la bulle défile quand son texte est trop long), et suit le défilement.
 // Une bulle haute (`data-placement="cote"` : la carte d'une créature invoquée, components/bestiaire/CarteInvoquee.astro) se place à côté du
-// déclencheur, à droite ou à gauche (pointe de côté), pour ne pas le recouvrir ; sans la place de côté, dessous ou dessus comme les autres, sa
+// déclencheur, à droite ou à gauche (pointe de côté), pour ne pas le recouvrir ; de même la bulle d'un `title` dont le déclencheur porte
+// `data-placement="cote"` (les chevrons de la chronologie, l'un sous l'autre : dessous, la bulle du premier couvrirait le second) ; sans la place
+// de côté, dessous ou dessus comme les autres, sa
 // hauteur bornée à l'espace qui reste (à la souris et au clavier : elle ne cache pas son déclencheur). Au toucher, elle couvre presque l'écran d'un
 // téléphone : un appui dans une bulle `data-fermer-au-toucher` (sans lien ni bouton) la ferme. Une bulle plus haute que sa place défile : à la
 // molette, et au clavier tant que son déclencheur a le focus (flèches haut et bas, pages, début, fin). Un clic dans une bulle ne la ferme pas.
@@ -102,13 +104,13 @@
       var largeur = document.documentElement.clientWidth;
       var hauteur = document.documentElement.clientHeight;
       var r = cible.getBoundingClientRect();
-      // le déclencheur a disparu (page recalculée) ou est sorti de l'écran (aussi de côté : un conteneur qui défile en largeur, la frise de la chronologie)
+      // le déclencheur a disparu (page recalculée) ou est sorti de l'écran (aussi de côté : un conteneur qui défile en largeur)
       if (!cible.isConnected || (r.width === 0 && r.height === 0) || r.bottom < 0 || r.top > hauteur || r.right < 0 || r.left > largeur) return fermer();
       var dessous = hauteur - r.bottom - ecart - marge;
       var dessus = r.top - ecart - marge;
       bulle.style.maxHeight = hauteur - 2 * marge + 'px';
       var b = bulle.getBoundingClientRect();
-      if (bulle.getAttribute('data-placement') === 'cote') {
+      if ((bulle.getAttribute('data-placement') || cible.getAttribute('data-placement')) === 'cote') {
         var aDroite = largeur - r.right - ecart - marge;
         var aGauche = r.left - ecart - marge;
         if (Math.max(aDroite, aGauche) >= b.width) {

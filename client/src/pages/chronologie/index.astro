@@ -1,16 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import ChronologieEvenement from '../../components/chronologie/ChronologieEvenement.astro';
+import Chronologie from '../../components/chronologie/Chronologie.astro';
 import { chargerChronologie } from '../../lib/chronologie-db.mjs';
-import { libelleDeDate } from '../../lib/chronologie.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 
-// La chronologie (menu Codex › Chronologie ; lib/chronologie.mjs) : son premier événement est l'accueil de l'onglet, comme le premier chapitre du guide
-// à /guide/ ; les autres sont à /chronologie/<id>/ ([slug].astro).
+// La chronologie (menu Codex › Chronologie ; lib/chronologie.mjs) : la frise seule, et à sa droite le mode d'emploi ; chaque événement est à
+// /chronologie/<id>/ ([slug].astro).
 const evenements = chargerChronologie(ouvrirBase());
-const premier = evenements[0];
 ---
 
-<Base title={premier ? `Chronologie : ${premier.titre}` : 'Chronologie'} description={premier ? `${libelleDeDate(premier)} : ${premier.titre}` : undefined}>
-  {premier ? <ChronologieEvenement evenements={evenements} id={premier.id} /> : <h1>Chronologie</h1>}
+<Base title="Chronologie" description="Les événements datés du Codex et des pages de race, du plus ancien au plus récent.">
+  <Chronologie evenements={evenements} id={null} />
 </Base>

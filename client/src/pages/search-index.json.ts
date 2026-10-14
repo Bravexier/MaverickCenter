@@ -40,7 +40,7 @@ export const GET: APIRoute = async () => {
     index.push({
       title: e.titre,
       type: 'Événement',
-      path: adresseDEvenement(evenements, e.id),
+      path: adresseDEvenement(e.id),
       summary: libelleDeDate(e),
       aliases: [],
       tags: ['chronologie'],

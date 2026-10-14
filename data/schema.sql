@@ -994,7 +994,7 @@ CREATE TABLE dieu (
 
 -- ====================================================================================================================
 -- 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
--- Page /chronologie/ : une page par événement, lue comme le guide du joueur, frise en haut et en bas (client/src/lib/chronologie.mjs).
+-- Pages /chronologie/<id>/ : une par événement, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas (client/src/lib/chronologie.mjs).
 -- Les lignes viennent du registre tools/chronologie/evenements.json, résolu contre le texte des pages par tools/chronologie/chronologie.mjs :
 -- le texte d'un extrait est COPIÉ d'une page du Codex (lore/…) ou d'une race (races/…), jamais réécrit.
 -- ====================================================================================================================
@@ -1005,7 +1005,7 @@ CREATE TABLE dieu (
 CREATE TABLE evenement (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
                                                      -- adresse /chronologie/<id>/ ; court, choisi dans tools/chronologie/evenements.json, puis figé
-  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre de lecture : frise, Précédent / Suivant ; le rang 1 est servi à /chronologie/
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre de lecture : frise, chevrons Haut / Bas ; chaque événement à /chronologie/<id>/
   titre      TEXT    NOT NULL CHECK (length(titre) > 0),
   titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
   epoque     TEXT    NOT NULL CHECK (epoque IN ('debut', 'datee', 'inconnue', 'aujourdhui')),   -- place dans la frise (EPOQUES de lib/chronologie.mjs)

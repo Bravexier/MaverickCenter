@@ -1,22 +1,29 @@
 # La chronologie (`/chronologie/`)
 
-Demande du propriétaire (2026-10-13) : l'onglet **Codex › Chronologie**, une page par événement daté, qui fonctionne comme le Guide du joueur mais avec
-une **ligne temporelle en haut et en bas** au lieu de la pagination numérotée, et les boutons **Précédent / Suivant** pour la parcourir dans l'ordre ;
-chaque page reprend tout ce que le Codex (et les pages de race, pour leur date d'apparition par exemple) dit de l'événement. Seuls les **événements**
-sont repris. C'est l'évolution **E5** de la [feuille de route](feuille-de-route.md).
+Demande du propriétaire (2026-10-13) : l'onglet **Codex › Chronologie**, une page par événement daté ; chaque page reprend tout ce que le Codex (et
+les pages de race, pour leur date d'apparition par exemple) dit de l'événement. Seuls les **événements** sont repris. C'est l'évolution **E5** de la
+[feuille de route](feuille-de-route.md).
+
+Le premier jet (une frise en haut et en bas de la page, comme la pagination du guide) n'a pas plu ; la page suit depuis la demande suivante du
+propriétaire (2026-10-13) : « Sur la gauche en vertical, mettre la chronologie sous forme d'une immense barre avec un dégradé. Chaque date est notée sur
+la gauche, le titre sur la droite. Cliquer dessus fait apparaître la page associée sur le côté (75 % de la largeur). Il y a alors tout à l'extrémité
+droite deux boutons de deux chevrons Haut et Bas pour passer de la suivante à la précédente. »
 
 ## La page
 
 | Élément | Ce qu'il fait |
 | --- | --- |
-| Adresses | `/chronologie/` sert le premier événement (comme `/guide/` sert le premier chapitre) ; les autres sont à `/chronologie/<id>/` |
-| Frise (en haut et en bas) | un point par événement, sur une ligne coupée en **périodes** : « Au début », un siècle par période datée (titre : l'année qui ouvre le siècle, « -500 », « 0 », « 1100 »), « Date inconnue », « Aujourd'hui ». Chaque période a sa couleur (du bleu au rouge brique avec le temps : un repère visuel, aucune époque du lore n'est déduite), qui colore aussi la page. Un **Impact majeur** de la liste du Codex est un losange, un **Impact mineur** un point plus grand. Le point de l'événement affiché est plein, sa date dessous ; date et titre de chaque point en infobulle. La frise défile de côté, centrée sur l'événement affiché |
-| Navigation | flèches rondes Précédent / Suivant par-dessus les bords de la page (cachées sur petit écran), liens du bas avec la date et le titre des voisins, ← → au clavier, glissement du doigt sur écran tactile : les mêmes gestes que le guide |
+| Adresses | chaque événement à `/chronologie/<id>/` (un lien se partage, tout se lit sans JavaScript) ; `/chronologie/` montre la frise et, à sa droite, le mode d'emploi |
+| Frise (à gauche, en vertical) | une **immense barre en dégradé**, une ligne par événement : la **date à gauche** de la barre (l'année, « 505 », « -400 à -350 », ou « Au début », « Date inconnue », « Aujourd'hui »), le **titre à droite**. La couleur tourne avec l'ordre de lecture, du violet (les origines) au rouge (les derniers siècles) par le bleu, le vert et l'or ; « Date inconnue » est gris (barre en pointillés), « Aujourd'hui » vert sombre : un repère visuel, aucune époque du lore n'est déduite. Un **Impact majeur** de la liste du Codex a un losange, un **Impact mineur** un point plus grand. La ligne de l'événement affiché est teintée, son point plein. La frise défile seule, à hauteur d'écran ; d'une page à l'autre, elle reste où on l'a laissée et montre l'événement affiché |
+| Page de l'événement | à droite de la frise, sur les trois quarts de la largeur ; d'une page de la chronologie à l'autre, le navigateur la fait glisser (transition entre documents : Chrome, Edge, Safari ; les autres changent de page sans effet) |
+| Navigation | un clic sur une ligne de la frise ; tout à l'extrémité droite, deux **chevrons** : Haut = événement précédent, Bas = suivant (grisés aux bords ; sur `/chronologie/`, Bas mène au premier ; la date et le titre de l'événement visé dans l'infobulle du site, à leur gauche) ; ← → au clavier ; glissement du doigt sur écran tactile |
+| Petit écran | `/chronologie/` est la frise (sous le mode d'emploi) ; la page d'un événement prend tout l'écran, avec un lien « Toute la chronologie » vers sa ligne de la frise ; les chevrons passent en bas à droite |
 | Contenu | la date (« An 505 », « An -400 à -350 »), le titre, la portée et le lieu d'un Impact (lien vers la page du Codex qui porte exactement ce nom), puis les **extraits** : chaque passage copié tel quel, la date qu'il écrit surlignée, regroupés par page source avec un lien vers elle |
 | Recherche | les événements sont dans l'index de `/recherche/` (type « Événement », mot-clé `chronologie`), avec le texte de leurs extraits |
 
-Code : `client/src/lib/chronologie.mjs` (pur : dates, ordre, voisins, adresses, périodes, date surlignée), `lib/chronologie-db.mjs` (chargeur),
-`components/chronologie/ChronologieEvenement.astro` et `Frise.astro`, `styles/chronologie/chronologie.css` (inséré en `?raw`),
+Code : `client/src/lib/chronologie.mjs` (pur : dates, ordre, voisins, adresses, couleurs du dégradé, date surlignée), `lib/chronologie-db.mjs` (chargeur),
+`components/chronologie/Chronologie.astro` (la mise en page, les chevrons, les gestes), `Frise.astro` (la frise et son défilement) et
+`ChronologieEvenement.astro` (la page d'un événement), `styles/chronologie/chronologie.css` (inséré en `?raw`),
 `pages/chronologie/index.astro` et `[slug].astro`. Tests : `client/test/chronologie.test.mjs` (logique et base), `chronologie-html.test.mjs` (site construit).
 
 ## Les données

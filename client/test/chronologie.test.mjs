@@ -1,10 +1,10 @@
-// Chronologie (/chronologie/, docs/chronologie.md) : la logique pure de lib/chronologie.mjs (dates, ordre, voisins, adresses, périodes de la frise,
-// date surlignée) et les tables `evenement` / `evenement_extrait` de la base, rejouées depuis le registre tools/chronologie/evenements.json sur les pages
+// Chronologie (/chronologie/, docs/chronologie.md) : la logique pure de lib/chronologie.mjs (dates, ordre, voisins, adresses, couleurs du dégradé de
+// la frise, date surlignée) et les tables `evenement` / `evenement_extrait` de la base, rejouées depuis le registre tools/chronologie/evenements.json sur les pages
 // telles que l'import les a laissées (le site de dev peut réécrire une page du Codex ou d'une race : l'extrait, lui, reste celui de l'import).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  adresseDEvenement, extraitsParPage, libelleDeDate, marquerLaDate, ordonner, periodesDeLaFrise, siecle, surlignerLaDate, voisins,
+  adresseDEvenement, contraste, couleursDesEvenements, dateCourte, extraitsParPage, libelleDeDate, marquerLaDate, ordonner, surlignerLaDate, voisins,
 } from '../src/lib/chronologie.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -23,8 +23,13 @@ test('libelleDeDate : « An N », « An N à M », ou le nom de l’époque hors
   assert.equal(libelleDeDate(ev(1, 'aujourdhui')), 'Aujourd’hui');
 });
 
-test('siecle : par centaines, vers le bas (l’an -450 est dans le siècle qui commence en -500)', () => {
-  assert.deepEqual([-450, -400, -1, 0, 99, 100, 1138].map(siecle), [-500, -400, -100, 0, 0, 100, 1100]);
+test('dateCourte : la colonne des dates de la frise, sans « An » ; le nom de l’époque hors des années', () => {
+  assert.equal(dateCourte(ev(1, 'datee', 505)), '505');
+  assert.equal(dateCourte(ev(1, 'datee', -400, { annee_fin: -350 })), '-400 à -350');
+  assert.equal(dateCourte(ev(1, 'datee', 0)), '0');
+  assert.equal(dateCourte(ev(1, 'debut')), 'Au début');
+  assert.equal(dateCourte(ev(1, 'inconnue')), 'Date inconnue');
+  assert.equal(dateCourte(ev(1, 'aujourdhui')), 'Aujourd’hui');
 });
 
 test('ordonner : rangs sans trou, époques dans l’ordre, années croissantes au sens large, une année pour les datés seulement', () => {
@@ -38,45 +43,51 @@ test('ordonner : rangs sans trou, époques dans l’ordre, années croissantes a
   assert.throws(() => ordonner([ev(1, 'plus-tard')]), /époque inconnue/);
 });
 
-test('voisins et adresses : le premier événement est l’accueil de /chronologie/, flèches grisées aux bords', () => {
+test('voisins et adresses : chaque événement à /chronologie/<id>/ (le premier aussi : /chronologie/ est la frise seule), chevrons grisés aux bords', () => {
   const liste = ordonner([ev(1, 'debut'), ev(2, 'datee', 1), ev(3, 'aujourdhui')]);
   assert.deepEqual(Object.values(voisins(liste, 'e1')).map((e) => e?.id ?? null), ['e1', null, 'e2']);
   assert.deepEqual(Object.values(voisins(liste, 'e3')).map((e) => e?.id ?? null), ['e3', 'e2', null]);
   assert.throws(() => voisins(liste, 'x'), /n'est pas un événement/);
-  assert.equal(adresseDEvenement(liste, 'e1'), 'chronologie/');
-  assert.equal(adresseDEvenement(liste, 'e2'), 'chronologie/e2/');
+  assert.equal(adresseDEvenement('e1'), 'chronologie/e1/');
+  assert.equal(adresseDEvenement('e2'), 'chronologie/e2/');
 });
 
-test('periodesDeLaFrise : une période par époque hors des années, un siècle par période datée, chacune sa couleur', () => {
-  const liste = ordonner([ev(1, 'debut'), ev(2, 'datee', -450), ev(3, 'datee', -430), ev(4, 'datee', 20), ev(5, 'datee', 99), ev(6, 'datee', 150), ev(7, 'inconnue'), ev(8, 'aujourdhui')]);
-  const periodes = periodesDeLaFrise(liste);
-  assert.deepEqual(periodes.map((p) => [p.titre, p.evenements.map((e) => e.id).join(',')]), [
-    ['Au début', 'e1'], ['-500', 'e2,e3'], ['0', 'e4,e5'], ['100', 'e6'], ['Date inconnue', 'e7'], ['Aujourd’hui', 'e8'],
-  ]);
-  assert.equal(periodes[1].description, 'De l’an -500 à l’an -401');
-  assert.equal(new Set(periodes.map((p) => p.couleur)).size, periodes.length, 'une couleur par période');
-  for (const p of periodes) assert.match(p.couleur, /^(#[0-9a-f]{6}|hsl\(\d+ \d+% \d+%\))$/);
+test('contraste : le calcul WCAG (noir sur blanc 21:1, une couleur avec elle-même 1:1, symétrique)', () => {
+  assert.equal(Math.round(contraste('#000000', '#ffffff')), 21);
+  assert.equal(contraste('#8a3b12', '#8a3b12'), 1);
+  assert.equal(contraste('#ffffff', '#5a6470'), contraste('#5a6470', '#ffffff'));
+  assert.ok(Math.abs(contraste('#767676', '#ffffff') - 4.54) < 0.01, 'le gris #767676 : 4,54:1 sur blanc');
 });
 
-/** Contraste WCAG d'une couleur de période (« #rrggbb » ou « hsl(h s% l%) ») avec le blanc. */
-function contrasteAvecLeBlanc(couleur) {
-  let rgb;
-  const h = couleur.match(/^hsl\((\d+) (\d+)% (\d+)%\)$/);
-  if (h) {
-    const [t, s, l] = [Number(h[1]), Number(h[2]) / 100, Number(h[3]) / 100];
-    const f = (n) => { const k = (n + t / 30) % 12; return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
-    rgb = [f(0), f(8), f(4)];
-  } else rgb = [1, 3, 5].map((i) => parseInt(couleur.slice(i, i + 2), 16) / 255);
-  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const L = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
-  return 1.05 / (L + 0.05);
-}
+test('couleursDesEvenements : une couleur par événement, du violet au rouge dans l’ordre de lecture, gris pour « Date inconnue »', () => {
+  const liste = ordonner([ev(1, 'debut'), ev(2, 'datee', -450), ev(3, 'datee', 20), ev(4, 'datee', 1160), ev(5, 'inconnue'), ev(6, 'aujourdhui')]);
+  const couleurs = couleursDesEvenements(liste);
+  assert.deepEqual([...couleurs.keys()].sort(), liste.map((e) => e.id).sort(), 'une couleur pour chaque événement');
+  for (const c of couleurs.values()) assert.match(c, /^#[0-9a-f]{6}$/);
+  // teinte de « #rrggbb » (degrés) : violet au début, rouge à la fin des événements datés
+  const teinte = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (h * 60 + 360) % 360;
+  };
+  assert.ok(teinte(couleurs.get('e1')) > 260 && teinte(couleurs.get('e1')) < 300, `début violet (${couleurs.get('e1')})`);
+  assert.ok(teinte(couleurs.get('e4')) < 20, `fin rouge (${couleurs.get('e4')})`);
+  assert.ok(teinte(couleurs.get('e2')) > teinte(couleurs.get('e3')) && teinte(couleurs.get('e3')) > teinte(couleurs.get('e4')), 'la teinte tourne dans l’ordre de lecture');
+  assert.equal(couleurs.get('e5'), '#5a6470');
+  assert.notEqual(couleurs.get('e6'), couleurs.get('e5'));
+});
 
-test('couleurs des périodes : un texte blanc sur leur aplat se lit (4,5:1), sur toute la frise de la base', () => {
-  assert.ok(contrasteAvecLeBlanc('#000000') > 20 && contrasteAvecLeBlanc('#ffffff') === 1, 'calcul du contraste');
-  for (const p of periodesDeLaFrise(chargerChronologie(ouvrirBase({ sansExemples: false })))) {
-    assert.ok(contrasteAvecLeBlanc(p.couleur) >= 4.5, `${p.titre} (${p.couleur}) : ${contrasteAvecLeBlanc(p.couleur).toFixed(2)}:1`);
+test('couleurs de la frise : un texte blanc sur leur aplat se lit (4,5:1), pour chaque événement de la base ; deux voisins datés diffèrent', () => {
+  const evenements = chargerChronologie(ouvrirBase({ sansExemples: false }));
+  const couleurs = couleursDesEvenements(evenements);
+  for (const e of evenements) {
+    const c = couleurs.get(e.id);
+    assert.ok(contraste(c, '#ffffff') >= 4.5, `${e.id} (${c}) : ${contraste(c, '#ffffff').toFixed(2)}:1`);
   }
+  const datees = evenements.filter((e) => e.epoque === 'datee');
+  datees.slice(1).forEach((e, i) => assert.notEqual(couleurs.get(e.id), couleurs.get(datees[i].id), `${datees[i].id} → ${e.id} : le dégradé avance`));
 });
 
 test('extraitsParPage : les passages qui se suivent sur une même page partagent une légende', () => {

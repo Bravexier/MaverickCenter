@@ -1,14 +1,14 @@
-// Chronologie (/chronologie/, docs/chronologie.md) : les événements datés du Codex et des pages de race, une page par événement, lue comme le guide
-// du joueur (demande du propriétaire : flèches Précédent / Suivant, glissement du doigt, clavier) mais avec une frise en haut et en bas au lieu de la
-// pagination numérotée. Les événements sont les lignes de `evenement` (data/schema.sql, section 5 bis), dans l'ordre de `rang` ; le premier est servi
-// à /chronologie/ (comme le premier chapitre du guide à /guide/), les autres à /chronologie/<id>/.
+// Chronologie (/chronologie/, docs/chronologie.md) : les événements datés du Codex et des pages de race (demande du propriétaire) : à gauche, la
+// chronologie en une immense barre verticale en dégradé, la date à gauche de la barre et le titre à droite ; un clic ouvre la page de l'événement à
+// côté (75 % de la largeur), et deux chevrons, tout à droite, passent au précédent ou au suivant. Les événements sont les lignes de `evenement`
+// (data/schema.sql, section 5 bis), dans l'ordre de `rang`, chacun à /chronologie/<id>/ ; /chronologie/ montre la frise seule et son mode d'emploi.
 // Module pur, sans dépendance (ni node:, ni Astro) : importé par les pages, le chargeur (chronologie-db.mjs), l'outil du registre
 // (tools/chronologie/chronologie.mjs) et les tests.
 
 /**
  * Les époques de la frise, dans l'ordre. « Au début » reprend le nom de la partie du Codex qui ouvre le document (« Au début … » : Origine du monde,
  * Situation actuelle, Les Impacts) ; « Date inconnue » range les événements que la liste des Impacts date « ??? » ; « Aujourd'hui » est la situation
- * actuelle. Les événements datés sont rangés par siècle (periodesDeLaFrise).
+ * actuelle.
  */
 export const EPOQUES = [
   { id: 'debut', titre: 'Au début' },
@@ -22,16 +22,13 @@ export const PORTEES = { majeur: 'Impact majeur', mineur: 'Impact mineur' };
 
 const rangDEpoque = (id) => EPOQUES.findIndex((e) => e.id === id);
 
-/** La date d'un événement telle que la frise l'affiche : « An 505 », « An -400 à -350 », ou le nom de son époque hors des années. */
+/** La date d'un événement telle que sa page l'affiche : « An 505 », « An -400 à -350 », ou le nom de son époque hors des années. */
 export function libelleDeDate(evenement) {
   if (evenement.epoque !== 'datee') return EPOQUES.find((e) => e.id === evenement.epoque)?.titre ?? '';
   return evenement.annee_fin === null || evenement.annee_fin === undefined
     ? `An ${evenement.annee}`
     : `An ${evenement.annee} à ${evenement.annee_fin}`;
 }
-
-/** Le siècle d'une année, compté par centaines : -450 → -500 (de -500 à -401), 0 → 0, 1138 → 1100. */
-export const siecle = (annee) => Math.floor(annee / 100) * 100;
 
 /**
  * Les événements dans l'ordre de lecture, vérifiés : rangs 1, 2, 3… sans trou, époques dans l'ordre de EPOQUES, années croissantes (au sens large)
@@ -53,60 +50,67 @@ export function ordonner(evenements) {
   return liste;
 }
 
-/** L'événement d'id donné et ses voisins dans l'ordre de lecture : { evenement, precedent, suivant } (null au bord : flèche grisée). */
+/** L'événement d'id donné et ses voisins dans l'ordre de lecture : { evenement, precedent, suivant } (null au bord : chevron grisé). */
 export function voisins(evenements, id) {
   const i = evenements.findIndex((e) => e.id === id);
   if (i < 0) throw new Error(`chronologie : ${id} n'est pas un événement`);
   return { evenement: evenements[i], precedent: evenements[i - 1] ?? null, suivant: evenements[i + 1] ?? null };
 }
 
-/** Adresse d'un événement, relative à la racine du site : le premier est l'accueil de l'onglet (/chronologie/), les autres /chronologie/<id>/. */
-export const adresseDEvenement = (evenements, id) => (evenements[0]?.id === id ? 'chronologie/' : `chronologie/${id}/`);
+/** Adresse d'un événement, relative à la racine du site : /chronologie/<id>/ (/chronologie/ est l'accueil de l'onglet : la frise seule et son mode d'emploi). */
+export const adresseDEvenement = (id) => `chronologie/${id}/`;
 
-/**
- * Couleurs des périodes de la frise, assez foncées pour un texte blanc dessus : « Au début » en violet, puis les siècles du bleu au rouge brique
- * (teinte qui tourne avec le temps), « Date inconnue » en gris, « Aujourd'hui » en vert sombre. Pur repère visuel : aucune époque du lore n'est déduite.
- */
-const COULEUR_DEBUT = '#5b4a9c';
-const COULEUR_INCONNUE = '#5a6470';
-const COULEUR_AUJOURDHUI = '#24715a';
-const couleurDeSiecle = (i, n) => `hsl(${Math.round(205 - (n > 1 ? (i / (n - 1)) * 195 : 0))} 55% 31%)`;
-
-/**
- * Les périodes de la frise, dans l'ordre : [{ id, epoque, titre, libelle, description, couleur, evenements }]. Hors des époques datées, une période par
- * époque (« Au début », « Date inconnue », « Aujourd'hui ») ; les événements datés sont rangés par siècle (titre sur la frise : l'année du début du
- * siècle, « -500 », « 0 », « 1100 » ; libellé de la pastille de la page : « An 0 à 99 »).
- * Une période sans événement n'apparaît pas. `evenements` : la liste rendue par `ordonner`.
- */
-export function periodesDeLaFrise(evenements) {
-  const periodes = [];
-  for (const e of evenements) {
-    const id = e.epoque === 'datee' ? `siecle-${siecle(e.annee)}` : e.epoque;
-    let p = periodes.at(-1);
-    if (!p || p.id !== id) {
-      p = { id, epoque: e.epoque, siecle: e.epoque === 'datee' ? siecle(e.annee) : null, evenements: [] };
-      periodes.push(p);
-    }
-    p.evenements.push(e);
-  }
-  const siecles = periodes.filter((p) => p.epoque === 'datee');
-  return periodes.map((p) => ({
-    id: p.id,
-    epoque: p.epoque,
-    titre: p.epoque === 'datee' ? String(p.siecle) : EPOQUES.find((x) => x.id === p.epoque).titre,
-    libelle: p.epoque === 'datee' ? `An ${p.siecle} à ${p.siecle + 99}` : EPOQUES.find((x) => x.id === p.epoque).titre,
-    description: p.epoque === 'datee' ? `De l’an ${p.siecle} à l’an ${p.siecle + 99}` : EPOQUES.find((x) => x.id === p.epoque).titre,
-    couleur:
-      p.epoque === 'debut' ? COULEUR_DEBUT
-        : p.epoque === 'inconnue' ? COULEUR_INCONNUE
-          : p.epoque === 'aujourdhui' ? COULEUR_AUJOURDHUI
-            : couleurDeSiecle(siecles.indexOf(p), siecles.length),
-    evenements: p.evenements,
-  }));
+/** La date d'un événement dans la colonne de gauche de la frise : l'année sans « An » (« 505 », « -400 à -350 »), ou le nom de son époque hors des années. */
+export function dateCourte(evenement) {
+  return evenement.epoque === 'datee' ? libelleDeDate(evenement).replace(/^An /, '') : libelleDeDate(evenement);
 }
 
-/** La période (de periodesDeLaFrise) d'un événement. */
-export const periodeDe = (periodes, id) => periodes.find((p) => p.evenements.some((e) => e.id === id));
+/** Contraste WCAG entre deux couleurs « #rrggbb » (1 à 21). */
+export function contraste(a, b) {
+  const luminance = (hex) => {
+    const [r, g, v] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * v;
+  };
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
+
+/** « #rrggbb » d'une teinte TSL (t en degrés, s et l de 0 à 1). */
+function hexDeTsl(t, s, l) {
+  const f = (n) => {
+    const k = (n + t / 30) % 12;
+    return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return `#${[f(0), f(8), f(4)].map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`;
+}
+
+const COULEUR_INCONNUE = '#5a6470';
+const COULEUR_AUJOURDHUI = '#24715a';
+const TEINTE_DU_DEBUT = 285;
+const TEINTE_DE_LA_FIN = 5;
+
+/**
+ * Couleurs de la frise et des pages, une par événement (demande du propriétaire : la chronologie en une immense barre verticale avec un dégradé).
+ * Les événements « Au début » et datés suivent la roue des couleurs dans l'ordre de lecture, du violet (les origines) au rouge (les derniers siècles),
+ * en passant par le bleu, le vert et l'or ; « Date inconnue » est gris, « Aujourd'hui » vert sombre. Chaque teinte est assez foncée pour un texte blanc
+ * dessus (4,5:1). Pur repère visuel : aucune époque du lore n'en est déduite. Rend une Map(id -> « #rrggbb »).
+ */
+export function couleursDesEvenements(evenements) {
+  const roue = evenements.filter((e) => e.epoque === 'debut' || e.epoque === 'datee');
+  const couleurs = new Map();
+  roue.forEach((e, i) => {
+    const t = TEINTE_DU_DEBUT - (roue.length > 1 ? i / (roue.length - 1) : 0) * (TEINTE_DU_DEBUT - TEINTE_DE_LA_FIN);
+    // la plus claire des teintes qui gardent 4,5:1 (marge : 4,6) avec le blanc
+    let l = 0.4;
+    while (contraste(hexDeTsl(t, 0.58, l), '#ffffff') < 4.6) l -= 0.01;
+    couleurs.set(e.id, hexDeTsl(t, 0.58, l));
+  });
+  for (const e of evenements) {
+    if (e.epoque === 'inconnue') couleurs.set(e.id, COULEUR_INCONNUE);
+    if (e.epoque === 'aujourdhui') couleurs.set(e.id, COULEUR_AUJOURDHUI);
+  }
+  return couleurs;
+}
 
 /**
  * Les extraits d'un événement regroupés par page source consécutive : [{ page_id, page_titre, extraits }] (une seule légende « Page › section »
