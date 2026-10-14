@@ -240,20 +240,26 @@ test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d�
   assert.match(necro, /<summary>TABLEAU &quot;AMÉLIORATION CADAVÉRIQUE&quot;<\/summary>/);
 });
 
-test('créatures invoquées (et celles de « Manteau noir ») : un bouton et un lien « Bestiaire » par créature, aucun lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
+test('créatures invoquées (et celles de « Manteau noir ») : un bouton par créature, sur la couleur de sa ou ses magies, sans lien « Bestiaire » ni lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
   const { lignes } = chargerInvocations(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
   const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
   // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), et les trois dans le Potentiel Illimité
   const attendu = { 'magie-de-la-necromancie': [28, 28], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68] };
   for (const { slug, html } of pages) {
     const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
-    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+">([^<]+)<\/button>/g)];
+    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+" style="--creature-1: (#[0-9a-f]{6}); --creature-2: (#[0-9a-f]{6})">([^<]+)<\/button>/g)];
     // au toucher, la carte couvre l'écran d'un téléphone : un lien à bulle ne pourrait pas être suivi (le second appui tomberait sur elle)
     assert.doesNotMatch(html, /<a\b[^>]*data-bulle="bulle-creature-/, `${slug} : aucun lien à bulle`);
     assert.equal(boutons.length, declencheurs, `${slug} : déclencheurs (noms des créatures, et « Carte de … » de Manteau noir)`);
     assert.equal([...html.matchAll(/data-bulle="bulle-creature-/g)].length, declencheurs, `${slug} : chaque déclencheur a la forme complète (aria-describedby, title)`);
-    assert.equal([...html.matchAll(/class="chip creature__lien"/g)].length, boutons.length, `${slug} : un lien Bestiaire par bouton`);
-    for (const [, s, nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'"), parSlug.get(s)?.nom, `${slug} : ${s}`);
+    // plus de lien « Bestiaire » à côté du nom (demande du propriétaire)
+    assert.doesNotMatch(html, /creature__lien|dans le bestiaire">Bestiaire</, `${slug} : aucun lien Bestiaire`);
+    // une magie : une couleur ; deux magies (« Terre + Feu ») : un dégradé de l'une à l'autre
+    if (slug === 'magie-de-la-terre' || slug === 'magie-de-la-necromancie') {
+      assert.ok(boutons.some(([, , c1, c2]) => c1 === c2), `${slug} : créatures d'une seule magie`);
+      assert.ok(boutons.some(([, , c1, c2]) => c1 !== c2), `${slug} : créatures de deux magies en dégradé`);
+    }
+    for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'"), parSlug.get(s)?.nom, `${slug} : ${s}`);
     // plus de fiche minimale sous les blocs
     assert.doesNotMatch(html, /creature__fiche|creature__rangee/, `${slug} : fiche minimale retirée`);
     // les cartes : une bulle par créature citée, cachée, role="tooltip", posée hors des onglets et des détails de sort (dans .cartes-creatures),

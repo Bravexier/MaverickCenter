@@ -1,11 +1,19 @@
 /* Créatures invoquées d'un sort : par bloc (combinaison de magies ou palier), leur nom (sa carte du bestiaire en infobulle : components/Infobulles.astro,
-   styles/bestiaire/carte.css) et le lien vers leur page */
+   styles/bestiaire/carte.css), sur la couleur de leur magie (--creature-1, --creature-2 : SortDetail.astro), en dégradé quand elles en ont deux */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
 .invoque__bloc { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .invoque__creatures { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; margin-top: 0.2rem; }
 .creature { display: inline-flex; align-items: baseline; gap: 0.25rem; }
-button.creature__bouton { cursor: help; font: inherit; font-size: 0.9rem; color: var(--text); }
-button.creature__bouton:hover, button.creature__bouton[data-ouverte] { border-color: var(--mag); background: var(--mag-soft); }
-button.creature__bouton:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
-.creature__lien { padding: 0 0.5rem; font-size: 0.68rem; line-height: 1.5; text-transform: uppercase; letter-spacing: 0.05em; }
+button.creature__bouton {
+  --creature-1: var(--mag); --creature-2: var(--creature-1);
+  cursor: help; font: inherit; font-size: 0.9rem; color: var(--text);
+  border-color: color-mix(in srgb, var(--creature-1) 55%, var(--border));
+  border-right-color: color-mix(in srgb, var(--creature-2) 55%, var(--border));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 32%, var(--surface)), color-mix(in srgb, var(--creature-2) 32%, var(--surface)));
+}
+button.creature__bouton:hover, button.creature__bouton[data-ouverte] {
+  border-color: var(--creature-1); border-right-color: var(--creature-2);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 50%, var(--surface)), color-mix(in srgb, var(--creature-2) 50%, var(--surface)));
+}
+button.creature__bouton:focus-visible { outline: 2px solid var(--creature-1); outline-offset: 2px; }
