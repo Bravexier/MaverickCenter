@@ -11,6 +11,7 @@ import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAve
 import { marquerBonus } from './sort-maitrise.mjs';
 import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
+import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -219,6 +220,8 @@ export const RENDUS = {
   // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,
+  // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
+  ...RENDUS_DES_COMPOSANTS,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */

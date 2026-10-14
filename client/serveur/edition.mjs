@@ -50,6 +50,8 @@ import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import { domainesDuBestiaire, especesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
+import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
+import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
 import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
@@ -1153,6 +1155,8 @@ const DOMAINES = {
   ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant }),
   // la page des armes : armes, matériaux, améliorations d'arme (serveur/edition-armes.mjs)
   ...domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
+  // la page des composants : matériaux, gemmes, bois, ingrédients d'alchimie, objets de l'équipement, monnaies (serveur/edition-composants.mjs)
+  ...domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1218,6 +1222,7 @@ export function recalculerLesPages(db, modifications) {
   const dons = new Map();
   const metiers = new Set();
   const armes = []; // lignes des tables de la page des armes (lib/corps-armes.mjs)
+  const composants = []; // lignes des composants (lib/corps-composants.mjs)
   const titres = [];
   const ajouter = (carte, id, ligne) => {
     if (!id) return;
@@ -1237,7 +1242,8 @@ export function recalculerLesPages(db, modifications) {
       dons.set(ligne.id, l);
     }
     if (l.table === 'metier') metiers.add(ligne.id);
-    if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.nom !== l.apres.nom))) armes.push(l);
+    if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.genre === 'materiau' && l.avant.nom !== l.apres.nom))) armes.push(l);
+    if (TABLES_DES_COMPOSANTS.includes(l.table)) composants.push(l);
     if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
     const anciennes = l.avant ?? l.inseree;
     const colonnes = anciennes && l.apres ? Object.keys(l.apres).filter((c) => (anciennes[c] ?? null) !== (l.apres[c] ?? null)) : null;
@@ -1355,6 +1361,33 @@ export function recalculerLesPages(db, modifications) {
   for (const id of renommes.length ? PAGES_DES_MATERIAUX : []) {
     const page = pageDe(id);
     if (page) ecrire(page, { corps_md: renommes.reduce((c, l) => corpsAvecMateriauRenomme(c, l.avant.nom, l.apres.nom), page.corps_md) });
+  }
+  // les composants (page « Composants ») : leurs lignes dans les pages qui les écrivent (équipement, armures, boucliers, bâtons, accessoires, ingrédients)
+  if (composants.length) {
+    const contexteComposants = contexteDuCorpsDesComposants(db);
+    const rang = (t) => TABLES_DES_COMPOSANTS.indexOf(t);
+    const corpsDe = new Map();
+    const enErreur = new Set();
+    for (const l of [...composants].sort((a, b) => rang(a.table) - rang(b.table))) {
+      const avant = l.inseree && !l.avant ? null : l.avant;
+      if (!avant && !l.apres) continue; // créé puis supprimé
+      for (const id of pagesDuComposant(l.table, l.apres ?? avant)) {
+        if (enErreur.has(id)) continue;
+        const page = corpsDe.has(id) ? null : pageDe(id);
+        if (!corpsDe.has(id)) {
+          if (!page) continue;
+          corpsDe.set(id, page.corps_md);
+        }
+        try {
+          corpsDe.set(id, corpsDuComposantApres(id, corpsDe.get(id), l.table, avant, l.apres, contexteComposants));
+        } catch (e) {
+          if (!(e instanceof ErreurCorpsComposants)) throw e;
+          enErreur.add(id);
+          illisibles.push({ page: id, raison: e.message });
+        }
+      }
+    }
+    for (const [id, corps] of corpsDe) if (!enErreur.has(id)) ecrire(pageDe(id), { corps_md: corps });
   }
   return { pages: [...new Set(ecrites)], illisibles };
 }
@@ -1601,6 +1634,9 @@ export function listes(db) {
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,
     // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45)
     famillesDArmes: db.prepare('SELECT id AS valeur, nom AS libelle FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre').all(),
+    // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
+    magiesSansGemme: magiesSansGemme(db),
+    magiesSansBois: magiesSansBois(db),
   };
 }
 

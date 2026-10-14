@@ -122,8 +122,8 @@ test('matériau renommé (même ressource que les armures et les boucliers) : le
     assert.ok(!corps(db, id).split('\n').some((l) => l.split('|').some((c) => c.trim().toLowerCase() === avant.nom.toLowerCase())), `${id} : plus de case « ${avant.nom} »`);
     assert.ok(corps(db, id).includes('Armure Peau/Fer Noir') || !pages[id].includes('Armure Peau/Fer Noir'), `${id} : les noms d'armures restent`);
   }
-  // une autre ressource ne se renomme pas ici
-  const autre = ligne("SELECT id FROM ressource WHERE genre <> 'materiau' LIMIT 1");
+  // une ressource qui n'est pas un composant (page « Composants ») ne se renomme pas
+  const autre = ligne("SELECT id FROM ressource WHERE genre = 'potion' LIMIT 1"); // un consommable : pas un composant
   assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: autre.id }, valeurs: { nom: 'X' } }]).statut, 400);
 });
 

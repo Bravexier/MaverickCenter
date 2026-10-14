@@ -312,6 +312,39 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
 - Sans JavaScript : tous les tableaux, ouverts, sans encart ni dé. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
   chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit).
 
+## Composants (`/ressources/composants/`) : tout ce qui sert à fabriquer sans être consommé
+
+Demandes du propriétaire (2026-10-14) : « un onglet "Composants". Il comprendra les tableaux des gemmes, des matériaux, la monnaie, et l'ensemble des
+tables de l'onglet "équipement inventaire". […] chaque élément est modifiable en édition, supprimable, ajoutable » ; « Il faut aussi y mettre la table des
+fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui peut servir pour fabriquer les potions / fioles et autres ». La page n'a pas
+de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
+`styles/composants/`, lignes : `lib/composants-rendu.mjs`), un tableau repliable par liste :
+
+- **Monnaie** (`monnaie`) : nom, abréviation, valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF ») sont celles qui
+  tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se supprime pas).
+- **Matériaux** (`ressource` de genre `materiau`) : matière (dans la couleur de l'onglet « Armes »), prix, description, et ce qui les utilise (armes,
+  armures, boucliers, montures d'accessoire). Le nom est celui de toutes ces pages.
+- **Gemmes** (`gemme`) : magie, gemme, description, prix de la gemme entière (bâton magique) et d'un quart (accessoires), par qualité.
+- **Bois** (`bois`) des bâtons magiques : magie, bois, description, prix.
+- **Ingrédients d'alchimie** (`ingredient_alchimie`, doc « Alchimie » › Liste d'ingrédients) : la **table des fruits** (les ingrédients de type
+  « Fruit » : catégorie — amplificateur majeur ou catalyseur —, type, affinité), puis un tableau par catégorie (Solvant, Essence, Amplificateur,
+  Catalyseur, Stabilisateur) sans les fruits.
+- **Équipement** : les six tableaux de l'onglet « Équipement inventaire » (Végétaux, Animaux, Autres, Matos aventures, Matos fabrication — fioles de
+  verre et kits d'alchimie compris —, Matos projectile).
+
+Les potions, livres et parchemins (des consommables) n'y sont pas. Une recherche filtre les lignes de tous les tableaux (`src/scripts/composants.mjs`).
+
+**Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : chaque case se modifie (nom, prix,
+description, prix d'une gemme, type et affinité d'un ingrédient, nom, abréviation et valeur d'une monnaie) ; ce qui en est tiré est recalculé (prix en RF,
+ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
+gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
+rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
+supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue (`serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`).
+Le corps Markdown des pages qui écrivent ces composants suit, case par case (`lib/corps-composants.mjs`) : « Équipement inventaire » (lignes des objets,
+MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
+avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».
+Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-html.test.mjs` (site construit).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche

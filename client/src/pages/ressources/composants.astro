@@ -1,0 +1,16 @@
+---
+import Base from '../../layouts/Base.astro';
+import ComposantsPage from '../../components/composants/ComposantsPage.astro';
+import { chargerComposants, PAGE_DES_COMPOSANTS } from '../../lib/composants-db.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { url } from '../../lib/wiki';
+
+// /ressources/composants/ (menu Ressources, demande du propriétaire) : une page sans page du wiki, rendue depuis les tables (components/composants/) ;
+// modifiable sur le site de dev (`edition` : src/scripts/edition/composants.mjs).
+const composants = chargerComposants(ouvrirBase());
+---
+
+<Base title="Composants" description="Monnaie, matériaux, gemmes, bois, ingrédients d’alchimie et équipement d’inventaire." edition={PAGE_DES_COMPOSANTS}>
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url('ressources/')}>Ressources</a></p>
+  <ComposantsPage composants={composants} />
+</Base>

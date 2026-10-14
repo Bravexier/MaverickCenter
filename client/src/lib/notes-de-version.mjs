@@ -1,6 +1,6 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, composants). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
@@ -23,6 +23,7 @@ export const DOMAINES = [
   { id: 'codex', titre: 'Codex' },
   { id: 'bestiaire', titre: 'Bestiaire' },
   { id: 'armes', titre: 'Armes' },
+  { id: 'composants', titre: 'Composants' },
 ];
 
 /**
@@ -40,9 +41,13 @@ export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
-  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement',
+  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie',
 ];
 
+/** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
+const GROUPES_DE_COMPOSANT = {
+  materiau: 'Matériaux', gemme: 'Gemmes', bois: 'Bois', ingredient_alchimie: 'Ingrédients d’alchimie', produit: 'Produits non monétaires', materiel: 'Matos',
+};
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
 /** Le cadrage d'un portrait n'est pas une ligne à lui : il est dit avec l'image (portraitDit). */
 const CADRAGE = ['portrait_x', 'portrait_y', 'portrait_zoom'];
@@ -192,17 +197,32 @@ const DEFINITIONS = [
           : colonne === 'type_id' ? x.nom('arme_type', v) : v,
   },
   {
-    // le nom d'un matériau d'arme (ressource partagée avec les armures et les boucliers)
-    table: 'ressource', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Matériau', filtre: (r) => r.genre === 'materiau',
-    groupe: () => 'Matériaux', entite: (r) => r.nom, ordre: () => [2, 0],
-  },
-  {
     table: 'materiau_arme', domaine: 'armes', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
     groupe: () => 'Matériaux', entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r) => [2, r.ordre ?? 0],
   },
   {
     table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'arme', groupe: () => 'Améliorations', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
+  },
+  // la page des composants (migration 0040) : monnaies, puis les ressources par tableau (matériaux, gemmes et leurs prix, bois, ingrédients d'alchimie,
+  // objets de l'onglet « Équipement inventaire ») ; les potions, livres et parchemins (consommables) n'en sont pas
+  {
+    table: 'monnaie', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('monnaie'), genre: 'Monnaie',
+    groupe: () => 'Monnaie', entite: (r) => r.nom, ordre: (r) => [0, r.valeur_rf ?? 0],
+  },
+  {
+    table: 'ressource', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Composant', filtre: (r) => GROUPES_DE_COMPOSANT[r.genre] !== undefined,
+    groupe: (r) => (['produit', 'materiel'].includes(r.genre) && r.section ? `${GROUPES_DE_COMPOSANT[r.genre]} › ${r.section}` : GROUPES_DE_COMPOSANT[r.genre]),
+    entite: (r) => r.nom, ordre: (r) => [1, Object.keys(GROUPES_DE_COMPOSANT).indexOf(r.genre), r.section ?? '', r.ordre ?? 0],
+  },
+  {
+    table: 'gemme', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('gemme'), genre: 'Gemme', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.gemme, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 1, '', x.ordre('ressource', r.ressource_id)],
+  },
+  {
+    table: 'ingredient_alchimie', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('ingredient_alchimie'), genre: 'Ingrédient', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.ingredient_alchimie, entite: (r, x) => x.nom('ressource', r.ressource_id),
+    ordre: (r, x) => [1, 3, x.ligne('ressource', r.ressource_id)?.section ?? '', x.ordre('ressource', r.ressource_id)],
   },
 ];
 
