@@ -11,7 +11,6 @@
 .bcarte .vide { color: var(--muted); opacity: 0.6; }
 .bcarte .texte { white-space: pre-line; }
 .bcarte [hidden] { display: none !important; }
-.prefixe { font-size: 0.72rem; padding: 0 0.3rem; border-radius: 4px; background: var(--bes-soft); color: var(--muted); white-space: nowrap; }
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
 .bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
@@ -88,18 +87,18 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Capacités : une tuile chacune, comme les dons de classe (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière
    que le font les dons de classe » ; lib/monstre-rendu.mjs#htmlDeCapacite) : filet de la couleur à gauche, pastilles pleines ([EP3], NPM 2, commune),
-   nom en gras ; sur une colonne */
-.bcapacites { list-style: none; padding-left: 0 !important; margin: 0.15rem 0 0; display: grid; gap: 0.45rem; }
+   nom en gras ; sur une colonne ; tailles en em, qui suivent la carte (0,86rem dans l'infobulle d'une page de magie) */
+.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 0.45rem; }
 .bcapacite { min-width: 0; padding: 0.45rem 0.75rem 0.55rem; border: 1px solid var(--border); border-left: 4px solid var(--bes); border-radius: 10px; background: var(--bg);
   break-inside: avoid; }
 .bcarte .bcapacite__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.4rem; margin: 0 0 0.2rem; }
-.bcapacite__nom { font-size: 1rem; color: var(--bes); }
-.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--bes); color: var(--surface); font-size: 0.7rem; font-weight: 700; }
-.bcapacite__texte { font-size: 0.92rem; }
+.bcapacite__nom { font-size: 1.08em; color: var(--bes); }
+.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--bes); color: var(--surface); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
 /* une capacité commune à toutes les créatures d'une invocation : le filet en pointillés */
 .bcapacite--commune { border-left-style: dashed; }
-/* dans l'infobulle d'une page de magie : la couleur de la magie */
-.bulle--carte .bcapacite { border-left-color: var(--mag, var(--bes)); }
+/* dans l'infobulle d'une page de magie : toute la tuile dans la couleur de la magie, comme un don de classe (--cla, --cla-readable) : le filet
+   pur, le nom et les pastilles dans sa version lisible (--bulle-lisible, styles/global/infobulles.css) */
+.bulle--carte .bcapacite { --bes: var(--bulle-lisible); border-left-color: var(--mag, var(--bes)); }
 @media print { .bcapacite .prefixe { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 .varie-note { font-style: italic; color: var(--muted); }
 .bbloc { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 0.3rem; }

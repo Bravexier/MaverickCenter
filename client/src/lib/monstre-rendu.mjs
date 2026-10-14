@@ -229,12 +229,18 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
  * page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle des pages de magie).
  * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
  * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
+ * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
  */
 export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = null, attributs = '', commune = false }) =>
-  `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}><p class="bcapacite__tete">`
-  + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
-  + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
-  + `</p><div class="bcapacite__texte">${corps ?? `<span class="texte">${e(texte)}</span>`}</div></li>`;
+  `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}>`
+  + (prefixes.length || nom
+    ? '<p class="bcapacite__tete">'
+      + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
+      + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
+      // l'espace sépare le nom du texte dans textContent, que lit la recherche du bestiaire (« Haine mutuelle Cette créature… ») ; sans effet à l'écran
+      + '</p> '
+    : '')
+  + `<div class="bcapacite__texte">${corps ?? `<span class="texte">${e(texte)}</span>`}</div></li>`;
 /** Les capacités d'une carte, une tuile chacune, sur une colonne (côte à côte, deux dons de classe sont un choix : ce n'en est pas un ici). */
 export const htmlDesCapacites = (capacites) => `<ul class="bcapacites" role="list">${capacites.map(htmlDeCapacite).join('')}</ul>`;
 

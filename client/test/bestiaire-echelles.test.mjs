@@ -405,15 +405,20 @@ test('capacités en tuiles (demande du propriétaire : « de la même manière q
   assert.equal(
     htmlDeRubrique('capacites', '[EP3] Nuage rapide. Un <texte>.\n\nSans préfixe. Autre texte.'),
     '<ul class="bcapacites" role="list">'
-      + '<li class="bcapacite" data-eps="3 4 5 6 7 8 9 10"><p class="bcapacite__tete"><span class="prefixe" title="Gagnée à partir de l’EP 3">[EP3]</span> <strong class="bcapacite__nom">Nuage rapide</strong></p>'
+      + '<li class="bcapacite" data-eps="3 4 5 6 7 8 9 10"><p class="bcapacite__tete"><span class="prefixe" title="Gagnée à partir de l’EP 3">[EP3]</span> <strong class="bcapacite__nom">Nuage rapide</strong></p> '
       + '<div class="bcapacite__texte"><span class="texte">Un &lt;texte&gt;.</span></div></li>'
-      + '<li class="bcapacite"><p class="bcapacite__tete"><strong class="bcapacite__nom">Sans préfixe</strong></p><div class="bcapacite__texte"><span class="texte">Autre texte.</span></div></li></ul>',
+      + '<li class="bcapacite"><p class="bcapacite__tete"><strong class="bcapacite__nom">Sans préfixe</strong></p> <div class="bcapacite__texte"><span class="texte">Autre texte.</span></div></li></ul>',
   );
   // une capacité commune (créature invoquée) : sa pastille et sa classe
   assert.equal(
     htmlDeCapacite({ prefixes: [{ texte: 'commune', titre: 'Commune à toutes les créatures de « X »' }], nom: 'Inerte', texte: 'T.', commune: true }),
-    '<li class="bcapacite bcapacite--commune"><p class="bcapacite__tete"><span class="prefixe" title="Commune à toutes les créatures de « X »">commune</span> <strong class="bcapacite__nom">Inerte</strong></p><div class="bcapacite__texte"><span class="texte">T.</span></div></li>',
+    '<li class="bcapacite bcapacite--commune"><p class="bcapacite__tete"><span class="prefixe" title="Commune à toutes les créatures de « X »">commune</span> <strong class="bcapacite__nom">Inerte</strong></p> <div class="bcapacite__texte"><span class="texte">T.</span></div></li>',
   );
+  // une capacité sans nom (premier paragraphe écrit sans « Nom. », possible après une modification sur le site de dev) : pas d'en-tête vide
+  assert.equal(htmlDeRubrique('capacites', 'texte écrit sans nom.'),
+    '<ul class="bcapacites" role="list"><li class="bcapacite"><div class="bcapacite__texte"><span class="texte">texte écrit sans nom.</span></div></li></ul>');
+  // le nom et le texte restent deux mots dans textContent, que lit la recherche (« Haine mutuelle Cette… », pas « mutuelleCette »)
+  assert.doesNotMatch(htmlDeRubrique('capacites', 'Haine mutuelle. Cette créature.'), /<\/p><div/);
   // toute la base : autant de tuiles que de capacités, chacune avec son nom, sans titre hN ni lien (la carte d'une créature invoquée sert d'infobulle)
   for (const r of rubriques.filter((x) => x.rubrique === 'capacites')) {
     const caps = capacitesDe(r.texte).filter((x) => x.nom);

@@ -11,6 +11,7 @@ import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { liaisonsEntreMagies, segmentCoupe } from '../src/lib/magie-fleches.mjs';
+import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
 const present = existsSync(dossier);
@@ -277,6 +278,8 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
       assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}">`), `${slug} : carte de ${s}`);
       assert.doesNotMatch(carte, /<(?:a|button|input|select|textarea)\b|\sid="(?!bulle-creature-)/, `${slug} : ${s} sans lien, bouton ni identifiant interne`);
       assert.match(carte, /<p class="bcarte__titre">/);
+      // ses capacités en tuiles, propres puis communes (lib/monstre-rendu.mjs#htmlDeCapacite)
+      assert.deepEqual(tuilesDeCapacites(carte), [...parSlug.get(s).capacites.map((k) => [false, k.nom]), ...parSlug.get(s).communes.map((k) => [true, k.nom])], `${slug} : ${s}, ses capacités en tuiles`);
     }
     // la CSS de la carte vient avec elle (styles/bestiaire/carte.css)
     assert.match(html, /\.bulle--carte \{ width: min\(30rem, calc\(100vw - 1rem\)\);/);
