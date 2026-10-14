@@ -400,17 +400,16 @@ function dessinerLesValeurs(ed, panneau) {
   if (!r?.propres || !zone) return;
   const places = placesDe(descriptionDe(ed, r.commune));
   // une description qui change son nombre d'emplacements dans ce lot : les valeurs de la carte se règlent après l'avoir enregistrée (le service décide
-  // alors quel emplacement garde quelle valeur : lib/monstre-champs.mjs#suiteDesEmplacements) ; ce qui était réglé ici est abandonné, et le dit
+  // alors quel emplacement garde quelle valeur : lib/monstre-champs.mjs#suiteDesEmplacements). Ce qui est réglé ici est gardé (la description peut revenir
+  // à son nombre d'emplacements, le temps d'une frappe) mais ne part pas tant qu'elle en diffère (operationsDeValeurs) : la note le dit s'il y en a
   if (bloque(ed, r)) {
     if (zone.dataset.signature !== 'attente') {
       zone.dataset.signature = 'attente';
-      const reglees = [...r.valeurs].some(([n, v]) => v !== (r.propres.get(n) ?? null)) || r.invalides.size > 0;
-      r.valeurs.clear();
-      r.invalides.clear();
+      const reglees = Object.keys(valeursAEnvoyer(descriptionDeLaBase(ed, r.commune), r.valeurs, r.propres)).length > 0 || r.invalides.size > 0;
       const note = document.createElement('p');
       note.className = 'ed-capacite__portee';
       note.textContent = `Le nombre de valeurs « {N} » de la description change : enregistrez-la d’abord, puis réglez les valeurs de cette carte.${
-        reglees ? ' Les valeurs réglées ici ne seront pas enregistrées.' : ''}`;
+        reglees ? ' Les valeurs réglées ici ne partent pas avec elle.' : ''}`;
       zone.replaceChildren(note);
     }
     zone.hidden = false;

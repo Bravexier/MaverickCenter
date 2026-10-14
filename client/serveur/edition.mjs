@@ -1467,11 +1467,6 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   // d'exemple, absentes de la base du site de dev) — page_tag peut donc changer au-delà du journal ; un mot-clé créé pour un lot d'avant 0043 : mot_cle
   if (reelles.some((m) => m.table === 'mot_cle' && m.operation === 'supprimer')) completees.add('page_tag');
   if (appliquees.some((m) => m.synthetique && m.table === 'mot_cle')) completees.add('mot_cle');
-  // une carte ou une capacité supprimée : la cascade de leur schéma retire aussi les capacités et les valeurs propres qu'un lot noté avant la migration
-  // 0044 n'a pas notées (ancienneEcritureDesCapacites)
-  const supprimees = new Set(reelles.filter((m) => m.operation === 'supprimer').map((m) => m.table));
-  if (supprimees.has('monstre')) completees.add('monstre_capacite');
-  if (supprimees.has('monstre') || supprimees.has('monstre_capacite')) completees.add('monstre_capacite_valeur');
   Object.assign(sortie, recalculerLesPages(db, reelles), { tablesCompletees: [...completees] });
   return bilan;
 }

@@ -2267,11 +2267,9 @@ CREATE INDEX monstre_capacite_commune_nom ON monstre_capacite_commune (nom_cle);
 
 -- Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de
 -- monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée
--- laisse un trou, une capacité ajoutée va à la fin. Supprimer une carte retire ses capacités, et une capacité ses valeurs (ON DELETE CASCADE : le service les
--- note une à une ; au rejeu du journal, clés coupées, la cascade retire aussi celles qu'un lot noté avant la migration 0044 n'a pas notées, comme la
--- capacité « Tome de la corruption niv.1. » que 0044 a détachée de la précédente : serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites).
+-- laisse un trou, une capacité ajoutée va à la fin.
 CREATE TABLE monstre_capacite (
-  monstre_id          TEXT    NOT NULL REFERENCES monstre(id) ON DELETE CASCADE,
+  monstre_id          TEXT    NOT NULL REFERENCES monstre(id),
   rang                INTEGER NOT NULL CHECK (rang >= 1),
   prefixe             TEXT    CHECK (prefixe IS NULL OR length(prefixe) > 0),  -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
   ep_min              INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe (R56) ; recalculé, jamais saisi
@@ -2295,7 +2293,7 @@ CREATE TABLE monstre_capacite_valeur (
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
   PRIMARY KEY (monstre_id, rang, numero),
-  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang) ON DELETE CASCADE
+  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang)
 ) STRICT, WITHOUT ROWID;
 
 -- Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts

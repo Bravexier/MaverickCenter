@@ -446,6 +446,12 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   for (const description of ['Accolade { seule.', 'Pas {x}.', '']) {
     assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description } }).statut, 400, description);
   }
+  // une valeur commune au-delà de 2^53 ne s'écrirait plus telle quelle (« 1e+21 ») : refusée, comme une valeur propre ; 2^53 - 1 passe
+  r = enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description: 'Malus de {9007199254740992}%.' } });
+  assert.equal(r.statut, 400);
+  assert.match(r.corps.erreur, /trop grand/);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description: 'Malus de {9007199254740991}%.' } }).statut, 200);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description: gabarit.description } }).statut, 200);
 
   // une nouvelle capacité commune, ajoutée à une carte dans le même lot (« @0 »), à la fin de ses capacités ; identifiant tiré du nom, figé
   const nom = nomLibre('Souffle d’essai+');
