@@ -357,3 +357,6 @@ L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que
 7. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
    faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ? Réponse : « Je sais pas » (2026-10-14) ; la note
    reste hors du site.
+8. **Momies** (Momie, Momie royale, Momie surveillante) : « Enragé » est à la fois dans « Vulnérabilité(s) Dégâts x2 » et dans « Immunité(s) »
+   (lignes 20809-20819, 20877-20885 et 20944-20952 de l'export). Laquelle fait foi ? Les deux sont gardées en attendant (relecture de la base du
+   2026-10-15, constat D4).
