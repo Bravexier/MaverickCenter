@@ -54,7 +54,8 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/journal/` | Le journal du service gardé en mémoire (page Debug, plus bas) |
 | `GET` | `/api/debug/metriques/`, `…/requetes/`, `…/export/` | Les métriques des appels `/api/` et des pages vues d'une instance ; les dernières requêtes une à une ; les agrégats horaires en pièce jointe (page Debug, plus bas) |
 | `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
-| `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles, en lecture seule (menu « DB », le schéma de la base, de la page Debug, plus bas) |
+| `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles (fiches comprises), en lecture seule, avec son `ETag` et `304` sur `If-None-Match` (menu « DB », le schéma de la base, de la page Debug, plus bas) |
+| `GET` | `/api/debug/base/` | La version de la base vivante, qui change à chaque écriture validée : la page Debug la relève pour suivre les tables en direct (plus bas) |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
@@ -379,7 +380,8 @@ l'ordre voulu par le propriétaire (2026-10-15 : « Il faudra mettre les journau
 système aussi sont fermés par défaut. L'ordre des menus est : 1) Système 2) Performance 3) Journaux 4) DB (ton futur schéma). Tester l'API sera
 donc supprimé car devenu inutile après le schéma »), et rien d'autre. **Un menu fermé ne demande rien au service** : Système, Performances et
 Journaux chargent leurs données à leur ouverture (aussitôt), les relèvent tant qu'ils restent ouverts (et que l'onglet se voit) et s'arrêtent quand
-on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base vivante qu'à sa première ouverture.
+on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB dessine le schéma à sa première ouverture puis, tant qu'il reste ouvert (et que
+l'onglet se voit), relève la version de la base toutes les 2 s et ne relit nombres de lignes et contenu que quand elle change.
 
 1. **Système** (choix de l'instance en tête, le même qu'en tête de Performances, les deux listes se suivent ; une adaptation, pas une demande :
    Performances étant fermé par défaut, sans elle il faudrait l'ouvrir, donc lancer ses relèves, pour changer l'instance de Système) : alertes,
@@ -404,13 +406,13 @@ on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base 
    lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés — décision du propriétaire ; la
    même liste qu'en tête de Système, les deux se suivent), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux
    (appels, moyenne, médiane, p95, p99, min/max, écart type, temps cumulé, erreurs 4xx/5xx, part des `304`, octets, requêtes SQL par appel) et courbe
-   des appels et du p95 par pas (5 min sur 1 h, heure sur 24 h et 7 j, jour au-delà), **sans les relèves automatiques** (journal, métriques et système
-   de la page Debug, maintenance de chaque page, balise : elles feraient l'essentiel des appels et mesureraient la page Debug elle-même ; leur nombre
-   est dit à part, chacune garde sa ligne), tableau des **routes** (une ligne par route × méthode, triable par chaque colonne ; les trois plus lentes
-   en moyenne et celles d'au moins 100 ms / 500 ms marquées ; un quantile au-delà de la dernière classe s'écrit « > 5 s »), **pages vues** (temps
-   mesurés par le navigateur : premier octet, `DOMContentLoaded`, chargement, LCP, moyenne / p95), **navigateurs et appareils**, **origines des
-   appels** (quelle page appelle quelle route ; ces trois listes sont comptées par heure : sur « 1 h », une phrase dit leur fenêtre,
-   `depuis_horaire`), **requêtes récentes** une à une (site de dev seulement, mémoire du service : phases, octets, SQL dont la requête la plus lente,
+   des appels et du p95 par pas (5 min sur 1 h, heure sur 24 h et 7 j, jour au-delà), **sans les relèves automatiques** (journal, version de la base,
+   métriques et système de la page Debug, maintenance de chaque page, balise : elles feraient l'essentiel des appels et mesureraient la page Debug
+   elle-même ; leur nombre est dit à part, chacune garde sa ligne), tableau des **routes** (une ligne par route × méthode, triable par chaque
+   colonne ; les trois plus lentes en moyenne et celles d'au moins 100 ms / 500 ms marquées ; un quantile au-delà de la dernière classe s'écrit
+   « > 5 s »), **pages vues** (temps mesurés par le navigateur : premier octet, `DOMContentLoaded`, chargement, LCP, moyenne / p95), **navigateurs
+   et appareils**, **origines des appels** (quelle page appelle quelle route ; ces trois listes sont comptées par heure : sur « 1 h », une phrase
+   dit leur fenêtre, `depuis_horaire`), **requêtes récentes** une à une (site de dev seulement, mémoire du service : phases, octets, SQL dont la requête la plus lente,
    page, navigateur ; filtres « plus lentes que … ms » et route, le gabarit exact ; l'instance « Production » choisie, une phrase à la place : la page
    ne montre jamais la mémoire du site de dev sous l'étiquette de la production), boutons **Exporter (CSV)** et **JSON** (agrégats bruts de la période
    affichée). Relevé toutes les 30 s, menu ouvert.
@@ -421,7 +423,8 @@ on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base 
    refaire le tableau : la ligne lue reste à sa place et une sélection en cours diffère l'affichage. Chaque réponse porte l'identité du processus
    (`processus`) : un redémarrage du service se voit même quand la page n'a rien relevé entre-temps (onglet caché, pause), et tout est relu depuis le
    début. Chaque requête `/api/` y est notée (catégorie `http` : méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves
-   du journal et de l'état de maintenance (reconnues à leur chemin, jamais à leur chaîne de requête) ; son entrée porte en plus des **champs isolés**
+   réussies du journal, de la version de la base, des métriques, du système et de l'état de maintenance, et la balise des pages vues (reconnues à
+   leur chemin, jamais à leur chaîne de requête : `journal-du-service.mjs#estUneReleve`) ; son entrée porte en plus des **champs isolés**
    `{ duree_ms, methode, route, statut, octets_sortie }` (`route` : le gabarit sans identifiant, ci-dessous), d'où une colonne **Durée** triable
    (Heure / Durée) et le filtre « plus lent que … ms » (`?min_ms=`, appliqué par le service, qui fait tout relire). En production, ni mémoire ni ligne
    par requête : la sortie du service (`docker logs`) ne garde que ses événements et les échecs du service (`5xx`).
@@ -447,13 +450,14 @@ on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base 
    flèches pour la voisine (dans la direction de la flèche, jamais de travers), Maj + flèches pour déplacer, + / − / 0, **L** pour la liste des clés
    étrangères de la table (Entrée y va), Entrée pour le contenu. **Double clic** ailleurs que sur une pastille (Entrée, appui long au toucher) : la
    fenêtre « Contenu de <table> » (`<dialog>`), lue dans la **base vivante** par `GET /api/debug/tables/<nom>/` par pages de 100 (« Charger plus », et
-   au défilement), total, tri par en-tête, NULL visible, nombres tels qu'en base (seule la partie entière est groupée par milliers), cellule coupée
-   marquée d'un fondu et dépliée d'un clic ou au clavier ; Échap, « Fermer » ou un clic sur le fond la ferment ; un `403` (fiches de la section 13, ou
-   hors du site de dev) ou un service absent le disent en clair. Le nom d'une table n'est jamais coupé par le nombre de lignes de la base vivante
-   (l'en-tête garde la place de « 99 999 lignes »). La structure (tables, colonnes, types, clés, sections, descriptions, nombre de lignes au build)
-   est calculée **au build** (`lib/schema-structure.mjs`, depuis la base construite et `data/schema.sql`) et posée dans la page en JSON (`<script
-   type="application/json" data-debug-schema>`), jamais dans un build `SITE_MODE=prod` ni dans la version portable ; les nombres de lignes des boîtes
-   deviennent ceux de la base vivante dès que `GET /api/debug/tables/` répond (« Contenu des tables », plus bas).
+   au défilement), **toutes les tables et vues, fiches de personnages comprises**, total, tri par en-tête, NULL visible, nombres tels qu'en base
+   (seule la partie entière est groupée par milliers), cellule coupée marquée d'un fondu et dépliée d'un clic ou au clavier ; Échap, « Fermer » ou un
+   clic sur le fond la ferment ; un `403` (hors du site de dev) ou un service absent le disent en clair. Le nom d'une table n'est jamais coupé par le
+   nombre de lignes de la base vivante (l'en-tête garde la place de « 99 999 lignes »). La structure (tables, colonnes, types, clés, sections,
+   descriptions, nombre de lignes au build) est calculée **au build** (`lib/schema-structure.mjs`, depuis la base construite et `data/schema.sql`) et
+   posée dans la page en JSON (`<script type="application/json" data-debug-schema>`), jamais dans un build `SITE_MODE=prod` ni dans la version
+   portable ; les nombres de lignes des boîtes deviennent ceux de la base vivante dès que `GET /api/debug/tables/` répond, puis **suivent la base**
+   tant que le menu reste ouvert, comme la fenêtre ouverte (« Suivi en direct », plus bas).
 
 En production (`SITE_MODE=prod`) l'entrée n'est pas au menu et la page ne dit qu'une phrase, sans script ; la version portable ne l'emporte pas.
 La CI construit aussi le site de production et y relance `debug-page` et `site-html` (`ci.yml`, `CONTROLES_DE_LA_CI`).
@@ -464,38 +468,85 @@ Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (Système, Performances,
 que `lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendus échappés ; aucun module commun avec `debug.mjs`),
 `lib/schema-structure.mjs` (au build), `styles/debug/schema.css` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service :
 `serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
-`serveur/debug-tables.mjs` (contenu des tables).
+`serveur/debug-tables.mjs` (contenu des tables, version de la base).
 
 ### Contenu des tables
 
-Site de dev seulement : ailleurs, `403` avant tout le reste (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que par les
-pages du site). Lecture seule : toute autre méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
+Site de dev seulement : ailleurs, `403` avant tout le reste — **seule la base du serveur de production reste fermée** (décision du propriétaire du
+2026-10-15 : en production, la base ne s'ouvre que par les pages du site). Sur le site de dev, **tout se lit**, fiches comprises : décision du
+propriétaire du 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. » Lecture seule : toute autre
+méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
+
+**À revoir à la 1.0** (un rappel : le code suit la décision) : la base vivante du serveur de test (`https://dev.maverick-jdr.com`) est une **copie
+de celle de production**, faite à sa première installation puis conservée (`MAVERICK_BASE_TEST=conservee`, [`deploy/vps/README.md`](../deploy/vps/README.md)),
+et ce site est ouvert **sans mot de passe** avant la connexion Discord (Caddy présente le mot de passe interne à la place des visiteurs). Quiconque
+connaît l'adresse y lit donc, par `GET /api/debug/tables/<nom>/`, les fiches, les comptes et les groupes copiés de la production, sans les règles de
+visibilité de `/api/personnages/` (`v_personnage_visible`). Sans conséquence aujourd'hui (des prétirés seulement, déjà publics par
+`/api/personnages/`) ; à la connexion Discord (1.0 : comptes avec leur identifiant Discord, fiches de joueur privées), cette ouverture est à
+reconsidérer avec le propriétaire (questions ouvertes de [`feuille-de-route.md`](feuille-de-route.md)).
 
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/debug/tables/` | `{ tables: [{ nom, genre, lignes }] }` : chaque table et vue de la **base vivante**, dans l'ordre des noms, ses lignes comptées maintenant ; `genre` = `table`, `derivee` (`-- @derivee` de `data/schema.sql`, hors FTS5) ou `vue` ; ni les tables internes de SQLite (`sqlite_…`), ni les tables FTS5 (virtuelles et leurs tables de *shadow*) |
-| `GET /api/debug/tables/<nom>/?limite=1..500&decalage=&tri=<colonne>&ordre=asc\|desc` | `{ table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes: [{ <colonne>: valeur }] }` (100 lignes par défaut ; `tri` : `null` sans tri demandé) ; `404` pour un nom qui n'est pas **exactement** celui d'une table ou d'une vue de la liste (interne, FTS5, casse, guillemets, « / » encodé…), `403` pour une table ou une vue des fiches (section 13, ci-dessous), `400` pour un tri qui n'est pas une colonne, un ordre inconnu, une limite hors de 1..500 ou un décalage qui n'est pas un entier positif |
+| `GET /api/debug/tables/<nom>/?limite=1..500&decalage=&tri=<colonne>&ordre=asc\|desc` | `{ table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes: [{ <colonne>: valeur }] }` (100 lignes par défaut ; `tri` : `null` sans tri demandé) pour **toute** table ou vue de la liste, celles de la section 13 comprises (fiches de personnages, comptes, groupes, et les vues qui les lisent : `v_personnage_visible`, `v_personnage_controle`…) ; `ETag: "<16 hex>"` (sha256 du JSON du corps) et `Cache-Control: no-cache` ; `304` sans corps (avec l'`ETag`) si `If-None-Match` la contient (liste séparée par des virgules, `W/` toléré) ; `404` pour un nom qui n'est pas **exactement** celui d'une table ou d'une vue de la liste (interne, FTS5, casse, guillemets, « / » encodé…), `400` pour un tri qui n'est pas une colonne, un ordre inconnu, une limite hors de 1..500 ou un décalage qui n'est pas un entier positif (ni l'un ni l'autre n'a d'`ETag`) |
+| `GET /api/debug/base/` | `{ version }` : la **version de la base vivante**, un texte opaque qui change dès qu'une écriture est validée, quelle que soit la table ; `Cache-Control: no-store` ; `405` (`Allow: GET`) pour une autre méthode, `503` sans base, `404` pour `/api/debug/base/<autre>/` |
 
 Un nom n'entre dans le SQL qu'après avoir été trouvé tel quel dans `PRAGMA table_list` ; une colonne de tri, dans `PRAGMA table_info` ; la route
 n'exécute que des `SELECT` et ces deux `PRAGMA`. Ordre **stable** d'une page à l'autre : la colonne de tri, puis la clé primaire, puis le rowid
-(une vue : toutes ses colonnes) ; `desc` renverse tout l'ordre. Valeurs : une image (data URL `data:image/…`) n'est **jamais** rendue entière :
-`{ image: true, type, octets, empreinte }` (l'empreinte de `lib/portrait.mjs`, comme `ligneSansImage`) ; une image **dans** un texte (le JSON de
-`modification.avant` / `apres` : le portrait d'une carte de monstre modifié sur le site de dev) devient « [image <type>, N octets, empreinte <e>] » ;
-un texte de plus de 2 000 caractères est coupé et suivi de « … (N caractères) » ; un BLOB devient `{ octets }` ; un entier hors de la plage sûre de
-JavaScript, son écriture en texte. **Ce qui serait jeté n'est pas lu** : le SQL ne rend d'un texte long que ses 2 000 premiers caractères et sa
-longueur (`substr`, `length`), d'un BLOB que sa taille ; seules les images (colonnes contraintes par `GLOB 'data:image/*'`, et un texte qui en
-contient une) sont lues en entier, pour leur empreinte, et chaque ligne est résumée dès sa lecture. Une colonne d'image se **trie par sa taille**
-(`length`), et avec un tri la page de clés (rowid ou clé primaire) se choisit d'abord, puis chaque ligne se lit par sa clé : le tri de SQLite ne
-porte jamais d'image (311 portraits de 700 000 caractères, le plafond : 100 lignes en ~0,3 s, sans hausse de mémoire ; triées par portrait,
-~0,45 s au lieu de 0,7 à 1,4 s).
+(une vue : toutes ses colonnes) ; `desc` renverse tout l'ordre. Valeurs : une image (data URL `data:image/…`) n'est **jamais** rendue entière — une
+question de volume, pas de secret : le portrait d'une fiche comme celui d'une carte de monstre devient `{ image: true, type, octets, empreinte }`
+(l'empreinte de `lib/portrait.mjs`, comme `ligneSansImage`) ; une image **dans** un texte (le JSON de `modification.avant` / `apres` : le portrait
+d'une carte de monstre modifié sur le site de dev) devient « [image <type>, N octets, empreinte <e>] » ; un texte de plus de 2 000 caractères est
+coupé et suivi de « … (N caractères) » ; un BLOB devient `{ octets }` ; un entier hors de la plage sûre de JavaScript, son écriture en texte. **Ce
+qui serait jeté n'est pas lu** : le SQL ne rend d'un texte long que ses 2 000 premiers caractères et sa longueur (`substr`, `length`), d'un BLOB que
+sa taille ; seules les images (colonnes contraintes par `GLOB 'data:image/*'`, et un texte qui en contient une) sont lues en entier, pour leur
+empreinte, et chaque ligne est résumée dès sa lecture. Une colonne d'image se **trie par sa taille** (`length`), et avec un tri la page de clés
+(rowid ou clé primaire) se choisit d'abord, puis chaque ligne se lit par sa clé : le tri de SQLite ne porte jamais d'image (311 portraits de
+700 000 caractères, le plafond : 100 lignes en ~0,3 s, sans hausse de mémoire ; triées par portrait, ~0,45 s au lieu de 0,7 à 1,4 s).
+`/api/v1/` ne change pas : il ne sert jamais une table des sections 13 et 14 (`lib/ressources.mjs`).
 
-**Fiches (section 13)** : les tables des fiches de personnages, des comptes et des groupes (`TABLES_FICHES` de `lib/fiche-format.mjs`) et les vues
-qui les lisent (`v_personnage_visible`, `v_personnage_controle`…) sont **listées** (nombre de lignes, dessinées par le schéma) mais leur contenu
-répond **`403`** avec la raison : comme pour `/api/v1/` (« jamais servi »), elles ne se lisent que par `/api/personnages/` et ses règles de
-visibilité — avec la connexion Discord (1.0), les fiches de joueur et les comptes seront privés, et le mot de passe du site de dev, que Caddy
-présente, n'en protégerait pas l'accès. Le journal de l'édition (section 14) et les notes de version (15) se lisent (`GET /api/edition/journal/`
-exporte déjà le journal sur le site de dev). Choix fait sans le propriétaire, à confirmer ; `test/serveur-debug-tables.test.mjs` épingle les deux
-listes (une table ajoutée à la section 13 oblige à revoir ce point). Métriques : gabarits `/api/debug/tables/` et `/api/debug/tables/{table}/`.
+**ETag d'une page** (`versionDuContenu`) : 16 caractères hexadécimaux d'un sha256 du JSON du corps, qui ne porte rien qui change sans que la page
+lue change (ni heure, ni version de la base) : une autre page, une autre taille, un autre tri, une ligne de la page modifiée ou le total changé
+donnent un autre ETag, une ligne hors de la page non.
+
+**Version de la base** (`versionDeLaBase`) : « `<jeton>.<connexion>.<schema_version>.<data_version>.<total_changes>` », à coût fixe — une seule
+instruction, préparée une fois par connexion, sans lire aucune table : le **jeton** est tiré au démarrage du processus (un service redémarré ne
+redonne jamais une version déjà vue), la **connexion** est numérotée par une `WeakMap` sur l'objet que donne `service.base()` (l'enveloppe de
+`serveur/metriques-sql.mjs`, la même pour une même connexion : une base rouverte ou remplacée en reçoit un autre), `PRAGMA schema_version` change
+avec le schéma, `PRAGMA data_version` avec une écriture validée par une **autre** connexion sur le même fichier, `total_changes()` avec les lignes
+écrites par **cette** connexion (celle du service). Une écriture validée change toujours la version ; une écriture annulée peut la changer (une
+relecture pour rien). C'est une **relève** : réussie, elle n'est notée ni au journal du service ni dans la mémoire des requêtes, et elle est hors
+du global des métriques, mais comptée sur sa ligne du tableau des routes (gabarit `/api/debug/base/`). Métriques : gabarits `/api/debug/tables/`,
+`/api/debug/tables/{table}/` et `/api/debug/base/`.
+
+**Suivi en direct** (demande du propriétaire du 2026-10-15 : « j'aimerais que ce tableau se mette à jour si la table change » ;
+`src/scripts/debug-schema.mjs`, fonctions pures et testées de `lib/debug-schema.mjs`) : tant que le menu « DB » est ouvert **et** la page visible,
+elle relève `GET /api/debug/base/` toutes les 2 s (minuterie enchaînée, jamais deux relèves à la fois ; aussitôt à l'ouverture du menu et au retour
+de la page au premier plan ; rien menu fermé ou page cachée, pas même la suite d'une relève dont la réponse arrive après qu'on a refermé le menu ;
+`403` : arrêt définitif ; réseau ou `5xx` : toutes les 10 s, puis 2 s après un succès : `suiteDeLaReleve`). La première version sert de
+référence ; une version différente fait relire les nombres de lignes des boîtes (`GET /api/debug/tables/` ; une boîte dont le nombre change
+s'éclaire 2 s, `.est-changee`) et, fenêtre « Contenu de <table> » ouverte, **chaque page déjà chargée** (pages alignées de 100 : `pagesARedemander`)
+avec `If-None-Match` = l'`ETag` reçu pour elle : `304` = page inchangée ; `200` = ses lignes comparées à celles affichées par leur JSON, en
+multiensemble (`planDeMiseAJour`), et seules celles qui diffèrent sont refaites. Le tableau montre alors exactement les premières min(lignes
+affichées avant, total) lignes de la table (`assemblerLesPages` : une insertion garde le même nombre de lignes, « Charger plus » annonce les autres ;
+une suppression en montre moins). Rien d'autre ne bouge : la première ligne visible reste à sa place à l'écran (sauf tout en haut), tri et ordre
+gardés, en-têtes refaits seulement si les colonnes changent (focus d'un bouton de tri gardé), cellules dépliées gardées pour les lignes inchangées,
+focus gardé (ou la case de même place) ; une ligne nouvelle ou changée **s'éclaire 2 s** (`tr.est-nouvelle` ; sous `prefers-reduced-motion`, un
+simple fond retiré au même délai) ; les bandes alternées sont posées par ligne, pour qu'une insertion ne repeigne pas les suivantes. Une ligne
+d'état dans l'en-tête de la fenêtre dit « Suivi en direct — à jour (lu à HH:MM:SS) », « … mis à jour à HH:MM:SS : N lignes changées » ou « …
+interrompu : service injoignable, nouvel essai dans 10 s » (`libelleDuSuivi`) ; une zone `aria-live` polite, à part, n'annonce que les
+changements. Jamais deux rafraîchissements à la fois, jamais pendant un chargement de page (« Charger plus », défilement : il attend la fin) ;
+changer de table, de tri ou fermer la fenêtre l'abandonne ; plusieurs versions vues pendant l'un : un seul de plus ensuite. « Charger plus » n'est
+jamais désactivé (Chrome retire le focus d'un bouton qui le devient) : pendant la lecture d'une page il est marqué occupé (`aria-disabled`), et un
+clic pendant un rafraîchissement est rejoué après lui ; caché, il laisse le focus au cadre du tableau. « Charger plus » lit toujours une page alignée, et une page relue qui ne redonne pas les lignes déjà affichées qu'elle contient (la table a changé depuis) n'ajoute
+rien : le tableau est rafraîchi d'abord (`pageAccordee`), pour que l'ETag de chaque page vaille pour ce qui est affiché. Erreurs au
+rafraîchissement : `404` (table disparue) = message dans la zone d'erreur, contenu gardé, ni réécrit ni annoncé de nouveau tant qu'il ne change pas
+(une écriture dans une autre table ne le répète pas) ; `400` sur le tri (colonne disparue) = retour à l'ordre par défaut et rechargement, dit avec le
+résumé du rechargement (une seule annonce) et dans la ligne d'état (« mis à jour à … : colonne de tri « v » disparue, retour à l'ordre par défaut » :
+`noteDuTriPerdu`) ; réseau = « interrompu », contenu gardé. Une lecture de page en échec (première page, « Charger plus ») le dit dans la ligne
+d'état (`etatDeLEchec` : jamais « en attente du service » quand il a répondu) ; à la version suivante, une première page en échec se relit sans
+rien effacer (ni « Chargement… », ni alerte réécrite si la réponse ne change pas), et un « Charger plus » en échec suivi d'un rafraîchissement sans
+changement (tout en `304`) rend le bouton et le résumé.
 
 ### Routes des métriques
 
@@ -542,7 +593,10 @@ classées par SQLite, images de l'autre instance),
 `serveur-metriques-http` (vrai serveur : routes des métriques et balise), `serveur-metriques-disque` (répartition du disque, relevé de l'hôte,
 réserve de root), `debug-metriques` (rendus purs de Performances, Système et de la jauge), `debug-balise` (balise des pages) ;
 `serveur-debug-tables` (contenu des tables : `403` hors du site de dev, liste, noms piégés, `400`, pagination, ordre stable, images et textes
-longs résumés, vues, lecture seule, gabarits des métriques, vrai serveur), `debug-schema` (structure du build sur la vraie base, mêmes tables
-dérivées que le service, mise en page sans chevauchement, un lien par clé étrangère, niveaux de détail, caméra, clavier, recherche, rendus
-échappés, fenêtre du contenu, script et composant) ; `debug-page` vérifie les quatre menus fermés et leur ordre, qu'un menu fermé ne demande rien
+longs résumés, vues, tables et vues de la section 13 lisibles (portrait résumé), lecture seule, `ETag` et `304`, version de la base — stable sans
+écriture, changée par une écriture de cette connexion ou d'une autre, par le schéma, par une réouverture, et d'un processus à l'autre —, route
+`/api/debug/base/`, gabarits et relèves des métriques et du journal, vrai serveur), `debug-schema` (structure du build sur la vraie base, mêmes
+tables dérivées que le service, mise en page sans chevauchement, un lien par clé étrangère, niveaux de détail, caméra, clavier, recherche, rendus
+échappés, fenêtre du contenu, suivi en direct — relève, pages à redemander, assemblage, lignes à refaire rejouées au hasard contre une force
+brute, libellés —, script et composant) ; `debug-page` vérifie les quatre menus fermés et leur ordre, qu'un menu fermé ne demande rien
 (`suivreLOuverture`), et leur absence en production ; `serveur-livraison` liste les modules livrés.

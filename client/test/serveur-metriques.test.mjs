@@ -70,6 +70,9 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
     '/api/debug/metriques/requetes/': '/api/debug/metriques/requetes/',
     '/api/debug/metriques/export/': '/api/debug/metriques/export/',
     '/api/debug/systeme/': '/api/debug/systeme/',
+    '/api/debug/base/': '/api/debug/base/',
+    '/api/debug/base?x=1': '/api/debug/base/',
+    '/api/debug/tables/metier/?limite=100': '/api/debug/tables/{table}/',
     '/api/metriques/page/': '/api/metriques/page/',
     '/api/classeur/': '/api/classeur/',
     '/api/classeur': '/api/classeur/',
@@ -81,7 +84,7 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
   for (const [a, r] of Object.entries(attendues)) assert.equal(routeNormalisee(a), r, a);
   for (const a of ['/', '/api/', '/autre/api/etat/', '/api/inconnue/', '/api/etat/x/', '/api/personnages//', '/api/personnages/a/b/', '/api/personnages/a/portrait/b/',
     '/api/edition/inconnue/', '/api/edition/lignes/x/', '/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/a/b/', '/api/debug/', '/api/debug/autre/',
-    '/api/debug/metriques/autre/', '/api/metriques/', '/api/metriques/page/x/', '/api/classeur/x/', '/api/classeur/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit/', '/api/v1/inconnue/', '/api/v1/openapi.json/x', '/api/v1/metiers/x/inconnu/',
+    '/api/debug/metriques/autre/', '/api/debug/base/x/', '/api/metriques/', '/api/metriques/page/x/', '/api/classeur/x/', '/api/classeur/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit/', '/api/v1/inconnue/', '/api/v1/openapi.json/x', '/api/v1/metiers/x/inconnu/',
     '/api/v1/metiers/x/y/z/w/', '', null]) {
     assert.equal(routeNormalisee(a), ROUTE_INCONNUE, String(a));
   }
@@ -126,6 +129,10 @@ test('méthodes gardées ; relèves (suivi) : réussies seulement', () => {
   assert.equal(estUnSuivi('GET', '/api/debug/metriques/', 304), true);
   assert.equal(estUnSuivi('GET', '/api/debug/metriques/export/', 200), false, 'un export se demande à la main');
   assert.equal(estUnSuivi('GET', '/api/debug/journal/', 403), false);
+  // la version de la base (menu « DB » ouvert, toutes les 2 s) : une relève ; le contenu d'une table, relu quand elle change, n'en est pas une
+  assert.equal(estUnSuivi('GET', '/api/debug/base/', 200), true);
+  assert.equal(estUnSuivi('GET', '/api/debug/base/', 503), false);
+  assert.equal(estUnSuivi('GET', '/api/debug/tables/{table}/', 304), false);
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 204), true);
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 400), false);
   assert.equal(estUnSuivi('GET', '/api/etat/', 200), false);

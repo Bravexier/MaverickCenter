@@ -55,7 +55,12 @@
 //   GET  /api/debug/tables/         chaque table et vue de la base vivante : { tables: [{ nom, genre, lignes }] } (menu « DB » de la page Debug ;
 //                                   serveur/debug-tables.mjs, ni tables internes sqlite_… ni tables FTS5)
 //   GET  /api/debug/tables/<nom>/   une page de ses lignes, en lecture seule : ?limite=1..500 (100)&decalage=&tri=<colonne>&ordre=asc|desc →
-//                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés)
+//                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés) ; toutes les
+//                                   tables et vues, fiches (section 13) comprises (décision du propriétaire du 2026-10-15 : « Il faut tout rendre
+//                                   ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; ETag (empreinte du corps), 304 sur If-None-Match
+//   GET  /api/debug/base/           { version } : la version de la base vivante, qui change à chaque écriture validée (coût fixe, aucune table lue) ;
+//                                   la page la relève toutes les 2 s, menu « DB » ouvert, pour suivre les tables en direct (une relève : ni au journal
+//                                   du service ni dans la mémoire des requêtes)
 // Mesure des pages vues, sur les DEUX instances (décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ;
 // MAVERICK_METRIQUES_PAGES=0 la ferme : 403) — chaque instance l'écrit dans SA base des métriques, jamais dans la base vivante :
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
@@ -80,7 +85,7 @@ import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
 import { traiterApiV1 } from './ressources.mjs';
 import { BALISE, ErreurMetriques } from './metriques.mjs';
-import { ErreurTables, lireTable, listerTables } from './debug-tables.mjs';
+import { ErreurTables, lireTable, listerTables, versionDeLaBase, versionDuContenu } from './debug-tables.mjs';
 import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
 
@@ -130,6 +135,11 @@ function repondre(Erreur, agir) {
   }
 }
 
+/** Vrai si l'en-tête If-None-Match (« "a", W/"b" ») contient cette étiquette (guillemets compris), la version faible comptant pour la forte. */
+function etiquetteConnue(entetes, etiquette) {
+  return String(entetes?.['if-none-match'] ?? '').split(',').map((v) => v.trim().replace(/^W\//, '')).includes(etiquette);
+}
+
 /** L'identifiant d'une fiche dans l'adresse, décodé ; null s'il est illisible, vide ou trop long. */
 function idDeFiche(brut) {
   try {
@@ -164,7 +174,7 @@ export function traiter(requete, service) {
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
-  if (ressource === 'debug') return traiterDebug(service, brut, reste, permis, params);
+  if (ressource === 'debug') return traiterDebug(requete, service, brut, reste, permis, params);
   if (ressource === 'metriques') return traiterMetriques(requete, service, brut, reste, permis);
   if (ressource === 'classeur') return traiterClasseur(requete, service, brut, reste, permis);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
@@ -222,8 +232,7 @@ function traiterPortrait(requete, service, brut, permis) {
   if (!portrait) return erreur(404, 'Pas de portrait pour cette fiche.');
   const etiquette = `"${portrait.empreinte}"`;
   const cache = { ETag: etiquette, 'Cache-Control': 'private, no-cache' };
-  const connue = String(requete.entetes?.['if-none-match'] ?? '').split(',').map((v) => v.trim().replace(/^W\//, ''));
-  if (connue.includes(etiquette)) return { statut: 304, corps: null, brut: '', entetes: cache };
+  if (etiquetteConnue(requete.entetes, etiquette)) return { statut: 304, corps: null, brut: '', entetes: cache };
   const octets = portrait.octets();
   if (!octets) return erreur(404, 'Pas de portrait pour cette fiche.');
   return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
@@ -319,24 +328,40 @@ function parametres(params, noms) {
  *   GET /api/debug/journal/ : les entrées du journal du service gardé en mémoire qui suivent ?depuis=<n>, filtrées (?niveau=, ?categorie= : une
  *     valeur, « a,b » ou répétée ; ?q= ; ?limite= ; ?min_ms=) — journal-du-service.mjs#lire, tel quel ;
  *   GET /api/debug/metriques/, …/requetes/, …/export/ et /api/debug/systeme/ : les métriques (serveur/metriques.mjs) ;
- *   GET /api/debug/tables/ et /api/debug/tables/<nom>/ : le contenu des tables de la base vivante, en lecture seule (serveur/debug-tables.mjs).
+ *   GET /api/debug/tables/ et /api/debug/tables/<nom>/ : le contenu des tables de la base vivante, en lecture seule, toutes les tables et vues
+ *     (serveur/debug-tables.mjs) ; le contenu d'une table porte son ETag (versionDuContenu : l'empreinte du JSON du corps) et répond 304 sans corps
+ *     à un If-None-Match qui la contient ;
+ *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store.
+ * En production, tout répond 403 : c'est la base du serveur de prod qui reste fermée (décisions du propriétaire du 2026-10-15).
  */
-function traiterDebug(service, action, reste, permis, params) {
+function traiterDebug(requete, service, action, reste, permis, params) {
   if (!service.edition) {
     const quoi = action === 'journal' ? 'Le journal du service ne se lit'
-      : action === 'tables' ? 'Le contenu des tables ne se lit' : 'Les métriques ne se lisent';
+      : action === 'tables' ? 'Le contenu des tables ne se lit'
+        : action === 'base' ? 'La version de la base ne se lit' : 'Les métriques ne se lisent';
     // décision du propriétaire (2026-10-15) : en production, la base ne s'ouvre que par les pages du site
     return erreur(403, `${quoi} que sur le site de dev (page Debug).`);
   }
   const metriques = action === 'metriques' && (!reste.length || (reste.length === 1 && ['requetes', 'export'].includes(reste[0])));
   const tables = action === 'tables' && reste.length <= 1;
-  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables) return erreur(404, 'Adresse inconnue.');
+  const base = action === 'base' && !reste.length;
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
-  if (tables) {
+  if (tables || base) {
     const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
     if (indisponible) return indisponible;
-    return repondre(ErreurTables, () => json(200, reste.length ? lireTable(db, reste[0], params) : { tables: listerTables(db) }));
+    // la relève de la page (toutes les 2 s, menu « DB » ouvert) : jamais gardée par un cache
+    if (base) return json(200, { version: versionDeLaBase(db) }, { 'Cache-Control': 'no-store' });
+    return repondre(ErreurTables, () => {
+      if (!reste.length) return json(200, { tables: listerTables(db) });
+      const page = lireTable(db, reste[0], params);
+      // le texte servi tel quel (`brut`) : son empreinte est l'ETag, le service ne le refait pas ; `corps` reste pour qui appelle `traiter` (tests)
+      const texte = JSON.stringify(page);
+      const cache = { ETag: `"${versionDuContenu(texte)}"`, 'Cache-Control': 'no-cache' };
+      if (etiquetteConnue(requete.entetes, cache.ETag)) return { statut: 304, corps: null, brut: '', entetes: cache };
+      return { statut: 200, corps: page, brut: texte, entetes: cache };
+    });
   }
   if (action === 'journal') {
     if (!service.journalDuService) return erreur(503, 'Le journal du service n’est pas disponible.');

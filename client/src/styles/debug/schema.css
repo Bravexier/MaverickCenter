@@ -5,7 +5,9 @@
      moyen : en-têtes, noms des colonnes et marques de clé ;
      pres  : tout (types, « NN »).
    Les traits gardent leur épaisseur à l'écran quel que soit le zoom (--trait = 1 px / --k). La fenêtre du contenu (<dialog>) est hors du
-   <details> : elle reçoit les mêmes variables. */
+   <details> : elle reçoit les mêmes variables. Suivi en direct de la fenêtre : ligne d'état « Suivi en direct » (voyant selon data-etat), ligne
+   nouvelle ou changée éclairée 2 s (tr.est-nouvelle : lib/debug-schema.mjs#MISE_EN_EVIDENCE_MS), bandes alternées par ligne et non par rang
+   (tr.est-rayee : une ligne insérée ne repeint pas celles d'après) ; une boîte dont le nombre de lignes change, éclairée de même (.est-changee). */
 .debug-schema, .schema-contenu {
   --sch-mono: var(--dbg-mono, ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace);
   --sch-fond: color-mix(in srgb, var(--bg) 65%, var(--surface));
@@ -19,6 +21,9 @@
   --sch-c0: #1f5f9e; --sch-c1: #1f7a45; --sch-c2: #8a5300; --sch-c3: #6a3d9a;
   --sch-c4: #b3261e; --sch-c5: #00737a; --sch-c6: #7a5c00; --sch-c7: #4a5a7a;
   --sch-teinte-part: 9%;
+  --sch-direct: #1f7a45;
+  --sch-panne: #b3261e;
+  --sch-nouvelle: color-mix(in srgb, #e0a800 30%, var(--surface));
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .debug-schema, :root:not([data-theme="light"]) .schema-contenu {
@@ -26,6 +31,7 @@
     --sch-c0: #8ec1f0; --sch-c1: #7fd3a0; --sch-c2: #f0c27a; --sch-c3: #c9a6ef;
     --sch-c4: #f2a19a; --sch-c5: #7fd6dc; --sch-c6: #e8d27a; --sch-c7: #b4c0d8;
     --sch-teinte-part: 11%;
+    --sch-direct: #7fd3a0; --sch-panne: #f2a19a; --sch-nouvelle: color-mix(in srgb, #e8d27a 26%, var(--surface));
   }
 }
 :root[data-theme="dark"] .debug-schema, :root[data-theme="dark"] .schema-contenu {
@@ -33,6 +39,7 @@
   --sch-c0: #8ec1f0; --sch-c1: #7fd3a0; --sch-c2: #f0c27a; --sch-c3: #c9a6ef;
   --sch-c4: #f2a19a; --sch-c5: #7fd6dc; --sch-c6: #e8d27a; --sch-c7: #b4c0d8;
   --sch-teinte-part: 11%;
+  --sch-direct: #7fd3a0; --sch-panne: #f2a19a; --sch-nouvelle: color-mix(in srgb, #e8d27a 26%, var(--surface));
 }
 
 /* Outils au-dessus de la carte */
@@ -201,6 +208,12 @@
 .schema-table.est-eclairee, .schema-table:focus-visible { box-shadow: 0 0 0 calc(2.6px / var(--k)) var(--sch-fort); }
 .schema-table.est-trouvee { box-shadow: 0 0 0 calc(4px / var(--k)) var(--sch-fort); }
 .schema-table.est-trouvee .schema-table__entete { background: color-mix(in srgb, var(--accent) 35%, var(--surface)); }
+/* une table dont le nombre de lignes change (suivi en direct, menu ouvert) : sa boîte s'éclaire 2 s, comme une ligne de la fenêtre ; sans
+   animation, le fond seul, retiré au bout du même délai (scripts/debug-schema.mjs#eclairerLesBoites) */
+.schema-table.est-changee { animation: schema-ligne-nouvelle 2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .schema-table.est-changee { animation: none; background-color: var(--sch-nouvelle); }
+}
 
 /* Légende */
 .schema-legende { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; margin: 0.3rem 0 0; padding: 0; list-style: none; font-size: 0.85rem; color: var(--muted); }
@@ -231,8 +244,19 @@
 .schema-contenu__titre code { font-family: var(--sch-mono); }
 .schema-contenu__resume { margin: 0; flex: 1 1 auto; color: var(--muted); font-size: 0.9rem; }
 .schema-contenu__fermer { margin-left: auto; }
+/* l'état du suivi en direct, sous le titre (dernière ligne de l'en-tête) ; le voyant : vert suivi, orange-rouge interrompu, gris sinon */
+.schema-contenu__suivi {
+  order: 1; flex: 1 1 100%; display: flex; align-items: center; gap: 0.45rem; margin: 0; color: var(--muted); font-size: 0.82rem;
+}
+.schema-contenu__voyant { flex: none; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); }
+.schema-contenu__suivi[data-etat="a-jour"] .schema-contenu__voyant, .schema-contenu__suivi[data-etat="mis-a-jour"] .schema-contenu__voyant { background: var(--sch-direct); }
+.schema-contenu__suivi[data-etat="interrompu"] { color: var(--sch-panne); }
+.schema-contenu__suivi[data-etat="interrompu"] .schema-contenu__voyant { background: var(--sch-panne); }
+/* la zone « live » : lue, jamais vue (le résumé et la ligne d'état disent la même chose à l'écran) */
+.schema-contenu__annonce { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .schema-contenu__erreur { margin: 0.6rem 1rem; }
-.schema-contenu__defilement { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+/* overflow-anchor: none : le script garde lui-même la première ligne visible à sa place quand le tableau suit la table (scripts/debug-schema.mjs) */
+.schema-contenu__defilement { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; overflow-anchor: none; }
 .schema-contenu__defilement:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .schema-contenu__tableau {
   /* la largeur de son contenu (le cadre défile) : sans elle, le tableau tient dans la fenêtre et chaque colonne se réduit à son mot le plus long */
@@ -251,7 +275,16 @@
 .schema-tri__pk { padding: 0 0.2rem; border-radius: 3px; background: var(--accent); color: var(--surface); font-size: 0.65rem; }
 .schema-tri__type { font-family: var(--sch-mono); font-size: 0.72rem; color: var(--muted); }
 .schema-contenu__tableau td { padding: 0.25rem 0.55rem; vertical-align: top; border-bottom: 1px solid var(--border); }
-.schema-contenu__tableau tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--bg) 45%, var(--surface)); }
+.schema-contenu__tableau tbody tr.est-rayee td { background: color-mix(in srgb, var(--bg) 45%, var(--surface)); }
+/* une ligne nouvelle ou changée (suivi en direct) : un fond qui s'éteint en 2 s ; sans animation, le fond seul, retiré au bout du même délai */
+.schema-contenu__tableau tbody tr.est-nouvelle td { animation: schema-ligne-nouvelle 2s ease-out; }
+.schema-contenu__tableau tbody tr.est-nouvelle td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+@keyframes schema-ligne-nouvelle {
+  0%, 35% { background-color: var(--sch-nouvelle); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schema-contenu__tableau tbody tr.est-nouvelle td { animation: none; background: var(--sch-nouvelle); }
+}
 /* trois lignes au plus (un clic déplie) ; un texte long passe à la ligne dans 26rem */
 .schema-cellule { max-width: 26rem; line-height: 1.4; max-height: calc(3 * 1.4em); overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; }
 td.est-depliee .schema-cellule { max-height: none; }
@@ -269,6 +302,8 @@ td.est-coupee:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .schema-contenu__sentinelle { height: 1px; }
 .schema-contenu__pied { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; padding: 0.5rem 1rem; border-top: 1px solid var(--border); }
 .schema-contenu__aide { flex: 1 1 auto; font-size: 0.8rem; color: var(--muted); }
+/* « Charger plus » pendant la lecture d'une page : marqué occupé (aria-disabled), jamais disabled — le focus clavier y reste */
+.schema-contenu__pied [aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
 /* Téléphone */
 @media (max-width: 40rem) {

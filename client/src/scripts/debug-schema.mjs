@@ -17,16 +17,38 @@
 //      (Échap le quitte, où que soit le focus ; le reste de la page est alors inerte). Recherche d'une table (centrée, mise en évidence ; Entrée y
 //      met le focus). Cases « Montrer les vues » (masquées par défaut) et « Liens vers famille ». Les messages s'écrivent par-dessus la carte, sans
 //      la déplacer. Le zoom et le déplacement replacent l'infobulle ouverte (un évènement « scroll » : components/Infobulles.astro).
-//      Les nombres de lignes des boîtes : ceux de la base vivante (GET <base>api/debug/tables/, une fois), sinon ceux du build.
+//      Les nombres de lignes des boîtes : ceux de la base vivante (GET <base>api/debug/tables/, après la première relève de la version, puis à
+//      chaque version nouvelle : 4 ; une boîte dont le nombre change ensuite s'éclaire 2 s), sinon ceux du build.
 //   3. Contenu d'une table : une fenêtre modale (<dialog>), GET <base>api/debug/tables/<nom>/?limite=100&decalage=&tri=&ordre= (lecture seule, site
-//      de dev seulement : 403 ailleurs, message clair ; service absent : message clair), par pages de 100 (« Charger plus », et au défilement),
-//      total affiché, tri par en-tête ; une cellule coupée (trois lignes) est marquée d'un fondu, se déplie d'un clic ou au clavier (Entrée, Espace) ;
-//      Échap, « Fermer » ou un clic hors du tableau la ferment.
+//      de dev seulement — toutes les tables et vues, fiches de personnages comprises : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la
+//      base du serveur de prod », demande du propriétaire du 2026-10-15 ; 403 ailleurs, message clair ; service absent : message clair), par pages
+//      de 100 toujours alignées (décalages 0, 100, … : chacune garde l'ETag de sa réponse, qui vaut pour ses lignes affichées — une page relue qui
+//      ne redonne pas celles déjà là fait d'abord rafraîchir le tableau : pageAccordee), « Charger plus » et au défilement, total affiché, tri
+//      par en-tête ; une cellule coupée (trois lignes) est marquée d'un fondu, se déplie d'un clic ou au clavier (Entrée, Espace) ; Échap,
+//      « Fermer » ou un clic hors du tableau la ferment. Suivi en direct (« j'aimerais que ce tableau se mette à jour si la table change ») : à
+//      chaque version nouvelle de la base (4), chaque page déjà chargée est redemandée avec If-None-Match (304 : inchangée) ; le tableau montre
+//      alors les premières min(lignes affichées avant, total) lignes de la table, et seules les lignes dont le JSON n'était pas affiché sont refaites
+//      (lib/debug-schema.mjs#planDeMiseAJour) et mises en évidence 2 s ; rien d'autre ne bouge : défilement (la première ligne visible gardée à sa
+//      place, sauf tout en haut), tri, en-têtes (refaits si les colonnes changent, focus du bouton de tri gardé), cellules dépliées, focus. Jamais
+//      deux rafraîchissements à la fois, jamais pendant un chargement de page (il attend la fin) ; une autre table, un autre tri ou la fermeture
+//      l'abandonnent ; plusieurs versions vues pendant l'un : un seul de plus ensuite. « Charger plus » n'est jamais désactivé (il garderait mal le
+//      focus) : un clic pendant un rafraîchissement est rejoué après lui. 404 (table disparue) : message, ni réécrit ni annoncé de nouveau tant
+//      qu'il ne change pas ; 400 (colonne de tri disparue) : ordre par défaut, rechargé, dit avec le résumé du rechargement et dans la ligne d'état ;
+//      réseau : « interrompu », contenu gardé, nouvel essai à la relève suivante ; une lecture de page en échec (première page, « Charger plus »)
+//      se relit à la version suivante sans rien effacer, et le tableau rafraîchi sans changement repart d'où il était. Ligne d'état « Suivi en
+//      direct » dans l'en-tête ; la zone « live » n'annonce que les changements.
+//   4. Relève de la version de la base (GET <base>api/debug/base/ : un texte opaque, qui change à chaque écriture validée) : toutes les 2 s, tant que
+//      le menu est ouvert ET la page visible (setTimeout enchaîné, jamais deux à la fois ; aussitôt à l'ouverture et au retour au premier plan ; 403 :
+//      arrêt définitif ; réseau ou 5xx : toutes les 10 s, puis 2 s après un succès : lib/debug-schema.mjs#suiteDeLaReleve). La première réponse sert
+//      de référence ; une version différente fait relire les nombres de lignes et, fenêtre ouverte, son contenu (3). Une relève dont la réponse
+//      arrive menu refermé ou page cachée n'a pas de suite (rien de relu : la version sera revue à la réouverture).
 // Jamais d'infobulle native (data-infobulle, components/Infobulles.astro) ; texte de la base toujours échappé (lib/debug-schema.mjs).
 import {
-  PAGE_DE_LIGNES, PAS_DE_ZOOM, actionDeLaMolette, adresseDuContenu, cadrer, centrerSur, chercherTable, clesASuivre, comptesVivants, deplacer, echapper,
-  etiquetteDeTable, htmlDesCles, htmlDesEntetes, htmlDesLignes, htmlDuSchema, interpoler, libelleDesLignes, messageDErreur, mettreEnPage, montrer,
-  niveauDeDetail, nombre, resumeDuContenu, schemaVersEcran, tableVoisine, traitsARefaire, triSuivant, zoomAutour,
+  MISE_EN_EVIDENCE_MS, PAGE_DE_LIGNES, PAS_DE_ZOOM, RELEVE_EN_PANNE_MS, actionDeLaMolette, adresseDeLaVersion, adresseDuContenu, annonceDuChangement,
+  assemblerLesPages, cadrer, centrerSur, chercherTable, cleDeLigne, clesASuivre, comptesVivants, debutDePage, deplacer, echapper, etatDeLEchec,
+  etiquetteDeTable, heureCourte, htmlDesCles, htmlDesEntetes, htmlDesLignes, htmlDuSchema, interpoler, libelleDesLignes, libelleDuSuivi, messageDErreur,
+  mettreEnPage, montrer, niveauDeDetail, noteDuTriPerdu, nombre, pageAccordee, pagesARedemander, planDeMiseAJour, resumeDesChangements, resumeDuContenu,
+  schemaVersEcran, suiteDeLaReleve, tableVoisine, traitsARefaire, triSuivant, zoomAutour,
 } from '../lib/debug-schema.mjs';
 
 const cadre = document.querySelector('[data-schema-cadre]');
@@ -87,22 +109,68 @@ function brancher(cadre, source) {
   }
   const premiere = plan.boites.find((b) => b.genre !== 'vue')?.nom ?? plan.boites[0]?.nom;
 
-  // les nombres de lignes de la base vivante (le dessin porte ceux du build) : GET <base>api/debug/tables/, une fois ; sans réponse, ceux du build
+  // les nombres de lignes de la base vivante (le dessin porte ceux du build) : GET <base>api/debug/tables/, après la première relève de la version
+  // puis à chaque version nouvelle (4) ; sans réponse, ceux du build. Une seule lecture à la fois (une demande pendant l'une : une de plus ensuite).
+  // Une boîte dont le nombre change ensuite s'éclaire MISE_EN_EVIDENCE_MS (pas à la première lecture : elle remplace seulement ceux du build).
   const sourceDesComptes = $('[data-schema-comptes]');
-  fetch(`${api}debug/tables/`, { cache: 'no-store', headers: { Accept: 'application/json' } })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((corps) => {
-      if (!Array.isArray(corps?.tables)) return;
+  const comptes = { enCours: false, encore: false, lus: false };
+  const eclairages = new Map(); // boîte → minuterie de son éclairage
+  function eclairerLesBoites(boites) {
+    for (const el of boites) {
+      clearTimeout(eclairages.get(el));
+      el.classList.remove('est-changee');
+    }
+    if (boites.length) void monde.offsetWidth; // l'animation repart pour une boîte encore éclairée (deux changements en moins de 2 s)
+    for (const el of boites) {
+      el.classList.add('est-changee');
+      eclairages.set(el, setTimeout(() => {
+        el.classList.remove('est-changee');
+        eclairages.delete(el);
+      }, MISE_EN_EVIDENCE_MS));
+    }
+  }
+  async function relireLesComptes() {
+    comptes.lus = true;
+    if (comptes.enCours) {
+      comptes.encore = true;
+      return;
+    }
+    comptes.enCours = true;
+    let statut = 0;
+    let corps = null;
+    try {
+      const r = await fetch(`${api}debug/tables/`, { cache: 'no-store', headers: { Accept: 'application/json' } });
+      statut = r.status;
+      corps = r.ok ? await r.json().catch(() => null) : null;
+    } catch {
+      statut = 0;
+    }
+    comptes.enCours = false;
+    if (Array.isArray(corps?.tables)) {
+      const changees = [];
       for (const { nom, lignes } of comptesVivants(structure, corps)) {
         const t = tableDe.get(nom);
         t.lignes = lignes;
         const el = elTable.get(nom);
         el.querySelector('.schema-table__compte').textContent = libelleDesLignes(lignes);
         el.setAttribute('aria-label', etiquetteDeTable(t));
+        changees.push(el);
       }
-      sourceDesComptes.textContent = 'de la base vivante du service';
-    })
-    .catch(() => {});
+      if ('vivants' in sourceDesComptes.dataset) eclairerLesBoites(changees);
+      sourceDesComptes.dataset.vivants = '';
+      majSourceDesComptes();
+    } else if (!statut || statut >= 500) suivi.enRetard = true; // relus à la relève suivante qui réussit
+    if (comptes.encore) {
+      comptes.encore = false;
+      relireLesComptes();
+    }
+  }
+  function majSourceDesComptes() {
+    if (!('vivants' in sourceDesComptes.dataset)) return;
+    const etat = suivi.arret ? 'sans suivi' : suivi.panne !== null ? 'suivi interrompu' : 'suivis en direct';
+    const texte = `de la base vivante du service, ${etat}`;
+    if (sourceDesComptes.textContent !== texte) sourceDesComptes.textContent = texte;
+  }
 
   // ---- vue : écran = schéma × k + (x, y) ---------------------------------------------------------------------------------------------------
   let vue = { x: 0, y: 0, k: 1 };
@@ -603,13 +671,78 @@ function brancher(cadre, source) {
   const d$ = (selecteur) => dialogue.querySelector(selecteur);
   const nomEl = d$('[data-schema-contenu-nom]');
   const resume = d$('[data-schema-contenu-resume]');
+  const ligneDuSuivi = d$('[data-schema-suivi]');
+  const texteDuSuivi = d$('[data-schema-suivi-texte]');
+  const annonceDuContenu = d$('[data-schema-contenu-annonce]');
   const erreurEl = d$('[data-schema-contenu-erreur]');
   const defilement = d$('[data-schema-contenu-defilement]');
   const entetes = d$('[data-schema-contenu-entetes]');
   const lignes = d$('[data-schema-contenu-lignes]');
   const sentinelle = d$('[data-schema-contenu-sentinelle]');
   const plus = d$('[data-schema-plus]');
-  const contenu = { nom: null, tri: null, ordre: 'asc', decalage: 0, total: 0, colonnes: [], enCours: false, fini: true, demande: 0, focusApres: null };
+  // cles : le JSON de chaque ligne affichée, dans l'ordre des <tr> (leur identité) ; etags : celui de la réponse de chaque page chargée (pages
+  // alignées : décalages 0, 100, …) ; rafraichit / aRafraichir / chargerApres : le suivi en direct (4), jamais en même temps qu'un chargement ;
+  // note : ce que la première page relue dira en plus de son résumé (une colonne de tri disparue : lib/debug-schema.mjs#noteDuTriPerdu)
+  const contenu = {
+    nom: null, tri: null, ordre: 'asc', total: 0, colonnes: [], cles: [], etags: new Map(), enCours: false, fini: true, demande: 0, focusApres: null,
+    rafraichit: false, aRafraichir: false, chargerApres: false, note: null,
+  };
+  // la relève de la version de la base (4) : arret = la raison d'un refus (403, plus de relève) ; panne = le statut de la dernière relève en échec
+  // (0 : réseau), null sinon ; enRetard = une lecture a échoué depuis la dernière version vue (refaite à la relève suivante qui réussit)
+  const suivi = { minuterie: 0, enCours: false, arret: null, panne: null, reference: null, enRetard: false };
+  let etatBon = { genre: 'attente' }; // l'état de la fenêtre après sa dernière lecture réussie (lib/debug-schema.mjs#libelleDuSuivi)
+  let etatDuContenu = etatBon; // le même, ou un échec du rafraîchissement
+
+  /** La ligne d'état « Suivi en direct — … » : un refus ou une panne de la relève l'emporte sur l'état de la fenêtre. */
+  function majSuivi() {
+    const etat = suivi.arret ? { genre: 'arrete', raison: suivi.arret }
+      : suivi.panne !== null ? { genre: 'interrompu', statut: suivi.panne, delai: RELEVE_EN_PANNE_MS } : etatDuContenu;
+    const texte = libelleDuSuivi(etat);
+    if (texteDuSuivi.textContent !== texte) texteDuSuivi.textContent = texte;
+    if (ligneDuSuivi.dataset.etat !== etat.genre) ligneDuSuivi.dataset.etat = etat.genre;
+    majSourceDesComptes();
+  }
+  // la zone « live » (polite) : le résultat d'un chargement et les changements du suivi, jamais une relève sans changement ; vidée puis écrite, pour
+  // qu'un même texte soit annoncé deux fois
+  let ecritureDeLAnnonce = 0;
+  function annoncer(texte) {
+    if (!texte) return;
+    clearTimeout(ecritureDeLAnnonce);
+    annonceDuContenu.textContent = '';
+    ecritureDeLAnnonce = setTimeout(() => { annonceDuContenu.textContent = texte; }, 60);
+  }
+  const ecrireLeResume = (texte) => {
+    if (resume.textContent !== texte) resume.textContent = texte;
+  };
+  /**
+   * Le message d'erreur de la fenêtre (role="alert" : annoncé à chaque écriture), réécrit seulement s'il change — une table toujours introuvable n'est
+   * pas annoncée de nouveau à chaque écriture dans une autre table. Vrai s'il est nouveau.
+   */
+  function montrerLErreur(texte) {
+    if (!erreurEl.hidden && erreurEl.textContent === texte) return false;
+    erreurEl.textContent = texte;
+    erreurEl.hidden = false;
+    return true;
+  }
+  /** « Charger plus » caché (plus rien à lire, ou une lecture en échec) : le focus qu'il avait reste dans la fenêtre, sur le cadre du tableau. */
+  function cacherPlus() {
+    if (document.activeElement === plus) defilement.focus({ preventScroll: true });
+    plus.hidden = true;
+  }
+  /** Le résumé et « Charger plus », d'après les lignes affichées et le total. */
+  function majPied() {
+    ecrireLeResume(resumeDuContenu(contenu.cles.length, contenu.total));
+    if (contenu.fini) cacherPlus();
+    else plus.hidden = false;
+    const restantes = contenu.total - contenu.cles.length;
+    if (!contenu.fini) plus.textContent = `Charger plus (${nombre(restantes)} restante${restantes > 1 ? 's' : ''})`;
+  }
+  // « Charger plus » n'est jamais désactivé (disabled) : Chrome retire le focus d'un bouton qui le devient. Pendant une lecture de page, il est
+  // marqué occupé (aria-disabled, un clic n'y fait rien : charger() ne lance jamais deux lectures) ; pendant un rafraîchissement, il reste actif et
+  // le clic est rejoué après lui (contenu.chargerApres).
+  const occuperPlus = (oui) => (oui ? plus.setAttribute('aria-disabled', 'true') : plus.removeAttribute('aria-disabled'));
+  /** Les lignes du tableau en bandes alternées, par identité et non par rang : une ligne insérée ou retirée ne repeint pas celles d'après. */
+  const rayer = (tr) => tr.classList.toggle('est-rayee', !!tr.previousElementSibling && !tr.previousElementSibling.classList.contains('est-rayee'));
 
   function ouvrirContenu(nom) {
     fermerCles();
@@ -620,64 +753,112 @@ function brancher(cadre, source) {
     if (!dialogue.open) dialogue.showModal();
     defilement.scrollTo(0, 0);
   }
-  /** Repart de la première page (autre table : en-têtes refaits ; autre tri : gardés jusqu'à la réponse). */
-  function recommencer(autreTable) {
+  /**
+   * Repart de la première page (autre table : en-têtes refaits ; autre tri : gardés jusqu'à la réponse). Un rafraîchissement en cours est abandonné.
+   * `note` : ce que la première page dira en plus de son résumé (noteDuTriPerdu).
+   */
+  function recommencer(autreTable, note = null) {
     contenu.demande++;
-    Object.assign(contenu, { decalage: 0, total: 0, enCours: false, fini: false });
+    Object.assign(contenu, {
+      total: 0, cles: [], etags: new Map(), enCours: false, fini: false, rafraichit: false, aRafraichir: false, chargerApres: false, note,
+    });
     if (autreTable) {
       contenu.colonnes = [];
       entetes.innerHTML = '';
     }
     lignes.innerHTML = '';
     erreurEl.hidden = true;
-    plus.hidden = true;
-    resume.textContent = 'Chargement…';
+    cacherPlus();
+    occuperPlus(false);
+    ecrireLeResume('Chargement…');
+    etatBon = { genre: 'attente' };
+    etatDuContenu = etatBon;
+    majSuivi();
     charger();
+  }
+  /** Une page de lignes (alignée sur PAGE_DE_LIGNES), avec l'ETag de sa dernière réponse s'il faut seulement savoir si elle a changé (304). */
+  async function lirePage(decalage, etag = null) {
+    const entetesHttp = { Accept: 'application/json' };
+    if (etag) entetesHttp['If-None-Match'] = etag;
+    try {
+      const reponse = await fetch(adresseDuContenu(api, contenu.nom, { limite: PAGE_DE_LIGNES, decalage, tri: contenu.tri, ordre: contenu.ordre }), {
+        cache: 'no-store',
+        headers: entetesHttp,
+      });
+      const corps = reponse.status === 304 ? null : await reponse.json().catch(() => null);
+      return { decalage, statut: reponse.status, corps, etag: reponse.headers.get('ETag') };
+    } catch {
+      return { decalage, statut: 0, corps: null, etag: null };
+    }
   }
   async function charger() {
     if (contenu.enCours || contenu.fini || !contenu.nom) return;
-    contenu.enCours = true;
-    const demande = contenu.demande;
-    plus.disabled = true;
-    let reponse = null;
-    let corps = null;
-    try {
-      reponse = await fetch(adresseDuContenu(api, contenu.nom, { limite: PAGE_DE_LIGNES, decalage: contenu.decalage, tri: contenu.tri, ordre: contenu.ordre }), {
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
-      });
-      corps = await reponse.json().catch(() => null);
-    } catch {
-      reponse = null;
-    }
-    if (demande !== contenu.demande) return; // une autre table, un autre tri, ou la fenêtre fermée entre-temps
-    contenu.enCours = false;
-    plus.disabled = false;
-    if (!reponse || !reponse.ok || !Array.isArray(corps?.lignes) || !Array.isArray(corps?.colonnes)) {
-      erreurEl.textContent = messageDErreur(reponse ? reponse.status : 0, corps);
-      erreurEl.hidden = false;
-      resume.textContent = '';
-      contenu.fini = true; // pas de nouvel essai au défilement : fermer et rouvrir
-      plus.hidden = true;
+    if (contenu.rafraichit) {
+      contenu.chargerApres = true; // un rafraîchissement en cours : la page suivante après lui
       return;
     }
-    if (contenu.decalage === 0) {
+    contenu.enCours = true;
+    const demande = contenu.demande;
+    const affichees = contenu.cles.length;
+    const debut = debutDePage(affichees); // la page qui contient la ligne suivante (une page à moitié affichée après un rafraîchissement : relue)
+    occuperPlus(true);
+    const { statut, corps, etag } = await lirePage(debut);
+    if (demande !== contenu.demande) return; // une autre table, un autre tri, ou la fenêtre fermée entre-temps
+    contenu.enCours = false;
+    occuperPlus(false);
+    if (statut !== 200 || !Array.isArray(corps?.lignes) || !Array.isArray(corps?.colonnes)) {
+      montrerLErreur(messageDErreur(statut, corps));
+      if (!affichees) ecrireLeResume(''); // des lignes affichées : leur résumé reste juste
+      // pas de nouvel essai au défilement : fermer et rouvrir, ou la version suivante de la base (la première page relue, ou le tableau rafraîchi
+      // et son pied refait) ; la ligne d'état dit pourquoi
+      contenu.fini = true;
+      cacherPlus();
+      etatDuContenu = { ...etatDeLEchec(statut), lecture: true };
+      majSuivi();
+      return;
+    }
+    // une lecture réussie : l'erreur d'une lecture d'avant (service revenu, première page enfin lue) s'efface
+    erreurEl.hidden = true;
+    if (!pageAccordee(contenu.cles, debut, corps.lignes)) {
+      // la table a changé depuis le dernier rafraîchissement (la page relue ne redonne pas les lignes déjà affichées qu'elle contient) : son ETag
+      // ne vaudrait pas pour elles — rien n'est ajouté, le tableau est rafraîchi d'abord (avec l'ETag qu'il a), puis la page suivante lue
+      Object.assign(contenu, { aRafraichir: true, chargerApres: true });
+      lancerLeRafraichissement();
+      return;
+    }
+    if (affichees === 0) {
       contenu.colonnes = corps.colonnes;
       entetes.innerHTML = htmlDesEntetes(corps.colonnes, contenu);
       if (contenu.focusApres) {
-        [...entetes.querySelectorAll('[data-tri-colonne]')].find((b) => b.dataset.triColonne === contenu.focusApres)?.focus();
+        const boutons = [...entetes.querySelectorAll('[data-tri-colonne]')];
+        (boutons.find((b) => b.dataset.triColonne === contenu.focusApres) ?? boutons[0])?.focus();
         contenu.focusApres = null;
       }
     }
-    lignes.insertAdjacentHTML('beforeend', htmlDesLignes(contenu.colonnes, corps.lignes));
+    contenu.etags.set(debut, etag);
+    const neuves = corps.lignes.slice(affichees - debut);
+    const avant = lignes.children.length;
+    lignes.insertAdjacentHTML('beforeend', htmlDesLignes(contenu.colonnes, neuves));
+    for (let i = avant; i < lignes.children.length; i++) rayer(lignes.children[i]);
+    contenu.cles.push(...neuves.map(cleDeLigne));
     marquerLesCoupees();
-    contenu.decalage += corps.lignes.length;
     contenu.total = Number(corps.total) || 0;
-    contenu.fini = corps.lignes.length === 0 || contenu.decalage >= contenu.total;
-    resume.textContent = resumeDuContenu(contenu.decalage, contenu.total);
-    plus.hidden = contenu.fini;
-    if (!contenu.fini) plus.textContent = `Charger plus (${nombre(contenu.total - contenu.decalage)} restantes)`;
+    contenu.fini = neuves.length === 0 || contenu.cles.length >= contenu.total;
+    majPied();
+    // la note d'un rechargement (colonne de tri disparue) : dite AVEC le résumé (une seconde annonce effacerait la première) et écrite dans la ligne
+    // d'état ; sinon la première lecture de la table pose « à jour ». L'échec d'une lecture de page d'avant s'efface (la première page, ou celle-ci,
+    // enfin lue) ; celui d'un rafraîchissement reste (le tableau n'a pas été relu : il le sera à la relève suivante qui réussit)
+    const note = contenu.note;
+    contenu.note = null;
+    annoncer(note ? `${note.annonce} ${resume.textContent}` : resume.textContent);
+    if (note) etatBon = { genre: 'mis-a-jour', heure: heureCourte(new Date()), resume: note.resume };
+    else if (etatBon.genre === 'attente') etatBon = { genre: 'a-jour', heure: heureCourte(new Date()) };
+    if (affichees === 0 || etatDuContenu.lecture) {
+      etatDuContenu = etatBon;
+      majSuivi();
+    }
     suiteSiVisible();
+    lancerLeRafraichissement(); // une version nouvelle vue pendant le chargement : le rafraîchissement part maintenant
   }
   /**
    * Les cellules que la hauteur de trois lignes coupe : un fondu le montre, et elles prennent le focus (Entrée ou Espace les déplient). Toutes les
@@ -700,8 +881,178 @@ function brancher(cadre, source) {
       if (sentinelle.getBoundingClientRect().top < defilement.getBoundingClientRect().bottom + 300) charger();
     });
   }
+
+  // ---- suivi en direct : le contenu affiché suit la table (une version nouvelle de la base : 4) ----------------------------------------------
+  /** Une version nouvelle de la base : le contenu affiché est à relire, aussitôt ou à la fin du chargement ou du rafraîchissement en cours. */
+  function demanderLeRafraichissement() {
+    if (!dialogue.open || !contenu.nom) return;
+    contenu.aRafraichir = true; // plusieurs demandes pendant un rafraîchissement : un seul de plus ensuite
+    lancerLeRafraichissement();
+  }
+  function lancerLeRafraichissement() {
+    if (!contenu.aRafraichir || contenu.rafraichit || contenu.enCours || !dialogue.open || !contenu.nom) return;
+    contenu.aRafraichir = false;
+    // rien n'a encore été lu (la première page a échoué : service absent, base pas prête, table introuvable) : elle est redemandée sans rien
+    // effacer ni écrire « Chargement… » — tant que la réponse ne change pas, ni le résumé ni le message d'erreur ne bougent (montrerLErreur)
+    if (!contenu.etags.size) {
+      contenu.fini = false;
+      charger();
+    } else rafraichir();
+  }
+  /**
+   * Chaque page déjà chargée, redemandée avec son ETag (304 : inchangée) ; le tableau passe à l'état reçu (appliquer). « Charger plus » reste actif
+   * (son focus aussi) : un clic pendant le rafraîchissement est rejoué après lui (charger : contenu.chargerApres).
+   */
+  async function rafraichir() {
+    contenu.rafraichit = true;
+    const demande = contenu.demande;
+    const avant = { cles: contenu.cles, total: contenu.total, colonnes: contenu.colonnes };
+    const reponses = await Promise.all(pagesARedemander(avant.cles.length).map((d) => lirePage(d, contenu.etags.get(d))));
+    if (demande !== contenu.demande) return; // une autre table, un autre tri, ou la fenêtre fermée : abandonné (leur état est déjà repris)
+    contenu.rafraichit = false;
+    const suite = assemblerLesPages(avant, reponses);
+    if (suite.erreur) {
+      if (traiterLEchec(suite.erreur)) return; // rechargé dans l'ordre par défaut
+    } else if (suite.inchange) {
+      // rien n'a changé ; un « Charger plus » en échec avait arrêté la fenêtre (fini, bouton caché) : elle repart d'où elle était
+      erreurEl.hidden = true;
+      contenu.fini = contenu.cles.length >= contenu.total;
+      majPied();
+      etatDuContenu = etatBon;
+      majSuivi();
+    } else {
+      erreurEl.hidden = true;
+      appliquer(suite, avant);
+    }
+    if (contenu.chargerApres) {
+      contenu.chargerApres = false;
+      charger();
+    }
+    lancerLeRafraichissement();
+  }
+  /** Un rafraîchissement en échec. Vrai si le contenu est rechargé (colonne de tri disparue) ; sinon le tableau reste tel qu'il était. */
+  function traiterLEchec({ genre, statut, corps }) {
+    if (genre === 'tri' && contenu.tri) {
+      const colonne = contenu.tri;
+      const focusAuxEntetes = entetes.contains(document.activeElement);
+      Object.assign(contenu, { tri: null, ordre: 'asc', focusApres: focusAuxEntetes ? colonne : null });
+      defilement.scrollTo({ top: 0 });
+      // dit avec le résumé de la première page relue, et dans la ligne d'état (une annonce à part serait effacée par celle du rechargement)
+      recommencer(false, noteDuTriPerdu(colonne));
+      return true;
+    }
+    etatDuContenu = etatDeLEchec(statut);
+    if (genre === 'panne') {
+      // service injoignable : le contenu reste ; nouvel essai à la relève suivante qui réussit
+      suivi.enRetard = true;
+    } else {
+      // le même échec qu'à la relève d'avant (une table toujours introuvable, et une écriture dans une autre) : ni réécrit ni annoncé de nouveau
+      const introuvable = genre === 'introuvable';
+      const nouveau = montrerLErreur(introuvable ? `${messageDErreur(404, corps)} Le tableau montre sa dernière lecture.` : messageDErreur(statut, corps));
+      if (introuvable && nouveau) annoncer(`La table ${contenu.nom} n’existe plus dans la base vivante.`);
+    }
+    majSuivi();
+    return false;
+  }
+  /**
+   * Le tableau passe à l'état reçu (lib/debug-schema.mjs#assemblerLesPages) : seules les lignes dont le JSON n'était pas affiché sont refaites, et
+   * mises en évidence MISE_EN_EVIDENCE_MS ; les autres <tr> restent (cellules dépliées comprises), déplacées s'il le faut (planDeMiseAJour : le
+   * moins possible). La première ligne visible reste à sa place à l'écran (sauf tout en haut : une ligne nouvelle en tête s'y voit) ; le focus reste
+   * où il était, ou sur la case de même place si sa ligne est refaite ; les en-têtes ne sont refaits que si les colonnes changent.
+   */
+  function appliquer(suite, avant) {
+    const anciennes = [...lignes.children];
+    const memesNoms = suite.colonnes.map((c) => c.nom).join('\n') === avant.colonnes.map((c) => c.nom).join('\n');
+    const colonnesChangees = JSON.stringify(suite.colonnes) !== JSON.stringify(avant.colonnes);
+    // d'autres colonnes (noms, ordre) : chaque ligne se rend autrement, toutes sont refaites
+    const plan = planDeMiseAJour(memesNoms ? avant.cles : [], suite.cles);
+    const retirees = memesNoms ? plan.retirees : anciennes.map((_, i) => i);
+
+    // avant d'écrire : le focus, et la ligne qui tient la place de la vue (mesures groupées)
+    const focus = dialogue.contains(document.activeElement) ? document.activeElement : null;
+    const trDuFocus = focus && lignes.contains(focus) ? focus.closest('tr') : null;
+    const caseDuFocus = trDuFocus ? { ligne: anciennes.indexOf(trDuFocus), colonne: [...trDuFocus.children].indexOf(focus.closest('td')) } : null;
+    const ancre = memesNoms ? ancreDuDefilement(anciennes, new Set([...plan.immobiles].map((j) => plan.source[j]))) : null;
+
+    if (colonnesChangees) {
+      const tri = focus && entetes.contains(focus) ? focus.closest('[data-tri-colonne]')?.dataset.triColonne ?? null : null;
+      contenu.colonnes = suite.colonnes;
+      entetes.innerHTML = htmlDesEntetes(suite.colonnes, contenu);
+      if (tri) {
+        const boutons = [...entetes.querySelectorAll('[data-tri-colonne]')];
+        (boutons.find((b) => b.dataset.triColonne === tri) ?? boutons[0])?.focus({ preventScroll: true });
+      }
+    }
+    // les lignes à refaire, rendues d'un coup (rendus échappés de lib/debug-schema.mjs) ; une ligne d'une page inchangée (304) se relit de son JSON
+    const tampon = document.createElement('tbody');
+    tampon.innerHTML = htmlDesLignes(suite.colonnes, plan.nouvelles.map((j) => suite.lignes[j] ?? JSON.parse(suite.cles[j])));
+    const neuves = [...tampon.children];
+    const elements = plan.source.map((s) => (s >= 0 ? anciennes[s] : null));
+    plan.nouvelles.forEach((j, k) => { elements[j] = neuves[k]; });
+    for (const i of retirees) anciennes[i].remove();
+    // de la fin vers le début : chaque ligne nouvelle ou déplacée se pose avant la suivante ; les immobiles ne bougent pas
+    let suivante = null;
+    for (let j = elements.length - 1; j >= 0; j--) {
+      if (!plan.immobiles.has(j)) lignes.insertBefore(elements[j], suivante);
+      suivante = elements[j];
+    }
+    elements.forEach((tr, j) => { if (!plan.immobiles.has(j)) rayer(tr); });
+    marquerLesCoupees();
+    if (ancre?.el.isConnected) defilement.scrollTop = ancre.el.offsetTop - ancre.ecart;
+    if (neuves.length) {
+      for (const tr of neuves) tr.classList.add('est-nouvelle');
+      setTimeout(() => neuves.forEach((tr) => tr.classList.remove('est-nouvelle')), MISE_EN_EVIDENCE_MS);
+    }
+    // le focus : là où il était (une ligne déplacée le perd), sinon la case de même place, sinon le cadre du tableau
+    if (focus && document.activeElement !== focus) {
+      if (focus.isConnected) focus.focus({ preventScroll: true });
+      else if (caseDuFocus) {
+        const td = lignes.children[Math.min(caseDuFocus.ligne, lignes.children.length - 1)]?.children[caseDuFocus.colonne];
+        (td && td.tabIndex >= 0 ? td : defilement).focus({ preventScroll: true });
+      }
+    }
+
+    contenu.cles = suite.cles;
+    contenu.total = suite.total;
+    for (const [d, etag] of Object.entries(suite.etags)) contenu.etags.set(Number(d), etag);
+    for (const d of [...contenu.etags.keys()]) if (d > 0 && d >= contenu.cles.length) contenu.etags.delete(d);
+    contenu.fini = contenu.cles.length >= contenu.total;
+    majPied();
+    const changements = resumeDesChangements({
+      nouvelles: plan.nouvelles.length, retirees: retirees.length, totalAvant: avant.total, totalApres: suite.total, colonnesChangees,
+    });
+    if (changements) {
+      etatBon = { genre: 'mis-a-jour', heure: heureCourte(new Date()), resume: changements };
+      annoncer(annonceDuChangement(contenu.nom, changements));
+    }
+    etatDuContenu = etatBon;
+    majSuivi();
+  }
+  /**
+   * La ligne qui tient la place de la vue : la première visible (sous les en-têtes collants) qui reste où elle est, et son écart au haut du cadre ;
+   * aucune tout en haut du tableau. `gardees` : les indices des anciennes lignes immobiles.
+   */
+  function ancreDuDefilement(anciennes, gardees) {
+    const haut = defilement.scrollTop;
+    if (haut <= 1) return null;
+    const limite = haut + entetes.offsetHeight;
+    let bas = 0;
+    let fin = anciennes.length;
+    while (bas < fin) {
+      const milieu = (bas + fin) >> 1;
+      if (anciennes[milieu].offsetTop + anciennes[milieu].offsetHeight <= limite) bas = milieu + 1;
+      else fin = milieu;
+    }
+    for (let i = bas; i < anciennes.length && anciennes[i].offsetTop < haut + defilement.clientHeight; i++) {
+      if (gardees.has(i)) return { el: anciennes[i], ecart: anciennes[i].offsetTop - haut };
+    }
+    return null;
+  }
+
+  // la fin du tableau approche : la page suivante, après avoir revu la mesure (suiteSiVisible) — une notification peut dater du tableau vidé par un
+  // autre tri et arriver après sa première page : elle ne doit pas en charger une seconde
   new IntersectionObserver((entrees) => {
-    if (entrees.some((e) => e.isIntersecting)) charger();
+    if (entrees.some((e) => e.isIntersecting)) suiteSiVisible();
   }, { root: defilement, rootMargin: '0px 0px 300px 0px' }).observe(sentinelle);
   plus.addEventListener('click', () => charger());
   entetes.addEventListener('click', (e) => {
@@ -730,9 +1081,65 @@ function brancher(cadre, source) {
     appuiSurLeFond = false;
   });
   dialogue.addEventListener('close', () => {
-    contenu.demande++; // une réponse encore en route n'écrit plus rien
-    contenu.enCours = false;
-    contenu.fini = true;
+    contenu.demande++; // une réponse encore en route (chargement, rafraîchissement) n'écrit plus rien
+    Object.assign(contenu, { enCours: false, fini: true, rafraichit: false, aRafraichir: false, chargerApres: false });
     elTable.get(contenu.nom)?.focus({ preventScroll: true });
   });
+
+  // ---- relève de la version de la base : menu ouvert ET page visible, toutes les 2 s (lib/debug-schema.mjs#suiteDeLaReleve) ----------------------
+  const releveActive = () => cadre.open && document.visibilityState === 'visible' && !suivi.arret;
+  /** La relève suivante dans `delai` ms (setTimeout enchaîné : jamais deux à la fois) ; rien si le menu est fermé, la page cachée ou le suivi arrêté. */
+  function planifier(delai) {
+    clearTimeout(suivi.minuterie);
+    suivi.minuterie = releveActive() ? setTimeout(relever, delai) : 0;
+  }
+  async function relever() {
+    clearTimeout(suivi.minuterie);
+    suivi.minuterie = 0;
+    if (suivi.enCours || !releveActive()) return;
+    suivi.enCours = true;
+    let statut = 0;
+    let corps = null;
+    try {
+      const reponse = await fetch(adresseDeLaVersion(api), { cache: 'no-store', headers: { Accept: 'application/json' } });
+      statut = reponse.status;
+      corps = await reponse.json().catch(() => null);
+    } catch {
+      statut = 0;
+    }
+    suivi.enCours = false;
+    const suite = suiteDeLaReleve(statut, corps);
+    if (suite.action === 'arret') {
+      // hors du site de dev : plus de relève (les nombres de lignes restent ceux du build, ou d'une lecture)
+      suivi.arret = `le service refuse (403)${typeof corps?.erreur === 'string' && corps.erreur.trim() ? ` : ${corps.erreur.trim()}` : ''}`;
+      if (!comptes.lus && cadre.open && document.visibilityState === 'visible') relireLesComptes();
+      majSuivi();
+      return;
+    }
+    // le menu refermé (ou la page cachée) pendant la relève : rien n'est relu ni rafraîchi, et la référence ne change pas — une version nouvelle
+    // sera vue à la réouverture du menu ou au retour de la page au premier plan (relever, aussitôt)
+    if (!releveActive()) return;
+    if (suite.action === 'panne') {
+      if (suivi.panne === null && dialogue.open) annoncer(`${libelleDuSuivi({ genre: 'interrompu', statut: suite.statut, delai: suite.delai })}.`);
+      suivi.panne = suite.statut;
+      if (!comptes.lus) relireLesComptes();
+    } else {
+      if (suivi.panne !== null && dialogue.open) annoncer('Suivi en direct rétabli.');
+      suivi.panne = null;
+      // la première version sert de référence (les nombres de lignes, lus après elle) ; une autre ensuite : tout ce qui est affiché est relu
+      const nouvelle = suite.version !== suivi.reference;
+      suivi.reference = suite.version;
+      if (nouvelle || suivi.enRetard || !comptes.lus) {
+        suivi.enRetard = false;
+        relireLesComptes();
+        demanderLeRafraichissement();
+      }
+    }
+    majSuivi();
+    planifier(suite.delai);
+  }
+  // aussitôt à l'ouverture du menu et au retour de la page au premier plan ; rien quand il est fermé ou la page cachée
+  cadre.addEventListener('toggle', () => (cadre.open ? relever() : planifier(0)));
+  document.addEventListener('visibilitychange', () => (releveActive() ? relever() : planifier(0)));
+  relever();
 }

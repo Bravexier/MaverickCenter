@@ -14,10 +14,10 @@
 // Niveau et catégorie se donnent (`ecrire(message, { niveau, categorie })`) ou se déduisent du message, d'après l'écriture des lignes que le service
 // note déjà (service.mjs, api.mjs, notes-de-version.mjs) : niveauDuMessage, categorieDuMessage.
 //
-// Les relèves réussies du journal lui-même (la page Debug le lit toutes les 2 s), des métriques et de l'état du système (page Debug), de l'état de
-// maintenance (chaque page ouverte le lit toutes les 30 s : layouts/Base.astro) et la balise des pages vues (POST /api/metriques/page/, une par page
-// ouverte) ne sont notées nulle part : elles noieraient le reste et le pousseraient hors de la mémoire (estUneReleve). Les métriques, elles, les
-// comptent (serveur/metriques.mjs).
+// Les relèves réussies du journal lui-même (la page Debug le lit toutes les 2 s), de la version de la base (2 s aussi, menu « DB » de la page Debug
+// ouvert : GET /api/debug/base/), des métriques et de l'état du système (page Debug), de l'état de maintenance (chaque page ouverte le lit toutes
+// les 30 s : layouts/Base.astro) et la balise des pages vues (POST /api/metriques/page/, une par page ouverte) ne sont notées nulle part : elles
+// noieraient le reste et le pousseraient hors de la mémoire (estUneReleve). Les métriques, elles, les comptent (serveur/metriques.mjs).
 // Module sans import (ni node: ni autre) : service.mjs et api.mjs le branchent.
 
 /** Les niveaux, du moins grave au plus grave. */
@@ -78,15 +78,16 @@ export function niveauDuMessage(message, categorie = categorieDuMessage(message)
 }
 
 /**
- * Vrai pour la ligne d'une relève réussie (2xx ou 304) du journal (GET /api/debug/journal/), des métriques et de l'état du système (GET
- * /api/debug/metriques/, …/requetes/, /api/debug/systeme/ ; pas l'export, demandé à la main) ou de l'état de maintenance (GET /api/maintenance/), et
- * pour la balise d'une page vue reçue (POST /api/metriques/page/ 204) : elle n'est notée ni en mémoire ni sur la sortie. Seul le chemin compte
- * (préfixe de déploiement compris), jamais la chaîne de requête.
+ * Vrai pour la ligne d'une relève réussie (2xx ou 304) du journal (GET /api/debug/journal/), de la version de la base (GET /api/debug/base/), des
+ * métriques et de l'état du système (GET /api/debug/metriques/, …/requetes/, /api/debug/systeme/ ; pas l'export, demandé à la main ; pas le contenu
+ * d'une table, qui ne se relit que quand la version change) ou de l'état de maintenance (GET /api/maintenance/), et pour la balise d'une page vue
+ * reçue (POST /api/metriques/page/ 204) : elle n'est notée ni en mémoire ni sur la sortie. Seul le chemin compte (préfixe de déploiement compris),
+ * jamais la chaîne de requête.
  */
 export function estUneReleve(message) {
   const texte = String(message ?? '');
   // le chemin s'arrête au « ? » : une chaîne de requête qui finirait par « /api/maintenance/ » ne fait pas d'une autre adresse une relève
-  return /^GET [^\s?]*\/api\/(?:debug\/(?:journal|metriques(?:\/requetes)?|systeme)|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(texte)
+  return /^GET [^\s?]*\/api\/(?:debug\/(?:journal|base|metriques(?:\/requetes)?|systeme)|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(texte)
     || /^POST [^\s?]*\/api\/metriques\/page\/?(?:\?\S*)? 204\b/.test(texte);
 }
 

@@ -1,12 +1,17 @@
 // Contenu des tables de la base vivante pour le menu « DB » (le schéma de la base) de la page Debug (client/serveur/debug-tables.mjs, api.mjs ; docs/api.md,
-// « Page Debug » ; demande du propriétaire du 2026-10-15 : « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un
-// tableau (scrollable) ») : site de dev seulement (403 ailleurs, avant 404 et 405), liste des tables et vues (ni internes ni FTS5), 404 pour un nom
-// inconnu ou piégé, 400 pour un tri ou une page hors bornes, pagination et total, ordre stable, images et textes longs résumés (jamais un portrait
-// entier), vues lisibles, lecture seule (405 avec Allow ; rien que des SELECT et des PRAGMA de lecture), gabarits des métriques
-// (serveur/metriques.mjs#routeNormalisee), puis le vrai serveur HTTP (nom encodé).
+// « Page Debug » ; demandes du propriétaire du 2026-10-15 : « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un
+// tableau (scrollable) », puis « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. De plus, j'aimerais que ce tableau
+// se mette à jour si la table change. ») : site de dev seulement (403 ailleurs, avant 404 et 405), liste des tables et vues (ni internes ni FTS5),
+// toutes lisibles, fiches de la section 13 comprises (portrait résumé), 404 pour un nom inconnu ou piégé, 400 pour un tri ou une page hors bornes,
+// pagination et total, ordre stable, images et textes longs résumés (jamais un portrait entier), vues lisibles, lecture seule (405 avec Allow ; rien
+// que des SELECT et des PRAGMA de lecture), ETag du contenu et 304, version de la base (GET /api/debug/base/ : stable sans écriture, changée par
+// toute écriture validée, une réouverture ou un redémarrage ; coût fixe), gabarits des métriques (serveur/metriques.mjs#routeNormalisee) et relève,
+// puis le vrai serveur HTTP (nom encodé, ETag, version, journal et mémoire des requêtes sans la relève).
 // Base vivante neuve dans un dossier temporaire.
 //   node --test test/serveur-debug-tables.test.mjs
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,10 +19,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { LIMITE_MAX, LIMITE_PAR_DEFAUT, lireTable, RAISON_FICHES, TABLES_DERIVEES, tablesDesFiches, TEXTE_MAX, valeurResumee } from '../serveur/debug-tables.mjs';
+import {
+  LIMITE_MAX, LIMITE_PAR_DEFAUT, lireTable, TABLES_DERIVEES, TEXTE_MAX, valeurResumee, versionDeLaBase, versionDuContenu,
+} from '../serveur/debug-tables.mjs';
+import { estUneReleve as estUneReleveDuJournal } from '../serveur/journal-du-service.mjs';
 import { TABLES_EDITION } from '../serveur/base-vivante.mjs';
-import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
-import { ROUTE_INCONNUE, routeNormalisee } from '../serveur/metriques.mjs';
+import { CHAMP_VERSION, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { estUnSuivi, estUneReleve, ROUTE_INCONNUE, routeNormalisee } from '../serveur/metriques.mjs';
+import { creerMesureSql } from '../serveur/metriques-sql.mjs';
 import { descriptionOpenApi } from '../serveur/openapi.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
@@ -28,6 +37,8 @@ import { lireSchema } from '../src/lib/schema-doc.mjs';
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
 /** Les octets d'une data URL, décodés à part (pas par le module essayé). */
 const octetsDe = (dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64').length;
+/** Un morceau du base64 d'une image (40 à 120 caractères après la virgule) : jamais dans une réponse. */
+const morceauDe = (image) => image.slice(image.indexOf(',') + 41, image.indexOf(',') + 121);
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-debug-tables-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -36,8 +47,8 @@ const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, '
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({ service: 'essai', version: '0.0.0-essai' }), journal: () => {}, edition: true };
 const JSON_ = { 'content-type': 'application/json' };
-const appel = (methode, chemin_, { s = service, corps, recherche } = {}) =>
-  traiter({ methode, chemin: chemin_, recherche, entetes: JSON_, corps: corps === undefined ? undefined : JSON.stringify(corps) }, s);
+const appel = (methode, chemin_, { s = service, corps, recherche, entetes = {} } = {}) =>
+  traiter({ methode, chemin: chemin_, recherche, entetes: { ...JSON_, ...entetes }, corps: corps === undefined ? undefined : JSON.stringify(corps) }, s);
 const ok = (r, statut = 200) => {
   assert.equal(r.statut, statut, JSON.stringify(r.corps)?.slice(0, 1200));
   return r.corps;
@@ -57,9 +68,12 @@ function toutesLesPages(table, limite, extra = {}) {
   return { total, vues };
 }
 /** Le schéma lu dans data/schema.sql : chaque objet avec sa section. */
-const OBJETS = lireSchema(readFileSync(join(trouverRacine(), 'data', 'schema.sql'), 'utf8')).flatMap((s) => s.objets);
+const SECTIONS = lireSchema(readFileSync(join(trouverRacine(), 'data', 'schema.sql'), 'utf8'));
+const OBJETS = SECTIONS.flatMap((s) => s.objets);
+/** Les tables et vues de la section 13 (fiches de personnages, comptes, groupes), dans l'ordre des noms. */
+const SECTION_13 = SECTIONS.find((s) => s.titre.startsWith('13.')).objets.filter((o) => o.genre === 'table' || o.genre === 'vue').map((o) => o.nom).sort();
 
-test('fermé hors du site de dev (décision du propriétaire, 2026-10-15) : 403 sur la liste et le contenu, avant 404 (nom inconnu, adresse en trop) et 405 (écriture)', () => {
+test('fermé hors du site de dev (décision du propriétaire, 2026-10-15 : « Ce qui est fermé c’est que la base du serveur de prod ») : 403 sur la liste, le contenu et la version de la base, avant 404 (nom inconnu, adresse en trop) et 405 (écriture)', () => {
   const ferme = { ...service, edition: false };
   for (const [m, c] of [
     ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables'], ['GET', '/api/debug/tables/metier/'], ['GET', '/api/debug/tables/personnage/'],
@@ -69,6 +83,12 @@ test('fermé hors du site de dev (décision du propriétaire, 2026-10-15) : 403 
     const r = appel(m, c, { s: ferme, corps: m === 'GET' ? undefined : {} });
     assert.equal(r.statut, 403, `${m} ${c}`);
     assert.equal(r.corps.erreur, 'Le contenu des tables ne se lit que sur le site de dev (page Debug).', `${m} ${c}`);
+  }
+  // la version de la base aussi, même avec un ETag connu ou une méthode d'écriture
+  for (const [m, c] of [['GET', '/api/debug/base/'], ['GET', '/api/debug/base'], ['GET', '/api/debug/base/x/'], ['POST', '/api/debug/base/'], ['DELETE', '/api/debug/base/']]) {
+    const r = appel(m, c, { s: ferme, corps: m === 'GET' ? undefined : {}, entetes: { 'if-none-match': '"0123456789abcdef"' } });
+    assert.equal(r.statut, 403, `${m} ${c}`);
+    assert.equal(r.corps.erreur, 'La version de la base ne se lit que sur le site de dev (page Debug).', `${m} ${c}`);
   }
   // les autres messages de /api/debug/ ne changent pas
   assert.match(appel('GET', '/api/debug/journal/', { s: ferme }).corps.erreur, /^Le journal du service ne se lit que sur le site de dev/);
@@ -95,35 +115,71 @@ test('liste : chaque table (sections 0 à 15, dérivées comprises) et chaque vu
     assert.equal(t.lignes, ligne(`SELECT count(*) AS n FROM "${t.nom}"`).n, t.nom);
     assert.deepEqual(Object.keys(t), ['nom', 'genre', 'lignes']);
   }
-  // les tables des fiches (section 13), du journal (14) et des notes de version (15) en sont (leur nombre de lignes ; le contenu des fiches : 403)
+  // les tables des fiches (section 13), du journal (14) et des notes de version (15) en sont, avec leur nombre de lignes
   for (const nom of ['personnage', 'utilisateur', 'modification_lot', 'modification', 'note_version', 'historique_modification']) assert.ok(noms.includes(nom), nom);
 });
 
-test('fiches (section 13) : listées, mais leur contenu répond 403 avec la raison, comme /api/v1/ — tables et vues qui les lisent ; le journal (14) se lit', () => {
-  // la liste épinglée : avec la connexion Discord (fiches de joueur privées, comptes), une table de plus dans la section 13 doit être revue ici
-  const section13 = OBJETS.filter((o) => (o.genre === 'table' || o.genre === 'vue') && lireSchema(readFileSync(join(trouverRacine(), 'data', 'schema.sql'), 'utf8'))
-    .find((s) => s.titre.startsWith('13.')).objets.some((x) => x.nom === o.nom)).map((o) => o.nom).sort();
-  assert.deepEqual(tablesDesFiches(db), section13, 'exactement la section 13 : ses tables et ses vues');
-  assert.deepEqual(tablesDesFiches(db).filter((n) => !n.startsWith('v_')), [...TABLES_FICHES].sort());
-  assert.deepEqual(tablesDesFiches(db).filter((n) => n.startsWith('v_')),
+test('fiches (section 13) : tout se lit sur le site de dev (décision du propriétaire, 2026-10-15 : « Il faut tout rendre ouvert ») — tables et vues, fiche avec portrait (résumé, jamais entier), comptes ; le journal (14) aussi', () => {
+  // la section 13 : les tables des fiches (TABLES_FICHES) et les vues qui les lisent
+  assert.deepEqual(SECTION_13.filter((n) => !n.startsWith('v_')), [...TABLES_FICHES].sort());
+  assert.deepEqual(SECTION_13.filter((n) => n.startsWith('v_')),
     ['v_groupe_controle', 'v_personnage_controle', 'v_personnage_metier_bonus', 'v_personnage_niveau', 'v_personnage_visible']);
-  for (const nom of section13) {
-    for (const recherche of ['', '?tri=inconnue', '?limite=0']) {
-      const r = appel('GET', `/api/debug/tables/${nom}/`, { recherche });
-      assert.equal(r.statut, 403, `${nom}${recherche}`);
-      assert.equal(r.corps.erreur, RAISON_FICHES);
+  // une fiche avec portrait (écrite par le service, dans la copie de la base qu'est la base vivante d'essai) et un compte
+  const fiche = ok(appel('POST', '/api/personnages/', { corps: { nom: `Fiche du test debug-tables ${process.pid}`, portrait: IMAGES.png } }), 201).personnage.id;
+  const compte = `compte-debug-tables-${process.pid}`;
+  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte du test', '2026-10-15T12:00:00Z');
+  try {
+    for (const nom of SECTION_13) {
+      const r = appel('GET', `/api/debug/tables/${nom}/`, { recherche: `?limite=${LIMITE_MAX}` });
+      assert.equal(r.statut, 200, `${nom} : ${JSON.stringify(r.corps)?.slice(0, 300)}`);
+      assert.equal(r.corps.genre, nom.startsWith('v_') ? 'vue' : 'table', nom);
+      assert.equal(r.corps.total, ligne(`SELECT count(*) AS n FROM "${nom}"`).n, nom);
+      assert.match(r.entetes.ETag, /^"[0-9a-f]{16}"$/, nom);
+      // les autres paramètres aussi (rien n'est refusé avant eux : tri inconnu = 400)
+      assert.equal(appel('GET', `/api/debug/tables/${nom}/`, { recherche: '?tri=inconnue' }).statut, 400, nom);
     }
+    // la fiche : son portrait résumé (type, octets, empreinte), jamais un morceau de l'image, trié par sa taille ou non
+    const personnages = ok(appel('GET', '/api/debug/tables/personnage/', { recherche: `?limite=${LIMITE_MAX}` }));
+    const lue = personnages.lignes.find((l) => l.id === fiche);
+    assert.ok(lue, 'la fiche écrite est lue');
+    assert.deepEqual(lue.portrait, { image: true, type: 'image/png', octets: octetsDe(IMAGES.png), empreinte: empreinte(IMAGES.png) });
+    const parTaille = ok(appel('GET', '/api/debug/tables/personnage/', { recherche: '?tri=portrait&ordre=desc&limite=1' }));
+    assert.deepEqual(parTaille.lignes[0].portrait, lue.portrait);
+    for (const corps of [personnages, parTaille]) assert.ok(!JSON.stringify(corps).includes(morceauDe(IMAGES.png)), 'aucun morceau du base64 de l’image');
+    // ses contrôles (vue), son compte et sa visibilité : lus comme toute vue
+    const controles = ok(appel('GET', '/api/debug/tables/v_personnage_controle/', { recherche: `?limite=${LIMITE_MAX}` }));
+    assert.ok(controles.lignes.some((l) => l.personnage_id === fiche), 'les contrôles de la fiche (race manquante…)');
+    assert.ok(ok(appel('GET', '/api/debug/tables/utilisateur/')).lignes.some((l) => l.id === compte && l.nom_affichage === 'Compte du test'));
+    const visibles = ok(appel('GET', '/api/debug/tables/v_personnage_visible/', { recherche: `?limite=${LIMITE_MAX}` }));
+    assert.deepEqual(visibles.lignes.filter((l) => l.personnage_id === fiche && l.utilisateur_id === compte).length,
+      ligne('SELECT count(*) AS n FROM v_personnage_visible WHERE personnage_id = ? AND utilisateur_id = ?', fiche, compte).n);
+  } finally {
+    db.prepare('DELETE FROM personnage WHERE id = ?').run(fiche);
+    db.prepare('DELETE FROM utilisateur WHERE id = ?').run(compte);
   }
-  assert.match(RAISON_FICHES, /\/api\/personnages\/ et ses règles de visibilité \(v_personnage_visible\)/);
-  // le journal de l'édition (section 14) et les notes de version (15) se lisent (GET /api/edition/journal/ exporte déjà le journal sur le site de dev)
+  // le journal de l'édition (section 14) et les notes de version (15) se lisent aussi
   for (const nom of [...TABLES_EDITION, 'note_version', 'historique_modification']) assert.equal(appel('GET', `/api/debug/tables/${nom}/`).statut, 200, nom);
-  // le schéma de la page les dessine toujours : ils restent dans la liste, avec leur nombre de lignes
-  const { tables } = ok(appel('GET', '/api/debug/tables/'));
-  for (const nom of section13) assert.ok(tables.some((t) => t.nom === nom), nom);
+  // à revoir à la 1.0 (relecture du 2026-10-15 ; un rappel, le code suit la décision) : la base vivante du serveur de test est copiée de celle de
+  // production à sa première installation, et dev.maverick-jdr.com est ouvert sans mot de passe avant la connexion Discord — dit dans l'en-tête du
+  // module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md, et posé parmi les questions ouvertes de la feuille de route
+  const racine = trouverRacine();
+  const aplatir = (texte) => texte.replace(/^\s*\/\/ ?/gm, '').replace(/\s+/g, ' ');
+  const section = (texte, titre) => texte.slice(texte.indexOf(titre), texte.indexOf('\n### ', texte.indexOf(titre) + titre.length) >>> 0);
+  const entete = aplatir(readFileSync(new URL('../serveur/debug-tables.mjs', import.meta.url), 'utf8').split('\nimport ')[0]);
+  const doc = aplatir(section(readFileSync(join(racine, 'docs', 'api.md'), 'utf8'), '### Contenu des tables'));
+  const questions = aplatir(section(readFileSync(join(racine, 'docs', 'feuille-de-route.md'), 'utf8'), '### Questions encore ouvertes'));
+  const serveur = aplatir(readFileSync(join(racine, 'docs', 'serveur.md'), 'utf8'));
+  for (const [ou, texte, motifs] of [
+    ['en-tête de debug-tables.mjs', entete, [/À revoir à la 1\.0/, /copiée de celle de production/, /sans mot de passe avant la connexion Discord/]],
+    ['docs/api.md', doc, [/\*\*À revoir à la 1\.0\*\*/, /copie de celle de production\*\*/, /MAVERICK_BASE_TEST=conservee/, /\*\*sans mot de passe\*\* avant la connexion Discord/, /à reconsidérer avec le propriétaire/]],
+    ['docs/feuille-de-route.md', questions, [/\*\*Base du site de dev à la connexion Discord\*\* \(E7, E8/, /copiée de celle de production/]],
+    ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /point à revoir à la 1\.0/]],
+  ]) for (const motif of motifs) assert.match(texte, motif, ou);
 });
 
-test('fiches, repli sur une base d’avant la migration 0045 : la table retirée (personnage_progression, TABLES_RETIREES) et la vue qui la lit restent refusées (403)', () => {
-  // un service à jour sur une base vivante dont la reconstruction a échoué : la table n'est plus dans TABLES_FICHES, mais elle a encore des lignes
+test('fiches, repli sur une base d’avant la migration 0045 : la table retirée (personnage_progression, TABLES_RETIREES) et la vue qui la lit se lisent comme les autres (tout est ouvert sur le site de dev)', () => {
+  // un service à jour sur une base vivante dont la reconstruction a échoué : la table n'est plus dans TABLES_FICHES, mais elle a encore des lignes ;
+  // décision du propriétaire du 2026-10-15 (« Il faut tout rendre ouvert ») : rien n'est refusé, ni elle ni la vue qui la lit
   const ancienne = new DatabaseSync(':memory:');
   ancienne.exec(`CREATE TABLE personnage_progression (personnage_id TEXT NOT NULL, niveau INTEGER NOT NULL, points_sante INTEGER NOT NULL,
     points_chakra INTEGER NOT NULL, PRIMARY KEY (personnage_id, niveau)) STRICT;
@@ -131,10 +187,8 @@ test('fiches, repli sur une base d’avant la migration 0045 : la table retirée
     CREATE VIEW v_gains AS SELECT personnage_id, sum(points_sante) AS sante FROM personnage_progression GROUP BY personnage_id;
     CREATE TABLE niveau_global (niveau INTEGER PRIMARY KEY) STRICT;`);
   try {
-    assert.deepEqual(tablesDesFiches(ancienne), ['personnage_progression', 'v_gains']);
-    for (const nom of ['personnage_progression', 'v_gains']) {
-      assert.throws(() => lireTable(ancienne, nom), (e) => e.statut === 403 && e.message === RAISON_FICHES, nom);
-    }
+    assert.deepEqual(lireTable(ancienne, 'personnage_progression').lignes, [{ personnage_id: 'p1', niveau: 2, points_sante: 10, points_chakra: 5 }]);
+    assert.deepEqual(lireTable(ancienne, 'v_gains').lignes, [{ personnage_id: 'p1', sante: 10 }]);
     assert.equal(lireTable(ancienne, 'niveau_global').total, 0, 'les autres tables se lisent');
   } finally {
     ancienne.close();
@@ -232,16 +286,13 @@ test('vue : lisible (genre « vue », aucune colonne de clé), total juste, ordr
   const attendues = lignes(`SELECT ${colonnes} FROM "${vue}" ORDER BY ${colonnes}`);
   const { vues } = toutesLesPages(vue, 500);
   assert.deepEqual(vues, attendues);
-  // une vue des fiches (section 13) ne se lit pas ici (403 : test « fiches »), une autre vue de la section 12 si
-  assert.equal(appel('GET', '/api/debug/tables/v_personnage_controle/').statut, 403);
+  // une vue des fiches (section 13) se lit comme une autre (décision du propriétaire, 2026-10-15 : « Il faut tout rendre ouvert »)
+  assert.equal(ok(appel('GET', '/api/debug/tables/v_personnage_controle/')).genre, 'vue');
   assert.equal(ok(appel('GET', '/api/debug/tables/v_niveau/')).genre, 'vue');
   // une table dérivée
   const lien = ok(appel('GET', '/api/debug/tables/lien/', { recherche: '?limite=3' }));
   assert.deepEqual([lien.genre, lien.total], ['derivee', ligne('SELECT count(*) AS n FROM lien').n]);
 });
-
-/** Un morceau du base64 d'une image (40 à 120 caractères après la virgule) : jamais dans une réponse. */
-const morceauDe = (image) => image.slice(image.indexOf(',') + 41, image.indexOf(',') + 121);
 
 test('images et textes longs résumés : le portrait d’une carte de monstre n’est jamais rendu entier ; un texte de plus de 2 000 caractères est coupé', () => {
   // un portrait de carte de monstre (écrit ici dans la base d'essai), trié par sa colonne : résumé
@@ -407,38 +458,257 @@ test('lecture seule : toute autre méthode que GET répond 405 (Allow: GET) sur 
   });
   const s = { ...service, base: () => espion };
   ok(appel('GET', '/api/debug/tables/', { s }));
-  for (const t of ['metier', 'monstre', 'v_niveau', 'lien']) {
+  for (const t of ['metier', 'monstre', 'v_niveau', 'lien', 'personnage', 'v_personnage_controle']) {
     ok(appel('GET', `/api/debug/tables/${t}/`, { s, recherche: `?tri=${lignes(`PRAGMA table_info("${t}")`)[0].name}&ordre=desc` }));
   }
   appel('GET', '/api/debug/tables/inconnue/', { s });
   appel('GET', '/api/debug/tables/metier/', { s, recherche: '?tri=inconnue' });
   assert.ok(preparees.length > 200, `${preparees.length} instructions`);
   for (const sql of preparees) assert.match(sql, /^(SELECT |PRAGMA main\.table_list$|PRAGMA main\.table_info\("[a-z0-9_]+"\)$)/, sql);
-  assert.ok(appel('GET', '/api/debug/tables/personnage/', { s }).statut === 403, 'une table des fiches : rien n’est lu');
 });
 
-test('métriques : les deux routes ont leur gabarit, jamais le nom demandé (le nombre de routes reste borné, même pour un nom fabriqué)', () => {
+test('version de la base (versionDeLaBase) : stable sans écriture ; changée par une écriture validée de la même connexion (INSERT, UPDATE, DELETE, transaction), d’une autre connexion sur le même fichier, un changement du schéma, une réouverture, un redémarrage du service ; une instruction préparée une fois, aucune table lue', () => {
+  const fichier = join(racine, 'version.db');
+  const a = new DatabaseSync(fichier);
+  a.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, x TEXT)');
+  const vues = new Set();
+  const nouvelle = (connexion, quoi) => {
+    const v = versionDeLaBase(connexion);
+    assert.equal(typeof v, 'string');
+    assert.ok(!vues.has(v), `${quoi} : une version jamais vue (${v})`);
+    vues.add(v);
+    return v;
+  };
+  let v = nouvelle(a, 'départ');
+  // stable : relevée plusieurs fois, des lectures entre-temps
+  a.prepare('SELECT count(*) AS n FROM t').get();
+  assert.equal(versionDeLaBase(a), v);
+  assert.equal(versionDeLaBase(a), v);
+  a.prepare('INSERT INTO t (x) VALUES (?)').run('un');
+  v = nouvelle(a, 'INSERT');
+  a.prepare('UPDATE t SET x = ? WHERE id = 1').run('deux');
+  v = nouvelle(a, 'UPDATE');
+  assert.equal(versionDeLaBase(a), v, 'stable après l’écriture');
+  a.prepare('DELETE FROM t WHERE id = 1').run();
+  v = nouvelle(a, 'DELETE');
+  a.exec("BEGIN; INSERT INTO t (x) VALUES ('a'); INSERT INTO t (x) VALUES ('b'); COMMIT");
+  v = nouvelle(a, 'transaction validée');
+  // une autre connexion sur le même fichier (un script, une autre instance) : PRAGMA data_version
+  const b = new DatabaseSync(fichier);
+  b.prepare('INSERT INTO t (x) VALUES (?)').run('d’ailleurs');
+  v = nouvelle(a, 'écriture d’une autre connexion');
+  assert.equal(versionDeLaBase(a), v);
+  b.exec('CREATE INDEX t_x ON t (x)');
+  v = nouvelle(a, 'schéma changé par une autre connexion');
+  a.exec('CREATE TABLE u (y)');
+  v = nouvelle(a, 'schéma changé par la connexion');
+  // une réouverture (base remplacée puis rouverte par le service) : une autre connexion, une autre version, même sans écriture
+  a.close();
+  const a2 = new DatabaseSync(fichier);
+  v = nouvelle(a2, 'réouverture');
+  // l'enveloppe de serveur/metriques-sql.mjs (ce que donne service.base()) : la même pour une même connexion, donc la même version d'une requête à l'autre
+  const mesure = creerMesureSql();
+  const enveloppe = mesure.envelopper(a2);
+  assert.equal(mesure.envelopper(a2), enveloppe, 'une enveloppe par connexion (WeakMap)');
+  const ve = versionDeLaBase(enveloppe);
+  mesure.debuter();
+  assert.equal(versionDeLaBase(mesure.envelopper(a2)), ve, 'pendant une requête mesurée aussi');
+  mesure.terminer();
+  a2.prepare('INSERT INTO t (x) VALUES (?)').run('par la connexion elle-même');
+  assert.notEqual(versionDeLaBase(enveloppe), ve, 'une écriture par la connexion, enveloppée ou non');
+  // coût fixe : une seule instruction, préparée une fois par connexion, qui ne lit que des PRAGMA et total_changes()
+  const preparees = [];
+  const espion = new Proxy(a2, {
+    get(cible, nom) {
+      if (nom === 'prepare') return (sql) => { preparees.push(sql); return cible.prepare(sql); };
+      const x = Reflect.get(cible, nom, cible);
+      return typeof x === 'function' ? x.bind(cible) : x;
+    },
+  });
+  for (let i = 0; i < 5; i++) versionDeLaBase(espion);
+  assert.equal(preparees.length, 1, 'préparée une fois');
+  assert.match(preparees[0], /^SELECT .*total_changes\(\)/);
+  assert.deepEqual([...preparees[0].matchAll(/\bFROM\s+"?(\w+)/gi)].map((m) => m[1]), ['pragma_schema_version', 'pragma_data_version'], 'aucune table lue');
+  a2.close();
+  b.close();
+  // un service redémarré : un autre processus, un autre jeton (même fichier, mêmes compteurs : seul le jeton change)
+  const code = `import { DatabaseSync } from 'node:sqlite'; import { versionDeLaBase } from ${JSON.stringify(new URL('../serveur/debug-tables.mjs', import.meta.url).href)};`
+    + ` process.stdout.write(versionDeLaBase(new DatabaseSync(${JSON.stringify(fichier)}, { readOnly: true })));`;
+  const processus = () => execFileSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', code], { encoding: 'utf8' });
+  const [p1, p2] = [processus(), processus()];
+  assert.notEqual(p1, p2, 'deux démarrages, deux versions');
+  assert.equal(p1.slice(p1.indexOf('.')), p2.slice(p2.indexOf('.')), 'la même base lue de la même façon : seul le jeton du processus diffère');
+});
+
+test('GET /api/debug/base/ : { version }, Cache-Control: no-store ; stable sans écriture (lectures comprises), changée par chaque écriture (service ou SQL) ; 405 (Allow: GET), 404 (adresse en trop), 503 sans base', () => {
+  const r = appel('GET', '/api/debug/base/');
+  assert.equal(r.statut, 200);
+  assert.deepEqual(Object.keys(r.corps), ['version']);
+  assert.equal(r.corps.version, versionDeLaBase(db));
+  assert.equal(r.entetes['Cache-Control'], 'no-store');
+  assert.equal(ok(appel('GET', '/api/debug/base')).version, r.corps.version, 'sans « / » finale');
+  assert.equal(ok(appel('GET', '/api/debug/base/', { recherche: '?x=1' })).version, r.corps.version, 'la chaîne de requête n’y fait rien');
+  // des lectures (liste, contenu, fiches, état) ne la changent pas
+  for (const c of ['/api/debug/tables/', '/api/debug/tables/metier/', '/api/debug/tables/personnage/', '/api/personnages/', '/api/etat/']) ok(appel('GET', c));
+  assert.equal(ok(appel('GET', '/api/debug/base/')).version, r.corps.version);
+  // chaque écriture : une autre version (le service : un prétiré créé puis supprimé ; du SQL : une ligne changée puis rendue)
+  const vues = new Set([r.corps.version]);
+  const nouvelle = (quoi) => {
+    const v = ok(appel('GET', '/api/debug/base/')).version;
+    assert.ok(!vues.has(v), quoi);
+    vues.add(v);
+    assert.equal(ok(appel('GET', '/api/debug/base/')).version, v, `${quoi} : stable ensuite`);
+  };
+  const cree = ok(appel('POST', '/api/personnages/', { corps: { nom: `Version du test debug-tables ${process.pid}` } }), 201).personnage;
+  nouvelle('création d’un prétiré');
+  ok(appel('DELETE', `/api/personnages/${encodeURIComponent(cree.id)}/`, { corps: { [CHAMP_VERSION]: cree[CHAMP_VERSION] } }));
+  nouvelle('suppression d’un prétiré');
+  const metier = ligne('SELECT id, remarque FROM metier ORDER BY id LIMIT 1');
+  db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run('essai de la version', metier.id);
+  nouvelle('une ligne changée');
+  db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run(metier.remarque, metier.id);
+  nouvelle('la ligne rendue');
+  // méthodes, adresses en trop, base indisponible
+  for (const m of ['POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']) {
+    const refus = appel(m, '/api/debug/base/', { corps: m === 'HEAD' || m === 'OPTIONS' ? undefined : {} });
+    assert.equal(refus.statut, 405, m);
+    assert.equal(refus.entetes.Allow, 'GET', m);
+  }
+  for (const c of ['/api/debug/base/x/', '/api/debug/base/x/y/', '/api/debug/base/metier/']) {
+    assert.equal(appel('GET', c).statut, 404, c);
+    assert.equal(appel('POST', c, { corps: {} }).statut, 404, `POST ${c} : 404 avant 405`);
+  }
+  const sansBase = { ...service, base: () => null };
+  assert.equal(appel('GET', '/api/debug/base/', { s: sansBase }).statut, 503);
+  assert.equal(appel('POST', '/api/debug/base/', { s: sansBase, corps: {} }).statut, 405, '405 avant 503');
+});
+
+test('contenu d’une table : ETag = 16 caractères hex d’un sha256 du JSON du corps, Cache-Control: no-cache ; If-None-Match qui la contient (liste, W/) : 304 sans corps ; une autre page, un autre tri, la page changée : un autre ETag ; rien d’autre ne le change', () => {
+  const adresse = '/api/debug/tables/metier/';
+  const lire = (recherche = '?limite=5', inm) => appel('GET', adresse, { recherche, entetes: inm === undefined ? {} : { 'if-none-match': inm } });
+  const r = lire();
+  assert.equal(r.statut, 200);
+  const etag = r.entetes.ETag;
+  assert.match(etag, /^"[0-9a-f]{16}"$/);
+  assert.equal(etag, `"${createHash('sha256').update(JSON.stringify(r.corps)).digest('hex').slice(0, 16)}"`, 'un sha256 du JSON du corps');
+  assert.equal(etag, `"${versionDuContenu(JSON.stringify(r.corps))}"`);
+  assert.equal(r.brut, JSON.stringify(r.corps), 'le texte servi est celui de l’empreinte');
+  assert.equal(r.entetes['Cache-Control'], 'no-cache');
+  // le corps ne porte rien qui change sans la table (ni heure, ni version de la base) : le même ETag plus tard, après une écriture ailleurs
+  const compte = `compte-etag-${process.pid}`;
+  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte ETag', '2026-10-15T12:00:00Z');
+  try {
+    assert.equal(lire().entetes.ETag, etag, 'une autre table écrite');
+  } finally {
+    db.prepare('DELETE FROM utilisateur WHERE id = ?').run(compte);
+  }
+  // If-None-Match : l'étiquette seule, dans une liste, faible (W/), avec des blancs
+  for (const inm of [etag, `W/${etag}`, `"0000000000000000", ${etag}`, `  ${etag} , "x"`]) {
+    const n = lire('?limite=5', inm);
+    assert.equal(n.statut, 304, inm);
+    assert.equal(n.corps, null);
+    assert.equal(n.brut, '');
+    assert.deepEqual(n.entetes, { ETag: etag, 'Cache-Control': 'no-cache' }, inm);
+  }
+  for (const inm of ['"0000000000000000"', etag.slice(1, -1), '', `${etag.slice(0, -2)}"`]) assert.equal(lire('?limite=5', inm).statut, 200, `« ${inm} »`);
+  // une autre page, une autre taille, un autre tri : d'autres corps, d'autres ETag (l'ancien n'y vaut pas)
+  for (const recherche of ['?limite=5&decalage=5', '?limite=6', '?limite=5&tri=nom', '?limite=5&ordre=desc']) {
+    const autre = lire(recherche, etag);
+    assert.equal(autre.statut, 200, recherche);
+    assert.notEqual(autre.entetes.ETag, etag, recherche);
+    assert.equal(lire(recherche, autre.entetes.ETag).statut, 304, `${recherche} : sa propre étiquette`);
+  }
+  // une ligne de la page changée : 200 et un autre ETag ; rendue telle quelle : l'ETag d'avant (il ne dépend que du contenu)
+  const premiere = r.corps.lignes[0];
+  const loin = ligne('SELECT id, remarque FROM metier ORDER BY id LIMIT 1 OFFSET 20');
+  db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run('changée par le test', premiere.id);
+  try {
+    const changee = lire('?limite=5', etag);
+    assert.equal(changee.statut, 200);
+    assert.notEqual(changee.entetes.ETag, etag);
+    assert.equal(changee.corps.lignes[0].remarque, 'changée par le test');
+  } finally {
+    db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run(premiere.remarque, premiere.id);
+  }
+  assert.equal(lire('?limite=5', etag).statut, 304, 'rendue telle quelle');
+  // une ligne hors de la page : la page ne change pas (la page redemande chaque page affichée : chacune a son ETag)
+  db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run('loin de la page', loin.id);
+  try {
+    assert.equal(lire('?limite=5', etag).statut, 304);
+    assert.equal(lire('?limite=5&decalage=20', etag).statut, 200);
+  } finally {
+    db.prepare('UPDATE metier SET remarque = ? WHERE id = ?').run(loin.remarque, loin.id);
+  }
+  // une ligne ajoutée, même hors de la page : le total change, donc la page aussi (« Charger plus » le suit)
+  const vide = appel('GET', '/api/debug/tables/utilisateur/');
+  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte ETag', '2026-10-15T12:00:00Z');
+  try {
+    const plein = appel('GET', '/api/debug/tables/utilisateur/', { entetes: { 'if-none-match': vide.entetes.ETag } });
+    assert.deepEqual([plein.statut, plein.corps.total], [200, vide.corps.total + 1]);
+  } finally {
+    db.prepare('DELETE FROM utilisateur WHERE id = ?').run(compte);
+  }
+  assert.equal(appel('GET', '/api/debug/tables/utilisateur/', { entetes: { 'if-none-match': vide.entetes.ETag } }).statut, 304, 'supprimée : la page d’avant');
+  // une vue aussi ; une erreur n'a pas d'ETag et ne devient jamais 304
+  assert.match(appel('GET', '/api/debug/tables/v_niveau/').entetes.ETag, /^"[0-9a-f]{16}"$/);
+  for (const [c, recherche, statut] of [['/api/debug/tables/inconnue/', '', 404], [adresse, '?tri=inconnue', 400]]) {
+    const e = appel('GET', c, { recherche, entetes: { 'if-none-match': etag } });
+    assert.equal(e.statut, statut, c);
+    assert.equal(e.entetes?.ETag, undefined, c);
+  }
+});
+
+test('métriques et journal : les trois routes ont leur gabarit, jamais le nom demandé ; la version de la base est une relève (comptée dans sa ligne, ni au journal ni dans la mémoire des requêtes, hors du global), pas le contenu d’une table', () => {
   for (const [adresse, route] of [
     ['/api/debug/tables/', '/api/debug/tables/'], ['/api/debug/tables', '/api/debug/tables/'], ['/api/debug/tables/metier/?limite=3', '/api/debug/tables/{table}/'],
     ['/api/debug/tables/x%2Fy/', '/api/debug/tables/{table}/'], ['/api/debug/tables/nom-fabrique-123/', '/api/debug/tables/{table}/'],
     ['/api/debug/tables/metier/lignes/', ROUTE_INCONNUE], ['/api/debug/tables//', ROUTE_INCONNUE],
+    ['/api/debug/base/', '/api/debug/base/'], ['/api/debug/base', '/api/debug/base/'], ['/api/debug/base/?x=1', '/api/debug/base/'],
+    ['/api/debug/base/x/', ROUTE_INCONNUE], ['/api/debug/base//', ROUTE_INCONNUE],
   ]) assert.equal(routeNormalisee(adresse), route, adresse);
+  // métriques (serveur/metriques.mjs) : relève en GET ; réussie (2xx, 304), elle n'est pas gardée une à une
+  assert.equal(estUneReleve('GET', '/api/debug/base/'), true);
+  assert.equal(estUneReleve('POST', '/api/debug/base/'), false);
+  assert.equal(estUneReleve('GET', '/api/debug/tables/{table}/'), false, 'le contenu ne se relit que quand la version change');
+  assert.equal(estUneReleve('GET', '/api/debug/tables/'), false);
+  assert.equal(estUnSuivi('GET', '/api/debug/base/', 200), true);
+  assert.equal(estUnSuivi('GET', '/api/debug/base/', 304), true);
+  for (const statut of [403, 404, 405, 500, 503]) assert.equal(estUnSuivi('GET', '/api/debug/base/', statut), false, `${statut} : gardée`);
+  assert.equal(estUnSuivi('GET', '/api/debug/tables/{table}/', 304), false);
+  // journal du service (serveur/journal-du-service.mjs) : la ligne d'une relève réussie n'est notée nulle part ; ses échecs, si
+  for (const l of ['GET /api/debug/base/ 200 0 ms', 'GET /api/debug/base 200 1 ms', 'GET /api/debug/base/?t=1 200 1 ms', 'GET /MaverickCenter/api/debug/base/ 304 0 ms']) {
+    assert.equal(estUneReleveDuJournal(l), true, l);
+  }
+  for (const l of ['GET /api/debug/base/ 403 0 ms', 'GET /api/debug/base/ 503 1 ms', 'POST /api/debug/base/ 405 0 ms', 'GET /api/debug/base/x/ 404 0 ms',
+    'GET /api/debug/tables/metier/?limite=100 200 3 ms', 'GET /api/debug/tables/metier/ 304 1 ms', 'GET /api/debug/tables/ 200 9 ms',
+    'GET /api/v1/metiers/?q=/api/debug/base/ 200 1 ms']) {
+    assert.equal(estUneReleveDuJournal(l), false, l);
+  }
 });
 
-test('base indisponible : 503 ; description OpenAPI : les deux routes, en lecture seulement (Service)', () => {
+test('base indisponible : 503 ; description OpenAPI : les trois routes, en lecture seulement (Service) ; le contenu avec son ETag et 304, plus de refus des fiches', () => {
   const sansBase = { ...service, base: () => null };
   assert.equal(appel('GET', '/api/debug/tables/', { s: sansBase }).statut, 503);
   assert.equal(appel('GET', '/api/debug/tables/metier/', { s: sansBase }).statut, 503);
   const spec = descriptionOpenApi({ modules: [], ressources: [], version: 'essai' });
-  for (const c of ['/debug/tables/', '/debug/tables/{table}/']) {
+  for (const c of ['/debug/tables/', '/debug/tables/{table}/', '/debug/base/']) {
     assert.deepEqual(Object.keys(spec.paths[c]).filter((m) => m !== 'parameters'), ['get'], c);
     assert.equal(spec.paths[c].get.tags[0], 'Service', c);
+    assert.ok(spec.paths[c].get.responses[403] && spec.paths[c].get.responses[503], `${c} : 403 (production) et 503`);
   }
+  const chemins = Object.keys(spec.paths);
+  assert.equal(chemins.indexOf('/debug/base/'), chemins.indexOf('/debug/tables/{table}/') + 1, 'à côté des tables');
+  assert.match(spec.paths['/debug/base/'].get.description, /\{ version \}/);
+  assert.match(spec.paths['/debug/base/'].get.description, /no-store/);
   const contenu = spec.paths['/debug/tables/{table}/'];
   assert.equal(contenu.parameters[0].name, 'table');
   assert.ok(ligne('SELECT 1 AS n FROM sqlite_schema WHERE name = ?', contenu.parameters[0].example), 'l’exemple est une vraie table');
-  assert.deepEqual(contenu.get.parameters.map((p) => p.name), ['limite', 'decalage', 'tri', 'ordre']);
+  assert.deepEqual(contenu.get.parameters.map((p) => `${p.in}:${p.name}`), ['query:limite', 'query:decalage', 'query:tri', 'query:ordre', 'header:If-None-Match']);
   assert.equal(contenu.get.parameters.find((p) => p.name === 'limite').schema.maximum, LIMITE_MAX);
+  assert.ok(contenu.get.responses[200].headers.ETag, 'ETag');
+  assert.ok(contenu.get.responses[304], '304');
+  assert.doesNotMatch(contenu.get.description, /comme \/api\/v1\/ \(ils passent par/, 'plus de refus des fiches');
+  assert.match(contenu.get.description, /section 13\) compris/);
 });
 
 test('serveur HTTP : un nom de table encodé est relu (« %6Detier », « monstre%5Fespece ») ; « / » encodé, shadow FTS5 : 404 ; écriture : 405 ; sans édition : 403', async () => {
@@ -469,8 +739,85 @@ test('serveur HTTP : un nom de table encodé est relu (« %6Detier », « monstr
   }
   const prod = await demarrerService({ regles, dossier: join(racine, 'instance-prod'), port: 0, intervalle: 0, edition: false, journal: () => {} });
   try {
-    for (const c of ['/api/debug/tables/', '/api/debug/tables/metier/', '/api/debug/tables/inconnue/']) assert.equal((await fetch(`${prod.url}${c}`)).status, 403, c);
+    for (const c of ['/api/debug/tables/', '/api/debug/tables/metier/', '/api/debug/tables/inconnue/', '/api/debug/tables/personnage/', '/api/debug/base/', '/api/debug/base/x/']) {
+      assert.equal((await fetch(`${prod.url}${c}`)).status, 403, c);
+    }
   } finally {
     await prod.arreter();
+  }
+});
+
+test('serveur HTTP : version de la base (no-store ; stable d’une requête à l’autre, l’enveloppe de la connexion étant la même ; changée par une écriture), contenu avec ETag et 304 sans corps, fiche lisible (portrait résumé) ; la relève n’est ni au journal ni dans la mémoire des requêtes, mais comptée dans sa ligne', async () => {
+  const regles = join(racine, 'regles-http-version.db');
+  copyFileSync(REGLES, regles);
+  const sortie = [];
+  const s = await demarrerService({
+    regles, dossier: join(racine, 'instance-http-version'), port: 0, intervalle: 0, edition: true, journal: (l) => sortie.push(l),
+    metriques: { dossier: join(racine, 'metriques-http-version'), intervalle: 0 },
+  });
+  const JSON_HTTP = { 'Content-Type': 'application/json' };
+  try {
+    const version = async () => {
+      const r = await fetch(`${s.url}/api/debug/base/`);
+      assert.equal(r.status, 200);
+      assert.equal(r.headers.get('cache-control'), 'no-store');
+      return (await r.json()).version;
+    };
+    const v1 = await version();
+    assert.equal(await version(), v1, 'stable d’une requête à l’autre');
+    assert.equal((await fetch(`${s.url}/api/debug/tables/metier/?limite=3`)).status, 200);
+    assert.equal(await version(), v1, 'une lecture ne la change pas');
+    // une écriture : un prétiré avec portrait
+    let r = await fetch(`${s.url}/api/personnages/`, { method: 'POST', headers: JSON_HTTP, body: JSON.stringify({ nom: 'Fiche du test HTTP', portrait: IMAGES.png }) });
+    assert.equal(r.status, 201);
+    const fiche = (await r.json()).personnage.id;
+    const v2 = await version();
+    assert.notEqual(v2, v1, 'changée par l’écriture');
+    assert.equal(await version(), v2);
+    // le contenu des fiches : lisible, portrait résumé ; ETag = empreinte du texte reçu, puis 304 sans corps ni type
+    const adresse = `${s.url}/api/debug/tables/personnage/?limite=500`;
+    r = await fetch(adresse);
+    assert.equal(r.status, 200);
+    const etag = r.headers.get('etag');
+    assert.match(etag, /^"[0-9a-f]{16}"$/);
+    assert.equal(r.headers.get('cache-control'), 'no-cache');
+    const texte = await r.text();
+    assert.equal(etag, `"${versionDuContenu(texte)}"`, 'l’empreinte du texte reçu');
+    assert.deepEqual(JSON.parse(texte).lignes.find((l) => l.id === fiche).portrait,
+      { image: true, type: 'image/png', octets: octetsDe(IMAGES.png), empreinte: empreinte(IMAGES.png) });
+    assert.ok(!texte.includes(morceauDe(IMAGES.png)), 'jamais l’image');
+    for (const inm of [etag, `W/${etag}`, `"0000000000000000", ${etag}`]) {
+      r = await fetch(adresse, { headers: { 'If-None-Match': inm } });
+      assert.equal(r.status, 304, inm);
+      assert.equal(r.headers.get('etag'), etag);
+      assert.equal(r.headers.get('cache-control'), 'no-cache');
+      assert.equal(r.headers.get('content-type'), null, 'un 304 n’a pas de type');
+      assert.equal(await r.text(), '');
+    }
+    r = await fetch(adresse, { headers: { 'If-None-Match': '"0000000000000000"' } });
+    assert.equal(r.status, 200);
+    await r.arrayBuffer();
+    // la version : adresse en trop, écriture
+    assert.equal((await fetch(`${s.url}/api/debug/base/x/`)).status, 404);
+    r = await fetch(`${s.url}/api/debug/base/`, { method: 'POST', headers: JSON_HTTP, body: '{}' });
+    assert.equal(r.status, 405);
+    assert.equal(r.headers.get('allow'), 'GET');
+    for (let i = 0; i < 3; i++) await version();
+    // journal du service : la relève réussie n'y est pas (ni sur la sortie) ; ses échecs et le contenu, si
+    const journal = await (await fetch(`${s.url}/api/debug/journal/?categorie=http`)).json();
+    assert.ok(!journal.entrees.some((e) => /^GET \/api\/debug\/base\/ 200 /.test(e.message)), 'relève absente du journal');
+    assert.ok(!sortie.some((l) => /^GET \/api\/debug\/base\/ 200 /.test(l)), 'ni sur la sortie');
+    assert.ok(journal.entrees.some((e) => /^POST \/api\/debug\/base\/ 405 /.test(e.message)), 'un échec y est');
+    assert.ok(journal.entrees.some((e) => e.route === '/api/debug/tables/{table}/' && e.statut === 304), 'la relecture d’un contenu (304) y est');
+    // métriques : pas dans la mémoire des requêtes ; comptée dans sa ligne, nommée parmi les relèves (hors du global)
+    const requetes = (await (await fetch(`${s.url}/api/debug/metriques/requetes/?limite=2000`)).json()).requetes;
+    assert.ok(!requetes.some((q) => q.route === '/api/debug/base/' && q.statut === 200), 'relève absente de la mémoire des requêtes');
+    assert.ok(requetes.some((q) => q.route === '/api/debug/tables/{table}/' && q.statut === 304), 'le contenu y est');
+    const m = await (await fetch(`${s.url}/api/debug/metriques/?periode=1h`)).json();
+    const ligneDeLaRoute = m.routes.find((x) => x.route === '/api/debug/base/' && x.methode === 'GET');
+    assert.ok(ligneDeLaRoute && ligneDeLaRoute.n >= 8, JSON.stringify(m.routes.map((x) => [x.methode, x.route, x.n])));
+    assert.ok(m.releves.routes.includes('GET /api/debug/base/'), 'une relève, hors du global');
+  } finally {
+    await s.arreter();
   }
 });

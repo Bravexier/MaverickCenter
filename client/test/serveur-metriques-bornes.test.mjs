@@ -320,23 +320,25 @@ test('mesure SQL : un parcours `iterate()` (paresseux : SQLite s’exécute aux 
 // Global et série sans les relèves ; adresse sans identifiant
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-test('global et série SANS les relèves automatiques (journal toutes les 2 s, métriques, système, maintenance, balise) ; chacune garde sa ligne', () => {
+test('global et série SANS les relèves automatiques (journal et version de la base toutes les 2 s, métriques, système, maintenance, balise) ; chacune garde sa ligne', () => {
   const m = creerMetriques({ dossier: dossierNeuf(), instance: 'dev', intervalle: 0 });
   try {
     for (let i = 0; i < 60; i++) requete(m, { adresse: `/api/v1/metiers/m${i}/`, duree: 80 });
     for (let i = 0; i < 10; i++) requete(m, { adresse: `/api/v1/metiers/m${i}/`, methode: 'PATCH', duree: 300 });
     // une heure de page Debug ouverte, et une page ordinaire qui relève la maintenance
     for (let i = 0; i < 1800; i++) requete(m, { adresse: `/api/debug/journal/?depuis=${i}`, duree: 0.6 });
-    for (const a of ['/api/debug/metriques/?periode=1h', '/api/debug/systeme/', '/api/debug/metriques/requetes/?limite=100', '/api/maintenance/']) {
+    for (const a of ['/api/debug/metriques/?periode=1h', '/api/debug/systeme/', '/api/debug/metriques/requetes/?limite=100', '/api/maintenance/', '/api/debug/base/']) {
       for (let i = 0; i < 120; i++) requete(m, { adresse: a, duree: 4 });
     }
     for (let i = 0; i < 20; i++) requete(m, { methode: 'POST', adresse: '/api/metriques/page/', statut: 204, duree: 1 });
     const l = m.lire({ periode: '1h' });
     assert.equal(l.global.n, 70, 'l’usage réel de l’API seulement');
     assert.ok(l.global.p95_ms >= 200, `p95 de l’API : ${l.global.p95_ms}`);
-    assert.equal(l.global_avec_releves.n, 70 + 1800 + 480 + 20);
-    assert.equal(l.releves.n, 1800 + 480 + 20);
+    assert.equal(l.global_avec_releves.n, 70 + 1800 + 600 + 20);
+    assert.equal(l.releves.n, 1800 + 600 + 20);
     assert.ok(l.releves.routes.includes('GET /api/debug/journal/') && l.releves.routes.includes('POST /api/metriques/page/'));
+    assert.ok(l.releves.routes.includes('GET /api/debug/base/'));
+    assert.equal(l.routes.find((r) => r.route === '/api/debug/base/').n, 120, 'la version de la base garde sa ligne');
     assert.equal(l.serie.reduce((n, p) => n + p.n, 0), 70, 'la courbe aussi');
     assert.ok(Math.max(...l.serie.map((p) => p.p95_ms ?? 0)) >= 200);
     assert.equal(l.routes.find((r) => r.route === '/api/debug/journal/').n, 1800, 'la relève garde sa ligne');

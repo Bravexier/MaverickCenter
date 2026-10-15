@@ -389,7 +389,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     let envoyee = null; // { statut, octets } de la réponse partie
     let exception = false; // une erreur du traitement (son évènement est déjà noté, avec l'empreinte de la pile)
     // chaque requête /api/ au journal (catégorie http, avec ses champs isolés), sans son corps, sur le site de dev ; en production, seulement un
-    // échec du service (5xx) ; les relèves du journal, des métriques et de la maintenance n'y vont pas (journal-du-service.mjs)
+    // échec du service (5xx) ; les relèves du journal, de la version de la base, des métriques et de la maintenance n'y vont pas (journal-du-service.mjs)
     const noterLaRequete = (statut, octets) => {
       const adresse = req.url ?? '/';
       if (!adresse.startsWith('/api/') || (!edition && statut < 500)) return;
