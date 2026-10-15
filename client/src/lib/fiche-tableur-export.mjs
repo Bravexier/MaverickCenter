@@ -1057,25 +1057,32 @@ export function nomDuFichier(nom) {
 export const INFOBULLES_DES_EXPORTS = Object.freeze({
   telecharger: 'Classeur .xlsx au modèle de la fiche V15.2.2 (Excel, LibreOffice, Google Sheets)',
   telechargerGrise: 'Enregistrez la fiche pour la télécharger',
+  telechargerApresRefus: 'L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre',
   exporter: 'Crée la fiche dans une nouvelle feuille Google Sheets de votre Drive (connexion à Google)',
   exporterGrise: 'Enregistrez la fiche pour l’exporter',
+  exporterApresRefus: 'L’enregistrement a échoué : exportez la fiche pour ne rien perdre',
   exporterSansClient: 'Export vers Google Sheets pas encore configuré',
 });
 
 /**
  * L'état des boutons « Télécharger » et « Exporter » de /fiche/ (demande du propriétaire, 2026-10-15 : « Grisé tant que la fiche n'a pas été
- * enregistrée ») : actifs pour une fiche enregistrée (`id`) sans modification en attente (`modifie`), ou quand le service ne répond pas
- * (`serviceJoignable` faux : la fiche ne peut pas être enregistrée, la télécharger évite de la perdre) ; jamais pendant un export (`occupe`) ;
- * « Exporter » est en plus grisé sans identifiant client Google (`client` : variable de build SITE_GOOGLE_CLIENT_ID). { telecharger, exporter },
- * chacun { actif, infobulle }.
+ * enregistrée ») : actifs pour une fiche enregistrée (`id`) sans modification en attente (`modifie`), ou quand elle ne peut pas l'être et que la
+ * télécharger évite de la perdre : le service ne répond pas (`serviceJoignable` faux), ou il a refusé le dernier enregistrement
+ * (`enregistrementRefuse` : toute réponse non OK, version changée entre-temps 409, requête trop volumineuse 413, fiche refusée 400… ; infobulle
+ * « L’enregistrement a échoué… ») ; jamais pendant un export (`occupe`) ; « Exporter » est en plus grisé sans identifiant client Google (`client` :
+ * variable de build SITE_GOOGLE_CLIENT_ID). { telecharger, exporter }, chacun { actif, infobulle }.
  */
-export function etatDesExports({ id = null, modifie = false, serviceJoignable = true, client = '', occupe = false } = {}) {
-  const permis = (id !== null && id !== undefined && !modifie) || !serviceJoignable;
+export function etatDesExports({ id = null, modifie = false, serviceJoignable = true, enregistrementRefuse = false, client = '', occupe = false } = {}) {
+  const enregistree = id !== null && id !== undefined && !modifie;
+  const permis = enregistree || !serviceJoignable || enregistrementRefuse;
+  // actifs seulement parce que le service a refusé la fiche : l'infobulle le dit
+  const apresRefus = permis && !enregistree && serviceJoignable;
   const i = INFOBULLES_DES_EXPORTS;
+  const infobulle = (normale, refus, grise) => (apresRefus ? refus : permis ? normale : grise);
   return {
-    telecharger: { actif: permis && !occupe, infobulle: permis ? i.telecharger : i.telechargerGrise },
+    telecharger: { actif: permis && !occupe, infobulle: infobulle(i.telecharger, i.telechargerApresRefus, i.telechargerGrise) },
     exporter: client
-      ? { actif: permis && !occupe, infobulle: permis ? i.exporter : i.exporterGrise }
+      ? { actif: permis && !occupe, infobulle: infobulle(i.exporter, i.exporterApresRefus, i.exporterGrise) }
       : { actif: false, infobulle: i.exporterSansClient },
   };
 }

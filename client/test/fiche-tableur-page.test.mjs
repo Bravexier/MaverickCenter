@@ -159,9 +159,30 @@ test('etatDesExports : Télécharger et Exporter grisés tant que la fiche n’e
   assert.deepEqual(etatDesExports({ id: 'x', client: CLIENT }).exporter, { actif: true, infobulle: i.exporter });
   assert.deepEqual(etatDesExports({ id: null, client: CLIENT }).exporter, { actif: false, infobulle: i.exporterGrise });
   // sans identifiant client (variable de build SITE_GOOGLE_CLIENT_ID vide) : Exporter grisé quoi qu'il arrive
-  for (const o of [{ id: 'x' }, { id: null, serviceJoignable: false }, {}]) {
+  for (const o of [{ id: 'x' }, { id: null, serviceJoignable: false }, { id: 'x', modifie: true, enregistrementRefuse: true }, {}]) {
     assert.deepEqual(etatDesExports(o).exporter, { actif: false, infobulle: i.exporterSansClient }, JSON.stringify(o));
   }
+});
+
+test('etatDesExports : après un enregistrement refusé (409 de version, 413, 400…), Télécharger et Exporter redeviennent actifs pour ne rien perdre', () => {
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const i = INFOBULLES_DES_EXPORTS;
+  assert.equal(i.telechargerApresRefus, 'L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre');
+  assert.equal(i.exporterApresRefus, 'L’enregistrement a échoué : exportez la fiche pour ne rien perdre');
+  const refusee = { telecharger: { actif: true, infobulle: i.telechargerApresRefus }, exporter: { actif: true, infobulle: i.exporterApresRefus } };
+  // deux onglets sur le même prétiré : l'autre a enregistré, celui-ci reçoit un 409 (version) et garde ses modifications ; le service répond toujours
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, serviceJoignable: true, enregistrementRefuse: true, client: CLIENT }), refusee);
+  // une fiche jamais enregistrée, refusée (400 avec ses problèmes, 413 « Requête trop volumineuse. »)
+  assert.deepEqual(etatDesExports({ id: null, modifie: true, enregistrementRefuse: true, client: CLIENT }), refusee);
+  assert.deepEqual(etatDesExports({ id: null, modifie: false, enregistrementRefuse: true, client: CLIENT }), refusee);
+  // pas pendant un export ; sans refus, la règle d'avant (grisés tant que la fiche n'est pas enregistrée telle qu'elle est)
+  const occupe = etatDesExports({ id: 'p1', modifie: true, enregistrementRefuse: true, client: CLIENT, occupe: true });
+  assert.deepEqual([occupe.telecharger.actif, occupe.exporter.actif], [false, false]);
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, enregistrementRefuse: false, client: CLIENT }).telecharger, { actif: false, infobulle: i.telechargerGrise });
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, client: CLIENT }).telecharger, { actif: false, infobulle: i.telechargerGrise }, 'pas de refus par défaut');
+  // service injoignable ou fiche enregistrée telle qu'elle est : les infobulles de toujours
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, serviceJoignable: false, enregistrementRefuse: true, client: CLIENT }).telecharger, { actif: true, infobulle: i.telecharger });
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: false, enregistrementRefuse: true, client: CLIENT }).exporter, { actif: true, infobulle: i.exporter });
 });
 
 // ------------------------------------------------------------------ le script de la page s'en sert (lu comme un texte : il touche au DOM)
@@ -195,7 +216,16 @@ test('src/scripts/fiche.mjs : la barre (Télécharger, Exporter, Importer (PC), 
   // l'état des boutons recalculé par rafraichir et à la fin de chaque action (jamais un « disabled = false » qui réactiverait Télécharger)
   assert.match(corps('rafraichir'), /\n {2}etatDesBoutons\(\);/);
   const etat = corps('etatDesBoutons');
-  assert.match(etat, /etatDesExports\(\{ id, modifie, serviceJoignable, client: \$\('fiche-exporter'\)\.dataset\.clientGoogle \?\? '', occupe \}\)/);
+  assert.match(etat, /etatDesExports\(\{ id, modifie, serviceJoignable, enregistrementRefuse, client: \$\('fiche-exporter'\)\.dataset\.clientGoogle \?\? '', occupe \}\)/);
+  // un enregistrement refusé (toute réponse non OK : 409 de version, 413, 400…) le note avant d'en dire la raison ; une autre fiche à l'écran (relue,
+  // enregistrée, nouvelle, ou un nouveau prétiré tiré d'un classeur) l'oublie
+  assert.match(SCRIPT, /\nlet enregistrementRefuse = false;/);
+  const enregistrer = corps('enregistrer');
+  assert.match(enregistrer, /if \(reponse\.ok\) \{[\s\S]*?return;\s*\}\s*enregistrementRefuse = true;[^\n]*\n\s*if \(reponse\.status === 409/, 'noté dès que la réponse n’est pas OK');
+  assert.equal([...enregistrer.matchAll(/enregistrementRefuse = /g)].length, 1);
+  assert.match(corps('appliquer'), /\n {2}enregistrementRefuse = false;/);
+  assert.match(corps('nouvelle'), /\n {2}enregistrementRefuse = false;/);
+  assert.match(corps('remplacerLaFiche'), /if \(cible === 'creer'\) \{[^}]*enregistrementRefuse = false;/);
   assert.match(etat, /\['telecharger', \$\('fiche-telecharger'\)\], \['exporter', \$\('fiche-exporter'\)\]/);
   assert.match(corps('pendant'), /finally \{\s*occupe = false;\s*etatDesBoutons\(\);/);
   assert.match(corps('enregistrer'), /bouton\.disabled = false;\s*etatDesBoutons\(\);/);

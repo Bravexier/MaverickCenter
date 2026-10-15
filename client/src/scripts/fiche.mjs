@@ -46,6 +46,12 @@ let version = null;
 let controles = null;
 let modifie = false;
 let serviceJoignable = true;
+/**
+ * Le service a refusé le dernier enregistrement de la fiche à l'écran (toute réponse non OK : version changée entre-temps 409, requête trop volumineuse
+ * 413, fiche refusée 400…) : Télécharger et Exporter redeviennent actifs pour ne rien perdre (etatDesBoutons). Oublié quand une autre fiche est à
+ * l'écran (appliquer : relue, enregistrée, rechargée ; nouvelle ; nouveau prétiré tiré d'un classeur).
+ */
+let enregistrementRefuse = false;
 /** Un téléchargement, un export ou un import en ligne en cours : Télécharger et Exporter attendent (etatDesBoutons). */
 let occupe = false;
 const noms = new Map();
@@ -1640,13 +1646,13 @@ function infobulle(e, texte) {
 
 /**
  * La barre : Enregistrer (une fiche modifiée, ou jamais enregistrée), Supprimer (une fiche enregistrée), Télécharger et Exporter (grisés tant que la
- * fiche n'est pas enregistrée telle qu'elle est, sauf quand le service ne répond pas ; Exporter aussi sans identifiant client Google ; pendant un
- * export : lib/fiche-tableur-export.mjs#etatDesExports). Recalculé par rafraichir et à la fin de chaque action.
+ * fiche n'est pas enregistrée telle qu'elle est, sauf quand le service ne répond pas ou a refusé le dernier enregistrement ; Exporter aussi sans
+ * identifiant client Google ; pendant un export : lib/fiche-tableur-export.mjs#etatDesExports). Recalculé par rafraichir et à la fin de chaque action.
  */
 function etatDesBoutons() {
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
-  const etat = etatDesExports({ id, modifie, serviceJoignable, client: $('fiche-exporter').dataset.clientGoogle ?? '', occupe });
+  const etat = etatDesExports({ id, modifie, serviceJoignable, enregistrementRefuse, client: $('fiche-exporter').dataset.clientGoogle ?? '', occupe });
   for (const [cle, bouton] of [['telecharger', $('fiche-telecharger')], ['exporter', $('fiche-exporter')]]) {
     bouton.disabled = !etat[cle].actif;
     infobulle(bouton, etat[cle].infobulle);
@@ -1683,6 +1689,7 @@ function appliquer(donnees) {
   version = fiche[CHAMP_VERSION];
   controles = donnees.controles ?? null;
   modifie = false;
+  enregistrementRefuse = false;
   rafraichir();
 }
 
@@ -1701,6 +1708,7 @@ async function enregistrer() {
       message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
+    enregistrementRefuse = true;   // les modifications restent à l'écran : Télécharger et Exporter permis pour ne rien perdre (etatDesBoutons, plus bas)
     if (reponse.status === 409 && donnees.personnage) {
       // des éléments retirés par les règles depuis l'ouverture de la fiche (R42) : le dire, ils sont dans les notes de la fiche à jour
       const n = nouveauxRetraits(fiche.notes, donnees.personnage.notes).length;
@@ -1791,6 +1799,7 @@ function nouvelle() {
   version = null;
   controles = null;
   modifie = false;
+  enregistrementRefuse = false;
   history.replaceState(null, '', racine.dataset.fiche);
   rafraichir();
   message('', '');
@@ -2027,6 +2036,7 @@ function remplacerLaFiche(nouvelle, cible) {
   if (cible === 'creer') {
     id = null;
     version = null;
+    enregistrementRefuse = false;   // un autre prétiré, jamais envoyé (une mise à jour du prétiré ouvert garde son identifiant et sa version : le refus reste noté)
     history.replaceState(null, '', racine.dataset.fiche);
   }
   changer();
