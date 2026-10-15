@@ -129,6 +129,24 @@ test('coupure : au dernier blanc qui tient ; suite encodée, blancs gardés ; re
   assert.equal(recollerLeTexte('Mot coupé…', 'suite fin'), 'Mot coupésuite fin');
 });
 
+test('suite relue : « ⏎ » tolère les espaces repliées autour de lui (un tableur qui replie les blancs d’une case)', () => {
+  // une ligne vide dans la part coupée : « ⏎  ⏎ » à l'écriture, « ⏎ ⏎ » une fois les deux espaces repliées
+  const t = 'Forge de ses mains une lame\n\nPuis la trempe\n\n\ndans le sang';
+  const c = couperLeTexte(t, zone({ largeur: largeurDuTexte('Forge de ses …', 10) + 2.5 }));
+  assert.equal(c.suite, 'mains une lame ⏎  ⏎ Puis la trempe ⏎  ⏎  ⏎ dans le sang');
+  assert.equal(recollerLeTexte(c.debut, c.suite), t);
+  assert.equal(recollerLeTexte(c.debut, c.suite.replace(/ {2,}/g, ' ')), t, 'espaces repliées');
+  // « ⏎ » sans espace, en tête, en fin : un saut de ligne chacun
+  assert.equal(recollerLeTexte('a …', 'b⏎c ⏎d⏎ e'), 'a b\nc\nd\ne');
+  assert.equal(recollerLeTexte('a …', '⏎ ⏎ b'), 'a\n\nb');
+  assert.equal(recollerLeTexte('a …', 'b ⏎'), 'a b\n');
+  // les blancs voisins d'un saut de ligne restent exacts quand rien n'est replié
+  for (const x of ['un deux \n  trois\n', 'a \n\n b', 'x\n \ny']) {
+    const d = couperLeTexte(x, zone({ largeur: largeurDuTexte('un …', 10) + 2.5 }));
+    if (d) assert.equal(recollerLeTexte(d.debut, d.suite), x, JSON.stringify(x));
+  }
+});
+
 test('part relue (`lu`) : seule sa fin non montrée fait une suite, qui se recolle en elle seule ; une coupure au-delà n’en a pas', () => {
   const relu = 'Composition : Acier\nEffet en plus : Gravée au nom de sa mère';
   const t = `${relu}\nUn effet du catalogue, assez long pour déborder de la case, que le site refait`;
@@ -167,13 +185,17 @@ test('ajuster : retour à la ligne d’une case de plusieurs rangées, réductio
   // une rangée : réduit tant qu'il garde ECHELLE_MIN de sa taille
   const juste = largeurDuTexte(texte, 10) * ECHELLE_MIN + 2.5;
   assert.deepEqual(ajusterLeTexte(texte, zone({ largeur: juste })), { texte, alignement: { retour: false, reduire: true }, suite: null });
-  // au-delà : coupé à cette échelle, et réduit
+  // au-delà : la police à ECHELLE_MIN de sa taille (la réduction minimale), puis coupé à cette taille
   const c = ajusterLeTexte(texte, zone({ largeur: juste / 1.5 }));
-  assert.deepEqual(c.alignement, { retour: false, reduire: true });
+  assert.deepEqual(c.alignement, { retour: false, reduire: true, echelle: ECHELLE_MIN });
   assert.ok(c.suite && recollerLeTexte(c.texte, c.suite) === texte);
-  // un saut de ligne dans une rangée : coupé au saut (la case n'en montre qu'une ligne)
+  assert.ok(tientDans(c.texte, zone({ largeur: (juste / 1.5) / ECHELLE_MIN, retour: false })), 'le début tient à cette taille');
+  // un saut de ligne dans une rangée : coupé au saut (la case n'en montre qu'une ligne) ; ce début tiendrait à la taille entière, il prend
+  // quand même la réduction minimale (une colonne de sorts garde une taille de texte homogène)
   const s = ajusterLeTexte('+5AP\nAugmente les AP', zone({ largeur: 400 }));
-  assert.deepEqual(s, { texte: '+5AP …', alignement: null, suite: '⏎ Augmente les AP' });
+  assert.deepEqual(s, { texte: '+5AP …', alignement: { retour: false, reduire: true, echelle: ECHELLE_MIN }, suite: '⏎ Augmente les AP' });
+  const affichee = ajusterLeTexte('+5AP\nAugmente les AP', zone({ largeur: 400 }), { lu: 0 });
+  assert.deepEqual(affichee, { ...s, suite: null }, 'une case affichée (rien de relu) : même taille, sans suite');
   // ce qui tient ne bouge pas ; une case réduite par le modèle non plus
   assert.deepEqual(ajusterLeTexte('court', zone()), { texte: 'court', alignement: null, suite: null });
   assert.deepEqual(ajusterLeTexte(long, zone({ reduire: true, retour: false, largeur: 10 })), { texte: long, alignement: null, suite: null });

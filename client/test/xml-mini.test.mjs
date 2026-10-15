@@ -191,5 +191,5 @@ test('aller-retour du modèle : toutes ses parties XML, dont sheet1.xml et style
   assert.deepEqual(enfantsNommes(chaines, 'si').slice(0, 3).map(texteDe), ['NOM', 'Surnom', 'Maîtrise d\'armes']);
   const dessin = analyserXml(lireModele('xl/drawings/drawing1.xml'));
   const ancre = enfantNomme(dessin, 'twoCellAnchor');
-  assert.equal(enfantNomme(enfantNomme(enfantNomme(ancre, 'pic'), 'nvPicPr'), 'cNvPr').attrs.name, 'Images 2');
+  assert.deepEqual({ ...enfantNomme(enfantNomme(enfantNomme(ancre, 'pic'), 'nvPicPr'), 'cNvPr').attrs }, { id: '0', name: 'Logo', descr: 'logo' });
 });

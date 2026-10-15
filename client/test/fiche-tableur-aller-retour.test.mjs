@@ -17,9 +17,9 @@ import { ficheVide, PARTIES_DE_FICHE } from '../src/lib/fiche-format.mjs';
 import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { casesDuDon, DONS, MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
-import { cellulesDeLaFiche, CLES_DE_LA_NOTE, lireLigneDeNote, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
-import { feuilleDeGrille, ficheDuClasseur } from '../src/lib/fiche-tableur-import.mjs';
+import { casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
+import { cellulesDeLaFiche, CLES_DE_LA_NOTE, enChiffres, lireLigneDeNote, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
+import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src/lib/fiche-tableur-import.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
@@ -60,12 +60,12 @@ function commeLaPage(fiche) {
  * note), le classeur (sans portrait : le logo du modèle, marqué « logo »), relu, importé.
  */
 async function allerRetour(fiche) {
-  const { cellules, remplis, alignements } = cellulesDeLaFiche(regles, fiche, { date: DATE, zones: ZONES });
+  const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, fiche, { date: DATE, zones: ZONES });
   const octets = await ecrireXlsx(MODELE, { cellules, remplis, alignements, descriptionImage: 'logo', titre: fiche.nom ?? '' });
   const classeur = await lireClasseur(octets, { nom: 'essai.xlsx' });
   assert.equal(classeur.format, 'xlsx');
   const r = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
-  return { ...r, cellules, remplis, alignements, octets };
+  return { ...r, cellules, remplis, alignements, avertissements, octets };
 }
 
 // ------------------------------------------------------------------ la forme canonique
@@ -135,9 +135,10 @@ async function verifier(fiche, quoi) {
   assert.deepEqual(r.nonRepris, [], `${quoi} : rien sans place sur le site`);
   assert.deepEqual(r.remarques, [], `${quoi} : rien de déduit`);
   assert.equal(r.image, null, `${quoi} : le logo du modèle n'est pas un portrait`);
+  assert.deepEqual(r.avertissements, [], `${quoi} : tout tient dans les cases`);
   assert.deepEqual(canonique(r.fiche), canonique(fiche), `${quoi} : la fiche relue`);
   const encore = cellulesDeLaFiche(regles, r.fiche, { date: DATE, zones: ZONES });
-  assert.deepEqual(encore, { cellules: r.cellules, remplis: r.remplis, alignements: r.alignements }, `${quoi} : point fixe de l'export`);
+  assert.deepEqual(encore, { cellules: r.cellules, remplis: r.remplis, alignements: r.alignements, avertissements: r.avertissements }, `${quoi} : point fixe de l'export`);
   // la note : des données du personnage ; une suite seulement pour une case relue, et le Mode Hyper 100 % sans ses effets
   const lues = lignesDeLaNote(r.cellules);
   assert.deepEqual(lues.filter((l) => l.nom === 'suite' && !CASES_RELUES.has(l.adresse)).map((l) => l.adresse), [], `${quoi} : suite d'une case affichée`);
@@ -157,11 +158,11 @@ const objet = (nom, quantite = 1) => ({ nom, quantite, ressource_id: regles.ress
 /** Mono-classe à métier, tout rempli : 26 sorts, 55 objets, 6 événements, accessoires sur tous les emplacements, armes forgées, armure en pièces. */
 function ficheRiche() {
   const f = {
-    ...ficheVide('Bérénice'), surnom: 'la Rousse', lieu_origine: 'Port-Sable', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
+    ...ficheVide('Bérénice'), surnom: 'la Rousse…', lieu_origine: 'Port-Sable', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
     magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-la-glace', dieu_choisi_id: regles.dieux.at(-1).id, metier_id: 'metiers/enchanteur',
     mode_classe: 'mono', xp: xpDuNiveau(14) + 250, alignement_loyal: 3, alignement_chaotique: 7, alignement_bon: 6, alignement_mauvais: 1,
     bourse_pp: 2, bourse_ro: 17, bourse_rf: 9, sante_actuelle: 12, chakra_actuel: 7, barriere_actuelle: 3, corruption: 2, posture_id: 'guide/postures#posture:vigilance',
-    notes: 'Une note : avec deux-points\nEt une seconde ligne', evenements: ['Naissance : à Port-Sable', 'Sans titre ici', `Deuil : ${LONG}`, 'Duel : perdu', 'Voyage : vers le nord', 'Dernier : encore'].join('\n'),
+    notes: 'Une note : avec deux-points\nEt une seconde ligne', evenements: ['Naissance : à Port-Sable', 'Sans titre ici', `Deuil : ${LONG}`, 'Duel : perdu… de peu', 'Voyage : vers le nord…', 'Dernier : encore'].join('\n'),
     classes: [
       { rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:epeiste' },
       { rang: 2, classe_id: 'classes/mage', specialite_id: 'classes/mage#specialite:mage-noir' },
@@ -286,6 +287,47 @@ test('fiches auto du propriétaire (Lucien, Louise) : importées, exportées, re
     assert.ok(lues.filter((l) => l.nom === 'suite').length <= 2, `${qui} : ${lues.filter((l) => l.nom === 'suite').map((l) => l.adresse).join(', ')}`);
     assert.ok(lues.length <= 7, `${qui} : ${lues.length} lignes`);
   }
+});
+
+test('notes plus longues qu’une case de tableur : un avertissement à l’export ; à l’import, toutes les données, les notes raccourcies et une remarque', async () => {
+  // un journal de campagne de 40 000 caractères : sans précaution, la fin de la case (le marqueur, les gains de niveau…) serait perdue
+  const notes = Array.from({ length: 2000 }, (_, i) => `Séance ${i + 1} : la troupe avance vers le nord.`).join('\n').slice(0, 40_000);
+  const f = { ...ficheRiche(), notes };
+  const r = await allerRetour(f);
+  assert.equal(r.avertissements.length, 1);
+  assert.match(r.avertissements[0], /^Notes trop longues pour une case de tableur \(32\u00a0767 caractères\) : les \d{1,3}(?:\u00a0\d{3})* derniers caractères ne sont pas dans le classeur\.$/);
+  assert.equal(r.cellules[ORDINATEUR.note].length, LONGUEUR_MAX_D_UNE_CASE);
+  assert.deepEqual(r.nonRepris, []);
+  assert.deepEqual(r.remarques, [`Notes : raccourcies à l'export (la case NOTE est pleine : ${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères) ; leur fin n'est pas dans le classeur`]);
+  assert.ok(r.fiche.notes.endsWith('…') && notes.startsWith(r.fiche.notes.slice(0, -1)));
+  assert.equal(notes.length - (r.fiche.notes.length - 1), Number(/les ([\d\u00a0]+) derniers/.exec(r.avertissements[0])[1].replace(/\u00a0/g, '')), 'l’avertissement compte ce qui manque');
+  // tout le reste est relu, gains de niveau compris (pas reconstitués)
+  assert.deepEqual(canonique({ ...r.fiche, notes }), canonique(f));
+});
+
+/** Une feuille relue, écrite en .csv comme le font Google Sheets et LibreOffice (« , », guillemets doublés, sauts de ligne entre guillemets). */
+function enCsv(feuille) {
+  const lignes = [];
+  for (let l = 1; l <= 75; l += 1) {
+    const valeurs = [];
+    for (let c = 1; c <= 78; c += 1) {
+      const t = feuille.cellules.get(`${lettresDeColonne(c)}${l}`)?.texte ?? '';
+      valeurs.push(/[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t);
+    }
+    lignes.push(valeurs.join(','));
+  }
+  return `${lignes.join('\r\n')}\r\n`;
+}
+
+test('par un .csv (Fichier › Télécharger) : la fiche relue, sauf les maîtrises que portaient les couleurs ; une remarque le dit', async () => {
+  const f = ficheRiche();
+  const { octets } = await allerRetour(f);
+  const classeur = await lireClasseur(new TextEncoder().encode(enCsv((await lireClasseur(octets)).feuille('Personnage'))), { nom: 'essai.csv' });
+  assert.equal(classeur.format, 'csv');
+  const r = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.csv', date: DATE, logo: LOGO, format: classeur.format });
+  assert.ok(f.maitrises_armes.length > 0);
+  assert.deepEqual([r.nonRepris, r.remarques, r.fiche.maitrises_armes], [[], [REMARQUE_MAITRISES_CSV], []]);
+  assert.deepEqual(canonique({ ...r.fiche, maitrises_armes: f.maitrises_armes }), canonique(f));
 });
 
 test('portrait : la vignette à la place du logo, marquée « portrait:<empreinte> », est relue comme le portrait ; gardé quand l’empreinte est celle de la fiche ouverte', async () => {

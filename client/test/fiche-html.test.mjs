@@ -147,6 +147,7 @@ test('/fiche/ : export en classeur ou en JSON, import de l’un ou l’autre (de
   assert.deepEqual(boutons, ['fiche-nouvelle Nouveau', 'fiche-exporter-tableur Exporter (tableur)', 'fiche-exporter Exporter (JSON)', 'fiche-importer', 'fiche-imprimer Imprimer']);
   // `id` juste après `type="button"` : la version portable (tools/build-artifact.mjs) masque ainsi les exports et l'impression
   assert.match(barre, /<button type="button" id="fiche-exporter-tableur" title="Classeur \.xlsx au modèle de la fiche V15\.2\.2 : Excel, LibreOffice, Google Sheets \(Fichier › Importer\)">/);
+  assert.match(barre, /<button type="button" id="fiche-exporter" title="Sauvegarde complète de la fiche \(\.json\), à réimporter sur le site">Exporter \(JSON\)<\/button>/);
   const accept = barre.match(/<input type="file" id="fiche-importer" accept="([^"]+)" hidden>/)?.[1].split(',');
   assert.deepEqual(accept, ['.json', '.xlsx', '.ods', '.csv', 'application/json', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.oasis.opendocument.spreadsheet', 'text/csv']);

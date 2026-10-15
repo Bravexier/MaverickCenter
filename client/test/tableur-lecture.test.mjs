@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { casesDesDes, dispositionDe, MAITRISES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
-import { lireClasseur, MAX_REPETITION } from '../src/lib/tableur-lecture.mjs';
+import { lireClasseur, MAX_CASES, MAX_REPETITION, MAX_TEXTE_LU, ZONE_DES_FONDS } from '../src/lib/tableur-lecture.mjs';
+import { recollerLeTexte } from '../src/lib/tableur-mesure.mjs';
 import { ecrireZip } from '../src/lib/zip.mjs';
 
 const MODELE = fileURLToPath(new URL('../src/modeles/fiche-personnage/', import.meta.url));
@@ -54,7 +55,7 @@ test('le modèle de la fiche (client/src/modeles/fiche-personnage) assemblé pui
   for (const m of MAITRISES) for (const a of casesDesDes(m)) assert.equal(f.cellules.get(a)?.remplissage ?? null, null, a);
   assert.equal(f.images.length, 1);
   const [logo] = f.images;
-  assert.deepEqual(sansOctets([logo]), [{ de: 'A1', a: 'E5', type: 'image/png', nom: 'Images 2', description: '' }]);
+  assert.deepEqual(sansOctets([logo]), [{ de: 'A1', a: 'E5', type: 'image/png', nom: 'Logo', description: 'logo' }], 'le logo marqué comme l’export le marque');
   assert.deepEqual(logo.octets, new Uint8Array(readFileSync(join(MODELE, 'xl/media/image1.png'))));
 });
 
@@ -183,8 +184,8 @@ test('xlsx fait à la main : relations, feuilles, chaînes partagées riches, ty
     I2: ['  espaces  ', '  espaces  ', null],
     A5: [42, '42', null],
     B5: [-150, '-150', null],
-    C5: [0.18, '18%', null],
-    D5: [0.1234, '12.3%', null],
+    C5: [0.18, '18 %', null],
+    D5: [0.1234, '12.3 %', null],
     E5: [5, '5', null], // « % » entre guillemets : pas un pourcentage
     F5: [0.30000000000000004, '0.3', null],
     G5: ['2026-10-15T00:00:00', '2026-10-15T00:00:00', null],
@@ -310,7 +311,8 @@ test('ods fait à la main : préfixes résolus par les xmlns, répétitions, fus
     F1: ['NOM', 'NOM', 'B2B2B2'],
     F2: [1.5, '1,5', null], G2: [1.5, '1,5', '00FF00'], F3: [1.5, '1,5', null], G3: [1.5, '1,5', '00FF00'], // ligne et case répétées
     I2: [true, 'VRAI', null], I3: [true, 'VRAI', null],
-    F4: ['début   fin \ndeux\ntrois\tquatre\nen lien et espaces', 'début   fin \ndeux\ntrois\tquatre\nen lien et espaces', null],
+    // blancs littéraux gardés tels quels, comme LibreOffice les relit (espace de tête, suites d'espaces, saut de ligne et retrait)
+    F4: ['  début   fin  \ndeux\ntrois\tquatre\nen lien  et\n   espaces', '  début   fin  \ndeux\ntrois\tquatre\nen lien  et\n   espaces', null],
     G4: ['valeur cachée', 'valeur cachée', '00FF00'],
     H4: [0.18, '18 %', null],
     I4: [12, '12', null],
@@ -413,4 +415,182 @@ test('refus : fichier vide, binaire quelconque, ancien .xls, ZIP sans classeur, 
   await assert.rejects(lireClasseur(tronque), /^Error: Fichier ZIP illisible : /);
   // un ArrayBuffer est accepté comme un Uint8Array
   assert.equal((await lireClasseur(new Uint8Array(enc.encode('a;b\n')).buffer)).format, 'csv');
+});
+
+// ---------- .ods écrit par LibreOffice : blancs littéraux ----------
+const ESPACES_LO = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '
+  + 'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"';
+const caseLo = (paragraphes) => `<table:table-cell office:value-type="string" calcext:value-type="string">${paragraphes}</table:table-cell>`;
+const odsLo = (lignes) => archive({
+  mimetype: 'application/vnd.oasis.opendocument.spreadsheet',
+  'content.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<office:document-content ${ESPACES_LO} office:version="1.3"><office:body><office:spreadsheet>`
+    + `<table:table table:name="Personnage">${lignes.map((l) => `<table:table-row>${l}</table:table-row>`).join('')}</table:table>`
+    + '</office:spreadsheet></office:body></office:document-content>',
+});
+
+test('ods de LibreOffice (24.2) : espaces d’une case de plusieurs paragraphes écrits tels quels, relus tels quels ; une suite « ⏎  ⏎ » se recolle', async () => {
+  // ce qu'écrit LibreOffice en convertissant l'export du site : text:s dans une case d'un paragraphe, espaces littéraux dans une case de plusieurs
+  const c = await lireClasseur(await odsLo([
+    caseLo('<text:p>Bob <text:s/>Le <text:s/>Grand</text:p>'),
+    caseLo('<text:p>  indentée de deux</text:p><text:p>mots  séparés  par  deux</text:p><text:p/><text:p/><text:p>fin</text:p>'),
+    caseLo('<text:p>Forge de ses …</text:p>'),
+    caseLo('<text:p>Notes</text:p><text:p>Suite de la case A3 : mains une lame ⏎  ⏎ Puis la trempe ⏎  ⏎  ⏎ dans le sang</text:p>'),
+    caseLo('<text:p> </text:p>') + caseLo('<text:p>a\tb</text:p>') + caseLo('<text:p>x<text:s text:c="3"/>y<text:tab/>z<text:line-break/>w</text:p>'),
+  ]), { nom: 'lo.ods' });
+  const texte = (a) => c.feuille().cellules.get(a)?.texte;
+  assert.equal(texte('A1'), 'Bob  Le  Grand');
+  assert.equal(texte('A2'), '  indentée de deux\nmots  séparés  par  deux\n\n\nfin', 'espace de tête et espaces doubles gardés');
+  assert.equal(texte('A5'), ' ');
+  assert.equal(texte('B5'), 'a\tb');
+  assert.equal(texte('C5'), 'x   y\tz\nw');
+  const suite = texte('A4').split('\n')[1].replace(/^Suite de la case A3 : /, '');
+  assert.equal(recollerLeTexte(texte('A3'), suite), 'Forge de ses mains une lame\n\nPuis la trempe\n\n\ndans le sang');
+});
+
+// ---------- trouver(test) ----------
+/** Un .xlsx de feuilles nommées, chacune { nom, cases: { A1: texte } } ou { nom, absente: true } (partie manquante). */
+function xlsxDeFeuilles(feuilles) {
+  const parties = {
+    'xl/workbook.xml': `<workbook xmlns="${NS_MAIN}" xmlns:r="${NS_REL}"><sheets>`
+      + feuilles.map((f, i) => `<sheet name="${f.nom}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+      + feuilles.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') + '</Relationships>',
+  };
+  feuilles.forEach((f, i) => {
+    if (f.absente) return;
+    const cases = Object.entries(f.cases ?? {}).map(([a, t]) => `<row r="${a.slice(1)}"><c r="${a}" t="inlineStr"><is><t>${t}</t></is></c></row>`).join('');
+    parties[`xl/worksheets/sheet${i + 1}.xml`] = `<worksheet xmlns="${NS_MAIN}"><sheetData>${cases}</sheetData></worksheet>`;
+  });
+  return archive(parties);
+}
+
+test('trouver(test) : « Personnage » (comparée par cle()) d’abord, puis les autres dans l’ordre ; null si aucune ; une feuille illisible passée', async () => {
+  const essayees = [];
+  const fiche = (f) => {
+    essayees.push(f.nom);
+    return f.cellules.get('F1')?.texte === 'NOM';
+  };
+  // onglet renommé et déplacé : retrouvé à son contenu
+  const renomme = await lireClasseur(await xlsxDeFeuilles([{ nom: 'BDD' }, { nom: 'Race', cases: { A1: 'Elfe' } }, { nom: 'Fiche de Lucien', cases: { F1: 'NOM' } }]));
+  const trouvee = renomme.trouver(fiche);
+  assert.equal(trouvee.nom, 'Fiche de Lucien');
+  assert.deepEqual(essayees, ['BDD', 'Race', 'Fiche de Lucien']);
+  assert.equal(renomme.feuille('Fiche de Lucien'), trouvee, 'même feuille, lue une fois');
+  // « PERSONNAGE » en troisième, essayée la première même si une autre convient aussi
+  essayees.length = 0;
+  const deux = await lireClasseur(await xlsxDeFeuilles([{ nom: 'Notes', cases: { F1: 'NOM' } }, { nom: 'Race' }, { nom: 'PERSONNAGE', cases: { F1: 'NOM' } }]));
+  assert.equal(deux.trouver(fiche).nom, 'PERSONNAGE');
+  assert.deepEqual(essayees, ['PERSONNAGE']);
+  essayees.length = 0;
+  const preferee = await lireClasseur(await xlsxDeFeuilles([{ nom: 'Notes', cases: { F1: 'NOM' } }, { nom: 'Personnage' }]));
+  assert.equal(preferee.trouver(fiche).nom, 'Notes', '« Personnage » ne convient pas : la suivante');
+  assert.deepEqual(essayees, ['Personnage', 'Notes']);
+  // aucune : null
+  assert.equal(renomme.trouver(() => false), null);
+  // une feuille illisible est passée ; si aucune ne convient, son erreur est levée
+  const abimee = await lireClasseur(await xlsxDeFeuilles([{ nom: 'Personnage', absente: true }, { nom: 'Copie', cases: { F1: 'NOM' } }]));
+  assert.equal(abimee.trouver(fiche).nom, 'Copie');
+  assert.throws(() => abimee.trouver(() => false), { message: 'Le classeur est incomplet : « xl/worksheets/sheet1.xml » manque.' });
+  // un CSV : sa feuille unique
+  const tableau = await lireClasseur(enc.encode('a;NOM\n'), { nom: 'x.csv' });
+  assert.equal(tableau.trouver((f) => f.cellules.get('B1')?.texte === 'NOM').nom, 'x');
+  assert.equal(tableau.trouver(() => false), null);
+});
+
+// ---------- bornes : longueur d'une case, fonds répétés, nombre de cases ----------
+test('une case lue garde au plus MAX_TEXTE_LU caractères, marquée `tronquee` (xlsx, ods, CSV) ; un .ods n’assemble pas au-delà', async () => {
+  assert.equal(MAX_TEXTE_LU, 40_000);
+  const long = 'é'.repeat(MAX_TEXTE_LU + 10_000);
+  const paire = `${'a'.repeat(MAX_TEXTE_LU - 1)}😀b`; // une paire de substitution à cheval sur la limite : pas coupée en deux
+  const xlsx = await lireClasseur(await xlsxDeFeuilles([{ nom: 'Personnage', cases: { A1: long, A2: paire, A3: 'court' } }]));
+  const f = xlsx.feuille();
+  assert.deepEqual(f.cellules.get('A1'), { valeur: long.slice(0, MAX_TEXTE_LU), texte: long.slice(0, MAX_TEXTE_LU), remplissage: null, tronquee: true });
+  assert.equal(f.cellules.get('A2').texte, 'a'.repeat(MAX_TEXTE_LU - 1));
+  assert.equal(f.cellules.get('A2').tronquee, true);
+  assert.deepEqual(f.cellules.get('A3'), { valeur: 'court', texte: 'court', remplissage: null }, 'une case courte n’a pas la marque');
+
+  const csv = await lireClasseur(enc.encode(`x;${'z'.repeat(MAX_TEXTE_LU + 1)}\n`));
+  assert.equal(csv.feuille().cellules.get('B1').texte.length, MAX_TEXTE_LU);
+  assert.equal(csv.feuille().cellules.get('B1').tronquee, true);
+  assert.equal(csv.feuille().cellules.get('A1').tronquee, undefined);
+
+  // .ods : 20 000 text:s de 10 000 espaces (deux cents millions de caractères annoncés en 600 Kio), répétés sur 10 cases
+  const bombe = `<text:p>${'<text:s text:c="10000"/>'.repeat(10_000)}</text:p>`.repeat(2);
+  const debut = Date.now();
+  const ods = await lireClasseur(await odsLo([caseLo(`<text:p>titre</text:p>${bombe}`).replace('<table:table-cell ', '<table:table-cell table:number-columns-repeated="10" ')]));
+  const cases = ods.feuille().cellules;
+  assert.ok(Date.now() - debut < 2000, `${Date.now() - debut} ms`);
+  assert.equal(cases.size, 10);
+  for (const c of cases.values()) {
+    assert.equal(c.texte.length, MAX_TEXTE_LU);
+    assert.ok(c.texte.startsWith('titre\n   '));
+    assert.equal(c.tronquee, true);
+  }
+});
+
+test('ods aux fonds répétés : dépliés dans ZONE_DES_FONDS (A1:CZ200) seulement, en moins d’une seconde ; au-delà de MAX_CASES valeurs, refusé', async () => {
+  assert.deepEqual({ ...ZONE_DES_FONDS }, { colonnes: 104, lignes: 200 });
+  // 40 lignes répétées 1000 fois, chacune une case remplie répétée sur 1000 colonnes (un fichier de moins d'un Kio ; 24 s avant la borne)
+  const ligne = '<t:table-row t:number-rows-repeated="1000"><t:table-cell t:style-name="fond" t:number-columns-repeated="1000"/></t:table-row>';
+  const fichier = await archive({ 'content.xml': contenuOds(ligne.repeat(40)) });
+  assert.ok(fichier.length < 2000, `${fichier.length} octets`);
+  const debut = Date.now();
+  const f = (await lireClasseur(fichier)).feuille('Personnage');
+  assert.ok(Date.now() - debut < 1000, `${Date.now() - debut} ms`);
+  assert.equal(f.cellules.size, ZONE_DES_FONDS.colonnes * ZONE_DES_FONDS.lignes);
+  assert.deepEqual(f.cellules.get('A1'), { valeur: '', texte: '', remplissage: 'B2B2B2' });
+  assert.ok(f.cellules.has('CZ200'));
+  for (const a of ['DA1', 'A201', 'DA201']) assert.equal(f.cellules.has(a), false, a);
+  // hors de la zone : une valeur reste lue (avec son fond), une case seulement remplie non
+  const hors = await lireClasseur(await archive({
+    'content.xml': contenuOds('<t:table-row t:number-rows-repeated="300"><t:table-cell t:number-columns-repeated="200"/></t:table-row>'
+      + '<t:table-row><t:table-cell t:number-columns-repeated="150"/><t:table-cell o:value-type="string"><p:p>loin</p:p></t:table-cell>'
+      + '<t:table-cell t:style-name="fond"/><t:table-cell o:value-type="string" t:style-name="fond"><p:p>remplie</p:p></t:table-cell></t:table-row>'),
+  }));
+  assert.deepEqual(grille(hors.feuille('Personnage')), { EU301: ['loin', 'loin', null], EW301: ['remplie', 'remplie', 'B2B2B2'] });
+
+  // au-delà de MAX_CASES valeurs (501 lignes de 1000 valeurs) : refusé, sans attendre
+  const valeurs = '<t:table-row><t:table-cell o:value-type="string" t:number-columns-repeated="1000"><p:p>x</p:p></t:table-cell></t:table-row>';
+  const trop = await lireClasseur(await archive({ 'content.xml': contenuOds(valeurs.repeat(MAX_CASES / 1000 + 1)) }));
+  assert.throws(() => trop.feuille('Personnage'), { message: `La feuille « Personnage » a trop de cases remplies (plus de ${MAX_CASES}) : fichier refusé.` });
+});
+
+// ---------- dates et pourcentages d'un .xlsx ----------
+/** Un .xlsx d'une feuille aux nombres `cases` ({ A1: [valeur, style] }), styles : les codes de format de cellXfs (numFmtId intégré ou code). */
+function xlsxDeNombres(cases, formats, { date1904 = false } = {}) {
+  const numFmts = formats.map((f, i) => (typeof f === 'string' ? `<numFmt numFmtId="${200 + i}" formatCode="${f.replaceAll('"', '&quot;')}"/>` : '')).join('');
+  const xfs = formats.map((f, i) => `<xf numFmtId="${typeof f === 'string' ? 200 + i : f}"/>`).join('');
+  return archive({
+    'xl/workbook.xml': `<workbook xmlns="${NS_MAIN}" xmlns:r="${NS_REL}">${date1904 ? '<workbookPr date1904="1"/>' : ''}`
+      + '<sheets><sheet name="Personnage" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+      + `<Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>`,
+    'xl/styles.xml': `<styleSheet xmlns="${NS_MAIN}"><numFmts>${numFmts}</numFmts><cellXfs><xf numFmtId="0"/>${xfs}</cellXfs></styleSheet>`,
+    'xl/worksheets/sheet1.xml': `<worksheet xmlns="${NS_MAIN}"><sheetData>`
+      + Object.entries(cases).map(([a, [v, s]]) => `<row r="${a.slice(1)}"><c r="${a}" s="${s}"><v>${v}</v></c></row>`).join('') + '</sheetData></worksheet>',
+  });
+}
+
+test('xlsx : un nombre au format de date donne JJ/MM/AAAA (et l’heure si le format en a une), au format pourcentage « 18 % » ; la valeur reste le nombre', async () => {
+  const formats = [14, 22, 20, 46, 'dd/mm/yyyy', '[$-40C]d mmmm yyyy;@', '0.00 "d"', '[Red]0;[Blue]\\-0', 'hh:mm:ss', 'yyyy-mm-dd hh:mm', 'mmm',
+    '#,##0.00\\ [$€-40C]', '0.0%', 9, 45, 21, 18, '0 \\d', '_-* #,##0 _m_-'];
+  const s = (f) => formats.indexOf(f) + 1;
+  const cases = {
+    A1: [45363, s(14)], A2: [45363.75, s(22)], A3: [0.5, s(20)], A4: [1.5, s(46)], A5: [60, s('dd/mm/yyyy')], A6: [59, s('dd/mm/yyyy')],
+    A7: [61, s('dd/mm/yyyy')], A8: [1, s('dd/mm/yyyy')], A9: [0, s(14)], A10: [-1, s(14)], A11: [45363, s('[$-40C]d mmmm yyyy;@')],
+    A12: [3, s('0.00 "d"')], A13: [5, s('[Red]0;[Blue]\\-0')], A14: [0.25 + 5 / 86400, s('hh:mm:ss')], A15: [45363.5, s('yyyy-mm-dd hh:mm')],
+    A16: [45363, s('mmm')], A17: [12.5, s('#,##0.00\\ [$€-40C]')], A18: [0.183, s('0.0%')], A19: [1, s(9)], A20: [90 / 86400, s(45)],
+    A21: [3_000_000, s(14)], A22: [45363.99999999, s(21)], A23: [0.75, s(18)], A24: [7, s('0 \\d')], A25: [8, s('_-* #,##0 _m_-')],
+  };
+  const f = (await lireClasseur(await xlsxDeNombres(cases, formats))).feuille();
+  const lu = Object.fromEntries([...f.cellules].map(([a, c]) => [a, c.texte]));
+  assert.deepEqual(lu, {
+    A1: '12/03/2024', A2: '12/03/2024 18:00', A3: '12:00', A4: '36:00:00', A5: '29/02/1900', A6: '28/02/1900', A7: '01/03/1900', A8: '01/01/1900',
+    A9: '00/01/1900', A10: '-1', A11: '12/03/2024', A12: '3', A13: '5', A14: '06:00:05', A15: '12/03/2024 12:00', A16: '12/03/2024', A17: '12.5',
+    A18: '18.3 %', A19: '100 %', A20: '00:01:30', A21: '3000000', A22: '00:00:00', A23: '18:00', A24: '7', A25: '8',
+  });
+  for (const [a, [v]] of Object.entries(cases)) assert.equal(f.cellules.get(a).valeur, v, a);
+  // calendrier de 1904 (workbookPr@date1904)
+  const mac = (await lireClasseur(await xlsxDeNombres({ A1: [0, 1], A2: [45363, 1] }, [14], { date1904: true }))).feuille();
+  assert.deepEqual([mac.cellules.get('A1').texte, mac.cellules.get('A2').texte], ['01/01/1904', '13/03/2028']);
 });

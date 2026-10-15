@@ -4,10 +4,14 @@
 // importé par deux scripts de page casse la version portable (CLAUDE.md, « Pièges connus ») ; n'importe que lib/zip.mjs, lib/xml-mini.mjs et
 // lib/fiche-tableur-cases.mjs.
 //
-//   lireClasseur(octets, { nom }) → { format: 'xlsx' | 'ods' | 'csv', feuilles: [noms], feuille(nom?) }
+//   lireClasseur(octets, { nom }) → { format: 'xlsx' | 'ods' | 'csv', feuilles: [noms], feuille(nom?), trouver(test) }
 //   feuille(nom) : la feuille de ce nom (même écriture, sinon même cle()), sinon la première ; lue à la première demande, puis gardée.
+//   trouver(test) : la première feuille dont `test(feuille)` est vrai, en essayant d'abord celle nommée « Personnage » (comparée par cle()),
+//     puis les autres dans l'ordre du classeur ; null si aucune (un onglet renommé ou déplacé est retrouvé à son contenu). Une feuille illisible
+//     est passée ; si aucune ne convient et qu'une n'a pas pu être lue, l'erreur de la première est levée (le fichier est abîmé, pas étranger).
 //   Feuille = { nom, cellules: Map<'A1', Cellule>, images: Image[] }
-//   Cellule = { valeur: string | number | boolean, texte, remplissage: 'RRGGBB' | null } (seules les cases non vides OU remplies)
+//   Cellule = { valeur: string | number | boolean, texte, remplissage: 'RRGGBB' | null, tronquee?: true } (seules les cases non vides OU remplies ;
+//             `tronquee` : valeur ou texte coupé à MAX_TEXTE_LU caractères)
 //   Image   = { de: 'A1', a: 'E5' | null, octets, type: 'image/png'…, nom, description }
 //
 // Décisions (relevées sur les fichiers de LibreOffice, d'Excel et de Google Sheets ; lecteurs d'essai vérifiés contre openpyxl) :
@@ -21,16 +25,26 @@
 //   - xlsx : noms locaux comparés (« x:c », « ns0: »… selon les producteurs ; OOXML Strict comme Transitional) ; parties retrouvées par les
 //     relations (cible relative, absolue, encodée en %, ou d'une autre casse : OPC ne distingue pas la casse) ; `_xHHHH_` décodé (Excel écrit
 //     `_x000D_`) puis `\r\n` → `\n` ; texte riche = les <t> des <r>, jamais ceux de <rPh> (lecture phonétique) ; types s, inlineStr, b, str, e,
-//     d, n ou absent ; `r` facultatif sur <row> et <c> ; texte affiché d'un nombre : format « Standard » (15 chiffres significatifs, point
-//     décimal) ou pourcentage (format qui écrit « % » hors guillemets), aucun autre format appliqué ; booléen « TRUE » / « FALSE ».
+//     d, n ou absent ; `r` facultatif sur <row> et <c> ; texte affiché d'un nombre, d'après le format de nombre de sa case (numFmtId de cellXfs :
+//     intégré ou <numFmt>, sa première section, hors guillemets, « \x », « _x », « *x » et crochets) : date (intégrés 14 à 22 et 45 à 47, ou
+//     un format qui écrit d, m ou y) → « JJ/MM/AAAA », suivie de « HH:MM » (« :SS ») si le format écrit aussi h ou s, l'heure seule pour un
+//     format d'heure sans d ni y (« h:mm », « mm:ss », « [h]:mm:ss » qui compte les heures au-delà de 24) ; calendrier de 1900 (le 29/02/1900
+//     fictif d'Excel compris) ou de 1904 (workbookPr@date1904) ; une valeur hors des dates (négative, après 9999) garde le format « Standard » ;
+//     pourcentage (format qui écrit « % ») → « 18 % », ses décimales au point ; sinon « Standard » (15 chiffres significatifs, point décimal) ;
+//     la valeur reste le nombre ; booléen « TRUE » / « FALSE ».
 //   - ods : préfixes résolus par les xmlns (aucun « office: » ni « table: » supposé) ; lignes dans table-header-rows, table-row-group,
-//     table-rows ; texte affiché = les text:p (text:h) DIRECTS de la cellule joints par `\n` (pas ceux
-//     d'un draw:frame ni d'une office:annotation), blancs repliés comme le veut ODF (§6.1.2 : suite de blancs → une espace, blanc de tête
-//     ignoré), text:s, text:tab, text:line-break, text:span / text:a lus ; nombre, pourcentage, devise → office:value, booléen →
-//     office:boolean-value, date / heure → la valeur ISO, texte → office:string-value sinon les paragraphes.
+//     table-rows ; texte affiché = les text:p (text:h) DIRECTS de la cellule joints par `\n` (pas ceux d'un draw:frame ni d'une
+//     office:annotation), lus comme LibreOffice les relit : blancs littéraux gardés tels quels (espaces doubles, espace de tête, tabulation,
+//     saut de ligne : LibreOffice écrit ainsi une case de plusieurs paragraphes, sans text:s, et ne replie rien à la relecture, contrairement au
+//     §6.1.2 d'ODF ; relevé sur LibreOffice 24.2), text:s (text:c espaces), text:tab, text:line-break, text:span / text:a lus ; nombre,
+//     pourcentage, devise → office:value, booléen → office:boolean-value, date / heure → la valeur ISO, texte → office:string-value sinon les
+//     paragraphes.
 //   - répétitions (ods) : une valeur non vide répétée plus de MAX_REPETITION fois (lignes × colonnes) refuse le fichier (bombe) ; une case
-//     vide seulement remplie n'est dépliée que si ses deux répétitions restent sous MAX_REPETITION (au-delà : le décor des bords de la feuille).
-//     Au plus MAX_CASES cases par feuille : au-delà, une valeur refuse le fichier, un simple fond est laissé.
+//     vide seulement remplie n'est dépliée que si ses deux répétitions restent sous MAX_REPETITION (au-delà : le décor des bords de la feuille),
+//     et dans ZONE_DES_FONDS seulement (A1:CZ200 ; la fiche s'arrête en BZ75) : un petit fichier aux fonds répétés ne fait pas des centaines de
+//     milliers de cases. Au plus MAX_CASES cases par feuille : au-delà, une valeur refuse le fichier, un simple fond n'est plus déplié.
+//   - longueur : une case lue garde au plus MAX_TEXTE_LU caractères (valeur et texte ; Excel n'en écrit pas plus de 32 767), au-delà elle est
+//     coupée et marquée `tronquee` ; un .ods n'assemble pas au-delà (text:s, paragraphes), quelle que soit leur répétition.
 //   - remplissage : xlsx, cellXfs[s].fillId → fills : motif « solid » seulement, fgColor (ARGB : le canal alpha ignoré comme le fait Excel ;
 //     indexed : palette standard d'Excel ou <indexedColors> ; theme : couleur du thème, ordre lt1 dk1 lt2 dk2 accent1…6 hlink folHlink, avec
 //     tint) ; « THEME » / « INDEXE » quand la couleur ne se retrouve pas (non nul : la case est bien remplie). ods : style de la case, sinon
@@ -53,6 +67,10 @@ import { cle, lettresDeColonne, numeroDeColonne } from './fiche-tableur-cases.mj
 export const MAX_REPETITION = 1000;
 /** Cases au plus dans une feuille. */
 export const MAX_CASES = 500_000;
+/** Caractères au plus dans une case lue (valeur et texte) ; au-delà, la case est coupée et marquée `tronquee`. */
+export const MAX_TEXTE_LU = 40_000;
+/** La zone où une case vide seulement remplie (ods) est dépliée : A1:CZ200. */
+export const ZONE_DES_FONDS = Object.freeze({ colonnes: 104, lignes: 200 });
 const MAX_COLONNE = 16_384; // XFD : la dernière colonne d'Excel
 const MAX_LIGNE = 1_048_576;
 
@@ -96,9 +114,16 @@ export async function lireClasseur(octets, { nom = '' } = {}) {
   return classeurCsv(texteDuCsv(o), nom);
 }
 
+/** Le nom de feuille que trouver() essaie d'abord : celui de l'onglet des deux modèles de la fiche. */
+const FEUILLE_PREFEREE = cle('Personnage');
+
 /** L'objet rendu par lireClasseur : `feuilles` = [{ nom, … }], `lire(feuille)` → Feuille (appelée une fois par feuille). */
 function classeur(format, feuilles, lire) {
   const lues = new Map();
+  const lue = (i) => {
+    if (!lues.has(i)) lues.set(i, lire(feuilles[i]));
+    return lues.get(i);
+  };
   return {
     format,
     feuilles: feuilles.map((f) => f.nom),
@@ -108,22 +133,62 @@ function classeur(format, feuilles, lire) {
         i = feuilles.findIndex((f) => f.nom === String(nom));
         if (i < 0) i = feuilles.findIndex((f) => cle(f.nom) === cle(nom));
       }
-      if (i < 0) i = 0;
-      if (!lues.has(i)) lues.set(i, lire(feuilles[i]));
-      return lues.get(i);
+      return lue(i < 0 ? 0 : i);
+    },
+    /** La première feuille dont `test(feuille)` est vrai, « Personnage » d'abord, puis les autres dans l'ordre ; null sinon (voir l'en-tête). */
+    trouver(test) {
+      const preferee = feuilles.findIndex((f) => cle(f.nom) === FEUILLE_PREFEREE);
+      const ordre = [...feuilles.keys()];
+      if (preferee > 0) ordre.unshift(...ordre.splice(preferee, 1));
+      let erreur = null;
+      for (const i of ordre) {
+        let f;
+        try {
+          f = lue(i);
+        } catch (e) {
+          erreur ??= e;
+          continue;
+        }
+        if (test(f)) return f;
+      }
+      if (erreur) throw erreur;
+      return null;
     },
   };
 }
 
-/** Pose une case dans la grille ; au-delà de MAX_CASES, une valeur refuse le fichier, un simple fond est laissé. */
-function poserCase(cellules, nomFeuille, colonne, ligne, valeur, texte, remplissage) {
+/** Une chaîne d'au plus MAX_TEXTE_LU caractères (sans couper une paire de substitution) ; toute autre valeur telle quelle. */
+function borne(v) {
+  if (typeof v !== 'string' || v.length <= MAX_TEXTE_LU) return v;
+  const code = v.charCodeAt(MAX_TEXTE_LU - 1);
+  return v.slice(0, code >= 0xd800 && code <= 0xdbff ? MAX_TEXTE_LU - 1 : MAX_TEXTE_LU);
+}
+
+/** Le contenu d'une case ({ valeur, texte } ou null) borné à MAX_TEXTE_LU caractères, `tronquee` s'il a fallu couper. */
+function contenuBorne(contenu) {
+  if (!contenu) return contenu;
+  const valeur = borne(contenu.valeur);
+  const texte = borne(contenu.texte);
+  return valeur === contenu.valeur && texte === contenu.texte ? contenu : { valeur, texte, tronquee: true };
+}
+
+/** La grille est-elle pleine (MAX_CASES) ? Une case de plus n'y entre que pour refuser le fichier. */
+const pleine = (cellules) => cellules.size >= MAX_CASES;
+
+/**
+ * Pose une case dans la grille (`contenu` : { valeur, texte, tronquee? } déjà borné, ou null pour une case seulement remplie) ; au-delà de MAX_CASES,
+ * une valeur refuse le fichier, un simple fond est laissé.
+ */
+function poserCase(cellules, nomFeuille, colonne, ligne, contenu, remplissage) {
   if (colonne < 1 || colonne > MAX_COLONNE || ligne < 1 || ligne > MAX_LIGNE) return;
   const a = adresse(colonne, ligne);
-  if (!cellules.has(a) && cellules.size >= MAX_CASES) {
-    if (valeur === '') return;
+  if (!cellules.has(a) && pleine(cellules)) {
+    if (!contenu) return;
     throw tropDeCases(nomFeuille);
   }
-  cellules.set(a, { valeur, texte, remplissage });
+  const cellule = { valeur: contenu?.valeur ?? '', texte: contenu?.texte ?? '', remplissage };
+  if (contenu?.tronquee) cellule.tronquee = true;
+  cellules.set(a, cellule);
 }
 
 // ---------- outils communs ----------
@@ -287,6 +352,7 @@ function typesDeContenu(entrees) {
 function classeurXlsx(entrees, cheminClasseur, racine) {
   const rels = relations(entrees, cheminClasseur);
   const feuilles = [];
+  const date1904 = ['1', 'true'].includes(String(enfantNomme(racine, 'workbookPr')?.attrs.date1904 ?? '').trim().toLowerCase());
   for (const s of enfantsNommes(enfantNomme(racine, 'sheets'), 'sheet')) {
     const rel = rels.get(attributPrefixe(s, 'id'));
     if (!rel || !rel.type.endsWith('/worksheet')) continue; // feuille de graphique, de dialogue, de macros : pas de cases
@@ -299,6 +365,7 @@ function classeurXlsx(entrees, cheminClasseur, racine) {
       partages: chainesPartagees(entrees, rels),
       styles: stylesXlsx(entrees, rels),
       types: typesDeContenu(entrees),
+      date1904,
     };
     return commun;
   };
@@ -396,14 +463,62 @@ function couleursDuTheme(entrees, rels) {
   return ORDRE_DU_THEME.map((n) => parNom.get(n) ?? null);
 }
 
-/** Nombre de décimales d'un format qui affiche en pourcentage, null pour un autre format. */
-function decimalesDuPourcentage(code) {
-  const section = String(code ?? '').split(';')[0].replace(/"[^"]*"|\[[^\]]*\]|\\./g, '');
-  if (!section.includes('%')) return null;
-  return /\.([0#?]+)/.exec(section)?.[1].length ?? 0;
+// Formats de nombre intégrés d'Excel qui ne sont pas « Standard » (ECMA-376, §18.8.30) : pourcentages, dates et heures.
+const FORMATS_INTEGRES = new Map([
+  [9, '0%'], [10, '0.00%'], [14, 'm/d/yyyy'], [15, 'd-mmm-yy'], [16, 'd-mmm'], [17, 'mmm-yy'], [18, 'h:mm AM/PM'], [19, 'h:mm:ss AM/PM'],
+  [20, 'h:mm'], [21, 'h:mm:ss'], [22, 'm/d/yyyy h:mm'], [45, 'mm:ss'], [46, '[h]:mm:ss'], [47, 'mmss.0'],
+]);
+
+/**
+ * Ce que dit un code de format de nombre (sa première section, hors texte entre guillemets, « \x », « _x », « *x » et crochets) :
+ * { pourcentage: décimales, date: null } pour un format qui écrit « % », { pourcentage: null, date: { jour, heure, secondes, ecoule } } pour une
+ * date ou une heure (d, m, y : le jour ; h, s, m à côté d'eux : l'heure ; « [h] » : les heures écoulées), null pour un autre format.
+ */
+function formatDeNombre(code) {
+  const section = String(code ?? '').replace(/"[^"]*"|\\.|[_*]./g, '').split(';')[0];
+  const ecoule = /\[h+\]/i.test(section);
+  const nu = section.replace(/\[[^\]]*\]/g, (crochets) => (/^\[(?:h+|m+|s+)\]$/i.test(crochets) ? crochets.slice(1, -1) : ''))
+    .replace(/AM\/PM|A\/P/gi, '').toLowerCase();
+  if (/[dy]/.test(nu) || /[hs]/.test(nu) || (nu.includes('m') && !/[0#?]/.test(nu))) {
+    const heure = /[hs]/.test(nu);
+    return { pourcentage: null, date: { jour: /[dy]/.test(nu) || !heure, heure, secondes: nu.includes('s'), ecoule } };
+  }
+  if (nu.includes('%')) return { pourcentage: /\.([0#?]+)/.exec(nu)?.[1].length ?? 0, date: null };
+  return null;
 }
 
-/** Les styles des cases (cellXfs) : [{ fond: 'RRGGBB' | 'THEME' | 'INDEXE' | null, pourcentage: décimales | null }]. */
+const deuxChiffres = (n) => String(n).padStart(2, '0');
+const JOUR_MS = 86_400_000;
+const DERNIER_JOUR = 2_958_465; // 31/12/9999 dans le calendrier de 1900
+
+/** Le texte d'une date ou d'une heure d'Excel (numéro de série), selon ce qu'en montre son format (formatDeNombre) ; null hors des dates. */
+function texteDeDate(n, { jour, heure, secondes, ecoule }, date1904) {
+  if (!Number.isFinite(n) || n < 0) return null;
+  const totalSecondes = Math.round(n * 86_400);
+  const jours = Math.floor(totalSecondes / 86_400);
+  if (jours > DERNIER_JOUR) return null;
+  const dansLeJour = totalSecondes - jours * 86_400;
+  const morceaux = [];
+  if (jour) {
+    if (date1904) {
+      const d = new Date(Date.UTC(1904, 0, 1) + jours * JOUR_MS);
+      morceaux.push(`${deuxChiffres(d.getUTCDate())}/${deuxChiffres(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`);
+    } else if (jours === 0) morceaux.push('00/01/1900'); // ce qu'écrit Excel
+    else if (jours === 60) morceaux.push('29/02/1900'); // le jour fictif d'Excel (Lotus 1-2-3)
+    else {
+      const d = new Date(Date.UTC(1899, 11, jours < 60 ? 31 : 30) + jours * JOUR_MS);
+      morceaux.push(`${deuxChiffres(d.getUTCDate())}/${deuxChiffres(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`);
+    }
+  }
+  if (heure) {
+    const heures = ecoule ? Math.floor(totalSecondes / 3600) : Math.floor(dansLeJour / 3600);
+    const minutes = Math.floor((dansLeJour % 3600) / 60);
+    morceaux.push(`${deuxChiffres(heures)}:${deuxChiffres(minutes)}${secondes ? `:${deuxChiffres(dansLeJour % 60)}` : ''}`);
+  }
+  return morceaux.join(' ');
+}
+
+/** Les styles des cases (cellXfs) : [{ fond: 'RRGGBB' | 'THEME' | 'INDEXE' | null, format: formatDeNombre(…) }]. */
 function stylesXlsx(entrees, rels) {
   const chemin = relationDeType(rels, 'styles')?.cible ?? trouverPartie(entrees, 'xl/styles.xml');
   if (!chemin) return [];
@@ -418,16 +533,16 @@ function stylesXlsx(entrees, rels) {
     if (!motif || motif.attrs.patternType !== 'solid') return null;
     return sansBlanc(couleurOoxml(enfantNomme(motif, 'fgColor'), palette, theme));
   });
-  const formats = new Map([[9, 0], [10, 2]]); // formats intégrés « 0% » et « 0.00% »
-  for (const f of enfantsNommes(enfantNomme(racine, 'numFmts'), 'numFmt')) formats.set(Number(f.attrs.numFmtId), decimalesDuPourcentage(f.attrs.formatCode));
+  const formats = new Map([...FORMATS_INTEGRES].map(([id, code]) => [id, formatDeNombre(code)]));
+  for (const f of enfantsNommes(enfantNomme(racine, 'numFmts'), 'numFmt')) formats.set(Number(f.attrs.numFmtId), formatDeNombre(f.attrs.formatCode));
   return enfantsNommes(enfantNomme(racine, 'cellXfs'), 'xf').map((xf) => ({
     fond: fonds[Number(xf.attrs.fillId ?? 0)] ?? null,
-    pourcentage: formats.get(Number(xf.attrs.numFmtId ?? 0)) ?? null,
+    format: formats.get(Number(xf.attrs.numFmtId ?? 0)) ?? null,
   }));
 }
 
 // ---------- feuille ----------
-function feuilleXlsx(entrees, f, { partages, styles, types }) {
+function feuilleXlsx(entrees, f, { partages, styles, types, date1904 }) {
   if (!f.cible) throw incomplet(f.chemin ?? '?');
   const racine = xmlDe(entrees, f.cible);
   const cellules = new Map();
@@ -441,10 +556,10 @@ function feuilleXlsx(entrees, f, { partages, styles, types }) {
       colonne = position ? position.colonne : colonne + 1;
       const ligneDeCase = position?.ligne ?? ligne;
       const style = styles[Number(c.attrs.s ?? 0)];
-      const contenu = valeurXlsx(c, partages, style);
+      const contenu = valeurXlsx(c, partages, style, date1904);
       const remplissage = style?.fond ?? null;
       if ((!contenu && !remplissage) || couverte(colonne, ligneDeCase)) continue;
-      poserCase(cellules, f.nom, colonne, ligneDeCase, contenu?.valeur ?? '', contenu?.texte ?? '', remplissage);
+      poserCase(cellules, f.nom, colonne, ligneDeCase, contenuBorne(contenu), remplissage);
     }
   }
   return { nom: f.nom, cellules, images: imagesXlsx(entrees, f.cible, types) };
@@ -465,7 +580,7 @@ function casesCouvertes(racine) {
 }
 
 /** { valeur, texte } d'une case <c>, ou null si elle est vide. */
-function valeurXlsx(c, partages, style) {
+function valeurXlsx(c, partages, style, date1904) {
   const v = enfantNomme(c, 'v');
   const brut = v ? texteDe(v) : null;
   const texte = (s) => (s === null || s === undefined || s === '' ? null : { valeur: s, texte: s });
@@ -489,8 +604,11 @@ function valeurXlsx(c, partages, style) {
       if (brut === null || brut.trim() === '') return null;
       const n = Number(brut.trim());
       if (!Number.isFinite(n)) return texte(brut);
-      const decimales = style?.pourcentage;
-      return { valeur: n, texte: decimales === null || decimales === undefined ? texteStandard(n) : `${(n * 100).toFixed(decimales)}%` };
+      const format = style?.format;
+      const date = format?.date ? texteDeDate(n, format.date, date1904) : null;
+      if (date) return { valeur: n, texte: date };
+      if (format?.pourcentage !== null && format?.pourcentage !== undefined) return { valeur: n, texte: `${(n * 100).toFixed(format.pourcentage)} %` };
+      return { valeur: n, texte: texteStandard(n) };
     }
   }
 }
@@ -670,7 +788,7 @@ function stylesOds(entrees, doc) {
 const GROUPES_DE_LIGNES = new Set(['table-header-rows', 'table-row-group', 'table-rows']);
 const GROUPES_DE_COLONNES = new Set(['table-header-columns', 'table-column-group', 'table-columns']);
 
-/** (numéro de colonne) → style par défaut de ses cases (table:default-cell-style-name), ou undefined. */
+/** (numéro de colonne) → style par défaut de ses cases (table:default-cell-style-name), ou undefined ; plages croissantes, cherchées par dichotomie. */
 function stylesDesColonnes(table) {
   const plages = [];
   let colonne = 1;
@@ -685,45 +803,52 @@ function stylesDesColonnes(table) {
     }
   };
   parcourir(table);
-  return (c) => plages.find((p) => c >= p.debut && c <= p.fin)?.style;
+  return (c) => {
+    let bas = 0;
+    let haut = plages.length - 1;
+    while (bas <= haut) {
+      const milieu = (bas + haut) >> 1;
+      const p = plages[milieu];
+      if (c < p.debut) haut = milieu - 1;
+      else if (c > p.fin) bas = milieu + 1;
+      else return p.style;
+    }
+    return undefined;
+  };
 }
 
-/** Texte affiché d'un text:p (ODF §6.1.2 : blancs littéraux repliés en une espace, ignorés en tête ; text:s, text:tab, text:line-break). */
-function texteDuParagraphe(paragraphe) {
+/**
+ * Texte affiché d'une table:table-cell, tel que LibreOffice le relit : ses text:p (text:h) directs joints par `\n`, blancs littéraux gardés tels
+ * quels (voir l'en-tête), text:s, text:tab, text:line-break ; pas plus de MAX_TEXTE_LU + 1 caractères assemblés (la case sera coupée).
+ */
+function texteAfficheOds(c) {
   let s = '';
-  let apresBlanc = true; // en tête de paragraphe, un blanc littéral ne compte pas
+  const plein = () => s.length > MAX_TEXTE_LU;
   const lire = (n) => {
     for (const e of n.enfants) {
-      if (typeof e === 'string') {
-        let t = e.replace(/[ \t\n\r]+/g, ' ');
-        if (apresBlanc && t.startsWith(' ')) t = t.slice(1);
-        if (t) {
-          s += t;
-          apresBlanc = t.endsWith(' ');
-        }
-        continue;
-      }
-      if (e.ns !== NS.text) continue; // office:annotation, draw:frame… : pas du texte affiché dans la case
-      if (e.local === 's') {
-        s += ' '.repeat(Math.min(entier(attribut(e, NS.text, 'c'), 1), 10_000));
-        apresBlanc = false;
-      } else if (e.local === 'tab') {
-        s += '\t';
-        apresBlanc = false;
-      } else if (e.local === 'line-break') {
-        s += '\n';
-        apresBlanc = true;
-      } else if (e.local !== 'note' && e.local !== 'ruby-text') lire(e); // span, a, meta, champs…
+      if (plein()) return;
+      if (typeof e === 'string') s += e;
+      else if (e.ns !== NS.text) continue; // office:annotation, draw:frame… : pas du texte affiché dans la case
+      else if (e.local === 's') s += ' '.repeat(Math.min(entier(attribut(e, NS.text, 'c'), 1), MAX_TEXTE_LU + 1));
+      else if (e.local === 'tab') s += '\t';
+      else if (e.local === 'line-break') s += '\n';
+      else if (e.local !== 'note' && e.local !== 'ruby-text') lire(e); // span, a, meta, champs…
     }
   };
-  lire(paragraphe);
+  let premier = true;
+  for (const p of fils(c, NS.text)) {
+    if (p.local !== 'p' && p.local !== 'h') continue;
+    if (plein()) break;
+    if (!premier) s += '\n';
+    premier = false;
+    lire(p);
+  }
   return s;
 }
 
 /** { valeur, texte } d'une table:table-cell, ou null si elle est vide. */
 function valeurOds(c) {
-  const paragraphes = fils(c, NS.text).filter((e) => e.local === 'p' || e.local === 'h');
-  const affiche = paragraphes.length ? paragraphes.map(texteDuParagraphe).join('\n') : '';
+  const affiche = texteAfficheOds(c);
   const type = attribut(c, NS.office, 'value-type');
   if (type === 'float' || type === 'percentage' || type === 'currency') {
     const n = Number(attribut(c, NS.office, 'value'));
@@ -775,7 +900,7 @@ function feuilleOds(entrees, f, { fond, types }) {
         colonne += nColonnes; // case couverte par une fusion : ni valeur (même écrite) ni fond, la zone s'affiche comme sa première case
         continue;
       }
-      const contenu = valeurOds(c);
+      const contenu = contenuBorne(valeurOds(c));
       const styleDeCase = attribut(c, NS.table, 'style-name') ?? styleDeLigne;
       const fondEn = (col) => fond(styleDeCase ?? styleDeColonne(col));
       if (contenu) {
@@ -783,12 +908,16 @@ function feuilleOds(entrees, f, { fond, types }) {
           throw new Error(`La feuille « ${f.nom} » répète une même case ${nColonnes * nLignes} fois (au plus ${MAX_REPETITION}) : fichier refusé.`);
         }
         for (let dl = 1; dl <= nLignes; dl++) {
-          for (let dc = 1; dc <= nColonnes; dc++) poserCase(cellules, f.nom, colonne + dc, ligne + dl, contenu.valeur, contenu.texte, fondEn(colonne + dc));
+          for (let dc = 1; dc <= nColonnes; dc++) poserCase(cellules, f.nom, colonne + dc, ligne + dl, contenu, fondEn(colonne + dc));
         }
-      } else if (nColonnes <= MAX_REPETITION && nLignes <= MAX_REPETITION && (styleDeCase === undefined || fondEn(colonne + 1))) {
-        for (let dc = 1; dc <= nColonnes; dc++) {
+      } else if (nColonnes <= MAX_REPETITION && nLignes <= MAX_REPETITION && colonne < ZONE_DES_FONDS.colonnes && ligne < ZONE_DES_FONDS.lignes
+        && !pleine(cellules) && (styleDeCase === undefined || fondEn(colonne + 1))) {
+        // une case seulement remplie : dépliée dans ZONE_DES_FONDS, tant que la grille n'est pas pleine
+        const colonnes = Math.min(nColonnes, ZONE_DES_FONDS.colonnes - colonne);
+        const lignes = Math.min(nLignes, ZONE_DES_FONDS.lignes - ligne);
+        for (let dc = 1; dc <= colonnes && !pleine(cellules); dc++) {
           const remplissage = fondEn(colonne + dc);
-          if (remplissage) for (let dl = 1; dl <= nLignes; dl++) poserCase(cellules, f.nom, colonne + dc, ligne + dl, '', '', remplissage);
+          if (remplissage) for (let dl = 1; dl <= lignes && !pleine(cellules); dl++) poserCase(cellules, f.nom, colonne + dc, ligne + dl, null, remplissage);
         }
       }
       if (colonne < MAX_COLONNE && ligne < MAX_LIGNE) {
@@ -939,7 +1068,7 @@ function classeurCsv(texte, nomFichier) {
     const cellules = new Map();
     decouperCsv(texte, separateurCsv(texte)).forEach((champs, i) => {
       champs.forEach((v, j) => {
-        if (v !== '') poserCase(cellules, nom, j + 1, i + 1, v, v, null);
+        if (v !== '') poserCase(cellules, nom, j + 1, i + 1, contenuBorne({ valeur: v, texte: v }), null);
       });
     });
     return { nom, cellules, images: [] };

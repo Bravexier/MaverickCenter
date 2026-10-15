@@ -13,6 +13,8 @@ docs/character-generator.md, « Tableur »).
 Ce que fait le script, rien d'autre :
   1. LibreOffice convertit le .ods en .xlsx (le format que la page écrit : Excel, Google Sheets et LibreOffice l'ouvrent) ;
   2. le logo (PNG 3021 × 3038, 3,7 Mo, ancré en A1:E5) est réduit à 320 px de haut (Pillow), le portrait de la fiche le remplace à l'export ;
+     il est marqué name="Logo" descr="logo" (xl/drawings/drawing1.xml), comme l'export le marque : l'import ne prend jamais le logo du modèle
+     vierge pour un portrait, même sans le modèle pour comparer les octets ;
   3. les formules (les 30 « Total » des compétences, K22:K36 et X22:X36) sont retirées : le fichier exporté ne porte que des résultats
      (demande du propriétaire : « Inutile de mettre les formules dans le fichier généré, seul le résultat ») ;
   4. les cellules vides hors de la fiche (au-delà de la colonne BZ ou de la ligne 75 : reliquats sans texte) sont retirées, la case active
@@ -76,6 +78,14 @@ def feuille_nettoyee(xml):
     return xml
 
 
+def dessin_marque(xml):
+    # l'image ancrée en A1 (la seule du dessin) : nommée et décrite comme l'export le fait pour le logo (client/src/lib/tableur-ecriture.mjs)
+    xml, n = re.subn(r'(<xdr:cNvPr id="\d+") name="[^"]*" descr="[^"]*"', r'\1 name="Logo" descr="logo"', xml)
+    if n != 1:
+        sys.exit(f'{n} images trouvées dans le dessin, 1 attendue (le logo en A1) : le modèle a changé, relire le script')
+    return xml
+
+
 def logo_reduit(octets):
     image = Image.open(io.BytesIO(octets))
     largeur = round(image.width * HAUTEUR_LOGO / image.height)
@@ -118,6 +128,7 @@ def main():
         sys.exit('une cellule à texte se trouvait hors de la zone gardée')
     parties['xl/worksheets/sheet1.xml'] = feuille.encode('utf-8')
     parties['xl/media/image1.png'] = logo_reduit(parties['xl/media/image1.png'])
+    parties['xl/drawings/drawing1.xml'] = dessin_marque(parties['xl/drawings/drawing1.xml'].decode('utf-8')).encode('utf-8')
     parties['docProps/core.xml'] = PROPRIETES.encode('utf-8')
     parties['docProps/app.xml'] = APPLICATION.encode('utf-8')
     if os.path.isdir(a.out):

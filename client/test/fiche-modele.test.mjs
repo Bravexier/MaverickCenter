@@ -54,6 +54,9 @@ test('le classeur : une feuille « Personnage », sans formule, logo de moins de
   const ancre = enfantsNommes(xml('xl/drawings/drawing1.xml'))[0];
   const coin = (nom) => ['col', 'row'].map((c) => Number(texteDe(enfantNomme(enfantNomme(ancre, nom), c))));
   assert.deepEqual([coin('from'), coin('to')], [[0, 0], [4, 4]], 'ancré de A1 à E5');
+  // marqué comme l'export marque le logo (tools/fiche/modele.py) : l'import ne prend jamais le logo du modèle vierge pour un portrait
+  const props = enfantNomme(enfantNomme(enfantNomme(ancre, 'pic'), 'nvPicPr'), 'cNvPr');
+  assert.deepEqual([props.attrs.name, props.attrs.descr], ['Logo', 'logo']);
 
   // chaque Override désigne une partie, chaque partie a son type (Override ou Default de son extension)
   const types = xml('[Content_Types].xml');

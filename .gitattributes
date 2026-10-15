@@ -2,3 +2,6 @@ data/rows/*.sql text eol=lf
 # Scripts et configuration envoyés tels quels sur un hôte Linux (scp depuis un clone Windows) : jamais de CRLF
 *.sh text eol=lf
 deploy/** text eol=lf
+# Modèle de la fiche en tableur (tools/fiche/modele.py) : assemblé tel quel au build, ses octets ne doivent pas dépendre du clone (autocrlf de Windows)
+client/src/modeles/** text eol=lf
+client/src/modeles/**/*.png binary

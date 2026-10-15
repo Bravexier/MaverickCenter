@@ -234,6 +234,44 @@ test('alignements : retour à la ligne, réduction au besoin (qui s’excluent),
   await assert.rejects(ecrireXlsx(MODELE, { alignements: { A1: { retour: 'oui' } } }), /alignement invalide/);
 });
 
+test('alignement `echelle` : la police de la case copiée à cette fraction de sa taille (demi-point inférieur), une copie par police × échelle', async () => {
+  const stylesAvant = modele.xml('xl/styles.xml');
+  const fontsAvant = enfantsNommes(enfantNomme(stylesAvant, 'fonts'), 'font');
+  const xfsAvant = enfantsNommes(enfantNomme(stylesAvant, 'cellXfs'), 'xf');
+  // AM55 et AM56 : même style (Arial 10) ; L45 : Calibri 8 ; AM57 : même style qu'AM55, sans échelle
+  assert.equal(modele.cases.get('AM55').s, modele.cases.get('AM56').s);
+  assert.equal(modele.cases.get('AM55').s, modele.cases.get('AM57').s);
+  const echelle = { retour: false, reduire: true, echelle: 0.6 };
+  const alignements = { AM55: echelle, AM56: echelle, L45: echelle, AM57: { retour: false, reduire: true } };
+  const sortie = await relire(await ecrireXlsx(MODELE, { alignements }));
+  const styles = sortie.xml('xl/styles.xml');
+  const fonts = enfantsNommes(enfantNomme(styles, 'fonts'), 'font');
+  const xfs = enfantsNommes(enfantNomme(styles, 'cellXfs'), 'xf');
+  assert.equal(Number(enfantNomme(styles, 'fonts').attrs.count), fonts.length);
+  assert.equal(fonts.length, fontsAvant.length + 2, 'une copie par police (AM55 et AM56 partagent la leur)');
+  assert.deepEqual(fonts.slice(0, fontsAvant.length), fontsAvant, 'les anciennes polices intactes');
+  const xfDe = (a) => xfs[Number(sortie.cases.get(a).s)];
+  const avant = (a) => xfsAvant[Number(modele.cases.get(a).s)];
+  const taille = (font) => enfantNomme(font, 'sz').attrs.val;
+  for (const [a, attendue] of [['AM55', '6'], ['L45', '4.5']]) { // 10 × 0,6 = 6 ; 8 × 0,6 = 4,8 → 4,5
+    const xf = xfDe(a);
+    const origine = fontsAvant[Number(avant(a).attrs.fontId)];
+    const copie = fonts[Number(xf.attrs.fontId)];
+    assert.ok(Number(xf.attrs.fontId) >= fontsAvant.length, a);
+    assert.equal(taille(copie), attendue, a);
+    assert.equal(xf.attrs.applyFont, 'true', a);
+    // la police copiée ne diffère que par sa taille ; l'alignement est posé comme sans échelle
+    const sansTaille = (f) => serialiserXml({ ...f, enfants: f.enfants.filter((e) => typeof e !== 'object' || nomLocal(e.nom) !== 'sz') }, { declaration: false });
+    assert.equal(sansTaille(copie), sansTaille(origine), a);
+    assert.deepEqual({ ...enfantNomme(xf, 'alignment').attrs }, { ...enfantNomme(avant(a), 'alignment')?.attrs, wrapText: 'false', shrinkToFit: 'true' }, a);
+  }
+  assert.equal(sortie.cases.get('AM56').s, sortie.cases.get('AM55').s, 'même style × même alignement : une seule copie');
+  assert.equal(xfDe('AM57').attrs.fontId, avant('AM57').attrs.fontId, 'sans échelle, la police du modèle');
+  await assert.rejects(ecrireXlsx(MODELE, { alignements: { A1: { echelle: 0 } } }), /alignement invalide/);
+  await assert.rejects(ecrireXlsx(MODELE, { alignements: { A1: { echelle: 1.5 } } }), /alignement invalide/);
+  await assert.rejects(ecrireXlsx(MODELE, { alignements: { A1: { echelle: '0.6' } } }), /alignement invalide/);
+});
+
 test('cases et lignes absentes insérées à leur rang (modèle), dimension élargie', async () => {
   const sortie = await relire(await ecrireXlsx(MODELE, { cellules: { CA1: 'à droite', B80: 7, A78: 'avant', I1: 'Nom', CA80: '' } }));
   ordreVerifie(sortie.lignes);

@@ -11,8 +11,9 @@
 //   - méthodes 0 (stockée) et 8 (deflate) seulement ; chiffrement, ZIP64 et archives en plusieurs volumes refusés (jamais utiles ici) ;
 //   - noms : UTF-8 si le bit 11 le déclare, sinon UTF-8 strict puis latin1 (beaucoup d'outils écrivent de l'UTF-8 sans le dire) ; un nom
 //     absolu (« /… ») ou qui remonte (segment « .. ») est refusé, comme un nom en double ; les entrées de dossier (« …/ ») sont ignorées ;
-//   - bombes : la taille annoncée est bornée (`maxEntree`, `maxTotal`) et la décompression s'arrête dès qu'elle la dépasse ; taille réelle et
-//     CRC vérifiés ;
+//   - bombes : les tailles décompressées annoncées par le répertoire central sont bornées (`maxEntree` par entrée, MAX_ENTREE = 16 Mio ;
+//     `maxTotal` pour leur somme, MAX_TOTAL = 64 Mio : une fiche en est loin, un onglet de navigateur tient) et vérifiées toutes AVANT la
+//     première décompression ; une décompression s'arrête dès qu'elle dépasse la taille annoncée ; taille réelle et CRC vérifiés ;
 //   - écriture : en-têtes complets (jamais de data descriptor), aucun « extra » (un .ods veut « mimetype » en premier, stocké, sans extra :
 //     son contenu à l'octet 38), deflate seulement s'il gagne, heure DOS tirée de `date` en UTC (la même Date donne les mêmes octets quel que
 //     soit le fuseau ; défaut 1980-01-01 00:00 : sortie déterministe).
@@ -26,8 +27,15 @@ const SIG_LOCALISATEUR_ZIP64 = 0x07064b50;
 const TAILLE_FIN = 22;
 const MIO = 2 ** 20;
 
+/** Taille décompressée permise d'une entrée, et de toutes les entrées ensemble (lireZip). */
+export const MAX_ENTREE = 16 * MIO;
+export const MAX_TOTAL = 64 * MIO;
+
 /** Erreur de lecture, au message français commun. */
 const illisible = (raison) => new Error(`Fichier ZIP illisible : ${raison}`);
+/** Une taille lisible : « 1 Mio », « 0,5 Mio » (au dixième), « 1000 octets » (moins de 0,1 Mio). */
+const taille = (n) => (n >= MIO / 10 ? `${String(Math.round((n / MIO) * 10) / 10).replace('.', ',')} Mio` : `${n} octets`);
+const tropGrand = (raison) => new Error(`Le classeur dépasse la taille permise : ${raison}`);
 const impossible = (raison) => new Error(`Fichier ZIP impossible à écrire : ${raison}`);
 
 // ---------- CRC-32 (polynôme 0xEDB88320, celui de ZIP) ----------
@@ -139,12 +147,13 @@ function chercherFin(zip, v) {
 
 /**
  * Lit une archive ZIP : Map<nom, octets> dans l'ordre du répertoire central (dossiers exclus). Refuse ce qui n'est pas sûr ou pas pris en
- * charge (voir l'en-tête) par une Error « Fichier ZIP illisible : … ».
+ * charge (voir l'en-tête) par une Error « Fichier ZIP illisible : … », ce qui dépasse les tailles permises par une Error « Le classeur dépasse
+ * la taille permise : … » (avant toute décompression).
  * @param {Uint8Array | ArrayBuffer} octets
  * @param {{ maxEntree?: number, maxTotal?: number }} [limites] tailles décompressées permises (une entrée, toute l'archive), en octets
  * @returns {Promise<Map<string, Uint8Array>>}
  */
-export async function lireZip(octets, { maxEntree = 64 * MIO, maxTotal = 256 * MIO } = {}) {
+export async function lireZip(octets, { maxEntree = MAX_ENTREE, maxTotal = MAX_TOTAL } = {}) {
   if (!(octets instanceof ArrayBuffer) && !ArrayBuffer.isView(octets)) throw illisible('aucun octet à lire.');
   // une vue Uint8Array simple (un Buffer de Node a un slice() qui ne copie pas)
   const zip = octets instanceof ArrayBuffer ? new Uint8Array(octets) : new Uint8Array(octets.buffer, octets.byteOffset, octets.byteLength);
@@ -164,7 +173,9 @@ export async function lireZip(octets, { maxEntree = 64 * MIO, maxTotal = 256 * M
   const base = fin - tailleCentral - debutCentral;
   if (base < 0) throw illisible('répertoire central hors de l’archive.');
 
-  const entrees = new Map();
+  // 1. le répertoire central entier, tailles annoncées comprises, avant de décompresser quoi que ce soit
+  const aLire = [];
+  const noms = new Set();
   let p = base + debutCentral;
   let total = 0;
   for (let n = 0; n < nombre; n++) {
@@ -186,11 +197,18 @@ export async function lireZip(octets, { maxEntree = 64 * MIO, maxTotal = 256 * M
     if (drapeaux & 0x41) throw illisible(`entrée chiffrée (« ${nom} »), non prise en charge.`);
     if (nomDangereux(nom)) throw illisible(`nom d’entrée refusé : « ${nom} ».`);
     if (nom.endsWith('/')) continue; // dossier
-    if (entrees.has(nom)) throw illisible(`entrée en double : « ${nom} ».`);
+    if (noms.has(nom)) throw illisible(`entrée en double : « ${nom} ».`);
+    noms.add(nom);
     if (methode !== 0 && methode !== 8) throw illisible(`méthode de compression ${methode} non prise en charge (« ${nom} »).`);
+    if (tailleU > maxEntree) throw tropGrand(`« ${nom} » ferait ${taille(tailleU)} une fois décompressé (au plus ${taille(maxEntree)} par partie).`);
     total += tailleU;
-    if (tailleU > maxEntree || total > maxTotal) throw illisible(`« ${nom} » dépasse la taille permise (${tailleU} octets annoncés).`);
+    aLire.push({ nom, methode, crc, tailleC, tailleU, local });
+  }
+  if (total > maxTotal) throw tropGrand(`il ferait ${taille(total)} une fois décompressé (au plus ${taille(maxTotal)}).`);
 
+  // 2. les données, dans l'ordre du répertoire central
+  const entrees = new Map();
+  for (const { nom, methode, crc, tailleC, tailleU, local } of aLire) {
     // en-tête local : ses longueurs de nom et d'extra peuvent différer de celles du répertoire central
     const tete = base + local;
     if (tete + 30 > zip.length || v.getUint32(tete, true) !== SIG_LOCAL) throw illisible(`en-tête local introuvable (« ${nom} »).`);

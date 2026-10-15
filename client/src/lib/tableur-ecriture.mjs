@@ -25,10 +25,12 @@
 //   - `remplis` : { A1: 'RRGGBB' } = fond plein de la case : un <fill> solide par couleur ajouté à la fin de <fills> (les deux premiers,
 //     réservés par Excel, restent en place), l'<xf> de la case recopié avec ce fillId et applyFill="true" ajouté à la fin de <cellXfs>, une
 //     seule copie par couple style × couleur ; count à jour.
-//   - `alignements` : { A1: { retour?: booléen, reduire?: booléen, vertical?: 'top' | 'center' | 'bottom' } } = retour à la ligne (wrapText),
-//     réduction au besoin (shrinkToFit : le texte rapetisse pour tenir sur une ligne ; les deux s'excluent, poser l'un retire l'autre) et alignement
-//     vertical de la case : l'<xf> recopié de même (applyAlignment="true", <alignment> en tête), une copie par style × alignement. Après les fonds :
-//     une case peut avoir les deux.
+//   - `alignements` : { A1: { retour?: booléen, reduire?: booléen, vertical?: 'top' | 'center' | 'bottom', echelle?: nombre } } = retour à la
+//     ligne (wrapText), réduction au besoin (shrinkToFit : le texte rapetisse pour tenir sur une ligne ; les deux s'excluent, poser l'un retire
+//     l'autre), alignement vertical de la case et `echelle` (de 0 exclu à 1) : la police de la case écrite à cette fraction de sa taille (arrondie
+//     au demi-point inférieur, 1 point au moins : une copie de la <font> ajoutée à la fin de <fonts>, une par police × échelle, count à jour ;
+//     applyFont="true") — ce que lib/tableur-mesure.mjs#ajusterLeTexte demande pour une case coupée. L'<xf> recopié de même
+//     (applyAlignment="true", <alignment> en tête), une copie par style × alignement. Après les fonds : une case peut avoir les deux.
 //   - `image` : { octets, type: 'image/png' | 'image/jpeg' } remplace l'image ancrée en A1 (même ancre, donc même place et même taille) ;
 //     les octets doivent être du type annoncé. Même dossier et même nom que l'ancienne, extension du type (image1.png → image1.jpeg) : cible
 //     de la relation du dessin et Override de [Content_Types].xml mis à jour, l'ancienne partie retirée si plus rien ne la cite.
@@ -335,6 +337,27 @@ function stylesDe(racine) {
   if (!fills || !cellXfs) throw impossible('styles.xml n’a pas de <fills> ou de <cellXfs>.');
   const fillParCouleur = new Map();
   const xfParCouple = new Map();
+  const fontParEchelle = new Map();
+  /** Index d'une copie de la police `fontId` à `echelle` de sa taille (au demi-point inférieur, 1 point au moins), créée à la première demande. */
+  const fontDe = (fontId, echelle) => {
+    const cle = `${fontId}|${echelle}`;
+    if (!fontParEchelle.has(cle)) {
+      const fonts = enfantNomme(racine, 'fonts');
+      const liste = enfantsNommes(fonts, 'font');
+      const origine = liste[fontId] ?? liste[0];
+      if (!origine) throw impossible('styles.xml n’a pas de <fonts>.');
+      const copie = structuredClone(origine);
+      const sz = enfantNomme(copie, 'sz');
+      const taille = Number(sz?.attrs.val ?? 11);
+      const reduite = String(Math.max(1, Math.floor((Number.isFinite(taille) && taille > 0 ? taille : 11) * echelle * 2) / 2));
+      if (sz) sz.attrs.val = reduite;
+      else copie.enfants.push(element(`${p}sz`, { val: reduite }));
+      fonts.enfants.push(copie);
+      fonts.attrs.count = String(liste.length + 1);
+      fontParEchelle.set(cle, liste.length);
+    }
+    return fontParEchelle.get(cle);
+  };
   const fillDe = (couleur) => {
     if (!fillParCouleur.has(couleur)) {
       fills.enfants.push(element(`${p}fill`, {}, [element(`${p}patternFill`, { patternType: 'solid' }, [
@@ -348,10 +371,9 @@ function stylesDe(racine) {
     return fillParCouleur.get(couleur);
   };
   return {
-    /** Index du style `s` avec le fond `couleur` (copie créée à la première demande). */
-    /** Index du style `s` avec cet alignement (copie créée à la première demande). */
-    aligner(s, { retour, reduire, vertical }) {
-      const cle = `${s}|${retour ?? ''}|${reduire ?? ''}|${vertical ?? ''}`;
+    /** Index du style `s` avec cet alignement, et sa police à `echelle` de sa taille (copie créée à la première demande). */
+    aligner(s, { retour, reduire, vertical, echelle }) {
+      const cle = `${s}|${retour ?? ''}|${reduire ?? ''}|${vertical ?? ''}|${echelle ?? ''}`;
       if (!xfParCouple.has(cle)) {
         const xfs = enfantsNommes(cellXfs, 'xf');
         const origine = xfs[Number(s)];
@@ -371,6 +393,10 @@ function stylesDe(racine) {
           if (reduire) alignement.attrs.wrapText = 'false';
         }
         if (vertical !== undefined) alignement.attrs.vertical = vertical;
+        if (echelle !== undefined && echelle < 1) {
+          copie.attrs.fontId = String(fontDe(Number(origine.attrs.fontId ?? 0), echelle));
+          copie.attrs.applyFont = 'true';
+        }
         copie.attrs.applyAlignment = 'true';
         cellXfs.enfants.push(copie);
         cellXfs.attrs.count = String(xfs.length + 1);
@@ -378,6 +404,7 @@ function stylesDe(racine) {
       }
       return xfParCouple.get(cle);
     },
+    /** Index du style `s` avec le fond `couleur` (copie créée à la première demande). */
     remplir(s, couleur) {
       const cle = `${s}|${couleur}`;
       if (!xfParCouple.has(cle)) {
@@ -524,6 +551,7 @@ function proprieteDe(racine, ns, voulu, local, attrs = {}) {
  * Écrit un .xlsx d'après le modèle (voir l'en-tête). Error « Classeur impossible à écrire : … » sur une entrée invalide ou un modèle incomplet.
  * @param {Uint8Array | ArrayBuffer} modele le .xlsx du modèle
  * @param {{ cellules?: Record<string, string | number | boolean | null>, remplis?: Record<string, string>,
+ *   alignements?: Record<string, { retour?: boolean, reduire?: boolean, vertical?: 'top' | 'center' | 'bottom', echelle?: number }>,
  *   image?: { octets: Uint8Array, type: 'image/png' | 'image/jpeg' } | null, descriptionImage?: string, titre?: string,
  *   date?: Date | string | null }} [options]
  * @returns {Promise<Uint8Array>}
@@ -534,11 +562,14 @@ export async function ecrireXlsx(modele, { cellules = {}, remplis = {}, aligneme
   for (const [adresse, couleur] of aRemplir) {
     if (!COULEUR.test(String(couleur))) throw impossible(`couleur invalide « ${couleur} » pour ${adresse} (RRGGBB attendu).`);
   }
-  const aAligner = Object.entries(alignements ?? {}).filter(([, a]) => a && (a.retour !== undefined || a.reduire !== undefined || a.vertical !== undefined));
+  const aAligner = Object.entries(alignements ?? {})
+    .filter(([, a]) => a && (a.retour !== undefined || a.reduire !== undefined || a.vertical !== undefined || a.echelle !== undefined));
   for (const [adresse, a] of aAligner) {
     const booleen = (v) => v === undefined || typeof v === 'boolean';
-    if (!booleen(a.retour) || !booleen(a.reduire) || (a.retour && a.reduire) || (a.vertical !== undefined && !VERTICAUX.has(a.vertical))) {
-      throw impossible(`alignement invalide ${JSON.stringify(a)} pour ${adresse} (retour, reduire : booléens qui s’excluent ; vertical : top, center ou bottom).`);
+    const echelle = a.echelle === undefined || (typeof a.echelle === 'number' && a.echelle > 0 && a.echelle <= 1);
+    if (!booleen(a.retour) || !booleen(a.reduire) || (a.retour && a.reduire) || (a.vertical !== undefined && !VERTICAUX.has(a.vertical)) || !echelle) {
+      throw impossible(`alignement invalide ${JSON.stringify(a)} pour ${adresse} (retour, reduire : booléens qui s’excluent ; vertical : top, center ou bottom ; `
+        + 'echelle : nombre de 0 exclu à 1).');
     }
   }
   const aEcrire = Object.entries(cellules ?? {});

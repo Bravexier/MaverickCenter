@@ -13,15 +13,17 @@ import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
-  CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR,
-  REMPLISSAGE_DE_ATTEINT, casesDesDes, casesDuDon, decouperAdresse, numeroDeColonne,
+  CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
+  MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE, casesDesDes, casesDuDon, decouperAdresse,
+  numeroDeColonne,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
   ARMURE_COMPLETE, CLES_DE_LA_NOTE, CLES_DES_ACCESSOIRES_SANS_CASE, CLES_D_INFORMATION, ETOILE, LIGNES_D_ARME, LIGNES_D_ARMURE, MARQUE_DE_POSTURE,
-  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
-  cellulesDeLaFiche, decouperEvenement, ligneDExport, ligneDeNote, lignesDAccessoire, lignesDArme, lignesDArmure, lireAccessoire, lireChoixDuMetier,
-  lireEffetDAmelioration, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet,
-  lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration, texteDObjet, texteDeSortEnSuite, texteDesGains, texteDesNmOfferts,
+  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
+  avertissementDeCase, avertissementDesDonnees, avertissementDesNotes, cellulesDeLaFiche, decouperEvenement, ligneDExport, ligneDeNote, lignesDAccessoire,
+  lignesDArme, lignesDArmure, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote,
+  lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration, texteDObjet,
+  texteDeLaNote, texteDeSortEnSuite, texteDesGains, texteDesNmOfferts,
 } from '../src/lib/fiche-tableur-export.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { modesAuNm, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
@@ -38,6 +40,9 @@ const trouve = (liste, critere, quoi) => {
 };
 const signe = (n) => (n > 0 ? `+${n}` : String(n));
 const nomDe = (liste, id) => M.trouver(regles[liste], id).nom;
+/** Une case d'une seule rangée : chaque partie et chacune de ses lignes, sans blancs de bord, séparées par « · » (SEPARATEUR_EN_LIGNE). */
+const enUneLigne = (parties) => parties.flatMap((p) => String(p ?? '').split('\n')).map((x) => x.trim()).filter(Boolean).join(SEPARATEUR_EN_LIGNE);
+const uneLigne = (t) => String(t ?? '').split('\n').map((x) => x.trim()).filter(Boolean).join(' ');
 
 // ------------------------------------------------------------------ le modèle stocké : fusions et textes (lecture sans dépendance)
 const MODELE = new URL('../src/modeles/fiche-personnage/xl/', import.meta.url);
@@ -376,29 +381,32 @@ test('fiche riche : dons (de base, race, métier, entraînement, classes), évé
   const base = M.donDeBase(dr.base);
   const b = casesDuDon(DONS.base);
   const [type, ...reste] = base.texte.split(' · ');
-  assert.deepEqual([c[b.nom], c[b.type], c[b.effet]], [base.nom, type, reste.join(' · ')]);
+  // des cases d'une seule rangée : leurs parties sur une ligne, séparées par « · » (coupées, elles montrent le début de chacune)
+  assert.deepEqual([c[b.nom], c[b.type], c[b.effet]], [base.nom, type, enUneLigne([reste.join(' · ')])]);
   const r = casesDuDon(DONS.race);
   assert.equal(c[r.nom], nomDe('ethnies', riche.ethnie_id));
   assert.equal(c[r.type], dr.dons[0].nom ?? dr.dons[0].etiquette);
-  assert.equal(c[r.effet], dr.dons.map((d) => `${d.nom ?? d.etiquette} : ${d.texte}`).join('\n'));
-  // métier : d'abord les rangs à choix avec leur flèche (relus), puis les autres rangs et l'artisanat (affichés)
+  assert.equal(c[r.effet], enUneLigne(dr.dons.map((d) => `${d.nom ?? d.etiquette} : ${d.texte}`)));
+  assert.ok(dr.dons.some((d) => d.texte.includes('\n')) && !c[r.effet].includes('\n'), 'un don de race sur plusieurs lignes, écrit sur une');
+  // métier : d'abord les rangs à choix avec leur flèche (relus), puis les autres rangs et l'artisanat (affichés), sur une ligne
   const m = casesDuDon(DONS.metier);
   const bm = M.bonusDuMetier(regles, riche);
   assert.equal(c[m.nom], bm.metier.nom);
   assert.equal(c[m.type], 'Passif');
-  const lignes = c[m.effet].split('\n');
+  assert.ok(!c[m.effet].includes('\n'));
+  const lignes = c[m.effet].split(SEPARATEUR_EN_LIGNE);
   assert.equal(lignes.length, bm.rangs.length + 1);
   const rangs = [...bm.rangs.filter((x) => x.aChoisir), ...bm.rangs.filter((x) => !x.aChoisir)];
-  rangs.forEach((x, i) => assert.equal(lignes[i], x.aChoisir ? `${x.texte} → ${nomDe('competences', x.retenue.competence_id)}` : x.texte));
+  rangs.forEach((x, i) => assert.equal(lignes[i], x.aChoisir ? `${uneLigne(x.texte)} → ${nomDe('competences', x.retenue.competence_id)}` : uneLigne(x.texte)));
   assert.ok(bm.rangs.some((x) => x.aChoisir) && bm.rangs.some((x) => !x.aChoisir), 'l’Enchanteur a un rang à choix et un sans choix');
   const art = M.artisanatDe(regles, riche);
   assert.equal(lignes.at(-1), `Artisanat : ${art.texte} (${art.caracteristiques.map((x) => x.nom).join(' + ')}) = ${art.score} %`);
   assert.deepEqual(partiesDuMetier(regles, riche).relues, lignes.slice(0, bm.rangs.filter((x) => x.aChoisir).length));
   assert.deepEqual(lireChoixDuMetier(c[m.effet]), bm.rangs.filter((x) => x.aChoisir).map((x) => ({ texte: x.texte, choix: nomDe('competences', x.retenue.competence_id) })));
-  // entraînement : les acquis saisis, dans l'ordre des compétences
+  // entraînement : rien d'écrit (guide « Fiche de personnage : Capacités/Dons » : les bonus d'entraînement, que le site ne distingue pas des autres acquis)
   const e = casesDuDon(DONS.entrainement);
-  assert.equal(c[e.effet], M.competencesDe(regles, riche).filter((x) => x.acquis).map((x) => `${x.nom} ${x.acquis}`).join(' | '));
-  assert.equal(c[e.nom], undefined, 'le libellé « Entraînement » du modèle reste');
+  assert.ok(M.competencesDe(regles, riche).some((x) => x.acquis), 'des acquis du joueur, que la case n’écrit pas');
+  assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined, undefined], 'le libellé « Entraînement » du modèle reste, la case vide');
   // dons de classe : classe 1 en 43…55, classe 2 en 57…69, dans l'ordre de donsAcquis
   const acquis = M.donsAcquis(regles, riche);
   assert.deepEqual(acquis.map((x) => x.rang), [1, 2]);
@@ -446,20 +454,44 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
     const col = S.colonnes;
     assert.equal(c[`${col.nom}${r}`], sort.nom);
     assert.equal(c[`${col.nm}${r}`], n);
-    assert.equal(c[`${col.type}${r}`], auNm(sort.type, 'type') || undefined, `${sort.nom} : type`);
-    assert.equal(c[`${col.cout}${r}`], enNombre(auNm(sort.cout, 'cout')));
-    assert.equal(c[`${col.portee}${r}`], enNombre(`${auNm(sort.portee, 'portee')} ${signe(acc.portee)}`));
-    assert.equal(c[`${col.zone}${r}`], enNombre(auNm(sort.zone, 'zone')));
+    // une rangée par sort : chaque case sur une ligne, la description ses parties séparées par « · »
+    assert.equal(c[`${col.type}${r}`], uneLigne(auNm(sort.type, 'type')) || undefined, `${sort.nom} : type`);
+    assert.equal(c[`${col.cout}${r}`], enNombre(uneLigne(auNm(sort.cout, 'cout'))));
+    assert.equal(c[`${col.portee}${r}`], enNombre(`${uneLigne(auNm(sort.portee, 'portee'))} ${signe(acc.portee)}`));
+    assert.equal(c[`${col.zone}${r}`], enNombre(uneLigne(auNm(sort.zone, 'zone'))));
     const dsb = auNm(sort.dsb, 'dsb');
     if (sort.attaque && dsb) attaques += 1;
-    const description = [
+    const description = enUneLigne([
       sort.attaque && dsb ? `${dsb} ${signe(acc.degats)}` : dsb, auNm(sort.effets, 'effets'),
-      modesAuNm(sort.modes, sort.bonus, n).filter((x) => x.atteint).map((x) => x.texte).join(' · '), sort.remarque ? `${ETOILE} ${sort.remarque}` : '',
-    ].filter(Boolean).join('\n');
+      ...modesAuNm(sort.modes, sort.bonus, n).filter((x) => x.atteint).map((x) => x.texte), sort.remarque ? `${ETOILE} ${sort.remarque}` : '',
+    ]);
     assert.equal(c[`${col.description}${r}`], description || undefined, `${sort.nom} : description`);
+    for (const col_ of ['type', 'cout', 'portee', 'zone', 'description']) assert.ok(!String(c[`${col[col_]}${r}`] ?? '').includes('\n'), `${sort.nom} : ${col_} sur une ligne`);
   });
   assert.ok(attaques > 0, 'un sort d’attaque reçoit les dégâts des accessoires');
   assert.ok(riche.sorts.slice(0, 20).some((l) => /IC|NM/.test(M.trouver(regles.sorts, l.sort_id).type ?? '')), 'un type qui écrit un NM est essayé');
+});
+
+test('une rangée par sort : type et effets écrits sur plusieurs lignes dans les règles, sur une dans la case (coupée, elle montre le début de chaque partie)', () => {
+  // des sorts d'une même magie dont le type, les effets ou le D/S/B tiennent sur plusieurs lignes (constat D1 : la coupe tombait au premier saut de ligne)
+  const parMagie = Map.groupBy(regles.sorts.filter((s) => /\n/.test(`${s.type ?? ''}${s.effets ?? ''}${s.dsb ?? ''}`)), (s) => s.magie_id);
+  const [magie, sorts] = [...parMagie].sort((x, y) => y[1].length - x[1].length)[0];
+  assert.ok(sorts.some((x) => /\n/.test(x.type ?? '')) && sorts.some((x) => /\n/.test(x.effets ?? '')), magie);
+  const f = { ...ficheVide('Une ligne'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: magie, xp: xpDuNiveau(10),
+    sorts: sorts.slice(0, 20).map((x, i) => ({ sort_id: x.id, rang: i + 1, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 })) };
+  const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
+  const col = ORDINATEUR.sorts.colonnes;
+  f.sorts.forEach((l, i) => {
+    const sort = M.trouver(regles.sorts, l.sort_id);
+    const r = ORDINATEUR.sorts.lignes[i];
+    const auNm = (ch) => valeurAuNm(sort[ch] ?? null, sort.bonus, ch, 1) ?? '';
+    for (const ch of ['type', 'cout', 'portee', 'zone']) assert.equal(String(v[`${col[ch]}${r}`] ?? ''), uneLigne(auNm(ch)), `${sort.nom} : ${ch}`);
+    const description = String(v[`${col.description}${r}`] ?? '');
+    assert.ok(!description.includes('\n'), sort.nom);
+    // chaque ligne du D/S/B et des effets, dans l'ordre, séparée de la suivante par « · »
+    const lignes = ['dsb', 'effets'].flatMap((ch) => auNm(ch).split('\n')).map((x) => x.trim()).filter(Boolean);
+    assert.ok(description.startsWith(lignes.join(SEPARATEUR_EN_LIGNE)), `${sort.nom} : ${description}`);
+  });
 });
 
 test('fiche riche : résistances, posture du moment, Mode Hyper', () => {
@@ -576,6 +608,97 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
   assert.deepEqual(lireLigneDeNote('suite de la case am55 : du texte ⏎ suite'), { nom: 'suite', cle: SUITE_DE_LA_CASE, valeur: 'du texte ⏎ suite', information: false, adresse: 'AM55' });
 });
 
+test('portée d’une arme (décision R50) : celle de la page « Armes », 1 sans portée écrite ; la solidité (R51) n’est pas calculée par la fiche', () => {
+  const sansPortee = regles.armes.find((a) => a.portee === '1' && a.effet && !/port[ée]e/i.test(a.effet));
+  assert.ok(sansPortee, 'une arme dont l’effet n’écrit pas de portée');
+  const f = { ...ficheVide('Portée'), armes: [{ rang: 1, arme_id: sansPortee.id, materiau_id: regles.materiau_arme_defaut }] };
+  const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
+  assert.equal(v[ORDINATEUR.armes[0].portee], 1, `${sansPortee.nom} : 1 par défaut`);
+  assert.equal(v[ORDINATEUR.armes[0].solidite], undefined);
+  const aDistance = regles.armes.find((a) => a.portee.includes(' - '));
+  const w = cellulesDeLaFiche(regles, { ...f, armes: [{ rang: 1, arme_id: aDistance.id, materiau_id: regles.materiau_arme_defaut }] }, { date: DATE }).cellules;
+  assert.equal(w[ORDINATEUR.armes[0].portee], aDistance.portee);
+});
+
+test('case NOTE au-delà de 32 767 caractères : le marqueur et ses lignes restent entiers, les notes du joueur sont raccourcies, et un avertissement le dit', () => {
+  const court = cellulesDeLaFiche(regles, { ...riche, notes: 'Court' }, { date: DATE });
+  assert.deepEqual(court.avertissements, []);
+  const donnees = court.cellules[ORDINATEUR.note].slice('Court\n\n'.length);
+  assert.ok(donnees.startsWith(MARQUEUR_DES_NOTES));
+  // des notes de 40 000 caractères (un journal de campagne)
+  const notes = Array.from({ length: 4000 }, (_, i) => `Jour ${String(i).padStart(4, '0')}.`).join('\n').padEnd(40_000, 'x');
+  const long = cellulesDeLaFiche(regles, { ...riche, notes }, { date: DATE });
+  const note = long.cellules[ORDINATEUR.note];
+  assert.equal(note.length, LONGUEUR_MAX_D_UNE_CASE, 'la case est pleine, pas plus');
+  assert.ok(note.endsWith(`…\n\n${donnees}`), 'les données entières, après les notes raccourcies');
+  const gardees = note.length - donnees.length - 3;
+  assert.ok(notes.startsWith(note.slice(0, gardees)));
+  assert.deepEqual(long.avertissements, [avertissementDesNotes(notes.length - gardees)]);
+  assert.match(long.avertissements[0], /^Notes trop longues pour une case de tableur \(32\u00a0767 caractères\) : les \d{1,3}(?:\u00a0\d{3})* derniers caractères ne sont pas dans le classeur\.$/);
+  // le reste de l'export ne change pas
+  for (const [a, v] of Object.entries(court.cellules)) if (a !== ORDINATEUR.note) assert.equal(long.cellules[a], v, a);
+
+  // des lignes de données trop longues elles-mêmes : les dernières retirées, une ligne entière à la fois ; les notes restent si la place le permet
+  const lignes = [MARQUEUR_DES_NOTES, `A : ${'x'.repeat(20_000)}`, `B : ${'y'.repeat(20_000)}`, 'C : z'];
+  const retrait = (n) => ligneDeNote(CLES_DE_LA_NOTE.lignesRetirees, String(n));
+  assert.deepEqual(texteDeLaNote('Mes notes', lignes),
+    { texte: `Mes notes\n\n${[...lignes.slice(0, 2), retrait(2)].join('\n')}`, avertissements: [avertissementDesDonnees(2)] }, 'la dernière ligne dit le retrait');
+  assert.match(avertissementDesDonnees(2), /^Données de la case NOTE trop longues pour une case de tableur \(32\u00a0767 caractères\) : les 2 dernières lignes ne sont pas dans le classeur\.$/);
+  assert.match(avertissementDesDonnees(1), /: la dernière ligne n’est pas dans le classeur\.$/);
+  // la ligne du retrait a sa place : une ligne de données qui tiendrait seule, mais pas avec elle, est retirée aussi
+  const juste = [MARQUEUR_DES_NOTES, `A : ${'x'.repeat(LONGUEUR_MAX_D_UNE_CASE - MARQUEUR_DES_NOTES.length - 10)}`, 'B : y'];
+  const t = texteDeLaNote('', juste).texte;
+  assert.equal(juste.slice(0, 2).join('\n').length <= LONGUEUR_MAX_D_UNE_CASE, true, 'la ligne A tiendrait seule');
+  assert.equal(t, `${MARQUEUR_DES_NOTES}\n${retrait(2)}`, 'mais pas avec la ligne du retrait : elle part aussi');
+  // sans place pour les notes : elles partent toutes, et un avertissement le dit
+  const pleine = [MARQUEUR_DES_NOTES, `A : ${'x'.repeat(LONGUEUR_MAX_D_UNE_CASE - MARQUEUR_DES_NOTES.length - 6)}`];
+  assert.deepEqual(texteDeLaNote('Mes notes', pleine), { texte: pleine.join('\n'), avertissements: [avertissementDesNotes('Mes notes'.length)] });
+  // une paire de substitution n'est jamais coupée
+  const emoji = texteDeLaNote('😀'.repeat(20_000), [MARQUEUR_DES_NOTES]).texte;
+  assert.ok(emoji.length <= LONGUEUR_MAX_D_UNE_CASE && !/[\uD800-\uDBFF]…/.test(emoji));
+  // dans l'export : 3 000 objets au-delà des 48 places, la ligne « Inventaire (suite) » (et ce qui la suit) retirée, celles d'avant entières
+  const inventaire = Array.from({ length: 3000 }, (_, i) => ({ rang: i + 1, nom: `Objet numéro ${i} au nom bien long`, quantite: 1, ressource_id: null }));
+  const trop = cellulesDeLaFiche(regles, { ...riche, notes: 'Mes notes', inventaire }, { date: DATE });
+  const texte = trop.cellules[ORDINATEUR.note];
+  assert.ok(texte.length <= LONGUEUR_MAX_D_UNE_CASE);
+  assert.ok(texte.startsWith(`Mes notes\n\n${MARQUEUR_DES_NOTES}\n${ligneDExport(DATE)}\n`));
+  const lues = texte.split('\n').slice(3).map(lireLigneDeNote);
+  assert.ok(lues.every(Boolean) && lues.some((l) => l.cle === CLES_DE_LA_NOTE.gains) && !lues.some((l) => l.cle === CLES_DE_LA_NOTE.inventaire), 'des lignes entières, jusqu’à l’inventaire');
+  assert.equal(lues.at(-1).cle, CLES_DE_LA_NOTE.lignesRetirees, 'la dernière ligne dit combien ont été retirées');
+  assert.equal(trop.avertissements.length, 1);
+  assert.match(trop.avertissements[0], /^Données de la case NOTE/);
+  // une autre case trop longue (sans zones, rien n'est coupé ici) : un avertissement
+  const enPlus = 'y'.repeat(LONGUEUR_MAX_D_UNE_CASE + 10);
+  const arme = cellulesDeLaFiche(regles, { ...riche, armes: [{ ...riche.armes[0], effet_en_plus: enPlus }] }, { date: DATE });
+  const longueur = arme.cellules[ORDINATEUR.armes[0].effet].length;
+  assert.deepEqual(arme.avertissements, [avertissementDeCase(ORDINATEUR.armes[0].effet, longueur - (LONGUEUR_MAX_D_UNE_CASE - 1))]);
+});
+
+test('lecteurs de l’export : en temps linéaire sur une case faite surtout d’espaces (pas de préfixe paresseux suivi de blancs)', () => {
+  const espaces = ' '.repeat(50_000);
+  const s = `a${espaces}b`;
+  const debut = performance.now();
+  lireObjet(s);
+  lireObjet(`(${espaces}b`);
+  lireSortEnSuite(s);
+  lireNmOfferts(s);
+  lireGains(`niv. 2 : dé${s}`);
+  lireGains(`niv. 2 : santé${s}`);
+  lireAccessoire(regles, [s, `x${s}=`, `Attributs :${s}→${s}`]);
+  lireEffetDArme(s);
+  lireEffetDArme(`Effet en plus :${s}\n${s}`, { affichees: `${s}\nb`, catalogue: s });
+  lireEffetDArme(`${s} …`, { affichees: `b${espaces}` });
+  lireLigneDArmure(regles, s);
+  lireLigneDArmure(regles, `Torse :${s}·${s}`);
+  lireLigneDArmure(regles, `x (AP${s}`);
+  lireChoixDuMetier(`${s}→${s}`);
+  lireLigneDeNote(s);
+  lireEffetDAmelioration(`(${s}`);
+  texteDObjet({ nom: s, quantite: 1 });
+  const ms = performance.now() - debut;
+  assert.ok(ms < 2000, `${Math.round(ms)} ms`);
+});
+
 test('armure portée : sans les statistiques du catalogue, puis sans l’effet des améliorations, quand la case ne les tient pas', async () => {
   const zones = await zonesDuClasseur(await modeleXlsx());
   const avecToutes = { ...riche, armures: regles.emplacements_armure.filter((e) => e.id !== ARMURE_COMPLETE).map((e, i) => ({
@@ -655,9 +778,9 @@ test('Mort-vivant : le don unique et la ligne du tableau de l’ethnie ; l’Âm
   const r = casesDuDon(DONS.race);
   assert.equal(v[r.nom], nomDe('ethnies', mv.ethnie_id));
   assert.equal(v[r.type], dr.dons[0].nom);
-  assert.equal(v[r.effet], [
+  assert.equal(v[r.effet], enUneLigne([
     ...dr.dons.map((d) => `${d.nom ?? d.etiquette} : ${d.texte}`), ...dr.tableau.cellules.map((x) => `${x.libelle.replace(/\n/g, ' / ')} : ${x.valeur}`),
-  ].join('\n'));
+  ]));
   assert.equal(v[ORDINATEUR.libelleBarre4], 'Âme');
   assert.match(v[ORDINATEUR.barre4], /^\d+ \/ \d+$/);
   const m = casesDuDon(DONS.metier);
@@ -803,7 +926,9 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
     }
   }
   assert.deepEqual(lireLigneDArmure(regles, 'Torse : Cuir (AP 3, AM 1) · Amélioration : niv. 1 — +2 AP/AM · Élément : Garde coeur (AP 7, AM 3) · Amélioration de l’élément : niv. 2 — +4 AP/AM · Gravée'),
-    { emplacement_id: 'torse', armure: 'Cuir', amelioration: 'niv. 1 — +2 AP/AM', element: 'Garde coeur', ameliorationElement: 'niv. 2 — +4 AP/AM', autres: ['Gravée'] });
+    { emplacement_id: 'torse', emplacementEcrit: true, armure: 'Cuir', amelioration: 'niv. 1 — +2 AP/AM', element: 'Garde coeur', ameliorationElement: 'niv. 2 — +4 AP/AM', autres: ['Gravée'] });
+  assert.deepEqual([lireLigneDArmure(regles, '+2 AP (forgeron)').emplacementEcrit, lireLigneDArmure(regles, '+2 AP (forgeron)').armure], [false, '+2 AP (forgeron)']);
+  assert.deepEqual(lireLigneDArmure(regles, 'Cuir·sans blancs · amél. niv. 1').armure, 'Cuir·sans blancs', 'un « · » sans blancs autour ne sépare pas');
   assert.deepEqual(lireLigneDArmure(regles, 'Armure Complète : Vêtement renforcé (AP 2, AM 2)').emplacement_id, ARMURE_COMPLETE, 'l’ancienne armure complète');
   assert.deepEqual(lireLigneDArmure(regles, 'Cotte de maille (Fer) · amél. niv. 2').armure, 'Cotte de maille (Fer)', 'ses parenthèses gardées, sans emplacement : l’armure complète');
 
@@ -812,7 +937,7 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   const effet = [...relues, ...affichees].join('\n');
   const attendu = { composition: 'Acier', amelioration: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_id)),
     element: nomDe('armes_elementaires', riche.armes[0].arme_elementaire_id), ameliorationElement: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_elementaire_id)),
-    effetEnPlus: 'Lame chantante\nsur deux lignes' };
+    effetEnPlus: 'Lame chantante\nsur deux lignes', libres: [], affichageRetrouve: true };
   const A = affichees.join('\n');
   assert.deepEqual(lireEffetDArme(effet, { affichees: A }), attendu);
   const relu = relues.join('\n');
@@ -820,13 +945,19 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
     assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), attendu, coupe.slice(-40));
   }
   assert.deepEqual(lireEffetDArme(relu, { affichees: A, entier: true }), attendu, 'recollée : la part relue seule');
+  // la part affichée attendue introuvable d'un bloc (règles changées) : reconnue ligne à ligne, et dit
+  assert.deepEqual(lireEffetDArme(`${relu}\n${affichees[0]}`, { affichees: `${affichees[0]}\nDeux armes : autre` }), { ...attendu, affichageRetrouve: false });
   assert.equal(lireEffetDArme(`${relu}\n${A}`.replace('sur deux lignes', 'sur deux lignes …'), { affichees: A }).effetEnPlus, 'Lame chantante\nsur deux lignes …', 'un « … » écrit par le joueur reste');
-  // sans la part affichée de la fiche (case réécrite) : jusqu'à « Deux armes : », « Non compté : » ou la première ligne du catalogue
+  // sans la part affichée de la fiche (case réécrite, règles changées) : ligne à ligne, l'effet du catalogue, « Deux armes : », « Non compté : »
   assert.equal(lireEffetDArme(`${relu}\nDeux armes : −20 % (main directrice)`).effetEnPlus, attendu.effetEnPlus);
-  assert.equal(lireEffetDArme(`${relu}\n${affichees[0]}\nautre`, { catalogue: affichees[0] }).effetEnPlus, attendu.effetEnPlus);
+  assert.equal(lireEffetDArme(`${relu}\n${affichees[0]}\nNon compté : Contact +2 (ancienne valeur)`, { catalogue: affichees[0] }).effetEnPlus, attendu.effetEnPlus);
+  // une ligne qui n'est ni d'une clé connue ni de la part affichée : de l'effet en plus (le joueur écrit sous le titre « Effet en plus » du modèle)
+  assert.deepEqual(lireEffetDArme(`${relu}\n${affichees[0]}\nautre`, { catalogue: affichees[0] }), { ...attendu, effetEnPlus: `${attendu.effetEnPlus}\nautre`, libres: ['autre'] });
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nautre`, { affichees: A }), { ...attendu, effetEnPlus: `${attendu.effetEnPlus}\nautre`, libres: ['autre'] }, 'après le bloc');
   // l'ancien ordre (l'effet en plus en dernier)
   assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu);
-  assert.deepEqual(lireEffetDArme('Composition : Fer\nUn effet du catalogue', { affichees: '' }), { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: null });
+  assert.deepEqual(lireEffetDArme('Composition : Fer\nUn effet écrit à la main', { affichees: '' }),
+    { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], affichageRetrouve: true });
 
   // métier : les rangs à choix, par leur ligne ; « → ? » pas choisi ; la fin « … » d'une case coupée juste après
   assert.deepEqual(lireChoixDuMetier('+2% Magie OU Concentration → Magie\n+1 Initiative → ?\nArtisanat : x'), [{ texte: '+2% Magie OU Concentration', choix: 'Magie' }, { texte: '+1 Initiative', choix: null }]);

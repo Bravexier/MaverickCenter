@@ -19,8 +19,13 @@
 //   - la suite ne porte que la part relue du texte (ses `lu` premiers caractères, tout par défaut) qui n'est pas montrée : coupé au-delà, un texte
 //     n'a pas de suite (ce qu'il ne montre pas, le site le refait) ; recollée, la suite redonne cette part, sans le reste ;
 //   - avant de couper (ajusterLeTexte) : une case de plusieurs rangées prend le retour à la ligne ; une case d'une rangée, la réduction au besoin
-//     (shrinkToFit, comme les noms et types de dons du modèle) tant que le texte garde ECHELLE_MIN de sa taille — le début coupé aussi. Google Sheets
-//     ne réduit pas : il y rogne ce qui dépasse, comme avant.
+//     (shrinkToFit, comme les noms et types de dons du modèle) tant que le texte garde ECHELLE_MIN de sa taille. Une case d'une rangée qu'il faut
+//     couper prend d'abord la réduction minimale : sa police est écrite à ECHELLE_MIN de sa taille (alignement `echelle`, lib/tableur-ecriture.mjs),
+//     puis le début est coupé à cette taille ; sinon un début court (coupé au premier saut de ligne) resterait à sa taille entière à côté des cases
+//     réduites de la même colonne (constat du 2026-10-15). Google Sheets ne réduit pas au besoin : il rogne ce qui dépasse, mais suit la police
+//     écrite ;
+//   - une suite relue tolère les espaces autour de « ⏎ » (un tableur qui replie les blancs d'une case) : « ⏎ », avec au plus une espace de
+//     chaque côté, redonne un saut de ligne.
 
 /**
  * Chasses des polices du modèle, de « » (U+0020) à « ~ » (U+007E), en centièmes de cadratin, romain puis gras, relevées sur les polices
@@ -180,10 +185,11 @@ export function encoderLaSuite(suite) {
   return String(suite ?? '').replace(/\n/g, ` ${SAUT_DANS_LA_SUITE} `).trim();
 }
 
-/** Les sauts de ligne d'une suite lue (encoderLaSuite) : « ⏎ » et l'espace de chaque côté (en tête, l'espace d'après seulement). */
-const decoderLaSuite = (suite) => suite
-  .replace(new RegExp(`^${SAUT_DANS_LA_SUITE}(?: |$)`), '\n')
-  .replace(new RegExp(` ${SAUT_DANS_LA_SUITE}(?: |$)`, 'g'), '\n');
+/**
+ * Les sauts de ligne d'une suite lue (encoderLaSuite) : chaque « ⏎ » et au plus une espace de chaque côté. Tolérant : « a ⏎ ⏎ b » (les deux espaces
+ * entre deux sauts repliées en une par le tableur) redonne la ligne vide, comme « a ⏎  ⏎ b ».
+ */
+const decoderLaSuite = (suite) => suite.replace(new RegExp(` ?${SAUT_DANS_LA_SUITE} ?`, 'g'), '\n');
 
 /** Le début d'un texte coupé (couperLeTexte), sans sa fin « … » ; null pour un texte qui ne finit pas ainsi. */
 export function sansLaCoupure(texte) {
@@ -209,8 +215,9 @@ export function recollerLeTexte(debut, suite) {
 /**
  * Ce que la fiche écrit dans une case pour un texte : { texte, alignement, suite } — le texte s'il tient ; sinon, dans une case de plusieurs rangées, le
  * retour à la ligne (alignement { retour: true }) puis, s'il ne suffit pas, le début coupé (couperLeTexte) et sa `suite` ; dans une case d'une rangée,
- * la réduction au besoin (alignement { retour: false, reduire: true }) si le texte, sur une ligne, garde ECHELLE_MIN de sa taille, sinon le début coupé
- * à cette échelle (réduit s'il dépasse). `lu` : la part du texte que l'import relit (couperLeTexte). `suite` : null quand rien de relu n'est coupé.
+ * la réduction au besoin (alignement { retour: false, reduire: true }) si le texte, sur une ligne, garde ECHELLE_MIN de sa taille, sinon la police à
+ * ECHELLE_MIN de sa taille et le début coupé à cette taille (alignement { retour: false, reduire: true, echelle: ECHELLE_MIN }, même si ce début
+ * tiendrait à la taille entière). `lu` : la part du texte que l'import relit (couperLeTexte). `suite` : null quand rien de relu n'est coupé.
  */
 export function ajusterLeTexte(texte, zone, { lu = null } = {}) {
   const t = String(texte ?? '');
@@ -226,5 +233,5 @@ export function ajusterLeTexte(texte, zone, { lu = null } = {}) {
   if (tientDans(t, reduite)) return { texte: t, alignement: reduire, suite: null };
   const coupe = couperLeTexte(t, reduite, { lu });
   if (!coupe) return { texte: t, alignement: null, suite: null };
-  return { texte: coupe.debut, alignement: tientDans(coupe.debut, zone) ? null : reduire, suite: coupe.suite };
+  return { texte: coupe.debut, alignement: { ...reduire, echelle: ECHELLE_MIN }, suite: coupe.suite };
 }

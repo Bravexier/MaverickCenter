@@ -42,7 +42,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
         <button type="button" id="fiche-nouvelle">Nouveau</button>
         {/* export : la fiche en JSON (le format d'échange) ou en classeur au modèle V15.2.2 ; import : l'un ou l'autre (src/scripts/fiche.mjs) */}
         <button type="button" id="fiche-exporter-tableur" title="Classeur .xlsx au modèle de la fiche V15.2.2 : Excel, LibreOffice, Google Sheets (Fichier › Importer)">Exporter (tableur)</button>
-        <button type="button" id="fiche-exporter">Exporter (JSON)</button>
+        <button type="button" id="fiche-exporter" title="Sauvegarde complète de la fiche (.json), à réimporter sur le site">Exporter (JSON)</button>
         <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept=".json,.xlsx,.ods,.csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,text/csv" hidden /><span role="button" tabindex="0" title="Une fiche exportée (.json) ou un classeur au modèle V15.2.2, ordinateur ou auto (.xlsx, .ods, .csv ; Google Sheets : Fichier › Télécharger)">Importer</span></label>
         <button type="button" id="fiche-imprimer">Imprimer</button>
         <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>

@@ -11,15 +11,19 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import * as M from '../src/lib/fiche-moteur.mjs';
 import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from '../src/lib/fiche-moteur.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import {
-  AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, cle, DONS, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR,
+  AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, cle, DONS, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR,
+  SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
-  acquisDeLEntrainement, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, lireLaNote, nombreDe, paireDe, porteUneMarque,
+  bonusDEntrainement, bornesDuDe, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, gainsReconstitues, lireLaNote, nombreDe, paireDe,
+  porteUneMarque, REMARQUE_MAITRISES_CSV,
 } from '../src/lib/fiche-tableur-import.mjs';
-import { lignesDArmure, lireGains, partiesDeLArme } from '../src/lib/fiche-tableur-export.mjs';
+import { cellulesDeLaFiche, enChiffres, lignesDArmure, lireGains, partiesDeLArme, SEPARATEUR_EN_LIGNE } from '../src/lib/fiche-tableur-export.mjs';
+import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
 
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
@@ -76,11 +80,15 @@ function modeleVierge() {
 }
 const VIERGE = modeleVierge();
 
-/** Le modèle vierge avec des cases écrites ({ A1: texte | nombre }) et des fonds ({ A1: 'RRGGBB' }). */
+/**
+ * Le modèle vierge avec des cases écrites ({ A1: texte | nombre | { valeur, texte, tronquee? } : une case telle que la lit lib/tableur-lecture.mjs, valeur
+ * et texte affiché distincts }) et des fonds ({ A1: 'RRGGBB' }).
+ */
 function ordinateur(valeurs = {}, { remplis = {}, images = [] } = {}) {
   const cellules = new Map(VIERGE.cellules);
   for (const [a, v] of Object.entries(valeurs)) {
     if (v === null || v === '') cellules.delete(a);
+    else if (typeof v === 'object') cellules.set(a, { remplissage: cellules.get(a)?.remplissage ?? null, ...v });
     else cellules.set(a, { valeur: v, texte: String(v), remplissage: cellules.get(a)?.remplissage ?? null });
   }
   for (const [a, r] of Object.entries(remplis)) cellules.set(a, { valeur: cellules.get(a)?.valeur ?? '', texte: cellules.get(a)?.texte ?? '', remplissage: r });
@@ -135,7 +143,21 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   // les accessoires sans case, par emplacement
   assert.deepEqual(lireLaNote(`${MARQUEUR_DES_NOTES}\nAccessoire Ceinture : Boucle / +2 Initiative\naccessoire autre : Maudit`).valeurs.accessoires,
     [{ emplacement: 'ceinture', valeur: 'Boucle / +2 Initiative' }, { emplacement: 'autre', valeur: 'Maudit' }]);
-  assert.deepEqual(lireLaNote('Sans marqueur\nBi-classé : oui'), { marqueur: false, notes: 'Sans marqueur\nBi-classé : oui', valeurs: {}, suites: new Map(), autres: [] });
+  assert.deepEqual(lireLaNote('Sans marqueur\nBi-classé : oui'), { marqueur: false, notes: 'Sans marqueur\nBi-classé : oui', valeurs: {}, suites: new Map(), autres: [], doubles: [] });
+  // des notes collées qui portent elles-mêmes le marqueur : seul le dernier sépare les notes des données
+  const collees = lireLaNote(['Notes collées', MARQUEUR_DES_NOTES, 'Bi-classé : oui', 'Mes notes', '', MARQUEUR_DES_NOTES, 'Bi-classé : non'].join('\n'));
+  assert.deepEqual([collees.notes, collees.valeurs], [`Notes collées\n${MARQUEUR_DES_NOTES}\nBi-classé : oui\nMes notes`, { biClasse: ['non'] }]);
+  // une clé en double : la première ; les autres à part (nonRepris) ; les événements, une ligne chacun
+  const doubles = lireLaNote([MARQUEUR_DES_NOTES, 'Bi-classé : non', 'Bi-classé : oui', 'Événement : Un', 'Événement : Deux', 'Accessoire Ceinture : A',
+    'Accessoire Ceinture : B', 'Accessoire Autre : C'].join('\n'));
+  assert.deepEqual(doubles.valeurs, { biClasse: ['non'], evenement: ['Un', 'Deux'], accessoires: [{ emplacement: 'ceinture', valeur: 'A' }, { emplacement: 'autre', valeur: 'C' }] });
+  assert.deepEqual(doubles.doubles, ['Bi-classé : oui', 'Accessoire Ceinture : B']);
+  const enDouble = ficheDuClasseur(regles, ordinateur({ BA54: [MARQUEUR_DES_NOTES, 'Bi-classé : non', 'Bi-classé : oui', 'Gains de niveau : niv. 2 : santé 15, chakra 0',
+    'Gains de niveau : niv. 2 : santé 0, chakra 15'].join('\n') }));
+  assert.equal(enDouble.fiche.mode_classe, 'mono');
+  assert.deepEqual(enDouble.fiche.progression, [{ niveau: 2, points_sante: 15, points_chakra: 0, de_choix: null, de_resultat: null }]);
+  assert.deepEqual(enDouble.nonRepris, ['Note : ligne « Bi-classé : oui » en double, seule la première de cette clé est lue',
+    'Note : ligne « Gains de niveau : niv. 2 : santé 0, chakra 15 » en double, seule la première de cette clé est lue']);
   // la suite d'un texte coupé (lib/tableur-mesure.mjs) : par adresse, la première seulement ; une seconde pour la même case revient dans les notes
   const coupee = lireLaNote([MARQUEUR_DES_NOTES, 'Suite de la case AM55 : du texte ⏎ et la suite', 'suite de la case am55 : encore', 'Suite de la case : sans adresse'].join('\n'));
   assert.deepEqual(coupee.suites, new Map([['AM55', { valeur: 'du texte ⏎ et la suite', ligne: 'Suite de la case AM55 : du texte ⏎ et la suite' }]]));
@@ -146,12 +168,14 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   const r = ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nGains de niveau : niv. 2 : beaucoup\nNM offerts : Boule de feu` }));
   assert.deepEqual(r.nonRepris, ['NM offerts : « Boule de feu » illisible', 'Gains de niveau : « niv. 2 : beaucoup » illisibles']);
 
-  // la case de l'entraînement : « 2 Magie | 10 Concentration » (fiche auto) ou « Concentration 10 | Magie 2 » (modèle ordinateur)
+  // la case « Entraînement » de la fiche auto : les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons »), « 2 Magie | 10 Concentration »
+  // ou « Magie 2 | Concentration 10 » (« % » permis)
   const attendu = new Map([['magie', 2], ['concentration', 10]]);
-  assert.deepEqual(acquisDeLEntrainement(regles, '2 Magie | 10 Concentration'), attendu);
-  assert.deepEqual(acquisDeLEntrainement(regles, 'Magie 2 | Concentration 10'), attendu);
-  assert.equal(acquisDeLEntrainement(regles, ''), null);
-  assert.equal(acquisDeLEntrainement(regles, '2 Magie | beaucoup de Chance'), null);
+  assert.deepEqual(bonusDEntrainement(regles, '2 Magie | 10 Concentration'), attendu);
+  assert.deepEqual(bonusDEntrainement(regles, 'Magie 2 | Concentration 10'), attendu);
+  assert.deepEqual(bonusDEntrainement(regles, '2% Magie | Concentration 10 %'), attendu);
+  assert.equal(bonusDEntrainement(regles, ''), null);
+  assert.equal(bonusDEntrainement(regles, '2 Magie | beaucoup de Chance'), null);
 });
 
 test('disposition inconnue : une Error qui nomme les deux modèles', () => {
@@ -162,27 +186,105 @@ test('disposition inconnue : une Error qui nomme les deux modèles', () => {
 });
 
 // ------------------------------------------------------------------ les deux fiches auto du propriétaire
+// Les fiches sont figées, les règles changent (le site de dev en est la source : CLAUDE.md, « Conventions de travail ») : seul ce qui vient du classeur
+// (nom, XP, bourse, noms écrits…) est attendu tel quel ; ce qui dépend des règles est retrouvé ici comme l'import le fait (par la clé du nom, sinon par le
+// dernier segment de l'identifiant), et contrôlé par des invariants (un nom introuvable part dans nonRepris, l'acquis du joueur est l'acquis écrit moins
+// les bonus de la base, chaque déduction a sa remarque).
+
+const segment = (id) => String(id ?? '').split(/[#:/]/).pop();
+/** Les entrées d'une liste qu'écrit un texte du classeur : par la clé de leur nom, sinon par le dernier segment de leur identifiant (ancienne graphie). */
+function selon(liste, ecrit) {
+  const k = cle(ecrit);
+  const parNom = liste.filter((x) => cle(x.nom) === k);
+  return parNom.length ? parNom : liste.filter((x) => segment(x.id) === k);
+}
+/** Les noms des règles (et les clés de leurs identifiants) : un nom que nonRepris cite doit en être absent. */
+const NOMS_DES_REGLES = new Set([...regles.races, ...regles.ethnies, ...regles.magies, ...regles.classes, ...regles.classes.flatMap((c) => [...c.specialites, ...c.dons]),
+  ...regles.sorts, ...regles.armes, ...regles.armures, ...regles.armures_elementaires, ...regles.armes_elementaires, ...regles.materiaux_armes,
+  ...regles.materiaux_bouclier, ...regles.boucliers, ...regles.metiers, ...regles.dieux, ...regles.competences].flatMap((x) => [cle(x.nom), segment(x.id)]));
+/** Chaque ligne de nonRepris d'une fiche auto du propriétaire cite (entre « ») un nom absent des règles du moment. */
+function verifierNonRepris(r) {
+  for (const l of r.nonRepris) {
+    const m = /« ([^»]+) »/.exec(l);
+    assert.ok(m && !NOMS_DES_REGLES.has(cle(m[1])) && !NOMS_DES_REGLES.has(cle(sansMains(m[1]))), l);
+  }
+}
+const sansMains = (nom) => nom.replace(/\s*\((?:une|deux) mains?\)\s*$/i, '');
+
+/**
+ * L'acquis du joueur, compétence par compétence : l'acquis écrit moins le métier et les accessoires de la base (competencesDe de la fiche importée), jamais
+ * négatif ; une remarque pour chaque compétence que ces bonus touchent (classeur qui ne vient pas de la page). Rend les remarques attendues.
+ */
+function verifierLesAcquis(values, r) {
+  const f = r.fiche;
+  const v = (a) => lue(values, a);
+  const attendues = [];
+  for (const k of M.competencesDe(regles, f)) {
+    const cases = CASES_COMPETENCES.find((c) => c.id === k.id);
+    const ecrit = Number(v(cases.acquis) || 0);
+    const joueur = f.competences.find((c) => c.competence_id === k.id)?.acquis ?? 0;
+    assert.equal(joueur, Math.max(0, ecrit - k.metier - k.accessoire), k.id);
+    if (!k.metier && !k.accessoire) continue;
+    const remarque = r.remarques.find((x) => x.startsWith(`${k.nom} : acquis ${ecrit} du classeur `));
+    assert.ok(remarque, `${k.nom} : la remarque de son acquis`);
+    if (k.metier) assert.ok(remarque.includes(` − ${k.metier} du métier ${M.trouver(regles.metiers, f.metier_id).nom} (base)`), remarque);
+    assert.ok(remarque.endsWith(ecrit < k.metier + k.accessoire ? ': moins que ces bonus, 0 au joueur' : `= ${joueur} au joueur`), remarque);
+    attendues.push(remarque);
+  }
+  return attendues;
+}
 
 /** Ce que les deux fiches ont en commun : identité, alignement, bourse, XP, caractéristiques, compétences (scores gardés), sorts, inventaire, maîtrises. */
-function verifierLeCommun(values, r, { magies, clampees = [] }) {
+function verifierLeCommun(values, r) {
   const f = r.fiche;
   const v = (a) => lue(values, a);
   assert.equal(r.disposition, 'auto');
+  verifierNonRepris(r);
   assert.equal(f.nom, v('I1'));
   assert.equal(f.surnom, v('S1'));
   assert.equal(f.lieu_origine, v('I3'));
-  assert.equal(f.race_id, parNom(regles.races, v('I2')).id);
-  assert.equal(f.magie_innee_id, magie(v('S2')).id);
-  assert.equal(f.magie_acquise_id, v('S3') ? magie(v('S3')).id : null);
-  assert.equal(f.ethnie_id, parNom(regles.ethnies.filter((e) => e.race_id === f.race_id), v('C40')).id);
-  assert.equal(f.metier_id, parNom(regles.metiers, v('C41')).id);
+  const unique = (liste, ecrit) => {
+    const x = selon(liste, ecrit);
+    return x.length === 1 ? x[0].id : null;
+  };
+  assert.equal(f.race_id, unique(regles.races, v('I2')));
+  assert.equal(f.magie_innee_id, unique(regles.magies, v('S2')));
+  assert.equal(f.magie_acquise_id, v('S3') ? unique(regles.magies, v('S3')) : null);
+  assert.equal(f.ethnie_id, unique(regles.ethnies.filter((e) => e.race_id === f.race_id), v('C40')));
+  assert.equal(f.metier_id, unique(regles.metiers, v('C41')));
   assert.deepEqual([f.alignement_loyal, f.alignement_chaotique, f.alignement_bon, f.alignement_mauvais], ['L5', 'M5', 'N5', 'O5'].map((a) => Number(v(a) || 0)));
   assert.deepEqual([f.bourse_pp, f.bourse_ro, f.bourse_rf], ['L6', 'Q6', 'W6'].map((a) => Number(v(a) || 0)));
   assert.equal(f.xp, Number(v('S11')));
   // niveaux de classe 20 et 2 au niveau global 11 : mono-classe (décision R2)
   assert.deepEqual([v('G9'), v('G11'), v('W8')], ['20', '2', '11']);
   assert.equal(f.mode_classe, 'mono');
-  assert.deepEqual(f.classes.map((c) => c.classe_id), [classe(v('A9')).id, classe(v('A11')).id]);
+  // classes et spécialités : celles qu'écrit le classeur (I9, I11), sinon celle des dons de spécialité écrits
+  for (const [rang, aClasse, aSpecialite] of [[1, 'A9', 'I9'], [2, 'A11', 'I11']]) {
+    const choix = f.classes.find((c) => c.rang === rang);
+    assert.equal(choix?.classe_id ?? null, unique(regles.classes, v(aClasse)), aClasse);
+    if (choix && v(aSpecialite)) assert.equal(choix.specialite_id, unique(M.trouver(regles.classes, choix.classe_id).specialites, v(aSpecialite)), aSpecialite);
+  }
+  // dons à choix : chacun est une option de la classe dont le nom est écrit, et son nom (ou l'ancienne graphie de son identifiant) est écrit dans ses lignes
+  for (const [rang, lignes] of [[1, DONS.classe1], [2, DONS.classe2]]) {
+    const choix = f.classes.find((c) => c.rang === rang);
+    const classe = M.trouver(regles.classes, choix?.classe_id);
+    const ecrits = lignes.map((l) => v(`C${l}`)).filter(Boolean);
+    const prefixe = `${segment(classe?.id)}-`;
+    const sienne = (d, ecrit) => cle(d.nom) === cle(ecrit) || segment(d.id) === cle(ecrit) || segment(d.id) === prefixe + cle(ecrit);
+    for (const c of f.capacites.filter((x) => classe?.dons.some((d) => d.id === x.capacite_id))) {
+      const d = classe.dons.find((x) => x.id === c.capacite_id);
+      assert.equal(d.nature, 'choix', d.id);
+      assert.ok(ecrits.some((e) => sienne(d, e)), `${d.nom} : écrit dans le classeur`);
+    }
+    // et chaque don à choix écrit (le seul de ce nom dans sa classe) est repris, s'il va avec la spécialité
+    for (const e of ecrits) {
+      const d = classe?.dons.filter((x) => sienne(x, e));
+      if (d?.length === 1 && d[0].nature === 'choix' && (!d[0].specialite_id || d[0].specialite_id === choix.specialite_id)) {
+        assert.ok(f.capacites.some((x) => x.capacite_id === d[0].id), `${e} : repris`);
+      }
+    }
+  }
+  assert.equal(f.capacites.length, new Set(f.capacites.map((c) => c.capacite_id)).size);
   for (const c of CASES_CARACTERISTIQUES) {
     const ligne = f.caracteristiques.find((x) => x.caracteristique_id === c.id);
     assert.deepEqual([ligne.base, ligne.croix], [Number(v(c.base)), c.croix.filter((a) => v(a) === 'TRUE').length], c.id);
@@ -190,29 +292,33 @@ function verifierLeCommun(values, r, { magies, clampees = [] }) {
   // le +1 de la magie innée sur sa caractéristique (case bonus du classeur)
   const bonus = CASES_CARACTERISTIQUES.filter((c) => v(c.bonus)).map((c) => c.id);
   assert.deepEqual(bonus, [regles.magies.find((m) => m.id === f.magie_innee_id).caracteristique_id]);
-  // compétences : le naturel tel quel, et chaque score du classeur retrouvé par le site (sauf un acquis du classeur rogné à 0 : voir les remarques)
+  // compétences : le naturel tel quel ; chaque score du classeur retrouvé par le site (sauf un acquis du classeur plus petit que les bonus de la base)
   const calcul = competencesDe(regles, f);
   for (const c of CASES_COMPETENCES) {
     const ligne = f.competences.find((x) => x.competence_id === c.id);
+    const k = calcul.find((x) => x.id === c.id);
     assert.equal(ligne?.naturel ?? 0, Number(v(c.naturel) || 0), c.id);
-    if (!clampees.includes(c.id)) assert.equal(calcul.find((k) => k.id === c.id).score, Number(v(c.total)), `score ${c.id}`);
+    if (Number(v(c.acquis) || 0) >= k.metier + k.accessoire) assert.equal(k.score, Number(v(c.total)), `score ${c.id}`);
   }
   // maîtrises : « Nd » → N dés, seules celles qui ajoutent un dé
   const attendues = MAITRISES.map((m) => ({ arme_famille_id: m.famille, des: Number(v(`${m.cote === 'gauche' ? 'AI' : 'AN'}${m.ligne}`).replace('d', '')) }))
     .filter((m) => m.des > maitriseDArme(regles).desSansMaitrise);
   assert.deepEqual([...f.maitrises_armes].sort((a, b) => a.arme_famille_id.localeCompare(b.arme_famille_id)),
     attendues.sort((a, b) => a.arme_famille_id.localeCompare(b.arme_famille_id)));
-  // sorts : chaque ligne écrite, retrouvée parmi les sorts des magies du personnage, avec son NM (rien d'offert : la fiche auto ne le dit pas)
-  const ecrits = AUTO.sorts.lignes.filter((l) => v(`AA${l}`)).map((l) => [v(`AA${l}`), Number(v(`AY${l}`) || 0)]);
-  assert.deepEqual(f.sorts.map((s) => [trouver(regles.sorts, s.sort_id).nom, s.niveau_maitrise, s.nm_livre, s.nm_cadeau, s.rang]),
-    ecrits.map(([nom, nm], i) => [regles.sorts.find((s) => magies.includes(s.magie_id) && cle(s.nom) === cle(nom)).nom, nm, 0, 0, i + 1]));
+  // sorts : chaque ligne écrite, retrouvée parmi les sorts des magies du personnage, avec son NM (rien d'offert : la fiche auto ne le dit pas) ; un sort
+  // que les règles n'ont plus part dans nonRepris (verifierNonRepris)
+  const magies = [f.magie_innee_id, f.magie_acquise_id].filter(Boolean);
+  const ecrits = AUTO.sorts.lignes.filter((l) => v(`AA${l}`)).map((l) => [v(`AA${l}`), Number(v(`AY${l}`) || 0)])
+    .map(([nom, nm]) => [selon(regles.sorts.filter((s) => magies.includes(s.magie_id)), nom), nm]).filter(([s]) => s.length === 1);
+  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.nm_livre, s.nm_cadeau, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, 0, 0, i + 1]));
+  assert.ok(f.sorts.length >= 1);
   // inventaire : colonne par colonne, les lignes nommées ; la ressource de ce nom exact (comme la page)
   const objets = AUTO.inventaire.colonnes.flatMap((c) => AUTO.inventaire.lignes.map((l) => [v(`${c.nom}${l}`), v(`${c.quantite}${l}`)])).filter(([nom]) => nom);
   assert.deepEqual(f.inventaire, objets.map(([nom, q], i) => ({ rang: i + 1, nom, quantite: Number(q), ressource_id: regles.ressources.find((x) => x.nom === nom)?.id ?? null })));
   // valeurs du moment au maximum (null), corruption 0 (null)
   assert.deepEqual([v('D14'), v('K14'), v('R14')], [v('F14'), v('M14'), v('T14')]);
   assert.deepEqual([f.sante_actuelle, f.chakra_actuel, f.barriere_actuelle, f.barre4_actuelle, f.corruption, f.posture_id], [null, null, null, null, null, null]);
-  // gains de niveau reconstitués : les maximums du classeur retrouvés, 15 points par niveau, un d8 aux niveaux à dé
+  // gains de niveau reconstitués : les maximums du classeur retrouvés, les points de chaque niveau, un dé aux niveaux qui en donnent un, dans ses bornes
   const a = attributsDe(regles, f);
   assert.deepEqual([a.sante, a.chakra], [Number(v('F14')), Number(v('M14'))]);
   const niveaux = regles.niveaux.filter((n) => n.niveau >= 2 && n.niveau <= Number(v('W8')));
@@ -221,134 +327,128 @@ function verifierLeCommun(values, r, { magies, clampees = [] }) {
     const n = niveaux.find((x) => x.niveau === p.niveau);
     assert.equal(p.points_sante + p.points_chakra, n.points_attributs);
     assert.equal(p.de_choix !== null, Boolean(n.de_attributs_bonus), `dé du niveau ${p.niveau}`);
-    if (p.de_choix) assert.ok(p.de_resultat >= 1 && p.de_resultat <= 8);
+    if (p.de_choix) {
+      const bornes = bornesDuDe(n.de_attributs_bonus);
+      assert.ok(p.de_resultat >= bornes.min && p.de_resultat <= bornes.max, `dé du niveau ${p.niveau} : ${p.de_resultat}`);
+    }
   }
-  assert.ok(r.remarques.includes(`Gains de niveau reconstitués d'après les maximums du classeur (santé ${v('F14')}, chakra ${v('M14')}) : à vérifier`));
   assert.equal(r.image, null);
   assert.equal(r.portraitGarde, false);
   assert.equal(f.notes, v('BA54') || null);
+  // les remarques : celles des acquis, des gains de niveau
+  const remarques = verifierLesAcquis(values, r);
+  remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur (santé ${v('F14')}, chakra ${v('M14')}) : à vérifier`);
+  for (const x of remarques) assert.ok(r.remarques.includes(x), x);
+  return remarques;
 }
 
-test('fiche auto de Lucien : tout ce que le classeur choisit est repris, rien ne part dans les notes', () => {
+test('fiche auto de Lucien : tout ce que le classeur choisit est repris, chaque déduction a sa remarque', () => {
   const r = importer(LUCIEN);
   const f = r.fiche;
   const v = (a) => lue(LUCIEN, a);
-  const necromancie = magie('Nécromancie');
-  verifierLeCommun(LUCIEN, r, { magies: [necromancie.id] });
-  assert.deepEqual(r.nonRepris, []);
-  // classes et spécialités ; « SPÉCIALISTE » en classe 2 au niveau 2 : gardée telle quelle (le contrôle specialite_trop_tot le signale)
-  assert.deepEqual(f.classes, [
-    { rang: 1, classe_id: classe('Barde').id, specialite_id: parNom(classe('Barde').specialites, v('I9')).id },
-    { rang: 2, classe_id: classe('Ocultomancien').id, specialite_id: parNom(classe('Ocultomancien').specialites, v('I11')).id },
-  ]);
-  // dons à choix : Nouvel accord, « Balade guerrière » (la base écrit « Ballade guerrière », même identifiant), Exaltation ; Prestation, Son perturbant,
-  // Ménestrel, Chant double et Économe se déduisent
-  const ballade = classe('Barde').dons.find((d) => d.id.endsWith('-balade-guerriere'));
+  const remarques = verifierLeCommun(LUCIEN, r);
+  assert.equal(f.dieu_choisi_id, selon(regles.dieux, v('S5'))[0]?.id ?? null, '« Pas de Dieu choisi » est un dieu de la liste');
+  // « Balade guerrière » (C51) : retrouvée par l'identifiant quand la base écrit le nom autrement (« Ballade guerrière » à l'import, décision 0006)
   assert.equal(v('C51'), 'Balade guerrière');
-  assert.notEqual(cle(ballade.nom), cle(v('C51')));
-  assert.deepEqual(f.capacites.map((c) => c.capacite_id), [don('Barde', 'Nouvel accord').id, ballade.id, don('Barde', 'Exaltation').id]);
-  assert.equal(f.dieu_choisi_id, parNom(regles.dieux, 'Pas de Dieu choisi').id, '« Pas de Dieu choisi » est un dieu de la liste');
-  // compétences : l'acquis du joueur = acquis du classeur − bonus du métier (Écrivain : celui de la base) − accessoire
-  const ecrivain = parNom(regles.metiers, 'Écrivain');
-  const bonusConnaissance = ecrivain.bonus.find((b) => b.options.some((o) => o.competence_id === 'connaissance')).valeur;
-  const acquis = (id) => f.competences.find((c) => c.competence_id === id)?.acquis ?? 0;
-  assert.equal(acquis('connaissance'), Number(v('I32')) - bonusConnaissance);
-  // « 2 Magie | 10 Concentration | 10 Observation | 10 Distinction » (L42) : les acquis du joueur ; l'accessoire « Compétence I » (18 %) est sur Magie
-  const entrainement = acquisDeLEntrainement(regles, v('L42'));
-  for (const [id, n] of entrainement) assert.equal(acquis(id), n, id);
+  // l'accessoire « Compétence » (Chef) : l'effet de la caractéristique écrite dont la fourchette contient la valeur tirée ; sa compétence, celle dont
+  // l'acquis écrit moins le métier et les bonus d'entraînement (L42) vaut la valeur tirée
   const chef = f.accessoires.find((a) => a.emplacement === 'chef');
-  const effetChef = regles.accessoires.find((a) => a.id === chef.accessoire_effet_id);
-  assert.deepEqual([effetChef.propriete_nom, effetChef.caracteristique_id, chef.valeur, chef.competence_id], ['Compétence', 'intelligence', 18, 'magie']);
-  assert.ok(18 >= effetChef.min && 18 <= effetChef.max);
-  assert.equal(Number(v('I33')) - entrainement.get('magie'), chef.valeur);
-  assert.ok(r.remarques.includes('Compétence de l\'accessoire Chef (Compétence I 18) déduite : Magie'));
-  // les autres accessoires : la propriété et le libellé du classeur, tels quels dans la table
-  assert.deepEqual(f.accessoires.filter((a) => a.emplacement !== 'chef').map((a) => [a.emplacement, a.accessoire_effet_id, a.texte, a.maudit]), [
-    ['collier', effetDAccessoire('Attributs', v('AI30').trim()).id, null, 0],
-    ['bracelet-1', effetDAccessoire('Attributs', v('AA33').trim()).id, null, 0],
-    ['bracelet-2', effetDAccessoire('Défense', v('AI33')).id, null, 0],
-    ['bague-1', effetDAccessoire('Attributs', v('AA36')).id, null, 0],
-  ]);
-  // armes : « (une main) » ignorée ; Laiton pour l'arbalète, le fer par défaut pour la dague (décision R49)
-  const arbalete = parNom(regles.armes, 'Arbalète à bras');
-  const dague = parNom(regles.armes, 'Dague');
-  assert.deepEqual(f.armes.map((a) => [a.rang, a.arme_id, a.materiau_id, a.amelioration_id, a.arme_elementaire_id]), [
-    [1, arbalete.id, parNom(regles.materiaux_armes, v('AE10')).id, null, null],
-    [2, dague.id, regles.materiau_arme_defaut, null, null],
-  ]);
-  // « Effet en plus » (AA12, AA13) : une formule de la fiche auto (=BDD!AJ36 : effet du catalogue, du matériau, malus d'ambidextrie), aucune saisie du
-  // joueur : rien n'en est tiré
-  assert.ok(v('AA13').includes('\n'), 'l’effet du catalogue et celui du matériau');
-  assert.equal(cle(v('AN13')), cle(dague.effet));
-  assert.deepEqual(f.armes.map((a) => a.effet_en_plus), [null, null]);
-  // armure : Vêtement renforcé (armure complète), élément « Nécromancie » = l'armure élémentaire Vêtement de cette magie, « +5 » = son amélioration niveau 5
-  const vetement = parNom(regles.armures, v('AD21'));
-  const elementaire = regles.armures_elementaires.find((x) => x.id === f.armures[0].armure_elementaire_id);
-  assert.deepEqual([elementaire.categorie, elementaire.id.split(':').pop()], [vetement.type, cle(v('AS21'))]);
+  const effetChef = M.trouver(regles.accessoires, chef.accessoire_effet_id);
+  const tiree = Number.parseFloat(v('AA31'));
+  const caracteristique = regles.caracteristiques.find((k) => cle(k.nom) === cle(v('AA30')));
+  assert.deepEqual([effetChef.propriete, effetChef.caracteristique_id, chef.valeur], ['competence', caracteristique.id, tiree]);
+  assert.ok(tiree >= effetChef.min && tiree <= effetChef.max);
+  const entrainement = bonusDEntrainement(regles, v('L42'));
+  const calcul = new Map(competencesDe(regles, { ...f, competences: [] }).map((k) => [k.id, k]));
+  const candidates = regles.competences.filter((k) => k.caracteristique_id === caracteristique.id).filter((k) => {
+    const cases = CASES_COMPETENCES.find((c) => c.id === k.id);
+    return Number(v(cases.acquis) || 0) - calcul.get(k.id).metier - (entrainement.get(k.id) ?? 0) === tiree;
+  });
+  assert.equal(candidates.length, 1);
+  assert.equal(chef.competence_id, candidates[0].id);
+  const ecrit = Number(v(CASES_COMPETENCES.find((c) => c.id === chef.competence_id).acquis));
+  const deduite = r.remarques.find((x) => x.startsWith(`Compétence de l'accessoire Chef (${effetChef.libelle} ${tiree}) déduite : ${candidates[0].nom} (acquis ${ecrit} = `));
+  assert.ok(deduite?.endsWith(`entraînement ${entrainement.get(chef.competence_id)} + accessoire ${tiree})`), deduite);
+  remarques.push(deduite);
+  // les autres accessoires : la propriété et le libellé du classeur, tels quels dans la table, sinon en texte libre (avec une remarque)
+  for (const a of f.accessoires.filter((x) => x.emplacement !== 'chef')) {
+    const effet = M.trouver(regles.accessoires, a.accessoire_effet_id);
+    assert.ok(effet ? !a.texte : a.texte, a.emplacement);
+  }
+  // armes : « (une main) » ignorée ; la composition écrite, le fer par défaut (décision R49) ; « Effet en plus » (AA13) est une formule de la fiche
+  // auto (=BDD!AJ36, relevée le 2026-10-15 : on y lit l'effet du catalogue puis celui du matériau), aucune saisie du joueur : rien n'en est tiré
+  assert.match(v('AA10'), /\(une main\)$/);
+  const armes = [['AA10', 'AE10'], ['AN10', 'AR10']].map(([nom, composition]) => ({ arme: selon(regles.armes, sansMains(v(nom))), composition: v(composition) }));
+  assert.deepEqual(f.armes.map((a) => [a.rang, a.arme_id, a.materiau_id, a.effet_en_plus]), armes.map((x, i) => [i + 1, x.arme[0].id,
+    x.composition ? selon(regles.materiaux_armes, x.composition)[0].id : regles.materiau_arme_defaut, null]));
+  // armure : l'armure complète écrite ; l'élément « Nécromancie », le nom d'une magie : l'armure élémentaire de cette magie et de la catégorie de
+  // l'armure (armure_elementaire.magie_id), et une remarque ; « +5 » : son amélioration de niveau 5
+  const vetement = selon(regles.armures, v('AD21'))[0];
+  const necromancie = selon(regles.magies, v('AS21'))[0] ?? regles.magies.find((m) => segment(m.id).endsWith(cle(v('AS21'))));
+  const elementaire = regles.armures_elementaires.find((x) => x.magie_id === necromancie.id && x.categorie === vetement.type);
   assert.equal(v('AT20'), 'Aucune');
   assert.deepEqual(f.armures, [{
     emplacement_id: 'armure-complete', armure_id: vetement.id, amelioration_id: null, armure_elementaire_id: elementaire.id,
     amelioration_elementaire_id: amelioration('armure_elementaire', Number(v('AX21'))).id,
   }]);
+  const element = `Élément d'armure déduit de la magie « ${necromancie.nom} » et de la catégorie « ${vetement.type} » : ${elementaire.nom}`;
+  assert.ok(r.remarques.includes(element));
+  remarques.push(element);
   assert.equal(f.bouclier_classe_id, null);
   assert.deepEqual(f.bouclier_materiaux, []);
   assert.equal(f.evenements, `${v('C71')} : ${v('L71')}\n${v('C72')} : ${v('L72')}`);
-  // les deux remarques propres à Lucien : la compétence de l'accessoire (ci-dessus) et ses 18 NM, plus que les NM de niveau du niveau 11
-  const disponibles = regles.niveaux.find((n) => n.niveau === Number(v('W8'))).niveaux_maitrise_cumul;
-  assert.ok(f.sorts.reduce((s, x) => s + x.niveau_maitrise, 0) > disponibles);
-  assert.equal(r.remarques.length, 3);
-  assert.ok(r.remarques.some((x) => x.startsWith(`NM des sorts : les 18 NM du classeur sont comptés comme NM de niveau (${disponibles} disponibles)`)));
+  // les NM du classeur, plus que les NM de niveau : comptés comme NM de niveau, une remarque
+  const nm = M.maitriseDesSorts(regles, f);
+  if (nm.deNiveau > nm.disponibles) {
+    const x = `NM des sorts : les ${nm.total} NM du classeur sont comptés comme NM de niveau (${nm.disponibles} disponibles) ; le classeur ne dit pas lesquels viennent d'un livre ou du MJ`;
+    assert.ok(r.remarques.includes(x));
+    remarques.push(x);
+  }
+  // les textes libres des accessoires
+  remarques.push(...r.remarques.filter((x) => /^Accessoire .* gardé en texte libre \(non compté\)$/.test(x)));
+  assert.deepEqual([...r.remarques].sort(), [...remarques].sort(), 'aucune autre remarque');
 });
 
 test('fiche auto de Louise : bi-magie, amélioration écrite « +N (effet) », anciennes graphies, métier qui a changé', () => {
   const r = importer(LOUISE);
   const f = r.fiche;
   const v = (a) => lue(LOUISE, a);
-  verifierLeCommun(LOUISE, r, { magies: [magie('Lumière').id, magie('Espace/Temps').id], clampees: ['esquive', 'reflexe'] });
-  assert.deepEqual(r.nonRepris, []);
-  assert.deepEqual(f.classes, [
-    { rang: 1, classe_id: classe('Mage Rouge').id, specialite_id: parNom(classe('Mage Rouge').specialites, v('I9')).id },
-    { rang: 2, classe_id: classe('Guerrier').id, specialite_id: null },
-  ]);
-  assert.deepEqual(f.capacites.map((c) => c.capacite_id), ['Ange rouge', 'Favori', 'Les deux'].map((n) => don('Mage Rouge', n).id));
+  const remarques = verifierLeCommun(LOUISE, r);
+  assert.ok(v('S3'), 'deux magies');
+  assert.equal(v('I11'), '', 'la classe 2 sans spécialité écrite');
   assert.equal(f.dieu_choisi_id, null);
-  // Acrobate : la base donne +3 % Esquive et +3 % Réflexe ; le classeur écrit 2 d'acquis (l'ancien « +2 % Réflexe, Esquive et Ruse ») : acquis du joueur 0
-  const acrobate = parNom(regles.metiers, 'Acrobate');
-  for (const [id, adresse] of [['esquive', 'V34'], ['reflexe', 'V35']]) {
-    const bonus = acrobate.bonus.find((b) => b.options.some((o) => o.competence_id === id)).valeur;
-    assert.ok(Number(v(adresse)) < bonus);
-    assert.equal(f.competences.find((c) => c.competence_id === id)?.acquis ?? 0, 0);
-    const nom = regles.competences.find((k) => k.id === id).nom;
-    assert.ok(r.remarques.includes(`Compétence ${nom} : acquis du classeur ${v(adresse)}, moins que ce qu'ajoutent le métier et les accessoires (${bonus}) : acquis du joueur 0`));
-  }
-  assert.equal(f.competences.find((c) => c.competence_id === 'ruse').acquis, Number(v('V36')), 'Ruse n’est plus un bonus d’Acrobate : l’acquis reste au joueur');
-  // arme : Épée rasoir en Mythril, « +5 » = amélioration niveau 5 ; « Passe barrière », sous l'effet du catalogue, vient de la formule (le matériau) :
-  // pas d'effet en plus
-  const rasoir = parNom(regles.armes, v('AA10'));
-  assert.equal(cle(v('AA13').split('\n')[0]), cle(rasoir.effet));
+  // le métier : les bonus de la base (pas ceux qu'écrivait la fiche auto, « +2% Reflexe, Esquive et Ruse ») ; l'acquis écrit qui en est plus petit
+  // revient à 0 (verifierLesAcquis), avec sa remarque
+  assert.match(v('L41'), /Reflexe, Esquive et Ruse/);
+  // arme : la composition écrite (Mythril), « +5 » : l'amélioration de niveau 5 ; « Passe barrière », sous l'effet du catalogue, vient de la formule (le
+  // matériau) : pas d'effet en plus
+  const rasoir = selon(regles.armes, v('AA10'));
   assert.equal(v('AA13').split('\n').length, 2);
-  assert.deepEqual(f.armes, [{
-    rang: 1, arme_id: rasoir.id, materiau_id: parNom(regles.materiaux_armes, v('AE10')).id, amelioration_id: amelioration('arme', 5).id,
+  assert.deepEqual(f.armes, rasoir.length === 1 ? [{
+    rang: 1, arme_id: rasoir[0].id, materiau_id: selon(regles.materiaux_armes, v('AE10'))[0].id, amelioration_id: amelioration('arme', Number(v('AI13').replace('+', ''))).id,
     arme_elementaire_id: null, amelioration_elementaire_id: null, effet_en_plus: null,
-  }]);
-  // armure : « Armure Vif Argent complet » = « Armure Vif Argent complète » (même identifiant) ; « +4 (+8 AP/AM) » = amélioration niveau 4, dont c'est l'effet
-  const vifArgent = regles.armures.find((a) => a.id.endsWith(`:${cle(v('AD21'))}`));
-  assert.notEqual(vifArgent.nom, v('AD21'));
-  assert.ok(cle(amelioration('armure', 4).effet).startsWith(cle('+8 AP/AM')));
-  assert.deepEqual(f.armures, [{ emplacement_id: 'armure-complete', armure_id: vifArgent.id, amelioration_id: amelioration('armure', 4).id, armure_elementaire_id: null, amelioration_elementaire_id: null }]);
-  // accessoires : « Les AP de base augmente de 5 » n'est pas le libellé de la base (« … augmentent … ») : texte libre, non compté, et une remarque
-  assert.ok(!regles.accessoires.some((a) => cle(a.libelle) === cle(v('AA33'))));
-  assert.ok(regles.accessoires.some((a) => a.libelle === 'Les AP de base augmentent de 5'));
-  assert.deepEqual(f.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, a.texte]), [
-    ['chef', effetDAccessoire('Défense', v('AA30')).id, null],
-    ['collier', effetDAccessoire('Défense', v('AI30')).id, null],
-    ['bracelet-1', null, `Défense : ${v('AA33')}`],
-    ['bracelet-2', effetDAccessoire('Défense', v('AI33')).id, null],
-    ['bague-1', effetDAccessoire('Défense', v('AA36')).id, null],
-  ]);
-  assert.ok(r.remarques.includes(`Accessoire Bracelet 1 : « ${v('AA33')} » (DÉFENSE) ne correspond à aucun effet de la table des accessoires : gardé en texte libre (non compté)`));
+  }] : []);
+  // armure : « Armure Vif Argent complet », l'ancienne graphie retrouvée par l'identifiant ; « +4 (+8 AP/AM) » : l'amélioration de niveau 4, si c'est son effet
+  const vifArgent = selon(regles.armures, v('AD21'));
+  assert.equal(vifArgent.length, 1);
+  const [, niveau, effet] = /^\s*\+(\d+)\s*\(([^)]*)\)\s*$/.exec(v('AT20'));
+  const a4 = amelioration('armure', Number(niveau));
+  const attendue = a4 && cle(a4.effet).startsWith(cle(effet)) ? a4.id : null;
+  assert.deepEqual(f.armures, [{ emplacement_id: 'armure-complete', armure_id: vifArgent[0].id, amelioration_id: attendue, armure_elementaire_id: null, amelioration_elementaire_id: null }]);
+  // accessoires : la propriété (« DÉFENSE ») et le libellé du classeur, tels quels dans la table ; sinon en texte libre, non compté, et une remarque
+  for (const [emplacement, adresse] of [['chef', 'AA30'], ['collier', 'AI30'], ['bracelet-1', 'AA33'], ['bracelet-2', 'AI33'], ['bague-1', 'AA36']]) {
+    const a = f.accessoires.find((x) => x.emplacement === emplacement);
+    const effets = regles.accessoires.filter((x) => x.propriete === 'defense' && cle(x.libelle) === cle(v(adresse)));
+    if (effets.length) assert.deepEqual([a.accessoire_effet_id, a.texte], [effets[0].id, null], emplacement);
+    else {
+      assert.deepEqual([a.accessoire_effet_id, a.texte], [null, `Défense : ${v(adresse)}`], emplacement);
+      const x = `Accessoire ${M.EMPLACEMENTS_ACCESSOIRES.find(([e]) => e === emplacement)[1]} : « ${v(adresse)} » (DÉFENSE) ne correspond à aucun effet de la table des accessoires : gardé en texte libre (non compté)`;
+      assert.ok(r.remarques.includes(x), x);
+      remarques.push(x);
+    }
+  }
   assert.equal(f.evenements, null);
-  assert.equal(r.remarques.length, 4, 'le texte libre, Esquive, Réflexe, les gains de niveau');
+  assert.deepEqual([...r.remarques].sort(), [...remarques].sort(), 'aucune autre remarque');
 });
 
 // La ceinture des fiches auto est en AQ29 (nom) et AX29 (quantité), AQ32/AX32, AQ35/AX35 : « CEINTURE » en AQ28 dans les deux fiches du propriétaire.
@@ -547,7 +647,11 @@ test('modèle ordinateur : l’écriture de la page — accessoires sur une lign
       `Casque : ${casque.nom} · élément ${elementaire.nom} · amél. élément niv. 2`].join('\n'),
   }));
   let f = r.fiche;
-  assert.deepEqual([r.nonRepris, r.remarques], [[], []]);
+  // une fiche sans marqueur (faite à la main) : l'acquis écrit moins les bonus de la base (métier, accessoire rogné au plafond), dit par une remarque
+  const equilibre = competencesDe(regles, f).find((k) => k.id === 'equilibre');
+  assert.deepEqual(r.nonRepris, []);
+  assert.deepEqual(r.remarques, [`Équilibre : acquis ${base.V33} du classeur − ${equilibre.metier} du métier Coursier (base) − ${equilibre.accessoire} de l'accessoire Chef = ${equilibre.acquis} au joueur`]);
+  assert.equal(equilibre.acquis, base.V33 - equilibre.metier - equilibre.accessoire);
   assert.deepEqual(f.metier_bonus, [{ rang: rangAChoisir.rang, competence_id: 'equilibre' }]);
   assert.deepEqual(f.armes.map((a) => [a.materiau_id, a.effet_en_plus]), [[parNom(regles.materiaux_armes, 'Acier').id, 'Première ligne\nSeconde ligne']]);
   const vide = { nom: null, accessoire_effet_id: null, valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: null };
@@ -643,7 +747,12 @@ test('modèle ordinateur : le portrait ancré en A1, sauf le logo du modèle ; u
   assert.equal(lire(marque).image, marque, 'marqué « portrait », même identique au logo');
   assert.equal(lire(marque, { empreintePortrait: 'abc' }).portraitGarde, true);
   assert.equal(lire(marque, { empreintePortrait: 'xyz' }).portraitGarde, false);
-  assert.equal(lire({ ...autre, de: 'B7' }).image, null, 'une image ailleurs qu’en A1 n’est pas le portrait');
+  // une image ailleurs qu'en A1 n'est pas le portrait, et le dit ; une seconde image en A1 non plus
+  const ailleurs = lire({ ...autre, de: 'B7' });
+  assert.deepEqual([ailleurs.image, ailleurs.nonRepris], [null, ['Image en B7 non reprise : le portrait se place en A1']]);
+  const deux = ficheDuClasseur(regles, ordinateur({}, { images: [image('', logo), autre, image('Une autre')] }), { logo });
+  assert.deepEqual([deux.image, deux.nonRepris], [autre, ['Image en A1 non reprise : une seule image sert de portrait']]);
+  assert.deepEqual(lire(image('logo')).nonRepris, [], 'le logo du modèle n’est pas une information');
   // la fiche auto : l'image (son logo) est ignorée
   const feuille = feuilleDeGrille(LOUISE);
   feuille.images = [autre];
@@ -706,6 +815,15 @@ test('homonymes : un don cherché dans sa classe, « Vague déferlante » dépar
   assert.deepEqual(r.fiche.sorts.map((x) => x.sort_id), [corruption.id], '« Si CR… »');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d.slice(0, d.indexOf('\n') + 12)} …` }));
   assert.deepEqual(r.fiche.sorts, [], 'coupée avant « Si CR »');
+  // la description telle que la page l'écrit (une rangée : ses lignes séparées par « · »), entière ou coupée
+  const enLigne = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean).join(SEPARATEUR_EN_LIGNE);
+  for (const s of vagues) {
+    r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: s.nom, AY55: 1, AM55: enLigne(description(s, 1)) }));
+    assert.deepEqual(r.fiche.sorts.map((x) => x.sort_id), [s.id], `${s.id} (sur une ligne)`);
+  }
+  const d1 = enLigne(d);
+  r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d1.slice(0, d1.lastIndexOf(SEPARATEUR_EN_LIGNE) + 8)}…` }));
+  assert.deepEqual(r.fiche.sorts.map((x) => x.sort_id), [corruption.id], '« Si CR… » (sur une ligne)');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: vagues[0].nom, AY55: 1 }));
   assert.deepEqual(r.fiche.sorts, []);
   assert.match(r.nonRepris[0], /^Sort : « Vague déferlante » désigne plusieurs entrées des règles \(Vague déferlante \(.+\), Vague déferlante \(.+\)\), rien dans le classeur pour les départager$/);
@@ -736,4 +854,231 @@ test('homonymes : un don cherché dans sa classe, « Vague déferlante » dépar
   r = ficheDuClasseur(regles, ordinateur(avecHache));
   assert.deepEqual(r.fiche.armes, []);
   assert.match(r.nonRepris[0], /^Arme 1 : « Crochet grappin » désigne plusieurs entrées des règles/);
+});
+
+// ------------------------------------------------------------------ rien ne se perd sans être dit
+
+/** Le classeur que la page écrit pour une fiche (lib/fiche-tableur-export.mjs, sans zones : rien de coupé) sur le modèle vierge, des cases changées ensuite. */
+function deLaPage(fiche, changements = {}) {
+  const { cellules, remplis } = cellulesDeLaFiche(regles, fiche, { date: '15/10/2026' });
+  return ordinateur({ ...cellules, ...changements }, { remplis });
+}
+const epeeLongue = () => parNom(regles.armes, 'Épée Longue');
+
+test('effet d’une arme (AA13) : une ligne sans clé est de l’effet en plus (le titre du modèle) ; dite par une remarque dans un classeur fait à la main', () => {
+  const epee = epeeLongue();
+  const lire = (AA13) => ficheDuClasseur(regles, ordinateur({ I1: 'X', AA10: epee.nom, AA13 }));
+  let r = lire('Lame empoisonnée +1D4');
+  assert.deepEqual([r.fiche.armes[0].effet_en_plus, r.nonRepris], ['Lame empoisonnée +1D4', []]);
+  assert.deepEqual(r.remarques, [`Arme 1 (${epee.nom}) : ligne « Lame empoisonnée +1D4 » reprise comme effet en plus`]);
+  r = lire('Lame empoisonnée\nBrille dans le noir');
+  assert.equal(r.fiche.armes[0].effet_en_plus, 'Lame empoisonnée\nBrille dans le noir');
+  assert.deepEqual(r.remarques, [`Arme 1 (${epee.nom}) : lignes « Lame empoisonnée », « Brille dans le noir » reprises comme effet en plus`]);
+  r = lire('Effet en plus : brûle');
+  assert.deepEqual([r.fiche.armes[0].effet_en_plus, r.remarques], ['brûle', []]);
+  // l'effet du catalogue recopié par le joueur : de la part affichée, pas de l'effet en plus
+  r = lire(`Composition : Acier\n${epee.effet}\nGravée`);
+  assert.deepEqual([r.fiche.armes[0].materiau_id, r.fiche.armes[0].effet_en_plus], [parNom(regles.materiaux_armes, 'Acier').id, 'Gravée']);
+
+  // un classeur de la page (deux armes : « Deux armes » sous l'effet du catalogue), une ligne ajoutée à la fin, au début, ou un « Effet en plus : » à la fin
+  const fiche = { ...ficheVide('Site'), race_id: 'races/humain', magie_innee_id: magie('Feu').id,
+    armes: [{ rang: 1, arme_id: epee.id, materiau_id: parNom(regles.materiaux_armes, 'Acier').id }, { rang: 2, arme_id: parNom(regles.armes, 'Dague').id, materiau_id: regles.materiau_arme_defaut }] };
+  const ecrit = cellulesDeLaFiche(regles, fiche).cellules.AA13;
+  assert.match(ecrit, /\nDeux armes : /);
+  for (const [AA13, attendu] of [[`${ecrit}\nForgée par mon père`, 'Forgée par mon père'], [`Forgée par mon père\n${ecrit}`, 'Forgée par mon père'],
+    [`${ecrit}\nEffet en plus : Forgée par mon père`, 'Forgée par mon père'], [ecrit, null]]) {
+    r = ficheDuClasseur(regles, deLaPage(fiche, { AA13 }));
+    assert.deepEqual([r.fiche.armes[0].effet_en_plus, r.fiche.armes[0].materiau_id, r.nonRepris, r.remarques], [attendu, fiche.armes[0].materiau_id, [], []], AA13);
+  }
+  // l'effet du catalogue a changé depuis l'export (les armes se modifient sur le site de dev) : l'ancien texte, qui n'est plus la part affichée, est repris
+  // comme effet en plus, et dit
+  const changees = structuredClone(regles);
+  changees.armes.find((a) => a.id === epee.id).effet = 'Un effet réécrit sur le site de dev';
+  r = ficheDuClasseur(changees, deLaPage(fiche));
+  const ancien = epee.effet.split('\n').map((l) => l.trim()).filter(Boolean);
+  assert.equal(r.fiche.armes[0].effet_en_plus, ancien.join('\n'));
+  assert.deepEqual(r.remarques, [`Arme 1 (${epee.nom}) : ligne${ancien.length > 1 ? 's' : ''} ${ancien.map((l) => `« ${l} »`).join(', ')} reprise${ancien.length > 1 ? 's' : ''} comme effet en plus (la case ne porte plus ce que le site y écrit pour cette arme)`]);
+});
+
+test('armure (modèle ordinateur) : AD22 toujours lue ; une ligne de « Bonus/ Malus » qui n’est pas une pièce part dans les notes ; un désaccord est dit', () => {
+  const [a1, a2] = [regles.armures[1], regles.armures[2]];
+  const complete = (id) => [{ emplacement_id: 'armure-complete', armure_id: id, amelioration_id: null, armure_elementaire_id: null, amelioration_elementaire_id: null }];
+  let r = ficheDuClasseur(regles, ordinateur({ AD22: a1.nom }));
+  assert.deepEqual([r.fiche.armures, r.nonRepris, r.remarques], [complete(a1.id), [], []]);
+  for (const bonus of ['+2 AP (forgeron)', 'Malus : -10% discrétion']) {
+    r = ficheDuClasseur(regles, ordinateur({ AD22: a1.nom, AQ21: bonus }));
+    assert.deepEqual([r.fiche.armures, r.nonRepris], [complete(a1.id), [`Bonus/Malus de l'armure : « ${bonus} » sans place sur le site`]], bonus);
+  }
+  // un classeur de la page : AD22 réécrite (une autre armure) ; les pièces de AQ21 sont reprises, et une remarque le dit
+  const torse = { ...ficheVide('Armure'), armures: [{ emplacement_id: 'torse', armure_id: a1.id }] };
+  r = ficheDuClasseur(regles, deLaPage(torse));
+  assert.deepEqual([r.fiche.armures.map((x) => [x.emplacement_id, x.armure_id]), r.nonRepris, r.remarques], [[['torse', a1.id]], [], []]);
+  r = ficheDuClasseur(regles, deLaPage(torse, { AD22: a2.nom }));
+  assert.deepEqual(r.fiche.armures.map((x) => [x.emplacement_id, x.armure_id]), [['torse', a1.id]]);
+  assert.deepEqual(r.remarques, [`Armure : « ${a2.nom} » (Nom Armure) ne correspond pas aux pièces de la case Bonus/Malus (${a1.nom}) : les pièces sont reprises`]);
+  // l'armure complète de la page : AD22 et sa ligne sans emplacement d'accord ; une pièce avec, une ligne de bonus en plus
+  const entiere = { ...ficheVide('Complète'), armures: [{ emplacement_id: 'armure-complete', armure_id: a2.id }, { emplacement_id: 'casque', armure_id: a1.id }] };
+  r = ficheDuClasseur(regles, deLaPage(entiere));
+  assert.deepEqual([r.fiche.armures.map((x) => x.armure_id), r.nonRepris, r.remarques], [[a2.id, a1.id], [], []]);
+  // « Nom Armure » d'une liste de pièces n'est qu'affiché : coupé par la page (« … »), son début s'accorde aux pièces
+  const deux = { ...ficheVide('Pièces'), armures: [{ emplacement_id: 'torse', armure_id: a1.id }, { emplacement_id: 'casque', armure_id: a2.id }] };
+  const liste = `${a2.nom}, ${a1.nom}`;
+  assert.equal(cellulesDeLaFiche(regles, deux).cellules.AD22, liste, 'dans l’ordre des emplacements');
+  assert.deepEqual(ficheDuClasseur(regles, deLaPage(deux, { AD22: `${liste.slice(0, a2.nom.length + 2)}…` })).remarques, []);
+  assert.equal(ficheDuClasseur(regles, deLaPage(deux, { AD22: 'Autre chose …' })).remarques.length, 1);
+  r = ficheDuClasseur(regles, deLaPage(entiere, { AQ21: `${cellulesDeLaFiche(regles, entiere).cellules.AQ21}\n+2 AP (forgeron)` }));
+  assert.deepEqual([r.fiche.armures.map((x) => x.armure_id), r.nonRepris], [[a2.id, a1.id], ['Bonus/Malus de l\'armure : « +2 AP (forgeron) » sans place sur le site']]);
+});
+
+test('nombres : « 20% » se lit 20 (le tableur en garde 0,2) ; un décimal là où la fiche veut un entier est arrondi vers le bas, et dit', () => {
+  assert.equal(nombreDe({ valeur: 0.2, texte: '20%' }), 20);
+  assert.equal(nombreDe({ valeur: 0.05, texte: '5 %' }), 5);
+  assert.equal(nombreDe({ valeur: 12.5, texte: '12,5' }), 12.5);
+  assert.equal(nombreDe('12,5'), 12.5);
+  assert.equal(nombreDe({ valeur: 1, texte: '100%' }), 100);
+  const r = ficheDuClasseur(regles, ordinateur({
+    I2: 'Humain', S2: 'Feu', G22: { valeur: 0.2, texte: '20%' }, I22: { valeur: 0.05, texte: '5%' }, Q6: { valeur: 12.5, texte: '12,5' }, L6: 3,
+    E18: { valeur: 2.7, texte: '2,7' }, AA55: sortDe('Feu', 'Boule de feu').nom, AY55: { valeur: 1.5, texte: '1,5' },
+  }));
+  const f = r.fiche;
+  assert.deepEqual(f.competences.find((c) => c.competence_id === 'arc'), { competence_id: 'arc', naturel: 20, acquis: 5 });
+  assert.deepEqual([f.bourse_pp, f.bourse_ro, f.caracteristiques.find((c) => c.caracteristique_id === 'force').base, f.sorts[0].niveau_maitrise], [3, 12, 2, 1]);
+  assert.deepEqual(r.remarques, ['Bourse (or) : « 12,5 » lu 12', 'Force (base) : « 2,7 » lu 2', `Sort « ${sortDe('Feu', 'Boule de feu').nom} » (NM) : « 1,5 » lu 1`]);
+  // fiche auto : une quantité décimale
+  const louise = importer(avec(LOUISE, { AA46: 'Corde', AF46: '2,5' }));
+  assert.deepEqual(louise.fiche.inventaire.find((o) => o.nom === 'Corde').quantite, 2);
+  assert.ok(louise.remarques.includes('Quantité de « Corde » : « 2,5 » lu 2'));
+});
+
+test('zones de saisie que le site ne garde pas (solidité, armure par pièce, bouclier, sac, entraînement) : leur valeur dans nonRepris ; le type d’un événement', () => {
+  // les textes du modèle (« / ») ne sont pas des valeurs
+  for (const s of SAISIES_SANS_PLACE) assert.equal(VIERGE.cellules.get(s.adresse)?.texte ?? '', s.modele, s.adresse);
+  assert.equal(VIERGE.cellules.get(ORDINATEUR.inventaire.titre).texte, TITRE_DE_L_INVENTAIRE);
+  assert.equal(SAISIES_SANS_PLACE.length, 2 + 6 * 3 + 3);
+  const epee = epeeLongue();
+  const r = ficheDuClasseur(regles, ordinateur({
+    AA10: epee.nom, AK17: '12 / 15', AI22: 5, AJ23: 1, AN24: '10/10', AA26: regles.boucliers[0].nom, AN26: 4, AS26: 2, AX26: '20 / 20',
+    AA38: 'INVENTAIRE | SAC = Sac à dos', C71: 'Malédiction du sorcier', I71: 'Passif', L71: '-2 en Social', I72: 'Actif', L72: 'Sans titre', L42: '2 Magie',
+  }));
+  const emplacement = (id) => regles.emplacements_armure.find((e) => e.id === id).nom;
+  assert.deepEqual(r.nonRepris, [
+    'Solidité de l’arme 1 : « 12 / 15 » sans place sur le site', `Armure, ${emplacement('casque')} (AP) : « 5 » sans place sur le site`,
+    `Armure, ${emplacement('torse')} (AM) : « 1 » sans place sur le site`, `Armure, ${emplacement('jambe-droit')} (solidité) : « 10/10 » sans place sur le site`,
+    'Bouclier, armure physique : « 4 » sans place sur le site', 'Bouclier, armure magique : « 2 » sans place sur le site',
+    'Bouclier, solidité : « 20 / 20 » sans place sur le site', 'Inventaire, sac : « Sac à dos » sans place sur le site', 'Entraînement : « 2 Magie » sans place sur le site',
+  ]);
+  assert.equal(r.fiche.evenements, 'Malédiction du sorcier (Passif) : -2 en Social\n(Actif) : Sans titre');
+  // fiche auto : le type d'un événement aussi
+  assert.equal(importer(avec(LOUISE, { C71: 'Titre', I71: 'Actif', L71: 'Texte', C72: '', I72: 'Réaction' })).fiche.evenements, 'Titre (Actif) : Texte\n(Réaction)');
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ AA38: 'INVENTAIRE | SAC = ' })).nonRepris, [], 'le titre du modèle, rien après « = »');
+});
+
+test('ce qui a pu se perdre avant l’import : case relue finie par « … » sans sa suite, case coupée à la lecture, case NOTE pleine', () => {
+  const fiche = { ...ficheVide('Coupée'), evenements: 'Rencontre : un long texte' };
+  const attendue = 'Case L71 : « … » final sans ligne « Suite de la case L71 » dans la note : la fin de la case a été perdue, sauf si le « … » fait partie du texte';
+  // la note n'est pas pleine : le « … » est celui du joueur (« le Taciturne… »), rien n'a pu se perdre
+  assert.deepEqual(ficheDuClasseur(regles, deLaPage(fiche, { L71: 'un long tex…' })).remarques, []);
+  assert.deepEqual(ficheDuClasseur(regles, deLaPage(fiche)).remarques, []);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ C71: 'Rencontre', L71: 'un long tex…' })).remarques, [], 'un classeur fait à la main : son « … »');
+  // une case que la lecture du classeur a coupée (lib/tableur-lecture.mjs : `tronquee`)
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ AA40: { valeur: 'Corde', texte: 'Corde', tronquee: true } })).remarques,
+    ['Case AA40 : trop longue, coupée à la lecture du classeur ; sa fin n\'est pas reprise']);
+  // la case NOTE de 32 767 caractères finie par « … » : coupée par le tableur, ses dernières lignes perdues
+  const pleine = `${'x'.repeat(LONGUEUR_MAX_D_UNE_CASE - 1)}…`;
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ BA54: pleine })).remarques,
+    [`Case NOTE (BA54) : ${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères finis par « … », la limite d'une case de tableur : sa fin a été coupée et n'est pas reprise`]);
+  // des notes raccourcies par la page (lib/fiche-tableur-export.mjs#texteDeLaNote) : les données relues entières, et une remarque
+  const progression = M.progressionAttendue(regles, 5).map((n) => ({ niveau: n.niveau, points_sante: n.points, points_chakra: 0, de_choix: n.de ? 'sante' : null, de_resultat: n.de ? 4 : null }));
+  const longue = { ...fiche, xp: regles.niveaux.find((n) => n.niveau === 5).xp_min, mode_classe: 'mono', progression, notes: 'n'.repeat(40_000) };
+  const r = ficheDuClasseur(regles, deLaPage(longue));
+  assert.deepEqual(r.fiche.progression, progression, 'les gains de niveau relus, pas reconstitués');
+  assert.ok(r.fiche.notes.endsWith('n…') && r.fiche.notes.length < 40_000);
+  const raccourcies = `Notes : raccourcies à l'export (la case NOTE est pleine : ${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères) ; leur fin n'est pas dans le classeur`;
+  assert.deepEqual(r.remarques, [raccourcies]);
+  // des notes raccourcies laissent les données entières : un « … » final reste celui du joueur
+  assert.deepEqual(ficheDuClasseur(regles, deLaPage(longue, { L71: 'un long tex…' })).remarques, [raccourcies]);
+  // des lignes de données retirées d'une note pleine (un inventaire démesuré) ont pu emporter la suite d'une case : son « … » final est signalé
+  const demesure = { ...fiche, inventaire: Array.from({ length: 4000 }, (_, i) => ({ rang: i + 1, nom: `Objet numéro ${i + 1}`, quantite: 1, ressource_id: null })) };
+  const remarques = ficheDuClasseur(regles, deLaPage(demesure, { L71: 'un long tex…' })).remarques;
+  assert.deepEqual(remarques, [
+    'Note : une ligne de données retirée à l\'export, la case NOTE étant pleine : ce qu\'elle portait n\'est pas repris', attendue]);
+});
+
+test('maîtrises (modèle ordinateur) : un fond commun à toutes les cases de dés n’est pas un dé atteint ; un .csv sans marque le dit', () => {
+  const cases = MAITRISES.flatMap(casesDesDes);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) })).fiche.maitrises_armes, [], 'un fond de bloc');
+  // le gris de la page sur toutes les cases : tous les dés
+  const max = maitriseDArme(regles).desMax;
+  assert.ok(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, '808080'])) })).fiche.maitrises_armes.every((m) => m.des === max));
+  // un fond de bloc et des marques : les marques
+  const epees = MAITRISES.find((m) => m.famille === 'epees');
+  const f = ficheDuClasseur(regles, ordinateur({ [casesDesDes(epees)[0]]: '2d ✔' }, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) })).fiche;
+  assert.deepEqual(f.maitrises_armes, [{ arme_famille_id: 'epees', des: 2 }]);
+  // un .csv au modèle ordinateur : les couleurs n'y sont pas ; sans marque écrite, une remarque (la page passe le format du fichier)
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur(), { format: 'csv' }).remarques, [REMARQUE_MAITRISES_CSV]);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ [casesDesDes(epees)[0]]: '✔' }), { format: 'csv' }).remarques, []);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur(), { format: 'xlsx' }).remarques, []);
+  assert.deepEqual(importer(LOUISE, { format: 'csv' }).remarques.filter((x) => x === REMARQUE_MAITRISES_CSV), [], 'la fiche auto écrit ses dés');
+});
+
+test('élément d’armure de la fiche auto (le nom d’une magie) : retrouvé par la magie (armure_elementaire.magie_id) et la catégorie de l’armure, même renommée', () => {
+  // la magie renommée sur le site de dev (son identifiant ne change pas) : le classeur écrit son nouveau nom
+  const renommees = structuredClone(regles);
+  const necro = renommees.magies.find((m) => m.id === magie('Nécromancie').id);
+  necro.nom = 'Art des morts';
+  const r = ficheDuClasseur(renommees, feuilleDeGrille(avec(LUCIEN, { S2: 'Art des morts', AS21: 'Art des morts' })));
+  const armure = renommees.armures.find((a) => a.id === r.fiche.armures[0].armure_id);
+  const element = renommees.armures_elementaires.find((x) => x.magie_id === necro.id && x.categorie === armure.type);
+  assert.equal(r.fiche.armures[0].armure_elementaire_id, element.id);
+  assert.ok(r.remarques.includes(`Élément d'armure déduit de la magie « Art des morts » et de la catégorie « ${armure.type} » : ${element.nom}`));
+  assert.deepEqual(r.nonRepris, []);
+});
+
+test('gains de niveau reconstitués : les bornes du dé lues dans le texte du niveau ; un texte illisible, pas de reconstitution et une remarque', () => {
+  assert.deepEqual(bornesDuDe('1d8 santé OU 1d8 chakra OU 1d4 pour les deux'), { min: 1, max: 8 }, 'le plus grand dé écrit');
+  assert.deepEqual(bornesDuDe('2d6'), { min: 2, max: 12 });
+  assert.equal(bornesDuDe('un dé au choix'), null);
+  // les dés des règles du moment : des bornes lues
+  for (const n of regles.niveaux.filter((x) => x.de_attributs_bonus)) assert.ok(bornesDuDe(n.de_attributs_bonus), n.niveau);
+  // un d12 : 12 par dé, ce que le d8 ne permet pas
+  const f = importer(LOUISE).fiche;
+  const sans = attributsDe(regles, { ...f, progression: [] });
+  const attendue = M.progressionAttendue(regles, M.niveauGlobal(regles, f.xp));
+  const points = attendue.reduce((s, n) => s + n.points, 0);
+  const des = attendue.filter((n) => n.de).length;
+  assert.ok(des >= 1);
+  const [maxSante, maxChakra] = [sans.sante + points, sans.chakra + 12 * des];
+  assert.equal(gainsReconstitues(regles, f, maxSante, maxChakra), null, '1d8 : pas plus de 8 par dé');
+  const d12 = structuredClone(regles);
+  for (const n of d12.niveaux) if (n.de_attributs_bonus) n.de_attributs_bonus = '1d12 santé OU 1d12 chakra';
+  const gains = gainsReconstitues(d12, f, maxSante, maxChakra);
+  assert.deepEqual(gains.filter((g) => g.de_choix).map((g) => [g.de_choix, g.de_resultat]), Array.from({ length: des }, () => ['chakra', 12]));
+  // un dé qui ne se lit pas : rien de reconstitué, une remarque avec les maximums
+  const illisible = structuredClone(regles);
+  const n5 = illisible.niveaux.find((n) => n.de_attributs_bonus);
+  n5.de_attributs_bonus = 'un dé au choix';
+  const r = ficheDuClasseur(illisible, feuilleDeGrille(LOUISE));
+  assert.deepEqual(r.fiche.progression, []);
+  assert.ok(r.remarques.includes(`Gains de niveau non reconstitués : le dé du niveau ${n5.niveau} (« un dé au choix ») ne se lit pas ; maximums du classeur (santé ${lue(LOUISE, 'F14')}, chakra ${lue(LOUISE, 'M14')}) : à saisir`));
+});
+
+test('cases de 32 767 caractères faites surtout d’espaces : l’import reste linéaire (moins de 5 s pour une dizaine de cases)', () => {
+  const s = `a${' '.repeat(LONGUEUR_MAX_D_UNE_CASE - 2)}b`;
+  const feuille = ordinateur({
+    I1: 'Espaces', AD29: s, AL29: `Attributs :${s}`, AA40: s, AA41: `${s}×3`, AA42: `(${s}`, AR29: s, AA10: epeeLongue().nom, AA13: `Effet en plus :${s}\n${s}`,
+    AQ21: `Torse :${s}·${s}`, C41: 'Coursier', L41: `${s}→${s}`, AA55: s, C71: s, L42: s, AK17: s,
+    BA54: [MARQUEUR_DES_NOTES, `Gains de niveau : niv. 2 : dé${s}`, `Sorts (suite) : ${s}`, `NM offerts : ${s}`].join('\n'),
+  });
+  const debut = performance.now();
+  const r = ficheDuClasseur(regles, feuille);
+  const ms = performance.now() - debut;
+  assert.ok(ms < 5000, `${Math.round(ms)} ms`);
+  assert.ok(r.nonRepris.length > 0);
+  // et une fiche auto aux noms d'arme pleins d'espaces
+  const debutAuto = performance.now();
+  importer(avec(LOUISE, { AA10: `Épée${' '.repeat(30_000)}(une main${' '.repeat(30_000)}`, L42: `1${' '.repeat(30_000)}2` }));
+  // une amélioration « +5 » suivie d'espaces et d'un mot, une ligne « Entraînement » au nombre suivi d'espaces et de deux lignes
+  const espaces = ' '.repeat(39_000);
+  importer(avec(LOUISE, { AI13: `+5${espaces}x`, AV13: `+5${espaces}x`, AT20: `+4${espaces}x`, AX21: `+5${espaces}x`, L42: `5${espaces}a\nb` }));
+  assert.ok(performance.now() - debutAuto < 5000);
 });

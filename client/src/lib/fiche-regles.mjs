@@ -7,6 +7,7 @@ import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
+import { porteeDeLArme } from './arme-champs.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -294,11 +295,11 @@ export function chargerReglesDeFiche(db) {
       .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1 })),
     // le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son type ; NULL pour le Pugilat : selon la Force), son bonus de dégâts (« +N dégâts »)
     // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes. Pour la fiche en tableur : son
-    // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et la portée que cet effet écrit (arme.portee_min / portee_max),
-    // « N » ou « N - M » ; null quand l'effet n'en écrit pas (rien n'est déduit ici : ni le 1 par défaut de la page Armes, R50, ni la portée du type, v_arme)
+    // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et sa portée, celle de la colonne de la page « Armes » (décision R50 :
+    // « la portée écrite, 1 par défaut », lib/arme-champs.mjs#porteeDeLArme, d'après arme.portee_min / portee_max), écrite « N » ou « N - M »
     armes: (() => {
       const types = parCle(lignes(db, 'SELECT arme_id, type_degats FROM arme_degats ORDER BY arme_id, type_degats'), 'arme_id', (r) => r.type_degats);
-      const portee = (min, max) => (min === null ? null : min === max ? String(min) : `${min} - ${max}`);
+      const portee = (min, max) => porteeDeLArme({ portee_min: min, portee_max: max }).replace(/^(\d+)-(\d+)$/, '$1 - $2');
       return lignes(db, 'SELECT id, nom, famille_id, type_id, mains, de, bonus_degats, effet, portee_min, portee_max FROM arme ORDER BY famille_id, ordre')
         .map(({ portee_min, portee_max, ...a }) => ({ ...a, portee: portee(portee_min, portee_max), types_degats: types.get(a.id) ?? [] }));
     })(),
@@ -311,7 +312,9 @@ export function chargerReglesDeFiche(db) {
     armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
     armures: lignes(db, 'SELECT id, nom, type, ap, am FROM armure ORDER BY ordre'),
-    armures_elementaires: lignes(db, 'SELECT id, nom, categorie, ap, am FROM armure_elementaire ORDER BY ordre'),
+    // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
+    // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
+    armures_elementaires: lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre'),
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
     materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am FROM materiau_bouclier ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am })),
     // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé

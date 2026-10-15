@@ -4,8 +4,8 @@
 // Export et import (demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel
 // ou Google Sheet et réexportée sous le même modèle ») : en JSON (le format d'échange), ou en classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2
 // ordinateur » (/fiche/modele.xlsx : lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la
-// place du logo) ; l'import lit aussi la fiche auto V15.2.2 et les .ods et .csv (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs), et ce qui n'a
-// pas de place sur le site va dans les notes.
+// place du logo) ; l'import lit aussi la fiche auto V15.2.2 et les .ods et .csv (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs : l'onglet qui
+// suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les notes.
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
@@ -14,8 +14,8 @@ import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
-import { cellulesDeLaFiche } from '../lib/fiche-tableur-export.mjs';
-import { ficheDuClasseur } from '../lib/fiche-tableur-import.mjs';
+import { cellulesDeLaFiche, messageDExport } from '../lib/fiche-tableur-export.mjs';
+import { feuilleDeLaFiche, ficheDuClasseur, messageDImport, portraitDeLImport } from '../lib/fiche-tableur-import.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
@@ -1797,9 +1797,10 @@ async function logoDuModele() {
 
 /**
  * Le classeur au modèle V15.2.2 ordinateur : les cases de la fiche (lib/fiche-tableur-export.mjs, sur la fiche telle qu'elle s'enregistre ; un texte
- * trop long pour sa case y est coupé, la suite dans la note), le portrait cadré à la place du logo (la vignette de la page, JPEG), marqué
- * « portrait:<empreinte de l'image d'origine> » pour qu'un import du fichier dans ce prétiré garde l'image d'origine et son cadrage ; sans portrait,
- * le logo du modèle, marqué « logo ».
+ * trop long pour sa case y est coupé, la suite de sa part relue dans la note), le portrait cadré à la place du logo (la vignette de la page, JPEG),
+ * marqué « portrait:<empreinte de l'image d'origine> » pour qu'un import du fichier dans ce prétiré garde l'image d'origine et son cadrage ; sans
+ * portrait, le logo du modèle, marqué « logo ». Ce qui ne tient pas dans une case de tableur (notes de plus de 32 767 caractères…) est dit dans le
+ * message (messageDExport).
  */
 async function exporterTableur() {
   const bouton = $('fiche-exporter-tableur');
@@ -1807,7 +1808,7 @@ async function exporterTableur() {
   message('Export du classeur…', 'attente');
   try {
     const f = aEnvoyer();
-    const { cellules, remplis, alignements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
+    const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
     let image = null;
     let descriptionImage = 'logo';
     if (fiche.portrait) {
@@ -1821,7 +1822,9 @@ async function exporterTableur() {
     // le nom du personnage tel quel, sans les caractères qu'un système de fichiers refuse
     const nom = String(f.nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').trim() || 'Personnage';
     telecharger(new Blob([classeur], { type: TYPE_XLSX }), `${nom} - Fiche Maverick V15.2.2.xlsx`);
-    message('Classeur exporté.', 'ok');
+    // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
+    const { texte, ton } = messageDExport(avertissements);
+    message(texte, ton);
   } catch (e) {
     message(`Le classeur n’a pas pu être exporté : ${e?.message ?? e}`, 'erreur');
   } finally {
@@ -1882,52 +1885,53 @@ async function importerJson(texte) {
 }
 
 /**
- * Un classeur (.xlsx, .ods, .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs). Ce qui n'a pas de
- * place sur le site (`nonRepris`) et ce que l'import a déduit (`remarques`) s'ajoutent à la fin des notes, sous une ligne datée qui nomme le fichier.
- * Portrait : celui de la fiche ouverte quand le classeur porte son empreinte (un classeur exporté par la page : l'image d'origine et son cadrage) ;
- * sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par défaut) ; sinon aucun.
+ * Un classeur (.xlsx, .ods, .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
+ * sinon le premier onglet qui suit l'un des deux modèles (feuilleDeLaFiche ; le message le nomme). Ce qui n'a pas de place sur le site (`nonRepris`) et
+ * ce que l'import a déduit (`remarques`) s'ajoutent à la fin des notes, sous une ligne datée qui nomme le fichier. Le message « Lecture du classeur… »
+ * est retiré avant le dialogue « import-cible ». Portrait (portraitDeLImport) : celui de la fiche ouverte, avec son cadrage, quand le classeur porte son
+ * empreinte (exporté par la page avec ce portrait), ou pour une mise à jour depuis un classeur sans image (fiche auto, .csv, export sans portrait) ;
+ * sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par défaut) ; un nouveau prétiré tiré d'un
+ * classeur sans image n'en a pas.
  */
 async function importerClasseur(octets, nomFichier) {
   const date = aujourdhui();
   let lu;
+  let classeur;
+  let feuille;
   try {
     message('Lecture du classeur…', 'attente');
-    const classeur = await lireClasseur(octets, { nom: nomFichier });
-    lu = ficheDuClasseur(regles, classeur.feuille('Personnage'), {
-      nomFichier, date, logo: await logoDuModele(), empreintePortrait: fiche.portrait ? empreinte(fiche.portrait) : null,
+    classeur = await lireClasseur(octets, { nom: nomFichier });
+    feuille = feuilleDeLaFiche(classeur);
+    lu = ficheDuClasseur(regles, feuille, {
+      nomFichier, date, format: classeur.format, logo: await logoDuModele(), empreintePortrait: fiche.portrait ? empreinte(fiche.portrait) : null,
     });
   } catch (e) {
     message(`Ce classeur n’a pas pu être lu : ${e?.message ?? e}`, 'erreur');
     return;
   }
+  message('', '');   // le classeur est lu : rien n'est « en cours » pendant que le dialogue attend la réponse
   const nom = fiche.nom || 'ce prétiré';
   const cible = await cibleDeLImport();
-  if (!cible) {
-    message('', '');
-    return;
-  }
+  if (!cible) return;
   const nouvelle = { ...lu.fiche };
   const nonRepris = [...lu.nonRepris];
-  if (lu.portraitGarde && fiche.portrait) {
-    Object.assign(nouvelle, { portrait: fiche.portrait, portrait_x: fiche.portrait_x ?? null, portrait_y: fiche.portrait_y ?? null, portrait_zoom: fiche.portrait_zoom ?? null });
-  } else if (lu.image) {
+  const ouverte = { portrait: fiche.portrait ?? null, cible };
+  const portraitOuvert = { portrait: fiche.portrait, portrait_x: fiche.portrait_x ?? null, portrait_y: fiche.portrait_y ?? null, portrait_zoom: fiche.portrait_zoom ?? null };
+  let portrait = portraitDeLImport(lu, ouverte);
+  if (portrait === 'image') {
     try {
       Object.assign(nouvelle, { portrait: await reduireImage(new Blob([lu.image.octets], { type: lu.image.type })), portrait_x: null, portrait_y: null, portrait_zoom: null });
     } catch {
       nonRepris.push(`Portrait du classeur (${lu.image.type || 'image'}) : illisible ou trop lourd pour la fiche`);
+      portrait = portraitDeLImport({ ...lu, image: null }, ouverte);
     }
   }
+  if (portrait === 'garder') Object.assign(nouvelle, portraitOuvert);
   const lignes = [...nonRepris, ...lu.remarques];
   if (lignes.length) nouvelle.notes = ajouterAuxNotes(nouvelle.notes, [`[${date}] Import du classeur « ${nomFichier} » :`, ...lignes]);
   remplacerLaFiche(nouvelle, cible);
-  // « : 3 informations sans équivalent ajoutées aux notes », « : 1 information sans équivalent et 2 remarques ajoutées aux notes »
-  const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
-  const dans = [
-    nonRepris.length ? pluriel(nonRepris.length, 'information sans équivalent', 'informations sans équivalent') : null,
-    lu.remarques.length ? pluriel(lu.remarques.length, 'remarque', 'remarques') : null,
-  ].filter(Boolean);
-  const notes = dans.length ? ` : ${dans.join(' et ')} ajouté${dans.length > 1 || nonRepris.length + lu.remarques.length > 1 ? 'es' : 'e'} aux notes` : '';
-  message(`Classeur importé (modèle ${lu.disposition})${notes}. ${suiteDeLImport(cible, nom)}`, 'attente');
+  const debut = messageDImport({ disposition: lu.disposition, format: classeur.format, onglet: feuille.nom, nonRepris: nonRepris.length, remarques: lu.remarques.length });
+  message(`${debut} ${suiteDeLImport(cible, nom)}`, 'attente');
 }
 
 /** Un fichier choisi par « Importer » : une fiche JSON (premier caractère non blanc « { »), sinon un classeur. */

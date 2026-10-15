@@ -10,6 +10,7 @@ import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
@@ -210,23 +211,29 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
   assert.equal(typeDImport('magies/magie-de-la-corruption#sort:aiguisage-magique'), 'Amplification (IC pour 3 NM)');
   assert.equal(typeDImport('magies/magie-de-la-foudre#sort:affutage'), 'Amplification\n(IC)');
 
-  // armes : arme.effet tel quel ; la portée que l'effet écrit (portee_min / portee_max), « N » ou « N - M », null sans portée écrite (ni 1 par défaut, R50,
-  // ni portée du type : rien de déduit)
+  // armes : arme.effet tel quel ; la portée de la page « Armes » (décision R50 : la portée écrite, portee_min / portee_max, « N » ou « N - M » ; 1 par défaut,
+  // lib/arme-champs.mjs#porteeDeLArme) ; rien d'autre de déduit (ni la portée du type)
   const armes = new Map(db.prepare('SELECT id, effet, portee_min, portee_max FROM arme').all().map((r) => [r.id, r]));
   for (const a of regles.armes) {
     const l = armes.get(a.id);
     assert.equal(a.effet, l.effet, a.id);
+    assert.ok(!('portee_min' in a) && !('portee_max' in a), `${a.id} : la portée seulement`);
+    assert.equal(a.portee, porteeDeLArme(l).replace('-', ' - '), a.id);
     if (l.portee_min === null) {
-      assert.equal(a.portee, null, a.id);
+      assert.equal(a.portee, '1', `${a.id} : 1 par défaut (R50)`);
       continue;
     }
     const m = /^(\d+)(?: - (\d+))?$/.exec(a.portee);
     assert.ok(m, `${a.id} : « ${a.portee} »`);
     assert.deepEqual([Number(m[1]), Number(m[2] ?? m[1])], [l.portee_min, l.portee_max], a.id);
     assert.equal(m[2] === undefined, l.portee_min === l.portee_max, `${a.id} : « N » pour une portée d’une seule valeur`);
-    assert.ok(!('portee_min' in a) && !('portee_max' in a), `${a.id} : la portée seulement`);
   }
-  assert.ok(regles.armes.some((a) => a.portee?.includes(' - ')) && regles.armes.some((a) => a.portee && !a.portee.includes(' - ')) && regles.armes.some((a) => a.portee === null));
+  assert.ok(regles.armes.some((a) => a.portee.includes(' - ')) && regles.armes.some((a) => a.portee !== '1' && !a.portee.includes(' - ')));
+  assert.ok([...armes.values()].some((l) => l.portee_min === null), 'des armes sans portée écrite : 1 par défaut');
+  // armures élémentaires : leur magie (armure_elementaire.magie_id), par laquelle l'import d'une fiche auto les retrouve
+  const magiesDesArmures = new Map(db.prepare('SELECT id, magie_id FROM armure_elementaire').all().map((r) => [r.id, r.magie_id]));
+  for (const x of regles.armures_elementaires) assert.equal(x.magie_id, magiesDesArmures.get(x.id), x.id);
+  assert.ok(regles.armures_elementaires.every((x) => regles.magies.some((m) => m.id === x.magie_id)), 'chaque armure élémentaire a sa magie');
   const armeDImport = (id) => ['effet', 'portee_min', 'portee_max'].map((c) => historique.valeurDImport('arme', { id }, c));
   const [effetBras, ...porteeBras] = armeDImport('ressources/armes#arme:arbalete:arbalete-a-bras');
   assert.match(effetBras, /1 - 7 portée/);

@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { deflateRawSync, crc32 as crc32DeZlib } from 'node:zlib';
-import { crc32, ecrireZip, lireZip } from '../src/lib/zip.mjs';
+import { crc32, ecrireZip, lireZip, MAX_ENTREE, MAX_TOTAL } from '../src/lib/zip.mjs';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -250,11 +250,45 @@ test('bombe : taille annoncée au-delà des limites, décompression au-delà de 
   const zeros = new Uint8Array(2 ** 20);
   const zip = await ecrireZip([['zeros.bin', zeros], ['b.bin', zeros.subarray(0, 600)]]);
   assert.ok(zip.length < 3000, 'un Mio de zéros tient en quelques Kio');
-  await assert.rejects(lireZip(zip, { maxEntree: 1000 }), illisible(/« zeros\.bin » dépasse la taille permise \(1048576 octets annoncés\)/));
-  await assert.rejects(lireZip(zip, { maxTotal: 2 ** 20 + 500 }), illisible(/« b\.bin » dépasse la taille permise/));
+  await assert.rejects(lireZip(zip, { maxEntree: 1000 }),
+    { message: 'Le classeur dépasse la taille permise : « zeros.bin » ferait 1 Mio une fois décompressé (au plus 1000 octets par partie).' });
+  await assert.rejects(lireZip(zip, { maxTotal: 2 ** 19 }),
+    { message: 'Le classeur dépasse la taille permise : il ferait 1 Mio une fois décompressé (au plus 0,5 Mio).' });
+  await assert.rejects(lireZip(zip, { maxTotal: 2 ** 20 + 500 }), /il ferait 1 Mio une fois décompressé/, 'la somme, pas une entrée');
   assert.equal((await lireZip(zip, { maxEntree: 2 ** 20, maxTotal: 2 ** 20 + 600 })).size, 2);
   // le répertoire central ment : 100 octets annoncés, un Mio réel ; la décompression s'arrête
   await assert.rejects(lireZip(fabriquer([{ nom: 'bombe.xml', donnees: zeros, tailleU: 100 }])), illisible(/« bombe\.xml » se décompresse au-delà de sa taille annoncée \(100 octets\)/));
+});
+
+test('limites par défaut (16 Mio par entrée, 64 Mio en tout) : la somme des tailles annoncées refusée AVANT toute décompression', async () => {
+  assert.equal(MAX_ENTREE, 16 * 2 ** 20);
+  assert.equal(MAX_TOTAL, 64 * 2 ** 20);
+  const { DecompressionStream: D } = globalThis;
+  let decompressions = 0;
+  globalThis.DecompressionStream = class extends D {
+    constructor(...a) {
+      super(...a);
+      decompressions += 1;
+    }
+  };
+  try {
+    // une entrée annoncée à 16 Mio + 1 (le répertoire ment : rien n'est décompressé pour le voir)
+    const grosse = fabriquer([{ nom: 'a.xml', donnees: 'a' }, { nom: 'gros.xml', donnees: 'b', tailleU: MAX_ENTREE + 1 }]);
+    await assert.rejects(lireZip(grosse),
+      { message: 'Le classeur dépasse la taille permise : « gros.xml » ferait 16 Mio une fois décompressé (au plus 16 Mio par partie).' });
+    // cinq entrées de 15 Mio annoncées : chacune permise, 75 Mio en tout ; la première aurait trahi son mensonge à la décompression
+    const cinq = fabriquer(Array.from({ length: 5 }, (_, i) => ({ nom: `gros${i}.bin`, donnees: 'x'.repeat(100), tailleU: 15 * 2 ** 20 })));
+    await assert.rejects(lireZip(cinq), { message: 'Le classeur dépasse la taille permise : il ferait 75 Mio une fois décompressé (au plus 64 Mio).' });
+    // une entrée invalide après une bombe menteuse : le répertoire entier est relu d'abord, la bombe n'est pas décompressée
+    const puisNomRefuse = fabriquer([{ nom: 'bombe.xml', donnees: new Uint8Array(2 ** 20), tailleU: 100 }, { nom: '../x', donnees: 'x' }]);
+    await assert.rejects(lireZip(puisNomRefuse), illisible(/nom d’entrée refusé : « \.\.\/x »/));
+    assert.equal(decompressions, 0, 'aucune décompression avant le refus');
+    // juste sous les limites : lu (le mensonge se voit alors à la décompression)
+    await assert.rejects(lireZip(fabriquer([{ nom: 'b.xml', donnees: 'b', tailleU: MAX_ENTREE }])), illisible(/taille réelle inattendue/));
+    assert.equal(decompressions, 1);
+  } finally {
+    globalThis.DecompressionStream = D;
+  }
 });
 
 test('sans DecompressionStream : message clair (une entrée stockée se lit encore) ; sans CompressionStream : écriture sans compression', async () => {

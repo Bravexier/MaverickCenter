@@ -80,7 +80,8 @@ export const MAITRISES = Object.freeze([
 ].map(Object.freeze));
 
 /** Modèle ordinateur : les cases « 2d 3d 4d 5d » d'une famille (le 2e dé, le 3e…), à gauche de AI à AL, à droite en miroir de AQ à AN.
- * Un dé atteint = sa case remplie (couleur REMPLISSAGE_DE_ATTEINT à l'export ; à l'import, toute couleur ou une marque écrite). */
+ * Un dé atteint = sa case remplie (couleur REMPLISSAGE_DE_ATTEINT à l'export ; à l'import, toute couleur — sauf un fond commun à toutes les cases de
+ * dés, celui du bloc — ou une marque écrite). */
 export function casesDesDes(maitrise) {
   const colonnes = maitrise.cote === 'gauche' ? ['AI', 'AJ', 'AK', 'AL'] : ['AQ', 'AP', 'AO', 'AN'];
   return colonnes.map((c) => `${c}${maitrise.ligne}`);
@@ -209,6 +210,27 @@ export const AUTO = Object.freeze({
   note: 'BA54',
   image: 'A1',
 });
+
+/**
+ * Modèle ordinateur : les zones de saisie dont le site ne garde rien — la solidité des armes, l'AP, l'AM et la solidité de chaque pièce d'armure (grille
+ * AI22:AN24, colonnes de ORDINATEUR.armure.colonnes, lignes de ORDINATEUR.armure.lignes) et du bouclier : la fiche ne les calcule pas. `modele` : le texte
+ * du modèle (« / »), qui n'est pas une valeur ; une autre valeur part dans les notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement`
+ * (id de armure_emplacement) et `valeur` ('ap', 'am', 'solidite') ; les autres : `quoi`.
+ */
+export const SAISIES_SANS_PLACE = Object.freeze([
+  ...ORDINATEUR.armes.map((a, i) => ({ adresse: a.solidite, quoi: `Solidité de l’arme ${i + 1}`, modele: '/' })),
+  ...Object.entries(ORDINATEUR.armure.colonnes).flatMap(([emplacement, colonne]) => Object.entries(ORDINATEUR.armure.lignes)
+    .map(([valeur, ligne]) => ({ adresse: `${colonne}${ligne}`, emplacement, valeur, modele: '' }))),
+  { adresse: ORDINATEUR.bouclier.ap, quoi: 'Bouclier, armure physique', modele: '' },
+  { adresse: ORDINATEUR.bouclier.am, quoi: 'Bouclier, armure magique', modele: '' },
+  { adresse: ORDINATEUR.bouclier.solidite, quoi: 'Bouclier, solidité', modele: '/' },
+].map(Object.freeze));
+
+/** Modèle ordinateur : le titre de l'inventaire (AA38), où le joueur écrit son sac à la suite (« INVENTAIRE | SAC = Sac à dos ») : le site n'en a pas. */
+export const TITRE_DE_L_INVENTAIRE = 'INVENTAIRE | SAC =';
+
+/** Le plus long texte qu'une case de tableur garde (Excel : 32 767 caractères ; lib/tableur-ecriture.mjs#MAX_TEXTE coupe au-delà, fini par « … »). */
+export const LONGUEUR_MAX_D_UNE_CASE = 32_767;
 
 /** La disposition d'un onglet d'après ses libellés fixes (« AP Base » : AA21 dans le modèle ordinateur, AA20 dans la fiche auto ; « COMPÉTENCES »
  * en B21 dans les deux), ou null. `texte(adresse)` rend le texte affiché d'une case. */

@@ -1,26 +1,38 @@
 // Import d'une fiche de personnage depuis un classeur (demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et
 // exportée à tout moment depuis un Excel ou Google Sheet et réexportée sous le même modèle. […] Toute info supplémentaire peut être notée dans les
-// « Notes » »). L'onglet « Personnage » arrive sous la forme de lib/tableur-lecture.mjs (`{ nom, cellules: Map<'A1', { valeur, texte, remplissage }>,
-// images }` ; feuilleDeGrille la fabrique depuis une grille de l'API Google) et suit l'une des deux dispositions de lib/fiche-tableur-cases.mjs : le
-// modèle « ordinateur » que la page écrit (lib/fiche-tableur-export.mjs) ou la fiche auto V15.2.2 des joueurs. ficheDuClasseur rend une fiche au format
-// de lib/fiche-format.mjs, prête pour la page /fiche/ comme l'import d'un JSON.
+// « Notes » »). L'onglet de la fiche (« Personnage », sinon le premier onglet qui suit l'une des deux dispositions : feuilleDeLaFiche) arrive sous la
+// forme de lib/tableur-lecture.mjs (`{ nom, cellules: Map<'A1', { valeur, texte, remplissage, tronquee? }>, images }` ; feuilleDeGrille la fabrique
+// depuis une grille de l'API Google) et suit l'une des deux dispositions de lib/fiche-tableur-cases.mjs : le modèle « ordinateur » que la page écrit
+// (lib/fiche-tableur-export.mjs) ou la fiche auto V15.2.2 des joueurs.
+// ficheDuClasseur rend une fiche au format de lib/fiche-format.mjs, prête pour la page /fiche/ comme l'import d'un JSON.
 // Décisions :
 //   - ne rien inventer (CLAUDE.md, règle d'or) : un nom écrit se retrouve par sa clé (cle()) dans son contexte (sorts : les magies du personnage, toutes
-//     pour le Potentiel Illimité ; dons et spécialités : la classe ; ethnie : la race ; compétence d'un accessoire : la caractéristique de l'effet), puis
-//     par le dernier segment de l'identifiant (les corrections d'orthographe ont gardé les identifiants : « Balade guerrière », « Armure Vif Argent
-//     complet ») ; aucun candidat, ou plusieurs sans départage écrit dans le classeur : l'information part dans `nonRepris`, que la page ajoute aux notes ;
+//     pour le Potentiel Illimité ; dons et spécialités : la classe ; ethnie : la race ; compétence d'un accessoire : la caractéristique de l'effet ;
+//     élément d'armure écrit par sa magie : armure_elementaire.magie_id et la catégorie de l'armure), puis par le dernier segment de l'identifiant (les
+//     corrections d'orthographe ont gardé les identifiants : « Balade guerrière », « Armure Vif Argent complet ») ; aucun candidat, ou plusieurs sans
+//     départage écrit dans le classeur : l'information part dans `nonRepris`, que la page ajoute aux notes ;
+//   - rien ne se perd sans être dit : chaque saisie du classeur est reprise, ou citée dans `nonRepris` avec sa valeur (zones que le site ne garde pas :
+//     solidité, armure de chaque pièce et du bouclier, sac de l'inventaire, bonus et malus de l'armure, case de l'entraînement du modèle ordinateur ;
+//     lignes de la note en double ; image hors de A1) ; ce qui a pu se perdre avant l'import est dit dans `remarques` (case coupée par le tableur, case
+//     relue finie par « … » sans sa suite) ;
 //   - ce que la fiche calcule (niveaux, totaux, dégâts, AP/AM, résistances…) n'est pas relu, sauf pour retrouver un choix que le classeur n'écrit pas :
-//     l'acquis du joueur (acquis écrit − bonus du métier − accessoires, competencesDe), les gains de niveau (maximums de santé et de chakra), la
-//     compétence d'un accessoire « Compétence X » de la fiche auto (case de l'entraînement, L42), la caractéristique du Potentiel Illimité ; chaque
-//     déduction est dite dans `remarques` ;
-//   - la case NOTE : avant MARQUEUR_DES_NOTES, les notes du joueur ; après, les lignes « Clé : valeur » que la page écrit pour ce que le modèle n'a pas de
-//     case pour écrire (lireLaNote) ; une ligne inconnue revient dans les notes (rien ne se perd). Un classeur qui porte le marqueur vient de la page :
-//     ce qu'elle n'y écrit pas n'existe pas (pas de gains de niveau reconstitués, pas de caractéristique déduite). Une ligne « Suite de la case A1 : … »
-//     (un texte trop long pour sa case, lib/tableur-mesure.mjs) se recolle au début resté dans la case avant toute lecture ; une case réécrite depuis
-//     (son texte ne finit plus par « … ») garde son texte, et la ligne revient dans les notes. Un texte affiché seulement (effets des sorts, du
-//     catalogue…) coupé par la page n'a pas de suite : il ne sert qu'à départager deux homonymes, et son début coupé compte alors pour lui (ecritComme) ;
+//     l'acquis du joueur (acquis écrit − bonus du métier − accessoires, competencesDe : une remarque par compétence pour un classeur qui ne vient pas de
+//     la page), les gains de niveau (maximums de santé et de chakra), la compétence d'un accessoire « Compétence X » de la fiche auto (départagée par la
+//     case « Entraînement », L42 : les bonus d'entraînement, guide « Fiche de personnage : Capacités/Dons »), la caractéristique du Potentiel Illimité ;
+//     chaque déduction est dite dans `remarques` ;
+//   - un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » : 20, pas 0,2), sinon sa valeur ; décimal là où la fiche veut un entier :
+//     arrondi vers le bas, et une remarque ;
+//   - la case NOTE : avant le dernier MARQUEUR_DES_NOTES (des notes collées peuvent en contenir un autre), les notes du joueur ; après, les lignes
+//     « Clé : valeur » que la page écrit pour ce que le modèle n'a pas de case pour écrire (lireLaNote ; une clé en double : la première, les autres dans
+//     `nonRepris`) ; une ligne inconnue revient dans les notes. Un classeur qui porte le marqueur vient de la page : ce qu'elle n'y écrit pas n'existe pas
+//     (pas de gains de niveau reconstitués, pas de caractéristique déduite, pas de remarque sur les acquis). Une ligne « Suite de la case A1 : … » (un
+//     texte trop long pour sa case, lib/tableur-mesure.mjs) se recolle au début resté dans la case avant toute lecture ; une case réécrite depuis (son
+//     texte ne finit plus par « … ») garde son texte, et la ligne revient dans les notes. Un texte affiché seulement (effets des sorts, du catalogue…)
+//     coupé par la page n'a pas de suite : il ne sert qu'à départager deux homonymes, et son début coupé compte alors pour lui (ecritComme) ;
 //   - les écritures de la page (lignes de la note, objets, accessoires, armure, effet d'une arme, choix du métier) se relisent par les fonctions de
-//     lib/fiche-tableur-export.mjs, qui les écrit : un seul jeu de lecteurs, l'aller et le retour ne divergent pas ; seule la fiche auto a les siens ;
+//     lib/fiche-tableur-export.mjs, qui les écrit : un seul jeu de lecteurs, l'aller et le retour ne divergent pas ; seule la fiche auto a les siens.
+//     Aucune expression régulière ne revient sur ses pas sur une longue suite d'espaces (pas de préfixe paresseux suivi de blancs) : une case de
+//     32 767 caractères se lit en un temps proportionnel à sa longueur ;
 //   - puis la même chaîne que la page (caracteristiquesCompletes, ethnieImposee, magieAcquiseValable, classesSelonLaMagieInnee, donsValables,
 //     choixDeMetierValables, maitrisesValables) ; ce qu'elle retire est dit dans `nonRepris` ;
 //   - les listes ont la forme qu'envoie la page (aEnvoyer de src/scripts/fiche.mjs) : compétences non nulles dans l'ordre des règles, sorts, inventaire et
@@ -32,25 +44,31 @@
 import { ajouterAuxNotes, ficheVide } from './fiche-format.mjs';
 import {
   armesApresChoix, attributsDe, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe, degatsDArme,
-  donsValables, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, magieAcquiseValable, maitriseDArme, maitrisesValables,
-  maitriseDesSorts, niveauGlobal, progressionAttendue, refusMagieAcquise, trouver,
+  donsValables, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, magieAcquiseValable, maitriseDArme,
+  maitrisesValables, maitriseDesSorts, niveauGlobal, progressionAttendue, refusMagieAcquise, trouver,
 } from './fiche-moteur.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, casesDesDes, casesDuDon, cle, DONS, dispositionDe, EMPLACEMENTS_DU_MODELE, lettresDeColonne,
-  MAITRISES, MARQUEUR_DES_NOTES,
+  LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
 } from './fiche-tableur-cases.mjs';
 import {
-  ARMURE_COMPLETE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme, lireGains,
-  lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
+  ARMURE_COMPLETE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme,
+  lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
 export const ERREUR_DISPOSITION = 'Ce classeur ne suit ni le modèle « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » ni la fiche auto V15.2.2 (onglet « Personnage »).';
 
+/** Remarque d'un .csv au modèle ordinateur sans marque de dé : les dés atteints s'y écrivent par la couleur des cases, qu'un .csv ne garde pas. */
+export const REMARQUE_MAITRISES_CSV = 'Les maîtrises d\'armes ne se lisent pas dans un .csv (les couleurs ne s\'y gardent pas) : importez le .xlsx ou le .ods.';
+
 /** Le Potentiel Illimité prend ses sorts dans toutes les magies (sortsPossibles de lib/fiche-moteur.mjs, même identifiant). */
 const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
+
+/** Libellé des cases de la bourse (« Précieuse », « Or », « Fer » du modèle). */
+const BOURSE = Object.freeze({ bourse_pp: 'précieuse', bourse_ro: 'or', bourse_rf: 'fer' });
 
 // ------------------------------------------------------------------ lecture des cases
 
@@ -77,13 +95,16 @@ function texteBrut(cellule) {
 const texteDe = (cellule) => texteBrut(cellule).trim();
 
 /**
- * Le nombre d'une case : sa valeur quand le tableur en donne une (tronquée à l'entier), sinon le premier entier de son texte, espaces retirés (« 20 600 »
- * = 20600 ; « 20600 / 23450 » = 20600) ; null s'il n'y en a pas.
+ * Le nombre d'une case : celui qu'écrit son texte quand il montre « % » (« 20% » : 20 ; le tableur en garde 0,2), sinon sa valeur quand le tableur en
+ * donne une, sinon le premier nombre de son texte, espaces retirés (« 20 600 » = 20600 ; « 20600 / 23450 » = 20600 ; « 12,5 » = 12,5) ; null s'il n'y
+ * en a pas. Peut être décimal : la fiche arrondit vers le bas (et le dit) là où elle veut un entier.
  */
 export function nombreDe(cellule) {
-  if (typeof cellule?.valeur === 'number' && Number.isFinite(cellule.valeur)) return Math.trunc(cellule.valeur);
-  const m = /[-−]?\d+/.exec(texteBrut(cellule).replace(/[\s\u00a0\u202f]+/g, ''));
-  return m ? Number(m[0].replace('−', '-')) : null;
+  const t = texteBrut(cellule);
+  const v = cellule?.valeur;
+  if (typeof v === 'number' && Number.isFinite(v) && !t.includes('%')) return v;
+  const m = /[-−]?\d+(?:[.,]\d+)?/.exec(t.replace(/[\s  ]+/g, ''));
+  return m ? Number(m[0].replace('−', '-').replace(',', '.')) : null;
 }
 
 /** « a / b » → [a, b] (nombreDe de chaque côté du « / ») ; sans « / », [nombre, null]. */
@@ -120,24 +141,29 @@ function ecritComme(ecrit, attendu) {
 
 /** Les lignes non vides d'un texte, sans leurs espaces de bord. */
 const lignesDe = (texte) => String(texte ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+/** Les parties d'un texte écrit sur plusieurs lignes ou sur une ligne, séparées par « · » (description d'un sort, lib/fiche-tableur-export.mjs). */
+const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.trim()).filter(Boolean);
 
 // ------------------------------------------------------------------ la case NOTE
 
 /**
- * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs: { nom:
- * [valeur…] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; accessoires : [{ emplacement, valeur }]), suites:
- * Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case), autres: [ligne] (lignes après le marqueur que rien ne reconnaît :
- * elles reviennent dans les notes) }. Les lignes d'information (refaites à chaque export) sont ignorées.
+ * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements ;
+ * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
+ * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
+ * d'information (refaites à chaque export) sont ignorées. Le dernier marqueur : des notes collées d'une autre fiche peuvent en porter un.
  */
 export function lireLaNote(texte) {
   const lignes = texteBrut(texte).split('\n');
   const repere = cle(MARQUEUR_DES_NOTES);
-  const i = lignes.findIndex((l) => l.trim() === MARQUEUR_DES_NOTES || cle(l) === repere);
+  let i = -1;
+  for (let k = lignes.length - 1; k >= 0 && i < 0; k -= 1) if (lignes[k].trim() === MARQUEUR_DES_NOTES || cle(lignes[k]) === repere) i = k;
   const avant = i < 0 ? [...lignes] : lignes.slice(0, i);
   while (avant.length && !avant[avant.length - 1].trim()) avant.pop();
   const valeurs = {};
   const suites = new Map();
   const autres = [];
+  const doubles = [];
   for (const ligne of i < 0 ? [] : lignes.slice(i + 1)) {
     if (!ligne.trim()) continue;
     const lue = lireLigneDeNote(ligne);
@@ -146,32 +172,39 @@ export function lireLaNote(texte) {
     else if (lue.nom === 'suite') {
       if (suites.has(lue.adresse)) autres.push(ligne);
       else suites.set(lue.adresse, { valeur: lue.valeur, ligne });
-    } else if (lue.nom === 'accessoire') (valeurs.accessoires ??= []).push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    else (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (lue.nom === 'accessoire') {
+      if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
+      else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
+    } else if (lue.nom === 'evenement') (valeurs.evenement ??= []).push(lue.valeur);
+    else if (valeurs[lue.nom]) doubles.push(ligne);
+    else valeurs[lue.nom] = [lue.valeur];
   }
-  return { marqueur: i >= 0, notes: avant.length ? avant.join('\n') : null, valeurs, suites, autres };
+  return { marqueur: i >= 0, notes: avant.length ? avant.join('\n') : null, valeurs, suites, autres, doubles };
 }
 
 /**
- * L'acquis du joueur écrit dans la case de l'entraînement (L42) : « 2 Magie | 10 Concentration » (fiche auto) ou « Concentration 10 | Magie 2 » (modèle
- * ordinateur) → Map competence_id → points ; null pour une case vide ou qu'on ne lit pas en entier.
+ * Les bonus d'entraînement écrits dans la case « Entraînement » (L42) de la fiche auto : « 2 Magie | 10 Concentration » ou « Concentration 10 | Magie 2 »
+ * → Map competence_id → points ; null pour une case vide ou qu'on ne lit pas en entier. Guide « Fiche de personnage : Capacités/Dons » : la case note
+ * « tous les bonus relatifs à l'avancée des différents entraînements » (15 compétences au plus, 10 % au plus) ; la fiche auto les compte dans l'acquis
+ * qu'elle affiche. Le site ne les distingue pas des autres acquis : l'import ne s'en sert que pour départager la compétence d'un accessoire.
  */
-export function acquisDeLEntrainement(regles, texte) {
+export function bonusDEntrainement(regles, texte) {
   const brut = String(texte ?? '').trim();
   if (!brut) return null;
-  const acquis = new Map();
-  for (const morceau of brut.split('|')) {
-    let m = /^\s*(\d+)\s*%?\s+(.+?)\s*$/.exec(morceau);
+  const bonus = new Map();
+  for (const morceau of brut.split('|').map((x) => x.trim())) {
+    // « 2 Magie » (le nombre en tête, « % » permis), sinon « Magie 2 » (le nombre à la fin) ; rien qui revienne sur ses pas
+    let m = /^(\d+)(?:\s*%)?\s+(\S.*)$/.exec(morceau);
     let n;
     let nom;
     if (m) [n, nom] = [Number(m[1]), m[2]];
-    else if ((m = /^\s*(.+?)\s+(\d+)\s*%?\s*$/.exec(morceau))) [n, nom] = [Number(m[2]), m[1]];
+    else if ((m = /\s(\d+)\s*%?$/.exec(morceau))) [n, nom] = [Number(m[1]), morceau.slice(0, m.index)];
     else return null;
     const k = regles.competences.filter((c) => cle(c.nom) === cle(nom) || c.id === cle(nom));
     if (k.length !== 1) return null;
-    acquis.set(k[0].id, (acquis.get(k[0].id) ?? 0) + n);
+    bonus.set(k[0].id, (bonus.get(k[0].id) ?? 0) + n);
   }
-  return acquis;
+  return bonus;
 }
 
 // ------------------------------------------------------------------ retrouver un nom
@@ -193,17 +226,25 @@ function retrouver(liste, texte, { nom = (x) => x.nom, autres = (x) => [segment(
 /** Les écritures d'une magie : son nom court, l'identifiant, et l'identifiant sans « magie-du- », « magie-de-la- »… (« Magie de la Nécromancie »). */
 const ecrituresDeMagie = (m) => [segment(m.id), segment(m.id).replace(/^magie-(?:du-|de-la-|des-|de-l|de-)/, '')];
 
+/** Un nom d'arme de la fiche auto sans la mention de ses mains entre parenthèses (« Arbalète à bras\n(une main) ») ; lu depuis la fin, sans retour en arrière. */
+function sansLesMains(nom) {
+  const brut = String(nom ?? '').trim();
+  const i = brut.endsWith(')') ? brut.lastIndexOf('(') : -1;
+  return i >= 0 && /^\s*(?:une|deux|1|2)\b[^()]*mains?\s*$/i.test(brut.slice(i + 1, -1)) ? brut.slice(0, i).trim() : brut;
+}
+
 // ------------------------------------------------------------------ l'import
 
 /**
  * La fiche que décrit l'onglet « Personnage » d'un classeur (voir l'en-tête). `feuille` : `{ cellules: Map, images }` (lib/tableur-lecture.mjs,
  * feuilleDeGrille). `logo` : les octets du logo du modèle (une image identique n'est pas un portrait) ; `empreintePortrait` : celle du portrait de la fiche
- * ouverte (un classeur exporté avec ce portrait le garde, avec son cadrage). `nomFichier` et `date` servent à la page pour la ligne d'en-tête des notes
- * (« [JJ/MM/AAAA] Import du classeur « … » : ») ; acceptés ici pour la même signature.
+ * ouverte (un classeur exporté avec ce portrait le garde, avec son cadrage). `format` : celui du fichier lu ('xlsx', 'ods', 'csv' : un .csv ne garde pas
+ * les couleurs des maîtrises). `nomFichier` et `date` servent à la page pour la ligne d'en-tête des notes (« [JJ/MM/AAAA] Import du classeur « … » : ») ;
+ * acceptés ici pour la même signature.
  * { fiche, disposition: 'ordinateur' | 'auto', nonRepris: [texte], remarques: [texte], image: Image | null, portraitGarde }.
  * Une disposition inconnue lève une Error (ERREUR_DISPOSITION).
  */
-export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/MM/AAAA', logo = null, empreintePortrait = null } = {}) {
+export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/MM/AAAA', logo = null, empreintePortrait = null, format = null } = {}) {
   let cellules = feuille?.cellules instanceof Map ? feuille.cellules : new Map(Object.entries(feuille?.cellules ?? {}));
   const cellule = (adresse) => cellules.get(adresse) ?? null;
   const texte = (adresse) => texteDe(cellule(adresse));
@@ -215,6 +256,16 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const remarques = [];
   const perdu = (ligne) => nonRepris.push(ligne);
   const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
+  const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? e;
+
+  /** Un nombre lu là où la fiche veut un entier : décimal, arrondi vers le bas, et une remarque (« Bourse (or) : « 12,5 » lu 12 »). */
+  const entierDe = (n, ecrit, quoi) => {
+    if (n === null || Number.isInteger(n)) return n;
+    const bas = Math.floor(n);
+    remarques.push(`${quoi} : « ${ecrit} » lu ${bas}`);
+    return bas;
+  };
+  const entierLu = (adresse, quoi) => entierDe(nombre(adresse), texte(adresse), quoi);
 
   /**
    * Le seul candidat ; sinon une ligne de `nonRepris` (`quoi` : « Race », « Arme 1 »… ; `ou` : « dans les règles », « parmi les ethnies de … » ;
@@ -230,7 +281,19 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     return null;
   };
 
+  // ---- ce qui a pu se perdre avant l'import : une case coupée par la lecture (lib/tableur-lecture.mjs), la case NOTE pleine
+  for (const [adresse, c] of cellules) if (c?.tronquee) remarques.push(`Case ${adresse} : trop longue, coupée à la lecture du classeur ; sa fin n'est pas reprise`);
   const note = lireLaNote(cellule(d.note));
+  const noteBrute = texteBrut(cellule(d.note));
+  if (noteBrute.length >= LONGUEUR_MAX_D_UNE_CASE - 1 && !cellule(d.note)?.tronquee) {
+    if (noteBrute.trimEnd().endsWith('…')) {
+      remarques.push(`Case NOTE (${d.note}) : ${enChiffres(noteBrute.length)} caractères finis par « … », la limite d'une case de tableur : sa fin a été coupée et n'est pas reprise`);
+    } else if (note.marqueur && note.notes?.endsWith('…')) {
+      remarques.push(`Notes : raccourcies à l'export (la case NOTE est pleine : ${enChiffres(noteBrute.length)} caractères) ; leur fin n'est pas dans le classeur`);
+    }
+  }
+  for (const ligne of note.doubles) perdu(`Note : ligne « ${ligne.trim()} » en double, seule la première de cette clé est lue`);
+
   // les textes relus coupés par la page : la suite, lue dans la note, recollée au début resté dans la case (une copie des cases : la feuille n'est pas
   // touchée) ; une case recollée ne porte plus que sa part relue
   const recollees = new Set();
@@ -248,6 +311,24 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   } else note.autres.push(...[...note.suites.values()].map((x) => x.ligne));
   const deLaPage = note.marqueur;
   const notee = (champ) => note.valeurs[champ] ?? [];
+
+  // ---- un classeur de la page : une case relue entière (lib/fiche-tableur-export.mjs) finie par « … » sans sa suite dans la note a perdu sa fin. Cela
+  // n'arrive que si la page a dû retirer des lignes de données d'une note pleine (texteDeLaNote : ligne « Lignes retirées (case NOTE pleine) : N ») ;
+  // sinon un « … » final est celui du joueur (« le Taciturne… »).
+  const retirees = notee('lignesRetirees')[0];
+  if (retirees) remarques.push(`Note : ${Number(retirees) > 1 ? `${retirees} lignes de données retirées` : 'une ligne de données retirée'} à l'export, la case NOTE étant pleine : ce qu'elle${Number(retirees) > 1 ? 's' : ''} portai${Number(retirees) > 1 ? 'en' : ''}t n'est pas repris`);
+  if (deLaPage && !auto && retirees) {
+    const O = ORDINATEUR;
+    const relues = [O.nom, O.surnom, O.lieuOrigine, O.race, O.magieInnee, O.magieAcquise, O.dieuChoisi, O.xp, O.classe1, O.classe2, O.specialite1,
+      O.specialite2, ...O.armes.map((x) => x.nom), O.armure.bonus, O.bouclier.nom, O.bouclier.composition, ...Object.values(O.accessoires), ...O.ceinture,
+      ...O.inventaire.colonnes.flatMap((c) => O.inventaire.lignes.map((l) => `${c}${l}`)), casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom,
+      ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom), ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]),
+      ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)];
+    for (const adresse of relues) {
+      if (recollees.has(adresse) || sansLaCoupure(texte(adresse)) === null) continue;
+      remarques.push(`Case ${adresse} : « … » final sans ligne « ${SUITE_DE_LA_CASE} ${adresse} » dans la note : la fin de la case a été perdue, sauf si le « … » fait partie du texte`);
+    }
+  }
 
   const f = ficheVide(texte(d.nom));
   Object.assign(f, {
@@ -270,11 +351,12 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       { ou: race ? `parmi les ethnies de la race ${race.nom}` : 'sans race reconnue' })?.id ?? null;
   }
   if (texte(d.dieuChoisi)) f.dieu_choisi_id = unSeul(retrouver(regles.dieux, texte(d.dieuChoisi)), 'Dieu choisi', texte(d.dieuChoisi))?.id ?? null;
-  for (const [champ, adresse] of [['alignement_loyal', d.loyal], ['alignement_chaotique', d.chaotique], ['alignement_bon', d.bon], ['alignement_mauvais', d.mauvais],
-    ['bourse_pp', d.bourseP], ['bourse_ro', d.bourseO], ['bourse_rf', d.bourseF]]) {
-    f[champ] = Math.max(0, nombre(adresse) ?? 0);
+  for (const [champ, adresse, quoi] of [['alignement_loyal', d.loyal, 'Alignement (loyal)'], ['alignement_chaotique', d.chaotique, 'Alignement (chaotique)'],
+    ['alignement_bon', d.bon, 'Alignement (bon)'], ['alignement_mauvais', d.mauvais, 'Alignement (mauvais)'],
+    ['bourse_pp', d.bourseP, `Bourse (${BOURSE.bourse_pp})`], ['bourse_ro', d.bourseO, `Bourse (${BOURSE.bourse_ro})`], ['bourse_rf', d.bourseF, `Bourse (${BOURSE.bourse_rf})`]]) {
+    f[champ] = Math.max(0, entierLu(adresse, quoi) ?? 0);
   }
-  f.xp = Math.max(0, nombre(d.xp) ?? 0);
+  f.xp = Math.max(0, entierLu(d.xp, 'XP') ?? 0);
 
   // ---- classes, spécialités, mode
   for (const [rang, aClasse, aSpecialite] of [[1, d.classe1, d.specialite1], [2, d.classe2, d.specialite2]]) {
@@ -299,7 +381,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- caractéristiques (base, croix)
   for (const c of CASES_CARACTERISTIQUES) {
-    const base = nombre(c.base);
+    const base = entierLu(c.base, `${nomDe(regles.caracteristiques, c.id)} (base)`);
     const croix = c.croix.filter((a) => estCoche(cellule(a))).length;
     // une croix sans base : la base part du minimum, comme une case vide de la page (caracteristiquesCompletes)
     const min = race?.bornes?.[c.id]?.[0] ?? regles.constantes['caracteristique.base_min'];
@@ -325,20 +407,26 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- maîtrises d'armes
   const maitrise = maitriseDArme(regles);
+  // modèle ordinateur : un dé atteint est une case remplie ou marquée ; un fond commun à toutes les cases de dés est celui du bloc (mise en forme), pas un
+  // dé atteint — sauf le gris de la page (REMPLISSAGE_DE_ATTEINT : cinq dés partout)
+  const casesDeDes = MAITRISES.flatMap(casesDesDes);
+  const fonds = casesDeDes.map((a) => cellule(a)?.remplissage ?? null);
+  const fondDuBloc = fonds[0] && fonds[0] !== REMPLISSAGE_DE_ATTEINT && fonds.every((x) => x === fonds[0]) ? fonds[0] : null;
+  const atteint = (a) => (Boolean(cellule(a)?.remplissage) && cellule(a).remplissage !== fondDuBloc) || porteUneMarque(texte(a));
   for (const m of MAITRISES) {
-    let des;
-    if (auto) des = nombre(`${m.cote === 'gauche' ? d.maitrises.gauche : d.maitrises.droite}${m.ligne}`);
-    else des = maitrise.desSansMaitrise + casesDesDes(m).filter((a) => Boolean(cellule(a)?.remplissage) || porteUneMarque(texte(a))).length;
-    if (des === null || des <= maitrise.desSansMaitrise) continue;
     const famille = nomDe(regles.familles_armes, m.famille);
+    let des;
+    if (auto) des = entierLu(`${m.cote === 'gauche' ? d.maitrises.gauche : d.maitrises.droite}${m.ligne}`, `Maîtrise ${famille}`);
+    else des = maitrise.desSansMaitrise + casesDesDes(m).filter(atteint).length;
+    if (des === null || des <= maitrise.desSansMaitrise) continue;
     if (des > maitrise.desMax) perdu(`Maîtrise ${famille} : ${des} dés, ramenés à ${maitrise.desMax} (le maximum)`);
     f.maitrises_armes.push({ arme_famille_id: m.famille, des: Math.min(des, maitrise.desMax) });
   }
+  if (!auto && format === 'csv' && !casesDeDes.some((a) => porteUneMarque(texte(a)))) remarques.push(REMARQUE_MAITRISES_CSV);
   const ordreDesFamilles = famillesMaitrisables(regles).map((x) => x.id);
   f.maitrises_armes.sort((a, b) => ordreDesFamilles.indexOf(a.arme_famille_id) - ordreDesFamilles.indexOf(b.arme_famille_id));
 
   // ---- accessoires
-  const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? e;
   const proprietes = [...new Map(regles.accessoires.map((a) => [a.propriete, a.propriete_nom ?? a.propriete])).entries()];
   const proprieteDe = (t) => proprietes.find(([id, nom]) => cle(nom) === cle(t) || id === cle(t)) ?? null;
   /** L'effet `libelle` d'une propriété (et sa valeur tirée, qui départage les fourchettes « Compétence F ») ; des lignes identiques comptent pour une. */
@@ -401,7 +489,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   /** Valeur tirée d'un accessoire de la fiche auto : « 18% » ou 0,18 (pourcentage du tableur) → 18. */
   const valeurTiree = (c) => {
     if (typeof c?.valeur === 'number' && c.valeur > 0 && c.valeur < 1 && !/%/.test(texteDe(c))) return Math.round(c.valeur * 100);
-    const t = texteDe(c).replace(/[\s\u00a0\u202f]+/g, '').replace(',', '.');
+    const t = texteDe(c).replace(/[\s  ]+/g, '').replace(',', '.');
     const n = Number.parseFloat(t);
     if (!Number.isFinite(n)) return null;
     return Math.round(!t.includes('%') && n > 0 && n < 1 ? n * 100 : n);
@@ -524,41 +612,62 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const c of metierLus) if (!f.metier_bonus.includes(c)) perdu(`Métier : choix « ${nomDe(regles.competences, c.competence_id)} » du rang ${c.rang} hors des options`);
   f.maitrises_armes = maitrisesValables(regles, f);
 
-  // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier et ce que la case
-  // de l'entraînement (L42) donne au joueur, vaut la valeur tirée
-  const entrainement = auto ? acquisDeLEntrainement(regles, texte(casesDuDon(DONS.entrainement).effet)) : null;
+  // ---- compétences : naturel et acquis écrits (entiers)
   const caseDeCompetence = new Map(CASES_COMPETENCES.map((c) => [c.id, c]));
+  const ecrits = new Map(regles.competences.filter((k) => caseDeCompetence.has(k.id)).map((k) => {
+    const cases = caseDeCompetence.get(k.id);
+    return [k.id, { naturel: entierLu(cases.naturel, `${k.nom} (naturel)`), acquis: entierLu(cases.acquis, `${k.nom} (acquis)`) }];
+  }));
+
+  // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier et les bonus
+  // d'entraînement (L42), vaut la valeur tirée
+  const entrainement = auto ? bonusDEntrainement(regles, texte(casesDuDon(DONS.entrainement).effet)) : null;
   if (entrainement) {
     const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
     for (const a of f.accessoires) {
       const effet = trouver(regles.accessoires, a.accessoire_effet_id);
       const cible = effet?.effets?.find((c) => c.cible === 'competence');
       if (!cible || a.competence_id || a.valeur === null) continue;
-      const candidats = regles.competences.filter((k) => k.caracteristique_id === cible.cible_id).filter((k) => {
+      const parCompetence = regles.competences.filter((k) => k.caracteristique_id === cible.cible_id && caseDeCompetence.has(k.id)).map((k) => {
         const c = calcul.get(k.id);
-        const reste = (nombre(caseDeCompetence.get(k.id).acquis) ?? 0) - c.metier - (entrainement.get(k.id) ?? 0);
-        return reste === a.valeur || reste === Math.min(a.valeur, Math.max(0, c.plafondAcquis - c.metier));
+        const ecrit = ecrits.get(k.id).acquis ?? 0;
+        const reste = ecrit - c.metier - (entrainement.get(k.id) ?? 0);
+        return { k, ecrit, metier: c.metier, entrainement: entrainement.get(k.id) ?? 0, reste, ok: reste === a.valeur || reste === Math.min(a.valeur, Math.max(0, c.plafondAcquis - c.metier)) };
       });
+      const candidats = parCompetence.filter((x) => x.ok);
       if (candidats.length === 1) {
-        a.competence_id = candidats[0].id;
-        remarques.push(`Compétence de l'accessoire ${libelleDEmplacement(a.emplacement)} (${effet.libelle} ${a.valeur}) déduite : ${candidats[0].nom}`);
+        const x = candidats[0];
+        a.competence_id = x.k.id;
+        const calculEcrit = [x.metier ? `métier ${x.metier}` : null, x.entrainement ? `entraînement ${x.entrainement}` : null, `accessoire ${x.reste}`].filter(Boolean).join(' + ');
+        remarques.push(`Compétence de l'accessoire ${libelleDEmplacement(a.emplacement)} (${effet.libelle} ${a.valeur}) déduite : ${x.k.nom} (acquis ${x.ecrit} = ${calculEcrit})`);
       }
     }
   }
 
-  // ---- compétences : naturel, et l'acquis du joueur = l'acquis écrit moins le métier et les accessoires (que la fiche ajoute d'elle-même)
+  // ---- compétences : l'acquis du joueur = l'acquis écrit moins le métier et les accessoires (que la fiche ajoute d'elle-même) ; un classeur qui ne vient
+  // pas de la page le dit, compétence par compétence (ses bonus peuvent être d'anciennes valeurs) ; un acquis écrit plus petit que ces bonus, toujours
   const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
+  const accessoiresDe = (id) => effetsDesAccessoires(regles, f).filter((e) => e.cible === 'competence' && e.cible_id === id && !e.aChoisir && e.valeur !== null);
   for (const k of regles.competences) {
-    const cases = caseDeCompetence.get(k.id);
-    if (!cases) continue;
-    const naturel = Math.max(0, nombre(cases.naturel) ?? 0);
-    const ecrit = nombre(cases.acquis) ?? 0;
-    const plus = calcul.get(k.id).metier + calcul.get(k.id).accessoire;
+    if (!caseDeCompetence.has(k.id)) continue;
+    const naturel = Math.max(0, ecrits.get(k.id).naturel ?? 0);
+    const ecrit = ecrits.get(k.id).acquis ?? 0;
+    const c = calcul.get(k.id);
+    const plus = c.metier + c.accessoire;
     let acquis = ecrit - plus;
-    if (acquis < 0) {
-      remarques.push(`Compétence ${k.nom} : acquis du classeur ${ecrit}, moins que ce qu'ajoutent le métier et les accessoires (${plus}) : acquis du joueur 0`);
-      acquis = 0;
+    if (plus) {
+      const termes = [];
+      const terme = (v, quoi) => termes.push(` ${v >= 0 ? '−' : '+'} ${Math.abs(v)} ${quoi}`);
+      if (c.metier) terme(c.metier, `du métier ${nomDe(regles.metiers, f.metier_id)} (base)`);
+      if (c.accessoire) {
+        const emplacements = [...new Set(accessoiresDe(k.id).map((e) => libelleDEmplacement(e.emplacement)))];
+        terme(c.accessoire, `${emplacements.length > 1 ? 'des accessoires' : 'de l\'accessoire'} ${emplacements.join(', ')}`);
+      }
+      const debut = `${k.nom} : acquis ${ecrit} du classeur${termes.join('')}`;
+      if (acquis < 0) remarques.push(`${debut} : moins que ces bonus, 0 au joueur`);
+      else if (!deLaPage) remarques.push(`${debut} = ${acquis} au joueur`);
     }
+    acquis = Math.max(0, acquis);
     if (naturel || acquis) f.competences.push({ competence_id: k.id, naturel, acquis });
   }
 
@@ -576,19 +685,20 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       return;
     }
     // homonymes (« Vague déferlante » : Corruption et Arcane, pour un Potentiel Illimité) : les colonnes écrites, comparées aux valeurs au NM du sort
-    // (leur début, pour une case coupée par la page) ; dans une description écrite entière, chaque ligne du D/S/B et des effets du sort qui y est compte,
-    // une seule qui n'y est pas écarte le sort ; coupée, on ne sait pas où : ses lignes entières comptent, et le début de la dernière
+    // (leur début, pour une case coupée par la page) ; dans une description écrite entière (ses parties sur des lignes, ou sur une ligne séparées par
+    // « · »), chaque ligne du D/S/B et des effets du sort qui y est compte, une seule qui n'y est pas écarte le sort ; coupée, on ne sait pas où : ses
+    // parties entières comptent, et le début de la dernière
     const auNm = (s, ch) => (s[ch] ? valeurAuNm(s[ch], s.bonus ?? [], ch, Math.min(3, Math.max(0, nm))) : '');
     const score = (s) => {
       if (ligne === null) return 0;
       const n = ['type', 'cout', 'portee', 'zone'].filter((ch) => texte(`${colonnes[ch]}${ligne}`) && ecritComme(texte(`${colonnes[ch]}${ligne}`), auNm(s, ch))).length;
       const description = texteBrut(cellule(`${colonnes.description}${ligne}`)).trim();
       const montre = sansLaCoupure(description);
-      const lignesEcrites = lignesDe(montre ?? description);
-      const coupee = montre !== null && lignesEcrites.length ? cle(lignesEcrites.pop()) : null;
-      const ecrites = new Set(lignesEcrites.map(cle));
+      const parties = segmentsDe(montre ?? description);
+      const coupee = montre !== null && parties.length ? cle(parties.pop()) : null;
+      const ecrites = new Set(parties.map(cle));
       if (!ecrites.size && coupee === null) return n;
-      const siennes = ['dsb', 'effets'].flatMap((ch) => lignesDe(auNm(s, ch))).map(cle);
+      const siennes = ['dsb', 'effets'].flatMap((ch) => segmentsDe(auNm(s, ch))).map(cle);
       if (montre === null) return siennes.every((l) => ecrites.has(l)) ? n + siennes.length : -Infinity;
       return n + siennes.filter((l) => ecrites.has(l)).length + (coupee && siennes.some((l) => l.startsWith(coupee)) ? 1 : 0);
     };
@@ -603,7 +713,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   };
   for (const l of d.sorts.lignes) {
     const nom = texte(`${colonnes.nom}${l}`);
-    if (nom) ajouterSort(nom, nombre(`${colonnes.nm}${l}`) ?? 0, l);
+    if (nom) ajouterSort(nom, entierLu(`${colonnes.nm}${l}`, `Sort « ${nom} » (NM)`) ?? 0, l);
   }
   for (const v of notee('sorts')) {
     for (const { nom, nm } of lireListe(v).map(lireSortEnSuite)) ajouterSort(nom, nm ?? 0, null);
@@ -638,7 +748,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
    */
   const amelioration = (t, cible, quoi) => {
     if (!t || ['aucune', 'aucun'].includes(cle(t))) return null;
-    const niveau = lireNiveauDAmelioration(t) ?? /^\s*\+?\s*(\d+)\s*(?:\([^()]*\))?\s*$/.exec(t)?.[1];
+    const niveau = lireNiveauDAmelioration(t) ?? /^\+?\s*(\d+)(?:\s*\([^()]*\))?$/.exec(t.trim())?.[1];
     const effetEcrit = lireEffetDAmelioration(t);
     const liste = regles.ameliorations.filter((a) => a.cible === cible);
     const trouvee = niveau !== null && niveau !== undefined
@@ -647,13 +757,14 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     if (!trouvee) perdu(`${quoi} : « ${t} » introuvable dans les règles`);
     return trouvee?.id ?? null;
   };
-  // l'effet en plus (modèle ordinateur), relu une fois la fiche entière : la part affichée qui le suit dans la case est celle de la fiche relue
-  // (partiesDeLArme) ; la fiche auto n'en a pas (son « Effet en plus », AA13, est une formule : effet du catalogue, du matériau, malus d'ambidextrie)
+  // l'effet en plus (modèle ordinateur), relu une fois la fiche entière : la part affichée de la case est celle de la fiche relue (partiesDeLArme) ; la
+  // fiche auto n'en a pas (son « Effet en plus », AA13, est une formule, =BDD!AJ36 dans les fiches du propriétaire relevées le 2026-10-15 : on y lit
+  // l'effet du catalogue puis celui du matériau ; docs/fiche-auto.md)
   const effetsEnPlus = [];
   for (const [i, cases] of d.armes.entries()) {
     const rang = i + 1;
     const quoi = `Arme ${rang}`;
-    const nom = auto ? texte(cases.nom).replace(/\s*\(\s*(?:une|deux|1|2)\b[^()]*mains?\s*\)\s*$/i, '').trim() : texte(cases.nom);
+    const nom = auto ? sansLesMains(texte(cases.nom)) : texte(cases.nom);
     if (!nom) continue;
     const effet = texteBrut(cellule(cases.effet));
     const lue = auto ? null : lireEffetDArme(effet);
@@ -690,12 +801,16 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const armureElementaire = (t, armure, quoi) => {
     const parNom = retrouver(regles.armures_elementaires, t, { autres: () => [] });
     if (parNom.length) return unSeul(parNom, quoi, t)?.id ?? null;
-    // fiche auto : le nom de la magie, l'armure élémentaire de cette magie et de la catégorie de l'armure
+    // fiche auto : le nom d'une magie ; l'armure élémentaire de cette magie (armure_elementaire.magie_id) et de la catégorie de l'armure
     const magie = retrouver(regles.magies, t, { autres: ecrituresDeMagie });
     if (magie.length === 1 && armure) {
-      const id = regles.armures_elementaires.find((x) => cle(x.categorie) === cle(armure.type) && segment(x.id) === cle(magie[0].nom))?.id ?? null;
-      if (!id) perdu(`${quoi} : pas d'armure élémentaire ${magie[0].nom} de catégorie ${armure.type}`);
-      return id;
+      const x = regles.armures_elementaires.find((e) => e.magie_id === magie[0].id && cle(e.categorie) === cle(armure.type)) ?? null;
+      if (!x) {
+        perdu(`${quoi} : pas d'armure élémentaire ${magie[0].nom} de catégorie ${armure.type}`);
+        return null;
+      }
+      remarques.push(`Élément d'armure déduit de la magie « ${magie[0].nom} » et de la catégorie « ${armure.type} » : ${x.nom}`);
+      return x.id;
     }
     perdu(`${quoi} : « ${t} » introuvable dans les règles`);
     return null;
@@ -716,10 +831,16 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       lue.ligne.amelioration_elementaire_id = amelioration(texte(d.armure.ameliorationElement), 'armure_elementaire', `Armure (${lue.armure.nom}), amélioration de l’élément`);
     }
   } else {
-    // une ligne par pièce (lib/fiche-tableur-export.mjs#lireLigneDArmure) ; sans elles, « Nom Armure » est l'armure complète
-    const lignes = lignesDe(texte(d.armure.bonus));
-    for (const l of lignes) {
+    // « Bonus/ Malus » (AQ21) : une pièce par ligne qui commence par un emplacement ou nomme une armure (lib/fiche-tableur-export.mjs#lireLigneDArmure) ;
+    // une autre ligne n'a pas de place sur le site. « Nom Armure » (AD22) : l'armure complète quand aucune ligne n'est une pièce, sinon comparé aux pièces
+    let pieces = 0;
+    for (const l of lignesDe(texte(d.armure.bonus))) {
       const lu = lireLigneDArmure(regles, l);
+      if (!lu.emplacementEcrit && !retrouver(regles.armures, lu.armure).length) {
+        perdu(`Bonus/Malus de l'armure : « ${l} » sans place sur le site`);
+        continue;
+      }
+      pieces += 1;
       const emplacement = trouver(regles.emplacements_armure, lu.emplacement_id);
       const lue = ajouterArmure(lu.emplacement_id, lu.armure, `Armure (${emplacement?.nom ?? lu.emplacement_id})`);
       if (!lue) continue;
@@ -729,7 +850,12 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       lue.ligne.amelioration_elementaire_id = amelioration(lu.ameliorationElement, 'armure_elementaire', `${quoi}, amélioration de l’élément`);
       for (const partie of lu.autres) perdu(`${quoi} : « ${partie} » sans place sur la fiche`);
     }
-    if (!lignes.length && texte(d.armure.nom)) ajouterArmure(ARMURE_COMPLETE, texte(d.armure.nom), 'Armure');
+    const nomAD22 = texte(d.armure.nom);
+    if (!pieces && nomAD22) ajouterArmure(ARMURE_COMPLETE, nomAD22, 'Armure');
+    else if (nomAD22 && f.armures.length && !nommeLesPieces(regles, nomAD22, f.armures)) {
+      const lues = regles.emplacements_armure.map((e) => f.armures.find((x) => x.emplacement_id === e.id)).filter(Boolean).map((x) => nomDe(regles.armures, x.armure_id));
+      remarques.push(`Armure : « ${nomAD22} » (Nom Armure) ne correspond pas aux pièces de la case Bonus/Malus (${lues.join(', ')}) : les pièces sont reprises`);
+    }
   }
   const ordreDesEmplacements = regles.emplacements_armure.map((e) => e.id);
   f.armures.sort((a, b) => ordreDesEmplacements.indexOf(a.emplacement_id) - ordreDesEmplacements.indexOf(b.emplacement_id));
@@ -737,7 +863,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   // ---- bouclier
   if (texte(d.bouclier.nom)) f.bouclier_classe_id = unSeul(retrouver(regles.boucliers, texte(d.bouclier.nom)), 'Bouclier', texte(d.bouclier.nom))?.id ?? null;
   const materiaux = auto
-    ? d.bouclier.materiaux.map((m) => (texte(m.materiau) ? { nom: texte(m.materiau), quantite: nombre(m.quantite) ?? 1 } : null)).filter(Boolean)
+    ? d.bouclier.materiaux.map((m) => (texte(m.materiau) ? { nom: texte(m.materiau), quantite: entierLu(m.quantite, `Bouclier, quantité de « ${texte(m.materiau)} »`) ?? 1 } : null)).filter(Boolean)
     : texte(d.bouclier.composition).split(',').map(lireObjet).filter(Boolean);
   for (const m of materiaux) {
     const materiau = unSeul(retrouver(regles.materiaux_bouclier, m.nom), 'Bouclier, matériau', m.nom);
@@ -746,11 +872,29 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     else f.bouclier_materiaux.push({ rang: f.bouclier_materiaux.length + 1, materiau_id: materiau.id, quantite: m.quantite });
   }
 
+  // ---- zones de saisie que le site ne garde pas (modèle ordinateur) : leur valeur dans les notes
+  if (!auto) {
+    const valeurs = { ap: 'AP', am: 'AM', solidite: 'solidité' };
+    for (const s of SAISIES_SANS_PLACE) {
+      const t = texte(s.adresse);
+      if (!t || t === s.modele) continue;
+      const quoi = s.quoi ?? `Armure, ${nomDe(regles.emplacements_armure, s.emplacement)} (${valeurs[s.valeur]})`;
+      perdu(`${quoi} : « ${t} » sans place sur le site`);
+    }
+    const titre = texte(d.inventaire.titre);
+    if (titre && cle(titre) !== cle(TITRE_DE_L_INVENTAIRE)) {
+      const sac = cle(titre).startsWith(cle(TITRE_DE_L_INVENTAIRE)) && titre.includes('=') ? titre.slice(titre.indexOf('=') + 1).trim() : titre;
+      if (sac) perdu(`Inventaire, sac : « ${sac} » sans place sur le site`);
+    }
+    const ecritEntrainement = texte(casesDuDon(DONS.entrainement).effet);
+    if (ecritEntrainement) perdu(`Entraînement : « ${ecritEntrainement} » sans place sur le site`);
+  }
+
   // ---- ceinture et inventaire (ressource_id : la ressource de ce nom exact, comme la page)
   const ressource = (nom) => (regles.ressources ?? []).find((r) => r.nom === nom)?.id ?? null;
   const objetAuto = (aNom, aQuantite) => {
     const nom = texte(aNom);
-    return nom ? { nom, quantite: nombre(aQuantite) ?? 1 } : null;
+    return nom ? { nom, quantite: entierLu(aQuantite, `Quantité de « ${nom} »`) ?? 1 } : null;
   };
   const ranger = (liste, objet, quoi, rang) => {
     if (!objet) return;
@@ -765,27 +909,30 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const v of notee('inventaire')) objets.push(...lireListe(v).map(lireObjet));
   for (const o of objets) ranger(f.inventaire, o, 'Inventaire', f.inventaire.length + 1);
 
-  // ---- événements, notes
+  // ---- événements (titre, type, texte : « titre (type) : texte »), notes
   const evenements = [];
   const derniere = auto ? d.evenementsJusqua : DONS.evenements[DONS.evenements.length - 1];
   for (let l = DONS.evenements[0]; l <= derniere; l += 1) {
-    const titre = texte(casesDuDon(l).nom);
+    const type = texte(casesDuDon(l).type);
+    const tete = [texte(casesDuDon(l).nom), type ? `(${type})` : ''].filter(Boolean).join(' ');
     const corps = texte(casesDuDon(l).effet);
-    if (titre && corps) evenements.push(`${titre} : ${corps}`);
-    else if (titre || corps) evenements.push(titre || corps);
+    if (tete && corps) evenements.push(`${tete} : ${corps}`);
+    else if (tete || corps) evenements.push(tete || corps);
   }
   evenements.push(...notee('evenement'));
   f.evenements = evenements.length ? evenements.join('\n') : null;
   f.notes = note.autres.length ? ajouterAuxNotes(note.notes, note.autres) : note.notes;
 
   // ---- valeurs du moment (null : au maximum ; corruption : null à 0) et posture du moment
+  const QUOI_DES_JAUGES = { sante_actuelle: 'Santé', chakra_actuel: 'Chakra', barriere_actuelle: 'Barrière', barre4_actuelle: '4ᵉ barre', corruption: 'Corruption' };
+  const paireLue = (adresse, champ) => paireDe(cellule(adresse)).map((n) => entierDe(n, texte(adresse), QUOI_DES_JAUGES[champ]));
   const jauges = auto
     ? [['sante_actuelle', d.sante, d.santeMax], ['chakra_actuel', d.chakra, d.chakraMax], ['barriere_actuelle', d.barriere, d.barriereMax], ['barre4_actuelle', d.barre4, d.barre4Max]]
-      .map(([champ, a, max]) => [champ, nombre(a), nombre(max)])
+      .map(([champ, a, max]) => [champ, entierLu(a, QUOI_DES_JAUGES[champ]), entierLu(max, `${QUOI_DES_JAUGES[champ]} (maximum)`)])
     : [['sante_actuelle', d.sante], ['chakra_actuel', d.chakra], ['barriere_actuelle', d.barriere], ['barre4_actuelle', d.barre4]]
-      .map(([champ, a]) => [champ, ...paireDe(cellule(a))]);
+      .map(([champ, a]) => [champ, ...paireLue(a, champ)]);
   for (const [champ, valeur, max] of jauges) f[champ] = valeur === null || valeur === max ? null : Math.max(0, valeur);
-  const corruption = auto ? nombre(d.corruption) : paireDe(cellule(d.corruption))[0];
+  const corruption = auto ? entierLu(d.corruption, QUOI_DES_JAUGES.corruption) : paireLue(d.corruption, 'corruption')[0];
   f.corruption = corruption ? Math.max(0, corruption) : null;
   if (!auto) {
     const marquees = CASES_POSTURES.filter((p) => porteUneMarque(texte(p.titre)));
@@ -802,42 +949,85 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     if (lus) f.progression = lus;
     else perdu(`Gains de niveau : « ${gainsEcrits} » illisibles`);
   } else if (!deLaPage) {
-    const maxSante = auto ? nombre(d.santeMax) : paireDe(cellule(d.sante))[1];
-    const maxChakra = auto ? nombre(d.chakraMax) : paireDe(cellule(d.chakra))[1];
+    // les maximums lus : fiche auto, leurs cases (F14, M14) ; modèle ordinateur, le « b » de « a / b »
+    const [maxSante, maxChakra] = [jauges[0][2], jauges[1][2]];
     if (maxSante !== null && maxChakra !== null) {
-      const reconstitues = gainsReconstitues(regles, f, maxSante, maxChakra);
       const lus = `(santé ${maxSante}, chakra ${maxChakra})`;
-      if (reconstitues === null) remarques.push(`Gains de niveau non reconstitués : les maximums du classeur ${lus} ne s'expliquent pas par les points et les dés des niveaux ; à saisir`);
-      else if (reconstitues.length) {
-        f.progression = reconstitues;
-        remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur ${lus} : à vérifier`);
+      const illisible = progressionAttendue(regles, niveauGlobal(regles, f.xp)).find((n) => n.de && !bornesDuDe(n.de));
+      if (illisible) {
+        remarques.push(`Gains de niveau non reconstitués : le dé du niveau ${illisible.niveau} (« ${illisible.de} ») ne se lit pas ; maximums du classeur ${lus} : à saisir`);
+      } else {
+        const reconstitues = gainsReconstitues(regles, f, maxSante, maxChakra);
+        if (reconstitues === null) remarques.push(`Gains de niveau non reconstitués : les maximums du classeur ${lus} ne s'expliquent pas par les points et les dés des niveaux ; à saisir`);
+        else if (reconstitues.length) {
+          f.progression = reconstitues;
+          remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur ${lus} : à vérifier`);
+        }
       }
     }
   }
 
-  // ---- effet en plus des armes (modèle ordinateur) : ce qui suit « Effet en plus : », sans la part affichée de la fiche relue (lireEffetDArme)
+  // ---- effet en plus des armes (modèle ordinateur) : les lignes du joueur, sans la part affichée de la fiche relue (lireEffetDArme) ; celles écrites sans
+  // « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page
   for (const { rang, effet, arme, entier } of effetsEnPlus) {
     const ligne = f.armes.find((x) => x.rang === rang);
     if (!ligne) continue;
-    ligne.effet_en_plus = lireEffetDArme(effet, { affichees: partiesDeLArme(regles, f, rang).affichees.join('\n'), catalogue: arme.effet, entier }).effetEnPlus;
+    const lue = lireEffetDArme(effet, { affichees: partiesDeLArme(regles, f, rang).affichees.join('\n'), catalogue: arme.effet, entier });
+    ligne.effet_en_plus = lue.effetEnPlus;
+    // (dans un classeur de la page aussi quand la case ne porte plus ce que le site y écrit : l'effet du catalogue a pu changer depuis l'export)
+    if (lue.libres.length && (!deLaPage || !lue.affichageRetrouve)) {
+      const s = lue.libres.length > 1 ? 's' : '';
+      const pourquoi = deLaPage ? ' (la case ne porte plus ce que le site y écrit pour cette arme)' : '';
+      remarques.push(`Arme ${rang} (${arme.nom}) : ligne${s} ${lue.libres.map((l) => `« ${l} »`).join(', ')} reprise${s} comme effet en plus${pourquoi}`);
+    }
   }
 
-  // ---- portrait (modèle ordinateur) : l'image ancrée en A1, sauf le logo du modèle
+  // ---- portrait (modèle ordinateur) : l'image ancrée en A1, sauf le logo du modèle ; une autre image n'a pas de place
   let image = null;
   let portraitGarde = false;
   if (!auto) {
-    const img = (feuille?.images ?? []).find((x) => x.de === d.image) ?? null;
-    if (img) {
-      const description = String(img.description ?? '').trim();
-      const marqueePortrait = /^portrait/i.test(description);
-      const marqueeLogo = /^logo/i.test(description) || (!description && cle(img.nom) === 'logo');
-      if (marqueePortrait || (!marqueeLogo && !memesOctets(img.octets, logo))) image = img;
-      const empreinte = /^portrait:(.+)$/i.exec(description)?.[1]?.trim();
+    const portraits = [];
+    for (const x of feuille?.images ?? []) {
+      const description = String(x.description ?? '').trim();
+      const marqueeLogo = /^logo/i.test(description) || (!description && cle(x.nom) === 'logo');
+      if (x.de !== d.image) perdu(`Image en ${x.de} non reprise : le portrait se place en ${d.image}`);
+      else if (/^portrait/i.test(description) || (!marqueeLogo && !memesOctets(x.octets, logo))) portraits.push(x);
+    }
+    image = portraits[0] ?? null;
+    for (const x of portraits.slice(1)) perdu(`Image en ${x.de} non reprise : une seule image sert de portrait`);
+    if (image) {
+      const empreinte = /^portrait:(.+)$/i.exec(String(image.description ?? '').trim())?.[1]?.trim();
       portraitGarde = Boolean(empreinte && empreintePortrait && empreinte === empreintePortrait);
     }
   }
 
   return { fiche: f, disposition: d.disposition, nonRepris, remarques, image, portraitGarde };
+}
+
+/**
+ * « Nom Armure » (AD22) nomme-t-il les pièces relues dans la case Bonus/Malus ? Comme l'écrit la page : l'armure complète, sinon les pièces jointes par
+ * « , » (une écriture qui désigne chacune, anciennes graphies comprises : retrouver), autant de noms que de pièces. Une liste de pièces n'y est
+ * qu'affichée (l'import les lit dans Bonus/Malus) : coupée par la page (« … »), son début.
+ */
+function nommeLesPieces(regles, nom, armures) {
+  const complete = armures.find((x) => x.emplacement_id === ARMURE_COMPLETE);
+  const montre = sansLaCoupure(nom);
+  if (montre !== null) {
+    const ordre = (regles.emplacements_armure ?? []).map((e) => e.id);
+    const ecrites = complete ? [complete] : [...armures].sort((a, b) => ordre.indexOf(a.emplacement_id) - ordre.indexOf(b.emplacement_id));
+    const attendu = ecrites.map((x) => trouver(regles.armures, x.armure_id)?.nom ?? x.armure_id).join(', ');
+    return cle(montre) !== '' && cle(attendu).startsWith(cle(montre));
+  }
+  if (complete) return retrouver(regles.armures, nom).some((a) => a.id === complete.armure_id);
+  const restantes = armures.map((x) => x.armure_id);
+  const ecrits = nom.split(',').map((x) => x.trim()).filter(Boolean);
+  if (ecrits.length !== restantes.length) return false;
+  for (const ecrit of ecrits) {
+    const i = restantes.findIndex((id) => retrouver(regles.armures, ecrit).some((a) => a.id === id));
+    if (i < 0) return false;
+    restantes.splice(i, 1);
+  }
+  return true;
 }
 
 /** Deux suites d'octets identiques (le logo du modèle n'est pas un portrait). */
@@ -848,11 +1038,22 @@ function memesOctets(a, b) {
 }
 
 /**
+ * Ce que peut donner le dé d'un niveau (niveau_global.de_attributs_bonus, « 1d8 santé OU 1d8 chakra OU 1d4 pour les deux ») : { min, max } d'après les dés
+ * qu'il écrit (« NdF » : de N à N × F ; le plus grand dé écrit pour le maximum) ; null quand il n'en écrit aucun.
+ */
+export function bornesDuDe(texte) {
+  const des = [...String(texte ?? '').matchAll(/\b(\d*)[dD](\d+)\b/g)].map((m) => ({ n: Number(m[1] || 1), faces: Number(m[2]) })).filter((x) => x.n >= 1 && x.faces >= 1);
+  if (!des.length) return null;
+  return { min: Math.min(...des.map((x) => x.n)), max: Math.max(...des.map((x) => x.n * x.faces)) };
+}
+
+/**
  * Les gains de niveau (personnage_progression) qu'il faut pour atteindre les maximums de santé et de chakra lus dans le classeur, la fiche n'en ayant pas :
  * gains = maximum − attributsDe de la fiche sans progression ; P = les points des niveaux atteints (progressionAttendue : 15 chacun, santé + chakra), D = les
  * niveaux à dé ; les dés font T = gains de santé + gains de chakra − P. Possible si les deux gains sont positifs et que T va avec D (aucun dé : T = 0 ;
- * sinon de |D| à 8 |D|, un d8 chacun) : les dés au plus près de l'égalité, sur le chakra tant qu'ils y tiennent puis sur la santé ; les points de chaque
- * niveau sur la santé jusqu'à épuisement, puis sur le chakra. null quand c'est impossible ; [] quand il n'y a rien à répartir.
+ * sinon entre la somme des plus petits résultats et celle des plus grands, bornesDuDe du texte de chaque niveau) : les dés au plus près de l'égalité (un
+ * point à la fois, à tour de rôle), sur le chakra tant qu'ils y tiennent puis sur la santé ; les points de chaque niveau sur la santé jusqu'à épuisement,
+ * puis sur le chakra. null quand c'est impossible, ou qu'un dé ne se lit pas ; [] quand il n'y a rien à répartir.
  */
 export function gainsReconstitues(regles, fiche, maxSante, maxChakra) {
   const sans = attributsDe(regles, { ...fiche, progression: [] });
@@ -860,12 +1061,23 @@ export function gainsReconstitues(regles, fiche, maxSante, maxChakra) {
   const gainsChakra = maxChakra - sans.chakra;
   const attendue = progressionAttendue(regles, niveauGlobal(regles, fiche.xp));
   const points = attendue.reduce((s, n) => s + n.points, 0);
-  const aDe = attendue.filter((n) => n.de);
+  const aDe = attendue.filter((n) => n.de).map((n) => ({ niveau: n.niveau, bornes: bornesDuDe(n.de) }));
+  if (aDe.some((n) => !n.bornes)) return null;
   const total = gainsSante + gainsChakra - points;
   if (gainsSante < 0 || gainsChakra < 0) return null;
-  if (aDe.length ? total < aDe.length || total > 8 * aDe.length : total !== 0) return null;
+  const minimum = aDe.reduce((s, n) => s + n.bornes.min, 0);
+  const maximum = aDe.reduce((s, n) => s + n.bornes.max, 0);
+  if (aDe.length ? total < minimum || total > maximum : total !== 0) return null;
   if (!attendue.length) return [];
-  const des = aDe.map((n, i) => ({ niveau: n.niveau, valeur: Math.floor(total / aDe.length) + (i < total % aDe.length ? 1 : 0), sur: null }));
+  const des = aDe.map((n) => ({ niveau: n.niveau, valeur: n.bornes.min, max: n.bornes.max, sur: null }));
+  for (let reste = total - minimum; reste > 0;) {
+    for (const de of des) {
+      if (reste > 0 && de.valeur < de.max) {
+        de.valeur += 1;
+        reste -= 1;
+      }
+    }
+  }
   let surChakra = 0;
   for (const de of des) {
     if (surChakra + de.valeur <= gainsChakra) {
@@ -882,4 +1094,56 @@ export function gainsReconstitues(regles, fiche, maxSante, maxChakra) {
     const de = des.find((x) => x.niveau === n.niveau);
     return { niveau: n.niveau, points_sante: sante, points_chakra: n.points - sante, de_choix: de?.sur ?? null, de_resultat: de?.valeur ?? null };
   });
+}
+
+// ------------------------------------------------------------------ ce que la page /fiche/ fait d'un classeur lu (src/scripts/fiche.mjs)
+
+/** L'onglet des deux modèles (comparé par cle()) : celui que la page essaie d'abord et ne nomme pas dans son message. */
+const ONGLET_DES_MODELES = cle('Personnage');
+
+/**
+ * L'onglet de la fiche dans un classeur lu (lib/tableur-lecture.mjs#lireClasseur) : le premier qui suit l'une des deux dispositions (dispositionDe),
+ * « Personnage » essayé d'abord, puis les autres onglets dans l'ordre (classeur.trouver) : un onglet renommé ou déplacé, ou rangé parmi d'autres (« BDD »,
+ * « Race »… de la fiche auto), est retrouvé à son contenu. Error ERREUR_DISPOSITION si aucun ne convient (celle d'un onglet illisible, s'il y en a un).
+ */
+export function feuilleDeLaFiche(classeur) {
+  const suitUnModele = (f) => {
+    const cellules = f?.cellules instanceof Map ? f.cellules : new Map(Object.entries(f?.cellules ?? {}));
+    return dispositionDe((adresse) => texteDe(cellules.get(adresse))) !== null;
+  };
+  const feuille = classeur.trouver(suitUnModele);
+  if (!feuille) throw new Error(ERREUR_DISPOSITION);
+  return feuille;
+}
+
+/**
+ * Le début du message de la page après l'import d'un classeur : « Classeur importé (modèle ordinateur). », « Classeur importé (modèle auto, onglet
+ * « Fiche de Lucien ») : 1 information sans équivalent et 2 remarques ajoutées aux notes. » ; l'onglet lu (`onglet`, le nom de la feuille) n'est nommé
+ * que si ce n'est pas « Personnage » (un .csv n'a pas d'onglet : sa feuille porte le nom du fichier) ; `nonRepris`, `remarques` : leur nombre. La page
+ * y ajoute la suite (« Enregistrez pour … »).
+ */
+export function messageDImport({ disposition, format = null, onglet = '', nonRepris = 0, remarques = 0 }) {
+  const ou = format !== 'csv' && cle(onglet) && cle(onglet) !== ONGLET_DES_MODELES ? `, onglet « ${String(onglet).trim()} »` : '';
+  const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+  const dans = [
+    nonRepris ? pluriel(nonRepris, 'information sans équivalent', 'informations sans équivalent') : null,
+    remarques ? pluriel(remarques, 'remarque', 'remarques') : null,
+  ].filter(Boolean);
+  const notes = dans.length ? ` : ${dans.join(' et ')} ajouté${nonRepris + remarques > 1 ? 'es' : 'e'} aux notes` : '';
+  return `Classeur importé (modèle ${disposition}${ou})${notes}.`;
+}
+
+/**
+ * Le portrait de la fiche importée, d'après ce que rend ficheDuClasseur (`image`, `portraitGarde`), le portrait de la fiche ouverte (`portrait`) et la
+ * cible de l'import (`cible` : 'mettre-a-jour' le prétiré ouvert ou 'creer' un nouveau prétiré : dialogue « import-cible » de la page) :
+ *   'garder' : celui de la fiche ouverte, avec son cadrage : le classeur porte son empreinte (exporté par la page avec ce portrait : l'image d'origine
+ *              plutôt que sa vignette), ou c'est une mise à jour et le classeur n'a pas d'image (fiche auto, .csv, export sans portrait) ;
+ *   'image'  : l'image du classeur, que la page réduit comme une image choisie (cadrage par défaut) ;
+ *   'aucun'  : un nouveau prétiré tiré d'un classeur sans image n'a pas de portrait.
+ * Une image que la page ne sait pas lire : la redemander sans elle (`{ ...lu, image: null }`).
+ */
+export function portraitDeLImport({ image = null, portraitGarde = false } = {}, { portrait = null, cible = 'creer' } = {}) {
+  if (portrait && portraitGarde) return 'garder';
+  if (image) return 'image';
+  return portrait && cible === 'mettre-a-jour' ? 'garder' : 'aucun';
 }
