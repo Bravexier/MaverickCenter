@@ -218,6 +218,10 @@ export function bonusDEntrainement(regles, texte) {
 const BLANCS = /[\s\u00a0\u202f]+/g;
 const estBlanc = (c) => c !== undefined && /[\s\u00a0\u202f]/.test(c);
 const estChiffre = (c) => c !== undefined && c >= '0' && c <= '9';
+/** Ce qui fait d'un « N% » un malus (trait d'union, signe moins, tiret demi-cadratin), que bonusDuMetierEcrit ne lit pas comme le bonus qu'écrit le nombre. */
+const MOINS = new Set(['-', '\u2212', '\u2013']);
+/** Les mots d'un texte, joints par « - » (cle() ; l'apostrophe d'une élision sépare deux mots : « d'Esquive » → « d-esquive »). */
+const motsDe = (texte) => cle(String(texte ?? '').replace(/['’]/g, ' '));
 
 /**
  * Les bonus de compétence qu'écrit la case du métier (L41) d'un classeur qui ne vient pas de la page : ceux que le classeur a comptés dans les acquis
@@ -231,11 +235,16 @@ const estChiffre = (c) => c !== undefined && c >= '0' && c <= '9';
  *   - une liste de compétences (noms ou identifiants, comparés par cle(), séparés par « , » et « et ») : N à chacune ;
  *   - une liste en « OU » : un choix, qu'écrit la flèche (« → Équilibre » : N à cette compétence, qui doit être de la liste ; « → ? » : rien, pas choisi) ;
  *     sans flèche, on ne sait pas lequel le classeur comptait : null ;
- *   - une liste qui ne nomme aucune compétence (« = 60 % » de l'artisanat, « de bonus à la création de documents », « au lieu de 40% ») : pas un bonus de
- *     compétence, ignoré — sauf avec une flèche (« dans une compétence sociale au choix → Diplomatie ») ;
- *   - une liste où se mêlent compétences et autres mots, un nombre décimal (« 2,5% »), une flèche vers ce qui n'est pas une compétence : null.
- * Aucun bonus de compétence lu : null. Un texte coupé (fini par « … », lib/tableur-mesure.mjs) : son dernier morceau est incertain, null s'il porte un
- * « % ». Linéaire : les blancs ramenés à une espace, puis des découpages par chaînes fixes, sans expression régulière qui revienne sur ses pas.
+ *   - une liste qui ne nomme aucune compétence, même parmi d'autres mots (« = 60 % » de l'artisanat, « de bonus à la création de documents », « au lieu
+ *     de 40% ») : pas un bonus de compétence, ignoré — sauf avec une flèche (« dans une compétence sociale au choix → Diplomatie ») ;
+ *   - une liste où se mêlent compétences et autres mots, une liste qui n'est pas de compétences mais en nomme une parmi d'autres mots (« en Esquive »,
+ *     « aux jets d'Esquive »), un nombre décimal (« 2,5% »), une flèche vers ce qui n'est pas une compétence : null.
+ * Un nom de compétence écrit avant son nombre (avant le premier « N% » d'un morceau : « Esquive +3%, Réflexe +3% », « Esquive : +3% » ; ou dans la
+ * liste qui précède un « N% » sans liste : « +3% Esquive, Réflexe +2% ») : on ne sait pas à quel nombre il va, null. Un nombre précédé d'un signe moins
+ * (MOINS, blancs permis : « Malus -2% Esquive », « − 2 % ») : un malus, null. Aucun bonus de compétence lu : null. Un texte coupé (fini par « … »,
+ * lib/tableur-mesure.mjs) : son dernier morceau est incertain, null s'il porte un « % ». Linéaire : les blancs ramenés à une espace, puis des découpages
+ * par chaînes fixes, sans expression régulière qui revienne sur ses pas ; un nom de compétence parmi d'autres mots se cherche mot à mot, sur des suites
+ * d'au plus autant de mots que le plus long nom (motsDe).
  * N'importe ni lib/text.mjs ni lib/metier-champs.mjs (partagés par d'autres scripts de page).
  */
 export function bonusDuMetierEcrit(regles, texte) {
@@ -249,6 +258,27 @@ export function bonusDuMetierEcrit(regles, texte) {
     parCle.set(cle(k.nom), k.id);
   }
   const competence = (nom) => parCle.get(cle(nom)) ?? null;
+  // une compétence nommée parmi d'autres mots : ses écritures en mots (nom, identifiant), cherchées à chaque mot du texte sur au plus `longueur` mots
+  const enMots = new Set();
+  let longueur = 1;
+  for (const k of regles.competences) {
+    for (const e of [motsDe(k.id), motsDe(k.nom)].filter(Boolean)) {
+      enMots.add(e);
+      longueur = Math.max(longueur, e.split('-').length);
+    }
+  }
+  const nommeUneCompetence = (texte) => {
+    const mots = motsDe(texte).split('-').filter(Boolean);
+    for (let i = 0; i < mots.length; i += 1) {
+      let suite = mots[i];
+      if (enMots.has(suite)) return true;
+      for (let n = 1; n < longueur && i + n < mots.length; n += 1) {
+        suite = `${suite}-${mots[i + n]}`;
+        if (enMots.has(suite)) return true;
+      }
+    }
+    return false;
+  };
   // les morceaux, en une passe
   const morceaux = [];
   let debut = 0;
@@ -276,8 +306,14 @@ export function bonusDuMetierEcrit(regles, texte) {
       while (k >= 0 && estChiffre(m[k])) k -= 1;
       if (k === j) continue;
       if ((m[k] === ',' || m[k] === '.') && estChiffre(m[k - 1])) return null; // un décimal : ce n'est pas un bonus de la base
+      let signe = k;
+      while (signe >= 0 && m[signe] === ' ') signe -= 1;
+      if (MOINS.has(m[signe])) return null; // un malus (« -2% », « − 2 % ») : pas le bonus qu'écrit le nombre
       nombres.push({ debut: k + 1, n: Number(m.slice(k + 1, j + 1)), apres: i + 1 });
     }
+    // un nom de compétence avant le premier nombre (« Esquive +3%, Réflexe +3% ») : on ne sait pas à quel nombre il va
+    if (nombres.length && nommeUneCompetence(m.slice(0, nombres[0].debut))) return null;
+    let precedente = '';
     for (const [x, p] of nombres.entries()) {
       const reste = m.slice(p.apres, x + 1 < nombres.length ? nombres[x + 1].debut : m.length);
       const f = reste.indexOf(FLECHE);
@@ -292,6 +328,11 @@ export function bonusDuMetierEcrit(regles, texte) {
       const toutes = ids.length > 0 && ids.every(Boolean);
       const aucune = ids.every((id) => !id);
       if (!toutes && !aucune) return null;
+      // pas une liste de compétences, mais une compétence parmi d'autres mots (« +3% en Esquive », « +2% aux jets d'Esquive ») : pas lue exactement
+      if (aucune && nommeUneCompetence(liste)) return null;
+      // un nombre sans liste après une liste qui nomme une compétence (« +3% Esquive, Réflexe +2% ») : le nom est-il au nombre d'avant ou à celui-ci ?
+      if (x > 0 && f < 0 && !liste && nommeUneCompetence(precedente)) return null;
+      precedente = liste;
       if (f >= 0) {
         const choix = reste.slice(f + FLECHE.length).trim();
         lus += 1;

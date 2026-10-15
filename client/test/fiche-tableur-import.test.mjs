@@ -1159,7 +1159,9 @@ test('cases de 32 767 caractères faites surtout d’espaces : l’import reste 
   // l'analyseur seul, sur des cases pleines (espaces, chiffres, « % », points, séparateurs)
   const debutMetier = performance.now();
   for (const t of [`${espaces}→${espaces}`, `1${espaces}%${espaces}a`, `${'1'.repeat(32_000)}%`, '%'.repeat(32_000), `1${'%'.repeat(32_000)}`, `${'1 '.repeat(16_000)}%`,
-    '.'.repeat(32_000), ' · '.repeat(10_000), `2% ${'Esquive, '.repeat(3_500)}`, `2% ${'Esquive OU '.repeat(2_900)}`, `${'2% Esquive et '.repeat(2_200)}`]) {
+    '.'.repeat(32_000), ' · '.repeat(10_000), `2% ${'Esquive, '.repeat(3_500)}`, `2% ${'Esquive OU '.repeat(2_900)}`, `${'2% Esquive et '.repeat(2_200)}`,
+    // un nom de compétence cherché parmi d'autres mots : avant le nombre, dans une liste qui n'en est pas une, des débuts de noms en plusieurs mots, des mots très longs
+    `${'vie en '.repeat(4_500)}2%`, `2% ${'vie en '.repeat(4_500)}`, `2% ${'d’'.repeat(16_000)}`, `${'a'.repeat(16_000)} 2% ${'b'.repeat(16_000)}`, `${'-'.repeat(32_000)}2%`]) {
     bonusDuMetierEcrit(regles, t);
   }
   assert.ok(performance.now() - debutMetier < 2000, `${Math.round(performance.now() - debutMetier)} ms`);
@@ -1227,6 +1229,24 @@ test('bonusDuMetierEcrit : la case du métier telle que la page l’écrit se re
   assert.equal(lit('+3% Esquive · +3% Réfl…'), null, 'une case coupée dans un bonus');
   assert.deepEqual(lit('4% Connaissance. Peut fabriquer des livres …'), { connaissance: 4 }, 'coupée après les bonus');
   for (const rien of ['', '   ', 'Métier ?', null]) assert.equal(lit(rien), null, String(rien));
+  // un nom de compétence écrit avant son « N% » : on ne sait pas à quel nombre il va (« Esquive +3%, Réflexe +3% » ne donne pas 3 à Réflexe seul)
+  for (const avant of ['Esquive +3%, Réflexe +3%', 'Esquive : +3%, Réflexe : +3%', 'Esquive 3% et Réflexe 3%', 'Esquive +3% Réflexe +3%', 'Bonus Esquive +2% et Ruse +2%',
+    'Esquive : +3%', 'Vie en nature +2%, +2% Survie', '+3% Esquive, Réflexe +2%', '+3% Esquive et Réflexe 2%']) {
+    assert.equal(lit(avant), null, avant);
+  }
+  // un nom de compétence pris dans d'autres mots, après « N% » : ce n'est pas une liste de compétences, ni rien d'ignorable
+  for (const entoure of ['+3% en Esquive, +3% Réflexe', '+2% Réflexe, +2% aux jets d’Esquive', '+2% Réflexe, +2% aux jets d\'Esquive', '+3% Connaissance, +3% en Fermeté',
+    '+3% à l’Esquive', '+2% Réflexe, +2% à la vie en nature', '+5% en Diplomatie ou en Intimidation → Diplomatie']) {
+    assert.equal(lit(entoure), null, entoure);
+  }
+  // un nombre précédé d'un signe moins (trait d'union, signe moins, tiret demi-cadratin) : un malus, pas le bonus qu'écrit le nombre
+  for (const malus of ['Malus -2% Esquive', '−2% Esquive', '- 2 % Esquive', '+3% Esquive, -2% Réflexe', '+3% Esquive · −3% Réflexe', '–2% Esquive', 'Esquive-2%']) {
+    assert.equal(lit(malus), null, malus);
+  }
+  // ce qui reste lisible : ce qui suit le nombre sans nommer de compétence, les signes « + » et les séparateurs
+  assert.deepEqual(lit('+3% Esquive (+1% par niveau)'), { esquive: 3 });
+  assert.deepEqual(lit('+3% Esquive - +3% Réflexe'), { esquive: 3, reflexe: 3 }, 'un trait d’union entre deux bonus, chacun son « + »');
+  assert.deepEqual(lit('Bonus : +3% Esquive, +3% Réflexe'), { esquive: 3, reflexe: 3 });
 });
 
 test('le métier suit la base (décision R72) : l’ancien bonus de L41 retiré de l’acquis écrit, une remarque quand il diffère ; illisible : la base, à vérifier', () => {
@@ -1247,13 +1267,22 @@ test('le métier suit la base (décision R72) : l’ancien bonus de L41 retiré 
   const acrobate = M.trouver(regles.metiers, importer(LOUISE).fiche.metier_id);
   const base = M.bonusDuMetier(regles, { metier_id: acrobate.id }).parCompetence;
   assert.ok(Object.keys(base).length > 0);
-  r = louise({ L41: '+3% Diplomatie OU Intimidation' });
-  assert.ok(r.remarques.includes(`Métier ${acrobate.nom} : bonus du classeur illisibles (« +3% Diplomatie OU Intimidation ») : l'acquis du joueur retire ceux de la base, à vérifier`));
-  assert.ok(!r.remarques.some((x) => x.includes('les acquis suivent la base')));
-  for (const [id, n] of Object.entries(base)) {
-    const k = regles.competences.find((x) => x.id === id);
-    const ecrit = Number(lue(LOUISE, CASES_COMPETENCES.find((c) => c.id === id).acquis) || 0);
-    assert.ok(r.remarques.some((x) => x.startsWith(`${k.nom} : acquis ${ecrit} du classeur − ${n} du métier ${acrobate.nom} (base)`)), k.nom);
+  // (une écriture qu'on ne sait pas lire exactement : un choix en « OU » sans flèche, le nom avant le nombre, un nom pris dans d'autres mots, un malus)
+  for (const L41 of ['+3% Diplomatie OU Intimidation', 'Esquive +2%, Réflexe +2%, Ruse +2%', '+2% Réflexe, +2% aux jets d’Esquive', 'Malus -2% Esquive']) {
+    r = louise({ L41 });
+    assert.ok(r.remarques.includes(`Métier ${acrobate.nom} : bonus du classeur illisibles (« ${L41} ») : l'acquis du joueur retire ceux de la base, à vérifier`), L41);
+    assert.ok(!r.remarques.some((x) => x.includes('les acquis suivent la base')), L41);
+    assert.ok(!r.remarques.some((x) => x.includes('(classeur)')), `${L41} : rien n'est retiré au nom du classeur`);
+    const calcul = competencesDe(regles, r.fiche);
+    for (const k of regles.competences) {
+      const cases = CASES_COMPETENCES.find((c) => c.id === k.id);
+      if (!cases) continue;
+      const ecrit = Number(lue(LOUISE, cases.acquis) || 0);
+      const n = base[k.id] ?? 0;
+      const accessoire = calcul.find((x) => x.id === k.id).accessoire;
+      assert.equal(r.fiche.competences.find((c) => c.competence_id === k.id)?.acquis ?? 0, Math.max(0, ecrit - n - accessoire), `${L41} : ${k.nom}, acquis ${ecrit} − ${n} de la base`);
+      if (n) assert.ok(r.remarques.some((x) => x.startsWith(`${k.nom} : acquis ${ecrit} du classeur − ${n} du métier ${acrobate.nom} (base)`)), `${L41} : ${k.nom}`);
+    }
   }
   r = louise({ L41: '' });
   assert.ok(!r.remarques.some((x) => x.startsWith(`Métier ${acrobate.nom}`)), 'L41 vide : rien à dire du métier');
