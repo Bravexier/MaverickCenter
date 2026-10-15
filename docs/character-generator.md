@@ -121,7 +121,7 @@ abandonne.
   Entre les deux, l'**entraînement** (décision R71, `personnage.entrainement`) : un texte libre — bonus d'entraînement, livres de magie lus, ce que le MJ
   accorde —, **jamais compté** (les points gagnés se saisissent dans l'acquis, le NM d'un livre sur son sort) ; son aide cite, tel que la base l'écrit, le
   paragraphe du guide « S’entraîner et exercer un métier » (chapitre 21) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
-  au build ; rien si la page ne l'écrit plus).
+  au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
 - **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
   **total attribué** et le **total à saisir** — « entre min et max » quand un dé bonus est atteint —, en rouge hors de la plage (`gainsDeNiveau`, les mêmes
   bornes que la règle `gains_niveau` de la base : `test/fiche-moteur.test.mjs` les compare aux niveaux 1 à 20) ; au-dessus, d'où vient le total : les points
@@ -172,8 +172,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
-  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), la fiche se remplit et se
-  **télécharge** (« Télécharger » reste alors actif, pour ne rien perdre) ; le classeur téléchargé se **réimporte** pour créer le prétiré. La barre,
+  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), ou quand il refuse
+  l'enregistrement (version changée entre-temps, requête trop volumineuse, fiche refusée), la fiche se remplit et se **télécharge** (« Télécharger »
+  reste alors actif, pour ne rien perdre) ; le classeur téléchargé se **réimporte** pour créer le prétiré (ou, après rechargement, mettre à jour le
+  prétiré ouvert). La barre,
   le classeur et Google Sheets : voir « Tableur » ci-dessous.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
@@ -193,11 +195,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 - **Télécharger** : le classeur `.xlsx` au modèle ci-dessous, nommé d'après le personnage seul (`nomDuFichier` de `lib/fiche-tableur-export.mjs` :
   chaque suite de caractères qu'un système de fichiers refuse remplacée par « - », 120 caractères au plus, « Personnage » s'il ne reste rien ;
   « Kaël/Nox » → `Kaël-Nox.xlsx`). **Grisé** tant que la fiche n'est pas enregistrée telle qu'elle est (jamais enregistrée, ou modifiée depuis ;
-  infobulle « Enregistrez la fiche pour la télécharger »), sauf quand le service ne répond pas : la fiche ne peut alors pas être enregistrée, et la
-  télécharger évite de la perdre (`etatDesExports`, recalculé par `etatDesBoutons` de `src/scripts/fiche.mjs` à chaque rafraîchissement et à la fin de
-  chaque action). Message : « Classeur téléchargé. », suivi de ce que le classeur n'a pas pu garder.
+  infobulle « Enregistrez la fiche pour la télécharger »), sauf quand le service ne répond pas, ou qu'il a **refusé le dernier enregistrement**
+  (toute réponse non OK : version changée entre-temps — 409, la fiche ouverte dans un autre onglet, ou un retrait R42 —, requête trop volumineuse —
+  413 —, fiche refusée — 400 — ; infobulle « L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre ») : la fiche ne peut alors pas être
+  enregistrée, et la télécharger évite de la perdre (`etatDesExports`, recalculé par `etatDesBoutons` de `src/scripts/fiche.mjs` à chaque
+  rafraîchissement et à la fin de chaque action ; le refus est oublié quand une autre fiche est à l'écran : relue, enregistrée, rechargée, nouvelle, ou
+  nouveau prétiré tiré d'un classeur). Message : « Classeur téléchargé. », suivi de ce que le classeur n'a pas pu garder.
 - **Exporter** (Google Sheets) : le même classeur, envoyé dans le Drive de la personne et converti en **nouvelle feuille Google Sheets** à chaque
-  export (nommée d'après le personnage). Même condition de grisé que « Télécharger » ; grisé aussi sans **identifiant client OAuth** (variable de
+  export (nommée d'après le personnage). Même condition de grisé que « Télécharger » (après un refus : « L’enregistrement a échoué : exportez la
+  fiche pour ne rien perdre ») ; grisé aussi sans **identifiant client OAuth** (variable de
   build `SITE_GOOGLE_CLIENT_ID`, infobulle « Export vers Google Sheets pas encore configuré » ; mise en place : [`deploy/vps/README.md`](../deploy/vps/README.md),
   « Export vers Google Sheets »). La page charge **Google Identity Services** (`https://accounts.google.com/gsi/client`, créé par
   `document.createElement` dès que le pointeur ou le focus approche du bouton : ni balise dans le HTML ni import), demande le droit
@@ -269,9 +275,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 - **Plus de 32 767 caractères** (ce qu'une case de tableur garde) : dans la case NOTE, le marqueur et les lignes qui le suivent restent toujours
   entiers ; les notes du joueur sont raccourcies (fin remplacée par « … »), puis, s'il le faut encore, les dernières lignes de données retirées
   (une dernière ligne « Lignes retirées (case NOTE pleine) : N » le dit, et l'import le rappelle).
-  Chaque perte est un avertissement (`avertissements` de `cellulesDeLaFiche`) que la page ajoute à son message : « Classeur exporté. Notes trop
-  longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. », sur le ton « attente » (au lieu
-  de « ok », `messageDExport`). À l'import, une remarque le dit.
+  Chaque perte est un avertissement (`avertissements` de `cellulesDeLaFiche`) que la page ajoute à son message : « Classeur téléchargé. Notes trop
+  longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. » (« Télécharger » ; « Feuille Google
+  créée. Notes trop longues… » pour « Exporter »), sur le ton « attente » (au lieu de « ok », `messageDExport`). À l'import, une remarque le dit.
 - **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
   le logo reste, décrit « logo ». Le fichier s'appelle « <nom du personnage>.xlsx » (`nomDuFichier`, plus haut).
 - **Lecture** (`lib/tableur-lecture.mjs`) : `.xlsx` (Excel, Google Sheets, LibreOffice), `.ods` (LibreOffice ; les blancs d'une case lus comme
