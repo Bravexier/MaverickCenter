@@ -342,3 +342,52 @@ test('configuration : une version livrée non modifiée sur place est remplacée
   assert.match(r.out, /nginx\.conf mis à jour par cette livraison : relancez « docker compose up -d »/);
   assert.notEqual(statSync(join(prod, 'mise-a-jour.sh')).ino, inode, 'nouveau fichier : un mise-a-jour.sh en cours garde l\'ancien');
 });
+
+test('test : les métriques (db/metriques/, sans dossier des métriques réglé) ne sont ni copiées de la production, ni effacées du test, ni prises pour une base', { skip }, () => {
+  // docs/serveur.md, « Métriques et volume » : une base de métriques par instance (prod.db, dev.db), jamais mêlées (décision du propriétaire du
+  // 2026-10-15). Avec docker-compose.yml, elles sont hors de db/ ; sans dossier réglé, le service les range dans db/metriques/.
+  const parent = dossier('metriques');
+  const prod = join(parent, 'maverick-center');
+  const test_ = join(parent, 'maverick-center-test');
+  assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
+  const base = new DatabaseSync(join(prod, 'db', 'maverick.db'));
+  base.exec("CREATE TABLE fiche (nom TEXT); INSERT INTO fiche VALUES ('Aldric');");
+  base.close();
+  mkdirSync(join(prod, 'db', 'metriques'));
+  const mesures = new DatabaseSync(join(prod, 'db', 'metriques', 'prod.db'));
+  mesures.exec('CREATE TABLE heure (n INTEGER); INSERT INTO heure VALUES (7);');
+  mesures.close();
+
+  // Test : son db/ ne contient que ses métriques (pas encore de base) : MAVERICK_BASE_TEST=conservee ne l'en empêche pas de copier la production.
+  mkdirSync(join(test_, 'db', 'metriques'), { recursive: true });
+  writeFileSync(join(test_, 'db', 'metriques', 'dev.db'), 'mesures du site de dev');
+  writeFileSync(join(test_, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\nMAVERICK_BASE_TEST=conservee\n');
+  const metriques = statSync(join(test_, 'db', 'metriques')).ino;
+  const r = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.1' }).fichier, ['--dossier', test_]);
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /Base de test conservée/, 'db/ sans base : la production est copiée');
+  const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
+  assert.deepEqual(copie.prepare('SELECT nom FROM fiche').all().map((l) => l.nom), ['Aldric']);
+  copie.close();
+  assert.deepEqual(readdirSync(join(test_, 'db', 'metriques')), ['dev.db'], 'les métriques de la production ne viennent jamais dans le test');
+  assert.equal(lire(test_, 'db', 'metriques', 'dev.db'), 'mesures du site de dev', 'celles du test ne sont pas effacées');
+  assert.equal(statSync(join(test_, 'db', 'metriques')).ino, metriques, 'dossier gardé (le service peut y avoir sa base ouverte)');
+  assert.match(lire(test_, 'db', '.copie-de-la-production'), /^source=/m);
+
+  // Sans MAVERICK_BASE_TEST=conservee, chaque installation recopie la production : les métriques du test restent.
+  writeFileSync(join(test_, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\n');
+  const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.2' }).fichier, ['--dossier', test_]);
+  assert.equal(r2.code, 0, r2.out);
+  assert.deepEqual(readdirSync(join(test_, 'db')).sort(), ['.copie-de-la-production', 'maverick.db', 'metriques']);
+  assert.deepEqual(readdirSync(join(test_, 'db', 'metriques')), ['dev.db']);
+  const p = new DatabaseSync(join(prod, 'db', 'metriques', 'prod.db'), { readOnly: true });
+  assert.equal(p.prepare('SELECT n FROM heure').get().n, 7, 'la production garde les siennes');
+  p.close();
+});
+
+test('docker-compose.yml de l’instance : métriques montées hors de db/, dossier partagé réglable comme celui de la maintenance', () => {
+  const compose = readFileSync(new URL('../../deploy/installateur/docker-compose.yml', import.meta.url), 'utf8');
+  assert.match(compose, /^ {6}- \$\{MAVERICK_DOSSIER_METRIQUES:-\.\/metriques\}:\/metriques$/m);
+  assert.match(compose, /^ {6}- \.\/db:\/db$/m);
+  assert.doesNotMatch(compose, /metriques:-\.\/db/, 'jamais dans db/, que l’installateur de test remplace');
+});

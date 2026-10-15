@@ -13,7 +13,9 @@
 # Une instance = un dossier :
 #   site/                le site statique (remplacé à chaque installation ; nginx le relit sans redémarrage)
 #   db/                  la base vivante de l'instance (le service des personnages y écrit). Production : jamais touchée par une installation.
-#                        Test : son contenu est remplacé à chaque installation par une copie, à cet instant, du db/ de la production.
+#                        Test : son contenu est remplacé à chaque installation par une copie, à cet instant, du db/ de la production, sauf
+#                        db/metriques/ (métriques d'une instance sans dossier des métriques réglé) : ni copié de la production, ni effacé.
+#   metriques/           les métriques du service (docker-compose.yml, MAVERICK_DOSSIER_METRIQUES) : jamais touché par une installation.
 #   docker-compose.yml, nginx.conf   posés s'ils sont absents ; s'ils diffèrent, la version livrée est écrite à côté (.nouveau)
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
 #   .htpasswd            mots de passe (jamais touché)
@@ -140,9 +142,12 @@ PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 # ---------------------------------------------------------------- base (avant le site : en cas d'échec, rien n'a changé)
 # Test seulement : MAVERICK_BASE_TEST=conservee dans le .env de l'instance. La base de test est alors copiée de la production à la première
 # installation seulement ; ensuite son db/ n'est plus touché (les modifications faites en test durent, jusqu'à ce qu'on retire la ligne).
+# Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
+# Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni effacé du test, ni compté comme une base.
+METRIQUES=metriques
 BASE_CONSERVEE=0
 if [ "$MODE" = test ] && [ -f "$DOSSIER/.env" ] && grep -q '^MAVERICK_BASE_TEST=conservee[[:space:]]*$' "$DOSSIER/.env" \
-  && [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 | grep -q .; then
+  && [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" | grep -q .; then
   BASE_CONSERVEE=1
 fi
 if [ "$MODE" = prod ]; then
@@ -175,10 +180,12 @@ else
     # le contenu de chaque base remplacé par une sauvegarde cohérente (.backup) prise à cet instant, réécrite en place pour garder
     # son propriétaire et ses droits.
     (cd "$SOURCE/" && tar -cf - .) | (cd "$COPIE" && tar -xf -) || die "copie de $SOURCE impossible"
+    rm -rf "${COPIE:?}/$METRIQUES"
     if [ "$SQLITE" -eq 1 ]; then
       find "$SOURCE/" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while IFS= read -r base; do
         relatif=${base#"$SOURCE"/}
         relatif=${relatif#/}
+        case "$relatif" in "$METRIQUES"/*) continue ;; esac
         cible="$COPIE/$relatif"
         rm -f "$cible-wal" "$cible-shm" "$cible-journal"
         (cd "$(dirname "$cible")" && sqlite3 "$base" ".backup copie-en-cours.tmp" && cat copie-en-cours.tmp > "$(basename "$cible")" && rm -f copie-en-cours.tmp) ||
@@ -195,7 +202,7 @@ else
   # db/ est monté tel quel dans le conteneur du service (docker-compose.yml) : on garde le dossier et on remplace son contenu, comme pour
   # site/ (un dossier remplacé laisserait le conteneur sur l'ancien, supprimé). Le service voit sa base remplacée et la rouvre.
   mkdir -p "$DOSSIER/db"
-  find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 -exec rm -rf {} \; || die "impossible de vider $DOSSIER/db"
+  find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" -exec rm -rf {} \; || die "impossible de vider $DOSSIER/db"
   find "$COPIE" -mindepth 1 -maxdepth 1 -exec mv {} "$DOSSIER/db/" \; || die "impossible de poser la copie dans $DOSSIER/db"
   rmdir "$COPIE"
 fi

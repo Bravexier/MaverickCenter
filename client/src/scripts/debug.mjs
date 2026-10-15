@@ -6,19 +6,30 @@
 //      « Je sais que cette requête modifie la base du site de dev » cochée. Une suppression n'arrive jamais préremplie d'une ligne réelle : seulement
 //      de l'adresse (Location) d'un élément créé dans la page, tant que ses champs n'ont pas été saisis à la main. Le navigateur envoie lui-même
 //      `Sec-Fetch-Site: same-origin`.
-//   3. « Journaux du serveur » : GET <base>api/debug/journal/ toutes les 2 s, les entrées qui suivent la dernière vue (?depuis=), filtrées dans la
+//   3. « Performances » et « Système » (details ouverts ; demande du propriétaire du 2026-10-15) : GET <base>api/debug/metriques/ (instance,
+//      période, tri), …/metriques/requetes/ et …/systeme/ toutes les 30 s (RELEVE_METRIQUES_MS), ni onglet caché ni bloc replié ; une instance
+//      (dev OU production : deux jeux de données séparés) pour les deux blocs ; le tableau des routes se trie dans la page (en-têtes, aria-sort) ;
+//      rendu pur : lib/debug-metriques.mjs ; les liens « Exporter » suivent l'instance et la période.
+//   4. « Journaux du serveur » : GET <base>api/debug/journal/ toutes les 2 s, les entrées qui suivent la dernière vue (?depuis=), filtrées dans la
 //      page (lib/debug-journaux.mjs) ; les nouvelles lignes s'ajoutent en haut sans refaire les autres (planDAffichage), la ligne lue reste à sa place
 //      et une sélection dans le tableau diffère l'affichage ; un autre processus du service (redémarrage) fait tout relire ; Pause (bouton bascule,
-//      aria-pressed), Effacer l'affichage.
-// Script de page : il n'importe que lib/debug-api.mjs et lib/debug-journaux.mjs, qu'aucun autre script de page n'importe (la version portable refuse
-// un module partagé ; test/debug-page.test.mjs). Aucune infobulle native (pas de `title`).
+//      aria-pressed), Effacer l'affichage ; colonne Durée triable (Heure / Durée) ; « Plus lent que … ms » part au service (?min_ms=) et fait tout relire.
+// Script de page : il n'importe que lib/debug-api.mjs, lib/debug-journaux.mjs et lib/debug-metriques.mjs, qu'aucun autre script de page n'importe (la
+// version portable refuse un module partagé ; test/debug-page.test.mjs). Aucune infobulle native (pas de `title`).
 import {
   cleDEtag, commandeCurl, corpsLisible, echapper, entetesUtiles, estDuTexte, familleDuStatut, groupesDOperations, htmlDeLaReponse, htmlDesGroupes,
   htmlDuFormulaire, operationCorrespond, operationsDe, racineDeLApi, requeteDe, valeursDuChemin,
 } from '../lib/debug-api.mjs';
 import {
-  RELEVE_MS, adresseDuJournal, categoriesDes, etatVide, filtrerEntrees, fusionner, htmlDesLignes, planDAffichage, resumeDuJournal,
+  RELEVE_MS, TRI_DU_JOURNAL_PAR_DEFAUT, adresseDuJournal, categoriesDes, etatVide, filtrerEntrees, fusionner, htmlDesLignes, planDAffichage,
+  resumeDuJournal,
 } from '../lib/debug-journaux.mjs';
+import {
+  INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques, adresseDesRequetes,
+  adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, htmlDesAlertes, htmlDesChiffres, htmlDesEvenements, htmlDesFichiers,
+  htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDuDisque, htmlDuProcessus, htmlDuVolume, optionsDesRoutes,
+  plusLentes, resumeDesMetriques, resumeDuSysteme, seuilSaisi, sensParDefaut, trierRoutes,
+} from '../lib/debug-metriques.mjs';
 
 const racine = document.querySelector('[data-debug]');
 
@@ -51,6 +62,7 @@ async function demarrer() {
   dire(`Service du site de dev, version ${etat.version ?? 'inconnue'}${demarre && !Number.isNaN(demarre.getTime())
     ? `, démarré le ${demarre.toLocaleString('fr-FR')}` : ''}${etat.base?.disponible === false ? ' ; base vivante indisponible' : ''}.`);
   brancherLeTesteur(api);
+  brancherLesMetriques(api);
   brancherLesJournaux(api);
 }
 
@@ -304,6 +316,255 @@ function brancherLeTesteur(api) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
+// Performances et système
+
+function brancherLesMetriques(api) {
+  const perfs = racine.querySelector('[data-debug-perfs]');
+  const systeme = racine.querySelector('[data-debug-systeme]');
+  const champ = (bloc, nom) => bloc.querySelector(`[data-${nom}]`);
+  const instance = champ(perfs, 'perfs-instance');
+  const periode = champ(perfs, 'perfs-periode');
+  const triChoisi = champ(perfs, 'perfs-tri');
+  const annonce = champ(perfs, 'perfs-annonce');
+  const routesCorps = champ(perfs, 'perfs-routes');
+  const requetesMin = champ(perfs, 'requetes-min');
+  const requetesRoute = champ(perfs, 'requetes-route');
+  const requetesAnnonce = champ(perfs, 'requetes-annonce');
+  const systemeAnnonce = champ(systeme, 'systeme-annonce');
+  /** Le tri du tableau des routes (dans la page) ; la clé part aussi au service quand il la connaît. */
+  let tri = { cle: TRI_PAR_DEFAUT, sens: sensParDefaut(TRI_PAR_DEFAUT) };
+  let routes = [];
+  /** Un numéro par demande : une réponse arrivée après un changement d'instance ou de période est ignorée. */
+  const demandes = { metriques: 0, requetes: 0, systeme: 0 };
+  const fermes = { metriques: false, requetes: false, systeme: false }; // 403 : ce service n'est pas celui du site de dev
+  const dernieres = { metriques: 0, systeme: 0 };
+  perfs.hidden = false;
+  systeme.hidden = false;
+
+  const choix = () => ({ instance: instance.value || INSTANCES[0].cle, periode: periode.value || PERIODE_PAR_DEFAUT });
+  const dire = (place, texte, erreur = false) => {
+    place.textContent = texte;
+    place.classList.toggle('debug-annonce--erreur', erreur);
+  };
+  /** Un tableau et sa phrase « vide » : le HTML des lignes (rien : la phrase se montre). */
+  const remplir = (nom, html) => {
+    const corps = racine.querySelector(`[data-${nom}]`);
+    corps.innerHTML = html;
+    const vide = racine.querySelector(`[data-${nom}-vide]`);
+    if (vide) vide.hidden = Boolean(html);
+  };
+
+  /** Lit une adresse : { statut, corps } (corps : le JSON, ou null) ; une panne réseau lève. */
+  async function lireJson(adresse) {
+    const r = await lire(adresse);
+    return { statut: r.status, corps: await r.json().catch(() => null) };
+  }
+
+  function majDesExports() {
+    const { instance: i, periode: p } = choix();
+    for (const lien of perfs.querySelectorAll('[data-perfs-export]')) lien.href = adresseDeLExport(api, { instance: i, periode: p, format: lien.dataset.perfsExport });
+  }
+
+  /** Les options d'instance : celles dont le fichier existe (réponse `instances`) ; les autres restent choisissables mais disent qu'elles sont vides. */
+  function majDesInstances(instances) {
+    if (!Array.isArray(instances)) return;
+    for (const option of instance.options) {
+      const connue = INSTANCES.find((i) => i.cle === option.value);
+      const presente = instances.includes(option.value);
+      option.textContent = `${connue?.libelle ?? option.value}${presente ? '' : ' (aucune donnée)'}`;
+    }
+  }
+
+  function afficherLesRoutes() {
+    const triees = trierRoutes(routes, tri);
+    routesCorps.innerHTML = htmlDesRoutes(triees, { lentes: plusLentes(routes) });
+    racine.querySelector('[data-perfs-routes-vide]').hidden = triees.length > 0;
+    for (const bouton of perfs.querySelectorAll('[data-tri-colonne]')) {
+      bouton.closest('th').setAttribute('aria-sort', ariaSort(tri, bouton.dataset.triColonne));
+    }
+  }
+
+  function viderLesMetriques() {
+    routes = [];
+    afficherLesRoutes();
+    champ(perfs, 'perfs-global').innerHTML = '';
+    champ(perfs, 'perfs-serie').innerHTML = '';
+    champ(perfs, 'perfs-resume').textContent = '';
+    for (const nom of ['perfs-pages', 'perfs-navigateurs', 'perfs-origines']) remplir(nom, '');
+  }
+
+  async function chargerLesMetriques() {
+    if (fermes.metriques) return;
+    const numero = ++demandes.metriques;
+    const { instance: i, periode: p } = choix();
+    let reponse;
+    try {
+      reponse = await lireJson(adresseDesMetriques(api, { instance: i, periode: p, tri: tri.cle }));
+    } catch (e) {
+      if (numero === demandes.metriques) dire(annonce, `Métriques injoignables (${e.message}) : nouvel essai dans ${RELEVE_METRIQUES_MS / 1000} s.`, true);
+      return;
+    }
+    if (numero !== demandes.metriques) return;
+    dernieres.metriques = Date.now();
+    const { statut, corps } = reponse;
+    if (statut === 403) {
+      fermes.metriques = true;
+      dire(annonce, corps?.erreur ?? 'Le service refuse ses métriques : il n’est pas celui du site de dev.', true);
+      return;
+    }
+    if (statut === 404) {
+      viderLesMetriques();
+      majDesInstances(corps?.instances);
+      dire(annonce, corps?.erreur ?? `Aucune métrique enregistrée pour « ${instance.selectedOptions[0]?.textContent ?? i} » pour l’instant.`);
+      return;
+    }
+    if (statut !== 200 || !corps || typeof corps !== 'object') {
+      dire(annonce, `Métriques illisibles (${corps?.erreur ?? `le service a répondu ${statut}`}).`, true);
+      return;
+    }
+    dire(annonce, '');
+    majDesInstances(corps.instances);
+    routes = Array.isArray(corps.routes) ? corps.routes : [];
+    afficherLesRoutes();
+    champ(perfs, 'perfs-resume').textContent = resumeDesMetriques(corps);
+    champ(perfs, 'perfs-global').innerHTML = htmlDesChiffres(corps.global);
+    champ(perfs, 'perfs-serie').innerHTML = courbeDeLaSerie(corps.serie);
+    remplir('perfs-pages', htmlDesPages(corps.pages));
+    remplir('perfs-navigateurs', htmlDesNavigateurs(corps.navigateurs));
+    remplir('perfs-origines', htmlDesOrigines(corps.origines));
+    const choisie = requetesRoute.value;
+    requetesRoute.innerHTML = optionsDesRoutes(routes, choisie);
+  }
+
+  async function chargerLesRequetes() {
+    if (fermes.requetes) return;
+    const numero = ++demandes.requetes;
+    let reponse;
+    try {
+      reponse = await lireJson(adresseDesRequetes(api, { limite: REQUETES_LIMITE, route: requetesRoute.value, minMs: seuilSaisi(requetesMin.value) }));
+    } catch (e) {
+      if (numero === demandes.requetes) dire(requetesAnnonce, `Requêtes récentes injoignables (${e.message}).`, true);
+      return;
+    }
+    if (numero !== demandes.requetes) return;
+    const { statut, corps } = reponse;
+    if (statut === 403) {
+      fermes.requetes = true;
+      dire(requetesAnnonce, corps?.erreur ?? 'Le service refuse ses requêtes récentes.', true);
+      return;
+    }
+    if (statut !== 200 || !Array.isArray(corps?.requetes)) {
+      dire(requetesAnnonce, `Requêtes récentes illisibles (${corps?.erreur ?? `le service a répondu ${statut}`}).`, true);
+      return;
+    }
+    dire(requetesAnnonce, '');
+    // les détails ouverts restent ouverts d'une relève à l'autre (repérés par instant, méthode et adresse)
+    const liste = champ(perfs, 'requetes-liste');
+    const ouverts = new Set([...liste.querySelectorAll('details[open]')].map((d) => d.closest('li').dataset.cle));
+    liste.innerHTML = htmlDesRequetes(corps.requetes);
+    for (const li of liste.children) {
+      const resume = li.querySelector('summary');
+      li.dataset.cle = resume ? resume.textContent : '';
+      if (ouverts.has(li.dataset.cle)) li.querySelector('details').open = true;
+    }
+    champ(perfs, 'requetes-vide').hidden = corps.requetes.length > 0;
+  }
+
+  async function chargerLeSysteme() {
+    if (fermes.systeme) return;
+    const numero = ++demandes.systeme;
+    const { instance: i } = choix();
+    let reponse;
+    try {
+      reponse = await lireJson(adresseDuSysteme(api, i));
+    } catch (e) {
+      if (numero === demandes.systeme) dire(systemeAnnonce, `Système injoignable (${e.message}) : nouvel essai dans ${RELEVE_METRIQUES_MS / 1000} s.`, true);
+      return;
+    }
+    if (numero !== demandes.systeme) return;
+    dernieres.systeme = Date.now();
+    const { statut, corps } = reponse;
+    if (statut === 403) {
+      fermes.systeme = true;
+      dire(systemeAnnonce, corps?.erreur ?? 'Le service refuse son état système : il n’est pas celui du site de dev.', true);
+      return;
+    }
+    const vider = () => {
+      for (const nom of ['systeme-alertes', 'systeme-processus', 'systeme-disque', 'systeme-volume', 'systeme-echantillons']) champ(systeme, nom).innerHTML = '';
+      champ(systeme, 'systeme-fichiers').innerHTML = '';
+      remplir('systeme-evenements', '');
+      champ(systeme, 'systeme-resume').textContent = '';
+    };
+    if (statut === 404) {
+      vider();
+      dire(systemeAnnonce, corps?.erreur ?? 'Aucun état système enregistré pour cette instance pour l’instant.');
+      return;
+    }
+    if (statut !== 200 || !corps || typeof corps !== 'object') {
+      dire(systemeAnnonce, `État système illisible (${corps?.erreur ?? `le service a répondu ${statut}`}).`, true);
+      return;
+    }
+    dire(systemeAnnonce, '');
+    const maintenant = new Date();
+    champ(systeme, 'systeme-resume').textContent = resumeDuSysteme(corps);
+    champ(systeme, 'systeme-alertes').innerHTML = htmlDesAlertes(corps.alertes);
+    champ(systeme, 'systeme-processus').innerHTML = htmlDuProcessus(corps.processus, maintenant);
+    champ(systeme, 'systeme-disque').innerHTML = htmlDuDisque(corps.disque);
+    champ(systeme, 'systeme-volume').innerHTML = htmlDuVolume(corps.volume);
+    champ(systeme, 'systeme-echantillons').innerHTML = courbeDuSysteme(corps.echantillons);
+    champ(systeme, 'systeme-fichiers').innerHTML = htmlDesFichiers(corps.fichiers);
+    remplir('systeme-evenements', htmlDesEvenements(corps.evenements, maintenant));
+  }
+
+  /** Une relève : chaque bloc ouvert, onglet visible ; `force` : même un bloc relevé il y a moins de 30 s (changement de choix, bouton). */
+  function relever(force = false) {
+    if (document.hidden) return;
+    const age = (t) => Date.now() - t >= RELEVE_METRIQUES_MS - 1000;
+    if (perfs.open && (force || age(dernieres.metriques))) {
+      chargerLesMetriques();
+      chargerLesRequetes();
+    }
+    if (systeme.open && (force || age(dernieres.systeme))) chargerLeSysteme();
+  }
+
+  instance.addEventListener('change', () => {
+    majDesExports();
+    relever(true);
+  });
+  periode.addEventListener('change', () => {
+    majDesExports();
+    chargerLesMetriques();
+  });
+  triChoisi.addEventListener('change', () => {
+    tri = { cle: triChoisi.value, sens: sensParDefaut(triChoisi.value) };
+    afficherLesRoutes();
+  });
+  perfs.querySelector('[data-perfs-actualiser]').addEventListener('click', () => relever(true));
+  perfs.querySelector('thead').addEventListener('click', (ev) => {
+    const bouton = ev.target.closest('[data-tri-colonne]');
+    if (!bouton) return;
+    const cle = bouton.dataset.triColonne;
+    tri = tri.cle === cle ? { cle, sens: tri.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: sensParDefaut(cle) };
+    triChoisi.value = cle;
+    afficherLesRoutes();
+  });
+  let attente = 0;
+  requetesMin.addEventListener('input', () => {
+    clearTimeout(attente);
+    attente = setTimeout(chargerLesRequetes, 400);
+  });
+  requetesRoute.addEventListener('change', chargerLesRequetes);
+  for (const f of perfs.querySelectorAll('form')) f.addEventListener('submit', (ev) => ev.preventDefault());
+  // `toggle` ne remonte pas : seul le bloc lui-même (pas une requête dépliée dedans) relance une relève
+  perfs.addEventListener('toggle', (ev) => { if (ev.target === perfs && perfs.open) relever(); });
+  systeme.addEventListener('toggle', (ev) => { if (ev.target === systeme && systeme.open) relever(); });
+  document.addEventListener('visibilitychange', () => relever());
+  setInterval(() => relever(), RELEVE_METRIQUES_MS);
+  majDesExports();
+  relever(true);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
 // Journaux du serveur
 
 function brancherLesJournaux(api) {
@@ -318,7 +579,11 @@ function brancherLesJournaux(api) {
   const lignes = section.querySelector('[data-journaux-lignes]');
   const vide = section.querySelector('[data-journaux-vide]');
   const cadre = section.querySelector('.debug-journaux__cadre');
+  const minMs = section.querySelector('[data-journaux-min-ms]');
   let etat = etatVide();
+  /** Le seuil de durée qui a servi à la relève en cours (?min_ms=) : un autre fait tout relire. */
+  let seuil = 0;
+  let tri = { ...TRI_DU_JOURNAL_PAR_DEFAUT };
   let enPause = false;
   let enCours = false;
   let arret = false;
@@ -336,7 +601,11 @@ function brancherLesJournaux(api) {
       categorie.innerHTML = `<option value=""${choisie ? '' : ' selected'}>Toutes</option>${categories
         .map((c) => `<option value="${echapper(c)}"${c === choisie ? ' selected' : ''}>${echapper(c)}</option>`).join('')}`;
     }
-    const { lignes: affichees, total } = filtrerEntrees(etat.entrees, { niveaux: niveaux(), categorie: choisie, texte: texte.value });
+    const { lignes: affichees, total } = filtrerEntrees(etat.entrees, { niveaux: niveaux(), categorie: choisie, texte: texte.value, minMs: seuil, tri });
+    for (const bouton of section.querySelectorAll('[data-journaux-tri]')) {
+      const actif = bouton.dataset.journauxTri === tri.cle;
+      bouton.closest('th').setAttribute('aria-sort', actif ? (tri.sens === 'asc' ? 'ascending' : 'descending') : 'none');
+    }
     // la ligne lue (la première visible du cadre, s'il n'est pas tout en haut) reste à sa place à l'écran
     const ancre = ancreDuCadre();
     const plan = planDAffichage([...lignes.rows].map((r) => Number(r.dataset.n)), affichees.map((e) => e.n));
@@ -386,10 +655,11 @@ function brancherLesJournaux(api) {
   async function relever() {
     if (enCours || arret) return;
     enCours = true;
+    const seuilDeLaDemande = seuil;
     let statut = 0;
     let reponse = null;
     try {
-      const r = await lire(adresseDuJournal(api, etat.dernier));
+      const r = await lire(adresseDuJournal(api, etat.dernier, { minMs: seuilDeLaDemande }));
       statut = r.status;
       reponse = await r.json().catch(() => null);
       if (!r.ok && statut !== 403) throw new Error(reponse?.erreur ?? `le service a répondu ${statut}`);
@@ -404,6 +674,11 @@ function brancherLesJournaux(api) {
     if (statut === 403) {
       arret = true;
       annonce.textContent = reponse.erreur ?? 'Le service refuse son journal : il n’est pas celui du site de dev.';
+      return;
+    }
+    if (seuilDeLaDemande !== seuil) {
+      // le seuil a changé pendant la demande : sa réponse ne vaut plus, tout est relu avec le nouveau
+      setTimeout(relever, 0);
       return;
     }
     const suite = fusionner(etat, reponse);
@@ -450,7 +725,29 @@ function brancherLesJournaux(api) {
     etat = { ...etat, entrees: [] };
     afficher();
   });
-  formulaire.addEventListener('input', afficher);
-  formulaire.addEventListener('change', afficher);
+  /** Un nouveau seuil « plus lent que … ms » : il part au service (?min_ms=), tout est relu depuis le début. */
+  let attente = 0;
+  function nouveauSeuil() {
+    clearTimeout(attente);
+    attente = setTimeout(() => {
+      const valeur = seuilSaisi(minMs.value);
+      if (valeur === seuil) return;
+      seuil = valeur;
+      etat = etatVide();
+      lignes.innerHTML = '';
+      afficher();
+      relever();
+    }, 400);
+  }
+  formulaire.addEventListener('input', (ev) => (ev.target === minMs ? nouveauSeuil() : afficher()));
+  formulaire.addEventListener('change', (ev) => (ev.target === minMs ? nouveauSeuil() : afficher()));
   formulaire.addEventListener('submit', (ev) => ev.preventDefault());
+  // tri par heure ou par durée (en-têtes) : le même en-tête inverse le sens ; un autre part de la plus récente ou de la plus lente
+  section.querySelector('thead').addEventListener('click', (ev) => {
+    const bouton = ev.target.closest('[data-journaux-tri]');
+    if (!bouton) return;
+    const cle = bouton.dataset.journauxTri;
+    tri = tri.cle === cle ? { cle, sens: tri.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'desc' };
+    afficher();
+  });
 }

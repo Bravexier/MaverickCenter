@@ -42,6 +42,9 @@ test('Caddyfile : normal sur 8080, test sur 8081 (les ports des installateurs), 
   assert.match(test_, /header Cache-Control "no-store"/, 'le test ne garde aucune copie dans le navigateur');
   assert.doesNotMatch(normal, /no-store/, 'la production garde le cache normal');
   assert.match(c, /X-Robots-Tag "noindex, nofollow"/);
+  // page d'où vient chaque appel /api/ (métriques, docs/serveur.md) : l'adresse n'est donnée qu'au site lui-même, et Caddy dit la même chose que nginx
+  assert.match(c, /^\t\tReferrer-Policy "same-origin"$/m);
+  assert.match(readFileSync(join(vps, '..', 'nginx.conf'), 'utf8'), /^ {4}add_header Referrer-Policy "same-origin" always;$/m);
   assert.match(c, /handle \/robots\.txt/);
   assert.doesNotMatch(c, /0\.0\.0\.0|^:808[01]\s*\{/m, 'jamais d\'accès direct aux ports des instances');
 });
@@ -136,10 +139,18 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.equal(r.code, 0, r.out);
 
   const normal = env(join(d.normal, '.env'));
-  assert.deepEqual(normal, { MAVERICK_CONTENEUR: 'maverick-center', MAVERICK_PORT: '127.0.0.1:8080' });
+  const metriques = join(d.normal, 'metriques');
+  assert.deepEqual(normal, { MAVERICK_CONTENEUR: 'maverick-center', MAVERICK_PORT: '127.0.0.1:8080', MAVERICK_INSTANCE: 'prod', MAVERICK_DOSSIER_METRIQUES: metriques });
   const test_ = env(join(d.test, '.env'));
   assert.deepEqual(test_, { MAVERICK_CONTENEUR: 'maverick-center-test', MAVERICK_PORT: '127.0.0.1:8081', MAVERICK_BASE_TEST: 'conservee', MAVERICK_EDITION: '1',
-    MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.maverick-jdr.com', MAVERICK_DOSSIER_MAINTENANCE: join(d.normal, 'maintenance') });
+    MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.maverick-jdr.com', MAVERICK_DOSSIER_MAINTENANCE: join(d.normal, 'maintenance'),
+    MAVERICK_INSTANCE: 'dev', MAVERICK_DOSSIER_METRIQUES: metriques });
+  // métriques (docs/serveur.md, « Métriques et volume ») : un dossier partagé, celui du serveur normal, où chaque instance écrit SA base (prod.db,
+  // dev.db : jamais mêlées) ; hors de db/ (l'installateur de test remplace le contenu de db/) ; écrit par le service, root dans son conteneur
+  assert.ok(statSync(metriques).isDirectory());
+  assert.equal(statSync(metriques).mode & 0o777, 0o755);
+  assert.ok(!existsSync(join(d.test, 'metriques')), 'un seul dossier des métriques, celui du serveur normal');
+  assert.notEqual(normal.MAVERICK_INSTANCE, test_.MAVERICK_INSTANCE, 'deux jeux de données séparés : un fichier par instance');
   assert.equal(statSync(join(d.test, 'secrets')).mode & 0o777, 0o700, 'dossier du jeton de la page Mise à jour, lisible par root seulement');
   // maintenance pendant une mise à jour : le serveur de test publie l'annonce dans le dossier du serveur normal, que les deux montent
   assert.ok(statSync(join(d.normal, 'maintenance')).isDirectory());
@@ -164,10 +175,15 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.match(validation, /^caddy validate --config \S+Caddyfile --adapter caddyfile domaine=maverick-jdr\.com acces=present$/);
   assert.ok(!r.out.includes(Buffer.from(caddy.MAVERICK_ACCES_NORMAL, 'base64').toString().split(':')[1]), 'aucun mot de passe affiché');
 
-  // Relance : les accès sont conservés, le réglage de port est rétabli s'il a été changé, le domaine peut changer.
+  // Relance : les accès sont conservés, le réglage de port est rétabli s'il a été changé, le domaine peut changer ; les métriques écrites restent.
   writeFileSync(join(d.normal, '.env'), 'MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=8080\n');
+  writeFileSync(join(metriques, 'prod.db'), 'mesures');
   const r2 = lancerInstances(d, ['--domaine', 'exemple.org']);
   assert.equal(r2.code, 0, r2.out);
+  assert.equal(readFileSync(join(metriques, 'prod.db'), 'utf8'), 'mesures');
+  assert.deepEqual(env(join(d.normal, '.env')), { MAVERICK_CONTENEUR: 'maverick-center', MAVERICK_PORT: '127.0.0.1:8080', MAVERICK_INSTANCE: 'prod',
+    MAVERICK_DOSSIER_METRIQUES: metriques }, 'réglages des métriques reposés sans doublon');
+  assert.deepEqual(env(join(d.test, '.env')), { ...test_, MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.exemple.org' }, 'relancé, le .env du test ne change que par le domaine');
   const caddy2 = env(join(d.caddy, 'maverick.env'));
   assert.equal(caddy2.MAVERICK_ACCES_NORMAL, caddy.MAVERICK_ACCES_NORMAL);
   assert.equal(caddy2.MAVERICK_DOMAINE, 'exemple.org');

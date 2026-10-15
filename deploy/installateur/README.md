@@ -24,7 +24,12 @@ du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](
 installé), `installation.log`, et `maintenance/` (créé par Docker : l'annonce « Maintenance en cours » pendant une mise à jour, que le site de dev écrit
 et que chaque serveur lit ; le serveur de test prend celui du serveur normal avec `MAVERICK_DOSSIER_MAINTENANCE=<dossier du serveur normal>/maintenance`
 dans son `.env` — `deploy/vps/instances.sh` le pose —, sinon la production n'est jamais mise en maintenance ; voir [`docs/serveur.md`](../../docs/serveur.md),
-« Maintenance pendant une mise à jour »). Un installateur de test refuse un dossier de production et inversement.
+« Maintenance pendant une mise à jour »), et `metriques/` (créé par Docker : la base des métriques du service, `prod.db` ou `dev.db`, une par
+instance, jamais mêlées ; le serveur de test y lit aussi celle du serveur normal quand son `.env` donne
+`MAVERICK_DOSSIER_METRIQUES=<dossier du serveur normal>/metriques` — `deploy/vps/instances.sh` le pose dans les deux `.env` ; voir
+[`docs/serveur.md`](../../docs/serveur.md), « Métriques et volume »). L'installateur ne touche jamais aux métriques : hors de `db/`, et un
+`db/metriques/` (service sans dossier réglé) n'est ni copié de la production ni effacé du test. Les journaux des conteneurs (`docker logs`)
+tournent : 5 fichiers de 10 Mo au plus par conteneur. Un installateur de test refuse un dossier de production et inversement.
 
 ## Installer une version
 

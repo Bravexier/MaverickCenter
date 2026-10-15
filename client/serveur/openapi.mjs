@@ -467,10 +467,49 @@ function cheminsDuService() {
         { name: 'categorie', in: 'query', description: 'service, http, base, fiches, edition, mise-a-jour, maintenance (plusieurs : « a,b »).', schema: { type: 'string' } },
         { name: 'q', in: 'query', description: 'Texte cherché dans le message (sans accents ni majuscules).', schema: { type: 'string' } },
         { name: 'limite', in: 'query', description: 'Au plus ce nombre d’entrées (les plus récentes).', schema: { type: 'integer', minimum: 1 } },
+        { name: 'min_ms', in: 'query', description: 'Seulement les entrées qui ont une durée (requêtes /api/, champ duree_ms) d’au moins tant de ms.', schema: { type: 'number', minimum: 0 } },
       ],
     }),
+    '/debug/metriques/': lectureDuService('metriques', 'Métriques des requêtes',
+      `Temps de réponse et volumes d’une instance sur une période : statistiques globales et par route normalisée (n, erreurs, part de 304, moyenne, médiane, p95, p99, min, max, écart type, total, octets, requêtes SQL), série, pages vues mesurées par le navigateur, navigateurs, pages d’origine. Le site de dev lit aussi les métriques de la production (lecture seule).${SITE_DE_DEV}`, {
+        parameters: [INSTANCE, PERIODE,
+          { name: 'tri', in: 'query', description: 'Tri décroissant des routes.', schema: { type: 'string', enum: ['moyenne', 'mediane', 'p95', 'p99', 'max', 'n', 'erreurs', 'total', 'sql'], default: 'moyenne' } }],
+        responses: { 200: reponse('Les métriques.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
+      }),
+    '/debug/metriques/requetes/': lectureDuService('metriques_requetes', 'Dernières requêtes, une à une',
+      `Les dernières requêtes gardées en mémoire (2 000 au plus, les plus récentes d’abord) : route, adresse (chemin seul), statut, durée et phases, octets, requêtes SQL et la plus lente, page d’origine, navigateur, requêtes simultanées. Jamais l’adresse IP, le corps ni la chaîne de requête.${SITE_DE_DEV}`, {
+        parameters: [
+          { name: 'limite', in: 'query', description: 'Au plus ce nombre de requêtes (200 par défaut).', schema: { type: 'integer', minimum: 1, maximum: 2000 } },
+          { name: 'route', in: 'query', description: 'Seulement les routes qui contiennent ce texte (« /api/v1/metiers/ »).', schema: { type: 'string' } },
+          { name: 'min_ms', in: 'query', description: 'Seulement les requêtes d’au moins tant de ms.', schema: { type: 'number', minimum: 0 } },
+          { name: 'statut', in: 'query', description: 'Un statut (« 404 ») ou une classe (« 5xx »).', schema: { type: 'string' } },
+        ],
+      }),
+    '/debug/metriques/export/': lectureDuService('metriques_export', 'Exporter les agrégats horaires',
+      `Les agrégats horaires bruts (par heure × route × méthode, avec l’histogramme des durées) d’une instance sur une période, en pièce jointe CSV ou JSON.${SITE_DE_DEV}`, {
+        parameters: [INSTANCE, { ...PERIODE, schema: { ...PERIODE.schema, default: 'tout' } },
+          { name: 'format', in: 'query', description: 'csv ou json.', schema: { type: 'string', enum: ['csv', 'json'], default: 'csv' } }],
+      }),
+    '/debug/systeme/': lectureDuService('systeme', 'État du système',
+      `Processus (mémoire, tas, boucle d’événements, CPU, charge), disque, fichiers (base vivante, archives, lots de mise à jour, métriques), échantillons par minute, évènements du service avec leur durée, volume des métriques (taille, croissance par jour, taille à terme, rétention) et alertes.${SITE_DE_DEV}`, {
+        parameters: [INSTANCE, PERIODE],
+        responses: { 200: reponse('L’état du système.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
+      }),
+    '/metriques/page/': {
+      post: {
+        operationId: 'metriques_page', tags: [SERVICE], summary: 'Mesure d’une page vue',
+        description: 'La balise que le navigateur envoie après le chargement d’une page (navigator.sendBeacon) : temps jusqu’au premier octet, DOMContentLoaded, chargement complet et LCP, en ms (0 à 120 000). Ouverte sur les deux instances (décision du propriétaire) ; MAVERICK_METRIQUES_PAGES=0 la ferme (403). Chaque instance l’écrit dans SA base des métriques, jamais dans la base vivante. Content-Type application/json ou text/plain, 2 Kio au plus ; 600 balises par minute au plus.',
+        requestBody: { required: true, ...json(objet, { example: { page: '/classes/', ttfb_ms: 42, dom_ms: 180, charge_ms: 320, lcp_ms: 410 } }) },
+        responses: { 204: { description: 'Reçue (pas de corps).' }, 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 413: reponse('Corps trop volumineux.', ref('schemas', 'Erreur')),
+          415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop de mesures reçues cette minute.', ref('schemas', 'Erreur')) },
+      },
+    },
   };
 }
+
+/** Paramètres des routes des métriques : l'instance lue (la sienne par défaut) et la période. */
+const INSTANCE = { name: 'instance', in: 'query', description: 'dev ou prod (par défaut : celle de ce service) ; le site de dev lit le fichier de la production en lecture seule.', schema: { type: 'string', pattern: '^[a-z0-9-]{1,32}$' } };
+const PERIODE = { name: 'periode', in: 'query', description: 'Période lue, jusqu’à maintenant.', schema: { type: 'string', enum: ['1h', '24h', '7j', '30j', '365j', 'tout'], default: '24h' } };
 
 const COMPOSANTS = {
   parameters: {
@@ -540,7 +579,7 @@ export function descriptionOpenApi(catalogue) {
       name: m.libelle,
       description: `Module « ${m.cle} » : ${catalogue.ressources.filter((r) => r.module === m.cle).map((r) => r.noms).join(', ')}.`,
     }));
-  tags.push({ name: SERVICE, description: 'Le service d’avant /api/v1/ (état, prétirés, maintenance, édition des pages, mise à jour, journal) et l’entrée de l’API v1 (catalogue, cette description).' });
+  tags.push({ name: SERVICE, description: 'Le service d’avant /api/v1/ (état, prétirés, maintenance, édition des pages, mise à jour, journal, métriques) et l’entrée de l’API v1 (catalogue, cette description).' });
   return {
     openapi: '3.1.0',
     info: {

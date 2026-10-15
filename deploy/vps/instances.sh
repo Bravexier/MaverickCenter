@@ -2,11 +2,12 @@
 # Prépare les deux instances (serveur normal et serveur de test) et configure Caddy. À lancer en root, après outils.sh :
 #   sudo bash instances.sh [--domaine maverick-jdr.com] [--regenerer-acces]
 #
-# Ce que fait le script (sûr à relancer, il ne touche ni au site ni à db/) :
-#   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080), .htpasswd, maintenance/ (annonce de maintenance des deux serveurs)
+# Ce que fait le script (sûr à relancer, il ne touche ni au site, ni à db/, ni aux métriques déjà écrites) :
+#   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080, MAVERICK_INSTANCE=prod, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques),
+#                               .htpasswd, maintenance/ (annonce de maintenance des deux serveurs), metriques/ (prod.db et dev.db, une base par instance)
 #   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1,
-#                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance), .htpasswd,
-#                               secrets/ (jeton de la page Mise à jour)
+#                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance,
+#                               MAVERICK_INSTANCE=dev, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques), .htpasswd, secrets/ (jeton de la page Mise à jour)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
 # Le site lui-même est posé ensuite par les installateurs (deploy/installateur/, voir README.md de ce dossier).
 set -euo pipefail
@@ -67,6 +68,17 @@ chmod 700 "$TEST/secrets"
 # maintenance/ du serveur normal, que les deux montent (docker-compose.yml) ; chacun rouvre dès que la nouvelle version y tourne.
 mkdir -p "$NORMAL/maintenance"
 poser "$TEST/.env" MAVERICK_DOSSIER_MAINTENANCE "$NORMAL/maintenance"
+# Métriques (docs/serveur.md, « Métriques et volume ») : un dossier PARTAGÉ, sur le modèle de celui de la maintenance, monté dans le conteneur
+# « serveur » des deux instances (docker-compose.yml) ; chacune n'y écrit QUE sa base (prod.db, dev.db : deux jeux de données séparés, décision du
+# propriétaire du 2026-10-15), et le site de dev y lit aussi celle de la production pour la page Debug. Hors de db/ : l'installateur de test, qui
+# remplace le contenu de db/, ne les copie ni ne les efface. Le service tourne en root dans son conteneur (node:22-alpine, pas de « user: ») :
+# root:root 755 lui suffit, comme pour db/.
+mkdir -p "$NORMAL/metriques"
+chmod 755 "$NORMAL/metriques"
+poser "$NORMAL/.env" MAVERICK_INSTANCE prod
+poser "$TEST/.env" MAVERICK_INSTANCE dev
+poser "$NORMAL/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
+poser "$TEST/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

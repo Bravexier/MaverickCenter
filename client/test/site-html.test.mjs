@@ -255,6 +255,41 @@ test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) de
   }
 });
 
+test('balise des pages (métriques du navigateur, page Debug) : sur chaque page sauf /maintenance/, production comprise, avec le chemin construit de la page', options, async () => {
+  // décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ; SITE_METRIQUES_PAGES=0 au build la retire
+  const pages = walk(dist).filter((f) => f.endsWith('.html')).map((f) => relative(dist, f).split('\\').join('/'));
+  const BALISE = /<script data-metriques-page="([^"]+)" data-metriques-chemin="([^"]+)">([\s\S]*?)<\/script>/;
+  if (process.env.SITE_METRIQUES_PAGES === '0') {
+    assert.deepEqual(pages.filter((rel) => BALISE.test(lire(rel))), [], 'SITE_METRIQUES_PAGES=0 : aucune page ne mesure');
+    return;
+  }
+  assert.deepEqual(pages.filter((rel) => !BALISE.test(lire(rel))), ['maintenance/index.html'], 'toutes les pages, page 404 comprise, sauf la maintenance');
+  for (const rel of pages.filter((r) => r !== 'maintenance/index.html')) {
+    const [, adresse, chemin] = lire(rel).match(BALISE);
+    assert.equal(adresse, '/api/metriques/page/', rel);
+    // le chemin construit : autant de valeurs que de pages construites (une adresse inconnue sert la page 404, qui se dit « 404 »)
+    if (rel.endsWith('index.html')) assert.equal(chemin, `/${rel.slice(0, -'index.html'.length)}`, rel);
+    else assert.match(chemin, /^\/[^?#"]*$/, rel);
+  }
+  assert.match(lire('404.html').match(BALISE)[2], /^\/404\/?$/, 'la page 404 : un seul chemin, quelle que soit l’adresse demandée');
+  // exécutée dans un faux navigateur : une seule mesure, en texte JSON, vers le service de CE serveur
+  const [, adresse, chemin, code] = lire('races/index.html').match(BALISE);
+  const envois = [];
+  const evenements = {};
+  vm.runInNewContext(code, {
+    document: { currentScript: { getAttribute: (n) => ({ 'data-metriques-page': adresse, 'data-metriques-chemin': chemin })[n] }, readyState: 'loading', visibilityState: 'hidden', addEventListener: () => {} },
+    navigator: { sendBeacon: (a, corps) => envois.push([a, corps]) },
+    performance: { getEntriesByType: () => [{ responseStart: 12.345, domContentLoadedEventEnd: 50, loadEventEnd: 80 }] },
+    addEventListener: (type, f) => { evenements[type] = f; },
+    setTimeout: () => 0,
+    clearTimeout: () => {},
+  });
+  evenements.pagehide();
+  evenements.pagehide();
+  assert.equal(envois.length, 1);
+  assert.deepEqual([envois[0][0], JSON.parse(envois[0][1])], ['/api/metriques/page/', { page: '/races/', ttfb_ms: 12.35, dom_ms: 50, charge_ms: 80 }]);
+});
+
 test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », menus grisés et inertes, les étapes ; hors du menu', options, () => {
   const html = lire('maintenance/index.html');
   assert.match(html, /<title>Maintenance en cours — Maverick Center<\/title>/);

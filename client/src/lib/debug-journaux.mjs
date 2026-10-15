@@ -1,11 +1,14 @@
 // Journaux du serveur sur la page Debug (demande du propriétaire : « les logs du serveur (avec une possibilité de filtrer) » ; pages/debug.astro,
 // src/scripts/debug.mjs) : fonctions pures sur les réponses de GET <base>api/debug/journal/ (serveur/journal-du-service.mjs) :
-//   { processus, entrees: [{ n, instant, niveau, categorie, message }], dernier, capacite, perdues }
+//   { processus, entrees: [{ n, instant, niveau, categorie, message, duree_ms?, methode?, route?, statut?, octets_sortie? }], dernier, capacite, perdues }
+// Une entrée `http` porte ses champs isolés en plus du message (demande du propriétaire du 2026-10-15 : « isoler les informations de temps de
+// réponse ») : la colonne Durée les montre, se trie, et le filtre « plus lent que … ms » les lit (?min_ms=, et dans la page).
 // La page relève toutes les 2 s les entrées qui suivent la dernière vue (?depuis=<dernier>), les garde (GARDEES_MAX au plus) et en affiche au plus
-// AFFICHEES_MAX, filtrées par niveau, catégorie et texte, la plus récente en haut. Les filtres s'appliquent dans la page : changer de filtre ne
-// redemande rien au service.
-// Sans dépendance hors du testeur de la même page (lib/debug-api.mjs) ; importé par le seul script de la page Debug.
+// AFFICHEES_MAX, filtrées par niveau, catégorie, texte et durée, la plus récente en haut (ou triées par durée). Niveaux, catégorie, texte et tri
+// s'appliquent dans la page : les changer ne redemande rien au service ; le seuil de durée, lui, part au service (?min_ms=) et fait tout relire.
+// Sans dépendance hors des deux autres modules de la même page (lib/debug-api.mjs, lib/debug-metriques.mjs) ; importé par le seul script de la page Debug.
 import { cle, echapper } from './debug-api.mjs';
+import { formaterDuree, lenteur } from './debug-metriques.mjs';
 
 /** Intervalle de la relève, en millisecondes. */
 export const RELEVE_MS = 2000;
@@ -20,10 +23,23 @@ export const NIVEAUX = [
   { cle: 'erreur', libelle: 'Erreur' },
 ];
 
-/** L'adresse de la relève : `api` = « <base>api/ » ; après la première, les entrées qui suivent `depuis`. */
-export function adresseDuJournal(api, depuis = 0) {
-  return `${api}debug/journal/${depuis > 0 ? `?depuis=${depuis}` : ''}`;
+/** Les tris du tableau des journaux : par heure (la plus récente en haut, par défaut) ou par durée (la plus lente en haut). */
+export const TRIS_DU_JOURNAL = ['instant', 'duree'];
+export const TRI_DU_JOURNAL_PAR_DEFAUT = { cle: 'instant', sens: 'desc' };
+
+/**
+ * L'adresse de la relève : `api` = « <base>api/ » ; après la première, les entrées qui suivent `depuis` ; `minMs` > 0 : seulement les requêtes
+ * plus lentes que ce seuil (?min_ms=, en millisecondes).
+ */
+export function adresseDuJournal(api, depuis = 0, { minMs = 0 } = {}) {
+  const parametres = [];
+  if (depuis > 0) parametres.push(`depuis=${depuis}`);
+  if (Number(minMs) > 0) parametres.push(`min_ms=${encodeURIComponent(String(Number(minMs)))}`);
+  return `${api}debug/journal/${parametres.length ? `?${parametres.join('&')}` : ''}`;
 }
+
+/** La durée isolée d'une entrée (ms), ou null (une entrée qui n'est pas une requête). */
+export const dureeDe = (e) => (typeof e?.duree_ms === 'number' && Number.isFinite(e.duree_ms) ? e.duree_ms : null);
 
 /** L'état vide de la page : aucune entrée, rien vu, aucun processus connu. */
 export const etatVide = () => ({ entrees: [], dernier: 0, perdues: 0, capacite: null, processus: null });
@@ -59,17 +75,33 @@ export function fusionner(etat, reponse) {
 }
 
 /**
- * Les entrées qui passent les filtres, la plus récente d'abord, AFFICHEES_MAX au plus : niveaux (les cases cochées : un ensemble ou un tableau ;
- * aucune : rien), categorie ('' : toutes), texte (chaque mot, sans accents ni majuscules, dans le message ou la catégorie).
+ * Les entrées qui passent les filtres, AFFICHEES_MAX au plus : niveaux (les cases cochées : un ensemble ou un tableau ; aucune : rien), categorie
+ * ('' : toutes), texte (chaque mot, sans accents ni majuscules, dans le message ou la catégorie), minMs (> 0 : seulement les entrées dont la durée
+ * isolée atteint ce seuil — une entrée sans durée n'en est pas). Tri : par défaut la plus récente d'abord (les AFFICHEES_MAX plus récentes) ;
+ * { cle: 'instant', sens: 'asc' } les mêmes, la plus ancienne d'abord ; { cle: 'duree' } la plus lente d'abord (ou la plus rapide, 'asc'), les
+ * entrées sans durée à la fin, à durée égale la plus récente d'abord.
  * Rend { lignes, total } (total : celles qui passent, avant la coupe).
  */
-export function filtrerEntrees(entrees, { niveaux = NIVEAUX.map((n) => n.cle), categorie = '', texte = '' } = {}) {
+export function filtrerEntrees(entrees, { niveaux = NIVEAUX.map((n) => n.cle), categorie = '', texte = '', minMs = 0, tri = TRI_DU_JOURNAL_PAR_DEFAUT } = {}) {
   const permis = new Set(niveaux);
   const mots = cle(texte).split(/\s+/).filter(Boolean);
+  const seuil = Number(minMs) > 0 ? Number(minMs) : 0;
   const passent = entrees.filter((e) => permis.has(e.niveau)
     && (!categorie || e.categorie === categorie)
+    && (!seuil || (dureeDe(e) ?? -1) >= seuil)
     && (!mots.length || ((t) => mots.every((m) => t.includes(m)))(cle(`${e.message} ${e.categorie}`))));
-  return { lignes: passent.slice(-AFFICHEES_MAX).reverse(), total: passent.length };
+  if (tri?.cle === 'duree') {
+    const signe = tri.sens === 'asc' ? 1 : -1;
+    const triees = [...passent].sort((a, b) => {
+      const da = dureeDe(a);
+      const db = dureeDe(b);
+      if (da === null || db === null) return da === db ? b.n - a.n : da === null ? 1 : -1;
+      return signe * (da - db) || b.n - a.n;
+    });
+    return { lignes: triees.slice(0, AFFICHEES_MAX), total: passent.length };
+  }
+  const recentes = passent.slice(-AFFICHEES_MAX);
+  return { lignes: tri?.sens === 'asc' ? recentes : recentes.reverse(), total: passent.length };
 }
 
 /** Les catégories des entrées (et celle qui est choisie, même sans entrée), par ordre alphabétique. */
@@ -108,14 +140,17 @@ export function planDAffichage(avant, apres) {
 
 const NIVEAU_CONNU = new Set(NIVEAUX.map((n) => n.cle));
 
-/** Les lignes du tableau des journaux (heure, niveau, catégorie, message), dans l'ordre donné. */
+/** Les lignes du tableau des journaux (heure, niveau, catégorie, durée isolée, message), dans l'ordre donné ; une durée lente est marquée. */
 export function htmlDesLignes(lignes, maintenant = new Date()) {
   return lignes.map((e) => {
     const niveau = NIVEAU_CONNU.has(e.niveau) ? e.niveau : 'info';
+    const duree = dureeDe(e);
+    const lente = duree === null ? '' : lenteur(duree);
     return `<tr class="debug-ligne debug-ligne--${niveau}" data-n="${e.n}">`
       + `<td class="debug-ligne__heure"><time datetime="${echapper(e.instant)}">${echapper(heureDe(e.instant, maintenant))}</time></td>`
       + `<td class="debug-ligne__niveau"><span class="debug-niveau debug-niveau--${niveau}">${echapper(e.niveau)}</span></td>`
       + `<td class="debug-ligne__categorie">${echapper(e.categorie)}</td>`
+      + `<td class="debug-ligne__duree"${lente ? ` data-lenteur="${lente}"` : ''}>${duree === null ? '' : formaterDuree(duree)}</td>`
       + `<td class="debug-ligne__message">${echapper(e.message)}</td></tr>`;
   }).join('');
 }
