@@ -15,7 +15,7 @@ import {
   objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, famillesMaitrisables, maitrisesValables, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  gainsAttendus, gainsDeNiveau, maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
+  gainsAttendus, gainsDeNiveau, maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -430,14 +430,6 @@ test('décision R26 : 3 NM au plus sur un sort ; NM de niveau au plus niveau −
   assert.throws(() => enregistrerFiche(vivante, fiche([{ ...sort(bdf, 1, 0, 1), nm_livre: 2, niveau_maitrise: 2 }])), (e) => e.statut === 400, 'un seul NM de livre par sort');
   assert.throws(() => enregistrerFiche(vivante, fiche([{ sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 1 }])), (e) => e.statut === 400, 'les NM offerts font partie du NM du sort');
   assert.equal(regles.constantes['sort.nm_max'], 3);
-});
-
-test('progression attendue : 15 points par niveau à partir du 2, le dé aux niveaux 5, 10, 15 et 20', () => {
-  const p = progressionAttendue(regles, 20);
-  assert.equal(p.length, 19);
-  assert.ok(p.every((x) => x.points === 15));
-  assert.deepEqual(p.filter((x) => x.de).map((x) => x.niveau), [5, 10, 15, 20]);
-  assert.deepEqual(progressionAttendue(regles, 1), []);
 });
 
 test('gains attendus (décision R73) : les points d’attributs cumulés, plus de 1 à 8 par dé bonus atteint ; tout lu dans les règles (v_niveau, niveau_global)', () => {

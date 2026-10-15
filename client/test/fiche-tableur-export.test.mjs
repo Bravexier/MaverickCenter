@@ -1,6 +1,7 @@
 // Export de la fiche en tableur (lib/fiche-tableur-export.mjs ; demande du propriétaire, 2026-10-15) sur les vraies règles (la base construite) : chaque
 // case attendue du modèle ordinateur est comparée aux fonctions du moteur (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs), jamais à un nombre recopié ;
-// les débordements des listes vont dans la case NOTE (lignes « Clé : valeur » sous le marqueur) ; les cases que le site ne calcule pas restent vides ;
+// les débordements des listes vont dans la case NOTE (lignes « Clé : valeur » sous le marqueur) ; les cases que le site ne calcule pas restent vides
+// (la solidité d'une arme s'écrit « N / M » depuis la décision R74, l'entraînement en L42 depuis la R71) ;
 // toute case écrite est dans A1:BZ75 et n'est pas couverte par une fusion du modèle (seule la case haut-gauche d'une fusion s'écrit). Fiches construites
 // ici : une riche (race à ethnie, deux magies, mono-classe au niveau 16 avec spécialités et dons à choix, métier à choix, accessoires dont un à fourchette
 // et un maudit, armes forgées, armure en pièces, bouclier, 60 objets, 6 événements, 25 sorts avec NM offerts, posture), une vide, une au Potentiel
@@ -126,10 +127,12 @@ function ficheRiche() {
         amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 2, 'amélioration 2').id,
         arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:epee:feu',
         amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'arme_elementaire' && a.niveau === 1, 'amélioration élémentaire 1').id,
-        effet_en_plus: 'Lame chantante\nsur deux lignes',
+        effet_en_plus: 'Lame chantante\nsur deux lignes', durabilite: 1,
       },
       { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut },
     ],
+    // le texte libre de l'entraînement (décision R71), sur deux lignes
+    entrainement: '2 Magie | 10 Concentration\nLivre de magie lu : Boule de feu',
     armures: [
       { emplacement_id: 'casque', armure_id: regles.armures[2].id, amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 1, 'armure 1').id },
       {
@@ -155,10 +158,10 @@ function ficheRiche() {
   };
   // un don à choix par groupe (la première option), comme la page le permet
   f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
-  // les gains de niveau, deux totaux (décision R73) : 15 points par niveau atteint (10 en santé, 5 en chakra), et 3 en santé par dé
-  const attendus = M.progressionAttendue(regles, NIVEAU_RICHE);
-  f.gains_sante = attendus.reduce((somme, n) => somme + Math.min(10, n.points) + (n.de ? 3 : 0), 0);
-  f.gains_chakra = attendus.reduce((somme, n) => somme + n.points - Math.min(10, n.points), 0);
+  // les gains de niveau, deux totaux (décision R73) : les points d'attributs des niveaux atteints, un tiers en chakra, et 3 en santé par dé
+  const attendus = M.gainsAttendus(regles, NIVEAU_RICHE);
+  f.gains_chakra = Math.floor(attendus.points / 3);
+  f.gains_sante = attendus.points - f.gains_chakra + 3 * attendus.des.length;
   // 25 sorts des deux magies, NM de niveau, d'un livre et du MJ
   f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => {
     const total = i % 4;
@@ -269,7 +272,7 @@ test('fiche riche : caractéristiques (base, bonus, croix), compétences (nature
   for (const adresse of Object.keys(exportRiche.remplis)) assert.equal(c[adresse], undefined, `${adresse} : le « 2d »… du modèle reste écrit`);
 });
 
-test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée), armure portée, bouclier', () => {
+test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidité), armure portée, bouclier', () => {
   for (const [i, cases] of ORDINATEUR.armes.entries()) {
     const rang = i + 1;
     const ligne = riche.armes.find((x) => x.rang === rang);
@@ -278,7 +281,10 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée), armure 
     assert.equal(c[cases.nom], arme.nom);
     assert.equal(c[cases.degats], degats.texte);
     assert.equal(c[cases.effet], lignesDArme(regles, riche, rang).join('\n'));
-    assert.equal(c[cases.solidite], undefined, 'la solidité n’est pas calculée');
+    // la solidité du moment et le maximum de l'arme forgée (décision R74), « N / M » ; sans valeur enregistrée, au maximum
+    const solidite = M.durabiliteDArme(regles, riche, rang);
+    assert.equal(c[cases.solidite], `${solidite.actuelle} / ${solidite.max}`);
+    assert.equal(solidite.actuelle, ligne.durabilite ?? solidite.max, `arme ${rang}`);
     const portee = [arme.portee ?? null, degats.porteeEnPlus ? `+ ${degats.porteeEnPlus}` : null].filter(Boolean).join(' ');
     assert.equal(c[cases.portee] === undefined ? '' : String(c[cases.portee]), portee);
   }
@@ -401,10 +407,11 @@ test('fiche riche : dons (de base, race, métier, entraînement, classes), évé
   assert.equal(lignes.at(-1), `Artisanat : ${art.texte} (${art.caracteristiques.map((x) => x.nom).join(' + ')}) = ${art.score} %`);
   assert.deepEqual(partiesDuMetier(regles, riche).relues, lignes.slice(0, bm.rangs.filter((x) => x.aChoisir).length));
   assert.deepEqual(lireChoixDuMetier(c[m.effet]), bm.rangs.filter((x) => x.aChoisir).map((x) => ({ texte: x.texte, choix: nomDe('competences', x.retenue.competence_id) })));
-  // entraînement : rien d'écrit (guide « Fiche de personnage : Capacités/Dons » : les bonus d'entraînement, que le site ne distingue pas des autres acquis)
+  // entraînement (décision R71) : le texte libre de la fiche, tel quel (une case relue) ; le libellé « Entraînement » et le type du modèle restent
   const e = casesDuDon(DONS.entrainement);
-  assert.ok(M.competencesDe(regles, riche).some((x) => x.acquis), 'des acquis du joueur, que la case n’écrit pas');
-  assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined, undefined], 'le libellé « Entraînement » du modèle reste, la case vide');
+  assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined, riche.entrainement]);
+  assert.equal(cellulesDeLaFiche(regles, { ...riche, entrainement: '  \n2 Magie\n ' }, { date: DATE }).cellules[e.effet], '2 Magie', 'blancs de bord retirés');
+  assert.equal(cellulesDeLaFiche(regles, { ...riche, entrainement: ' \n ' }, { date: DATE }).cellules[e.effet], undefined, 'rien d’écrit');
   // dons de classe : classe 1 en 43…55, classe 2 en 57…69, dans l'ordre de donsAcquis ; au-delà de sept (des dons ajoutés sur le site de dev), la note
   // (« Dons de classe N (suite) », test de la note)
   const acquis = M.donsAcquis(regles, riche);
@@ -576,9 +583,12 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
   const relues = new Set([O.nom, O.surnom, O.lieuOrigine, O.race, O.magieInnee, O.magieAcquise, O.dieuChoisi, O.xp, O.classe1, O.classe2, O.specialite1,
     O.specialite2, ...O.armes.flatMap((x) => [x.nom, x.effet]), O.armure.nom, O.armure.bonus, O.bouclier.nom, O.bouclier.composition,
     ...Object.values(O.accessoires), ...O.ceinture, ...O.inventaire.colonnes.flatMap((col) => O.inventaire.lignes.map((l) => `${col}${l}`)),
-    casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom, casesDuDon(DONS.metier).effet, ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom),
-    ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]), ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)]);
+    casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom, casesDuDon(DONS.metier).effet, casesDuDon(DONS.entrainement).effet,
+    ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom), ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]),
+    ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)]);
   assert.deepEqual(suites.map((x) => x.adresse).filter((a) => !relues.has(a)), [], 'une suite pour une case affichée');
+  // l'entraînement (une rangée) sur deux lignes : la case en garde le début, la suite dans la note
+  assert.ok(suites.some((x) => x.adresse === casesDuDon(DONS.entrainement).effet), 'l’entraînement sur deux lignes a sa suite');
   // chaque case coupée : son début (fini par « … ») tient dans sa case ; recollé à la suite, il redonne la part relue du texte (ici : l'arme sans son
   // effet du catalogue ni ses lignes non comptées ; l'armure portée sans les statistiques du catalogue ni l'effet des améliorations, qui ne tiennent
   // pas ; les autres en entier)
@@ -611,13 +621,30 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
   assert.deepEqual(lireLigneDeNote('suite de la case am55 : du texte ⏎ suite'), { nom: 'suite', cle: SUITE_DE_LA_CASE, valeur: 'du texte ⏎ suite', information: false, adresse: 'AM55' });
 });
 
-test('portée d’une arme (décision R50) : celle de la page « Armes », 1 sans portée écrite ; la solidité (R51) n’est pas calculée par la fiche', () => {
+test('portée d’une arme (décision R50) : celle de la page « Armes », 1 sans portée écrite ; solidité (R74) : « N / M », « 0 / M » cassée, rien pour une arme de monstre', () => {
   const sansPortee = regles.armes.find((a) => a.portee === '1' && a.effet && !/port[ée]e/i.test(a.effet));
   assert.ok(sansPortee, 'une arme dont l’effet n’écrit pas de portée');
   const f = { ...ficheVide('Portée'), armes: [{ rang: 1, arme_id: sansPortee.id, materiau_id: regles.materiau_arme_defaut }] };
   const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
   assert.equal(v[ORDINATEUR.armes[0].portee], 1, `${sansPortee.nom} : 1 par défaut`);
-  assert.equal(v[ORDINATEUR.armes[0].solidite], undefined);
+  const max = M.durabiliteMaxDArme(regles, f.armes[0]);
+  assert.ok(max >= 1);
+  assert.equal(v[ORDINATEUR.armes[0].solidite], `${max} / ${max}`, 'sans valeur : à son maximum');
+  // une arme cassée : « 0 / M », ses dégâts (réparée) gardés en AG10 (ils départagent deux armes du même nom à l'import)
+  const cassee = { ...f, armes: [{ ...f.armes[0], durabilite: 0 }] };
+  const vc = cellulesDeLaFiche(regles, cassee, { date: DATE }).cellules;
+  assert.equal(vc[ORDINATEUR.armes[0].solidite], `0 / ${max}`);
+  assert.equal(vc[ORDINATEUR.armes[0].degats], v[ORDINATEUR.armes[0].degats]);
+  assert.equal(vc[ORDINATEUR.armes[0].degats], M.degatsDArme(regles, cassee, 1).texte);
+  // une valeur enregistrée au-delà du maximum (règles changées) : bornée
+  assert.equal(cellulesDeLaFiche(regles, { ...f, armes: [{ ...f.armes[0], durabilite: max + 3 }] }, { date: DATE }).cellules[ORDINATEUR.armes[0].solidite], `${max} / ${max}`);
+  // une arme de monstre (R45 : sans solidité) : la case garde le « / » du modèle
+  const monstre = regles.armes.find((a) => a.solidite === null);
+  assert.ok(monstre, 'une arme sans solidité');
+  const vm = cellulesDeLaFiche(regles, { ...f, armes: [{ rang: 2, arme_id: monstre.id, materiau_id: regles.materiau_arme_defaut }] }, { date: DATE }).cellules;
+  assert.equal(vm[ORDINATEUR.armes[1].nom], monstre.nom);
+  assert.equal(vm[ORDINATEUR.armes[1].solidite], undefined);
+  assert.equal(textesDuModele.get(ORDINATEUR.armes[1].solidite), '/');
   const aDistance = regles.armes.find((a) => a.portee.includes(' - '));
   const w = cellulesDeLaFiche(regles, { ...f, armes: [{ rang: 1, arme_id: aDistance.id, materiau_id: regles.materiau_arme_defaut }] }, { date: DATE }).cellules;
   assert.equal(w[ORDINATEUR.armes[0].portee], aDistance.portee);

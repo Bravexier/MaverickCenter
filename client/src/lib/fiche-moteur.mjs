@@ -374,15 +374,6 @@ export function budgetCompetences(regles, fiche) {
 }
 
 /**
- * Gains de niveau, niveau par niveau, du niveau 2 au niveau global : points d'attributs et dé bonus du niveau, s'il y en a un. La page ne s'en sert plus
- * (deux totaux : gainsAttendus, décision R73) ; gardé pour la reconstitution des gains à l'import d'une fiche auto (lib/fiche-tableur-import.mjs#gainsReconstitues),
- * qui part avec elle.
- */
-export function progressionAttendue(regles, niveau) {
-  return regles.niveaux.filter((n) => n.niveau >= 2 && n.niveau <= niveau).map((n) => ({ niveau: n.niveau, points: n.points_attributs ?? 0, de: n.de_attributs_bonus }));
-}
-
-/**
  * Les gains de niveau à saisir au niveau global `niveau` (décision R73 : « on peut mettre le total attribué avec le total à saisir. (qui augmente donc de 15
  * par niveau. Pour les niveaux qui accordent un dé donc une valeur aléatoire, ça fait varier entre la valeur théorique minimale (au cas où le joueur fait
  * 1) et la valeur maximale (s'il fait 8, ou 4 pour les 2 stats) ») : les points d'attributs des niveaux atteints (v_niveau.points_attributs_cumul), plus

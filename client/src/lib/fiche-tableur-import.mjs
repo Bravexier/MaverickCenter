@@ -12,20 +12,25 @@
 //     corrections d'orthographe ont gardé les identifiants : « Balade guerrière », « Armure Vif Argent complet ») ; aucun candidat, ou plusieurs sans
 //     départage écrit dans le classeur : l'information part dans `nonRepris`, que la page ajoute aux notes ;
 //   - rien ne se perd sans être dit : chaque saisie du classeur est reprise, ou citée dans `nonRepris` avec sa valeur (zones que le site ne garde pas :
-//     solidité, armure de chaque pièce et du bouclier, sac de l'inventaire, bonus et malus de l'armure, case de l'entraînement du modèle ordinateur ;
-//     lignes de la note en double ; image hors de A1) ; ce qui a pu se perdre avant l'import est dit dans `remarques` (case coupée par le tableur, case
-//     relue finie par « … » sans sa suite) ;
-//   - ce que la fiche calcule (niveaux, totaux, dégâts, AP/AM, résistances…) n'est pas relu, sauf pour retrouver un choix que le classeur n'écrit pas :
-//     l'acquis du joueur (acquis écrit − bonus du métier − accessoires, competencesDe : une remarque par compétence pour un classeur qui ne vient pas de
-//     la page), les gains de niveau (maximums de santé et de chakra), la compétence d'un accessoire « Compétence X » de la fiche auto (départagée par la
-//     case « Entraînement », L42 : les bonus d'entraînement, guide « Fiche de personnage : Capacités/Dons »), la caractéristique du Potentiel Illimité ;
-//     chaque déduction est dite dans `remarques` ;
+//     armure de chaque pièce et du bouclier, sac de l'inventaire, bonus et malus de l'armure ; solidité d'une arme sans solidité, sans arme reconnue ou
+//     illisible ; lignes de la note en double ; image hors de A1) ; ce qui a pu se perdre avant l'import est dit dans `remarques` (case coupée par le
+//     tableur, case relue finie par « … » sans sa suite) ;
+//   - relus dans les deux dispositions : la case « Entraînement » (L42), un texte libre de la fiche (décision R71) ; dans le modèle ordinateur, la
+//     solidité du moment de chaque arme (AK17, AX17 : « N / M », décision R74 ; à son maximum ou au-delà, rien d'enregistré ; un maximum écrit autre que
+//     celui du site, une remarque). La case « Solidité » de la fiche auto (AK15, AX15) est un maximum calculé : pas relue ;
+//   - ce que la fiche calcule (niveaux, totaux, dégâts, AP/AM, résistances, maximum de solidité…) n'est pas relu, sauf pour retrouver un choix que le
+//     classeur n'écrit pas : l'acquis du joueur (acquis écrit − bonus du métier − accessoires, competencesDe ; pour un classeur qui ne vient pas de la
+//     page, le bonus du métier retiré est celui qu'écrit sa case L41, bonusDuMetierEcrit — décision R72 : « Le métier suit la base » —, une remarque
+//     par compétence touchée), les gains de niveau (décision R73 : les maximums de santé et de chakra lus, moins ce que la fiche calcule sans gains), la
+//     compétence d'un accessoire « Compétence X » de la fiche auto (départagée par les bonus d'entraînement de la case L42, guide « Fiche de
+//     personnage : Capacités/Dons »), la caractéristique du Potentiel Illimité ; chaque déduction est dite dans `remarques` ;
 //   - un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » : 20, pas 0,2), sinon sa valeur ; décimal là où la fiche veut un entier :
 //     arrondi vers le bas, et une remarque ;
 //   - la case NOTE : avant le dernier MARQUEUR_DES_NOTES (des notes collées peuvent en contenir un autre), les notes du joueur ; après, les lignes
 //     « Clé : valeur » que la page écrit pour ce que le modèle n'a pas de case pour écrire (lireLaNote ; une clé en double : la première, les autres dans
 //     `nonRepris`) ; une ligne inconnue revient dans les notes. Un classeur qui porte le marqueur vient de la page : ce qu'elle n'y écrit pas n'existe pas
-//     (pas de gains de niveau reconstitués, pas de caractéristique déduite, pas de remarque sur les acquis). Une ligne « Suite de la case A1 : … » (un
+//     (pas de gains de niveau déduits, pas de caractéristique déduite, pas d'ancien bonus du métier ni de remarque sur les acquis). Une ligne « Suite de
+//     la case A1 : … » (un
 //     texte trop long pour sa case, lib/tableur-mesure.mjs) se recolle au début resté dans la case avant toute lecture ; une case réécrite depuis (son
 //     texte ne finit plus par « … ») garde son texte, et la ligne revient dans les notes. Un texte affiché seulement (effets des sorts, du catalogue…)
 //     coupé par la page n'a pas de suite : il ne sert qu'à départager deux homonymes, et son début coupé compte alors pour lui (ecritComme) ;
@@ -41,21 +46,22 @@
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
 // CLAUDE.md « Pièges connus » ; jamais lib/text.mjs, partagé par la recherche).
 
-import { ajouterAuxNotes, ficheVide, gainsDeLaProgression } from './fiche-format.mjs';
+import { ajouterAuxNotes, ficheVide } from './fiche-format.mjs';
 import {
-  armesApresChoix, attributsDe, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe, degatsDArme,
-  donsValables, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, magieAcquiseValable, maitriseDArme,
-  maitrisesValables, maitriseDesSorts, niveauGlobal, progressionAttendue, refusMagieAcquise, trouver,
+  armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
+  degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
+  famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, refusMagieAcquise, trouver,
 } from './fiche-moteur.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, casesDesDes, casesDuDon, cle, DONS, dispositionDe, EMPLACEMENTS_DU_MODELE, lettresDeColonne,
-  LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
+  LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, MODELE_DE_LA_SOLIDITE, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE,
+  TITRE_DE_L_INVENTAIRE,
 } from './fiche-tableur-cases.mjs';
 import {
-  ARMURE_COMPLETE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme,
-  lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
+  ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
+  lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -186,7 +192,8 @@ export function lireLaNote(texte) {
  * Les bonus d'entraînement écrits dans la case « Entraînement » (L42) de la fiche auto : « 2 Magie | 10 Concentration » ou « Concentration 10 | Magie 2 »
  * → Map competence_id → points ; null pour une case vide ou qu'on ne lit pas en entier. Guide « Fiche de personnage : Capacités/Dons » : la case note
  * « tous les bonus relatifs à l'avancée des différents entraînements » (15 compétences au plus, 10 % au plus) ; la fiche auto les compte dans l'acquis
- * qu'elle affiche. Le site ne les distingue pas des autres acquis : l'import ne s'en sert que pour départager la compétence d'un accessoire.
+ * qu'elle affiche. Le texte de la case est gardé tel quel dans la fiche (personnage.entrainement, décision R71 : jamais compté, les points restent dans
+ * l'acquis) ; ces nombres ne servent qu'à départager la compétence d'un accessoire.
  */
 export function bonusDEntrainement(regles, texte) {
   const brut = String(texte ?? '').trim();
@@ -205,6 +212,101 @@ export function bonusDEntrainement(regles, texte) {
     bonus.set(k[0].id, (bonus.get(k[0].id) ?? 0) + n);
   }
   return bonus;
+}
+
+/** Blancs d'une case (espaces insécables comprises), ramenés à une espace par bonusDuMetierEcrit. */
+const BLANCS = /[\s\u00a0\u202f]+/g;
+const estBlanc = (c) => c !== undefined && /[\s\u00a0\u202f]/.test(c);
+const estChiffre = (c) => c !== undefined && c >= '0' && c <= '9';
+
+/**
+ * Les bonus de compétence qu'écrit la case du métier (L41) d'un classeur qui ne vient pas de la page : ceux que le classeur a comptés dans les acquis
+ * qu'il affiche, que l'import retire de l'acquis écrit (décision R72 : « Le métier suit la base » — « L'ancien bonus est retiré, le nouveau s'applique, le
+ * joueur ne garde que ses propres points ») ; Map competence_id → points (vide : la case n'en donne aucun, « → ? »), ou null quand on ne sait pas les
+ * lire exactement. Lit l'écriture de la page (partiesDuMetier de lib/fiche-tableur-export.mjs : rangs à choix « … → Compétence », autres rangs,
+ * « Artisanat : … = N % », séparés par « · ») et celle de la fiche auto (« 4% Connaissance. Peut fabriquer des livres magiques.\n(Artisanat …) »,
+ * « Bonus +2% Reflexe, Esquive et Ruse. »). Le texte se découpe en morceaux (lignes, « · » entre deux blancs, parenthèses, « ; », « . » en fin de
+ * phrase) ; dans un morceau, chaque « N% » (N entier, « + » et blancs permis) porte un bonus, sur la liste qui le suit jusqu'au bonus suivant (sans le
+ * « + » ni le « et » qui les lient), jusqu'à « → » s'il y en a une :
+ *   - une liste de compétences (noms ou identifiants, comparés par cle(), séparés par « , » et « et ») : N à chacune ;
+ *   - une liste en « OU » : un choix, qu'écrit la flèche (« → Équilibre » : N à cette compétence, qui doit être de la liste ; « → ? » : rien, pas choisi) ;
+ *     sans flèche, on ne sait pas lequel le classeur comptait : null ;
+ *   - une liste qui ne nomme aucune compétence (« = 60 % » de l'artisanat, « de bonus à la création de documents », « au lieu de 40% ») : pas un bonus de
+ *     compétence, ignoré — sauf avec une flèche (« dans une compétence sociale au choix → Diplomatie ») ;
+ *   - une liste où se mêlent compétences et autres mots, un nombre décimal (« 2,5% »), une flèche vers ce qui n'est pas une compétence : null.
+ * Aucun bonus de compétence lu : null. Un texte coupé (fini par « … », lib/tableur-mesure.mjs) : son dernier morceau est incertain, null s'il porte un
+ * « % ». Linéaire : les blancs ramenés à une espace, puis des découpages par chaînes fixes, sans expression régulière qui revienne sur ses pas.
+ * N'importe ni lib/text.mjs ni lib/metier-champs.mjs (partagés par d'autres scripts de page).
+ */
+export function bonusDuMetierEcrit(regles, texte) {
+  const ecrit = String(texte ?? '').replace(/\r\n?/g, '\n');
+  if (!ecrit.trim()) return null;
+  const montre = sansLaCoupure(ecrit);
+  const brut = montre ?? ecrit;
+  const parCle = new Map();
+  for (const k of regles.competences) {
+    parCle.set(k.id, k.id);
+    parCle.set(cle(k.nom), k.id);
+  }
+  const competence = (nom) => parCle.get(cle(nom)) ?? null;
+  // les morceaux, en une passe
+  const morceaux = [];
+  let debut = 0;
+  for (let i = 0; i <= brut.length; i += 1) {
+    const c = brut[i];
+    const fin = i === brut.length || c === '\n' || c === '(' || c === ')' || c === ';'
+      || (c === '·' && estBlanc(brut[i - 1]) && estBlanc(brut[i + 1]))
+      || (c === '.' && (i + 1 === brut.length || estBlanc(brut[i + 1])));
+    if (fin) {
+      morceaux.push(brut.slice(debut, i));
+      debut = i + 1;
+    }
+  }
+  if (montre !== null && morceaux.at(-1).includes('%')) return null;
+  const bonus = new Map();
+  let lus = 0;
+  for (const morceau of morceaux) {
+    const m = morceau.replace(BLANCS, ' ').toLowerCase();
+    // les « N% » du morceau : le nombre lu en remontant depuis « % » (blancs, puis chiffres)
+    const nombres = [];
+    for (let i = m.indexOf('%'); i >= 0; i = m.indexOf('%', i + 1)) {
+      let j = i - 1;
+      while (j >= 0 && m[j] === ' ') j -= 1;
+      let k = j;
+      while (k >= 0 && estChiffre(m[k])) k -= 1;
+      if (k === j) continue;
+      if ((m[k] === ',' || m[k] === '.') && estChiffre(m[k - 1])) return null; // un décimal : ce n'est pas un bonus de la base
+      nombres.push({ debut: k + 1, n: Number(m.slice(k + 1, j + 1)), apres: i + 1 });
+    }
+    for (const [x, p] of nombres.entries()) {
+      const reste = m.slice(p.apres, x + 1 < nombres.length ? nombres[x + 1].debut : m.length);
+      const f = reste.indexOf(FLECHE);
+      let liste = (f >= 0 ? reste.slice(0, f) : reste).trim();
+      // ce qui lie au bonus suivant (« Réflexe et +2 % Ruse ») n'est pas de la liste
+      if (liste.endsWith('+')) liste = liste.slice(0, -1).trim();
+      if (liste === 'et' || liste.endsWith(' et')) liste = liste.slice(0, -2).trim();
+      if (liste.endsWith(',')) liste = liste.slice(0, -1).trim();
+      const enOu = ` ${liste} `.split(' ou ').map((t) => t.trim());
+      const noms = (enOu.length > 1 ? enOu : liste.split(',').flatMap((t) => ` ${t} `.split(' et '))).map((t) => t.trim()).filter(Boolean);
+      const ids = noms.map(competence);
+      const toutes = ids.length > 0 && ids.every(Boolean);
+      const aucune = ids.every((id) => !id);
+      if (!toutes && !aucune) return null;
+      if (f >= 0) {
+        const choix = reste.slice(f + FLECHE.length).trim();
+        lus += 1;
+        if (choix === '?' || choix === '') continue;
+        const id = competence(choix);
+        if (!id || (toutes && !ids.includes(id))) return null;
+        bonus.set(id, (bonus.get(id) ?? 0) + p.n);
+      } else if (toutes) {
+        if (enOu.length > 1) return null;
+        lus += 1;
+        for (const id of ids) bonus.set(id, (bonus.get(id) ?? 0) + p.n);
+      }
+    }
+  }
+  return lus ? bonus : null;
 }
 
 // ------------------------------------------------------------------ retrouver un nom
@@ -322,6 +424,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const relues = [O.nom, O.surnom, O.lieuOrigine, O.race, O.magieInnee, O.magieAcquise, O.dieuChoisi, O.xp, O.classe1, O.classe2, O.specialite1,
       O.specialite2, ...O.armes.map((x) => x.nom), O.armure.bonus, O.bouclier.nom, O.bouclier.composition, ...Object.values(O.accessoires), ...O.ceinture,
       ...O.inventaire.colonnes.flatMap((c) => O.inventaire.lignes.map((l) => `${c}${l}`)), casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom,
+      casesDuDon(DONS.entrainement).effet,
       ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom), ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]),
       ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)];
     for (const adresse of relues) {
@@ -336,7 +439,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     lieu_origine: texte(d.lieuOrigine) || null,
     race_id: null, ethnie_id: null, magie_innee_id: null, magie_acquise_id: null, caracteristique_magie_id: null, dieu_choisi_id: null, metier_id: null,
     bouclier_classe_id: null, sante_actuelle: null, chakra_actuel: null, barriere_actuelle: null, corruption: null, barre4_actuelle: null,
-    notes: null, evenements: null, posture_id: null,
+    notes: null, evenements: null, posture_id: null, entrainement: null,
   });
 
   // ---- identité, race, magies, ethnie, dieu, alignement, bourse, XP
@@ -619,8 +722,31 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     return [k.id, { naturel: entierLu(cases.naturel, `${k.nom} (naturel)`), acquis: entierLu(cases.acquis, `${k.nom} (acquis)`) }];
   }));
 
-  // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier et les bonus
-  // d'entraînement (L42), vaut la valeur tirée
+  // ---- le bonus du métier que le classeur a compté dans ses acquis (décision R72 : « Le métier suit la base ») : un classeur qui ne vient pas de la page
+  // écrit en L41 le bonus de son temps, qui peut ne plus être celui de la base ; c'est lui que l'acquis écrit porte, et lui qui en est retiré (brut : rien
+  // ne dit que le classeur le rognait au plafond), le site ajoutant ensuite celui de la base. Illisible : celui de la base, à vérifier. Un classeur de
+  // la page : celui de la base, qu'il a écrit (`ancienMetier` undefined).
+  const texteL41 = texteBrut(cellule(casesDuDon(DONS.metier).effet));
+  const metierEcrit = !deLaPage && Boolean(texteMetier) && cle(texteMetier) !== cle('Métier ?');
+  const ancienMetier = metierEcrit ? bonusDuMetierEcrit(regles, texteL41) : undefined;
+  const nomDuMetier = metier?.nom ?? texteMetier;
+  const metierDuClasseur = (id, c) => (ancienMetier ? ancienMetier.get(id) ?? 0 : c.metier);
+  const origineDuMetier = ancienMetier ? 'classeur' : 'base';
+  const bonusEcrits = (parCompetence) => regles.competences.filter((k) => parCompetence.get(k.id)).map((k) => `${k.nom} +${parCompetence.get(k.id)}`).join(', ');
+  if (ancienMetier === null && texteL41.trim() && metier?.bonus.some((b) => b.options.some((o) => o.competence_id))) {
+    remarques.push(`Métier ${nomDuMetier} : bonus du classeur illisibles (« ${texteL41.replace(BLANCS, ' ').trim()} ») : l'acquis du joueur retire ceux de la base, à vérifier`);
+  } else if (ancienMetier) {
+    const base = new Map(Object.entries(bonusDuMetier(regles, f).parCompetence).filter(([, n]) => n));
+    const avant = bonusEcrits(ancienMetier);
+    const apres = bonusEcrits(base);
+    if (!metier && avant) remarques.push(`Métier « ${texteMetier} » (introuvable dans les règles) : le classeur comptait ${avant}, retiré des acquis (R72)`);
+    else if (metier && avant !== apres) {
+      remarques.push(`Métier ${nomDuMetier} : le classeur comptait ${avant || 'aucun bonus de compétence'} ; la base donne ${apres || 'aucun bonus de compétence'} : les acquis suivent la base (R72)`);
+    }
+  }
+
+  // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier (celui du
+  // classeur, R72) et les bonus d'entraînement (L42), vaut la valeur tirée
   const entrainement = auto ? bonusDEntrainement(regles, texte(casesDuDon(DONS.entrainement).effet)) : null;
   if (entrainement) {
     const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
@@ -631,21 +757,23 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const parCompetence = regles.competences.filter((k) => k.caracteristique_id === cible.cible_id && caseDeCompetence.has(k.id)).map((k) => {
         const c = calcul.get(k.id);
         const ecrit = ecrits.get(k.id).acquis ?? 0;
-        const reste = ecrit - c.metier - (entrainement.get(k.id) ?? 0);
-        return { k, ecrit, metier: c.metier, entrainement: entrainement.get(k.id) ?? 0, reste, ok: reste === a.valeur || reste === Math.min(a.valeur, Math.max(0, c.plafondAcquis - c.metier)) };
+        const duMetier = metierDuClasseur(k.id, c);
+        const reste = ecrit - duMetier - (entrainement.get(k.id) ?? 0);
+        return { k, ecrit, metier: duMetier, entrainement: entrainement.get(k.id) ?? 0, reste, ok: reste === a.valeur || reste === Math.min(a.valeur, Math.max(0, c.plafondAcquis - duMetier)) };
       });
       const candidats = parCompetence.filter((x) => x.ok);
       if (candidats.length === 1) {
         const x = candidats[0];
         a.competence_id = x.k.id;
-        const calculEcrit = [x.metier ? `métier ${x.metier}` : null, x.entrainement ? `entraînement ${x.entrainement}` : null, `accessoire ${x.reste}`].filter(Boolean).join(' + ');
+        const calculEcrit = [x.metier ? `métier ${x.metier}${ancienMetier ? ' (classeur)' : ''}` : null, x.entrainement ? `entraînement ${x.entrainement}` : null, `accessoire ${x.reste}`].filter(Boolean).join(' + ');
         remarques.push(`Compétence de l'accessoire ${libelleDEmplacement(a.emplacement)} (${effet.libelle} ${a.valeur}) déduite : ${x.k.nom} (acquis ${x.ecrit} = ${calculEcrit})`);
       }
     }
   }
 
-  // ---- compétences : l'acquis du joueur = l'acquis écrit moins le métier et les accessoires (que la fiche ajoute d'elle-même) ; un classeur qui ne vient
-  // pas de la page le dit, compétence par compétence (ses bonus peuvent être d'anciennes valeurs) ; un acquis écrit plus petit que ces bonus, toujours
+  // ---- compétences : l'acquis du joueur = l'acquis écrit moins le métier (celui que le classeur comptait, R72 : bonusDuMetierEcrit ; celui de la base
+  // pour un classeur de la page) et les accessoires (que la fiche ajoute d'elle-même) ; un classeur qui ne vient pas de la page le dit, compétence par
+  // compétence ; un acquis écrit plus petit que ces bonus, toujours
   const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
   const accessoiresDe = (id) => effetsDesAccessoires(regles, f).filter((e) => e.cible === 'competence' && e.cible_id === id && !e.aChoisir && e.valeur !== null);
   for (const k of regles.competences) {
@@ -653,12 +781,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const naturel = Math.max(0, ecrits.get(k.id).naturel ?? 0);
     const ecrit = ecrits.get(k.id).acquis ?? 0;
     const c = calcul.get(k.id);
-    const plus = c.metier + c.accessoire;
+    const duMetier = metierDuClasseur(k.id, c);
+    const plus = duMetier + c.accessoire;
     let acquis = ecrit - plus;
     if (plus) {
       const termes = [];
       const terme = (v, quoi) => termes.push(` ${v >= 0 ? '−' : '+'} ${Math.abs(v)} ${quoi}`);
-      if (c.metier) terme(c.metier, `du métier ${nomDe(regles.metiers, f.metier_id)} (base)`);
+      if (duMetier) terme(duMetier, `du métier ${nomDuMetier} (${origineDuMetier})`);
       if (c.accessoire) {
         const emplacements = [...new Set(accessoiresDe(k.id).map((e) => libelleDEmplacement(e.emplacement)))];
         terme(c.accessoire, `${emplacements.length > 1 ? 'des accessoires' : 'de l\'accessoire'} ${emplacements.join(', ')}`);
@@ -765,7 +894,12 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const rang = i + 1;
     const quoi = `Arme ${rang}`;
     const nom = auto ? sansLesMains(texte(cases.nom)) : texte(cases.nom);
-    if (!nom) continue;
+    // modèle ordinateur : la solidité du moment, « N / M » (le « / » du modèle n'est pas une valeur) ; la fiche auto n'écrit que le maximum (AK15, AX15)
+    const solidite = auto || texte(cases.solidite) === MODELE_DE_LA_SOLIDITE ? '' : texte(cases.solidite);
+    if (!nom) {
+      if (solidite) perdu(`${quoi}, solidité : « ${solidite} » sans arme`);
+      continue;
+    }
     const effet = texteBrut(cellule(cases.effet));
     const lue = auto ? null : lireEffetDArme(effet);
     const composition = auto ? texte(cases.composition) : lue.composition;
@@ -792,9 +926,25 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const arme = unSeul(retrouver(regles.armes, nom), quoi, nom, {
       departager, nom: (a) => `${a.nom} (${nomDe(regles.familles_armes, a.famille_id)})`, precisions: [composition, degatsEcrits].filter(Boolean).join(', '),
     });
-    if (!arme) continue;
+    if (!arme) {
+      if (solidite) perdu(`${quoi}, solidité : « ${solidite} » sans arme reconnue`);
+      continue;
+    }
     if (!auto) effetsEnPlus.push({ rang, effet, arme, entier: recollees.has(cases.effet) });
     f.armes = avecLArme(arme.id);
+    // la solidité du moment (décision R74), sur la ligne finale (matériau et amélioration relus : ils font le maximum)
+    if (solidite) {
+      const finale = f.armes.find((x) => x.rang === rang);
+      const max = durabiliteMaxDArme(regles, finale);
+      const [actuelle, maxEcrit] = paireDe(cellule(cases.solidite));
+      if (max === null) perdu(`${quoi} (${arme.nom}), solidité : « ${solidite} » sans place sur le site (arme sans solidité)`);
+      else if (actuelle === null) perdu(`${quoi} (${arme.nom}), solidité : « ${solidite} » illisible`);
+      else {
+        const crans = durabiliteAEcrire(regles, finale, entierDe(actuelle, solidite, `${quoi}, solidité`));
+        if (crans !== null) finale.durabilite = crans;
+        if (maxEcrit !== null && maxEcrit !== max) remarques.push(`${quoi} (${arme.nom}) : solidité maximale écrite ${maxEcrit}, le site calcule ${max} (décision R51)`);
+      }
+    }
   }
 
   // ---- armure
@@ -886,8 +1036,6 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const sac = cle(titre).startsWith(cle(TITRE_DE_L_INVENTAIRE)) && titre.includes('=') ? titre.slice(titre.indexOf('=') + 1).trim() : titre;
       if (sac) perdu(`Inventaire, sac : « ${sac} » sans place sur le site`);
     }
-    const ecritEntrainement = texte(casesDuDon(DONS.entrainement).effet);
-    if (ecritEntrainement) perdu(`Entraînement : « ${ecritEntrainement} » sans place sur le site`);
   }
 
   // ---- ceinture et inventaire (ressource_id : la ressource de ce nom exact, comme la page)
@@ -922,6 +1070,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   evenements.push(...notee('evenement'));
   f.evenements = evenements.length ? evenements.join('\n') : null;
   f.notes = note.autres.length ? ajouterAuxNotes(note.notes, note.autres) : note.notes;
+  // l'entraînement (décision R71) : le texte de la case L42, tel quel (recollé à sa suite dans la note quand la page l'a coupé)
+  f.entrainement = texte(casesDuDon(DONS.entrainement).effet) || null;
 
   // ---- valeurs du moment (null : au maximum ; corruption : null à 0) et posture du moment
   const QUOI_DES_JAUGES = { sante_actuelle: 'Santé', chakra_actuel: 'Chakra', barriere_actuelle: 'Barrière', barre4_actuelle: '4ᵉ barre', corruption: 'Corruption' };
@@ -942,29 +1092,20 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     perdu('Ambidextrie : cochée dans le classeur ; la fiche calcule l’attaque à deux armes d’après les armes portées (décision R46)');
   }
 
-  // ---- gains de niveau : la ligne de la note ; sinon reconstitués d'après les maximums de santé et de chakra du classeur
-  // (deux totaux, décision R73 : la note d'un classeur exporté avant, niveau par niveau, est sommée par lireGains)
+  // ---- gains de niveau (deux totaux, décision R73) : la ligne de la note (celle d'un classeur exporté avant, niveau par niveau, est sommée par
+  // lireGains) ; sinon, d'un classeur qui ne vient pas de la page, « maximum lu − le reste du calcul » : les maximums de santé et de chakra (fiche auto :
+  // F14, M14 ; modèle ordinateur : le « b » de « a / b ») moins ce que la fiche calcule sans gains (race, ethnie, magies, classes, accessoires)
   const gainsEcrits = notee('gains')[0];
   if (gainsEcrits !== undefined) {
     const lus = lireGains(gainsEcrits);
     if (lus) Object.assign(f, lus);
     else perdu(`Gains de niveau : « ${gainsEcrits} » illisibles`);
   } else if (!deLaPage) {
-    // les maximums lus : fiche auto, leurs cases (F14, M14) ; modèle ordinateur, le « b » de « a / b »
     const [maxSante, maxChakra] = [jauges[0][2], jauges[1][2]];
-    if (maxSante !== null && maxChakra !== null) {
-      const lus = `(santé ${maxSante}, chakra ${maxChakra})`;
-      const illisible = progressionAttendue(regles, niveauGlobal(regles, f.xp)).find((n) => n.de && !bornesDuDe(n.de));
-      if (illisible) {
-        remarques.push(`Gains de niveau non reconstitués : le dé du niveau ${illisible.niveau} (« ${illisible.de} ») ne se lit pas ; maximums du classeur ${lus} : à saisir`);
-      } else {
-        const reconstitues = gainsReconstitues(regles, f, maxSante, maxChakra);
-        if (reconstitues === null) remarques.push(`Gains de niveau non reconstitués : les maximums du classeur ${lus} ne s'expliquent pas par les points et les dés des niveaux ; à saisir`);
-        else if (reconstitues.length) {
-          Object.assign(f, gainsDeLaProgression(reconstitues));   // provisoire : les deux totaux de la répartition reconstituée (R73)
-          remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur ${lus} : à vérifier`);
-        }
-      }
+    const gains = maxSante !== null && maxChakra !== null ? gainsDesMaximums(regles, f, maxSante, maxChakra) : null;
+    if (gains) {
+      Object.assign(f, { gains_sante: gains.gains_sante, gains_chakra: gains.gains_chakra });
+      remarques.push(gains.remarque);
     }
   }
 
@@ -1039,62 +1180,24 @@ function memesOctets(a, b) {
 }
 
 /**
- * Ce que peut donner le dé d'un niveau (niveau_global.de_attributs_bonus, « 1d8 santé OU 1d8 chakra OU 1d4 pour les deux ») : { min, max } d'après les dés
- * qu'il écrit (« NdF » : de N à N × F ; le plus grand dé écrit pour le maximum) ; null quand il n'en écrit aucun.
+ * Les gains de niveau d'un classeur qui ne les écrit pas (décision R73 : « Import d'une fiche auto : gains = maximum lu − le reste du calcul ») :
+ * { gains_sante, gains_chakra, remarque }. Chacun = le maximum lu moins ce que la fiche calcule sans gains (attributsDe : race, ethnie, magies, classes,
+ * accessoires) ; un maximum plus petit que ce calcul donne 0, à vérifier. La remarque dit toujours la déduction (fiche auto de Lucien : « Gains de
+ * niveau déduits des maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), et un total hors de ce que donnent les niveaux atteints
+ * (gainsDeNiveau : les points d'attributs et les dés bonus, la règle gains_niveau de la base) : « … : hors du total à saisir (152 à 166), à vérifier ».
  */
-export function bornesDuDe(texte) {
-  const des = [...String(texte ?? '').matchAll(/\b(\d*)[dD](\d+)\b/g)].map((m) => ({ n: Number(m[1] || 1), faces: Number(m[2]) })).filter((x) => x.n >= 1 && x.faces >= 1);
-  if (!des.length) return null;
-  return { min: Math.min(...des.map((x) => x.n)), max: Math.max(...des.map((x) => x.n * x.faces)) };
-}
-
-/**
- * Les gains de niveau (personnage_progression) qu'il faut pour atteindre les maximums de santé et de chakra lus dans le classeur, la fiche n'en ayant pas :
- * gains = maximum − attributsDe de la fiche sans progression ; P = les points des niveaux atteints (progressionAttendue : 15 chacun, santé + chakra), D = les
- * niveaux à dé ; les dés font T = gains de santé + gains de chakra − P. Possible si les deux gains sont positifs et que T va avec D (aucun dé : T = 0 ;
- * sinon entre la somme des plus petits résultats et celle des plus grands, bornesDuDe du texte de chaque niveau) : les dés au plus près de l'égalité (un
- * point à la fois, à tour de rôle), sur le chakra tant qu'ils y tiennent puis sur la santé ; les points de chaque niveau sur la santé jusqu'à épuisement,
- * puis sur le chakra. null quand c'est impossible, ou qu'un dé ne se lit pas ; [] quand il n'y a rien à répartir.
- */
-export function gainsReconstitues(regles, fiche, maxSante, maxChakra) {
+export function gainsDesMaximums(regles, fiche, maxSante, maxChakra) {
   const sans = attributsDe(regles, { ...fiche, gains_sante: 0, gains_chakra: 0 });
-  const gainsSante = maxSante - sans.sante;
-  const gainsChakra = maxChakra - sans.chakra;
-  const attendue = progressionAttendue(regles, niveauGlobal(regles, fiche.xp));
-  const points = attendue.reduce((s, n) => s + n.points, 0);
-  const aDe = attendue.filter((n) => n.de).map((n) => ({ niveau: n.niveau, bornes: bornesDuDe(n.de) }));
-  if (aDe.some((n) => !n.bornes)) return null;
-  const total = gainsSante + gainsChakra - points;
-  if (gainsSante < 0 || gainsChakra < 0) return null;
-  const minimum = aDe.reduce((s, n) => s + n.bornes.min, 0);
-  const maximum = aDe.reduce((s, n) => s + n.bornes.max, 0);
-  if (aDe.length ? total < minimum || total > maximum : total !== 0) return null;
-  if (!attendue.length) return [];
-  const des = aDe.map((n) => ({ niveau: n.niveau, valeur: n.bornes.min, max: n.bornes.max, sur: null }));
-  for (let reste = total - minimum; reste > 0;) {
-    for (const de of des) {
-      if (reste > 0 && de.valeur < de.max) {
-        de.valeur += 1;
-        reste -= 1;
-      }
-    }
-  }
-  let surChakra = 0;
-  for (const de of des) {
-    if (surChakra + de.valeur <= gainsChakra) {
-      de.sur = 'chakra';
-      surChakra += de.valeur;
-    } else de.sur = 'sante';
-  }
-  const surSante = total - surChakra;
-  if (surSante > gainsSante) return null;
-  let resteSante = gainsSante - surSante;
-  return attendue.map((n) => {
-    const sante = Math.min(n.points, resteSante);
-    resteSante -= sante;
-    const de = des.find((x) => x.niveau === n.niveau);
-    return { niveau: n.niveau, points_sante: sante, points_chakra: n.points - sante, de_choix: de?.sur ?? null, de_resultat: de?.valeur ?? null };
-  });
+  const brut = { sante: maxSante - sans.sante, chakra: maxChakra - sans.chakra };
+  const gains = { gains_sante: Math.max(0, brut.sante), gains_chakra: Math.max(0, brut.chakra) };
+  const partie = (nom, champ) => `${nom} ${gains[`gains_${champ}`]}${brut[champ] < 0 ? ` (maximum sous les ${sans[champ]} que la fiche calcule sans gains)` : ''}`;
+  const attendus = gainsDeNiveau(regles, { ...fiche, ...gains });
+  const plage = attendus.min === attendus.max ? String(attendus.min) : `${attendus.min} à ${attendus.max}`;
+  const suite = attendus.hors ? ` : hors du total à saisir (${plage}), à vérifier` : brut.sante < 0 || brut.chakra < 0 ? ' : à vérifier' : '';
+  return {
+    ...gains,
+    remarque: `Gains de niveau déduits des maximums du classeur (santé ${maxSante}, chakra ${maxChakra}) : ${partie('santé', 'sante')}, ${partie('chakra', 'chakra')}${suite}`,
+  };
 }
 
 // ------------------------------------------------------------------ ce que la page /fiche/ fait d'un classeur lu (src/scripts/fiche.mjs)

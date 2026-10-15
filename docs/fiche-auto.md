@@ -89,18 +89,25 @@ est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/
   compétences, maîtrises (« Nd » en AI et AN), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
   composition manque, R49), armure (AD21, AT20, AS21, AX21), bouclier et ses trois matériaux, accessoires (propriété, effet, valeur — « 18% » ou
   0,18 : 18 —, malédiction), ceinture (AQ29, AQ32, AQ35, et leur quantité en AX), inventaire, sorts et NM, dons à choix, métier, événements
-  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes.
-- **Déduit**, et dit dans les notes : l'acquis du joueur (l'acquis écrit moins le bonus du métier, R33 rogné au plafond R38, et les accessoires,
-  R54 ; une remarque par compétence touchée, ces bonus pouvant différer de ceux de la base), les gains de niveau (d'après les maximums de santé et de
-  chakra, F14 et M14 ; « à vérifier »), la compétence d'un accessoire « Compétence X » (d'après la case « Entraînement », L42, où la fiche note les
-  bonus d'entraînement : guide « Fiche de personnage : Capacités/Dons »), l'élément d'une armure écrit par le nom de sa magie (l'armure élémentaire
+  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes, et l'**entraînement** (L42, tel
+  quel : le champ texte libre de la fiche, décision R71 ; Lucien : « 2 Magie | 10 Concentration | 10 Observation | 10 Distinction »).
+- **Déduit**, et dit dans les notes : l'acquis du joueur (l'acquis écrit moins le bonus du métier **que la fiche comptait**, celui qu'écrit sa case
+  L41 — décision R72, « Le métier suit la base » : l'ancien bonus est retiré, celui de la base s'applique, le joueur ne garde que ses points ;
+  Lucien, « 4% Connaissance » : Connaissance 0 au joueur ; Louise, « +2% Reflexe, Esquive et Ruse » : Esquive, Réflexe et Ruse 0 ; une remarque de
+  synthèse quand il diffère de la base ; L41 illisible : le bonus de la base, à vérifier —, et moins les accessoires, R54 ; une remarque par
+  compétence touchée), les gains de niveau (deux totaux, décision R73 : les maximums de santé et de chakra, F14 et M14, moins ce que la fiche calcule
+  sans gains ; Lucien : santé 41, chakra 121 ; Louise : santé 61, chakra 99 ; « à vérifier » quand un maximum est sous ce calcul ou que le total
+  sort de ce que donnent les niveaux atteints), la compétence d'un accessoire « Compétence X » (d'après les bonus d'entraînement de la case L42 :
+  guide « Fiche de personnage : Capacités/Dons »), l'élément d'une armure écrit par le nom de sa magie (l'armure élémentaire
   de cette magie et de la catégorie de l'armure), la caractéristique de la magie au choix du Potentiel Illimité, les NM des sorts (tous comptés de
   niveau : la fiche ne dit pas lesquels viennent d'un livre ou du MJ, R26 ; dit quand ils dépassent ceux du niveau). Déduits sans remarque : le
   mode bi-classe (deux classes au niveau global, sous le niveau 20 : R2) et la spécialité d'après un don de spécialité. Un nombre décimal là où la
   fiche veut un entier est arrondi vers le bas, avec une remarque.
 - **Pas repris**, et dit dans les notes : un nom introuvable dans les règles ou qui en désigne plusieurs sans rien pour les départager, la case
   « Ambidextrie » cochée (AU8 : l'attaque à deux armes est calculée, décision R46), ce que les règles du site retirent. Les valeurs calculées
-  (totaux, dégâts, AP, AM, paliers de résistance…) ne sont pas relues : le site les recalcule. L'image en A1 (le logo de la fiche auto) est ignorée.
+  (totaux, dégâts, AP, AM, paliers de résistance, « Solidité » des armes en AK15 et AX15…) ne sont pas relues : le site les recalcule. La solidité
+  des armes est un maximum (sur les deux fiches du propriétaire, celui de l'arme forgée, décision R51), pas la solidité du moment : une arme importée
+  est à son maximum (décision R74). L'image en A1 (le logo de la fiche auto) est ignorée.
 - « Effet en plus » (AA13, AN13) n'est pas relu : dans les fiches du propriétaire, c'est une formule (`=BDD!AJ36`, relevée le 2026-10-15), qui ne
   porte aucune saisie du joueur ; on y lit l'effet du catalogue de l'arme, puis celui de son matériau (Lucien, Laiton : « dégâts doublés contre la
   barrière » ; Louise, Mythril : « Passe barrière »). L'effet en plus de la fiche importée reste vide.

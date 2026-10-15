@@ -6,7 +6,7 @@
 // mono-classe à métier et accessoires, bi-classe au Potentiel Illimité), les quatre personnages fil rouge du guide (lib/guide-fil-rouge.mjs) et les deux
 // fiches auto du propriétaire (test/fixtures : Lucien et Louise), importées puis réexportées. La comparaison se fait sur la forme qu'envoie la page
 // (aEnvoyer de src/scripts/fiche.mjs) mise en forme canonique : rangs des listes numérotées renumérotés, null, '' et absent confondus, listes sans ordre
-// triées ; une valeur du moment égale à son maximum (ou une corruption nulle) vaut « rien d'écrit ».
+// triées ; une valeur du moment égale à son maximum (ou une corruption nulle), une solidité d'arme à son maximum (armesValables), valent « rien d'écrit ».
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -47,6 +47,7 @@ function commeLaPage(fiche) {
   f.caracteristiques = f.caracteristiques.filter((c) => c.base !== null && c.base !== undefined);
   f.competences = f.competences.filter((c) => c.naturel || c.acquis);
   f.maitrises_armes = M.maitrisesValables(regles, f);
+  f.armes = M.armesValables(regles, f);
   f.sorts = f.sorts.map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = f.bouclier_materiaux.filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
@@ -116,8 +117,9 @@ const O = ORDINATEUR;
 const CASES_RELUES = new Set([O.nom, O.surnom, O.lieuOrigine, O.race, O.magieInnee, O.magieAcquise, O.dieuChoisi, O.xp, O.classe1, O.classe2, O.specialite1,
   O.specialite2, ...O.armes.flatMap((x) => [x.nom, x.effet]), O.armure.nom, O.armure.bonus, O.bouclier.nom, O.bouclier.composition,
   ...Object.values(O.accessoires), ...O.ceinture, ...O.inventaire.colonnes.flatMap((c) => O.inventaire.lignes.map((l) => `${c}${l}`)),
-  casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom, casesDuDon(DONS.metier).effet, ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom),
-  ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]), ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)]);
+  casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom, casesDuDon(DONS.metier).effet, casesDuDon(DONS.entrainement).effet,
+  ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom), ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]),
+  ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`), ...O.armes.map((x) => x.solidite)]);
 
 /** Les lignes de la note sous le marqueur, lues (lireLigneDeNote) : toutes ont une clé connue. */
 function lignesDeLaNote(cellules) {
@@ -154,7 +156,10 @@ const LONG = 'Banni du Temple de Morfot pour avoir ouvert le Livre des Cendres :
 /** Un objet de l'inventaire ou de la ceinture, comme la page l'écrit : la ressource est la première de ce nom (src/scripts/fiche.mjs). */
 const objet = (nom, quantite = 1) => ({ nom, quantite, ressource_id: regles.ressources.find((r) => r.nom === nom)?.id ?? null });
 
-/** Mono-classe à métier, tout rempli : 26 sorts, 55 objets, 6 événements, accessoires sur tous les emplacements, armes forgées, armure en pièces. */
+/**
+ * Mono-classe à métier, tout rempli : 26 sorts, 55 objets, 6 événements, accessoires sur tous les emplacements, armes forgées (l'une abîmée, l'autre
+ * cassée : décision R74), armure en pièces, gains de niveau (R73), un entraînement long sur trois lignes (R71).
+ */
 function ficheRiche() {
   const f = {
     ...ficheVide('Bérénice'), surnom: 'la Rousse…', lieu_origine: 'Port-Sable', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
@@ -179,10 +184,11 @@ function ficheRiche() {
         amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 3, 'amélioration 3').id,
         arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:epee:feu',
         amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'arme_elementaire' && a.niveau === 2, 'amélioration élémentaire 2').id,
-        effet_en_plus: `Gravée au nom de sa mère\nTranchant : comme au premier jour\n${LONG}\n\n${LONG}`,
+        effet_en_plus: `Gravée au nom de sa mère\nTranchant : comme au premier jour\n${LONG}\n\n${LONG}`, durabilite: 1,
       },
-      { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut },
+      { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut, durabilite: 0 },
     ],
+    entrainement: `2 Magie | 10 Concentration | 10 Observation | 10 Distinction | 5 Survie | 5 Vigueur | 5 Fermeté\nLivre de magie lu : ${LONG}\nAccordé par le MJ : +5 Survie`,
     armures: [
       { emplacement_id: 'torse', armure_id: regles.armures[1].id, amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 2, 'armure 2').id },
       {
@@ -235,10 +241,18 @@ function ficheBiPotentiel() {
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {
   const f = ficheRiche();
+  // une arme abîmée, une arme cassée (décision R74) : sous leur maximum, gardées telles quelles
+  assert.ok(f.armes.every((x) => x.durabilite < M.durabiliteMaxDArme(regles, x)));
   const r = await verifier(f, 'fiche riche');
+  assert.deepEqual(r.fiche.armes.map((x) => x.durabilite), [1, 0]);
+  assert.deepEqual(ORDINATEUR.armes.map((x) => r.cellules[x.solidite]), f.armes.map((x) => `${x.durabilite} / ${M.durabiliteMaxDArme(regles, x)}`));
+  assert.equal(r.cellules[ORDINATEUR.armes[1].degats], M.degatsDArme(regles, f, 2).texte, 'une arme cassée garde ses dégâts dans le classeur');
+  // l'entraînement (décision R71), long et sur trois lignes : relu à l'identique ; les gains de niveau (R73) aussi
+  assert.equal(r.fiche.entrainement, f.entrainement);
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [f.gains_sante, f.gains_chakra]);
   // des textes que l'import relit, trop longs pour leur case : coupés (« … »), la suite dans la note, recollés à l'import
   const suites = r.cellules[ORDINATEUR.note].split('\n').filter((l) => l.startsWith('Suite de la case ')).map((l) => /^Suite de la case ([A-Z]+\d+) : /.exec(l)[1]);
-  const lues = [ORDINATEUR.armes[0].effet, ORDINATEUR.accessoires.chef, ORDINATEUR.ceinture[2], 'L73', 'AA51'];
+  const lues = [ORDINATEUR.armes[0].effet, ORDINATEUR.accessoires.chef, ORDINATEUR.ceinture[2], 'L73', 'AA51', casesDuDon(DONS.entrainement).effet];
   assert.deepEqual(lues.filter((a) => !suites.includes(a)), [], `cases coupées : ${suites.join(', ')}`);
   for (const a of lues) assert.match(r.cellules[a], /…$/, a);
   // la suite de l'effet de l'arme ne porte que ce que l'import relit : ni l'effet du catalogue, ni les lignes « Deux armes », « Non compté »
@@ -279,7 +293,8 @@ test('fiches auto du propriétaire (Lucien, Louise) : importées, exportées, re
     const auto = ficheDuClasseur(regles, feuilleDeGrille(values));
     assert.equal(auto.disposition, 'auto');
     const r = await verifier(auto.fiche, qui);
-    // la note : bi-classe, gains de niveau, Mode Hyper 100 %, et au plus deux suites (un libellé d'accessoire, un événement trop longs pour leur case)
+    // l'entraînement (L42) et les gains de niveau de la fiche auto reviennent tels quels (verifier) ; la note : bi-classe, gains de niveau, Mode Hyper
+    // 100 %, et au plus deux suites (un libellé d'accessoire, un événement trop longs pour leur case)
     const lues = lignesDeLaNote(r.cellules);
     assert.ok(lues.filter((l) => l.nom === 'suite').length <= 2, `${qui} : ${lues.filter((l) => l.nom === 'suite').map((l) => l.adresse).join(', ')}`);
     assert.ok(lues.length <= 7, `${qui} : ${lues.length} lignes`);

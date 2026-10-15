@@ -196,11 +196,14 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = acquis du joueur + bonus du métier (R33, rogné au plafond : R38) +
   accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (voir les questions ouvertes). **Restent vides** les cases que la fiche ne
-  calcule pas : AP, AM et solidité des pièces d'armure et du bouclier, solidité d'une arme (la page « Armes » la calcule, R51, pas encore la fiche),
-  et la case « Entraînement » (L42), où la fiche auto note les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons » : 15 compétences,
-  10 % au plus), que le site ne distingue pas des autres acquis. Les dés de maîtrise atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la
-  posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du Potentiel Illimité, gains de niveau, NM offerts de livre et
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP, AM et
+  solidité des pièces d'armure et du bouclier. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
+  l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
+  deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte le
+  texte libre de la fiche (R71, `personnage.entrainement`), tel quel, blancs de bord retirés ; le nom et le type du modèle restent. Les dés de maîtrise
+  atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
+  Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
+  niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre et
   du MJ (R26), accessoires de ceinture et « autre », dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
@@ -219,7 +222,8 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
   toujours pas, la case en garde le début, fini par « … », écrit à 60 % (comme ses voisines réduites de la même colonne). Chaque case est **relue**
   (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, pièces d'armure,
-  composition, améliorations, élément et effet en plus d'une arme, choix du métier…) ou **affichée** (un texte de règles ou un calcul que le site
+  composition, améliorations, élément, effet en plus et solidité d'une arme, choix du métier, entraînement…) ou **affichée** (un texte de règles ou un
+  calcul que le site
   refait : type, coût, portée, zone et description des sorts, type et effets des dons, textes de la race, don de base, artisanat, Mode Hyper,
   résistances, dégâts, effet du catalogue d'une arme, titres…). Une case affichée coupée perd sa fin, **sans rien dans la note** ; seule la part
   relue d'une case coupée a une suite dans la note (« Suite de la case AA51 : … », sauts de ligne en « ⏎ »), que l'import recolle avant de lire la
@@ -254,11 +258,24 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   de spécialité) :
   - **bi-classe** : la ligne de la note ; sinon deux classes au niveau global, sous le niveau 20 (R2 : en mono-classe, la classe 1 est à deux fois
     le niveau global, 20 au plus ; au niveau 20, les deux s'écrivent pareil : mono-classe) ;
-  - **acquis du joueur** = acquis écrit − bonus du métier (R33, R38) − accessoires (R54) ; une remarque par compétence touchée pour un classeur qui
-    ne vient pas de la page (ses bonus peuvent être d'anciennes valeurs), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au
-    joueur ») ;
-  - **gains de niveau** (fiche faite à la main) : reconstitués d'après les maximums de santé et de chakra (les dés bornés par le dé écrit de chaque
-    niveau), « à vérifier » ; impossibles, les maximums lus sont dits ;
+  - **acquis du joueur** = acquis écrit − bonus du métier − accessoires (R54). Le bonus du métier retiré : pour un classeur de la page, celui de la
+    base (R33, rogné au plafond : R38), qu'elle a écrit ; pour un classeur qui n'en vient pas (fiche auto, modèle rempli à la main), **celui qu'écrit
+    sa case L41** (R72 : « Le métier suit la base » — l'ancien bonus est retiré, brut, le site ajoute celui de la base, le joueur ne garde que ses
+    points ; `bonusDuMetierEcrit`). Lucien : Connaissance 0 au joueur (4 écrits, « 4% Connaissance »), affichée 3 ; Louise : Esquive, Réflexe et Ruse
+    0 (« +2% Reflexe, Esquive et Ruse »), affichées 3, 3 et 0. Une remarque de synthèse quand l'ancien bonus n'est pas celui de la base (« Métier
+    Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 : les acquis suivent la base (R72) ») ;
+    une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et autres mots, décimal, case coupée dans
+    un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son ancien bonus est retiré quand même, et
+    dit. L41 se lit comme la page l'écrit (rangs à choix « … → Compétence », « → ? » pas choisi ; l'artisanat « = N % » n'est pas un bonus) et comme
+    la fiche auto (« 4% Connaissance. … », « Bonus +2% Reflexe, Esquive et Ruse. ») ; le test relit la case de chaque métier de la base, pour chaque
+    choix. Une remarque par compétence touchée pour un classeur qui ne vient pas de la page (« Connaissance : acquis 4 du classeur − 4 du métier
+    Écrivain (classeur) = 0 au joueur »), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au joueur ») ;
+  - **gains de niveau** (classeur qui ne vient pas de la page, sans la ligne de la note) : deux totaux (R73 : « gains = maximum lu − le reste du
+    calcul »), le maximum de santé et de chakra lu (fiche auto : F14, M14 ; modèle ordinateur : le « b » de « a / b ») moins ce que la fiche calcule
+    sans gains (race, ethnie, magies, classes, accessoires : `gainsDesMaximums`) ; une remarque dit la déduction (« Gains de niveau déduits des
+    maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), « à vérifier » quand un maximum est sous ce calcul (ramené à 0) ou que le
+    total sort de ce que donnent les niveaux atteints (« : hors du total à saisir (152 à 166), à vérifier » : `gainsDeNiveau`, la règle
+    `gains_niveau`) ;
   - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26) : tous comptés de niveau, et dit si cela dépasse ;
   - élément d'armure écrit par sa magie (fiche auto) : l'armure élémentaire de cette magie et de la catégorie de l'armure ; caractéristique du
     Potentiel Illimité d'après le bonus ; compétence d'un accessoire « Compétence X » de la fiche auto d'après la case « Entraînement » ; sans
@@ -266,9 +283,14 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   Un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » = 20) ; un décimal où la fiche veut un entier est arrondi vers le bas (une
   remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
   de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
-  sans place sur le site (solidité, grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38, « Entraînement » en
-  L42), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une ligne de note en double (la première compte), une image hors de A1
-  ou une seconde image. Remarques encore : « Nom Armure » (AD22, toujours lu) qui ne nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
+  sans place sur le site (grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38), une solidité d'arme illisible,
+  sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une
+  ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R71), dans les
+  deux dispositions, tel quel (recollé à sa suite dans la note quand la page l'a coupé) ; dans le modèle ordinateur, la **solidité** de chaque arme
+  (AK17, AX17, R74 : « N / M » lu sur la ligne d'arme finale, composition et amélioration relues ; à son maximum ou au-delà, rien d'enregistré ; le
+  « / » du modèle n'est pas une valeur ; un décimal arrondi vers le bas, dit) ; la « Solidité » de la fiche auto (AK15, AX15) n'est qu'un maximum
+  calculé, jamais relu. Remarques encore : un maximum de solidité écrit autre que celui du site (R51) ; « Nom Armure » (AD22, toujours lu) qui ne
+  nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
   plus » (AA13) reprises comme effet en plus de l'arme ; case relue finie par « … » sans sa suite dans la note, quand la page a dû retirer des lignes de données (sinon le « … » est celui du joueur) ; case NOTE pleine ; un `.csv` du
   modèle ordinateur ne porte pas les couleurs des maîtrises (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
   dans son texte, « titre (type) : texte ». Dans la note, c'est le **dernier** marqueur qui compte (des notes collées peuvent en contenir un). Le
@@ -287,7 +309,8 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur exporté. »,
   suivi de ses avertissements.
 - **Aller-retour** (`test/fiche-tableur-aller-retour.test.mjs`) : export → `.xlsx` → lecture → import redonne la fiche, sans rien dans les notes, et
-  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris), une bi-classe au Potentiel
+  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris, une arme abîmée et une arme cassée,
+  des gains de niveau, un entraînement long sur trois lignes, coupé, sa suite dans la note), une bi-classe au Potentiel
   Illimité, les personnages fil rouge du guide et les deux fiches auto du propriétaire ; des notes trop longues reviennent raccourcies, avec toutes
   leurs données ; par un `.csv`, tout revient sauf les maîtrises (une remarque le dit). L'aller-retour exact vaut pour le `.xlsx` ; les blancs d'une
   case d'un `.ods` se lisent comme LibreOffice les relit (`test/tableur-lecture.test.mjs`).

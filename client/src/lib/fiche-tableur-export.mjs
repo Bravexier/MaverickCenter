@@ -3,20 +3,22 @@
 // résultat […] Toute info supplémentaire peut être notée dans les « Notes » ») : les cases du modèle « Fiche-de-personnage-Maverick-V15.2.2
 // ordinateur » (lib/fiche-tableur-cases.mjs#ORDINATEUR) remplies des valeurs que la page /fiche/ affiche, calculées par les mêmes appels au moteur
 // (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs) — jamais une règle de plus : une case que la fiche ne calcule pas reste telle que dans le modèle (AP/AM
-// d'une pièce d'armure ou du bouclier ; la solidité d'une arme, que la page « Armes » calcule (décision R51, lib/arme-forge.mjs) mais pas encore la
-// fiche ; la case « Entraînement » (L42), où la fiche auto écrit les bonus d'entraînement — guide « Fiche de personnage : Capacités/Dons » : 15
-// compétences, 10 % au plus —, que le site ne distingue pas des autres acquis). La portée d'une arme est celle de la page « Armes » (décision R50 : la
-// portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe, gains de niveau, NM offerts, accessoires de ceinture,
-// débordements des listes…) va dans la case NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) :
-// leur mise en forme et leur lecture sont ici (CLES_DE_LA_NOTE, texteDesGains / lireGains…), comme celles des cases que l'import relit (objets,
-// accessoires, armure, effet d'une arme, choix du métier) : un seul jeu de lecteurs, l'aller et le retour ne divergent pas.
+// et solidité d'une pièce d'armure ou du bouclier). La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
+// (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : le texte libre de la fiche
+// (décision R71, personnage.entrainement : bonus d'entraînement, livres de magie lus, ce que le MJ accorde ; jamais compté), relu. La portée d'une
+// arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
+// gains de niveau — deux totaux, décision R73 : « santé X, chakra Y » —, NM offerts, accessoires de ceinture, débordements des listes…) va dans la case
+// NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) : leur mise en forme et leur lecture sont
+// ici (CLES_DE_LA_NOTE, texteDesGains / lireGains…), comme celles des cases que l'import relit (objets, accessoires, armure, effet d'une arme, choix du
+// métier) : un seul jeu de lecteurs, l'aller et le retour ne divergent pas.
 // La note ne porte que des données du personnage, jamais un texte de règles : chaque case écrite est « relue » (l'import en tire un choix : nom, sorts,
-// NM, noms des dons, accessoires, objets, événements, lignes de l'armure, composition et effet en plus d'une arme, choix du métier…) ou « affichée » (un
-// texte de règles ou un calcul que le site refait : effets des sorts et des dons, textes de la race, artisanat, Mode Hyper, résistances, dégâts, effet du
-// catalogue d'une arme…) ; une case à la fois relue et affichée écrit ses lignes relues d'abord (partiesDeLArme, partiesDuMetier). Un texte trop long
-// pour sa case (`zones` : la taille des cases du modèle, lib/tableur-ecriture.mjs#zonesDuClasseur) n'y est pas rogné : une case de plusieurs rangées
-// prend le retour à la ligne, une case d'une rangée rapetisse un peu son texte (`alignements`), puis la case garde ce qui tient, fini par « … » ; seule la
-// part relue qu'elle ne montre pas va dans la note (« Suite de la case AA51 : … », lib/tableur-mesure.mjs#ajusterLeTexte), que l'import recolle. Des
+// NM, noms des dons, accessoires, objets, événements, lignes de l'armure, composition, effet en plus et solidité d'une arme, choix du métier,
+// entraînement…) ou « affichée » (un texte de règles ou un calcul que le site refait : effets des sorts et des dons, textes de la race, artisanat, Mode
+// Hyper, résistances, dégâts, effet du catalogue d'une arme…) ; une case à la fois relue et affichée écrit ses lignes relues d'abord (partiesDeLArme,
+// partiesDuMetier). Un texte trop long pour sa case (`zones` : la taille des cases du modèle, lib/tableur-ecriture.mjs#zonesDuClasseur) n'y est pas
+// rogné : une case de plusieurs rangées prend le retour à la ligne, une case d'une rangée rapetisse un peu son texte (`alignements`), puis la case garde
+// ce qui tient, fini par « … » ; seule la part relue qu'elle ne montre pas va dans la note (« Suite de la case AA51 : … »,
+// lib/tableur-mesure.mjs#ajusterLeTexte), que l'import recolle. Des
 // écritures courtes (accessoire sur une ligne, pièce d'armure sans ses statistiques quand elles ne tiennent pas) laissent ces suites rares ; la note
 // qui déborde elle-même s'aligne en haut (son début reste lisible). Une case d'une seule rangée (description et colonnes d'un sort, dons de base, de
 // race et du métier) écrit ses parties sur une ligne, séparées par « · » (SEPARATEUR_EN_LIGNE) : coupée, elle montre le début de chacune et pas
@@ -31,7 +33,7 @@ import { RAISONS } from './degats-texte.mjs';
 import { PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
-  caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace,
+  caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, progressionXp, resistancesDe, trouver, valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
@@ -833,6 +835,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const porteeEnPlus = degats?.porteeEnPlus ?? 0;
     const portee = [arme?.portee ?? null, porteeEnPlus ? `${porteeEnPlus > 0 ? '+' : '-'} ${Math.abs(porteeEnPlus)}` : null].filter(Boolean).join(' ');
     ecrire(cases.portee, nombreSiEntier(portee));
+    // solidité du moment et maximum (décision R74), « N / M » comme les valeurs du moment ; une arme cassée (0 / M) garde ses dégâts en AG10 : ils
+    // départagent deux armes du même nom à l'import
+    const solidite = durabiliteDArme(regles, f, rang);
+    if (solidite) ecrire(cases.solidite, `${solidite.actuelle} / ${solidite.max}`, RELUE);
   });
 
   // armure de base, armure portée, bouclier
@@ -876,9 +882,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   objets.slice(0, PLACES_INVENTAIRE).forEach((o, i) => ecrire(placesDInventaire[i], texteDObjet(o), RELUE));
   const inventaireEnSuite = objets.slice(PLACES_INVENTAIRE).map(texteDObjet);
 
-  // dons : de base, de race (ethnie), du métier, de classe ; seuls le nom de l'ethnie, du métier et des dons de classe, et les choix du métier sont relus
-  // (le reste : textes de règles et calculs que le site refait). Les dons de base, de race et du métier ont une rangée : leurs parties sur une ligne.
-  // L'entraînement (L42) n'est pas écrit : la fiche auto y note les bonus d'entraînement, que le site ne distingue pas des autres acquis (voir l'en-tête).
+  // dons : de base, de race (ethnie), du métier, l'entraînement, de classe ; seuls le nom de l'ethnie, du métier et des dons de classe, les choix du
+  // métier et l'entraînement sont relus (le reste : textes de règles et calculs que le site refait). Les dons de base, de race et du métier ont une
+  // rangée : leurs parties sur une ligne. L'entraînement (L42, une rangée aussi) est écrit tel quel, blancs de bord retirés (l'import les retire) : sur
+  // plusieurs lignes ou trop long, la case en garde le début et la suite va dans la note, que l'import recolle.
   const dr = donsDeRace(regles, f);
   if (dr.base) {
     const base = donDeBase(dr.base);
@@ -903,6 +910,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(cases.type, 'Passif');
     ecrireEnDeuxParts(cases.effet, partiesDuMetier(regles, f), SEPARATEUR_EN_LIGNE);
   }
+  // entraînement (décision R71) : le texte libre de la fiche ; le nom (« Entraînement ») et le type du modèle restent
+  ecrire(casesDuDon(DONS.entrainement).effet, String(f.entrainement ?? '').trim() || null, RELUE);
   const donsEnSuite = { 1: [], 2: [] };
   for (const c of donsAcquis(regles, f)) {
     const lignes = c.rang === 1 ? DONS.classe1 : DONS.classe2;

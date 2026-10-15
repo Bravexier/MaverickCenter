@@ -1,9 +1,10 @@
 // Import d'une fiche de personnage depuis un classeur (lib/fiche-tableur-import.mjs ; demande du propriétaire, 2026-10-15 : « La fiche de personnage doit
 // pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet »). Les deux fiches auto du propriétaire (Lucien et Louise,
 // test/fixtures : valeurs affichées par l'API Google) relues contre la base — ce qui est repris, ce qui part dans `nonRepris`, ce que disent les
-// `remarques`, chaque valeur attendue tirée du fichier ou des règles —, puis des feuilles « ordinateur » : le modèle vierge (client/src/modeles,
-// lu ici par lib/xml-mini.mjs) et des cases remplies à la main (maîtrises par remplissage et par marque, posture, accessoires en lignes, case NOTE et
-// ses clés, débordements, portrait, l'écriture de la page et l'ancienne) ; anciennes graphies, homonymes (cases coupées comprises), disposition inconnue.
+// `remarques`, chaque valeur attendue tirée du fichier ou des règles ; le métier qui suit la base (R72), les gains déduits des maximums (R73) —, puis
+// des feuilles « ordinateur » : le modèle vierge (client/src/modeles, lu ici par lib/xml-mini.mjs) et des cases remplies à la main (maîtrises par
+// remplissage et par marque, posture, accessoires en lignes, solidité des armes (R74), entraînement (R71), case NOTE et ses clés, débordements,
+// portrait, l'écriture de la page et l'ancienne) ; anciennes graphies, homonymes (cases coupées comprises), disposition inconnue.
 // Les écritures de la page se relisent par les lecteurs de lib/fiche-tableur-export.mjs, testés avec elle (fiche-tableur-export.test.mjs).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,14 +16,16 @@ import * as M from '../src/lib/fiche-moteur.mjs';
 import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from '../src/lib/fiche-moteur.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import {
-  AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, cle, DONS, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR,
-  SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
+  AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, casesDuDon, cle, DONS, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES,
+  MODELE_DE_LA_SOLIDITE, ORDINATEUR, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
-  bonusDEntrainement, bornesDuDe, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, gainsReconstitues, lireLaNote, nombreDe, paireDe,
+  bonusDEntrainement, bonusDuMetierEcrit, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, gainsDesMaximums, lireLaNote, nombreDe, paireDe,
   porteUneMarque, REMARQUE_MAITRISES_CSV,
 } from '../src/lib/fiche-tableur-import.mjs';
-import { cellulesDeLaFiche, enChiffres, lignesDArmure, lireGains, partiesDeLArme, SEPARATEUR_EN_LIGNE } from '../src/lib/fiche-tableur-export.mjs';
+import {
+  cellulesDeLaFiche, enChiffres, lignesDArmure, lireGains, partiesDeLArme, partiesDuMetier, SEPARATEUR_EN_LIGNE,
+} from '../src/lib/fiche-tableur-export.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
 
@@ -212,26 +215,51 @@ function verifierNonRepris(r) {
 const sansMains = (nom) => nom.replace(/\s*\((?:une|deux) mains?\)\s*$/i, '');
 
 /**
- * L'acquis du joueur, compétence par compétence : l'acquis écrit moins le métier et les accessoires de la base (competencesDe de la fiche importée), jamais
- * négatif ; une remarque pour chaque compétence que ces bonus touchent (classeur qui ne vient pas de la page). Rend les remarques attendues.
+ * Le bonus du métier que le classeur a compté dans ses acquis (décision R72) : celui qu'écrit sa case L41 (bonusDuMetierEcrit), sinon celui de la base
+ * (competencesDe) ; Map competence_id → points, et d'où il vient.
+ */
+function ancienMetier(values, f) {
+  const lu = bonusDuMetierEcrit(regles, lue(values, 'L41'));
+  if (lu) return { origine: 'classeur', points: lu };
+  return { origine: 'base', points: new Map(M.competencesDe(regles, f).map((k) => [k.id, k.metier])) };
+}
+
+/**
+ * L'acquis du joueur, compétence par compétence : l'acquis écrit moins le métier que le classeur comptait (R72) et les accessoires de la base
+ * (competencesDe de la fiche importée), jamais négatif ; une remarque pour chaque compétence que ces bonus touchent (classeur qui ne vient pas de la
+ * page). Rend les remarques attendues.
  */
 function verifierLesAcquis(values, r) {
   const f = r.fiche;
   const v = (a) => lue(values, a);
+  const ancien = ancienMetier(values, f);
   const attendues = [];
   for (const k of M.competencesDe(regles, f)) {
     const cases = CASES_COMPETENCES.find((c) => c.id === k.id);
     const ecrit = Number(v(cases.acquis) || 0);
+    const metier = ancien.points.get(k.id) ?? 0;
     const joueur = f.competences.find((c) => c.competence_id === k.id)?.acquis ?? 0;
-    assert.equal(joueur, Math.max(0, ecrit - k.metier - k.accessoire), k.id);
-    if (!k.metier && !k.accessoire) continue;
+    assert.equal(joueur, Math.max(0, ecrit - metier - k.accessoire), k.id);
+    if (!metier && !k.accessoire) continue;
     const remarque = r.remarques.find((x) => x.startsWith(`${k.nom} : acquis ${ecrit} du classeur `));
     assert.ok(remarque, `${k.nom} : la remarque de son acquis`);
-    if (k.metier) assert.ok(remarque.includes(` − ${k.metier} du métier ${M.trouver(regles.metiers, f.metier_id).nom} (base)`), remarque);
-    assert.ok(remarque.endsWith(ecrit < k.metier + k.accessoire ? ': moins que ces bonus, 0 au joueur' : `= ${joueur} au joueur`), remarque);
+    if (metier) assert.ok(remarque.includes(` − ${metier} du métier ${M.trouver(regles.metiers, f.metier_id)?.nom ?? v('C41')} (${ancien.origine})`), remarque);
+    assert.ok(remarque.endsWith(ecrit < metier + k.accessoire ? ': moins que ces bonus, 0 au joueur' : `= ${joueur} au joueur`), remarque);
     attendues.push(remarque);
   }
   return attendues;
+}
+
+/**
+ * La remarque du métier d'un classeur qui ne vient pas de la page (R72), quand ce qu'il comptait (`ancien`, Map) n'est pas ce que donne la base :
+ * « Métier X : le classeur comptait A +n… ; la base donne B +m… : les acquis suivent la base (R72) », dans l'ordre des compétences des règles.
+ */
+function remarqueDuMetier(f, ancien) {
+  const ecrits = (m) => regles.competences.filter((k) => m.get(k.id)).map((k) => `${k.nom} +${m.get(k.id)}`).join(', ');
+  const base = new Map(Object.entries(M.bonusDuMetier(regles, f).parCompetence).filter(([, n]) => n));
+  const [avant, apres] = [ecrits(ancien), ecrits(base)];
+  if (avant === apres) return null;
+  return `Métier ${M.trouver(regles.metiers, f.metier_id).nom} : le classeur comptait ${avant || 'aucun bonus de compétence'} ; la base donne ${apres || 'aucun bonus de compétence'} : les acquis suivent la base (R72)`;
 }
 
 /** Ce que les deux fiches ont en commun : identité, alignement, bourse, XP, caractéristiques, compétences (scores gardés), sorts, inventaire, maîtrises. */
@@ -292,13 +320,16 @@ function verifierLeCommun(values, r) {
   // le +1 de la magie innée sur sa caractéristique (case bonus du classeur)
   const bonus = CASES_CARACTERISTIQUES.filter((c) => v(c.bonus)).map((c) => c.id);
   assert.deepEqual(bonus, [regles.magies.find((m) => m.id === f.magie_innee_id).caracteristique_id]);
-  // compétences : le naturel tel quel ; chaque score du classeur retrouvé par le site (sauf un acquis du classeur plus petit que les bonus de la base)
+  // compétences : le naturel tel quel ; chaque score du classeur retrouvé par le site, au métier près (R72 : le bonus que comptait le classeur retiré,
+  // celui de la base ajouté ; sauf un acquis du classeur plus petit que ses bonus)
   const calcul = competencesDe(regles, f);
+  const ancien = ancienMetier(values, f);
   for (const c of CASES_COMPETENCES) {
     const ligne = f.competences.find((x) => x.competence_id === c.id);
     const k = calcul.find((x) => x.id === c.id);
+    const metier = ancien.points.get(c.id) ?? 0;
     assert.equal(ligne?.naturel ?? 0, Number(v(c.naturel) || 0), c.id);
-    if (Number(v(c.acquis) || 0) >= k.metier + k.accessoire) assert.equal(k.score, Number(v(c.total)), `score ${c.id}`);
+    if (Number(v(c.acquis) || 0) >= metier + k.accessoire) assert.equal(k.score, Number(v(c.total)) - metier + k.metier, `score ${c.id}`);
   }
   // maîtrises : « Nd » → N dés, seules celles qui ajoutent un dé
   const attendues = MAITRISES.map((m) => ({ arme_famille_id: m.famille, des: Number(v(`${m.cote === 'gauche' ? 'AI' : 'AN'}${m.ligne}`).replace('d', '')) }))
@@ -318,18 +349,26 @@ function verifierLeCommun(values, r) {
   // valeurs du moment au maximum (null), corruption 0 (null)
   assert.deepEqual([v('D14'), v('K14'), v('R14')], [v('F14'), v('M14'), v('T14')]);
   assert.deepEqual([f.sante_actuelle, f.chakra_actuel, f.barriere_actuelle, f.barre4_actuelle, f.corruption, f.posture_id], [null, null, null, null, null, null]);
-  // gains de niveau (deux totaux, décision R73) : les maximums du classeur retrouvés, un total dans la plage du niveau (points et dés atteints)
+  // gains de niveau (deux totaux, décision R73 : « gains = maximum lu − le reste du calcul ») : les maximums du classeur retrouvés, un total dans la
+  // plage du niveau (points et dés atteints)
   const a = attributsDe(regles, f);
   assert.deepEqual([a.sante, a.chakra], [Number(v('F14')), Number(v('M14'))]);
   const n = regles.niveaux.find((x) => x.niveau === Number(v('W8')));
   const total = f.gains_sante + f.gains_chakra;
   assert.ok(total >= n.points_attributs_cumul + n.de_attributs_min_cumul && total <= n.points_attributs_cumul + n.de_attributs_max_cumul, `gains ${total}`);
+  assert.equal(M.gainsDeNiveau(regles, f).hors, false);
   assert.equal(r.image, null);
   assert.equal(r.portraitGarde, false);
   assert.equal(f.notes, v('BA54') || null);
-  // les remarques : celles des acquis, des gains de niveau
+  // l'entraînement (décision R71) : le texte de la case L42, tel quel
+  assert.equal(f.entrainement, v('L42') || null);
+  // ni la solidité de la fiche auto (AK15, AX15 : un maximum calculé) ni rien d'autre des armes
+  assert.ok(f.armes.every((x) => !('durabilite' in x)));
+  // les remarques : celles des acquis, du métier (R72), des gains de niveau
   const remarques = verifierLesAcquis(values, r);
-  remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur (santé ${v('F14')}, chakra ${v('M14')}) : à vérifier`);
+  const metier = remarqueDuMetier(f, ancienMetier(values, f).points);
+  if (metier) remarques.push(metier);
+  remarques.push(`Gains de niveau déduits des maximums du classeur (santé ${v('F14')}, chakra ${v('M14')}) : santé ${f.gains_sante}, chakra ${f.gains_chakra}`);
   for (const x of remarques) assert.ok(r.remarques.includes(x), x);
   return remarques;
 }
@@ -340,6 +379,14 @@ test('fiche auto de Lucien : tout ce que le classeur choisit est repris, chaque 
   const v = (a) => lue(LUCIEN, a);
   const remarques = verifierLeCommun(LUCIEN, r);
   assert.equal(f.dieu_choisi_id, selon(regles.dieux, v('S5'))[0]?.id ?? null, '« Pas de Dieu choisi » est un dieu de la liste');
+  // le métier (décision R72, « Lucien : Connaissance 3 (au lieu de 4) ») : le classeur comptait « 4% Connaissance » (L41), retiré de l'acquis écrit ;
+  // le joueur ne garde que ses points (ici aucun), celui de la base s'y ajoute
+  assert.match(v('L41'), /^4% Connaissance\./);
+  assert.deepEqual(bonusDuMetierEcrit(regles, v('L41')), new Map([['connaissance', 4]]));
+  assert.equal(v('I32'), '4');
+  const connaissance = competencesDe(regles, f).find((k) => k.id === 'connaissance');
+  assert.equal(f.competences.find((c) => c.competence_id === 'connaissance')?.acquis ?? 0, 0, 'Connaissance : 0 au joueur');
+  assert.equal(connaissance.acquis + connaissance.metier, connaissance.metier, 'l’acquis affiché : le bonus de la base');
   // « Balade guerrière » (C51) : retrouvée par l'identifiant quand la base écrit le nom autrement (« Ballade guerrière » à l'import, décision 0006)
   assert.equal(v('C51'), 'Balade guerrière');
   // l'accessoire « Compétence » (Chef) : l'effet de la caractéristique écrite dont la fourchette contient la valeur tirée ; sa compétence, celle dont
@@ -351,10 +398,10 @@ test('fiche auto de Lucien : tout ce que le classeur choisit est repris, chaque 
   assert.deepEqual([effetChef.propriete, effetChef.caracteristique_id, chef.valeur], ['competence', caracteristique.id, tiree]);
   assert.ok(tiree >= effetChef.min && tiree <= effetChef.max);
   const entrainement = bonusDEntrainement(regles, v('L42'));
-  const calcul = new Map(competencesDe(regles, { ...f, competences: [] }).map((k) => [k.id, k]));
+  const ancien = bonusDuMetierEcrit(regles, v('L41'));
   const candidates = regles.competences.filter((k) => k.caracteristique_id === caracteristique.id).filter((k) => {
     const cases = CASES_COMPETENCES.find((c) => c.id === k.id);
-    return Number(v(cases.acquis) || 0) - calcul.get(k.id).metier - (entrainement.get(k.id) ?? 0) === tiree;
+    return Number(v(cases.acquis) || 0) - (ancien.get(k.id) ?? 0) - (entrainement.get(k.id) ?? 0) === tiree;
   });
   assert.equal(candidates.length, 1);
   assert.equal(chef.competence_id, candidates[0].id);
@@ -409,9 +456,17 @@ test('fiche auto de Louise : bi-magie, amélioration écrite « +N (effet) », a
   assert.ok(v('S3'), 'deux magies');
   assert.equal(v('I11'), '', 'la classe 2 sans spécialité écrite');
   assert.equal(f.dieu_choisi_id, null);
-  // le métier : les bonus de la base (pas ceux qu'écrivait la fiche auto, « +2% Reflexe, Esquive et Ruse ») ; l'acquis écrit qui en est plus petit
-  // revient à 0 (verifierLesAcquis), avec sa remarque
+  // le métier (décision R72, « Louise : Esquive 3, Réflexe 3, Ruse 0 (au lieu de 2) ») : le classeur comptait « +2% Reflexe, Esquive et Ruse » (L41),
+  // retiré des acquis écrits ; le joueur n'y a rien mis, les bonus de la base s'ajoutent (verifierLesAcquis, la remarque de synthèse)
   assert.match(v('L41'), /Reflexe, Esquive et Ruse/);
+  assert.deepEqual(bonusDuMetierEcrit(regles, v('L41')), new Map([['esquive', 2], ['reflexe', 2], ['ruse', 2]]));
+  const competences = competencesDe(regles, f);
+  for (const id of ['esquive', 'reflexe', 'ruse']) {
+    assert.equal(lue(LOUISE, CASES_COMPETENCES.find((c) => c.id === id).acquis), '2', id);
+    assert.equal(f.competences.find((c) => c.competence_id === id)?.acquis ?? 0, 0, `${id} : 0 au joueur`);
+    const k = competences.find((x) => x.id === id);
+    assert.equal(k.acquis + k.metier + k.accessoire, k.metier, `${id} : l’acquis affiché, le bonus de la base`);
+  }
   // arme : la composition écrite (Mythril), « +5 » : l'amélioration de niveau 5 ; « Passe barrière », sous l'effet du catalogue, vient de la formule (le
   // matériau) : pas d'effet en plus
   const rasoir = selon(regles.armes, v('AA10'));
@@ -485,10 +540,13 @@ test('fiche auto : ce qui n’a pas de place sur le site part dans nonRepris, un
   const beige = regles.ethnies.find((e) => e.race_id === drakos.id && e.magie_id === magie('Lumière').id);
   assert.equal(r.fiche.ethnie_id, beige.id);
   assert.ok(r.nonRepris.includes(`Ethnie « Drakos Rouge » : remplacée par ${beige.nom}, la seule de la race qui aille avec la magie innée Lumière`));
-  // des maximums que les règles n'expliquent pas : pas de gains de niveau, une remarque
+  // un maximum de santé sous ce que la fiche calcule sans gains : santé 0, le chakra déduit, à vérifier (et le total hors de la plage du niveau)
   r = louise({ F14: '5' });
-  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, 0]);
-  assert.ok(r.remarques.includes('Gains de niveau non reconstitués : les maximums du classeur (santé 5, chakra 133) ne s\'expliquent pas par les points et les dés des niveaux ; à saisir'));
+  const sans = attributsDe(regles, { ...r.fiche, gains_sante: 0, gains_chakra: 0 });
+  const g = M.gainsDeNiveau(regles, r.fiche);
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, Number(lue(LOUISE, 'M14')) - sans.chakra]);
+  assert.ok(g.hors);
+  assert.ok(r.remarques.includes(`Gains de niveau déduits des maximums du classeur (santé 5, chakra ${lue(LOUISE, 'M14')}) : santé 0 (maximum sous les ${sans.sante} que la fiche calcule sans gains), chakra ${r.fiche.gains_chakra} : hors du total à saisir (${g.min} à ${g.max}), à vérifier`), r.remarques.join('\n'));
 });
 
 // ------------------------------------------------------------------ le modèle « ordinateur »
@@ -645,7 +703,8 @@ test('modèle ordinateur : l’écriture de la page — accessoires sur une lign
   // une fiche sans marqueur (faite à la main) : l'acquis écrit moins les bonus de la base (métier, accessoire rogné au plafond), dit par une remarque
   const equilibre = competencesDe(regles, f).find((k) => k.id === 'equilibre');
   assert.deepEqual(r.nonRepris, []);
-  assert.deepEqual(r.remarques, [`Équilibre : acquis ${base.V33} du classeur − ${equilibre.metier} du métier Coursier (base) − ${equilibre.accessoire} de l'accessoire Chef = ${equilibre.acquis} au joueur`]);
+  // (le métier que le classeur comptait, celui qu'écrit L41 : le même que la base, sans remarque de synthèse ; R72)
+  assert.deepEqual(r.remarques, [`Équilibre : acquis ${base.V33} du classeur − ${equilibre.metier} du métier Coursier (classeur) − ${equilibre.accessoire} de l'accessoire Chef = ${equilibre.acquis} au joueur`]);
   assert.equal(equilibre.acquis, base.V33 - equilibre.metier - equilibre.accessoire);
   assert.deepEqual(f.metier_bonus, [{ rang: rangAChoisir.rang, competence_id: 'equilibre' }]);
   assert.deepEqual(f.armes.map((a) => [a.materiau_id, a.effet_en_plus]), [[parNom(regles.materiaux_armes, 'Acier').id, 'Première ligne\nSeconde ligne']]);
@@ -945,23 +1004,31 @@ test('nombres : « 20% » se lit 20 (le tableur en garde 0,2) ; un décimal là 
   assert.ok(louise.remarques.includes('Quantité de « Corde » : « 2,5 » lu 2'));
 });
 
-test('zones de saisie que le site ne garde pas (solidité, armure par pièce, bouclier, sac, entraînement) : leur valeur dans nonRepris ; le type d’un événement', () => {
-  // les textes du modèle (« / ») ne sont pas des valeurs
+test('zones de saisie que le site ne garde pas (armure par pièce, bouclier, sac) : leur valeur dans nonRepris ; la solidité d’une arme et l’entraînement repris ; le type d’un événement', () => {
+  // les textes du modèle (« / ») ne sont pas des valeurs ; les cases de solidité des armes aussi écrivent « / »
   for (const s of SAISIES_SANS_PLACE) assert.equal(VIERGE.cellules.get(s.adresse)?.texte ?? '', s.modele, s.adresse);
+  for (const a of ORDINATEUR.armes) assert.equal(VIERGE.cellules.get(a.solidite)?.texte, MODELE_DE_LA_SOLIDITE, a.solidite);
   assert.equal(VIERGE.cellules.get(ORDINATEUR.inventaire.titre).texte, TITRE_DE_L_INVENTAIRE);
-  assert.equal(SAISIES_SANS_PLACE.length, 2 + 6 * 3 + 3);
+  assert.equal(SAISIES_SANS_PLACE.length, 6 * 3 + 3);
+  assert.ok(!SAISIES_SANS_PLACE.some((x) => ORDINATEUR.armes.some((a) => a.solidite === x.adresse)), 'la solidité d’une arme a sa place (R74)');
   const epee = epeeLongue();
+  const max = M.durabiliteMaxDArme(regles, { arme_id: epee.id, materiau_id: regles.materiau_arme_defaut });
   const r = ficheDuClasseur(regles, ordinateur({
     AA10: epee.nom, AK17: '12 / 15', AI22: 5, AJ23: 1, AN24: '10/10', AA26: regles.boucliers[0].nom, AN26: 4, AS26: 2, AX26: '20 / 20',
     AA38: 'INVENTAIRE | SAC = Sac à dos', C71: 'Malédiction du sorcier', I71: 'Passif', L71: '-2 en Social', I72: 'Actif', L72: 'Sans titre', L42: '2 Magie',
   }));
   const emplacement = (id) => regles.emplacements_armure.find((e) => e.id === id).nom;
   assert.deepEqual(r.nonRepris, [
-    'Solidité de l’arme 1 : « 12 / 15 » sans place sur le site', `Armure, ${emplacement('casque')} (AP) : « 5 » sans place sur le site`,
+    `Armure, ${emplacement('casque')} (AP) : « 5 » sans place sur le site`,
     `Armure, ${emplacement('torse')} (AM) : « 1 » sans place sur le site`, `Armure, ${emplacement('jambe-droit')} (solidité) : « 10/10 » sans place sur le site`,
     'Bouclier, armure physique : « 4 » sans place sur le site', 'Bouclier, armure magique : « 2 » sans place sur le site',
-    'Bouclier, solidité : « 20 / 20 » sans place sur le site', 'Inventaire, sac : « Sac à dos » sans place sur le site', 'Entraînement : « 2 Magie » sans place sur le site',
+    'Bouclier, solidité : « 20 / 20 » sans place sur le site', 'Inventaire, sac : « Sac à dos » sans place sur le site',
   ]);
+  // la solidité (R74) : 12 crans, au-delà du maximum que calcule le site (R51) : l'arme est à son maximum ; le maximum écrit est dit
+  assert.equal(r.fiche.armes[0].durabilite ?? null, null);
+  assert.deepEqual(r.remarques, [`Arme 1 (${epee.nom}) : solidité maximale écrite 15, le site calcule ${max} (décision R51)`]);
+  // l'entraînement (R71) : le texte de la fiche
+  assert.equal(r.fiche.entrainement, '2 Magie');
   assert.equal(r.fiche.evenements, 'Malédiction du sorcier (Passif) : -2 en Social\n(Actif) : Sans titre');
   // fiche auto : le type d'un événement aussi
   assert.equal(importer(avec(LOUISE, { C71: 'Titre', I71: 'Actif', L71: 'Texte', C72: '', I72: 'Réaction' })).fiche.evenements, 'Titre (Actif) : Texte\n(Réaction)');
@@ -992,10 +1059,12 @@ test('ce qui a pu se perdre avant l’import : case relue finie par « … » sa
   // des notes raccourcies laissent les données entières : un « … » final reste celui du joueur
   assert.deepEqual(ficheDuClasseur(regles, deLaPage(longue, { L71: 'un long tex…' })).remarques, [raccourcies]);
   // des lignes de données retirées d'une note pleine (un inventaire démesuré) ont pu emporter la suite d'une case : son « … » final est signalé
+  // (l'entraînement, L42, est une case relue : la sienne aussi)
   const demesure = { ...fiche, inventaire: Array.from({ length: 4000 }, (_, i) => ({ rang: i + 1, nom: `Objet numéro ${i + 1}`, quantite: 1, ressource_id: null })) };
-  const remarques = ficheDuClasseur(regles, deLaPage(demesure, { L71: 'un long tex…' })).remarques;
+  const remarques = ficheDuClasseur(regles, deLaPage(demesure, { L71: 'un long tex…', L42: '2 Magie | 10 Concen…' })).remarques;
   assert.deepEqual(remarques, [
-    'Note : une ligne de données retirée à l\'export, la case NOTE étant pleine : ce qu\'elle portait n\'est pas repris', attendue]);
+    'Note : une ligne de données retirée à l\'export, la case NOTE étant pleine : ce qu\'elle portait n\'est pas repris',
+    'Case L42 : « … » final sans ligne « Suite de la case L42 » dans la note : la fin de la case a été perdue, sauf si le « … » fait partie du texte', attendue]);
 });
 
 test('maîtrises (modèle ordinateur) : un fond commun à toutes les cases de dés n’est pas un dé atteint ; un .csv sans marque le dit', () => {
@@ -1028,32 +1097,40 @@ test('élément d’armure de la fiche auto (le nom d’une magie) : retrouvé p
   assert.deepEqual(r.nonRepris, []);
 });
 
-test('gains de niveau reconstitués : les bornes du dé lues dans le texte du niveau ; un texte illisible, pas de reconstitution et une remarque', () => {
-  assert.deepEqual(bornesDuDe('1d8 santé OU 1d8 chakra OU 1d4 pour les deux'), { min: 1, max: 8 }, 'le plus grand dé écrit');
-  assert.deepEqual(bornesDuDe('2d6'), { min: 2, max: 12 });
-  assert.equal(bornesDuDe('un dé au choix'), null);
-  // les dés des règles du moment : des bornes lues
-  for (const n of regles.niveaux.filter((x) => x.de_attributs_bonus)) assert.ok(bornesDuDe(n.de_attributs_bonus), n.niveau);
-  // un d12 : 12 par dé, ce que le d8 ne permet pas
+test('gains de niveau d’un classeur qui ne les écrit pas (décision R73) : maximum lu − ce que la fiche calcule sans gains ; négatif ou hors du total à saisir : à vérifier', () => {
   const f = importer(LOUISE).fiche;
   const sans = attributsDe(regles, { ...f, gains_sante: 0, gains_chakra: 0 });
-  const attendue = M.progressionAttendue(regles, M.niveauGlobal(regles, f.xp));
-  const points = attendue.reduce((s, n) => s + n.points, 0);
-  const des = attendue.filter((n) => n.de).length;
-  assert.ok(des >= 1);
-  const [maxSante, maxChakra] = [sans.sante + points, sans.chakra + 12 * des];
-  assert.equal(gainsReconstitues(regles, f, maxSante, maxChakra), null, '1d8 : pas plus de 8 par dé');
-  const d12 = structuredClone(regles);
-  for (const n of d12.niveaux) if (n.de_attributs_bonus) n.de_attributs_bonus = '1d12 santé OU 1d12 chakra';
-  const gains = gainsReconstitues(d12, f, maxSante, maxChakra);
-  assert.deepEqual(gains.filter((g) => g.de_choix).map((g) => [g.de_choix, g.de_resultat]), Array.from({ length: des }, () => ['chakra', 12]));
-  // un dé qui ne se lit pas : rien de reconstitué, une remarque avec les maximums
-  const illisible = structuredClone(regles);
-  const n5 = illisible.niveaux.find((n) => n.de_attributs_bonus);
-  n5.de_attributs_bonus = 'un dé au choix';
-  const r = ficheDuClasseur(illisible, feuilleDeGrille(LOUISE));
-  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, 0]);
-  assert.ok(r.remarques.includes(`Gains de niveau non reconstitués : le dé du niveau ${n5.niveau} (« un dé au choix ») ne se lit pas ; maximums du classeur (santé ${lue(LOUISE, 'F14')}, chakra ${lue(LOUISE, 'M14')}) : à saisir`));
+  const g = M.gainsDeNiveau(regles, f);
+  assert.ok(g.min > 100 && g.min < g.max, 'un niveau à dés');
+  const debut = (sante, chakra) => `Gains de niveau déduits des maximums du classeur (santé ${sante}, chakra ${chakra}) : `;
+  // dans la plage : la déduction, dite
+  let x = gainsDesMaximums(regles, f, sans.sante + 100, sans.chakra + g.min - 100);
+  assert.deepEqual(x, { gains_sante: 100, gains_chakra: g.min - 100, remarque: `${debut(sans.sante + 100, sans.chakra + g.min - 100)}santé 100, chakra ${g.min - 100}` });
+  x = gainsDesMaximums(regles, f, sans.sante, sans.chakra + g.max);
+  assert.deepEqual([x.gains_sante, x.gains_chakra, x.remarque.endsWith(`santé 0, chakra ${g.max}`)], [0, g.max, true]);
+  // hors de la plage (points d'attributs et dés bonus des niveaux atteints : gainsDeNiveau, la règle gains_niveau de la base)
+  x = gainsDesMaximums(regles, f, sans.sante + g.max + 1, sans.chakra);
+  assert.equal(x.remarque, `${debut(sans.sante + g.max + 1, sans.chakra)}santé ${g.max + 1}, chakra 0 : hors du total à saisir (${g.min} à ${g.max}), à vérifier`);
+  // un maximum sous ce que la fiche calcule sans gains : 0, à vérifier
+  x = gainsDesMaximums(regles, f, sans.sante - 3, sans.chakra + g.min);
+  assert.deepEqual([x.gains_sante, x.gains_chakra], [0, g.min]);
+  assert.equal(x.remarque, `${debut(sans.sante - 3, sans.chakra + g.min)}santé 0 (maximum sous les ${sans.sante} que la fiche calcule sans gains), chakra ${g.min} : à vérifier`);
+  // au niveau 1 : rien à saisir (plage d'une seule valeur)
+  const n1 = { ...f, xp: 0 };
+  const sans1 = attributsDe(regles, { ...n1, gains_sante: 0, gains_chakra: 0 });
+  assert.equal(gainsDesMaximums(regles, n1, sans1.sante, sans1.chakra).remarque, `${debut(sans1.sante, sans1.chakra)}santé 0, chakra 0`);
+  assert.equal(gainsDesMaximums(regles, n1, sans1.sante + 2, sans1.chakra).remarque, `${debut(sans1.sante + 2, sans1.chakra)}santé 2, chakra 0 : hors du total à saisir (0), à vérifier`);
+
+  // modèle ordinateur fait à la main (sans le marqueur de la page) : les maximums des « a / b » ; écrit par la page, la note seule (rien de déduit)
+  const humain = { I2: 'Humain', S2: 'Feu', A9: classe('Mage').nom, G9: 10, W8: 5, S11: String(xpDuNiveau(5)) };
+  const lu = ficheDuClasseur(regles, ordinateur(humain)).fiche;
+  const sansO = attributsDe(regles, { ...lu, gains_sante: 0, gains_chakra: 0 });
+  const r = ficheDuClasseur(regles, ordinateur({ ...humain, D14: `10 / ${sansO.sante + 40}`, K14: `${sansO.chakra + 21} / ${sansO.chakra + 21}` }));
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra, r.fiche.sante_actuelle, r.fiche.chakra_actuel], [40, 21, 10, null]);
+  assert.deepEqual(r.remarques, [`${debut(sansO.sante + 40, sansO.chakra + 21)}santé 40, chakra 21`]);
+  assert.equal(M.gainsDeNiveau(regles, r.fiche).hors, false);
+  const page = ficheDuClasseur(regles, ordinateur({ ...humain, D14: `10 / ${sansO.sante + 40}`, K14: `${sansO.chakra + 21} / ${sansO.chakra + 21}`, BA54: `${MARQUEUR_DES_NOTES}\nBi-classé : non` }));
+  assert.deepEqual([page.fiche.gains_sante, page.fiche.gains_chakra, page.remarques], [0, 0, []], 'un classeur de la page sans ligne de gains : aucun');
 });
 
 test('cases de 32 767 caractères faites surtout d’espaces : l’import reste linéaire (moins de 5 s pour une dizaine de cases)', () => {
@@ -1071,8 +1148,177 @@ test('cases de 32 767 caractères faites surtout d’espaces : l’import reste 
   // et une fiche auto aux noms d'arme pleins d'espaces
   const debutAuto = performance.now();
   importer(avec(LOUISE, { AA10: `Épée${' '.repeat(30_000)}(une main${' '.repeat(30_000)}`, L42: `1${' '.repeat(30_000)}2` }));
-  // une amélioration « +5 » suivie d'espaces et d'un mot, une ligne « Entraînement » au nombre suivi d'espaces et de deux lignes
+  // une amélioration « +5 » suivie d'espaces et d'un mot, une ligne « Entraînement » au nombre suivi d'espaces et de deux lignes ; la case du métier
+  // (R72, bonusDuMetierEcrit) : des listes de compétences entre des espaces, en « , », « et », « OU », une flèche
   const espaces = ' '.repeat(39_000);
   importer(avec(LOUISE, { AI13: `+5${espaces}x`, AV13: `+5${espaces}x`, AT20: `+4${espaces}x`, AX21: `+5${espaces}x`, L42: `5${espaces}a\nb` }));
+  importer(avec(LOUISE, { L41: `2${espaces}%${espaces}Esquive${espaces},${espaces}x` }));
+  importer(avec(LOUISE, { L41: `2%${espaces}Esquive${espaces}OU${espaces}x` }));
+  importer(avec(LOUISE, { L41: `2%Esquive${espaces}et${espaces}Ruse${espaces}et${espaces}→${espaces}?` }));
   assert.ok(performance.now() - debutAuto < 5000);
+  // l'analyseur seul, sur des cases pleines (espaces, chiffres, « % », points, séparateurs)
+  const debutMetier = performance.now();
+  for (const t of [`${espaces}→${espaces}`, `1${espaces}%${espaces}a`, `${'1'.repeat(32_000)}%`, '%'.repeat(32_000), `1${'%'.repeat(32_000)}`, `${'1 '.repeat(16_000)}%`,
+    '.'.repeat(32_000), ' · '.repeat(10_000), `2% ${'Esquive, '.repeat(3_500)}`, `2% ${'Esquive OU '.repeat(2_900)}`, `${'2% Esquive et '.repeat(2_200)}`]) {
+    bonusDuMetierEcrit(regles, t);
+  }
+  assert.ok(performance.now() - debutMetier < 2000, `${Math.round(performance.now() - debutMetier)} ms`);
 });
+
+// ------------------------------------------------------------------ le métier d'un classeur qui ne vient pas de la page (décision R72)
+
+/** Les choix possibles d'un métier : aucun, puis chaque compétence de chaque rang à choix, combinées (comme la page les laisse faire). */
+function choixDuMetier(metier) {
+  let variantes = [[]];
+  for (const b of metier.bonus.filter((x) => x.options.filter((o) => o.competence_id).length > 1)) {
+    variantes = variantes.flatMap((v) => [v, ...b.options.filter((o) => o.competence_id).map((o) => [...v, { rang: b.rang, competence_id: o.competence_id }])]);
+  }
+  return variantes;
+}
+
+test('bonusDuMetierEcrit : la case du métier telle que la page l’écrit se relit, pour chaque métier de la base et chaque choix, comme la base la compte', () => {
+  let combinaisons = 0;
+  const sansCompetence = [];
+  for (const metier of regles.metiers) {
+    // un métier qui n'a aucun bonus de compétence dans la base (calculé ici : le site de dev modifie les métiers) n'écrit aucun « N% <compétence> »
+    const aucun = !metier.bonus.some((b) => b.options.some((o) => o.competence_id));
+    if (aucun) sansCompetence.push(metier.nom);
+    for (const metier_bonus of choixDuMetier(metier)) {
+      combinaisons += 1;
+      const f = { ...ficheVide('Métier'), metier_id: metier.id, metier_bonus, caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })) };
+      // la case L41 telle que l'export l'écrit (lib/fiche-tableur-export.mjs : rangs à choix, autres rangs, artisanat, séparés par « · »)
+      const ecrit = cellulesDeLaFiche(regles, f).cellules[casesDuDon(DONS.metier).effet];
+      const p = partiesDuMetier(regles, f);
+      assert.equal(ecrit, [...p.relues, ...p.affichees].join(SEPARATEUR_EN_LIGNE) || undefined);
+      const lu = bonusDuMetierEcrit(regles, ecrit);
+      const base = Object.entries(M.bonusDuMetier(regles, f).parCompetence).filter(([, n]) => n).sort();
+      if (aucun) assert.equal(lu, null, `${metier.nom} : ${ecrit}`);
+      else assert.deepEqual(lu && [...lu].sort(), base, `${metier.nom} ${JSON.stringify(metier_bonus)} : ${ecrit}`);
+      // la même case écrite à la main, une partie par ligne
+      if (!aucun) assert.deepEqual([...bonusDuMetierEcrit(regles, [...p.relues, ...p.affichees].join('\n'))].sort(), base, metier.nom);
+    }
+  }
+  assert.ok(combinaisons > regles.metiers.length, `${combinaisons} combinaisons`);
+  assert.ok(sansCompetence.length < regles.metiers.length / 4, sansCompetence.join(', '));
+
+  // la fiche auto du propriétaire : « 4% Connaissance. Peut fabriquer… », « Bonus +2% Reflexe, Esquive et Ruse. Avantage… »
+  assert.deepEqual(bonusDuMetierEcrit(regles, lue(LUCIEN, 'L41')), new Map([['connaissance', 4]]));
+  assert.deepEqual(bonusDuMetierEcrit(regles, lue(LOUISE, 'L41')), new Map([['esquive', 2], ['reflexe', 2], ['ruse', 2]]));
+  const lit = (t) => { const x = bonusDuMetierEcrit(regles, t); return x && Object.fromEntries([...x].sort()); };
+  // une écriture du choix : la flèche (« → ? » : pas choisi) ; en « OU » sans flèche, on ne sait pas lequel le classeur comptait
+  assert.deepEqual(lit('+2% Athlétisme OU Équilibre → Équilibre\n+1 INI\nArtisanat : Livrer (Agilité + Perception) = 20 %'), { equilibre: 2 });
+  assert.deepEqual(lit('+3% Diplomatie OU Intimidation → ?'), {});
+  assert.equal(lit('+3% Diplomatie OU Intimidation'), null);
+  assert.equal(lit('+3% Diplomatie OU Intimidation → Ruse'), null, 'un choix hors de la liste');
+  assert.equal(lit('+3% Diplomatie OU Intimidation → Chance'), null, 'un choix qui n’est pas une compétence');
+  assert.deepEqual(lit('+5% dans une compétence sociale au choix → Diplomatie'), { diplomatie: 5 });
+  assert.deepEqual(lit('+5% dans une compétence sociale au choix → ?'), {});
+  // plusieurs bonus, des espaces, les identifiants, « % » détaché
+  assert.deepEqual(lit('+2 % Réflexe et +2 % Ruse'), { reflexe: 2, ruse: 2 });
+  assert.deepEqual(lit('4 % connaissance ; 2% Vie en nature'), { connaissance: 4, 'vie-en-nature': 2 });
+  assert.deepEqual(lit('3%\u00a0Esquive, Reflexe'), { esquive: 3, reflexe: 3 });
+  // ce qui n'est pas un bonus de compétence : ignoré ; aucun bonus de compétence : null
+  assert.deepEqual(lit('+10% de bonus à la création de documents · 4% Connaissance'), { connaissance: 4 });
+  assert.equal(lit('Le malus est réduit à 20% au lieu de 40%'), null);
+  assert.equal(lit('Artisanat : Livrer (Agilité + Perception) = 20 %'), null);
+  // ce qui ne se lit pas exactement : null
+  assert.equal(lit('3% Esquive, Danse'), null, 'une liste mêlée');
+  assert.equal(lit('2,5% Esquive'), null, 'un décimal');
+  assert.equal(lit('+3% Esquive · +3% Réfl…'), null, 'une case coupée dans un bonus');
+  assert.deepEqual(lit('4% Connaissance. Peut fabriquer des livres …'), { connaissance: 4 }, 'coupée après les bonus');
+  for (const rien of ['', '   ', 'Métier ?', null]) assert.equal(lit(rien), null, String(rien));
+});
+
+test('le métier suit la base (décision R72) : l’ancien bonus de L41 retiré de l’acquis écrit, une remarque quand il diffère ; illisible : la base, à vérifier', () => {
+  const louise = (changements) => importer(avec(LOUISE, changements));
+  const ruse = (r) => r.fiche.competences.find((c) => c.competence_id === 'ruse')?.acquis ?? 0;
+  // le joueur avait mis 3 points en Ruse : il les garde (5 écrits − 2 du métier du classeur)
+  let r = louise({ V36: '5' });
+  assert.equal(ruse(r), 3);
+  assert.ok(r.remarques.includes('Ruse : acquis 5 du classeur − 2 du métier Acrobate (classeur) = 3 au joueur'));
+  // un métier que les règles n'ont pas : son ancien bonus est retiré quand même, et dit
+  r = louise({ C41: 'Funambule' });
+  assert.equal(r.fiche.metier_id, null);
+  assert.ok(r.nonRepris.includes('Métier : « Funambule » introuvable dans les règles'));
+  assert.ok(r.remarques.includes('Métier « Funambule » (introuvable dans les règles) : le classeur comptait Esquive +2, Réflexe +2, Ruse +2, retiré des acquis (R72)'));
+  assert.ok(r.remarques.includes('Esquive : acquis 2 du classeur − 2 du métier Funambule (classeur) = 0 au joueur'));
+  assert.equal(ruse(r), 0);
+  // une case L41 illisible : les bonus de la base, à vérifier ; vide : la base, sans remarque
+  const acrobate = M.trouver(regles.metiers, importer(LOUISE).fiche.metier_id);
+  const base = M.bonusDuMetier(regles, { metier_id: acrobate.id }).parCompetence;
+  assert.ok(Object.keys(base).length > 0);
+  r = louise({ L41: '+3% Diplomatie OU Intimidation' });
+  assert.ok(r.remarques.includes(`Métier ${acrobate.nom} : bonus du classeur illisibles (« +3% Diplomatie OU Intimidation ») : l'acquis du joueur retire ceux de la base, à vérifier`));
+  assert.ok(!r.remarques.some((x) => x.includes('les acquis suivent la base')));
+  for (const [id, n] of Object.entries(base)) {
+    const k = regles.competences.find((x) => x.id === id);
+    const ecrit = Number(lue(LOUISE, CASES_COMPETENCES.find((c) => c.id === id).acquis) || 0);
+    assert.ok(r.remarques.some((x) => x.startsWith(`${k.nom} : acquis ${ecrit} du classeur − ${n} du métier ${acrobate.nom} (base)`)), k.nom);
+  }
+  r = louise({ L41: '' });
+  assert.ok(!r.remarques.some((x) => x.startsWith(`Métier ${acrobate.nom}`)), 'L41 vide : rien à dire du métier');
+  // la base et le classeur d'accord : pas de remarque de synthèse
+  const accord = Object.entries(base).map(([id, n]) => `+${n}% ${regles.competences.find((k) => k.id === id).nom}`).join(' · ');
+  r = louise({ L41: accord });
+  assert.ok(!r.remarques.some((x) => x.startsWith(`Métier ${acrobate.nom}`)), accord);
+  assert.ok(r.remarques.some((x) => x.includes(`du métier ${acrobate.nom} (classeur)`)));
+});
+
+// ------------------------------------------------------------------ solidité des armes (décision R74) et entraînement (décision R71)
+
+test('solidité d’une arme (modèle ordinateur, AK17, AX17) : « N / M » relue ; à son maximum ou au-delà, rien ; le « / » du modèle n’est pas une valeur ; ce qui ne se lit pas est dit', () => {
+  const epee = epeeLongue();
+  const max = M.durabiliteMaxDArme(regles, { arme_id: epee.id, materiau_id: regles.materiau_arme_defaut });
+  assert.ok(max >= 2, 'une arme qui a des crans à perdre');
+  const lire = (valeurs) => ficheDuClasseur(regles, ordinateur({ AA10: epee.nom, ...valeurs }));
+  for (const [AK17, attendue] of [[`1 / ${max}`, 1], [`0 / ${max}`, 0], ['1', 1], ['0/' + max, 0], [String(max), null], [`${max} / ${max}`, null], [`${max + 2} / ${max}`, null],
+    [MODELE_DE_LA_SOLIDITE, null], [` ${MODELE_DE_LA_SOLIDITE} `, null], ['', null], [`-1 / ${max}`, 0]]) {
+    const r = lire({ AK17 });
+    assert.deepEqual([r.fiche.armes[0].durabilite ?? null, r.nonRepris, r.remarques], [attendue, [], []], AK17);
+    assert.equal('durabilite' in r.fiche.armes[0], attendue !== null, `${AK17} : la clé seulement quand il y a une valeur`);
+  }
+  // un décimal : arrondi vers le bas, et dit ; un maximum écrit autre que celui du site (R51) : dit
+  let r = lire({ AK17: `1,5 / ${max}` });
+  assert.deepEqual([r.fiche.armes[0].durabilite, r.remarques], [1, [`Arme 1, solidité : « 1,5 / ${max} » lu 1`]]);
+  r = lire({ AK17: `1 / ${max + 4}` });
+  assert.deepEqual([r.fiche.armes[0].durabilite, r.remarques], [1, [`Arme 1 (${epee.nom}) : solidité maximale écrite ${max + 4}, le site calcule ${max} (décision R51)`]]);
+  // le maximum de l'arme forgée : composition et amélioration relues d'abord (un matériau qui ajoute un cran)
+  const solide = regles.materiaux_armes.find((m) => m.cran_solidite > 0);
+  assert.ok(solide, 'un matériau qui ajoute des crans');
+  r = lire({ AA13: `Composition : ${solide.nom}`, AK17: `${max} / ${max + solide.cran_solidite}` });
+  assert.deepEqual([r.fiche.armes[0].materiau_id, r.fiche.armes[0].durabilite, r.remarques], [solide.id, max, []]);
+  // l'arme 2 (AX17)
+  r = ficheDuClasseur(regles, ordinateur({ AN10: epee.nom, AX17: `0 / ${max}` }));
+  assert.deepEqual(r.fiche.armes.map((x) => [x.rang, x.durabilite]), [[2, 0]]);
+  // ce qui ne se lit pas, une arme sans solidité (arme de monstre, R45), une solidité sans arme : dans nonRepris
+  assert.deepEqual(lire({ AK17: 'cassée' }).nonRepris, [`Arme 1 (${epee.nom}), solidité : « cassée » illisible`]);
+  const monstre = regles.armes.find((a) => a.solidite === null);
+  r = ficheDuClasseur(regles, ordinateur({ AA10: monstre.nom, AK17: '1 / 2' }));
+  assert.deepEqual([r.fiche.armes[0].arme_id, r.fiche.armes[0].durabilite, r.nonRepris], [monstre.id, undefined, [`Arme 1 (${monstre.nom}), solidité : « 1 / 2 » sans place sur le site (arme sans solidité)`]]);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ AK17: '1 / 2' })).nonRepris, ['Arme 1, solidité : « 1 / 2 » sans arme']);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ AA10: 'Épée inventée', AK17: '1 / 2' })).nonRepris,
+    ['Arme 1 : « Épée inventée » introuvable dans les règles', 'Arme 1, solidité : « 1 / 2 » sans arme reconnue']);
+  // la fiche auto n'écrit que le maximum (AK15, AX15, calculé) : jamais relu
+  for (const values of [LUCIEN, LOUISE]) {
+    assert.ok(lue(values, 'AK15'), 'une solidité écrite');
+    const auto = importer(avec(values, { AK15: '0', AX15: '1' }));
+    assert.ok(auto.fiche.armes.length && auto.fiche.armes.every((x) => !('durabilite' in x)));
+    assert.ok(!auto.nonRepris.some((x) => /solidité/i.test(x)));
+  }
+});
+
+test('entraînement (décision R71) : la case L42 relue dans les deux dispositions, recollée à sa suite dans la note', () => {
+  assert.equal(ficheDuClasseur(regles, ordinateur({ L42: '2 Magie | 10 Concentration' })).fiche.entrainement, '2 Magie | 10 Concentration');
+  assert.equal(ficheDuClasseur(regles, ordinateur({ L42: '  Livre lu : Boule de feu\r\nAccordé par le MJ : +5 Survie  ' })).fiche.entrainement,
+    'Livre lu : Boule de feu\nAccordé par le MJ : +5 Survie');
+  assert.equal(ficheDuClasseur(regles, VIERGE).fiche.entrainement, null);
+  // coupé par la page (une rangée) : le début dans la case, la suite dans la note
+  const r = ficheDuClasseur(regles, ordinateur({
+    L42: '2 Magie | 10 Concentration …', BA54: `${MARQUEUR_DES_NOTES}\nSuite de la case L42 : | 10 Observation ⏎Livre lu : Boule de feu`,
+  }));
+  assert.deepEqual([r.fiche.entrainement, r.nonRepris, r.remarques], ['2 Magie | 10 Concentration | 10 Observation\nLivre lu : Boule de feu', [], []]);
+  // la fiche auto : son texte tel quel (ses nombres départagent aussi la compétence d'un accessoire : bonusDEntrainement)
+  assert.equal(importer(LUCIEN).fiche.entrainement, lue(LUCIEN, 'L42'));
+  assert.equal(importer(avec(LUCIEN, { L42: '' })).fiche.entrainement, null);
+});
+
