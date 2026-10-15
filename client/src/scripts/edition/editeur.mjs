@@ -1,4 +1,4 @@
-// Éditeur des pages (site de dev, ordinateur seulement ; chargé par src/scripts/edition.mjs) — demande du propriétaire :
+// Éditeur des pages (site de dev, tous les écrans ; chargé par src/scripts/edition.mjs) — demande du propriétaire :
 //   - un crayon à cocher (côté droit) fait passer la page en mode modification : chaque champ `data-ed` (lib/edition-modele.mjs) devient une saisie,
 //     remplie avec la valeur actuelle de la base (POST /api/edition/lignes/) ;
 //   - un bouton de confirmation flottant à droite enregistre les modifications en cours (POST /api/edition/, un lot d'un bloc) et repasse en lecture ;

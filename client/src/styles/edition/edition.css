@@ -1,4 +1,4 @@
-/* Mode modification du site de dev (src/scripts/edition/editeur.mjs, qui insère cette feuille) : jamais chargé en production ni sur mobile.
+/* Mode modification du site de dev (src/scripts/edition/editeur.mjs, qui insère cette feuille) : jamais chargé en production.
    Crayon à cocher et bouton de confirmation flottants sur le côté droit ; champs modifiables encadrés ; formulaires de création ; annonces. */
 .ed-cote {
   position: fixed;

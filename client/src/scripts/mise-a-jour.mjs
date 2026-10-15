@@ -1,6 +1,6 @@
 // Page « Mise à jour » (pages/mise-a-jour.astro) sur le site de dev : si le service répond `edition: true` (MAVERICK_EDITION=1), la note EN
 // PRÉPARATION s'affiche au-dessus de la note de production — les modifications des règles de la production (master) à la base dev, calculées par
-// le service (GET /api/mise-a-jour/), le champ libre des admins et, sur ordinateur seulement (comme le mode modification), le bouton
+// le service (GET /api/mise-a-jour/), le champ libre des admins et, sur tous les écrans (comme le mode modification), le bouton
 // « Effectuer la mise à jour » : après confirmation, le service fige le lot et déclenche le workflow GitHub (rebase sur dev, PR, fusion
 // automatique si tout est vert, puis livraison dev → master) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
 // La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
@@ -9,7 +9,6 @@
 import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
-const BUREAU = matchMedia('(min-width: 60rem) and (hover: hover) and (pointer: fine)');
 const api = racine?.dataset.api ?? '/api/';
 
 async function appel(methode, chemin, corps) {
@@ -61,7 +60,7 @@ function htmlDuLancement(l, github, liberable) {
   // le service dit si le lancement est annulable (mêmes règles des deux côtés : estLiberable) ; un lot dans dev ou livré, resté sans nouvelles plus
   // de 3 h, libère seulement le texte
   const tardif = ['fusionne', 'echec_livraison', 'termine', 'lance', 'en_cours'].includes(l.etat);
-  const liberer = liberable && BUREAU.matches
+  const liberer = liberable
     ? `<button type="button" data-nv-liberer data-lot="${echapper(l.lot)}">${tardif ? 'Libérer le texte (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
     <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
@@ -71,7 +70,6 @@ function htmlDuLancement(l, github, liberable) {
 function rendre() {
   const d = donnees;
   const zone = racine.querySelector('[data-nv-dev]');
-  const bureau = BUREAU.matches;
   // un lot figé (brouillon.lot) verrouille le texte et le bouton jusqu'à ce que la version livrée arrive sur ce site (ou que le lancement soit annulé)
   const verrouille = Boolean(d.brouillon?.lot);
   const occupe = verrouille || Boolean(d.occupe); // règle du service (occupe : lancement en cours ou en attente de livraison)
@@ -84,17 +82,15 @@ function rendre() {
       + `${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}`
     : `La base de production (référence) manque sur ce serveur : la liste ne peut pas être calculée.`;
   const texte = d.brouillon?.texte ?? '';
-  const note = bureau && !verrouille
+  const note = !verrouille
     ? `<label for="nv-texte"><strong>Informations supplémentaires</strong> (champ libre, ajouté à la note : paragraphes, listes « - », **gras**, *italique*, liens)</label>
        <textarea id="nv-texte" data-nv-texte>${echapper(texte)}</textarea>
        <div class="nv-dev__actions"><button type="button" data-nv-enregistrer>Enregistrer le texte</button><span data-nv-etat-texte></span></div>
        <div class="nv-dev__apercu nv-texte" data-nv-apercu ${texte ? '' : 'hidden'}>${htmlDuTexteLibre(texte)}</div>`
     : texte ? `<div class="nv-texte">${htmlDuTexteLibre(texte)}</div>` : '';
-  const bouton = bureau
-    ? `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
+  const bouton = `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
        <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
-       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`
-    : `<p class="nv-bascule">Le bouton « Effectuer la mise à jour » est sur la version ordinateur du site.</p>`;
+       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`;
   zone.innerHTML = `<h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>
     <p class="nv-dev__bilan">${bilan}</p>
     <div class="nv-dev__note">${note}</div>
