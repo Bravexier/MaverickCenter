@@ -19,5 +19,5 @@
 .carrousel__point[aria-current='true'] { background: var(--accent); border-color: var(--accent); }
 .carrousel__pause { margin-left: 0.5rem; font-size: 0.85rem; padding: 0.2rem 0.7rem; }
 .carrousel__chantier { margin: 0; padding: 0.6rem 1rem; border-top: 1px dashed var(--border); background: var(--surface); color: var(--muted); font-size: 0.9rem; text-align: center; }
-.carrousel__badge { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text);
+.carrousel__badge { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn-text);
   font-size: 0.75rem; font-weight: bold; letter-spacing: 0.03em; text-transform: uppercase; }

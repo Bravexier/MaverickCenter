@@ -23,5 +23,5 @@
 
 .classe .texte { white-space: pre-line; margin: 0.4rem 0; }
 .classe .texte-titre { margin: 0.9rem 0 0.2rem; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-.classe .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--cla-soft); border: 1px solid var(--cla-line); color: var(--muted); vertical-align: middle; }
+.classe .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--cla-soft); border: 1px solid var(--cla-line); color: var(--muted); vertical-align: middle; }
 .classe .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

@@ -5,7 +5,7 @@
 .autres-magies__onglets { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr)); gap: 0.35rem; margin: 0.8rem 0 0; }
 .autre-magie__onglet {
   display: flex; align-items: center; gap: 0.45rem; min-width: 0; padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text);
   font-size: 0.88rem; font-weight: 600; line-height: 1.2; text-decoration: none; overflow-wrap: break-word;
 }
 .autre-magie__onglet::before {
@@ -26,7 +26,7 @@ html.js .autre-magie:not(.is-active) { display: none; }
 .autre-magie__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding-bottom: 0.4rem; font-size: 1.2rem; border-bottom: 3px solid var(--mag); }
 .autre-magie__titre a { color: var(--text); text-decoration: none; }
 .autre-magie__titre a:hover, .autre-magie__titre a:focus-visible { color: var(--mag-readable); text-decoration: underline; }
-.autre-magie__titre .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--mag-soft); border: 1px solid var(--mag-line); color: var(--muted); }
+.autre-magie__titre .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--mag-soft); border: 1px solid var(--mag-line); color: var(--muted); }
 
 @media (max-width: 44rem) {
   .autres-magies__onglets { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: 0.3rem; }

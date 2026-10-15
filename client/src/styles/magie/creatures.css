@@ -1,7 +1,7 @@
 /* Créatures invoquées d'un sort : par bloc (combinaison de magies ou palier), leur nom (sa carte du bestiaire en infobulle : components/Infobulles.astro,
    styles/bestiaire/carte.css), sur la couleur de leur magie (--creature-1, --creature-2 : SortDetail.astro), en dégradé quand elles en ont deux */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
-.invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .invoque__bloc { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .invoque__creatures { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; margin-top: 0.2rem; }
 .creature { display: inline-flex; align-items: baseline; gap: 0.25rem; }

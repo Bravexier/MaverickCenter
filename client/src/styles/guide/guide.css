@@ -33,7 +33,7 @@ main { overflow-x: clip; }
   display: inline-block;
   margin-right: 0.5rem;
   padding: 0.05rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--guide);
   color: #fff;
   font-weight: 700;
@@ -74,7 +74,7 @@ main { overflow-x: clip; }
   font-size: 2rem;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 3px 12px rgb(0 0 0 / 0.18);
+  box-shadow: var(--ombre-flottante);
   transition: background-color 0.15s, color 0.15s, transform 0.15s, opacity 0.2s, visibility 0.2s;
 }
 .guide-fleche--precedent { justify-self: start; margin-left: -0.5rem; }
@@ -183,7 +183,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   height: 2.3rem;
   padding: 0 0.4rem;
   border: 1px solid var(--guide-line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--guide-texte);
   font-weight: 700;
@@ -281,7 +281,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   padding: 0.3rem 0.75rem 0.3rem 0.5rem;
   /* bord et point mêlés de gris : une magie claire (Vide, Lumière) reste visible sur la feuille */
   border: 2px solid color-mix(in srgb, var(--c) 65%, var(--muted));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--c) 12%, var(--surface));
   color: var(--text);
   font-weight: 700;
@@ -299,7 +299,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   display: inline-block;
   padding: 0 0.55rem;
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--c);
   color: var(--c-texte);
   font-weight: 700;

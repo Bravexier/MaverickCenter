@@ -11,16 +11,16 @@
 .etage__repere { margin: 0 0 0.3rem; padding: 0 0.6rem; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
 
 /* Carte d'un don */
-.don { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--cla); border-radius: 12px; padding: 0.6rem 0.9rem 0.75rem; scroll-margin-top: 1rem; }
+.don { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--cla); border-radius: var(--radius-lg); padding: 0.6rem 0.9rem 0.75rem; scroll-margin-top: 1rem; }
 .don:target { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cla) 40%, transparent); }
 .don--cartouche { border-left-width: 6px; background: var(--cla-soft); }
 .don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; }
-.don__niveau { flex: none; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--cla); color: var(--cla-texte); }
+.don__niveau { flex: none; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: var(--cla); color: var(--cla-texte); }
 .don__nom { margin: 0; font-size: 1.05rem; line-height: 1.3; }
 .don__nom a { color: var(--cla-readable); text-decoration: none; }
 .don__nom a:hover { text-decoration: underline; }
 .don__type { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.45rem; margin: 0.3rem 0 0; }
-.don-type { --gh: 30; --gs: 55%; font-size: 0.75rem; padding: 0.02rem 0.55rem; border-radius: 999px; border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
+.don-type { --gh: 30; --gs: 55%; font-size: 0.75rem; padding: 0.02rem 0.55rem; border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
 .don-type:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; } /* data-infobulle : le `title` déplacé (components/Infobulles.astro) */
 .don-type[data-type="passif"] { --gh: 210; --gs: 30%; }
 .don-type[data-type="actif"] { --gh: 32; }
@@ -32,12 +32,12 @@
 .don__effet > .texte:first-child, .don__effet > ul:first-child { margin-top: 0.35rem; }
 .don__effet > :last-child { margin-bottom: 0; }
 .don__effet ul { margin: 0.3rem 0; padding-left: 1.1rem; }
-.don__remarque { margin: 0.5rem 0 0; padding: 0.35rem 0.55rem; border-radius: 6px; background: var(--cla-soft); font-size: 0.85rem; }
+.don__remarque { margin: 0.5rem 0 0; padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); background: var(--cla-soft); font-size: 0.85rem; }
 
 /* Un choix : cadre en tirets, « Au choix », pastille « ou » entre les options */
-.choix { container-type: inline-size; min-width: 0; border: 2px dashed var(--cla-line); border-radius: 14px; padding: 0.5rem 0.6rem 0.65rem; background: color-mix(in srgb, var(--cla) 5%, var(--bg)); }
+.choix { container-type: inline-size; min-width: 0; border: 2px dashed var(--cla-line); border-radius: var(--radius-xl); padding: 0.5rem 0.6rem 0.65rem; background: color-mix(in srgb, var(--cla) 5%, var(--bg)); }
 .choix__tete, .specialites__tete { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.55rem; margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted); }
-.choix__badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.1rem 0.55rem; border-radius: 4px; background: var(--cla); color: var(--cla-texte); }
+.choix__badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.1rem 0.55rem; border-radius: var(--radius-xs); background: var(--cla); color: var(--cla-texte); }
 .choix__options { display: flex; flex-direction: column; gap: 0.35rem; }
 .choix__ou { display: flex; align-items: center; gap: 0.5rem; color: var(--cla-readable); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
 .choix__ou::before, .choix__ou::after { content: ''; flex: 1; border-top: 1px solid var(--cla-line); }
@@ -64,7 +64,7 @@
   background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: #fff; text-decoration: none; }
 .onglet__surtitre { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .onglet__nom { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; line-height: 1.25; overflow-wrap: normal; word-break: normal; }
-.onglet__magique { margin-top: 0.15rem; font-size: 0.7rem; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
+.onglet__magique { margin-top: 0.15rem; font-size: 0.7rem; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
 .onglet:focus-visible { outline: 2px solid var(--cla); outline-offset: 2px; }
 html.js .onglet { cursor: pointer; }
 html.js .onglet:not(.is-active) { background: var(--cla-soft); color: var(--cla-readable); border-color: var(--border); }
@@ -74,14 +74,14 @@ html.js .onglet:not(.is-active):hover { background: color-mix(in srgb, var(--cla
 .onglets__ou > span { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--cla); color: var(--cla-texte);
   font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em; text-indent: 0.12em; text-transform: uppercase; }
 .specialite { display: grid; align-content: start; gap: 0.8rem; min-width: 0; background: var(--surface); border: 1px solid var(--cla-line); border-radius: 0 0 12px 12px; padding: 0.8rem; scroll-margin-top: 1rem; }
-.specialite + .specialite { margin-top: 0.8rem; border-radius: 12px; }
+.specialite + .specialite { margin-top: 0.8rem; border-radius: var(--radius-lg); }
 html.js .specialites[data-onglets] .specialite:not(.is-active) { display: none; }
 html.js .specialites[data-onglets] .specialite { margin-top: 0; border-radius: 0 0 12px 12px; }
 /* titre du panneau : visible sans JavaScript ; avec JavaScript, l'onglet le montre déjà (gardé pour les lecteurs d'écran) */
-.specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: 8px; color: #fff;
+.specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: var(--radius); color: #fff;
   background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); font-size: 1.1rem; letter-spacing: 0.1em; }
 .specialite__surtitre { width: 100%; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
-.specialite__magique { font-size: 0.7rem; font-weight: normal; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
+.specialite__magique { font-size: 0.7rem; font-weight: normal; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
 html.js .specialites[data-onglets] .specialite__titre { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .specialite__cartouche { display: grid; justify-items: center; }
 .specialite__cartouche > .don { width: min(100%, 36rem); }
@@ -94,7 +94,7 @@ html.js .specialites[data-onglets] .specialite__titre { position: absolute; widt
 
 @media print {
   .plateau::before, .onglets { display: none; }
-  html.js .specialites[data-onglets] .specialite { display: grid !important; border-radius: 12px; }
+  html.js .specialites[data-onglets] .specialite { display: grid !important; border-radius: var(--radius-lg); }
   html.js .specialites[data-onglets] .specialite + .specialite { margin-top: 0.8rem; }
   html.js .specialites[data-onglets] .specialite__titre { position: static; width: auto; height: auto; margin: 0; padding: 0.5rem 0.8rem; overflow: visible; clip: auto; white-space: normal; }
   .don, .choix { break-inside: avoid; }

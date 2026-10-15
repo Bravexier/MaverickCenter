@@ -1,6 +1,6 @@
 /* Le recadrage d'un portrait (src/scripts/portrait.mjs) : un cadre carré où l'image se déplace, un curseur de zoom. Partagé par la fiche de personnage
    et le portrait d'un monstre (mode modification du bestiaire) ; inséré par le script à la première ouverture. */
-.recadrage { width: min(26rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); }
+.recadrage { width: min(26rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); color: var(--text); }
 .recadrage::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
 .recadrage__corps { display: grid; gap: 0.6rem; padding: 0.9rem; }
 .recadrage h2 { margin: 0; font-size: 1.05rem; }
@@ -9,7 +9,7 @@
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   background: repeating-conic-gradient(color-mix(in srgb, var(--text) 8%, var(--surface)) 0 25%, var(--surface) 0 50%) 0 0 / 1.2rem 1.2rem;
   cursor: grab;
   touch-action: none;
@@ -22,4 +22,4 @@
 .recadrage__zoom input { flex: 1; }
 .recadrage__boutons { display: flex; justify-content: flex-end; gap: 0.4rem; }
 /* le bouton « Valider » d'un dialogue que le script construit (la fiche a le sien, aux couleurs de sa barre) */
-.recadrage__valider:not(.fiche-barre__principal) { font-weight: 700; color: var(--surface); background: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 0.25rem 0.9rem; }
+.recadrage__valider:not(.fiche-barre__principal) { font-weight: 700; color: var(--surface); background: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius); padding: 0.25rem 0.9rem; }
