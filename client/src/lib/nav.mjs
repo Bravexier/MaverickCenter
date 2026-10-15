@@ -3,6 +3,7 @@
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
 // `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Ressources).
+// `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // Boucliers et bâtons magiques iront dans « Objets à la ceinture » (bientôt, choix du propriétaire) ; hors menu, comme l'alchimie, leurs pages restent
 // trouvables par la recherche et les liens.
@@ -68,9 +69,20 @@ export const NAV = [
       { label: 'Galeries', path: 'galeries/' },
       { label: 'Recherche', path: 'recherche/' },
       { label: 'Archives', path: 'archives/' },
+      // Debug (demande du propriétaire : « visible uniquement sur le serveur dev ») : le testeur de l'API et les journaux du service (pages/debug.astro) ;
+      // `devSeulement` : hors du menu d'un build de production (SITE_MODE=prod) et de la version portable (entreesDuMenu, layouts/Base.astro)
+      { label: 'Debug', path: 'debug/', devSeulement: true },
     ],
   },
 ];
+
+/**
+ * Les entrées d'une rubrique à afficher : sans celles du site de dev seulement (`devSeulement`) quand `dev` est faux (build de production,
+ * version portable).
+ */
+export function entreesDuMenu(group, { dev = true } = {}) {
+  return group.items.filter((i) => dev || !i.devSeulement);
+}
 
 /** Tous les chemins référencés par le menu. */
 export function navPaths(nav = NAV) {

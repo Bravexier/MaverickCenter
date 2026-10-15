@@ -34,8 +34,13 @@
 //                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
 //   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
+// API REST /api/v1/ et page Debug, sur le site de dev seulement (même garde ; décision du propriétaire du 2026-10-15 : en production, tout /api/v1/
+// répond 403, lectures comprises) :
+//   GET  /api/v1/ , /api/v1/openapi.json, /api/v1/<ressource>/[<cle>/[<enfant>/[<cle>/]]]   le CRUD des éléments du jeu (serveur/ressources.mjs,
+//                                   registre lib/ressources.mjs ; description OpenAPI : serveur/openapi.mjs) ; POST, PATCH, DELETE par le service d'édition
+//   GET  /api/debug/journal/        le journal du service gardé en mémoire (serveur/journal-du-service.mjs) : ?depuis=&niveau=&categorie=&q=&limite=
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
-// le service accepte aussi la forme sans « / ».
+// le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
 // Avant la 1.0, pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
@@ -51,6 +56,7 @@ import {
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
+import { traiterApiV1 } from './ressources.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -109,12 +115,17 @@ function idDeFiche(brut) {
 }
 
 /**
- * @param {{ methode: string, chemin: string, entetes: Record<string, string>, corps?: string }} requete chemin sans paramètres (« /api/… »)
- * @param {{ base: () => import('node:sqlite').DatabaseSync | null, etat: () => object, journal?: (ligne: string) => void }} service
+ * @param {{ methode: string, chemin: string, recherche?: string, entetes: Record<string, string>, corps?: string }} requete chemin (« /api/… »), avec
+ *   ou sans sa chaîne de requête (« ?q=… », sinon dans `recherche`)
+ * @param {{ base: () => import('node:sqlite').DatabaseSync | null, etat: () => object, journal?: (message: string, options?: object) => void,
+ *   journalDuService?: { lire: (filtres: object) => object } }} service
  * @returns {{ statut: number, corps: object, entetes: Record<string, string> }}
  */
 export function traiter(requete, service) {
-  const { methode, chemin, entetes = {} } = requete;
+  const { methode, entetes = {} } = requete;
+  const separation = requete.chemin.indexOf('?');
+  const chemin = separation >= 0 ? requete.chemin.slice(0, separation) : requete.chemin;
+  const params = new URLSearchParams(requete.recherche ?? (separation >= 0 ? requete.chemin.slice(separation) : ''));
   if (!chemin.startsWith(PREFIXE)) return erreur(404, 'Adresse inconnue.');
   const morceaux = chemin.slice(PREFIXE.length).split('/');
   if (morceaux.at(-1) === '') morceaux.pop(); // « /api/personnages/ » = « /api/personnages »
@@ -125,6 +136,8 @@ export function traiter(requete, service) {
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
+  if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
+  if (ressource === 'debug') return traiterDebug(service, brut, reste, permis, params);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
   if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
 
@@ -221,6 +234,24 @@ function traiterEdition(requete, service, action, reste, permis) {
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);
     return json(200, resultat);
   });
+}
+
+/**
+ * GET /api/debug/journal/ (page Debug, site de dev seulement) : les entrées du journal du service gardé en mémoire qui suivent ?depuis=<n>, filtrées
+ * (?niveau=, ?categorie= : une valeur, « a,b » ou répétée ; ?q= ; ?limite=) — journal-du-service.mjs#lire, tel quel.
+ */
+function traiterDebug(service, action, reste, permis, params) {
+  if (!service.edition) return erreur(403, 'Le journal du service ne se lit que sur le site de dev (page Debug).');
+  if (action !== 'journal' || reste.length) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('GET');
+  if (refus) return refus;
+  if (!service.journalDuService) return erreur(503, 'Le journal du service n’est pas disponible.');
+  const filtres = {};
+  for (const nom of ['depuis', 'niveau', 'categorie', 'q', 'limite']) {
+    const valeurs = params.getAll(nom);
+    if (valeurs.length) filtres[nom] = valeurs.length > 1 ? valeurs : valeurs[0];
+  }
+  return json(200, service.journalDuService.lire(filtres));
 }
 
 const sansMaintenance = { active: false };

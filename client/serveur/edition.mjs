@@ -315,6 +315,8 @@ const METIER = {
     // les fiches qui l'ont le perdent, avec une note datée (R42) : avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     retirerDesFiches(db, { metiers: [metier.id] }, ctx.retraits);
     for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
+    // ses notes de cellule et écarts entre sources (Enchanteur, Forgeron) partent avec lui : sinon des traces orphelines que db:check refuse
+    for (const t of ['note_cellule', 'ecart_source']) synchroniser(ctx, t, { entite_table: 'metier', entite_id: metier.id }, []);
     w.supprimer('metier', { id: metier.id });
     supprimerPage(ctx, metier.id);
     return { id: metier.id, resume: `Métier supprimé : ${metier.nom}` };

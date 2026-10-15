@@ -24,13 +24,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      # Contrôles du site construit (câblage des infobulles et des fiches des pages de magie, gabarits des pages de race et de classe, tableau des métiers, tableaux et pages des monstres du bestiaire, chapitres du guide, adresses sans /wiki/ et logo, fiche de personnage et recherche des personnages, rendus des champs modifiables du site de dev) : se sautent tant que dist/ n’existe pas.
-      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs
+      # Contrôles du site construit (câblage des infobulles et des fiches des pages de magie, gabarits des pages de race et de classe, tableau des métiers, tableaux et pages des monstres du bestiaire, chapitres du guide, adresses sans /wiki/ et logo, fiche de personnage et recherche des personnages, rendus des champs modifiables du site de dev, page Debug du site de dev) : se sautent tant que dist/ n’existe pas.
+      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs test/debug-page.test.mjs
       # Ce que fait livraison.yml après la fusion (le site HIDE_EXAMPLES=1 avant la 1.0 ; ensuite, en plus, le bandeau de test et l'installateur) :
       # une PR verte ne doit pas casser la publication.
       - run: HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build
       - run: grep -q 'class="bandeau-test"' dist/index.html
       - run: sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier
+      # Le site de production (SITE_MODE=prod, comme l'installateur du serveur normal) : ce qui n'existe que sur le site de dev en est absent (page
+      # Debug : ni au menu, ni testeur, ni son script ; site-html : sa branche « production »). Sans ce build, ces contrôles ne tourneraient jamais.
+      - run: HIDE_EXAMPLES=1 SITE_MODE=prod SITE_TAG=v0.0.0 npm run build
+      - run: node --test test/debug-page.test.mjs test/site-html.test.mjs
       # Version portable (liens relatifs, CSS/JS inline) : elle échoue si le script d'une page importe un autre module.
       - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
 
@@ -65,10 +69,12 @@ jobs:
       - run: npm run db:check
       - run: npm test
       - run: npm run build
-      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs
+      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs test/debug-page.test.mjs
       - run: HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build
       - run: grep -q 'class="bandeau-test"' dist/index.html
       - run: sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier
+      - run: HIDE_EXAMPLES=1 SITE_MODE=prod SITE_TAG=v0.0.0 npm run build
+      - run: node --test test/debug-page.test.mjs test/site-html.test.mjs
       - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
       - run: git diff --exit-code --stat && test -z "$(git ls-files --others --exclude-standard)"
 

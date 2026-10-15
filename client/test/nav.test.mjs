@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { NAV, activeGroup, adresseComplete, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { NAV, activeGroup, adresseComplete, entreesDuMenu, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { PARAMETRE_MOT_CLE } from '../src/lib/recherche-mots-cles.mjs';
 import { TYPE_KEYS } from '../src/lib/types.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
 
 test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre', () => {
-  const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`)).join(', ')}`);
+  const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
     'Règles : Guide, Races, Magies, Classes, Métiers',
     'Ressources : Armes, Armures, Accessoires, Composants, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
-    'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives',
+    'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
   ]);
   assert.deepEqual(NAV.find((g) => g.key === 'personnages').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
 });
@@ -102,4 +102,20 @@ test('/tags/<clé>/ n’existe plus : la page 404 mène aux éléments du mot-cl
   assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?mot-cle=glace'), '/recherche/?mot-cle=feu', 'le mot-clé de l’adresse l’emporte');
   assert.equal(adresseComplete('/fiche/', '?id=12', '#notes'), '/fiche/?id=12#notes');
   assert.equal(adresseComplete('/races/nain/', '', ''), '/races/nain/');
+});
+
+test('la page Debug n’est au menu que sur le site de dev (demande du propriétaire : « visible uniquement sur le serveur dev »)', () => {
+  const outils = NAV.find((g) => g.key === 'outils');
+  assert.deepEqual(NAV.flatMap((g) => g.items.filter((i) => i.devSeulement).map((i) => `${g.key} ${i.label} ${i.path}`)), ['outils Debug debug/'],
+    'la seule entrée du site de dev seulement');
+  assert.deepEqual(entreesDuMenu(outils).map((i) => i.label), ['Statistiques', 'Mise à jour', 'Boîte à idée', 'Galeries', 'Recherche', 'Archives', 'Debug']);
+  assert.deepEqual(entreesDuMenu(outils, { dev: false }).map((i) => i.label), ['Statistiques', 'Mise à jour', 'Boîte à idée', 'Galeries', 'Recherche', 'Archives'],
+    'production et version portable : sans Debug');
+  for (const g of NAV.filter((x) => x.key !== 'outils')) assert.deepEqual(entreesDuMenu(g, { dev: false }), g.items, g.key);
+  assert.equal(activeGroup('/debug/').key, 'outils');
+  // le menu (layouts/Base.astro) n'affiche que entreesDuMenu, sans les entrées du site de dev en production (SITE_MODE=prod) ni dans la version portable
+  const base = readFileSync(new URL('../src/layouts/Base.astro', import.meta.url), 'utf8');
+  assert.match(base, /const dev = !site\.prod && !portable;/);
+  assert.match(base, /entreesDuMenu\(group, \{ dev \}\)\.map\(\(item\) =>/);
+  assert.doesNotMatch(base, /group\.items\.map\(/, 'jamais toutes les entrées');
 });
