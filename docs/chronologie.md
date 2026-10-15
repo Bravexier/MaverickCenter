@@ -54,7 +54,7 @@ Comme les autres pages modifiables (crayon, « Enregistrer », `docs/serveur.md`
 | **Supprimer** | « Supprimer cet événement » : à l'enregistrement, après confirmation, avec ses descriptions (et ses liens à ses catégories) ; la page passe à son voisin |
 
 Le site construit est en retard sur le site de dev : au chargement, la frise (événements créés, supprimés, déplacés, titres, catégories, choix du filtre) et
-l'événement affiché sont refaits d'après la base vivante (sur ordinateur, là où le mode modification existe). Les modifications vont au journal, puis dans la
+l'événement affiché sont refaits d'après la base vivante (là où le mode modification existe : le site de dev). Les modifications vont au journal, puis dans la
 note de version (domaine « Chronologie ») et dans `data/rows` à la livraison.
 
 ## Les données

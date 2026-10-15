@@ -104,8 +104,8 @@ service (qui accepte les deux formes).
 
 ## Édition des règles (site de dev)
 
-Demande du propriétaire : sur le **site de dev seulement**, et **sur ordinateur seulement** (écran large et pointeur précis : ni téléphone ni
-tablette), les pages du guide, des races, des magies, des classes, des métiers et des armes se modifient en place, et celles du Codex (pages du Codex et
+Demande du propriétaire : sur le **site de dev seulement**, sur tous les écrans (téléphone et tablette compris depuis le 2026-10-15 : un outil pour
+ceux qui bidouillent déjà, pas pour les utilisateurs finaux), les pages du guide, des races, des magies, des classes, des métiers et des armes se modifient en place, et celles du Codex (pages du Codex et
 bestiaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »). Le service n'ouvre ses routes
 `/api/edition/` que s'il est lancé avec `MAVERICK_EDITION=1` (le `.env` du serveur de test, posé par `deploy/vps/instances.sh` ou l'installateur
 de test ; `npm run serveur` l'ouvre par défaut, `MAVERICK_EDITION=0` le ferme) : ailleurs elles répondent `403` et `/api/etat/` dit
@@ -342,7 +342,7 @@ une ligne (« 116 pages du Codex », « 144 espèces », « 315 monstres », « 
 paragraphes, listes, gras, italique, liens web) s'enregistre dans `note_version_brouillon` (section 14 : il suit la base vivante quand les
 règles changent ; `409` si quelqu'un l'a changé entre-temps).
 
-**« Effectuer la mise à jour »** (ordinateur seulement ; pas de protection avant la connexion Discord, décision du propriétaire) : après
+**« Effectuer la mise à jour »** (et « Simulation de mise à jour », sur tous les écrans ; pas de protection avant la connexion Discord, décision du propriétaire) : après
 confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
 versions — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
 bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il déclenche le workflow GitHub **`mise-a-jour.yml`** sur `dev`
