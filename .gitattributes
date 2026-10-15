@@ -5,3 +5,4 @@ deploy/** text eol=lf
 # Modèle de la fiche en tableur (tools/fiche/modele.py) : assemblé tel quel au build, ses octets ne doivent pas dépendre du clone (autocrlf de Windows)
 client/src/modeles/** text eol=lf
 client/src/modeles/**/*.png binary
+sources/raw/classeurs/*.json text eol=lf

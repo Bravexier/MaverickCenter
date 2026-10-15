@@ -1,0 +1,13 @@
+{
+  "$comment": "Registre du classeur « Classe Maverick V7 » pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne de la base ne cite, et pourquoi ; `libelles`, les intitulés de mise en page des cellules citées. Chaque entrée a sa raison écrite : rien d'autre ne s'y ajoute sans relecture.",
+  "regles": [
+    {"onglets": ["Combo stat"], "raison": "Statistiques d'usage (nombre de fois qu'une classe ou une spécialité a été prise, et leurs formules) : pas des règles, onglet non publié (IGNORED_SHEETS de tools/sheets/classes.py)."},
+    {"onglets": ["*"], "plages": ["N1"], "raison": "Bannière de l'onglet : le nom de la classe en capitales (« GUERRIER », « MAGE BLEU »), le nom même de l'onglet ; `classe.nom` le porte (cité depuis le Sommaire).", "nom_d_onglet": true},
+    {"onglets": ["Sommaire"], "plages": ["A17"], "valeurs": "^Il vous suffit de cliquer", "raison": "Consigne de navigation du classeur (« cliquer sur celui qui vous plaît »)."},
+    {"onglets": ["Sommaire"], "plages": ["A19"], "valeurs": "^OBJETS DES INVENTAIRES DE DEPART$", "raison": "Intitulé du glossaire des objets de départ ; le glossaire (A21:K92) est cité par `objet_depart`."}
+  ],
+  "libelles": [
+    {"valeurs": "^Lvl \\d+$", "mots": "lvl", "raison": "« Lvl N » au-dessus d'un don : seul le nombre est une valeur (`capacite.niveau`, comparé) ; « Lvl » est l'intitulé."},
+    {"plages": ["A1:Z13"], "valeurs": "^(Don de départ|Inventaire de départ|Santé|Chakra|Barrière|Maîtrise Arme|Maîtrise Armures|Arme de départ|Armure de départ|CHOSE A SAVOIR)$", "raison": "Intitulés du gabarit d'un onglet de classe (colonnes A, G et Z des lignes 1 à 13) : la valeur est dans la case voisine, que cite la même ligne (`classe.sante_depart`, `chakra_depart`, `barriere_depart`, `maitrise_arme`, `maitrise_armure`, `inventaire_depart`, `arme_depart`, `armure_depart`, `chose_a_savoir` ; le don de départ est le don de niveau 1, `capacite`)."}
+  ]
+}
