@@ -1,6 +1,7 @@
 // Registre des ressources de l'API REST (/api/v1/, docs/api.md ; demande du propriétaire : « une entrée pour TOUS les éléments possibles, avec une
 // API REST et un CRUD ») : chaque élément du jeu rangé dans la base, rangé une seule fois, dans un module. Module pur (ni node:fs ni navigateur) : lu
-// par le service (serveur/ressources.mjs), par la description OpenAPI (serveur/openapi.mjs) et par la page Debug.
+// par le service (serveur/ressources.mjs, et serveur/metriques.mjs pour les gabarits des routes) et par la description OpenAPI (serveur/openapi.mjs),
+// qui le donne aux outils externes ; aucune page du site ne le lit.
 //
 // Une ressource ne fait que DÉCRIRE une table de la base (et ce qui n'existe qu'avec elle) ; elle n'écrit rien elle-même. Toute écriture de l'API
 // passe par le service d'édition (serveur/edition.mjs#enregistrer : un lot du journal, rejoué puis livré dans data/rows par la mise à jour) :
@@ -60,7 +61,7 @@ import * as univers from './ressources/univers.mjs';
 import * as bestiaire from './ressources/bestiaire.mjs';
 import * as wiki from './ressources/wiki.mjs';
 
-/** Les modules de l'API, dans l'ordre de la documentation (et du testeur de la page Debug). */
+/** Les modules de l'API, dans l'ordre de la documentation (et des tags de la description OpenAPI : serveur/openapi.mjs). */
 export const MODULES = [
   { cle: 'creation', libelle: 'Création de personnage', ressources: creation.RESSOURCES, horsRessource: creation.HORS_RESSOURCE },
   { cle: 'regles', libelle: 'Règles de jeu', ressources: regles.RESSOURCES, horsRessource: regles.HORS_RESSOURCE },

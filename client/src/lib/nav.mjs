@@ -69,7 +69,8 @@ export const NAV = [
       { label: 'Galeries', path: 'galeries/' },
       { label: 'Recherche', path: 'recherche/' },
       { label: 'Archives', path: 'archives/' },
-      // Debug (demande du propriétaire : « visible uniquement sur le serveur dev ») : le testeur de l'API et les journaux du service (pages/debug.astro) ;
+      // Debug (demande du propriétaire : « visible uniquement sur le serveur dev ») : système, performances, journaux du service et schéma de la base
+      // (pages/debug.astro) ;
       // `devSeulement` : hors du menu d'un build de production (SITE_MODE=prod) et de la version portable (entreesDuMenu, layouts/Base.astro)
       { label: 'Debug', path: 'debug/', devSeulement: true },
     ],

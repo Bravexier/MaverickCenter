@@ -32,7 +32,7 @@ jobs:
       - run: grep -q 'class="bandeau-test"' dist/index.html
       - run: sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier
       # Le site de production (SITE_MODE=prod, comme l'installateur du serveur normal) : ce qui n'existe que sur le site de dev en est absent (page
-      # Debug : ni au menu, ni testeur, ni son script ; site-html : sa branche « production »). Sans ce build, ces contrôles ne tourneraient jamais.
+      # Debug : ni au menu, ni ses menus, ni leurs scripts ; site-html : sa branche « production »). Sans ce build, ces contrôles ne tourneraient jamais.
       - run: HIDE_EXAMPLES=1 SITE_MODE=prod SITE_TAG=v0.0.0 npm run build
       - run: node --test test/debug-page.test.mjs test/site-html.test.mjs
       # Version portable (liens relatifs, CSS/JS inline) : elle échoue si le script d'une page importe un autre module.

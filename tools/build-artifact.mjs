@@ -96,7 +96,7 @@ for (const file of walk(raw)) {
   if (rel.startsWith('_astro/')) continue; // inliné
   if (rel.endsWith('.db')) continue; // la base SQLite (téléchargement de /donnees/) n'a pas sa place dans la version portable
   if (rel.startsWith('_serveur/')) continue; // le service des personnages (client/serveur/) ne tourne que derrière nginx, pas dans une page statique
-  if (rel.startsWith('debug/')) continue; // la page Debug (site de dev seulement : testeur de l'API et journaux du service) n'a rien à montrer sans service
+  if (rel.startsWith('debug/')) continue; // la page Debug (site de dev seulement : système, performances, journaux du service, schéma de la base) n'a rien à montrer sans service
   if (!rel.endsWith('.html')) {
     mkdirSync(dirname(join(files, rel)), { recursive: true });
     writeFileSync(join(files, rel), readFileSync(file));

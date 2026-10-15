@@ -1,14 +1,15 @@
 // Description OpenAPI 3.1 du service (GET /api/v1/openapi.json, site de dev seulement : serveur/ressources.mjs) : les routes de l'API REST /api/v1/,
 // tirées du catalogue (serveur/ressources.mjs#catalogue : registre lib/ressources.mjs, colonnes de la base vivante, champs de TABLES et ENTITES,
 // une ligne d'exemple par ressource), puis les routes du service d'avant (api.mjs : état, prétirés, maintenance, édition, mise à jour, journal).
-// Lue par le testeur de la page Debug (src/lib/debug-api.mjs) : `servers[0].url` = « /api » (la page y ajoute la base du site), un tag par module
-// (son libellé) et « Service » pour le reste, dans l'ordre des groupes ; chemins avec la « / » finale (sauf openapi.json) ; chaque opération a un
-// operationId unique, un résumé, ses paramètres (chemin, requête, en-têtes, avec un exemple), un corps d'exemple tiré des champs et ses réponses.
-// Une valeur de clé d'exemple ({cle}) est écrite comme on la saisit : valeurs brutes jointes par « , » (le testeur encode chacune, « , » gardée).
-// Garde-fous du testeur (une case cochée suffit à envoyer) : la clé d'exemple d'une ligne réelle n'est posée que sur les opérations qui lisent ou
+// Pour des outils externes (la page Debug n'a plus de testeur : demande du propriétaire du 2026-10-15 ; test/aide-openapi.mjs la lit comme un
+// client) : `servers[0].url` = « /api » (relative au site : un client y ajoute la base du site), un tag par module (son libellé) et « Service » pour
+// le reste, dans l'ordre des groupes ; chemins avec la « / » finale (sauf openapi.json) ; chaque opération a un operationId unique, un résumé, ses
+// paramètres (chemin, requête, en-têtes, avec un exemple), un corps d'exemple tiré des champs et ses réponses.
+// Une valeur de clé d'exemple ({cle}) est écrite comme on la saisit : valeurs brutes jointes par « , » (un client encode chacune, « , » gardée).
+// Garde-fous (un client qui enverrait les exemples tels quels) : la clé d'exemple d'une ligne réelle n'est posée que sur les opérations qui lisent ou
 // modifient (GET, PATCH : un PATCH d'exemple ne change rien), jamais sur un DELETE ni une action (paramètre du chemin sans exemple) ; une création
 // qu'aucune suppression ne défait (races, classes, peuples…) n'a pas de corps d'exemple ; une écriture sans retour (cette création, la suppression
-// d'une entité, une action) le dit dans `x-sans-retour` (une phrase), que le testeur affiche à côté de la case de confirmation.
+// d'une entité, une action) le dit dans `x-sans-retour` (une phrase).
 // Module pur : aucun import, aucune lecture (le catalogue lui est donné).
 
 const SERVICE = 'Service';
@@ -66,7 +67,7 @@ const ecritPar = (o) => (o.operation ? `l’opération « ${o.operation} » du l
 
 /**
  * Le corps d'une création : schéma (champs de l'entité, sans ceux que l'adresse donne) et exemple (champs obligatoires ou exigés) ; `sansExemple` :
- * une création qu'aucune suppression ne défait n'a pas de corps prêt à l'envoi (le testeur l'enverrait d'un clic). La description dit les champs
+ * une création qu'aucune suppression ne défait n'a pas de corps prêt à l'envoi (un client l'enverrait tel quel). La description dit les champs
  * exigés hors d'un cas et la limite (une règle : au plus N par …), et qu'elle est atteinte partout quand c'est le cas.
  */
 function corpsDeCreation(creation, exemple, { sansExemple = false, quoi = '' } = {}) {
@@ -267,7 +268,7 @@ function cheminsDeRessource(r, tag) {
     };
   }
   for (const a of r.actions ?? []) {
-    // une action : jamais d'exemple de clé ni de corps (elle ne se défait pas) ; la page Debug le dit à côté de la case
+    // une action : jamais d'exemple de clé ni de corps (elle ne se défait pas) ; `x-sans-retour` le dit au client
     const sansRetour = `Action définitive : ${a.nom.toLowerCase()} ne se défait pas (le lot part en production à la prochaine mise à jour). Pas de clé ni de corps d’exemple : tapez-les.`;
     chemins[`${base}{cle}/${a.cle}/`] = {
       parameters: [parametreDeCle('cle', r.cle_primaire, null, quoiCle)],
@@ -495,6 +496,21 @@ function cheminsDuService() {
         parameters: [INSTANCE, PERIODE],
         responses: { 200: reponse('L’état du système.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
       }),
+    '/debug/tables/': lectureDuService('tables_de_la_base', 'Tables de la base vivante',
+      `Chaque table et vue de la base vivante, dans l’ordre des noms : { tables: [{ nom, genre (table, derivee ou vue), lignes (comptées maintenant) }] } ; ni les tables internes de SQLite (sqlite_…) ni les tables FTS5 (menu « DB », le schéma de la base, de la page Debug).${SITE_DE_DEV}`),
+    '/debug/tables/{table}/': {
+      parameters: [{ name: 'table', in: 'path', required: true, description: 'Nom exact d’une table ou d’une vue (GET /api/debug/tables/) ; tout autre nom : 404.', example: 'metier', schema: { type: 'string' } }],
+      ...lectureDuService('contenu_d_une_table', 'Contenu d’une table',
+        `Une page des lignes d’une table ou d’une vue, en lecture seule : { table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes }. Ordre stable : la colonne de tri, puis la clé primaire, puis le rowid (une vue : toutes ses colonnes) ; « desc » renverse tout l’ordre. Une image n’est jamais rendue entière : { image: true, type, octets, empreinte } ; une image dans un texte (le JSON du journal de l’édition) devient « [image <type>, N octets, empreinte <e>] » ; un texte de plus de 2 000 caractères est coupé (« … (N caractères) ») ; un BLOB : { octets } ; une colonne d’image se trie par sa taille. Les fiches de personnages, les comptes et les groupes (section 13, et les vues qui les lisent) : 403, comme /api/v1/ (ils passent par /api/personnages/).${SITE_DE_DEV}`, {
+          parameters: [
+            { name: 'limite', in: 'query', description: 'Taille de la page (1 à 500).', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+            { name: 'decalage', in: 'query', description: 'Nombre de lignes sautées.', schema: { type: 'integer', minimum: 0, default: 0 } },
+            { name: 'tri', in: 'query', description: 'Une colonne de la table (sans elle : la clé primaire, puis le rowid ; une colonne d’image : par sa taille) ; colonne inconnue : 400.', schema: { type: 'string' } },
+            { name: 'ordre', in: 'query', description: 'Sens de tout l’ordre.', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+          ],
+          responses: { 200: reponse('Les lignes.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
+        }),
+    },
     '/metriques/page/': {
       post: {
         operationId: 'metriques_page', tags: [SERVICE], summary: 'Mesure d’une page vue',

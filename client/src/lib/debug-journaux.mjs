@@ -6,9 +6,11 @@
 // La page relève toutes les 2 s les entrées qui suivent la dernière vue (?depuis=<dernier>), les garde (GARDEES_MAX au plus) et en affiche au plus
 // AFFICHEES_MAX, filtrées par niveau, catégorie, texte et durée, la plus récente en haut (ou triées par durée). Niveaux, catégorie, texte et tri
 // s'appliquent dans la page : les changer ne redemande rien au service ; le seuil de durée, lui, part au service (?min_ms=) et fait tout relire.
-// Sans dépendance hors des deux autres modules de la même page (lib/debug-api.mjs, lib/debug-metriques.mjs) ; importé par le seul script de la page Debug.
-import { cle, echapper } from './debug-api.mjs';
-import { formaterDuree, lenteur } from './debug-metriques.mjs';
+// Sans dépendance hors de l'autre module de la même page (lib/debug-metriques.mjs) ; importé par le seul script de la page Debug.
+import { echapper, formaterDuree, lenteur } from './debug-metriques.mjs';
+
+/** Écriture de recherche : minuscules, sans accents. */
+const cle = (texte) => String(texte ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 /** Intervalle de la relève, en millisecondes. */
 export const RELEVE_MS = 2000;

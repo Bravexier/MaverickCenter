@@ -1,5 +1,6 @@
-// Page Debug (pages/debug.astro, site de dev seulement ; demande du propriétaire) : fonctions pures du testeur de l'API (lib/debug-api.mjs) et des
-// journaux du serveur (lib/debug-journaux.mjs), contrat avec le journal du service (serveur/journal-du-service.mjs), et la page elle-même : une
+// Page Debug (pages/debug.astro, site de dev seulement ; demande du propriétaire) : fonctions pures des journaux du serveur (lib/debug-journaux.mjs),
+// contrat avec le journal du service (serveur/journal-du-service.mjs), et la page elle-même — quatre menus déroulants fermés dans l'ordre Système,
+// Performances, Journaux du serveur, DB (demande du propriétaire du 2026-10-15), chacun ne demandant rien au service tant qu'il est fermé ; une
 // phrase sans script en production, aucun module partagé avec un autre script de page, absente de la version portable.
 //   node --test test/debug-page.test.mjs
 import assert from 'node:assert/strict';
@@ -7,284 +8,16 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import YAML from 'yaml';
 import {
-  AFFICHAGE_MAX, SANS_TAG, cleDEtag, commandeCurl, corpsDe, corpsLisible, echapper, entetesUtiles, estDuTexte, estEcriture, familleDuStatut,
-  groupesDOperations, htmlDeLaReponse, htmlDesGroupes, htmlDuFormulaire, ifMatchDe, operationCorrespond, operationsDe, parametresDe, racineDeLApi,
-  requeteDe, resoudre, segmentDeChemin, valeursDuChemin,
-} from '../src/lib/debug-api.mjs';
-import {
   AFFICHEES_MAX, GARDEES_MAX, NIVEAUX, RELEVE_MS, TRIS_DU_JOURNAL, TRI_DU_JOURNAL_PAR_DEFAUT, adresseDuJournal, categoriesDes, dureeDe, etatVide,
   filtrerEntrees, fusionner, heureDe, htmlDesLignes, planDAffichage, resumeDuJournal,
 } from '../src/lib/debug-journaux.mjs';
-import { COLONNES_DES_ROUTES, INSTANCES, PERIODES, TRIS } from '../src/lib/debug-metriques.mjs';
+import {
+  COLONNES_DES_ROUTES, INSTANCES, PERIODES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, TRIS, TRI_PAR_DEFAUT, adresseDesMetriques, adresseDesRequetes,
+  adresseDuSysteme, echapper, suivreLOuverture,
+} from '../src/lib/debug-metriques.mjs';
 import { NIVEAUX as NIVEAUX_DU_SERVICE, creerJournalDuService } from '../serveur/journal-du-service.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
-
-/** Une description OpenAPI 3.1 comme celle du service (serveur/openapi.mjs) : $ref, tags, exemples, If-Match, opération sans tag. */
-const SPEC = {
-  openapi: '3.1.0',
-  info: { title: 'Maverick Center', version: '1' },
-  servers: [{ url: '/api' }],
-  tags: [{ name: 'Métiers', description: 'Les métiers du jeu' }, { name: 'Service' }, { name: 'Vide' }],
-  components: {
-    parameters: {
-      cle: { name: 'cle', in: 'path', required: true, description: 'Identifiant figé', schema: { type: 'string', example: 'forgeron' } },
-      ifMatch: { name: 'If-Match', in: 'header', required: true, description: 'Version de la ligne lue (ETag)', schema: { type: 'string' } },
-    },
-    examples: { corps: { value: { description: 'Nouveau texte' } } },
-  },
-  paths: {
-    '/v1/metiers/': {
-      get: {
-        operationId: 'listerMetiers',
-        summary: 'Lister les métiers',
-        tags: ['Métiers'],
-        parameters: [
-          { name: 'q', in: 'query', description: 'Texte cherché', schema: { type: 'string' }, example: 'forge' },
-          { name: 'tri', in: 'query', schema: { type: ['string', 'null'], enum: ['nom', '-nom'] } },
-          { name: 'limite', in: 'query', required: true, schema: { type: 'integer', default: 50 } },
-          // un filtre de colonne comme ceux du service (serveur/openapi.mjs#filtresDe) : répétable, vide permis
-          { name: 'famille', in: 'query', description: 'Filtre', style: 'form', explode: true, allowEmptyValue: true, schema: { type: 'array', items: { type: 'string' } } },
-        ],
-      },
-      post: {
-        operationId: 'creerMetier',
-        summary: 'Créer un métier',
-        tags: ['Métiers'],
-        requestBody: { required: true, content: { 'application/json': { example: { nom: 'Forgeron <test>' } } } },
-      },
-    },
-    '/v1/metiers/{cle}/': {
-      parameters: [{ $ref: '#/components/parameters/cle' }],
-      get: { operationId: 'lireMetier', summary: 'Lire un métier', tags: ['Métiers'] },
-      patch: {
-        operationId: 'modifierMetier',
-        summary: 'Modifier un métier',
-        tags: ['Métiers'],
-        parameters: [{ $ref: '#/components/parameters/ifMatch' }],
-        requestBody: { content: { 'application/json': { examples: { a: { $ref: '#/components/examples/corps' } } } } },
-      },
-      delete: { operationId: 'supprimerMetier', summary: 'Supprimer un métier', tags: ['Métiers'], deprecated: true },
-    },
-    '/etat/': { get: { operationId: 'etat', summary: 'État du service', tags: ['Service'] } },
-    '/x/{a}/{b}/': { head: { summary: 'Sans tag' } },
-  },
-};
-
-test('operationsDe : chemins puis méthodes dans l’ordre, $ref suivis, paramètres du chemin hérités, If-Match à part, corps et exemples', () => {
-  const ops = operationsDe(SPEC);
-  assert.deepEqual(ops.map((o) => `${o.methode} ${o.chemin} ${o.id}`), [
-    'GET /v1/metiers/ listerMetiers',
-    'POST /v1/metiers/ creerMetier',
-    'GET /v1/metiers/{cle}/ lireMetier',
-    'PATCH /v1/metiers/{cle}/ modifierMetier',
-    'DELETE /v1/metiers/{cle}/ supprimerMetier',
-    'GET /etat/ etat',
-    'HEAD /x/{a}/{b}/ HEAD /x/{a}/{b}/',
-  ]);
-  const [lister, creer, lireUn, modifier, supprimer, etat, sansTag] = ops;
-  const simple = { repetable: false, videPermis: false };
-  assert.deepEqual(lister.parametres, [
-    { nom: 'q', dans: 'query', requis: false, description: 'Texte cherché', exemple: 'forge', type: 'string', valeurs: null, ...simple },
-    { nom: 'tri', dans: 'query', requis: false, description: '', exemple: '', type: 'string', valeurs: ['nom', '-nom'], ...simple },
-    { nom: 'limite', dans: 'query', requis: true, description: '', exemple: '50', type: 'integer', valeurs: null, ...simple },
-    { nom: 'famille', dans: 'query', requis: false, description: 'Filtre', exemple: '', type: 'string', valeurs: null, repetable: true, videPermis: true },
-  ], 'type 3.1 en tableau : le premier qui n’est pas null ; défaut du schéma en exemple ; un filtre de type array : répétable, son type est celui de ses valeurs');
-  assert.deepEqual(lireUn.parametres, [{ nom: 'cle', dans: 'path', requis: true, description: 'Identifiant figé', exemple: 'forgeron', type: 'string', valeurs: null, ...simple }]);
-  assert.deepEqual(modifier.parametres.map((p) => p.nom), ['cle'], 'If-Match n’est pas un paramètre : il a son champ');
-  assert.deepEqual(modifier.ifMatch, { requis: true, description: 'Version de la ligne lue (ETag)' });
-  assert.equal(supprimer.ifMatch, null, 'DELETE sans If-Match déclaré : pas de champ (le service ne le lirait pas)');
-  assert.equal(lireUn.ifMatch, null);
-  assert.equal(creer.ifMatch, null);
-  assert.deepEqual(creer.corps, { requis: true, type: 'application/json', description: '', exemple: '{\n  "nom": "Forgeron <test>"\n}' });
-  assert.equal(modifier.corps.exemple, '{\n  "description": "Nouveau texte"\n}', 'examples nommés, par $ref');
-  assert.equal(lister.corps, null);
-  assert.deepEqual([lister, creer, lireUn, modifier, supprimer, etat, sansTag].map((o) => o.ecriture), [false, true, false, true, true, false, false]);
-  assert.equal(supprimer.depreciee, true);
-  assert.deepEqual(sansTag.parametres.map((p) => [p.nom, p.dans, p.requis]), [['a', 'path', true], ['b', 'path', true]], 'paramètres du gabarit non déclarés');
-  assert.deepEqual(sansTag.tags, []);
-  // fonctions de base
-  assert.deepEqual(resoudre(SPEC, { $ref: '#/components/parameters/cle' }).name, 'cle');
-  assert.deepEqual(resoudre(SPEC, { $ref: '#/rien/du/tout' }), {});
-  assert.deepEqual(resoudre(SPEC, { $ref: 'https://ailleurs/x.json' }), {}, 'seuls les $ref locaux');
-  assert.equal(parametresDe(SPEC, {}, {}, '/a/{b}/')[0].nom, 'b');
-  assert.equal(ifMatchDe(SPEC, {}, {}), null, 'non déclaré : pas de champ, quelle que soit la méthode');
-  assert.deepEqual(ifMatchDe(SPEC, {}, { parameters: [{ $ref: '#/components/parameters/ifMatch' }] }), { requis: true, description: 'Version de la ligne lue (ETag)' });
-  assert.equal(corpsDe(SPEC, { requestBody: { content: { 'application/json': { example: '{"a":1}' } } } }).exemple, '{\n  "a": 1\n}', 'exemple en texte JSON');
-  assert.deepEqual(['GET', 'HEAD', 'OPTIONS', 'get'].map(estEcriture), [false, false, false, false]);
-  assert.deepEqual(['POST', 'PUT', 'PATCH', 'DELETE'].map(estEcriture), [true, true, true, true]);
-  assert.deepEqual(operationsDe({}), []);
-});
-
-test('groupes par tag (ordre de spec.tags, puis les autres, sans tag : « Autres ») ; filtre texte sans accents ni majuscules', () => {
-  const ops = operationsDe(SPEC);
-  const groupes = groupesDOperations(SPEC, ops);
-  assert.deepEqual(groupes.map((g) => [g.tag, g.description, g.operations.length]), [
-    ['Métiers', 'Les métiers du jeu', 5],
-    ['Service', '', 1],
-    [SANS_TAG, '', 1],
-  ], 'pas de groupe vide (« Vide »)');
-  const filtre = (texte) => ops.filter((o) => operationCorrespond(o, texte)).map((o) => o.id);
-  assert.equal(filtre('').length, ops.length);
-  assert.deepEqual(filtre('METIERS patch'), ['modifierMetier'], 'chaque mot, dans la méthode, le chemin, le résumé, l’id ou les tags');
-  assert.deepEqual(filtre('état'), ['etat']);
-  assert.deepEqual(filtre('etat'), ['etat'], 'sans accents');
-  assert.deepEqual(filtre('supprimermetier'), ['supprimerMetier'], 'par l’operationId');
-  assert.deepEqual(filtre('introuvable'), []);
-});
-
-test('requeteDe : adresse (base de la page + servers[0].url), paramètres encodés, en-têtes, corps JSON, erreurs avant tout envoi', () => {
-  const ops = operationsDe(SPEC);
-  const op = (id) => ops.find((o) => o.id === id);
-  assert.equal(racineDeLApi('/', SPEC), '/api');
-  assert.equal(racineDeLApi('/MaverickCenter/', SPEC), '/MaverickCenter/api', 'déploiement sous un sous-chemin');
-  assert.equal(racineDeLApi('/', {}), '/api', 'sans servers : /api');
-  assert.equal(racineDeLApi('/MaverickCenter/', { servers: [{ url: 'https://dev.maverick-jdr.com/api/' }] }), 'https://dev.maverick-jdr.com/api', 'adresse absolue telle quelle');
-
-  const liste = requeteDe(op('listerMetiers'), { racine: '/api', valeurs: { query: { q: ' forge ', tri: '', limite: '20' } } });
-  assert.deepEqual(liste, { methode: 'GET', url: '/api/v1/metiers/?q=forge&limite=20', entetes: { Accept: 'application/json' }, corps: null, erreurs: [] });
-  assert.deepEqual(requeteDe(op('listerMetiers'), { racine: '/api' }).erreurs, ['Paramètre « limite » manquant.']);
-  // un filtre répété (une valeur par ligne : l'une OU l'autre) et un filtre vide (colonne vide), comme le service les lit
-  const filtres = requeteDe(op('listerMetiers'), { racine: '/api', valeurs: { query: { limite: '5', famille: 'epee\n  \nhache ' } }, vides: ['famille'] });
-  assert.equal(filtres.url, '/api/v1/metiers/?limite=5&famille=epee&famille=hache&famille=');
-  assert.equal(requeteDe(op('listerMetiers'), { racine: '/api', valeurs: { query: { limite: '5' } }, vides: ['famille'] }).url, '/api/v1/metiers/?limite=5&famille=', 'seulement vide');
-  assert.equal(requeteDe(op('listerMetiers'), { racine: '/api', valeurs: { query: { limite: '5', famille: ['a', ' b '] } } }).url, '/api/v1/metiers/?limite=5&famille=a&famille=b', 'un tableau');
-  assert.equal(requeteDe(op('listerMetiers'), { racine: '/api', valeurs: { query: { limite: '5', q: '' } }, vides: ['q'] }).url, '/api/v1/metiers/?limite=5', 'vide non permis : rien');
-  assert.match(commandeCurl(filtres, 'https://dev.example'), /'https:\/\/dev\.example\/api\/v1\/metiers\/\?limite=5&famille=epee&famille=hache&famille='/, 'la commande curl aussi');
-
-  const modif = requeteDe(op('modifierMetier'), { racine: '/MaverickCenter/api', valeurs: { path: { cle: 'a b,c/d' } }, corps: '{"description":"x"}', ifMatch: ' "v1" ' });
-  assert.deepEqual(modif, {
-    methode: 'PATCH',
-    url: '/MaverickCenter/api/v1/metiers/a%20b,c%2Fd/',
-    entetes: { Accept: 'application/json', 'If-Match': '"v1"', 'Content-Type': 'application/json' },
-    corps: '{"description":"x"}',
-    erreurs: [],
-  }, 'la virgule d’une clé composée reste (lib/ressources.mjs#segmentDeCle), le reste est encodé');
-  assert.equal(segmentDeChemin('3,2'), '3,2');
-  assert.deepEqual(requeteDe(op('modifierMetier'), { racine: '/api', corps: '{ illisible' }).erreurs, [
-    'Paramètre de chemin « cle » manquant.',
-    'En-tête « If-Match » manquant.',
-    requeteDe(op('modifierMetier'), { racine: '/api', corps: '{ illisible' }).erreurs[2],
-  ]);
-  assert.match(requeteDe(op('modifierMetier'), { racine: '/api', corps: '{ illisible' }).erreurs[2], /^Corps JSON illisible : /);
-  assert.deepEqual(requeteDe(op('creerMetier'), { racine: '/api' }).erreurs, ['Corps de la requête manquant.']);
-  // une écriture porte toujours Content-Type: application/json (la garde du service l'exige), même sans corps
-  const suppr = requeteDe(op('supprimerMetier'), { racine: '/api', valeurs: { path: { cle: 'forgeron' } } });
-  assert.deepEqual(suppr, { methode: 'DELETE', url: '/api/v1/metiers/forgeron/', entetes: { Accept: 'application/json', 'Content-Type': 'application/json' }, corps: null, erreurs: [] });
-  assert.equal(requeteDe(op('lireMetier'), { racine: '/api', valeurs: { path: { cle: 'x' } }, corps: '{"ignoré":1}' }).corps, null, 'un GET n’a pas de corps');
-  assert.equal(cleDEtag('/api/v1/metiers/x/?champs=nom#haut'), '/api/v1/metiers/x/', 'l’ETag est gardé par adresse, sans requête');
-});
-
-test('valeursDuChemin : l’adresse rendue par une création (Location) redonne les champs de chemin d’une opération (pour préremplir sa suppression)', () => {
-  const ops = operationsDe(SPEC);
-  const supprimer = ops.find((o) => o.id === 'supprimerMetier');
-  assert.deepEqual(valeursDuChemin(supprimer, '/api/v1/metiers/metiers%2Facrobate/', '/api'), { cle: 'metiers/acrobate' });
-  assert.deepEqual(valeursDuChemin(supprimer, '/MaverickCenter/api/v1/metiers/a%20b,2/?x=1', '/MaverickCenter/api'), { cle: 'a b,2' }, 'clé composée, sous-chemin');
-  assert.equal(valeursDuChemin(supprimer, '/api/v1/metiers/', '/api'), null, 'la liste n’est pas un élément');
-  assert.equal(valeursDuChemin(supprimer, '/api/v1/armes/x/', '/api'), null, 'une autre ressource');
-  assert.equal(valeursDuChemin(supprimer, '/api/v1/metiers/x/y/', '/api'), null, 'une sous-ressource');
-  assert.equal(valeursDuChemin(supprimer, '/autre/v1/metiers/x/', '/api'), null, 'une autre racine');
-  assert.equal(valeursDuChemin(ops.find((o) => o.id === 'etat'), '/api/etat/', '/api'), null, 'pas de paramètre de chemin');
-  assert.deepEqual(valeursDuChemin({ chemin: '/v1/evenements/{cle}/descriptions/{cleEnfant}/' }, '/api/v1/evenements/e%231/descriptions/2/'), { cle: 'e#1', cleEnfant: '2' });
-  assert.equal(valeursDuChemin(supprimer, '/api/v1/metiers/%E0%A4%A/', '/api'), null, 'mal encodée');
-  // aller-retour avec requeteDe : la même adresse
-  const valeurs = valeursDuChemin(supprimer, '/api/v1/metiers/metiers%2Facrobate/', '/api');
-  assert.equal(requeteDe(supprimer, { racine: '/api', valeurs: { path: valeurs } }).url, '/api/v1/metiers/metiers%2Facrobate/');
-});
-
-test('commande curl équivalente : adresse absolue, guillemets du shell, corps sur une ligne', () => {
-  const requete = { methode: 'PATCH', url: '/api/v1/metiers/x/', entetes: { Accept: 'application/json', 'If-Match': '"v1"', 'Content-Type': 'application/json' }, corps: '{\n  "nom": "L\'or"\n}' };
-  assert.equal(commandeCurl(requete, 'https://dev.maverick-jdr.com'),
-    `curl -i -X PATCH 'https://dev.maverick-jdr.com/api/v1/metiers/x/' -H 'Accept: application/json' -H 'If-Match: "v1"' -H 'Content-Type: application/json' --data-raw '{"nom":"L'\\''or"}'`);
-  assert.equal(commandeCurl({ methode: 'GET', url: '/api/etat/', entetes: { Accept: 'application/json' } }, 'http://localhost:4321'),
-    `curl -i 'http://localhost:4321/api/etat/' -H 'Accept: application/json'`);
-  assert.equal(commandeCurl({ methode: 'HEAD', url: '/api/etat/' }), `curl --head '/api/etat/'`, 'sans origine : l’adresse telle quelle');
-  assert.equal(commandeCurl({ methode: 'POST', url: '/api/x/', entetes: {}, corps: 'pas du json' }), `curl -i -X POST '/api/x/' --data-raw 'pas du json'`);
-});
-
-test('réponse : en-têtes utiles, corps JSON indenté et coupé au-delà d’AFFICHAGE_MAX, familles de statut', () => {
-  const entetes = new Headers({ ETag: '"abc"', 'Content-Type': 'application/json; charset=utf-8', Location: '/api/v1/metiers/x/', 'X-Autre': '1' });
-  assert.deepEqual(entetesUtiles(entetes), [['ETag', '"abc"'], ['Location', '/api/v1/metiers/x/'], ['Content-Type', 'application/json; charset=utf-8']]);
-  assert.deepEqual(entetesUtiles(new Headers({ Allow: 'GET, PATCH' })), [['Allow', 'GET, PATCH']]);
-  assert.deepEqual(corpsLisible('{"a":[1]}', 'application/json'), { texte: '{\n  "a": [\n    1\n  ]\n}', json: true, coupe: 0 });
-  assert.deepEqual(corpsLisible('[1,2]', ''), { texte: '[\n  1,\n  2\n]', json: true, coupe: 0 }, 'du JSON sans type');
-  assert.deepEqual(corpsLisible('{"a":', 'application/json'), { texte: '{"a":', json: false, coupe: 0 }, 'illisible : tel quel');
-  const long = corpsLisible('x'.repeat(AFFICHAGE_MAX + 5), 'text/plain');
-  assert.equal(long.texte.length, AFFICHAGE_MAX);
-  assert.equal(long.coupe, AFFICHAGE_MAX + 5);
-  assert.deepEqual(['application/json', 'text/plain; charset=utf-8', 'application/xml', '', undefined].map(estDuTexte), [true, true, true, true, true]);
-  assert.deepEqual(['image/webp', 'application/octet-stream'].map(estDuTexte), [false, false]);
-  assert.deepEqual([200, 201, 204, 304, 400, 403, 409, 412, 500, 503, 0].map(familleDuStatut),
-    ['succes', 'succes', 'succes', 'renvoi', 'refus', 'refus', 'refus', 'refus', 'erreur', 'erreur', 'erreur']);
-  const html = htmlDeLaReponse({ entetes: [['ETag', '"v<1>"']], corps: corpsLisible('{"nom":"<b>"}', 'application/json') }, "curl -i '/api/x/'");
-  assert.match(html, /<dt>ETag<\/dt><dd><code>&quot;v&lt;1&gt;&quot;<\/code><\/dd>/);
-  assert.match(html, /<pre class="debug-reponse__corps" tabindex="0"><code>\{\n {2}&quot;nom&quot;: &quot;&lt;b&gt;&quot;\n\}<\/code><\/pre>/);
-  assert.match(html, /<code data-curl>curl -i &#39;\/api\/x\/&#39;<\/code>/);
-  assert.match(html, /<button type="button" data-copier>Copier<\/button>/);
-  assert.match(htmlDeLaReponse({ octets: { type: 'image/webp', taille: 12 } }, 'curl'), /Contenu non textuel \(image\/webp, 12 octets\)/);
-  assert.match(htmlDeLaReponse({}, 'curl'), /Réponse sans corps\./);
-  assert.match(htmlDeLaReponse({ erreur: 'Failed <fetch>' }, 'curl'), /<p class="debug-reponse__erreur">Failed &lt;fetch&gt;<\/p>/);
-});
-
-test('formulaire d’une opération : un champ étiqueté par paramètre, If-Match, corps prérempli, case de garde des écritures, annonce en aria-live', () => {
-  const ops = operationsDe(SPEC);
-  const op = (id) => ops.find((o) => o.id === id);
-  const ids = (html) => [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
-  for (const [i, o] of ops.entries()) {
-    const html = htmlDuFormulaire(o, `debug-op${i}`);
-    // chaque label vise un champ qui existe, chaque id est unique et commence par le préfixe
-    const tous = ids(html);
-    assert.equal(new Set(tous).size, tous.length, o.id);
-    assert.ok(tous.every((id) => id.startsWith(`debug-op${i}-`)), o.id);
-    for (const [, cible] of html.matchAll(/<label for="([^"]+)"/g)) assert.ok(tous.includes(cible), `${o.id} : label sans champ ${cible}`);
-    assert.equal(/data-confirmer/.test(html), o.ecriture, `${o.id} : la case de garde, pour une écriture seulement`);
-    assert.equal(/data-corps/.test(html), o.ecriture, `${o.id} : un corps pour une écriture seulement`);
-    assert.match(html, /<p class="debug-reponse__annonce" data-annonce role="status" aria-live="polite"><\/p>/);
-    assert.doesNotMatch(html, /\stitle=/, 'jamais d’infobulle native (Infobulles.astro)');
-  }
-  const lister = htmlDuFormulaire(op('listerMetiers'), 'p');
-  assert.match(lister, /<textarea id="p-p3" data-param-dans="query" data-param-nom="famille" aria-describedby="p-p3-aide" data-param-repetable rows="1" spellcheck="false" autocapitalize="off"><\/textarea>/);
-  assert.match(lister, /Une valeur par ligne : l’une OU l’autre\./);
-  assert.match(lister, /<label class="debug-champ__vide"><input type="checkbox" data-param-vide="famille"> Envoyer aussi vide/);
-  assert.match(lister, /<span class="debug-champ__ou">requête · string \(répétable\)<\/span>/);
-  assert.match(lister, /<input type="text" id="p-p0" data-param-dans="query" data-param-nom="q" aria-describedby="p-p0-aide" value="" placeholder="forge"/, 'facultatif : l’exemple en indication');
-  assert.match(lister, /<select id="p-p1" data-param-dans="query" data-param-nom="tri"><option value=""><\/option><option>nom<\/option><option>-nom<\/option><\/select>/);
-  assert.match(lister, /id="p-p2" data-param-dans="query" data-param-nom="limite" required value="50"/, 'requis : prérempli');
-  const modifier = htmlDuFormulaire(op('modifierMetier'), 'm');
-  assert.match(modifier, /id="m-p0" data-param-dans="path" data-param-nom="cle" required aria-describedby="m-p0-aide" value="forgeron"/);
-  assert.match(modifier, /<input type="text" id="m-if-match" data-if-match /);
-  assert.match(modifier, /Rempli avec l’ETag du dernier GET de la même adresse\./);
-  assert.match(modifier, /<textarea id="m-corps" data-corps rows="4" spellcheck="false" autocapitalize="off">\{\n {2}&quot;description&quot;: &quot;Nouveau texte&quot;\n\}<\/textarea>/);
-  assert.match(htmlDuFormulaire(op('creerMetier'), 'c'), /&quot;nom&quot;: &quot;Forgeron &lt;test&gt;&quot;/, 'exemple échappé');
-  assert.match(htmlDuFormulaire(op('supprimerMetier'), 's'), /Opération dépréciée\./);
-  // une suppression n'est jamais préremplie avec l'exemple de la description (la clé d'une ligne réelle) : il reste en indication
-  const supprimer = htmlDuFormulaire(op('supprimerMetier'), 's');
-  assert.match(supprimer, /id="s-p0" data-param-dans="path" data-param-nom="cle" required aria-describedby="s-p0-aide" value="" placeholder="forgeron"/);
-  assert.doesNotMatch(supprimer, /data-if-match/, 'If-Match non déclaré : pas de champ');
-  assert.deepEqual(requeteDe(op('supprimerMetier'), { racine: '/api' }).erreurs, ['Paramètre de chemin « cle » manquant.'], 'rien ne part sans clé tapée');
-  // une écriture sans retour le dit à côté de la case
-  const sansRetour = { ...op('creerMetier'), sansRetour: 'Création définitive : <rien> ne la défait.' };
-  const html = htmlDuFormulaire(sansRetour, 'd');
-  assert.match(html, /<p class="debug-form__sans-retour" id="d-sans-retour">Création définitive : &lt;rien&gt; ne la défait\.<\/p>/);
-  assert.match(html, /<input type="checkbox" data-confirmer aria-describedby="d-sans-retour"> Je sais que cette requête modifie la base du site de dev, sans retour possible\./);
-  assert.equal(operationsDe({ paths: { '/x/': { post: { 'x-sans-retour': ' Définitif. ' } } } })[0].sansRetour, 'Définitif.');
-  assert.equal(op('creerMetier').sansRetour, null);
-  assert.match(htmlDuFormulaire(op('creerMetier'), 'c'), /Je sais que cette requête modifie la base du site de dev\./);
-});
-
-test('liste des opérations : un details fermé par groupe et par opération, rang dans data-op, pastille par méthode, texte échappé', () => {
-  const ops = operationsDe(SPEC);
-  const html = htmlDesGroupes(groupesDOperations(SPEC, ops), ops);
-  assert.equal((html.match(/<details class="debug-groupe" data-groupe="\d+">/g) ?? []).length, 3);
-  assert.doesNotMatch(html, /<details[^>]*\sopen/, 'tout est fermé');
-  assert.deepEqual([...html.matchAll(/data-op="(\d+)"/g)].map((m) => Number(m[1])), ops.map((_, i) => i), 'chaque opération, une fois, à son rang');
-  assert.match(html, /<span class="debug-methode debug-methode--patch">PATCH<\/span> <code class="debug-op__chemin">\/v1\/metiers\/\{cle\}\/<\/code> <span class="debug-op__resume">Modifier un métier<\/span>/);
-  assert.match(html, /<span class="debug-groupe__nom">Métiers<\/span> <span class="debug-groupe__compte" data-groupe-compte>5<\/span> <span class="debug-groupe__description">Les métiers du jeu<\/span>/);
-  assert.match(html, /<div class="debug-op__corps" data-op-corps><\/div>/, 'formulaire construit à l’ouverture');
-  assert.doesNotMatch(html, /\stitle=/);
-  assert.match(htmlDesGroupes([{ tag: '<x>', description: '', operations: [] }], []), /&lt;x&gt;/);
-  assert.equal(echapper(`<a href="x">'&'</a>`), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;');
-});
 
 test('journaux : relève (?depuis=), fusion des réponses du VRAI journal du service, redémarrage, plafond des entrées gardées', () => {
   assert.equal(RELEVE_MS, 2000, 'toutes les 2 s (demande)');
@@ -387,6 +120,8 @@ test('journaux : filtres de la page (niveaux, catégorie, texte), la plus récen
   assert.match(html, /^<tr class="debug-ligne debug-ligne--erreur" data-n="7"><td class="debug-ligne__heure"><time datetime="2026-10-15T12:00:00Z">[^<]+<\/time><\/td>/);
   assert.match(html, /<td class="debug-ligne__niveau"><span class="debug-niveau debug-niveau--erreur">erreur<\/span><\/td><td class="debug-ligne__categorie">base<\/td><td class="debug-ligne__duree"><\/td><td class="debug-ligne__message">ERREUR &lt;b&gt; &amp; co\n {2}at x<\/td><\/tr>$/, 'sans durée isolée : une case vide');
   assert.match(htmlDesLignes([{ n: 1, instant: '', niveau: '"><script>', categorie: '', message: '' }]), /debug-ligne--info.*&quot;&gt;&lt;script&gt;/, 'niveau inconnu : classe info, texte échappé');
+  assert.equal(echapper(`<a href="x">'&'</a>`), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;', 'contenu et valeur d’attribut');
+  assert.equal(echapper(null), '');
   assert.equal(resumeDuJournal({ affichees: 1, total: 1, gardees: 1 }), '1 ligne affichée ; 1 entrée reçue depuis l’ouverture ou le dernier effacement.');
   assert.equal(resumeDuJournal({ affichees: 1000, total: 1500, gardees: 1800, perdues: 3, enPause: true }),
     '1000 lignes affichées (les 1000 plus récentes sur 1500) ; 1800 entrées reçues depuis l’ouverture ou le dernier effacement ; 3 entrées plus anciennes ne sont plus dans la mémoire du service. Relève en pause.');
@@ -476,25 +211,60 @@ test('la page : une phrase sans script en production et dans la version portable
   assert.equal((page.match(/<script/g) ?? []).length, 1, 'un seul script');
   assert.match(page, /import debugCss from '\.\.\/styles\/debug\/debug\.css\?raw';/);
   assert.match(page, /<style is:inline set:html=\{debugCss\}><\/style>/);
-  assert.match(page, /<details class="debug-testeur" data-debug-testeur hidden>\s*<summary>\s*<span class="debug-testeur__titre">Tester l’API<\/span>/, 'le testeur dans un menu déroulant fermé');
-  assert.ok(page.indexOf('data-debug-testeur') < page.indexOf('data-debug-journaux'), 'les journaux en dessous');
-  // demande du 2026-10-15 : « Performances » puis « Système », deux menus déroulants ouverts, entre le testeur et les journaux
-  assert.match(page, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-perfs-titre">Performances<\/h2>/);
-  assert.match(page, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-systeme-titre">Système<\/h2>/);
-  // demande du 2026-10-15 : « Tout en bas […] la place occupée sur le serveur sur la place totale sous forme de jauge » (après les journaux)
-  assert.match(page, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre" hidden>\s*<h2 id="debug-espace-titre">Espace disque du serveur<\/h2>/);
-  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => page.indexOf(m));
-  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, performances, système, journaux, espace disque');
-  assert.ok(page.lastIndexOf('</section>') > page.indexOf('data-debug-espace') && page.indexOf('data-debug-espace') > page.lastIndexOf('data-journaux-vide'), 'tout en bas');
-  for (const m of ['data-perfs-instance', 'data-perfs-periode', 'data-perfs-tri', 'data-perfs-routes', 'data-perfs-serie', 'data-perfs-pages',
-    'data-perfs-navigateurs', 'data-perfs-origines', 'data-requetes-liste', 'data-requetes-min', 'data-systeme-processus', 'data-systeme-disque',
-    'data-systeme-fichiers', 'data-systeme-volume', 'data-systeme-echantillons', 'data-systeme-evenements', 'data-systeme-alertes', 'data-espace-jauge',
-    'data-espace-annonce']) {
-    assert.ok(page.includes(m), m);
+  assert.match(page, /data-api=\{url\('api\/'\)\}>/);
+  assert.doesNotMatch(page, /<(?!Base\b)[A-Za-z][^>]*\stitle=/, 'jamais d’infobulle native (le title de <Base> est celui de la page)');
+  // chaque champ a son étiquette
+  for (const [, id] of page.matchAll(/<(?:input|select)[^>]*\sid="([^"]+)"/g)) assert.match(page, new RegExp(`<label for="${id}">`), id);
+  // la version portable ne l'emporte pas (pas de service)
+  assert.match(lire('../../tools/build-artifact.mjs'), /if \(rel\.startsWith\('debug\/'\)\) continue;/);
+});
+
+test('la page : quatre menus déroulants FERMÉS, dans l’ordre Système, Performances, Journaux du serveur, DB, et rien d’autre (demande du 2026-10-15)', () => {
+  const page = lire('../src/pages/debug.astro');
+  // « Il faudra mettre les journaux du serveur dans un menu déroulant fermé de base. Performance et système aussi sont fermés par défaut »
+  assert.match(page, /<details class="debug-bloc debug-systeme" data-debug-systeme hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-systeme-titre">Système<\/h2>/);
+  assert.match(page, /<details class="debug-bloc debug-perfs" data-debug-perfs hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-perfs-titre">Performances<\/h2>/);
+  assert.match(page, /<details class="debug-bloc debug-journaux" data-debug-journaux hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-journaux-titre">Journaux du serveur<\/h2>/);
+  assert.doesNotMatch(page, /<details\b[^>]*\sopen\b/, 'aucun menu ouvert au chargement');
+  // « L'ordre des menus est : 1) Système 2) Performance 3) Journaux 4) DB (ton futur schéma) »
+  const ordre = ['data-debug-systeme', 'data-debug-perfs', 'data-debug-journaux', '<SchemaDeLaBase />'].map((m) => page.indexOf(m));
+  assert.ok(ordre.every((i) => i >= 0));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'Système, Performances, Journaux, DB');
+  // « Tester l'API sera donc supprimé » : ni le testeur, ni son module, ni ses styles
+  const gabarit = page.slice(page.indexOf('---\n\n<Base'));
+  assert.doesNotMatch(gabarit, /testeur|Tester l’API|openapi/i);
+  assert.ok(!existsSync(new URL('../src/lib/debug-api.mjs', import.meta.url)), 'lib/debug-api.mjs supprimé');
+  assert.doesNotMatch(lire('../src/styles/debug/debug.css'), /debug-testeur|debug-op\b|debug-form|debug-curl|debug-reponse|debug-groupe/);
+  // ni ce qui, côté service, ne parlait que de lui (la description OpenAPI reste, pour des outils externes : x-sans-retour le dit au client)
+  assert.doesNotMatch(lire('../serveur/openapi.mjs'), /la page Debug le dit|à côté de la case/);
+  // rien hors des menus : dans la zone du site de dev, après la ligne d'état (et son <noscript>), chaque élément de premier niveau est un menu
+  const zone = page.slice(page.indexOf('<div class="debug" data-debug'), page.indexOf(') : ('));
+  const corps = zone.slice(zone.indexOf('</noscript>') + '</noscript>'.length);
+  const premierNiveau = [...corps.matchAll(/^ {8}<([A-Za-z]+)\b[^>]*>/gm)].map((m) => m[0].trim());
+  assert.deepEqual(premierNiveau.map((b) => b.match(/^<([A-Za-z]+)/)[1]), ['details', 'details', 'details', 'SchemaDeLaBase']);
+  // « Inclus-la directement dans Système » : la jauge de l'espace disque, intacte, DANS le menu Système (son propre titre de section)
+  const systeme = page.slice(page.indexOf('data-debug-systeme'), page.indexOf('data-debug-perfs'));
+  assert.match(systeme, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre">\s*<h3 id="debug-espace-titre">Espace disque du serveur<\/h3>/);
+  assert.match(systeme, /<div class="debug-espace__contenu" data-espace-jauge><\/div>/);
+  assert.equal((page.match(/data-debug-espace/g) ?? []).length, 1);
+  for (const m of ['data-systeme-instance', 'data-systeme-processus', 'data-systeme-disque', 'data-systeme-fichiers', 'data-systeme-volume',
+    'data-systeme-echantillons', 'data-systeme-evenements', 'data-systeme-alertes', 'data-systeme-annonce', 'data-espace-jauge']) {
+    assert.ok(systeme.includes(m), `Système : ${m}`);
   }
-  assert.match(page, /<a class="debug-bouton" data-perfs-export="csv" href=\{url\(`api\/debug\/metriques\/export\/\?instance=dev&periode=\$\{PERIODE_PAR_DEFAUT\}&format=csv`\)\} download>Exporter \(CSV\)<\/a>/);
+  // l'instance se choisit en tête de Système comme de Performances (les deux listes se suivent : scripts/debug.mjs)
+  assert.match(systeme, /<label for="debug-systeme-instance">Instance \(système et performances\)<\/label>\s*<select id="debug-systeme-instance" data-systeme-instance>\s*\{INSTANCES\.map\(/);
+  const perfs = page.slice(page.indexOf('data-debug-perfs'), page.indexOf('data-debug-journaux'));
+  for (const m of ['data-perfs-instance', 'data-perfs-periode', 'data-perfs-tri', 'data-perfs-routes', 'data-perfs-serie', 'data-perfs-pages',
+    'data-perfs-navigateurs', 'data-perfs-origines', 'data-requetes-liste', 'data-requetes-min']) {
+    assert.ok(perfs.includes(m), `Performances : ${m}`);
+  }
+  assert.match(perfs, /<a class="debug-bouton" data-perfs-export="csv" href=\{url\(`api\/debug\/metriques\/export\/\?instance=dev&periode=\$\{PERIODE_PAR_DEFAUT\}&format=csv`\)\} download>Exporter \(CSV\)<\/a>/);
+  const journaux = page.slice(page.indexOf('data-debug-journaux'), page.indexOf('<SchemaDeLaBase />'));
+  for (const m of ['data-journaux-filtres', 'data-journaux-categorie', 'data-journaux-texte', 'data-journaux-min-ms', 'data-journaux-pause',
+    'data-journaux-effacer', 'data-journaux-lignes', 'data-journaux-vide']) {
+    assert.ok(journaux.includes(m), `Journaux : ${m}`);
+  }
   // les listes de la page viennent du module (instances, périodes, tris), les en-têtes du tableau des routes aussi
-  assert.match(page, /INSTANCES\.map\(/);
   assert.match(page, /PERIODES\.map\(/);
   assert.match(page, /TRIS\.map\(/);
   assert.match(page, /COLONNES_DES_ROUTES\.map\(/);
@@ -502,39 +272,189 @@ test('la page : une phrase sans script en production et dans la version portable
   assert.deepEqual(PERIODES.map((p) => p.cle), ['1h', '24h', '7j', '30j', '365j', 'tout']);
   assert.deepEqual(TRIS.slice(0, 9).map((t) => t.cle), ['n', 'moyenne', 'mediane', 'p95', 'p99', 'max', 'total', 'erreurs', 'sql'], 'les tris du service d’abord');
   assert.equal(COLONNES_DES_ROUTES.length, TRIS.length, 'chaque colonne se trie');
-  assert.match(page, /data-api=\{url\('api\/'\)\} data-base=\{url\(\)\}/);
-  assert.doesNotMatch(page, /<(?!Base\b)[A-Za-z][^>]*\stitle=/, 'jamais d’infobulle native (le title de <Base> est celui de la page)');
-  // chaque champ des filtres des journaux a son étiquette
-  for (const [, id] of page.matchAll(/<(?:input|select)[^>]*\sid="([^"]+)"/g)) assert.match(page, new RegExp(`<label for="${id}">`), id);
-  // la version portable ne l'emporte pas (pas de service)
-  assert.match(lire('../../tools/build-artifact.mjs'), /if \(rel\.startsWith\('debug\/'\)\) continue;/);
 });
 
-test('le script de la page n’importe que lib/debug-api.mjs, lib/debug-journaux.mjs et lib/debug-metriques.mjs, qu’aucun autre script de page n’importe', () => {
+test('suivreLOuverture : un menu fermé ne demande rien ; ouvert, une relève aussitôt puis à chaque intervalle ; refermé, plus rien', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const menu = new EventTarget();
+  menu.open = false;
+  const releves = [];
+  suivreLOuverture(menu, RELEVE_METRIQUES_MS, (force) => releves.push(force));
+  const basculer = (open) => {
+    menu.open = open;
+    menu.dispatchEvent(new Event('toggle'));
+  };
+  t.mock.timers.tick(RELEVE_METRIQUES_MS * 3);
+  assert.deepEqual(releves, [], 'fermé au chargement : aucune relève, aucune minuterie');
+  basculer(true);
+  assert.deepEqual(releves, [true], 'à l’ouverture : aussitôt, forcée');
+  t.mock.timers.tick(RELEVE_METRIQUES_MS);
+  t.mock.timers.tick(RELEVE_METRIQUES_MS);
+  assert.deepEqual(releves, [true, false, false], 'puis à chaque intervalle tant qu’il est ouvert');
+  basculer(false);
+  t.mock.timers.tick(RELEVE_METRIQUES_MS * 5);
+  assert.deepEqual(releves, [true, false, false], 'refermé : la minuterie s’arrête');
+  basculer(true);
+  t.mock.timers.tick(RELEVE_METRIQUES_MS);
+  assert.deepEqual(releves, [true, false, false, true, false], 'rouvert : aussitôt, puis une seule minuterie');
+  // un `toggle` venu d'un détail déplié dedans (une requête récente) ne compte pas
+  const autre = new EventTarget();
+  const avant = releves.length;
+  menu.dispatchEvent(Object.defineProperty(new Event('toggle'), 'target', { value: autre }));
+  assert.equal(releves.length, avant);
+  // un menu déjà ouvert quand on le suit : aussitôt
+  const ouvert = new EventTarget();
+  ouvert.open = true;
+  const r2 = [];
+  suivreLOuverture(ouvert, 2000, (force) => r2.push(force));
+  assert.deepEqual(r2, [true]);
+});
+
+test('le script de la page n’importe que lib/debug-journaux.mjs et lib/debug-metriques.mjs, qu’aucun autre script de page n’importe ; un menu fermé ne demande rien', () => {
   const imports = (url) => [...readFileSync(url, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   const scripts = new URL('../src/scripts/', import.meta.url);
-  assert.deepEqual(imports(new URL('debug.mjs', scripts)), ['../lib/debug-api.mjs', '../lib/debug-journaux.mjs', '../lib/debug-metriques.mjs']);
-  assert.deepEqual(imports(new URL('../src/lib/debug-journaux.mjs', import.meta.url)), ['./debug-api.mjs', './debug-metriques.mjs']);
-  assert.deepEqual(imports(new URL('../src/lib/debug-metriques.mjs', import.meta.url)), ['./debug-api.mjs'], 'pas de boucle avec debug-journaux');
-  assert.deepEqual(imports(new URL('../src/lib/debug-api.mjs', import.meta.url)), [], 'sans dépendance');
+  assert.deepEqual(imports(new URL('debug.mjs', scripts)), ['../lib/debug-journaux.mjs', '../lib/debug-metriques.mjs']);
+  assert.deepEqual(imports(new URL('../src/lib/debug-journaux.mjs', import.meta.url)), ['./debug-metriques.mjs']);
+  assert.deepEqual(imports(new URL('../src/lib/debug-metriques.mjs', import.meta.url)), [], 'sans dépendance (pas de boucle avec debug-journaux)');
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'debug.mjs')) {
-    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/debug-(api|journaux|metriques)\.mjs$/.test(m)), [], nom);
+    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/debug-(journaux|metriques)\.mjs$/.test(m)), [], nom);
   }
   const script = lire('../src/scripts/debug.mjs');
   assert.doesNotMatch(script, /\.title\b|getAttribute\('title'\)|setAttribute\('title'/, 'aucune infobulle native');
   assert.match(script, /`\$\{api\}etat\/`/, 'l’état du service d’abord');
   assert.match(script, /etat\.edition !== true/, 'hors du site de dev : la page s’arrête');
-  assert.match(script, /`\$\{api\}v1\/openapi\.json`/);
-  // performances et système : relevés toutes les 30 s au plus, ni onglet caché ni bloc replié ; une réponse périmée (choix changé) ignorée
-  assert.match(script, /setInterval\(\(\) => relever\(\), RELEVE_METRIQUES_MS\)/);
-  assert.match(script, /if \(document\.hidden\) return;/);
-  assert.match(script, /if \(perfs\.open && /);
-  // le système (et la jauge de l'espace disque, tirée de la même réponse) : relevé tant que son bloc est ouvert OU que la jauge, tout en bas, se voit
-  assert.match(script, /const systemeVisible = \(\) => systeme\.open \|\| !espace\.hidden;/);
-  assert.match(script, /if \(systemeVisible\(\) && /);
-  assert.match(script, /espaceJauge\.innerHTML = htmlDeLEspaceDisque\(corps\.disque, /, 'la jauge, de la réponse du système');
+  assert.doesNotMatch(script, /openapi|testeur|Tester l/i, 'plus de testeur');
+  // chaque menu : chargé à son ouverture, relevé tant qu'il est ouvert (30 s, 30 s, 2 s), arrêté à sa fermeture — aucune minuterie hors de suivreLOuverture
+  assert.match(script, /suivreLOuverture\(systeme, RELEVE_METRIQUES_MS, releverLeSysteme\);/);
+  assert.match(script, /suivreLOuverture\(perfs, RELEVE_METRIQUES_MS, releverLesPerfs\);/);
+  assert.match(script, /suivreLOuverture\(section, RELEVE_MS, \(\) => \{/);
+  assert.doesNotMatch(script, /setInterval\(/, 'aucune relève qui tourne menu fermé');
+  // chaque lecture vérifie que son menu est ouvert (un choix ou un délai qui arriverait menu fermé ne demande rien)
+  assert.match(script, /if \(document\.hidden \|\| !perfs\.open\) return;/);
+  assert.match(script, /if \(document\.hidden \|\| !systeme\.open\) return;/);
+  assert.match(script, /if \(fermes\.metriques \|\| !perfs\.open\) return;/);
+  assert.match(script, /if \(fermes\.requetes \|\| !perfs\.open\) return;/);
+  assert.match(script, /if \(fermes\.systeme \|\| !systeme\.open\) return;/);
+  assert.match(script, /if \(enCours \|\| arret \|\| !section\.open\) return;/);
+  // la jauge de l'espace disque : de la réponse du système, dans son menu
+  assert.match(script, /const espaceJauge = champ\(systeme, 'espace-jauge'\);/);
+  assert.match(script, /espaceJauge\.innerHTML = htmlDeLEspaceDisque\(corps\.disque, /);
+  // une instance pour les deux menus : les deux listes se suivent
+  assert.match(script, /const instances = \[champ\(systeme, 'systeme-instance'\), champ\(perfs, 'perfs-instance'\)\];/);
+  assert.match(script, /for \(const autre of instances\) if \(autre !== liste\) autre\.value = liste\.value;/);
   assert.match(script, /if \(numero !== demandes\.metriques\) return;/);
   assert.match(script, /statut === 403/, 'un service qui refuse (pas le site de dev) : la page s’arrête de demander');
+});
+
+/** Un faux élément pour faire tourner scripts/debug.mjs hors d'un navigateur : chaque sélecteur donne toujours le même enfant, rien n'est rendu. */
+class FauxElement extends EventTarget {
+  constructor() {
+    super();
+    Object.assign(this, { open: false, hidden: true, innerHTML: '', textContent: '', value: '', dataset: {}, children: [], options: [], selectedOptions: [], rows: [], scrollTop: 0 });
+    this.classList = { toggle() {}, add() {}, remove() {}, contains: () => false };
+    this.enfants = new Map();
+  }
+
+  querySelector(selecteur) {
+    if (!this.enfants.has(selecteur)) this.enfants.set(selecteur, new FauxElement());
+    return this.enfants.get(selecteur);
+  }
+
+  querySelectorAll() { return []; }
+  closest() { return new FauxElement(); }
+  setAttribute() {}
+  getAttribute() { return null; }
+  toggleAttribute() {}
+  removeAttribute() {}
+  insertAdjacentHTML() {}
+  getBoundingClientRect() { return { top: 0, bottom: 0 }; }
+  contains() { return false; }
+  get lastElementChild() { return null; }
+}
+
+test('le vrai script dans un faux document : menus fermés, AUCUNE requête (choix, boutons, onglet compris) ; ouvert, aussitôt puis relevé ; refermé, arrêté ; l’instance choisie en tête de Système vaut pour Performances sans l’ouvrir', async () => {
+  // « Performance et système aussi sont fermés par défaut » : la liste « Instance » en tête de Système (adaptation : sans elle, changer l'instance
+  // de Système demanderait d'ouvrir Performances, donc de lancer ses relèves) et celle de Performances se suivent, et seul un menu ouvert demande.
+  const racine = new FauxElement();
+  racine.dataset.api = '/api/';
+  const [systeme, perfs, journaux] = ['systeme', 'perfs', 'journaux'].map((nom) => racine.querySelector(`[data-debug-${nom}]`));
+  const liste = { systeme: systeme.querySelector('[data-systeme-instance]'), perfs: perfs.querySelector('[data-perfs-instance]') };
+  liste.systeme.value = INSTANCES[0].cle;
+  liste.perfs.value = INSTANCES[0].cle;
+  perfs.querySelector('[data-perfs-periode]').value = PERIODE_PAR_DEFAUT;
+  const doc = new EventTarget();
+  Object.assign(doc, { hidden: false, querySelector: (s) => (s === '[data-debug]' ? racine : null), getSelection: () => null });
+  const appels = [];
+  const minuteries = new Map();
+  let numero = 0;
+  const reponse = (status, corps) => ({ ok: status >= 200 && status < 300, status, json: async () => corps });
+  const avant = { document: globalThis.document, fetch: globalThis.fetch, setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+  Object.assign(globalThis, {
+    document: doc,
+    fetch: async (adresse) => {
+      appels.push(String(adresse));
+      return String(adresse) === '/api/etat/' ? reponse(200, { edition: true, version: '0.0.0' }) : reponse(404, { erreur: 'rien pour l’essai' });
+    },
+    setInterval: (f, ms) => (minuteries.set(++numero, ms), numero),
+    clearInterval: (id) => minuteries.delete(id),
+  });
+  const attendre = async () => { for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r)); };
+  /** Les requêtes parties pendant `geste` (attendues : tout ce qui suit les promesses du script). */
+  const pendant = async (geste) => {
+    appels.length = 0;
+    geste();
+    await attendre();
+    return [...appels];
+  };
+  const basculer = (menu, ouvert) => () => {
+    menu.open = ouvert;
+    menu.dispatchEvent(new Event('toggle'));
+  };
+  const choisir = (champ, valeur) => () => {
+    champ.value = valeur;
+    champ.dispatchEvent(new Event('change'));
+  };
+  try {
+    assert.deepEqual(await pendant(() => import(new URL('../src/scripts/debug.mjs?faux-document', import.meta.url))), ['/api/etat/'], 'au chargement : l’état du service, rien d’autre');
+    assert.equal(minuteries.size, 0, 'aucune minuterie, menus fermés');
+    assert.deepEqual([systeme.hidden, perfs.hidden, journaux.hidden], [false, false, false], 'les menus se montrent (fermés)');
+    // menus fermés : ni un choix, ni un bouton, ni l'onglet qui redevient visible ne demandent quoi que ce soit
+    assert.deepEqual(await pendant(() => {
+      choisir(liste.systeme, 'prod')();
+      choisir(perfs.querySelector('[data-perfs-periode]'), '7j')();
+      perfs.querySelector('[data-perfs-actualiser]').dispatchEvent(new Event('click'));
+      doc.dispatchEvent(new Event('visibilitychange'));
+      for (let i = 0; i < 2; i++) journaux.querySelector('[data-journaux-pause]').dispatchEvent(new Event('click'));
+    }), [], 'menus fermés : aucune requête');
+    assert.equal(liste.perfs.value, 'prod', 'l’instance choisie dans Système passe à Performances');
+    // Système ouvert : aussitôt, l'instance choisie, sans rien demander pour Performances (resté fermé) ; puis toutes les 30 s
+    assert.deepEqual(await pendant(basculer(systeme, true)), [adresseDuSysteme('/api/', 'prod')]);
+    assert.deepEqual([...minuteries.values()], [RELEVE_METRIQUES_MS]);
+    assert.deepEqual(await pendant(choisir(liste.systeme, 'dev')), [adresseDuSysteme('/api/', 'dev')], 'changer l’instance de Système ne lance pas Performances');
+    assert.equal(liste.perfs.value, 'dev');
+    assert.deepEqual(await pendant(basculer(systeme, false)), []);
+    assert.equal(minuteries.size, 0, 'refermé : sa minuterie s’arrête');
+    // Performances ouvert : ses deux lectures, l'instance et la période choisies menu fermé ; un choix d'instance n'y relève pas Système fermé
+    const metriques = adresseDesMetriques('/api/', { instance: 'dev', periode: '7j', tri: TRI_PAR_DEFAUT });
+    assert.deepEqual(await pendant(basculer(perfs, true)), [metriques, adresseDesRequetes('/api/')]);
+    assert.deepEqual([...minuteries.values()], [RELEVE_METRIQUES_MS]);
+    assert.deepEqual(await pendant(choisir(liste.perfs, 'prod')), [adresseDesMetriques('/api/', { instance: 'prod', periode: '7j', tri: TRI_PAR_DEFAUT })],
+      'la production : ses métriques, ni requêtes une à une ni Système (fermé)');
+    assert.equal(liste.systeme.value, 'prod', 'et l’instance choisie dans Performances passe à Système');
+    await pendant(basculer(perfs, false));
+    assert.equal(minuteries.size, 0);
+    // Journaux ouvert : aussitôt, puis toutes les 2 s ; refermé, plus rien
+    assert.deepEqual(await pendant(basculer(journaux, true)), [adresseDuJournal('/api/')]);
+    assert.deepEqual([...minuteries.values()], [RELEVE_MS]);
+    await pendant(basculer(journaux, false));
+    assert.equal(minuteries.size, 0);
+    assert.deepEqual(await pendant(() => doc.dispatchEvent(new Event('visibilitychange'))), [], 'tout refermé : plus rien');
+  } finally {
+    for (const [nom, valeur] of Object.entries(avant)) {
+      if (valeur === undefined) delete globalThis[nom];
+      else globalThis[nom] = valeur;
+    }
+  }
 });
 
 test('la CI construit aussi le site de production et y relance ce contrôle (sinon sa branche « production » ne tournerait jamais)', () => {
@@ -552,44 +472,67 @@ test('la CI construit aussi le site de production et y relance ce contrôle (sin
 const dist = new URL('../dist/', import.meta.url);
 const construit = existsSync(new URL('index.html', dist)) ? {} : { skip: 'site non construit (npm run build)' };
 
-test('site construit : /debug/ selon le mode — testeur fermé, journaux et script hors production ; une phrase et rien au menu en production', construit, () => {
+test('site construit : /debug/ selon le mode — quatre menus fermés (Système, Performances, Journaux, DB) et leurs scripts hors production ; une phrase et rien au menu en production', construit, () => {
   const html = readFileSync(new URL('debug/index.html', dist), 'utf8');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   const outils = html.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   const auMenu = /<a href="\/debug\/"[^>]*>Debug<\/a>/.test(outils);
   if (main.includes('class="debug-reservee"')) {
-    // build de production (SITE_MODE=prod ; la CI en fait un : ci.yml) : ni entrée de menu, ni testeur, ni son script — dans toute la page, pas
+    // build de production (SITE_MODE=prod ; la CI en fait un : ci.yml) : ni entrée de menu, ni menus, ni leurs scripts — dans toute la page, pas
     // seulement dans <main> : un composant qui poserait le script hors de la condition `actif` l'y ferait charger. Astro construit le script même
-    // quand la page ne le pose pas (dist/_astro/) : on le reconnaît à ce qu'il lit (la description de l'API, le journal), et aucune page ne doit le
-    // charger.
+    // quand la page ne le pose pas (dist/_astro/) : on le reconnaît à ce qu'il lit (le journal, les métriques, le système, les tables), et aucune
+    // page ne doit le charger.
     assert.match(main, /<p class="debug-reservee">Cette page est réservée au serveur de dev\.<\/p>/);
-    assert.doesNotMatch(html, /data-debug\b|data-journaux|data-testeur/);
+    assert.doesNotMatch(html, /data-debug\b|data-journaux|data-debug-systeme|data-debug-perfs/);
+    // ni le menu « DB », ni la structure de la base (JSON), ni sa fenêtre
+    assert.doesNotMatch(html, /data-debug-schema|data-schema-cadre|data-schema-dialogue|schema-contenu/);
     assert.equal(auMenu, false, 'pas au menu en production');
     const accueil = readFileSync(new URL('index.html', dist), 'utf8');
     assert.doesNotMatch(accueil, /href="\/debug\/"/, 'ni au menu de l’accueil');
     const duDebug = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js'))
-      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['v1/openapi.json', 'debug/journal/', 'debug/metriques/', 'debug/systeme/'].some((a) => code.includes(a)); });
+      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/'].some((a) => code.includes(a)); });
     for (const page of [html, accueil]) {
       const charges = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].split('/').at(-1));
-      assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'le script du testeur ou des journaux chargé en production');
+      assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'un script de la page Debug chargé en production');
     }
     return;
   }
   assert.equal(auMenu, true, 'au menu Outils du site de dev');
-  assert.match(main, /<div class="debug" data-debug data-api="\/api\/" data-base="\/">/);
-  assert.match(main, /<details class="debug-testeur" data-debug-testeur hidden>/, 'le testeur, fermé (et caché tant que le service n’a pas répondu)');
-  assert.ok(main.indexOf('data-debug-testeur') < main.indexOf('data-debug-journaux'));
-  assert.match(main, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>/, 'Performances, ouvert (caché tant que le service n’a pas répondu)');
-  assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>/);
-  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => main.indexOf(m));
-  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'l’espace disque tout en bas');
+  assert.match(main, /<div class="debug" data-debug data-api="\/api\/">/);
+  // quatre menus déroulants fermés, dans l'ordre ; Système, Performances et Journaux cachés tant que le service n'a pas répondu, DB visible
+  assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme hidden>/);
+  assert.match(main, /<details class="debug-bloc debug-perfs" data-debug-perfs hidden>/);
+  assert.match(main, /<details class="debug-bloc debug-journaux" data-debug-journaux hidden>/);
+  assert.match(main, /<details class="debug-bloc debug-schema" data-schema-cadre data-api="\/api\/">/, 'DB, fermé (ni open ni hidden)');
+  assert.doesNotMatch(main, /<details\b[^>]*\sopen\b/, 'aucun menu ouvert au chargement');
+  const ordre = ['data-debug-systeme', 'data-debug-perfs', 'data-debug-journaux', 'data-schema-cadre'].map((m) => main.indexOf(m));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'Système, Performances, Journaux, DB');
+  assert.equal((main.match(/<details class="debug-bloc /g) ?? []).length, 4, 'quatre menus, rien d’autre');
+  assert.doesNotMatch(main, /data-debug-testeur|data-testeur|Tester l’API/, 'plus de testeur');
+  assert.match(main, /<h2 class="debug-bloc__titre" id="debug-schema-titre">DB<\/h2>\s*<span class="debug-bloc__resume">Schéma de la base : \d+ tables, \d+ vues, \d+ clés étrangères<\/span>/);
+  // la jauge de l'espace disque, dans Système
+  const systeme = main.slice(main.indexOf('data-debug-systeme'), main.indexOf('data-debug-perfs'));
+  assert.match(systeme, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre">/);
+  assert.match(systeme, /<select id="debug-systeme-instance" data-systeme-instance><option value="dev" selected>Site de dev<\/option><option value="prod">Production<\/option><\/select>/);
+  // DB : la structure du build en JSON, relue telle quelle ; sa fenêtre et son script
+  const json = main.match(/<script type="application\/json" data-debug-schema>([^<]*)<\/script>/);
+  assert.ok(json, 'la structure du schéma, en JSON');
+  const structure = JSON.parse(json[1]);
+  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 192);
+  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 35);
+  assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
+  assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
+  assert.match(main, /<div class="schema-carte" data-schema-carte data-detail="loin" role="application" aria-roledescription="schéma de la base"/);
   assert.match(main, /<option value="dev" selected>Site de dev<\/option><option value="prod">Production<\/option>/, 'deux instances, jamais mélangées');
   assert.match(main, /<th scope="col" aria-sort="descending"><button type="button" class="debug-tri" data-tri-colonne="moyenne">Moyenne<\/button><\/th>/, 'trié par moyenne décroissante');
   assert.match(main, /href="\/api\/debug\/metriques\/export\/\?instance=dev&amp;periode=24h&amp;format=csv" download>Exporter \(CSV\)<\/a>/);
   assert.match(main, /<script type="module"/, 'le script de la page');
-  // le script construit est bien celui qui lit la description et le journal (le contrôle de production le cherche par ces adresses)
+  // les scripts construits : celui des trois premiers menus (qui lit le journal, les métriques et le système) et celui de DB
   const construits = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js')).map((n) => readFileSync(new URL(`_astro/${n}`, dist), 'utf8'));
-  assert.ok(construits.some((code) => code.includes('v1/openapi.json') && code.includes('debug/journal/') && code.includes('debug/metriques/') && code.includes('debug/systeme/')),
+  assert.ok(construits.some((code) => code.includes('debug/journal/') && code.includes('debug/metriques/') && code.includes('debug/systeme/')),
     'le script de la page Debug dans dist/_astro/');
+  assert.ok(!construits.some((code) => code.includes('v1/openapi.json')), 'plus de testeur (rien ne lit la description OpenAPI)');
+  assert.ok(construits.some((code) => code.includes('debug/tables/') && code.includes('data-schema-monde')), 'le script du schéma dans dist/_astro/');
+  assert.equal((main.match(/<script type="module"/g) ?? []).length, 2, 'les deux scripts de la page (menus et schéma), aucun module partagé');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

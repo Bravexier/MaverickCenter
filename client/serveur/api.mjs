@@ -47,6 +47,10 @@
 //                                   X-Export-Tronque sinon) : ?instance=&periode=&format=csv|json
 //   GET  /api/debug/systeme/        processus, disque et sa répartition par type de données (jauge), fichiers, échantillons par minute, évènements,
 //                                   volume des métriques et alertes : ?instance=&periode=
+//   GET  /api/debug/tables/         chaque table et vue de la base vivante : { tables: [{ nom, genre, lignes }] } (menu « DB » de la page Debug ;
+//                                   serveur/debug-tables.mjs, ni tables internes sqlite_… ni tables FTS5)
+//   GET  /api/debug/tables/<nom>/   une page de ses lignes, en lecture seule : ?limite=1..500 (100)&decalage=&tri=<colonne>&ordre=asc|desc →
+//                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés)
 // Mesure des pages vues, sur les DEUX instances (décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ;
 // MAVERICK_METRIQUES_PAGES=0 la ferme : 403) — chaque instance l'écrit dans SA base des métriques, jamais dans la base vivante :
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
@@ -71,6 +75,7 @@ import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
 import { traiterApiV1 } from './ressources.mjs';
 import { BALISE, ErreurMetriques } from './metriques.mjs';
+import { ErreurTables, lireTable, listerTables } from './debug-tables.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -269,19 +274,29 @@ function parametres(params, noms) {
 }
 
 /**
- * Les routes /api/debug/… (page Debug, site de dev seulement ; 403 ailleurs, avant tout 404) :
+ * Les routes /api/debug/… (page Debug, site de dev seulement ; 403 ailleurs, avant tout 404 et 405) :
  *   GET /api/debug/journal/ : les entrées du journal du service gardé en mémoire qui suivent ?depuis=<n>, filtrées (?niveau=, ?categorie= : une
  *     valeur, « a,b » ou répétée ; ?q= ; ?limite= ; ?min_ms=) — journal-du-service.mjs#lire, tel quel ;
- *   GET /api/debug/metriques/, …/requetes/, …/export/ et /api/debug/systeme/ : les métriques (serveur/metriques.mjs).
+ *   GET /api/debug/metriques/, …/requetes/, …/export/ et /api/debug/systeme/ : les métriques (serveur/metriques.mjs) ;
+ *   GET /api/debug/tables/ et /api/debug/tables/<nom>/ : le contenu des tables de la base vivante, en lecture seule (serveur/debug-tables.mjs).
  */
 function traiterDebug(service, action, reste, permis, params) {
   if (!service.edition) {
-    return erreur(403, action === 'journal' ? 'Le journal du service ne se lit que sur le site de dev (page Debug).' : 'Les métriques ne se lisent que sur le site de dev (page Debug).');
+    const quoi = action === 'journal' ? 'Le journal du service ne se lit'
+      : action === 'tables' ? 'Le contenu des tables ne se lit' : 'Les métriques ne se lisent';
+    // décision du propriétaire (2026-10-15) : en production, la base ne s'ouvre que par les pages du site
+    return erreur(403, `${quoi} que sur le site de dev (page Debug).`);
   }
   const metriques = action === 'metriques' && (!reste.length || (reste.length === 1 && ['requetes', 'export'].includes(reste[0])));
-  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length)) return erreur(404, 'Adresse inconnue.');
+  const tables = action === 'tables' && reste.length <= 1;
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
+  if (tables) {
+    const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+    if (indisponible) return indisponible;
+    return repondre(ErreurTables, () => json(200, reste.length ? lireTable(db, reste[0], params) : { tables: listerTables(db) }));
+  }
   if (action === 'journal') {
     if (!service.journalDuService) return erreur(503, 'Le journal du service n’est pas disponible.');
     const filtres = {};

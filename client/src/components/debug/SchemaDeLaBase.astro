@@ -1,0 +1,134 @@
+---
+// Menu « DB » de la page Debug, le schéma de la base (pages/debug.astro, le dernier des quatre menus, après « Journaux du serveur » ; demande du
+// propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un mappage vectoriel des tables. Ce cadre peut aussi être déroulé, masqué par défaut.
+// Dans le cadre j'aimerais pouvoir zoomer et dézoomer pour voir une représentation de l'ensemble des tables de la base, et des liens entre elles. Les
+// tables montreraient une liste de toutes les colonnes et des liens pour les FK vers une autre table, ainsi que le type de données. D'un double clic
+// sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable). » ; puis « L'ordre des menus est : 1) Système
+// 2) Performance 3) Journaux 4) DB (ton futur schéma) » : titre « DB », une sous-ligne dit que c'est le schéma de la base).
+//
+//   - un <details> FERMÉ par défaut ; le schéma n'est dessiné qu'à sa première ouverture (scripts/debug-schema.mjs), et la base vivante n'est lue
+//     qu'alors (nombre de lignes, une fois) ;
+//   - la structure (tables, vues, colonnes, types, clés, clés étrangères, sections, descriptions, nombre de lignes au build) est calculée AU BUILD
+//     (lib/schema-structure.mjs, depuis la base construite et data/schema.sql) et posée en JSON dans un élément script de type
+//     application/json marqué data-debug-schema — jamais dans un build SITE_MODE=prod ni dans la version portable : le composant n'y rend rien (et pages/debug.astro ne
+//     l'y appelle pas) ;
+//   - le contenu d'une table (double clic, Entrée, appui long) vient du service du site de dev : GET <base>api/debug/tables/<nom>/ (403 ailleurs),
+//     affiché dans une fenêtre modale (<dialog>) ;
+//   - la carte est une « application » (role="application") : elle se parcourt au clavier, table par table (roving tabindex), chaque table étant un
+//     bouton étiqueté « table X, N colonnes, N lignes » qui ouvre la fenêtre ; l'aide des touches est liée par aria-describedby ;
+//   - boîtes en HTML et liens en SVG dans un même conteneur, zoomé par une transformation CSS (lib/debug-schema.mjs, « Rendu » : un texte SVG serait
+//     remis en page à chaque changement d'échelle).
+// CSS : styles/debug/schema.css, inséré ici (?raw). Rendu et calculs : lib/debug-schema.mjs (pur, testé par test/debug-schema.test.mjs).
+import schemaCss from '../../styles/debug/schema.css?raw';
+import packageInfo from '../../../package.json';
+import { modeDuSite } from '../../lib/mode-site.mjs';
+import { jsonPourLaPage, structureDeLaBase } from '../../lib/schema-structure.mjs';
+import { resumeDuSchema, tablesCommunes } from '../../lib/debug-schema.mjs';
+import { url } from '../../lib/wiki';
+
+const site = modeDuSite(process.env, packageInfo.version);
+const actif = !site.prod && process.env.INLINE_CSS !== '1';
+const structure = actif ? structureDeLaBase() : null;
+const compteCles = structure ? structure.tables.reduce((n, t) => n + t.cles_etrangeres.length, 0) : 0;
+const communes = structure ? tablesCommunes(structure) : [];
+---
+
+{
+  structure && (
+    <>
+      <style is:inline set:html={schemaCss}></style>
+      <details class="debug-bloc debug-schema" data-schema-cadre data-api={url('api/')}>
+        <summary>
+          <h2 class="debug-bloc__titre" id="debug-schema-titre">DB</h2>
+          <span class="debug-bloc__resume">Schéma de la base : {resumeDuSchema(structure)}</span>
+        </summary>
+        <div class="debug-bloc__contenu">
+          <p class="debug-petit">
+            Toutes les tables de la base, rangées par section de <code>data/schema.sql</code>, avec leurs colonnes, leurs types et un lien par clé
+            étrangère (structure du build ; nombre de lignes <span data-schema-comptes>du build</span>). Double-cliquez sur une table (Entrée au clavier,
+            appui long au toucher) pour en voir le contenu dans la base vivante du service.
+          </p>
+          <div class="schema-outils">
+            <div class="schema-outils__recherche">
+              <label for="schema-recherche">Chercher une table</label>
+              <input type="search" id="schema-recherche" data-schema-recherche list="schema-noms" placeholder="nom de table…" autocomplete="off" spellcheck="false" />
+              <datalist id="schema-noms" data-schema-noms></datalist>
+            </div>
+            <label class="schema-outils__case"><input type="checkbox" data-schema-vues /> Montrer les vues</label>
+            {
+              communes.length > 0 && (
+                <label class="schema-outils__case">
+                  <input type="checkbox" data-schema-communs checked /> Liens vers {communes.map((c, i) => <>{i > 0 && ', '}<code>{c.nom}</code></>)} ({communes.reduce((n, c) => n + c.liens, 0)})
+                </label>
+              )
+            }
+          </div>
+          <div class="schema-vue" data-schema-vue>
+            <div
+              class="schema-carte"
+              data-schema-carte
+              data-detail="loin"
+              role="application"
+              aria-roledescription="schéma de la base"
+              aria-label={`Schéma de la base : ${structure.tables.length} tables et vues, ${compteCles} clés étrangères`}
+              aria-describedby="schema-aide"
+            >
+              <div class="schema-monde" data-schema-monde></div>
+            </div>
+            <div class="schema-commandes" role="toolbar" aria-label="Zoom du schéma">
+              <button type="button" data-schema-zoom="plus" aria-label="Zoomer">+</button>
+              <button type="button" data-schema-zoom="moins" aria-label="Dézoomer">−</button>
+              <button type="button" data-schema-zoom="tout">Tout voir</button>
+              <button type="button" data-schema-agrandir aria-pressed="false">Plein cadre</button>
+            </div>
+            <p class="schema-vue__attente" data-schema-attente>Le schéma se dessine à l’ouverture du cadre…</p>
+            <ul class="schema-cles" data-schema-cles role="menu" aria-label="Clés étrangères" hidden></ul>
+            <p class="schema-vue__conseil" data-schema-conseil aria-hidden="true" hidden>Ctrl + molette pour zoomer (ou cliquez d’abord dans le schéma)</p>
+            {/* par-dessus la carte, en bas : un message ne déplace jamais la carte sous le pointeur */}
+            <p class="schema-annonce" data-schema-annonce role="status" aria-live="polite"></p>
+          </div>
+          <p class="debug-petit schema-aide" id="schema-aide">
+            Souris : molette pour zoomer autour du pointeur une fois le schéma activé (un clic dedans ; sinon Ctrl + molette, la molette seule
+            faisant défiler la page), glisser pour déplacer, survol d’une table pour éclairer ses liens, clic sur la pastille d’une clé étrangère pour
+            aller à la table visée, double clic pour le contenu. Toucher : deux doigts pour zoomer, appui long pour le contenu. Clavier (sur une
+            table) : flèches pour la table voisine, Maj + flèches pour déplacer la vue, + et − pour zoomer, 0 pour tout voir, L pour la liste de ses
+            clés étrangères, Entrée pour le contenu. Échap pour quitter le plein cadre.
+          </p>
+          <ul class="schema-legende" aria-label="Légende">
+            <li><span class="schema-marque schema-marque--pk">PK</span> clé primaire</li>
+            <li><span class="schema-marque schema-marque--fk" aria-hidden="true"></span> clé étrangère (lien vers la table visée ; clic sur la pastille : y aller)</li>
+            <li><span class="schema-marque schema-marque--nn">NN</span> non nul</li>
+            <li><span class="schema-marque schema-marque--derivee" aria-hidden="true"></span> table dérivée (recalculée par le build)</li>
+            <li><span class="schema-marque schema-marque--vue" aria-hidden="true"></span> vue (masquée par défaut)</li>
+          </ul>
+          <noscript><p class="debug-attente">Le schéma est dessiné dans le navigateur : cette page demande JavaScript.</p></noscript>
+        </div>
+      </details>
+      <dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">
+        <div class="schema-contenu__cadre">
+          <header class="schema-contenu__entete">
+            <h3 class="schema-contenu__titre" id="schema-contenu-titre">Contenu de <code data-schema-contenu-nom></code></h3>
+            <p class="schema-contenu__resume" data-schema-contenu-resume role="status" aria-live="polite"></p>
+            <button type="button" class="schema-contenu__fermer" data-schema-fermer>Fermer</button>
+          </header>
+          <p class="debug-annonce debug-annonce--erreur schema-contenu__erreur" data-schema-contenu-erreur role="alert" hidden></p>
+          <div class="schema-contenu__defilement" data-schema-contenu-defilement tabindex="0" role="region" aria-labelledby="schema-contenu-titre">
+            <table class="schema-contenu__tableau">
+              <thead data-schema-contenu-entetes></thead>
+              <tbody data-schema-contenu-lignes></tbody>
+            </table>
+            <div class="schema-contenu__sentinelle" data-schema-contenu-sentinelle></div>
+          </div>
+          <footer class="schema-contenu__pied">
+            <span class="schema-contenu__aide">Un en-tête trie le tableau ; une cellule coupée (fondu) se déplie d’un clic, ou d’Entrée au clavier. Lecture seule.</span>
+            <button type="button" data-schema-plus hidden>Charger plus</button>
+          </footer>
+        </div>
+      </dialog>
+      <script is:inline type="application/json" data-debug-schema set:html={jsonPourLaPage(structure)}></script>
+      <script>
+        import '../../scripts/debug-schema.mjs';
+      </script>
+    </>
+  )
+}

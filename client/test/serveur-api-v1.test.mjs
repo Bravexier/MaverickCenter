@@ -20,7 +20,7 @@ import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { capacitesDe, MODULES, RESSOURCES, segmentDeCle, tablesDe } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { htmlDuFormulaire, operationsDe, requeteDe } from '../src/lib/debug-api.mjs';
+import { operationsDe, requeteDe } from './aide-openapi.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
@@ -182,7 +182,7 @@ test('description OpenAPI 3.1 : chaque ressource a ses chemins, chaque méthode 
   assert.ok(creer.example.nom);
 });
 
-test('les exemples de la description servent tels quels au testeur de la page Debug (src/lib/debug-api.mjs) : chaque lecture répond 200, chaque modification d’exemple ne change rien', () => {
+test('les exemples de la description servent tels quels (un client qui les enverrait sans rien changer : test/aide-openapi.mjs) : chaque lecture répond 200, chaque modification d’exemple ne change rien', () => {
   const spec = ok(appel('GET', '/api/v1/openapi.json'));
   /** La table d'une opération : celle de l'enfant (« /v1/<res>/{cle}/<enfant>/… »), sinon celle de la ressource. */
   const tableDe = (chemin_) => {
@@ -209,26 +209,24 @@ test('les exemples de la description servent tels quels au testeur de la page De
   assert.ok(lectures > RESSOURCES.length * 2, `${lectures} lectures`);
 });
 
-test('page Debug : aucun DELETE n’arrive prérempli avec la clé d’une ligne réelle ; une création qu’aucune suppression ne défait n’a pas de corps d’exemple ; chaque écriture sans retour le dit', () => {
+test('description : aucun DELETE n’a pour exemple la clé d’une ligne réelle ; une création qu’aucune suppression ne défait n’a pas de corps d’exemple ; chaque écriture sans retour le dit (x-sans-retour)', () => {
   const spec = ok(appel('GET', '/api/v1/openapi.json'));
   const operations = operationsDe(spec);
   const suppressions = operations.filter((o) => o.methode === 'DELETE' && o.chemin.startsWith('/v1/'));
   assert.ok(suppressions.length > 10, `${suppressions.length} suppressions`);
   for (const op of suppressions) {
     for (const p of op.parametres.filter((x) => x.dans === 'path')) assert.equal(p.exemple, '', `${op.id} : {${p.nom}} sans exemple`);
-    const html = htmlDuFormulaire(op, 'x');
-    for (const [, valeur] of html.matchAll(/data-param-dans="path"[^>]*\svalue="([^"]*)"/g)) assert.equal(valeur, '', `${op.id} : champ de chemin vide`);
-    // envoyée telle quelle, la page ne part pas : une clé manque
+    // envoyée telle quelle (ses exemples), elle ne peut pas partir : une clé manque
     assert.ok(requeteDe(op, { valeurs: { path: {} } }).erreurs.some((e) => /manquant/.test(e)), op.id);
-    // une suppression d'entité ne se défait pas : la page le dit ; une ligne retirée par une opération du lot se repose (POST)
+    // une suppression d'entité ne se défait pas : la description le dit ; une ligne retirée par une opération du lot se repose (POST)
     const parOperation = /opération « [a-z_]+ » du lot/.test(op.description);
     assert.equal(Boolean(op.sansRetour), !parOperation, `${op.id} : x-sans-retour`);
-    if (!parOperation) assert.match(html, /sans retour possible\./);
+    if (!parOperation) assert.match(op.sansRetour, /^Suppression définitive : rien ne la défait/, op.id);
   }
   // les lectures et modifications gardent leur exemple réel (le test suivant les rejoue)
   assert.ok(operations.find((o) => o.id === 'lire_metiers').parametres.find((p) => p.nom === 'cle').exemple);
   assert.ok(operations.find((o) => o.id === 'modifier_metiers').parametres.find((p) => p.nom === 'cle').exemple);
-  // une création sans suppression : pas de corps prêt à l'envoi, et la page le dit
+  // une création sans suppression : pas de corps prêt à l'envoi, et la description le dit
   const catalogue = ok(appel('GET', '/api/v1/'));
   const sansSuppression = catalogue.ressources.filter((r) => r.capacites.creer && !r.capacites.supprimer).map((r) => `creer_${r.cle.replace(/-/g, '_')}`);
   assert.ok(['creer_races', 'creer_classes', 'creer_peuples'].every((id) => sansSuppression.includes(id)), sansSuppression.join(', '));
@@ -237,12 +235,11 @@ test('page Debug : aucun DELETE n’arrive prérempli avec la clé d’une ligne
     assert.equal(op.corps.exemple, '', `${id} : pas de corps d’exemple`);
     assert.match(op.sansRetour, /Création définitive/, id);
     assert.equal(requeteDe(op, { corps: op.corps.exemple }).erreurs.join(' '), 'Corps de la requête manquant.', `${id} : rien ne part tel quel`);
-    assert.match(htmlDuFormulaire(op, 'c'), /<p class="debug-form__sans-retour" id="c-sans-retour">Création définitive/);
   }
   // une création qui se défait garde son exemple
   assert.ok(JSON.parse(operations.find((o) => o.id === 'creer_metiers').corps.exemple).nom);
   assert.equal(operations.find((o) => o.id === 'creer_metiers').sansRetour, null);
-  // un filtre de liste répété (l'une OU l'autre) ou vide (colonne vide), comme la description l'annonce, part du testeur et le service le sert
+  // un filtre de liste répété (l'une OU l'autre) ou vide (colonne vide), comme la description l'annonce : le service le sert
   const lister = operations.find((o) => o.id === 'lister_metiers');
   const filtre = lister.parametres.find((p) => p.nom === 'test_carac_1_id');
   assert.deepEqual([filtre.repetable, filtre.videPermis], [true, true]);

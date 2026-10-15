@@ -1,5 +1,6 @@
-/* Page Debug (/debug/, site de dev seulement) : testeur de l'API « façon Swagger » (lib/debug-api.mjs), performances et système
-   (lib/debug-metriques.mjs) et journaux du service (lib/debug-journaux.mjs), menés par scripts/debug.mjs. Inséré par pages/debug.astro (?raw).
+/* Page Debug (/debug/, site de dev seulement) : quatre menus déroulants fermés — Système (et l'espace disque du serveur), Performances
+   (lib/debug-metriques.mjs), Journaux du serveur (lib/debug-journaux.mjs), menés par scripts/debug.mjs, et DB (le schéma de la base :
+   styles/debug/schema.css). Inséré par pages/debug.astro (?raw).
    Tons du site (styles/global/base.css) ; une couleur par méthode HTTP, par niveau de journal et par série de courbe, claire et sombre. */
 .debug {
   --dbg-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
@@ -8,13 +9,9 @@
   --dbg-post: #1f7a45;
   --dbg-post-fond: #e3f4ea;
   --dbg-put: #8a5300;
-  --dbg-put-fond: #fbefd9;
   --dbg-patch: #6a3d9a;
-  --dbg-patch-fond: #efe6f7;
   --dbg-delete: #b3261e;
-  --dbg-delete-fond: #fbe6e4;
   --dbg-autre: var(--muted);
-  --dbg-autre-fond: var(--accent-soft);
   --dbg-erreur-fond: #fbe6e4;
   --dbg-serie-0: #1f5f9e;
   --dbg-serie-1: #b3261e;
@@ -46,9 +43,9 @@
   :root:not([data-theme="light"]) .debug {
     --dbg-get: #8ec1f0; --dbg-get-fond: #182838;
     --dbg-post: #7fd3a0; --dbg-post-fond: #18301f;
-    --dbg-put: #f0c27a; --dbg-put-fond: #382a14;
-    --dbg-patch: #c9a6ef; --dbg-patch-fond: #2a1e38;
-    --dbg-delete: #f2a19a; --dbg-delete-fond: #3a1d1b;
+    --dbg-put: #f0c27a;
+    --dbg-patch: #c9a6ef;
+    --dbg-delete: #f2a19a;
     --dbg-erreur-fond: #3a1d1b;
     --dbg-serie-0: #8ec1f0; --dbg-serie-1: #f2a19a;
     --dbg-lent-fond: #382a14; --dbg-tres-lent-fond: #3a1d1b;
@@ -62,9 +59,9 @@
 :root[data-theme="dark"] .debug {
   --dbg-get: #8ec1f0; --dbg-get-fond: #182838;
   --dbg-post: #7fd3a0; --dbg-post-fond: #18301f;
-  --dbg-put: #f0c27a; --dbg-put-fond: #382a14;
-  --dbg-patch: #c9a6ef; --dbg-patch-fond: #2a1e38;
-  --dbg-delete: #f2a19a; --dbg-delete-fond: #3a1d1b;
+  --dbg-put: #f0c27a;
+  --dbg-patch: #c9a6ef;
+  --dbg-delete: #f2a19a;
   --dbg-erreur-fond: #3a1d1b;
   --dbg-serie-0: #8ec1f0; --dbg-serie-1: #f2a19a;
   --dbg-lent-fond: #382a14; --dbg-tres-lent-fond: #3a1d1b;
@@ -82,98 +79,20 @@
 .debug-etat { margin: 0 0 1rem; color: var(--muted); }
 .debug-etat--erreur { color: var(--danger); font-weight: bold; }
 
-/* Testeur : un menu déroulant fermé par défaut */
-.debug-testeur { margin: 0 0 2rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.debug-testeur > summary {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem;
-  padding: 0.7rem 1rem; cursor: pointer; font-size: 1.2rem; font-weight: bold;
-}
-.debug-testeur[open] > summary { border-bottom: 1px solid var(--border); }
-.debug-testeur__compte { font-size: 0.85rem; font-weight: normal; color: var(--muted); }
-.debug-testeur__contenu { padding: 0.8rem 1rem 1rem; }
-.debug-avertissement { margin: 0 0 0.8rem; padding: 0.5rem 0.8rem; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-text); }
-.debug-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; margin: 0 0 0.8rem; }
-.debug-filtre input { flex: 1 1 14rem; min-width: 0; }
-.debug-filtre__resume { font-size: 0.85rem; color: var(--muted); }
-.debug-attente { color: var(--muted); font-style: italic; }
-.debug-attente--erreur { color: var(--danger); font-style: normal; }
-
-.debug-groupe { margin: 0.4rem 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
-.debug-groupe > summary { padding: 0.45rem 0.8rem; cursor: pointer; }
-.debug-groupe[open] > summary { border-bottom: 1px solid var(--border); }
-.debug-groupe__nom { font-weight: bold; }
-.debug-groupe__compte {
-  display: inline-block; min-width: 1.6rem; padding: 0 0.4rem; border-radius: var(--radius-pill);
-  background: var(--accent-soft); color: var(--accent); font-size: 0.8rem; text-align: center;
-}
-.debug-groupe__description { display: block; margin-top: 0.1rem; font-size: 0.85rem; color: var(--muted); }
-.debug-ops { margin: 0; padding: 0.3rem 0.5rem; list-style: none; }
-.debug-ops > li { margin: 0.3rem 0; }
-
-.debug-op { --m: var(--dbg-autre); --m-fond: var(--dbg-autre-fond); border: 1px solid var(--m); border-radius: var(--radius-sm); background: var(--m-fond); }
-.debug-op--get, .debug-methode--get { --m: var(--dbg-get); --m-fond: var(--dbg-get-fond); }
-.debug-op--post, .debug-methode--post { --m: var(--dbg-post); --m-fond: var(--dbg-post-fond); }
-.debug-op--put, .debug-methode--put { --m: var(--dbg-put); --m-fond: var(--dbg-put-fond); }
-.debug-op--patch, .debug-methode--patch { --m: var(--dbg-patch); --m-fond: var(--dbg-patch-fond); }
-.debug-op--delete, .debug-methode--delete { --m: var(--dbg-delete); --m-fond: var(--dbg-delete-fond); }
-.debug-op > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; padding: 0.35rem 0.6rem; cursor: pointer; }
+/* Pastille d'une méthode HTTP (tableau des routes, requêtes récentes : lib/debug-metriques.mjs#pastilleDeMethode) */
 .debug-methode {
-  /* --m : celle de la méthode (.debug-methode--get…), sinon celle de l'opération qui la porte */
+  --m: var(--dbg-autre);
   display: inline-block; min-width: 4.4rem; padding: 0.05rem 0.4rem; border-radius: var(--radius-xs);
   background: var(--m); color: var(--surface); font: bold 0.8rem/1.5 var(--dbg-mono); text-align: center; letter-spacing: 0.02em;
 }
-.debug-op__chemin { font-weight: bold; overflow-wrap: anywhere; }
-.debug-op__resume { color: var(--text); font-size: 0.92rem; }
-.debug-op__corps { padding: 0 0.7rem 0.7rem; background: var(--surface); border-top: 1px solid var(--m); border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
-.debug-op__corps:empty { display: none; }
+.debug-methode--get { --m: var(--dbg-get); }
+.debug-methode--post { --m: var(--dbg-post); }
+.debug-methode--put { --m: var(--dbg-put); }
+.debug-methode--patch { --m: var(--dbg-patch); }
+.debug-methode--delete { --m: var(--dbg-delete); }
+.debug-attente { color: var(--muted); font-style: italic; }
 
-/* Formulaire d'une opération */
-.debug-form__description { margin: 0.6rem 0; white-space: pre-line; }
-.debug-form__depreciee { color: var(--danger); font-weight: bold; }
-.debug-form__champs { display: grid; gap: 0.6rem 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0.7rem 0; }
-.debug-champ { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-.debug-champ > input, .debug-champ > select, .debug-champ > textarea { width: 100%; min-width: 0; }
-.debug-champ__ou { font-size: 0.8rem; color: var(--muted); }
-.debug-champ__requis { font-size: 0.75rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn-text); }
-.debug-champ__aide { font-size: 0.82rem; color: var(--muted); }
-.debug-champ--corps { margin: 0.7rem 0; }
-.debug-champ--corps textarea { resize: vertical; line-height: 1.45; tab-size: 2; }
-.debug-form__garde { margin: 0.4rem 0; padding: 0.4rem 0.7rem; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-text); }
-/* une écriture que rien ne défait (création sans suppression, suppression) : la phrase de la description, au-dessus de la case */
-.debug-form__sans-retour { margin: 0.6rem 0 0.2rem; padding: 0.4rem 0.7rem; border-left: 4px solid var(--danger); background: var(--dbg-erreur-fond); color: var(--danger); font-weight: bold; }
-.debug-champ__vide { font-size: 0.82rem; color: var(--muted); }
-.debug-champ__vide input { margin-right: 0.3rem; }
-.debug-champ > textarea[data-param-repetable] { resize: vertical; font-family: var(--dbg-mono); }
-.debug-form__garde input { margin-right: 0.4rem; }
-.debug-form__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.6rem 0 0.3rem; }
-.debug-envoyer { font-weight: bold; border-color: var(--m); background: var(--m); color: var(--surface); }
-.debug-form__adresse { overflow-wrap: anywhere; color: var(--muted); }
-
-/* Réponse */
-.debug-reponse__annonce { margin: 0.4rem 0; font-weight: bold; }
-.debug-reponse__annonce:empty { display: none; }
-.debug-reponse__annonce[data-famille] { display: inline-block; padding: 0.1rem 0.6rem; border-radius: var(--radius-pill); }
-.debug-reponse__annonce[data-famille="succes"] { background: var(--dbg-post-fond); color: var(--dbg-post); }
-.debug-reponse__annonce[data-famille="renvoi"] { background: var(--dbg-get-fond); color: var(--dbg-get); }
-.debug-reponse__annonce[data-famille="refus"] { background: var(--warn-bg); color: var(--warn-text); }
-.debug-reponse__annonce[data-famille="erreur"] { background: var(--dbg-erreur-fond); color: var(--danger); }
-.debug-reponse { margin-top: 0.4rem; }
-.debug-reponse__entetes { display: grid; gap: 0.15rem; margin: 0.3rem 0 0.6rem; }
-.debug-reponse__entetes > div { display: flex; flex-wrap: wrap; gap: 0 0.5rem; }
-.debug-reponse__entetes dt { font-weight: bold; min-width: 7rem; }
-.debug-reponse__entetes dd { margin: 0; overflow-wrap: anywhere; }
-.debug-reponse__corps, .debug-curl__commande {
-  margin: 0.3rem 0; padding: 0.6rem 0.8rem; max-height: 30rem; overflow: auto;
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); white-space: pre; tab-size: 2;
-}
-.debug-curl__commande { max-height: 10rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.debug-reponse__erreur { color: var(--danger); font-weight: bold; }
-.debug-reponse__octets, .debug-reponse__vide, .debug-reponse__coupe { color: var(--muted); font-style: italic; }
-.debug-curl { margin-top: 0.6rem; }
-.debug-curl__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; font-size: 0.9rem; color: var(--muted); }
-.debug-curl__titre button { padding: 0.15rem 0.7rem; font-size: 0.85rem; }
-
-/* Performances et Système : deux menus déroulants ouverts, comme le testeur */
+/* Les menus déroulants (Système, Performances, Journaux du serveur, DB) : fermés par défaut */
 .debug-bloc { margin: 0 0 2rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .debug-bloc > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem; padding: 0.7rem 1rem; cursor: pointer; }
 .debug-bloc[open] > summary { border-bottom: 1px solid var(--border); }
@@ -305,7 +224,6 @@
 .debug-alerte--info { border-left-color: var(--accent); background: var(--accent-soft); color: var(--text); }
 
 /* Journaux du serveur */
-.debug-journaux h2 { margin-top: 0; }
 .debug-journaux__filtres { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 1rem; margin: 0 0 0.6rem; }
 .debug-journaux__niveaux { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; margin: 0; padding: 0.2rem 0.7rem 0.4rem; }
 .debug-journaux__niveaux legend { padding: 0 0.3rem; font-size: 0.85rem; color: var(--muted); }
@@ -344,11 +262,9 @@
 .debug-niveau--erreur { background: var(--danger); color: var(--surface); }
 .debug-journaux__vide { margin: 0; padding: 0.8rem; color: var(--muted); font-style: italic; }
 
-/* Espace disque du serveur (tout en bas ; lib/debug-metriques.mjs#htmlDeLEspaceDisque) : une jauge pleine largeur, un segment par type de données
-   (flex-basis = sa part ; 2 px de la surface entre deux segments) ; aucun segment sous 6 px (les grands cèdent la place : un très fin, moins de
-   1 %, ne rétrécit jamais), puis la légende */
-.debug-espace { margin: 2rem 0 0; }
-.debug-espace h2 { margin-top: 0; }
+/* Espace disque du serveur (dans le menu Système ; lib/debug-metriques.mjs#htmlDeLEspaceDisque) : une jauge pleine largeur, un segment par type
+   de données (flex-basis = sa part ; 2 px de la surface entre deux segments) ; aucun segment sous 6 px (les grands cèdent la place : un très fin,
+   moins de 1 %, ne rétrécit jamais), puis la légende */
 .debug-espace__titre { margin: 0.4rem 0 0.2rem; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .debug-espace__titre[data-niveau="alerte"] strong { color: var(--danger); }
 .debug-espace__jauge {
@@ -412,8 +328,5 @@
   .debug-ligne__duree:empty { display: none; }
   .debug-bloc__contenu { padding: 0.6rem; }
   .debug-definitions dt { min-width: 0; flex-basis: 100%; }
-  .debug-op > summary { padding: 0.35rem 0.45rem; }
   .debug-methode { min-width: 3.8rem; }
-  .debug-testeur__contenu { padding: 0.6rem; }
-  .debug-op__corps { padding: 0 0.45rem 0.6rem; }
 }
