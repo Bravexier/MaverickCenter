@@ -140,6 +140,8 @@ export const ORDINATEUR = Object.freeze({
   ...IDENTITE,
   // valeurs du moment : « actuelle / maximum » dans une case
   sante: 'D14', chakra: 'K14', barriere: 'R14', barre4: 'D15', corruption: 'K15',
+  // `solidite` (AK17, AX17, sous le libellé « Solidité ») : la solidité du moment et le maximum de l'arme forgée, « N / M » (décision R74), relue ; le
+  // modèle y écrit « / » (MODELE_DE_LA_SOLIDITE)
   armes: Object.freeze([
     Object.freeze({ nom: 'AA10', degats: 'AG10', effet: 'AA13', portee: 'AK13', solidite: 'AK17' }),
     Object.freeze({ nom: 'AN10', degats: 'AT10', effet: 'AN13', portee: 'AX13', solidite: 'AX17' }),
@@ -174,6 +176,8 @@ export const AUTO = Object.freeze({
   corruption: 'K15', corruptionMax: 'M15',
   maitrises: Object.freeze({ gauche: 'AI', droite: 'AN' }),
   ambidextrie: 'AU8',
+  // `solidite` (AK15, AX15) : le maximum que calcule la fiche auto (les deux fiches du propriétaire : celui de la décision R51), pas la solidité du
+  // moment : jamais relue, comme les autres valeurs calculées (docs/fiche-auto.md)
   armes: Object.freeze([
     Object.freeze({ nom: 'AA10', composition: 'AE10', degats: 'AI10', effet: 'AA13', amelioration: 'AI13', portee: 'AI15', solidite: 'AK15', element: 'AI17' }),
     Object.freeze({ nom: 'AN10', composition: 'AR10', degats: 'AV10', effet: 'AN13', amelioration: 'AV13', portee: 'AV15', solidite: 'AX15', element: 'AV17' }),
@@ -211,19 +215,22 @@ export const AUTO = Object.freeze({
   image: 'A1',
 });
 
+/** Modèle ordinateur : le texte des cases de solidité (armes : AK17, AX17 ; bouclier : AX26), « / », qui n'est pas une valeur. */
+export const MODELE_DE_LA_SOLIDITE = '/';
+
 /**
- * Modèle ordinateur : les zones de saisie dont le site ne garde rien — la solidité des armes, l'AP, l'AM et la solidité de chaque pièce d'armure (grille
- * AI22:AN24, colonnes de ORDINATEUR.armure.colonnes, lignes de ORDINATEUR.armure.lignes) et du bouclier : la fiche ne les calcule pas. `modele` : le texte
- * du modèle (« / »), qui n'est pas une valeur ; une autre valeur part dans les notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement`
- * (id de armure_emplacement) et `valeur` ('ap', 'am', 'solidite') ; les autres : `quoi`.
+ * Modèle ordinateur : les zones de saisie dont le site ne garde rien — l'AP, l'AM et la solidité de chaque pièce d'armure (grille AI22:AN24, colonnes de
+ * ORDINATEUR.armure.colonnes, lignes de ORDINATEUR.armure.lignes) et du bouclier : la fiche ne les calcule pas (la solidité des armes a sa place depuis
+ * la décision R74 : ORDINATEUR.armes[].solidite). `modele` : le texte du modèle (« / » : MODELE_DE_LA_SOLIDITE), qui n'est pas une valeur ; une autre
+ * valeur part dans les notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am',
+ * 'solidite') ; les autres : `quoi`.
  */
 export const SAISIES_SANS_PLACE = Object.freeze([
-  ...ORDINATEUR.armes.map((a, i) => ({ adresse: a.solidite, quoi: `Solidité de l’arme ${i + 1}`, modele: '/' })),
   ...Object.entries(ORDINATEUR.armure.colonnes).flatMap(([emplacement, colonne]) => Object.entries(ORDINATEUR.armure.lignes)
     .map(([valeur, ligne]) => ({ adresse: `${colonne}${ligne}`, emplacement, valeur, modele: '' }))),
   { adresse: ORDINATEUR.bouclier.ap, quoi: 'Bouclier, armure physique', modele: '' },
   { adresse: ORDINATEUR.bouclier.am, quoi: 'Bouclier, armure magique', modele: '' },
-  { adresse: ORDINATEUR.bouclier.solidite, quoi: 'Bouclier, solidité', modele: '/' },
+  { adresse: ORDINATEUR.bouclier.solidite, quoi: 'Bouclier, solidité', modele: MODELE_DE_LA_SOLIDITE },
 ].map(Object.freeze));
 
 /** Modèle ordinateur : le titre de l'inventaire (AA38), où le joueur écrit son sac à la suite (« INVENTAIRE | SAC = Sac à dos ») : le site n'en a pas. */

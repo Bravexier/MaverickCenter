@@ -8,7 +8,7 @@ import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
@@ -30,6 +30,50 @@ test('tout est sérialisable et chaque liste a toutes les lignes de sa table', (
   assert.equal(regles.emplacements_armure.length, compte('armure_emplacement') - 1, 'le bouclier a sa propre ligne sur la fiche');
   assert.equal(regles.am_classe_magique, 4);
   assert.equal(regles.constantes['caracteristique.bonus_magie_innee'], 1);
+});
+
+test('niveaux (décision R73) : bornes du dé bonus de chaque niveau et cumuls de v_niveau, les mêmes que la règle gains_niveau', () => {
+  const v = new Map(db.prepare('SELECT * FROM v_niveau').all().map((r) => [r.niveau, r]));
+  for (const n of regles.niveaux) {
+    const g = db.prepare('SELECT de_attributs_min, de_attributs_max FROM niveau_global WHERE niveau = ?').get(n.niveau);
+    assert.deepEqual([n.de_attributs_min, n.de_attributs_max], [g.de_attributs_min, g.de_attributs_max], `niveau ${n.niveau}`);
+    for (const c of ['points_attributs_cumul', 'de_attributs_min_cumul', 'de_attributs_max_cumul']) assert.equal(n[c], v.get(n.niveau)[c], `niveau ${n.niveau} : ${c}`);
+  }
+  assert.deepEqual(regles.niveaux.filter((n) => n.de_attributs_bonus).map((n) => [n.niveau, n.de_attributs_min, n.de_attributs_max]), [[5, 1, 8], [10, 1, 8], [15, 1, 8], [20, 1, 8]]);
+});
+
+test('entraînement (décision R71) : l’aide du champ cite le paragraphe du guide (chapitre 21) qui en dit les limites et la case des dons, tel qu’écrit', () => {
+  // à l'import (la page se modifie sur le site de dev : son texte du moment est celui que la fiche cite, test/fiche-html.test.mjs)
+  const corps = historique.valeurDImport('page', { id: PAGE_DE_L_ENTRAINEMENT }, 'corps_md');
+  assert.equal(limitesDeLEntrainement(corps), 'L’entraînement a ses limites : il ne peut améliorer que 15 compétences au plus, et de 10 % au plus chacune. Les bonus se notent dans la case Entraînement des dons.');
+  const aide = aideDeLEntrainement(db);
+  const page = db.prepare("SELECT titre, corps_md, json_extract(donnees, '$.chapitre') AS chapitre FROM page WHERE id = ?").get(PAGE_DE_L_ENTRAINEMENT);
+  assert.deepEqual(aide, limitesDeLEntrainement(page.corps_md) === null ? null : { titre: page.titre, chapitre: page.chapitre, texte: limitesDeLEntrainement(page.corps_md) });
+  // un paragraphe, sans sa mise en forme ; ni titre, ni liste, ni commentaire ; rien quand la page ne l'écrit plus
+  assert.equal(limitesDeLEntrainement('## La case **Entraînement**\n\n- dans la case Entraînement\n\n<!-- case Entraînement -->\n\nUn [[guide/x|texte]] noté\ndans la case __Entraînement__.'), 'Un texte noté dans la case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Rien sur la case des dons.'), null);
+  assert.equal(limitesDeLEntrainement(null), null);
+  // l'italique simple aussi (28 pages du guide l'emploient : « *Survie* »), à l'étoile comme au soulignement, entre limites de mot ; le mot lui-même en italique
+  assert.equal(limitesDeLEntrainement('Une *limite* dans la case Entraînement, voir _ici_.'), 'Une limite dans la case Entraînement, voir ici.');
+  assert.equal(limitesDeLEntrainement('Les bonus se notent dans la case *Entraînement* des dons.'), 'Les bonus se notent dans la case Entraînement des dons.');
+  assert.equal(limitesDeLEntrainement('La case _Entraînement_ des dons, ***15 compétences*** au plus.'), 'La case Entraînement des dons, 15 compétences au plus.');
+  assert.equal(limitesDeLEntrainement('Un *texte\nsur deux lignes* : case Entraînement.'), 'Un texte sur deux lignes : case Entraînement.');
+  // ni un signe isolé, ni un soulignement dans un mot, ni ce qui n'est pas de l'italique
+  assert.equal(limitesDeLEntrainement('2 * 3 * 4 dans la case Entraînement, nom_de_fichier, * seul.'), '2 * 3 * 4 dans la case Entraînement, nom_de_fichier, * seul.');
+  // un lien du wiki sans texte : le titre de la page qu'il vise (la base), sinon le dernier segment de son identifiant, jamais l'identifiant brut
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y]] : case Entraînement.'), 'Voir x y : case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Voir [[Règles des métiers]] : case Entraînement.'), 'Voir Règles des métiers : case Entraînement.', 'une cible écrite comme un titre');
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y]] : case Entraînement.', (c) => (c === 'guide/x-y' ? 'Le titre de X' : null)), 'Voir Le titre de X : case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y|ce texte]] : case Entraînement.', () => 'Le titre de X'), 'Voir ce texte : case Entraînement.', 'le texte écrit d’abord');
+  // aideDeLEntrainement les cherche dans la base : par identifiant, puis par titre, nom court ou alias (comme les [[liens]] du wiki), une seule page
+  const corpsAvecLien = `Voir [[${PAGE_DE_L_ENTRAINEMENT}]] et [[Règles des métiers]] : case Entraînement.`;
+  const ici = page.titre;
+  const regles_ = db.prepare("SELECT DISTINCT p.id, p.titre FROM cle_page c JOIN page p ON p.id = c.page_id WHERE c.cle = 'regles-des-metiers'").all();
+  assert.equal(regles_.length, 1, 'une seule page « Règles des métiers »');
+  const faux = { prepare: (sql) => (/FROM page WHERE id = \?$/.test(sql.trim()) && /corps_md/.test(sql)
+    ? { get: () => ({ titre: ici, corps_md: corpsAvecLien, chapitre: 21 }) }
+    : db.prepare(sql)) };
+  assert.deepEqual(aideDeLEntrainement(faux), { titre: ici, chapitre: 21, texte: `Voir ${ici} et ${regles_[0].titre} : case Entraînement.` });
 });
 
 test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 dés au plus (liste « 1d » à « 5d » de la fiche auto), soit 4 points', () => {
@@ -253,6 +297,9 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {
   assert.deepEqual(regles.resistance_paliers.map((p) => p.id), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((r) => r.id));
+  // décision R70 : ÷2, ÷4, x2, x4, x8, ceux de la fiche auto (le modèle ordinateur écrit ÷3, x3 et x4 : « C'est bien 2 4 8 »)
+  assert.deepEqual(regles.resistance_paliers.map((p) => p.effet),
+    ['dégâts subis =0', 'dégâts subis ÷4', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x4', 'dégâts subis x8']);
   assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
   assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
   for (const m of regles.magies) {

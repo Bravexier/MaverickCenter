@@ -3,20 +3,22 @@
 // résultat […] Toute info supplémentaire peut être notée dans les « Notes » ») : les cases du modèle « Fiche-de-personnage-Maverick-V15.2.2
 // ordinateur » (lib/fiche-tableur-cases.mjs#ORDINATEUR) remplies des valeurs que la page /fiche/ affiche, calculées par les mêmes appels au moteur
 // (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs) — jamais une règle de plus : une case que la fiche ne calcule pas reste telle que dans le modèle (AP/AM
-// d'une pièce d'armure ou du bouclier ; la solidité d'une arme, que la page « Armes » calcule (décision R51, lib/arme-forge.mjs) mais pas encore la
-// fiche ; la case « Entraînement » (L42), où la fiche auto écrit les bonus d'entraînement — guide « Fiche de personnage : Capacités/Dons » : 15
-// compétences, 10 % au plus —, que le site ne distingue pas des autres acquis). La portée d'une arme est celle de la page « Armes » (décision R50 : la
-// portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe, gains de niveau, NM offerts, accessoires de ceinture,
-// débordements des listes…) va dans la case NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) :
-// leur mise en forme et leur lecture sont ici (CLES_DE_LA_NOTE, texteDesGains / lireGains…), comme celles des cases que l'import relit (objets,
-// accessoires, armure, effet d'une arme, choix du métier) : un seul jeu de lecteurs, l'aller et le retour ne divergent pas.
+// et solidité d'une pièce d'armure ou du bouclier). La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
+// (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : le texte libre de la fiche
+// (décision R71, personnage.entrainement : bonus d'entraînement, livres de magie lus, ce que le MJ accorde ; jamais compté), relu. La portée d'une
+// arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
+// gains de niveau — deux totaux, décision R73 : « santé X, chakra Y » —, NM offerts, accessoires de ceinture, débordements des listes…) va dans la case
+// NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) : leur mise en forme et leur lecture sont
+// ici (CLES_DE_LA_NOTE, texteDesGains / lireGains…), comme celles des cases que l'import relit (objets, accessoires, armure, effet d'une arme, choix du
+// métier) : un seul jeu de lecteurs, l'aller et le retour ne divergent pas.
 // La note ne porte que des données du personnage, jamais un texte de règles : chaque case écrite est « relue » (l'import en tire un choix : nom, sorts,
-// NM, noms des dons, accessoires, objets, événements, lignes de l'armure, composition et effet en plus d'une arme, choix du métier…) ou « affichée » (un
-// texte de règles ou un calcul que le site refait : effets des sorts et des dons, textes de la race, artisanat, Mode Hyper, résistances, dégâts, effet du
-// catalogue d'une arme…) ; une case à la fois relue et affichée écrit ses lignes relues d'abord (partiesDeLArme, partiesDuMetier). Un texte trop long
-// pour sa case (`zones` : la taille des cases du modèle, lib/tableur-ecriture.mjs#zonesDuClasseur) n'y est pas rogné : une case de plusieurs rangées
-// prend le retour à la ligne, une case d'une rangée rapetisse un peu son texte (`alignements`), puis la case garde ce qui tient, fini par « … » ; seule la
-// part relue qu'elle ne montre pas va dans la note (« Suite de la case AA51 : … », lib/tableur-mesure.mjs#ajusterLeTexte), que l'import recolle. Des
+// NM, noms des dons, accessoires, objets, événements, lignes de l'armure, composition, effet en plus et solidité d'une arme, choix du métier,
+// entraînement…) ou « affichée » (un texte de règles ou un calcul que le site refait : effets des sorts et des dons, textes de la race, artisanat, Mode
+// Hyper, résistances, dégâts, effet du catalogue d'une arme…) ; une case à la fois relue et affichée écrit ses lignes relues d'abord (partiesDeLArme,
+// partiesDuMetier). Un texte trop long pour sa case (`zones` : la taille des cases du modèle, lib/tableur-ecriture.mjs#zonesDuClasseur) n'y est pas
+// rogné : une case de plusieurs rangées prend le retour à la ligne, une case d'une rangée rapetisse un peu son texte (`alignements`), puis la case garde
+// ce qui tient, fini par « … » ; seule la part relue qu'elle ne montre pas va dans la note (« Suite de la case AA51 : … »,
+// lib/tableur-mesure.mjs#ajusterLeTexte), que l'import recolle. Des
 // écritures courtes (accessoire sur une ligne, pièce d'armure sans ses statistiques quand elles ne tiennent pas) laissent ces suites rares ; la note
 // qui déborde elle-même s'aligne en haut (son début reste lisible). Une case d'une seule rangée (description et colonnes d'un sort, dons de base, de
 // race et du métier) écrit ses parties sur une ligne, séparées par « · » (SEPARATEUR_EN_LIGNE) : coupée, elle montre le début de chacune et pas
@@ -28,10 +30,10 @@
 // modules que seule la page /fiche/ utilise (CLAUDE.md, « Pièges connus » : la version portable refuse un module partagé entre deux scripts de page) ;
 // pas lib/text.mjs (partagé par la recherche) : cle() de lib/fiche-tableur-cases.mjs.
 import { RAISONS } from './degats-texte.mjs';
-import { PARTIES_DE_FICHE } from './fiche-format.mjs';
+import { PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
-  caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace,
+  caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, progressionXp, resistancesDe, trouver, valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
@@ -142,7 +144,7 @@ export const LIGNES_D_ARMURE = Object.freeze({ amelioration: 'amél.', element: 
 /** Ligne d'information de la note : le Mode Hyper 100 % débloqué (ses effets sont un texte de règles : la page les montre, pas la note). */
 export const MODE_HYPER_CENT_DEBLOQUE = 'débloqué';
 
-/** Libellé du dé d'un gain de niveau (personnage_progression.de_choix) dans la note. */
+/** Libellé du dé d'un gain de niveau dans la note d'avant la décision R73 (personnage_progression.de_choix, niveau par niveau), relue par lireGains. */
 export const DES_DES_GAINS = Object.freeze({ sante: 'santé', chakra: 'chakra', les_deux: 'les deux' });
 
 // ------------------------------------------------------------------ outils
@@ -238,20 +240,18 @@ export function lireObjet(texte) {
   return { nom: brut, quantite: 1 };
 }
 
-/** Les gains de niveau (personnage_progression), par niveau : « niv. 2 : santé 10, chakra 5 ; niv. 5 : santé 5, chakra 10, dé chakra 6 ». */
-export function texteDesGains(progression) {
-  return [...(progression ?? [])].sort((a, b) => entier(a.niveau) - entier(b.niveau)).map((p) => {
-    const parts = [`santé ${entier(p.points_sante)}`, `chakra ${entier(p.points_chakra)}`];
-    if (p.de_choix) parts.push(`dé ${DES_DES_GAINS[p.de_choix] ?? p.de_choix}${vide(p.de_resultat) ? '' : ` ${entier(p.de_resultat)}`}`);
-    return `niv. ${entier(p.niveau)}${SEPARATEUR_DE_CLE}${parts.join(', ')}`;
-  }).join(SEPARATEUR_DE_LISTE);
+/** Les gains de niveau (décision R73 : deux totaux) : « santé 41, chakra 121 » ; vide quand les deux sont nuls (la note n'en a pas de ligne). */
+export function texteDesGains(fiche) {
+  const sante = entier(fiche?.gains_sante);
+  const chakra = entier(fiche?.gains_chakra);
+  return sante || chakra ? `santé ${sante}, chakra ${chakra}` : '';
 }
 
 /**
- * Les lignes de personnage_progression d'un texte de texteDesGains (« niveau 2 » aussi) ; un dé choisi sans son résultat (la page le laisse saisir) est
- * relu tel quel. null si une partie ne se lit pas (l'import le dit).
+ * Les lignes de personnage_progression d'une note d'avant la décision R73 (« niv. 2 : santé 10, chakra 5 ; niv. 5 : …, dé chakra 6 », « niveau 2 »
+ * aussi) ; un dé choisi sans son résultat (l'ancienne page le laissait saisir) est relu tel quel. null si une partie ne se lit pas.
  */
-export function lireGains(texte) {
+function lignesDesGains(texte) {
   const choix = new Map(Object.entries(DES_DES_GAINS).map(([id, libelle]) => [cle(libelle), id]));
   const lignes = [];
   for (const morceau of lireListe(texte)) {
@@ -273,6 +273,30 @@ export function lireGains(texte) {
     lignes.push(p);
   }
   return lignes;
+}
+
+/**
+ * Les gains de niveau d'un texte de la note : { gains_sante, gains_chakra }. Le format de texteDesGains (« santé 41, chakra 121 » ; une partie absente
+ * vaut 0) et celui d'avant la décision R73, niveau par niveau, sommé comme la reconstruction de la base vivante (gainsDeLaProgression de
+ * lib/fiche-format.mjs : le dé « les deux » compte sur chacun). Un texte vide : 0 et 0 ; null si une partie ne se lit pas (l'import le dit).
+ */
+export function lireGains(texte) {
+  const brut = String(texte ?? '').trim();
+  if (!brut) return { gains_sante: 0, gains_chakra: 0 };
+  if (/^niv/i.test(brut)) {
+    const lignes = lignesDesGains(brut);
+    return lignes ? gainsDeLaProgression(lignes) : null;
+  }
+  const gains = { gains_sante: 0, gains_chakra: 0 };
+  const lus = new Set();
+  for (const part of brut.split(',').map((x) => x.trim()).filter(Boolean)) {
+    const point = /^(sant[ée]|chakra)\s+(\d+)$/i.exec(part);
+    const champ = point && (cle(point[1]) === 'sante' ? 'gains_sante' : 'gains_chakra');
+    if (!point || lus.has(champ)) return null;
+    lus.add(champ);
+    gains[champ] = Number(point[2]);
+  }
+  return gains;
 }
 
 /** Les NM offerts (livre, MJ) des sorts de la fiche : « Boule de feu (livre 1, MJ 2) ; Brasier (MJ 1) » ; vide quand aucun. */
@@ -811,6 +835,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const porteeEnPlus = degats?.porteeEnPlus ?? 0;
     const portee = [arme?.portee ?? null, porteeEnPlus ? `${porteeEnPlus > 0 ? '+' : '-'} ${Math.abs(porteeEnPlus)}` : null].filter(Boolean).join(' ');
     ecrire(cases.portee, nombreSiEntier(portee));
+    // solidité du moment et maximum (décision R74), « N / M » comme les valeurs du moment ; une arme cassée (0 / M) garde ses dégâts en AG10 : ils
+    // départagent deux armes du même nom à l'import
+    const solidite = durabiliteDArme(regles, f, rang);
+    if (solidite) ecrire(cases.solidite, `${solidite.actuelle} / ${solidite.max}`, RELUE);
   });
 
   // armure de base, armure portée, bouclier
@@ -854,9 +882,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   objets.slice(0, PLACES_INVENTAIRE).forEach((o, i) => ecrire(placesDInventaire[i], texteDObjet(o), RELUE));
   const inventaireEnSuite = objets.slice(PLACES_INVENTAIRE).map(texteDObjet);
 
-  // dons : de base, de race (ethnie), du métier, de classe ; seuls le nom de l'ethnie, du métier et des dons de classe, et les choix du métier sont relus
-  // (le reste : textes de règles et calculs que le site refait). Les dons de base, de race et du métier ont une rangée : leurs parties sur une ligne.
-  // L'entraînement (L42) n'est pas écrit : la fiche auto y note les bonus d'entraînement, que le site ne distingue pas des autres acquis (voir l'en-tête).
+  // dons : de base, de race (ethnie), du métier, l'entraînement, de classe ; seuls le nom de l'ethnie, du métier et des dons de classe, les choix du
+  // métier et l'entraînement sont relus (le reste : textes de règles et calculs que le site refait). Les dons de base, de race et du métier ont une
+  // rangée : leurs parties sur une ligne. L'entraînement (L42, une rangée aussi) est écrit tel quel, blancs de bord retirés (l'import les retire) : sur
+  // plusieurs lignes ou trop long, la case en garde le début et la suite va dans la note, que l'import recolle.
   const dr = donsDeRace(regles, f);
   if (dr.base) {
     const base = donDeBase(dr.base);
@@ -881,6 +910,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(cases.type, 'Passif');
     ecrireEnDeuxParts(cases.effet, partiesDuMetier(regles, f), SEPARATEUR_EN_LIGNE);
   }
+  // entraînement (décision R71) : le texte libre de la fiche ; le nom (« Entraînement ») et le type du modèle restent
+  ecrire(casesDuDon(DONS.entrainement).effet, String(f.entrainement ?? '').trim() || null, RELUE);
   const donsEnSuite = { 1: [], 2: [] };
   for (const c of donsAcquis(regles, f)) {
     const lignes = c.rang === 1 ? DONS.classe1 : DONS.classe2;
@@ -963,7 +994,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   const K = CLES_DE_LA_NOTE;
   noter(K.biClasse, f.mode_classe === 'bi' ? OUI : NON);
   if (innee && !innee.caracteristique_id && f.caracteristique_magie_id) noter(K.caracteristiqueMagie, nomDe(regles.caracteristiques, f.caracteristique_magie_id));
-  noter(K.gains, texteDesGains(f.progression));
+  noter(K.gains, texteDesGains(f));
   noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
@@ -1004,12 +1035,56 @@ export const avertissementDesDonnees = (n) => `Données de la case NOTE trop lon
 export const avertissementDeCase = (adresse, n) => `Case ${adresse} trop longue pour une case de tableur (${LIMITE_ECRITE}) : ses ${enChiffres(n)} derniers caractères ne sont pas dans le classeur.`;
 
 /**
- * Le message de la page /fiche/ après l'export en tableur (src/scripts/fiche.mjs) : « Classeur exporté. », suivi des `avertissements` de cellulesDeLaFiche
- * s'il y en a (ce que le classeur n'a pas pu garder), et alors sur le ton « attente » au lieu de « ok ». { texte, ton }.
+ * Le message de la page /fiche/ après l'export en tableur (src/scripts/fiche.mjs) : `debut` (« Classeur exporté. » par défaut ; la page dit « Classeur
+ * téléchargé. » ou « Feuille Google créée. »), suivi des `avertissements` de cellulesDeLaFiche s'il y en a (ce que le classeur n'a pas pu garder), et
+ * alors sur le ton « attente » au lieu de « ok ». { texte, ton }.
  */
-export function messageDExport(avertissements = []) {
+export function messageDExport(avertissements = [], debut = 'Classeur exporté.') {
   const liste = (avertissements ?? []).filter(Boolean);
-  return liste.length ? { texte: `Classeur exporté. ${liste.join(' ')}`, ton: 'attente' } : { texte: 'Classeur exporté.', ton: 'ok' };
+  return liste.length ? { texte: `${debut} ${liste.join(' ')}`, ton: 'attente' } : { texte: debut, ton: 'ok' };
+}
+
+/**
+ * Le nom du fichier téléchargé (« Télécharger » de /fiche/ : `${nomDuFichier(nom)}.xlsx`) et de la feuille Google (« Exporter ») : le nom du personnage
+ * seul (demande du propriétaire, 2026-10-15 : « Le nom du fichier deviens juste nom du personnage »), chaque suite de caractères qu'un système de
+ * fichiers refuse remplacée par « - », 120 caractères au plus ; « Personnage » s'il ne reste rien.
+ */
+export function nomDuFichier(nom) {
+  return String(nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f]+/g, '-').trim().slice(0, 120).trim() || 'Personnage';
+}
+
+/** Les infobulles des boutons « Télécharger » et « Exporter » de /fiche/ (etatDesExports). */
+export const INFOBULLES_DES_EXPORTS = Object.freeze({
+  telecharger: 'Classeur .xlsx au modèle de la fiche V15.2.2 (Excel, LibreOffice, Google Sheets)',
+  telechargerGrise: 'Enregistrez la fiche pour la télécharger',
+  telechargerApresRefus: 'L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre',
+  exporter: 'Crée la fiche dans une nouvelle feuille Google Sheets de votre Drive (connexion à Google)',
+  exporterGrise: 'Enregistrez la fiche pour l’exporter',
+  exporterApresRefus: 'L’enregistrement a échoué : exportez la fiche pour ne rien perdre',
+  exporterSansClient: 'Export vers Google Sheets pas encore configuré',
+});
+
+/**
+ * L'état des boutons « Télécharger » et « Exporter » de /fiche/ (demande du propriétaire, 2026-10-15 : « Grisé tant que la fiche n'a pas été
+ * enregistrée ») : actifs pour une fiche enregistrée (`id`) sans modification en attente (`modifie`), ou quand elle ne peut pas l'être et que la
+ * télécharger évite de la perdre : le service ne répond pas (`serviceJoignable` faux), ou il a refusé le dernier enregistrement
+ * (`enregistrementRefuse` : toute réponse non OK, version changée entre-temps 409, requête trop volumineuse 413, fiche refusée 400… ; infobulle
+ * « L’enregistrement a échoué… ») ; jamais pendant un export (`occupe`) ; « Exporter » est en plus grisé sans identifiant client Google (`client` :
+ * variable de build SITE_GOOGLE_CLIENT_ID). { telecharger, exporter }, chacun { actif, infobulle }.
+ */
+export function etatDesExports({ id = null, modifie = false, serviceJoignable = true, enregistrementRefuse = false, client = '', occupe = false } = {}) {
+  const enregistree = id !== null && id !== undefined && !modifie;
+  const permis = enregistree || !serviceJoignable || enregistrementRefuse;
+  // actifs seulement parce que le service a refusé la fiche : l'infobulle le dit
+  const apresRefus = permis && !enregistree && serviceJoignable;
+  const i = INFOBULLES_DES_EXPORTS;
+  const infobulle = (normale, refus, grise) => (apresRefus ? refus : permis ? normale : grise);
+  return {
+    telecharger: { actif: permis && !occupe, infobulle: infobulle(i.telecharger, i.telechargerApresRefus, i.telechargerGrise) },
+    exporter: client
+      ? { actif: permis && !occupe, infobulle: infobulle(i.exporter, i.exporterApresRefus, i.exporterGrise) }
+      : { actif: false, infobulle: i.exporterSansClient },
+  };
 }
 
 /**

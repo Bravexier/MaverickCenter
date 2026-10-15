@@ -7,15 +7,17 @@
 // R42 : serveur/fiches-retraits.mjs ; la liste dans vivante.json, rendue par /api/etat). Toute autre ligne qui ne passe pas (une fiche cite une race, une
 // classe, une magie… disparue, une colonne remplie n'existe plus — sauf une colonne que les règles retirent exprès, COLONNES_RETIREES de
 // src/lib/fiche-format.mjs : le statut des fiches, migration 0038, perdu sans bloquer —, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
-// pourquoi. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières) : l'archive garde donc la base
-// d'avant les retraits.
+// pourquoi. Une table que les règles retirent de la section 13 (TABLES_RETIREES de src/lib/fiche-format.mjs) n'est plus recopiée : ses lignes sont
+// converties (CONVERSIONS : personnage_progression, migration 0045, devient la somme des gains de niveau, personnage.gains_sante et gains_chakra,
+// décision R73), jamais perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
+// dernières) : l'archive garde donc la base d'avant les retraits et les conversions.
 // Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
 // Node seulement (node:sqlite), sans dépendance.
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { COLONNES_RETIREES, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { COLONNES_RETIREES, TABLES_FICHES, TABLES_RETIREES } from '../src/lib/fiche-format.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
@@ -29,6 +31,47 @@ export { TABLES_FICHES };
 export const TABLES_EDITION = Object.freeze(['modification_lot', 'modification', 'note_version_brouillon']);
 /** Ce que le service écrit et qui survit à un changement de règles : les fiches, puis le journal des modifications. */
 export const TABLES_VIVANTES = Object.freeze([...TABLES_FICHES, ...TABLES_EDITION]);
+
+/**
+ * Conversion des lignes d'une table que les règles ont retirée (TABLES_RETIREES), de la base `ancienne` (attachée) vers les nouvelles règles (`main`),
+ * après la copie des tables encore présentes. personnage_progression (une ligne par niveau atteint) : la somme par fiche, points du niveau plus le dé sur
+ * la santé, le chakra ou les deux, un résultat absent comptant 0 (décision R73 ; la même que la migration 0045 et que gainsDeLaProgression de
+ * src/lib/fiche-format.mjs). Une table retirée sans conversion bloque la reconstruction (ses lignes seraient perdues).
+ */
+export const CONVERSIONS = Object.freeze({
+  personnage_progression: `UPDATE main.personnage SET
+    gains_sante = (SELECT COALESCE(SUM(pp.points_sante + CASE WHEN pp.de_choix IN ('sante', 'les_deux') THEN COALESCE(pp.de_resultat, 0) ELSE 0 END), 0)
+                   FROM ancienne.personnage_progression pp WHERE pp.personnage_id = personnage.id),
+    gains_chakra = (SELECT COALESCE(SUM(pp.points_chakra + CASE WHEN pp.de_choix IN ('chakra', 'les_deux') THEN COALESCE(pp.de_resultat, 0) ELSE 0 END), 0)
+                    FROM ancienne.personnage_progression pp WHERE pp.personnage_id = personnage.id)
+    WHERE id IN (SELECT personnage_id FROM ancienne.personnage_progression)`,
+});
+
+/**
+ * Convertit les lignes des tables retirées de la base `ancienne` (attachée) dans `db` : rend les problèmes (une conversion qui échoue, ou une table
+ * retirée que les nouvelles règles ont encore, ou qui n'a pas de conversion) ; rien n'est perdu sans être dit.
+ */
+function convertirLesTablesRetirees(db) {
+  const problemes = [];
+  for (const t of Object.keys(TABLES_RETIREES)) {
+    if (!colonnes(db, 'ancienne', t).length || !compter(db, 'ancienne', t)) continue; // rien à convertir
+    if (colonnes(db, 'main', t).length) {
+      // les règles l'ont encore (service et règles qui ne vont pas ensemble : base des règles pas reconstruite) : ses lignes seraient perdues
+      problemes.push(`${t} : table retirée par les nouvelles règles (TABLES_RETIREES), mais encore dans la base des règles : ses lignes ne seraient pas reprises`);
+      continue;
+    }
+    if (!CONVERSIONS[t]) {
+      problemes.push(`${t} : table retirée sans conversion, ses lignes seraient perdues`);
+      continue;
+    }
+    try {
+      db.exec(CONVERSIONS[t]);
+    } catch (e) {
+      problemes.push(`${t} : ${e.message}`);
+    }
+  }
+  return problemes;
+}
 
 export const FICHIER_BASE = 'vivante.db';
 /** À côté de la base : l'empreinte des règles dont elle est faite (refaite quand elle diffère de celle de la base publiée). */
@@ -122,7 +165,8 @@ function verifierRegles(db) {
 }
 
 /**
- * Recopie dans `db` (la copie neuve des règles) les lignes des sections 13 et 14 de la base `ancienne`, puis rejoue les modifications en attente du
+ * Recopie dans `db` (la copie neuve des règles) les lignes des sections 13 et 14 de la base `ancienne`, convertit celles d'une table que les règles ont
+ * retirée (TABLES_RETIREES, CONVERSIONS : les gains de niveau, R73), puis rejoue les modifications en attente du
  * journal sur les nouvelles règles, avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition (une classe, une spécialité, un
  * don), y compris par un lot qui suit un autre lot touchant la même table. Le rejeu ne contrôle donc pas les clés étrangères des fiches lot par lot
  * (`horsControleParLot`) : elles le sont toutes ici, après le rejeu complet. Un don, une spécialité, un sort ou un métier que les nouvelles règles n'ont
@@ -162,6 +206,8 @@ function transferer(db, ancienne, instant, evenement = null) {
           problemes.push(`${t} : ${e.message}`);
         }
       }
+      // les lignes d'une table que les règles ont retirée (TABLES_RETIREES) sont converties, après la copie des fiches qu'elles complètent
+      if (!problemes.length) problemes.push(...convertirLesTablesRetirees(db));
       // les modifications déjà livrées (leur lot est dans historique_modification des nouvelles règles : mise à jour ou rapatriement) sont
       // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production

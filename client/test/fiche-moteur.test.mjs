@@ -15,7 +15,7 @@ import {
   objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, famillesMaitrisables, maitrisesValables, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
+  gainsAttendus, gainsDeNiveau, maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -157,7 +157,7 @@ test('attributs des quatre personnages fil rouge : les mêmes que le guide (sant
   }
 });
 
-test('attributs : deux classes et deux magies comptent ; gains de niveau et dé ; accessoires « Attributs » signés par leur malédiction ; barrière = chakra ÷ 2', () => {
+test('attributs : deux classes et deux magies comptent ; gains de niveau (deux totaux, R73) ; accessoires « Attributs » signés par leur malédiction ; barrière = chakra ÷ 2', () => {
   const ecu = (cible, maudit = 0) => {
     const effet = regles.accessoires.find((e) => e.propriete === 'attributs' && e.cible === cible && e.valeur);
     return { effet, ligne: { emplacement: 'chef', accessoire_effet_id: effet.id, valeur: null, maudit } };
@@ -175,11 +175,12 @@ test('attributs : deux classes et deux magies comptent ; gains de niveau et dé 
   const chakra = ecu('Chakra', 1);
   const avecTout = attributsDe(regles, {
     ...base, xp: 1650,
-    progression: [{ niveau: 2, points_sante: 10, points_chakra: 5 }, { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 }],
+    gains_sante: 13, gains_chakra: 23,
     accessoires: [sante.ligne, { ...chakra.ligne, emplacement: 'collier' }],
   });
-  assert.equal(avecTout.sante, a0.sante + 10 + 3 + sante.effet.valeur);
-  assert.equal(avecTout.chakra, a0.chakra + 5 + 15 + 3 - chakra.effet.valeur, 'accessoire maudit : en moins');
+  assert.equal(avecTout.sante, a0.sante + 13 + sante.effet.valeur);
+  assert.equal(avecTout.chakra, a0.chakra + 23 - chakra.effet.valeur, 'accessoire maudit : en moins');
+  assert.deepEqual([avecTout.detail.sante.niveaux, avecTout.detail.chakra.niveaux], [13, 23]);
   assert.equal(avecTout.barriere, Math.floor(avecTout.chakra / 2) + avecTout.detail.barriere.classes + avecTout.detail.barriere.race + avecTout.detail.barriere.ethnie);
   assert.equal(avecTout.corruptionMax, avecTout.chakra);
   assert.deepEqual(attributsDe(regles, { ...base, magie_innee_id: 'magies/magie-du-sang' }).quatriemeBarre, { ressource: 'Sang', max: regles.magies.find((m) => m.id === 'magies/magie-du-sang').barre4.max });
@@ -431,12 +432,48 @@ test('décision R26 : 3 NM au plus sur un sort ; NM de niveau au plus niveau −
   assert.equal(regles.constantes['sort.nm_max'], 3);
 });
 
-test('progression attendue : 15 points par niveau à partir du 2, le dé aux niveaux 5, 10, 15 et 20', () => {
-  const p = progressionAttendue(regles, 20);
-  assert.equal(p.length, 19);
-  assert.ok(p.every((x) => x.points === 15));
-  assert.deepEqual(p.filter((x) => x.de).map((x) => x.niveau), [5, 10, 15, 20]);
-  assert.deepEqual(progressionAttendue(regles, 1), []);
+test('gains attendus (décision R73) : les points d’attributs cumulés, plus de 1 à 8 par dé bonus atteint ; tout lu dans les règles (v_niveau, niveau_global)', () => {
+  for (const n of regles.niveaux) {
+    const g = gainsAttendus(regles, n.niveau);
+    assert.equal(g.points, n.points_attributs_cumul, `niveau ${n.niveau}`);
+    assert.deepEqual([g.min, g.max], [n.points_attributs_cumul + n.de_attributs_min_cumul, n.points_attributs_cumul + n.de_attributs_max_cumul]);
+    const des = regles.niveaux.filter((x) => x.niveau <= n.niveau && x.de_attributs_bonus);
+    assert.deepEqual(g.des, des.map((x) => ({ niveau: x.niveau, texte: x.de_attributs_bonus, min: x.de_attributs_min, max: x.de_attributs_max })), 'un dé typé là où le guide en écrit un');
+    assert.equal(g.des.reduce((s, d) => s + d.min, 0), n.de_attributs_min_cumul);
+    assert.equal(g.des.reduce((s, d) => s + d.max, 0), n.de_attributs_max_cumul);
+  }
+  const g20 = gainsAttendus(regles, 20);
+  assert.deepEqual([g20.parNiveau, g20.depuis], [15, 2], '15 points par niveau à partir du 2');
+  assert.deepEqual(g20.des.map((d) => [d.niveau, d.min, d.max]), [[5, 1, 8], [10, 1, 8], [15, 1, 8], [20, 1, 8]]);
+  const plage = (niveau) => [gainsAttendus(regles, niveau).min, gainsAttendus(regles, niveau).max];
+  assert.deepEqual([1, 2, 4, 5, 11, 20].map(plage), [[0, 0], [15, 15], [45, 45], [61, 68], [152, 166], [289, 317]]);
+  assert.deepEqual(gainsAttendus(regles, 1).des, [], 'niveau 1 : rien à saisir');
+
+  const xp11 = regles.niveaux.find((n) => n.niveau === 11).xp_min;
+  assert.deepEqual(
+    (({ sante, chakra, total, niveau, min, max, hors }) => ({ sante, chakra, total, niveau, min, max, hors }))(gainsDeNiveau(regles, { xp: xp11, gains_sante: 41, gains_chakra: 121 })),
+    { sante: 41, chakra: 121, total: 162, niveau: 11, min: 152, max: 166, hors: false },
+  );
+  assert.equal(gainsDeNiveau(regles, { xp: xp11, gains_sante: 41, gains_chakra: 126 }).hors, true, 'au-delà de la plage');
+  assert.deepEqual([gainsDeNiveau(regles, ficheVide('x')).total, gainsDeNiveau(regles, ficheVide('x')).hors], [0, false], 'une fiche neuve, niveau 1 : 0 sur 0');
+  assert.deepEqual([gainsDeNiveau(regles, { xp: 0, gains_sante: 'abc' }).total, gainsDeNiveau(regles, { xp: 0, gains_sante: 1 }).hors], [0, true], 'illisible : 0 ; au niveau 1, rien');
+});
+
+test('gains de niveau : le moteur et la règle gains_niveau de la base (v_personnage_controle) disent la même chose, niveaux 1 à 20, aux bornes de la plage', () => {
+  let comparees = 0;
+  for (const n of regles.niveaux) {
+    const g = gainsAttendus(regles, n.niveau);
+    for (const total of [g.min - 1, g.min, g.min + 1, g.max - 1, g.max, g.max + 1].filter((t) => t >= 0)) {
+      const fiche = { ...ficheVide(`Gains ${n.niveau} ${total}`), xp: n.xp_min, gains_sante: Math.ceil(total / 2), gains_chakra: Math.floor(total / 2) };
+      const moteur = gainsDeNiveau(regles, fiche);
+      assert.equal(moteur.niveau, n.niveau);
+      const base = enregistrerFiche(vivante, fiche).controles.filter((c) => c.regle === 'gains_niveau');
+      assert.equal(base.length > 0, moteur.hors, `niveau ${n.niveau}, total ${total}`);
+      if (moteur.hors) assert.equal(base[0].detail, `${total} / ${moteur.min}${moteur.max > moteur.min ? ` à ${moteur.max}` : ''}`);
+      comparees += 1;
+    }
+  }
+  assert.ok(comparees >= regles.niveaux.length * 5);
 });
 
 test('dons à choisir : groupes de la classe et de la spécialité choisie, jusqu’au niveau de classe', (t) => {

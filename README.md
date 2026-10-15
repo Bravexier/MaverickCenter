@@ -31,7 +31,8 @@ npm run build    # site statique dans client/dist/ (avec le service, dans dist/_
   (Découvrir, Créer son personnage, Jouer, Progresser, Pour aller plus loin), avec flèches Précédent / Suivant et pagination ; quatre personnages
   fil rouge sont créés étape par étape. Les tableaux (progression, postures, compétences…) sont tirés de la base.
 - **Fiche de personnage** (`/fiche/`) : créer et modifier un prétiré étape par étape (race, magies, classes, caractéristiques, compétences, sorts,
-  progression, dons, équipement), les valeurs calculées au fil de la saisie et contrôlées par la base ; export/import JSON, impression.
+  progression, dons, équipement), les valeurs calculées au fil de la saisie et contrôlées par la base ; téléchargement en tableur (.xlsx au modèle
+  de la fiche V15.2.2), export vers Google Sheets, import d'un .xlsx ou d'une feuille Google partagée par lien (fiche auto comprise).
   **Personnages** (`/personnages/`) : tous les prétirés, avec filtres et tri par colonne. Voir [docs/character-generator.md](docs/character-generator.md).
 
 ## Mode client / serveur

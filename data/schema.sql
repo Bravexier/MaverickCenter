@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 44;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 45;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -234,7 +234,11 @@ CREATE TABLE niveau_global (
   de_attributs_bonus          TEXT,                                           -- « 1d8 santé OU 1d8 chakra OU 1d4 pour les deux » (niveaux 5, 10, 15, 20), texte du guide
   dons_brut                   TEXT    NOT NULL,                               -- cellule « Dons » telle qu'écrite (les <br> sont conservés)
   origine                     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref                  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref                  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- Bornes du dé bonus du niveau (« 1d8 santé OU 1d8 chakra OU 1d4 pour les deux »), santé + chakra : décision R73 du propriétaire, migration 0045
+  -- (« entre la valeur théorique minimale (au cas où le joueur fait 1) et la valeur maximale (s'il fait 8, ou 4 pour les 2 stats) »). NULL sans dé.
+  de_attributs_min            INTEGER CHECK (de_attributs_min >= 1),          -- au moins : 1 (le joueur fait 1)
+  de_attributs_max            INTEGER CHECK (de_attributs_max >= 1)           -- au plus : 8 (1d8 sur l'un, ou 4 sur chacun avec « 1d4 pour les deux »)
 ) STRICT;
 
 -- Déblocages écrits dans la colonne « Dons » qui ne sont pas des quantités : mode hyper (niveau 2), mode hyper 100 % et
@@ -3622,6 +3626,8 @@ CREATE VIEW v_armure_piece AS
 --   *_cumul : somme des dons des niveaux <= niveau (un don NULL compte 0 dans la SOMME : c'est un calcul, pas une donnée)
 --   caracteristiques_total / competence_naturel_max / puissance_magique_max_feuille : seuil_niveau (formules de la fiche)
 --   puissance_magique_max_guide : plus haute puissance écrite par le guide aux niveaux <= niveau
+--   de_attributs_min_cumul / de_attributs_max_cumul : bornes des dés bonus des niveaux <= niveau (santé + chakra, décision R73) ; avec
+--   points_attributs_cumul, la plage des gains de niveau à saisir (règle gains_niveau de v_personnage_controle)
 CREATE VIEW v_niveau AS
 SELECT n.niveau,
        n.xp_min,
@@ -3633,6 +3639,8 @@ SELECT n.niveau,
        SUM(COALESCE(n.niveaux_classe, 0))              OVER w AS niveaux_classe_cumul,
        SUM(COALESCE(n.niveaux_maitrise, 0))            OVER w AS niveaux_maitrise_cumul,
        SUM(CASE WHEN n.de_attributs_bonus IS NULL THEN 0 ELSE 1 END) OVER w AS des_attributs_cumul,
+       SUM(COALESCE(n.de_attributs_min, 0))            OVER w AS de_attributs_min_cumul,
+       SUM(COALESCE(n.de_attributs_max, 0))            OVER w AS de_attributs_max_cumul,
        (SELECT s.valeur FROM seuil_niveau s WHERE s.regle = 'caracteristiques_total'
          AND s.niveau_min <= n.niveau ORDER BY s.niveau_min DESC LIMIT 1) AS caracteristiques_total,
        (SELECT s.valeur FROM seuil_niveau s WHERE s.regle = 'competence_naturel_max'
@@ -3850,6 +3858,15 @@ CREATE TABLE personnage (
   portrait_x            REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
   portrait_y            REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
   portrait_zoom         REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
+  -- Gains de niveau (décision R73, migration 0045) : deux totaux, la santé et le chakra gagnés par les niveaux atteints (15 points d'attributs par
+  -- niveau à partir du 2, plus le dé bonus des niveaux qui en donnent un), que la fiche auto ajoute à la main dans la formule de F14/M14 (« +0 ») ;
+  -- leur somme est contrôlée (règle gains_niveau de v_personnage_controle). Plus de détail niveau par niveau : « Les bonus de chakra / santé par
+  -- niveau ne devraient pas être un niveau à part. »
+  gains_sante           INTEGER NOT NULL DEFAULT 0 CHECK (gains_sante >= 0),
+  gains_chakra          INTEGER NOT NULL DEFAULT 0 CHECK (gains_chakra >= 0),
+  -- « Entraînement » (L42 du modèle ordinateur), texte libre (décision R71) : bonus d'entraînement (guide), livres de magie lus, ce que le MJ accorde ;
+  -- jamais compté (les points restent dans personnage_competence.acquis, les NM de livre dans personnage_sort.nm_livre)
+  entrainement          TEXT,
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -3913,20 +3930,6 @@ CREATE TABLE personnage_metier_bonus (
   PRIMARY KEY (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
 
--- Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra
--- (la fiche compte F14 + M14 : BDD!K40), et le dé bonus des niveaux qui en donnent un (niveau_global.de_attributs_bonus : « 1d8 santé OU 1d8 chakra
--- OU 1d4 pour les deux »). La fiche ajoute tout à la main dans la formule de F14/M14 (« +0 ») : ici chaque gain est daté par son niveau.
-CREATE TABLE personnage_progression (
-  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
-  niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
-  points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
-  points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
-  de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),   -- NULL = pas de dé à ce niveau
-  de_resultat    INTEGER CHECK (de_resultat >= 1),   -- résultat du dé, ajouté à la santé, au chakra, ou aux deux (« 1d4 pour les deux »)
-  PRIMARY KEY (personnage_id, niveau),
-  CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
-) STRICT, WITHOUT ROWID;
-
 -- Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seulement ceux qui demandent un CHOIX (v_capacite_exclusive : options d'une
 -- même ligne, une spécialité contre l'autre, paliers de l'Archimage). Les dons sans alternative se déduisent de la classe, du niveau et de la spécialité.
 CREATE TABLE personnage_capacite (
@@ -3973,6 +3976,9 @@ CREATE TABLE personnage_arme (
   arme_elementaire_id          TEXT    REFERENCES arme_elementaire(id),          -- « Elément » (AI16)
   amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),   -- amélioration de la pièce élémentaire (AI18) : cible 'arme_elementaire'
   effet_en_plus                TEXT,                                             -- « Effet en plus » (AA12), texte libre
+  -- Durabilité du moment (« Solidité » AK17, AX17 du modèle ordinateur ; décision R74, migration 0045) : de 0 (l'arme est cassée) au maximum de
+  -- l'arme forgée (arme + matériau + amélioration, au moins 1 : R51, calculé par la page, pas ici) ; NULL = à son maximum
+  durabilite                   INTEGER CHECK (durabilite >= 0),
   PRIMARY KEY (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
 
@@ -4112,7 +4118,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4252,23 +4258,17 @@ CREATE VIEW v_personnage_controle AS
   WHERE (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
     AND NOT EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang)
   UNION ALL
-  -- Progression : un gain par niveau atteint (2 à niveau global), points d'attributs exacts (R3), dé seulement aux niveaux qui en donnent un
-  SELECT pp.personnage_id, 'progression_niveau_non_atteint', CAST(pp.niveau AS TEXT)
-  FROM personnage_progression pp JOIN v_personnage_niveau n ON n.personnage_id = pp.personnage_id
-  WHERE pp.niveau > n.niveau_global
-  UNION ALL
-  SELECT n.personnage_id, 'progression_manquante', CAST(g.niveau AS TEXT)
+  -- Gains de niveau (décision R73) : santé + chakra gagnés (personnage.gains_sante, gains_chakra) = les points d'attributs des niveaux atteints
+  -- (v_niveau.points_attributs_cumul : 15 par niveau à partir du 2), plus le dé bonus de chaque niveau atteint qui en donne un, entre son plus petit
+  -- et son plus grand résultat (niveau_global.de_attributs_min, de_attributs_max : 1 et 8) ; au niveau 1, rien. Détail : « total / à saisir », ou
+  -- « total / minimum à maximum » quand un dé est atteint
+  SELECT n.personnage_id, 'gains_niveau', (p.gains_sante + p.gains_chakra) || ' / ' || (v.points_attributs_cumul + v.de_attributs_min_cumul)
+         || CASE WHEN v.de_attributs_max_cumul > v.de_attributs_min_cumul THEN ' à ' || (v.points_attributs_cumul + v.de_attributs_max_cumul) ELSE '' END
   FROM v_personnage_niveau n
-  JOIN niveau_global g ON g.niveau BETWEEN 2 AND n.niveau_global
-  WHERE NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
-  UNION ALL
-  SELECT pp.personnage_id, 'progression_points', pp.niveau || ' : ' || (pp.points_sante + pp.points_chakra) || ' / ' || COALESCE(g.points_attributs, 0)
-  FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
-  WHERE pp.points_sante + pp.points_chakra <> COALESCE(g.points_attributs, 0)
-  UNION ALL
-  SELECT pp.personnage_id, 'progression_de', CAST(pp.niveau AS TEXT)
-  FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
-  WHERE (pp.de_choix IS NULL) <> (g.de_attributs_bonus IS NULL)
+  JOIN personnage p ON p.id = n.personnage_id
+  JOIN v_niveau v ON v.niveau = n.niveau_global
+  WHERE p.gains_sante + p.gains_chakra NOT BETWEEN v.points_attributs_cumul + v.de_attributs_min_cumul
+                                               AND v.points_attributs_cumul + v.de_attributs_max_cumul
   UNION ALL
   -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
   SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)

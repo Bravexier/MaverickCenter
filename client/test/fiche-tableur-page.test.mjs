@@ -1,9 +1,12 @@
 // Ce que la page /fiche/ (src/scripts/fiche.mjs) fait d'un classeur, hors du DOM : l'onglet lu (« Personnage » d'abord, sinon le premier onglet qui suit
 // l'un des deux modèles : feuilleDeLaFiche, nommé dans le message), le portrait d'une fiche importée (portraitDeLImport : la mise à jour d'un prétiré par
 // un classeur sans image garde son portrait), les messages de l'import (messageDImport) et de l'export (messageDExport : ce que le classeur n'a pas pu
-// garder) ; puis le script de la page, lu comme un texte, s'en sert (format du fichier passé à l'import, message de lecture retiré avant le dialogue
-// « import-cible »). Demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel
-// ou Google Sheet ».
+// garder) ; le nom du fichier (nomDuFichier) et l'état des boutons « Télécharger » et « Exporter » (etatDesExports) ; puis le script de la page, lu
+// comme un texte, s'en sert (format du fichier passé à l'import, message de lecture retiré avant le dialogue « import-cible », barre recalculée, export
+// Google et import en ligne). Demandes du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment
+// depuis un Excel ou Google Sheet » ; « [Exporter(Tableur)] => [Télécharger] Le nom du fichier deviens juste nom du personnage. Grisé tant que la
+// fiche n'a pas été enregistrée ; [Exporter(Json)] =>[Exporter] Exporte sous le format Google Sheet. ; [Importer] => [Importer(PC)] Demande un fichier
+// Xlsx ; [Imprimer] => [Importer(EnLigne)] Demande l'url d'un Google Sheet. »
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -11,7 +14,9 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { LONGUEUR_MAX_D_UNE_CASE } from '../src/lib/fiche-tableur-cases.mjs';
-import { avertissementDesNotes, cellulesDeLaFiche, messageDExport } from '../src/lib/fiche-tableur-export.mjs';
+import {
+  INFOBULLES_DES_EXPORTS, avertissementDesNotes, cellulesDeLaFiche, etatDesExports, messageDExport, nomDuFichier,
+} from '../src/lib/fiche-tableur-export.mjs';
 import {
   ERREUR_DISPOSITION, feuilleDeGrille, feuilleDeLaFiche, ficheDuClasseur, messageDImport, portraitDeLImport,
 } from '../src/lib/fiche-tableur-import.mjs';
@@ -116,6 +121,68 @@ test('messageDExport : « Classeur exporté. », puis ce que le classeur n’a p
   const { texte, ton } = messageDExport(longue.avertissements);
   assert.equal(ton, 'attente');
   assert.equal(texte, `Classeur exporté. ${longue.avertissements[0]}`);
+  // le début du message selon le bouton : « Télécharger », « Exporter » (Google Sheets)
+  assert.deepEqual(messageDExport([], 'Classeur téléchargé.'), { texte: 'Classeur téléchargé.', ton: 'ok' });
+  assert.deepEqual(messageDExport(longue.avertissements, 'Feuille Google créée.'), { texte: `Feuille Google créée. ${longue.avertissements[0]}`, ton: 'attente' });
+});
+
+test('nomDuFichier : le nom du personnage seul, chaque suite de caractères interdits remplacée par « - », 120 caractères au plus ; « Personnage » s’il ne reste rien', () => {
+  assert.equal(nomDuFichier('Kaël Nox'), 'Kaël Nox');
+  assert.equal(nomDuFichier('  Lucien  '), 'Lucien');
+  assert.equal(nomDuFichier('Kaël/Nox'), 'Kaël-Nox');
+  assert.equal(nomDuFichier('a\\b:c*d?e"f<g>h|i'), 'a-b-c-d-e-f-g-h-i');
+  assert.equal(nomDuFichier('a//\\\\::b'), 'a-b', 'une suite : un seul « - »');
+  assert.equal(nomDuFichier('a\u0000\u001f\u007fb'), 'a-b');
+  assert.equal(nomDuFichier('Dr. Ombre'), 'Dr. Ombre', 'le point reste (le fichier finit par .xlsx)');
+  for (const vide of ['', '   ', null, undefined]) assert.equal(nomDuFichier(vide), 'Personnage', String(vide));
+  assert.equal(nomDuFichier('x'.repeat(300)).length, 120);
+});
+
+test('etatDesExports : Télécharger et Exporter grisés tant que la fiche n’est pas enregistrée telle qu’elle est, sauf service injoignable ; Exporter grisé sans identifiant client', () => {
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const i = INFOBULLES_DES_EXPORTS;
+  assert.equal(i.telechargerGrise, 'Enregistrez la fiche pour la télécharger');
+  assert.equal(i.exporterSansClient, 'Export vers Google Sheets pas encore configuré');
+  const etat = (o) => {
+    const e = etatDesExports({ client: CLIENT, ...o });
+    return [e.telecharger.actif, e.exporter.actif];
+  };
+  assert.deepEqual(etat({ id: null, modifie: false }), [false, false], 'fiche neuve');
+  assert.deepEqual(etat({ id: null, modifie: true }), [false, false]);
+  assert.deepEqual(etat({ id: 'x', modifie: false }), [true, true], 'enregistrée');
+  assert.deepEqual(etat({ id: 'x', modifie: true }), [false, false], 'modifiée depuis');
+  assert.deepEqual(etat({ id: 'x', modifie: false, occupe: true }), [false, false], 'un export en cours');
+  // le service ne répond pas : la fiche ne peut pas être enregistrée, la télécharger évite de la perdre
+  assert.deepEqual(etat({ id: null, modifie: true, serviceJoignable: false }), [true, true]);
+  assert.deepEqual(etatDesExports({ id: null, modifie: true }).telecharger, { actif: false, infobulle: i.telechargerGrise });
+  assert.deepEqual(etatDesExports({ id: 'x' }).telecharger, { actif: true, infobulle: i.telecharger });
+  assert.deepEqual(etatDesExports({ id: 'x', client: CLIENT }).exporter, { actif: true, infobulle: i.exporter });
+  assert.deepEqual(etatDesExports({ id: null, client: CLIENT }).exporter, { actif: false, infobulle: i.exporterGrise });
+  // sans identifiant client (variable de build SITE_GOOGLE_CLIENT_ID vide) : Exporter grisé quoi qu'il arrive
+  for (const o of [{ id: 'x' }, { id: null, serviceJoignable: false }, { id: 'x', modifie: true, enregistrementRefuse: true }, {}]) {
+    assert.deepEqual(etatDesExports(o).exporter, { actif: false, infobulle: i.exporterSansClient }, JSON.stringify(o));
+  }
+});
+
+test('etatDesExports : après un enregistrement refusé (409 de version, 413, 400…), Télécharger et Exporter redeviennent actifs pour ne rien perdre', () => {
+  const CLIENT = '123-abc.apps.googleusercontent.com';
+  const i = INFOBULLES_DES_EXPORTS;
+  assert.equal(i.telechargerApresRefus, 'L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre');
+  assert.equal(i.exporterApresRefus, 'L’enregistrement a échoué : exportez la fiche pour ne rien perdre');
+  const refusee = { telecharger: { actif: true, infobulle: i.telechargerApresRefus }, exporter: { actif: true, infobulle: i.exporterApresRefus } };
+  // deux onglets sur le même prétiré : l'autre a enregistré, celui-ci reçoit un 409 (version) et garde ses modifications ; le service répond toujours
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, serviceJoignable: true, enregistrementRefuse: true, client: CLIENT }), refusee);
+  // une fiche jamais enregistrée, refusée (400 avec ses problèmes, 413 « Requête trop volumineuse. »)
+  assert.deepEqual(etatDesExports({ id: null, modifie: true, enregistrementRefuse: true, client: CLIENT }), refusee);
+  assert.deepEqual(etatDesExports({ id: null, modifie: false, enregistrementRefuse: true, client: CLIENT }), refusee);
+  // pas pendant un export ; sans refus, la règle d'avant (grisés tant que la fiche n'est pas enregistrée telle qu'elle est)
+  const occupe = etatDesExports({ id: 'p1', modifie: true, enregistrementRefuse: true, client: CLIENT, occupe: true });
+  assert.deepEqual([occupe.telecharger.actif, occupe.exporter.actif], [false, false]);
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, enregistrementRefuse: false, client: CLIENT }).telecharger, { actif: false, infobulle: i.telechargerGrise });
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, client: CLIENT }).telecharger, { actif: false, infobulle: i.telechargerGrise }, 'pas de refus par défaut');
+  // service injoignable ou fiche enregistrée telle qu'elle est : les infobulles de toujours
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: true, serviceJoignable: false, enregistrementRefuse: true, client: CLIENT }).telecharger, { actif: true, infobulle: i.telecharger });
+  assert.deepEqual(etatDesExports({ id: 'p1', modifie: false, enregistrementRefuse: true, client: CLIENT }).exporter, { actif: true, infobulle: i.exporter });
 });
 
 // ------------------------------------------------------------------ le script de la page s'en sert (lu comme un texte : il touche au DOM)
@@ -142,5 +209,49 @@ test('src/scripts/fiche.mjs : onglet retrouvé, format passé à l’import, mes
   assert.match(importer, /portraitDeLImport\(lu, ouverte\)/);
   assert.match(importer, /portraitDeLImport\(\{ \.\.\.lu, image: null \}, ouverte\)/, 'une image illisible : le portrait sans elle');
   assert.match(importer, /messageDImport\(\{[^}]*onglet: feuille\.nom/);
-  assert.match(corps('exporterTableur'), /messageDExport\(avertissements\)/, 'les avertissements de l’export dans le message');
+  assert.match(corps('telechargerClasseur'), /messageDExport\(avertissements, 'Classeur téléchargé\.'\)/, 'les avertissements de l’export dans le message');
+});
+
+test('src/scripts/fiche.mjs : la barre (Télécharger, Exporter, Importer (PC), Importer (en ligne)) recalculée ; plus de JSON ni d’impression', () => {
+  // l'état des boutons recalculé par rafraichir et à la fin de chaque action (jamais un « disabled = false » qui réactiverait Télécharger)
+  assert.match(corps('rafraichir'), /\n {2}etatDesBoutons\(\);/);
+  const etat = corps('etatDesBoutons');
+  assert.match(etat, /etatDesExports\(\{ id, modifie, serviceJoignable, enregistrementRefuse, client: \$\('fiche-exporter'\)\.dataset\.clientGoogle \?\? '', occupe \}\)/);
+  // un enregistrement refusé (toute réponse non OK : 409 de version, 413, 400…) le note avant d'en dire la raison ; une autre fiche à l'écran (relue,
+  // enregistrée, nouvelle, ou un nouveau prétiré tiré d'un classeur) l'oublie
+  assert.match(SCRIPT, /\nlet enregistrementRefuse = false;/);
+  const enregistrer = corps('enregistrer');
+  assert.match(enregistrer, /if \(reponse\.ok\) \{[\s\S]*?return;\s*\}\s*enregistrementRefuse = true;[^\n]*\n\s*if \(reponse\.status === 409/, 'noté dès que la réponse n’est pas OK');
+  assert.equal([...enregistrer.matchAll(/enregistrementRefuse = /g)].length, 1);
+  assert.match(corps('appliquer'), /\n {2}enregistrementRefuse = false;/);
+  assert.match(corps('nouvelle'), /\n {2}enregistrementRefuse = false;/);
+  assert.match(corps('remplacerLaFiche'), /if \(cible === 'creer'\) \{[^}]*enregistrementRefuse = false;/);
+  assert.match(etat, /\['telecharger', \$\('fiche-telecharger'\)\], \['exporter', \$\('fiche-exporter'\)\]/);
+  assert.match(corps('pendant'), /finally \{\s*occupe = false;\s*etatDesBoutons\(\);/);
+  assert.match(corps('enregistrer'), /bouton\.disabled = false;\s*etatDesBoutons\(\);/);
+  // Télécharger : le classeur, nommé d'après le personnage
+  assert.match(corps('classeurDeLaFiche'), /nom: nomDuFichier\(f\.nom\)/);
+  assert.match(corps('telechargerClasseur'), /telecharger\(new Blob\(\[octets\], \{ type: TYPE_XLSX \}\), `\$\{nom\}\.xlsx`\)/);
+  // Exporter : la fenêtre de connexion de Google ouverte dans le clic (requestAccessToken sans attente avant lui), le même classeur envoyé
+  const exporter = corps('exporterVersGoogle');
+  const avantLaFenetre = exporter.slice(0, exporter.indexOf('clientDeJetons.requestAccessToken();'));
+  assert.ok(avantLaFenetre.length > 0 && !/\bawait\b|\.then\(/.test(avantLaFenetre), 'aucune attente avant requestAccessToken');
+  const envoi = corps('envoyerAGoogle');
+  assert.match(envoi, /corpsMultipart\(\{ nom, octets, frontiere: `maverick-\$\{crypto\.randomUUID\(\)\}` \}\)/);
+  assert.match(envoi, /fetch\(ADRESSE_D_ENVOI, \{ method: 'POST', headers: \{ Authorization: `Bearer \$\{jeton\}`, 'Content-Type': type \}, body: corps \}\)/);
+  assert.match(envoi, /messageDExport\(avertissements, 'Feuille Google créée\.'\)/);
+  assert.match(envoi, /lienDeFeuille\(donnees\)/);
+  assert.match(envoi, /'Ouvrir dans Google Sheets'/);
+  assert.match(corps('chargerGoogle'), /initTokenClient\(\{\s*client_id: \$\('fiche-exporter'\)\.dataset\.clientGoogle,\s*scope: PORTEE_DRIVE,/);
+  assert.doesNotMatch(SCRIPT, /localStorage|sessionStorage/, 'le jeton de Google reste en mémoire');
+  // Importer (en ligne) : le service, puis le même chemin qu'un classeur de l'ordinateur
+  const enLigne = corps('importerEnLigne');
+  assert.match(enLigne, /fetch\(`\$\{API\}classeur\/`, \{ method: 'POST', headers: \{ 'Content-Type': 'application\/json' \}, body: JSON\.stringify\(\{ url: adresse \}\) \}\)/);
+  assert.match(enLigne, /await importerClasseur\(octets, nomDuClasseur\(reponse\.headers\.get\('content-disposition'\)\) \?\? 'Google Sheets\.xlsx'\)/);
+  assert.match(corps('preparerImportEnLigne'), /idDeFeuille\(champ\.value\)/);
+  // plus d'export ni d'import en JSON, plus d'impression ; les messages disent « téléchargez »
+  for (const parti of [/function importerJson/, /function exporter\(/, /window\.print/, /type: 'application\/json' \}\)/, /fiche-imprimer/, /fiche-exporter-tableur/, /[Ee]xportez/]) {
+    assert.doesNotMatch(SCRIPT, parti, String(parti));
+  }
+  assert.match(SCRIPT, /Service indisponible : téléchargez la fiche pour ne rien perdre\./);
 });

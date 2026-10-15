@@ -163,7 +163,7 @@ test('description OpenAPI 3.1 : chaque ressource a ses chemins, chaque méthode 
     }
   }
   for (const c of ['/etat/', '/maintenance/', '/maintenance/lever/', '/personnages/', '/personnages/{id}/', '/personnages/{id}/portrait/', '/edition/', '/edition/en-attente/',
-    '/edition/journal/', '/mise-a-jour/', '/mise-a-jour/lots/{lot}/', '/debug/journal/', '/v1/', '/v1/openapi.json']) {
+    '/edition/journal/', '/mise-a-jour/', '/mise-a-jour/lots/{lot}/', '/debug/journal/', '/metriques/page/', '/classeur/', '/v1/', '/v1/openapi.json']) {
     assert.ok(spec.paths[c], c);
     assert.equal(spec.paths[c][Object.keys(spec.paths[c]).find((m) => m !== 'parameters')].tags[0], 'Service', c);
   }

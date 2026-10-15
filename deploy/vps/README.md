@@ -163,6 +163,34 @@ sudo du -sh /srv/maverick-center*/{site,db,metriques} 2>/dev/null
 sudo docker system df                                           # images, conteneurs, journaux compris
 ```
 
+## 9. Export vers Google Sheets (identifiant client OAuth)
+
+Le bouton **« Exporter »** de la fiche de personnage crée une feuille Google Sheets dans le Drive de la personne connectée
+([`docs/character-generator.md`](../../docs/character-generator.md), « Tableur »). Il lui faut un **identifiant client OAuth** de Google, posé au
+build : sans lui, le bouton reste grisé (« Export vers Google Sheets pas encore configuré »). Rien à faire sur le serveur lui-même. À faire une
+fois, par le propriétaire, avec son compte Google :
+
+1. <https://console.cloud.google.com/> : **créer un projet** (par exemple « Maverick Center »).
+2. *API et services › Bibliothèque* : **activer « Google Drive API »** (sans elle, Google refuse l'envoi : « HTTP 403 » dans le message de la page).
+3. *Écran de consentement OAuth* (« Google Auth Platform ») : type d'utilisateurs **Externe** ; nom de l'application, adresse de contact ;
+   domaine autorisé `maverick-jdr.com` ; accès demandé : `https://www.googleapis.com/auth/drive.file` (le site ne voit que les fichiers qu'il crée :
+   un accès « non sensible », sans validation de Google). Puis **publier l'application (« En production »)** : en mode « Test », seuls les
+   comptes déclarés comme testeurs peuvent se connecter.
+4. *Identifiants › Créer des identifiants › ID client OAuth* : type **« Application Web »** ; **origines JavaScript autorisées** :
+   `https://maverick-jdr.com`, `https://dev.maverick-jdr.com` et `http://localhost:4321` (développement) ; aucune URI de redirection.
+5. Copier l'**ID client** (`<numéro>-<texte>.apps.googleusercontent.com`). Il est public (il est écrit dans la page) : ce n'est pas un secret, et
+   le « code secret du client » ne sert pas.
+6. GitHub : *Settings › Secrets and variables › Actions › onglet Variables › New repository variable* : nom **`GOOGLE_CLIENT_ID`**, valeur l'ID
+   client. `.github/workflows/livraison.yml` le passe aux builds des sites (`SITE_GOOGLE_CLIENT_ID`) : il est pris en compte à la **livraison
+   suivante** (serveur de test puis serveur normal). À la main : `SITE_GOOGLE_CLIENT_ID=<ID client> ./deploy/installateur/fabriquer.sh prod` ;
+   en développement : `SITE_GOOGLE_CLIENT_ID=<ID client> npm run dev`.
+7. Vérifier sur `https://dev.maverick-jdr.com/fiche/` : enregistrer une fiche, « Exporter » (la fenêtre de Google s'ouvre, puis « Feuille Google
+   créée » et le lien), partager la feuille par lien, puis « Importer (en ligne) » avec ce lien.
+
+« **Importer (en ligne) »** ne demande aucun réglage : le service de chaque instance télécharge lui-même la feuille partagée par lien
+(`docs.google.com`, `*.googleusercontent.com` en HTTPS : le pare-feu du serveur laisse sortir ; bornes de taille, de délai et de débit :
+[`docs/serveur.md`](../../docs/serveur.md), « Hébergement »).
+
 ## Avant la 0.2.0 : le serveur de test suit la branche `site`
 
 Tant que `dev` est en 0.1.x, il n'y a ni installateur ni *release* : après chaque fusion dans `dev`, le bot publie le site construit sur la
@@ -275,6 +303,6 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 | 401 sur le site | Les mots de passe de Caddy et de l'instance ne concordent plus : `sudo bash ~/vps/instances.sh --regenerer-acces` puis `docker compose restart` dans les deux dossiers |
 | 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
 | « Maintenance en cours » qui ne finit pas | `sudo tail /srv/maverick-center*/mise-a-jour.log` (l'installateur est-il arrivé ?) ; bouton « Lever la maintenance » sur `https://dev.maverick-jdr.com/maintenance/`, sinon elle se lève seule 4 h après le lancement |
-| Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
+| Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) ; sous la migration 0045, « Revenir sous la migration 0045 » (remettre l'archive de la base, copiée à part avant tout) |
 | Disque presque plein | Commandes de l'étape 8, puis la liste de [`docs/serveur.md`](../../docs/serveur.md), « Tout ce qui grossit sur le serveur » : restes d'une installation interrompue (`.installation.*`, `.db.copie.*`, `/tmp/maverick-mise-a-jour.*`), installateurs copiés dans `~`, sauvegardes `/root/vivante-*.db`, `sudo docker image prune`, `sudo journalctl --vacuum-size=200M` ; les journaux des conteneurs ne tournent qu'après `docker compose up -d` avec le nouveau `docker-compose.yml` |
 | Verrouillé hors du serveur | Console VNC d'Infomaniak (page du serveur) |

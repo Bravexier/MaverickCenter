@@ -4,7 +4,9 @@
 // l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { createHash, randomUUID } from 'node:crypto';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
+import {
+  CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
+} from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
 import { instant } from './instant.mjs';
@@ -14,6 +16,28 @@ import { instant } from './instant.mjs';
  * d'avant si la reconstruction échoue (docs/serveur.md), et cette base exigerait la colonne (NOT NULL) à chaque création.
  */
 const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
+
+/**
+ * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
+ * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74). Quand le service retombe sur sa base d'avant (reconstruction
+ * échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) : une de ces colonnes que la base n'a pas est ignorée
+ * tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ inconnu » (ce qu'elle porte serait perdu).
+ */
+export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
+  personnage: Object.freeze({ gains_sante: 0, gains_chakra: 0, entrainement: null }),
+  personnage_arme: Object.freeze({ durabilite: null }),
+});
+
+/** Vrai si `valeur`, reçue pour la colonne `colonne` de `table` que la base vivante n'a pas, ne porte rien (DEPART_DES_COLONNES_AJOUTEES). */
+function ajouteeSansRien(table, colonne, valeur) {
+  const departs = DEPART_DES_COLONNES_AJOUTEES[table] ?? {};
+  if (!Object.hasOwn(departs, colonne)) return false;
+  return valeur === null || valeur === undefined || valeur === '' || valeur === departs[colonne];
+}
+
+/** Message d'un envoi qui porte les deux formes des gains de niveau (progressionAvecGains de src/lib/fiche-format.mjs). */
+export const PAGE_D_AVANT = 'La page vient d’une version précédente du site : rien n’a été enregistré. Rechargez-la, puis saisissez de nouveau ce '
+  + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -225,15 +249,18 @@ function verifierForme(db, entree, problemes) {
   for (const cle of Object.keys(entree)) {
     if (modifiables.has(cle) || COLONNES_DU_SERVICE.includes(cle) || cle === CHAMP_VERSION) continue;
     if (COLONNES_RETIREES.personnage.includes(cle)) continue; // colonne que les règles ont retirée (fichier exporté avant, page restée ouverte) : ignorée
+    // colonne ajoutée par les règles, absente d'une base vivante d'avant (le service y retombe si la reconstruction échoue) : ignorée si elle ne porte rien
+    if (ajouteeSansRien('personnage', cle, entree[cle])) continue;
     if (cle in PARTIES_DE_FICHE) {
       const liste = entree[cle];
+      const table = PARTIES_DE_FICHE[cle];
       if (!Array.isArray(liste)) problemes.push(`${cle} : une liste est attendue`);
       else if (liste.length > LIGNES_MAX) problemes.push(`${cle} : ${liste.length} lignes, au plus ${LIGNES_MAX}`);
       else {
-        const colonnes = new Set(colonnesDeDetail(db, PARTIES_DE_FICHE[cle]));
+        const colonnes = new Set(colonnesDeDetail(db, table));
         liste.forEach((l, i) => {
           if (!l || typeof l !== 'object' || Array.isArray(l)) problemes.push(`${cle}[${i}] : un objet est attendu`);
-          else for (const c of Object.keys(l)) if (!colonnes.has(c)) problemes.push(`${cle}[${i}] : champ inconnu « ${c} »`);
+          else for (const c of Object.keys(l)) if (!colonnes.has(c) && !ajouteeSansRien(table, c, l[c])) problemes.push(`${cle}[${i}] : champ inconnu « ${c} »`);
         });
       }
       continue;
@@ -246,9 +273,15 @@ function verifierForme(db, entree, problemes) {
  * Crée (sans `id`) ou modifie (avec `id`) un prétiré à partir du JSON `entree`. Une colonne absente du JSON garde sa valeur (création : celle
  * d'une fiche vide) ; une liste présente remplace toute la liste, une liste absente ne change pas. Modifier exige la `version` lue : si la fiche a
  * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 404, 409).
+ * La clé d'une table que les règles ont retirée est convertie d'abord (sansPartiesRetirees de src/lib/fiche-format.mjs) : une page restée ouverte
+ * qui envoie encore `progression` enregistre ses gains de niveau en deux totaux (décision R73), sans « champ inconnu ». Une `progression` non vide
+ * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
+ * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire.
  */
-export function enregistrerFiche(db, entree, { id = null, maintenant = new Date() } = {}) {
+export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
+  if (progressionAvecGains(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
+  const entree = sansPartiesRetirees(recue);
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 

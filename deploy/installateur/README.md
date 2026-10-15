@@ -59,6 +59,32 @@ la nouvelle version est écrite à côté (`.nouveau`), à reporter à la main.
 **Revenir à une version précédente** : créez d'abord un fichier `GELER` dans le dossier de l'instance (sinon la mise à jour automatique réinstalle la
 dernière livraison dans les 5 minutes), puis relancez l'installateur de la version voulue. Supprimez `GELER` une fois une livraison corrigée publiée.
 
+**Revenir sous la migration 0045** (une version d'avant les gains de niveau en deux totaux, l'entraînement et la solidité des armes) : le service
+d'avant ne relit pas la base des fiches refaite en 0045 (toute lecture de fiche échoue) et refuse de la reconstruire. Il faut lui remettre
+l'archive faite à la reconstruction 0045, et **tout ce que la base a reçu depuis est perdu** : fiches créées, modifiées ou supprimées, gains de
+niveau, entraînement et solidité des armes saisis (et, sur le serveur de test, les modifications des règles en attente). Dans le dossier de
+l'instance :
+
+1. `touch GELER`, puis sauvegardez la base en place, hors de `db/` : `sqlite3 db/vivante.db ".backup /root/vivante-avant-retour.db"`.
+2. Trouvez l'archive, la plus récente de `db/archives/` qui a encore la table `personnage_progression`, et **copiez-la à part tout de suite** :
+   seules les 5 dernières archives sont gardées (`ARCHIVES_GARDEES` : au-delà, chaque reconstruction efface la plus ancienne), et l'installateur
+   de test remplace le contenu de `db/`.
+   ```bash
+   for f in db/archives/vivante-*.db; do sqlite3 "$f" ".tables personnage_progression" | grep -q . && echo "$f"; done | tail -1
+   cp db/archives/vivante-AAAA-MM-JJT….db /root/vivante-avant-0045.db     # le fichier affiché par la ligne précédente
+   ```
+   Aucune archive de ce genre : soit la base n'avait ni fiche ni modification en attente à la reconstruction 0045 (à l'étape 4, supprimez alors
+   aussi `db/vivante.db` au lieu d'y copier l'archive : le service en refait une vide), soit elle a déjà été effacée, et les fiches d'avant 0045
+   ne se retrouvent plus que dans une sauvegarde faite à la main.
+3. `docker compose stop serveur`, puis lancez l'installateur de la version voulue.
+4. Remettez l'archive à la place de la base, sans ses fichiers voisins ni `vivante.json` (sans lui, le service refait la base pour les règles
+   installées, en reprenant les fiches de l'archive) :
+   ```bash
+   cp /root/vivante-avant-0045.db db/vivante.db
+   rm -f db/vivante.db-wal db/vivante.db-shm db/vivante.db-journal db/vivante.json
+   ```
+5. `docker compose start serveur`, puis vérifiez `/api/etat` (base refaite, sans erreur).
+
 ## Mise à jour automatique
 
 `mise-a-jour.sh` (posé dans chaque instance par l'installateur) prend le dernier installateur publié pour le mode de l'instance (lu dans `VERSION`) et

@@ -1,1 +1,0 @@
--- data/rows/personnage_progression.sql : export déterministe, une instruction par ligne, triée par (personnage_id, niveau). NE PAS ÉDITER À LA MAIN.

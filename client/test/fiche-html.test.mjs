@@ -1,7 +1,8 @@
 // Site CONSTRUIT (client/dist/) : la fiche de personnage (/fiche/, création et modification d'un prétiré) et la recherche des personnages
 // (/personnages/), demandes du propriétaire ; l'ancien générateur (/generateur/) a disparu et son adresse mène à la fiche (page 404) ; le menu met
-// la fiche à droite, après les métiers ; la fiche s'exporte et s'importe en JSON ou en classeur au modèle V15.2.2 (/fiche/modele.xlsx, demande du
-// propriétaire, 2026-10-15). Ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
+// la fiche à droite, après les métiers ; la fiche se télécharge et s'importe en classeur au modèle V15.2.2 (/fiche/modele.xlsx), s'exporte en feuille
+// Google Sheets et s'importe d'une feuille partagée par lien (demandes du propriétaire, 2026-10-15). Ne tourne qu'après `npm run build` (la CI
+// l'exécute juste après, sans identifiant client Google) et se saute sinon.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,6 +10,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
+import { aideDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
@@ -26,7 +28,7 @@ test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les donné
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-modele="\/fiche\/modele\.xlsx" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
   const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
-  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
+  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements', 'gains_sante', 'gains_chakra', 'entrainement']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }
   // plus de statut (brouillon, validé, archivé : demande du propriétaire, migration 0038) : les contrôles signalent, n'empêchent jamais d'enregistrer
@@ -93,6 +95,17 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
+  // « Entraînement » (décision R71) : un texte libre entre les dons de la race et ceux des classes, avec l'aide du guide (le paragraphe que la base écrit)
+  const entrainement = dons.indexOf('data-champ="entrainement"');
+  assert.ok(entrainement > dons.indexOf('id="dons-race"') && entrainement < dons.indexOf('id="dons-classes"'), 'entre les dons de la race et ceux des classes');
+  assert.match(dons, /<label for="fiche-entrainement">Entraînement<\/label><\/h4>\s*<textarea id="fiche-entrainement" data-champ="entrainement" rows="2" aria-describedby="entrainement-aide"><\/textarea>/);
+  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
+  const guide = aideDeLEntrainement(ouvrirBase());
+  const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
+  assert.match(aide, /livres de magie lus \(pour le NM\) et tout autre élément à la libre volonté du MJ/, 'les mots du propriétaire (R71)');
+  assert.match(aide, /jamais compté/);
+  assert.equal([...html.matchAll(/data-champ="entrainement"/g)].length, 1);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // III. selon la situation
   const posture = bloc('posture');
@@ -106,7 +119,14 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   // IV. paramètres et suivi
   const progression = bloc('progression');
   for (const id of ['xp-bloc', 'xp-niveau', 'xp-jauge', 'xp-plus', 'xp-ajout']) assert.match(progression, new RegExp(`id="${id}"`), `progression : ${id}`);
-  assert.match(progression, /<div id="progression" class="gains"><\/div>/, 'gains de niveau compacts');
+  // gains de niveau (décision R73) : deux totaux, santé et chakra, jamais négatifs ; le total attribué et le total à saisir (rempli par le script)
+  const gains = progression.slice(progression.indexOf('<div id="progression" class="gains">'));
+  assert.ok(gains.length < progression.length, 'le bloc des gains');
+  assert.match(gains, /<label class="gains__champ gains__champ--sante"><span>Santé<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante"><\/label>/);
+  assert.match(gains, /<label class="gains__champ gains__champ--chakra"><span>Chakra<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra"><\/label>/);
+  assert.match(gains, /<output class="gains__total" id="gains-total" for="gains-sante gains-chakra"><\/output>/);
+  assert.ok(progression.indexOf('id="progression-aide"') < progression.indexOf('id="progression"'), 'l’aide au-dessus des deux champs');
+  assert.equal([...html.matchAll(/data-champ="gains_(sante|chakra)"/g)].length, 2, 'un champ chacun, pas un par niveau');
   const choix = bloc('choix');
   for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
     assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);
@@ -140,27 +160,54 @@ test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, 
   assert.ok(!html.includes('id="ajout-sort"'), 'les sorts se choisissent dans le tableau, ligne par ligne');
 });
 
-test('/fiche/ : export en classeur ou en JSON, import de l’un ou l’autre (demande du propriétaire, 2026-10-15) ; le dialogue « import-cible »', options, () => {
+test('/fiche/ : la barre Nouveau, Télécharger, Exporter, Importer (PC), Importer (en ligne), Supprimer (demandes du propriétaire, 2026-10-15) ; les dialogues « import-cible » et « import-en-ligne »', options, () => {
   const html = lire('fiche/index.html');
-  const barre = html.slice(html.indexOf('<span class="fiche-barre__outils">'), html.indexOf('id="fiche-supprimer"'));
-  const boutons = [...barre.matchAll(/<button type="button" id="([a-z-]+)"[^>]*>([^<]+)<\/button>|<input type="file" id="(fiche-importer)"/g)].map((m) => m[1] ? `${m[1]} ${m[2]}` : m[3]);
-  assert.deepEqual(boutons, ['fiche-nouvelle Nouveau', 'fiche-exporter-tableur Exporter (tableur)', 'fiche-exporter Exporter (JSON)', 'fiche-importer', 'fiche-imprimer Imprimer']);
-  // `id` juste après `type="button"` : la version portable (tools/build-artifact.mjs) masque ainsi les exports et l'impression
-  assert.match(barre, /<button type="button" id="fiche-exporter-tableur" title="Classeur \.xlsx au modèle de la fiche V15\.2\.2 : Excel, LibreOffice, Google Sheets \(Fichier › Importer\)">/);
-  assert.match(barre, /<button type="button" id="fiche-exporter" title="Sauvegarde complète de la fiche \(\.json\), à réimporter sur le site">Exporter \(JSON\)<\/button>/);
+  const barre = html.slice(html.indexOf('<span class="fiche-barre__outils">'), html.indexOf('</span>', html.indexOf('id="fiche-supprimer"')));
+  const boutons = [...barre.matchAll(/<button type="button"(?: class="[^"]*")? id="([a-z-]+)"[^>]*>([^<]+)<\/button>|<input type="file" id="(fiche-importer)"[^>]*><span[^>]*>([^<]+)<\/span>/g)]
+    .map((m) => (m[1] ? `${m[1]} ${m[2]}` : `${m[3]} ${m[4]}`));
+  assert.deepEqual(boutons, ['fiche-nouvelle Nouveau', 'fiche-telecharger Télécharger', 'fiche-exporter Exporter', 'fiche-importer Importer (PC)',
+    'fiche-importer-en-ligne Importer (en ligne)', 'fiche-supprimer Supprimer']);
+  // plus d'export ni d'import en JSON, plus d'impression (Ctrl+P reste possible : la mise en page d'impression est gardée)
+  assert.ok(!/fiche-imprimer|fiche-exporter-tableur|Exporter \(JSON\)|\.json/.test(barre), 'ni JSON ni Imprimer dans la barre');
+  // `id` juste après `type="button"` : la version portable (tools/build-artifact.mjs) masque ainsi Télécharger, Exporter et Importer (en ligne)
+  const portable = readFileSync(new URL('../../tools/build-artifact.mjs', import.meta.url), 'utf8').match(/html\.replace\((\/<button type="button" id="[^/]+"\/g), /)?.[1];
+  assert.equal(portable, '/<button type="button" id="(fiche-telecharger|fiche-exporter|fiche-importer-en-ligne)"/g');
+  for (const id of ['fiche-telecharger', 'fiche-exporter', 'fiche-importer-en-ligne']) assert.match(barre, new RegExp(`<button type="button" id="${id}"`), id);
+  // Télécharger et Exporter grisés dans la page construite (une fiche neuve n'est pas enregistrée ; le script les recalcule) ; la CI construit sans
+  // identifiant client Google (SITE_GOOGLE_CLIENT_ID) : Exporter dit qu'il n'est pas configuré
+  assert.match(barre, /<button type="button" id="fiche-telecharger" disabled title="Enregistrez la fiche pour la télécharger">Télécharger<\/button>/);
+  // (un attribut vide est écrit sans valeur : le script lit dataset.clientGoogle = '')
+  assert.match(barre, /<button type="button" id="fiche-exporter" data-client-google(?:="")? disabled title="Export vers Google Sheets pas encore configuré">Exporter<\/button>/);
+  assert.ok(!/<script[^>]+src="https:\/\/accounts\.google\.com/.test(html), 'le script de Google n’est pas dans la page : la page le crée au besoin');
+  // Importer (PC) : un .xlsx
   const accept = barre.match(/<input type="file" id="fiche-importer" accept="([^"]+)" hidden>/)?.[1].split(',');
-  assert.deepEqual(accept, ['.json', '.xlsx', '.ods', '.csv', 'application/json', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.oasis.opendocument.spreadsheet', 'text/csv']);
-  assert.match(barre, /<span role="button" tabindex="0" title="Une fiche exportée \(\.json\) ou un classeur au modèle V15\.2\.2, ordinateur ou auto \(\.xlsx, \.ods, \.csv ; Google Sheets : Fichier › Télécharger\)">Importer<\/span>/);
+  assert.deepEqual(accept, ['.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+  assert.match(barre, /<span role="button" tabindex="0" title="Un classeur \.xlsx au modèle de la fiche V15\.2\.2, ordinateur ou auto \(depuis Google Sheets : Fichier › Télécharger › Microsoft Excel\)">Importer \(PC\)<\/span>/);
+  assert.match(barre, /<button type="button" id="fiche-importer-en-ligne" title="Le lien d’une feuille Google Sheets partagée à « Tous les utilisateurs disposant du lien »">Importer \(en ligne\)<\/button>/);
+  // la connexion à Google : la fenêtre de Google reçoit l'origine du site (cette page seulement ; le reste du site garde Referrer-Policy same-origin)
+  const tete = html.slice(0, html.indexOf('</head>'));
+  assert.match(tete, /<meta name="referrer" content="strict-origin-when-cross-origin">/);
+  assert.ok(!lire('index.html').includes('name="referrer"'), 'pas sur les autres pages');
   // où va une fiche importée quand un prétiré est ouvert : le mettre à jour, en créer un nouveau, ou annuler ; caché à l'impression
   const dialogue = html.match(/<dialog class="import-cible" id="import-cible" aria-labelledby="titre-import-cible">([\s\S]*?)<\/dialog>/)?.[1];
   assert.ok(dialogue, 'dialogue « import-cible »');
   assert.match(dialogue, /<form method="dialog"/);
+  assert.match(dialogue, /<p>La fiche du classeur remplace celle de la page\.<\/p>/);
   assert.match(dialogue, /<p class="import-cible__perte" id="import-cible-perte" hidden>Les modifications non enregistrées seront perdues\.<\/p>/);
   assert.deepEqual([...dialogue.matchAll(/<button type="submit"[^>]* id="([a-z-]+)" value="([a-z-]+)">([^<]+)<\/button>/g)].map((m) => [m[1], m[2], m[3]]), [
     ['import-cible-maj', 'mettre-a-jour', 'Mettre à jour le prétiré'], ['import-cible-creer', 'creer', 'Créer un nouveau prétiré'], ['import-cible-annuler', 'annuler', 'Annuler'],
   ]);
-  assert.match(html, /@media print\s*\{[^}]*\.import-cible[^}]*display:\s*none/, 'dialogue caché à l’impression');
+  // « Importer (en ligne) » : le lien de la feuille (requis), Annuler sans validation ; même classe, donc caché à l'impression
+  const enLigne = html.match(/<dialog class="import-cible import-en-ligne" id="import-en-ligne" aria-labelledby="titre-import-en-ligne">([\s\S]*?)<\/dialog>/)?.[1];
+  assert.ok(enLigne, 'dialogue « import-en-ligne »');
+  assert.match(enLigne, /<form method="dialog" class="import-cible__corps" id="import-en-ligne-formulaire">/);
+  assert.match(enLigne, /<input type="url" id="import-en-ligne-adresse" name="adresse" required inputmode="url" autocomplete="off" spellcheck="false" placeholder="https:\/\/docs\.google\.com\/spreadsheets\/d\/…">/);
+  assert.match(enLigne, /Tous les utilisateurs disposant du lien/);
+  assert.match(enLigne, /<p class="import-en-ligne__erreur" id="import-en-ligne-erreur" role="alert" hidden><\/p>/);
+  assert.deepEqual([...enLigne.matchAll(/<button type="submit"[^>]* id="([a-z-]+)" value="([a-z-]+)"( formnovalidate)?>([^<]+)<\/button>/g)].map((m) => [m[1], m[2], Boolean(m[3]), m[4]]), [
+    ['import-en-ligne-importer', 'importer', false, 'Importer'], ['import-en-ligne-annuler', 'annuler', true, 'Annuler'],
+  ]);
+  assert.match(html, /@media print\s*\{[^}]*\.import-cible[^}]*display:\s*none/, 'dialogues cachés à l’impression');
 });
 
 test('/fiche/modele.xlsx : le modèle V15.2.2 ordinateur assemblé au build (lib/fiche-modele.mjs), que la page remplit et relit', options, async () => {

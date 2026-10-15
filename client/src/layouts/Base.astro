@@ -43,6 +43,8 @@ const pageMesuree = Astro.url.pathname;
     <link rel="icon" type="image/png" sizes="32x32" href={url('favicon.png')} />
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
+    {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
+    <slot name="tete" />
     {
       /* Maintenance pendant une mise à jour (demande du propriétaire ; serveur/maintenance.mjs, docs/serveur.md) : chaque page demande au service si
          ce serveur est en maintenance — au chargement, au retour sur l'onglet, puis toutes les 30 s — et, si oui, grise le menu et part vers

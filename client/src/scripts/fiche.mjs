@@ -2,29 +2,36 @@
 // fiche en cours au format d'échange (lib/fiche-format.mjs), recalcule ce qui en découle à chaque saisie (lib/fiche-moteur.mjs) et l'enregistre
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
 // Export et import (demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel
-// ou Google Sheet et réexportée sous le même modèle ») : en JSON (le format d'échange), ou en classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2
-// ordinateur » (/fiche/modele.xlsx : lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la
-// place du logo) ; l'import lit aussi la fiche auto V15.2.2 et les .ods et .csv (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs : l'onglet qui
-// suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les notes.
+// ou Google Sheet et réexportée sous le même modèle ») : le classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » (/fiche/modele.xlsx :
+// lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la place du logo). La barre (demandes du
+// propriétaire, 2026-10-15) : « Télécharger » (le .xlsx, nommé d'après le personnage), « Exporter » (le même classeur, en nouvelle feuille Google Sheets
+// du Drive de la personne : connexion par Google Identity Services, chargé à la demande ; lib/google-sheets.mjs), tous deux grisés tant que la fiche
+// n'est pas enregistrée telle qu'elle est (etatDesBoutons) ; « Importer (PC) » (un .xlsx) et « Importer (en ligne) » (le lien d'une feuille partagée
+// par lien, que le service télécharge : POST /api/classeur/) ; l'import lit aussi la fiche auto V15.2.2 (lib/tableur-lecture.mjs,
+// lib/fiche-tableur-import.mjs : l'onglet qui suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les
+// notes. Plus d'export ni d'import en JSON, plus de bouton « Imprimer » (Ctrl+P reste possible).
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
-import { cellulesDeLaFiche, messageDExport } from '../lib/fiche-tableur-export.mjs';
+import { cellulesDeLaFiche, etatDesExports, messageDExport, nomDuFichier } from '../lib/fiche-tableur-export.mjs';
+import {
+  ADRESSE_D_ENVOI, PORTEE_DRIVE, SCRIPT_GOOGLE, TYPE_XLSX, corpsMultipart, estUnZip, idDeFeuille, lienDeFeuille, nomDuClasseur,
+} from '../lib/google-sheets.mjs';
 import { feuilleDeLaFiche, ficheDuClasseur, messageDImport, portraitDeLImport } from '../lib/fiche-tableur-import.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
-  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
+  durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
@@ -39,6 +46,14 @@ let version = null;
 let controles = null;
 let modifie = false;
 let serviceJoignable = true;
+/**
+ * Le service a refusé le dernier enregistrement de la fiche à l'écran (toute réponse non OK : version changée entre-temps 409, requête trop volumineuse
+ * 413, fiche refusée 400…) : Télécharger et Exporter redeviennent actifs pour ne rien perdre (etatDesBoutons). Oublié quand une autre fiche est à
+ * l'écran (appliquer : relue, enregistrée, rechargée ; nouvelle ; nouveau prétiré tiré d'un classeur).
+ */
+let enregistrementRefuse = false;
+/** Un téléchargement, un export ou un import en ligne en cours : Télécharger et Exporter attendent (etatDesBoutons). */
+let occupe = false;
 const noms = new Map();
 /** Fonctions qui alignent les champs et les états sur la fiche, par conteneur (remplacées quand le conteneur est reconstruit). */
 const synchros = new Map();
@@ -1107,55 +1122,45 @@ function ouvrirSaisie(curseur) {
 }
 
 // ------------------------------------------------------------------ progression et dons à choix
+/** « 5 », « 5 et 10 », « 5, 10 et 15 ». */
+const enListe = (mots) => (mots.length > 1 ? `${mots.slice(0, -1).join(', ')} et ${mots.at(-1)}` : mots.join(''));
+
 /**
- * Gains de niveau, compacts (demande du propriétaire : « la liste des bonus est trop grande ») : une petite carte par niveau atteint, côte à côte —
- * santé et chakra (15 points exactement), le total, et aux niveaux qui en donnent un, le dé bonus (sur quoi, et son résultat). Le dé n'est décrit
- * qu'une fois, au-dessus (progressionAttendue : table niveau_global).
+ * D'où vient le total à saisir des gains de niveau (gainsDeNiveau : tout est lu dans les règles) : les points d'attributs par niveau, à répartir entre la
+ * santé et le chakra, et les dés bonus atteints, avec leur texte (niveau_global.de_attributs_bonus), leurs niveaux et ce que chacun ajoute au total.
+ */
+function aideDesGains(g) {
+  const repartir = 'à répartir entre la santé (case rouge) et le chakra (case bleue)';
+  const points = g.parNiveau !== null && g.depuis !== null
+    ? `${g.parNiveau} points d’attributs par niveau à partir du ${g.depuis}, ${repartir}`
+    : `Les points d’attributs des niveaux atteints, ${repartir}`;
+  const parTexte = new Map();
+  for (const d of g.des) {
+    const cle = JSON.stringify([d.texte, d.min, d.max]);
+    if (!parTexte.has(cle)) parTexte.set(cle, { ...d, niveaux: [] });
+    parTexte.get(cle).niveaux.push(d.niveau);
+  }
+  const des = [...parTexte.values()].map((d) => {
+    const plusieurs = d.niveaux.length > 1;
+    const ajoute = d.min === d.max ? `${d.min}` : `de ${d.min} à ${d.max}`;
+    return ` Dé bonus au${plusieurs ? 'x' : ''} niveau${plusieurs ? 'x' : ''} ${enListe(d.niveaux.map(String))}${d.texte ? ` (${d.texte})` : ''} : ${plusieurs ? 'chacun ajoute' : 'il ajoute'} ${ajoute} au total.`;
+  });
+  return `${points} : ${g.points ? `${g.points} au niveau ${g.niveau}` : `rien à saisir au niveau ${g.niveau}`}.${des.join('')}`;
+}
+
+/**
+ * Gains de niveau (décision R73) : deux champs du gabarit (data-champ gains_sante, gains_chakra : la liaison générique les borne à 0, jamais vides), et
+ * à côté le total attribué et le total à saisir — sa plage quand un dé bonus est atteint —, en rouge hors de la plage (gainsDeNiveau : les mêmes bornes
+ * que la règle gains_niveau de la base, qui le signale à l'enregistrement). Visible dès le niveau 1 (rien à saisir) ; jamais dans les choix à faire.
  */
 function construireProgression() {
-  const attendus = progressionAttendue(regles, calcul.niveau);
-  const des = [...new Set(attendus.filter((n) => n.de).map((n) => n.de))];
-  const niveauxDuDe = (de) => attendus.filter((n) => n.de === de).map((n) => n.niveau);
-  $('progression-aide').textContent = attendus.length
-    ? `À chaque niveau à partir du 2 : ${attendus[0].points} points d’attributs à répartir entre la santé (case rouge) et le chakra (case bleue), exactement.${des.map((de) => ` Dé bonus au${niveauxDuDe(de).length > 1 ? 'x' : ''} niveau${niveauxDuDe(de).length > 1 ? 'x' : ''} ${niveauxDuDe(de).join(', ')} : ${de}.`).join('')}`
-    : 'Les gains commencent au niveau 2.';
-  reconstruire($('progression'), `${calcul.niveau}`, () => attendus.map((n) => {
-    const trouverLigne = () => ligne('progression', (x) => x.niveau === n.niveau, () => ({ niveau: n.niveau, points_sante: 0, points_chakra: 0, de_choix: null, de_resultat: null }));
-    const champ = (cle, nom) => el('input', {
-      type: 'number', min: '0', step: '1', class: `gain__${cle === 'points_sante' ? 'sante' : 'chakra'}`, 'aria-label': `Niveau ${n.niveau} : ${nom}`, title: nom,
-      oninput: (ev) => { trouverLigne()[cle] = entier(ev.target.value); changer(); },
-    });
-    const sante = champ('points_sante', 'santé');
-    const chakra = champ('points_chakra', 'chakra');
-    const total = el('span', { class: 'gain__total' });
-    const de = n.de ? el('select', {
-      'aria-label': `Niveau ${n.niveau} : dé bonus (${n.de})`, title: n.de,
-      onchange: (ev) => {
-        const l = trouverLigne();
-        l.de_choix = ev.target.value || null;
-        if (!l.de_choix) l.de_resultat = null;
-        changer();
-      },
-    }, option('', 'Dé : —'), option('sante', 'Santé'), option('chakra', 'Chakra'), option('les_deux', 'Les deux')) : null;
-    const resultat = n.de ? el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Niveau ${n.niveau} : résultat du dé`, title: 'Résultat du dé', oninput: (ev) => { trouverLigne().de_resultat = ev.target.value === '' ? null : entier(ev.target.value); changer(); } }) : null;
-    synchro(() => {
-      const l = ligneDe('progression', (x) => x.niveau === n.niveau);
-      poser(sante, l ? l.points_sante : '');
-      poser(chakra, l ? l.points_chakra : '');
-      const t = l ? entier(l.points_sante) + entier(l.points_chakra) : 0;
-      total.textContent = `${t}/${n.points}`;
-      total.toggleAttribute('data-hors', t !== n.points);
-      total.title = `${t} points répartis sur ${n.points}`;
-      if (de) poser(de, l?.de_choix ?? '');
-      if (resultat) {
-        poser(resultat, l?.de_resultat ?? '');
-        resultat.disabled = !l?.de_choix;
-      }
-    });
-    return el('div', { class: `gain${n.de ? ' gain--de' : ''}` },
-      el('span', { class: 'gain__niveau' }, `Niv. ${n.niveau}`), sante, chakra, total,
-      n.de ? el('span', { class: 'gain__de' }, de, resultat) : null);
-  }));
+  const g = gainsDeNiveau(regles, fiche);
+  const aSaisir = g.max > g.min ? `entre ${g.min} et ${g.max}` : String(g.min);
+  const total = $('gains-total');
+  total.textContent = `Total attribué : ${g.total} / à saisir : ${aSaisir}`;
+  total.toggleAttribute('data-hors', g.hors);
+  total.title = g.hors ? `Hors du total à saisir au niveau ${g.niveau} : santé ${g.sante} + chakra ${g.chakra} = ${g.total}` : '';
+  $('progression-aide').textContent = aideDesGains(g);
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
@@ -1232,10 +1237,11 @@ function texteDEffet(e) {
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
-    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49)
+    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49) ; une autre arme est neuve, une autre composition ou amélioration ramène
+    // la solidité du moment sous son nouveau maximum (armesApresReglage, décision R74)
     const poserChamp = (cle) => (v) => {
       if (cle === 'arme_id') fiche.armes = armesApresChoix(regles, fiche, rang, v);
-      else if (l()) l()[cle] = v;
+      else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
     const familles = new Map(regles.familles_armes.map((f) => [f.id, f.nom]));
@@ -1252,15 +1258,46 @@ function construireEquipement() {
     const des = el('strong', { class: 'objet__des' });
     const etoile = el('span', { class: 'objet__etoile', tabindex: '0', role: 'img' }, '★');
     const resume = el('span', { class: 'objet__resume' });
+    // la solidité du moment (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : un curseur de 0 au maximum de l'arme
+    // forgée (durabiliteDArme : arme, composition, amélioration, au moins 1), « N / M » à côté ; clic droit ou Entrée : saisir le nombre. Caché pour une
+    // arme sans solidité (arme de monstre). Le maximum ou plus s'enregistre « à son maximum » (durabiliteAEcrire)
+    const solidite = el('input', {
+      type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `Arme ${rang} : solidité`,
+      oninput: (ev) => {
+        const x = l();
+        if (!x) return;
+        x.durabilite = durabiliteAEcrire(regles, x, ev.target.value);
+        changer();
+      },
+    });
+    const soliditeValeur = el('output', { class: 'curseur__valeur' });
+    const soliditeLigne = el('div', { class: 'objet__solidite' }, el('span', { class: 'objet__solidite-nom' }, 'Solidité'), solidite, soliditeValeur);
     synchro(() => {
       const x = l();
       poser(effet, x?.effet_en_plus ?? '');
       for (const d of [effet, ...details]) d.disabled = !x;
+      const dur = durabiliteDArme(regles, fiche, rang);
+      soliditeLigne.hidden = !dur;
+      soliditeLigne.toggleAttribute('data-cassee', Boolean(dur?.cassee));
+      if (dur) {
+        solidite.max = String(dur.max);
+        poser(solidite, dur.actuelle);
+        soliditeValeur.textContent = `${dur.actuelle} / ${dur.max}`;
+        soliditeLigne.title = [
+          `Solidité : ${dur.actuelle} / ${dur.max} cran${dur.max > 1 ? 's' : ''}${dur.cassee ? ' : l’arme est cassée' : ''}`,
+          ...dur.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}`)),
+          ...(dur.plancher ? [`Jamais moins de ${dur.max} cran`] : []),
+          'À 0, l’arme est cassée. Clic droit ou Entrée sur le curseur : saisir le nombre.',
+        ].join('\n');
+      }
       const d = degatsDArme(regles, fiche, rang);
       des.hidden = !d;
+      // une arme cassée : la pastille de ses dés grisée, « Cassée » (décision R74) ; ses dégâts, réparée, restent en infobulle
+      des.toggleAttribute('data-cassee', Boolean(d && dur?.cassee));
       if (d) {
-        des.textContent = d.texte;
+        des.textContent = dur?.cassee ? 'Cassée' : d.texte;
         des.title = [
+          ...(dur?.cassee ? [`Arme cassée (solidité 0 / ${dur.max}). Réparée : ${d.texte}`] : []),
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
           ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
@@ -1282,6 +1319,7 @@ function construireEquipement() {
     // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition, améliorations, élément et effet en plus repliés
     return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
       el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+      soliditeLigne,
       el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
       champ('Composition', selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` })),
       champ('Amélioration', selecteur(() => l()?.amelioration_id, ameliorations('arme'), poserChamp('amelioration_id'), { etiquette: `Arme ${rang} : amélioration` })),
@@ -1597,9 +1635,29 @@ function rafraichir() {
   construireControles();
   construireRetraits();
   construireChoixEnAttente();
+  etatDesBoutons();
+  if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : téléchargez la fiche pour ne rien perdre.', 'attente');
+}
+
+/** Pose l'infobulle d'un élément (son `title`, que components/Infobulles.astro déplace dans data-infobulle) seulement si elle change. */
+function infobulle(e, texte) {
+  if ((e.dataset.infobulle ?? e.getAttribute('title')) !== texte) e.title = texte;
+}
+
+/**
+ * La barre : Enregistrer (une fiche modifiée, ou jamais enregistrée), Supprimer (une fiche enregistrée), Télécharger et Exporter (grisés tant que la
+ * fiche n'est pas enregistrée telle qu'elle est, sauf quand le service ne répond pas ou a refusé le dernier enregistrement ; Exporter aussi sans
+ * identifiant client Google ; pendant un export : lib/fiche-tableur-export.mjs#etatDesExports). Recalculé par rafraichir et à la fin de chaque action.
+ */
+function etatDesBoutons() {
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
-  if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
+  const etat = etatDesExports({ id, modifie, serviceJoignable, enregistrementRefuse, client: $('fiche-exporter').dataset.clientGoogle ?? '', occupe });
+  for (const [cle, bouton] of [['telecharger', $('fiche-telecharger')], ['exporter', $('fiche-exporter')]]) {
+    bouton.disabled = !etat[cle].actif;
+    infobulle(bouton, etat[cle].infobulle);
+  }
+  $('fiche-importer-en-ligne').disabled = occupe;
 }
 
 // ------------------------------------------------------------------ enregistrement, chargement
@@ -1611,6 +1669,9 @@ function aEnvoyer() {
   f.caracteristiques = (f.caracteristiques ?? []).filter((c) => c.base !== null && c.base !== undefined);
   f.competences = (f.competences ?? []).filter((c) => c.naturel || c.acquis);
   f.maitrises_armes = maitrisesValables(regles, f);
+  // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
+  f.armes = armesValables(regles, f);
+  for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
@@ -1621,13 +1682,14 @@ function aEnvoyer() {
 }
 
 function appliquer(donnees) {
-  fiche = { ...ficheVide(''), ...donnees.personnage };
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(donnees.personnage) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) fiche[cle] ??= [];
   id = fiche.id;
   version = fiche[CHAMP_VERSION];
   controles = donnees.controles ?? null;
   modifie = false;
+  enregistrementRefuse = false;
   rafraichir();
 }
 
@@ -1640,11 +1702,13 @@ async function enregistrer() {
     const reponse = await fetch(adresse, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...aEnvoyer(), [CHAMP_VERSION]: version }) });
     const donnees = await reponse.json().catch(() => ({}));
     if (reponse.ok) {
+      serviceJoignable = true;   // il répond de nouveau : Télécharger suit de nouveau l'enregistrement
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
       message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
+    enregistrementRefuse = true;   // les modifications restent à l'écran : Télécharger et Exporter permis pour ne rien perdre (etatDesBoutons, plus bas)
     if (reponse.status === 409 && donnees.personnage) {
       // des éléments retirés par les règles depuis l'ouverture de la fiche (R42) : le dire, ils sont dans les notes de la fiche à jour
       const n = nouveauxRetraits(fiche.notes, donnees.personnage.notes).length;
@@ -1653,15 +1717,21 @@ async function enregistrer() {
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
     } else if (donnees.erreur) {
       message(`${donnees.erreur}${donnees.problemes ? ` ${donnees.problemes.map(avecNoms).join(' ; ')}` : ''}`, 'erreur');
+    } else if (reponse.status === 413) {
+      // nginx répond avant le service (client_max_body_size, deploy/nginx.conf), en HTML : le service répond bien, la fiche est trop lourde
+      message('Non enregistré : la fiche est trop volumineuse (portrait ou notes trop longs). Téléchargez-la pour ne rien perdre.', 'erreur');
+    } else if (reponse.status < 500) {
+      message(`Non enregistré (erreur ${reponse.status}). Téléchargez la fiche pour ne rien perdre.`, 'erreur');
     } else {
       throw new Error(`HTTP ${reponse.status}`);
     }
   } catch {
     serviceJoignable = false;
-    afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été enregistrée. Exportez-la pour ne rien perdre, puis réessayez.');
+    afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été enregistrée. Téléchargez-la pour ne rien perdre, puis réessayez.');
     message('Non enregistré : service injoignable.', 'erreur');
   }
   bouton.disabled = false;
+  etatDesBoutons();
 }
 
 async function charger(identifiant) {
@@ -1698,14 +1768,14 @@ async function verifierService() {
     if (!etat.base.a_jour) afficherIndisponible(`La base des fiches n’a pas pu suivre les dernières règles : ${etat.base.erreur}`);
   } catch {
     serviceJoignable = false;
-    afficherIndisponible('Le service des personnages n’est pas joignable : la fiche peut être remplie, exportée et imprimée, mais pas enregistrée.');
+    afficherIndisponible('Le service des personnages n’est pas joignable : la fiche peut être remplie et téléchargée, mais pas enregistrée.');
   }
 }
 
 /** Supprime la fiche enregistrée (demande du propriétaire), après confirmation ; on revient à la liste des personnages. */
 async function supprimer() {
   if (!id) return;
-  if (!confirm(`Supprimer définitivement « ${fiche.nom || 'ce prétiré'} » ? La fiche ne pourra pas être récupérée (exportez-la d’abord pour en garder une copie).`)) return;
+  if (!confirm(`Supprimer définitivement « ${fiche.nom || 'ce prétiré'} » ? La fiche ne pourra pas être récupérée (téléchargez-la d’abord pour en garder une copie).`)) return;
   message('Suppression…', 'attente');
   try {
     const reponse = await fetch(`${API}personnages/${encodeURIComponent(id)}/`, {
@@ -1722,6 +1792,7 @@ async function supprimer() {
     serviceJoignable = false;
     afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été supprimée.');
     message('Non supprimée : service injoignable.', 'erreur');
+    etatDesBoutons();
   }
 }
 
@@ -1733,12 +1804,13 @@ function nouvelle() {
   version = null;
   controles = null;
   modifie = false;
+  enregistrementRefuse = false;
   history.replaceState(null, '', racine.dataset.fiche);
   rafraichir();
   message('', '');
 }
 
-// ------------------------------------------------------------------ export et import (JSON, classeur)
+// ------------------------------------------------------------------ export et import (classeur, Google Sheets)
 /** Fait télécharger un fichier. */
 function telecharger(blob, nom) {
   const lien = el('a', { href: URL.createObjectURL(blob), download: nom });
@@ -1754,12 +1826,6 @@ function aujourdhui() {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-function exporter() {
-  const f = aEnvoyer();
-  telecharger(new Blob([`${JSON.stringify(f, null, 2)}\n`], { type: 'application/json' }), `${(f.nom || 'personnage').replace(/[^\p{L}\p{N}-]+/gu, '-')}.json`);
-}
-
-const TYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 /** Le logo du modèle, à sa place dans l'archive (tools/fiche/modele.py) : l'import ne le prend pas pour un portrait. */
 const LOGO_DU_MODELE = 'xl/media/image1.png';
 let modeleDuClasseur = null;
@@ -1799,37 +1865,154 @@ async function logoDuModele() {
  * Le classeur au modèle V15.2.2 ordinateur : les cases de la fiche (lib/fiche-tableur-export.mjs, sur la fiche telle qu'elle s'enregistre ; un texte
  * trop long pour sa case y est coupé, la suite de sa part relue dans la note), le portrait cadré à la place du logo (la vignette de la page, JPEG),
  * marqué « portrait:<empreinte de l'image d'origine> » pour qu'un import du fichier dans ce prétiré garde l'image d'origine et son cadrage ; sans
- * portrait, le logo du modèle, marqué « logo ». Ce qui ne tient pas dans une case de tableur (notes de plus de 32 767 caractères…) est dit dans le
- * message (messageDExport).
+ * portrait, le logo du modèle, marqué « logo ». { octets, nom (le nom du personnage : nomDuFichier), avertissements } : ce qui ne tient pas dans une
+ * case de tableur (notes de plus de 32 767 caractères…), que le message dit (messageDExport). « Télécharger » et « Exporter » en font le même fichier.
  */
-async function exporterTableur() {
-  const bouton = $('fiche-exporter-tableur');
-  bouton.disabled = true;
-  message('Export du classeur…', 'attente');
-  try {
-    const f = aEnvoyer();
-    const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
-    let image = null;
-    let descriptionImage = 'logo';
-    if (fiche.portrait) {
-      const octets = octetsDuPortrait(await dessinerVignette(fiche.portrait, cadrageDuPortrait()));
-      if (octets) {
-        image = { octets, type: 'image/jpeg' };
-        descriptionImage = `portrait:${empreinte(fiche.portrait)}`;
-      }
+async function classeurDeLaFiche() {
+  const f = aEnvoyer();
+  const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
+  let image = null;
+  let descriptionImage = 'logo';
+  if (fiche.portrait) {
+    const octets = octetsDuPortrait(await dessinerVignette(fiche.portrait, cadrageDuPortrait()));
+    if (octets) {
+      image = { octets, type: 'image/jpeg' };
+      descriptionImage = `portrait:${empreinte(fiche.portrait)}`;
     }
-    const classeur = await ecrireXlsx(await octetsDuModele(), { cellules, remplis, alignements, image, descriptionImage, titre: f.nom || 'Personnage', date: new Date() });
-    // le nom du personnage tel quel, sans les caractères qu'un système de fichiers refuse
-    const nom = String(f.nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').trim() || 'Personnage';
-    telecharger(new Blob([classeur], { type: TYPE_XLSX }), `${nom} - Fiche Maverick V15.2.2.xlsx`);
-    // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
-    const { texte, ton } = messageDExport(avertissements);
-    message(texte, ton);
-  } catch (e) {
-    message(`Le classeur n’a pas pu être exporté : ${e?.message ?? e}`, 'erreur');
-  } finally {
-    bouton.disabled = false;
   }
+  const octets = await ecrireXlsx(await octetsDuModele(), { cellules, remplis, alignements, image, descriptionImage, titre: f.nom || 'Personnage', date: new Date() });
+  return { octets, nom: nomDuFichier(f.nom), avertissements };
+}
+
+/** Exécute une action de la barre (téléchargement, export, import en ligne) : Télécharger, Exporter et Importer (en ligne) attendent sa fin. */
+async function pendant(action) {
+  occupe = true;
+  etatDesBoutons();
+  try {
+    return await action();
+  } finally {
+    occupe = false;
+    etatDesBoutons();
+  }
+}
+
+/** « Télécharger » : le classeur, nommé d'après le personnage (demande du propriétaire, 2026-10-15 : « Le nom du fichier deviens juste nom du personnage »). */
+function telechargerClasseur() {
+  return pendant(async () => {
+    message('Préparation du classeur…', 'attente');
+    try {
+      const { octets, nom, avertissements } = await classeurDeLaFiche();
+      telecharger(new Blob([octets], { type: TYPE_XLSX }), `${nom}.xlsx`);
+      // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
+      const { texte, ton } = messageDExport(avertissements, 'Classeur téléchargé.');
+      message(texte, ton);
+    } catch (e) {
+      message(`Le classeur n’a pas pu être préparé : ${e?.message ?? e}`, 'erreur');
+    }
+  });
+}
+
+// « Exporter » (demande du propriétaire, 2026-10-15 : « Exporte sous le format Google Sheet » ; précision choisie : « Créer un Google Sheet en ligne ») :
+// la page se connecte à Google (Google Identity Services, droit drive.file : le site ne voit que les fichiers qu'il crée) et envoie le classeur de
+// « Télécharger » à l'API Drive, qui en fait une nouvelle feuille Google Sheets à chaque export. Le script de Google est chargé à la demande
+// (document.createElement : ni balise dans le HTML ni import, que la version portable refuse), dès que le pointeur ou le focus approche du bouton ;
+// la fenêtre de connexion doit s'ouvrir dans le clic même (requestAccessToken sans attente avant lui), sinon le navigateur la bloque. Le jeton reste
+// en mémoire (jamais enregistré, jamais envoyé au service) jusqu'à son expiration.
+let chargementGoogle = null;
+let clientDeJetons = null;
+let jetonGoogle = null;
+
+/** Charge Google Identity Services une fois et prépare le client de jetons ; un échec se retente au prochain appel. */
+function chargerGoogle() {
+  if (!chargementGoogle) {
+    chargementGoogle = new Promise((ok, ko) => {
+      const script = document.createElement('script');
+      script.src = SCRIPT_GOOGLE;
+      script.async = true;
+      script.onload = () => ok();
+      script.onerror = () => {
+        script.remove();
+        ko(new Error('le service de connexion de Google n’a pas pu être chargé'));
+      };
+      document.head.append(script);
+    }).then(() => {
+      clientDeJetons = globalThis.google.accounts.oauth2.initTokenClient({
+        client_id: $('fiche-exporter').dataset.clientGoogle,
+        scope: PORTEE_DRIVE,
+        callback: recevoirJeton,
+        error_callback: erreurDeConnexion,
+      });
+    });
+    chargementGoogle.catch(() => { chargementGoogle = null; });
+  }
+  return chargementGoogle;
+}
+
+/** La réponse de la connexion à Google : le jeton, gardé en mémoire jusqu'à une minute avant son expiration, puis l'envoi. */
+function recevoirJeton(reponse) {
+  if (reponse?.error) {
+    message(reponse.error === 'access_denied' ? 'Export annulé : Google n’a pas reçu l’autorisation.' : `Connexion à Google refusée (${reponse.error}).`, 'erreur');
+    return;
+  }
+  if (!globalThis.google.accounts.oauth2.hasGrantedAllScopes(reponse, PORTEE_DRIVE)) {
+    message('Export annulé : l’accès à Google Drive n’a pas été accordé (il sert à y créer la feuille).', 'erreur');
+    return;
+  }
+  jetonGoogle = { valeur: reponse.access_token, expire: Date.now() + (Number(reponse.expires_in) || 3600) * 1000 - 60_000 };
+  envoyerAGoogle(jetonGoogle.valeur);
+}
+
+/** La fenêtre de connexion de Google bloquée ou fermée. */
+function erreurDeConnexion(e) {
+  if (e?.type === 'popup_failed_to_open') message('La fenêtre de connexion de Google a été bloquée : cliquez de nouveau sur « Exporter » (ou autorisez les fenêtres de ce site).', 'erreur');
+  else if (e?.type === 'popup_closed') message('Export annulé : la fenêtre de connexion de Google a été fermée.', 'attente');
+  else message(`Connexion à Google impossible : ${e?.message ?? e?.type ?? e}`, 'erreur');
+}
+
+/** « Exporter » : un jeton encore valable → l'envoi ; sinon la fenêtre de connexion de Google, ouverte dans le clic (aucune attente avant elle). */
+function exporterVersGoogle() {
+  if (jetonGoogle && Date.now() < jetonGoogle.expire) {
+    envoyerAGoogle(jetonGoogle.valeur);
+    return;
+  }
+  if (clientDeJetons) {
+    clientDeJetons.requestAccessToken();
+    return;
+  }
+  // le script de Google n'était pas encore là (aucun survol avant le clic) : la fenêtre s'ouvre après son chargement, si le navigateur le permet
+  message('Connexion à Google…', 'attente');
+  chargerGoogle().then(() => clientDeJetons.requestAccessToken(), (e) => message(`Export impossible : ${e?.message ?? e}`, 'erreur'));
+}
+
+/** Envoie le classeur à Google Drive, converti en feuille Google Sheets ; le message donne son lien (une fenêtre s'ouvre si le navigateur le permet). */
+function envoyerAGoogle(jeton) {
+  return pendant(async () => {
+    message('Envoi vers Google Sheets…', 'attente');
+    try {
+      const { octets, nom, avertissements } = await classeurDeLaFiche();
+      const { type, corps } = corpsMultipart({ nom, octets, frontiere: `maverick-${crypto.randomUUID()}` });
+      const reponse = await fetch(ADRESSE_D_ENVOI, { method: 'POST', headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': type }, body: corps });
+      const donnees = await reponse.json().catch(() => ({}));
+      if (reponse.status === 401) {
+        jetonGoogle = null;
+        message('La connexion à Google a expiré : cliquez de nouveau sur « Exporter ».', 'erreur');
+        return;
+      }
+      if (!reponse.ok) {
+        message(`Google a refusé la feuille (HTTP ${reponse.status}${donnees?.error?.message ? ` : ${donnees.error.message}` : ''}).`, 'erreur');
+        return;
+      }
+      const lien = lienDeFeuille(donnees);
+      const { texte, ton } = messageDExport(avertissements, 'Feuille Google créée.');
+      message(`${texte} Pour la réimporter ici, partagez-la par lien (« Tous les utilisateurs disposant du lien »), puis « Importer (en ligne) ».`, ton);
+      if (lien) {
+        $('fiche-message').append(' ', el('a', { href: lien, target: '_blank', rel: 'noopener' }, 'Ouvrir dans Google Sheets'));
+        window.open(lien, '_blank', 'noopener');   // souvent bloquée (plus dans le clic) : le lien reste dans le message
+      }
+    } catch (e) {
+      message(`La feuille Google n’a pas pu être créée : ${e?.message ?? e}`, 'erreur');
+    }
+  });
 }
 
 /**
@@ -1838,7 +2021,7 @@ async function exporterTableur() {
  * enregistrées. 'mettre-a-jour' | 'creer' | null (annulé).
  */
 function cibleDeLImport() {
-  if (!id) return Promise.resolve(!modifie || confirm('Remplacer la fiche en cours par celle du fichier ?') ? 'creer' : null);
+  if (!id) return Promise.resolve(!modifie || confirm('Remplacer la fiche en cours par celle du classeur ?') ? 'creer' : null);
   const d = $('import-cible');
   $('import-cible-maj').textContent = `Mettre à jour « ${fiche.nom || 'ce prétiré'} »`;
   $('import-cible-perte').hidden = !modifie;
@@ -1851,13 +2034,14 @@ function cibleDeLImport() {
 
 /** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
 function remplacerLaFiche(nouvelle, cible) {
-  fiche = { ...ficheVide(''), ...nouvelle };
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle) };   // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73)
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
   controles = null;
   if (cible === 'creer') {
     id = null;
     version = null;
+    enregistrementRefuse = false;   // un autre prétiré, jamais envoyé (une mise à jour du prétiré ouvert garde son identifiant et sa version : le refus reste noté)
     history.replaceState(null, '', racine.dataset.fiche);
   }
   changer();
@@ -1866,26 +2050,8 @@ function remplacerLaFiche(nouvelle, cible) {
 /** « Enregistrez pour mettre à jour « X » » ou « … pour créer le prétiré ». */
 const suiteDeLImport = (cible, nom) => `Enregistrez pour ${cible === 'creer' ? 'créer le prétiré' : `mettre à jour « ${nom} »`}.`;
 
-/** Un fichier exporté en JSON (lib/fiche-format.mjs). */
-async function importerJson(texte) {
-  let objet;
-  try {
-    objet = JSON.parse(texte);
-    if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
-  } catch {
-    message('Ce fichier n’est pas une fiche exportée.', 'erreur');
-    return;
-  }
-  const nom = fiche.nom || 'ce prétiré';
-  const cible = await cibleDeLImport();
-  if (!cible) return;
-  for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
-  remplacerLaFiche(objet, cible);
-  message(`Fiche importée. ${suiteDeLImport(cible, nom)}`, 'attente');
-}
-
 /**
- * Un classeur (.xlsx, .ods, .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
+ * Un classeur (.xlsx ; la lecture sait aussi les .ods et .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
  * sinon le premier onglet qui suit l'un des deux modèles (feuilleDeLaFiche ; le message le nomme). Ce qui n'a pas de place sur le site (`nonRepris`) et
  * ce que l'import a déduit (`remarques`) s'ajoutent à la fin des notes, sous une ligne datée qui nomme le fichier. Le message « Lecture du classeur… »
  * est retiré avant le dialogue « import-cible ». Portrait (portraitDeLImport) : celui de la fiche ouverte, avec son cadrage, quand le classeur porte son
@@ -1934,7 +2100,7 @@ async function importerClasseur(octets, nomFichier) {
   message(`${debut} ${suiteDeLImport(cible, nom)}`, 'attente');
 }
 
-/** Un fichier choisi par « Importer » : une fiche JSON (premier caractère non blanc « { »), sinon un classeur. */
+/** Un fichier choisi par « Importer (PC) » : un classeur (un ancien export .json ne s'importe plus : le message le dit). */
 async function importer(fichier) {
   let octets;
   try {
@@ -1943,10 +2109,67 @@ async function importer(fichier) {
     message('Ce fichier n’a pas pu être lu.', 'erreur');
     return;
   }
-  const zip = octets[0] === 0x50 && octets[1] === 0x4b;
-  const texte = zip ? '' : new TextDecoder('utf-8').decode(octets).replace(/^\uFEFF/, '');
-  if (!zip && texte.trimStart().startsWith('{')) return importerJson(texte);
+  if (!estUnZip(octets) && new TextDecoder('utf-8').decode(octets.subarray(0, 64)).replace(/^﻿/, '').trimStart().startsWith('{')) {
+    message('Les fiches .json ne s’importent plus : importez un classeur .xlsx (celui de « Télécharger »).', 'erreur');
+    return;
+  }
   return importerClasseur(octets, fichier.name);
+}
+
+/**
+ * « Importer (en ligne) » (demande du propriétaire, 2026-10-15 : « Demande l'url d'un Google Sheet » ; précision choisie : « Feuille partagée par
+ * lien ») : le service télécharge la feuille au format .xlsx (POST /api/classeur/, serveur/classeur.mjs : Google ne laisse pas une page d'un autre
+ * site la lire), puis le même chemin qu'un classeur choisi sur l'ordinateur (importerClasseur : dialogue « import-cible », notes datées).
+ */
+function importerEnLigne(adresse) {
+  return pendant(async () => {
+    message('Téléchargement de la feuille Google…', 'attente');
+    const horsService = 'Le service du site ne répond pas : dans Google Sheets, « Fichier › Télécharger › Microsoft Excel (.xlsx) », puis « Importer (PC) ».';
+    let reponse;
+    try {
+      reponse = await fetch(`${API}classeur/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: adresse }) });
+    } catch {
+      message(horsService, 'erreur');
+      return;
+    }
+    if (!reponse.ok) {
+      const donnees = await reponse.json().catch(() => null);
+      message(donnees?.erreur ?? ([502, 503, 504].includes(reponse.status) ? horsService : `La feuille n’a pas pu être téléchargée (HTTP ${reponse.status}).`), 'erreur');
+      return;
+    }
+    let octets;
+    try {
+      octets = new Uint8Array(await reponse.arrayBuffer());
+    } catch {
+      message('La feuille n’a pas pu être téléchargée en entier : réessayez.', 'erreur');
+      return;
+    }
+    await importerClasseur(octets, nomDuClasseur(reponse.headers.get('content-disposition')) ?? 'Google Sheets.xlsx');
+  });
+}
+
+/** Le dialogue « Importer (en ligne) » : le lien est vérifié avant de fermer (un lien de feuille Google Sheets), puis l'import part. */
+function preparerImportEnLigne() {
+  const d = $('import-en-ligne');
+  const champ = $('import-en-ligne-adresse');
+  const erreur = $('import-en-ligne-erreur');
+  $('fiche-importer-en-ligne').addEventListener('click', () => {
+    erreur.hidden = true;
+    d.returnValue = '';
+    d.showModal();
+    champ.select();
+  });
+  $('import-en-ligne-formulaire').addEventListener('submit', (ev) => {
+    if (ev.submitter?.value !== 'importer' || idDeFeuille(champ.value)) return;
+    ev.preventDefault();
+    erreur.textContent = 'Lien d’une feuille Google Sheets attendu : https://docs.google.com/spreadsheets/d/…';
+    erreur.hidden = false;
+    champ.focus();
+  });
+  champ.addEventListener('input', () => { erreur.hidden = true; });
+  d.addEventListener('close', () => {
+    if (d.returnValue === 'importer') importerEnLigne(champ.value.trim());
+  });
 }
 
 // ------------------------------------------------------------------ démarrage
@@ -1983,15 +2206,24 @@ async function demarrer() {
     if (!(t instanceof HTMLElement) || !t.dataset.champ) return;
     if (t.dataset.champ === 'metier_id') return changerDeMetier(t.value || null);   // bonus choisis et objets de départ suivent (décisions R33, R35)
     if (t instanceof HTMLInputElement && t.type === 'checkbox') fiche[t.dataset.champ] = t.checked ? 1 : 0;
-    else if ('entier' in t.dataset) fiche[t.dataset.champ] = t.value === '' ? ('videNull' in t.dataset ? null : 0) : entier(t.value);
+    else if ('entier' in t.dataset) {
+      const v = t.value === '' ? ('videNull' in t.dataset ? null : 0) : entier(t.value);
+      // le minimum du champ (min="0" : XP, alignement, bourse, gains de niveau ; la base refuserait un nombre négatif)
+      fiche[t.dataset.champ] = v !== null && t instanceof HTMLInputElement && t.min !== '' && Number.isFinite(Number(t.min)) ? Math.max(Number(t.min), v) : v;
+    }
     else fiche[t.dataset.champ] = t.value === '' ? null : t.value;
     changer();
   });
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
-  $('fiche-exporter').addEventListener('click', exporter);
-  $('fiche-exporter-tableur').addEventListener('click', exporterTableur);
-  $('fiche-imprimer').addEventListener('click', () => window.print());
+  $('fiche-telecharger').addEventListener('click', telechargerClasseur);
+  const exporter = $('fiche-exporter');
+  exporter.addEventListener('click', exporterVersGoogle);
+  // le script de Google se charge dès que le geste s'annonce : au clic, la fenêtre de connexion peut s'ouvrir aussitôt
+  for (const type of ['pointerenter', 'focus', 'touchstart']) {
+    exporter.addEventListener(type, () => { if (exporter.dataset.clientGoogle && !exporter.disabled) chargerGoogle().catch(() => {}); }, { passive: true });
+  }
+  preparerImportEnLigne();
   $('fiche-supprimer').addEventListener('click', supprimer);
   const fichier = $('fiche-importer');
   fichier.addEventListener('change', () => {

@@ -18,8 +18,8 @@ restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie 
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
-2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes et maîtrises d'armes** et la **ceinture** ;
-   les sorts, à côté les **dons débloqués**.
+2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) **et maîtrises
+   d'armes** et la **ceinture** ; les sorts, à côté les **dons débloqués** (et l'**entraînement**).
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure et les accessoires, à côté l'initiative et les vitesses, les
    résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
@@ -53,6 +53,14 @@ abandonne.
   l'élément, et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,
   toutes les armes ; formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe). Le détail est en infobulle, avec les bonus de dons qui ne se
   comptent pas (situation, au choix, deux armes, bouclier, armes visées non écrites : « augmente les dégâts de 3 » de Tir renforcé, par exemple).
+- **Solidité des armes** (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : sous chaque arme, un **curseur** de 0 au
+  maximum de l'arme forgée et « N / M » à côté (clic droit ou Entrée : saisir le nombre) ; le maximum est celui de la page « Armes » (R51 : crans de l'arme,
+  de sa composition et de son amélioration, au moins 1 ; l'élément n'est pas compté, question Q12), le détail en infobulle (`durabiliteDArme`). La fiche ne
+  garde que ce qui manque : à son maximum, rien (`personnage_arme.durabilite` NULL, `durabiliteAEcrire`) ; une autre arme est neuve (`armesApresChoix`), une
+  autre composition ou amélioration ramène la solidité sous le nouveau maximum (`armesApresReglage`, une arme pleine le reste ; `armesValables` à
+  l'enregistrement). À 0, la pastille des dégâts est **grisée** et dit **« Cassée »**, ses dégâts (réparée) en infobulle ; ils restent comptés ailleurs (tableur,
+  attaque à deux armes). Pas de curseur pour une arme de monstre (sans solidité, R45). Le moteur recopie le calcul de `lib/arme-forge.mjs`, que son script ne
+  peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base.
 - **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
   infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
@@ -110,8 +118,15 @@ abandonne.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
-- **Gains de niveau** : une petite carte par niveau (santé en rouge, chakra en bleu, total ; aux niveaux qui en donnent un, le dé bonus), plusieurs par ligne ;
-  le dé n'est décrit qu'une fois, au-dessus.
+  Entre les deux, l'**entraînement** (décision R71, `personnage.entrainement`) : un texte libre — bonus d'entraînement, livres de magie lus, ce que le MJ
+  accorde —, **jamais compté** (les points gagnés se saisissent dans l'acquis, le NM d'un livre sur son sort) ; son aide cite, tel que la base l'écrit, le
+  paragraphe du guide « S’entraîner et exercer un métier » (chapitre 21) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
+  au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
+- **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
+  **total attribué** et le **total à saisir** — « entre min et max » quand un dé bonus est atteint —, en rouge hors de la plage (`gainsDeNiveau`, les mêmes
+  bornes que la règle `gains_niveau` de la base : `test/fiche-moteur.test.mjs` les compare aux niveaux 1 à 20) ; au-dessus, d'où vient le total : les points
+  par niveau et les dés atteints, leur texte et ce que chacun ajoute (`gainsAttendus`, tout lu dans `regles.niveaux`). Visible dès le niveau 1 (rien à
+  saisir) ; pas dans les choix à faire.
 - **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, le portrait et le médaillon du niveau prennent la couleur de la magie innée, en dégradé vers celle de
   la magie acquise (demande du propriétaire) ; sans magie innée, celle de la partie du guide. Seuls les cadres changent : caractéristiques, attributs,
   pastilles et curseurs gardent leurs couleurs.
@@ -136,7 +151,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   (`ethnieImposee` : la seule de la race — Lamia, Majin, Hujin, Elfe doré — ou la seule de la magie innée — races hybrides, Drakos ; demande du propriétaire),
   magie acquise refusée et pourquoi (race à une seule magie R28, incompatibilité, mono-magie R15, exceptions R20) et retirée d'office quand un changement de race
   ou de magie innée la ferme (`magieAcquiseValable`, demande du propriétaire) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
-  scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
+  scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau à saisir (`gainsAttendus`,
+  `gainsDeNiveau`, R73) ; solidité des armes (`durabiliteDArme`, R74) ; classe magique (R6, R7) ;
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
   (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
@@ -156,8 +172,11 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
-  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), la fiche se remplit, s'**exporte** (JSON ou tableur) et s'**imprime** ; un
-  fichier exporté se **réimporte** pour créer le prétiré. La version portable masque les exports et l'impression. Export et import en **tableur** : voir « Tableur » ci-dessous.
+  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), ou quand il refuse
+  l'enregistrement (version changée entre-temps, requête trop volumineuse, fiche refusée), la fiche se remplit et se **télécharge** (« Télécharger »
+  reste alors actif, pour ne rien perdre) ; le classeur téléchargé se **réimporte** pour créer le prétiré (ou, après rechargement, mettre à jour le
+  prétiré ouvert). La barre,
+  le classeur et Google Sheets : voir « Tableur » ci-dessous.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
 ### Tableur : export et import (demande du propriétaire, 2026-10-15)
@@ -166,9 +185,46 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 > Le portrait peut remplacer l'icône du logo en haut à gauche. Inutile de mettre les formules dans le fichier généré, seul le résultat.
 > Évidemment toutes les infos ne rentrent peut-être pas dans ces fiches-là. Toute info supplémentaire peut être notée dans les « Notes ».
 
-Dans la barre : **« Exporter (tableur) »** (un `.xlsx` ; infobulle « Classeur .xlsx au modèle de la fiche V15.2.2 : Excel, LibreOffice, Google Sheets
-(Fichier › Importer) »), **« Exporter (JSON) »** (le format d'échange ; infobulle « Sauvegarde complète de la fiche (.json), à réimporter sur le
-site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version portable masque les deux exports et l'impression (`tools/build-artifact.mjs`).
+La barre (demande du propriétaire, 2026-10-15 : « [Nouveau] => Inchangé ; [Exporter(Tableur)] => [Télécharger] Le nom du fichier deviens juste nom
+du personnage. Grisé tant que la fiche n'a pas été enregistrée ; [Exporter(Json)] =>[Exporter] Exporte sous le format Google Sheet. ; [Importer] =>
+[Importer(PC)] Demande un fichier Xlsx ; [Imprimer] => [Importer(EnLigne)] Demande l'url d'un Google Sheet. » ; précisions choisies : Exporter =
+« Créer un Google Sheet en ligne », Importer (en ligne) = « Feuille partagée par lien ») : **Nouveau**, **Télécharger**, **Exporter**, **Importer
+(PC)**, **Importer (en ligne)**, Supprimer. Plus d'export ni d'import en JSON (un ancien `.json` choisi par « Importer (PC) » est refusé en le
+disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page d'impression ne change pas).
+
+- **Télécharger** : le classeur `.xlsx` au modèle ci-dessous, nommé d'après le personnage seul (`nomDuFichier` de `lib/fiche-tableur-export.mjs` :
+  chaque suite de caractères qu'un système de fichiers refuse remplacée par « - », 120 caractères au plus, « Personnage » s'il ne reste rien ;
+  « Kaël/Nox » → `Kaël-Nox.xlsx`). **Grisé** tant que la fiche n'est pas enregistrée telle qu'elle est (jamais enregistrée, ou modifiée depuis ;
+  infobulle « Enregistrez la fiche pour la télécharger »), sauf quand le service ne répond pas, ou qu'il a **refusé le dernier enregistrement**
+  (toute réponse non OK : version changée entre-temps — 409, la fiche ouverte dans un autre onglet, ou un retrait R42 —, requête trop volumineuse —
+  413 —, fiche refusée — 400 — ; infobulle « L’enregistrement a échoué : téléchargez la fiche pour ne rien perdre ») : la fiche ne peut alors pas être
+  enregistrée, et la télécharger évite de la perdre (`etatDesExports`, recalculé par `etatDesBoutons` de `src/scripts/fiche.mjs` à chaque
+  rafraîchissement et à la fin de chaque action ; le refus est oublié quand une autre fiche est à l'écran : relue, enregistrée, rechargée, nouvelle, ou
+  nouveau prétiré tiré d'un classeur). Message : « Classeur téléchargé. », suivi de ce que le classeur n'a pas pu garder.
+- **Exporter** (Google Sheets) : le même classeur, envoyé dans le Drive de la personne et converti en **nouvelle feuille Google Sheets** à chaque
+  export (nommée d'après le personnage). Même condition de grisé que « Télécharger » (après un refus : « L’enregistrement a échoué : exportez la
+  fiche pour ne rien perdre ») ; grisé aussi sans **identifiant client OAuth** (variable de
+  build `SITE_GOOGLE_CLIENT_ID`, infobulle « Export vers Google Sheets pas encore configuré » ; mise en place : [`deploy/vps/README.md`](../deploy/vps/README.md),
+  « Export vers Google Sheets »). La page charge **Google Identity Services** (`https://accounts.google.com/gsi/client`, créé par
+  `document.createElement` dès que le pointeur ou le focus approche du bouton : ni balise dans le HTML ni import), demande le droit
+  `drive.file` (le site ne voit que les fichiers qu'il crée) dans le clic même (`requestAccessToken`, sinon le navigateur bloque la fenêtre de
+  connexion : un message invite alors à cliquer de nouveau), garde le jeton **en mémoire** jusqu'à son expiration (jamais enregistré, jamais
+  envoyé au service), puis envoie le classeur à l'API Drive (`POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
+  `corpsMultipart` de `lib/google-sheets.mjs`). Message « Feuille Google créée. », le rappel « pour la réimporter ici, partagez-la par lien », et un
+  lien « Ouvrir dans Google Sheets » (une fenêtre s'ouvre aussi quand le navigateur le permet). La page `/fiche/` porte `<meta name="referrer"
+  content="strict-origin-when-cross-origin">` (le reste du site garde `Referrer-Policy: same-origin`).
+- **Importer (PC)** : un `.xlsx` (le chemin de l'import ci-dessous ; la lecture sait aussi les `.ods` et `.csv`, que le sélecteur ne propose plus).
+- **Importer (en ligne)** : un dialogue (`#import-en-ligne`) demande le lien d'une feuille Google Sheets **partagée par lien** (« Partager », Accès
+  général « Tous les utilisateurs disposant du lien ») ; le lien est vérifié dans le dialogue (`idDeFeuille` : `https://docs.google.com/spreadsheets/d/<id>…`),
+  puis le **service** télécharge la feuille au format `.xlsx` (`POST /api/classeur/`, [`serveur.md`](serveur.md) ; une page ne peut pas la lire
+  elle-même) et la page l'importe comme un classeur de l'ordinateur (dialogue « import-cible », notes datées au nom de la feuille). Une feuille
+  non partagée, un lien d'autre chose, une feuille trop grosse : le message du service le dit ; service injoignable : télécharger la feuille
+  depuis Google Sheets (Fichier › Télécharger › Microsoft Excel), puis « Importer (PC) ».
+- **Version portable** : « Télécharger », « Exporter » et « Importer (en ligne) » masqués (`tools/build-artifact.mjs` : ni téléchargement, ni
+  fenêtre de Google, ni service dans un cadre isolé) ; « Importer (PC) » reste.
+- **À vérifier avec le vrai Google** (rien n'a pu être essayé contre Google : les tests et la vérification dans Chromium remplacent Google par
+  des faux) : la connexion et la création de la feuille sur `dev.maverick-jdr.com`, puis « Importer (en ligne) » de cette feuille partagée par
+  lien — ce que la conversion de Google garde du classeur (portrait et sa description « portrait:<empreinte> », couleurs des maîtrises, notes).
 
 - **Le modèle** : « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » du propriétaire, rangé en texte dans `client/src/modeles/fiche-personnage/`
   (14 parties fabriquées par `tools/fiche/modele.py` depuis son `.ods` : aucun classeur binaire dans le dépôt ; fins de ligne LF, `.gitattributes`),
@@ -180,11 +236,14 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = acquis du joueur + bonus du métier (R33, rogné au plafond : R38) +
   accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (voir les questions ouvertes). **Restent vides** les cases que la fiche ne
-  calcule pas : AP, AM et solidité des pièces d'armure et du bouclier, solidité d'une arme (la page « Armes » la calcule, R51, pas encore la fiche),
-  et la case « Entraînement » (L42), où la fiche auto note les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons » : 15 compétences,
-  10 % au plus), que le site ne distingue pas des autres acquis. Les dés de maîtrise atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la
-  posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du Potentiel Illimité, gains de niveau, NM offerts de livre et
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP, AM et
+  solidité des pièces d'armure et du bouclier. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
+  l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
+  deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte le
+  texte libre de la fiche (R71, `personnage.entrainement`), tel quel, blancs de bord retirés ; le nom et le type du modèle restent. Les dés de maîtrise
+  atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
+  Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
+  niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre et
   du MJ (R26), accessoires de ceinture et « autre », dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
@@ -203,7 +262,8 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
   toujours pas, la case en garde le début, fini par « … », écrit à 60 % (comme ses voisines réduites de la même colonne). Chaque case est **relue**
   (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, pièces d'armure,
-  composition, améliorations, élément et effet en plus d'une arme, choix du métier…) ou **affichée** (un texte de règles ou un calcul que le site
+  composition, améliorations, élément, effet en plus et solidité d'une arme, choix du métier, entraînement…) ou **affichée** (un texte de règles ou un
+  calcul que le site
   refait : type, coût, portée, zone et description des sorts, type et effets des dons, textes de la race, don de base, artisanat, Mode Hyper,
   résistances, dégâts, effet du catalogue d'une arme, titres…). Une case affichée coupée perd sa fin, **sans rien dans la note** ; seule la part
   relue d'une case coupée a une suite dans la note (« Suite de la case AA51 : … », sauts de ligne en « ⏎ »), que l'import recolle avant de lire la
@@ -215,11 +275,11 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
 - **Plus de 32 767 caractères** (ce qu'une case de tableur garde) : dans la case NOTE, le marqueur et les lignes qui le suivent restent toujours
   entiers ; les notes du joueur sont raccourcies (fin remplacée par « … »), puis, s'il le faut encore, les dernières lignes de données retirées
   (une dernière ligne « Lignes retirées (case NOTE pleine) : N » le dit, et l'import le rappelle).
-  Chaque perte est un avertissement (`avertissements` de `cellulesDeLaFiche`) que la page ajoute à son message : « Classeur exporté. Notes trop
-  longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. », sur le ton « attente » (au lieu
-  de « ok », `messageDExport`). À l'import, une remarque le dit.
+  Chaque perte est un avertissement (`avertissements` de `cellulesDeLaFiche`) que la page ajoute à son message : « Classeur téléchargé. Notes trop
+  longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. » (« Télécharger » ; « Feuille Google
+  créée. Notes trop longues… » pour « Exporter »), sur le ton « attente » (au lieu de « ok », `messageDExport`). À l'import, une remarque le dit.
 - **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
-  le logo reste, décrit « logo ». Le fichier s'appelle « <nom> - Fiche Maverick V15.2.2.xlsx ».
+  le logo reste, décrit « logo ». Le fichier s'appelle « <nom du personnage>.xlsx » (`nomDuFichier`, plus haut).
 - **Lecture** (`lib/tableur-lecture.mjs`) : `.xlsx` (Excel, Google Sheets, LibreOffice), `.ods` (LibreOffice ; les blancs d'une case lus comme
   LibreOffice les relit), `.csv` (« ; », « , » ou tabulation ; UTF-8, UTF-16 ou Windows-1252) ; aucune formule évaluée (le résultat en cache) ;
   d'un `.xlsx`, une date se lit JJ/MM/AAAA et un pourcentage « 18 % » (un `.ods` porte le texte affiché) ; un `.xls` ou un classeur protégé par mot
@@ -238,11 +298,25 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   de spécialité) :
   - **bi-classe** : la ligne de la note ; sinon deux classes au niveau global, sous le niveau 20 (R2 : en mono-classe, la classe 1 est à deux fois
     le niveau global, 20 au plus ; au niveau 20, les deux s'écrivent pareil : mono-classe) ;
-  - **acquis du joueur** = acquis écrit − bonus du métier (R33, R38) − accessoires (R54) ; une remarque par compétence touchée pour un classeur qui
-    ne vient pas de la page (ses bonus peuvent être d'anciennes valeurs), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au
-    joueur ») ;
-  - **gains de niveau** (fiche faite à la main) : reconstitués d'après les maximums de santé et de chakra (les dés bornés par le dé écrit de chaque
-    niveau), « à vérifier » ; impossibles, les maximums lus sont dits ;
+  - **acquis du joueur** = acquis écrit − bonus du métier − accessoires (R54). Le bonus du métier retiré : pour un classeur de la page, celui de la
+    base (R33, rogné au plafond : R38), qu'elle a écrit ; pour un classeur qui n'en vient pas (fiche auto, modèle rempli à la main), **celui qu'écrit
+    sa case L41** (R72 : « Le métier suit la base » — l'ancien bonus est retiré, brut, le site ajoute celui de la base, le joueur ne garde que ses
+    points ; `bonusDuMetierEcrit`). Lucien : Connaissance 0 au joueur (4 écrits, « 4% Connaissance »), affichée 3 ; Louise : Esquive, Réflexe et Ruse
+    0 (« +2% Reflexe, Esquive et Ruse »), affichées 3, 3 et 0. Une remarque de synthèse quand l'ancien bonus n'est pas celui de la base (« Métier
+    Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 : les acquis suivent la base (R72) ») ;
+    une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et autres mots, nom de compétence écrit
+    avant son « N% » (« Esquive +3% ») ou pris dans d'autres mots (« aux jets d'Esquive »), nombre précédé d'un signe moins, décimal, case coupée
+    dans un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son ancien bonus est retiré quand même, et
+    dit. L41 se lit comme la page l'écrit (rangs à choix « … → Compétence », « → ? » pas choisi ; l'artisanat « = N % » n'est pas un bonus) et comme
+    la fiche auto (« 4% Connaissance. … », « Bonus +2% Reflexe, Esquive et Ruse. ») ; le test relit la case de chaque métier de la base, pour chaque
+    choix. Une remarque par compétence touchée pour un classeur qui ne vient pas de la page (« Connaissance : acquis 4 du classeur − 4 du métier
+    Écrivain (classeur) = 0 au joueur »), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au joueur ») ;
+  - **gains de niveau** (classeur qui ne vient pas de la page, sans la ligne de la note) : deux totaux (R73 : « gains = maximum lu − le reste du
+    calcul »), le maximum de santé et de chakra lu (fiche auto : F14, M14 ; modèle ordinateur : le « b » de « a / b ») moins ce que la fiche calcule
+    sans gains (race, ethnie, magies, classes, accessoires : `gainsDesMaximums`) ; une remarque dit la déduction (« Gains de niveau déduits des
+    maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), « à vérifier » quand un maximum est sous ce calcul (ramené à 0) ou que le
+    total sort de ce que donnent les niveaux atteints (« : hors du total à saisir (152 à 166), à vérifier » : `gainsDeNiveau`, la règle
+    `gains_niveau`) ;
   - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26) : tous comptés de niveau, et dit si cela dépasse ;
   - élément d'armure écrit par sa magie (fiche auto) : l'armure élémentaire de cette magie et de la catégorie de l'armure ; caractéristique du
     Potentiel Illimité d'après le bonus ; compétence d'un accessoire « Compétence X » de la fiche auto d'après la case « Entraînement » ; sans
@@ -250,9 +324,14 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   Un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » = 20) ; un décimal où la fiche veut un entier est arrondi vers le bas (une
   remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
   de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
-  sans place sur le site (solidité, grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38, « Entraînement » en
-  L42), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une ligne de note en double (la première compte), une image hors de A1
-  ou une seconde image. Remarques encore : « Nom Armure » (AD22, toujours lu) qui ne nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
+  sans place sur le site (grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38), une solidité d'arme illisible,
+  sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une
+  ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R71), dans les
+  deux dispositions, tel quel (recollé à sa suite dans la note quand la page l'a coupé) ; dans le modèle ordinateur, la **solidité** de chaque arme
+  (AK17, AX17, R74 : « N / M » lu sur la ligne d'arme finale, composition et amélioration relues ; à son maximum ou au-delà, rien d'enregistré ; le
+  « / » du modèle n'est pas une valeur ; un décimal arrondi vers le bas, dit) ; la « Solidité » de la fiche auto (AK15, AX15) n'est qu'un maximum
+  calculé, jamais relu. Remarques encore : un maximum de solidité écrit autre que celui du site (R51) ; « Nom Armure » (AD22, toujours lu) qui ne
+  nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
   plus » (AA13) reprises comme effet en plus de l'arme ; case relue finie par « … » sans sa suite dans la note, quand la page a dû retirer des lignes de données (sinon le « … » est celui du joueur) ; case NOTE pleine ; un `.csv` du
   modèle ordinateur ne porte pas les couleurs des maîtrises (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
   dans son texte, « titre (type) : texte ». Dans la note, c'est le **dernier** marqueur qui compte (des notes collées peuvent en contenir un). Le
@@ -261,17 +340,19 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
 - **Où va la fiche importée** : le message « Lecture du classeur… » est retiré, puis, si un prétiré enregistré est ouvert, le dialogue « Importer la
   fiche » (`#import-cible`) propose de le **mettre à jour** (il garde son identifiant et sa version), de **créer un nouveau prétiré** (l'un et l'autre
   oubliés) ou d'annuler, en rappelant la perte des modifications non enregistrées ; sinon, une confirmation s'il y a des modifications. De même
-  pour un JSON. Rien n'est enregistré avant « Enregistrer ». Le **portrait** (`portraitDeLImport`) : celui de la fiche ouverte, avec son cadrage,
+  pour une feuille d'« Importer (en ligne) ». Rien n'est enregistré avant « Enregistrer ». Le **portrait** (`portraitDeLImport`) : celui de la fiche ouverte, avec son cadrage,
   quand le classeur porte son empreinte (exporté par la page avec ce portrait), ou pour une **mise à jour** depuis un classeur sans image (fiche
   auto, `.csv`, export sans portrait) ; sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par
   défaut ; illisible, elle est dite dans les notes et l'on fait comme sans elle) ; un **nouveau prétiré** tiré d'un classeur sans image n'a pas de
   portrait.
 - **Messages** (`messageDImport`, `messageDExport`) : « Classeur importé (modèle ordinateur|auto[, onglet « <nom> »])[ : N informations sans
   équivalent et N remarques ajoutées aux notes]. Enregistrez pour mettre à jour « <nom> » | créer le prétiré. » (l'onglet n'est nommé que si ce
-  n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur exporté. »,
-  suivi de ses avertissements.
+  n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur téléchargé. »
+  (« Télécharger ») ou « Feuille Google créée. » (« Exporter »), suivi de ses avertissements (`messageDExport(avertissements, debut)` ; « Classeur
+  exporté. » par défaut).
 - **Aller-retour** (`test/fiche-tableur-aller-retour.test.mjs`) : export → `.xlsx` → lecture → import redonne la fiche, sans rien dans les notes, et
-  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris), une bi-classe au Potentiel
+  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris, une arme abîmée et une arme cassée,
+  des gains de niveau, un entraînement long sur trois lignes, coupé, sa suite dans la note), une bi-classe au Potentiel
   Illimité, les personnages fil rouge du guide et les deux fiches auto du propriétaire ; des notes trop longues reviennent raccourcies, avec toutes
   leurs données ; par un `.csv`, tout revient sauf les maîtrises (une remarque le dit). L'aller-retour exact vaut pour le `.xlsx` ; les blancs d'une
   case d'un `.ods` se lisent comme LibreOffice les relit (`test/tableur-lecture.test.mjs`).
@@ -279,12 +360,15 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   `fiche-tableur-export.mjs`, `fiche-tableur-import.mjs` (dans `client/src/lib/`) : purs, sans DOM ; parmi les scripts de page, seul
   `src/scripts/fiche.mjs` les importe (un module partagé entre deux scripts de page casse la version portable), jamais `lib/text.mjs` (`cle()` de
   `fiche-tableur-cases.mjs` le remplace) ; `fiche-modele.mjs` (Node : il importe `zip.mjs` pour assembler le modèle) ne sert qu'au build et aux
-  tests. Ce que la page fait d'un classeur hors du DOM (onglet, portrait, messages) est testé dans `test/fiche-tableur-page.test.mjs`.
-- **Questions ouvertes** : les paliers de résistance du modèle ordinateur (÷3, x3, x4) ne sont pas ceux de la fiche auto et de la base (÷4, x4,
-  x8) : l'export écrit ceux de la base, en attendant la réponse du propriétaire ([`sql/a-valider.md`](sql/a-valider.md), Q6) ; « Vague déferlante »
-  (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les deux. Questions Q7 à Q11 de
-  [`sql/a-valider.md`](sql/a-valider.md) : case « Entraînement », écarts de métier entre la fiche auto et la base, gains de niveau reconstitués,
-  solidité d'une arme (R51), textes de règles coupés.
+  tests. Ce que la page fait d'un classeur hors du DOM (onglet, portrait, messages, nom du fichier, état des boutons) est testé dans
+  `test/fiche-tableur-page.test.mjs`. `lib/google-sheets.mjs` (Google : identifiant client, lien d'une feuille, envoi à l'API Drive) suit la même
+  règle (seul script de page : `src/scripts/fiche.mjs` ; le service et la page Astro l'importent aussi), sans aucun import (`test/google-sheets.test.mjs`).
+- **Décisions du 2026-10-15** (questions Q6 à Q11 de [`sql/a-valider.md`](sql/a-valider.md)) : les paliers de résistance sont ceux de la fiche auto
+  et de la base, ÷2, ÷4, x2, x4, x8 (R70 : le modèle ordinateur, ÷3, x3, x4, se trompe ; l'export écrit ceux de la base) ; la case « Entraînement » est
+  un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
+  note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
+- **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
+  deux ; maximum de solidité d'une arme élémentaire (Q12) et « Vieille Branche » du Mage Vert (Q13) : [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 
@@ -343,17 +427,16 @@ pas, et la note datée est le seul signal.
 | Table | Contenu (cellules de la fiche) |
 | --- | --- |
 | `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage) et ses rôles : connexion Discord prévue à la 1.0 (`feuille-de-route.md`) |
-| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) |
+| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73), et **entraînement** (`entrainement`, case L42 : texte libre, jamais compté, décision R71) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes |
 | `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche |
 | `personnage_classe` | Classes 1 et 2 (A9, A11) et leur spécialité (choisie au niveau de classe 10) |
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
 | `personnage_competence` | Points « Nat. » et « Acquis » de chaque compétence (G22, I22…) ; l'Acquis du métier n'y est pas écrit (il se calcule : `v_personnage_metier_bonus`) |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
-| `personnage_progression` | À chaque niveau global à partir du 2 : les 15 points d'attributs répartis entre santé et chakra, et le dé bonus des niveaux 5, 10, 15, 20 |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |
 | `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) ; jamais sur ARME DE MONSTRES (R45, règle `maitrise_arme_exclue`) |
-| `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac |
+| `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
@@ -368,7 +451,8 @@ pas, et la note datée est le seul signal.
   et le Potentiel Illimité, R25), magie acquise d'une race à une seule magie (la Lamia, R28), magies incompatibles,
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3 ; l'Acquis compte le bonus du métier, R33), bonus de métier choisi
-  hors des options du métier ou rang à choix sans choix (R33), gains de niveau (points exacts, dé), 2ᵉ classe, spécialité
+  hors des options du métier ou rang à choix sans choix (R33), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
+  plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
   du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM de niveau au plus niveau global − 1 sur un sort et au plus ceux gagnés, les autres d'un livre ou du MJ, R24, R26), matériaux du bouclier, améliorations, valeur d'un
   accessoire ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).

@@ -10,10 +10,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches } from '../serveur/fiches.mjs';
+import { DEPART_DES_COLONNES_AJOUTEES, PAGE_D_AVANT, enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
+import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_RETIREES, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
 import { adresseDuPortrait } from '../src/lib/personnages-liste.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
 
@@ -66,6 +66,13 @@ test('format : chaque table qui cite une fiche est une partie de la fiche ou exp
     for (const c of retirees) assert.ok(!presentes.includes(c), `${table}.${c} : retirée des règles, encore dans la table`);
   }
   for (const c of COLONNES_RETIREES.personnage) assert.ok(!(c in ficheVide()), `${c} : retirée des règles, encore dans ficheVide`);
+  // une table que les règles ont retirée (personnage_progression, migration 0045) : plus dans la base ni dans une fiche, sa clé n'est plus une partie
+  for (const [table, cle] of Object.entries(TABLES_RETIREES)) {
+    assert.equal(PARTIES_RETIREES[cle], table);
+    assert.ok(!(cle in PARTIES_DE_FICHE) && !(cle in ficheVide()), cle);
+    assert.ok(!TABLES_VIVANTES.includes(table), table);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?").get(table).n, 0, `${table} : encore dans la base`);
+  }
 });
 
 test('un choix que les règles n’ont plus (don ou spécialité supprimé depuis le site de dev, D11) : message en français, rien n’est écrit', () => {
@@ -177,6 +184,69 @@ test('refus d’écrire : bornes, types, références inconnues, champs inconnus
   assert.equal(r.statut, 400);
   assert.deepEqual(r.corps.problemes, ['« nom » est obligatoire']);
   assert.equal(appel('POST', '/api/personnages', [1, 2]).statut, 400);
+});
+
+test('gains de niveau en deux totaux (R73), entraînement (R71), durabilité d’une arme (R74) : enregistrés et relus tels quels, bornés ; une `progression` reçue (page d’avant la migration 0045) devient les deux totaux, vide elle est jetée, non vide avec les totaux refusée (409)', () => {
+  const arme = db.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
+  const r = appel('POST', '/api/personnages', {
+    ...ficheConforme('Elouan'), gains_sante: 3, gains_chakra: 2, entrainement: 'Arc +5 % (entraîneur de Valbrume) ; livre de magie lu : Boule de feu',
+    armes: [{ rang: 1, arme_id: arme, durabilite: 2 }, { rang: 2, arme_id: arme }],
+  });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual([p.gains_sante, p.gains_chakra, p.entrainement], [3, 2, 'Arc +5 % (entraîneur de Valbrume) ; livre de magie lu : Boule de feu']);
+  assert.deepEqual(p.armes.map((a) => [a.rang, a.durabilite]), [[1, 2], [2, null]], 'NULL : l’arme à son maximum');
+  assert.deepEqual(r.corps.controles, [{ regle: 'gains_niveau', detail: '5 / 0' }], 'des gains au niveau 1 : signalés, enregistrés quand même');
+  assert.equal('progression' in p, false);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+
+  // bornes : des totaux positifs, toujours écrits ; une durabilité positive
+  const refus = (corps, motif) => {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, ...corps });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  };
+  refus({ gains_sante: -1 }, /valeur hors des bornes/);
+  refus({ gains_chakra: null }, /« gains_chakra » est obligatoire/);
+  refus({ armes: [{ rang: 1, arme_id: arme, durabilite: -1 }] }, /^armes\[0\] : valeur hors des bornes/);
+
+  // une page restée ouverte envoie encore la progression niveau par niveau : sa somme (« les deux » compte sur chacun), pas « champ inconnu »
+  const progression = [
+    { niveau: 2, points_sante: 10, points_chakra: 5, de_choix: null, de_resultat: null },
+    { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 },
+  ];
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, progression });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual([m.corps.personnage.gains_sante, m.corps.personnage.gains_chakra], [13, 23]);
+  assert.equal('progression' in m.corps.personnage, false);
+  // la même page, après cet enregistrement : elle a repris les deux totaux de la réponse, et sa fiche vide d'avant lui laisse une progression vide,
+  // jetée sans rien dire
+  m = appel('PUT', `/api/personnages/${p.id}`, { ...m.corps.personnage, progression: [], surnom: 'l’Ancien' });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual([m.corps.personnage.gains_sante, m.corps.personnage.gains_chakra, m.corps.personnage.surnom], [13, 23, 'l’Ancien']);
+  // puis le gain d'un niveau saisi dans son ancienne interface : une progression non vide AVEC les deux totaux ne se concilie pas avec eux (des gains
+  // nouveaux, ou les anciens saisis de nouveau ?) : refus 409, rien n'est écrit, la page doit être rechargée (pas de `personnage` : ce n'est pas un
+  // conflit de version, que la page proposerait de résoudre en rechargeant la fiche)
+  const avant = lire(p.id);
+  const niveau3 = [{ niveau: 3, points_sante: 15, points_chakra: 0, de_choix: null, de_resultat: null }];
+  const { gains_sante: _gs, gains_chakra: _gc, ...sansTotaux } = m.corps.personnage;
+  for (const totaux of [{ gains_sante: 13, gains_chakra: 23 }, { gains_sante: 13 }, { gains_chakra: 0 }]) {
+    const k = appel('PUT', `/api/personnages/${p.id}`, { ...sansTotaux, ...totaux, progression: niveau3 });
+    assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }], JSON.stringify(totaux));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  assert.match(PAGE_D_AVANT, /version précédente du site.*rien n’a été enregistré.*Rechargez-la/);
+  const fiches = appel('GET', '/api/personnages/').corps.personnages.length;
+  const creation = appel('POST', '/api/personnages', { ...ficheConforme('Gaspard'), progression: niveau3 });
+  assert.deepEqual([creation.statut, creation.corps], [409, { erreur: PAGE_D_AVANT }], 'une création aussi');
+  assert.equal(appel('GET', '/api/personnages/').corps.personnages.length, fiches, 'aucune fiche créée');
+  // une création par une page d'avant : sa fiche vide n'avait pas les deux totaux
+  const { gains_sante: _s, gains_chakra: _c, ...davant } = ficheConforme('Fanny');
+  const c = appel('POST', '/api/personnages', { ...davant, progression });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  assert.deepEqual([c.corps.personnage.gains_sante, c.corps.personnage.gains_chakra], [13, 23]);
 });
 
 test('les contrôles signalent sans bloquer : une fiche qui enfreint des règles s’enregistre (plus de 422) ; un « statut » reçu (fichier exporté avant la migration 0038) est ignoré', () => {
@@ -458,6 +528,89 @@ test('repli sur une base vivante d’avant la migration 0038 (sa reconstruction 
     assert.deepEqual(listerFiches(base).map((f) => f.nom), ['Repli']);
     const modifiee = enregistrerFiche(base, { version: cree.personnage.version, surnom: 'de secours' }, { id: cree.personnage.id });
     assert.deepEqual([modifiee.personnage.surnom, lireFiche(base, cree.personnage.id).statut], ['de secours', 'brouillon']);
+  } finally {
+    base.close();
+  }
+});
+
+test('colonnes ajoutées par la migration 0045 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+  assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, { personnage: { gains_sante: 0, gains_chakra: 0, entrainement: null }, personnage_arme: { durabilite: null } });
+  for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
+    const colonnes = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.dflt_value]));
+    for (const [colonne, depart] of Object.entries(departs)) {
+      assert.ok(colonnes.has(colonne), `${table}.${colonne}`);
+      assert.equal(colonnes.get(colonne), depart === null ? null : String(depart), `${table}.${colonne} : défaut du schéma`);
+      if (table === 'personnage') assert.equal(ficheVide()[colonne] ?? null, depart, `${colonne} : fiche vide`);
+    }
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0045 (sa reconstruction a échoué, docs/serveur.md) : gains, entraînement et durabilité, absents de la base, sont ignorés tant qu’ils ne portent rien, refusés sinon ; la fiche se crée, se lit, se liste et se modifie, ses gains niveau par niveau intacts', () => {
+  // les règles d'aujourd'hui, les tables des fiches telles qu'avant 0045 (comme AVANT_0045 de test/serveur-base-vivante.test.mjs), la vue des
+  // contrôles d'aujourd'hui lisant les gains dans personnage_progression
+  const regles = join(racine, 'regles-avant-0045.db');
+  copyFileSync(REGLES, regles);
+  const r = new DatabaseSync(regles, { enableForeignKeyConstraints: false });
+  try {
+    const vue = r.prepare("SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_personnage_controle'").get().sql;
+    const totaux = 'p.gains_sante + p.gains_chakra';
+    assert.equal(vue.split(totaux).length, 3, 'la règle gains_niveau lit les deux totaux, deux fois');
+    r.exec(`DROP VIEW v_personnage_controle;
+      ALTER TABLE personnage DROP COLUMN gains_sante;
+      ALTER TABLE personnage DROP COLUMN gains_chakra;
+      ALTER TABLE personnage DROP COLUMN entrainement;
+      ALTER TABLE personnage_arme DROP COLUMN durabilite;
+      CREATE TABLE personnage_progression (
+        personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
+        points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
+        points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
+        de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),
+        de_resultat    INTEGER CHECK (de_resultat >= 1),
+        PRIMARY KEY (personnage_id, niveau),
+        CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
+      ) STRICT, WITHOUT ROWID;
+      ${vue.replaceAll(totaux, '(SELECT coalesce(sum(g.points_sante + g.points_chakra), 0) FROM personnage_progression g WHERE g.personnage_id = p.id)')};`);
+  } finally {
+    r.close();
+  }
+  const base = ouvrirBaseVivante(preparerBaseVivante({ regles, dossier: join(racine, 'db-avant-0045') }).chemin);
+  try {
+    const arme = base.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
+    // ce qu'envoie la page à jour : une fiche vide (gains à 0), l'entraînement vidé, une arme à son maximum (durabilité NULL)
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli'), entrainement: '', armes: [{ rang: 1, arme_id: arme, durabilite: null }] });
+    const p = cree.personnage;
+    assert.ok(!('gains_sante' in p) && !('gains_chakra' in p) && !('entrainement' in p), 'colonnes absentes de la base : ni écrites ni rendues');
+    assert.deepEqual(p.armes.map((a) => [a.rang, a.arme_id, 'durabilite' in a]), [[1, arme, false]]);
+    assert.deepEqual(cree.controles, [], 'les contrôles de la base');
+    assert.deepEqual(listerFiches(base).map((f) => f.nom), ['Repli']);
+    // ses gains niveau par niveau, tels que le service d'avant les a écrits
+    base.prepare('INSERT INTO personnage_progression VALUES (?, 2, 10, 5, NULL, NULL)').run(p.id);
+
+    // la page relit la fiche (sans gains : la base n'a pas les deux totaux) et l'enregistre telle qu'elle la tient : ficheVide, puis la fiche lue
+    const lue = lireFiche(base, p.id);
+    assert.ok(!('progression' in lue) && !('gains_sante' in lue));
+    const page = { ...ficheVide(''), ...lue, surnom: 'de secours' };
+    for (const c of COLONNES_DU_SERVICE) delete page[c];
+    const modifiee = enregistrerFiche(base, page, { id: p.id });
+    assert.equal(modifiee.personnage.surnom, 'de secours');
+    assert.deepEqual(base.prepare('SELECT niveau, points_sante, points_chakra FROM personnage_progression WHERE personnage_id = ?').all(p.id).map((l) => ({ ...l })),
+      [{ niveau: 2, points_sante: 10, points_chakra: 5 }], 'intacts : la reconstruction suivante les convertira (TABLES_RETIREES)');
+
+    // ce qui porte quelque chose serait perdu : « champ inconnu », rien n'est écrit
+    for (const [envoi, probleme] of [
+      [{ gains_sante: 3 }, 'champ inconnu « gains_sante »'],
+      [{ gains_chakra: 1 }, 'champ inconnu « gains_chakra »'],
+      [{ entrainement: 'Arc +5 %' }, 'champ inconnu « entrainement »'],
+      [{ armes: [{ rang: 1, arme_id: arme, durabilite: 2 }] }, 'armes[0] : champ inconnu « durabilite »'],
+    ]) {
+      const avant = lireFiche(base, p.id);
+      assert.throws(() => enregistrerFiche(base, { version: avant.version, ...envoi }, { id: p.id }), (e) => {
+        assert.deepEqual([e.statut, e.details.problemes], [400, [probleme]], JSON.stringify(envoi));
+        return true;
+      });
+      assert.deepEqual(lireFiche(base, p.id), avant, 'rien n’est écrit');
+    }
   } finally {
     base.close();
   }

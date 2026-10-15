@@ -83,7 +83,7 @@ test('liste : chaque table (sections 0 à 15, dérivées comprises) et chaque vu
   // les mêmes objets que data/schema.sql : toutes les tables et vues, sans les tables de recherche plein texte
   const attendus = OBJETS.filter((o) => o.genre === 'table' || o.genre === 'vue').map((o) => o.nom).sort();
   assert.deepEqual(noms, attendus);
-  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 192, '192 tables STRICT');
+  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 191, '191 tables STRICT');
   assert.equal(tables.filter((t) => t.genre === 'vue').length, 35, '35 vues');
   for (const nom of ['sqlite_schema', 'sqlite_master', 'page_fts', 'entite_fts', 'page_fts_data', 'page_fts_idx', 'entite_fts_content']) assert.ok(!noms.includes(nom), nom);
   // genre : vue, table dérivée (`-- @derivee`, hors FTS5), sinon table
@@ -120,6 +120,25 @@ test('fiches (section 13) : listées, mais leur contenu répond 403 avec la rais
   // le schéma de la page les dessine toujours : ils restent dans la liste, avec leur nombre de lignes
   const { tables } = ok(appel('GET', '/api/debug/tables/'));
   for (const nom of section13) assert.ok(tables.some((t) => t.nom === nom), nom);
+});
+
+test('fiches, repli sur une base d’avant la migration 0045 : la table retirée (personnage_progression, TABLES_RETIREES) et la vue qui la lit restent refusées (403)', () => {
+  // un service à jour sur une base vivante dont la reconstruction a échoué : la table n'est plus dans TABLES_FICHES, mais elle a encore des lignes
+  const ancienne = new DatabaseSync(':memory:');
+  ancienne.exec(`CREATE TABLE personnage_progression (personnage_id TEXT NOT NULL, niveau INTEGER NOT NULL, points_sante INTEGER NOT NULL,
+    points_chakra INTEGER NOT NULL, PRIMARY KEY (personnage_id, niveau)) STRICT;
+    INSERT INTO personnage_progression VALUES ('p1', 2, 10, 5);
+    CREATE VIEW v_gains AS SELECT personnage_id, sum(points_sante) AS sante FROM personnage_progression GROUP BY personnage_id;
+    CREATE TABLE niveau_global (niveau INTEGER PRIMARY KEY) STRICT;`);
+  try {
+    assert.deepEqual(tablesDesFiches(ancienne), ['personnage_progression', 'v_gains']);
+    for (const nom of ['personnage_progression', 'v_gains']) {
+      assert.throws(() => lireTable(ancienne, nom), (e) => e.statut === 403 && e.message === RAISON_FICHES, nom);
+    }
+    assert.equal(lireTable(ancienne, 'niveau_global').total, 0, 'les autres tables se lisent');
+  } finally {
+    ancienne.close();
+  }
 });
 
 test('nom inconnu ou piégé : 404 (interne, FTS5 et ses tables de shadow, casse, guillemets, « ; », « / » encodé, encodage illisible, segment vide) ; adresse en trop : 404 ; la base ne change pas', () => {

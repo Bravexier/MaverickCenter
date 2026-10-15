@@ -313,7 +313,6 @@ export const HORS_RESSOURCE = {
   personnage_caracteristique: `Caractéristiques de base et croix d’une fiche (partie de la fiche, R19) : ${FICHES}.`,
   personnage_competence: `Points de compétences d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_metier_bonus: `Choix d’un rang de bonus de métier à plusieurs compétences (partie de la fiche) : ${FICHES}.`,
-  personnage_progression: `Gains de niveau d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_capacite: `Dons à choix d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,
   personnage_maitrise_arme: `Maîtrises d’armes d’une fiche (partie de la fiche) : ${FICHES}.`,
