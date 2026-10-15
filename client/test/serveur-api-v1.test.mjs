@@ -851,3 +851,21 @@ test('segment de clé : chaque valeur encodée, jointes par « , »', () => {
   assert.equal(segmentDeCle({ id: 'magies/magie-du-feu#sort:boule-de-feu' }, ['id']), 'magies%2Fmagie-du-feu%23sort%3Aboule-de-feu');
   assert.equal(segmentDeCle({ a: 'x,y', b: 2 }, ['a', 'b']), 'x%2Cy,2');
 });
+
+test('DELETE d’un métier ou d’une arme qui a des écarts entre sources : ses traces (note_cellule, ecart_source) partent avec lui, dans le journal', () => {
+  const orphelines = () => lignes(`SELECT entite_table, entite_id FROM ecart_source e WHERE (entite_table = 'metier' AND NOT EXISTS (SELECT 1 FROM metier WHERE id = e.entite_id))
+    OR (entite_table = 'arme' AND NOT EXISTS (SELECT 1 FROM arme WHERE id = e.entite_id))
+    UNION ALL SELECT entite_table, entite_id FROM note_cellule n WHERE (entite_table = 'metier' AND NOT EXISTS (SELECT 1 FROM metier WHERE id = n.entite_id))
+    OR (entite_table = 'arme' AND NOT EXISTS (SELECT 1 FROM arme WHERE id = n.entite_id))`);
+  assert.deepEqual(orphelines(), []);
+  const metier = ligne("SELECT entite_id AS id FROM ecart_source WHERE entite_table = 'metier' ORDER BY entite_id LIMIT 1");
+  const arme = ligne("SELECT entite_id AS id FROM ecart_source WHERE entite_table = 'arme' ORDER BY entite_id LIMIT 1");
+  assert.ok(metier && arme, 'la base a des écarts sur un métier et sur une arme');
+  for (const [res, id] of [['metiers', metier.id], ['armes', arme.id]]) {
+    const r = ok(appel('DELETE', `/api/v1/${res}/${seg(id)}/`, {}));
+    assert.ok(r, `${res} supprimé`);
+  }
+  assert.deepEqual(orphelines(), [], 'aucune trace orpheline');
+  const notees = lignes("SELECT DISTINCT table_nom FROM modification WHERE table_nom IN ('ecart_source', 'note_cellule') AND operation = 'supprimer'").map((l) => l.table_nom);
+  assert.ok(notees.includes('ecart_source'), 'les retraits de traces sont dans le journal (ils voyagent jusqu’à data/rows)');
+});

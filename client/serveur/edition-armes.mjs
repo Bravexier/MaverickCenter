@@ -130,7 +130,7 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     },
     /**
      * Une arme supprimée : retirée des fiches de personnage qui l'ont, avec une note datée (décision R52, comme R42 ; avant sa suppression : clés
-     * étrangères contrôlées, son nom encore lisible), puis ses types de dégâts, ses minimums, son lien à la page et sa ligne du corps.
+     * étrangères contrôlées, son nom encore lisible), puis ses types de dégâts, ses minimums, son lien à la page, ses notes de cellule et écarts entre sources, et sa ligne du corps.
      */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
@@ -140,6 +140,8 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
       retirerDesFiches(db, { armes: [arme.id] }, ctx.retraits);
       for (const t of ['arme_degats', 'arme_prerequis']) synchroniser(ctx, t, { arme_id: arme.id }, []);
       synchroniser(ctx, 'page_entite', { entite_table: 'arme', entite_id: arme.id }, []);
+      // ses notes de cellule et écarts entre sources partent avec elle : sinon des traces orphelines que db:check refuse
+      for (const t of ['note_cellule', 'ecart_source']) synchroniser(ctx, t, { entite_table: 'arme', entite_id: arme.id }, []);
       w.supprimer('arme', { id: arme.id });
       suivreLeCorps(ctx, 'arme', arme, null);
       return { id: arme.id, resume: `Arme supprimée : ${arme.nom}` };
