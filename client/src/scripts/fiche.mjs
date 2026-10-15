@@ -1717,6 +1717,11 @@ async function enregistrer() {
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
     } else if (donnees.erreur) {
       message(`${donnees.erreur}${donnees.problemes ? ` ${donnees.problemes.map(avecNoms).join(' ; ')}` : ''}`, 'erreur');
+    } else if (reponse.status === 413) {
+      // nginx répond avant le service (client_max_body_size, deploy/nginx.conf), en HTML : le service répond bien, la fiche est trop lourde
+      message('Non enregistré : la fiche est trop volumineuse (portrait ou notes trop longs). Téléchargez-la pour ne rien perdre.', 'erreur');
+    } else if (reponse.status < 500) {
+      message(`Non enregistré (erreur ${reponse.status}). Téléchargez la fiche pour ne rien perdre.`, 'erreur');
     } else {
       throw new Error(`HTTP ${reponse.status}`);
     }

@@ -304,8 +304,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
     points ; `bonusDuMetierEcrit`). Lucien : Connaissance 0 au joueur (4 écrits, « 4% Connaissance »), affichée 3 ; Louise : Esquive, Réflexe et Ruse
     0 (« +2% Reflexe, Esquive et Ruse »), affichées 3, 3 et 0. Une remarque de synthèse quand l'ancien bonus n'est pas celui de la base (« Métier
     Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 : les acquis suivent la base (R72) ») ;
-    une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et autres mots, décimal, case coupée dans
-    un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son ancien bonus est retiré quand même, et
+    une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et autres mots, nom de compétence écrit
+    avant son « N% » (« Esquive +3% ») ou pris dans d'autres mots (« aux jets d'Esquive »), nombre précédé d'un signe moins, décimal, case coupée
+    dans un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son ancien bonus est retiré quand même, et
     dit. L41 se lit comme la page l'écrit (rangs à choix « … → Compétence », « → ? » pas choisi ; l'artisanat « = N % » n'est pas un bonus) et comme
     la fiche auto (« 4% Connaissance. … », « Bonus +2% Reflexe, Esquive et Ruse. ») ; le test relit la case de chaque métier de la base, pour chaque
     choix. Une remarque par compétence touchée pour un classeur qui ne vient pas de la page (« Connaissance : acquis 4 du classeur − 4 du métier
