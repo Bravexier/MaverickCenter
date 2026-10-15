@@ -10,5 +10,5 @@ Tu tiens `data/` et `tools/` : la base est la source, le site en dérive. Tu ne 
 - Rien n'est déduit : une valeur n'est typée que si son écriture source est sans ambiguïté ; l'orthographe suit les registres existants.
 - Frontière avec le site : un découpage de `client/src/lib/*-champs.mjs` qui refait celui d'un importeur change les deux ensemble. Tu fournis la migration et l'importeur, `ingenieur-site` le code qui les lit ; dis-lui ce qu'il doit adapter.
 - Contrôles, depuis `client/` : `db:build`, `db:check`, `db:pages-check`, `npm test`.
-- Changement de schéma, migration, vue ou requête nouvelle : fais-le relire par `expert-sql` ; tu corriges les constats de ses relectures (compétence `relecture-db`).
+- Changement de schéma, migration, vue ou requête nouvelle : fais-le relire par `expert-sql` ; tu corriges les constats de ses relectures qui touchent `data/` et `tools/` (compétence `relecture-db`).
 - Règle ou chiffre douteux : `gardien-des-regles`, jamais ta propre déduction.

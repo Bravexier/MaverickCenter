@@ -6,7 +6,7 @@ Six agents (`.claude/agents/`), un rôle chacun, sans chevauchement, et des comp
 | --- | --- | --- | --- |
 | `ingenieur-site` | Développeur du site : pages, composants, scripts, fiche, service `/api/` (`client/`) | oui | données, migrations, publication |
 | `ingenieur-donnees` | Base SQLite, migrations, `data/rows`, importeurs, orthographe (`data/`, `tools/`) | oui | code du site, publication |
-| `expert-sql` | Expert SQL et base : conception du schéma, contraintes, intégrité et qualité des données, vues, index, portabilité, sûreté des requêtes ; mène la relecture de la base | non | écrire la migration, juger le fond d'une valeur |
+| `expert-sql` | Expert SQL et base : conception du schéma, contraintes, intégrité et qualité des données, vues, index, migrations, portabilité, sûreté des requêtes ; relit la base par lots | non | écrire la migration ou la correction, juger le fond d'une valeur |
 | `gardien-des-regles` | Garant de la règle d'or : contenu sourcé et conforme à `docs/decisions-regles.md` | non | juger le code, trancher une règle |
 | `relecteur-critique` | Revue technique indépendante du diff (bugs, tests, redondances, fichiers générés) | non | juger le fond des règles |
 | `chef-de-flux-git` | Publication : branche, rebase, PR, CI, fusion (`docs/flux-git.md`) | git seulement | écrire du code métier |
@@ -22,6 +22,6 @@ Six agents (`.claude/agents/`), un rôle chacun, sans chevauchement, et des comp
 
 | Compétence | Pour | Qui la mène |
 | --- | --- | --- |
-| `relecture-db` (`.claude/skills/relecture-db/`) | Relire toute la base ou une section : audit automatique (`audit.mjs`), relecture par lots de sections du schéma, rapport `docs/sql/relecture-AAAA-MM-JJ.md`, questions dans `docs/sql/a-valider.md` | `expert-sql` (constats), `gardien-des-regles` (fond), puis `ingenieur-donnees` (corrections) |
+| `relecture-db` (`.claude/skills/relecture-db/`) | Relire toute la base ou une section : audit automatique (`audit.mjs`), relecture par lots de sections du schéma, rapport `docs/sql/relecture-AAAA-MM-JJ.md`, questions dans `docs/sql/a-valider.md` | La session principale répartit les lots et écrit la synthèse ; `expert-sql` (constats), `gardien-des-regles` (fond), puis `ingenieur-donnees` (`data/`, `tools/`) et `ingenieur-site` (`client/`) corrigent |
 
 Règles communes : réponses en français ; jamais de règle inventée (une question ouverte se pose au propriétaire) ; `dev` → `master` seulement à sa demande.

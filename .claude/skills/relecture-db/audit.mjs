@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Audit automatique de la base (compétence « relecture-db », agent `expert-sql`) : un RELEVÉ de constats à examiner, jamais un verdict ni une correction.
-//   node .claude/skills/relecture-db/audit.mjs [--base var/maverick.db] [--json] [--sortie <fichier>] [--exemples 3]
+//   node --no-warnings .claude/skills/relecture-db/audit.mjs [--base var/maverick.db] [--json] [--sortie <fichier>] [--exemples 3]   (depuis la racine du dépôt)
 // Construire la base d'abord (depuis client/ : `npm run db:build`). Le script travaille sur une COPIE dans un dossier temporaire (contrôle de la recherche
-// plein texte, plans d'exécution) : la base construite n'est jamais modifiée. Aucune dépendance : node:sqlite (Node >= 22.13), node:fs.
+// plein texte, plans d'exécution), effacée à la sortie même en cas d'erreur : la base lue n'est jamais modifiée. Il refuse une base qui contient des fiches
+// (section 13 non vide : base vivante d'un serveur). Aucune dépendance : node:sqlite (Node >= 22.13), node:fs.
 // Ce que l'audit ne sait pas juger (une valeur conforme à sa source, une modélisation adaptée au besoin) reste à la relecture : voir SKILL.md.
 import { DatabaseSync } from 'node:sqlite';
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -11,20 +12,34 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RACINE = resolve(fileURLToPath(new URL('../../../', import.meta.url)));
-const arg = (nom, defaut) => { const i = process.argv.indexOf(nom); return i > 0 ? process.argv[i + 1] : defaut; };
+const arreter = (message) => { console.error(message); process.exit(2); };
+function arg(nom, defaut) {
+  const i = process.argv.indexOf(nom);
+  if (i < 0) return defaut;
+  const v = process.argv[i + 1];
+  if (v === undefined || v.startsWith('--')) arreter(`${nom} attend une valeur`);
+  return v;
+}
 const BASE = resolve(arg('--base', join(RACINE, 'var', 'maverick.db')));
-const EXEMPLES = Number(arg('--exemples', 3));
+const EXEMPLES = Number(arg('--exemples', '3'));
 const SORTIE = arg('--sortie', null);
 const EN_JSON = process.argv.includes('--json');
+if (!Number.isInteger(EXEMPLES) || EXEMPLES < 0) arreter('--exemples attend un entier positif ou nul');
+if (!existsSync(BASE)) arreter(`Base introuvable : ${BASE}. Depuis client/ : npm run db:build`);
 
-if (!existsSync(BASE)) { console.error(`Base introuvable : ${BASE}. Depuis client/ : npm run db:build`); process.exit(2); }
 const dossier = mkdtempSync(join(tmpdir(), 'audit-db-'));
+let db = null;
+process.on('exit', () => {
+  try { db?.close(); } catch { /* déjà fermée */ }
+  rmSync(dossier, { recursive: true, force: true });
+});
 const copie = join(dossier, 'audit.db');
 copyFileSync(BASE, copie);
-const db = new DatabaseSync(copie);
+db = new DatabaseSync(copie);
 db.exec('PRAGMA foreign_keys = ON');
 
 const q = (nom) => `"${nom.replaceAll('"', '""')}"`;
+const echapper = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const tous = (sql, ...p) => db.prepare(sql).all(...p);
 const un = (sql, ...p) => db.prepare(sql).get(...p);
 const court = (v, n = 80) => { const s = String(v).replace(/\n/g, '⏎'); return s.length > n ? `${s.slice(0, n)}…` : s; };
@@ -62,6 +77,8 @@ const vues = maitre.filter((o) => o.type === 'view').map((o) => o.name).sort();
 const sqlDe = new Map(maitre.map((o) => [o.name, o.sql ?? '']));
 const colonnesDe = new Map(tables.map((t) => [t, tous(`PRAGMA table_xinfo(${q(t)})`).filter((c) => c.hidden === 0)]));
 const lignesDe = new Map(tables.map((t) => [t, un(`SELECT count(*) AS n FROM ${q(t)}`).n]));
+const fiches = tables.filter((t) => numeroDeSection(t) === '13' && lignesDe.get(t) > 0);
+if (fiches.length) arreter(`Base refusée : la section 13 n'est pas vide (${fiches.join(', ')}). L'audit ne lit pas de fiches de joueurs : utiliser la base construite (var/maverick.db).`);
 const clesEtrangeres = new Map(tables.map((t) => {
   const groupes = new Map();
   for (const fk of tous(`PRAGMA foreign_key_list(${q(t)})`)) {
@@ -76,18 +93,39 @@ const indexDe = new Map(tables.map((t) => [t, tous(`PRAGMA index_list(${q(t)})`)
   colonnes: tous(`PRAGMA index_info(${q(i.name)})`).map((c) => c.name ?? '<expression>'),
 }))]));
 const clePrimaire = (t) => colonnesDe.get(t).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
-// Expressions CHECK d'une table (parenthèses équilibrées) : une colonne est « contrôlée » si l'une d'elles la nomme.
-function checksDe(t) {
-  const sql = sqlDe.get(t);
-  const res = [];
-  for (const m of sql.matchAll(/\bCHECK\s*\(/gi)) {
-    let i = m.index + m[0].length, prof = 1;
-    while (i < sql.length && prof > 0) { if (sql[i] === '(') prof += 1; else if (sql[i] === ')') prof -= 1; i += 1; }
-    res.push(sql.slice(m.index, i));
+// SQL sans ses commentaires `--` (hors chaînes : '*--*' reste), lignes conservées.
+function sansCommentaires(texte) {
+  let res = '';
+  let chaine = false;
+  for (let i = 0; i < texte.length; i += 1) {
+    const ch = texte[i];
+    if (chaine) { res += ch; if (ch === "'") chaine = false; continue; }   // '' (apostrophe doublée) : fermée puis rouverte, même résultat
+    if (ch === "'") { chaine = true; res += ch; continue; }
+    if (ch === '-' && texte[i + 1] === '-') {
+      while (i < texte.length && texte[i] !== '\n') { res += ' '; i += 1; }
+      if (i < texte.length) res += '\n';
+      continue;
+    }
+    res += ch;
   }
   return res;
 }
-const controlee = (t, col) => checksDe(t).some((c) => new RegExp(`\\b${col}\\b`).test(c));
+// Expressions CHECK (parenthèses équilibrées, chaînes sautées) avec leur position : une colonne est « contrôlée » si l'une d'elles la nomme.
+function expressionsCheck(sql) {
+  const res = [];
+  for (const m of sql.matchAll(/\bCHECK\s*\(/gi)) {
+    let i = m.index + m[0].length, prof = 1, chaine = false;
+    while (i < sql.length && prof > 0) {
+      const ch = sql[i];
+      if (chaine) { if (ch === "'") chaine = false; } else if (ch === "'") chaine = true; else if (ch === '(') prof += 1; else if (ch === ')') prof -= 1;
+      i += 1;
+    }
+    res.push({ debut: m.index, fin: i, texte: sql.slice(m.index, i) });
+  }
+  return res;
+}
+const checksDe = (t) => expressionsCheck(sansCommentaires(sqlDe.get(t))).map((c) => c.texte);
+const controlee = (t, col) => checksDe(t).some((c) => new RegExp(`\\b${echapper(col)}\\b`).test(c));
 const colonnesEtrangeres = (t) => new Set(clesEtrangeres.get(t).flatMap((f) => f.colonnes));
 
 const R = {
@@ -99,7 +137,8 @@ const R = {
 // 1. Moteur
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 R.moteur.integrity_check = tous('PRAGMA integrity_check').map((r) => r.integrity_check);
-R.moteur.foreign_key_check = tous('PRAGMA foreign_key_check').slice(0, 50);
+// « foreign key mismatch » (clé étrangère vers une colonne ni primaire ni unique) fait lever le PRAGMA : noté, la section 3 dit laquelle.
+try { R.moteur.foreign_key_check = tous('PRAGMA foreign_key_check').slice(0, 50); } catch (e) { R.moteur.foreign_key_check = [{ erreur: e.message }]; }
 for (const p of ['user_version', 'page_size', 'page_count', 'freelist_count', 'encoding', 'journal_mode', 'auto_vacuum', 'application_id']) {
   R.moteur[p] = Object.values(un(`PRAGMA ${p}`))[0];
 }
@@ -138,8 +177,10 @@ const declare = (t, c) => (colonnesDe.get(t)?.find((x) => x.name === c)?.type ??
 for (const t of tables) {
   const idx = indexDe.get(t);
   for (const fk of clesEtrangeres.get(t)) {
-    const couvert = idx.some((i) => !i.partiel && fk.colonnes.every((c, k) => i.colonnes[k] === c))
-      || idx.some((i) => i.partiel && fk.colonnes.every((c, k) => i.colonnes[k] === c));
+    // Couverte : un index qui commence par ses colonnes, complet ou partiel « WHERE col IS NOT NULL » (clé clairsemée, convention du schéma).
+    const nonNul = (i) => fk.colonnes.length === 1
+      && new RegExp(`WHERE\\s+"?${echapper(fk.colonnes[0])}"?\\s+IS\\s+NOT\\s+NULL\\s*;?\\s*$`, 'i').test(sansCommentaires(sqlDe.get(i.nom) ?? '').trim());
+    const couvert = idx.some((i) => fk.colonnes.every((c, k) => i.colonnes[k] === c) && (!i.partiel || nonNul(i)));
     if (!couvert) {
       if (fk.colonnes.length === 1 && fk.colonnes[0] === 'origine') R.cles.origine_sans_index += 1;
       else R.cles.sans_index.push({ table: t, section: numeroDeSection(t), colonnes: fk.colonnes.join(', '), parent: fk.parent, suppression: fk.suppression });
@@ -177,6 +218,7 @@ for (const t of tables) {
   const idx = indexDe.get(t).filter((i) => !i.partiel);
   for (const a of idx) {
     if (a.origine !== 'c') continue;                       // seuls les index créés à la main (CREATE INDEX) se retirent
+    if (a.colonnes.includes('<expression>')) continue;     // deux expressions ne se comparent pas : à relire à la main
     const b = idx.find((x) => x !== a && x.colonnes.length >= a.colonnes.length && a.colonnes.every((c, k) => x.colonnes[k] === c)
       && (!a.unique || (x.unique && x.colonnes.length === a.colonnes.length)));
     if (b) R.index.redondants.push({ table: t, index: a.nom, colonnes: a.colonnes.join(', '), couvert_par: `${b.nom} (${b.colonnes.join(', ')})` });
@@ -231,10 +273,10 @@ const ANOMALIES = {
   retour_chariot: { titre: 'retour chariot (\\r)', test: (v) => v.includes('\r') },
   tabulation: { titre: 'tabulation', test: (v) => v.includes('\t') },
   controle: { titre: 'caractère de contrôle', test: (v) => /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v) },
-  invisible: { titre: 'caractère invisible (largeur nulle, BOM)', test: (v) => /[​-‍⁠﻿]/.test(v) },
+  invisible: { titre: 'caractère invisible (largeur nulle, BOM)', test: (v) => /[\u200B-\u200D\u2060\uFEFF]/.test(v) },
   non_nfc: { titre: 'Unicode non normalisé (NFC)', test: (v) => v !== v.normalize('NFC') },
-  remplacement: { titre: 'caractère de remplacement U+FFFD', test: (v) => v.includes('�') },
-  mojibake: { titre: 'encodage cassé (Ã©, â€™…)', test: (v) => /Ã[\u0080-¿]|â€|Â[ -¿]/.test(v) },
+  remplacement: { titre: 'caractère de remplacement U+FFFD', test: (v) => v.includes('\uFFFD') },
+  mojibake: { titre: 'encodage cassé (Ã©, Ã‰, â€™…)', test: (v) => /\u00C3[\u0080-\u00BF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013\u2014\u2018-\u201E\u2020-\u2022\u2026\u2030\u2039\u203A\u20AC\u2122]|\u00E2\u20AC|\u00C2[\u00A0-\u00BF]/.test(v) },
   chaine_vide: { titre: "chaîne vide là où l'absence s'écrit NULL", test: (v) => v === '' },
 };
 for (const t of tables) {
@@ -280,32 +322,59 @@ for (const t of tables) {
     const candidates = [...(pkCols.includes('rang') ? [pkCols] : []), ...uniques.filter((u) => u.includes('rang'))];
     const cleUnique = candidates.find((u) => !u.includes('<expression>'));
     if (!cleUnique) {
-      const remarque = candidates.length ? `rang unique avec une expression (${candidates[0].join(', ')}) : à relire à la main` : 'aucune clé unique ne contient rang';
+      const partiels = indexDe.get(t).filter((i) => i.unique && i.partiel && i.colonnes.includes('rang')).map((i) => i.nom);
+      const remarque = candidates.length ? `rang unique avec une expression (${candidates[0].join(', ')}) : à relire à la main`
+        : partiels.length ? `rang unique seulement dans l'index partiel ${partiels.join(', ')} : à relire à la main` : 'aucune clé unique ne contient rang';
       R.rangs.push({ table: t, parent: '—', listes: '', trous_ou_decalages: '', remarque });
       continue;
     }
     const parent = cleUnique.filter((c) => c !== 'rang');
     const g = parent.length ? parent.map(q).join(', ') : "'tout'";
-    const pb = tous(`SELECT ${g}, min(rang) AS mi, max(rang) AS ma, count(*) AS n FROM ${q(t)} GROUP BY ${g} HAVING mi <> 1 OR ma <> n`);
-    const total = un(`SELECT count(*) AS n FROM (SELECT 1 FROM ${q(t)} GROUP BY ${g})`).n;
+    const pb = tous(`SELECT ${g}, min(rang) AS mi, max(rang) AS ma, count(rang) AS n FROM ${q(t)} WHERE rang IS NOT NULL GROUP BY ${g} HAVING mi <> 1 OR ma <> n`);
+    const total = un(`SELECT count(*) AS n FROM (SELECT 1 FROM ${q(t)} WHERE rang IS NOT NULL GROUP BY ${g})`).n;
     if (pb.length) R.rangs.push({ table: t, parent: parent.join(', ') || '(toute la table)', listes: `${pb.length} / ${total}`, trous_ou_decalages: pb.slice(0, EXEMPLES).map((r) => `${r.mi}..${r.ma} pour ${r.n}`).join(' ; ') });
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
-// 8. Vues : exécution, durée, parcours complets des grandes tables
+// 8. Vues : exécution, durée, plans d'exécution (parcours complets en boucle interne, index automatiques)
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Le plan nomme une table par son alias : retrouvé dans le SQL de la vue (« FROM capacite a », « JOIN capacite AS b »). Un alias de sous-requête,
+// de CTE ou de vue (résultat intermédiaire : rien à y indexer) reste sans table.
+function tableDeLAlias(v, alias) {
+  if (lignesDe.has(alias)) return alias;
+  for (const m of sansCommentaires(sqlDe.get(v)).matchAll(new RegExp(`\\b(\\w+)\\s+(?:AS\\s+)?${echapper(alias)}\\b`, 'gi'))) if (lignesDe.has(m[1])) return m[1];
+  return null;
+}
+const SEUIL_BOUCLE = 100;   // une boucle interne sur moins de lignes ne coûte rien
 R.vues.erreurs = [];
 R.vues.durees = [];
-R.vues.parcours = [];
+R.vues.boucles_internes = [];
+R.vues.index_automatiques = [];
+R.vues.intermediaires = [];
 for (const v of vues) {
   const debut = process.hrtime.bigint();
   try {
     const n = un(`SELECT count(*) AS n FROM ${q(v)}`).n;
     R.vues.durees.push({ vue: v, lignes: n, ms: Number(process.hrtime.bigint() - debut) / 1e6 });
-    const plan = tous(`EXPLAIN QUERY PLAN SELECT * FROM ${q(v)}`).map((r) => r.detail);
-    const scans = plan.map((d) => /^SCAN (\w+)(?:\s|$)(?!.*USING)/.exec(d)?.[1]).filter((x) => x && (lignesDe.get(x) ?? 0) >= 500);
-    if (scans.length) R.vues.parcours.push({ vue: v, tables: [...new Set(scans)].map((x) => `${x} (${lignesDe.get(x)})`).join(', ') });
+    const plan = tous(`EXPLAIN QUERY PLAN SELECT * FROM ${q(v)}`);
+    // Parcourir toute la table de tête est normal ; une boucle qui n'est pas la première de son niveau, ou dans une sous-requête corrélée, tourne
+    // une fois par ligne de la boucle externe : un SCAN y est un parcours complet répété.
+    const niveauxVus = new Set();
+    const correlees = new Set(plan.filter((r) => /^CORRELATED/.test(r.detail)).map((r) => r.id));
+    for (const r of plan) {
+      const boucle = /^(SCAN|SEARCH) (\S+)/.exec(r.detail);
+      if (!boucle || boucle[2].startsWith('(')) continue;
+      const interne = niveauxVus.has(r.parent) || correlees.has(r.parent);
+      niveauxVus.add(r.parent);
+      const table = tableDeLAlias(v, boucle[2]);
+      const automatique = /AUTOMATIC/.test(r.detail);
+      if (!automatique && !(boucle[1] === 'SCAN' && interne)) continue;
+      if (!table) { R.vues.intermediaires.push(`${v} : ${r.detail}`); continue; }
+      const lignes = lignesDe.get(table);
+      if (automatique) R.vues.index_automatiques.push({ vue: v, table, lignes, detail: r.detail });
+      else if (lignes >= SEUIL_BOUCLE) R.vues.boucles_internes.push({ vue: v, table, lignes, detail: r.detail });
+    }
   } catch (e) {
     R.vues.erreurs.push({ vue: v, erreur: e.message });
   }
@@ -323,60 +392,61 @@ for (const v of virtuelles) {
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 // 10. Portabilité : constructions propres à SQLite hors de la liste admise par l'en-tête de schema.sql
-//     (STRICT / WITHOUT ROWID, GLOB dans quelques CHECK, json_valid / json_type, instr, FTS5, group_concat, PRAGMA)
+//     (STRICT / WITHOUT ROWID, GLOB dans quelques CHECK, json_valid / json_type, instr, FTS5, group_concat dans une vue, PRAGMA)
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 {
   const textes = { 'data/schema.sql': schemaSql, 'data/derive.sql': readFileSync(join(RACINE, 'data', 'derive.sql'), 'utf8') };
   const MOTIFS = {
-    'json_* hors json_valid / json_type': /\bjson_(?!valid\b|type\b)\w+\s*\(/gi, 'iif(': /\biif\s*\(/gi, 'printf(': /\bprintf\s*\(/gi, 'format(': /\bformat\s*\(/gi,
+    'json_* hors json_valid / json_type': /\bjson_(?!valid\b|type\b)\w+\s*\(/gi, 'iif(': /\biif\s*\(/gi, 'printf( / format(': /\b(?:printf|format)\s*\(/gi,
     'typeof(': /\btypeof\s*\(/gi, 'unicode( / char(': /\b(?:unicode|char)\s*\(/gi, 'strftime / datetime / julianday': /\b(?:strftime|datetime|julianday|unixepoch)\s*\(/gi,
-    rowid: /\browid\b/gi, AUTOINCREMENT: /\bAUTOINCREMENT\b/gi, 'INSERT OR / REPLACE INTO': /\bINSERT\s+OR\s+\w+|\bREPLACE\s+INTO\b/gi,
-    'LIKE … ESCAPE / GLOB hors CHECK': /\bGLOB\b/gi, 'group_concat': /\bgroup_concat\s*\(/gi, 'substr(': /\bsubstr\s*\(/gi, 'total(': /\btotal\s*\(/gi,
-    'min()/max() à plusieurs arguments': /\b(?:min|max)\s*\([^()]*,[^()]*\)/gi, "concaténation d'un entier (||)": /\|\|\s*\d/g,
+    'rowid (hors WITHOUT ROWID)': /(?<!WITHOUT\s+)\browid\b/gi, AUTOINCREMENT: /\bAUTOINCREMENT\b/gi, 'INSERT OR / REPLACE INTO': /\bINSERT\s+OR\s+\w+|\bREPLACE\s+INTO\b/gi,
+    'GLOB hors CHECK': /\bGLOB\b/gi, group_concat: /\bgroup_concat\s*\(/gi, 'total(': /\btotal\s*\(/gi,
+    'min()/max() à plusieurs arguments': /\b(?:min|max)\s*\([^()]*,[^()]*\)/gi,
   };
-  for (const [motif, re] of Object.entries(MOTIFS)) {
-    for (const [fichier, texte] of Object.entries(textes)) {
-      const lignes = texte.split('\n').map((l, i) => [i + 1, l.replace(/--.*$/, '')]).filter(([, l]) => { re.lastIndex = 0; return re.test(l); });
-      if (motif.startsWith('LIKE') && fichier === 'data/schema.sql') {
-        const horsCheck = lignes.filter(([, l]) => !/CHECK/i.test(l));
-        if (horsCheck.length) R.portabilite.push({ motif: 'GLOB hors CHECK', fichier, nombre: horsCheck.length, lignes: horsCheck.slice(0, 8).map(([n]) => n).join(', ') });
-        continue;
-      }
-      if (lignes.length) R.portabilite.push({ motif, fichier, nombre: lignes.length, lignes: lignes.slice(0, 8).map(([n]) => n).join(', ') });
+  const ADMIS = { group_concat: { 'data/schema.sql': 1 } };   // l'en-tête de schema.sql admet group_concat dans une vue
+  for (const [fichier, brut] of Object.entries(textes)) {
+    const texte = sansCommentaires(brut);
+    const checks = expressionsCheck(texte);
+    const ligneDe = (index) => texte.slice(0, index).split('\n').length;
+    for (const [motif, re] of Object.entries(MOTIFS)) {
+      let positions = [...texte.matchAll(re)].map((m) => m.index);
+      if (motif === 'GLOB hors CHECK') positions = positions.filter((i) => !checks.some((c) => c.debut <= i && i < c.fin));
+      const lignes = [...new Set(positions.map(ligneDe))];
+      if (lignes.length > (ADMIS[motif]?.[fichier] ?? 0)) R.portabilite.push({ motif, fichier, nombre: lignes.length, lignes: lignes.slice(0, 8).join(', ') });
     }
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
-// 11. Usage dans le code : tables et vues que rien ne lit (hors tests, migrations, registre de l'API /api/v1/, schéma et docs)
+// 11. Usage dans le code : tables et vues que rien ne cite (hors tests, migrations, registre de l'API /api/v1/, schéma et docs)
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 {
   const DOSSIERS = ['client/src', 'client/serveur', 'client/scripts', 'tools', 'data/derive.sql', 'deploy'];
-  const EXCLUS = /node_modules|[\\/]dist[\\/]|[\\/]\.astro[\\/]|content[\\/]wiki|src[\\/]lib[\\/]ressources|[\\/]modeles[\\/]/;
+  const EXCLUS = /node_modules|(?:^|[\\/])(?:dist|\.astro|modeles)(?:[\\/]|$)|content[\\/]wiki|src[\\/]lib[\\/]ressources(?:[\\/]|$)/;   // testé sur le chemin relatif
   const EXT = /\.(mjs|js|ts|astro|py|sql|sh|json)$/;
   const fichiers = [];
   const parcourir = (p) => {
     const abs = join(RACINE, p);
-    if (!existsSync(abs) || EXCLUS.test(abs)) return;
+    if (!existsSync(abs) || EXCLUS.test(p)) return;
     if (statSync(abs).isDirectory()) { for (const f of readdirSync(abs)) parcourir(join(p, f)); return; }
     if (EXT.test(abs) && !/lib[\\/]ressources\.mjs$/.test(abs)) fichiers.push([p, readFileSync(abs, 'utf8')]);
   };
   DOSSIERS.forEach(parcourir);
-  const cite = (nom, texte) => new RegExp(`(?<![\\w-])${nom}(?![\\w-])`).test(texte);
+  const cite = (nom, texte) => new RegExp(`(?<![\\w-])${echapper(nom)}(?![\\w-])`).test(texte);
   const compte = (nom) => fichiers.filter(([, texte]) => cite(nom, texte)).map(([f]) => f);
-  // Une vue citée par le code est lue ; ce qu'elle cite (tables, autres vues) l'est aussi, de proche en proche.
+  // Une vue citée par le code compte ; ce qu'elle cite (tables, autres vues) aussi, de proche en proche.
   const lus = new Set([...tables, ...vues].filter((n) => compte(n).length > 0));
   for (let encore = true; encore;) {
     encore = false;
     for (const v of vues.filter((x) => lus.has(x))) {
-      for (const n of [...tables, ...vues]) if (!lus.has(n) && cite(n, sqlDe.get(v))) { lus.add(n); encore = true; }
+      for (const n of [...tables, ...vues]) if (!lus.has(n) && cite(n, sansCommentaires(sqlDe.get(v)))) { lus.add(n); encore = true; }
     }
   }
   R.usage.fichiers_lus = fichiers.length;
-  R.usage.tables_jamais_lues = tables.filter((t) => !lus.has(t)).map((t) => ({
+  R.usage.tables_jamais_citees = tables.filter((t) => !lus.has(t)).map((t) => ({
     table: t, section: numeroDeSection(t), lignes: lignesDe.get(t), vues_qui_la_citent: vues.filter((v) => cite(t, sqlDe.get(v))).join(', '),
   }));
-  R.usage.vues_jamais_lues = vues.filter((v) => !lus.has(v));
+  R.usage.vues_jamais_citees = vues.filter((v) => !lus.has(v));
   R.usage.vues_citees_une_fois = vues.map((v) => [v, compte(v)]).filter(([, f]) => f.length === 1).map(([v, f]) => `${v} (${f[0]})`);
 }
 
@@ -392,9 +462,6 @@ for (const s of [...sections, 'hors schema.sql']) {
     + R.donnees.toujours_null.filter((x) => x.section === num).length;
   R.sections.push({ section: s, tables: ts.length, vues: vs.length, lignes: ts.reduce((a, t) => a + lignesDe.get(t), 0), colonnes: ts.reduce((a, t) => a + colonnesDe.get(t).length, 0), constats_automatiques: constats });
 }
-
-db.close();
-rmSync(dossier, { recursive: true, force: true });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 // Rendu
@@ -463,18 +530,21 @@ function markdown() {
   o.push(tableau(R.vues.erreurs, ['vue', 'erreur']));
   o.push('**Les plus lentes** (count(*) sur la vue entière) :\n');
   o.push(tableau(R.vues.durees.slice(0, 10).map((d) => ({ ...d, ms: d.ms.toFixed(1) })), ['vue', 'lignes', 'ms']));
-  o.push('**Parcours complets** d\'une table de 500 lignes ou plus dans le plan d\'exécution :\n');
-  o.push(tableau(R.vues.parcours, ['vue', 'tables']));
+  o.push(`**Parcours complets en boucle interne** (une fois par ligne de la boucle externe ; table de ${SEUIL_BOUCLE} lignes ou plus) :\n`);
+  o.push(tableau(R.vues.boucles_internes, ['vue', 'table', 'lignes', 'detail']));
+  o.push('**Index automatiques** (SQLite construit un index temporaire faute d\'index qui convienne : un index manque peut-être) :\n');
+  o.push(tableau(R.vues.index_automatiques, ['vue', 'table', 'lignes', 'detail']));
+  o.push(`**Sur un résultat intermédiaire** (sous-requête, CTE ou vue : rien à indexer, à relire si la vue est lente) : ${liste(R.vues.intermediaires)}`);
   o.push('## 10. Recherche plein texte\n');
   o.push(tableau(R.fts, ['table', 'lignes', 'integrity_check']));
   o.push('## 11. Portabilité (hors liste admise par l\'en-tête de schema.sql)\n');
   o.push(tableau(R.portabilite, ['motif', 'fichier', 'nombre', 'lignes']));
   o.push('## 12. Usage dans le code\n');
   o.push(`${R.usage.fichiers_lus} fichiers lus (client/src hors pages fabriquées et registre de l'API, client/serveur, client/scripts, tools, data/derive.sql, deploy ; ni tests, ni migrations).\n`);
-  o.push('Une table ou une vue « jamais lue » n\'est citée par aucun de ces fichiers ni par une vue qu\'ils lisent : seuls l\'API générique `/api/v1/` (registre), la page Debug, `data/rows` et l\'export `/donnees/` y touchent.\n');
-  o.push('**Tables jamais lues** :\n');
-  o.push(tableau(R.usage.tables_jamais_lues, ['table', 'section', 'lignes', 'vues_qui_la_citent']));
-  o.push(`**Vues jamais lues** : ${liste(R.usage.vues_jamais_lues)}`);
+  o.push('« Citée » = le nom apparaît dans un de ces fichiers (lecture, écriture ou simple commentaire) ou dans une vue citée. Un nom courant (`page`, `sort`, `lien`…) est donc toujours cité : l\'absence de citation est un signal fort, la présence ne prouve rien. L\'API générique `/api/v1/` et la page Debug listent toutes les tables, citées ou non.\n');
+  o.push('**Tables jamais citées** :\n');
+  o.push(tableau(R.usage.tables_jamais_citees, ['table', 'section', 'lignes', 'vues_qui_la_citent']));
+  o.push(`**Vues jamais citées** : ${liste(R.usage.vues_jamais_citees)}`);
   o.push(`**Vues citées par un seul fichier** : ${liste(R.usage.vues_citees_une_fois)}`);
   return o.join('\n');
 }
