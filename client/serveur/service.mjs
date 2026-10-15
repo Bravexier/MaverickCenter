@@ -12,6 +12,7 @@ import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
+import { instant as maintenant } from './instant.mjs';
 import { FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
@@ -35,7 +36,6 @@ export function guetteur(initiale) {
   };
 }
 
-const maintenant = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
 const inode = (chemin) => {
   try {
