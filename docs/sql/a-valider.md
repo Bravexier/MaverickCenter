@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R20) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R69, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -28,8 +28,10 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Règles | « Calme » ou « Prouesse » (compétence de Volonté) | **décidé : Calme** (R4) |
 | Règles | Mode hyper : quelle version fait foi (+15/+7 ou +10/+5), cinq lectures stockées dans `mode_hyper_effet` | **décidé : +15 / +7** (R5) |
 | Règles | Total de points à répartir : égalité ou maximum | **décidé : exactement** (R3) |
-| Règles | Puissance magique 5 au niveau 16 ou 17 ; plafond de caractéristique aux niveaux 5, 10, 15 ; sens des deux « croix » ; entraînement 10 % par compétence ou au total | ouvert |
-| Magies | Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps seulement) ? Arcane et Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) ? (les pages de magie, le guide et le tableau des résistances de `/fiche/` suivent V8) | ouvert |
+| Règles | Puissance magique 5 au niveau 16 ou 17 ; sens des deux « croix » | **décidé : niveau 16** (R16) ; **les croix** (R19, voir Q1 du §3) |
+| Règles | Plafond de caractéristique aux niveaux 5, 10, 15 ; entraînement 10 % par compétence ou au total (voir Q7 du §3) | ouvert |
+| Magies | Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps seulement) ? | **décidé : mono-magie uniquement**, sauf Elfe Noir Charbon et Felfe Noir (R15) |
+| Magies | Arcane et Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) ? (les pages de magie, le guide et le tableau des résistances de `/fiche/` suivent V8) | ouvert |
 | Magies | Niveaux de maîtrise (migration 0004) : la lecture typée de quelques expressions ambiguës de `sort_bonus_maitrise` ; « /3NM » collé à une proposition en toutes lettres typé **palier à 3 NM** (Grenade cryogénique « gel 1/3NM », Échange « 3CK = 2BA/3NM », Planète chakratique « 1CK/3NM », Lame sous pression « ou verticales/3NM », comme les grenades voisines « 3NM = … »), « (x4/3NM) » typé par NM de pas 3, « (+1/NM) » sans unité écrite (Image diffuse, Aspect vide, Pichenette, Lame d'ombre) typé sans unité. Le texte de la cellule est conservé tel quel dans chaque ligne | ouvert |
 | Magies | « D/S/B » non développé dans les sources ; 32 sorts sans chakra écrit ; noms d'états (« Gelé » / « Gel ») | ouvert |
 | Magies | 26 fils de commentaires orphelins (cellules supprimées, certains textes sont des règles) ; 28 dieux dont 16 reliés à une magie | ouvert |
@@ -45,7 +47,8 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Races | Capacité hyper : deux versions (fiche, guide) divergent pour 8 races ; bonus d'ethnie issu de formules (faux positif probable : Elfe forestier Forêt +3 AP) | la page suit l'onglet (R13 : version `onglet_race`) ; bonus d'ethnie de la fiche : ouvert |
 | Bestiaire | Sigle FPVSIA non défini (« NPM » = niveau de puissance magique, et le « EP » des marionnettes en est une faute du classeur : décision R53) ; 6 créatures aux résistances contradictoires ; « Golem d'Argile » sans créature ; 6 sorts cités sur 105 introuvables (3 variantes évidentes comme « Veilliessement ») | ouvert |
 | Métiers | Après les décisions R33 à R40 (migrations `0024-metiers-fiche`, `0025-metiers-precisions`) : Survie du Prostitué (R36), vitesses (R37), plafond d'Acquis qui prévaut sur le bonus (R38), croix et artisanat (R39), options des équipements à choix (R40) sont **décidés**. Restent : (1) un objet « (Arme) » va dans l'inventaire, pas dans un emplacement d'arme ; (2) l'Artisan (« Un peu tout ») n'a pas de caractéristiques d'artisanat ; (3) « Démarre avec une pioche en acier (arme) » (Mineur) entre tel quel dans l'inventaire (à réécrire depuis le site de dev si besoin) | **à valider** ; la base applique la lecture indiquée |
-| Équipement | 9 prix de matière incohérents ; deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; unité des prix d'armure et de bouclier | ouvert |
+| Équipement | 9 prix de matière incohérents (« 100 RF / 10 RO ») ; unité du prix des matériaux d'armure et de bouclier | **décidé : le prix d'un matériau est en RO, le RF n'est plus d'actualité** (R49) ; la base garde encore `prix_rf` à `NULL` pour ces 9 matériaux (relecture du 2026-10-15, E5) |
+| Équipement | Deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; unité du prix des pièces d'armure (`armure.prix`) et des boucliers (`bouclier.prix`), que R49 ne vise pas | ouvert |
 
 Pour chaque question ouverte, la base garde les deux lectures (`ecart_source`) et laisse la valeur absente à `NULL` : rien n'est inventé en attendant ta réponse.
 
@@ -80,4 +83,22 @@ Questions :
 | Q9 | Gains de niveau d'une fiche auto (la fiche n'écrit que les maximums de santé et de chakra) : garder une répartition reconstituée, ou laisser les gains vides en notant les maximums lus ? | Reconstitués (santé d'abord, dés sur le chakra, bornés par le dé écrit du niveau), avec la remarque « à vérifier » |
 | Q10 | Solidité d'une arme (AK17, AX17 du modèle ordinateur) : l'écrire comme la page « Armes » la calcule (R51) ? | Case vide : la fiche ne calcule pas encore la solidité |
 | Q11 | Les textes de règles trop longs pour leur case (effets des dons, descriptions des sorts) : les reprendre en entier dans la case NOTE ? | Coupés par « … » sans suite (le site les a en entier) ; la note ne garde que les données du personnage |
+
+## 4. Questions de la relecture du 2026-10-15
+
+Relevées par la relecture complète de la base ([`relecture-2026-10-15.md`](relecture-2026-10-15.md), le numéro renvoie au constat) et vérifiées par
+`gardien-des-regles` : aucune décision ne les tranche. Rien n'est changé avant ta réponse.
+
+| # | Question | Ce que fait la base en attendant |
+| --- | --- | --- |
+| C5 | Sur le site de dev, une race dont on **décoche toutes les magies** innées retombe sur la matrice de la fiche (le Nain passerait de 5 à 15 magies). Une liste vidée veut-elle dire « aucune magie », « la matrice de la fiche », ou faut-il refuser de vider la liste ? | La liste vide est traitée comme absente : la matrice fait foi |
+| C6 | **Restrictions de caractéristiques des races** (13 races) : la phrase de l'onglet se modifie sur le site, la table typée (tirée de la fiche) non. Laquelle fait foi : la phrase, ou une liste typée à rendre modifiable comme les magies (R31) ? | La table typée fixe les bornes de la fiche ; une phrase modifiée ne change rien |
+| D4 | **Momies** (Momie, Momie royale, Momie surveillante) : « Enragé » est à la fois dans les vulnérabilités (dégâts ×2) et dans les immunités du Bestiaire 2.0. Laquelle fait foi ? | Les deux sont gardées, telles que dans le doc |
+| E6 | **Armures et boucliers composés** : leur type, leurs AP / AM et le prix des boucliers suivent les matériaux (231/231, 100/100, 90/100), mais aucune règle écrite ne le dit. Sont-ils calculés (alors recalculés quand un matériau change sur la page Composants, et les 9 prix de bouclier qui s'écartent sont des fautes du classeur), ou propres à la source ? | Valeurs du classeur, figées ; elles ne suivent pas un matériau modifié |
+| F2 | Un bonus de métier **« compétence OU attribut »** (« +1 Vitesse OU Esquive ») est-il une forme permise ? Aucun métier ne l'écrit aujourd'hui | Le site de dev l'accepte à la saisie, mais la fiche ne peut ni le choisir ni le contrôler |
+| F10 | **Suppression d'un compte** : que deviennent les fiches d'un joueur qui part (supprimées, anonymisées, changées en prétirés) et l'auteur des modifications qu'il a faites ? | Impossible de supprimer un utilisateur qui possède une fiche ou a écrit un lot |
+| F11 | **Auteur des modifications** : faut-il le garder dans l'historique ? Le dépôt est public : l'écrire dans `data/rows` publierait une identité Discord ; la base vivante seule, ou une autre forme ? | L'historique n'a pas d'auteur |
+| F12 | **Amélioration de bouclier** : les règles en ont 5, mais la fiche auto n'en porte pas (l'arme et l'armure, si). Faut-il l'ajouter à la fiche du site ? | Pas de choix d'amélioration pour le bouclier |
+| B13 | **Calme** n'a pas de description ; le guide décrit à sa place « *Prouesse (Volonté) :* Faire preuve de sang-froid dans les situations dangereuses. » (R4 ne retient que le nom). Cette phrase décrit-elle Calme ? | Pas de description |
+| B7 | Une magie a-t-elle **au plus une altération d'état liée** ? (C'est le cas des 14 magies aujourd'hui ; la source lie une altération à ses magies, jamais l'inverse) | La fiche suppose une seule altération par magie |
 
