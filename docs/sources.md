@@ -51,6 +51,11 @@ aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migr
 mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
 partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
 
+**Les originaux font foi (décision du propriétaire, 2026-10-15).** Les classeurs d'origine (propriétaire payoumorfot@hotmail.fr) sont toujours tenus
+à jour (Magie V8 et Les races modifiés le 2026-10-12, une grosse mise à jour annoncée pour la fin d'octobre) ; les copies du 2026-10-10 ne le sont pas, et
+le compte Google connecté aux sessions cloud ne les voit pas. La vérification des tables et les mises à jour lisent donc les **originaux** ; les copies
+restent une trace (registre de la migration 0014). Voir « Rapprochement d'un classeur » plus bas.
+
 Export automatique, à lancer **depuis une machine qui a accès à Google** (documents partagés en
 « Toute personne disposant du lien ») :
 
@@ -128,10 +133,41 @@ une correction périmée (la source a changé), redondante (la source est déjà
 signe ou plus qu'un mot : cela ne serait plus une faute mais une règle, donc une question pour le propriétaire.
 `corriger-dump.py verifier-registre` contrôle le registre seul (testé par `client/test/corrections.test.mjs`).
 
-Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
+Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs. Exception : l'**instantané** de chaque
+classeur rapproché (`sources/raw/classeurs/`, plus bas), qui est la référence d'une mise à jour et doit donc être gardé.
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
 puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
 relancer l'extracteur sur ces pages.
+
+### Rapprochement d'un classeur (dans les deux sens)
+
+Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
+mises à jour du classeur. Outils : `tools/sources/` ; test : `client/test/sources-rapprochement.test.mjs`.
+
+1. **Instantané** du classeur original : `download_file_content` du connecteur Google Drive avec l'export
+   `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (la réponse, trop grande pour la conversation, est enregistrée dans un fichier : son
+   champ `content` est le `.xlsx` en base64), puis `python3 -I tools/sheets/xlsx_to_json.py <classeur.xlsx> <dump.json>` et
+   `node --no-warnings tools/sources/instantane.mjs <dump.json> sources/raw/classeurs/<classeur>.json` (forme stable : une cellule par ligne, un diff
+   git montre exactement les cellules changées). Un classeur de plus de 10 Mo (« Les races ») passe par `get_spreadsheet` (voir plus haut). L'instantané est
+   inscrit dans `sources/raw/classeurs/registre.json` (identifiant Drive, date de dernière modification lue dans le Drive, empreinte de l'export).
+2. **Rapprochement** : `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump sources/raw/classeurs/<classeur>.json
+   --ignorer tools/sources/ignorer/<classeur>.json [--sortie <rapport.md>]` (base : `var/maverick.db`, depuis `npm run db:build`). Il vérifie :
+   - **base → classeur** : chaque ligne typée lit, dans les cellules que cite son `source_ref`, chacun de ses textes et nombres, une fois défaites les
+     corrections d'orthographe des migrations (registres 0003, 0005, 0006) et appliqué `tools/sheets/corrections.json`, et avec la valeur d'import d'une
+     colonne que le site de dev a modifiée depuis (`historique_modification` : le site est la source de ce qu'il modifie, ce n'est pas un écart) ;
+   - **classeur → base** : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre des cellules ignorées
+     (`tools/sources/ignorer/<classeur>.json` : onglets, plages, motif de valeur, **raison** écrite) ;
+   - **notes de cellule** : les mêmes dans le classeur et dans `note_cellule`.
+   Le test fait échouer la CI au moindre écart, avec le relevé complet. Le passage des textes aux colonnes typées est garanti par les tests des
+   découpages (`classe-champs.mjs`, `sort-analyse.mjs`, `metier-champs.mjs`…, rejoués sur toute la base).
+3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané ; `git diff sources/raw/classeurs/<classeur>.json`
+   donne les cellules changées, le rapprochement les lignes qu'elles touchent (écarts) et les cellules nouvelles (non citées). La liste est présentée au
+   propriétaire ; une fois validée, une migration (`ingenieur-donnees`) applique les changements, le registre des cellules ignorées suit, et le test
+   redevient vert. Une valeur changée **à la fois** dans le classeur et sur le site de dev est un conflit : présenté avec les deux valeurs, jamais tranché
+   sans le propriétaire (sa décision du 2026-10-15). Une règle nouvelle ou changée suit la règle d'or : citée, jamais déduite.
+
+État (2026-10-15) : « Classe Maverick V7 » rapproché, 0 écart (1 228 lignes typées, 3 976 cellules, 43 notes ; 270 cellules ignorées : statistiques
+d'usage « Combo stat », bannières, consignes du Sommaire). Les autres classeurs suivent.
 
 ## De la source au wiki
 

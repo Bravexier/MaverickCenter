@@ -1,0 +1,82 @@
+{
+  "$comment": "Instantanés des classeurs Google Sheets (docs/sources.md, « Rapprochement d'un classeur ») : la référence à laquelle la base est comparée dans les deux sens (tools/sources/rapprocher.mjs, test client/test/sources-rapprochement.test.mjs) et à partir de laquelle se calcule une mise à jour du classeur. Décision du propriétaire (2026-10-15) : les classeurs ORIGINAUX font foi (propriétaire payoumorfot@hotmail.fr, toujours tenus à jour ; les copies du 2026-10-10 de la migration 0014 restent une trace). Un instantané = l'export .xlsx du connecteur Google Drive (download_file_content), converti par tools/sheets/xlsx_to_json.py puis tools/sources/instantane.mjs. `modifie_le` est la date de dernière modification du classeur lue dans le Drive au moment de l'instantané ; `sha256_xlsx`, l'empreinte de l'export. `etat` : « rapproche » (le test exige 0 écart dans les deux sens) ou « en_cours » (instantané gardé, analyse des écarts en cours : le test ne vérifie que sa forme).",
+  "classeurs": [
+    {
+      "titre": "Classe Maverick V7",
+      "fichier": "classe-maverick-v7.json",
+      "ignorer": "tools/sources/ignorer/classe-maverick-v7.json",
+      "drive_id": "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs",
+      "copie_0014": "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I",
+      "modifie_le": "2026-09-30T19:03:32.648Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "71698ddb2450ee393c438289d05401b55b6a4df54c7975cf9c7de1c752269d81",
+      "etat": "rapproche"
+    },
+    {
+      "titre": "Magie Maverick V8",
+      "fichier": "magie-maverick-v8.json",
+      "ignorer": "tools/sources/ignorer/magie-maverick-v8.json",
+      "drive_id": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c",
+      "copie_0014": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
+      "modifie_le": "2026-10-12T14:49:14.734Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "5b0574056a745c1c9c7ec7540b33c0832e19c46c51bae6db5cb72506ad138bc9",
+      "etat": "en_cours"
+    },
+    {
+      "titre": "Ressources et Craft",
+      "fichier": "ressources-et-craft.json",
+      "ignorer": "tools/sources/ignorer/ressources-et-craft.json",
+      "drive_id": "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA",
+      "copie_0014": "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw",
+      "modifie_le": "2026-10-11T22:23:44.738Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "854f131f5c37fd4b391ce2de5117464effa6c738401d42e93078e6854621b271",
+      "etat": "en_cours"
+    },
+    {
+      "titre": "Invocation",
+      "fichier": "invocation.json",
+      "ignorer": "tools/sources/ignorer/invocation.json",
+      "drive_id": "1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4",
+      "copie_0014": "1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo",
+      "modifie_le": "2026-09-03T16:07:18.401Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "a3c23d62deae20b7280403672c2f60fef7a25b64c89dbdb67352d437ac31952b",
+      "etat": "en_cours"
+    },
+    {
+      "titre": "Mode hyper et co",
+      "fichier": "mode-hyper-et-co.json",
+      "ignorer": "tools/sources/ignorer/mode-hyper-et-co.json",
+      "drive_id": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w",
+      "copie_0014": "1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo",
+      "modifie_le": "2026-09-30T19:43:05.831Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "983f093724baffe868c4cee0741df4336b5cc82955e5b5b6b1db5a217e6acedb",
+      "etat": "en_cours"
+    },
+    {
+      "titre": "Fiche auto V15.2.2",
+      "fichier": "fiche-auto-v15-2-2.json",
+      "ignorer": "tools/sources/ignorer/fiche-auto-v15-2-2.json",
+      "drive_id": "1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4",
+      "copie_0014": "1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0",
+      "modifie_le": "2026-03-31T22:57:25.049Z",
+      "instantane_le": "2026-10-15",
+      "sha256_xlsx": "913850f6c1ecd2c382184cc9bc7b0e9b1051e9aad8d87e5d816c273792d10b17",
+      "etat": "en_cours"
+    },
+    {
+      "titre": "Les races",
+      "fichier": "les-races.json",
+      "ignorer": "tools/sources/ignorer/les-races.json",
+      "drive_id": "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4",
+      "copie_0014": "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q",
+      "modifie_le": "2026-10-12T14:48:57.062Z",
+      "instantane_le": "2026-10-15",
+      "voie": "get_spreadsheet (classeur de plus de 10 Mo : valeurs affichées, notes, liens ; ni formules ni fils de commentaires)",
+      "etat": "en_cours"
+    }
+  ]
+}

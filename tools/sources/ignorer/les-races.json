@@ -1,0 +1,5 @@
+{
+  "$comment": "Registre du classeur pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit).",
+  "regles": [],
+  "derivees": {}
+}
