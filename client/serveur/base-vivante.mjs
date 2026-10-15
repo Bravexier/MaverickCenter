@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { COLONNES_RETIREES, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { rejouerLeJournal } from './edition.mjs';
+import { instant as ecrireInstant } from './instant.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
 
 /** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql : définies dans src/lib/fiche-format.mjs (le journal en tire ses tables interdites). */
@@ -261,7 +262,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
   let schema;
   let rejeu = null;
   let fiches = [];
-  const iso = instant.toISOString().replace(/\.\d{3}Z$/, 'Z'); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
+  const iso = ecrireInstant(instant); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
     const db = new DatabaseSync(neuve);

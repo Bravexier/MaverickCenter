@@ -7,6 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
+import { instant } from './instant.mjs';
 
 /**
  * Valeur de départ d'une colonne que les règles ont retirée (COLONNES_RETIREES) quand la base vivante l'a encore : le service retombe sur sa base
@@ -27,8 +28,7 @@ export class ErreurFiche extends Error {
   }
 }
 
-/** Instant ISO 8601 en UTC à la seconde, le format des colonnes `cree_le` / `modifie_le`. */
-export const instant = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+export { instant };
 
 const infos = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all();
 const colonnesDeDetail = (db, table) => infos(db, table).map((c) => c.name).filter((c) => c !== 'personnage_id');

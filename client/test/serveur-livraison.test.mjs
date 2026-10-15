@@ -21,7 +21,7 @@ const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 test('modules livrés : l’entrée, le service, le format des fiches et l’édition (modèle, découpages et rendus du bestiaire, des armes et des composants partagés avec les pages) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
     'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
-    'serveur/edition-composants.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs',
+    'serveur/edition-composants.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
     'serveur/maintenance.mjs', 'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs',
     'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/chronologie.mjs', 'src/lib/class-groups.mjs',
     'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-classes.mjs',

@@ -50,6 +50,7 @@ import {
 } from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
+import { instant } from './instant.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -75,6 +76,38 @@ function lireCorps(corps) {
   }
 }
 
+/** Une écriture : { valeur } = le corps JSON, ou { refus } = la réponse à rendre (mauvais type, autre site, JSON illisible). */
+function lireEcriture(requete) {
+  const interdit = refusEcriture(requete.entetes ?? {});
+  return interdit ? { refus: interdit } : lireCorps(requete.corps);
+}
+
+/** La base vivante, ou { refus: 503 } tant qu'elle n'est pas disponible. */
+function baseOuRefus(service, message) {
+  const db = service.base();
+  return db ? { db } : { refus: erreur(503, message, { etat: service.etat() }) };
+}
+
+/** Exécute `agir` ; une erreur métier de la classe `Erreur` devient sa réponse (statut, message, détails), toute autre remonte. */
+function repondre(Erreur, agir) {
+  try {
+    return agir();
+  } catch (e) {
+    if (e instanceof Erreur) return erreur(e.statut, e.message, e.details);
+    throw e;
+  }
+}
+
+/** L'identifiant d'une fiche dans l'adresse, décodé ; null s'il est illisible, vide ou trop long. */
+function idDeFiche(brut) {
+  try {
+    const id = decodeURIComponent(brut);
+    return id && id.length <= 200 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @param {{ methode: string, chemin: string, entetes: Record<string, string>, corps?: string }} requete chemin sans paramètres (« /api/… »)
  * @param {{ base: () => import('node:sqlite').DatabaseSync | null, etat: () => object, journal?: (ligne: string) => void }} service
@@ -97,18 +130,14 @@ export function traiter(requete, service) {
 
   let id = null;
   if (brut !== undefined) {
-    try {
-      id = decodeURIComponent(brut);
-    } catch {
-      return erreur(404, 'Fiche introuvable.');
-    }
-    if (!id || id.length > 200) return erreur(404, 'Fiche introuvable.');
+    id = idDeFiche(brut);
+    if (id === null) return erreur(404, 'Fiche introuvable.');
   }
   const refus = id === null ? permis('GET', 'POST') : permis('GET', 'PUT', 'DELETE');
   if (refus) return refus;
 
-  const db = service.base();
-  if (!db) return erreur(503, 'La base des fiches n’est pas disponible pour le moment.', { etat: service.etat() });
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
 
   if (methode === 'GET') {
     if (id === null) return json(200, { personnages: listerFiches(db) });
@@ -117,11 +146,9 @@ export function traiter(requete, service) {
     return json(200, { personnage, controles: controlesDe(db, id), niveau: niveauDe(db, id) });
   }
 
-  const interdit = refusEcriture(entetes);
+  const { valeur, refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
-  const { valeur, refus: illisible } = lireCorps(requete.corps);
-  if (illisible) return illisible;
-  try {
+  return repondre(ErreurFiche, () => {
     if (methode === 'DELETE') {
       supprimerFiche(db, id, valeur?.[CHAMP_VERSION]);
       service.journal?.(`suppression du prétiré ${id}`);
@@ -131,10 +158,7 @@ export function traiter(requete, service) {
     service.journal?.(`${id === null ? 'création' : 'modification'} du prétiré ${resultat.personnage.id}`);
     if (id === null) return json(201, resultat, { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });
     return json(200, resultat);
-  } catch (e) {
-    if (e instanceof ErreurFiche) return erreur(e.statut, e.message, e.details);
-    throw e;
-  }
+  });
 }
 
 /**
@@ -144,15 +168,10 @@ export function traiter(requete, service) {
 function traiterPortrait(requete, service, brut, permis) {
   const refus = permis('GET');
   if (refus) return refus;
-  let id;
-  try {
-    id = decodeURIComponent(brut);
-  } catch {
-    return erreur(404, 'Fiche introuvable.');
-  }
-  if (!id || id.length > 200) return erreur(404, 'Fiche introuvable.');
-  const db = service.base();
-  if (!db) return erreur(503, 'La base des fiches n’est pas disponible pour le moment.', { etat: service.etat() });
+  const id = idDeFiche(brut);
+  if (id === null) return erreur(404, 'Fiche introuvable.');
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
   const portrait = portraitDeFiche(db, id);
   if (!portrait) return erreur(404, 'Pas de portrait pour cette fiche.');
   const etiquette = `"${portrait.empreinte}"`;
@@ -172,8 +191,8 @@ function traiterEdition(requete, service, action, reste, permis) {
   }
   const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].includes(action) ? permis('POST') : permis('GET');
   if (refus) return refus;
-  const db = service.base();
-  if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
 
   if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
@@ -184,11 +203,9 @@ function traiterEdition(requete, service, action, reste, permis) {
     const jour = new Date().toISOString().slice(0, 10);
     return json(200, journalExporte(db), { 'Content-Disposition': `attachment; filename="journal-edition-${jour}.json"` });
   }
-  const interdit = refusEcriture(requete.entetes ?? {});
+  const { valeur, refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
-  const { valeur, refus: illisible } = lireCorps(requete.corps);
-  if (illisible) return illisible;
-  try {
+  return repondre(ErreurEdition, () => {
     if (action === 'lignes') return json(200, { lignes: lireLignes(db, valeur?.lignes) });
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
     if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
@@ -203,10 +220,7 @@ function traiterEdition(requete, service, action, reste, permis) {
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);
     return json(200, resultat);
-  } catch (e) {
-    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
-    throw e;
-  }
+  });
 }
 
 const sansMaintenance = { active: false };
@@ -221,18 +235,13 @@ function traiterMaintenance(requete, service, action, reste, permis) {
   const refus = permis('POST');
   if (refus) return refus;
   if (!service.edition) return erreur(403, 'La maintenance ne se lève que depuis le site de dev.');
-  const interdit = refusEcriture(requete.entetes ?? {});
+  const { valeur, refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
-  const { valeur, refus: illisible } = lireCorps(requete.corps);
-  if (illisible) return illisible;
-  try {
-    const lancement = leverMaintenance(service.dossier, { lot: valeur?.lot, instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+  return repondre(ErreurNotes, () => {
+    const lancement = leverMaintenance(service.dossier, { lot: valeur?.lot, instant: instant() });
     service.journal?.(`maintenance levée depuis la page (lot ${lancement.lot})`);
     return json(200, service.maintenance?.() ?? sansMaintenance);
-  } catch (e) {
-    if (e instanceof ErreurNotes) return erreur(e.statut, e.message, e.details);
-    throw e;
-  }
+  });
 }
 
 /** L'adresse publique du site (le workflow GitHub y télécharge le lot figé) : MAVERICK_ADRESSE_PUBLIQUE, sinon d'après la requête. */
@@ -260,16 +269,16 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   if (reste.length || ![undefined, 'brouillon', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
   const refus = action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
   if (refus) return refus;
-  const db = service.base();
-  if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
   const versionDev = service.etat().version ?? null;
   const github = { configure: Boolean(service.github?.configure()), depot: service.depot ?? null };
-  const instant = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const maintenant = instant();
   if (action === undefined || action === 'lancement') {
     service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
     const lancement = actualiserLancement(db, service.dossier, { reference: lireReference(service.reference) });
     // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
-    const regles = { liberable: estLiberable(lancement, instant), occupe: occupe(lancement, instant) };
+    const regles = { liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) };
     if (action === 'lancement') return json(200, { lancement, ...regles, github });
     return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION });
   }
@@ -278,17 +287,17 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   const { valeur, refus: illisible } = lireCorps(requete.corps);
   if (illisible) return illisible;
   try {
-    if (action === 'brouillon') return json(200, { brouillon: enregistrerBrouillon(db, valeur ?? {}, { instant }) });
+    if (action === 'brouillon') return json(200, { brouillon: enregistrerBrouillon(db, valeur ?? {}, { instant: maintenant }) });
     if (action === 'liberer') {
       // `lot` : le lancement que la page affiche (un onglet périmé n'annule pas le suivant) ; le run éventuel est annulé sur GitHub
-      const lancement = libererLot(db, service.dossier, { instant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });
+      const lancement = libererLot(db, service.dossier, { instant: maintenant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });
       service.maintenance?.(); // annulé : l'annonce de maintenance est retirée tout de suite (les deux serveurs rouvrent)
-      return json(200, { lancement, liberable: estLiberable(lancement, instant), occupe: occupe(lancement, instant) });
+      return json(200, { lancement, liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) });
     }
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
-      versionDev, versionCible: note.version_cible, instant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
+      versionDev, versionCible: note.version_cible, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
       etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: note.lignes ? note.lignes.length : null,
       ...(service.limites ? { limites: service.limites } : {}),
     });
