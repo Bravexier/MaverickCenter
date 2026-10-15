@@ -4,14 +4,14 @@
 // ignorée avec sa raison, chaque mot d'une cellule citée est dans la base, et les notes de cellule sont les mêmes de part et d'autre. Un écart fait
 // échouer le test avec le relevé complet.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
-  adresse, avecCorrections, citations, comparable, enA1, feuillesJson, formuleLisible, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe, plage,
-  rapport, rapprocher, remplacer, sansCorrections,
+  adresse, avecCorrections, changements, citations, comparable, enA1, feuillesJson, formuleLisible, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe,
+  plage, rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -74,9 +74,13 @@ test('chaque classeur du registre est rapproché ou en cours, avec son instantan
     for (const v of reg.voulus) assert.ok(v.table && v.cle && v.colonne && typeof v.avant === 'string' && typeof v.apres === 'string' && v.raison, `${c.ignorer} : écart voulu incomplet`);
     for (const d of reg.conflits) assert.ok(['site', 'classeur'].includes(d.garder) && d.table && d.cle && d.colonne && d.decide_le && d.raison, `${c.ignorer} : conflit incomplet`);
     for (const m of reg.commentaires) assert.ok(m.onglet && adresse(m.cellule) && m.texte && m.raison, `${c.ignorer} : commentaire non importé incomplet`);
+    for (const m of reg.copies) assert.ok(m.onglet && plage(m.plage) && m.de?.onglet && plage(m.de.plage) && m.raison, `${c.ignorer} : copie incomplète`);
   }
   assert.ok(registre.classeurs.some((c) => c.etat === 'rapproche'));
   assert.throws(() => lireRegistre(cheminDe('tools/sources/ignorer/absent.json')), /registre introuvable/);
+  const inconnu = join(mkdtempSync(join(tmpdir(), 'registre-')), 'r.json');
+  writeFileSync(inconnu, JSON.stringify({ regles: [], ignores: [] }));
+  assert.throws(() => lireRegistre(inconnu), /section\(s\) inconnue\(s\) : ignores/);
 });
 
 test('un instantané se réécrit à l’identique (forme stable, rien de perdu)', () => {
@@ -164,6 +168,64 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   // La décision du propriétaire, inscrite au registre, résout le conflit tant que la cellule dit ce qu'il a vu.
   const decision = { table: 'capacite', cle: { id: 'capacites/anansi-piege-toile' }, colonne: 'nom', garder: 'site', valeur_classeur: 'Piège-soie', decide_le: '2026-10-15', raison: 'test' };
   const D = rapprocher(base, { ...lireRegistre(cheminDe(v7.ignorer)), classeur: v7.titre, dump: avecCellule('Anansi', 11, 18, () => 'Piège-soie'), autres: instantanes, conflits: [decision] });
-  assert.equal(D.conflits.length, 0);
+  assert.equal(nombreDEcarts(D), 0, rapport(D, { exemples: 20 }));
+  base.close();
+});
+
+test('une mise à jour du classeur : chaque cellule changée et les lignes de la base qu’elle touche (le contrôle que le rapprochement par ligne ne fait pas)', () => {
+  // Une barrière de 1 devenue 5 : la ligne de la classe écrit déjà « 5 » ailleurs (classe de bouclier), le rapprochement ne la voit pas ; le diff, si.
+  const apres = avecCellule('Guerrier', 5, 5, () => 5);
+  assert.equal(nombreDEcarts(relever(db, v7, apres)), 0, 'limite documentée du rapprochement par ligne');
+  assert.deepEqual(changements(db, { classeur: v7.titre, avant: instantanes[v7.titre], apres }), [
+    { onglet: 'Guerrier', cellule: 'E5', avant: '1', apres: '5', lignes: ['classe {"id":"classes/guerrier"}'] },
+  ]);
+});
+
+test('les tolérances du rapprochement, sur un classeur synthétique : première feuille, liste déroulante, écart voulu, commentaire écarté, autre classeur, source sans instantané, copie, entrée périmée', () => {
+  const base = new DatabaseSync(':memory:');
+  base.exec(`
+    CREATE TABLE correction (classeur TEXT, onglet TEXT, cellule TEXT, champ TEXT, avant TEXT, apres TEXT);
+    CREATE TABLE page_entite (entite_table TEXT, entite_id TEXT, page_id TEXT);
+    CREATE TABLE note_cellule (entite_table TEXT, entite_id TEXT, rang INTEGER, texte TEXT, nature TEXT, source_ref TEXT, PRIMARY KEY (entite_table, entite_id, rang));
+    CREATE TABLE commentaire_orphelin (id TEXT PRIMARY KEY, occurrence INTEGER, texte TEXT, source_ref TEXT);
+    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT);
+  `);
+  const ajouter = base.prepare('INSERT INTO chose VALUES (?, ?, ?)');
+  ajouter.run('a', 'Alpha', 'Essai › première feuille › A1');                          // le premier onglet, sous le nom que lui donne l'import des races
+  ajouter.run('b', 'Vert', 'Essai › Liste › B2 (liste déroulante, rang 2)');           // une saisie vide : sa liste de validation
+  ajouter.run('c', "La lame d'Eaunoire", 'Essai › Texte › A1');                         // un écart voulu (décision), déclaré
+  ajouter.run('d', 'xy', 'Essai › Texte › A2');                                          // une cellule qui porte un commentaire écarté à l'import
+  ajouter.run('e', 'Bêta\nGamma', 'Essai › Texte › A3 ; Autre › Feuille › A1');          // une ligne qui cite deux classeurs
+  ajouter.run('f', 'Delta\nEpsilon', 'Essai › Texte › A4 ; Google Doc « Notes » › Section'); // … dont l'un sans instantané
+  ajouter.run('g', 'un\ndeux', 'Essai › Liste › D1:D2');                                 // la source d'une copie
+  const dump = { sheets: [
+    { name: 'Sommaire', cells: [{ r: 1, c: 1, v: 'Alpha' }] },
+    { name: 'Liste', validations: [{ range: 'B2', type: 'list', formula1: '"Rouge,Vert"' }], cells: [{ r: 1, c: 4, v: 'un' }, { r: 2, c: 4, v: 'deux' }] },
+    { name: 'Texte', cells: [
+      { r: 1, c: 1, v: "La lame d'eau noire" }, { r: 2, c: 1, v: 'xy', threads: [{ text: 'salut', done: true }] }, { r: 3, c: 1, v: 'Bêta' }, { r: 4, c: 1, v: 'Delta' },
+    ] },
+    { name: 'Copie', cells: [{ r: 1, c: 1, v: 'un' }, { r: 2, c: 1, v: 'deux' }] },
+  ] };
+  const autres = { Autre: { sheets: [{ name: 'Feuille', cells: [{ r: 1, c: 1, v: 'Gamma' }] }] } };
+  const registre = {
+    voulus: [{ table: 'chose', cle: { id: 'c' }, colonne: 'nom', avant: "d'eau noire", apres: "d'Eaunoire", raison: 'décision' }],
+    commentaires: [{ onglet: 'Texte', cellule: 'A2', texte: 'salut', raison: 'conversation' }],
+    copies: [{ onglet: 'Copie', plage: 'A1:A2', de: { onglet: 'Liste', plage: 'D1:D2' }, raison: 'copie' }],
+  };
+  const R = rapprocher(base, { classeur: 'Essai', dump, autres, ...registre });
+  assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
+  assert.deepEqual([R.aRelire.map((x) => x.ligne), R.notes.declares, R.ignorees], [['chose {"id":"f"}'], 1, 2]);
+  // Chaque tolérance retirée ou contredite redevient un écart.
+  const sans = (cle) => rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, [cle]: [] });
+  assert.ok(sans('voulus').ecarts.length && sans('voulus').motsAbsents.length, 'écart voulu non déclaré');
+  assert.equal(sans('commentaires').notes.manquantes.length, 1, 'commentaire non déclaré');
+  assert.equal(sans('copies').nonCitees.length, 2, 'copie non déclarée');
+  const copieChangee = structuredClone(dump);
+  copieChangee.sheets[3].cells[1].v = 'trois';
+  assert.equal(rapprocher(base, { classeur: 'Essai', dump: copieChangee, autres, ...registre }).copiesDifferentes.length, 1, 'copie qui diverge');
+  const perimee = rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, regles: [{ onglets: ['Texte'], plages: ['Z99'], raison: 'rien' }] });
+  assert.deepEqual(perimee.perimees.map((x) => x.liste), ['regles'], 'entrée qui ne couvre plus rien');
+  const sansAutre = rapprocher(base, { classeur: 'Essai', dump, ...registre });
+  assert.ok(sansAutre.aRelire.some((x) => x.ligne === 'chose {"id":"e"}'), 'sans l’instantané de l’autre classeur, la ligne est à relire');
   base.close();
 });

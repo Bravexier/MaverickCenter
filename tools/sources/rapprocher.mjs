@@ -3,6 +3,7 @@
 //
 //   node --no-warnings tools/sources/rapprocher.mjs --classeur "Classe Maverick V7" --dump sources/raw/classeurs/classe-maverick-v7.json \
 //        [--base var/maverick.db] [--registre tools/sources/ignorer/classe-maverick-v7.json] [--sortie <rapport.md>] [--json] [--exemples 20]
+//   … --avant <ancien instantané.json> : mise à jour, les cellules changées et les lignes qu'elles touchent (au lieu du rapprochement).
 //
 // Le dump est le JSON uniforme de tools/sheets/xlsx_to_json.py (ou sheets_api_to_json.py) : { sheets: [{ name, cells: [{ r, c, v, note?, threads? }] }] }.
 // La base est lue dans son ÉTAT D'IMPORT (lib/historique-site.mjs#lignesDImport) : une ligne que le site de dev a supprimée compte encore, une ligne qu'il a
@@ -13,10 +14,15 @@
 //    la faute), les écarts voulus du registre (`voulus`) et appliqué tools/sheets/corrections.json. Une ligne qui cite aussi un autre classeur se lit dans
 //    les cellules des deux (instantanés de sources/raw/classeurs/registre.json) ; si l'autre source n'a pas d'instantané (un Google Doc), ce qui ne se lit
 //    pas est « à relire » (listé, pas compté).
-// 2. Classeur -> base : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre (`regles`) avec sa raison ; et chaque mot
-//    d'une cellule citée se lit dans les valeurs des lignes qui la citent (sinon le classeur dit quelque chose que la base n'a pas), sauf les libellés de
-//    mise en page déclarés (`libelles`). Limite : deux nombres permutés entre deux cellules d'une même ligne ne se voient pas ici (les tests des découpages
-//    rapprochent chaque colonne de sa cellule).
+// 2. Classeur -> base : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre (`regles`, `copies`) avec sa raison ; et
+//    chaque mot d'une cellule citée se lit dans les valeurs des lignes qui la citent (sinon le classeur dit quelque chose que la base n'a pas), sauf les
+//    libellés de mise en page déclarés (`libelles`).
+// LIMITES (le contrôle est par ligne, pas par colonne : `source_ref` cite les cellules d'une ligne, pas celle de chaque colonne) : un nombre de la ligne est
+// accepté s'il se lit dans N'IMPORTE LAQUELLE de ses cellules, un morceau de texte s'il est contenu dans ses cellules, un mot d'une cellule s'il est
+// dans N'IMPORTE LAQUELLE de ses colonnes. Ne se voient donc pas : une valeur changée en une autre que la même ligne écrit déjà ailleurs (une barrière
+// de 1 devenue 5 quand la classe écrit aussi « classe 1 à 5 »), des nombres permutés, un ajout fait de mots que la ligne contient déjà. « 0 écart » dit
+// que tout le classeur est dans la base et réciproquement, pas que chaque colonne vient de sa case. Pour une MISE À JOUR, le contrôle est le diff des
+// instantanés : `--avant <ancien instantané>` liste chaque cellule changée et les lignes qui la citent (`changements`).
 // 3. Notes et fils de commentaires : les mêmes dans le classeur et dans `note_cellule` (état d'import).
 // Une colonne modifiée par le site ET dont la cellule a changé dans le classeur est un CONFLIT : présenté avec les deux valeurs, jamais tranché ici ; la
 // décision du propriétaire s'inscrit dans le registre (`conflits`). Le rapport range les écarts ; il ne corrige rien et ne déduit rien. Les valeurs du
@@ -25,13 +31,17 @@
 // du dump.
 //
 // Registre d'un classeur (`--registre`, tools/sources/ignorer/<classeur>.json) :
-//   regles    [{ onglets: ["*"] | [noms], plages?: ["A1:B2"], valeurs?: "regex", raison }]  cellules qu'aucune ligne ne cite, et pourquoi ;
+//   regles    [{ onglets: ["*"] | [noms], plages?: ["A1:B2"], valeurs?: "regex", nom_d_onglet?: true, raison }]  cellules qu'aucune ligne ne cite, et
+//             pourquoi (`nom_d_onglet` : la cellule écrit le nom de son onglet) ;
 //   derivees  { "table.colonne": "raison, et le test qui la garantit" }                     colonnes que l'import calcule au lieu de les recopier ;
 //   libelles  [{ mots?: "regex d'un mot", valeurs?: "regex de la cellule", onglets?, plages?, raison }]  libellés de mise en page d'une cellule citée :
 //             les mots qui répondent à `mots` (tous si `mots` manque) d'une cellule dont la valeur répond à `valeurs` (« ^Lvl \d+$ » : « Lvl » seul) ;
 //   voulus    [{ table, cle: { … }, colonne, avant, apres, raison }]                       écarts voulus hors des registres d'orthographe (décision R…,
 //             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base ;
-//   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire ;
+//   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire (la valeur retenue
+//             compte dans les deux sens) ;
+//   copies    [{ onglet, plage, de: { classeur?, onglet, plage }, raison }]                   plage qui recopie une autre plage (même suite de valeurs non
+//             vides) : ignorée tant qu'elle la recopie, un écart dès qu'elle diverge ;
 //   commentaires [{ onglet, cellule, texte, raison }]                                      commentaires du classeur que l'import écarte (un message de
 //             conversation : tools/sheets/magies.py#EXCLUDED_COMMENTS).
 import { DatabaseSync } from 'node:sqlite';
@@ -284,7 +294,7 @@ function classeurLu(dumpLu, titre, lignesDeCorrection) {
  * pour les lignes qui en citent plusieurs. Les dumps ne sont pas modifiés.
  */
 export function rapprocher(db, {
-  classeur, dump, nomDuDump = '', regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [], autres = {},
+  classeur, dump, nomDuDump = '', regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [], copies: copies_ = [], autres = {},
 }) {
   const h = historiqueSite(db);
   const cle = cleDeNom(classeur);
@@ -332,7 +342,10 @@ export function rapprocher(db, {
   const clesEtrangeres = new Map();
   const etrangeresDe = (table) => {
     if (!clesEtrangeres.has(table)) {
-      clesEtrangeres.set(table, db.prepare(`PRAGMA foreign_key_list("${table}")`).all().map((f) => ({ de: f.from, table: f.table, vers: f.to ?? pkDe(f.table)[0] }))
+      // Une clé à une seule colonne (une clé composite, `capacite (specialite_id, classe_id) -> specialite`, ne désigne pas une ligne par une colonne seule).
+      const fks = db.prepare(`PRAGMA foreign_key_list("${table}")`).all();
+      const parCle = fks.reduce((m, f) => m.set(f.id, (m.get(f.id) ?? 0) + 1), new Map());
+      clesEtrangeres.set(table, fks.filter((f) => parCle.get(f.id) === 1).map((f) => ({ de: f.from, table: f.table, vers: f.to ?? pkDe(f.table)[0] }))
         .filter((f) => f.vers && f.table !== 'famille'));
     }
     return clesEtrangeres.get(table);
@@ -370,14 +383,18 @@ export function rapprocher(db, {
       plages: (l.plages ?? []).map(plage),
     };
   });
-  const libelle = (o, x, mot) => libellesLus.some((l) => l.onglets.some((n) => n === '*' || n === cleDeNom(o.nom))
-    && (!l.plages.length || l.plages.some((p) => dans(x, p))) && (!l.valeurs || l.valeurs.test(valeur(x))) && (!l.mots || l.mots.test(mot)));
+  const libelle = (o, x, mot) => {
+    const i = libellesLus.findIndex((l) => l.onglets.some((n) => n === '*' || n === cleDeNom(o.nom))
+      && (!l.plages.length || l.plages.some((p) => dans(x, p))) && (!l.valeurs || l.valeurs.test(valeur(x))) && (!l.mots || l.mots.test(mot)));
+    if (i >= 0) usages.libelles[i] += 1;
+    return i >= 0;
+  };
 
   const R = {
     classeur, dump: nomDuDump, onglets: dump.sheets.length, cellules: 0, lignes: 0, parTable: {}, citationsDOnglet: 0, corrigees: ce.corrigees,
     autresClasseurs: autresLus.size, voulus: voulus.length,
     sansOnglet: [], sansCellule: [], illisibles: [], ecarts: [], nombres: [], conflits: [], casse: [], aRelire: [], nonCitees: [], motsAbsents: [], ignorees: 0,
-    notes: { classeur: 0, declares: 0, manquantes: [], enTrop: [] },
+    notes: { classeur: 0, declares: 0, declaresVus: new Set(), manquantes: [], enTrop: [] }, copiesDifferentes: [], perimees: [],
     site: { modifiees: [], supprimees: [], creees: [] },
   };
   for (const o of onglets.values()) R.cellules += [...o.cellules.values()].filter((x) => valeur(x) !== '').length;
@@ -435,14 +452,16 @@ export function rapprocher(db, {
           for (const c of cellulesDe(o, p)) {
             const k = `${c.r}:${c.c}`;
             if (!o.citees.has(k)) o.citees.set(k, []);
-            o.citees.get(k).push({ table: t.name, cleLigne, ligne });
+            o.citees.get(k).push({ table: t.name, cleLigne, ligne, actuelle });
             const commentaires = commentairesDe(c);
             if (c.f) formules.push(formuleLisible(c.f));
             if (valeur(c) !== '' || commentaires.length || c.f) { n += 1; textesCellules.push(valeur(c), ...commentaires); cellulesCitees.push(c); }
           }
-          // Une saisie vide à liste déroulante (« Personnage › S5 ») : la liste est ce que la cellule dit.
+          // Une saisie vide à liste déroulante (« Personnage › S5 ») : la liste est ce que la cellule dit (pas une cellule remplie).
           for (const v of o.validations) {
-            if (!v.plages.some((q) => q.r1 <= p.r2 && q.r2 >= p.r1 && q.c1 <= p.c2 && q.c2 >= p.c1)) continue;
+            const communes = v.plages.map((q) => ({ r1: Math.max(q.r1, p.r1), c1: Math.max(q.c1, p.c1), r2: Math.min(q.r2, p.r2), c2: Math.min(q.c2, p.c2) }))
+              .filter((q) => q.r1 <= q.r2 && q.c1 <= q.c2);
+            if (!communes.length || communes.some((q) => cellulesDe(o, q).some((c) => valeur(c) !== ''))) continue;
             n += 1;
             textesCellules.push(...v.textes);
             cellulesCitees.push(null);
@@ -459,7 +478,7 @@ export function rapprocher(db, {
       }
       if (!cellulesCitees.length) continue;
       const brut = [...textesCellules, ...formules].join('\n');
-      const valeursDesCellules = new Set(textesCellules.map(comparable));
+      const valeursDesCellules = new Set(textesCellules.flatMap((v) => [v, ...String(v).split(/\n+/)]).map(comparable));
       const formulesSansBlancs = sansBlancs(formules.join('\n'));
       const tout = comparable(brut);
       const toutMinuscules = tout.toLowerCase();
@@ -488,7 +507,7 @@ export function rapprocher(db, {
         const d = decisions.get(cleK(t.name, cleLigne, c.name));
         if (d?.garder === 'site') {
           // Le site garde sa valeur : l'écart reste résolu tant que la cellule dit ce que le propriétaire a vu en tranchant.
-          if (!tout.includes(comparable(d.valeur_classeur))) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), base: courante, note: 'la cellule a encore changé depuis la décision' });
+          if (!valeursDesCellules.has(comparable(d.valeur_classeur))) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), base: courante, note: 'la cellule a encore changé depuis la décision' });
           return;
         }
         const attendue = d?.garder === 'classeur' ? courante : importee;
@@ -555,7 +574,7 @@ export function rapprocher(db, {
     return new Set([sansCorrections(nb.texte, propres), sansCorrections(comparable(nb.texte), enComparable(propres), heritees)].map(comparable));
   };
   const EVENEMENTS_DE_FIL = new Set(['Marquée comme fermée', 'Rouverte']);
-  const nonImportes = commentaires.map((c) => ({ onglet: cleDeNom(c.onglet), adresse: adresse(c.cellule), texte: comparable(c.texte) }));
+  const nonImportes = commentaires.map((c) => ({ onglet: cleDeNom(c.onglet), adresse: adresse(c.cellule), texte: comparable(c.texte), cle: JSON.stringify(c) }));
   for (const o of onglets.values()) {
     for (const x of o.cellules.values()) {
       const vus = new Set();
@@ -565,7 +584,8 @@ export function rapprocher(db, {
         const redite = vus.has(cible);
         vus.add(cible);
         R.notes.classeur += 1;
-        if (nonImportes.some((c) => c.onglet === cleDeNom(o.nom) && c.adresse?.r === x.r && c.adresse?.c === x.c && c.texte === cible)) { R.notes.declares += 1; continue; }
+        const declare = nonImportes.find((c) => c.onglet === cleDeNom(o.nom) && c.adresse?.r === x.r && c.adresse?.c === x.c && c.texte === cible);
+        if (declare) { R.notes.declares += 1; R.notes.declaresVus.add(declare.cle); continue; }
         const n = notesBase.find((nb) => !retrouvees.has(idNote(nb))
           && nb.cites.some((ci) => ce.onglet(ci.onglet) === o && ci.plages.some((p) => dans(x, p)))
           && lecturesDeNote(nb, texteNote).has(cible));
@@ -579,8 +599,9 @@ export function rapprocher(db, {
   }
   for (const n of notesBase) if (!retrouvees.has(idNote(n))) R.notes.enTrop.push({ ligne: `${n.entite_table} ${n.entite_id} #${n.rang}`, texte: comparable(n.texte).slice(0, 160) });
 
-  // Cellules ignorées par le registre.
-  for (const regle of regles) {
+  // Cellules ignorées par le registre (`nom_d_onglet` : la cellule écrit le nom de son onglet, en capitales ou non).
+  const usages = { regles: regles.map(() => 0), libelles: libelles.map(() => 0), copies: copies_.map(() => 0) };
+  for (const [i, regle] of regles.entries()) {
     const re = regle.valeurs ? new RegExp(regle.valeurs, 'u') : null;
     for (const o of onglets.values()) {
       if (!(regle.onglets ?? ['*']).some((n) => n === '*' || cleDeNom(n) === cleDeNom(o.nom))) continue;
@@ -588,9 +609,30 @@ export function rapprocher(db, {
       for (const x of o.cellules.values()) {
         if (!ps.some((p) => dans(x, p))) continue;
         if (re && !re.test(valeur(x))) continue;
-        o.ignorees.set(`${x.r}:${x.c}`, regle.raison);
+        if (regle.nom_d_onglet && cleDeNom(valeur(x)) !== cleDeNom(o.nom)) continue;
+        o.ignorees.set(`${x.r}:${x.c}`, { liste: 'regles', i });
       }
     }
+  }
+  // Copies (`copies`) : une plage qui recopie une autre plage, de ce classeur ou d'un autre, vérifiée à chaque passage (mêmes valeurs non vides, dans
+  // l'ordre de lecture) ; une copie qui diverge est un écart.
+  const valeursEnOrdre = (o, p) => cellulesDe(o, p).filter((x) => valeur(x) !== '').sort((a, b) => a.r - b.r || a.c - b.c).map((x) => comparable(valeur(x)));
+  for (const [i, c] of copies_.entries()) {
+    const o = ce.onglet(c.onglet);
+    const source = c.de?.classeur && cleDeNom(c.de.classeur) !== cle ? autresLus.get(cleDeNom(c.de.classeur)) : ce;
+    const os = source?.onglet(c.de?.onglet ?? '');
+    const p = plage(c.plage);
+    const ps = plage(c.de?.plage ?? '');
+    if (!o || !os || !p || !ps) { R.copiesDifferentes.push({ copie: `${c.onglet} › ${c.plage}`, de: `${c.de?.classeur ?? classeur} › ${c.de?.onglet} › ${c.de?.plage}`, ecart: 'onglet, classeur ou plage introuvable' }); continue; }
+    const a = valeursEnOrdre(o, p);
+    const b = valeursEnOrdre(os, ps);
+    const j = a.findIndex((v, n) => v !== b[n]);
+    if (a.length !== b.length || j >= 0) {
+      const n = j >= 0 ? j : Math.min(a.length, b.length);
+      R.copiesDifferentes.push({ copie: `${c.onglet} › ${c.plage}`, de: `${c.de.classeur ?? classeur} › ${c.de.onglet} › ${c.de.plage}`, ecart: `valeur ${n + 1} : « ${(a[n] ?? '—').slice(0, 60)} » / « ${(b[n] ?? '—').slice(0, 60)} »` });
+      continue;
+    }
+    for (const x of cellulesDe(o, p)) if (!o.ignorees.has(`${x.r}:${x.c}`)) o.ignorees.set(`${x.r}:${x.c}`, { liste: 'copies', i });
   }
 
   // Classeur -> base : cellules non citées ; mots d'une cellule citée absents des lignes qui la citent.
@@ -600,7 +642,9 @@ export function rapprocher(db, {
     if (!vocabulaires.has(k)) {
       const valeurs = Object.entries(cite.ligne).filter(([col, v]) => v !== null && v !== undefined && !EXCLUES.test(col)).map(([, v]) => v);
       for (const f of etrangeresDe(cite.table)) if (cite.ligne[f.de] !== null && cite.ligne[f.de] !== undefined) valeurs.push(...libellesDe(f.table, f.vers, cite.ligne[f.de]));
-      vocabulaires.set(k, new Set(valeurs.flatMap((v) => mots(v))));
+      // Un conflit tranché par le propriétaire : la valeur qu'il a retenue (celle du classeur qu'il a vue, ou la valeur actuelle de la base).
+      for (const d of conflits.filter((c) => cleK(c.table, cleDeCorrection(c), '') === k)) valeurs.push(d.garder === 'site' ? d.valeur_classeur : cite.actuelle?.[d.colonne]);
+      vocabulaires.set(k, new Set(valeurs.filter((v) => v !== null && v !== undefined).flatMap((v) => mots(v))));
     }
     return vocabulaires.get(k);
   };
@@ -610,7 +654,8 @@ export function rapprocher(db, {
       if (valeur(x) === '') continue;
       const cites = o.citees.get(k);
       if (!cites) {
-        if (o.ignorees.has(k)) R.ignorees += 1;
+        const ig = o.ignorees.get(k);
+        if (ig) { R.ignorees += 1; usages[ig.liste][ig.i] += 1; }
         else R.nonCitees.push({ onglet: o.nom, cellule: enA1(x), valeur: comparable(valeur(x)).slice(0, 120), formule: x.f ? true : undefined });
         continue;
       }
@@ -628,12 +673,18 @@ export function rapprocher(db, {
       if (absents.length) R.motsAbsents.push({ onglet: o.nom, cellule: enA1(x), mots: absents.slice(0, 12), valeur: comparable(valeur(x)).slice(0, 160) });
     }
   }
+  // Entrées du registre qui ne servent plus (après une mise à jour du classeur, une règle ou un libellé qui ne couvre plus rien est à retirer).
+  for (const [liste, entrees] of [['regles', regles], ['libelles', libelles], ['copies', copies_]]) {
+    for (const [i, e] of entrees.entries()) if (!usages[liste][i]) R.perimees.push({ liste, entree: JSON.stringify(e).slice(0, 160) });
+  }
+  for (const c of commentaires) if (!R.notes.declaresVus.has(JSON.stringify(c))) R.perimees.push({ liste: 'commentaires', entree: JSON.stringify(c).slice(0, 160) });
+  delete R.notes.declaresVus;
   return R;
 }
 
 /** Nombre d'écarts d'un relevé (0 = classeur et base d'accord dans les deux sens). */
 export const nombreDEcarts = (R) => R.sansOnglet.length + R.sansCellule.length + R.illisibles.length + R.ecarts.length + R.nombres.length + R.conflits.length
-  + R.nonCitees.length + R.motsAbsents.length + R.notes.manquantes.length + R.notes.enTrop.length;
+  + R.nonCitees.length + R.motsAbsents.length + R.notes.manquantes.length + R.notes.enTrop.length + R.copiesDifferentes.length + R.perimees.length;
 
 /** Le relevé en Markdown. */
 export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
@@ -660,6 +711,8 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
     { controle: 'Mots d\'une cellule citée absents des lignes qui la citent', n: R.motsAbsents.length },
     { controle: 'Note ou commentaire du classeur absent de note_cellule', n: R.notes.manquantes.length },
     { controle: 'Note de la base absente du classeur', n: R.notes.enTrop.length },
+    { controle: 'Copie déclarée qui ne recopie plus sa source', n: R.copiesDifferentes.length },
+    { controle: 'Entrée du registre qui ne sert plus', n: R.perimees.length },
     { controle: 'Pour mémoire : à relire dans une autre source citée par la ligne, sans instantané', n: R.aRelire.length },
     { controle: 'Pour mémoire : différences de casse seulement (valeurs normalisées à l\'import)', n: R.casse.length },
     { controle: 'Pour mémoire : cellules ignorées par le registre', n: R.ignorees },
@@ -680,6 +733,9 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
   o.push('## 3. Notes et commentaires\n');
   o.push('**Du classeur, absents de la base** :\n'); o.push(tab(R.notes.manquantes, ['cellule', 'note']));
   o.push('**De la base, absentes du classeur** :\n'); o.push(tab(R.notes.enTrop, ['ligne', 'texte']));
+  o.push('## 4. Registre\n');
+  o.push('**Copies qui divergent** :\n'); o.push(tab(R.copiesDifferentes, ['copie', 'de', 'ecart']));
+  o.push('**Entrées qui ne servent plus** :\n'); o.push(tab(R.perimees, ['liste', 'entree']));
   o.push('## Pour mémoire\n');
   o.push('**À relire dans une autre source citée par la ligne** (sans instantané : un Google Doc) :\n');
   o.push(tab(R.aRelire.map((x) => ({ ...x, absent: x.absent ?? x.valeur })), ['ligne', 'colonne', 'absent', 'ailleurs']));
@@ -691,11 +747,60 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
   return o.join('\n');
 }
 
-/** Lit le registre d'un classeur (erreur s'il manque : un registre absent ne doit pas passer pour vide). */
+/**
+ * Les cellules d'un classeur qui changent d'un instantané à l'autre (valeur, note, fils), et pour chacune les lignes de la base qui la citent, avec ce
+ * que le site de dev leur a fait : la liste à présenter au propriétaire avant une mise à jour (R81). Rien n'est appliqué.
+ */
+export function changements(db, { classeur, avant, apres }) {
+  const h = historiqueSite(db);
+  const cle = cleDeNom(classeur);
+  const contenu = (x) => (x ? [valeur(x), ...commentairesDe(x)].map(comparable).join(' ‖ ') : '');
+  const parOnglet = (d) => new Map(d.sheets.map((s) => [cleDeNom(s.name), { nom: s.name, cellules: new Map(s.cells.map((x) => [`${x.r}:${x.c}`, x])) }]));
+  const A = parOnglet(avant);
+  const B = parOnglet(apres);
+  const res = [];
+  for (const k of new Set([...A.keys(), ...B.keys()])) {
+    const a = A.get(k);
+    const b = B.get(k);
+    const nom = (b ?? a).nom;
+    if (!a || !b) { res.push({ onglet: nom, cellule: '*', avant: a ? 'onglet' : '', apres: b ? 'onglet' : '', lignes: [] }); continue; }
+    for (const ad of new Set([...a.cellules.keys(), ...b.cellules.keys()])) {
+      const [va, vb] = [contenu(a.cellules.get(ad)), contenu(b.cellules.get(ad))];
+      if (va === vb) continue;
+      const [r, c] = ad.split(':').map(Number);
+      res.push({ onglet: nom, cellule: enA1({ r, c }), r, c, avant: va, apres: vb, lignes: [] });
+    }
+  }
+  // Les lignes (actuelles et supprimées par le site) qui citent chaque cellule changée.
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all().map((t) => t.name)
+    .filter((t) => db.prepare(`PRAGMA table_info("${t}")`).all().some((c) => c.name === 'source_ref'));
+  for (const t of tables) {
+    const pk = db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => c.pk).sort((x, y) => x.pk - y.pk).map((c) => c.name);
+    for (const ligne of h.lignesDImport(t)) {
+      for (const x of citations(ligne.source_ref).filter((ci) => cleDeNom(ci.classeur) === cle)) {
+        for (const ch of res) {
+          if (ch.cellule === '*' || cleDeNom(x.onglet ?? '') !== cleDeNom(ch.onglet)) continue;
+          if (!x.plages.some((p) => dans(ch, p))) continue;
+          const cleLigne = Object.fromEntries((pk.length ? pk : Object.keys(ligne)).map((n) => [n, ligne[n]]));
+          const site = h.supprimee(t, cleLigne) ? 'supprimée par le site' : h.modifiee(t, cleLigne) ? 'modifiée par le site : conflit possible' : '';
+          ch.lignes.push(`${t} ${JSON.stringify(cleLigne)}${site ? ` (${site})` : ''}`);
+        }
+      }
+    }
+  }
+  return res.map(({ r, c, ...x }) => x);
+}
+
+export const SECTIONS_DU_REGISTRE = ['regles', 'derivees', 'libelles', 'voulus', 'conflits', 'commentaires', 'copies'];
+
+/** Lit le registre d'un classeur (erreur s'il manque : un registre absent ne doit pas passer pour vide ; erreur sur une section inconnue). */
 export function lireRegistre(chemin) {
   if (!existsSync(chemin)) throw new Error(`registre introuvable : ${chemin}`);
-  const { regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [] } = JSON.parse(readFileSync(chemin, 'utf8'));
-  return { regles, derivees, libelles, voulus, conflits, commentaires };
+  const lu = JSON.parse(readFileSync(chemin, 'utf8'));
+  const inconnues = Object.keys(lu).filter((k) => !SECTIONS_DU_REGISTRE.includes(k) && k !== '$comment');
+  if (inconnues.length) throw new Error(`${chemin} : section(s) inconnue(s) : ${inconnues.join(', ')}`);
+  const { regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [], copies = [] } = lu;
+  return { regles, derivees, libelles, voulus, conflits, commentaires, copies };
 }
 
 /** Les instantanés du registre des classeurs (sources/raw/classeurs/registre.json) : { titre: dump }. */
@@ -714,11 +819,23 @@ function principal() {
   };
   const classeur = arg('--classeur', null);
   const dump = arg('--dump', null);
-  if (!classeur || !dump) { console.error('usage : rapprocher.mjs --classeur "<titre>" --dump <instantané.json> [--registre <registre.json>] [--base var/maverick.db] [--sortie <fichier>] [--json]'); process.exit(2); }
+  if (!classeur || !dump) { console.error('usage : rapprocher.mjs --classeur "<titre>" --dump <instantané.json> [--registre <registre.json>] [--avant <ancien instantané.json>] [--base var/maverick.db] [--sortie <fichier>] [--json]'); process.exit(2); }
   const base = resolve(arg('--base', resolve(RACINE, 'var', 'maverick.db')));
   const registre = arg('--registre', arg('--ignorer', null));
   const sortie = arg('--sortie', null);
   const db = new DatabaseSync(base, { readOnly: true });
+  const avant = arg('--avant', null);
+  if (avant) {
+    // Mise à jour : les cellules changées depuis l'ancien instantané et les lignes qu'elles touchent.
+    const liste = changements(db, { classeur, avant: JSON.parse(readFileSync(resolve(avant), 'utf8')), apres: JSON.parse(readFileSync(resolve(dump), 'utf8')) });
+    db.close();
+    const cell = (v) => String(v ?? '').replaceAll('|', '\\|').replace(/\n/g, ' ');
+    const md = [`# Changements de « ${classeur} » : ${avant} -> ${dump}\n`, `${liste.length} cellule(s) changée(s).\n`, '| Onglet | Cellule | Avant | Après | Lignes de la base |', '| --- | --- | --- | --- | --- |',
+      ...liste.map((x) => `| ${cell(x.onglet)} | ${x.cellule} | ${cell(x.avant)} | ${cell(x.apres)} | ${cell(x.lignes.join(' ; ') || 'aucune : cellule nouvelle ou ignorée')} |`)].join('\n');
+    const sortieDiff = arg('--sortie', null);
+    if (sortieDiff) writeFileSync(sortieDiff, process.argv.includes('--json') ? JSON.stringify(liste, null, 2) : `${md}\n`); else process.stdout.write(process.argv.includes('--json') ? JSON.stringify(liste, null, 2) : `${md}\n`);
+    return;
+  }
   const R = rapprocher(db, {
     classeur, dump: JSON.parse(readFileSync(resolve(dump), 'utf8')), nomDuDump: dump, autres: instantanesDuRegistre(), ...(registre ? lireRegistre(resolve(registre)) : {}),
   });

@@ -167,24 +167,32 @@ mises à jour du classeur ; ses réponses sont la décision **R81** (`docs/decis
    - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
    Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
    **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R81) ; sa réponse s'inscrit dans le registre (`conflits`).
-   Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs`), ne contient que des entrées
-   **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage, consignes de navigation),
-   `libelles` (intitulés de mise en page d'une cellule citée, bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `derivees` (colonnes que l'import
-   calcule, avec le test qui les garantit), `voulus` (écart voulu hors des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import
-   écarte : un message de conversation), `conflits`.
-   Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le compte. Le test fait échouer la CI au moindre écart d'un
-   classeur `rapproche`, avec le relevé complet ; le passage des textes aux colonnes typées est garanti par les tests des découpages (`classe-champs.mjs`,
-   `sort-analyse.mjs`, `metier-champs.mjs`…, rejoués sur toute la base). Limites connues : deux nombres permutés entre deux cellules citées par la même
-   ligne, ou deux descriptions échangées dans une même cellule fusionnée citée par plusieurs lignes, ne se voient pas ; une formule se lit comme un
-   texte (sans ses blancs), une liste de validation par ses choix écrits, jamais par la plage qu'elle cite.
-3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané ; `git diff sources/raw/classeurs/<classeur>.json`
-   donne les cellules changées, le rapprochement les lignes qu'elles touchent (écarts), les mots nouveaux et les cellules nouvelles (non citées). La liste
-   est présentée au propriétaire ; une fois validée, une migration (`ingenieur-donnees`) applique les changements, le registre suit, et le test redevient
-   vert. Une règle nouvelle ou changée suit la règle d'or : citée, jamais déduite.
+   Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs` ; une section inconnue est une
+   erreur), ne contient que des entrées **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage,
+   consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,
+   bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `copies` (plage qui recopie une autre plage, de ce classeur ou d'un autre : vérifiée à
+   chaque passage, un écart dès qu'elle diverge), `derivees` (colonnes que l'import calcule, avec le test qui les garantit), `voulus` (écart voulu hors
+   des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
+   entrée qui ne couvre plus rien est un écart (à retirer). Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le
+   compte. Le test fait échouer la CI au moindre écart d'un classeur `rapproche`, avec le relevé complet.
 
-État (2026-10-15) : « Classe Maverick V7 » rapproché, 0 écart (1 228 lignes typées, 3 964 cellules non vides, 43 notes ; 270 cellules ignorées :
-statistiques d'usage « Combo stat », bannières, consignes du Sommaire ; 2 libellés de mise en page). Les six autres classeurs sont enregistrés
-`en_cours` (instantané gardé, analyse des écarts en cours) : leurs écarts sont relevés dans `docs/sql/rapprochement-classeurs.md`.
+   **Ce que « 0 écart » garantit, et ce qu'il ne garantit pas.** Le contrôle est **par ligne**, pas par colonne : un `source_ref` cite les cellules
+   d'une ligne de la base, pas la case de chaque colonne. Un nombre de la ligne est accepté s'il se lit dans n'importe laquelle de ses cellules, un
+   morceau de texte s'il y est contenu, un mot d'une cellule s'il est dans n'importe laquelle des colonnes de la ligne. « 0 écart » veut donc dire : tout
+   le classeur est dans la base, et toute la base dans le classeur. Il ne voit pas une valeur changée en une autre que la ligne écrit déjà ailleurs (la
+   barrière d'une classe passée de 1 à 5, quand la même classe écrit « Bouclier classe 1 à 5 »), des nombres permutés, ni un ajout fait de mots que la
+   ligne contient déjà. Une formule se lit comme un texte (sans ses blancs), une liste de validation par ses choix écrits (sur une saisie vide), jamais
+   par la plage qu'elle cite. **Pour une mise à jour, c'est le diff des instantanés qui fait foi** (étape 3), case par case.
+3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané (étape 1), puis
+   `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump <nouvel instantané> --avant sources/raw/classeurs/<classeur>.json
+   [--sortie <changements.md>]` : chaque cellule changée (valeur, note, fil), avant et après, et les lignes de la base qui la citent, avec ce que le site
+   de dev leur a fait (« modifiée par le site : conflit possible »). Cette liste est présentée au propriétaire ; une fois validée, une migration
+   (`ingenieur-donnees`) applique les changements, l'instantané remplace l'ancien, le rapprochement (étape 2) repasse à 0 et le registre suit. Une règle
+   nouvelle ou changée suit la règle d'or : citée, jamais déduite.
+
+État (2026-10-15) : « Classe Maverick V7 » et « Invocation » rapprochés, 0 écart (V7 : 1 228 lignes typées, 3 964 cellules non vides, 43 notes,
+270 cellules ignorées ; Invocation : 1 128 lignes, 1 207 cellules, le tableau des améliorations cadavériques déclaré comme copie de celui de
+« Magie Maverick V8 »). Les cinq autres sont enregistrés `en_cours` (instantané gardé, écarts relevés dans `docs/sql/rapprochement-classeurs.md`).
 
 ## De la source au wiki
 

@@ -2,7 +2,7 @@
   "$comment": "Registre du classeur « Classe Maverick V7 » pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne de la base ne cite, et pourquoi ; `libelles`, les intitulés de mise en page des cellules citées. Chaque entrée a sa raison écrite : rien d'autre ne s'y ajoute sans relecture.",
   "regles": [
     {"onglets": ["Combo stat"], "raison": "Statistiques d'usage (nombre de fois qu'une classe ou une spécialité a été prise, et leurs formules) : pas des règles, onglet non publié (IGNORED_SHEETS de tools/sheets/classes.py)."},
-    {"onglets": ["*"], "plages": ["N1"], "raison": "Bannière de l'onglet : le nom de la classe en capitales (« GUERRIER », « MAGE BLEU »), que porte `classe.nom` (cité depuis le Sommaire).", "valeurs": "^[A-ZÀ-Ü' ]+$"},
+    {"onglets": ["*"], "plages": ["N1"], "raison": "Bannière de l'onglet : le nom de la classe en capitales (« GUERRIER », « MAGE BLEU »), le nom même de l'onglet ; `classe.nom` le porte (cité depuis le Sommaire).", "nom_d_onglet": true},
     {"onglets": ["Sommaire"], "plages": ["A17"], "valeurs": "^Il vous suffit de cliquer", "raison": "Consigne de navigation du classeur (« cliquer sur celui qui vous plaît »)."},
     {"onglets": ["Sommaire"], "plages": ["A19"], "valeurs": "^OBJETS DES INVENTAIRES DE DEPART$", "raison": "Intitulé du glossaire des objets de départ ; le glossaire (A21:K92) est cité par `objet_depart`."}
   ],
