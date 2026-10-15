@@ -25,6 +25,7 @@ Chaque agent a un rôle distinct ; ne pas cumuler. Présentation et circuit : `d
 | --- | --- |
 | `ingenieur-site` | Code du site (`client/`) : pages, composants, scripts, fiche, service `/api/` |
 | `ingenieur-donnees` | Base SQLite, migrations, `data/rows`, importeurs, orthographe |
+| `expert-sql` | Lecture seule : conception de la base, contraintes, intégrité, vues, index, SQL ; relecture de toute la base (compétence `relecture-db`) |
 | `gardien-des-regles` | Lecture seule : contenu sourcé, conforme à `docs/decisions-regles.md` |
 | `relecteur-critique` | Lecture seule : revue indépendante du diff avant PR |
 | `chef-de-flux-git` | Branches, rebase, PR, CI, fusion (`docs/flux-git.md`) |
