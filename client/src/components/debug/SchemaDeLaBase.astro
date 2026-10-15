@@ -9,8 +9,8 @@
 //   - un <details> FERMÉ par défaut ; le schéma n'est dessiné qu'à sa première ouverture (scripts/debug-schema.mjs), et la base vivante n'est lue
 //     qu'alors (nombre de lignes, une fois) ;
 //   - la structure (tables, vues, colonnes, types, clés, clés étrangères, sections, descriptions, nombre de lignes au build) est calculée AU BUILD
-//     (lib/schema-structure.mjs, depuis la base construite et data/schema.sql) et posée en JSON dans <script type="application/json"
-//     data-debug-schema> — jamais dans un build SITE_MODE=prod ni dans la version portable : le composant n'y rend rien (et pages/debug.astro ne
+//     (lib/schema-structure.mjs, depuis la base construite et data/schema.sql) et posée en JSON dans un élément script de type
+//     application/json marqué data-debug-schema — jamais dans un build SITE_MODE=prod ni dans la version portable : le composant n'y rend rien (et pages/debug.astro ne
 //     l'y appelle pas) ;
 //   - le contenu d'une table (double clic, Entrée, appui long) vient du service du site de dev : GET <base>api/debug/tables/<nom>/ (403 ailleurs),
 //     affiché dans une fenêtre modale (<dialog>) ;
