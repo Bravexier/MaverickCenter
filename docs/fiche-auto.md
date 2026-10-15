@@ -78,9 +78,10 @@ Restent à tester avec l'accès autorisé (ils lisent les classeurs) : 6, 15, 16
 
 ## Importer une fiche auto sur le site
 
-Demande du propriétaire (2026-10-15) : une fiche auto se reprend sur la page `/fiche/` (« Importer » ; détail dans
-[`character-generator.md`](character-generator.md), « Tableur »). Dans Google Sheets : **Fichier › Télécharger** au format `.xlsx` ou `.ods` (ou
-l'onglet « Personnage » en `.csv`), puis choisir le fichier. L'import (`client/src/lib/fiche-tableur-import.mjs`) reconnaît l'onglet à ses libellés
+Demande du propriétaire (2026-10-15) : une fiche auto se reprend sur la page `/fiche/` (détail dans [`character-generator.md`](character-generator.md),
+« Tableur ») : **« Importer (en ligne) »** avec le lien de la feuille, partagée par lien (« Partager », Accès général « Tous les utilisateurs
+disposant du lien ») ; ou, dans Google Sheets, **Fichier › Télécharger › Microsoft Excel (.xlsx)**, puis **« Importer (PC) »** (la lecture sait
+aussi un `.ods`, ou l'onglet « Personnage » en `.csv`, que le sélecteur ne propose plus). L'import (`client/src/lib/fiche-tableur-import.mjs`) reconnaît l'onglet à ses libellés
 (« COMPÉTENCES » en B21, « AP Base » en AA20) : l'onglet « Personnage » d'abord, sinon le premier onglet qui les porte (un onglet renommé ou déplacé
 est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/fiche-tableur-cases.mjs#AUTO`.
 

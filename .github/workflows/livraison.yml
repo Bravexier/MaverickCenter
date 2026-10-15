@@ -124,8 +124,12 @@ jobs:
           npm ci
           npm test
 
+      # « Exporter » de la fiche (feuille Google Sheets) : l'identifiant client OAuth de Google, une variable du dépôt (public : pas un secret) ;
+      # vide, le bouton reste grisé (deploy/vps/README.md, « Export vers Google Sheets »)
       - name: Construire (sans les pages d'exemple)
         working-directory: client
+        env:
+          SITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: HIDE_EXAMPLES=1 npm run build
 
       - name: Publier sur la branche « site » (une seule révision, réécrite à chaque fois)
@@ -179,8 +183,11 @@ jobs:
           npm ci
           npm test
 
+      # « Exporter » de la fiche : l'identifiant client OAuth de Google (variable du dépôt ; vide, le bouton reste grisé)
       - name: Construire le site (sans les pages d'exemple ; bandeau TEST en mode test)
         working-directory: client
+        env:
+          SITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: HIDE_EXAMPLES=1 SITE_MODE="$MODE" SITE_TAG="$TAG" npm run build
 
       - name: Fabriquer l'installateur

@@ -18,9 +18,10 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | --- | --- |
 | `client/serveur/index.mjs` | Point d'entrée livré (variables d'environnement ci-dessous) |
 | `client/serveur/service.mjs` | Serveur HTTP (`node:http`), surveillance des fichiers, arrêt propre |
-| `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait), sans réseau (testé directement) |
+| `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/` rend une promesse, que `service.mjs` attend |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
+| `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service sur Internet |
 | `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
 | `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
 | `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
@@ -84,6 +85,7 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 | `PUT /api/personnages/<id>/` | Modifie → `{ personnage, controles, niveau }` |
 | `DELETE /api/personnages/<id>/` | Supprime, corps `{ "version": … }` (celle de la fiche lue) → `{ supprime }` ; `409` si elle a changé entre-temps |
 | `GET /api/personnages/<id>/portrait/` | L'image du portrait, telle quelle (pas du JSON : `Content-Type` de l'image, WebP, JPEG ou PNG), pour la liste des personnages qui n'en reçoit que l'empreinte ; `ETag` = l'empreinte, `304` si le navigateur l'a déjà (`If-None-Match`) ; `404` sans fiche ou sans portrait |
+| `POST /api/classeur/` | Corps `{ "url": "https://docs.google.com/spreadsheets/d/<id>/…" }` (« Importer (en ligne) » de `/fiche/`) → les octets `.xlsx` de la feuille, partagée par lien (pas du JSON : `Content-Type` du classeur, son nom dans `Content-Disposition`). Sur **les deux instances**, sans la base (répond pendant qu'elle se refait). `400` lien qui n'est pas celui d'une feuille Google Sheets ; `403` feuille non partagée par lien (Google renvoie vers sa page de connexion, répond 401 ou 403, ou rend une page HTML) ; `404` feuille introuvable ; `413` plus de 16 Mio ; `429` plus de 2 téléchargements à la fois ou de 30 par minute (tout le service), ou Google qui limite ; `502` Google en panne, injoignable ou qui renvoie ailleurs ; `504` plus de 20 s. Voir « Hébergement » |
 
 Les adresses finissent par « / », comme celles du site : en développement, Astro refuse une adresse sans « / » finale avant de la transmettre au
 service (qui accepte les deux formes).
@@ -117,7 +119,8 @@ R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilit
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
-  (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe.
+  (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe. `POST /api/classeur/`
+  suit la même garde.
 
 ## Édition des règles (site de dev)
 
@@ -604,6 +607,15 @@ pour ne pas agir au milieu d'une copie) :
 
 Seul un changement de `docker-compose.yml` ou de `nginx.conf` demande `docker compose up -d` (l'installateur le signale ; sur le NAS, voir
 `deploy/README.md`).
+
+**La seule sortie sur Internet** : `POST /api/classeur/` (« Importer (en ligne) » de la fiche, `serveur/classeur.mjs`), que tout visiteur peut
+déclencher (le site est public). Le service n'accepte qu'un lien `https://docs.google.com/spreadsheets/d/<id>…`, construit lui-même l'adresse
+d'export (`…/export?format=xlsx`, jamais l'adresse reçue), suit les redirections une à une (5 au plus, `https`, `docs.google.com` ou un hôte
+`*.googleusercontent.com` seulement), lit au plus **16 Mio** (taille annoncée, puis lecture par morceaux arrêtée au-delà), abandonne après **20 s**
+(sous le délai de 60 s de nginx), fait au plus **2 téléchargements à la fois et 30 par minute** pour tout le service, et arrête le téléchargement si
+le visiteur part. Il vérifie qu'il a reçu un `.xlsx` (« PK\x03\x04 »). Rien de l'adresse ni de l'identifiant de la feuille n'est noté : le
+journal dit la taille, les redirections et la durée, les métriques comptent la route `/api/classeur/` et un évènement `classeur` (statut, durée,
+octets, redirections). `fetch` est injectable (`demarrerService({ fetch })`) : les tests ne joignent pas Google.
 
 ## Métriques et volume
 

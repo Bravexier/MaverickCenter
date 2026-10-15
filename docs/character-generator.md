@@ -172,8 +172,9 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
-  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), la fiche se remplit, s'**exporte** (JSON ou tableur) et s'**imprime** ; un
-  fichier exporté se **réimporte** pour créer le prétiré. La version portable masque les exports et l'impression. Export et import en **tableur** : voir « Tableur » ci-dessous.
+  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), la fiche se remplit et se
+  **télécharge** (« Télécharger » reste alors actif, pour ne rien perdre) ; le classeur téléchargé se **réimporte** pour créer le prétiré. La barre,
+  le classeur et Google Sheets : voir « Tableur » ci-dessous.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
 ### Tableur : export et import (demande du propriétaire, 2026-10-15)
@@ -182,9 +183,42 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 > Le portrait peut remplacer l'icône du logo en haut à gauche. Inutile de mettre les formules dans le fichier généré, seul le résultat.
 > Évidemment toutes les infos ne rentrent peut-être pas dans ces fiches-là. Toute info supplémentaire peut être notée dans les « Notes ».
 
-Dans la barre : **« Exporter (tableur) »** (un `.xlsx` ; infobulle « Classeur .xlsx au modèle de la fiche V15.2.2 : Excel, LibreOffice, Google Sheets
-(Fichier › Importer) »), **« Exporter (JSON) »** (le format d'échange ; infobulle « Sauvegarde complète de la fiche (.json), à réimporter sur le
-site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version portable masque les deux exports et l'impression (`tools/build-artifact.mjs`).
+La barre (demande du propriétaire, 2026-10-15 : « [Nouveau] => Inchangé ; [Exporter(Tableur)] => [Télécharger] Le nom du fichier deviens juste nom
+du personnage. Grisé tant que la fiche n'a pas été enregistrée ; [Exporter(Json)] =>[Exporter] Exporte sous le format Google Sheet. ; [Importer] =>
+[Importer(PC)] Demande un fichier Xlsx ; [Imprimer] => [Importer(EnLigne)] Demande l'url d'un Google Sheet. » ; précisions choisies : Exporter =
+« Créer un Google Sheet en ligne », Importer (en ligne) = « Feuille partagée par lien ») : **Nouveau**, **Télécharger**, **Exporter**, **Importer
+(PC)**, **Importer (en ligne)**, Supprimer. Plus d'export ni d'import en JSON (un ancien `.json` choisi par « Importer (PC) » est refusé en le
+disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page d'impression ne change pas).
+
+- **Télécharger** : le classeur `.xlsx` au modèle ci-dessous, nommé d'après le personnage seul (`nomDuFichier` de `lib/fiche-tableur-export.mjs` :
+  chaque suite de caractères qu'un système de fichiers refuse remplacée par « - », 120 caractères au plus, « Personnage » s'il ne reste rien ;
+  « Kaël/Nox » → `Kaël-Nox.xlsx`). **Grisé** tant que la fiche n'est pas enregistrée telle qu'elle est (jamais enregistrée, ou modifiée depuis ;
+  infobulle « Enregistrez la fiche pour la télécharger »), sauf quand le service ne répond pas : la fiche ne peut alors pas être enregistrée, et la
+  télécharger évite de la perdre (`etatDesExports`, recalculé par `etatDesBoutons` de `src/scripts/fiche.mjs` à chaque rafraîchissement et à la fin de
+  chaque action). Message : « Classeur téléchargé. », suivi de ce que le classeur n'a pas pu garder.
+- **Exporter** (Google Sheets) : le même classeur, envoyé dans le Drive de la personne et converti en **nouvelle feuille Google Sheets** à chaque
+  export (nommée d'après le personnage). Même condition de grisé que « Télécharger » ; grisé aussi sans **identifiant client OAuth** (variable de
+  build `SITE_GOOGLE_CLIENT_ID`, infobulle « Export vers Google Sheets pas encore configuré » ; mise en place : [`deploy/vps/README.md`](../deploy/vps/README.md),
+  « Export vers Google Sheets »). La page charge **Google Identity Services** (`https://accounts.google.com/gsi/client`, créé par
+  `document.createElement` dès que le pointeur ou le focus approche du bouton : ni balise dans le HTML ni import), demande le droit
+  `drive.file` (le site ne voit que les fichiers qu'il crée) dans le clic même (`requestAccessToken`, sinon le navigateur bloque la fenêtre de
+  connexion : un message invite alors à cliquer de nouveau), garde le jeton **en mémoire** jusqu'à son expiration (jamais enregistré, jamais
+  envoyé au service), puis envoie le classeur à l'API Drive (`POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
+  `corpsMultipart` de `lib/google-sheets.mjs`). Message « Feuille Google créée. », le rappel « pour la réimporter ici, partagez-la par lien », et un
+  lien « Ouvrir dans Google Sheets » (une fenêtre s'ouvre aussi quand le navigateur le permet). La page `/fiche/` porte `<meta name="referrer"
+  content="strict-origin-when-cross-origin">` (le reste du site garde `Referrer-Policy: same-origin`).
+- **Importer (PC)** : un `.xlsx` (le chemin de l'import ci-dessous ; la lecture sait aussi les `.ods` et `.csv`, que le sélecteur ne propose plus).
+- **Importer (en ligne)** : un dialogue (`#import-en-ligne`) demande le lien d'une feuille Google Sheets **partagée par lien** (« Partager », Accès
+  général « Tous les utilisateurs disposant du lien ») ; le lien est vérifié dans le dialogue (`idDeFeuille` : `https://docs.google.com/spreadsheets/d/<id>…`),
+  puis le **service** télécharge la feuille au format `.xlsx` (`POST /api/classeur/`, [`serveur.md`](serveur.md) ; une page ne peut pas la lire
+  elle-même) et la page l'importe comme un classeur de l'ordinateur (dialogue « import-cible », notes datées au nom de la feuille). Une feuille
+  non partagée, un lien d'autre chose, une feuille trop grosse : le message du service le dit ; service injoignable : télécharger la feuille
+  depuis Google Sheets (Fichier › Télécharger › Microsoft Excel), puis « Importer (PC) ».
+- **Version portable** : « Télécharger », « Exporter » et « Importer (en ligne) » masqués (`tools/build-artifact.mjs` : ni téléchargement, ni
+  fenêtre de Google, ni service dans un cadre isolé) ; « Importer (PC) » reste.
+- **À vérifier avec le vrai Google** (rien n'a pu être essayé contre Google : les tests et la vérification dans Chromium remplacent Google par
+  des faux) : la connexion et la création de la feuille sur `dev.maverick-jdr.com`, puis « Importer (en ligne) » de cette feuille partagée par
+  lien — ce que la conversion de Google garde du classeur (portrait et sa description « portrait:<empreinte> », couleurs des maîtrises, notes).
 
 - **Le modèle** : « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » du propriétaire, rangé en texte dans `client/src/modeles/fiche-personnage/`
   (14 parties fabriquées par `tools/fiche/modele.py` depuis son `.ods` : aucun classeur binaire dans le dépôt ; fins de ligne LF, `.gitattributes`),
@@ -239,7 +273,7 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. », sur le ton « attente » (au lieu
   de « ok », `messageDExport`). À l'import, une remarque le dit.
 - **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
-  le logo reste, décrit « logo ». Le fichier s'appelle « <nom> - Fiche Maverick V15.2.2.xlsx ».
+  le logo reste, décrit « logo ». Le fichier s'appelle « <nom du personnage>.xlsx » (`nomDuFichier`, plus haut).
 - **Lecture** (`lib/tableur-lecture.mjs`) : `.xlsx` (Excel, Google Sheets, LibreOffice), `.ods` (LibreOffice ; les blancs d'une case lus comme
   LibreOffice les relit), `.csv` (« ; », « , » ou tabulation ; UTF-8, UTF-16 ou Windows-1252) ; aucune formule évaluée (le résultat en cache) ;
   d'un `.xlsx`, une date se lit JJ/MM/AAAA et un pourcentage « 18 % » (un `.ods` porte le texte affiché) ; un `.xls` ou un classeur protégé par mot
@@ -299,15 +333,16 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
 - **Où va la fiche importée** : le message « Lecture du classeur… » est retiré, puis, si un prétiré enregistré est ouvert, le dialogue « Importer la
   fiche » (`#import-cible`) propose de le **mettre à jour** (il garde son identifiant et sa version), de **créer un nouveau prétiré** (l'un et l'autre
   oubliés) ou d'annuler, en rappelant la perte des modifications non enregistrées ; sinon, une confirmation s'il y a des modifications. De même
-  pour un JSON. Rien n'est enregistré avant « Enregistrer ». Le **portrait** (`portraitDeLImport`) : celui de la fiche ouverte, avec son cadrage,
+  pour une feuille d'« Importer (en ligne) ». Rien n'est enregistré avant « Enregistrer ». Le **portrait** (`portraitDeLImport`) : celui de la fiche ouverte, avec son cadrage,
   quand le classeur porte son empreinte (exporté par la page avec ce portrait), ou pour une **mise à jour** depuis un classeur sans image (fiche
   auto, `.csv`, export sans portrait) ; sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par
   défaut ; illisible, elle est dite dans les notes et l'on fait comme sans elle) ; un **nouveau prétiré** tiré d'un classeur sans image n'a pas de
   portrait.
 - **Messages** (`messageDImport`, `messageDExport`) : « Classeur importé (modèle ordinateur|auto[, onglet « <nom> »])[ : N informations sans
   équivalent et N remarques ajoutées aux notes]. Enregistrez pour mettre à jour « <nom> » | créer le prétiré. » (l'onglet n'est nommé que si ce
-  n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur exporté. »,
-  suivi de ses avertissements.
+  n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur téléchargé. »
+  (« Télécharger ») ou « Feuille Google créée. » (« Exporter »), suivi de ses avertissements (`messageDExport(avertissements, debut)` ; « Classeur
+  exporté. » par défaut).
 - **Aller-retour** (`test/fiche-tableur-aller-retour.test.mjs`) : export → `.xlsx` → lecture → import redonne la fiche, sans rien dans les notes, et
   l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris, une arme abîmée et une arme cassée,
   des gains de niveau, un entraînement long sur trois lignes, coupé, sa suite dans la note), une bi-classe au Potentiel
@@ -318,7 +353,9 @@ site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version po
   `fiche-tableur-export.mjs`, `fiche-tableur-import.mjs` (dans `client/src/lib/`) : purs, sans DOM ; parmi les scripts de page, seul
   `src/scripts/fiche.mjs` les importe (un module partagé entre deux scripts de page casse la version portable), jamais `lib/text.mjs` (`cle()` de
   `fiche-tableur-cases.mjs` le remplace) ; `fiche-modele.mjs` (Node : il importe `zip.mjs` pour assembler le modèle) ne sert qu'au build et aux
-  tests. Ce que la page fait d'un classeur hors du DOM (onglet, portrait, messages) est testé dans `test/fiche-tableur-page.test.mjs`.
+  tests. Ce que la page fait d'un classeur hors du DOM (onglet, portrait, messages, nom du fichier, état des boutons) est testé dans
+  `test/fiche-tableur-page.test.mjs`. `lib/google-sheets.mjs` (Google : identifiant client, lien d'une feuille, envoi à l'API Drive) suit la même
+  règle (seul script de page : `src/scripts/fiche.mjs` ; le service et la page Astro l'importent aussi), sans aucun import (`test/google-sheets.test.mjs`).
 - **Décisions du 2026-10-15** (questions Q6 à Q11 de [`sql/a-valider.md`](sql/a-valider.md)) : les paliers de résistance sont ceux de la fiche auto
   et de la base, ÷2, ÷4, x2, x4, x8 (R70 : le modèle ordinateur, ÷3, x3, x4, se trompe ; l'export écrit ceux de la base) ; la case « Entraînement » est
   un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se

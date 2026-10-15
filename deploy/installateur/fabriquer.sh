@@ -3,6 +3,8 @@
 #   ./deploy/installateur/fabriquer.sh prod   installateur du serveur normal → deploy/installateur/sortie/maverick-center-vX.Y-local-install.sh
 #   ./deploy/installateur/fabriquer.sh test   installateur du serveur de test, vX.Y.Z-local (bandeau TEST ; copie la base du serveur normal à l'installation)
 # Prérequis sur la machine qui construit : Node.js >= 22.12. Sous-chemin (proxy inversé sur /maverick/) : SITE_BASE=/maverick/ …
+# « Exporter » de la fiche (feuille Google Sheets) : SITE_GOOGLE_CLIENT_ID=<identifiant client OAuth> ./deploy/installateur/fabriquer.sh prod
+# (sans lui, le bouton reste grisé ; deploy/vps/README.md, « Export vers Google Sheets »).
 # (Le paquet du NAS d'avant la 1.0 se construit avec ./deploy/build.sh.)
 set -euo pipefail
 

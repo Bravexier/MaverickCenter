@@ -318,6 +318,8 @@ export function routeNormalisee(adresse) {
       return seul(3) && b === 'metriques' && (c === 'requetes' || c === 'export') ? r('debug', 'metriques', c) : ROUTE_INCONNUE;
     case 'metriques':
       return seul(2) && b === 'page' ? r('metriques', 'page') : ROUTE_INCONNUE;
+    case 'classeur':
+      return seul(1) ? r('classeur') : ROUTE_INCONNUE;
     case 'v1': {
       if (seul(1)) return r('v1');
       if (b === 'openapi.json') return seul(2) ? '/api/v1/openapi.json' : ROUTE_INCONNUE;

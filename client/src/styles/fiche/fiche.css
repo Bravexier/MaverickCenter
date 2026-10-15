@@ -248,6 +248,13 @@ main:has(> .fiche) { max-width: 100rem; }
 .import-cible p { margin: 0; }
 .import-cible__perte { color: var(--danger); }
 .import-cible__boutons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; margin-top: 0.3rem; }
+/* « Importer (en ligne) » : le lien de la feuille Google Sheets (même dialogue, caché à l'impression avec .import-cible) */
+.import-en-ligne__champ { display: grid; gap: 0.2rem; }
+.fiche .import-en-ligne__champ input { width: 100%; }
+.import-cible .import-en-ligne__aide { color: var(--muted); font-size: 0.85rem; }
+.import-cible .import-en-ligne__erreur { color: var(--danger); }
+/* le lien « Ouvrir dans Google Sheets » après un export, dans le message de la barre */
+.fiche-message a { margin-left: 0.35rem; }
 
 /* ----------------------------------------------------------------- IV. paramètres et suivi : des onglets (components/Onglets.astro) ; sans
    JavaScript et à l'impression, les panneaux se suivent, chacun avec son titre */

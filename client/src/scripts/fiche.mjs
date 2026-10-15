@@ -2,19 +2,26 @@
 // fiche en cours au format d'échange (lib/fiche-format.mjs), recalcule ce qui en découle à chaque saisie (lib/fiche-moteur.mjs) et l'enregistre
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
 // Export et import (demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel
-// ou Google Sheet et réexportée sous le même modèle ») : en JSON (le format d'échange), ou en classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2
-// ordinateur » (/fiche/modele.xlsx : lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la
-// place du logo) ; l'import lit aussi la fiche auto V15.2.2 et les .ods et .csv (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs : l'onglet qui
-// suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les notes.
+// ou Google Sheet et réexportée sous le même modèle ») : le classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » (/fiche/modele.xlsx :
+// lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la place du logo). La barre (demandes du
+// propriétaire, 2026-10-15) : « Télécharger » (le .xlsx, nommé d'après le personnage), « Exporter » (le même classeur, en nouvelle feuille Google Sheets
+// du Drive de la personne : connexion par Google Identity Services, chargé à la demande ; lib/google-sheets.mjs), tous deux grisés tant que la fiche
+// n'est pas enregistrée telle qu'elle est (etatDesBoutons) ; « Importer (PC) » (un .xlsx) et « Importer (en ligne) » (le lien d'une feuille partagée
+// par lien, que le service télécharge : POST /api/classeur/) ; l'import lit aussi la fiche auto V15.2.2 (lib/tableur-lecture.mjs,
+// lib/fiche-tableur-import.mjs : l'onglet qui suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les
+// notes. Plus d'export ni d'import en JSON, plus de bouton « Imprimer » (Ctrl+P reste possible).
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
-import { cellulesDeLaFiche, messageDExport } from '../lib/fiche-tableur-export.mjs';
+import { cellulesDeLaFiche, etatDesExports, messageDExport, nomDuFichier } from '../lib/fiche-tableur-export.mjs';
+import {
+  ADRESSE_D_ENVOI, PORTEE_DRIVE, SCRIPT_GOOGLE, TYPE_XLSX, corpsMultipart, estUnZip, idDeFeuille, lienDeFeuille, nomDuClasseur,
+} from '../lib/google-sheets.mjs';
 import { feuilleDeLaFiche, ficheDuClasseur, messageDImport, portraitDeLImport } from '../lib/fiche-tableur-import.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../lib/tableur-lecture.mjs';
@@ -39,6 +46,8 @@ let version = null;
 let controles = null;
 let modifie = false;
 let serviceJoignable = true;
+/** Un téléchargement, un export ou un import en ligne en cours : Télécharger et Exporter attendent (etatDesBoutons). */
+let occupe = false;
 const noms = new Map();
 /** Fonctions qui alignent les champs et les états sur la fiche, par conteneur (remplacées quand le conteneur est reconstruit). */
 const synchros = new Map();
@@ -1620,9 +1629,29 @@ function rafraichir() {
   construireControles();
   construireRetraits();
   construireChoixEnAttente();
+  etatDesBoutons();
+  if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : téléchargez la fiche pour ne rien perdre.', 'attente');
+}
+
+/** Pose l'infobulle d'un élément (son `title`, que components/Infobulles.astro déplace dans data-infobulle) seulement si elle change. */
+function infobulle(e, texte) {
+  if ((e.dataset.infobulle ?? e.getAttribute('title')) !== texte) e.title = texte;
+}
+
+/**
+ * La barre : Enregistrer (une fiche modifiée, ou jamais enregistrée), Supprimer (une fiche enregistrée), Télécharger et Exporter (grisés tant que la
+ * fiche n'est pas enregistrée telle qu'elle est, sauf quand le service ne répond pas ; Exporter aussi sans identifiant client Google ; pendant un
+ * export : lib/fiche-tableur-export.mjs#etatDesExports). Recalculé par rafraichir et à la fin de chaque action.
+ */
+function etatDesBoutons() {
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
-  if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
+  const etat = etatDesExports({ id, modifie, serviceJoignable, client: $('fiche-exporter').dataset.clientGoogle ?? '', occupe });
+  for (const [cle, bouton] of [['telecharger', $('fiche-telecharger')], ['exporter', $('fiche-exporter')]]) {
+    bouton.disabled = !etat[cle].actif;
+    infobulle(bouton, etat[cle].infobulle);
+  }
+  $('fiche-importer-en-ligne').disabled = occupe;
 }
 
 // ------------------------------------------------------------------ enregistrement, chargement
@@ -1666,6 +1695,7 @@ async function enregistrer() {
     const reponse = await fetch(adresse, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...aEnvoyer(), [CHAMP_VERSION]: version }) });
     const donnees = await reponse.json().catch(() => ({}));
     if (reponse.ok) {
+      serviceJoignable = true;   // il répond de nouveau : Télécharger suit de nouveau l'enregistrement
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
       message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
@@ -1684,10 +1714,11 @@ async function enregistrer() {
     }
   } catch {
     serviceJoignable = false;
-    afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été enregistrée. Exportez-la pour ne rien perdre, puis réessayez.');
+    afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été enregistrée. Téléchargez-la pour ne rien perdre, puis réessayez.');
     message('Non enregistré : service injoignable.', 'erreur');
   }
   bouton.disabled = false;
+  etatDesBoutons();
 }
 
 async function charger(identifiant) {
@@ -1724,14 +1755,14 @@ async function verifierService() {
     if (!etat.base.a_jour) afficherIndisponible(`La base des fiches n’a pas pu suivre les dernières règles : ${etat.base.erreur}`);
   } catch {
     serviceJoignable = false;
-    afficherIndisponible('Le service des personnages n’est pas joignable : la fiche peut être remplie, exportée et imprimée, mais pas enregistrée.');
+    afficherIndisponible('Le service des personnages n’est pas joignable : la fiche peut être remplie et téléchargée, mais pas enregistrée.');
   }
 }
 
 /** Supprime la fiche enregistrée (demande du propriétaire), après confirmation ; on revient à la liste des personnages. */
 async function supprimer() {
   if (!id) return;
-  if (!confirm(`Supprimer définitivement « ${fiche.nom || 'ce prétiré'} » ? La fiche ne pourra pas être récupérée (exportez-la d’abord pour en garder une copie).`)) return;
+  if (!confirm(`Supprimer définitivement « ${fiche.nom || 'ce prétiré'} » ? La fiche ne pourra pas être récupérée (téléchargez-la d’abord pour en garder une copie).`)) return;
   message('Suppression…', 'attente');
   try {
     const reponse = await fetch(`${API}personnages/${encodeURIComponent(id)}/`, {
@@ -1748,6 +1779,7 @@ async function supprimer() {
     serviceJoignable = false;
     afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été supprimée.');
     message('Non supprimée : service injoignable.', 'erreur');
+    etatDesBoutons();
   }
 }
 
@@ -1764,7 +1796,7 @@ function nouvelle() {
   message('', '');
 }
 
-// ------------------------------------------------------------------ export et import (JSON, classeur)
+// ------------------------------------------------------------------ export et import (classeur, Google Sheets)
 /** Fait télécharger un fichier. */
 function telecharger(blob, nom) {
   const lien = el('a', { href: URL.createObjectURL(blob), download: nom });
@@ -1780,12 +1812,6 @@ function aujourdhui() {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-function exporter() {
-  const f = aEnvoyer();
-  telecharger(new Blob([`${JSON.stringify(f, null, 2)}\n`], { type: 'application/json' }), `${(f.nom || 'personnage').replace(/[^\p{L}\p{N}-]+/gu, '-')}.json`);
-}
-
-const TYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 /** Le logo du modèle, à sa place dans l'archive (tools/fiche/modele.py) : l'import ne le prend pas pour un portrait. */
 const LOGO_DU_MODELE = 'xl/media/image1.png';
 let modeleDuClasseur = null;
@@ -1825,37 +1851,154 @@ async function logoDuModele() {
  * Le classeur au modèle V15.2.2 ordinateur : les cases de la fiche (lib/fiche-tableur-export.mjs, sur la fiche telle qu'elle s'enregistre ; un texte
  * trop long pour sa case y est coupé, la suite de sa part relue dans la note), le portrait cadré à la place du logo (la vignette de la page, JPEG),
  * marqué « portrait:<empreinte de l'image d'origine> » pour qu'un import du fichier dans ce prétiré garde l'image d'origine et son cadrage ; sans
- * portrait, le logo du modèle, marqué « logo ». Ce qui ne tient pas dans une case de tableur (notes de plus de 32 767 caractères…) est dit dans le
- * message (messageDExport).
+ * portrait, le logo du modèle, marqué « logo ». { octets, nom (le nom du personnage : nomDuFichier), avertissements } : ce qui ne tient pas dans une
+ * case de tableur (notes de plus de 32 767 caractères…), que le message dit (messageDExport). « Télécharger » et « Exporter » en font le même fichier.
  */
-async function exporterTableur() {
-  const bouton = $('fiche-exporter-tableur');
-  bouton.disabled = true;
-  message('Export du classeur…', 'attente');
-  try {
-    const f = aEnvoyer();
-    const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
-    let image = null;
-    let descriptionImage = 'logo';
-    if (fiche.portrait) {
-      const octets = octetsDuPortrait(await dessinerVignette(fiche.portrait, cadrageDuPortrait()));
-      if (octets) {
-        image = { octets, type: 'image/jpeg' };
-        descriptionImage = `portrait:${empreinte(fiche.portrait)}`;
-      }
+async function classeurDeLaFiche() {
+  const f = aEnvoyer();
+  const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
+  let image = null;
+  let descriptionImage = 'logo';
+  if (fiche.portrait) {
+    const octets = octetsDuPortrait(await dessinerVignette(fiche.portrait, cadrageDuPortrait()));
+    if (octets) {
+      image = { octets, type: 'image/jpeg' };
+      descriptionImage = `portrait:${empreinte(fiche.portrait)}`;
     }
-    const classeur = await ecrireXlsx(await octetsDuModele(), { cellules, remplis, alignements, image, descriptionImage, titre: f.nom || 'Personnage', date: new Date() });
-    // le nom du personnage tel quel, sans les caractères qu'un système de fichiers refuse
-    const nom = String(f.nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').trim() || 'Personnage';
-    telecharger(new Blob([classeur], { type: TYPE_XLSX }), `${nom} - Fiche Maverick V15.2.2.xlsx`);
-    // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
-    const { texte, ton } = messageDExport(avertissements);
-    message(texte, ton);
-  } catch (e) {
-    message(`Le classeur n’a pas pu être exporté : ${e?.message ?? e}`, 'erreur');
-  } finally {
-    bouton.disabled = false;
   }
+  const octets = await ecrireXlsx(await octetsDuModele(), { cellules, remplis, alignements, image, descriptionImage, titre: f.nom || 'Personnage', date: new Date() });
+  return { octets, nom: nomDuFichier(f.nom), avertissements };
+}
+
+/** Exécute une action de la barre (téléchargement, export, import en ligne) : Télécharger, Exporter et Importer (en ligne) attendent sa fin. */
+async function pendant(action) {
+  occupe = true;
+  etatDesBoutons();
+  try {
+    return await action();
+  } finally {
+    occupe = false;
+    etatDesBoutons();
+  }
+}
+
+/** « Télécharger » : le classeur, nommé d'après le personnage (demande du propriétaire, 2026-10-15 : « Le nom du fichier deviens juste nom du personnage »). */
+function telechargerClasseur() {
+  return pendant(async () => {
+    message('Préparation du classeur…', 'attente');
+    try {
+      const { octets, nom, avertissements } = await classeurDeLaFiche();
+      telecharger(new Blob([octets], { type: TYPE_XLSX }), `${nom}.xlsx`);
+      // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
+      const { texte, ton } = messageDExport(avertissements, 'Classeur téléchargé.');
+      message(texte, ton);
+    } catch (e) {
+      message(`Le classeur n’a pas pu être préparé : ${e?.message ?? e}`, 'erreur');
+    }
+  });
+}
+
+// « Exporter » (demande du propriétaire, 2026-10-15 : « Exporte sous le format Google Sheet » ; précision choisie : « Créer un Google Sheet en ligne ») :
+// la page se connecte à Google (Google Identity Services, droit drive.file : le site ne voit que les fichiers qu'il crée) et envoie le classeur de
+// « Télécharger » à l'API Drive, qui en fait une nouvelle feuille Google Sheets à chaque export. Le script de Google est chargé à la demande
+// (document.createElement : ni balise dans le HTML ni import, que la version portable refuse), dès que le pointeur ou le focus approche du bouton ;
+// la fenêtre de connexion doit s'ouvrir dans le clic même (requestAccessToken sans attente avant lui), sinon le navigateur la bloque. Le jeton reste
+// en mémoire (jamais enregistré, jamais envoyé au service) jusqu'à son expiration.
+let chargementGoogle = null;
+let clientDeJetons = null;
+let jetonGoogle = null;
+
+/** Charge Google Identity Services une fois et prépare le client de jetons ; un échec se retente au prochain appel. */
+function chargerGoogle() {
+  if (!chargementGoogle) {
+    chargementGoogle = new Promise((ok, ko) => {
+      const script = document.createElement('script');
+      script.src = SCRIPT_GOOGLE;
+      script.async = true;
+      script.onload = () => ok();
+      script.onerror = () => {
+        script.remove();
+        ko(new Error('le service de connexion de Google n’a pas pu être chargé'));
+      };
+      document.head.append(script);
+    }).then(() => {
+      clientDeJetons = globalThis.google.accounts.oauth2.initTokenClient({
+        client_id: $('fiche-exporter').dataset.clientGoogle,
+        scope: PORTEE_DRIVE,
+        callback: recevoirJeton,
+        error_callback: erreurDeConnexion,
+      });
+    });
+    chargementGoogle.catch(() => { chargementGoogle = null; });
+  }
+  return chargementGoogle;
+}
+
+/** La réponse de la connexion à Google : le jeton, gardé en mémoire jusqu'à une minute avant son expiration, puis l'envoi. */
+function recevoirJeton(reponse) {
+  if (reponse?.error) {
+    message(reponse.error === 'access_denied' ? 'Export annulé : Google n’a pas reçu l’autorisation.' : `Connexion à Google refusée (${reponse.error}).`, 'erreur');
+    return;
+  }
+  if (!globalThis.google.accounts.oauth2.hasGrantedAllScopes(reponse, PORTEE_DRIVE)) {
+    message('Export annulé : l’accès à Google Drive n’a pas été accordé (il sert à y créer la feuille).', 'erreur');
+    return;
+  }
+  jetonGoogle = { valeur: reponse.access_token, expire: Date.now() + (Number(reponse.expires_in) || 3600) * 1000 - 60_000 };
+  envoyerAGoogle(jetonGoogle.valeur);
+}
+
+/** La fenêtre de connexion de Google bloquée ou fermée. */
+function erreurDeConnexion(e) {
+  if (e?.type === 'popup_failed_to_open') message('La fenêtre de connexion de Google a été bloquée : cliquez de nouveau sur « Exporter » (ou autorisez les fenêtres de ce site).', 'erreur');
+  else if (e?.type === 'popup_closed') message('Export annulé : la fenêtre de connexion de Google a été fermée.', 'attente');
+  else message(`Connexion à Google impossible : ${e?.message ?? e?.type ?? e}`, 'erreur');
+}
+
+/** « Exporter » : un jeton encore valable → l'envoi ; sinon la fenêtre de connexion de Google, ouverte dans le clic (aucune attente avant elle). */
+function exporterVersGoogle() {
+  if (jetonGoogle && Date.now() < jetonGoogle.expire) {
+    envoyerAGoogle(jetonGoogle.valeur);
+    return;
+  }
+  if (clientDeJetons) {
+    clientDeJetons.requestAccessToken();
+    return;
+  }
+  // le script de Google n'était pas encore là (aucun survol avant le clic) : la fenêtre s'ouvre après son chargement, si le navigateur le permet
+  message('Connexion à Google…', 'attente');
+  chargerGoogle().then(() => clientDeJetons.requestAccessToken(), (e) => message(`Export impossible : ${e?.message ?? e}`, 'erreur'));
+}
+
+/** Envoie le classeur à Google Drive, converti en feuille Google Sheets ; le message donne son lien (une fenêtre s'ouvre si le navigateur le permet). */
+function envoyerAGoogle(jeton) {
+  return pendant(async () => {
+    message('Envoi vers Google Sheets…', 'attente');
+    try {
+      const { octets, nom, avertissements } = await classeurDeLaFiche();
+      const { type, corps } = corpsMultipart({ nom, octets, frontiere: `maverick-${crypto.randomUUID()}` });
+      const reponse = await fetch(ADRESSE_D_ENVOI, { method: 'POST', headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': type }, body: corps });
+      const donnees = await reponse.json().catch(() => ({}));
+      if (reponse.status === 401) {
+        jetonGoogle = null;
+        message('La connexion à Google a expiré : cliquez de nouveau sur « Exporter ».', 'erreur');
+        return;
+      }
+      if (!reponse.ok) {
+        message(`Google a refusé la feuille (HTTP ${reponse.status}${donnees?.error?.message ? ` : ${donnees.error.message}` : ''}).`, 'erreur');
+        return;
+      }
+      const lien = lienDeFeuille(donnees);
+      const { texte, ton } = messageDExport(avertissements, 'Feuille Google créée.');
+      message(`${texte} Pour la réimporter ici, partagez-la par lien (« Tous les utilisateurs disposant du lien »), puis « Importer (en ligne) ».`, ton);
+      if (lien) {
+        $('fiche-message').append(' ', el('a', { href: lien, target: '_blank', rel: 'noopener' }, 'Ouvrir dans Google Sheets'));
+        window.open(lien, '_blank', 'noopener');   // souvent bloquée (plus dans le clic) : le lien reste dans le message
+      }
+    } catch (e) {
+      message(`La feuille Google n’a pas pu être créée : ${e?.message ?? e}`, 'erreur');
+    }
+  });
 }
 
 /**
@@ -1864,7 +2007,7 @@ async function exporterTableur() {
  * enregistrées. 'mettre-a-jour' | 'creer' | null (annulé).
  */
 function cibleDeLImport() {
-  if (!id) return Promise.resolve(!modifie || confirm('Remplacer la fiche en cours par celle du fichier ?') ? 'creer' : null);
+  if (!id) return Promise.resolve(!modifie || confirm('Remplacer la fiche en cours par celle du classeur ?') ? 'creer' : null);
   const d = $('import-cible');
   $('import-cible-maj').textContent = `Mettre à jour « ${fiche.nom || 'ce prétiré'} »`;
   $('import-cible-perte').hidden = !modifie;
@@ -1892,26 +2035,8 @@ function remplacerLaFiche(nouvelle, cible) {
 /** « Enregistrez pour mettre à jour « X » » ou « … pour créer le prétiré ». */
 const suiteDeLImport = (cible, nom) => `Enregistrez pour ${cible === 'creer' ? 'créer le prétiré' : `mettre à jour « ${nom} »`}.`;
 
-/** Un fichier exporté en JSON (lib/fiche-format.mjs). */
-async function importerJson(texte) {
-  let objet;
-  try {
-    objet = JSON.parse(texte);
-    if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
-  } catch {
-    message('Ce fichier n’est pas une fiche exportée.', 'erreur');
-    return;
-  }
-  const nom = fiche.nom || 'ce prétiré';
-  const cible = await cibleDeLImport();
-  if (!cible) return;
-  for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
-  remplacerLaFiche(objet, cible);
-  message(`Fiche importée. ${suiteDeLImport(cible, nom)}`, 'attente');
-}
-
 /**
- * Un classeur (.xlsx, .ods, .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
+ * Un classeur (.xlsx ; la lecture sait aussi les .ods et .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
  * sinon le premier onglet qui suit l'un des deux modèles (feuilleDeLaFiche ; le message le nomme). Ce qui n'a pas de place sur le site (`nonRepris`) et
  * ce que l'import a déduit (`remarques`) s'ajoutent à la fin des notes, sous une ligne datée qui nomme le fichier. Le message « Lecture du classeur… »
  * est retiré avant le dialogue « import-cible ». Portrait (portraitDeLImport) : celui de la fiche ouverte, avec son cadrage, quand le classeur porte son
@@ -1960,7 +2085,7 @@ async function importerClasseur(octets, nomFichier) {
   message(`${debut} ${suiteDeLImport(cible, nom)}`, 'attente');
 }
 
-/** Un fichier choisi par « Importer » : une fiche JSON (premier caractère non blanc « { »), sinon un classeur. */
+/** Un fichier choisi par « Importer (PC) » : un classeur (un ancien export .json ne s'importe plus : le message le dit). */
 async function importer(fichier) {
   let octets;
   try {
@@ -1969,10 +2094,67 @@ async function importer(fichier) {
     message('Ce fichier n’a pas pu être lu.', 'erreur');
     return;
   }
-  const zip = octets[0] === 0x50 && octets[1] === 0x4b;
-  const texte = zip ? '' : new TextDecoder('utf-8').decode(octets).replace(/^\uFEFF/, '');
-  if (!zip && texte.trimStart().startsWith('{')) return importerJson(texte);
+  if (!estUnZip(octets) && new TextDecoder('utf-8').decode(octets.subarray(0, 64)).replace(/^﻿/, '').trimStart().startsWith('{')) {
+    message('Les fiches .json ne s’importent plus : importez un classeur .xlsx (celui de « Télécharger »).', 'erreur');
+    return;
+  }
   return importerClasseur(octets, fichier.name);
+}
+
+/**
+ * « Importer (en ligne) » (demande du propriétaire, 2026-10-15 : « Demande l'url d'un Google Sheet » ; précision choisie : « Feuille partagée par
+ * lien ») : le service télécharge la feuille au format .xlsx (POST /api/classeur/, serveur/classeur.mjs : Google ne laisse pas une page d'un autre
+ * site la lire), puis le même chemin qu'un classeur choisi sur l'ordinateur (importerClasseur : dialogue « import-cible », notes datées).
+ */
+function importerEnLigne(adresse) {
+  return pendant(async () => {
+    message('Téléchargement de la feuille Google…', 'attente');
+    const horsService = 'Le service du site ne répond pas : dans Google Sheets, « Fichier › Télécharger › Microsoft Excel (.xlsx) », puis « Importer (PC) ».';
+    let reponse;
+    try {
+      reponse = await fetch(`${API}classeur/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: adresse }) });
+    } catch {
+      message(horsService, 'erreur');
+      return;
+    }
+    if (!reponse.ok) {
+      const donnees = await reponse.json().catch(() => null);
+      message(donnees?.erreur ?? ([502, 503, 504].includes(reponse.status) ? horsService : `La feuille n’a pas pu être téléchargée (HTTP ${reponse.status}).`), 'erreur');
+      return;
+    }
+    let octets;
+    try {
+      octets = new Uint8Array(await reponse.arrayBuffer());
+    } catch {
+      message('La feuille n’a pas pu être téléchargée en entier : réessayez.', 'erreur');
+      return;
+    }
+    await importerClasseur(octets, nomDuClasseur(reponse.headers.get('content-disposition')) ?? 'Google Sheets.xlsx');
+  });
+}
+
+/** Le dialogue « Importer (en ligne) » : le lien est vérifié avant de fermer (un lien de feuille Google Sheets), puis l'import part. */
+function preparerImportEnLigne() {
+  const d = $('import-en-ligne');
+  const champ = $('import-en-ligne-adresse');
+  const erreur = $('import-en-ligne-erreur');
+  $('fiche-importer-en-ligne').addEventListener('click', () => {
+    erreur.hidden = true;
+    d.returnValue = '';
+    d.showModal();
+    champ.select();
+  });
+  $('import-en-ligne-formulaire').addEventListener('submit', (ev) => {
+    if (ev.submitter?.value !== 'importer' || idDeFeuille(champ.value)) return;
+    ev.preventDefault();
+    erreur.textContent = 'Lien d’une feuille Google Sheets attendu : https://docs.google.com/spreadsheets/d/…';
+    erreur.hidden = false;
+    champ.focus();
+  });
+  champ.addEventListener('input', () => { erreur.hidden = true; });
+  d.addEventListener('close', () => {
+    if (d.returnValue === 'importer') importerEnLigne(champ.value.trim());
+  });
 }
 
 // ------------------------------------------------------------------ démarrage
@@ -2019,9 +2201,14 @@ async function demarrer() {
   });
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
-  $('fiche-exporter').addEventListener('click', exporter);
-  $('fiche-exporter-tableur').addEventListener('click', exporterTableur);
-  $('fiche-imprimer').addEventListener('click', () => window.print());
+  $('fiche-telecharger').addEventListener('click', telechargerClasseur);
+  const exporter = $('fiche-exporter');
+  exporter.addEventListener('click', exporterVersGoogle);
+  // le script de Google se charge dès que le geste s'annonce : au clic, la fenêtre de connexion peut s'ouvrir aussitôt
+  for (const type of ['pointerenter', 'focus', 'touchstart']) {
+    exporter.addEventListener(type, () => { if (exporter.dataset.clientGoogle && !exporter.disabled) chargerGoogle().catch(() => {}); }, { passive: true });
+  }
+  preparerImportEnLigne();
   $('fiche-supprimer').addEventListener('click', supprimer);
   const fichier = $('fiche-importer');
   fichier.addEventListener('change', () => {

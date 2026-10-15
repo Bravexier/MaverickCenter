@@ -520,6 +520,24 @@ function cheminsDuService() {
           415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop de mesures reçues cette minute.', ref('schemas', 'Erreur')) },
       },
     },
+    '/classeur/': {
+      post: {
+        operationId: 'classeur_en_ligne', tags: [SERVICE], summary: 'Feuille Google Sheets partagée par lien (« Importer (en ligne) »)',
+        description: 'Le service télécharge au format .xlsx la feuille d’un lien Google Sheets (https://docs.google.com/spreadsheets/d/…) partagée à « Tous les utilisateurs disposant du lien », et en rend les octets (pas du JSON), que la page /fiche/ importe comme un classeur choisi sur l’ordinateur (serveur/classeur.mjs). Sur les deux instances, sans la base. Seule route qui sort sur Internet : redirections vers docs.google.com ou *.googleusercontent.com seulement, 16 Mio au plus, 20 s au plus, 2 à la fois et 30 par minute pour tout le service ; ni l’adresse ni l’identifiant de la feuille ne sont notés.',
+        requestBody: { required: true, ...json({ type: 'object', required: ['url'], properties: { url: { type: 'string' } }, additionalProperties: true }, { example: { url: 'https://docs.google.com/spreadsheets/d/<identifiant>/edit' } }) },
+        responses: {
+          200: { description: 'Le classeur (.xlsx), son nom dans Content-Disposition.', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+          400: reponse('Lien de feuille Google Sheets attendu, ou corps illisible.', ref('schemas', 'Erreur')),
+          403: reponse('Feuille non partagée par lien, ou requête venue d’un autre site.', ref('schemas', 'Erreur')),
+          404: reponse('Feuille introuvable.', ref('schemas', 'Erreur')),
+          413: reponse('Feuille trop volumineuse (16 Mio au plus).', ref('schemas', 'Erreur')),
+          415: ref('responses', 'TypeDeCorps'),
+          429: reponse('Trop d’imports en ligne en même temps ou cette minute (ou Google limite les téléchargements).', ref('schemas', 'Erreur')),
+          502: reponse('Google n’a pas rendu la feuille (erreur, redirection inattendue, injoignable).', ref('schemas', 'Erreur')),
+          504: reponse('Google ne répond pas (20 s).', ref('schemas', 'Erreur')),
+        },
+      },
+    },
   };
 }
 

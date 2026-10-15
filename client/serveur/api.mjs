@@ -1,5 +1,6 @@
 // Routes de l'API du service (docs/serveur.md, « API ») : une requête déjà lue (méthode, chemin, en-têtes, corps) → une réponse JSON.
-// Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante ; les tests appellent `traiter` directement.
+// Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante (et le téléchargeur de /api/classeur/, la seule route
+// qui sort sur Internet et rend une promesse) ; les tests appellent `traiter` directement.
 //
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
@@ -10,6 +11,9 @@
 //   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau } ; 409 si elle a changé entre-temps
 //   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
 //   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag)
+//   POST /api/classeur/             { url } → les octets .xlsx d'une feuille Google Sheets partagée par lien (« Importer (en ligne) » de /fiche/ ;
+//                                   serveur/classeur.mjs, la seule route qui sort sur Internet) ; les deux instances, sans la base ; la réponse est une
+//                                   PROMESSE (seule route asynchrone : service.mjs l'attend)
 // Édition des règles, sur le site de dev seulement (service lancé avec MAVERICK_EDITION=1 ; ailleurs 403) — serveur/edition.mjs :
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
@@ -76,6 +80,8 @@ import { instant } from './instant.mjs';
 import { traiterApiV1 } from './ressources.mjs';
 import { BALISE, ErreurMetriques } from './metriques.mjs';
 import { ErreurTables, lireTable, listerTables } from './debug-tables.mjs';
+import { ErreurClasseur } from './classeur.mjs';
+import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -138,7 +144,8 @@ function idDeFiche(brut) {
  *   ou sans sa chaîne de requête (« ?q=… », sinon dans `recherche`)
  * @param {{ base: () => import('node:sqlite').DatabaseSync | null, etat: () => object, journal?: (message: string, options?: object) => void,
  *   journalDuService?: { lire: (filtres: object) => object } }} service
- * @returns {{ statut: number, corps: object, entetes: Record<string, string> }}
+ * @returns {{ statut: number, corps: object, entetes: Record<string, string> } | Promise<object>} la réponse ; une promesse de réponse pour
+ *   POST /api/classeur/ seulement (requete.signal : le visiteur est parti ; service.classeur : serveur/classeur.mjs#creerClasseurEnLigne)
  */
 export function traiter(requete, service) {
   const { methode, entetes = {} } = requete;
@@ -158,6 +165,7 @@ export function traiter(requete, service) {
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
   if (ressource === 'debug') return traiterDebug(service, brut, reste, permis, params);
   if (ressource === 'metriques') return traiterMetriques(requete, service, brut, reste, permis);
+  if (ressource === 'classeur') return traiterClasseur(requete, service, brut, reste, permis);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
   if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
 
@@ -218,6 +226,34 @@ function traiterPortrait(requete, service, brut, permis) {
   const octets = portrait.octets();
   if (!octets) return erreur(404, 'Pas de portrait pour cette fiche.');
   return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
+}
+
+/** L'en-tête Content-Disposition d'un classeur : le nom en ASCII (repli), puis en entier (RFC 5987). */
+function pieceJointe(nom) {
+  const ascii = nom.replace(/[^\x20-\x7e]|["\\]/g, '_');
+  const encode = encodeURIComponent(nom).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encode}`;
+}
+
+/**
+ * POST /api/classeur/ { url } (« Importer (en ligne) » de /fiche/) : la feuille Google Sheets d'un lien partagé, au format .xlsx (ses octets, pas du
+ * JSON), téléchargée par serveur/classeur.mjs (bornes de taille, de délai et de débit, redirections vérifiées). Sur les deux instances, sans la base
+ * (répond pendant qu'elle se refait). Même garde que les écritures (JSON, page de ce site). Rend une PROMESSE (la seule route asynchrone).
+ */
+function traiterClasseur(requete, service, brut, reste, permis) {
+  if (brut !== undefined || reste.length) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('POST');
+  if (refus) return refus;
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  if (!service.classeur) return erreur(503, 'L’import en ligne n’est pas disponible sur ce service.');
+  return service.classeur.telecharger(valeur?.url, { signal: requete.signal ?? null }).then(
+    ({ octets, nom }) => ({ statut: 200, corps: null, brut: octets, entetes: { 'Content-Type': TYPE_XLSX, 'Content-Disposition': pieceJointe(nom) } }),
+    (e) => {
+      if (e instanceof ErreurClasseur) return erreur(e.statut, e.message);
+      throw e;
+    },
+  );
 }
 
 /** Les routes /api/edition/… (site de dev seulement). */

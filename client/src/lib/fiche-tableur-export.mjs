@@ -1035,12 +1035,49 @@ export const avertissementDesDonnees = (n) => `Données de la case NOTE trop lon
 export const avertissementDeCase = (adresse, n) => `Case ${adresse} trop longue pour une case de tableur (${LIMITE_ECRITE}) : ses ${enChiffres(n)} derniers caractères ne sont pas dans le classeur.`;
 
 /**
- * Le message de la page /fiche/ après l'export en tableur (src/scripts/fiche.mjs) : « Classeur exporté. », suivi des `avertissements` de cellulesDeLaFiche
- * s'il y en a (ce que le classeur n'a pas pu garder), et alors sur le ton « attente » au lieu de « ok ». { texte, ton }.
+ * Le message de la page /fiche/ après l'export en tableur (src/scripts/fiche.mjs) : `debut` (« Classeur exporté. » par défaut ; la page dit « Classeur
+ * téléchargé. » ou « Feuille Google créée. »), suivi des `avertissements` de cellulesDeLaFiche s'il y en a (ce que le classeur n'a pas pu garder), et
+ * alors sur le ton « attente » au lieu de « ok ». { texte, ton }.
  */
-export function messageDExport(avertissements = []) {
+export function messageDExport(avertissements = [], debut = 'Classeur exporté.') {
   const liste = (avertissements ?? []).filter(Boolean);
-  return liste.length ? { texte: `Classeur exporté. ${liste.join(' ')}`, ton: 'attente' } : { texte: 'Classeur exporté.', ton: 'ok' };
+  return liste.length ? { texte: `${debut} ${liste.join(' ')}`, ton: 'attente' } : { texte: debut, ton: 'ok' };
+}
+
+/**
+ * Le nom du fichier téléchargé (« Télécharger » de /fiche/ : `${nomDuFichier(nom)}.xlsx`) et de la feuille Google (« Exporter ») : le nom du personnage
+ * seul (demande du propriétaire, 2026-10-15 : « Le nom du fichier deviens juste nom du personnage »), chaque suite de caractères qu'un système de
+ * fichiers refuse remplacée par « - », 120 caractères au plus ; « Personnage » s'il ne reste rien.
+ */
+export function nomDuFichier(nom) {
+  return String(nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f]+/g, '-').trim().slice(0, 120).trim() || 'Personnage';
+}
+
+/** Les infobulles des boutons « Télécharger » et « Exporter » de /fiche/ (etatDesExports). */
+export const INFOBULLES_DES_EXPORTS = Object.freeze({
+  telecharger: 'Classeur .xlsx au modèle de la fiche V15.2.2 (Excel, LibreOffice, Google Sheets)',
+  telechargerGrise: 'Enregistrez la fiche pour la télécharger',
+  exporter: 'Crée la fiche dans une nouvelle feuille Google Sheets de votre Drive (connexion à Google)',
+  exporterGrise: 'Enregistrez la fiche pour l’exporter',
+  exporterSansClient: 'Export vers Google Sheets pas encore configuré',
+});
+
+/**
+ * L'état des boutons « Télécharger » et « Exporter » de /fiche/ (demande du propriétaire, 2026-10-15 : « Grisé tant que la fiche n'a pas été
+ * enregistrée ») : actifs pour une fiche enregistrée (`id`) sans modification en attente (`modifie`), ou quand le service ne répond pas
+ * (`serviceJoignable` faux : la fiche ne peut pas être enregistrée, la télécharger évite de la perdre) ; jamais pendant un export (`occupe`) ;
+ * « Exporter » est en plus grisé sans identifiant client Google (`client` : variable de build SITE_GOOGLE_CLIENT_ID). { telecharger, exporter },
+ * chacun { actif, infobulle }.
+ */
+export function etatDesExports({ id = null, modifie = false, serviceJoignable = true, client = '', occupe = false } = {}) {
+  const permis = (id !== null && id !== undefined && !modifie) || !serviceJoignable;
+  const i = INFOBULLES_DES_EXPORTS;
+  return {
+    telecharger: { actif: permis && !occupe, infobulle: permis ? i.telecharger : i.telechargerGrise },
+    exporter: client
+      ? { actif: permis && !occupe, infobulle: permis ? i.exporter : i.exporterGrise }
+      : { actif: false, infobulle: i.exporterSansClient },
+  };
 }
 
 /**

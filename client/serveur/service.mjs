@@ -34,6 +34,7 @@ import {
   CAPACITE_REQUETES, creerMetriques, empreinteDePile, instanceDuService, INTERVALLE_VERSEMENT, limiteMemoire, methodeNormalisee, octetsDesImages, routeNormalisee,
 } from './metriques.mjs';
 import { creerMesureSql } from './metriques-sql.mjs';
+import { creerClasseurEnLigne } from './classeur.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
@@ -107,6 +108,8 @@ const inode = (chemin) => {
  * @param {ReturnType<typeof creerJournalDuService>} [o.journalDuService] le journal gardé en mémoire (par défaut, un neuf sur le site de dev, aucun
  *   en production : personne ne peut l'y lire)
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
+ * @param {typeof fetch} [o.fetch] les téléchargements de « Importer (en ligne) » (POST /api/classeur/, serveur/classeur.mjs) : le fetch de Node par
+ *   défaut, un faux dans les tests (le réseau de la session ne joint pas Google)
  * @param {false | { dossier?: string, instance?: string, brutes?: boolean, pages?: boolean, intervalle?: number, horloge?: () => number,
  *   site?: string|null }} [o.metriques]
  *   la collecte des métriques (serveur/metriques.mjs) ; chaque réglage absent vient de l'environnement : MAVERICK_DOSSIER_METRIQUES (sinon
@@ -116,7 +119,7 @@ const inode = (chemin) => {
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
-  journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {} }) {
+  journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch }) {
   const lancementDuService = performance.now();
   const chemin = join(dossier, FICHIER_BASE);
   // la mémoire de la page Debug (site de dev seulement) et la sortie de toujours (console, horodatée ; l'écouteur à sa place dans les tests) ; une
@@ -208,6 +211,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     }
   };
   const github = edition ? creerGithub({ dossier, depot, lireJeton, journal, fetch: fetchMesure }) : null;
+  // « Importer (en ligne) » de /fiche/ (POST /api/classeur/) : sur les deux instances ; ses bornes de débit valent pour tout le service
+  const classeur = creerClasseurEnLigne({ fetch: fetchDuClasseur, journal, evenement });
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
 
   function fermer() {
@@ -408,6 +413,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     res.once('finish', terminer);
     res.once('close', terminer);
     const envoyer = ({ statut, corps, brut, entetes = {} }) => {
+      // le visiteur est parti pendant une réponse attendue (POST /api/classeur/) : terminer() a déjà noté 499, rien à écrire
+      if (res.destroyed || res.writableEnded) return;
       // un 304 n'a pas de corps : ni Content-Type ni Content-Length (RFC 9110 § 15.4.5 ; un cache recopierait le type sur l'image qu'il garde) ;
       // un 204 (balise des pages vues) non plus
       if (statut === 304 || statut === 204) {
@@ -448,6 +455,18 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       }
       morceaux.push(m);
     });
+    // le visiteur part avant la réponse : ce qui l'attend encore s'arrête (téléchargement de POST /api/classeur/)
+    const abandon = new AbortController();
+    res.once('close', () => {
+      if (!res.writableFinished) abandon.abort(new Error('requête abandonnée par le visiteur'));
+    });
+    /** Un échec du traitement : journal, évènement erreur_5xx (avec l'empreinte de la pile), réponse 500. */
+    const echec = (e) => {
+      exception = true;
+      journal(`ERREUR ${req.method} ${req.url} : ${e?.stack ?? e?.message ?? e}`);
+      evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut: 500, ...empreinteDePile(e) } });
+      return { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
+    };
     req.on('end', () => {
       if (trop) return;
       if (mesure) mesure.tCorps = performance.now();
@@ -456,18 +475,21 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         const url = new URL(req.url ?? '/', 'http://service');
         sql.debuter();
         try {
-          reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
-            { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference, depot, adresse, github,
-              maintenance: maintenanceDemandee, metriques, evenement });
+          reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
+            signal: abandon.signal },
+          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference, depot, adresse, github,
+            maintenance: maintenanceDemandee, metriques, evenement, classeur });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
         }
       } catch (e) {
-        exception = true;
-        journal(`ERREUR ${req.method} ${req.url} : ${e.stack ?? e.message}`);
-        evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut: 500, ...empreinteDePile(e) } });
-        reponse = { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
+        reponse = echec(e);
+      }
+      // une promesse (POST /api/classeur/ : la seule route asynchrone ; la mesure SQL, synchrone, est déjà prise) : la réponse part quand elle arrive
+      if (typeof reponse?.then === 'function') {
+        reponse.then((r) => r, echec).then(envoyer).catch((e) => journal(`ERREUR ${req.method} ${req.url} : envoi de la réponse : ${e?.message ?? e}`));
+        return;
       }
       envoyer(reponse);
     });
