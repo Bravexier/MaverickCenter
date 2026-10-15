@@ -21,7 +21,7 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/` rend une promesse, que `service.mjs` attend |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
-| `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service sur Internet |
+| `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service sur Internet en production (le site de dev joint aussi l'API GitHub, pour la page « Mise à jour » : `serveur/notes-de-version.mjs#creerGithub`) |
 | `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
 | `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
 | `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
@@ -69,6 +69,17 @@ niveau, plus le dé sur la santé, le chakra ou les deux ; décision R73). Des r
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
 d'avant les retraits et les conversions (les gains niveau par niveau compris).
 
+**Revenir à une version d'avant la migration 0045** (« Revenir sous la migration 0045 » de
+[`deploy/installateur/README.md`](../deploy/installateur/README.md), qui donne les commandes) : le service d'avant ne relit pas une base vivante
+refaite en 0045 (sans `personnage_progression`, toute lecture de fiche échoue) et refuse de la reconstruire (`gains_sante` et `gains_chakra`,
+obligatoires, sont toujours remplis, même à 0). Il faut lui rendre l'archive faite à la reconstruction 0045 : la plus récente de `db/archives/` qui
+a encore la table `personnage_progression`, **copiée à part avant tout** (seules les `ARCHIVES_GARDEES` = 5 dernières sont gardées : au-delà,
+chaque reconstruction efface la plus ancienne ; l'installateur de test remplace le contenu de `db/`). Conteneur « serveur » arrêté, elle remplace
+`db/vivante.db` (ses `-wal`, `-shm` et `-journal` supprimés s'il y en a), `db/vivante.json` est supprimé (la base est alors refaite pour les règles
+installées, fiches de l'archive reprises), puis le conteneur est relancé. **Tout ce que la base a reçu depuis la reconstruction 0045 est perdu** :
+fiches créées, modifiées ou supprimées, gains de niveau, entraînement et solidité des armes saisis, et, sur le site de dev, les modifications des
+règles en attente (journal de l'édition). Sauvegarder d'abord la base en place (`sqlite3 db/vivante.db ".backup …"`).
+
 **Sauvegarde** : `db/` est la seule donnée du serveur qui ne se reconstruit pas. La copier avec `sqlite3 db/vivante.db ".backup sauvegarde.db"`
 (cohérente même pendant une écriture), ou copier le dossier `db/` pendant que le conteneur « serveur » est arrêté. `data/rows` garde les tables de la section 13 **vides** : aucune
 fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une base des règles qui en contient).
@@ -112,9 +123,18 @@ R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilit
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038) n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
-  migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas, sinon ceux-ci font foi. Si la reconstruction a échoué et
-  que le service tourne sur une base vivante d'avant 0045, une page à jour qui envoie `gains_sante`, `entrainement` ou `armes[].durabilite` reçoit
-  « champ inconnu », comme pour toute colonne ajoutée : rien n'est écrit, rien n'est perdu.
+  migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
+  dire (le reste de la fiche vide d'une page d'avant, qui a repris les deux totaux d'une réponse du service), mais une `progression` **non vide** est
+  refusée : `409`, `{ erreur }` sans `personnage` (« La page vient d'une version précédente du site : rien n'a été enregistré. Rechargez-la… »),
+  rien n'est écrit. Ses lignes peuvent être des gains nouveaux ou les anciens saisis de nouveau dans l'ancienne interface, vidée par la réponse :
+  on ne sait pas les concilier avec les totaux (`progressionAvecGains` de `fiche-format.mjs`).
+  **Repli sur une base vivante d'avant 0045** (sa reconstruction a échoué, le service continue avec elle) : la page à jour envoie toujours
+  `gains_sante` et `gains_chakra` (0 dans une fiche vide). Une colonne ajoutée par 0045 que la base n'a pas (`gains_sante`, `gains_chakra`,
+  `entrainement`, `armes[].durabilite` : `DEPART_DES_COLONNES_AJOUTEES` de `serveur/fiches.mjs`) est **ignorée tant qu'elle ne porte rien** (sa
+  valeur de départ, 0 pour les gains, ou vide : `null`, `""`) : la fiche se crée, se lit, se liste et se modifie, et ses gains niveau par niveau
+  restent dans `personnage_progression`, convertis à la reconstruction suivante (la fiche relue n'a pas de gains : la page affiche 0). Une autre
+  valeur (des gains, un entraînement, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
+  le dire.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
@@ -608,14 +628,16 @@ pour ne pas agir au milieu d'une copie) :
 Seul un changement de `docker-compose.yml` ou de `nginx.conf` demande `docker compose up -d` (l'installateur le signale ; sur le NAS, voir
 `deploy/README.md`).
 
-**La seule sortie sur Internet** : `POST /api/classeur/` (« Importer (en ligne) » de la fiche, `serveur/classeur.mjs`), que tout visiteur peut
-déclencher (le site est public). Le service n'accepte qu'un lien `https://docs.google.com/spreadsheets/d/<id>…`, construit lui-même l'adresse
-d'export (`…/export?format=xlsx`, jamais l'adresse reçue), suit les redirections une à une (5 au plus, `https`, `docs.google.com` ou un hôte
-`*.googleusercontent.com` seulement), lit au plus **16 Mio** (taille annoncée, puis lecture par morceaux arrêtée au-delà), abandonne après **20 s**
-(sous le délai de 60 s de nginx), fait au plus **2 téléchargements à la fois et 30 par minute** pour tout le service, et arrête le téléchargement si
-le visiteur part. Il vérifie qu'il a reçu un `.xlsx` (« PK\x03\x04 »). Rien de l'adresse ni de l'identifiant de la feuille n'est noté : le
-journal dit la taille, les redirections et la durée, les métriques comptent la route `/api/classeur/` et un évènement `classeur` (statut, durée,
-octets, redirections). `fetch` est injectable (`demarrerService({ fetch })`) : les tests ne joignent pas Google.
+**La seule sortie sur Internet en production** : `POST /api/classeur/` (« Importer (en ligne) » de la fiche, `serveur/classeur.mjs`), que tout
+visiteur peut déclencher (le site est public). Le site de dev (`MAVERICK_EDITION=1`) joint aussi l'API GitHub (`api.github.com`), pour la page « Mise
+à jour » seulement et quand le serveur de test a son jeton (`serveur/notes-de-version.mjs#creerGithub` ; « Mise à jour (site de dev) » ci-dessus) ; en
+production, le service n'a pas de client GitHub. Pour le classeur, le service n'accepte qu'un lien `https://docs.google.com/spreadsheets/d/<id>…`,
+construit lui-même l'adresse d'export (`…/export?format=xlsx`, jamais l'adresse reçue), suit les redirections une à une (5 au plus, `https`,
+`docs.google.com` ou un hôte `*.googleusercontent.com` seulement), lit au plus **16 Mio** (taille annoncée, puis lecture par morceaux arrêtée
+au-delà), abandonne après **20 s** (sous le délai de 60 s de nginx), fait au plus **2 téléchargements à la fois et 30 par minute** pour tout le
+service, et arrête le téléchargement si le visiteur part. Il vérifie qu'il a reçu un `.xlsx` (« PK\x03\x04 »). Rien de l'adresse ni de l'identifiant
+de la feuille n'est noté : le journal dit la taille, les redirections et la durée, les métriques comptent la route `/api/classeur/` et un évènement
+`classeur` (statut, durée, octets, redirections). `fetch` est injectable (`demarrerService({ fetch })`) : les tests ne joignent pas Google.
 
 ## Métriques et volume
 
