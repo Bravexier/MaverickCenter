@@ -373,9 +373,53 @@ export function budgetCompetences(regles, fiche) {
   return { total: (fiche.competences ?? []).reduce((s, c) => s + entier(c.naturel), 0), attendu: ligneDeNiveau(regles, niveau).points_competences_cumul };
 }
 
-/** Gains de niveau attendus, du niveau 2 au niveau global : points d'attributs (santé + chakra, exactement) et dé bonus du niveau, s'il y en a un. */
+/**
+ * Gains de niveau, niveau par niveau, du niveau 2 au niveau global : points d'attributs et dé bonus du niveau, s'il y en a un. La page ne s'en sert plus
+ * (deux totaux : gainsAttendus, décision R73) ; gardé pour la reconstitution des gains à l'import d'une fiche auto (lib/fiche-tableur-import.mjs#gainsReconstitues),
+ * qui part avec elle.
+ */
 export function progressionAttendue(regles, niveau) {
   return regles.niveaux.filter((n) => n.niveau >= 2 && n.niveau <= niveau).map((n) => ({ niveau: n.niveau, points: n.points_attributs ?? 0, de: n.de_attributs_bonus }));
+}
+
+/**
+ * Les gains de niveau à saisir au niveau global `niveau` (décision R73 : « on peut mettre le total attribué avec le total à saisir. (qui augmente donc de 15
+ * par niveau. Pour les niveaux qui accordent un dé donc une valeur aléatoire, ça fait varier entre la valeur théorique minimale (au cas où le joueur fait
+ * 1) et la valeur maximale (s'il fait 8, ou 4 pour les 2 stats) ») : les points d'attributs des niveaux atteints (v_niveau.points_attributs_cumul), plus
+ * pour chaque dé bonus atteint de son plus petit à son plus grand résultat (niveau_global.de_attributs_min, de_attributs_max ; cumuls de v_niveau) — les
+ * mêmes bornes que la règle gains_niveau de v_personnage_controle (test/fiche-moteur.test.mjs les compare niveau par niveau). Rien n'est écrit ici : ni
+ * « 15 », ni « à partir du 2 », ni les bornes du dé.
+ *   points    : les points d'attributs des niveaux atteints ;
+ *   parNiveau : les points d'un niveau, quand tous les niveaux qui en donnent en donnent autant (15), sinon null ; depuis : le premier de ces niveaux (2) ;
+ *   des       : les dés bonus atteints, [{ niveau, texte (niveau_global.de_attributs_bonus), min, max }] ;
+ *   min, max  : le total à saisir (min = max sans dé atteint ; 0 au niveau 1).
+ */
+export function gainsAttendus(regles, niveau) {
+  const ligne = ligneDeNiveau(regles, niveau);
+  const points = entier(ligne?.points_attributs_cumul);
+  const avecPoints = regles.niveaux.filter((n) => entier(n.points_attributs) > 0);
+  const parNiveau = avecPoints.length && avecPoints.every((n) => n.points_attributs === avecPoints[0].points_attributs) ? avecPoints[0].points_attributs : null;
+  const des = regles.niveaux
+    .filter((n) => n.niveau <= niveau && n.de_attributs_min !== null && n.de_attributs_min !== undefined)
+    .map((n) => ({ niveau: n.niveau, texte: n.de_attributs_bonus, min: n.de_attributs_min, max: n.de_attributs_max }));
+  return {
+    points, parNiveau, depuis: avecPoints[0]?.niveau ?? null, des,
+    min: points + entier(ligne?.de_attributs_min_cumul), max: points + entier(ligne?.de_attributs_max_cumul),
+  };
+}
+
+/**
+ * Les gains de niveau de la fiche (décision R73) : santé et chakra gagnés (personnage.gains_sante, gains_chakra ; une valeur absente ou illisible compte 0),
+ * leur total, ce qu'il faut saisir au niveau atteint (gainsAttendus) et `hors` : le total sort de la plage — exactement quand la base ajoute la ligne
+ * gains_niveau à v_personnage_controle. { sante, chakra, total, niveau, points, parNiveau, depuis, des, min, max, hors }.
+ */
+export function gainsDeNiveau(regles, fiche) {
+  const sante = entier(fiche.gains_sante);
+  const chakra = entier(fiche.gains_chakra);
+  const total = sante + chakra;
+  const niveau = niveauGlobal(regles, fiche.xp);
+  const attendus = gainsAttendus(regles, niveau);
+  return { sante, chakra, total, niveau, ...attendus, hors: total < attendus.min || total > attendus.max };
 }
 
 /**
@@ -984,15 +1028,87 @@ export function attaqueADeuxArmes(regles, fiche) {
 /**
  * Les armes de la fiche après le choix de l'arme `rang` (1 ou 2) : `armeId` vide retire la ligne ; une arme choisie sans matériau prend le matériau par
  * défaut, le fer (décision R49 : « le fait de choisir son arme, son matériau (par défaut le fer), et son amélioration recalcule les dégâts »). Le
- * matériau, l'amélioration et l'élément déjà choisis restent.
+ * matériau, l'amélioration et l'élément déjà choisis restent ; pas la solidité du moment (décision R74) : une autre arme est neuve, la clé `durabilite`
+ * disparaît (à son maximum).
  */
 export function armesApresChoix(regles, fiche, rang, armeId) {
   const armes = (fiche.armes ?? []).filter((x) => entier(x.rang) !== rang);
   if (!armeId) return armes;
   const avant = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
   const ligne = { ...(avant ?? { rang }), arme_id: armeId };
+  if (avant && avant.arme_id !== armeId) delete ligne.durabilite;
   if (!ligne.materiau_id && regles.materiau_arme_defaut) ligne.materiau_id = regles.materiau_arme_defaut;
   return [...armes, ligne].sort((a, b) => entier(a.rang) - entier(b.rang));
+}
+
+/**
+ * Les armes de la fiche après le réglage d'une autre colonne de l'arme `rang` (composition, amélioration, élément, effet en plus : `champ`, `valeur`) ;
+ * sans arme à ce rang, rien ne change. Composition ou amélioration changées, la solidité du moment est ramenée au nouveau maximum (durabiliteAEcrire :
+ * une arme à son maximum le reste, une arme abîmée garde ses crans s'ils tiennent sous le nouveau maximum).
+ */
+export function armesApresReglage(regles, fiche, rang, champ, valeur) {
+  return (fiche.armes ?? []).map((x) => {
+    if (entier(x.rang) !== rang) return x;
+    const ligne = { ...x, [champ]: valeur };
+    if ('durabilite' in ligne) ligne.durabilite = durabiliteAEcrire(regles, ligne, ligne.durabilite);
+    return ligne;
+  });
+}
+
+/**
+ * Solidité maximale d'une arme de la fiche, en crans (décision R74 : « Un slider qui va de 0 au max de l'arme ») : l'arme forgée de la page « Armes »
+ * (décision R51 : les crans de l'arme nue, `regles.armes[].solidite`, de sa composition et de son amélioration « il faut les cumuler mais il est
+ * impossible de descendre à moins de 1 ») — le calcul de lib/arme-forge.mjs#forgerArme, que ce module ne peut pas importer (src/scripts/armes.mjs
+ * l'importe ; test/fiche-durabilite.test.mjs compare les deux sur toutes les combinaisons de la base). L'élément n'est pas compté, comme sur la page
+ * « Armes » (question Q12 de docs/sql/a-valider.md). null sans arme, ou pour une arme sans solidité (arme de monstre, décision R45).
+ */
+export function durabiliteMaxDArme(regles, ligne) {
+  const arme = trouver(regles.armes, ligne?.arme_id);
+  if (!arme || arme.solidite === null || arme.solidite === undefined) return null;
+  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
+  return Math.max(constante(regles, 'arme.durabilite_min'), entier(arme.solidite) + entier(materiau?.cran_solidite) + entier(amelioration?.bonus_cran));
+}
+
+/**
+ * Ce qui s'enregistre comme solidité du moment d'une arme (personnage_arme.durabilite, décision R74) : null quand elle est à son maximum (ou au-delà),
+ * sans valeur, illisible, ou pour une arme sans solidité ; sinon le nombre de crans, arrondi, au moins 0 (0 : l'arme est cassée). Une arme à son
+ * maximum suit ainsi sa composition, son amélioration et les règles.
+ */
+export function durabiliteAEcrire(regles, ligne, valeur) {
+  const max = durabiliteMaxDArme(regles, ligne);
+  if (max === null || valeur === null || valeur === undefined || String(valeur).trim() === '') return null;
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) return null;
+  const crans = Math.max(0, Math.round(n));
+  return crans >= max ? null : crans;
+}
+
+/**
+ * La solidité de l'arme `rang` (1 ou 2), pour son curseur (décision R74) : { max, actuelle, cassee, detail: [{ nom, valeur }], plancher } — `actuelle`
+ * de 0 au maximum (sans valeur enregistrée : le maximum), `cassee` à 0 (« A zéro, l'arme est cassée »), `detail` les crans de l'arme, de sa composition et
+ * de son amélioration (comme la section « Durabilité » de la fiche d'une arme, page « Armes »), `plancher` vrai quand leur somme est ramenée au minimum
+ * (R51). null sans arme ou pour une arme sans solidité (arme de monstre).
+ */
+export function durabiliteDArme(regles, fiche, rang) {
+  const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+  const max = durabiliteMaxDArme(regles, ligne);
+  if (max === null) return null;
+  const arme = trouver(regles.armes, ligne.arme_id);
+  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
+  const detail = [{ nom: arme.nom, valeur: entier(arme.solidite) }];
+  if (entier(materiau?.cran_solidite)) detail.push({ nom: `Composition : ${materiau.nom}`, valeur: entier(materiau.cran_solidite) });
+  if (entier(amelioration?.bonus_cran)) detail.push({ nom: `Amélioration niveau ${amelioration.niveau}`, valeur: entier(amelioration.bonus_cran) });
+  const v = ligne.durabilite;
+  const enregistree = v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Math.round(Number(v));
+  const actuelle = enregistree === null ? max : Math.min(max, Math.max(0, enregistree));
+  return { max, actuelle, cassee: actuelle === 0, detail, plancher: detail.reduce((s, d) => s + d.valeur, 0) < max };
+}
+
+/** Les armes de la fiche à enregistrer : la solidité du moment de chacune bornée (durabiliteAEcrire), quand elle en a une. */
+export function armesValables(regles, fiche) {
+  return (fiche.armes ?? []).map((x) => ('durabilite' in x ? { ...x, durabilite: durabiliteAEcrire(regles, x, x.durabilite) } : x));
 }
 
 /**

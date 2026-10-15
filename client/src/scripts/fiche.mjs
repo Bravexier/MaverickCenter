@@ -21,10 +21,10 @@ import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
-  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
+  durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
@@ -1107,45 +1107,45 @@ function ouvrirSaisie(curseur) {
 }
 
 // ------------------------------------------------------------------ progression et dons à choix
+/** « 5 », « 5 et 10 », « 5, 10 et 15 ». */
+const enListe = (mots) => (mots.length > 1 ? `${mots.slice(0, -1).join(', ')} et ${mots.at(-1)}` : mots.join(''));
+
 /**
- * Gains de niveau (décision R73, migration 0045) : deux totaux, la santé (case rouge) et le chakra (case bleue) gagnés par les niveaux atteints, jamais
- * négatifs ni vides ; à côté, le total attribué et le total à saisir (ou sa plage quand un dé est atteint), en rouge hors plage. Les bornes sont celles
- * de la règle gains_niveau de la base (regles.niveaux : points_attributs_cumul, de_attributs_min_cumul, de_attributs_max_cumul).
- * Version provisoire : l'onglet Progression sera refait (champs du gabarit, aide détaillée) avec gainsAttendus / gainsDeNiveau du moteur.
+ * D'où vient le total à saisir des gains de niveau (gainsDeNiveau : tout est lu dans les règles) : les points d'attributs par niveau, à répartir entre la
+ * santé et le chakra, et les dés bonus atteints, avec leur texte (niveau_global.de_attributs_bonus), leurs niveaux et ce que chacun ajoute au total.
+ */
+function aideDesGains(g) {
+  const repartir = 'à répartir entre la santé (case rouge) et le chakra (case bleue)';
+  const points = g.parNiveau !== null && g.depuis !== null
+    ? `${g.parNiveau} points d’attributs par niveau à partir du ${g.depuis}, ${repartir}`
+    : `Les points d’attributs des niveaux atteints, ${repartir}`;
+  const parTexte = new Map();
+  for (const d of g.des) {
+    const cle = JSON.stringify([d.texte, d.min, d.max]);
+    if (!parTexte.has(cle)) parTexte.set(cle, { ...d, niveaux: [] });
+    parTexte.get(cle).niveaux.push(d.niveau);
+  }
+  const des = [...parTexte.values()].map((d) => {
+    const plusieurs = d.niveaux.length > 1;
+    const ajoute = d.min === d.max ? `${d.min}` : `de ${d.min} à ${d.max}`;
+    return ` Dé bonus au${plusieurs ? 'x' : ''} niveau${plusieurs ? 'x' : ''} ${enListe(d.niveaux.map(String))}${d.texte ? ` (${d.texte})` : ''} : ${plusieurs ? 'chacun ajoute' : 'il ajoute'} ${ajoute} au total.`;
+  });
+  return `${points} : ${g.points ? `${g.points} au niveau ${g.niveau}` : `rien à saisir au niveau ${g.niveau}`}.${des.join('')}`;
+}
+
+/**
+ * Gains de niveau (décision R73) : deux champs du gabarit (data-champ gains_sante, gains_chakra : la liaison générique les borne à 0, jamais vides), et
+ * à côté le total attribué et le total à saisir — sa plage quand un dé bonus est atteint —, en rouge hors de la plage (gainsDeNiveau : les mêmes bornes
+ * que la règle gains_niveau de la base, qui le signale à l'enregistrement). Visible dès le niveau 1 (rien à saisir) ; jamais dans les choix à faire.
  */
 function construireProgression() {
-  const attendus = progressionAttendue(regles, calcul.niveau);
-  const des = [...new Set(attendus.filter((n) => n.de).map((n) => n.de))];
-  const niveauxDuDe = (de) => attendus.filter((n) => n.de === de).map((n) => n.niveau);
-  const bornesDuDe = (de) => {
-    const b = regles.niveaux.find((x) => x.niveau === niveauxDuDe(de)[0]);
-    return b && b.de_attributs_min !== null ? ` (de ${b.de_attributs_min} à ${b.de_attributs_max} chacun)` : '';
-  };
-  const n = regles.niveaux.find((x) => x.niveau === calcul.niveau) ?? null;
-  const min = n ? entier(n.points_attributs_cumul) + entier(n.de_attributs_min_cumul) : 0;
-  const max = n ? entier(n.points_attributs_cumul) + entier(n.de_attributs_max_cumul) : 0;
-  const aSaisir = max > min ? `entre ${min} et ${max}` : String(min);
-  $('progression-aide').textContent = attendus.length
-    ? `${attendus[0].points} points d’attributs par niveau à partir du 2, à répartir entre la santé (case rouge) et le chakra (case bleue) : les deux totaux.${des.map((de) => ` Dé bonus au${niveauxDuDe(de).length > 1 ? 'x' : ''} niveau${niveauxDuDe(de).length > 1 ? 'x' : ''} ${niveauxDuDe(de).join(', ')} : ${de}${bornesDuDe(de)}.`).join('')}`
-    : 'Les gains commencent au niveau 2.';
-  reconstruire($('progression'), `${calcul.niveau}`, () => {
-    const champ = (cle, nom) => el('input', {
-      type: 'number', min: '0', step: '1', class: `gain__${cle === 'gains_sante' ? 'sante' : 'chakra'}`, 'aria-label': `Gains de niveau : ${nom}`, title: nom,
-      oninput: (ev) => { fiche[cle] = Math.max(0, entier(ev.target.value)); changer(); },
-    });
-    const sante = champ('gains_sante', 'santé');
-    const chakra = champ('gains_chakra', 'chakra');
-    const total = el('span', { class: 'gain__total' });
-    synchro(() => {
-      poser(sante, entier(fiche.gains_sante));
-      poser(chakra, entier(fiche.gains_chakra));
-      const t = entier(fiche.gains_sante) + entier(fiche.gains_chakra);
-      total.textContent = `${t} / ${max > min ? `${min} à ${max}` : min}`;
-      total.title = `Total attribué : ${t} / à saisir : ${aSaisir}`;
-      total.toggleAttribute('data-hors', t < min || t > max);
-    });
-    return el('div', { class: 'gain' }, el('span', { class: 'gain__niveau' }, 'Total'), sante, chakra, total);
-  });
+  const g = gainsDeNiveau(regles, fiche);
+  const aSaisir = g.max > g.min ? `entre ${g.min} et ${g.max}` : String(g.min);
+  const total = $('gains-total');
+  total.textContent = `Total attribué : ${g.total} / à saisir : ${aSaisir}`;
+  total.toggleAttribute('data-hors', g.hors);
+  total.title = g.hors ? `Hors du total à saisir au niveau ${g.niveau} : santé ${g.sante} + chakra ${g.chakra} = ${g.total}` : '';
+  $('progression-aide').textContent = aideDesGains(g);
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
@@ -1222,10 +1222,11 @@ function texteDEffet(e) {
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
-    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49)
+    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49) ; une autre arme est neuve, une autre composition ou amélioration ramène
+    // la solidité du moment sous son nouveau maximum (armesApresReglage, décision R74)
     const poserChamp = (cle) => (v) => {
       if (cle === 'arme_id') fiche.armes = armesApresChoix(regles, fiche, rang, v);
-      else if (l()) l()[cle] = v;
+      else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
     const familles = new Map(regles.familles_armes.map((f) => [f.id, f.nom]));
@@ -1242,15 +1243,46 @@ function construireEquipement() {
     const des = el('strong', { class: 'objet__des' });
     const etoile = el('span', { class: 'objet__etoile', tabindex: '0', role: 'img' }, '★');
     const resume = el('span', { class: 'objet__resume' });
+    // la solidité du moment (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : un curseur de 0 au maximum de l'arme
+    // forgée (durabiliteDArme : arme, composition, amélioration, au moins 1), « N / M » à côté ; clic droit ou Entrée : saisir le nombre. Caché pour une
+    // arme sans solidité (arme de monstre). Le maximum ou plus s'enregistre « à son maximum » (durabiliteAEcrire)
+    const solidite = el('input', {
+      type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `Arme ${rang} : solidité`,
+      oninput: (ev) => {
+        const x = l();
+        if (!x) return;
+        x.durabilite = durabiliteAEcrire(regles, x, ev.target.value);
+        changer();
+      },
+    });
+    const soliditeValeur = el('output', { class: 'curseur__valeur' });
+    const soliditeLigne = el('div', { class: 'objet__solidite' }, el('span', { class: 'objet__solidite-nom' }, 'Solidité'), solidite, soliditeValeur);
     synchro(() => {
       const x = l();
       poser(effet, x?.effet_en_plus ?? '');
       for (const d of [effet, ...details]) d.disabled = !x;
+      const dur = durabiliteDArme(regles, fiche, rang);
+      soliditeLigne.hidden = !dur;
+      soliditeLigne.toggleAttribute('data-cassee', Boolean(dur?.cassee));
+      if (dur) {
+        solidite.max = String(dur.max);
+        poser(solidite, dur.actuelle);
+        soliditeValeur.textContent = `${dur.actuelle} / ${dur.max}`;
+        soliditeLigne.title = [
+          `Solidité : ${dur.actuelle} / ${dur.max} cran${dur.max > 1 ? 's' : ''}${dur.cassee ? ' : l’arme est cassée' : ''}`,
+          ...dur.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}`)),
+          ...(dur.plancher ? [`Jamais moins de ${dur.max} cran`] : []),
+          'À 0, l’arme est cassée. Clic droit ou Entrée sur le curseur : saisir le nombre.',
+        ].join('\n');
+      }
       const d = degatsDArme(regles, fiche, rang);
       des.hidden = !d;
+      // une arme cassée : la pastille de ses dés grisée, « Cassée » (décision R74) ; ses dégâts, réparée, restent en infobulle
+      des.toggleAttribute('data-cassee', Boolean(d && dur?.cassee));
       if (d) {
-        des.textContent = d.texte;
+        des.textContent = dur?.cassee ? 'Cassée' : d.texte;
         des.title = [
+          ...(dur?.cassee ? [`Arme cassée (solidité 0 / ${dur.max}). Réparée : ${d.texte}`] : []),
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
           ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
@@ -1272,6 +1304,7 @@ function construireEquipement() {
     // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition, améliorations, élément et effet en plus repliés
     return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
       el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+      soliditeLigne,
       el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
       champ('Composition', selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` })),
       champ('Amélioration', selecteur(() => l()?.amelioration_id, ameliorations('arme'), poserChamp('amelioration_id'), { etiquette: `Arme ${rang} : amélioration` })),
@@ -1601,6 +1634,9 @@ function aEnvoyer() {
   f.caracteristiques = (f.caracteristiques ?? []).filter((c) => c.base !== null && c.base !== undefined);
   f.competences = (f.competences ?? []).filter((c) => c.naturel || c.acquis);
   f.maitrises_armes = maitrisesValables(regles, f);
+  // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
+  f.armes = armesValables(regles, f);
+  for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
@@ -1973,7 +2009,11 @@ async function demarrer() {
     if (!(t instanceof HTMLElement) || !t.dataset.champ) return;
     if (t.dataset.champ === 'metier_id') return changerDeMetier(t.value || null);   // bonus choisis et objets de départ suivent (décisions R33, R35)
     if (t instanceof HTMLInputElement && t.type === 'checkbox') fiche[t.dataset.champ] = t.checked ? 1 : 0;
-    else if ('entier' in t.dataset) fiche[t.dataset.champ] = t.value === '' ? ('videNull' in t.dataset ? null : 0) : entier(t.value);
+    else if ('entier' in t.dataset) {
+      const v = t.value === '' ? ('videNull' in t.dataset ? null : 0) : entier(t.value);
+      // le minimum du champ (min="0" : XP, alignement, bourse, gains de niveau ; la base refuserait un nombre négatif)
+      fiche[t.dataset.champ] = v !== null && t instanceof HTMLInputElement && t.min !== '' && Number.isFinite(Number(t.min)) ? Math.max(Number(t.min), v) : v;
+    }
     else fiche[t.dataset.champ] = t.value === '' ? null : t.value;
     changer();
   });

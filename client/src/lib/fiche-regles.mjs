@@ -7,7 +7,8 @@ import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
-import { porteeDeLArme } from './arme-champs.mjs';
+import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
+import { DURABILITE_MIN } from './arme-forge.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -49,6 +50,11 @@ export function chargerReglesDeFiche(db) {
   const accessoireMax = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'accessoire.caracteristique_max'").get();
   if (!accessoireMax) throw new Error('constante_equipement « accessoire.caracteristique_max » absente de la base');
   constantes['accessoire.caracteristique_max'] = accessoireMax.valeur;
+  // solidité d'une arme forgée (décisions R51, R74) : les crans de l'arme, de son matériau et de son amélioration se cumulent, « impossible de descendre à
+  // moins de 1 » ; le plancher vient de lib/arme-forge.mjs (page Armes), que le moteur de la fiche ne peut pas importer (un module par script de page)
+  constantes['arme.durabilite_min'] = DURABILITE_MIN;
+  const soliditeDeBase = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get();
+  if (!soliditeDeBase) throw new Error('constante_equipement « arme.solidite_base » absente de la base');
 
   // gains de niveau (décision R73) : les points d'attributs et les bornes du dé de chaque niveau, et leurs cumuls (v_niveau), les mêmes que la règle
   // gains_niveau de v_personnage_controle : la plage à saisir se lit ici, jamais 15 × (N − 1) écrit dans le moteur
@@ -299,19 +305,29 @@ export function chargerReglesDeFiche(db) {
     // le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son type ; NULL pour le Pugilat : selon la Force), son bonus de dégâts (« +N dégâts »)
     // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes. Pour la fiche en tableur : son
     // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et sa portée, celle de la colonne de la page « Armes » (décision R50 :
-    // « la portée écrite, 1 par défaut », lib/arme-champs.mjs#porteeDeLArme, d'après arme.portee_min / portee_max), écrite « N » ou « N - M »
+    // « la portée écrite, 1 par défaut », lib/arme-champs.mjs#porteeDeLArme, d'après arme.portee_min / portee_max), écrite « N » ou « N - M ».
+    // `solidite` : les crans de l'arme nue, ceux de la colonne « Durabilité » de la page Armes (lib/arme-champs.mjs#durabiliteDeLArme : « 1 seul cran » de
+    // son effet, sinon la base de l'onglet, 2, corrigée de « ±N cran », au moins 1) ; null pour une arme de monstre (famille sans maîtrise, décision R45 :
+    // la page Armes ne l'affiche pas et ne lui écrit aucune durabilité). Pas `durabilite` : c'est la solidité du moment d'une arme de la fiche (R74)
     armes: (() => {
       const types = parCle(lignes(db, 'SELECT arme_id, type_degats FROM arme_degats ORDER BY arme_id, type_degats'), 'arme_id', (r) => r.type_degats);
       const portee = (min, max) => porteeDeLArme({ portee_min: min, portee_max: max }).replace(/^(\d+)-(\d+)$/, '$1 - $2');
-      return lignes(db, 'SELECT id, nom, famille_id, type_id, mains, de, bonus_degats, effet, portee_min, portee_max FROM arme ORDER BY famille_id, ordre')
-        .map(({ portee_min, portee_max, ...a }) => ({ ...a, portee: portee(portee_min, portee_max), types_degats: types.get(a.id) ?? [] }));
+      return lignes(db, `SELECT a.id, a.nom, a.famille_id, a.type_id, a.mains, a.de, a.bonus_degats, a.effet, a.portee_min, a.portee_max, a.solidite_fixee,
+                                a.solidite_delta, f.maitrisable
+                         FROM arme a JOIN arme_famille f ON f.id = a.famille_id ORDER BY a.famille_id, a.ordre`)
+        .map(({ portee_min, portee_max, solidite_fixee, solidite_delta, maitrisable, ...a }) => ({
+          ...a, portee: portee(portee_min, portee_max), types_degats: types.get(a.id) ?? [],
+          solidite: maitrisable === 1 ? durabiliteDeLArme({ solidite_fixee, solidite_delta }, soliditeDeBase.valeur) : null,
+        }));
     })(),
-    // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition, de l'amélioration, de l'élément et de son amélioration
-    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats FROM materiau_arme ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats })),
+    // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition, de l'amélioration, de l'élément et de son amélioration ;
+    // de même les crans de solidité de la composition et de l'amélioration (`cran_solidite`, `bonus_cran` : décisions R51, R74)
+    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite FROM materiau_arme ORDER BY ordre')
+      .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite })),
     // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
     materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
-    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats FROM amelioration_equipement ORDER BY cible, niveau')
-      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats })),
+    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau')
+      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_cran: a.bonus_cran })),
     armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
     armures: lignes(db, 'SELECT id, nom, type, ap, am FROM armure ORDER BY ordre'),
@@ -341,4 +357,44 @@ export function chargerReglesDeFiche(db) {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
     ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, ...equipement,
   };
+}
+
+// ------------------------------------------------------------------------------------------------------------------ aide du champ « Entraînement »
+/** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (chapitre « S’entraîner et exercer un métier » ; décision R71). */
+export const PAGE_DE_L_ENTRAINEMENT = 'guide/s-entrainer-et-exercer-un-metier';
+
+/** Un paragraphe Markdown en texte : sans gras ni italique, un lien du wiki ou du site par son texte, les sauts de ligne en espaces. */
+const enTexte = (paragraphe) => paragraphe
+  .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
+  .replace(/\[\[([^\]]+)\]\]/g, '$1')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  .replace(/\{couleur:[^}]*\}/g, '')
+  .replace(/\*\*|__/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+/**
+ * Le paragraphe du corps de cette page qui renvoie à la case « Entraînement » des dons (« Les bonus se notent dans la case **Entraînement** des dons »,
+ * avec les limites qui le précèdent : « il ne peut améliorer que **15 compétences** au plus, et de **10 %** au plus chacune »), tel qu'écrit, en texte ;
+ * null quand la page ne l'écrit plus (elle se modifie sur le site de dev : l'aide de la fiche se passe alors de citation, rien n'est réécrit ici).
+ */
+export function limitesDeLEntrainement(corps) {
+  for (const bloc of String(corps ?? '').split(/\n[ \t]*\n/)) {
+    const t = bloc.trim();
+    if (!t || /^(#|<!--|\||- |\* |\d+\. )/.test(t)) continue;
+    const texte = enTexte(t);
+    if (/\bcase Entraînement\b/i.test(texte)) return texte;
+  }
+  return null;
+}
+
+/**
+ * L'aide du champ « Entraînement » de la fiche (décision R71), écrite dans la page au build : { titre, chapitre, texte } de la page du guide, ou null si
+ * la page manque ou n'écrit plus ce paragraphe.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function aideDeLEntrainement(db) {
+  const page = db.prepare("SELECT titre, corps_md, json_extract(donnees, '$.chapitre') AS chapitre FROM page WHERE id = ?").get(PAGE_DE_L_ENTRAINEMENT);
+  const texte = page ? limitesDeLEntrainement(page.corps_md) : null;
+  return texte ? { titre: page.titre, chapitre: page.chapitre ?? null, texte } : null;
 }

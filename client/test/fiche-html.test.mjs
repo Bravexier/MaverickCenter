@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
+import { aideDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
@@ -26,7 +27,7 @@ test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les donné
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-modele="\/fiche\/modele\.xlsx" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
   const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
-  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
+  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements', 'gains_sante', 'gains_chakra', 'entrainement']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }
   // plus de statut (brouillon, validé, archivé : demande du propriétaire, migration 0038) : les contrôles signalent, n'empêchent jamais d'enregistrer
@@ -93,6 +94,17 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
+  // « Entraînement » (décision R71) : un texte libre entre les dons de la race et ceux des classes, avec l'aide du guide (le paragraphe que la base écrit)
+  const entrainement = dons.indexOf('data-champ="entrainement"');
+  assert.ok(entrainement > dons.indexOf('id="dons-race"') && entrainement < dons.indexOf('id="dons-classes"'), 'entre les dons de la race et ceux des classes');
+  assert.match(dons, /<label for="fiche-entrainement">Entraînement<\/label><\/h4>\s*<textarea id="fiche-entrainement" data-champ="entrainement" rows="2" aria-describedby="entrainement-aide"><\/textarea>/);
+  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
+  const guide = aideDeLEntrainement(ouvrirBase());
+  const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
+  assert.match(aide, /livres de magie lus \(pour le NM\) et tout autre élément à la libre volonté du MJ/, 'les mots du propriétaire (R71)');
+  assert.match(aide, /jamais compté/);
+  assert.equal([...html.matchAll(/data-champ="entrainement"/g)].length, 1);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // III. selon la situation
   const posture = bloc('posture');
@@ -106,7 +118,14 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   // IV. paramètres et suivi
   const progression = bloc('progression');
   for (const id of ['xp-bloc', 'xp-niveau', 'xp-jauge', 'xp-plus', 'xp-ajout']) assert.match(progression, new RegExp(`id="${id}"`), `progression : ${id}`);
-  assert.match(progression, /<div id="progression" class="gains"><\/div>/, 'gains de niveau compacts');
+  // gains de niveau (décision R73) : deux totaux, santé et chakra, jamais négatifs ; le total attribué et le total à saisir (rempli par le script)
+  const gains = progression.slice(progression.indexOf('<div id="progression" class="gains">'));
+  assert.ok(gains.length < progression.length, 'le bloc des gains');
+  assert.match(gains, /<label class="gains__champ gains__champ--sante"><span>Santé<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante"><\/label>/);
+  assert.match(gains, /<label class="gains__champ gains__champ--chakra"><span>Chakra<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra"><\/label>/);
+  assert.match(gains, /<output class="gains__total" id="gains-total" for="gains-sante gains-chakra"><\/output>/);
+  assert.ok(progression.indexOf('id="progression-aide"') < progression.indexOf('id="progression"'), 'l’aide au-dessus des deux champs');
+  assert.equal([...html.matchAll(/data-champ="gains_(sante|chakra)"/g)].length, 2, 'un champ chacun, pas un par niveau');
   const choix = bloc('choix');
   for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
     assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);

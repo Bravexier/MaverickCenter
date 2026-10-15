@@ -5,10 +5,12 @@ import ficheCss from '../../styles/fiche/fiche.css?raw';
 import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 import { htmlDePiece } from '../../lib/monnaies.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { aideDeLEntrainement } from '../../lib/fiche-regles.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts, dons débloqués, armes et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
+// à portée (attributs, caractéristiques et compétences, sorts, dons débloqués et entraînement (R71), armes avec leur solidité (R74) et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
 // dépend de la situation (posture, initiative et vitesses, armure, bouclier, résistances et faiblesses, accessoires) ; IV. ce qui se règle et se suit, en
 // onglets (progression et XP, choix, inventaire, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
 // magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
@@ -24,6 +26,8 @@ const ZONES = [
   { id: 'parametres', numero: 'IV', titre: 'Paramètres et suivi', court: 'Paramètres', partie: 'progresser' },
 ];
 const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)!.partie]}`;
+// l'aide du champ « Entraînement » (décision R71) : le paragraphe du guide qui en dit les limites, tel que la base l'écrit (null s'il n'y est plus)
+const entrainement = aideDeLEntrainement(ouvrirBase());
 ---
 
 <Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, avec les règles de Maverick">
@@ -181,6 +185,12 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
           <h3 id="titre-dons">Dons débloqués</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
+            {/* « Entraînement » (décision R71), la case qui suit la race et le métier dans les dons de la fiche : texte libre, jamais compté */}
+            <div class="dons-entrainement">
+              <h4 class="fiche-sous-titre"><label for="fiche-entrainement">Entraînement</label></h4>
+              <textarea id="fiche-entrainement" data-champ="entrainement" rows="2" aria-describedby="entrainement-aide"></textarea>
+              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment>Guide{entrainement.chapitre ? `, chapitre ${entrainement.chapitre}` : ''}, <cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Aussi les livres de magie lus (pour le NM) et tout autre élément à la libre volonté du MJ. Texte libre, jamais compté : les points gagnés se saisissent dans l’acquis de la compétence, le NM d’un livre sur son sort.</p>
+            </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
           </div>
         </section>
@@ -268,7 +278,14 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
+            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) */}
+            <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p>
+              <div id="progression" class="gains">
+                <label class="gains__champ gains__champ--sante"><span>Santé</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante" /></label>
+                <label class="gains__champ gains__champ--chakra"><span>Chakra</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra" /></label>
+                <output class="gains__total" id="gains-total" for="gains-sante gains-chakra"></output>
+              </div>
+            </div>
           </div>
         </section>
 

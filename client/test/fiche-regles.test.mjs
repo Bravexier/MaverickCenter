@@ -8,7 +8,7 @@ import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
@@ -40,6 +40,19 @@ test('niveaux (décision R73) : bornes du dé bonus de chaque niveau et cumuls d
     for (const c of ['points_attributs_cumul', 'de_attributs_min_cumul', 'de_attributs_max_cumul']) assert.equal(n[c], v.get(n.niveau)[c], `niveau ${n.niveau} : ${c}`);
   }
   assert.deepEqual(regles.niveaux.filter((n) => n.de_attributs_bonus).map((n) => [n.niveau, n.de_attributs_min, n.de_attributs_max]), [[5, 1, 8], [10, 1, 8], [15, 1, 8], [20, 1, 8]]);
+});
+
+test('entraînement (décision R71) : l’aide du champ cite le paragraphe du guide (chapitre 21) qui en dit les limites et la case des dons, tel qu’écrit', () => {
+  // à l'import (la page se modifie sur le site de dev : son texte du moment est celui que la fiche cite, test/fiche-html.test.mjs)
+  const corps = historique.valeurDImport('page', { id: PAGE_DE_L_ENTRAINEMENT }, 'corps_md');
+  assert.equal(limitesDeLEntrainement(corps), 'L’entraînement a ses limites : il ne peut améliorer que 15 compétences au plus, et de 10 % au plus chacune. Les bonus se notent dans la case Entraînement des dons.');
+  const aide = aideDeLEntrainement(db);
+  const page = db.prepare("SELECT titre, corps_md, json_extract(donnees, '$.chapitre') AS chapitre FROM page WHERE id = ?").get(PAGE_DE_L_ENTRAINEMENT);
+  assert.deepEqual(aide, limitesDeLEntrainement(page.corps_md) === null ? null : { titre: page.titre, chapitre: page.chapitre, texte: limitesDeLEntrainement(page.corps_md) });
+  // un paragraphe, sans sa mise en forme ; ni titre, ni liste, ni commentaire ; rien quand la page ne l'écrit plus
+  assert.equal(limitesDeLEntrainement('## La case **Entraînement**\n\n- dans la case Entraînement\n\n<!-- case Entraînement -->\n\nUn [[guide/x|texte]] noté\ndans la case __Entraînement__.'), 'Un texte noté dans la case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Rien sur la case des dons.'), null);
+  assert.equal(limitesDeLEntrainement(null), null);
 });
 
 test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 dés au plus (liste « 1d » à « 5d » de la fiche auto), soit 4 points', () => {

@@ -18,8 +18,8 @@ restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie 
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
-2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes et maîtrises d'armes** et la **ceinture** ;
-   les sorts, à côté les **dons débloqués**.
+2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) **et maîtrises
+   d'armes** et la **ceinture** ; les sorts, à côté les **dons débloqués** (et l'**entraînement**).
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure et les accessoires, à côté l'initiative et les vitesses, les
    résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
@@ -53,6 +53,14 @@ abandonne.
   l'élément, et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,
   toutes les armes ; formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe). Le détail est en infobulle, avec les bonus de dons qui ne se
   comptent pas (situation, au choix, deux armes, bouclier, armes visées non écrites : « augmente les dégâts de 3 » de Tir renforcé, par exemple).
+- **Solidité des armes** (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : sous chaque arme, un **curseur** de 0 au
+  maximum de l'arme forgée et « N / M » à côté (clic droit ou Entrée : saisir le nombre) ; le maximum est celui de la page « Armes » (R51 : crans de l'arme,
+  de sa composition et de son amélioration, au moins 1 ; l'élément n'est pas compté, question Q12), le détail en infobulle (`durabiliteDArme`). La fiche ne
+  garde que ce qui manque : à son maximum, rien (`personnage_arme.durabilite` NULL, `durabiliteAEcrire`) ; une autre arme est neuve (`armesApresChoix`), une
+  autre composition ou amélioration ramène la solidité sous le nouveau maximum (`armesApresReglage`, une arme pleine le reste ; `armesValables` à
+  l'enregistrement). À 0, la pastille des dégâts est **grisée** et dit **« Cassée »**, ses dégâts (réparée) en infobulle ; ils restent comptés ailleurs (tableur,
+  attaque à deux armes). Pas de curseur pour une arme de monstre (sans solidité, R45). Le moteur recopie le calcul de `lib/arme-forge.mjs`, que son script ne
+  peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base.
 - **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
   infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
@@ -110,8 +118,15 @@ abandonne.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
-- **Gains de niveau** : une petite carte par niveau (santé en rouge, chakra en bleu, total ; aux niveaux qui en donnent un, le dé bonus), plusieurs par ligne ;
-  le dé n'est décrit qu'une fois, au-dessus.
+  Entre les deux, l'**entraînement** (décision R71, `personnage.entrainement`) : un texte libre — bonus d'entraînement, livres de magie lus, ce que le MJ
+  accorde —, **jamais compté** (les points gagnés se saisissent dans l'acquis, le NM d'un livre sur son sort) ; son aide cite, tel que la base l'écrit, le
+  paragraphe du guide « S’entraîner et exercer un métier » (chapitre 21) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
+  au build ; rien si la page ne l'écrit plus).
+- **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
+  **total attribué** et le **total à saisir** — « entre min et max » quand un dé bonus est atteint —, en rouge hors de la plage (`gainsDeNiveau`, les mêmes
+  bornes que la règle `gains_niveau` de la base : `test/fiche-moteur.test.mjs` les compare aux niveaux 1 à 20) ; au-dessus, d'où vient le total : les points
+  par niveau et les dés atteints, leur texte et ce que chacun ajoute (`gainsAttendus`, tout lu dans `regles.niveaux`). Visible dès le niveau 1 (rien à
+  saisir) ; pas dans les choix à faire.
 - **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, le portrait et le médaillon du niveau prennent la couleur de la magie innée, en dégradé vers celle de
   la magie acquise (demande du propriétaire) ; sans magie innée, celle de la partie du guide. Seuls les cadres changent : caractéristiques, attributs,
   pastilles et curseurs gardent leurs couleurs.
@@ -136,7 +151,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   (`ethnieImposee` : la seule de la race — Lamia, Majin, Hujin, Elfe doré — ou la seule de la magie innée — races hybrides, Drakos ; demande du propriétaire),
   magie acquise refusée et pourquoi (race à une seule magie R28, incompatibilité, mono-magie R15, exceptions R20) et retirée d'office quand un changement de race
   ou de magie innée la ferme (`magieAcquiseValable`, demande du propriétaire) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
-  scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
+  scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau à saisir (`gainsAttendus`,
+  `gainsDeNiveau`, R73) ; solidité des armes (`durabiliteDArme`, R74) ; classe magique (R6, R7) ;
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
   (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts

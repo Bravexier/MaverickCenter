@@ -1,6 +1,6 @@
 // Refonte de la fiche (demandes du propriétaire, 2026-10-11) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : le don de base de la race sous
 // son nom (Méditation ou Repos), les choix qui restent à faire (tiroir des choix), l'attaque à deux armes (décision R46 : −20 % / −40 %, moitié
-// avec une dague, moitié pour un Bimane, cumulables), les dégâts d'une arme avec ses bonus (équipement et dons passifs), le Mode Hyper, les avantages et
+// avec une dague, moitié pour un Bimane, cumulables), les dégâts d’une arme avec ses bonus (équipement et dons passifs) et sa solidité (décision R74 ; le détail : test/fiche-durabilite.test.mjs), le Mode Hyper, les avantages et
 // inconvénients des postures (décision R47) ; le portrait et la ceinture enregistrés par le service (migration 0031).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
-import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, maitriseDArme, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
+import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, durabiliteDArme, durabiliteMaxDArme, maitriseDArme, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
 import { forgerArme } from '../src/lib/arme-forge.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 
@@ -110,6 +110,10 @@ test('arme choisie : le fer par défaut (décision R49) ; le matériau, l’amé
   const avecTitane = { armes: [{ rang: 1, arme_id: epee.id, materiau_id: titane.id, amelioration_id: 'x' }, { rang: 2, arme_id: dague.id, materiau_id: fer }] };
   assert.deepEqual(armesApresChoix(regles, avecTitane, 1, dague.id)[0], { rang: 1, arme_id: dague.id, materiau_id: titane.id, amelioration_id: 'x' });
   assert.deepEqual(armesApresChoix(regles, avecTitane, 2, null), [avecTitane.armes[0]]);
+  // la solidité du moment (décision R74) : une autre arme est neuve (la clé disparaît), la même garde ses crans
+  const abimee = { armes: [{ ...avecTitane.armes[0], durabilite: 1 }] };
+  assert.deepEqual(armesApresChoix(regles, abimee, 1, dague.id)[0], { rang: 1, arme_id: dague.id, materiau_id: titane.id, amelioration_id: 'x' });
+  assert.equal(armesApresChoix(regles, abimee, 1, epee.id)[0].durabilite, 1);
 });
 
 test('dégâts de la fiche = ceux de la page des armes (lib/arme-forge.mjs) : le dé de l’arme, son bonus, celui du matériau et de l’amélioration', () => {
@@ -124,6 +128,11 @@ test('dégâts de la fiche = ceux de la page des armes (lib/arme-forge.mjs) : le
   assert.equal(d.de, espadon.de, 'le dé de l’arme, pas celui de son type');
   const donsDeClasse = d.bonus.filter((b) => !b.nom.startsWith('Composition') && !b.nom.startsWith('Amélioration') && b.nom !== espadon.nom).reduce((s, b) => s + b.valeur, 0);
   assert.equal(d.total - donsDeClasse, f.bonus.total);
+  // sa solidité (décisions R51, R74) : celle de l'arme forgée, les crans de l'arme, du titane et de l'amélioration +5
+  const forgee = forgerArme({ de: espadon.de, bonus_degats: espadon.bonus_degats, durabilite: espadon.solidite, cout_ro: 0 }, { ...titane, prix_ro: 0 },
+    regles.ameliorations.filter((a) => a.cible === 'arme').map((a) => ({ ...a, cout_ro: 0, cout_materiaux: 0 })), 5);
+  assert.equal(durabiliteMaxDArme(regles, fiche.armes[0]), forgee.durabilite.total);
+  assert.deepEqual(durabiliteDArme(regles, fiche, 1).detail.map((c) => c.valeur), [forgee.durabilite.arme, forgee.durabilite.materiau, forgee.durabilite.amelioration].filter((v, i) => i === 0 || v));
 });
 
 test('Mode Hyper : débloqué au niveau 2, Mode Hyper 100 % au niveau 10 ; effets de base, de la magie (mono ou bi) et de la race', () => {

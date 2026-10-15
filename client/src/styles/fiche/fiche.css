@@ -647,27 +647,15 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .nm-origines > * { vertical-align: middle; }
 .fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
 .nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: 0.78rem; }
-/* gains de niveau, compacts (demande du propriétaire) : une petite carte par niveau, plusieurs par ligne ; santé bordée de rouge, chakra de bleu */
-.gains { display: grid; gap: 0.3rem 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); align-items: start; }
-.gain {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--etape-ligne);
-  border-radius: var(--radius);
-  background: var(--etape-doux);
-  font-size: 0.8rem;
-}
-.gain__niveau { min-width: 2.7rem; font-weight: 700; color: color-mix(in srgb, var(--etape) 65%, var(--text)); white-space: nowrap; }
-.fiche .gain input[type='number'] { width: 3.1rem; padding-inline: 0.25rem; text-align: right; font-variant-numeric: tabular-nums; }
-.fiche .gain .gain__sante { border-color: #c62828; }
-.fiche .gain .gain__chakra { border-color: #1e5bb8; }
-.gain__total { margin-left: auto; color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gain__total[data-hors] { color: var(--danger); }
-.gain__de { display: flex; flex: 1 1 100%; gap: 0.25rem; }
-.fiche .gain__de select { flex: 1; min-width: 0; padding-inline: 0.25rem; }
+/* gains de niveau (décision R73) : deux totaux sur une ligne, santé bordée de rouge, chakra de bleu, puis le total attribué et le total à saisir, en rouge
+   hors de la plage */
+.gains { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.9rem; margin-top: 0.3rem; }
+.gains__champ { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; font-weight: 600; }
+.fiche .gains__champ input { width: 4.4rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fiche .gains__champ--sante input { border-color: #c62828; }
+.fiche .gains__champ--chakra input { border-color: #1e5bb8; }
+.gains__total { color: var(--good); font-size: 0.82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gains__total[data-hors] { color: var(--danger); }
 .fiche-defile { overflow-x: auto; }
 
 /* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (--c,
@@ -867,6 +855,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--muted); font-size: 0.68rem; }
 .don__type:not([data-type='passif']) { border-color: color-mix(in srgb, var(--c, var(--etape)) 60%, var(--border)); color: var(--text); font-weight: 700; }
 .don__texte { color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+/* « Entraînement » (décision R71) : texte libre, entre les dons de la race et ceux des classes */
+.dons-entrainement textarea { display: block; width: 100%; min-height: 2.6rem; resize: vertical; }
+.dons-entrainement .fiche-aide { margin-top: 0.2rem; font-size: 0.76rem; }
 .dons-classes { display: grid; gap: 0.5rem; }
 .dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: 0.82rem; }
 
@@ -882,11 +873,22 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .objet .fiche-champs { grid-template-columns: 1fr; gap: 0.35rem; }
 .objet .fiche-champs--paire { grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: end; }
 .equipement--armes { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 0.45rem; }
+/* deux armes côte à côte : celle dont les réglages sont repliés garde ses lignes en haut, sans s'étirer à la hauteur de l'autre */
+.equipement--armes .objet { align-content: start; }
 .objet__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .objet__degats { display: inline-flex; align-items: center; gap: 0.2rem; }
 .objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: #fff; font-size: 0.85rem; font-variant-numeric: tabular-nums; cursor: help; }
 .objet__etoile { color: #c99a06; font-size: 1rem; line-height: 1; cursor: help; }
 .objet__etoile:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
+/* une arme cassée (décision R74 : « La tuile des dés de dégâts devra alors être grisée et indiquée "Cassée" ») : seule la pastille des dés est grisée */
+.objet__des[data-cassee] { background: var(--border); color: var(--muted); }
+/* solidité du moment : un curseur de 0 au maximum de l'arme, « N / M » à côté */
+.objet__solidite { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; }
+.objet__solidite[hidden] { display: none; }
+.objet__solidite-nom { color: var(--muted); }
+.objet__solidite .curseur { flex: 1; min-width: 0; }
+.objet__solidite .curseur__valeur { min-width: 2.6rem; }
+.objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
 .objet__details > summary { color: var(--muted); font-size: 0.76rem; cursor: pointer; overflow-wrap: anywhere; }
 .objet__details[open] > summary { margin-bottom: 0.35rem; }
 .zp-colonne .maitrises { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: 0.1rem 0.9rem; }
