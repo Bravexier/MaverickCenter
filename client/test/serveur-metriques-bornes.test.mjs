@@ -27,11 +27,20 @@ const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KH
 /** Une requête simulée : debut, phases posées, fin. */
 function requete(m, { methode = 'GET', adresse = '/api/etat/', statut = 200, duree = null, entetes = {}, sql = null, octets = 100 } = {}) {
   const r = m.debut(methode, adresse, { host: 'site', 'user-agent': CHROME, ...entetes });
-  if (duree !== null) r.t0 = performance.now() - duree;
+  // une durée donnée est exacte : `fin` lit performance.now(), figé ici à t0 + duree le temps de son appel (synchrone) ; sinon le temps réellement
+  // écoulé entre ces lignes et `fin` s'ajoute à la durée (sur une machine chargée, +3 ms sur quatre requêtes : run 38825777373 de la CI)
+  const t = performance.now();
+  if (duree !== null) r.t0 = t - duree;
   r.tCorps = r.t0;
   r.tTraite = r.t0;
   r.sql = sql;
-  return m.fin(r, { statut, octets_sortie: octets });
+  if (duree === null) return m.fin(r, { statut, octets_sortie: octets });
+  Object.defineProperty(performance, 'now', { value: () => t, configurable: true, writable: true });
+  try {
+    return m.fin(r, { statut, octets_sortie: octets });
+  } finally {
+    delete performance.now; // la méthode du prototype revient
+  }
 }
 
 /** Un site construit factice : une page index.html par chemin donné (« /races/elfe/ »). */
