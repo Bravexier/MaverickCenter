@@ -19,7 +19,7 @@ import {
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
   ARMURE_COMPLETE, CLES_DE_LA_NOTE, CLES_DES_ACCESSOIRES_SANS_CASE, CLES_D_INFORMATION, ETOILE, LIGNES_D_ARME, LIGNES_D_ARMURE, MARQUE_DE_POSTURE,
-  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
+  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_DE_LISTE, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
   avertissementDeCase, avertissementDesDonnees, avertissementDesNotes, cellulesDeLaFiche, decouperEvenement, ligneDExport, ligneDeNote, lignesDAccessoire,
   lignesDArme, lignesDArmure, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote,
   lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration, texteDObjet,
@@ -407,12 +407,12 @@ test('fiche riche : dons (de base, race, métier, entraînement, classes), évé
   const e = casesDuDon(DONS.entrainement);
   assert.ok(M.competencesDe(regles, riche).some((x) => x.acquis), 'des acquis du joueur, que la case n’écrit pas');
   assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined, undefined], 'le libellé « Entraînement » du modèle reste, la case vide');
-  // dons de classe : classe 1 en 43…55, classe 2 en 57…69, dans l'ordre de donsAcquis
+  // dons de classe : classe 1 en 43…55, classe 2 en 57…69, dans l'ordre de donsAcquis ; au-delà de sept (des dons ajoutés sur le site de dev), la note
+  // (« Dons de classe N (suite) », test de la note)
   const acquis = M.donsAcquis(regles, riche);
   assert.deepEqual(acquis.map((x) => x.rang), [1, 2]);
   for (const x of acquis) {
     const rangees = x.rang === 1 ? DONS.classe1 : DONS.classe2;
-    assert.ok(x.dons.length <= rangees.length);
     rangees.forEach((ligne, i) => {
       const d = x.dons[i];
       const cases = casesDuDon(ligne);
@@ -529,7 +529,11 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
     assert.deepEqual(note.valeur(CLES_DES_ACCESSOIRES_SANS_CASE[emplacement]), [lignesDAccessoire(regles, a).join(' / ')], emplacement);
   }
   assert.ok(note.valeur(K.accessoireAutre)[0].endsWith(' / Maudit'));
-  assert.deepEqual(note.valeur(K.donsClasse1), [], 'sept dons : tous dans leurs cases');
+  // les dons de classe au-delà des sept places de chaque classe (aucun tant que les règles en donnent sept au plus par classe)
+  for (const x of M.donsAcquis(regles, riche)) {
+    const enSuite = x.dons.slice((x.rang === 1 ? DONS.classe1 : DONS.classe2).length).map((d) => d.nom);
+    assert.deepEqual(note.valeur(K[`donsClasse${x.rang}`]), enSuite.length ? [enSuite.join(SEPARATEUR_DE_LISTE)] : [], `classe ${x.rang}`);
+  }
   // débordements : sorts au-delà de 20, objets au-delà de 48, événements au-delà de 4
   assert.deepEqual(lireListe(note.valeur(K.sorts)[0]).map(lireSortEnSuite),
     riche.sorts.slice(20).map((s) => ({ nom: nomDe('sorts', s.sort_id), nm: s.niveau_maitrise })));
