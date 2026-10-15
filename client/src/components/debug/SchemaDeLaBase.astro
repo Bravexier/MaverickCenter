@@ -7,13 +7,18 @@
 // 2) Performance 3) Journaux 4) DB (ton futur schéma) » : titre « DB », une sous-ligne dit que c'est le schéma de la base).
 //
 //   - un <details> FERMÉ par défaut ; le schéma n'est dessiné qu'à sa première ouverture (scripts/debug-schema.mjs), et la base vivante n'est lue
-//     qu'alors (nombre de lignes, une fois) ;
+//     que menu ouvert (nombres de lignes, puis à chaque version nouvelle de la base : ci-dessous) ;
 //   - la structure (tables, vues, colonnes, types, clés, clés étrangères, sections, descriptions, nombre de lignes au build) est calculée AU BUILD
 //     (lib/schema-structure.mjs, depuis la base construite et data/schema.sql) et posée en JSON dans un élément script de type
 //     application/json marqué data-debug-schema — jamais dans un build SITE_MODE=prod ni dans la version portable : le composant n'y rend rien (et pages/debug.astro ne
 //     l'y appelle pas) ;
-//   - le contenu d'une table (double clic, Entrée, appui long) vient du service du site de dev : GET <base>api/debug/tables/<nom>/ (403 ailleurs),
-//     affiché dans une fenêtre modale (<dialog>) ;
+//   - le contenu d'une table (double clic, Entrée, appui long) vient du service du site de dev : GET <base>api/debug/tables/<nom>/ (toutes les
+//     tables et vues, fiches de personnages comprises : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod » ;
+//     403 ailleurs), affiché dans une fenêtre modale (<dialog>) ;
+//   - suivi en direct (« j'aimerais que ce tableau se mette à jour si la table change », même demande du 2026-10-15) : menu ouvert et page visible,
+//     la version de la base (GET <base>api/debug/base/) est relevée toutes les 2 s ; une version nouvelle fait relire les nombres de lignes et le
+//     contenu de la fenêtre ouverte, dont seules les lignes changées sont refaites et mises en évidence (une boîte dont le nombre de lignes change
+//     s'éclaire de même) ; la ligne d'état « Suivi en direct » est dans l'en-tête de la fenêtre, une zone « live » annonce les changements ;
 //   - la carte est une « application » (role="application") : elle se parcourt au clavier, table par table (roving tabindex), chaque table étant un
 //     bouton étiqueté « table X, N colonnes, N lignes » qui ouvre la fenêtre ; l'aide des touches est liée par aria-describedby ;
 //   - boîtes en HTML et liens en SVG dans un même conteneur, zoomé par une transformation CSS (lib/debug-schema.mjs, « Rendu » : un texte SVG serait
@@ -46,7 +51,9 @@ const communes = structure ? tablesCommunes(structure) : [];
           <p class="debug-petit">
             Toutes les tables de la base, rangées par section de <code>data/schema.sql</code>, avec leurs colonnes, leurs types et un lien par clé
             étrangère (structure du build ; nombre de lignes <span data-schema-comptes>du build</span>). Double-cliquez sur une table (Entrée au clavier,
-            appui long au toucher) pour en voir le contenu dans la base vivante du service.
+            appui long au toucher) pour en voir le contenu dans la base vivante du service. Tant que ce menu est ouvert, les nombres de lignes et le
+            contenu affiché suivent la base vivante : une table dont le nombre de lignes change, et dans la fenêtre du contenu une ligne nouvelle ou
+            changée, s’éclairent un instant.
           </p>
           <div class="schema-outils">
             <div class="schema-outils__recherche">
@@ -108,9 +115,14 @@ const communes = structure ? tablesCommunes(structure) : [];
         <div class="schema-contenu__cadre">
           <header class="schema-contenu__entete">
             <h3 class="schema-contenu__titre" id="schema-contenu-titre">Contenu de <code data-schema-contenu-nom></code></h3>
-            <p class="schema-contenu__resume" data-schema-contenu-resume role="status" aria-live="polite"></p>
+            <p class="schema-contenu__resume" data-schema-contenu-resume></p>
             <button type="button" class="schema-contenu__fermer" data-schema-fermer>Fermer</button>
+            {/* l'état du suivi en direct, mis à jour sans être annoncé ; la zone « live » qui suit n'annonce que les changements */}
+            <p class="schema-contenu__suivi" data-schema-suivi data-etat="attente">
+              <span class="schema-contenu__voyant" aria-hidden="true"></span><span data-schema-suivi-texte>Suivi en direct</span>
+            </p>
           </header>
+          <p class="schema-contenu__annonce" data-schema-contenu-annonce role="status" aria-live="polite"></p>
           <p class="debug-annonce debug-annonce--erreur schema-contenu__erreur" data-schema-contenu-erreur role="alert" hidden></p>
           <div class="schema-contenu__defilement" data-schema-contenu-defilement tabindex="0" role="region" aria-labelledby="schema-contenu-titre">
             <table class="schema-contenu__tableau">
@@ -120,7 +132,10 @@ const communes = structure ? tablesCommunes(structure) : [];
             <div class="schema-contenu__sentinelle" data-schema-contenu-sentinelle></div>
           </div>
           <footer class="schema-contenu__pied">
-            <span class="schema-contenu__aide">Un en-tête trie le tableau ; une cellule coupée (fondu) se déplie d’un clic, ou d’Entrée au clavier. Lecture seule.</span>
+            <span class="schema-contenu__aide">
+              Un en-tête trie le tableau ; une cellule coupée (fondu) se déplie d’un clic, ou d’Entrée au clavier. Lecture seule. Le tableau suit la
+              table : une ligne nouvelle ou changée s’éclaire un instant, le reste ne bouge pas.
+            </span>
             <button type="button" data-schema-plus hidden>Charger plus</button>
           </footer>
         </div>

@@ -18,7 +18,11 @@
 //   - caméra : écran = schéma × k + (x, y) ; zoom autour d'un point, bornes, « tout voir », centrage, interpolation (animation) ; niveaux de détail ;
 //   - navigation au clavier (tableVoisine), recherche (chercherTable) ;
 //   - rendu (htmlDuSchema : chaînes, une seule fois ; boîtes en HTML, liens en SVG, voir « Rendu ») et rendu de la fenêtre « Contenu de <table> »
-//     (GET <base>api/debug/tables/<nom>/).
+//     (GET <base>api/debug/tables/<nom>/) ;
+//   - suivi en direct (demande du propriétaire du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod.
+//     De plus, j'aimerais que ce tableau se mette à jour si la table change. ») : relève de la version de la base (GET <base>api/debug/base/, son
+//     délai : suiteDeLaReleve), pages à redemander avec leur ETag (pagesARedemander, assemblerLesPages), lignes à refaire (planDeMiseAJour : par leur
+//     JSON, en multiensemble), libellés de l'état du suivi et des changements (libelleDuSuivi, resumeDesChangements).
 // Texte de la base (noms, descriptions, valeurs) : toujours échappé. Jamais d'infobulle native : `data-infobulle` (components/Infobulles.astro).
 
 /** Géométrie des boîtes et des blocs, en unités du schéma (1 unité = 1 pixel au zoom 1). Polices à chasse fixe : largeurs calculables. */
@@ -868,4 +872,240 @@ export function messageDErreur(statut, corps = null) {
   if (statut === 403) return `Le service refuse (403) : ${message ?? 'le contenu des tables ne se lit que sur le site de dev.'}`;
   if (statut === 404) return `Table introuvable dans la base vivante du service (404)${message ? ` : ${message}` : '.'}`;
   return `Le service a répondu ${statut}${message ? ` : ${message}` : '.'}`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Suivi en direct (menu « DB » ouvert, page visible) : GET <base>api/debug/base/ → { version } toutes les 2 s (serveur/debug-tables.mjs : un texte
+// opaque qui change dès qu'une écriture est validée dans la base vivante, quelle que soit la table). Une version différente de la référence (la
+// première reçue) fait relire les nombres de lignes des boîtes et, fenêtre ouverte, redemander chaque page déjà chargée avec son ETag (If-None-Match :
+// 304 = page inchangée) ; seules les lignes dont le JSON n'était pas affiché sont refaites (et mises en évidence).
+
+/** Délai de la relève de la version de la base, et celui qui suit un échec (réseau, 5xx) : retour à RELEVE_DE_LA_BASE_MS après un succès. */
+export const RELEVE_DE_LA_BASE_MS = 2000;
+export const RELEVE_EN_PANNE_MS = 10_000;
+/** Durée de la mise en évidence d'une ligne nouvelle ou changée (classe est-nouvelle : styles/debug/schema.css). */
+export const MISE_EN_EVIDENCE_MS = 2000;
+
+/** L'adresse de la version de la base. `api` : la racine de l'API du site (« /api/ », ou sous un sous-chemin). */
+export const adresseDeLaVersion = (api) => `${api}debug/base/`;
+
+/** Un statut qui dit que le service n'a pas répondu (réseau : 0) ou ne peut pas répondre pour le moment (5xx). */
+const enPanne = (statut) => !statut || statut >= 500;
+
+/**
+ * Ce que fait la page d'une réponse de GET <base>api/debug/base/ :
+ *   - { action: 'version', version, delai: RELEVE_DE_LA_BASE_MS } : la version (texte non vide) ;
+ *   - { action: 'arret', statut: 403 } : le service refuse (hors du site de dev) — plus aucune relève ;
+ *   - { action: 'panne', statut, delai: RELEVE_EN_PANNE_MS } : réseau, 5xx, ou toute autre réponse (un service d'avant cette route : 404) —
+ *     relève espacée.
+ */
+export function suiteDeLaReleve(statut, corps) {
+  if (statut === 403) return { action: 'arret', statut };
+  if (statut >= 200 && statut < 300 && typeof corps?.version === 'string' && corps.version) {
+    return { action: 'version', version: corps.version, delai: RELEVE_DE_LA_BASE_MS };
+  }
+  return { action: 'panne', statut: statut || 0, delai: RELEVE_EN_PANNE_MS };
+}
+
+/** L'identité d'une ligne de la fenêtre : son JSON tel que le service le rend (colonnes dans leur ordre). */
+export const cleDeLigne = (ligne) => JSON.stringify(ligne);
+
+/** Le début de la page (multiple de `page`) qui contient la ligne d'indice `indice` : toutes les pages demandées sont alignées. */
+export const debutDePage = (indice, page = PAGE_DE_LIGNES) => Math.floor(Math.max(0, indice) / page) * page;
+
+/**
+ * Les décalages des pages à redemander pour `affichees` lignes affichées : 0, 100, … jusqu'à la dernière qui en contient une (au moins la première,
+ * même sans ligne : son total et ses colonnes).
+ */
+export function pagesARedemander(affichees, page = PAGE_DE_LIGNES) {
+  const decalages = [0];
+  for (let d = page; d < affichees; d += page) decalages.push(d);
+  return decalages;
+}
+
+/**
+ * Vrai si une page lue pour « Charger plus » (décalage `debut`, ses `lignes` reçues) redonne telles quelles les lignes déjà affichées qu'elle
+ * contient (`cles` : le JSON des lignes affichées ; celles d'indice debut à cles.length − 1 : la dernière page, à moitié affichée après un
+ * rafraîchissement) — son ETag vaut alors pour ce qui est affiché. Faux si la table a changé depuis le dernier rafraîchissement (une ligne modifiée,
+ * insérée ou retirée avant la fin de l'affichage) : rien n'est ajouté, le tableau est d'abord rafraîchi, et la page relue ensuite.
+ */
+export function pageAccordee(cles, debut, lignes) {
+  const deja = Math.max(0, cles.length - debut);
+  if (!Array.isArray(lignes) || lignes.length < deja) return false;
+  for (let i = 0; i < deja; i++) if (cleDeLigne(lignes[i]) !== cles[debut + i]) return false;
+  return true;
+}
+
+/** Un corps de page lisible (lignes, colonnes, total). */
+const pageLisible = (corps) => Array.isArray(corps?.lignes) && Array.isArray(corps?.colonnes) && Number.isFinite(Number(corps?.total));
+
+/**
+ * Le nouvel état de la fenêtre après avoir redemandé ses pages. `avant` : { cles (JSON des lignes affichées, dans l'ordre), total, colonnes } ;
+ * `reponses` : [{ decalage, statut, corps, etag }], une par page de pagesARedemander (304 = page inchangée, sans corps). Rend :
+ *   - { erreur: { genre, statut, corps } } si une page a échoué : genre 'introuvable' (404 : la table a disparu), 'tri' (400 : la colonne de tri,
+ *     disparue), 'panne' (réseau, 5xx) ou 'autre' — dans cet ordre de priorité ;
+ *   - { inchange: true } si toutes les pages répondent 304 (le total et les colonnes sont dans le corps, donc dans l'ETag : inchangés aussi) ;
+ *   - sinon { cles, lignes, total, colonnes, etags } : les premières min(affichées, total) lignes de l'état actuel, sans trou (une page plus courte
+ *     que prévu, la table ayant changé entre deux réponses, arrête la liste : la relève suivante la complète) ; `lignes[i]` : l'objet reçu, ou
+ *     null pour une ligne d'une page inchangée (elle reste dans la page) ; `etags` : { décalage: ETag } des pages reçues ; `total` : le plus petit
+ *     des totaux reçus.
+ */
+export function assemblerLesPages(avant, reponses, page = PAGE_DE_LIGNES) {
+  const echecs = reponses.filter((r) => !(r.statut === 304 || (r.statut === 200 && pageLisible(r.corps))));
+  if (echecs.length) {
+    const genreDe = (r) => (r.statut === 404 ? 'introuvable' : r.statut === 400 ? 'tri' : enPanne(r.statut) ? 'panne' : 'autre');
+    const rang = { introuvable: 0, tri: 1, panne: 2, autre: 3 };
+    const pire = echecs.map((r) => ({ genre: genreDe(r), statut: r.statut || 0, corps: r.corps ?? null })).sort((a, b) => rang[a.genre] - rang[b.genre])[0];
+    return { erreur: pire };
+  }
+  const recues = reponses.filter((r) => r.statut === 200);
+  if (!recues.length) return { inchange: true };
+  const total = Math.min(...recues.map((r) => Number(r.corps.total)));
+  const colonnes = [...recues].sort((a, b) => a.decalage - b.decalage)[0].corps.colonnes;
+  const affichees = Math.min(avant.cles.length, total);
+  const cles = [];
+  const lignes = [];
+  const etags = {};
+  for (const r of [...reponses].sort((a, b) => a.decalage - b.decalage)) {
+    if (cles.length !== r.decalage || cles.length >= affichees) break;
+    const voulues = Math.min(page, affichees - r.decalage);
+    if (r.statut === 304) {
+      const gardees = avant.cles.slice(r.decalage, r.decalage + voulues);
+      cles.push(...gardees);
+      lignes.push(...gardees.map(() => null));
+      if (gardees.length < voulues) break;
+      continue;
+    }
+    etags[r.decalage] = r.etag ?? null;
+    const recuesIci = r.corps.lignes.slice(0, voulues);
+    cles.push(...recuesIci.map(cleDeLigne));
+    lignes.push(...recuesIci);
+    if (recuesIci.length < voulues) break;
+  }
+  return { cles, lignes, total, colonnes, etags };
+}
+
+/**
+ * Comment passer des lignes affichées (`avant`, leurs JSON dans l'ordre) aux lignes voulues (`apres`) en refaisant le moins possible : chaque ligne
+ * voulue reprend une ligne affichée de même JSON (multiensemble : deux lignes identiques comptent deux fois ; la première encore libre), sinon elle
+ * est nouvelle. Rend { source, nouvelles, retirees, immobiles } :
+ *   source[j]  : l'indice dans `avant` de la ligne reprise pour la j-ième voulue, ou -1 (nouvelle ou changée : à refaire, à mettre en évidence) ;
+ *   nouvelles  : les j dont source[j] = -1 ;
+ *   retirees   : les indices de `avant` qui ne sont repris par aucune (à retirer du tableau) ;
+ *   immobiles  : les j dont la ligne reprise ne bouge pas (plus longue suite croissante des sources : les autres sont déplacées, peu nombreuses).
+ */
+export function planDeMiseAJour(avant, apres) {
+  const libres = new Map();
+  avant.forEach((cle, i) => {
+    const file = libres.get(cle);
+    if (file) file.indices.push(i);
+    else libres.set(cle, { indices: [i], prochain: 0 });
+  });
+  const source = apres.map((cle) => {
+    const file = libres.get(cle);
+    return file && file.prochain < file.indices.length ? file.indices[file.prochain++] : -1;
+  });
+  const reprises = new Set(source.filter((i) => i >= 0));
+  const retirees = avant.flatMap((_, i) => (reprises.has(i) ? [] : [i]));
+  const nouvelles = source.flatMap((s, j) => (s < 0 ? [j] : []));
+  return { source, nouvelles, retirees, immobiles: suiteCroissante(source) };
+}
+
+/** Les positions j (source[j] ≥ 0) d'une plus longue suite strictement croissante des source[j] (méthode des piles, n log n). */
+function suiteCroissante(source) {
+  const fins = []; // fins[l] : la position j qui termine la meilleure suite de longueur l + 1
+  const avantDe = new Array(source.length).fill(-1);
+  source.forEach((s, j) => {
+    if (s < 0) return;
+    let bas = 0;
+    let haut = fins.length;
+    while (bas < haut) {
+      const milieu = (bas + haut) >> 1;
+      if (source[fins[milieu]] < s) bas = milieu + 1;
+      else haut = milieu;
+    }
+    avantDe[j] = bas > 0 ? fins[bas - 1] : -1;
+    fins[bas] = j;
+  });
+  const immobiles = new Set();
+  for (let j = fins.length ? fins[fins.length - 1] : -1; j >= 0; j = avantDe[j]) immobiles.add(j);
+  return immobiles;
+}
+
+/** « 09:05:07 » : l'heure d'un instant (heure locale du navigateur), pour l'état du suivi. */
+export function heureCourte(instant) {
+  const d = instant instanceof Date ? instant : new Date(instant);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+}
+
+/**
+ * Ce qu'un rafraîchissement a changé dans la fenêtre, en une ligne (vide si rien) : « 2 lignes changées », « 1 ligne retirée », « colonnes
+ * changées », « 323 lignes en tout (+1) ». `nouvelles` : les lignes refaites (JSON qui n'était pas affiché) ; `retirees` : celles qui ont quitté le
+ * tableau (une ligne modifiée compte une fois : elle est nouvelle ET retirée).
+ */
+export function resumeDesChangements({ nouvelles = 0, retirees = 0, totalAvant = 0, totalApres = 0, colonnesChangees = false } = {}) {
+  const morceaux = [];
+  if (colonnesChangees) morceaux.push('colonnes changées');
+  if (nouvelles) morceaux.push(`${pluriel(nouvelles, 'ligne')} changée${nouvelles > 1 ? 's' : ''}`);
+  const enMoins = retirees - nouvelles;
+  if (enMoins > 0) morceaux.push(`${nouvelles ? nombre(enMoins) : pluriel(enMoins, 'ligne')} retirée${enMoins > 1 ? 's' : ''}`);
+  if (totalApres !== totalAvant) {
+    const ecart = totalApres - totalAvant;
+    morceaux.push(`${libelleDesLignes(totalApres)} en tout (${ecart > 0 ? '+' : '−'}${nombre(Math.abs(ecart))})`);
+  }
+  return morceaux.join(', ');
+}
+
+/** La raison d'une panne du suivi : le service injoignable (réseau, 5xx) ou sa réponse. */
+const raisonDeLaPanne = (statut) => (enPanne(statut) ? 'service injoignable' : `le service a répondu ${statut}`);
+
+/**
+ * La ligne d'état de la fenêtre (« Suivi en direct — … »). `etat` : { genre, heure, resume, statut, raison, delai } :
+ *   attente    : la première relève n'a pas encore répondu ;
+ *   a-jour     : rien n'a changé depuis la lecture (heure : celle de la lecture) ;
+ *   mis-a-jour : le dernier rafraîchissement a changé le tableau (heure, resume : resumeDesChangements) ;
+ *   interrompu : relève ou rafraîchissement en échec, nouvel essai (statut, ou raison ; delai en ms : dit quand) ;
+ *   arrete     : plus de suivi (raison : le service refuse).
+ */
+export function libelleDuSuivi(etat = {}) {
+  const tete = 'Suivi en direct — ';
+  switch (etat.genre) {
+    case 'a-jour':
+      return `${tete}à jour${etat.heure ? ` (lu à ${etat.heure})` : ''}`;
+    case 'mis-a-jour':
+      return `${tete}mis à jour à ${etat.heure}${etat.resume ? ` : ${etat.resume}` : ''}`;
+    case 'interrompu':
+      return `${tete}interrompu : ${etat.raison ?? raisonDeLaPanne(etat.statut)}, nouvel essai${etat.delai ? ` dans ${Math.round(etat.delai / 1000)} s` : '…'}`;
+    case 'arrete':
+      return `${tete}arrêté : ${etat.raison ?? 'le service refuse (403)'}`;
+    default:
+      return `${tete}en attente du service…`;
+  }
+}
+
+/** Ce que la zone « live » de la fenêtre annonce d'un rafraîchissement qui a changé le tableau (jamais une relève sans changement). */
+export const annonceDuChangement = (nom, resume) => (resume ? `Contenu de ${nom} mis à jour : ${resume}.` : '');
+
+/**
+ * L'état du suivi (libelleDuSuivi) après une lecture de la fenêtre en échec — première page, « Charger plus » ou rafraîchissement ; statut 0 :
+ * réseau — : sa raison, nouvel essai à la version suivante de la base. La ligne d'état ne reste jamais « en attente du service » quand il a répondu.
+ */
+export function etatDeLEchec(statut) {
+  if (statut === 404) return { genre: 'interrompu', raison: 'table introuvable (404)' };
+  if (statut === 403) return { genre: 'interrompu', raison: 'le service refuse (403)' };
+  if (enPanne(statut)) return { genre: 'interrompu', statut: statut || 0 };
+  if (statut >= 200 && statut < 300) return { genre: 'interrompu', raison: 'réponse illisible du service' };
+  return { genre: 'interrompu', raison: `le service a répondu ${statut}` };
+}
+
+/**
+ * Ce que la fenêtre dit d'une colonne de tri disparue (400 au rafraîchissement : le tableau revient à l'ordre par défaut et se recharge) : `annonce`,
+ * jointe au résumé que le rechargement annonce (deux annonces de suite, la seconde effacerait la première), et `resume`, pour la ligne d'état
+ * (libelleDuSuivi, « mis à jour à … : … ») : visible à l'écran, pas seulement dite au lecteur d'écran.
+ */
+export function noteDuTriPerdu(colonne) {
+  return {
+    annonce: `La colonne de tri « ${colonne} » n’existe plus : le tableau revient à l’ordre par défaut.`,
+    resume: `colonne de tri « ${colonne} » disparue, retour à l’ordre par défaut`,
+  };
 }

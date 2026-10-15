@@ -1,7 +1,8 @@
-// Contenu des tables de la base vivante pour le menu « DB » (le schéma de la base) de la page Debug (demande du propriétaire du 2026-10-15 :
-// « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »). Site de dev seulement :
-// api.mjs répond 403 ailleurs, avant tout 404 ou 405 (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que par les
-// pages du site).
+// Contenu des tables de la base vivante pour le menu « DB » (le schéma de la base) de la page Debug (demandes du propriétaire du 2026-10-15 :
+// « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) », puis « Il faut tout rendre
+// ouvert. Ce qui est fermé c'est que la base du serveur de prod. De plus, j'aimerais que ce tableau se mette à jour si la table change. »). Site de
+// dev seulement : api.mjs répond 403 ailleurs, avant tout 404 ou 405 (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que
+// par les pages du site).
 //
 //   GET /api/debug/tables/          { tables: [{ nom, genre, lignes }] } : chaque table et chaque vue de la base vivante, dans l'ordre des noms, ses
 //                                   lignes comptées maintenant ; genre 'table', 'derivee' (TABLES_DERIVEES : `-- @derivee` de data/schema.sql) ou
@@ -9,12 +10,30 @@
 //                                   « _data », « _idx »…) : celles que le schéma de la page ne montre pas non plus.
 //   GET /api/debug/tables/<nom>/    ?limite=<1..500, 100>&decalage=<n ≥ 0, 0>&tri=<colonne>&ordre=asc|desc →
 //                                   { table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes: [{ <colonne>: valeur }] }
-//                                   (`tri` : la colonne demandée, ou null pour l'ordre par défaut)
+//                                   (`tri` : la colonne demandée, ou null pour l'ordre par défaut) ; ETag = versionDuContenu (16 caractères hex d'un
+//                                   sha256 du JSON du corps, qui ne porte rien qui change sans que la table change : ni heure ni version de la base) ;
+//                                   If-None-Match qui la contient → 304 sans corps (api.mjs). La page redemande ainsi chaque page déjà affichée.
+//   GET /api/debug/base/            { version } : versionDeLaBase, un texte opaque qui change dès qu'une écriture est validée dans la base vivante,
+//                                   quelle que soit la table ; la page la relève toutes les 2 s tant que le menu « DB » est ouvert (une relève : ni
+//                                   au journal du service ni dans la mémoire des requêtes) et ne relit nombres de lignes et contenu que quand elle change.
 //
-// Fiches (section 13 : fiches de personnages, comptes, groupes ; et les vues qui les lisent) : listées avec leur nombre de lignes, mais leur contenu
-// répond 403 avec la raison — comme /api/v1/ (« jamais servi »), elles ne se lisent que par /api/personnages/ et ses règles de visibilité
-// (v_personnage_visible) : avec la connexion Discord, les fiches de joueur et les comptes seront privés. Le journal de l'édition (section 14) se lit :
-// GET /api/edition/journal/ l'exporte déjà sur le site de dev (test/serveur-debug-tables.test.mjs épingle les deux listes).
+// Tout se lit, fiches comprises (section 13 : fiches de personnages, comptes, groupes, et les vues qui les lisent) : décision du propriétaire du
+// 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. » — cette route ne sert que la base du site de
+// dev. Seul le volume reste borné : le portrait d'une fiche est résumé comme toute image (ci-dessous), jamais rendu entier. /api/v1/ ne change pas
+// (jamais une table des sections 13 et 14 : lib/ressources.mjs).
+// À revoir à la 1.0 (un rappel, le code suit la décision) : la base vivante du serveur de test (dev.maverick-jdr.com) est copiée de celle de
+// production à sa première installation (MAVERICK_BASE_TEST=conservee, deploy/vps/README.md), et ce site est ouvert sans mot de passe avant la
+// connexion Discord (Caddy présente le mot de passe interne) : cette route y sert donc les fiches, les comptes et les groupes copiés de la production,
+// sans les règles de visibilité de /api/personnages/ (v_personnage_visible). Aujourd'hui, des prétirés seulement, déjà publics ; avec les comptes et
+// les fiches de joueur privées, ouverture à reconsidérer avec le propriétaire (docs/api.md, « Contenu des tables » ; docs/feuille-de-route.md,
+// questions encore ouvertes).
+//
+// Version de la base (versionDeLaBase). Coût fixe, aucune lecture de table : une seule instruction (préparée une fois par connexion) lit
+// PRAGMA schema_version (une table, un index, une vue créés ou retirés), PRAGMA data_version (une écriture validée par une AUTRE connexion sur le même
+// fichier : un script, une seconde instance) et total_changes() (les lignes écrites par CETTE connexion depuis son ouverture : le service écrit par
+// elle) ; devant, un jeton tiré au chargement du module (un service redémarré ne redonne jamais une version déjà vue) et le numéro de la connexion
+// (WeakMap sur l'objet que donne service.base() — l'enveloppe de serveur/metriques-sql.mjs, la même pour une même connexion : une base rouverte,
+// remplacée, en reçoit un autre). Une écriture annulée peut changer la version (une relecture pour rien) ; une écriture validée la change toujours.
 //
 // Sécurité. Lecture seule : le routeur ne sert que GET (405 avec Allow sinon) et ce module n'exécute que des SELECT et des PRAGMA de lecture
 // (table_list, table_info). Un nom de table n'entre dans le SQL qu'après avoir été trouvé TEL QUEL (casse comprise) parmi les tables et vues que
@@ -30,8 +49,8 @@
 // que sa taille ; seules les images (colonnes déclarées `GLOB 'data:image/*'`, et un texte qui en contient une) sont lues en entier, pour leur
 // empreinte. Une colonne d'image se trie par sa taille (length) ; avec un tri, la page se choisit d'abord par la clé (rowid ou clé primaire) puis ses
 // lignes se lisent une à une : le tri de SQLite ne porte jamais les images.
-// N'importe que des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { TABLES_FICHES, TABLES_RETIREES } from '../src/lib/fiche-format.mjs';
+// N'importe que node:… et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
+import { createHash, randomUUID } from 'node:crypto';
 import { empreinte } from '../src/lib/portrait.mjs';
 
 export const LIMITE_PAR_DEFAUT = 100;
@@ -54,50 +73,20 @@ export class ErreurTables extends Error {
 /** Un identifiant SQL entre guillemets doubles (ceux qu'il contient, doublés). */
 const nomSql = (nom) => `"${String(nom).replace(/"/g, '""')}"`;
 
-/** Raison du refus du contenu d'une table des fiches (section 13) ou d'une vue qui en lit une. */
-export const RAISON_FICHES = 'Les fiches de personnages, les comptes et les groupes (section 13) ne se lisent pas ici : comme pour /api/v1/, elles '
-  + 'passent par /api/personnages/ et ses règles de visibilité (v_personnage_visible).';
-
 const echapperRegex = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// une table retirée de la section 13 (TABLES_RETIREES : personnage_progression, migration 0045) reste une table de fiches : un service à jour qui
-// tourne en repli sur une base vivante d'avant sa migration l'a encore, remplie
-const TABLES_DE_FICHES = Object.freeze([...TABLES_FICHES, ...Object.keys(TABLES_RETIREES)]);
-const LIT_UNE_FICHE = new RegExp(`\\b(?:${TABLES_DE_FICHES.map(echapperRegex).join('|')})\\b`, 'i');
 
 /**
- * Les tables et vues lisibles de la base : Map(nom → { genre, sansRowid, fiches }) d'après PRAGMA table_list (schéma main) — types « table » et
- * « view » seulement (ni « virtual » ni « shadow » : les tables FTS5), sans les tables internes « sqlite_… ». `fiches` : une table de la section 13
- * (TABLES_FICHES, ou retirée d'elle : TABLES_RETIREES), ou une vue qui en lit une (son SQL la nomme, directement ou par une autre vue de fiches) — contenu refusé (RAISON_FICHES).
+ * Les tables et vues lisibles de la base : Map(nom → { genre, sansRowid }) d'après PRAGMA table_list (schéma main) — types « table » et « view »
+ * seulement (ni « virtual » ni « shadow » : les tables FTS5), sans les tables internes « sqlite_… ».
  */
 function objetsLisibles(db) {
   const objets = new Map();
   for (const o of db.prepare('PRAGMA main.table_list').all()) {
     const nom = String(o.name);
     if (nom.startsWith('sqlite_') || (o.type !== 'table' && o.type !== 'view')) continue;
-    const genre = o.type === 'view' ? 'vue' : TABLES_DERIVEES.has(nom) ? 'derivee' : 'table';
-    objets.set(nom, { genre, sansRowid: Number(o.wr) === 1, fiches: genre !== 'vue' && TABLES_DE_FICHES.includes(nom) });
-  }
-  // les vues des fiches, jusqu'à ce que plus rien ne change (une vue qui lit une vue de fiches en est une)
-  const vues = db.prepare("SELECT name, sql FROM sqlite_schema WHERE type = 'view'").all().filter((v) => objets.has(String(v.name)));
-  for (let change = true; change;) {
-    change = false;
-    const deFiches = [...objets].filter(([, o]) => o.fiches && o.genre === 'vue').map(([n]) => echapperRegex(n));
-    const lit = deFiches.length ? new RegExp(`\\b(?:${deFiches.join('|')})\\b`, 'i') : null;
-    for (const v of vues) {
-      const o = objets.get(String(v.name));
-      if (o.fiches) continue;
-      if (LIT_UNE_FICHE.test(String(v.sql)) || lit?.test(String(v.sql))) {
-        o.fiches = true;
-        change = true;
-      }
-    }
+    objets.set(nom, { genre: o.type === 'view' ? 'vue' : TABLES_DERIVEES.has(nom) ? 'derivee' : 'table', sansRowid: Number(o.wr) === 1 });
   }
   return objets;
-}
-
-/** Les tables et vues dont le contenu est refusé (fiches : section 13, et les vues qui les lisent), dans l'ordre des noms. */
-export function tablesDesFiches(db) {
-  return [...objetsLisibles(db)].filter(([, o]) => o.fiches).map(([nom]) => nom).sort();
 }
 
 /** GET /api/debug/tables/ : { nom, genre, lignes } de chaque table et vue lisible, dans l'ordre des noms. */
@@ -227,7 +216,6 @@ export function lireTable(db, segment, params = new URLSearchParams()) {
   if (!objet) {
     throw new ErreurTables(404, `Table introuvable${nom ? ` : « ${nom.slice(0, 100)} »` : ''} (les tables et vues de la base : GET /api/debug/tables/).`);
   }
-  if (objet.fiches) throw new ErreurTables(403, RAISON_FICHES, { table: nom });
   const info = db.prepare(`PRAGMA main.table_info(${nomSql(nom)})`).all();
   const colonnes = info.map((c) => ({ nom: String(c.name), type: String(c.type ?? ''), pk: Number(c.pk) }));
   const noms = colonnes.map((c) => c.nom);
@@ -283,4 +271,33 @@ export function lireTable(db, segment, params = new URLSearchParams()) {
     for (const l of instruction.iterate(limite, decalage)) lignes.push(resumer(l));
   }
   return { table: nom, genre: objet.genre, colonnes, total, limite, decalage, tri, ordre, lignes };
+}
+
+/** La version (l'ETag, sans ses guillemets) d'un contenu servi : 16 caractères hex d'un sha256 de son JSON, comme serveur/ressources.mjs#versionDe. */
+export const versionDuContenu = (json) => createHash('sha256').update(json).digest('hex').slice(0, 16);
+
+/** Tiré au chargement du module, donc à chaque démarrage du service : la version d'une base n'est jamais celle d'un autre processus. */
+const JETON_DU_PROCESSUS = randomUUID();
+/** Ce que la version lit, sans lire aucune table (voir l'en-tête du module). */
+const SQL_VERSION = 'SELECT (SELECT schema_version FROM pragma_schema_version) AS schema, (SELECT data_version FROM pragma_data_version) AS donnees, '
+  + 'total_changes() AS ecritures';
+/** Par connexion (l'objet que donne service.base()) : { numero, instruction } ; une connexion fermée et oubliée sort de la table d'elle-même. */
+const connexions = new WeakMap();
+let connexionsVues = 0;
+
+/**
+ * GET /api/debug/base/ : la version de la base vivante, un texte opaque (« <jeton du processus>.<connexion>.<schema_version>.<data_version>.
+ * <total_changes> ») stable tant que rien n'est écrit, différent dès qu'une écriture est validée (par cette connexion ou une autre), après une
+ * réouverture de la base ou un redémarrage du service. Coût fixe : aucune lecture de table.
+ * @param {import('node:sqlite').DatabaseSync} db la base vivante (ou son enveloppe : la même pour une même connexion)
+ */
+export function versionDeLaBase(db) {
+  let connexion = connexions.get(db);
+  if (!connexion) {
+    connexionsVues += 1;
+    connexion = { numero: connexionsVues, instruction: db.prepare(SQL_VERSION) };
+    connexions.set(db, connexion);
+  }
+  const v = connexion.instruction.get();
+  return `${JETON_DU_PROCESSUS}.${connexion.numero}.${v.schema}.${v.donnees}.${v.ecritures}`;
 }

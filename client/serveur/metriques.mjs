@@ -312,7 +312,7 @@ export function routeNormalisee(adresse) {
       if (b === 'lots') return seul(3) ? r('mise-a-jour', 'lots', '{lot}') : ROUTE_INCONNUE;
       return seul(2) && ACTIONS_MISE_A_JOUR.has(b) ? r('mise-a-jour', b) : ROUTE_INCONNUE;
     case 'debug':
-      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables')) return r('debug', b);
+      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables' || b === 'base')) return r('debug', b);
       // le contenu d'une table (serveur/debug-tables.mjs) : un gabarit, quel que soit le nom demandé (connu ou non)
       if (seul(3) && b === 'tables') return r('debug', 'tables', '{table}');
       return seul(3) && b === 'metriques' && (c === 'requetes' || c === 'export') ? r('debug', 'metriques', c) : ROUTE_INCONNUE;
@@ -335,8 +335,11 @@ export function routeNormalisee(adresse) {
   }
 }
 
-/** Les routes que les pages relèvent sans cesse, en GET : état de maintenance (chaque page, toutes les 30 s), journal (2 s), métriques et système (30 s). */
-const RELEVES_GET = new Set(['/api/maintenance/', '/api/debug/journal/', '/api/debug/metriques/', '/api/debug/metriques/requetes/', '/api/debug/systeme/']);
+/**
+ * Les routes que les pages relèvent sans cesse, en GET : état de maintenance (chaque page, toutes les 30 s), journal (2 s), version de la base (2 s,
+ * menu « DB » de la page Debug ouvert : serveur/debug-tables.mjs#versionDeLaBase), métriques et système (30 s).
+ */
+const RELEVES_GET = new Set(['/api/maintenance/', '/api/debug/journal/', '/api/debug/base/', '/api/debug/metriques/', '/api/debug/metriques/requetes/', '/api/debug/systeme/']);
 
 /**
  * Vrai pour une route × méthode de relève automatique (RELEVES_GET, et la balise des pages vues en POST) : comptée dans sa ligne du tableau des
@@ -2179,9 +2182,10 @@ export function creerMetriques({
 
   /**
    * GET /api/debug/metriques/ : les statistiques d'une instance sur une période (voir l'en-tête du module et docs/api.md). `global` et `serie` sont
-   * SANS les relèves automatiques (estUneReleve : journal, métriques et système de la page Debug, maintenance, balise), qui restent chacune sur sa
-   * ligne de `routes` ; `global_avec_releves` les compte, `releves` = { n, routes } les nomme. Les pages vues, navigateurs et origines n'existent
-   * que par heure : leur fenêtre commence à `depuis_horaire` (le début de l'heure de `depuis` : une heure de plus au plus pour « 1h »).
+   * SANS les relèves automatiques (estUneReleve : journal, version de la base, métriques et système de la page Debug, maintenance, balise), qui
+   * restent chacune sur sa ligne de `routes` ; `global_avec_releves` les compte, `releves` = { n, routes } les nomme. Les pages vues, navigateurs
+   * et origines n'existent que par heure : leur fenêtre commence à `depuis_horaire` (le début de l'heure de `depuis` : une heure de plus au plus
+   * pour « 1h »).
    */
   function lire({ instance: demandee, periode = '24h', tri = 'moyenne' } = {}) {
     if (!TRIS.includes(tri)) throw new ErreurMetriques(400, `Tri inconnu : « ${tri} » (${TRIS.join(', ')}).`);

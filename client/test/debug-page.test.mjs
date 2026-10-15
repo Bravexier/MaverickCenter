@@ -480,8 +480,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   if (main.includes('class="debug-reservee"')) {
     // build de production (SITE_MODE=prod ; la CI en fait un : ci.yml) : ni entrée de menu, ni menus, ni leurs scripts — dans toute la page, pas
     // seulement dans <main> : un composant qui poserait le script hors de la condition `actif` l'y ferait charger. Astro construit le script même
-    // quand la page ne le pose pas (dist/_astro/) : on le reconnaît à ce qu'il lit (le journal, les métriques, le système, les tables), et aucune
-    // page ne doit le charger.
+    // quand la page ne le pose pas (dist/_astro/) : on le reconnaît à ce qu'il lit (le journal, les métriques, le système, les tables, la version
+    // de la base), et aucune page ne doit le charger.
     assert.match(main, /<p class="debug-reservee">Cette page est réservée au serveur de dev\.<\/p>/);
     assert.doesNotMatch(html, /data-debug\b|data-journaux|data-debug-systeme|data-debug-perfs/);
     // ni le menu « DB », ni la structure de la base (JSON), ni sa fenêtre
@@ -490,7 +490,7 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
     const accueil = readFileSync(new URL('index.html', dist), 'utf8');
     assert.doesNotMatch(accueil, /href="\/debug\/"/, 'ni au menu de l’accueil');
     const duDebug = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js'))
-      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/'].some((a) => code.includes(a)); });
+      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/', 'debug/base/'].some((a) => code.includes(a)); });
     for (const page of [html, accueil]) {
       const charges = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].split('/').at(-1));
       assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'un script de la page Debug chargé en production');
@@ -532,7 +532,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   assert.ok(construits.some((code) => code.includes('debug/journal/') && code.includes('debug/metriques/') && code.includes('debug/systeme/')),
     'le script de la page Debug dans dist/_astro/');
   assert.ok(!construits.some((code) => code.includes('v1/openapi.json')), 'plus de testeur (rien ne lit la description OpenAPI)');
-  assert.ok(construits.some((code) => code.includes('debug/tables/') && code.includes('data-schema-monde')), 'le script du schéma dans dist/_astro/');
+  assert.ok(construits.some((code) => code.includes('debug/tables/') && code.includes('debug/base/') && code.includes('data-schema-monde')),
+    'le script du schéma dans dist/_astro/ (contenu des tables, et relève de la version de la base pour les suivre)');
   assert.equal((main.match(/<script type="module"/g) ?? []).length, 2, 'les deux scripts de la page (menus et schéma), aucun module partagé');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

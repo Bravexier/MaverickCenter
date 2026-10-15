@@ -10,7 +10,9 @@ navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/      
 ```
 
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
-le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API ; elle viendra avec la connexion Discord.
+le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
+Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
+propriétaire du 2026-10-15 ; point à revoir à la 1.0 : [`api.md`](api.md), « Contenu des tables »).
 
 ## Le code
 
@@ -26,7 +28,7 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
 | `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
 | `client/serveur/journal-du-service.mjs` | Journal du service gardé en mémoire (page Debug du site de dev, `GET /api/debug/journal/`) ; sans import |
-| `client/serveur/debug-tables.mjs` | Contenu des tables de la base vivante, en lecture seule (menu « DB », le schéma de la base, de la page Debug, `GET /api/debug/tables/` ; site de dev seulement) |
+| `client/serveur/debug-tables.mjs` | Contenu des tables de la base vivante, en lecture seule, fiches comprises, et version de la base qui le fait suivre (menu « DB », le schéma de la base, de la page Debug, `GET /api/debug/tables/`, `GET /api/debug/base/` ; site de dev seulement) |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -377,8 +379,9 @@ ressources par module, comment rendre une ressource modifiable) : [`api.md`](api
 `docker logs`) ; sur le site de dev, aussi dans une mémoire des 2 000 dernières entrées `{ n, instant, niveau, categorie, message }` (niveau
 `info`, `avertissement` ou `erreur` ; catégorie `service`, `http`, `base`, `fiches`, `edition`, `mise-a-jour`, `maintenance`, déduits du message
 quand l'appelant ne les donne pas ; `n` croît depuis le démarrage, jamais réutilisé), et chaque requête `/api/` y est notée (catégorie `http` :
-méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves réussies du journal lui-même et de l'état de maintenance
-(reconnues à leur chemin, jamais à leur chaîne de requête), qui noieraient le reste. La mémoire repart à vide quand le service redémarre ; chaque
+méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves réussies du journal lui-même, de la version de la base
+(`/api/debug/base/`, menu « DB » ouvert), des métriques, du système et de l'état de maintenance, et la balise des pages vues (reconnues à leur
+chemin, jamais à leur chaîne de requête : `estUneReleve`), qui noieraient le reste. La mémoire repart à vide quand le service redémarre ; chaque
 lecture porte l'identité du processus (`processus`, tirée au démarrage) pour que la page voie un redémarrage. En production (sans édition), ni
 mémoire ni ligne par requête réussie ou refusée : seuls les événements du service et ses échecs (`5xx`) vont sur la sortie, dont le log Docker
 tourne (5 fichiers de 10 Mo par conteneur : « Métriques et volume », plus bas).
@@ -386,17 +389,18 @@ tourne (5 fichiers de 10 Mo par conteneur : « Métriques et volume », plus bas
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/debug/journal/` | `{ processus, entrees, dernier, capacite, perdues }` : les entrées qui suivent `?depuis=<n>`, filtrées par `?niveau=`, `?categorie=` (une valeur, « a,b » ou répétée), `?q=` (texte, sans accents ni majuscules) et `?limite=` ; `dernier` = le curseur de la relève suivante, `perdues` = les entrées sorties de la mémoire. `403` hors du site de dev, `503` sans journal |
-| `GET /api/debug/tables/`, `GET /api/debug/tables/<nom>/` | Les tables et vues de la base vivante (`{ tables: [{ nom, genre, lignes }] }`), puis une page des lignes de l'une d'elles, en lecture seule (images et textes longs résumés ; fiches, comptes et groupes de la section 13 : `403`, comme `/api/v1/`) : [`api.md`](api.md), « Contenu des tables ». `403` hors du site de dev |
+| `GET /api/debug/tables/`, `GET /api/debug/tables/<nom>/` | Les tables et vues de la base vivante (`{ tables: [{ nom, genre, lignes }] }`), puis une page des lignes de l'une d'elles, en lecture seule : toutes, fiches, comptes et groupes de la section 13 compris (décision du propriétaire du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; images et textes longs résumés ; `ETag`, `304` sur `If-None-Match` : [`api.md`](api.md), « Contenu des tables ». `403` hors du site de dev |
+| `GET /api/debug/base/` | `{ version }` : la version de la base vivante, qui change dès qu'une écriture est validée (coût fixe, aucune table lue ; `Cache-Control: no-store`) ; une relève (toutes les 2 s, menu « DB » ouvert) : ni au journal ni dans la mémoire des requêtes. `403` hors du site de dev, `503` sans base |
 
 **Page Debug** (`/debug/`, menu Outils, site de dev seulement : absente du menu d'un build `SITE_MODE=prod`, où la page ne dit qu'une phrase, et de
 la version portable) : quatre menus déroulants, **tous fermés par défaut**, dans l'ordre voulu par le propriétaire (2026-10-15) — « Système »
 (processus, disque, fichiers, évènements, volume, alertes, et la jauge « Espace disque du serveur », colorée par type de données ; production **ou**
 site de dev), « Performances » (temps de réponse par route, pages vues, navigateurs, origines, requêtes récentes, export CSV ; même instance), les
 « Journaux du serveur » (relevés toutes les 2 s, filtres par niveau, catégorie, texte et durée) et « DB » (le schéma de la base : toutes les tables,
-leurs colonnes et leurs clés étrangères, zoom ; au double clic, le contenu d'une table de la base vivante). Un menu fermé ne demande rien au
-service : il charge à son ouverture et ne relève que tant qu'il reste ouvert. Plus de testeur de l'API (« Tester l'API sera donc supprimé car
-devenu inutile après le schéma ») ; la description OpenAPI reste servie, pour des outils externes : [`api.md`](api.md), « Page Debug » ;
-métriques : « Métriques et volume », plus bas.
+leurs colonnes et leurs clés étrangères, zoom ; au double clic, le contenu d'une table de la base vivante, fiches comprises, qui se met à jour
+quand la table change). Un menu fermé ne demande rien au service : il charge à son ouverture et ne relève que tant qu'il reste ouvert. Plus de
+testeur de l'API (« Tester l'API sera donc supprimé car devenu inutile après le schéma ») ; la description OpenAPI reste servie, pour des outils
+externes : [`api.md`](api.md), « Page Debug » ; métriques : « Métriques et volume », plus bas.
 
 ## Mise à jour (site de dev)
 

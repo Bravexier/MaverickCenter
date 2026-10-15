@@ -501,16 +501,22 @@ function cheminsDuService() {
     '/debug/tables/{table}/': {
       parameters: [{ name: 'table', in: 'path', required: true, description: 'Nom exact d’une table ou d’une vue (GET /api/debug/tables/) ; tout autre nom : 404.', example: 'metier', schema: { type: 'string' } }],
       ...lectureDuService('contenu_d_une_table', 'Contenu d’une table',
-        `Une page des lignes d’une table ou d’une vue, en lecture seule : { table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes }. Ordre stable : la colonne de tri, puis la clé primaire, puis le rowid (une vue : toutes ses colonnes) ; « desc » renverse tout l’ordre. Une image n’est jamais rendue entière : { image: true, type, octets, empreinte } ; une image dans un texte (le JSON du journal de l’édition) devient « [image <type>, N octets, empreinte <e>] » ; un texte de plus de 2 000 caractères est coupé (« … (N caractères) ») ; un BLOB : { octets } ; une colonne d’image se trie par sa taille. Les fiches de personnages, les comptes et les groupes (section 13, et les vues qui les lisent) : 403, comme /api/v1/ (ils passent par /api/personnages/).${SITE_DE_DEV}`, {
+        `Une page des lignes d’une table ou d’une vue, en lecture seule : { table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes }. Toutes les tables et vues, fiches de personnages, comptes et groupes (section 13) compris : c’est la base du site de dev (décision du propriétaire du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c’est que la base du serveur de prod. »). Ordre stable : la colonne de tri, puis la clé primaire, puis le rowid (une vue : toutes ses colonnes) ; « desc » renverse tout l’ordre. Une image n’est jamais rendue entière (une question de volume) : { image: true, type, octets, empreinte } ; une image dans un texte (le JSON du journal de l’édition) devient « [image <type>, N octets, empreinte <e>] » ; un texte de plus de 2 000 caractères est coupé (« … (N caractères) ») ; un BLOB : { octets } ; une colonne d’image se trie par sa taille. ETag = 16 caractères hex d’un sha256 du JSON du corps (qui ne change qu’avec la page lue) ; If-None-Match qui la contient : 304 sans corps (la page Debug redemande ainsi les pages déjà affichées quand la version de la base change).${SITE_DE_DEV}`, {
           parameters: [
             { name: 'limite', in: 'query', description: 'Taille de la page (1 à 500).', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
             { name: 'decalage', in: 'query', description: 'Nombre de lignes sautées.', schema: { type: 'integer', minimum: 0, default: 0 } },
             { name: 'tri', in: 'query', description: 'Une colonne de la table (sans elle : la clé primaire, puis le rowid ; une colonne d’image : par sa taille) ; colonne inconnue : 400.', schema: { type: 'string' } },
             { name: 'ordre', in: 'query', description: 'Sens de tout l’ordre.', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+            { name: 'If-None-Match', in: 'header', required: false, description: 'L’ETag d’une réponse déjà reçue pour la même page (mêmes limite, décalage, tri et ordre) : 304 si elle n’a pas changé.', schema: { type: 'string' } },
           ],
-          responses: { 200: reponse('Les lignes.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
+          responses: {
+            200: reponse('Les lignes.', objet, { headers: { ETag: { schema: { type: 'string' } } } }), 304: ref('responses', 'NonModifie'), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'),
+            404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible'),
+          },
         }),
     },
+    '/debug/base/': lectureDuService('version_de_la_base', 'Version de la base vivante',
+      `{ version } : un texte opaque qui change dès qu’une écriture est validée dans la base vivante, quelle que soit la table (et quand la base est rouverte ou le service redémarré) ; coût fixe, aucune table lue ; Cache-Control: no-store. La page Debug la relève toutes les 2 s tant que le menu « DB » est ouvert, et ne relit les nombres de lignes et la fenêtre « Contenu de <table> » que quand elle change (une relève : ni au journal du service ni dans la mémoire des requêtes).${SITE_DE_DEV}`),
     '/metriques/page/': {
       post: {
         operationId: 'metriques_page', tags: [SERVICE], summary: 'Mesure d’une page vue',

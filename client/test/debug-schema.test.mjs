@@ -17,6 +17,8 @@ import {
   infobulleDeTable, interpoler, libelleDeCle, libelleDesLignes, lignesDuNom, mesurerTable, messageDErreur, mettreEnPage, milieuDeLaColonne, montrer,
   niveauDeDetail, nombre, partieVisible, recouvrent, resumeDuContenu, resumeDuSchema, schemaVersEcran, htmlDuSchema, tableVoisine, tablesCommunes,
   TAILLES_DE_LOIN, tailleDuNomDeLoin, titreCourt, traitsARefaire, triSuivant, valeurEnHtml, zoomAutour,
+  MISE_EN_EVIDENCE_MS, RELEVE_DE_LA_BASE_MS, RELEVE_EN_PANNE_MS, adresseDeLaVersion, annonceDuChangement, assemblerLesPages, cleDeLigne, debutDePage,
+  etatDeLEchec, heureCourte, libelleDuSuivi, noteDuTriPerdu, pageAccordee, pagesARedemander, planDeMiseAJour, resumeDesChangements, suiteDeLaReleve,
 } from '../src/lib/debug-schema.mjs';
 import { TABLES_DERIVEES } from '../serveur/debug-tables.mjs';
 import { descriptionOpenApi } from '../serveur/openapi.mjs';
@@ -569,6 +571,159 @@ test('fenêtre du contenu : adresse (nom encodé, pages de 100, tri), en-têtes 
   assert.match(messageDErreur(500, { erreur: 42 }), /^Le service a répondu 500\.$/);
 });
 
+test('suivi en direct : relève de la version (2 s, 10 s en panne, arrêt au 403), pages à redemander (alignées), assemblage des réponses (304, 200, erreurs)', () => {
+  assert.equal(RELEVE_DE_LA_BASE_MS, 2000);
+  assert.equal(RELEVE_EN_PANNE_MS, 10_000);
+  assert.equal(MISE_EN_EVIDENCE_MS, 2000);
+  assert.equal(adresseDeLaVersion('/api/'), '/api/debug/base/');
+  assert.equal(adresseDeLaVersion('/MaverickCenter/api/'), '/MaverickCenter/api/debug/base/');
+  // la relève : une version (texte non vide) → 2 s ; 403 → arrêt définitif ; réseau, 5xx ou toute autre réponse → 10 s
+  assert.deepEqual(suiteDeLaReleve(200, { version: 'a.1.2' }), { action: 'version', version: 'a.1.2', delai: RELEVE_DE_LA_BASE_MS });
+  assert.deepEqual(suiteDeLaReleve(403, { erreur: 'Réservé au site de dev.' }), { action: 'arret', statut: 403 });
+  for (const [statut, corps] of [[0, null], [502, null], [503, { erreur: 'La base n’est pas disponible.' }], [500, {}], [404, { erreur: 'x' }], [200, null], [200, { version: '' }], [200, { version: 3 }]]) {
+    assert.deepEqual(suiteDeLaReleve(statut, corps), { action: 'panne', statut, delai: RELEVE_EN_PANNE_MS }, `${statut} ${JSON.stringify(corps)}`);
+  }
+  assert.equal(suiteDeLaReleve(undefined, null).statut, 0, 'pas de réponse : statut 0');
+  // les pages déjà chargées : 0, 100, … jusqu'à la dernière qui contient une ligne affichée ; la première même sans ligne (son total, ses colonnes)
+  assert.deepEqual(pagesARedemander(0), [0]);
+  assert.deepEqual(pagesARedemander(1), [0]);
+  assert.deepEqual(pagesARedemander(100), [0]);
+  assert.deepEqual(pagesARedemander(101), [0, 100]);
+  assert.deepEqual(pagesARedemander(250), [0, 100, 200]);
+  assert.deepEqual(pagesARedemander(300), [0, 100, 200]);
+  assert.deepEqual(pagesARedemander(5, 2), [0, 2, 4]);
+  // « Charger plus » demande toujours une page alignée (celle qui contient la ligne suivante) : son ETag vaut pour le rafraîchissement
+  assert.deepEqual([0, 99, 100, 250, 300].map((n) => debutDePage(n)), [0, 0, 100, 200, 300]);
+  assert.equal(debutDePage(-3), 0);
+  assert.equal(cleDeLigne({ id: 'a', n: 1, x: null }), '{"id":"a","n":1,"x":null}', 'l’identité d’une ligne : son JSON');
+  // une page relue par « Charger plus » vaut pour ce qui est affiché seulement si elle redonne les lignes déjà là (sinon : rafraîchir d'abord)
+  const dejaLa = ['a', 'b', 'c'].map((id) => cleDeLigne({ id }));
+  assert.equal(pageAccordee(dejaLa, 3, [{ id: 'd' }]), true, 'page qui commence après l’affichage : rien à comparer');
+  assert.equal(pageAccordee([], 0, []), true, 'table vide');
+  assert.equal(pageAccordee(dejaLa, 2, [{ id: 'c' }, { id: 'd' }]), true, 'la ligne déjà affichée, telle quelle');
+  assert.equal(pageAccordee(dejaLa, 2, [{ id: 'C' }, { id: 'd' }]), false, 'une ligne déjà affichée a changé');
+  assert.equal(pageAccordee(dejaLa, 2, [{ id: 'x' }, { id: 'c' }]), false, 'une ligne insérée avant la fin de l’affichage');
+  assert.equal(pageAccordee(dejaLa, 2, []), false, 'une ligne retirée : la page ne la contient plus');
+  assert.equal(pageAccordee(dejaLa, 2, null), false);
+
+  // assemblage, pages de 2 pour l'essai : lignes { id, v }, colonnes id et v
+  const colonnes = [{ nom: 'id', type: 'TEXT', pk: 1 }, { nom: 'v', type: 'INTEGER', pk: 0 }];
+  const L = (id, v = 0) => ({ id, v });
+  const K = (...ids) => ids.map((id) => cleDeLigne(L(id)));
+  const page = (decalage, lignes, total, etag = `"e${decalage}-${total}"`) => ({ decalage, statut: 200, corps: { colonnes, lignes, total }, etag });
+  const inchangee = (decalage) => ({ decalage, statut: 304, corps: null, etag: '"x"' });
+  const avant = { cles: K('a', 'b', 'c'), total: 5, colonnes };
+  assert.deepEqual(assemblerLesPages(avant, [inchangee(0), inchangee(2)], 2), { inchange: true }, 'tout en 304 : rien n’a changé (total et colonnes compris : ils sont dans le corps)');
+  // une ligne changée dans la seconde page : les lignes de la première, inchangées (null : reprises du tableau)
+  const change = assemblerLesPages(avant, [inchangee(0), page(2, [L('c', 9), L('d')], 5)], 2);
+  assert.deepEqual(change, { cles: [...K('a', 'b'), cleDeLigne(L('c', 9))], lignes: [null, null, L('c', 9)], total: 5, colonnes, etags: { 2: '"e2-5"' } },
+    'les premières min(affichées, total) lignes : 3, pas la 4e de la page');
+  // insertion en tête : toujours 3 lignes affichées, la dernière repoussée hors du tableau
+  assert.deepEqual(assemblerLesPages(avant, [page(0, [L('z'), L('a')], 6), page(2, [L('b'), L('c')], 6)], 2).cles, K('z', 'a', 'b'));
+  // suppression : moins de lignes que le tableau n'en montrait
+  const moins = assemblerLesPages({ cles: K('a', 'b', 'c'), total: 3, colonnes }, [page(0, [L('a'), L('c')], 2), page(2, [], 2)], 2);
+  assert.deepEqual([moins.cles, moins.total], [K('a', 'c'), 2]);
+  // table vide à l'affichage : rien de plus n'est montré (« Charger plus » annonce les autres)
+  assert.deepEqual(assemblerLesPages({ cles: [], total: 0, colonnes }, [page(0, [L('a')], 1)], 2), { cles: [], lignes: [], total: 1, colonnes, etags: {} });
+  // une page plus courte que prévu (la table a changé entre deux réponses) arrête la liste : jamais de trou ; le plus petit total reçu
+  const court = assemblerLesPages({ cles: K('a', 'b', 'c', 'd', 'e'), total: 5, colonnes }, [page(0, [L('a')], 5), page(2, [L('c'), L('d')], 4), inchangee(4)], 2);
+  assert.deepEqual([court.cles, court.total], [K('a'), 4]);
+  // des colonnes reçues (une colonne ajoutée) : celles de la première page reçue
+  const autres = [...colonnes, { nom: 'w', type: '', pk: 0 }];
+  assert.deepEqual(assemblerLesPages({ cles: K('a'), total: 1, colonnes }, [{ ...page(0, [{ id: 'a', v: 0, w: null }], 1), corps: { colonnes: autres, lignes: [{ id: 'a', v: 0, w: null }], total: 1 } }], 2).colonnes, autres);
+  // erreurs : 404 (table disparue) avant 400 (colonne de tri disparue) avant une panne (réseau, 5xx) avant le reste ; un corps illisible = 'autre'
+  const echec = (decalage, statut, corps = null) => ({ decalage, statut, corps, etag: null });
+  assert.deepEqual(assemblerLesPages(avant, [echec(0, 0), echec(2, 404, { erreur: 'Table inconnue.' })], 2), { erreur: { genre: 'introuvable', statut: 404, corps: { erreur: 'Table inconnue.' } } });
+  assert.equal(assemblerLesPages(avant, [echec(0, 503), echec(2, 400)], 2).erreur.genre, 'tri');
+  assert.equal(assemblerLesPages(avant, [inchangee(0), echec(2, 0)], 2).erreur.genre, 'panne');
+  assert.equal(assemblerLesPages(avant, [echec(0, 502), inchangee(2)], 2).erreur.genre, 'panne');
+  assert.equal(assemblerLesPages(avant, [echec(0, 418), inchangee(2)], 2).erreur.genre, 'autre');
+  assert.deepEqual(assemblerLesPages(avant, [echec(0, 200, { pas: 'de lignes' }), inchangee(2)], 2).erreur, { genre: 'autre', statut: 200, corps: { pas: 'de lignes' } });
+});
+
+test('suivi en direct : lignes à refaire par leur JSON (multiensemble), le moins de déplacements possible ; rejoué au hasard', () => {
+  assert.deepEqual(planDeMiseAJour(['a', 'b', 'c'], ['a', 'b', 'c']), { source: [0, 1, 2], nouvelles: [], retirees: [], immobiles: new Set([0, 1, 2]) }, 'rien de changé : rien ne bouge');
+  assert.deepEqual(planDeMiseAJour(['a', 'b', 'c'], ['a', 'B', 'c']), { source: [0, -1, 2], nouvelles: [1], retirees: [1], immobiles: new Set([0, 2]) }, 'une ligne modifiée : refaite seule');
+  assert.deepEqual(planDeMiseAJour(['a', 'b', 'c'], ['a', 'x', 'b']), { source: [0, -1, 1], nouvelles: [1], retirees: [2], immobiles: new Set([0, 2]) }, 'insertion : la dernière sort, les autres restent');
+  assert.deepEqual(planDeMiseAJour(['a', 'b', 'c', 'd'], ['a', 'c', 'd', 'e']), { source: [0, 2, 3, -1], nouvelles: [3], retirees: [1], immobiles: new Set([0, 1, 2]) }, 'suppression : une ligne entre en bas');
+  // deux lignes identiques comptent deux fois (une table sans clé primaire)
+  assert.deepEqual(planDeMiseAJour(['a', 'a', 'b'], ['a', 'b']).retirees, [1]);
+  assert.deepEqual(planDeMiseAJour(['a', 'b'], ['a', 'a', 'b']), { source: [0, -1, 1], nouvelles: [1], retirees: [], immobiles: new Set([0, 2]) });
+  assert.deepEqual(planDeMiseAJour([], ['x', 'y']).nouvelles, [0, 1]);
+  assert.deepEqual(planDeMiseAJour(['x', 'y'], []).retirees, [0, 1]);
+  // une ligne déplacée (sa valeur de tri a changé) : elle seule bouge
+  const deplacee = planDeMiseAJour(['a', 'b', 'c', 'd', 'e'], ['a', 'c', 'd', 'e', 'b']);
+  assert.deepEqual([deplacee.nouvelles, deplacee.retirees, [...deplacee.immobiles].sort()], [[], [], [0, 1, 2, 3]]);
+  assert.equal(planDeMiseAJour(['a', 'b', 'c'], ['c', 'b', 'a']).immobiles.size, 1, 'à l’envers : une seule reste');
+  // au hasard : le plan redonne exactement les lignes voulues, les immobiles gardent leur ordre et sont aussi nombreux que possible
+  let graine = 7;
+  const hasard = (n) => { graine = (graine * 1103515245 + 12345) % 2147483648; return graine % n; };
+  const plusLongue = (suite) => {
+    const meilleure = suite.map(() => 1);
+    for (let i = 0; i < suite.length; i++) for (let k = 0; k < i; k++) if (suite[k] < suite[i]) meilleure[i] = Math.max(meilleure[i], meilleure[k] + 1);
+    return Math.max(0, ...meilleure);
+  };
+  for (let essai = 0; essai < 400; essai++) {
+    const avant = Array.from({ length: hasard(12) }, () => 'abcdef'[hasard(6)]);
+    const apres = Array.from({ length: hasard(12) }, () => 'abcdefg'[hasard(7)]);
+    const plan = planDeMiseAJour(avant, apres);
+    assert.deepEqual(plan.source.map((s, j) => (s >= 0 ? avant[s] : apres[j])), apres);
+    for (const [j, s] of plan.source.entries()) if (s >= 0) assert.equal(avant[s], apres[j]);
+    assert.deepEqual(plan.nouvelles, plan.source.flatMap((s, j) => (s < 0 ? [j] : [])));
+    const reprises = plan.source.filter((s) => s >= 0);
+    assert.equal(new Set(reprises).size, reprises.length, 'une ligne affichée reprise une fois au plus');
+    assert.deepEqual([...reprises, ...plan.retirees].sort((x, y) => x - y), avant.map((_, i) => i), 'chaque ligne affichée : reprise ou retirée');
+    // autant de reprises que le multiensemble le permet
+    const compte = (liste) => liste.reduce((m, c) => m.set(c, (m.get(c) ?? 0) + 1), new Map());
+    const [ca, cb] = [compte(avant), compte(apres)];
+    assert.equal(reprises.length, [...cb].reduce((n, [c, k]) => n + Math.min(k, ca.get(c) ?? 0), 0));
+    const immobiles = [...plan.immobiles].sort((x, y) => x - y);
+    for (let i = 1; i < immobiles.length; i++) assert.ok(plan.source[immobiles[i - 1]] < plan.source[immobiles[i]], 'les immobiles dans l’ordre du tableau');
+    assert.ok(immobiles.every((j) => plan.source[j] >= 0));
+    assert.equal(immobiles.length, plusLongue(reprises), 'le plus d’immobiles possible');
+  }
+});
+
+test('suivi en direct : la ligne d’état « Suivi en direct — … », le résumé d’un changement, son annonce, l’heure', () => {
+  assert.equal(heureCourte(new Date(2026, 9, 15, 9, 5, 7)), '09:05:07');
+  assert.equal(heureCourte(new Date(2026, 9, 15, 23, 59, 0).getTime()), '23:59:00');
+  assert.equal(libelleDuSuivi(), 'Suivi en direct — en attente du service…');
+  assert.equal(libelleDuSuivi({ genre: 'attente' }), 'Suivi en direct — en attente du service…');
+  assert.equal(libelleDuSuivi({ genre: 'a-jour' }), 'Suivi en direct — à jour');
+  assert.equal(libelleDuSuivi({ genre: 'a-jour', heure: '14:03:22' }), 'Suivi en direct — à jour (lu à 14:03:22)');
+  assert.equal(libelleDuSuivi({ genre: 'mis-a-jour', heure: '14:03:22', resume: '2 lignes changées' }), 'Suivi en direct — mis à jour à 14:03:22 : 2 lignes changées');
+  assert.equal(libelleDuSuivi({ genre: 'interrompu', statut: 0, delai: RELEVE_EN_PANNE_MS }), 'Suivi en direct — interrompu : service injoignable, nouvel essai dans 10 s');
+  assert.equal(libelleDuSuivi({ genre: 'interrompu', statut: 503 }), 'Suivi en direct — interrompu : service injoignable, nouvel essai…');
+  assert.equal(libelleDuSuivi({ genre: 'interrompu', statut: 404 }), 'Suivi en direct — interrompu : le service a répondu 404, nouvel essai…');
+  assert.equal(libelleDuSuivi({ genre: 'interrompu', raison: 'table introuvable (404)' }), 'Suivi en direct — interrompu : table introuvable (404), nouvel essai…');
+  assert.equal(libelleDuSuivi({ genre: 'arrete' }), 'Suivi en direct — arrêté : le service refuse (403)');
+  // un changement en une ligne : une ligne modifiée compte une fois (nouvelle ET retirée) ; une ligne retirée sans remplaçante ; le total ; les colonnes
+  assert.equal(resumeDesChangements({ nouvelles: 1, retirees: 1, totalAvant: 5, totalApres: 5 }), '1 ligne changée');
+  assert.equal(resumeDesChangements({ nouvelles: 2, retirees: 2, totalAvant: 1234, totalApres: 1235 }), `2 lignes changées, 1${String.fromCharCode(0x202f)}235 lignes en tout (+1)`);
+  assert.equal(resumeDesChangements({ nouvelles: 0, retirees: 1, totalAvant: 3, totalApres: 2 }), '1 ligne retirée, 2 lignes en tout (−1)');
+  assert.equal(resumeDesChangements({ nouvelles: 1, retirees: 3, totalAvant: 9, totalApres: 7 }), '1 ligne changée, 2 retirées, 7 lignes en tout (−2)');
+  assert.equal(resumeDesChangements({ nouvelles: 0, retirees: 0, totalAvant: 322, totalApres: 323 }), '323 lignes en tout (+1)', 'une ligne hors de ce qui est affiché');
+  assert.equal(resumeDesChangements({ nouvelles: 3, retirees: 3, totalAvant: 3, totalApres: 3, colonnesChangees: true }), 'colonnes changées, 3 lignes changées');
+  assert.equal(resumeDesChangements({ nouvelles: 0, retirees: 0, totalAvant: 3, totalApres: 3 }), '', 'rien de changé : rien à dire');
+  assert.equal(resumeDesChangements(), '');
+  assert.equal(annonceDuChangement('personnage', '1 ligne changée'), 'Contenu de personnage mis à jour : 1 ligne changée.');
+  assert.equal(annonceDuChangement('personnage', ''), '', 'une relève sans changement n’annonce rien');
+  // une lecture en échec : la ligne d'état dit pourquoi (jamais « en attente du service » quand il a répondu), nouvel essai à la version suivante
+  assert.equal(libelleDuSuivi(etatDeLEchec(404)), 'Suivi en direct — interrompu : table introuvable (404), nouvel essai…');
+  assert.equal(libelleDuSuivi(etatDeLEchec(0)), 'Suivi en direct — interrompu : service injoignable, nouvel essai…');
+  assert.equal(libelleDuSuivi(etatDeLEchec(502)), 'Suivi en direct — interrompu : service injoignable, nouvel essai…');
+  assert.equal(libelleDuSuivi(etatDeLEchec(403)), 'Suivi en direct — interrompu : le service refuse (403), nouvel essai…');
+  assert.equal(libelleDuSuivi(etatDeLEchec(400)), 'Suivi en direct — interrompu : le service a répondu 400, nouvel essai…');
+  assert.equal(libelleDuSuivi(etatDeLEchec(200)), 'Suivi en direct — interrompu : réponse illisible du service, nouvel essai…', 'un corps illisible');
+  assert.deepEqual(etatDeLEchec(undefined), { genre: 'interrompu', statut: 0 });
+  // une colonne de tri disparue : dite avec le résumé du rechargement (une seule annonce) et visible dans la ligne d'état
+  const note = noteDuTriPerdu('v');
+  assert.equal(`${note.annonce} ${resumeDuContenu(100, 300)}`, `La colonne de tri « v » n’existe plus : le tableau revient à l’ordre par défaut. 100 lignes affichées sur 300.`);
+  assert.equal(libelleDuSuivi({ genre: 'mis-a-jour', heure: '22:49:35', resume: note.resume }),
+    'Suivi en direct — mis à jour à 22:49:35 : colonne de tri « v » disparue, retour à l’ordre par défaut');
+  assert.match(noteDuTriPerdu('a<b').annonce, /« a<b »/, 'du texte (textContent), jamais du HTML');
+});
+
 test('le script : n’importe que lib/debug-schema.mjs (sans dépendance), qu’aucun autre script de page n’importe ; aucun module commun avec debug.mjs', () => {
   const imports = (url) => [...readFileSync(url, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   const scripts = new URL('../src/scripts/', import.meta.url);
@@ -619,6 +774,78 @@ test('le script : n’importe que lib/debug-schema.mjs (sans dépendance), qu’
     /touche === '0'/, /`\$\{api\}debug\/tables\/`/, /comptesVivants\(structure, corps\)/, /dialogue\.showModal\(\)/, /dialogue\.close\(\)/, /new IntersectionObserver\(/, /adresseDuContenu\(api,/, /messageDErreur\(/]) {
     assert.match(script, motif);
   }
+  // suivi en direct (demande du 2026-10-15 : « j'aimerais que ce tableau se mette à jour si la table change ») : la relève de la version, menu ouvert
+  // ET page visible, setTimeout enchaîné (jamais deux à la fois), aussitôt à l'ouverture et au retour au premier plan, arrêtée au 403
+  assert.match(script, /const releveActive = \(\) => cadre\.open && document\.visibilityState === 'visible' && !suivi\.arret;/);
+  assert.match(script, /suivi\.minuterie = releveActive\(\) \? setTimeout\(relever, delai\) : 0;/);
+  assert.doesNotMatch(script, /setInterval\(/, 'une relève attend la précédente');
+  assert.match(script, /if \(suivi\.enCours \|\| !releveActive\(\)\) return;/);
+  assert.match(script, /fetch\(adresseDeLaVersion\(api\), \{ cache: 'no-store'/);
+  assert.match(script, /const suite = suiteDeLaReleve\(statut, corps\);/);
+  assert.match(script, /cadre\.addEventListener\('toggle', \(\) => \(cadre\.open \? relever\(\) : planifier\(0\)\)\);/);
+  assert.match(script, /document\.addEventListener\('visibilitychange', \(\) => \(releveActive\(\) \? relever\(\) : planifier\(0\)\)\);/);
+  // une version nouvelle : les nombres de lignes (la lecture d'avant, devenue une fonction) et le contenu de la fenêtre ouverte
+  assert.match(script, /if \(nouvelle \|\| suivi\.enRetard \|\| !comptes\.lus\) \{\n        suivi\.enRetard = false;\n        relireLesComptes\(\);\n        demanderLeRafraichissement\(\);/);
+  // chaque page déjà chargée, redemandée avec son ETag ; jamais pendant un chargement, abandonné par une autre table, un autre tri, la fermeture
+  assert.match(script, /if \(etag\) entetesHttp\['If-None-Match'\] = etag;/);
+  // « Charger plus » : une page qui ne redonne pas les lignes déjà affichées n'ajoute rien et fait rafraîchir d'abord (son ETag ne vaudrait pas)
+  assert.match(script, /if \(!pageAccordee\(contenu\.cles, debut, corps\.lignes\)\) \{[\s\S]{0,400}?Object\.assign\(contenu, \{ aRafraichir: true, chargerApres: true \}\);\s*lancerLeRafraichissement\(\);\s*return;/);
+  assert.match(script, /pagesARedemander\(avant\.cles\.length\)\.map\(\(d\) => lirePage\(d, contenu\.etags\.get\(d\)\)\)/);
+  assert.match(script, /if \(!contenu\.aRafraichir \|\| contenu\.rafraichit \|\| contenu\.enCours \|\| !dialogue\.open \|\| !contenu\.nom\) return;/);
+  assert.match(script, /if \(demande !== contenu\.demande\) return; \/\/ une autre table, un autre tri, ou la fenêtre fermée : abandonné/);
+  assert.match(script, /contenu\.chargerApres = true; \/\/ un rafraîchissement en cours : la page suivante après lui/);
+  assert.match(script, /lancerLeRafraichissement\(\); \/\/ une version nouvelle vue pendant le chargement/);
+  // seules les lignes dont le JSON n'était pas affiché sont refaites (les autres <tr> restent : cellules dépliées comprises), et mises en évidence
+  assert.match(script, /const plan = planDeMiseAJour\(memesNoms \? avant\.cles : \[\], suite\.cles\);/);
+  assert.match(script, /tampon\.innerHTML = htmlDesLignes\(suite\.colonnes, plan\.nouvelles\.map\(/);
+  assert.match(script, /if \(!plan\.immobiles\.has\(j\)\) lignes\.insertBefore\(elements\[j\], suivante\);/);
+  assert.match(script, /for \(const tr of neuves\) tr\.classList\.add\('est-nouvelle'\);\n      setTimeout\(\(\) => neuves\.forEach\(\(tr\) => tr\.classList\.remove\('est-nouvelle'\)\), MISE_EN_EVIDENCE_MS\);/);
+  // rien ne bouge : la première ligne visible gardée (le cadre ne s'ancre pas lui-même : overflow-anchor), les en-têtes seulement si les colonnes changent
+  assert.match(script, /if \(ancre\?\.el\.isConnected\) defilement\.scrollTop = ancre\.el\.offsetTop - ancre\.ecart;/);
+  assert.match(script, /if \(colonnesChangees\) \{\n      const tri = /);
+  assert.equal((script.match(/entetes\.innerHTML = htmlDesEntetes\(/g) ?? []).length, 2, 'à la première page, et quand les colonnes changent');
+  // erreurs : 404 (message), 400 sur le tri (ordre par défaut, rechargé), réseau (interrompu, contenu gardé, nouvel essai)
+  assert.match(script, /if \(genre === 'tri' && contenu\.tri\) \{/);
+  assert.match(script, /Le tableau montre sa dernière lecture\./);
+  assert.match(script, /etatDuContenu = etatDeLEchec\(statut\);\n    if \(genre === 'panne'\) \{\n      \/\/ [^\n]*\n      suivi\.enRetard = true;/);
+  // la ligne d'état et la zone « live » (les changements seulement)
+  assert.match(script, /texteDuSuivi\.textContent = texte;/);
+  assert.match(script, /annoncer\(annonceDuChangement\(contenu\.nom, changements\)\);/);
+
+  // relecture du 2026-10-15 (essai Chromium). « Charger plus » n'est jamais désactivé : Chrome retirait le focus clavier du bouton à chaque
+  // rafraîchissement (une écriture n'importe où dans la base), et un clic pendant l'un était perdu au lieu d'être rejoué après lui
+  assert.doesNotMatch(script, /plus\.disabled/, 'ni pendant un rafraîchissement, ni pendant une lecture de page');
+  assert.match(script, /const occuperPlus = \(oui\) => \(oui \? plus\.setAttribute\('aria-disabled', 'true'\) : plus\.removeAttribute\('aria-disabled'\)\);/);
+  const rafraichir = /async function rafraichir\(\) \{([\s\S]*?)\n  \}\n/.exec(script)[1];
+  assert.doesNotMatch(rafraichir, /occuperPlus|disabled/, 'actif pendant un rafraîchissement : le clic est rejoué (chargerApres)');
+  assert.match(script, /if \(document\.activeElement === plus\) defilement\.focus\(\{ preventScroll: true \}\);\n    plus\.hidden = true;/, 'caché : le focus reste dans la fenêtre');
+  // un « Charger plus » en échec puis un rafraîchissement sans changement (tout en 304) : la fenêtre repart d'où elle était (bouton, résumé)
+  assert.match(rafraichir, /\} else if \(suite\.inchange\) \{\n(?:      \/\/[^\n]*\n)*      erreurEl\.hidden = true;\n      contenu\.fini = contenu\.cles\.length >= contenu\.total;\n      majPied\(\);/);
+  assert.match(script, /if \(!affichees\) ecrireLeResume\(''\);/, 'des lignes affichées : leur résumé reste');
+  // une table toujours introuvable n'est ni réécrite ni annoncée à chaque écriture dans une autre ; une première page en échec se relit sans
+  // « Chargement… » ni alerte réécrite, et la ligne d'état dit pourquoi (plus « en attente du service »)
+  assert.match(script, /function montrerLErreur\(texte\) \{\n    if \(!erreurEl\.hidden && erreurEl\.textContent === texte\) return false;/);
+  assert.doesNotMatch(script, /erreurEl\.textContent = (?!texte;)/, 'l’alerte ne s’écrit que par montrerLErreur');
+  assert.match(script, /if \(introuvable && nouveau\) annoncer\(/);
+  assert.match(script, /if \(!contenu\.etags\.size\) \{\n      contenu\.fini = false;\n      charger\(\);\n    \} else rafraichir\(\);/);
+  assert.match(script, /etatDuContenu = \{ \.\.\.etatDeLEchec\(statut\), lecture: true \};/);
+  // une colonne de tri disparue : la note part avec le rechargement, dite avec son résumé (l'annonce suivante l'effaçait) et dans la ligne d'état
+  assert.match(script, /recommencer\(false, noteDuTriPerdu\(colonne\)\);/);
+  assert.doesNotMatch(script, /recommencer\(false\);\n\s*annoncer\(/);
+  assert.match(script, /annoncer\(note \? `\$\{note\.annonce\} \$\{resume\.textContent\}` : resume\.textContent\);/);
+  assert.match(script, /if \(note\) etatBon = \{ genre: 'mis-a-jour', heure: heureCourte\(new Date\(\)\), resume: note\.resume \};/);
+  // une relève qui revient menu refermé (ou page cachée) n'a pas de suite : ni nombres de lignes relus, ni rafraîchissement, ni référence changée
+  const relever = /async function relever\(\) \{([\s\S]*?)\n  \}\n/.exec(script)[1];
+  const garde = relever.indexOf('if (!releveActive()) return;', relever.indexOf('suivi.enCours = false;'));
+  assert.ok(garde > relever.indexOf("if (suite.action === 'arret')"), 'après le 403 (arrêt définitif, même menu fermé)');
+  assert.ok(garde < relever.indexOf('relireLesComptes();', garde - 1) && garde < relever.indexOf('suivi.reference = suite.version;'), 'avant toute relecture');
+  assert.match(relever, /if \(!comptes\.lus && cadre\.open && document\.visibilityState === 'visible'\) relireLesComptes\(\);/);
+  // le texte du menu promet que ce qui change s'éclaire : les boîtes dont le nombre de lignes change aussi (pas à la première lecture)
+  assert.match(script, /if \('vivants' in sourceDesComptes\.dataset\) eclairerLesBoites\(changees\);\n      sourceDesComptes\.dataset\.vivants = '';/);
+  assert.match(script, /el\.classList\.add\('est-changee'\);/);
+  // deux fonctions de même nom dans brancher() : la seconde masquerait la première sans erreur (l'éclairage des boîtes l'a été un temps)
+  const fonctions = [...script.matchAll(/^  (?:async )?function (\w+)\(/gm)].map((m) => m[1]);
+  assert.deepEqual(fonctions.filter((f, i) => fonctions.indexOf(f) !== i), [], 'aucun nom de fonction en double');
 });
 
 test('le menu s’appelle « DB » partout où l’on y renvoie : description OpenAPI servie de /debug/tables/, docs/api.md, commentaires (plus aucun renvoi à son ancien titre)', () => {
@@ -653,6 +880,13 @@ test('le composant : <details> fermé (ni open ni hidden), JSON et script seulem
   assert.match(composant, /<script>\s*import '\.\.\/\.\.\/scripts\/debug-schema\.mjs';\s*<\/script>/);
   assert.match(composant, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
   assert.match(composant, /role="application"/);
+  // suivi en direct : la ligne d'état dans l'en-tête de la fenêtre (non annoncée), une zone « live » à part ; le résumé n'est plus « live »
+  assert.match(composant, /<p class="schema-contenu__resume" data-schema-contenu-resume><\/p>/);
+  assert.match(composant, /<p class="schema-contenu__suivi" data-schema-suivi data-etat="attente">\s*<span class="schema-contenu__voyant" aria-hidden="true"><\/span><span data-schema-suivi-texte>Suivi en direct<\/span>/);
+  assert.match(composant, /<p class="schema-contenu__annonce" data-schema-contenu-annonce role="status" aria-live="polite"><\/p>/);
+  assert.equal((composant.match(/aria-live=/g) ?? []).length, 2, 'l’annonce de la carte et celle de la fenêtre');
+  const entete = /<header class="schema-contenu__entete">([\s\S]*?)<\/header>/.exec(composant)[1];
+  assert.ok(entete.includes('data-schema-suivi') && !entete.includes('aria-live'), 'la ligne d’état dans l’en-tête, sans être annoncée à chaque relève');
   // les messages, la liste des clés et le conseil de la molette PAR-DESSUS la carte (dans .schema-vue, après la carte) : rien ne la déplace
   const vue = composant.slice(composant.indexOf('<div class="schema-vue" data-schema-vue>'), composant.indexOf('<p class="debug-petit schema-aide"'));
   for (const motif of ['data-schema-annonce', 'data-schema-cles', 'data-schema-conseil']) {
@@ -691,5 +925,18 @@ test('le composant : <details> fermé (ni open ni hidden), JSON et script seulem
   // l'annonce par-dessus la carte ; une cellule coupée marquée d'un fondu
   assert.match(css, /\.schema-annonce \{\n  position: absolute;/);
   assert.match(css, /td\.est-coupee:not\(\.est-depliee\) \.schema-cellule \{[^}]*mask-image: linear-gradient/);
+  // suivi en direct : une ligne nouvelle ou changée éclairée (sans animation sous prefers-reduced-motion) ; bandes par ligne, pas par rang ; le
+  // cadre ne s'ancre pas lui-même (le script garde la première ligne visible)
+  assert.match(css, /\.schema-contenu__tableau tbody tr\.est-nouvelle td \{ animation: schema-ligne-nouvelle 2s ease-out; \}/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n  \.schema-contenu__tableau tbody tr\.est-nouvelle td \{ animation: none; background: var\(--sch-nouvelle\); \}/);
+  assert.match(css, /\.schema-contenu__tableau tbody tr\.est-rayee td \{/);
+  assert.doesNotMatch(css, /tr:nth-child\(even\)/, 'une ligne insérée ne repeint pas les suivantes');
+  assert.match(css, /\.schema-contenu__defilement \{[^}]*overflow-anchor: none;/);
+  assert.match(css, /\.schema-contenu__annonce \{ position: absolute; width: 1px; height: 1px;/);
+  assert.ok(css.indexOf('tr.est-nouvelle td {') > css.indexOf('tr.est-rayee td {'), 'l’éclairage passe sur la bande');
+  assert.match(css, /\.schema-table\.est-changee \{ animation: schema-ligne-nouvelle 2s ease-out; \}\n@media \(prefers-reduced-motion: reduce\) \{\n  \.schema-table\.est-changee \{ animation: none; background-color: var\(--sch-nouvelle\); \}/);
+  assert.match(css, /\.schema-contenu__pied \[aria-disabled="true"\] \{/);
+  // le texte du menu : ce qui s'éclaire (une boîte, une ligne de la fenêtre)
+  assert.match(composant.replace(/\s+/g, ' '), /une table dont le nombre de lignes change, et dans la fenêtre du contenu une ligne nouvelle ou changée, s’éclairent un instant\./);
   assert.match(css, /prefers-color-scheme: dark/);
 });

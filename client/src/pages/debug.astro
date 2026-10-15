@@ -26,10 +26,11 @@ import SchemaDeLaBase from '../components/debug/SchemaDeLaBase.astro';
 //   3. « Journaux du serveur » : le journal du service en mémoire (GET <base>api/debug/journal/, serveur/journal-du-service.mjs ; rendu pur :
 //      lib/debug-journaux.mjs), filtré dans la page ; une colonne Durée (isolée, triable) et « plus lent que … ms » (?min_ms=) ;
 //   4. « DB » : le schéma de la base (components/debug/SchemaDeLaBase.astro : toutes les tables et vues, colonnes, types, clés étrangères,
-//      structure du build, dessiné à la première ouverture ; le contenu d'une table au double clic, GET <base>api/debug/tables/<nom>/).
+//      structure du build, dessiné à la première ouverture ; le contenu d'une table au double clic, GET <base>api/debug/tables/<nom>/, fiches
+//      comprises ; nombres de lignes et contenu suivent la base vivante : GET <base>api/debug/base/, demande du propriétaire du 2026-10-15).
 // Un menu fermé ne demande rien au service : Système, Performances et Journaux chargent leurs données à leur ouverture (aussitôt), les relèvent
-// tant qu'ils restent ouverts (30 s, 30 s, 2 s) et s'arrêtent quand on les referme (scripts/debug.mjs) ; DB ne lit la base vivante qu'à sa
-// première ouverture (scripts/debug-schema.mjs).
+// tant qu'ils restent ouverts (30 s, 30 s, 2 s) et s'arrêtent quand on les referme (scripts/debug.mjs) ; DB relève la version de la base
+// toutes les 2 s tant qu'il reste ouvert et ne relit nombres de lignes et contenu que quand elle change (scripts/debug-schema.mjs).
 // Le script (scripts/debug.mjs) lit d'abord GET <base>api/etat/ : sans `edition: true`, le service n'est pas celui du site de dev et il s'arrête
 // (Système, Performances et Journaux restent cachés).
 // Build de production (SITE_MODE=prod) et version portable (pas de service ; tools/build-artifact.mjs ne l'emporte pas) : une phrase, sans script.

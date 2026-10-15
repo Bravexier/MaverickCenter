@@ -155,12 +155,17 @@ test('lire : curseur `depuis`, filtres (une valeur, « a,b » ou un tableau), te
   assert.equal(j.lire().entrees[0].message, 'service des personnages 1 : http://x/api/');
 });
 
-test('les relèves réussies du journal et de la maintenance ne sont notées nulle part ; leurs échecs, si', () => {
+test('les relèves réussies du journal, de la version de la base et de la maintenance ne sont notées nulle part ; leurs échecs, si', () => {
   const { j, lignes } = journal();
   assert.equal(estUneReleve('GET /api/debug/journal/?depuis=12 200 1 ms'), true);
   assert.equal(estUneReleve('GET /api/debug/journal/ 200 1 ms'), true);
   assert.equal(estUneReleve('GET /MaverickCenter/api/maintenance/ 304 0 ms'), true);
   assert.equal(estUneReleve('GET /api/debug/journal/ 403 1 ms'), false);
+  // la version de la base (menu « DB » de la page Debug, toutes les 2 s) ; pas le contenu d'une table (relu quand elle change)
+  assert.equal(estUneReleve('GET /api/debug/base/ 200 0 ms'), true);
+  assert.equal(estUneReleve('GET /api/debug/base/ 503 1 ms'), false);
+  assert.equal(estUneReleve('GET /api/debug/tables/metier/?limite=100 200 3 ms'), false);
+  assert.equal(estUneReleve('GET /api/debug/tables/metier/ 304 1 ms'), false);
   assert.equal(estUneReleve('POST /api/maintenance/lever/ 200 4 ms'), false);
   assert.equal(estUneReleve('GET /api/etat/ 200 1 ms'), false);
   // seul le chemin compte : une chaîne de requête qui finit par l'adresse d'une relève ne cache pas une autre requête (ni en mémoire ni sur la sortie)
@@ -170,6 +175,7 @@ test('les relèves réussies du journal et de la maintenance ne sont notées nul
   assert.equal(estUneReleve('GET /api/maintenance/?x=/a 200 1 ms'), true, 'la vraie relève garde sa chaîne de requête');
   assert.equal(j.ecrire('GET /api/debug/journal/?depuis=3 200 1 ms', { categorie: 'http' }), null);
   assert.equal(j.ecrire('GET /api/maintenance/ 200 1 ms', { categorie: 'http' }), null);
+  assert.equal(j.ecrire('GET /api/debug/base/ 200 0 ms', { categorie: 'http' }), null);
   assert.equal(j.ecrire('GET /api/debug/journal/ 403 1 ms', { categorie: 'http' }).niveau, 'avertissement');
   assert.equal(j.ecrire('GET /api/v1/metiers/?q=/api/maintenance/ 200 1 ms', { categorie: 'http' }).n, 2, 'notée');
   assert.equal(lignes.length, 2);

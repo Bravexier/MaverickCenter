@@ -265,6 +265,12 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
 6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
+7. **Base du site de dev à la connexion Discord** (E7, E8 ; rappel du 2026-10-15) : le menu « DB » de la page Debug lit toute la base vivante du
+   site de dev, fiches et comptes compris (votre décision du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du
+   serveur de prod. »). Or la base du serveur de test est copiée de celle de production à sa première installation, et `dev.maverick-jdr.com` est
+   ouvert sans mot de passe avant la connexion Discord : avec des comptes et des fiches de joueur privées (1.0), n'importe quel visiteur qui
+   connaît l'adresse lirait cette copie. Faut-il alors garder cette ouverture, fermer le site de dev au public, ou ne plus y copier les fiches et
+   les comptes ? ([`api.md`](api.md), « Contenu des tables »)
 
 ## Orthographe : relecture complète à la conversion en SQL
 
