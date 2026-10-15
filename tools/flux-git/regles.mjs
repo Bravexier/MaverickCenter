@@ -102,7 +102,7 @@ export function demandeMajeure(...textes) {
 
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
-export function lireVersion(version) {
+function lireVersion(version) {
   const m = SEMVER.exec(String(version ?? ''));
   if (!m) throw new Error(`version invalide « ${version} » (X.Y.Z attendu)`);
   return m.slice(1).map(Number);

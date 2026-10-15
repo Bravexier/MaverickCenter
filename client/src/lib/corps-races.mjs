@@ -45,7 +45,7 @@
 // Fonctions pures, sans dépendance (aucun accès à la base : les lignes sont passées par l'appelant, voir etatDeRace).
 
 /** Requêtes qui donnent l'état d'une race (paramètre : id de la race), une clé par table : ce que `corpsDeRace` attend (voir etatDeRace). */
-export const REQUETES_DE_RACE = {
+const REQUETES_DE_RACE = {
   race: 'SELECT * FROM race WHERE id = ?',
   race_onglet: 'SELECT * FROM race_onglet WHERE race_id = ?',
   race_don: 'SELECT * FROM race_don WHERE race_id = ? ORDER BY rang',
@@ -59,7 +59,7 @@ export const REQUETES_DE_RACE = {
   race_classe: 'SELECT * FROM race_classe WHERE race_id = ? ORDER BY ordre',
 };
 /** Tables lues en entier (sans paramètre) : noms et ordre des magies, noms des classes. */
-export const REQUETES_COMMUNES = {
+const REQUETES_COMMUNES = {
   magie: 'SELECT id, nom, ordre FROM magie ORDER BY ordre',
   classe: 'SELECT id, nom FROM classe',
 };
@@ -140,9 +140,9 @@ const strip = (s) => s.replace(BORDS, '');
 /** races.fmt : texte d'une cellule (fins de ligne unifiées, espaces des bords retirés) ; un nombre s'écrit en chiffres. */
 const fmt = (v) => (typeof v === 'number' ? String(v) : strip(String(v ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')));
 /** races.norm_ws : espaces réduits à une seule, retours à la ligne compris. */
-export const normWs = (t) => fmt(t).split(SUITE_D_ESPACES).filter(Boolean).join(' ');
+const normWs = (t) => fmt(t).split(SUITE_D_ESPACES).filter(Boolean).join(' ');
 /** races.first_line */
-export const premiereLigne = (t) => normWs(fmt(t).split('\n')[0]);
+const premiereLigne = (t) => normWs(fmt(t).split('\n')[0]);
 
 const echapperTexte = (s) => s.replace(/\\/g, '\\\\').replace(/([`*_[\]<~])/g, '\\$1').replace(/&(?=#?[\p{L}\p{N}_]+;)/gu, '\\&');
 
@@ -204,7 +204,7 @@ export function mdTexte(texte) {
 }
 
 /** races.labeled : « **Libellé** : texte » si le texte tient sur une ligne, sinon le libellé puis le texte. */
-export function etiquete(libelle, valeur) {
+function etiquete(libelle, valeur) {
   const b = blocs(valeur);
   if (b.length === 1 && !b[0].liste && b[0].lignes.length === 1) return [`**${escInline(libelle)}** : ${escInline(b[0].lignes[0])}`];
   return [`**${escInline(libelle)}**`, '', ...mdTexte(valeur)];

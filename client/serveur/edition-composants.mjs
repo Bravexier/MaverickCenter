@@ -32,10 +32,7 @@ export const contexteDuCorpsDesComposants = (db) => ({
  * Un composant de la page : un matériau, une gemme, un bois, un ingrédient d'alchimie ou un objet de l'onglet « Équipement inventaire » (pas les potions,
  * les livres…, qui sont des consommables).
  */
-export const estUnComposant = (r) => Boolean(r && (['materiau', 'gemme', 'bois', 'ingredient_alchimie'].includes(r.genre) || sectionDeLInventaire(r)));
-
-/** Une ressource liée à une magie (« une par magie ») et rangée sous une table de détail : gemme, bois. */
-const LIEES_A_UNE_MAGIE = ['gemme', 'bois'];
+const estUnComposant = (r) => Boolean(r && (['materiau', 'gemme', 'bois', 'ingredient_alchimie'].includes(r.genre) || sectionDeLInventaire(r)));
 
 /** Les matériaux créés ont leur ligne dans la page des armures (page_entite, id), comme les autres. */
 const PAGE_D_UN_MATERIAU = PAGE_DES_ARMURES;

@@ -14,7 +14,7 @@ export const PAGE_DES_COMPOSANTS = 'ressources/composants';
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 
 /** Les clés étrangères vers `ressource` des règles (hors fiches de personnage, section 13) : [{ table, colonnes }], lues dans le schéma. */
-export function referencesAuxRessources(db) {
+function referencesAuxRessources(db) {
   return db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((t) => t.name)
     .filter((t) => !TABLES_FICHES.includes(t))
     .map((t) => ({ table: t, colonnes: db.prepare(`PRAGMA foreign_key_list("${t}")`).all().filter((f) => f.table === 'ressource').map((f) => f.from) }))
@@ -36,13 +36,7 @@ export function citationsDeRessource(db, id, sauf = [], references = referencesA
 }
 
 /** Un ingrédient qui va dans le tableau des fruits (« la table des fruits ») : son type est « Fruit ». */
-export const estUnFruit = (i) => /^fruit$/i.test(String(i?.type ?? '').trim());
-
-/** Libellé de la catégorie d'un ingrédient (un amplificateur « (majeur) » : « Amplificateur majeur », le sixième emplacement de la recette). */
-export const libelleDeCategorie = (i) => {
-  const c = CATEGORIES_D_INGREDIENTS.find((x) => x.categorie === i.categorie)?.section ?? i.categorie;
-  return i.majeur ? `${c} majeur` : c;
-};
+const estUnFruit = (i) => /^fruit$/i.test(String(i?.type ?? '').trim());
 
 /**
  * Les données de la page :

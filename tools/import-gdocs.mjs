@@ -13,7 +13,7 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
 
-export function exportUrls(source) {
+function exportUrls(source) {
   const base = `https://docs.google.com/${source.kind === 'doc' ? 'document' : 'spreadsheets'}/d/${source.id}/export`;
   if (source.kind === 'doc') {
     return [{ url: `${base}?format=md`, file: `${source.id}.md` }];

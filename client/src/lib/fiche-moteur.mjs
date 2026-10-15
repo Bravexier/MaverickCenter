@@ -29,7 +29,7 @@ export function niveauGlobal(regles, xp) {
   return niveau;
 }
 
-export const ligneDeNiveau = (regles, niveau) => regles.niveaux.find((n) => n.niveau === niveau) ?? null;
+const ligneDeNiveau = (regles, niveau) => regles.niveaux.find((n) => n.niveau === niveau) ?? null;
 
 /** XP du niveau suivant, ou null au niveau maximal. */
 export function xpDuNiveauSuivant(regles, niveau) {
@@ -177,7 +177,7 @@ export function magieAcquiseValable(regles, fiche) {
 }
 
 /** Caractéristique qui reçoit le point de la magie innée : celle de la magie, ou celle que la fiche choisit quand la magie la laisse au choix. */
-export function caracteristiqueDeMagie(regles, fiche) {
+function caracteristiqueDeMagie(regles, fiche) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (!innee) return null;
   return innee.caracteristique_id ?? fiche.caracteristique_magie_id ?? null;

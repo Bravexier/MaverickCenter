@@ -32,7 +32,7 @@ const desDeLaRegle = (regle) => (String(regle ?? '').match(/D\d+/g) ?? []).join(
  * Dé de l'arme pour la page : celui de la ligne (effet, sinon type) ; sans dé (Pugilat), les dés de la règle du type, selon la Force.
  * → { de, regle (texte de la règle, sinon null) }
  */
-export function deAffiche(ligne, ctx = {}) {
+function deAffiche(ligne, ctx = {}) {
   if (ligne.de) return { de: ligne.de, regle: null };
   const type = typeDe(ligne.type_id, ctx);
   return { de: desDeLaRegle(type?.de_regle) || '—', regle: type?.de_regle ?? null };
@@ -64,7 +64,7 @@ export function htmlDuFiltreDeCompetence(id, ctx = {}) {
 }
 
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
-export function htmlDesTypesDeDegats(effet) {
+function htmlDesTypesDeDegats(effet) {
   const types = analyserEffetDArme(effet).degats;
   return types.length ? types.map((t) => `<span class="arme-dgt arme-dgt--${t}">${LIBELLES_DES_DEGATS[t]}</span>`).join(' ') : VIDE;
 }

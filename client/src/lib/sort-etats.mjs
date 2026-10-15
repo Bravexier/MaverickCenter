@@ -21,7 +21,7 @@ export const CHAMPS_DES_ETATS = { type: 'type_brut', cout: 'cout_brut', zone: 'z
  * Écritures d'un état autres que son nom, relevées dans les lignes de l'import (forme normalisée → nom normalisé de l'état) : « aveuglé » (Grenade
  * flash), « Empoisonné » (Câlin putréfié…), « confus » (Souffle hydraulique…). Aucune autre n'est supposée.
  */
-export const FORMES_D_ETAT = { aveugle: 'aveuglement', empoisonne: 'poison', confus: 'confusion' };
+const FORMES_D_ETAT = { aveugle: 'aveuglement', empoisonne: 'poison', confus: 'confusion' };
 
 const L = '\\p{L}';
 const BLANC = '[\\s\\u00a0\\u202f]';

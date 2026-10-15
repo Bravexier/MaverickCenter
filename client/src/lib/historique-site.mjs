@@ -23,7 +23,7 @@
 const structures = new WeakMap(); // db -> Map(table -> { colonnes, cle } | null)
 
 /** Colonnes et clé primaire d'une table (null pour une table absente de la base : une table renommée ou supprimée depuis). */
-export function structureDe(db, table) {
+function structureDe(db, table) {
   let parBase = structures.get(db);
   if (!parBase) structures.set(db, (parBase = new Map()));
   if (parBase.has(table)) return parBase.get(table);

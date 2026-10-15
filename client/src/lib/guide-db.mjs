@@ -3,7 +3,7 @@
 // par lib/donnees.mjs#ouvrirBase (au build, ou par les tests).
 
 /** Les caractéristiques dans l'ordre de la fiche (Force, Volonté, Intelligence, Perception, Social, Agilité). */
-export const chargerCaracteristiques = (db) => db.prepare('SELECT id, nom, lettre FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
+const chargerCaracteristiques = (db) => db.prepare('SELECT id, nom, lettre FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
 
 /**
  * Le tableau de la montée de niveau (table niveau_global, celle du guide « Créer sa fiche de personnage ») : une ligne par niveau global, chaque gain

@@ -387,7 +387,7 @@ export function cibles(texte) {
  * (l'état « Pétrifié », « Gel », « Enragé »). Rien d'autre : « Frappe », « Maladie », « Contrôle mentale »… restent sans magie.
  * `magies` : [noms] ; `etats` : [{ nom, magie }] (une ligne par magie liée, dans l'ordre de leur rang).
  */
-export const CIBLES_RAPPROCHEES = { 'temps-espace': 'espace-temps', petrification: 'petrifie', gele: 'gel', enragee: 'enrage' };
+const CIBLES_RAPPROCHEES = { 'temps-espace': 'espace-temps', petrification: 'petrifie', gele: 'gel', enragee: 'enrage' };
 export function magiesDesCibles(magies = [], etats = []) {
   const table = {};
   for (const m of magies) table[normalize(m)] = [m];

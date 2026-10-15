@@ -55,7 +55,7 @@ export const raceKind = (entries, race) =>
 /** Couleur des races pures et des races hybrides : celle de la liste /races/ et du bandeau des pages de race (repère visuel sans valeur de règle). */
 export const RACE_COLORS = { pure: '#2f6a6a', hybride: '#8a5a1c' };
 
-export const RACE_GROUPS = [
+const RACE_GROUPS = [
   { key: 'pures', kind: 'pure', label: 'Races pures' },
   { key: 'hybrides', kind: 'hybride', label: 'Races hybrides' },
 ];

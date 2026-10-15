@@ -68,13 +68,13 @@ export const OUI_NON = [
 ];
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
-export const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
+const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
 
 /**
  * Les tableaux de la page « Composants » où un objet peut être créé (champ « Tableau » du formulaire) : ceux de l'onglet « Équipement inventaire »
  * (genre:section de la ressource : lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE) ; un matériau, une gemme, un bois, un ingrédient ont leur entité.
  */
-export const TABLEAUX_DE_COMPOSANTS = [
+const TABLEAUX_DE_COMPOSANTS = [
   { valeur: 'produit:VÉGÉTAUX', libelle: 'Produits non monétaires › Végétaux' },
   { valeur: 'produit:ANIMAUX', libelle: 'Produits non monétaires › Animaux' },
   { valeur: 'produit:AUTRES', libelle: 'Produits non monétaires › Autres' },
@@ -435,7 +435,7 @@ export const TABLES = {
 };
 
 /** Première source des pages du Codex (tools/docs/codex.py, docs/codex.md). */
-export const SOURCE_DU_CODEX = 'Google Doc « CODEX Maverick »';
+const SOURCE_DU_CODEX = 'Google Doc « CODEX Maverick »';
 /**
  * Une page dont le titre et le texte se modifient (lignes `page` de TABLES) : une page du guide, ou une page du Codex (demande du propriétaire :
  * « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi ») = type `lore` tiré du Google Doc « CODEX
@@ -451,7 +451,7 @@ export const texteDePageModifiable = (type, premiereSource) => type === 'guide' 
  */
 const champsDe = (table, colonnes) => Object.fromEntries(colonnes.map((c) => [c, TABLES[table].colonnes[c]]));
 /** Nature d'une race (demande du propriétaire : une race hybride peut être créée avant sa classe raciale ; lib/race-kinds.mjs). */
-export const NATURES_DE_RACE = [
+const NATURES_DE_RACE = [
   { valeur: 'pure', libelle: 'Race pure' },
   { valeur: 'hybride', libelle: 'Race hybride (elle aura sa classe raciale)' },
 ];

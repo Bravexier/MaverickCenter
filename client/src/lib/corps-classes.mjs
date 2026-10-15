@@ -231,7 +231,7 @@ export function corpsDeDon(don) {
 }
 
 /** Un effet d'une seule ligne d'au plus ce nombre de caractères est le résumé entier. */
-export const RESUME_COURT = 120;
+const RESUME_COURT = 120;
 const ETIQUETTE = /^\([^()]+\)$/;
 
 /**

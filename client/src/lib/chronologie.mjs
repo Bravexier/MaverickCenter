@@ -180,8 +180,8 @@ export function extraitsParPage(extraits) {
 
 // Marqueurs de la date à surligner dans un extrait : deux caractères de la zone d'usage privé, posés dans le Markdown autour de `date_brut` et changés en
 // <mark> une fois le HTML rendu (le Markdown d'une page ne peut pas en contenir : rien de ce que la source écrit n'est confondu avec eux).
-export const DEBUT_DATE = '';
-export const FIN_DATE = '';
+const DEBUT_DATE = '';
+const FIN_DATE = '';
 
 /** Le Markdown d'un extrait avec sa date entourée des marqueurs (la première occurrence, celle que la source écrit) ; inchangé sans date. */
 export function marquerLaDate(texte, date) {

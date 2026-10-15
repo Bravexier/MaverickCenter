@@ -35,7 +35,7 @@ import {
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
-export const FICHIERS_VERSION = ['client/package.json', 'client/package-lock.json'];
+const FICHIERS_VERSION = ['client/package.json', 'client/package-lock.json'];
 const PACKAGE = FICHIERS_VERSION[0];
 
 class Refus extends Error {}

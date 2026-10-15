@@ -9,7 +9,7 @@
 // Pur, sans dépendance : partagé par le service et le workflow de mise à jour.
 
 /** Schémas d'adresse permis dans un lien ou une image ; une adresse sans schéma (relative, #ancre, //hôte) l'est toujours. */
-export const SCHEMAS_SURS = ['http', 'https', 'mailto'];
+const SCHEMAS_SURS = ['http', 'https', 'mailto'];
 
 const BR = /^<br\s*\/?>$/i;
 const LIEN_AUTOMATIQUE = /^<(?:https?|mailto):[^\s<>]*>$/i;

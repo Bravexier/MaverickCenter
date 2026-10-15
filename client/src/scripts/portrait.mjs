@@ -9,7 +9,7 @@ import { CADRAGE_PAR_DEFAUT, LONGUEUR_MAX_PORTRAIT, PIXELS_MAX_PORTRAIT, ZOOM_MA
 /** Côté, en pixels, du carré cadré que dessine dessinerVignette. */
 const COTE_VIGNETTE = 384;
 
-export const chargerImage = (source) => new Promise((ok, ko) => {
+const chargerImage = (source) => new Promise((ok, ko) => {
   const i = new Image();
   i.onload = () => ok(i);
   i.onerror = ko;

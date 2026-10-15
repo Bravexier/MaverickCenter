@@ -17,7 +17,7 @@ import { normalize } from './text.mjs';
 export const CATEGORIES = { ennemi_simple: 'Ennemi simple', mini_boss: 'Mini-boss', boss: 'Boss' };
 
 /** Rubriques d'une carte : libellé de la fiche, et les rubriques de défense rangées par colonne du tableau. */
-export const LIBELLES_RUBRIQUES = {
+const LIBELLES_RUBRIQUES = {
   attributs: 'Santé, chakra, barrière',
   sante: 'Santé',
   chakra: 'Chakra',
@@ -37,7 +37,7 @@ export const LIBELLES_RUBRIQUES = {
   capacites: 'Capacité(s)',
   tactique: 'Tactique de combat',
 };
-export const SENS_PAR_COLONNE = {
+const SENS_PAR_COLONNE = {
   vulnerabilites: ['vulnerabilite', 'grande_vulnerabilite'],
   resistances: ['resistance', 'grande_resistance', 'double_resistance'],
   immunites: ['immunite', 'reflexion'],

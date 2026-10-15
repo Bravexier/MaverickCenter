@@ -36,7 +36,7 @@ const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) =>
  * Ce qu'une description de capacité commune peut écrire (décision R69) : des accolades seulement autour d'un entier, « {10} » (un emplacement de valeur
  * commune 10) ; renvoie le message du refus, ou null.
  */
-export function refusDeDescription(description) {
+function refusDeDescription(description) {
   const reste = String(description ?? '').replace(/\{\d+\}/g, '');
   if (/[{}]/.test(reste)) return 'une accolade ne s’écrit qu’autour d’un nombre entier : « {10} » est une valeur que chaque carte peut changer (curseur).';
   if (emplacements(description).length > 20) return 'au plus 20 valeurs « {N} » par description.';
@@ -46,7 +46,7 @@ export function refusDeDescription(description) {
 }
 
 /** L'identifiant d'une capacité commune : normalize(nom), « + » écrit « plus » (« Science du critique+ » -> science-du-critique-plus). */
-export const cleDeCapacite = (nom) => normalize(String(nom ?? '').replace(/\+/g, ' plus '));
+const cleDeCapacite = (nom) => normalize(String(nom ?? '').replace(/\+/g, ' plus '));
 const SANS_PORTRAIT = portraitDe(null);
 
 /**
@@ -54,7 +54,7 @@ const SANS_PORTRAIT = portraitDe(null);
  * le carré reste dans l'image (lib/portrait.mjs#bornerCadrage, la règle de la page qui recadre) — une image dont l'en-tête ne se lit pas garde le
  * cadrage reçu (ses bornes sont celles des colonnes).
  */
-export function suiviDuPortrait(ligne, valeurs) {
+function suiviDuPortrait(ligne, valeurs) {
   if (!COLONNES_DU_PORTRAIT.some((c) => c in valeurs)) return {};
   if (ligne.portrait === null || ligne.portrait === undefined) return { portrait_x: null, portrait_y: null, portrait_zoom: null };
   const cadrage = {

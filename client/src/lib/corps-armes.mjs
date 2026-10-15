@@ -19,7 +19,7 @@ export class ErreurCorpsArmes extends Error {
 }
 
 /** Une case de tableau : lignes sans espaces de bord, jointes par <br>, « | » échappé (cell_md de l'importeur). */
-export const celluleDArmes = (valeur) =>
+const celluleDArmes = (valeur) =>
   String(valeur ?? '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.trim()).join('<br>').replace(/\|/g, '\\|');
 
 /** La ligne d'une arme : Nom | Coût | Catégorie | Effet | Description. */
@@ -36,7 +36,7 @@ export const ligneDAmelioration = (a) => `| +${a.niveau} | ${celluleDArmes(a.cou
 export const ligneDuTotal = (total) => `**TOTAL** : ${total ?? ''}`;
 
 /** Le nom d'une arme dans la liste des armes de départ : sa cellule Nom sur une ligne (« Dague (une main) »). */
-export const nomDeDepart = (a) => String(a.nom_brut ?? '').replace(/\s+/g, ' ').trim();
+const nomDeDepart = (a) => String(a.nom_brut ?? '').replace(/\s+/g, ' ').trim();
 
 const TITRE_DE_DEPART = '## Armes sur fond bleu dans la source';
 const TITRE_DES_MATERIAUX = '## MATÉRIAUX';

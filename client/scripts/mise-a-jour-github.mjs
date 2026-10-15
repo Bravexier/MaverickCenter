@@ -67,7 +67,7 @@ import { DEV, MARQUEUR_MAJEURE, MASTER, demandeMajeure, familleDe } from '../../
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 
 /** Les phases (--phase) : le job « preparer », puis les deux étapes du job « livrer ». */
-export const PHASES = ['preparer', 'dev', 'master'];
+const PHASES = ['preparer', 'dev', 'master'];
 /** Noms des jobs et des étapes du job livrer : le service lit leur état (GET /actions/runs/{id}/jobs), ils ne changent pas. */
 export const JOBS = Object.freeze({ preparer: 'preparer', livrer: 'livrer' });
 export const ETAPES_DE_LIVRER = Object.freeze({ dev: 'Fusion dans dev', master: 'Livraison vers master' });
@@ -91,10 +91,10 @@ export const DELAIS = Object.freeze({
   intervalleFusionnable: 5_000,
 });
 /** Délai d'un appel réseau (lot, API) : une connexion pendue ne bloque pas le job jusqu'à son timeout. */
-export const DELAI_RESEAU = 60_000;
+const DELAI_RESEAU = 60_000;
 /** Corps d'une PR : GitHub en accepte 65 536 caractères ; la note est coupée avant, le pied s'y ajoute. */
 export const MAX_CORPS = 60_000;
-export const PREFIXE_BRANCHE = 'feature/mise-a-jour-regles-';
+const PREFIXE_BRANCHE = 'feature/mise-a-jour-regles-';
 /** Tables de la note de version, toujours écrites par la mise à jour (même liste que scripts/mise-a-jour-regles.mjs, comparée par le test). */
 export const TABLES_DE_LA_NOTE = ['note_version', 'note_version_ligne', 'historique_modification'];
 /**
@@ -132,7 +132,7 @@ export const CODES_REGLES = {
 };
 export const ACTIONS_REGLES = { 7: ACTION_LOT_EN_ATTENTE };
 /** Heure des noms de branche et date de la note : celle du propriétaire. */
-export const FUSEAU = 'Europe/Paris';
+const FUSEAU = 'Europe/Paris';
 const BOT = { nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' };
 /** Préfixe des commandes git du job livrer qui pourraient lancer un hook (push, cherry-pick) et du commit de preparer. */
 const SANS_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
@@ -144,7 +144,7 @@ const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
 const FICHIER_DE_DATA_ROWS = /^data\/rows\/[A-Za-z0-9_]+\.sql$/;
 
-export class ErreurMiseAJourGithub extends Error {
+class ErreurMiseAJourGithub extends Error {
   constructor(message, { etape = null, pr = null } = {}) {
     super(message);
     this.etape = etape;
@@ -195,7 +195,7 @@ export function lireLot(octets, { empreinte, lot }, etape = 'lot') {
 }
 
 /** Télécharge le lot et vérifie son empreinte sur les octets reçus, puis sa forme. Rend { octets, donnees }. */
-export async function telechargerLot({ adresse, empreinte, lot }, { fetch }) {
+async function telechargerLot({ adresse, empreinte, lot }, { fetch }) {
   let r;
   try {
     // Jamais de redirection (vers un autre hôte que celui contrôlé par verifierEntrees) ; délai borné.
@@ -282,7 +282,7 @@ export function neutraliserReferences(texte) {
     .replace(/@(?!​)/g, `@${SANS_CHASSE}`);
 }
 /** Tout ce qu'un texte venu du lot ou de la note ne doit pas porter dans une PR ou un commentaire : marqueur, références, mentions. */
-export const neutraliserTexte = (texte) => neutraliserReferences(neutraliserMarqueur(texte));
+const neutraliserTexte = (texte) => neutraliserReferences(neutraliserMarqueur(texte));
 
 /** Corps d'une PR : la note neutralisée (neutraliserTexte) coupée à MAX_CORPS, puis une ligne de pied (le lot, le run), neutralisée de même. */
 export function corpsDePR(markdown, pied) {
@@ -302,10 +302,10 @@ export function noteDuCorps(corps) {
   return i < 0 ? texte : texte.slice(0, i);
 }
 
-export const titreDev = (version) => `Mise à jour des règles V${version} (site de dev)`;
-export const titreLivraison = (version) => `Livraison V${version} (mise à jour du site de dev)`;
-export const messageDeCommit = (version, lot) => `Mise à jour des règles V${version} (site de dev, lot ${lot.slice(0, 8)})`;
-export const corpsDuCommit = (lot, run) => `Lot : ${lot}${run ? `\nRun : ${run}` : ''}\n\nAppliqué par le workflow « Mise à jour des règles » (.github/workflows/mise-a-jour.yml).`;
+const titreDev = (version) => `Mise à jour des règles V${version} (site de dev)`;
+const titreLivraison = (version) => `Livraison V${version} (mise à jour du site de dev)`;
+const messageDeCommit = (version, lot) => `Mise à jour des règles V${version} (site de dev, lot ${lot.slice(0, 8)})`;
+const corpsDuCommit = (lot, run) => `Lot : ${lot}${run ? `\nRun : ${run}` : ''}\n\nAppliqué par le workflow « Mise à jour des règles » (.github/workflows/mise-a-jour.yml).`;
 /** Le message complet du commit préparé : livrer le recalcule et le compare (aucune ligne « Lot : » d'un autre lot ne peut s'y glisser). */
 export const messageAttendu = (version, lot, run) => `${messageDeCommit(version, lot)}\n\n${corpsDuCommit(lot, run)}`;
 
@@ -462,14 +462,14 @@ export function lotsEnAttente(g, lot) {
   return autres;
 }
 
-export const messageLotEnAttente = (a) => `une autre mise à jour attend sa livraison : la V${a.version ?? '?'} du lot ${a.lot} est dans dev `
+const messageLotEnAttente = (a) => `une autre mise à jour attend sa livraison : la V${a.version ?? '?'} du lot ${a.lot} est dans dev `
   + `(commit ${a.commit.slice(0, 7)}) mais pas encore sur master. ${ACTION_LOT_EN_ATTENTE}${a.run ? ` Run de cette mise à jour : ${a.run}.` : ''} Rien n'est fait.`;
 
 /**
  * Au départ de chaque phase : master doit être dans dev (une refusion après un hotfix en attente ferait refuser la livraison), et aucune autre
  * mise à jour ne doit attendre sa livraison dans dev (lotsEnAttente).
  */
-export function verifierDepart(g, lot) {
+function verifierDepart(g, lot) {
   if (g(['merge-base', '--is-ancestor', `origin/${MASTER}`, `origin/${DEV}`], { ok: [0, 1] }).code !== 0) {
     throw echec('depart', 'master contient des commits absents de dev (refusion après un hotfix en attente) : la livraison serait refusée, rien n\'est fait. Refusionner master dans dev d\'abord (docs/flux-git.md).');
   }
@@ -505,7 +505,7 @@ export function verifierPreparation(p, { lot, empreinte, essai }) {
 }
 
 /** Relit l'artefact « preparation » (job livrer). Le lot est vérifié par l'empreinte de l'entrée du workflow. Rend { donnees, tables, preparation }. */
-export function lireArtefact(dossier, { lot, empreinte, essai }) {
+function lireArtefact(dossier, { lot, empreinte, essai }) {
   if (!dossier) throw echec('entrees', 'ARTEFACT manquant (dossier de l\'artefact « preparation »)');
   let octets;
   try {
@@ -567,7 +567,7 @@ export function appliquerSurDev(g, { preparation: p, branche, tables }) {
  * Client de l'API REST du dépôt : { statut, donnees } pour chaque appel ; GET avec le jeton de lecture s'il y en a un (sauf `{ ecriture: true }`,
  * qui lit avec le jeton du bot : vérification du jeton en simulation).
  */
-export function creerApi({ fetch, depot, jeton, jetonLecture = null }) {
+function creerApi({ fetch, depot, jeton, jetonLecture = null }) {
   const base = `https://api.github.com/repos/${depot}`;
   const appel = async (methode, chemin, corps, { ecriture = false } = {}) => {
     const r = await fetch(`${base}${chemin}`, {
@@ -639,7 +639,7 @@ export function etatDesChecks(runs, requis = CHECKS_REQUIS) {
 }
 
 /** Attend que les checks requis du commit `sha` soient tous verts. Rend { ok, raison: 'succes' | 'echec' | 'delai', reussis, echecs, attente }. */
-export async function attendreChecks(ctx, sha) {
+async function attendreChecks(ctx, sha) {
   const { api, outils: { attendre, journal }, delais } = ctx;
   let attendu = 0;
   let dernier = '';
@@ -671,7 +671,7 @@ function texteDesChecks(checks, delais) {
 }
 
 /** Attend que GitHub ait calculé `mergeable`. Rend { etat: 'fusionnable' | 'conflit' | 'inconnu' | 'fermee', pr }. */
-export async function attendreFusionnable(ctx, numero) {
+async function attendreFusionnable(ctx, numero) {
   const { api, outils: { attendre }, delais } = ctx;
   let attendu = 0;
   let pr = null;
@@ -722,7 +722,7 @@ async function abandonnerPR(ctx, numero, branche, raison) {
 }
 
 /** Les PR encore ouvertes d'un passage précédent du même lot (même préfixe de branche, lot cité dans le corps) : fermées. */
-export async function fermerAnciennesPR(ctx) {
+async function fermerAnciennesPR(ctx) {
   const r = await sonder(() => ctx.api.get(`/pulls?state=open&base=${DEV}&per_page=100`));
   if (r.statut !== 200 || !Array.isArray(r.donnees)) {
     ctx.outils.journal(`avertissement : lecture des PR ouvertes vers ${DEV} impossible (${messageGithub(r)}) : une PR d'un passage précédent du même lot resterait ouverte`);
@@ -876,7 +876,7 @@ export async function preparer(entrees, outils) {
  * Simulation : le jeton peut-il pousser (git push --dry-run : la découverte receive-pack exige l'écriture sur Contents) et lire les PR ? Rien
  * n'est envoyé. Rend la liste de ce qui est vérifié.
  */
-export async function verifierJeton(ctx, branche) {
+async function verifierJeton(ctx, branche) {
   const r = ctx.g([...SANS_HOOKS, 'push', '--dry-run', '--quiet', 'origin', `HEAD:refs/heads/${branche}`], { ok: [0, 1, 128] });
   if (r.code !== 0) {
     throw echec('jeton', `git push --dry-run refusé (${String(r.erreur || r.sortie).trim() || `code ${r.code}`}) : le jeton MISE_A_JOUR_TOKEN doit pouvoir écrire `
@@ -1013,7 +1013,7 @@ export async function fusionDansDev(entrees, outils) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Étape c : le commit de version que livraison.yml pousse sur dev après la fusion de la PR `numero`. Rend { sha, version }. */
-export async function attendreCommitDeVersion(ctx, numero) {
+async function attendreCommitDeVersion(ctx, numero) {
   const { api, outils: { attendre, journal }, delais } = ctx;
   const suffixe = `(PR #${numero})`;
   let attendu = 0;
@@ -1046,7 +1046,7 @@ const MAJEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déj
   + 'du propriétaire, à fusionner (ou fermer) à la main';
 
 /** Étape d : la PR de livraison dev → master (ou celle déjà ouverte, sans [V: X+1]), checks verts, fusion par commit de fusion avec sha. */
-export async function livrerSurMaster(ctx, dev) {
+async function livrerSurMaster(ctx, dev) {
   const { api, outils: { journal }, lot, run } = ctx;
   const titre = titreLivraison(dev.version);
   const corps = corpsDePR(dev.markdown, `Livraison automatique après la fusion de la PR #${dev.pr} dans dev (lot \`${lot}\`, workflow « Mise à jour des règles »${run ? ` : ${run}` : ''}).`);
@@ -1155,7 +1155,7 @@ export async function livraisonVersMaster(entrees, outils) {
 // Exécution dans le workflow
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-export const attendreVraiment = (ms) => new Promise((r) => { setTimeout(r, ms); });
+const attendreVraiment = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 /** L'en-tête qu'actions/checkout pose pour un jeton (jeton du workflow ou jeton personnel). */
 export const enteteAuthentification = (jeton) => `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${jeton}`).toString('base64')}`;
@@ -1200,7 +1200,7 @@ export function gitLocal(racine = RACINE, jetons = {}) {
  * Une commande dont la sortie va au journal du workflow : { code }. Dans GitHub Actions, sa sortie (où passent des textes du lot : résumés, conflits,
  * tests) ne peut pas émettre de commandes de workflow (« ::…:: ») : elles sont suspendues le temps de la commande (::stop-commands::).
  */
-export function executerLocal(commande, args, { cwd, env } = {}) {
+function executerLocal(commande, args, { cwd, env } = {}) {
   const pause = process.env.GITHUB_ACTIONS === 'true' ? randomUUID() : null;
   if (pause) console.log(`::stop-commands::${pause}`);
   try {

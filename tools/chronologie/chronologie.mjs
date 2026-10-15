@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
 import { EPOQUES, PORTEES } from '../../client/src/lib/chronologie.mjs';
 
-export const FICHIER_REGISTRE = fileURLToPath(new URL('./evenements.json', import.meta.url));
+const FICHIER_REGISTRE = fileURLToPath(new URL('./evenements.json', import.meta.url));
 
 /** Le registre (evenements.json) lu. */
 export const lireRegistre = () => JSON.parse(readFileSync(FICHIER_REGISTRE, 'utf8'));
