@@ -122,6 +122,25 @@ test('fiches (section 13) : listées, mais leur contenu répond 403 avec la rais
   for (const nom of section13) assert.ok(tables.some((t) => t.nom === nom), nom);
 });
 
+test('fiches, repli sur une base d’avant la migration 0045 : la table retirée (personnage_progression, TABLES_RETIREES) et la vue qui la lit restent refusées (403)', () => {
+  // un service à jour sur une base vivante dont la reconstruction a échoué : la table n'est plus dans TABLES_FICHES, mais elle a encore des lignes
+  const ancienne = new DatabaseSync(':memory:');
+  ancienne.exec(`CREATE TABLE personnage_progression (personnage_id TEXT NOT NULL, niveau INTEGER NOT NULL, points_sante INTEGER NOT NULL,
+    points_chakra INTEGER NOT NULL, PRIMARY KEY (personnage_id, niveau)) STRICT;
+    INSERT INTO personnage_progression VALUES ('p1', 2, 10, 5);
+    CREATE VIEW v_gains AS SELECT personnage_id, sum(points_sante) AS sante FROM personnage_progression GROUP BY personnage_id;
+    CREATE TABLE niveau_global (niveau INTEGER PRIMARY KEY) STRICT;`);
+  try {
+    assert.deepEqual(tablesDesFiches(ancienne), ['personnage_progression', 'v_gains']);
+    for (const nom of ['personnage_progression', 'v_gains']) {
+      assert.throws(() => lireTable(ancienne, nom), (e) => e.statut === 403 && e.message === RAISON_FICHES, nom);
+    }
+    assert.equal(lireTable(ancienne, 'niveau_global').total, 0, 'les autres tables se lisent');
+  } finally {
+    ancienne.close();
+  }
+});
+
 test('nom inconnu ou piégé : 404 (interne, FTS5 et ses tables de shadow, casse, guillemets, « ; », « / » encodé, encodage illisible, segment vide) ; adresse en trop : 404 ; la base ne change pas', () => {
   const avant = ligne('SELECT count(*) AS n FROM metier').n;
   for (const segment of [

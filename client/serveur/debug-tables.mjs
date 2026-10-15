@@ -31,7 +31,7 @@
 // empreinte. Une colonne d'image se trie par sa taille (length) ; avec un tri, la page se choisit d'abord par la clé (rowid ou clé primaire) puis ses
 // lignes se lisent une à une : le tri de SQLite ne porte jamais les images.
 // N'importe que des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { TABLES_FICHES, TABLES_RETIREES } from '../src/lib/fiche-format.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
 
 export const LIMITE_PAR_DEFAUT = 100;
@@ -59,12 +59,15 @@ export const RAISON_FICHES = 'Les fiches de personnages, les comptes et les grou
   + 'passent par /api/personnages/ et ses règles de visibilité (v_personnage_visible).';
 
 const echapperRegex = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const LIT_UNE_FICHE = new RegExp(`\\b(?:${TABLES_FICHES.map(echapperRegex).join('|')})\\b`, 'i');
+// une table retirée de la section 13 (TABLES_RETIREES : personnage_progression, migration 0045) reste une table de fiches : un service à jour qui
+// tourne en repli sur une base vivante d'avant sa migration l'a encore, remplie
+const TABLES_DE_FICHES = Object.freeze([...TABLES_FICHES, ...Object.keys(TABLES_RETIREES)]);
+const LIT_UNE_FICHE = new RegExp(`\\b(?:${TABLES_DE_FICHES.map(echapperRegex).join('|')})\\b`, 'i');
 
 /**
  * Les tables et vues lisibles de la base : Map(nom → { genre, sansRowid, fiches }) d'après PRAGMA table_list (schéma main) — types « table » et
  * « view » seulement (ni « virtual » ni « shadow » : les tables FTS5), sans les tables internes « sqlite_… ». `fiches` : une table de la section 13
- * (TABLES_FICHES), ou une vue qui en lit une (son SQL la nomme, directement ou par une autre vue de fiches) — contenu refusé (RAISON_FICHES).
+ * (TABLES_FICHES, ou retirée d'elle : TABLES_RETIREES), ou une vue qui en lit une (son SQL la nomme, directement ou par une autre vue de fiches) — contenu refusé (RAISON_FICHES).
  */
 function objetsLisibles(db) {
   const objets = new Map();
@@ -72,7 +75,7 @@ function objetsLisibles(db) {
     const nom = String(o.name);
     if (nom.startsWith('sqlite_') || (o.type !== 'table' && o.type !== 'view')) continue;
     const genre = o.type === 'view' ? 'vue' : TABLES_DERIVEES.has(nom) ? 'derivee' : 'table';
-    objets.set(nom, { genre, sansRowid: Number(o.wr) === 1, fiches: genre !== 'vue' && TABLES_FICHES.includes(nom) });
+    objets.set(nom, { genre, sansRowid: Number(o.wr) === 1, fiches: genre !== 'vue' && TABLES_DE_FICHES.includes(nom) });
   }
   // les vues des fiches, jusqu'à ce que plus rien ne change (une vue qui lit une vue de fiches en est une)
   const vues = db.prepare("SELECT name, sql FROM sqlite_schema WHERE type = 'view'").all().filter((v) => objets.has(String(v.name)));
