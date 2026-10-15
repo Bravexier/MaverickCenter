@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 46;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 47;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3600,6 +3600,29 @@ CREATE VIEW v_potion AS
   FROM potion p
   JOIN ressource r ON r.id = p.ressource_id
   JOIN niveau_alchimie n ON n.id = p.niveau_id;
+
+-- Objets à la ceinture (décision R81 ; page /ressources/objets-a-la-ceinture/) : les objets du catalogue que la page liste parmi ceux qu'un personnage
+-- met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage : Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez
+-- avec votre mj »). Une ligne par objet, `famille` :
+--   'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ;
+--   'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la
+--                 ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ;
+--   'baton'     : les bâtons magiques (onglet « Bâton magique » : « Ces objets peuvent être portés à la ceinture ou dans un emplacement d'arme pour que
+--                 l'effet soit actif »).
+-- `ressource_id` (potion, contenant) ou `baton_id` (bâton magique) : l'un des deux. Le bouclier n'en est pas (décision R82 : son emplacement est dans
+-- l'armure). Le matériel que le guide cite aussi (briquet, torche, corde, kits) va à la ceinture mais n'est pas listé (décision R81 : il reste dans
+-- « Composants »).
+CREATE VIEW v_objet_ceinture AS
+  SELECT p.famille AS famille, p.ressource_id AS ressource_id, CAST(NULL AS TEXT) AS baton_id
+  FROM potion p
+  UNION ALL
+  SELECT 'contenant', r.id, CAST(NULL AS TEXT)
+  FROM ressource r
+  WHERE r.genre = 'materiel'
+    AND (r.nom_cle LIKE '%carquois%' OR r.nom_cle LIKE '%sac-de-bombe%' OR r.nom_cle LIKE '%sac-de-pierre%')
+  UNION ALL
+  SELECT 'baton', CAST(NULL AS TEXT), b.id
+  FROM baton_magique b;
 
 -- Arme forgée dans un matériau : « tous les bonus se cumulent une fois l'arme forgée (exemple : une claymore en cuivre donne un bonus aux
 -- dégâts de +10 car le cuivre donne +5 aux dégâts et la claymore donne aussi +5) » (Armes!A1). Une ligne par couple (arme, matériau).

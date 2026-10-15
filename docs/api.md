@@ -428,7 +428,7 @@ on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base 
 4. **DB**, le schéma de la base (dessiné à la première ouverture du menu ; demande du propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un
    mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »,
    puis « 4) DB (ton futur schéma) » : titre « DB », la sous-ligne dit « Schéma de la base » et ses nombres) : une carte de **toutes les tables**
-   (191, dont les 2 dérivées `lien` et `lien_candidat`) et des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace
+   (191, dont les 2 dérivées `lien` et `lien_candidat`) et des **36 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace
    aucune table), une boîte par table avec chaque colonne, son type déclaré, `PK`, `NN` et une pastille par clé étrangère, et **un lien par clé
    étrangère** (409 ; une clé à plusieurs colonnes reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à
    plusieurs colonnes part de la colonne qui la distingue et arrive à la colonne visée au même rang (`indiceDuLien` :

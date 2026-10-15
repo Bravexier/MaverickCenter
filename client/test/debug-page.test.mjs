@@ -519,7 +519,7 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   assert.ok(json, 'la structure du schéma, en JSON');
   const structure = JSON.parse(json[1]);
   assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 191);
-  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 35);
+  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 36);
   assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
   assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
   assert.match(main, /<div class="schema-carte" data-schema-carte data-detail="loin" role="application" aria-roledescription="schéma de la base"/);
