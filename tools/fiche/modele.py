@@ -7,7 +7,8 @@ Usage (LibreOffice et Pillow requis ; relançable, mêmes fichiers à l'identiqu
 
 Source : le modèle vide que le propriétaire a donné le 2026-10-15 (Google Sheets « Fiche-de-personnage-Maverick-V15.2.2 ordinateur »,
 `18ltusGgVzAj6jZaq55f4SW5YkZ50KbdqT-TAzygZ6co`, un seul onglet « Personnage », et son téléchargement .ods). La page /fiche/ exporte une fiche
-dans ce modèle et en réimporte une (client/src/lib/fiche-tableur.mjs ; docs/character-generator.md, « Tableur »).
+dans ce modèle et en réimporte une (client/src/lib/fiche-tableur-export.mjs, client/src/lib/fiche-tableur-import.mjs ;
+docs/character-generator.md, « Tableur »).
 
 Ce que fait le script, rien d'autre :
   1. LibreOffice convertit le .ods en .xlsx (le format que la page écrit : Excel, Google Sheets et LibreOffice l'ouvrent) ;

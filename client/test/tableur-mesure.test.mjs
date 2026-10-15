@@ -1,15 +1,15 @@
 // Ce qu'une case de tableur montre d'un texte (lib/tableur-mesure.mjs) et la taille des cases du modèle (lib/tableur-ecriture.mjs#zonesDuClasseur) :
 // la fiche exportée ne laisse pas un texte rogné par sa case (demande du propriétaire, 2026-10-15 : « Toute info supplémentaire peut être notée dans
-// les « Notes » ») ; elle en garde le début, la suite va dans la note, et l'import recolle les deux (fiche-tableur-aller-retour.test.mjs : la chaîne
-// entière). Ici : chasses, lignes, tient / ne tient pas, coupure et recollage exacts (essais tirés au sort, graine fixe), ajustement (retour à la
-// ligne, réduction au besoin), et les zones lues dans le modèle stocké.
+// les « Notes » ») ; elle en garde le début, la suite de sa part relue va dans la note, et l'import recolle les deux (fiche-tableur-aller-retour.test.mjs :
+// la chaîne entière). Ici : chasses, lignes, tient / ne tient pas, coupure et recollage exacts (essais tirés au sort, graine fixe), part relue (`lu`),
+// ajustement (retour à la ligne, réduction au besoin), et les zones lues dans le modèle stocké.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { pointsDeLaColonne, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import {
   ajusterLeTexte, couperLeTexte, ECHELLE_MIN, encoderLaSuite, FIN_COUPEE, FIN_COUPEE_DANS_UN_MOT, largeurDuTexte, lignesDuTexte, recollerLeTexte,
-  SAUT_DANS_LA_SUITE, tientDans,
+  SAUT_DANS_LA_SUITE, sansLaCoupure, tientDans,
 } from '../src/lib/tableur-mesure.mjs';
 
 const zone = (z = {}) => ({ colonnes: 10, lignes: 1, largeur: 150, hauteur: 15, police: 'Calibri', taille: 10, gras: false, retour: true, reduire: false, ...z });
@@ -22,7 +22,9 @@ test('chasses : celles de Carlito (Calibri) et de Liberation Sans (Arial), lettr
   assert.ok(largeurDuTexte('Mm', 10, true) > largeurDuTexte('Mm', 10), 'le gras est plus large');
   assert.equal(largeurDuTexte('é', 10), largeurDuTexte('e', 10));
   assert.equal(largeurDuTexte('Liberation', 10, false, 'Liberation Sans'), largeurDuTexte('Liberation', 10, false, 'Arial'));
-  assert.equal(largeurDuTexte('→', 10), 10, 'une flèche : un cadratin');
+  assert.ok(Math.abs(largeurDuTexte('→', 10) - 9.1) < 0.01, 'la flèche de Carlito (0,905 cadratin)');
+  assert.equal(largeurDuTexte('→', 10, false, 'Arial'), 10);
+  assert.equal(largeurDuTexte('★', 10), 10, 'un signe absent de la police : un cadratin');
   assert.equal(largeurDuTexte('abc', 20), 2 * largeurDuTexte('abc', 10));
   assert.equal(largeurDuTexte('', 10), 0);
 });
@@ -125,6 +127,31 @@ test('coupure : au dernier blanc qui tient ; suite encodée, blancs gardés ; re
   assert.equal(encoderLaSuite(' a \nb\t\n c '), 'a  ⏎ b\t ⏎  c');
   assert.equal(recollerLeTexte('Texte réécrit', 'la suite'), null);
   assert.equal(recollerLeTexte('Mot coupé…', 'suite fin'), 'Mot coupésuite fin');
+});
+
+test('part relue (`lu`) : seule sa fin non montrée fait une suite, qui se recolle en elle seule ; une coupure au-delà n’en a pas', () => {
+  const relu = 'Composition : Acier\nEffet en plus : Gravée au nom de sa mère';
+  const t = `${relu}\nUn effet du catalogue, assez long pour déborder de la case, que le site refait`;
+  const deux = zone({ largeur: 400, hauteur: 30 });
+  // la case montre les deux lignes relues : coupée juste après, ou dans la part affichée, sans suite
+  const c = couperLeTexte(t, deux, { lu: relu.length });
+  assert.deepEqual(c, { debut: `${relu} …`, suite: null });
+  assert.notEqual(couperLeTexte(t, deux).suite, null, 'sans `lu`, tout le texte est relu');
+  const large = couperLeTexte(t, zone({ largeur: largeurDuTexte('Effet en plus : Gravée au nom de sa mère', 10) + 3, hauteur: 45 }), { lu: relu.length });
+  assert.equal(large.suite, null);
+  assert.ok(large.debut.startsWith(`${relu}\nUn effet`), large.debut);
+  // une ligne seulement : la suite ne porte que le reste de la part relue ; recollée, elle redonne cette part
+  const une = couperLeTexte(t, zone({ largeur: 400 }), { lu: relu.length });
+  assert.deepEqual(une, { debut: 'Composition : Acier …', suite: '⏎ Effet en plus : Gravée au nom de sa mère' });
+  assert.equal(recollerLeTexte(une.debut, une.suite), relu);
+  // rien de relu : jamais de suite
+  assert.deepEqual(ajusterLeTexte(t, zone({ largeur: 400 }), { lu: 0 }).suite, null);
+  assert.equal(ajusterLeTexte(t, zone({ largeur: 400 }), { lu: 0 }).texte, 'Composition : Acier …');
+  assert.equal(ajusterLeTexte(t, zone({ largeur: 400, hauteur: 30, lignes: 2 }), { lu: relu.length }).suite, null);
+  // le début d'un texte coupé, sans sa fin
+  assert.equal(sansLaCoupure('Composition : Acier …'), 'Composition : Acier');
+  assert.equal(sansLaCoupure('Anticonstitution…'), 'Anticonstitution');
+  assert.equal(sansLaCoupure('Rien de coupé'), null);
 });
 
 test('ajuster : retour à la ligne d’une case de plusieurs rangées, réduction au besoin d’une case d’une rangée (jusqu’à ECHELLE_MIN), puis coupure', () => {

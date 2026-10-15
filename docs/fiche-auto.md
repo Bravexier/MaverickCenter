@@ -93,7 +93,8 @@ l'onglet « Personnage » en `.csv`), puis choisir le fichier. L'import (`client
 - **Pas repris**, et dit dans les notes : un nom introuvable dans les règles ou qui en désigne plusieurs sans rien pour les départager, la case
   « Ambidextrie » cochée (AU8 : l'attaque à deux armes est calculée, décision R46), ce que les règles du site retirent. Les valeurs calculées
   (totaux, dégâts, AP, AM…) ne sont pas relues : le site les recalcule. L'image en A1 (le logo de la fiche auto) est ignorée.
-- Une ligne de l'effet d'une arme (AA13) qui n'est pas celle du catalogue est gardée en « effet en plus » (une ancienne graphie de l'effet comprise).
+- « Effet en plus » (AA13, AN13) n'est pas relu : c'est une formule de la fiche auto (`=BDD!AJ36` : effet du catalogue, effet du matériau, malus
+  d'ambidextrie), qui ne porte aucune saisie du joueur ; l'effet en plus de la fiche importée reste vide.
 
 Les deux fiches du propriétaire servent d'essai (`client/test/fixtures/fiche-auto-lucien.json`, `fiche-auto-louise.json` : valeurs affichées,
 lues par l'API Google) : `test/fiche-tableur-import.test.mjs` vérifie ce qui est repris et ce qui part dans les notes, `test/fiche-tableur-aller-retour.test.mjs`

@@ -17,8 +17,8 @@ import { ficheVide, PARTIES_DE_FICHE } from '../src/lib/fiche-format.mjs';
 import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
-import { cellulesDeLaFiche } from '../src/lib/fiche-tableur-export.mjs';
+import { casesDuDon, DONS, MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
+import { cellulesDeLaFiche, CLES_DE_LA_NOTE, lireLigneDeNote, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
 import { feuilleDeGrille, ficheDuClasseur } from '../src/lib/fiche-tableur-import.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
@@ -112,6 +112,22 @@ function canonique(fiche) {
   return resultat;
 }
 
+/** Les cases dont l'import tire un choix du personnage : seules elles peuvent avoir une suite dans la note (jamais un texte de règles). */
+const O = ORDINATEUR;
+const CASES_RELUES = new Set([O.nom, O.surnom, O.lieuOrigine, O.race, O.magieInnee, O.magieAcquise, O.dieuChoisi, O.xp, O.classe1, O.classe2, O.specialite1,
+  O.specialite2, ...O.armes.flatMap((x) => [x.nom, x.effet]), O.armure.nom, O.armure.bonus, O.bouclier.nom, O.bouclier.composition,
+  ...Object.values(O.accessoires), ...O.ceinture, ...O.inventaire.colonnes.flatMap((c) => O.inventaire.lignes.map((l) => `${c}${l}`)),
+  casesDuDon(DONS.race).nom, casesDuDon(DONS.metier).nom, casesDuDon(DONS.metier).effet, ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom),
+  ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]), ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)]);
+
+/** Les lignes de la note sous le marqueur, lues (lireLigneDeNote) : toutes ont une clé connue. */
+function lignesDeLaNote(cellules) {
+  const lignes = cellules[O.note].split('\n');
+  const lues = lignes.slice(lignes.indexOf(MARQUEUR_DES_NOTES) + 1).map((l) => [l, lireLigneDeNote(l)]);
+  assert.deepEqual(lues.filter(([, x]) => !x).map(([l]) => l), [], 'toute ligne sous le marqueur a une clé connue');
+  return lues.map(([, x]) => x);
+}
+
 /** L'aller-retour d'une fiche : même fiche, rien dans les notes, et l'export de la fiche relue redonne les mêmes cases. */
 async function verifier(fiche, quoi) {
   const r = await allerRetour(fiche);
@@ -122,6 +138,10 @@ async function verifier(fiche, quoi) {
   assert.deepEqual(canonique(r.fiche), canonique(fiche), `${quoi} : la fiche relue`);
   const encore = cellulesDeLaFiche(regles, r.fiche, { date: DATE, zones: ZONES });
   assert.deepEqual(encore, { cellules: r.cellules, remplis: r.remplis, alignements: r.alignements }, `${quoi} : point fixe de l'export`);
+  // la note : des données du personnage ; une suite seulement pour une case relue, et le Mode Hyper 100 % sans ses effets
+  const lues = lignesDeLaNote(r.cellules);
+  assert.deepEqual(lues.filter((l) => l.nom === 'suite' && !CASES_RELUES.has(l.adresse)).map((l) => l.adresse), [], `${quoi} : suite d'une case affichée`);
+  assert.ok(lues.filter((l) => l.cle === CLES_DE_LA_NOTE.modeHyperCent).every((l) => l.valeur === MODE_HYPER_CENT_DEBLOQUE), quoi);
   return r;
 }
 
@@ -223,6 +243,13 @@ test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue
   const lues = [ORDINATEUR.armes[0].effet, ORDINATEUR.accessoires.chef, ORDINATEUR.ceinture[2], 'L73', 'AA51'];
   assert.deepEqual(lues.filter((a) => !suites.includes(a)), [], `cases coupées : ${suites.join(', ')}`);
   for (const a of lues) assert.match(r.cellules[a], /…$/, a);
+  // la suite de l'effet de l'arme ne porte que ce que l'import relit : ni l'effet du catalogue, ni les lignes « Deux armes », « Non compté »
+  const suiteDeLArme = r.cellules[ORDINATEUR.note].split('\n').find((l) => l.startsWith(`Suite de la case ${ORDINATEUR.armes[0].effet} : `));
+  const catalogue = regles.armes.find((a) => a.id === f.armes[0].arme_id).effet;
+  assert.ok(!suiteDeLArme.includes(catalogue.split('\n')[0]) && !/Deux armes|Non compté/.test(suiteDeLArme), suiteDeLArme);
+  // des textes affichés coupés (descriptions des sorts…) : sans suite, la fin « … » dans leur case
+  const affichees = Object.keys(r.cellules).filter((a) => /^AM(5[5-9]|6\d|7[0-4])$/.test(a) && /…$/.test(r.cellules[a]));
+  assert.ok(affichees.length > 0 && affichees.every((a) => !suites.includes(a)), `descriptions coupées : ${affichees.join(', ')}`);
   assert.ok(Object.values(r.alignements).some((x) => x.reduire) && Object.values(r.alignements).some((x) => x.retour), 'réduction et retour à la ligne');
   // les débordements sont bien passés par la note : la fiche relue en a autant que la fiche écrite
   assert.ok(f.sorts.length > ORDINATEUR.sorts.lignes.length && r.fiche.sorts.length === f.sorts.length);
@@ -248,12 +275,16 @@ test('les personnages fil rouge du guide : relus tels quels, point fixe', async 
   }
 });
 
-test('fiches auto du propriétaire (Lucien, Louise) : importées, exportées, relues telles quelles, point fixe', async () => {
+test('fiches auto du propriétaire (Lucien, Louise) : importées, exportées, relues telles quelles, point fixe ; une note courte', async () => {
   for (const qui of ['lucien', 'louise']) {
     const values = JSON.parse(readFileSync(new URL(`./fixtures/fiche-auto-${qui}.json`, import.meta.url), 'utf8')).values;
     const auto = ficheDuClasseur(regles, feuilleDeGrille(values));
     assert.equal(auto.disposition, 'auto');
-    await verifier(auto.fiche, qui);
+    const r = await verifier(auto.fiche, qui);
+    // la note : bi-classe, gains de niveau, Mode Hyper 100 %, et au plus deux suites (un libellé d'accessoire, un événement trop longs pour leur case)
+    const lues = lignesDeLaNote(r.cellules);
+    assert.ok(lues.filter((l) => l.nom === 'suite').length <= 2, `${qui} : ${lues.filter((l) => l.nom === 'suite').map((l) => l.adresse).join(', ')}`);
+    assert.ok(lues.length <= 7, `${qui} : ${lues.length} lignes`);
   }
 });
 

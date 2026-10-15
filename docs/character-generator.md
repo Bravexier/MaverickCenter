@@ -178,21 +178,38 @@ Dans la barre : **« Exporter (tableur) »** (un `.xlsx`), **« Exporter (JSON) 
   remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du Potentiel
   Illimité, gains de niveau, NM offerts, accessoires de ceinture et « autre », dons, sorts, objets et événements de trop) va dans la case **NOTE**, sous
   les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que l'import relit ; suivent des lignes d'information refaites à
-  chaque export (résistances au choix, Mode Hyper 100 %, choix à faire), que l'import ignore. Le classeur est écrit par `lib/tableur-ecriture.mjs`
-  (le modèle, ses styles gardés, les valeurs, les fonds, le portrait).
+  chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire), que l'import ignore. La note ne porte que des **données du
+  personnage**, jamais un texte de règles (les effets du Mode Hyper 100 %, par exemple, sont sur la page, pas dans la note). Le classeur est écrit
+  par `lib/tableur-ecriture.mjs` (le modèle, ses styles gardés, les valeurs, les fonds, le portrait).
+- **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, son nom en première ligne, puis l'effet sur
+  une ligne, « <libellé>[ = valeur][ → compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas :
+  vide, comme « Attaque : », ou partagé par plusieurs propriétés, comme « MALÉDICTION »), « Effet : <texte> » pour l'effet hors table, « Maudit »
+  sur sa ligne ; une pièce d'armure par ligne (AQ21), « [<Emplacement> : ]<armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N
+  (effet) » (l'emplacement omis pour l'armure complète), avec les statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis
+  sans l'effet des améliorations. L'import lit aussi l'ancienne écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … ·
+  Amélioration : niv. 1 — … »).
 - **Textes trop longs** (« toute info supplémentaire peut être notée dans les Notes ») : la page lit la taille des cases du modèle
   (`zonesDuClasseur`) et mesure chaque texte (`lib/tableur-mesure.mjs` : chasses de Calibri et d'Arial). Une case de plusieurs rangées prend le retour
   à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
-  toujours pas, la case en garde le début, fini par « … », et la **suite va dans la note** (« Suite de la case AM55 : … », sauts de ligne en « ⏎ »),
-  que l'import recolle avant de lire la case. Une note qui déborde elle-même s'aligne en haut : ses premières lignes restent lisibles à l'impression.
-  Google Sheets ne réduit pas un texte : il rogne ce qui dépasse.
+  toujours pas, la case en garde le début, fini par « … ». Chaque case est **relue** (l'import en tire un choix du personnage : noms, sorts et NM,
+  noms des dons, accessoires, ceinture, inventaire, événements, pièces d'armure, composition, améliorations, élément et effet en plus d'une arme,
+  choix du métier…) ou **affichée** (un texte de règles ou un calcul que le site refait : type, coût, portée, zone et description des sorts, type et
+  effets des dons, textes de la race, don de base, artisanat, Mode Hyper, résistances, dégâts, effet du catalogue d'une arme, titres…). Une case
+  affichée coupée perd sa fin, **sans rien dans la note** ; seule la part relue d'une case coupée a une suite dans la note (« Suite de la case AA51 :
+  … », sauts de ligne en « ⏎ »), que l'import recolle avant de lire la case. Une case à la fois relue et affichée écrit d'abord ses lignes relues :
+  l'effet d'une arme (AA13, AN13) donne la composition, les améliorations, l'élément et l'effet en plus, puis l'effet du catalogue, « Deux armes »
+  et « Non compté » (`partiesDeLArme`) ; le métier (L41), les rangs à choix « → compétence », puis les autres rangs et l'artisanat
+  (`partiesDuMetier`). Un texte affiché coupé sert encore à départager deux homonymes (sorts, armes) par son début. Une note qui déborde elle-même
+  s'aligne en haut : ses premières lignes restent lisibles à l'impression. Google Sheets ne réduit pas un texte : il rogne ce qui dépasse.
 - **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
   le logo reste, décrit « logo ». Le fichier s'appelle « <nom> - Fiche Maverick V15.2.2.xlsx ».
 - **Import** (`lib/tableur-lecture.mjs` lit le `.xlsx`, le `.ods` ou le `.csv` ; `lib/fiche-tableur-import.mjs`, `ficheDuClasseur`) : l'onglet
   « Personnage » du modèle ordinateur ou de la **fiche auto V15.2.2** (voir [`fiche-auto.md`](fiche-auto.md)). Un nom se retrouve dans son contexte
   (sorts : les magies du personnage ; dons et spécialités : la classe ; ethnie : la race…), par sa clé puis par l'ancienne graphie gardée dans
   l'identifiant ; rien n'est rapproché par vraisemblance. Puis la même chaîne que la page (caractéristiques complètes, ethnie imposée, magie acquise
-  valable, classes selon la magie innée, dons et choix de métier valables, maîtrises). Ce qui n'a pas de place sur le site (`nonRepris`) et ce que
+  valable, classes selon la magie innée, dons et choix de métier valables, maîtrises). Les écritures de la page (lignes de la note, objets,
+  accessoires, armure, effet d'une arme, choix du métier) se relisent par les lecteurs de `lib/fiche-tableur-export.mjs`, qui les écrit (un seul jeu
+  de lecteurs ; la fiche auto a les siens). Ce qui n'a pas de place sur le site (`nonRepris`) et ce que
   l'import a déduit (`remarques` : gains de niveau reconstitués, compétence d'un accessoire…) s'ajoutent à la fin des notes, sous une ligne
   « [JJ/MM/AAAA] Import du classeur « <fichier> » : » ; pour un fichier exporté par la page, il n'y a rien.
 - **Où va la fiche importée** : un prétiré enregistré est ouvert → le dialogue « Importer la fiche » (`#import-cible`) propose de le **mettre à
