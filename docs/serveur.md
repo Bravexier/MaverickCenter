@@ -22,6 +22,9 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
 | `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
+| `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
+| `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
+| `client/serveur/journal-du-service.mjs` | Journal du service gardé en mémoire (page Debug du site de dev, `GET /api/debug/journal/`) ; sans import |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -317,6 +320,39 @@ une valeur que le site a changée.
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
 
+## API REST `/api/v1/` et page Debug (site de dev)
+
+Demande du propriétaire : un CRUD pour tous les éléments du jeu, à l'image d'un swagger. Détail complet (adresses, paramètres, formats, ETag,
+codes, exemples `curl`, ressources par module, comment rendre une ressource modifiable) : [`api.md`](api.md).
+
+- **Site de dev seulement** : ouverte avec l'édition (`MAVERICK_EDITION=1`) ; ailleurs, **tout** `/api/v1/` répond `403`, lectures comprises
+  (décision du propriétaire du 2026-10-15 : en production, la base n'est ouverte que par le front, c'est-à-dire les pages du site).
+- **Lectures** : la base vivante, ressource par ressource (`GET /api/v1/` : le catalogue ; `GET /api/v1/openapi.json` : la description OpenAPI
+  3.1 de tout le service, routes de cette page comprises). Jamais une table des sections 13 et 14 ni une image entière.
+- **Écritures** : une requête = un lot de `serveur/edition.mjs#enregistrer` (page `api/v1/<ressource>`), comme le mode modification : journal,
+  rejeu, note en préparation de « Mise à jour », livraison dans `data/rows`, retraits des fiches (R42). Une table que le site de dev écrit par une
+  opération du lot (relations entre peuples, magies innées, catégories d'un événement, valeurs propres d'une capacité de monstre, fusion de
+  mots-clés) l'est par la même opération (`operations`, `actions` du registre). Ce que le service d'édition ne sait pas écrire (ni `TABLES`, ni
+  `ENTITES`, ni une opération du lot) est en lecture seule : `405`, jamais de SQL direct.
+
+**Journal du service** (`serveur/journal-du-service.mjs`) : chaque ligne que le service note part toujours sur la sortie, horodatée (ce que montre
+`docker logs`) ; sur le site de dev, aussi dans une mémoire des 2 000 dernières entrées `{ n, instant, niveau, categorie, message }` (niveau
+`info`, `avertissement` ou `erreur` ; catégorie `service`, `http`, `base`, `fiches`, `edition`, `mise-a-jour`, `maintenance`, déduits du message
+quand l'appelant ne les donne pas ; `n` croît depuis le démarrage, jamais réutilisé), et chaque requête `/api/` y est notée (catégorie `http` :
+méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves réussies du journal lui-même et de l'état de maintenance
+(reconnues à leur chemin, jamais à leur chaîne de requête), qui noieraient le reste. La mémoire repart à vide quand le service redémarre ; chaque
+lecture porte l'identité du processus (`processus`, tirée au démarrage) pour que la page voie un redémarrage. En production (sans édition), ni
+mémoire ni ligne par requête réussie ou refusée : seuls les événements du service et ses échecs (`5xx`) vont sur la sortie, dont le log Docker n'a
+pas de rotation.
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/debug/journal/` | `{ processus, entrees, dernier, capacite, perdues }` : les entrées qui suivent `?depuis=<n>`, filtrées par `?niveau=`, `?categorie=` (une valeur, « a,b » ou répétée), `?q=` (texte, sans accents ni majuscules) et `?limite=` ; `dernier` = le curseur de la relève suivante, `perdues` = les entrées sorties de la mémoire. `403` hors du site de dev, `503` sans journal |
+
+**Page Debug** (`/debug/`, menu Outils, site de dev seulement : absente du menu d'un build `SITE_MODE=prod`, où la page ne dit qu'une phrase, et de
+la version portable) : « Tester l'API » (menu déroulant fermé, construit depuis la description OpenAPI ; une écriture demande une case cochée) et les
+« Journaux du serveur » (relevés toutes les 2 s, filtres par niveau, catégorie et texte) : [`api.md`](api.md), « Page Debug ».
+
 ## Mise à jour (site de dev)
 
 Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour/`) à deux visages, comme l'édition.
@@ -559,7 +595,8 @@ journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot fig
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
 (annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
-`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
+`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé), `ressources-registre`, `serveur-api-v1` et
+`api-doc` (API REST `/api/v1/`, [`api.md`](api.md)), `journal-du-service` et `debug-page` (page Debug) ; `site-html` contrôle `dist/_serveur/`
 après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
 
 ## Suite

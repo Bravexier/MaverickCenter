@@ -16,6 +16,12 @@ n'est encore réalisé au-delà de la première étape.
    par rapport à la production, en note de version historisée, et son bouton apporte les modifications du site dans `data/rows` puis livre en
    production (`docs/serveur.md`, « Mise à jour ») ; le propriétaire a décidé que **le site devient la source** des données qu'il modifie (les
    modifications versées dans `historique_modification`, que les tests relisent pour ne plus épingler ce que le site a changé : `client/src/lib/historique-site.mjs`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
+   **API REST et page Debug** (2026-10-15, en place) : sur le site de dev seulement, `/api/v1/` sert chaque élément du jeu rangé dans la base
+   (104 ressources en 8 modules, description OpenAPI) et écrit, par le journal de l'édition, ce que le service sait déjà modifier ; la page Debug
+   (menu Outils) en est le testeur, avec les journaux du serveur ([`api.md`](api.md)). Fermée en production (décision du propriétaire : la base n'y
+   est ouverte que par le front). **Le CRUD complet reste à étendre domaine par domaine** : armures, boucliers, potions, accessoires, ethnies,
+   états, postures, dieux, familiers, créatures… sont en lecture seule tant que le service d'édition ne sait pas les écrire (recette :
+   [`api.md`](api.md), « Rendre une ressource modifiable »).
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 À côté de ces trois étapes, un axe **communauté de jeu** (comptes Discord, groupes, planning, bot, boîte à idées, statistiques) et l'achèvement du

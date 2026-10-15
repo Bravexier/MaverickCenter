@@ -1,6 +1,6 @@
 // Journaux du serveur sur la page Debug (demande du propriétaire : « les logs du serveur (avec une possibilité de filtrer) » ; pages/debug.astro,
 // src/scripts/debug.mjs) : fonctions pures sur les réponses de GET <base>api/debug/journal/ (serveur/journal-du-service.mjs) :
-//   { entrees: [{ n, instant, niveau, categorie, message }], dernier, capacite, perdues }
+//   { processus, entrees: [{ n, instant, niveau, categorie, message }], dernier, capacite, perdues }
 // La page relève toutes les 2 s les entrées qui suivent la dernière vue (?depuis=<dernier>), les garde (GARDEES_MAX au plus) et en affiche au plus
 // AFFICHEES_MAX, filtrées par niveau, catégorie et texte, la plus récente en haut. Les filtres s'appliquent dans la page : changer de filtre ne
 // redemande rien au service.
@@ -25,20 +25,24 @@ export function adresseDuJournal(api, depuis = 0) {
   return `${api}debug/journal/${depuis > 0 ? `?depuis=${depuis}` : ''}`;
 }
 
-/** L'état vide de la page : aucune entrée, rien vu. */
-export const etatVide = () => ({ entrees: [], dernier: 0, perdues: 0, capacite: null });
+/** L'état vide de la page : aucune entrée, rien vu, aucun processus connu. */
+export const etatVide = () => ({ entrees: [], dernier: 0, perdues: 0, capacite: null, processus: null });
 
 const valide = (e) => e && Number.isInteger(e.n) && typeof e.message === 'string';
 
 /**
  * L'état de la page après une réponse du journal : les nouvelles entrées (n plus grand que le dernier vu) à la suite, GARDEES_MAX au plus.
- * Un `dernier` plus petit que celui de la page : le service a redémarré (sa numérotation repart de 1) — `redemarre: true` et l'état est vidé, la
- * page redemande tout. Rend { etat, ajoutees, redemarre }.
+ * Le service a redémarré — sa numérotation repart de 1 — quand la réponse vient d'un autre processus que celui que la page lisait (`processus`,
+ * tiré à chaque démarrage : seul signe sûr quand le nouveau service a déjà écrit autant de lignes que la page en avait vu, ou plus, onglet caché ou
+ * relève en pause), ou quand son `dernier` est plus petit que celui de la page : `redemarre: true` et l'état est vidé, la page redemande tout
+ * depuis le début (rien du nouveau processus n'est sauté). Rend { etat, ajoutees, redemarre }.
  */
 export function fusionner(etat, reponse) {
   const dernier = Number(reponse?.dernier);
   if (!Number.isInteger(dernier) || dernier < 0) return { etat, ajoutees: 0, redemarre: false };
-  if (dernier < etat.dernier) return { etat: etatVide(), ajoutees: 0, redemarre: true };
+  const processus = typeof reponse.processus === 'string' && reponse.processus ? reponse.processus : null;
+  const autreProcessus = Boolean(processus && etat.processus && processus !== etat.processus);
+  if (autreProcessus || dernier < etat.dernier) return { etat: etatVide(), ajoutees: 0, redemarre: true };
   const recues = (Array.isArray(reponse.entrees) ? reponse.entrees : []).filter((e) => valide(e) && e.n > etat.dernier).sort((a, b) => a.n - b.n);
   const entrees = [...etat.entrees, ...recues].slice(-GARDEES_MAX);
   return {
@@ -47,6 +51,7 @@ export function fusionner(etat, reponse) {
       dernier: Math.max(dernier, recues.at(-1)?.n ?? 0),
       perdues: Number.isInteger(reponse.perdues) ? reponse.perdues : etat.perdues,
       capacite: Number.isInteger(reponse.capacite) ? reponse.capacite : etat.capacite,
+      processus: processus ?? etat.processus ?? null,
     },
     ajoutees: recues.length,
     redemarre: false,
@@ -83,6 +88,22 @@ export function heureDe(instant, maintenant = new Date()) {
   const heure = `${deux(d.getHours())}:${deux(d.getMinutes())}:${deux(d.getSeconds())}`;
   const memeJour = d.getFullYear() === maintenant.getFullYear() && d.getMonth() === maintenant.getMonth() && d.getDate() === maintenant.getDate();
   return memeJour ? heure : `${deux(d.getDate())}/${deux(d.getMonth() + 1)} ${heure}`;
+}
+
+/**
+ * Comment passer des lignes affichées (`avant` : leurs n, la plus récente en haut) à celles qui doivent l'être (`apres`) sans refaire le tableau :
+ * { ajout, retrait } — `ajout` lignes nouvelles à insérer en haut, `retrait` lignes à ôter en bas (le plafond AFFICHEES_MAX) — quand `apres` n'est
+ * que `avant` précédé des nouvelles entrées ; null sinon (filtre changé, effacement, redémarrage : tout se refait). Les lignes gardées restent les
+ * mêmes nœuds : la ligne lue ne bouge pas et une sélection en cours survit à la relève.
+ */
+export function planDAffichage(avant, apres) {
+  if (!avant.length) return null;
+  const ajout = apres.indexOf(avant[0]);
+  if (ajout < 0) return null;
+  const gardees = apres.length - ajout;
+  if (gardees > avant.length) return null;
+  for (let i = 0; i < gardees; i++) if (apres[ajout + i] !== avant[i]) return null;
+  return { ajout, retrait: avant.length - gardees };
 }
 
 const NIVEAU_CONNU = new Set(NIVEAUX.map((n) => n.cle));

@@ -105,10 +105,12 @@ export const TABLES_DE_LA_NOTE = ['note_version', 'note_version_ligne', 'histori
 export const CONTROLES_DE_LA_CI = [
   'npm test',
   'npm run build',
-  'node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs',
+  'node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs test/debug-page.test.mjs',
   'HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build',
   'grep -q \'class="bandeau-test"\' dist/index.html',
   'sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier',
+  'HIDE_EXAMPLES=1 SITE_MODE=prod SITE_TAG=v0.0.0 npm run build',
+  'node --test test/debug-page.test.mjs test/site-html.test.mjs',
   'node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"',
 ];
 /** Les contrôles du job preparer, avant le commit : la base reconstruite et vérifiée, puis exactement ce que la CI de la PR fera (client). */

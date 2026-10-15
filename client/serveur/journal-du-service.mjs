@@ -70,10 +70,20 @@ export function niveauDuMessage(message, categorie = categorieDuMessage(message)
 
 /**
  * Vrai pour la ligne d'une relève réussie (2xx ou 304) du journal (GET /api/debug/journal/) ou de l'état de maintenance (GET /api/maintenance/) :
- * elle n'est notée ni en mémoire ni sur la sortie.
+ * elle n'est notée ni en mémoire ni sur la sortie. Seul le chemin compte (préfixe de déploiement compris), jamais la chaîne de requête.
  */
 export function estUneReleve(message) {
-  return /^GET \S*\/api\/(?:debug\/journal|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(String(message ?? ''));
+  // le chemin s'arrête au « ? » : une chaîne de requête qui finirait par « /api/maintenance/ » ne fait pas d'une autre adresse une relève
+  return /^GET [^\s?]*\/api\/(?:debug\/journal|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(String(message ?? ''));
+}
+
+/**
+ * L'identité d'un journal, tirée à sa création (donc à chaque démarrage du service) : la page Debug la compare d'une relève à l'autre pour voir un
+ * redémarrage que la numérotation ne montre pas (le nouveau service a déjà écrit autant de lignes que la page en avait vu, ou plus).
+ */
+function identifiantDuProcessus() {
+  const hasard = globalThis.crypto?.randomUUID?.() ?? `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+  return `${Date.now().toString(36)}-${hasard}`;
 }
 
 /** Écriture de recherche : minuscules, sans accents (« Édition » se trouve par « edition »). */
@@ -98,8 +108,9 @@ function entier(valeur, defaut) {
  * @param {number} [o.capacite] entrées gardées en mémoire (les plus récentes)
  * @param {((ligne: string) => void) | null} [o.sortie] où écrire la ligne horodatée (la console ; null : nulle part)
  * @param {() => Date | string | number} [o.horloge] l'instant d'une écriture (tests)
+ * @param {string} [o.processus] l'identité de ce journal, rendue par chaque lecture (par défaut, tirée au hasard à sa création)
  */
-export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => console.log(ligne), horloge = () => new Date() } = {}) {
+export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => console.log(ligne), horloge = () => new Date(), processus = identifiantDuProcessus() } = {}) {
   const taille = Math.max(1, entier(capacite, 2000));
   /** @type {{ n: number, instant: string, niveau: string, categorie: string, message: string }[]} */
   let entrees = [];
@@ -130,7 +141,8 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
    * plus récentes) :
    *   niveau, categorie : une valeur, « a,b » ou un tableau (l'une OU l'autre) ; q : un texte cherché dans le message et la catégorie (sans
    *   accents ni majuscules). Un filtre vide laisse tout passer.
-   * Rend { entrees, dernier (le n de la dernière écriture, filtres ou non : le curseur de la relève suivante), capacite, perdues (entrées écrites
+   * Rend { processus (l'identité du journal : une autre après un redémarrage du service, même si la numérotation a déjà dépassé le curseur de la
+   * page), entrees, dernier (le n de la dernière écriture, filtres ou non : le curseur de la relève suivante), capacite, perdues (entrées écrites
    * qui ne sont plus en mémoire) }.
    */
   function lire({ depuis, niveau, categorie, q, limite } = {}) {
@@ -143,7 +155,7 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
       && (!niveaux || niveaux.has(e.niveau))
       && (!categories || categories.has(e.categorie))
       && (!texte || cle(`${e.message} ${e.categorie}`).includes(texte)));
-    return { entrees: trouvees.slice(-max).map((e) => ({ ...e })), dernier, capacite: taille, perdues: dernier - entrees.length };
+    return { processus: String(processus), entrees: trouvees.slice(-max).map((e) => ({ ...e })), dernier, capacite: taille, perdues: dernier - entrees.length };
   }
 
   /** Les catégories des entrées en mémoire : celles de CATEGORIES dans leur ordre, puis les autres par ordre alphabétique. */

@@ -1,8 +1,9 @@
 // Ressources de l'API REST du module « creation » (format : lib/ressources.mjs) : ce qu'on choisit en créant un personnage — race et ethnie (section 7 de
 // data/schema.sql, sauf les relations entre peuples), classe, spécialité et dons de classe (section 6), métier (section 9). Les écritures sont celles que le
 // site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition.mjs : RACE, RACE_ONGLET, RACE_DON, CLASSE, SPECIALITE, CAPACITE,
-// METIER) : rien de plus. Les tables que le service refait quand une ligne change (découpages des maîtrises, de l'inventaire, des bonus de métier…) sont
-// des `derivees`, jamais écrites par l'API.
+// METIER, et l'opération `magies_innees` pour les magies innées d'une race) : rien de plus. Les tables que le service refait quand une ligne change
+// (découpages des maîtrises, de l'inventaire, des bonus de métier…) sont des `derivees`, jamais écrites par l'API.
+import { SPECIALITES_MAX } from '../dons-edition.mjs';
 
 export const RESSOURCES = [
   {
@@ -12,7 +13,9 @@ export const RESSOURCES = [
     description:
       'Les races jouables (une par onglet du classeur « Les races ») : la phrase de présentation et l’onglet de la race, qui fait foi (décision R13) — textes, ' +
       'valeurs de départ, avantages, inconvénients, don de base ; ses dons raciaux, son tableau de dons, ses bornes de caractéristiques et ses matrices ' +
-      'd’accès de la fiche en sous-ressources ; une race créée reçoit « À compléter. » et 0, rien n’est déduit (ni magie, ni classe accessible).',
+      'd’accès de la fiche en sous-ressources ; une race créée reçoit « À compléter. » et 0, rien n’est déduit (ni magie innée, ni classe accessible : ses ' +
+      'magies innées se posent ensuite par la matrice, sous-ressource acces-aux-magies), et le service lui crée aussi son peuple du même nom dans la ' +
+      'matrice « Relation entre les races », avec sa case « Même peuple » face à lui-même ; une race ne se supprime pas.',
     table: 'race',
     extensions: [{ table: 'race_onglet', parent: { race_id: 'id' } }],
     enfants: [
@@ -25,8 +28,9 @@ export const RESSOURCES = [
         tri: 'rang',
         description:
           'Les dons raciaux de l’onglet, dans son ordre : une ligne du tableau des ethnies (forme « ethnie », étiquette de la 1re colonne) ou le don de toute ' +
-          'la race (forme « unique ») ; étiquette, nom, texte et remarque se modifient, l’identifiant est tiré de l’étiquette ou du nom (renommage qui le ' +
-          'change refusé).',
+          'la race (forme « unique ») ; étiquette, nom et texte se modifient, l’identifiant est tiré de l’étiquette ou du nom (renommage qui le change ' +
+          'refusé) ; la remarque ne se modifie que sur un don dont l’onglet porte une note de cellule (les trois dons d’ethnie du Médusain) : ailleurs la ' +
+          'page de la race n’a pas de place pour elle et le service la refuse (422).',
       },
       {
         cle: 'colonnes-du-tableau-de-dons',
@@ -73,7 +77,10 @@ export const RESSOURCES = [
         tri: 'rang',
         description:
           'Les magies innées que l’onglet de la race limite (le Nain et les races hybrides à classe raciale), dans l’ordre où il les cite ; la liste prime sur ' +
-          'la matrice de la fiche (décisions R11, R31) ; elle se change par l’opération des magies innées du site de dev, pas ligne à ligne.',
+          'la matrice de la fiche (décisions R11, R31) ; une magie s’y ajoute à la fin (POST) ou s’en retire (DELETE) par l’opération `magies_innees` du ' +
+          'site de dev, seulement pour une race dont l’onglet limite déjà ses magies (sinon : la matrice, acces-aux-magies) ; retirer la dernière rend la ' +
+          'main à la matrice.',
+        operations: { POST: 'magies_innees', DELETE: 'magies_innees' },
       },
       {
         cle: 'acces-aux-magies',
@@ -84,7 +91,10 @@ export const RESSOURCES = [
         tri: 'ordre',
         description:
           'La ligne de la race dans la matrice « Accessibilité Magie » de la fiche auto (une case par magie, 1 = accessible en magie innée), qui fait foi quand ' +
-          'l’onglet ne limite pas (décision R8) ; en lecture seule.',
+          'l’onglet ne limite pas (décision R8) : une case se modifie (PATCH { accessible: 0 | 1 }) par l’opération `magies_innees` du site de dev, ' +
+          'seulement pour une race dont l’onglet ne limite pas ses magies (sinon : magies-innees-de-l-onglet) — c’est ainsi qu’une race créée reçoit ses ' +
+          'magies innées.',
+        operations: { PATCH: 'magies_innees' },
       },
       {
         cle: 'acces-aux-classes',
@@ -146,7 +156,8 @@ export const RESSOURCES = [
     description:
       'Les classes (une par onglet du classeur « Classe Maverick V7 », rangées par catégorie du Sommaire ; une classe raciale porte le nom de sa race) : don de ' +
       'départ (santé, chakra, barrière), maîtrises d’armes et d’armures, arme, armure et inventaire de départ, chose à savoir, présentation ; les maîtrises et ' +
-      'l’inventaire découpés sont refaits à chaque modification ; ni renommage ni suppression.',
+      'l’inventaire découpés sont refaits à chaque modification ; ni renommage ni suppression ; une classe créée l’est dans une catégorie, avec un nom ' +
+      '(une classe raciale prend celui de sa race hybride).',
     table: 'classe',
     enfants: [
       {
@@ -167,7 +178,8 @@ export const RESSOURCES = [
     liste: ['id', 'nom', 'categorie_id', 'ordre', 'sante_depart', 'chakra_depart', 'barriere_depart'],
     recherche: ['nom'],
     tri: 'ordre',
-    ecriture: { creer: 'classe' },
+    // le nom : exigé par le service hors classe raciale (serveur/edition.mjs, CLASSE.creer), qu'ENTITES ne dit pas requis
+    ecriture: { creer: 'classe', exiges: { nom: 'sauf pour une classe raciale (race_id), qui prend le nom de sa race' } },
   },
   {
     cle: 'specialites',
@@ -180,7 +192,8 @@ export const RESSOURCES = [
     liste: ['id', 'nom', 'classe_id', 'rang'],
     recherche: ['nom'],
     tri: 'classe_id',
-    ecriture: { creer: 'specialite', supprimer: 'specialite' },
+    // deux spécialités au plus par classe (décision R43 : SPECIALITES_MAX, refus 409 de SPECIALITE.creer)
+    ecriture: { creer: 'specialite', supprimer: 'specialite', limite: { champ: 'classe_id', table: 'classe', nombre: SPECIALITES_MAX, regle: 'R43' } },
   },
   {
     cle: 'dons-de-classe',
@@ -194,7 +207,8 @@ export const RESSOURCES = [
     liste: ['id', 'nom', 'classe_id', 'specialite_id', 'niveau', 'nature', 'type_brut'],
     recherche: ['nom'],
     tri: 'classe_id',
-    ecriture: { creer: 'capacite', supprimer: 'capacite' },
+    // le niveau : exigé par le service sauf pour une option d'un choix (serveur/edition.mjs, CAPACITE.creer), qu'ENTITES ne dit pas requis
+    ecriture: { creer: 'capacite', supprimer: 'capacite', exiges: { niveau: 'sauf pour une option d’un choix (avec)' } },
   },
   {
     cle: 'objets-de-depart',

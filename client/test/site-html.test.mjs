@@ -54,7 +54,11 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
     ['regles Règles', 'ressources Ressources', 'personnages Personnages', 'codex Codex', 'outils Outils']);
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
+  // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
+  // (test/debug-page.test.mjs)
+  const production = lire('debug/index.html').includes('class="debug-reservee"');
+  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
+    ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
   assert.match(lire('ressources/alchimie/index.html'), /data-group="ressources" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Ressources');
 });
 

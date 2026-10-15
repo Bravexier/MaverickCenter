@@ -468,6 +468,7 @@ export const ENTITES = {
   race: {
     table: 'race',
     libelle: 'race',
+    nouveau: 'Nouvelle race',
     champs: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       nature: { type: 'choix', libelle: 'Nature', requis: true, choix: NATURES_DE_RACE },
@@ -478,6 +479,7 @@ export const ENTITES = {
   classe: {
     table: 'classe',
     libelle: 'classe',
+    nouveau: 'Nouvelle classe',
     champs: {
       categorie_id: { type: 'choix', libelle: 'Catégorie', requis: true, liste: 'categories' },
       nom: { type: 'ligne', libelle: 'Nom (une classe raciale prend celui de sa race)' },

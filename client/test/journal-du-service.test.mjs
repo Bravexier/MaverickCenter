@@ -119,7 +119,9 @@ test('anneau borné : les plus anciennes sortent, comptées dans `perdues` ; la 
   assert.equal(r.capacite, 3);
   assert.equal(r.perdues, 2);
   j.vider();
-  assert.deepEqual(j.lire(), { entrees: [], dernier: 5, capacite: 3, perdues: 5 });
+  const { processus, ...reste } = j.lire();
+  assert.deepEqual(reste, { entrees: [], dernier: 5, capacite: 3, perdues: 5 });
+  assert.equal(processus, r.processus, 'vider ne change pas l’identité du journal');
   assert.equal(j.ecrire('après').n, 6);
   assert.deepEqual(j.lire({ depuis: 5 }).entrees.map((e) => e.message), ['après']);
 });
@@ -161,11 +163,17 @@ test('les relèves réussies du journal et de la maintenance ne sont notées nul
   assert.equal(estUneReleve('GET /api/debug/journal/ 403 1 ms'), false);
   assert.equal(estUneReleve('POST /api/maintenance/lever/ 200 4 ms'), false);
   assert.equal(estUneReleve('GET /api/etat/ 200 1 ms'), false);
+  // seul le chemin compte : une chaîne de requête qui finit par l'adresse d'une relève ne cache pas une autre requête (ni en mémoire ni sur la sortie)
+  assert.equal(estUneReleve('GET /api/v1/metiers/?q=/api/maintenance/ 200 1 ms'), false);
+  assert.equal(estUneReleve('GET /api/v1/openapi.json?/api/debug/journal/ 200 1 ms'), false);
+  assert.equal(estUneReleve('GET /api/personnages/abc/?/api/maintenance/ 200 2 ms'), false);
+  assert.equal(estUneReleve('GET /api/maintenance/?x=/a 200 1 ms'), true, 'la vraie relève garde sa chaîne de requête');
   assert.equal(j.ecrire('GET /api/debug/journal/?depuis=3 200 1 ms', { categorie: 'http' }), null);
   assert.equal(j.ecrire('GET /api/maintenance/ 200 1 ms', { categorie: 'http' }), null);
   assert.equal(j.ecrire('GET /api/debug/journal/ 403 1 ms', { categorie: 'http' }).niveau, 'avertissement');
-  assert.equal(lignes.length, 1);
-  assert.equal(j.lire().dernier, 1, 'pas de numéro pris');
+  assert.equal(j.ecrire('GET /api/v1/metiers/?q=/api/maintenance/ 200 1 ms', { categorie: 'http' }).n, 2, 'notée');
+  assert.equal(lignes.length, 2);
+  assert.equal(j.lire().dernier, 2, 'pas de numéro pris par les relèves');
 });
 
 test('un message très long est coupé en mémoire, pas sur la sortie', () => {
@@ -182,4 +190,14 @@ test('le module n’importe rien (le service le charge tel quel, sans paquet)', 
   const code = readFileSync(new URL('../serveur/journal-du-service.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(code, /^\s*import\s/m);
   assert.doesNotMatch(code, /\bimport\(/);
+});
+
+test('identité du journal : la même à chaque lecture, une autre pour un autre journal (un redémarrage du service), donnée ou tirée au hasard', () => {
+  const a = creerJournalDuService({ sortie: null });
+  const b = creerJournalDuService({ sortie: null });
+  assert.equal(typeof a.lire().processus, 'string');
+  assert.ok(a.lire().processus.length >= 8);
+  assert.equal(a.lire().processus, a.lire({ depuis: 3, niveau: 'erreur' }).processus);
+  assert.notEqual(a.lire().processus, b.lire().processus);
+  assert.equal(creerJournalDuService({ sortie: null, processus: 'essai' }).lire().processus, 'essai');
 });

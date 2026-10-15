@@ -8,14 +8,24 @@
 //   - version.json du service livré : une nouvelle version arrête le processus (code 0), que Docker relance (restart: unless-stopped).
 // Sur le site de dev, la même minuterie suit aussi une vraie mise à jour en cours (run GitHub, note arrivée) et publie l'annonce de maintenance que
 // lisent les deux serveurs (maintenance.mjs).
+// Journal : chaque ligne part sur la sortie (horodatée, ce que montre `docker logs`). Sur le site de dev seulement (`edition`), elle va aussi dans le
+// journal gardé en mémoire (journal-du-service.mjs) que lit la page Debug (GET /api/debug/journal/), et chaque requête /api/ y est notée (catégorie
+// http : méthode, adresse avec sa chaîne de requête, statut, durée ; jamais les corps), sauf les relèves du journal lui-même et de l'état de
+// maintenance. En production, la page Debug n'existe pas (403) : pas de mémoire, et une requête n'est notée que si elle échoue côté service (5xx) —
+// la sortie garde ses seuls événements d'avant (démarrage, base, écritures, erreurs), sans une ligne par visite (le log du conteneur n'a pas de
+// rotation : deploy/…/docker-compose.yml).
 import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
+import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
 import { FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
+
+/** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
+const horodater = (ligne) => `${maintenant()} ${ligne}`;
 
 /** Rend une fonction qui dit, pour chaque valeur observée, s'il faut agir : la valeur a changé et elle était déjà la même à l'observation précédente. */
 export function guetteur(initiale) {
@@ -36,7 +46,6 @@ export function guetteur(initiale) {
   };
 }
 
-const horodater = (ligne) => `${maintenant()} ${ligne}`;
 const inode = (chemin) => {
   try {
     return statSync(chemin).ino;
@@ -62,13 +71,27 @@ const inode = (chemin) => {
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
- * @param {(ligne: string) => void} [o.journal]
+ * @param {((message: string, options?: object) => void) | null} [o.journal] reçoit chaque ligne notée (sans horodatage) ; donné, la sortie console se tait
+ *   (tests) ; sinon les lignes partent sur la console, horodatées
+ * @param {ReturnType<typeof creerJournalDuService>} [o.journalDuService] le journal gardé en mémoire (par défaut, un neuf sur le site de dev, aucun
+ *   en production : personne ne peut l'y lire)
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
-  journal = (ligne) => console.log(horodater(ligne)), relancer = () => process.exit(0) }) {
+  journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0) }) {
   const chemin = join(dossier, FICHIER_BASE);
+  // la mémoire de la page Debug (site de dev seulement) et la sortie de toujours (console, horodatée ; l'écouteur à sa place dans les tests) ; une
+  // relève (estUneReleve) n'est notée nulle part
+  const memoire = journalDuService ?? (edition ? creerJournalDuService({ sortie: null }) : null);
+  const journal = (message, options) => {
+    if (estUneReleve(message)) return null;
+    const entree = memoire ? memoire.ecrire(message, options) : { message: String(message ?? '') };
+    if (!entree) return null;
+    if (ecouteur) ecouteur(message, options);
+    else console.log(horodater(message));
+    return entree;
+  };
   const version = (() => {
     try {
       return JSON.parse(readFileSync(fichierVersion, 'utf8'));
@@ -210,6 +233,14 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   ouvrir();
 
   const serveur = createServer((req, res) => {
+    const debut = performance.now();
+    // chaque requête /api/ au journal (catégorie http), sans son corps, sur le site de dev ; en production, seulement un échec du service (5xx) ; les
+    // relèves du journal et de la maintenance n'y vont pas (journal-du-service.mjs)
+    const noterLaRequete = (statut) => {
+      const adresse = req.url ?? '/';
+      if (!adresse.startsWith('/api/') || (!edition && statut < 500)) return;
+      journal(`${req.method} ${adresse} ${statut} ${Math.round(performance.now() - debut)} ms`, { categorie: 'http' });
+    };
     const envoyer = ({ statut, corps, brut, entetes = {} }) => {
       // un 304 n'a pas de corps : ni Content-Type ni Content-Length (RFC 9110 § 15.4.5 ; un cache recopierait le type sur l'image qu'il garde)
       if (statut === 304) {
@@ -239,6 +270,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         morceaux.length = 0;
         res.once('finish', () => req.destroy());
         envoyer({ statut: 413, corps: { erreur: 'Requête trop volumineuse.' }, entetes: { Connection: 'close' } });
+        noterLaRequete(413);
         return;
       }
       morceaux.push(m);
@@ -248,13 +280,15 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       let reponse;
       try {
         const url = new URL(req.url ?? '/', 'http://service');
-        reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
-          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition), dossier, reference, depot, adresse, github, maintenance: maintenanceDemandee });
+        reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
+          { base: () => etat.db, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference, depot, adresse, github,
+            maintenance: maintenanceDemandee });
       } catch (e) {
         journal(`ERREUR ${req.method} ${req.url} : ${e.stack ?? e.message}`);
         reponse = { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
       }
       envoyer(reponse);
+      noterLaRequete(reponse.statut);
     });
   });
 
@@ -305,5 +339,5 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     minuterie.unref?.();
   }
 
-  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance };
+  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire };
 }
