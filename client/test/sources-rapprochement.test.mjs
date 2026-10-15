@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
-  adresse, avecCorrections, citations, comparable, enA1, feuillesJson, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe, plage,
+  adresse, avecCorrections, citations, comparable, enA1, feuillesJson, formuleLisible, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe, plage,
   rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
@@ -42,6 +42,9 @@ test('texte comparable, nombres, morceaux et valeurs JSON', () => {
   assert.equal(comparable('  l’armure  lourde\n'), "l'armure lourde");
   assert.deepEqual(morceaux('- 1 maîtrise Dague\n- 1 maîtrise au choix'), ['1 maîtrise Dague', '1 maîtrise au choix']);
   assert.deepEqual([...nombresDe('portée 4-18, 1 000 RO, -5 PV, 2,5')].sort((a, b) => a - b), [-5, 0, 1, 2.5, 4, 18, 1000]);
+  assert.deepEqual([...nombresDe('1% -5% = Niveau 1 ; coût 7 (–1/NM)')].sort((a, b) => a - b), [-5, -1, 1, 5, 7]);
+  assert.deepEqual(morceaux('Sang › Niveau 1'), ['Sang', 'Niveau 1']);
+  assert.equal(formuleLisible('=IFERROR(__xludf.DUMMYFUNCTION("TEXTJOIN("", "",TRUE,A1:A3)"),"")'), 'TEXTJOIN(", ",TRUE,A1:A3)');
   assert.deepEqual(feuillesJson('{"elements":[{"nom":"Saut","n":2}]}'), { textes: ['Saut'], nombres: [2] });
   assert.equal(feuillesJson('Texte [entre crochets]'), null);
 });
@@ -54,6 +57,11 @@ test('corrections d’orthographe dans les deux sens : occurrence par occurrence
   const mineure = [{ avant: 'panacée mineur', apres: 'panacée mineure' }, { avant: 'panacée mineur', apres: 'panacée mineure' }];
   assert.equal(avecCorrections('panacée mineur, panacée mineure', mineure), 'panacée mineure, panacée mineure');
   assert.equal(remplacer('une secte, ect', 'ect', 'etc'), 'une secte, etc');
+  // Les corrections d'une ligne, dans l'ordre des migrations (elles peuvent se chevaucher : 0005 puis 0006) ; celles d'une autre ligne, sans chevauchement.
+  const goule = [{ avant: 'Vivant ayant succombés à', apres: 'Vivant ayant succombé à' }, { avant: 'des Mort-Vivant', apres: 'des Morts-Vivants' }];
+  assert.equal(sansCorrections('des Morts-Vivants ayant succombé à', goule), 'des Mort-Vivant ayant succombés à');
+  assert.equal(avecCorrections('Une race méleant araignée', [], [{ avant: 'araignée', apres: 'araignées' }, { avant: 'race méleant araignée', apres: 'race mêlant araignée' }]),
+    'Une race mêlant araignée');
 });
 
 test('chaque classeur du registre est rapproché ou en cours, avec son instantané et son registre', () => {
@@ -65,6 +73,7 @@ test('chaque classeur du registre est rapproché ou en cours, avec son instantan
     for (const l of reg.libelles) assert.ok(l.raison && (l.mots || l.valeurs), `${c.ignorer} : libellé sans raison, ou sans « mots » ni « valeurs »`);
     for (const v of reg.voulus) assert.ok(v.table && v.cle && v.colonne && typeof v.avant === 'string' && typeof v.apres === 'string' && v.raison, `${c.ignorer} : écart voulu incomplet`);
     for (const d of reg.conflits) assert.ok(['site', 'classeur'].includes(d.garder) && d.table && d.cle && d.colonne && d.decide_le && d.raison, `${c.ignorer} : conflit incomplet`);
+    for (const m of reg.commentaires) assert.ok(m.onglet && adresse(m.cellule) && m.texte && m.raison, `${c.ignorer} : commentaire non importé incomplet`);
   }
   assert.ok(registre.classeurs.some((c) => c.etat === 'rapproche'));
   assert.throws(() => lireRegistre(cheminDe('tools/sources/ignorer/absent.json')), /registre introuvable/);

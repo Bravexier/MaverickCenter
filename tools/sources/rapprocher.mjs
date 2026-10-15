@@ -31,7 +31,9 @@
 //             les mots qui répondent à `mots` (tous si `mots` manque) d'une cellule dont la valeur répond à `valeurs` (« ^Lvl \d+$ » : « Lvl » seul) ;
 //   voulus    [{ table, cle: { … }, colonne, avant, apres, raison }]                       écarts voulus hors des registres d'orthographe (décision R…,
 //             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base ;
-//   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire.
+//   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire ;
+//   commentaires [{ onglet, cellule, texte, raison }]                                      commentaires du classeur que l'import écarte (un message de
+//             conversation : tools/sheets/magies.py#EXCLUDED_COMMENTS).
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -113,9 +115,12 @@ export const comparable = (s) => String(s ?? '').normalize('NFC').replace(/[’�
 /** Les mots d'un texte, pour le contrôle inverse : lettres et chiffres, en minuscules. */
 export const mots = (s) => comparable(s).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 
-/** Les morceaux d'une valeur de la base à retrouver dans ses cellules : une valeur faite de plusieurs cellules est écrite ligne à ligne (« - 1 maîtrise… »). */
+/**
+ * Les morceaux d'une valeur de la base à retrouver dans ses cellules : une valeur faite de plusieurs cellules est écrite ligne à ligne (« - 1 maîtrise… »)
+ * ou en chemin (« Sang › Niveau 1 » : l'en-tête, puis la ligne).
+ */
 export function morceaux(valeur) {
-  return String(valeur).split(/\n+/).map((l) => comparable(l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, ''))).filter((l) => l.length >= 2);
+  return String(valeur).split(/\n+| › /).map((l) => comparable(l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, ''))).filter((l) => l.length >= 2);
 }
 
 /** Les feuilles d'une valeur JSON (objet ou tableau, colonne `donnees`) : ses textes et ses nombres, sans les clés ; null si la valeur n'en est pas une. */
@@ -194,10 +199,18 @@ export const avecCorrections = (texte, propres, heritees = []) => appliquer(enSu
 /** Défait, dans une valeur de la base, les corrections d'orthographe (`apres` redevient `avant`) : l'inverse de `avecCorrections`. */
 export const sansCorrections = (valeur, propres, heritees = []) => enSuite(appliquer(String(valeur), heritees.map((c) => [c.apres, c.avant])), [...propres].reverse().map((c) => [c.apres, c.avant]));
 
-/** « 1 000 » se lit 1000 (et aussi 1 et 0) ; « 2,5 » se lit 2.5 ; « -5 » se lit -5 ; « 4-18 » (une plage) se lit 4 et 18. */
+/**
+ * « 1 000 » se lit 1000 (et aussi 1 et 0) ; « 2,5 » se lit 2.5 ; « -5 » se lit -5 ; une plage « 4-18 », « 1% -5% » se lit 4 et 18, 1 et 5 (le tiret qui
+ * suit un nombre est un trait d'intervalle : la borne se lit aussi sans signe).
+ */
 export function nombresDe(texte) {
-  const t = comparable(texte);
-  const lus = [...(t.match(/(?<!\d)-?\d+(?:[.,]\d+)?/g) ?? []), ...(t.match(/\d{1,3}(?: \d{3})+(?:[.,]\d+)?/g) ?? []).map((n) => n.replace(/ /g, ''))];
+  const t = comparable(texte).replace(/[–−](?=\d)/g, '-');   // tiret demi-cadratin, signe moins typographique
+  const lus = [];
+  for (const m of t.matchAll(/(?<!\d)-?\d+(?:[.,]\d+)?/g)) {
+    lus.push(m[0]);
+    if (m[0].startsWith('-') && /[\d%]\s*$/.test(t.slice(0, m.index))) lus.push(m[0].slice(1));
+  }
+  lus.push(...(t.match(/\d{1,3}(?: \d{3})+(?:[.,]\d+)?/g) ?? []).map((n) => n.replace(/ /g, '')));
   return new Set(lus.map((n) => Number(n.replace(',', '.'))));
 }
 
@@ -271,7 +284,7 @@ function classeurLu(dumpLu, titre, lignesDeCorrection) {
  * pour les lignes qui en citent plusieurs. Les dumps ne sont pas modifiés.
  */
 export function rapprocher(db, {
-  classeur, dump, nomDuDump = '', regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], autres = {},
+  classeur, dump, nomDuDump = '', regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [], autres = {},
 }) {
   const h = historiqueSite(db);
   const cle = cleDeNom(classeur);
@@ -307,6 +320,10 @@ export function rapprocher(db, {
   };
   for (const cs of registresDOrthographe()) for (const c of cs) inscrire(c, c.col);
   for (const v of voulus) inscrire(v, v.colonne);
+  // Identifiants des documents Google remplacés par ceux des copies (migration 0014, registre `copies` : avant -> apres) : un lien du classeur original
+  // vers un autre document, recopié dans la base, cite la copie.
+  const chemin0014 = resolve(RACINE, 'data', 'migrations', '0014-sources-copies-drive.json');
+  const copies = existsSync(chemin0014) ? (JSON.parse(readFileSync(chemin0014, 'utf8')).copies ?? []).filter((c) => c.avant && c.apres) : [];
   // Corrections héritées : une ligne tirée d'un texte déjà corrigé porte les corrections de ce texte (0003.sql a corrigé les notes et extraits d'un sort
   // avec lui, 0004 a lu les NM dans le texte corrigé, les tables de 0007 viennent du Markdown corrigé des pages) : celles des lignes qu'elle cite par
   // clé étrangère, de l'entité d'une note (`entite_table`, `entite_id`), et de sa page (`page_entite`, `page_id`, ou une colonne qui vaut l'identifiant
@@ -321,7 +338,7 @@ export function rapprocher(db, {
     return clesEtrangeres.get(table);
   };
   const correctionsHeritees = (table, ligne) => {
-    const res = [];
+    const res = [...copies];
     for (const f of etrangeresDe(table)) if (ligne[f.de] !== null && ligne[f.de] !== undefined) res.push(...(correctionsDeLigne.get(cleK(f.table, { [f.vers]: ligne[f.de] }, '')) ?? []));
     if (ligne.entite_table && ligne.entite_id) res.push(...(correctionsDeLigne.get(cleK(ligne.entite_table, { id: ligne.entite_id }, '')) ?? []));
     if (table !== 'page') {
@@ -360,7 +377,7 @@ export function rapprocher(db, {
     classeur, dump: nomDuDump, onglets: dump.sheets.length, cellules: 0, lignes: 0, parTable: {}, citationsDOnglet: 0, corrigees: ce.corrigees,
     autresClasseurs: autresLus.size, voulus: voulus.length,
     sansOnglet: [], sansCellule: [], illisibles: [], ecarts: [], nombres: [], conflits: [], casse: [], aRelire: [], nonCitees: [], motsAbsents: [], ignorees: 0,
-    notes: { classeur: 0, manquantes: [], enTrop: [] },
+    notes: { classeur: 0, declares: 0, manquantes: [], enTrop: [] },
     site: { modifiees: [], supprimees: [], creees: [] },
   };
   for (const o of onglets.values()) R.cellules += [...o.cellules.values()].filter((x) => valeur(x) !== '').length;
@@ -375,12 +392,14 @@ export function rapprocher(db, {
     // une colonne `*_brut` est toujours comparée (c'est l'écriture de la source).
     const avant = (col) => `CHECK\\s*\\(\\s*(?:"?${col}"?\\s+IS\\s+NULL\\s+OR\\s+)?"?${col}"?\\s+IN\\s*\\(`;
     const enumeree = (col) => !col.endsWith('_brut') && new RegExp(avant(col), 'i').test(t.sql);
-    const booleen = (col) => new RegExp(`${avant(col)}\\s*0\\s*,\\s*1\\s*\\)\\s*\\)`, 'i').test(t.sql);
+    const booleen = (col) => new RegExp(`${avant(col)}\\s*[01]\\s*(?:,\\s*[01]\\s*)?\\)\\s*\\)`, 'i').test(t.sql);   // IN (0, 1), IN (1)
     const compare = (c) => !META.has(t.name) && !derivee.has(`${t.name}.${c.name}`);
     const textes = colonnes.filter((c) => compare(c) && /TEXT/i.test(c.type) && !EXCLUES.test(c.name) && !enumeree(c.name) && !(t.name === 'note_cellule' && c.name !== 'texte'));
     // Une colonne typée qui a sa `*_brut` sœur se contrôle par elle quand elle est remplie (la fidélité typé <-> brut est l'affaire des tests de découpage).
     const parSonBrut = new Set(colonnes.filter((c) => colonnes.some((b) => b.name === `${c.name}_brut`)).map((c) => c.name));
-    const nombres = colonnes.filter((c) => compare(c) && /INT|REAL/i.test(c.type) && !c.pk && !POSITIONS.test(c.name) && !booleen(c.name));
+    // Une position : nom de position, ou colonne qu'un CHECK égale au rang (`etat_stade.stade`, tiré de l'en-tête « Stade N »).
+    const liee = (col) => new RegExp(`\\b${col}\\s*=\\s*rang\\b|\\brang\\s*=\\s*${col}\\b`).test(t.sql);
+    const nombres = colonnes.filter((c) => compare(c) && /INT|REAL/i.test(c.type) && !c.pk && !POSITIONS.test(c.name) && !liee(c.name) && !booleen(c.name));
     const pk = colonnes.filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => c.name);
     const cleDe = (l) => Object.fromEntries((pk.length ? pk : colonnes.map((c) => c.name)).map((k) => [k, l[k]]));
     const actuelles = new Map(db.prepare(`SELECT * FROM "${t.name}"`).all().map((l) => [JSON.stringify(cleDe(l)), l]));
@@ -450,6 +469,8 @@ export function rapprocher(db, {
       // Une formule se compare sans ses blancs ; l'import écrit une formule « Onglet!A1 =… », une cellule sans formule « <valeur> (constante) ».
       const seLit = (m, texte) => {
         if (texte.includes(m) || nomsDOnglets.has(m) || (/^-?\d+(?:[.,]\d+)?$/.test(m) && lus.has(Number(m.replace(',', '.'))))) return true;
+        // Un nom d'onglet tronqué à 31 caractères (« Potentiel illimité (magie diffi ») : la valeur est son début, avant la parenthèse.
+        if ([...nomsDOnglets].some((n) => n.toLowerCase().startsWith(`${m.toLowerCase()} (`))) return true;
         const f = /^[^\s!]+![A-Z]{1,3}\d+\s+(=.*)$/s.exec(m)?.[1] ?? /^(.*) \(constante\)$/s.exec(m)?.[1] ?? m;
         return (f !== m && seLit(f, texte)) || (formulesSansBlancs !== '' && formulesSansBlancs.includes(sansBlancs(f)));
       };
@@ -483,7 +504,9 @@ export function rapprocher(db, {
           const propres = corrections.get(cleK(t.name, cleLigne, c.name)) ?? [];
           // Une valeur d'un caractère (« 0 », « x ») : égale à l'une des cellules (corrections et écarts voulus défaits).
           if (comparable(attendue).length < 2) {
-            const lue = [attendue, sansCorrections(attendue, propres, heritees)].some((v) => valeursDesCellules.has(comparable(v)));
+            // … ou un jeton entier d'une cellule (« Prix : 4 », « 40% »).
+            const jeton = (v) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${comparable(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}\\p{N}])`, 'u').test(tout);
+            const lue = [attendue, sansCorrections(attendue, propres, heritees)].some((v) => valeursDesCellules.has(comparable(v)) || jeton(v));
             return lue ? null : () => signaler({ ligne: ident, colonne: c.name, absent: [String(attendue)], cellules: tout.slice(0, 300) }, R.ecarts);
           }
           // Une valeur JSON (`donnees`) : ses feuilles, pas son écriture (les clés ne sont pas dans le classeur).
@@ -515,25 +538,42 @@ export function rapprocher(db, {
     }
   }
 
-  // Notes et fils de commentaires : chacun dans note_cellule (état d'import, plage qui le contient, même texte), et inversement.
+  // Notes et fils de commentaires : chacun dans note_cellule (état d'import, plage qui le contient, même texte), et inversement. Ne comptent pas : les
+  // réponses automatiques d'un fil (« Marquée comme fermée », « Rouverte » : des événements, tools/sheets/magies.py#STATUS_REPLIES), un fil qui redit la
+  // note de sa cellule ou un fil précédent (une seule ligne à l'import), un commentaire que le registre déclare non importé (`commentaires`).
   const notesBase = [...h.lignesDImport('note_cellule'), ...h.lignesDImport('commentaire_orphelin').map((n) => ({ ...n, entite_table: 'commentaire_orphelin', entite_id: n.id, rang: n.occurrence }))]
+    .filter((n) => n.nature !== 'evenement')
     .map((n) => ({ ...n, cites: citeCeClasseur(n.source_ref).filter((x) => x.plages.length) })).filter((n) => n.cites.length);
   const retrouvees = new Set();
   const idNote = (n) => `${n.entite_table}|${n.entite_id}|${n.rang}`;
-  // Une note de la base, ses corrections défaites : les siennes, et celles de son entité quand elle a été corrigée avec elle (0003.sql), ou pas.
-  const lecturesDeNote = (nb) => {
+  // Une note de la base, ses corrections défaites : les siennes, et celles de son entité dont l'écriture d'origine se lit dans le commentaire du
+  // classeur (0003.sql a corrigé des notes avec leur sort ; une correction du sort que la note n'a pas reçue ne se défait pas).
+  const lecturesDeNote = (nb, texteNote) => {
     const propres = corrections.get(cleK('note_cellule', { entite_table: nb.entite_table, entite_id: nb.entite_id, rang: nb.rang }, 'texte')) ?? [];
-    return new Set([sansCorrections(nb.texte, propres), sansCorrections(nb.texte, propres, correctionsHeritees('note_cellule', nb))].map(comparable));
+    const cible = comparable(texteNote);
+    const heritees = enComparable(correctionsHeritees('note_cellule', nb)).filter((c) => c.avant && cible.includes(c.avant));
+    return new Set([sansCorrections(nb.texte, propres), sansCorrections(comparable(nb.texte), enComparable(propres), heritees)].map(comparable));
   };
+  const EVENEMENTS_DE_FIL = new Set(['Marquée comme fermée', 'Rouverte']);
+  const nonImportes = commentaires.map((c) => ({ onglet: cleDeNom(c.onglet), adresse: adresse(c.cellule), texte: comparable(c.texte) }));
   for (const o of onglets.values()) {
     for (const x of o.cellules.values()) {
+      const vus = new Set();
       for (const texteNote of commentairesDe(x)) {
+        const cible = comparable(texteNote);
+        if (EVENEMENTS_DE_FIL.has(cible)) continue;
+        const redite = vus.has(cible);
+        vus.add(cible);
         R.notes.classeur += 1;
+        if (nonImportes.some((c) => c.onglet === cleDeNom(o.nom) && c.adresse?.r === x.r && c.adresse?.c === x.c && c.texte === cible)) { R.notes.declares += 1; continue; }
         const n = notesBase.find((nb) => !retrouvees.has(idNote(nb))
           && nb.cites.some((ci) => ce.onglet(ci.onglet) === o && ci.plages.some((p) => dans(x, p)))
-          && lecturesDeNote(nb).has(comparable(texteNote)));
-        if (n) retrouvees.add(idNote(n));
-        else R.notes.manquantes.push({ cellule: `${o.nom}!${enA1(x)}`, note: comparable(texteNote).slice(0, 160) });
+          && lecturesDeNote(nb, texteNote).has(cible));
+        if (n) { retrouvees.add(idNote(n)); continue; }
+        // Un commentaire recopié dans la colonne `commentaire` d'une ligne qui cite la cellule (mode_hyper_effet).
+        const enColonne = (o.citees.get(`${x.r}:${x.c}`) ?? []).some((c) => typeof c.ligne.commentaire === 'string'
+          && [c.ligne.commentaire, sansCorrections(c.ligne.commentaire, corrections.get(cleK(c.table, c.cleLigne, 'commentaire')) ?? [])].map(comparable).includes(cible));
+        if (!enColonne && !redite) R.notes.manquantes.push({ cellule: `${o.nom}!${enA1(x)}`, note: cible.slice(0, 160) });
       }
     }
   }
@@ -623,6 +663,7 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
     { controle: 'Pour mémoire : à relire dans une autre source citée par la ligne, sans instantané', n: R.aRelire.length },
     { controle: 'Pour mémoire : différences de casse seulement (valeurs normalisées à l\'import)', n: R.casse.length },
     { controle: 'Pour mémoire : cellules ignorées par le registre', n: R.ignorees },
+    { controle: 'Pour mémoire : commentaires non importés déclarés par le registre', n: R.notes.declares },
     { controle: 'Pour mémoire : colonnes modifiées, lignes supprimées, lignes créées par le site de dev', n: `${R.site.modifiees.length}, ${R.site.supprimees.length}, ${R.site.creees.length}` },
   ], ['controle', 'n'], Infinity));
   o.push('## 1. Base -> classeur\n');
@@ -653,8 +694,8 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
 /** Lit le registre d'un classeur (erreur s'il manque : un registre absent ne doit pas passer pour vide). */
 export function lireRegistre(chemin) {
   if (!existsSync(chemin)) throw new Error(`registre introuvable : ${chemin}`);
-  const { regles = [], derivees = {}, libelles = [], voulus = [], conflits = [] } = JSON.parse(readFileSync(chemin, 'utf8'));
-  return { regles, derivees, libelles, voulus, conflits };
+  const { regles = [], derivees = {}, libelles = [], voulus = [], conflits = [], commentaires = [] } = JSON.parse(readFileSync(chemin, 'utf8'));
+  return { regles, derivees, libelles, voulus, conflits, commentaires };
 }
 
 /** Les instantanés du registre des classeurs (sources/raw/classeurs/registre.json) : { titre: dump }. */

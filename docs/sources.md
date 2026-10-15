@@ -170,12 +170,13 @@ mises à jour du classeur ; ses réponses sont la décision **R81** (`docs/decis
    Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs`), ne contient que des entrées
    **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage, consignes de navigation),
    `libelles` (intitulés de mise en page d'une cellule citée, bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `derivees` (colonnes que l'import
-   calcule, avec le test qui les garantit), `voulus` (écart voulu hors des registres d'orthographe : décision R…, migration de données), `conflits`.
+   calcule, avec le test qui les garantit), `voulus` (écart voulu hors des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import
+   écarte : un message de conversation), `conflits`.
    Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le compte. Le test fait échouer la CI au moindre écart d'un
    classeur `rapproche`, avec le relevé complet ; le passage des textes aux colonnes typées est garanti par les tests des découpages (`classe-champs.mjs`,
    `sort-analyse.mjs`, `metier-champs.mjs`…, rejoués sur toute la base). Limites connues : deux nombres permutés entre deux cellules citées par la même
-   ligne, ou deux descriptions échangées dans une même cellule fusionnée citée par plusieurs lignes, ne se voient pas ; une formule et une liste de
-   validation ne sont pas lues (seulement la valeur de la cellule).
+   ligne, ou deux descriptions échangées dans une même cellule fusionnée citée par plusieurs lignes, ne se voient pas ; une formule se lit comme un
+   texte (sans ses blancs), une liste de validation par ses choix écrits, jamais par la plage qu'elle cite.
 3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané ; `git diff sources/raw/classeurs/<classeur>.json`
    donne les cellules changées, le rapprochement les lignes qu'elles touchent (écarts), les mots nouveaux et les cellules nouvelles (non citées). La liste
    est présentée au propriétaire ; une fois validée, une migration (`ingenieur-donnees`) applique les changements, le registre suit, et le test redevient
