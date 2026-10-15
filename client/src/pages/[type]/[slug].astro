@@ -11,6 +11,7 @@ import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import GuideChapitre from '../../components/guide/GuideChapitre.astro';
 import ArmesPage from '../../components/armes/ArmesPage.astro';
 import AccessoiresPage from '../../components/accessoires/AccessoiresPage.astro';
+import ArmuresPage from '../../components/armures/ArmuresPage.astro';
 import { TYPES } from '../../lib/types.mjs';
 import { classCategory } from '../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
@@ -18,12 +19,13 @@ import { loadMagies } from '../../lib/magies';
 import { loadRaces } from '../../lib/races';
 import { loadClasses } from '../../lib/classes';
 import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
-import { estUnMetier } from '../../lib/metiers.mjs';
+import { estUnMetier, pageSansAdresse } from '../../lib/metiers.mjs';
 import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
 import { chargerAccessoires, PAGE_DES_ACCESSOIRES, reglesDeLaPage as reglesDesAccessoires } from '../../lib/accessoires-db.mjs';
+import { chargerArmures, contexteDesArmures, PAGE_DES_ARMURES, reglesDeLaPage as reglesDesArmures } from '../../lib/armures-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { idDuMotCle } from '../../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../../lib/recherche-mots-cles.mjs';
@@ -32,8 +34,10 @@ import { rendreMarkdown } from '../../lib/guide-rendu';
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
   // Les métiers n'ont pas de page : ce sont les lignes du tableau de /metiers/ (lib/metiers.mjs), où mènent leurs liens. Le premier chapitre du guide
-  // est l'accueil de l'onglet, servi par [type]/index.astro à /guide/ (lib/guide.mjs).
-  return entries.filter((entry) => !estUnMetier(entry.id) && entry.id !== PREMIER_CHAPITRE).map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
+  // est l'accueil de l'onglet, servi par [type]/index.astro à /guide/ (lib/guide.mjs). La page « Bouclier » est l'onglet Boucliers de la page des armures
+  // (lib/metiers.mjs#pageSansAdresse).
+  return entries.filter((entry) => !estUnMetier(entry.id) && entry.id !== PREMIER_CHAPITRE && !pageSansAdresse(entry.id))
+    .map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
 }
 
 const { entry } = Astro.props as { entry: WikiEntry };
@@ -70,7 +74,18 @@ const reglesArmesHtml = reglesArmes
 // lib/accessoires-db.mjs) ; de son Markdown, seules les règles de l'onglet (avant la création) sont rendues.
 const accessoires = entry.id === PAGE_DES_ACCESSOIRES ? chargerAccessoires(ouvrirBase()) : null;
 const reglesAccessoiresHtml = accessoires?.page ? await rendreMarkdown(reglesDesAccessoires(accessoires.page.corps_md), entry.id) : null;
-const gabarit = Boolean(magie || race || classe || chapitre || armes || accessoires);
+// Page des armures et des boucliers (demandes du propriétaire, 2026-10-15) : deux onglets, les matériaux à choisir pour forger une armure, la forme et la
+// matière d'un bouclier, les listes et les améliorations, depuis les tables (components/armures/ArmuresPage.astro, lib/armures-db.mjs) ; des Markdown
+// des pages « Armures » et « Bouclier », seules les règles (avant les tableaux) sont rendues.
+const armures = entry.id === PAGE_DES_ARMURES ? chargerArmures(ouvrirBase()) : null;
+const contexteArmures = armures ? contexteDesArmures(ouvrirBase()) : null;
+const reglesArmuresHtml = armures
+  ? {
+      armures: await rendreMarkdown(reglesDesArmures(armures.pages.armures?.corps_md), entry.id),
+      boucliers: await rendreMarkdown(reglesDesArmures(armures.pages.boucliers?.corps_md), entry.id),
+    }
+  : null;
+const gabarit = Boolean(magie || race || classe || chapitre || armes || accessoires || armures);
 const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races, des classes et du guide ne rendent pas le Markdown
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
@@ -79,7 +94,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
 // Mode modification du site de dev (demande du propriétaire) : les pages du guide, des races, des magies et des classes (les métiers sont sur /metiers/),
 // et celles du Codex (« Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »).
 const pageDeTexte = texteDePageModifiable(typeOf(entry), entry.data.sources[0]); // le guide et le Codex (lib/edition-modele.mjs)
-const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry)) || Boolean(armes)) && entry.data.status !== 'example';
+const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry)) || Boolean(armes) || Boolean(armures)) && entry.data.status !== 'example';
 // une page de référence du guide ou une page du Codex : titre et texte modifiables (src/scripts/edition/guide.mjs) ; les autres pages suivent leurs tables
 const texteModifiable = modifiable && pageDeTexte && !chapitre;
 ---
@@ -122,6 +137,8 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
       <ArmesPage armes={armes} contexte={contexteArmes} regles={reglesArmesHtml} resume={entry.data.summary} />
     ) : accessoires && reglesAccessoiresHtml !== null ? (
       <AccessoiresPage accessoires={accessoires} regles={reglesAccessoiresHtml} resume={entry.data.summary} />
+    ) : armures && contexteArmures && reglesArmuresHtml ? (
+      <ArmuresPage armures={armures} contexte={contexteArmures} regles={reglesArmuresHtml} resume={entry.data.summary} />
     ) : (
       <>
         <h1>

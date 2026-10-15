@@ -7047,7 +7047,7 @@ Ses **bonus et malus** disent comment elle encaisse les trois types de dégâts 
 
 ## Le bouclier
 
-Le bouclier ajoute ses AP et son AM à celles de l’armure, mais seulement lors d’une **défense partielle** (voir [Attaquer et se défendre](/guide/attaquer-et-se-defendre/)). Les boucliers sont rangés par classe, de 1 à 5 : chaque classe de personnage dit jusqu’où elle sait les porter. Voir les [boucliers](/ressources/bouclier/).
+Le bouclier ajoute ses AP et son AM à celles de l’armure, mais seulement lors d’une **défense partielle** (voir [Attaquer et se défendre](/guide/attaquer-et-se-defendre/)). Les boucliers sont rangés par classe, de 1 à 5 : chaque classe de personnage dit jusqu’où elle sait les porter. Voir les [boucliers](/ressources/armures/#boucliers).
 
 ## Les accessoires
 

@@ -13,6 +13,7 @@ import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAve
 import { marquerBonus } from './sort-maitrise.mjs';
 import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
+import { RENDUS_DES_ARMURES } from './armures-rendu.mjs';
 import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
 
@@ -227,6 +228,9 @@ export const RENDUS = {
   // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,
+  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux de /ressources/armures/) : défense, prix, type, solidité, résistances,
+  // coût d'une pièce, coût et effet d'une amélioration
+  ...RENDUS_DES_ARMURES,
   // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
   ...RENDUS_DES_COMPOSANTS,
 };

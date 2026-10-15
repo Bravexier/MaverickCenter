@@ -89,6 +89,16 @@ test('/generateur/ est devenu /fiche/ : l’ancienne adresse mène à la nouvell
   assert.equal(nouvelleAdresse('/autre/generateur/', '/MaverickCenter/'), null);
 });
 
+test('la page « Bouclier » est l’onglet Boucliers de la page des armures : l’ancienne adresse y mène, la requête avant l’ancre, jamais deux « # »', () => {
+  assert.equal(nouvelleAdresse('/ressources/bouclier/'), '/ressources/armures/#boucliers');
+  assert.equal(nouvelleAdresse('/wiki/ressources/bouclier/'), '/ressources/armures/#boucliers', 'une ancienne adresse du wiki : un seul saut');
+  assert.equal(nouvelleAdresse('/wiki/generateur/'), '/fiche/');
+  assert.equal(nouvelleAdresse('/MaverickCenter/ressources/bouclier', '/MaverickCenter/'), '/MaverickCenter/ressources/armures/#boucliers');
+  assert.equal(adresseComplete('/ressources/armures/#boucliers', '?forme=ecu', ''), '/ressources/armures/?forme=ecu#boucliers');
+  assert.equal(adresseComplete('/ressources/armures/#boucliers', '', '#bouclier-ecu-fer'), '/ressources/armures/#bouclier-ecu-fer', 'l’ancre d’origine l’emporte');
+  assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?q=1', '#h'), '/recherche/?mot-cle=feu&q=1#h');
+});
+
 test('/tags/<clé>/ n’existe plus : la page 404 mène aux éléments du mot-clé dans la recherche (son id = l’ancienne clé), la requête fusionnée', () => {
   assert.equal(PARAMETRE_MOT_CLE, 'mot-cle', 'le paramètre que lit la page Recherche (nav.mjs ne l’importe pas : la page 404 n’emporte que lui)');
   assert.equal(nouvelleAdresse('/tags/feu/'), '/recherche/?mot-cle=feu');

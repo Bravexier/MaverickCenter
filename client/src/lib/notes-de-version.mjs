@@ -1,6 +1,6 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, armures et boucliers, composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
@@ -23,6 +23,7 @@ export const DOMAINES = [
   { id: 'codex', titre: 'Codex' },
   { id: 'bestiaire', titre: 'Bestiaire' },
   { id: 'armes', titre: 'Armes' },
+  { id: 'armures', titre: 'Armures et boucliers' },
   { id: 'composants', titre: 'Composants' },
   { id: 'chronologie', titre: 'Chronologie' },
   { id: 'mots-cles', titre: 'Mots-clés' },
@@ -45,6 +46,7 @@ export const TABLES_LUES = [
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
+  'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle',
 ];
 
@@ -238,6 +240,37 @@ const DEFINITIONS = [
     table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'arme', groupe: () => 'Améliorations', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
   },
+  // la page des armures et des boucliers (migration 0046) : les armures (de la grille, puis particulières), les pièces du tableau FABRICATION, les
+  // améliorations d'armure, puis les formes de bouclier, chaque bouclier sous sa forme, les poids et les améliorations de bouclier
+  {
+    table: 'armure', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('armure'), genre: 'Armure',
+    groupe: (r) => (r.sorte === 'particuliere' ? 'Armures particulières' : 'Armures'), entite: (r) => r.nom, ordre: (r) => [1, r.ordre ?? 0],
+  },
+  {
+    table: 'armure_emplacement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('armure_emplacement'), genre: 'Pièce d’armure',
+    groupe: () => 'Fabrication', entite: (r) => r.nom, ordre: (r) => [2, r.ordre ?? 0],
+  },
+  {
+    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    filtre: (r) => r.cible === 'armure', groupe: () => 'Améliorations d’armure', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
+  },
+  {
+    table: 'bouclier_classe', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier_classe'), genre: 'Forme de bouclier',
+    groupe: () => 'Formes de bouclier', entite: (r) => r.nom, ordre: (r) => [4, r.classe ?? 0],
+  },
+  {
+    table: 'bouclier', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier'), genre: 'Bouclier',
+    groupe: (r, x) => x.nom('bouclier_classe', r.classe_id), entite: (r) => r.nom,
+    ordre: (r, x) => [5, x.ligne('bouclier_classe', r.classe_id)?.classe ?? 0, r.nom],
+  },
+  {
+    table: 'bouclier_poids', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier_poids'), genre: 'Poids de bouclier',
+    groupe: () => 'Poids de bouclier', entite: (r) => r.nom, ordre: (r) => [6, r.ordre ?? 0],
+  },
+  {
+    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
+  },
   // la page des composants (migration 0040) : monnaies, puis les ressources par tableau (matériaux, gemmes et leurs prix, bois, ingrédients d'alchimie,
   // objets de l'onglet « Équipement inventaire ») ; les potions, livres et parchemins (consommables) n'en sont pas
   {
@@ -308,7 +341,7 @@ function chapitreDe(page) {
 function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune']
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
     monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),

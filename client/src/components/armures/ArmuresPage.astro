@@ -1,0 +1,339 @@
+---
+import armuresCss from '../../styles/armures/armures.css?raw';
+import Onglets from '../Onglets.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { ARMURE_COMPLETE, type chargerArmures, type contexteDesArmures } from '../../lib/armures-db.mjs';
+import { analyserAmeliorationDeProtection } from '../../lib/armure-champs.mjs';
+import {
+  COULEURS_DES_TYPES, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau,
+  htmlDeLigneDePiece, RENDUS_DES_ARMURES,
+} from '../../lib/armures-rendu.mjs';
+import { RENDUS_DES_ARMES } from '../../lib/armes-rendu.mjs';
+import { htmlAvecMonnaies, htmlDeMontant, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+
+// Page /ressources/armures/ (demandes du propriétaire, 2026-10-15 : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les
+// Armes. […] Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
+// sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
+// aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendue depuis les tables de la base
+// (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles s'affichent, repliées.
+// Deux onglets (components/Onglets.astro ; sans JavaScript, ils se suivent) :
+//   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
+//     fiche s'ouvre à côté, avec la pièce (tableau FABRICATION) et l'amélioration à choisir (décisions R75, R77) ; dessous, la liste des armures par type
+//     et les armures particulières, dont une ligne choisit l'armure ;
+//   - Boucliers : les formes et les matières ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche à côté, avec son
+//     amélioration (R76) ; dessous, la liste des boucliers par forme, et les poids de bouclier.
+// Puis, pour les deux, le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62).
+// Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs).
+// Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
+// pièces, des formes, des boucliers, des poids et des améliorations modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
+// (?raw, inséré ici seulement).
+type Armures = ReturnType<typeof chargerArmures>;
+interface Props {
+  armures: Armures;
+  contexte: ReturnType<typeof contexteDesArmures>;
+  /** HTML des règles des deux onglets (le texte avant les tableaux des pages « Armures » et « Bouclier » : lib/armures-db.mjs#reglesDeLaPage) */
+  regles: { armures: string; boucliers: string };
+  /** première phrase des règles des armures, affichée sous le titre */
+  resume?: string | null;
+}
+const { armures, contexte, regles, resume } = Astro.props;
+const TYPES_DE_LA_GRILLE = Object.keys(COULEURS_DES_TYPES);
+const parType = TYPES_DE_LA_GRILLE.map((type) => ({ type, armures: armures.combinaisons.filter((a) => a.type === type) }))
+  .concat([{ type: 'Autres', armures: armures.combinaisons.filter((a) => !TYPES_DE_LA_GRILLE.includes(a.type)) }])
+  .filter((g) => g.armures.length);
+const nbArmures = armures.combinaisons.length + armures.particulieres.length;
+const matiereDe = new Map(armures.matieres.map((m) => [m.cle, m]));
+const boucliersParForme = armures.formes.map((f) => ({ forme: f, boucliers: armures.boucliers.filter((b) => b.classe_id === f.id) }));
+const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+/** La ligne TOTAL d'un tableau d'améliorations, refaite depuis ses niveaux (comme le script de la page) : « 1 300 [RO] + 2 matériaux ». */
+function totalHtml(cible: 'armure' | 'bouclier') {
+  const niveaux = armures.ameliorations[cible].map((a) => analyserAmeliorationDeProtection(cible, a.cout_brut, a.effet_brut));
+  const ro = niveaux.reduce((s, n) => s + (n.cout_ro ?? 0), 0);
+  const mat = niveaux.reduce((s, n) => s + (n.cout_materiaux ?? 0), 0);
+  return `${htmlDeMontant(String(ro), 'RO')}${mat ? ` + ${mat} matériau${mat > 1 ? 'x' : ''}` : ''}`;
+}
+const edP = (id: string, colonne: string) => attributEd('bouclier_poids', { id }, colonne);
+const legende = (
+  TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype" style="--t: ${couleurDuType(t)}">${t}</span>`).join(' ')
+);
+---
+
+<style is:inline set:html={armuresCss}></style>
+{/* Onglets pose aussi `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) */}
+<Onglets />
+<div class="armures" data-armures data-onglets="Armures et boucliers">
+  {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
+  {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armures-piece={abr} set:html={htmlDePiece(abr)}></template>)}
+  <h1>{armures.pages.armures?.titre ?? 'Armures'} <span class="badge">Ressource</span></h1>
+  {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
+
+  <nav class="armures-onglets" aria-label="Armures et boucliers">
+    <a class="onglet is-active" id="onglet-armures" href="#armures">
+      <span class="onglet__nom">Armures</span>
+      <span class="onglet__detail">{armures.materiaux.length} matériaux · {nbArmures} armures</span>
+    </a>
+    <a class="onglet" id="onglet-boucliers" href="#boucliers">
+      <span class="onglet__nom">Boucliers</span>
+      <span class="onglet__detail">{armures.formes.length} formes · {armures.boucliers.length} boucliers</span>
+    </a>
+  </nav>
+
+  {/* ── Armures ───────────────────────────────────────────────────────────────────────────────────────────────────────── */}
+  <section class="armures-panneau is-active" id="armures" aria-labelledby="titre-armures" data-panneau="armure">
+    <h2 class="armures-panneau__titre" id="titre-armures">Armures</h2>
+    <details class="armures-regles">
+      <summary>Règles des armures : matériaux, pièces, solidité, améliorations</summary>
+      <div class="prose armures-regles__texte"><Fragment set:html={regles.armures} /></div>
+    </details>
+    <p class="armures-aide js-seul">
+      Choisissez un matériau dans chacun des deux tableaux : l’armure ainsi créée s’ouvre à côté, avec sa pièce et son amélioration. Une armure de la
+      liste, plus bas, se choisit aussi d’un clic.
+    </p>
+    <p class="armures-legende"><span class="armures-legende__titre">Types</span> <Fragment set:html={legende} /></p>
+
+    <div class="armures-vue" data-vue="armure">
+      <div class="armures-principal">
+        <div class="armures-choix">
+          {
+            [
+              { role: 'm1', titre: 'Premier matériau', id: 'premier-materiau' },
+              { role: 'm2', titre: 'Second matériau', id: 'second-materiau' },
+            ].map((t) => (
+              <details class="armures-bloc" id={t.id} open>
+                <summary class="armures-bloc__titre"><span class="armures-bloc__nom">{t.titre}</span><span class="armures-bloc__compte">{armures.materiaux.length}</span></summary>
+                <div class="armures-wrap">
+                  <table class="armures-table armures-table--choix" data-choix={t.role}>
+                    <thead><tr><th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th></tr></thead>
+                    <tbody>{armures.materiaux.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, t.role)} />)}</tbody>
+                  </table>
+                </div>
+              </details>
+            ))
+          }
+        </div>
+        {armures.ecarts.map((ecart) => <p class="armures-bloc__note armures-ecart">{ecart}</p>)}
+
+        <h2 class="armures-sous-titre" id="liste-des-armures">Liste des armures</h2>
+        <div class="armures-listes">
+          {
+            parType.map((g) => (
+              <details class="armures-bloc armures-liste" id={`armures-${slug(g.type)}`} open>
+                <summary class="armures-bloc__titre">
+                  <span class="ptype" style={`--t: ${couleurDuType(g.type)}`}>{g.type}</span>
+                  <span class="armures-bloc__compte">{g.armures.length} armures</span>
+                </summary>
+                <div class="armures-wrap">
+                  <table class="armures-table armures-table--liste">
+                    <thead>
+                      <tr>
+                        <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th><th scope="col">Défense</th>
+                        <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th><th scope="col">Prix</th>
+                      </tr>
+                    </thead>
+                    <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
+                  </table>
+                </div>
+              </details>
+            ))
+          }
+          <details class="armures-bloc armures-liste" id="armures-particulieres" open>
+            <summary class="armures-bloc__titre">
+              <span class="armures-bloc__nom">Armures particulières</span>
+              <span class="armures-bloc__compte">{armures.particulieres.length} armures</span>
+            </summary>
+            <p class="armures-bloc__note">Vêtements, cottes de mailles, armure montagne, armures de familiers : un prix pour l’armure entière (décision R80). « Cran de solidité uni = Si un cran de solidité est perdu, c'est TOUTE l'armure qui est abimée. »</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--liste">
+                <thead>
+                  <tr>
+                    <th scope="col">Nom</th><th scope="col">Type</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Solidité</th>
+                    <th scope="col">Effet</th><th scope="col">Prix</th>
+                  </tr>
+                </thead>
+                <tbody>{armures.particulieres.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <aside class="armures-cote" aria-label="Armure choisie, pièce et amélioration">
+        <section class="pfiche" data-fiche="armure" aria-label="Fiche de l’armure" aria-live="polite">
+          <p class="pfiche__vide js-seul">Choisissez deux matériaux, ou une armure de la liste.</p>
+        </section>
+        <div class="armures-cote__tables">
+          <details class="armures-bloc" id="pieces" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Fabrication</span><span class="armures-bloc__compte">pièce</span></summary>
+            <p class="armures-bloc__note">« Il faut 2 matériaux pour chaque morceau » : une pièce coûte sa fabrication et 1 unité de chaque matériau (décision R75) ; une armure particulière n’a que le prix de l’armure entière (R80).</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--pieces">
+                <thead><tr><th scope="col">Armure</th><th scope="col">Coût</th></tr></thead>
+                <tbody>{armures.pieces.map((p) => <Fragment set:html={htmlDeLigneDePiece(p, { complete: p.id === ARMURE_COMPLETE })} />)}</tbody>
+              </table>
+            </div>
+          </details>
+          <details class="armures-bloc" id="ameliorations-armure" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Améliorations</span><span class="armures-bloc__compte">+1 à +{armures.ameliorations.armure.length}</span></summary>
+            <p class="armures-bloc__note">« Armures (L'entièreté) » : une amélioration +N demande les coûts des niveaux +1 à +N et donne l’effet écrit au niveau N ; elle vaut pour l’armure entière, pas pour une pièce (décision R77).</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--ameliorations">
+                <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+                <tbody>
+                  <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure" data-niveau="0">
+                    <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+                    <td colspan="2" class="muted">Armure non améliorée</td>
+                  </tr>
+                  {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+                </tbody>
+                <tfoot><tr><th scope="row">Total</th><td colspan="2" data-armures-total="armure" set:html={totalHtml('armure')} /></tr></tfoot>
+              </table>
+            </div>
+          </details>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  {/* ── Boucliers ─────────────────────────────────────────────────────────────────────────────────────────────────────── */}
+  <section class="armures-panneau" id="boucliers" aria-labelledby="titre-boucliers" data-panneau="bouclier">
+    <h2 class="armures-panneau__titre" id="titre-boucliers">Boucliers</h2>
+    <details class="armures-regles">
+      <summary>Règles des boucliers : classes, matériaux, poids, améliorations</summary>
+      <div class="prose armures-regles__texte"><Fragment set:html={regles.boucliers} /></div>
+    </details>
+    <p class="armures-aide js-seul">Choisissez une forme et une matière : le bouclier ainsi créé s’ouvre à côté, avec son amélioration. Un bouclier de la liste, plus bas, se choisit aussi d’un clic.</p>
+    <p class="armures-aide">La page compose un bouclier d’une seule matière (« forme + matière », décision R78) ; les règles ci-dessus permettent d’en mêler jusqu’à 3 différentes.</p>
+
+    <div class="armures-vue" data-vue="bouclier">
+      <div class="armures-principal">
+        <div class="armures-choix">
+          <details class="armures-bloc" id="formes-de-bouclier" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Forme</span><span class="armures-bloc__compte">{armures.formes.length}</span></summary>
+            <p class="armures-bloc__note">« Un bouclier a besoin d’autant de matériaux que sa classe indique (classe 4 = 4 matériaux) ».</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--formes">
+                <thead><tr><th scope="col">Forme</th><th scope="col">Catégorie</th><th scope="col">Prix</th></tr></thead>
+                <tbody>{armures.formes.map((f) => <Fragment set:html={htmlDeLigneDeForme(f)} />)}</tbody>
+              </table>
+            </div>
+            {
+              armures.fabricationDuBouclier && (
+                <p class="armures-bloc__note">
+                  Fabrication :{' '}
+                  <span
+                    data-ed={attributEd('armure_emplacement', { id: armures.fabricationDuBouclier.id }, 'cout_brut')}
+                    data-ed-rendu="piece-cout"
+                    set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDuBouclier.cout_brut, armures.fabricationDuBouclier)}
+                  />{' '}
+                  (tableau FABRICATION des armures).
+                </p>
+              )
+            }
+          </details>
+          <details class="armures-bloc" id="matieres-de-bouclier" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Matière</span><span class="armures-bloc__compte">{armures.matieres.length}</span></summary>
+            <p class="armures-bloc__note">« Les matériaux n’ont pas les mêmes stats pour les boucliers par rapport aux armures. »</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--choix" data-choix="matiere">
+                <thead><tr><th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th></tr></thead>
+                <tbody>{armures.matieres.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, 'matiere')} />)}</tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <h2 class="armures-sous-titre" id="liste-des-boucliers">Liste des boucliers</h2>
+        <div class="armures-listes">
+          {
+            boucliersParForme.map((g) => (
+              <details class="armures-bloc armures-liste" id={`boucliers-${g.forme.id}`} open>
+                <summary class="armures-bloc__titre">
+                  <span class="armures-bloc__nom">{g.forme.nom}</span>
+                  <span class="armures-bloc__de">{g.forme.categorie_brut}</span>
+                  <span class="armures-bloc__compte">{g.boucliers.length} boucliers</span>
+                </summary>
+                <div class="armures-wrap">
+                  <table class="armures-table armures-table--liste">
+                    <thead><tr><th scope="col">Matière</th><th scope="col">Nom</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité : ceux de la matière (décision R78)">Solidité</th><th scope="col">Prix</th></tr></thead>
+                    <tbody>{g.boucliers.map((b) => <Fragment set:html={htmlDeLigneDeBouclier(b, matiereDe.get(b.matiere))} />)}</tbody>
+                  </table>
+                </div>
+              </details>
+            ))
+          }
+        </div>
+      </div>
+
+      <aside class="armures-cote" aria-label="Bouclier choisi et amélioration">
+        <section class="pfiche" data-fiche="bouclier" aria-label="Fiche du bouclier" aria-live="polite">
+          <p class="pfiche__vide js-seul">Choisissez une forme et une matière, ou un bouclier de la liste.</p>
+        </section>
+        <div class="armures-cote__tables armures-cote__tables--bouclier">
+          <details class="armures-bloc" id="ameliorations-bouclier" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Améliorations</span><span class="armures-bloc__compte">+1 à +{armures.ameliorations.bouclier.length}</span></summary>
+            <p class="armures-bloc__note">Une amélioration +N demande les coûts des niveaux +1 à +N ; l’AP est celui écrit au niveau N, les crans de solidité se cumulent, « + matériaux » compte 1 matériau de la matière du bouclier (décision R76).</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--ameliorations">
+                <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+                <tbody>
+                  <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="bouclier" data-niveau="0">
+                    <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+                    <td colspan="2" class="muted">Bouclier non amélioré</td>
+                  </tr>
+                  {armures.ameliorations.bouclier.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+                </tbody>
+                <tfoot><tr><th scope="row">Total</th><td colspan="2" data-armures-total="bouclier" set:html={totalHtml('bouclier')} /></tr></tfoot>
+              </table>
+            </div>
+          </details>
+          <details class="armures-bloc" id="poids-de-bouclier" open>
+            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Poids</span><span class="armures-bloc__compte">{armures.poids.length}</span></summary>
+            <p class="armures-bloc__note">« Il existe 4 poids différents pour les boucliers, il est nécessaire d’avoir le score de Force ou plus pour le porter. » Dans l’onglet, « À refaire » est écrit sous le tableau FABRICATION, avant cette liste, que la source ne relie pas aux formes.</p>
+            <div class="armures-wrap">
+              <table class="armures-table armures-table--poids">
+                <thead><tr><th scope="col">Poids</th><th scope="col">Force</th></tr></thead>
+                <tbody>
+                  {
+                    armures.poids.map((p) => (
+                      <tr class="poids" data-poids={p.id}>
+                        <th scope="row" data-ed={edP(p.id, 'nom')}>{p.nom}</th>
+                        <td data-ed={edP(p.id, 'force_brut')}>{p.force_brut}</td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  {/* ── Matériaux (pour les deux onglets : « la table de l'onglet Bouclier est identique mot pour mot ») ────────────────── */}
+  <details class="armures-bloc armures-materiaux" id="materiaux">
+    <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Matériaux : prix, description et fabrication</span><span class="armures-bloc__compte">{armures.materiaux.length}</span></summary>
+    <p class="armures-bloc__note">Le tableau MATÉRIAUX des onglets « Armures » et « Bouclier » ; ces matériaux se modifient sur la page Composants (décision R62).</p>
+    <div class="armures-wrap">
+      <table class="armures-table armures-table--materiaux">
+        <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col">Description</th><th scope="col">Fabrication (pour obtenir une matière)</th></tr></thead>
+        <tbody>
+          {
+            armures.materiaux.map((m) => (
+              <tr class="pmat-ref" id={`materiau-${m.cle}`}>
+                <th scope="row" class="pmat-ref__nom" style={`--t: ${couleurDuType(m.type)}`} data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')}>{m.nom}</th>
+                <td class="pmat-ref__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS_DES_ARMES['materiau-prix'](m.prix)} />
+                <td class="pmat-ref__description" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'description')}>{m.description ?? ''}</td>
+                <td class="pmat-ref__fabrication">{m.fabrication ?? '—'}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+
+<script>
+  import '../../scripts/armures.mjs';
+</script>

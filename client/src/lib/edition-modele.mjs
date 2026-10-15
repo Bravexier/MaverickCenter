@@ -7,11 +7,14 @@
 // R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme, bois, ingrédient et monnaie
 // (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé (retiré de tout ce qui
 // le porte).
-// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
+// Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs).
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 import { ECRITURES_DE_COMPETENCE, MAINS } from './arme-champs.mjs';
+import { TYPES_D_ARMURE } from './armure-champs.mjs';
 import { EPOQUES, PORTEES } from './chronologie.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -379,12 +382,63 @@ export const TABLES = {
       effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
     },
   },
-  // améliorations d'arme (+1 à +10) : coût et effet ; les améliorations d'armure, de bouclier et des pièces élémentaires ne se modifient pas ici
+  // améliorations d'arme (+1 à +10), d'armure et de bouclier (+1 à +5) : coût et effet ; celles des pièces élémentaires ne se modifient pas ici
   amelioration_equipement: {
-    libelle: 'Amélioration d’arme',
+    libelle: 'Amélioration',
     colonnes: {
-      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO »)', requis: true },
-      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité »)', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
+      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+    },
+  },
+  // Armures et boucliers (/ressources/armures/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
+  // « Bouclier » ; le service en tire les colonnes typées (prix, AP, AM, coût en RF, Force minimum) et les résistances et faiblesses d'une armure
+  // (lib/armure-champs.mjs), et suit le corps des pages (lib/corps-armures.mjs). Ni création ni suppression (les fiches de personnage citent armures,
+  // pièces, formes et améliorations) ; les matériaux se modifient sur la page « Composants » (décision R62).
+  armure: {
+    libelle: 'Armure',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
+      stats_brut: { type: 'ligne', libelle: 'Défense (« +10AP +14AM », « Aucune »)', requis: true },
+      solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
+      // une combinaison de deux matières seulement (la case de la grille) ; une armure particulière écrit son effet
+      resistance_brut: { type: 'ligne', libelle: 'Résistance (« x2 Frappe », « Estoc/Taille »)' },
+      faiblesse_brut: { type: 'ligne', libelle: 'Faiblesse (« x2 Estoc », « Taille/Frappe »)' },
+      effet: { type: 'texte', libelle: 'Effet (armure particulière)' },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2 050 », « ???? »)' },
+    },
+  },
+  // une pièce du tableau FABRICATION (Armure Complète, Casque…, Bouclier) : son coût de fabrication (décision R75)
+  armure_emplacement: {
+    libelle: 'Pièce d’armure',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Pièce', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût de fabrication (« 150 RF / 1,5 RO », « 250 RF / Classe »)', requis: true },
+    },
+  },
+  // une forme (classe) de bouclier : Bocle, Targe, Bouclier Rond, Écu, Pavois (sa classe ne change pas : « classe 4 = 4 matériaux »)
+  bouclier_classe: {
+    libelle: 'Forme de bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Forme', requis: true },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2,5 »)', requis: true },
+    },
+  },
+  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits
+  bouclier: {
+    libelle: 'Bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      defense_brut: { type: 'ligne', libelle: 'Défense (« +20AP +25AM »)', requis: true },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
+    },
+  },
+  // un poids de bouclier (liste de l'onglet « Bouclier », que la source ne relie pas aux formes) : son nom et sa Force minimum
+  bouclier_poids: {
+    libelle: 'Poids de bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Poids', requis: true },
+      force_brut: { type: 'ligne', libelle: 'Force (« 1 de Force minimum »)', requis: true },
     },
   },
   // Chronologie (migration 0043, demande du propriétaire : « que la page puisse être modifiée […] supprimer une page, ou en créer une nouvelle, lui attribuant

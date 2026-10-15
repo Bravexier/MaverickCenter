@@ -100,7 +100,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'composants', 'chronologie', 'mots-cles']);
 });
 
 test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
