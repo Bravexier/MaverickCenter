@@ -5,7 +5,7 @@
 .relations details { margin-top: 0.7rem; }
 .relations summary { cursor: pointer; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.35rem 0; list-style: none; }
-.chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 0.9rem; }
+.chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 0.9rem; }
 a.chip { color: var(--accent); }
 a.chip:hover { background: var(--accent-soft); }
 .chip--fort { border-color: var(--good); }

@@ -6,7 +6,7 @@
 .archive__titre { font-weight: bold; overflow-wrap: anywhere; }
 .archive__titre a { text-decoration: none; }
 .archive__titre a:hover { text-decoration: underline; }
-.archive__genre { display: inline-block; margin-right: 0.4rem; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: normal; vertical-align: 0.1em;
+.archive__genre { display: inline-block; margin-right: 0.4rem; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: normal; vertical-align: 0.1em;
   background: var(--accent-soft); color: var(--accent); }
 /* couleurs des icônes Google : bleu des Docs, vert des Sheets */
 .archive__genre--doc { background: #e3ecfb; color: #1a56b8; }

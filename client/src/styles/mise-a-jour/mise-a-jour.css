@@ -33,7 +33,7 @@
 .nv-entite__nom { font-weight: bold; }
 .nv-champ { display: inline; margin-right: 0.6rem; }
 .nv-champ__nom { font-style: italic; color: var(--muted); }
-.nv-partie { font-size: 0.75rem; padding: 0 0.35rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.nv-partie { font-size: 0.75rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent); }
 .nv-sep, .nv-fleche { color: var(--muted); }
 .mise-a-jour del { color: var(--muted); text-decoration-thickness: 1.5px; }
 .mise-a-jour ins { text-decoration: none; font-weight: bold; }
@@ -47,7 +47,7 @@
 .nv-diff { white-space: pre-wrap; margin: 0.3rem 0 0.5rem; padding: 0.5rem 0.7rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.92rem; max-height: 28rem; overflow: auto; }
 .nv-diff ins { color: var(--nv-vert); background: var(--nv-vert-fond); }
 .nv-diff del { color: var(--nv-rouge); background: var(--nv-rouge-fond); }
-.nv-badge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.75rem; vertical-align: 0.1em; }
+.nv-badge { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.75rem; vertical-align: 0.1em; }
 .nv-badge--ajout { background: var(--nv-vert-fond); color: var(--nv-vert); }
 .nv-badge--retrait { background: var(--nv-rouge-fond); color: var(--nv-rouge); }
 .nv-badge--exemple { background: var(--warn-bg); color: var(--warn-text); margin-left: 0.4rem; }
@@ -65,7 +65,7 @@
 .nv-dev__bilan { margin: 0.3rem 0 1rem; }
 .nv-dev__note textarea { width: 100%; min-height: 9rem; font: inherit; padding: 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); }
 .nv-dev__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.5rem 0 1rem; }
-.nv-dev button, .nv-dialogue button { font: inherit; padding: 0.35rem 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.nv-dev button, .nv-dialogue button { font: inherit; padding: 0.35rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .nv-dev button.nv-principal, .nv-dialogue button.nv-principal { background: var(--good); color: #fff; border-color: var(--good); font-weight: bold; }
 .nv-dev button:disabled { opacity: 0.55; cursor: not-allowed; }
 .nv-dev__apercu { margin-top: 0.5rem; }
@@ -76,7 +76,7 @@
 .nv-message { margin: 0.4rem 0; }
 .nv-message--erreur { color: var(--danger); font-weight: bold; }
 .nv-bascule { font-size: 0.9rem; }
-.nv-dialogue { width: min(40rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.3rem; color: var(--text); background: var(--surface); }
+.nv-dialogue { width: min(40rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem 1.3rem; color: var(--text); background: var(--surface); }
 .nv-dialogue::backdrop { background: rgb(0 0 0 / 0.45); }
 .nv-dialogue input { font: inherit; width: 100%; padding: 0.35rem 0.5rem; margin: 0.3rem 0 0.8rem; }
 .nv-dialogue .nv-dev__actions { justify-content: flex-end; margin-bottom: 0; }

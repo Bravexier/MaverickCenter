@@ -26,7 +26,7 @@
 /* sous un titre, le texte se détache par un filet, comme le corps d'une carte sous son en-tête */
 :is(.bulle__titre, .bulle__sous) ~ :is(.bulle__texte, .bulle__stades) { margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--bulle-ligne); }
 .bulle__stades { display: grid; margin: 0.2rem 0 0; gap: 0.25rem; }
-.bulle__stade { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.bulle__stade { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; padding: 0.1rem 0.3rem; border-radius: var(--radius-xs); }
 .bulle__stade-nom { color: var(--muted); font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; padding-top: 0.08rem; }
 .bulle__stade.is-actif { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
 .bulle__stade.is-actif .bulle__stade-nom { color: var(--bulle-lisible); }
