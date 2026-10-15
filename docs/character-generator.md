@@ -157,8 +157,59 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
   la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (version portable, service arrêté), la fiche se remplit, s'**exporte** en JSON et s'**imprime** ; un
-  fichier exporté se **réimporte** pour créer le prétiré.
+  fichier exporté se **réimporte** pour créer le prétiré. Export et import en **tableur** : voir « Tableur » ci-dessous.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
+
+### Tableur : export et import (demande du propriétaire, 2026-10-15)
+
+> La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet et réexportée sous le même modèle.
+> Le portrait peut remplacer l'icône du logo en haut à gauche. Inutile de mettre les formules dans le fichier généré, seul le résultat.
+> Évidemment toutes les infos ne rentrent peut-être pas dans ces fiches-là. Toute info supplémentaire peut être notée dans les « Notes ».
+
+Dans la barre : **« Exporter (tableur) »** (un `.xlsx`), **« Exporter (JSON) »** (le format d'échange) et **« Importer »** (`.json`, `.xlsx`, `.ods`,
+`.csv`). La version portable masque les deux exports et l'impression (`tools/build-artifact.mjs`).
+
+- **Le modèle** : « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » du propriétaire, rangé en texte dans `client/src/modeles/fiche-personnage/`
+  (14 parties fabriquées par `tools/fiche/modele.py` depuis son `.ods` : aucun classeur binaire dans le dépôt), assemblé au build en
+  `/fiche/modele.xlsx` (`lib/fiche-modele.mjs`, `pages/fiche/modele.xlsx.ts`, mêmes octets d'un build à l'autre). Feuille unique « Personnage »,
+  A1:BZ75, aucune formule. Les adresses des cases, de ce modèle et de la fiche auto, sont dans `lib/fiche-tableur-cases.mjs`.
+- **Export** (`lib/fiche-tableur-export.mjs`, `cellulesDeLaFiche`) : chaque case reçoit ce que la page affiche, calculé par les mêmes fonctions du
+  moteur ; une case que le site ne calcule pas (AP, AM et solidité des pièces d'armure et du bouclier) reste vide. Les dés de maîtrise atteints sont
+  remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du Potentiel
+  Illimité, gains de niveau, NM offerts, accessoires de ceinture et « autre », dons, sorts, objets et événements de trop) va dans la case **NOTE**, sous
+  les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que l'import relit ; suivent des lignes d'information refaites à
+  chaque export (résistances au choix, Mode Hyper 100 %, choix à faire), que l'import ignore. Le classeur est écrit par `lib/tableur-ecriture.mjs`
+  (le modèle, ses styles gardés, les valeurs, les fonds, le portrait).
+- **Textes trop longs** (« toute info supplémentaire peut être notée dans les Notes ») : la page lit la taille des cases du modèle
+  (`zonesDuClasseur`) et mesure chaque texte (`lib/tableur-mesure.mjs` : chasses de Calibri et d'Arial). Une case de plusieurs rangées prend le retour
+  à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
+  toujours pas, la case en garde le début, fini par « … », et la **suite va dans la note** (« Suite de la case AM55 : … », sauts de ligne en « ⏎ »),
+  que l'import recolle avant de lire la case. Une note qui déborde elle-même s'aligne en haut : ses premières lignes restent lisibles à l'impression.
+  Google Sheets ne réduit pas un texte : il rogne ce qui dépasse.
+- **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
+  le logo reste, décrit « logo ». Le fichier s'appelle « <nom> - Fiche Maverick V15.2.2.xlsx ».
+- **Import** (`lib/tableur-lecture.mjs` lit le `.xlsx`, le `.ods` ou le `.csv` ; `lib/fiche-tableur-import.mjs`, `ficheDuClasseur`) : l'onglet
+  « Personnage » du modèle ordinateur ou de la **fiche auto V15.2.2** (voir [`fiche-auto.md`](fiche-auto.md)). Un nom se retrouve dans son contexte
+  (sorts : les magies du personnage ; dons et spécialités : la classe ; ethnie : la race…), par sa clé puis par l'ancienne graphie gardée dans
+  l'identifiant ; rien n'est rapproché par vraisemblance. Puis la même chaîne que la page (caractéristiques complètes, ethnie imposée, magie acquise
+  valable, classes selon la magie innée, dons et choix de métier valables, maîtrises). Ce qui n'a pas de place sur le site (`nonRepris`) et ce que
+  l'import a déduit (`remarques` : gains de niveau reconstitués, compétence d'un accessoire…) s'ajoutent à la fin des notes, sous une ligne
+  « [JJ/MM/AAAA] Import du classeur « <fichier> » : » ; pour un fichier exporté par la page, il n'y a rien.
+- **Où va la fiche importée** : un prétiré enregistré est ouvert → le dialogue « Importer la fiche » (`#import-cible`) propose de le **mettre à
+  jour** (il garde son identifiant), de **créer un nouveau prétiré** ou d'annuler, en rappelant la perte des modifications non enregistrées ; sinon,
+  une confirmation s'il y a des modifications. De même pour un JSON. Rien n'est enregistré avant « Enregistrer ». Le portrait : celui de la fiche
+  ouverte si le classeur porte son empreinte (l'image d'origine et son cadrage), sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite
+  comme une image choisie ; sinon aucun.
+- **Aller-retour** (`test/fiche-tableur-aller-retour.test.mjs`) : export → classeur → lecture → import redonne la fiche, sans rien dans les notes, et
+  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris), une bi-classe au Potentiel Illimité,
+  les personnages fil rouge du guide et les deux fiches auto du propriétaire.
+- **Modules** : `zip.mjs`, `xml-mini.mjs`, `tableur-lecture.mjs`, `tableur-ecriture.mjs`, `tableur-mesure.mjs`, `fiche-tableur-cases.mjs`,
+  `fiche-tableur-export.mjs`, `fiche-tableur-import.mjs` (dans `client/src/lib/`) : purs, sans DOM, importés par le seul `src/scripts/fiche.mjs` (un
+  module partagé entre deux scripts de page casse la version portable), jamais `lib/text.mjs` (`cle()` de `fiche-tableur-cases.mjs` le remplace) ;
+  `fiche-modele.mjs` (Node) ne sert qu'au build et aux tests.
+- **Questions ouvertes** : les paliers de résistance du modèle (÷3, x3, x4) ne sont pas ceux de la base (÷4, x4, x8) : l'export écrit ceux de la base ;
+  une arme dont l'effet n'écrit pas de portée laisse la case vide ; « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la
+  note d'un Potentiel Illimité qui aurait les deux.
 
 ## La page `/personnages/`
 

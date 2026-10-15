@@ -192,8 +192,9 @@ export const AUTO = Object.freeze({
     'bague-1': Object.freeze({ propriete: 'AD35', effet: 'AA36', valeur: 'AA37', maudit: 'AD37' }),
     'bague-2': Object.freeze({ propriete: 'AL35', effet: 'AI36', valeur: 'AI37', maudit: 'AL37' }),
   }),
+  // « CEINTURE » en AQ28 (une colonne plus à gauche que le modèle ordinateur), quantité en AX : relevé sur les deux fiches du propriétaire
   ceinture: Object.freeze([
-    Object.freeze({ nom: 'AR29', quantite: 'AY29' }), Object.freeze({ nom: 'AR32', quantite: 'AY32' }), Object.freeze({ nom: 'AR35', quantite: 'AY35' }),
+    Object.freeze({ nom: 'AQ29', quantite: 'AX29' }), Object.freeze({ nom: 'AQ32', quantite: 'AX32' }), Object.freeze({ nom: 'AQ35', quantite: 'AX35' }),
   ]),
   inventaire: Object.freeze({
     titre: 'AA38', lignes: Object.freeze(plage(40, 51)),

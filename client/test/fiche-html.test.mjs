@@ -1,14 +1,18 @@
 // Site CONSTRUIT (client/dist/) : la fiche de personnage (/fiche/, création et modification d'un prétiré) et la recherche des personnages
 // (/personnages/), demandes du propriétaire ; l'ancien générateur (/generateur/) a disparu et son adresse mène à la fiche (page 404) ; le menu met
-// la fiche à droite, après les métiers. Ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
+// la fiche à droite, après les métiers ; la fiche s'exporte et s'importe en JSON ou en classeur au modèle V15.2.2 (/fiche/modele.xlsx, demande du
+// propriétaire, 2026-10-15). Ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
+import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
+import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'fiche', 'index.html'));
@@ -19,7 +23,7 @@ const BLOC = /<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g;
 
 test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les données à lire (règles, service) et le script', options, () => {
   const html = lire('fiche/index.html');
-  assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
+  assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-modele="\/fiche\/modele\.xlsx" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
   const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
   for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
@@ -134,6 +138,38 @@ test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, 
   assert.equal([...html.matchAll(/data-champ="xp"/g)].length, 1, 'un seul champ d’XP : celui de la jauge');
   assert.match(html, /<button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer<\/button>/);
   assert.ok(!html.includes('id="ajout-sort"'), 'les sorts se choisissent dans le tableau, ligne par ligne');
+});
+
+test('/fiche/ : export en classeur ou en JSON, import de l’un ou l’autre (demande du propriétaire, 2026-10-15) ; le dialogue « import-cible »', options, () => {
+  const html = lire('fiche/index.html');
+  const barre = html.slice(html.indexOf('<span class="fiche-barre__outils">'), html.indexOf('id="fiche-supprimer"'));
+  const boutons = [...barre.matchAll(/<button type="button" id="([a-z-]+)"[^>]*>([^<]+)<\/button>|<input type="file" id="(fiche-importer)"/g)].map((m) => m[1] ? `${m[1]} ${m[2]}` : m[3]);
+  assert.deepEqual(boutons, ['fiche-nouvelle Nouveau', 'fiche-exporter-tableur Exporter (tableur)', 'fiche-exporter Exporter (JSON)', 'fiche-importer', 'fiche-imprimer Imprimer']);
+  // `id` juste après `type="button"` : la version portable (tools/build-artifact.mjs) masque ainsi les exports et l'impression
+  assert.match(barre, /<button type="button" id="fiche-exporter-tableur" title="Classeur \.xlsx au modèle de la fiche V15\.2\.2 : Excel, LibreOffice, Google Sheets \(Fichier › Importer\)">/);
+  const accept = barre.match(/<input type="file" id="fiche-importer" accept="([^"]+)" hidden>/)?.[1].split(',');
+  assert.deepEqual(accept, ['.json', '.xlsx', '.ods', '.csv', 'application/json', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.oasis.opendocument.spreadsheet', 'text/csv']);
+  assert.match(barre, /<span role="button" tabindex="0" title="Une fiche exportée \(\.json\) ou un classeur au modèle V15\.2\.2, ordinateur ou auto \(\.xlsx, \.ods, \.csv ; Google Sheets : Fichier › Télécharger\)">Importer<\/span>/);
+  // où va une fiche importée quand un prétiré est ouvert : le mettre à jour, en créer un nouveau, ou annuler ; caché à l'impression
+  const dialogue = html.match(/<dialog class="import-cible" id="import-cible" aria-labelledby="titre-import-cible">([\s\S]*?)<\/dialog>/)?.[1];
+  assert.ok(dialogue, 'dialogue « import-cible »');
+  assert.match(dialogue, /<form method="dialog"/);
+  assert.match(dialogue, /<p class="import-cible__perte" id="import-cible-perte" hidden>Les modifications non enregistrées seront perdues\.<\/p>/);
+  assert.deepEqual([...dialogue.matchAll(/<button type="submit"[^>]* id="([a-z-]+)" value="([a-z-]+)">([^<]+)<\/button>/g)].map((m) => [m[1], m[2], m[3]]), [
+    ['import-cible-maj', 'mettre-a-jour', 'Mettre à jour le prétiré'], ['import-cible-creer', 'creer', 'Créer un nouveau prétiré'], ['import-cible-annuler', 'annuler', 'Annuler'],
+  ]);
+  assert.match(html, /@media print\s*\{[^}]*\.import-cible[^}]*display:\s*none/, 'dialogue caché à l’impression');
+});
+
+test('/fiche/modele.xlsx : le modèle V15.2.2 ordinateur assemblé au build (lib/fiche-modele.mjs), que la page remplit et relit', options, async () => {
+  const octets = new Uint8Array(readFileSync(join(dist, 'fiche', 'modele.xlsx')));
+  assert.deepEqual(octets, await modeleXlsx(), 'les octets de lib/fiche-modele.mjs (sortie identique d’un build à l’autre)');
+  const classeur = await lireClasseur(octets, { nom: 'modele.xlsx' });
+  assert.deepEqual([classeur.format, classeur.feuilles], ['xlsx', ['Personnage']]);
+  const feuille = classeur.feuille('Personnage');
+  assert.equal(dispositionDe((a) => feuille.cellules.get(a)?.texte ?? '')?.disposition, 'ordinateur');
+  assert.deepEqual(feuille.images.map((i) => [i.de, i.a, i.type]), [['A1', 'E5', 'image/png']], 'le logo, en haut à gauche');
 });
 
 test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 27 et 39 à l’import)', options, () => {

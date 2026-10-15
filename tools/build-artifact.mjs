@@ -75,8 +75,8 @@ function convert(html, rel) {
   html = html.replace(/\b(href|action)="(\.{1,2}\/[^"#?]*\/)([#?][^"]*)?"/g, (m, attr, target, reste = '') =>
     target === prefix ? m : `${attr}="${target}index.html${reste}"`);
   html = html.replace('data-suffix=""', 'data-suffix="index.html"');
-  // Imprimer / Exporter : sans effet dans un cadre sandbox
-  html = html.replace(/<button type="button" id="(btn-print|btn-export)"/g, '<button type="button" id="$1" hidden');
+  // Imprimer / Exporter : sans effet dans un cadre sandbox (la fiche de personnage : exports en tableur et en JSON, impression)
+  html = html.replace(/<button type="button" id="(btn-print|btn-export|fiche-exporter-tableur|fiche-exporter|fiche-imprimer)"/g, '<button type="button" id="$1" hidden');
   return html;
 }
 

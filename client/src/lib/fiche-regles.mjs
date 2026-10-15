@@ -225,7 +225,8 @@ export function chargerReglesDeFiche(db) {
 
   // Sorts : coût, portée, zone, dégâts/soins/barrière, effets et remarque tels qu'écrits, avec leurs expressions de NM (sort_bonus_maitrise) : la page les
   // montre à la valeur du NM du sort (lib/sort-maitrise.mjs#valeurAuNm, demande du propriétaire). Le mode (IC, imparable, inesquivable : sort_mode, valeur
-  // de base) et l'expression de NM du type (« IC pour 3 NM ») donnent l'indication IC au NM du sort (lib/sort-maitrise.mjs#modesAuNm).
+  // de base) et l'expression de NM du type (« IC pour 3 NM ») donnent l'indication IC au NM du sort (lib/sort-maitrise.mjs#modesAuNm). Le type lui-même
+  // (sort.type_brut, « Amplification (IC pour 3 NM) ») tel qu'écrit, pour la colonne « Type » du tableau des sorts de la fiche en tableur (au NM du sort).
   const champsAuNm = new Set(['type', 'cout', 'portee', 'zone', 'dsb', 'effets']);
   const modesDesSorts = parCle(lignes(db, 'SELECT sort_id, mode, libelle, fois FROM sort_mode ORDER BY sort_id, rang'), 'sort_id', (m) => ({ mode: m.mode, libelle: m.libelle, fois: m.fois }));
   const bonusDesSorts = parCle(lignes(db, 'SELECT sort_id, champ, nature, texte_brut, increment_brut, pas_nm, seuil_nm FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang'),
@@ -233,9 +234,9 @@ export function chargerReglesDeFiche(db) {
   const ciblesDesAccessoires = parCle(lignes(db, 'SELECT effet_id, cible, cible_id, valeur, choix FROM accessoire_effet_cible ORDER BY effet_id, rang'), 'effet_id',
     (c) => ({ cible: c.cible, cible_id: c.cible_id, valeur: c.valeur, choix: c.choix === 1 }));
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
-      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
       modes: modesDesSorts.get(s.id) ?? [],
       bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
       // un sort d'attaque (sort_type) reçoit les « Dégâts magie +N » d'un accessoire (décision R54)
@@ -292,11 +293,14 @@ export function chargerReglesDeFiche(db) {
     familles_armes: lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable FROM arme_famille ORDER BY ordre')
       .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1 })),
     // le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son type ; NULL pour le Pugilat : selon la Force), son bonus de dégâts (« +N dégâts »)
-    // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes
+    // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes. Pour la fiche en tableur : son
+    // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et la portée que cet effet écrit (arme.portee_min / portee_max),
+    // « N » ou « N - M » ; null quand l'effet n'en écrit pas (rien n'est déduit ici : ni le 1 par défaut de la page Armes, R50, ni la portée du type, v_arme)
     armes: (() => {
       const types = parCle(lignes(db, 'SELECT arme_id, type_degats FROM arme_degats ORDER BY arme_id, type_degats'), 'arme_id', (r) => r.type_degats);
-      return lignes(db, 'SELECT id, nom, famille_id, type_id, mains, de, bonus_degats FROM arme ORDER BY famille_id, ordre')
-        .map((a) => ({ ...a, types_degats: types.get(a.id) ?? [] }));
+      const portee = (min, max) => (min === null ? null : min === max ? String(min) : `${min} - ${max}`);
+      return lignes(db, 'SELECT id, nom, famille_id, type_id, mains, de, bonus_degats, effet, portee_min, portee_max FROM arme ORDER BY famille_id, ordre')
+        .map(({ portee_min, portee_max, ...a }) => ({ ...a, portee: portee(portee_min, portee_max), types_degats: types.get(a.id) ?? [] }));
     })(),
     // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition, de l'amélioration, de l'élément et de son amélioration
     materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats FROM materiau_arme ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats })),
@@ -311,10 +315,13 @@ export function chargerReglesDeFiche(db) {
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
     materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am FROM materiau_bouclier ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am })),
     // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
-    // sous les dons de race (« (Action) » ou usage compté)
-    accessoires: lignes(db, 'SELECT id, propriete_id, libelle, caracteristique_id, niveau, bonus_min, bonus_max, bonus_valeur, bonus_cible, malediction, usage FROM accessoire_effet ORDER BY propriete_id, ordre')
+    // sous les dons de race (« (Action) » ou usage compté) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
+    // fiche en tableur
+    accessoires: lignes(db, `SELECT e.id, e.propriete_id, p.nom AS propriete_nom, e.libelle, e.caracteristique_id, e.niveau, e.bonus_min, e.bonus_max, e.bonus_valeur,
+                                    e.bonus_cible, e.malediction, e.usage
+                             FROM accessoire_effet e JOIN accessoire_propriete p ON p.id = e.propriete_id ORDER BY e.propriete_id, e.ordre`)
       .map((a) => ({
-        id: a.id, propriete: a.propriete_id, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
+        id: a.id, propriete: a.propriete_id, propriete_nom: a.propriete_nom, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
         valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1, usage: a.usage,
         effets: (ciblesDesAccessoires.get(a.id) ?? []),
       })),
