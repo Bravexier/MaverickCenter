@@ -1,4 +1,4 @@
-// Rapprochement des classeurs et de la base, dans les deux sens (demande du propriétaire, 2026-10-15 ; décision R81 ; tools/sources/rapprocher.mjs,
+// Rapprochement des classeurs et de la base, dans les deux sens (demande du propriétaire, 2026-10-15 ; décision R83 ; tools/sources/rapprocher.mjs,
 // docs/sources.md, « Rapprochement d'un classeur ») : pour chaque instantané de sources/raw/classeurs/registre.json à l'état « rapproche », chaque ligne
 // typée se lit dans les cellules qu'elle cite (orthographe des migrations défaite, valeurs d'import du site de dev), chaque cellule non vide est citée ou
 // ignorée avec sa raison, chaque mot d'une cellule citée est dans la base, et les notes de cellule sont les mêmes de part et d'autre. Un écart fait

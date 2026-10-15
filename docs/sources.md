@@ -51,7 +51,7 @@ aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migr
 mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
 partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
 
-**Les originaux font foi (décision R81 du propriétaire, 2026-10-15).** Les classeurs d'origine (ceux de l'ancien mainteneur) sont toujours tenus
+**Les originaux font foi (décision R83 du propriétaire, 2026-10-15).** Les classeurs d'origine (ceux de l'ancien mainteneur) sont toujours tenus
 à jour (Magie V8 et Les races modifiés le 2026-10-12, une grosse mise à jour annoncée pour la fin d'octobre) ; les copies du 2026-10-10 ne le sont pas, et
 le compte Google connecté aux sessions cloud ne les voit pas. La vérification des tables et les mises à jour lisent donc les **originaux** ; les copies
 restent une trace (registre de la migration 0014). Voir « Rapprochement d'un classeur » plus bas.
@@ -142,7 +142,7 @@ relancer l'extracteur sur ces pages.
 ### Rapprochement d'un classeur (dans les deux sens)
 
 Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
-mises à jour du classeur ; ses réponses sont la décision **R81** (`docs/decisions-regles.md`). Outils : `tools/sources/` ; test :
+mises à jour du classeur ; ses réponses sont la décision **R83** (`docs/decisions-regles.md`). Outils : `tools/sources/` ; test :
 `client/test/sources-rapprochement.test.mjs`.
 
 1. **Instantané** du classeur original : `download_file_content` du connecteur Google Drive avec l'export
@@ -166,7 +166,7 @@ mises à jour du classeur ; ses réponses sont la décision **R81** (`docs/decis
      leur provenance) : sinon le classeur dit quelque chose que la base n'a pas ;
    - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
    Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
-   **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R81) ; sa réponse s'inscrit dans le registre (`conflits`).
+   **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R83) ; sa réponse s'inscrit dans le registre (`conflits`).
    Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs` ; une section inconnue est une
    erreur), ne contient que des entrées **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage,
    consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,

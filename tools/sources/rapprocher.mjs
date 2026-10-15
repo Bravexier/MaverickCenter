@@ -1,5 +1,5 @@
 // Rapprochement d'un classeur Google Sheets et de la base, dans les deux sens (demande du propriétaire, 2026-10-15 : « m'assurer que toutes les sources
-// des classeurs ont été correctement intégrées dans des tables dans tous les sens » ; décision R81 ; docs/sources.md, « Rapprochement d'un classeur »).
+// des classeurs ont été correctement intégrées dans des tables dans tous les sens » ; décision R83 ; docs/sources.md, « Rapprochement d'un classeur »).
 //
 //   node --no-warnings tools/sources/rapprocher.mjs --classeur "Classe Maverick V7" --dump sources/raw/classeurs/classe-maverick-v7.json \
 //        [--base var/maverick.db] [--registre tools/sources/ignorer/classe-maverick-v7.json] [--sortie <rapport.md>] [--json] [--exemples 20]
@@ -749,7 +749,7 @@ export function rapport(R, { exemples: EXEMPLES = 20 } = {}) {
 
 /**
  * Les cellules d'un classeur qui changent d'un instantané à l'autre (valeur, note, fils), et pour chacune les lignes de la base qui la citent, avec ce
- * que le site de dev leur a fait : la liste à présenter au propriétaire avant une mise à jour (R81). Rien n'est appliqué.
+ * que le site de dev leur a fait : la liste à présenter au propriétaire avant une mise à jour (R83). Rien n'est appliqué.
  */
 export function changements(db, { classeur, avant, apres }) {
   const h = historiqueSite(db);

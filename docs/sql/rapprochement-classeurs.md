@@ -1,7 +1,7 @@
 # Rapprochement des classeurs et de la base (2026-10-15)
 
 Demande du propriétaire : « m'assurer que toutes les sources des classeurs ont été correctement intégrées dans des tables dans tous les sens ». Ses
-réponses du même jour sont la décision **R81** (`docs/decisions-regles.md`) : les classeurs **originaux** font foi, un écart est **listé** puis appliqué
+réponses du même jour sont la décision **R83** (`docs/decisions-regles.md`) : les classeurs **originaux** font foi, un écart est **listé** puis appliqué
 à sa demande, une valeur modifiée à la fois dans le classeur et sur le site de dev **lui est demandée**. Méthode et outil : `docs/sources.md`,
 « Rapprochement d'un classeur » (avec ce que « 0 écart » garantit et ne garantit pas) ; instantanés du 2026-10-15 dans `sources/raw/classeurs/`.
 
