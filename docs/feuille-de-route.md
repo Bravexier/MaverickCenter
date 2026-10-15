@@ -255,6 +255,14 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 5. **Sources** (salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E5, E6). Le « CODEX Maverick » et le
    « Bestiaire 2.0 » sont arrivés le 2026-10-11 (copies du propriétaire : [`codex.md`](codex.md), [`bestiaire.md`](bestiaire.md)).
 
+### Réponses du propriétaire (2026-10-15)
+
+1. **Serveur de dev** : il reste, et tout y reste ouvert (le menu « DB » de la page Debug lit toute sa base, fiches et comptes compris ; seule la base
+   du serveur de production est fermée) : « Le serveur dev restera. Il servira toujours pour modifier les règles par ceux qui en auront l'accès. »
+   Qui y a accès se réglera avec la connexion Discord (E7).
+2. **Fiches sur le serveur de dev** : une fiche créée ou supprimée sur le site de dev ne part pas en production (un lot de mise à jour ne porte
+   jamais la section 13) ; « on a juste une copie de la prod vers dev après la MEP » — ce que le serveur de test ne fait pas encore (question 7).
+
 ### Questions encore ouvertes
 
 1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ?
@@ -265,12 +273,11 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
 6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
-7. **Base du site de dev à la connexion Discord** (E7, E8 ; rappel du 2026-10-15) : le menu « DB » de la page Debug lit toute la base vivante du
-   site de dev, fiches et comptes compris (votre décision du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du
-   serveur de prod. »). Or la base du serveur de test est copiée de celle de production à sa première installation, et `dev.maverick-jdr.com` est
-   ouvert sans mot de passe avant la connexion Discord : avec des comptes et des fiches de joueur privées (1.0), n'importe quel visiteur qui
-   connaît l'adresse lirait cette copie. Faut-il alors garder cette ouverture, fermer le site de dev au public, ou ne plus y copier les fiches et
-   les comptes ? ([`api.md`](api.md), « Contenu des tables »)
+7. **Copie de la production vers le dev après la mise en production** (réponse 2 ci-dessus, 2026-10-15) : aujourd'hui, le serveur de test
+   ne copie la base de la production qu'à sa **première installation** ; ensuite il garde la sienne (`MAVERICK_BASE_TEST=conservee`,
+   [`deploy/vps/README.md`](../deploy/vps/README.md)), parce qu'il est réinstallé à chaque version de `dev` et que la copie effacerait les
+   modifications des règles en cours. Faut-il recopier la base de la production vers le dev **après chaque mise en production** — toute la
+   base, ou seulement les fiches, les comptes et les groupes (section 13), le journal de l'édition du dev gardé ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 

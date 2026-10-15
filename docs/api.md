@@ -477,13 +477,13 @@ Site de dev seulement : ailleurs, `403` avant tout le reste — **seule la base 
 propriétaire du 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. » Lecture seule : toute autre
 méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
 
-**À revoir à la 1.0** (un rappel : le code suit la décision) : la base vivante du serveur de test (`https://dev.maverick-jdr.com`) est une **copie
-de celle de production**, faite à sa première installation puis conservée (`MAVERICK_BASE_TEST=conservee`, [`deploy/vps/README.md`](../deploy/vps/README.md)),
-et ce site est ouvert **sans mot de passe** avant la connexion Discord (Caddy présente le mot de passe interne à la place des visiteurs). Quiconque
-connaît l'adresse y lit donc, par `GET /api/debug/tables/<nom>/`, les fiches, les comptes et les groupes copiés de la production, sans les règles de
-visibilité de `/api/personnages/` (`v_personnage_visible`). Sans conséquence aujourd'hui (des prétirés seulement, déjà publics par
-`/api/personnages/`) ; à la connexion Discord (1.0 : comptes avec leur identifiant Discord, fiches de joueur privées), cette ouverture est à
-reconsidérer avec le propriétaire (questions ouvertes de [`feuille-de-route.md`](feuille-de-route.md)).
+**Le serveur de dev reste ouvert** (réponse du propriétaire du 2026-10-15 : « Le serveur dev restera. Il servira toujours pour modifier les
+règles par ceux qui en auront l'accès. ») ; qui y a accès se réglera avec la connexion Discord (E7). Sa base vivante est une **copie de celle de
+production**, faite à sa première installation puis conservée (`MAVERICK_BASE_TEST=conservee`, [`deploy/vps/README.md`](../deploy/vps/README.md)) :
+ce qu'on y lit des fiches, des comptes et des groupes est cette copie, sans les règles de visibilité de `/api/personnages/` (`v_personnage_visible`).
+Une fiche créée ou supprimée sur le site de dev ne part jamais en production (un lot ne porte pas la section 13). Le propriétaire attend une copie
+de la production vers le dev après chaque mise en production, que le serveur de test ne fait pas encore (question 7 de
+[`feuille-de-route.md`](feuille-de-route.md), « Questions encore ouvertes »).
 
 | Requête | Réponse |
 | --- | --- |
