@@ -114,7 +114,7 @@ test('estUnZip : « PK\\x03\\x04 » (un .xlsx), pas une page HTML', () => {
   assert.equal(estUnZip(null), false);
 });
 
-test('nomDuClasseur : filename* (UTF-8, le nom de la feuille chez Google), sinon filename ; sans chemin ni caractère de contrôle ; null sinon', () => {
+test('nomDuClasseur : filename* (UTF-8, le nom de la feuille chez Google), sinon filename ; sans chemin ni caractère de contrôle ; 200 caractères au plus, bien formé ; null sinon', () => {
   assert.equal(nomDuClasseur('attachment; filename="Kael.xlsx"; filename*=UTF-8\'\'Ka%C3%ABl%20Nox.xlsx'), 'Kaël Nox.xlsx');
   assert.equal(nomDuClasseur("attachment; filename*=utf-8''Fiche%20de%20Lucien.xlsx"), 'Fiche de Lucien.xlsx');
   assert.equal(nomDuClasseur('attachment; filename="Lucien.xlsx"'), 'Lucien.xlsx');
@@ -126,6 +126,16 @@ test('nomDuClasseur : filename* (UTF-8, le nom de la feuille chez Google), sinon
   assert.equal(nomDuClasseur("attachment; filename*=UTF-8''%E0%A4%A; filename=\"repli.xlsx\""), 'repli.xlsx', 'filename* illisible : le repli');
   for (const rien of [null, undefined, '', 'attachment', 'inline', 'attachment; filename=""', 'attachment; filename="/"']) assert.equal(nomDuClasseur(rien), null, String(rien));
   assert.ok(nomDuClasseur(`attachment; filename="${'a'.repeat(5000)}.xlsx"`).length <= 200, 'borné');
+  // borné à 200 caractères, pas 200 unités UTF-16 : un emoji (hors du plan de base, deux unités) à cheval sur la coupe n'est jamais coupé en deux
+  // (la moitié restante rendrait le nom mal formé : encodeURIComponent, dans la réponse du service, lèverait une URIError)
+  const coupe = nomDuClasseur(`attachment; filename*=UTF-8''${encodeURIComponent(`${'a'.repeat(199)}\u{1F600} Kaël.xlsx`)}`);
+  assert.equal(coupe, `${'a'.repeat(199)}\u{1F600}`);
+  assert.equal(Array.from(coupe).length, 200);
+  assert.ok(coupe.isWellFormed());
+  assert.equal(nomDuClasseur(`attachment; filename="${'\u{1F600}'.repeat(300)}"`), '\u{1F600}'.repeat(200), '200 emojis, 400 unités UTF-16');
+  // une demi-paire seule (texte reçu tel quel) : « � », comme toWellFormed
+  assert.equal(nomDuClasseur('attachment; filename="a\uD83Db\uDE00c.xlsx"'), 'a\uFFFDb\uFFFDc.xlsx');
+  assert.equal(nomDuClasseur('attachment; filename="Ka\u00EBl \u{1F600}.xlsx"'), 'Ka\u00EBl \u{1F600}.xlsx', 'une paire entière est gardée');
 });
 
 test('corpsMultipart : métadonnées JSON (nom, type Google Sheets : la conversion) puis les octets du .xlsx intacts, frontières et fermeture', () => {

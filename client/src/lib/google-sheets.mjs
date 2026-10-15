@@ -96,10 +96,17 @@ export function estUnZip(octets) {
 
 /** Les caractères de contrôle d'un nom de fichier. */
 const CONTROLE = /[\u0000-\u001f\u007f]/g;
+/** Une moitié de paire de substitution seule (en mode `u`, une paire entière est un seul caractère, hors de cet intervalle). */
+const DEMI_PAIRE = /[\uD800-\uDFFF]/gu;
+
+/** Longueur maximale d'un nom de classeur, en caractères (points de code : un emoji compte pour un). */
+const NOM_MAX = 200;
 
 /**
  * Le nom du fichier d'un en-tête Content-Disposition : « filename*=UTF-8''… » (RFC 5987, le nom de la feuille chez Google), sinon « filename="…" »,
- * sans chemin ni caractère de contrôle ; null s'il n'y en a pas.
+ * sans chemin ni caractère de contrôle, coupé à NOM_MAX caractères (jamais au milieu d'un caractère hors du plan de base, un emoji : la moitié
+ * restante rendrait le nom mal formé, que encodeURIComponent refuse) et bien formé (une demi-paire seule devient « � », comme toWellFormed) ;
+ * null s'il n'y en a pas.
  */
 export function nomDuClasseur(contentDisposition) {
   const texte = String(contentDisposition ?? '').slice(0, 1024);
@@ -120,7 +127,7 @@ export function nomDuClasseur(contentDisposition) {
     if (simple) nom = simple.length >= 2 && simple.startsWith('"') && simple.endsWith('"') ? simple.slice(1, -1).replace(/\\(.)/g, '$1') : simple;
   }
   if (nom === null) return null;
-  nom = nom.replace(CONTROLE, '').split(/[\\/]/).at(-1).trim().slice(0, 200);
+  nom = Array.from(nom.replace(CONTROLE, '').replace(DEMI_PAIRE, '\uFFFD').split(/[\\/]/).at(-1).trim()).slice(0, NOM_MAX).join('');
   return nom || null;
 }
 

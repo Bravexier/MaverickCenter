@@ -1,6 +1,6 @@
 // Routes de l'API du service (docs/serveur.md, « API ») : une requête déjà lue (méthode, chemin, en-têtes, corps) → une réponse JSON.
 // Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante (et le téléchargeur de /api/classeur/, la seule route
-// qui sort sur Internet et rend une promesse) ; les tests appellent `traiter` directement.
+// qui rend une promesse) ; les tests appellent `traiter` directement.
 //
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
@@ -12,8 +12,9 @@
 //   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
 //   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag)
 //   POST /api/classeur/             { url } → les octets .xlsx d'une feuille Google Sheets partagée par lien (« Importer (en ligne) » de /fiche/ ;
-//                                   serveur/classeur.mjs, la seule route qui sort sur Internet) ; les deux instances, sans la base ; la réponse est une
-//                                   PROMESSE (seule route asynchrone : service.mjs l'attend)
+//                                   serveur/classeur.mjs, la seule route qui sort sur Internet à la demande de tout visiteur ; en production, la seule
+//                                   sortie : le site de dev joint aussi l'API GitHub, routes /api/mise-a-jour/) ; les deux instances, sans la base ; la
+//                                   réponse est une PROMESSE (seule route asynchrone : service.mjs l'attend)
 // Édition des règles, sur le site de dev seulement (service lancé avec MAVERICK_EDITION=1 ; ailleurs 403) — serveur/edition.mjs :
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
@@ -228,9 +229,13 @@ function traiterPortrait(requete, service, brut, permis) {
   return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
 }
 
-/** L'en-tête Content-Disposition d'un classeur : le nom en ASCII (repli), puis en entier (RFC 5987). */
-function pieceJointe(nom) {
-  const ascii = nom.replace(/[^\x20-\x7e]|["\\]/g, '_');
+/**
+ * L'en-tête Content-Disposition d'un classeur : le nom en ASCII (repli), puis en entier (RFC 5987). Rendu bien formé d'abord (toWellFormed : une
+ * demi-paire de substitution seule devient « � ») : encodeURIComponent lèverait une URIError, que le service changerait en 500.
+ */
+function pieceJointe(brut) {
+  const nom = String(brut).toWellFormed();
+  const ascii = nom.replace(/[^\x20-\x7e]|["\\]/gu, '_'); // un caractère, un « _ » (un emoji aussi : mode u)
   const encode = encodeURIComponent(nom).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encode}`;
 }

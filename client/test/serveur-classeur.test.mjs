@@ -231,7 +231,7 @@ const appel = (methode, chemin, corps, { entetes = JSON_, classeur: cl, signal }
   { base: () => null, etat: () => ({}), classeur: cl },
 );
 
-test('POST /api/classeur/ : garde des écritures (405, 415, 403, 400, 404), 503 sans téléchargeur ; sans la base ; une promesse → les octets, leur type et leur nom', async () => {
+test('POST /api/classeur/ : garde des écritures (405, 415, 403, 400, 404), 503 sans téléchargeur ; sans la base ; une promesse → les octets, leur type et leur nom (bien formé, même coupé)', async () => {
   const fetch = fauxGoogle(redirection(FICHIER), classeur());
   const { c } = telechargeur(fetch);
   const get = appel('GET', '/api/classeur/', undefined, { classeur: c });
@@ -266,6 +266,18 @@ test('POST /api/classeur/ : garde des écritures (405, 415, 403, 400, 404), 503 
     classeur: { telecharger: async () => ({ octets: XLSX, nom: 'a"b\\c\'(d)*é.xlsx' }) },
   });
   assert.equal(drole.entetes['Content-Disposition'], 'attachment; filename="a_b_c\'(d)*_.xlsx"; filename*=UTF-8\'\'a%22b%5Cc%27%28d%29%2A%C3%A9.xlsx');
+  // une feuille au titre de plus de 200 caractères, un emoji à cheval sur la coupe : coupé après lui (lib/google-sheets.mjs#nomDuClasseur), pas de 500
+  const long = `${'a'.repeat(199)}\u{1F600} Kaël.xlsx`;
+  const emoji = await appel('POST', '/api/classeur/', { url: LIEN }, {
+    classeur: telechargeur(fauxGoogle(classeur(XLSX, { 'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(long)}` }))).c,
+  });
+  assert.equal(emoji.statut, 200);
+  assert.deepEqual(emoji.brut, XLSX);
+  assert.equal(emoji.entetes['Content-Disposition'], `attachment; filename="${'a'.repeat(199)}_"; filename*=UTF-8''${'a'.repeat(199)}%F0%9F%98%80`);
+  // un nom mal formé qui viendrait d'ailleurs (demi-paire seule) : rendu bien formé avant d'être encodé
+  const demi = await appel('POST', '/api/classeur/', { url: LIEN }, { classeur: { telecharger: async () => ({ octets: XLSX, nom: 'a\uD83D.xlsx' }) } });
+  assert.equal(demi.statut, 200);
+  assert.equal(demi.entetes['Content-Disposition'], 'attachment; filename="a_.xlsx"; filename*=UTF-8\'\'a%EF%BF%BD.xlsx');
 });
 
 // ------------------------------------------------------------------ le vrai serveur HTTP
