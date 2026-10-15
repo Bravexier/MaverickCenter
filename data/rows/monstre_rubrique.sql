@@ -3700,17 +3700,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 22693');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 22697');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22701');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 11, 'tactique', 'TACTIQUE COMBAT', 'Leur armure les recouvrent tellement qu’on dirait des statues à la gloire de la Déesse de la glace, ils sont très forts et seront prêts à tout pour défendre leur territoire. Ils s''assurent de neutraliser les éléments les plus dangereux pour eux.
-
-________________
-Ottar (explication)
-Les Ottars ont été des êtres humanoïdes de tout horizon sans histoire pour la plupart, mais un jour, un tragique événement les ont profondément affecté au point que leur chakra s''est totalement effondré sur lui-même et dégénéré.
-
-Selon les situations, les évènements, le sexe, les races, l''ottar peut être différent, mais dans tout les cas il s''agit d''abominations chakratiques qui n''aspire que la destruction, où il est nécessaire de détruire le plus rapidement possible avant qu''il ne fasse trop de dégâts.
-
-L’effondrement chakratique peut être ressenti par tout le monde, il est facile de reconnaître un ottar quand il fait face, bien que certains soient capables de se cacher aux yeux de tous.
-
-Se transformer en Ottar reste extrêmement rare, il faut que l''évènement soit très grave pour la personne et la santé mentale doit être particulièrement faible. (les joueurs peuvent le devenir mais ça doit être discuté avec le mj et le créateur si jamais il y a doute sur le concept de l''Ottar visé)', 'monstres', 'Bestiaire 2.0 › ligne 22721');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 11, 'tactique', 'TACTIQUE COMBAT', 'Leur armure les recouvrent tellement qu’on dirait des statues à la gloire de la Déesse de la glace, ils sont très forts et seront prêts à tout pour défendre leur territoire. Ils s''assurent de neutraliser les éléments les plus dangereux pour eux.', 'monstres', 'Bestiaire 2.0 › ligne 22721');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 1, 'attributs', NULL, 'Santé : 100 Chakra : 80 Barrière : 40', 'monstres', 'Bestiaire 2.0 › ligne 22548');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 2, 'degats', 'Dégâts', 'Étoile du nord – 4d10 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 22551');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 3, 'defense', 'Défense', '8 points d''armure / 16 résistance magique (Armure)', 'monstres', 'Bestiaire 2.0 › ligne 22555');
