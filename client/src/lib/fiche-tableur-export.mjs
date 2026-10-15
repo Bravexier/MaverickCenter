@@ -28,7 +28,7 @@
 // modules que seule la page /fiche/ utilise (CLAUDE.md, « Pièges connus » : la version portable refuse un module partagé entre deux scripts de page) ;
 // pas lib/text.mjs (partagé par la recherche) : cle() de lib/fiche-tableur-cases.mjs.
 import { RAISONS } from './degats-texte.mjs';
-import { PARTIES_DE_FICHE } from './fiche-format.mjs';
+import { PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace,
@@ -142,7 +142,7 @@ export const LIGNES_D_ARMURE = Object.freeze({ amelioration: 'amél.', element: 
 /** Ligne d'information de la note : le Mode Hyper 100 % débloqué (ses effets sont un texte de règles : la page les montre, pas la note). */
 export const MODE_HYPER_CENT_DEBLOQUE = 'débloqué';
 
-/** Libellé du dé d'un gain de niveau (personnage_progression.de_choix) dans la note. */
+/** Libellé du dé d'un gain de niveau dans la note d'avant la décision R73 (personnage_progression.de_choix, niveau par niveau), relue par lireGains. */
 export const DES_DES_GAINS = Object.freeze({ sante: 'santé', chakra: 'chakra', les_deux: 'les deux' });
 
 // ------------------------------------------------------------------ outils
@@ -238,20 +238,18 @@ export function lireObjet(texte) {
   return { nom: brut, quantite: 1 };
 }
 
-/** Les gains de niveau (personnage_progression), par niveau : « niv. 2 : santé 10, chakra 5 ; niv. 5 : santé 5, chakra 10, dé chakra 6 ». */
-export function texteDesGains(progression) {
-  return [...(progression ?? [])].sort((a, b) => entier(a.niveau) - entier(b.niveau)).map((p) => {
-    const parts = [`santé ${entier(p.points_sante)}`, `chakra ${entier(p.points_chakra)}`];
-    if (p.de_choix) parts.push(`dé ${DES_DES_GAINS[p.de_choix] ?? p.de_choix}${vide(p.de_resultat) ? '' : ` ${entier(p.de_resultat)}`}`);
-    return `niv. ${entier(p.niveau)}${SEPARATEUR_DE_CLE}${parts.join(', ')}`;
-  }).join(SEPARATEUR_DE_LISTE);
+/** Les gains de niveau (décision R73 : deux totaux) : « santé 41, chakra 121 » ; vide quand les deux sont nuls (la note n'en a pas de ligne). */
+export function texteDesGains(fiche) {
+  const sante = entier(fiche?.gains_sante);
+  const chakra = entier(fiche?.gains_chakra);
+  return sante || chakra ? `santé ${sante}, chakra ${chakra}` : '';
 }
 
 /**
- * Les lignes de personnage_progression d'un texte de texteDesGains (« niveau 2 » aussi) ; un dé choisi sans son résultat (la page le laisse saisir) est
- * relu tel quel. null si une partie ne se lit pas (l'import le dit).
+ * Les lignes de personnage_progression d'une note d'avant la décision R73 (« niv. 2 : santé 10, chakra 5 ; niv. 5 : …, dé chakra 6 », « niveau 2 »
+ * aussi) ; un dé choisi sans son résultat (l'ancienne page le laissait saisir) est relu tel quel. null si une partie ne se lit pas.
  */
-export function lireGains(texte) {
+function lignesDesGains(texte) {
   const choix = new Map(Object.entries(DES_DES_GAINS).map(([id, libelle]) => [cle(libelle), id]));
   const lignes = [];
   for (const morceau of lireListe(texte)) {
@@ -273,6 +271,30 @@ export function lireGains(texte) {
     lignes.push(p);
   }
   return lignes;
+}
+
+/**
+ * Les gains de niveau d'un texte de la note : { gains_sante, gains_chakra }. Le format de texteDesGains (« santé 41, chakra 121 » ; une partie absente
+ * vaut 0) et celui d'avant la décision R73, niveau par niveau, sommé comme la reconstruction de la base vivante (gainsDeLaProgression de
+ * lib/fiche-format.mjs : le dé « les deux » compte sur chacun). Un texte vide : 0 et 0 ; null si une partie ne se lit pas (l'import le dit).
+ */
+export function lireGains(texte) {
+  const brut = String(texte ?? '').trim();
+  if (!brut) return { gains_sante: 0, gains_chakra: 0 };
+  if (/^niv/i.test(brut)) {
+    const lignes = lignesDesGains(brut);
+    return lignes ? gainsDeLaProgression(lignes) : null;
+  }
+  const gains = { gains_sante: 0, gains_chakra: 0 };
+  const lus = new Set();
+  for (const part of brut.split(',').map((x) => x.trim()).filter(Boolean)) {
+    const point = /^(sant[ée]|chakra)\s+(\d+)$/i.exec(part);
+    const champ = point && (cle(point[1]) === 'sante' ? 'gains_sante' : 'gains_chakra');
+    if (!point || lus.has(champ)) return null;
+    lus.add(champ);
+    gains[champ] = Number(point[2]);
+  }
+  return gains;
 }
 
 /** Les NM offerts (livre, MJ) des sorts de la fiche : « Boule de feu (livre 1, MJ 2) ; Brasier (MJ 1) » ; vide quand aucun. */
@@ -963,7 +985,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   const K = CLES_DE_LA_NOTE;
   noter(K.biClasse, f.mode_classe === 'bi' ? OUI : NON);
   if (innee && !innee.caracteristique_id && f.caracteristique_magie_id) noter(K.caracteristiqueMagie, nomDe(regles.caracteristiques, f.caracteristique_magie_id));
-  noter(K.gains, texteDesGains(f.progression));
+  noter(K.gains, texteDesGains(f));
   noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));

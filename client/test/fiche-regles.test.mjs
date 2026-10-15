@@ -32,6 +32,16 @@ test('tout est sérialisable et chaque liste a toutes les lignes de sa table', (
   assert.equal(regles.constantes['caracteristique.bonus_magie_innee'], 1);
 });
 
+test('niveaux (décision R73) : bornes du dé bonus de chaque niveau et cumuls de v_niveau, les mêmes que la règle gains_niveau', () => {
+  const v = new Map(db.prepare('SELECT * FROM v_niveau').all().map((r) => [r.niveau, r]));
+  for (const n of regles.niveaux) {
+    const g = db.prepare('SELECT de_attributs_min, de_attributs_max FROM niveau_global WHERE niveau = ?').get(n.niveau);
+    assert.deepEqual([n.de_attributs_min, n.de_attributs_max], [g.de_attributs_min, g.de_attributs_max], `niveau ${n.niveau}`);
+    for (const c of ['points_attributs_cumul', 'de_attributs_min_cumul', 'de_attributs_max_cumul']) assert.equal(n[c], v.get(n.niveau)[c], `niveau ${n.niveau} : ${c}`);
+  }
+  assert.deepEqual(regles.niveaux.filter((n) => n.de_attributs_bonus).map((n) => [n.niveau, n.de_attributs_min, n.de_attributs_max]), [[5, 1, 8], [10, 1, 8], [15, 1, 8], [20, 1, 8]]);
+});
+
 test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 dés au plus (liste « 1d » à « 5d » de la fiche auto), soit 4 points', () => {
   assert.equal(regles.constantes['maitrise_arme.des_sans_maitrise'], 1);
   assert.equal(regles.constantes['maitrise_arme.des_max'], 5);
@@ -253,6 +263,9 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {
   assert.deepEqual(regles.resistance_paliers.map((p) => p.id), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((r) => r.id));
+  // décision R70 : ÷2, ÷4, x2, x4, x8, ceux de la fiche auto (le modèle ordinateur écrit ÷3, x3 et x4 : « C'est bien 2 4 8 »)
+  assert.deepEqual(regles.resistance_paliers.map((p) => p.effet),
+    ['dégâts subis =0', 'dégâts subis ÷4', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x4', 'dégâts subis x8']);
   assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
   assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
   for (const m of regles.magies) {

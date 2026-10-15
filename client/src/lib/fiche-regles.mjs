@@ -50,9 +50,12 @@ export function chargerReglesDeFiche(db) {
   if (!accessoireMax) throw new Error('constante_equipement « accessoire.caracteristique_max » absente de la base');
   constantes['accessoire.caracteristique_max'] = accessoireMax.valeur;
 
+  // gains de niveau (décision R73) : les points d'attributs et les bornes du dé de chaque niveau, et leurs cumuls (v_niveau), les mêmes que la règle
+  // gains_niveau de v_personnage_controle : la plage à saisir se lit ici, jamais 15 × (N − 1) écrit dans le moteur
   const niveaux = lignes(db, `
-    SELECT g.niveau, g.xp_min, g.points_competences, g.points_attributs, g.de_attributs_bonus, g.puissance_magique, g.puissance_magique_note,
-           g.niveaux_maitrise, v.caracteristiques_total, v.competence_naturel_max, v.points_competences_cumul, v.niveaux_maitrise_cumul
+    SELECT g.niveau, g.xp_min, g.points_competences, g.points_attributs, g.de_attributs_bonus, g.de_attributs_min, g.de_attributs_max,
+           g.puissance_magique, g.puissance_magique_note, g.niveaux_maitrise, v.caracteristiques_total, v.competence_naturel_max,
+           v.points_competences_cumul, v.niveaux_maitrise_cumul, v.points_attributs_cumul, v.de_attributs_min_cumul, v.de_attributs_max_cumul
     FROM niveau_global g JOIN v_niveau v ON v.niveau = g.niveau ORDER BY g.niveau`);
 
   // couleur de la caractéristique, reprise par ses compétences (demande du propriétaire, lib/caracteristiques-postures.mjs)

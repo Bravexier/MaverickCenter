@@ -41,7 +41,7 @@
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
 // CLAUDE.md « Pièges connus » ; jamais lib/text.mjs, partagé par la recherche).
 
-import { ajouterAuxNotes, ficheVide } from './fiche-format.mjs';
+import { ajouterAuxNotes, ficheVide, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   armesApresChoix, attributsDe, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe, degatsDArme,
   donsValables, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, magieAcquiseValable, maitriseDArme,
@@ -943,10 +943,11 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   }
 
   // ---- gains de niveau : la ligne de la note ; sinon reconstitués d'après les maximums de santé et de chakra du classeur
+  // (deux totaux, décision R73 : la note d'un classeur exporté avant, niveau par niveau, est sommée par lireGains)
   const gainsEcrits = notee('gains')[0];
   if (gainsEcrits !== undefined) {
     const lus = lireGains(gainsEcrits);
-    if (lus) f.progression = lus;
+    if (lus) Object.assign(f, lus);
     else perdu(`Gains de niveau : « ${gainsEcrits} » illisibles`);
   } else if (!deLaPage) {
     // les maximums lus : fiche auto, leurs cases (F14, M14) ; modèle ordinateur, le « b » de « a / b »
@@ -960,7 +961,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
         const reconstitues = gainsReconstitues(regles, f, maxSante, maxChakra);
         if (reconstitues === null) remarques.push(`Gains de niveau non reconstitués : les maximums du classeur ${lus} ne s'expliquent pas par les points et les dés des niveaux ; à saisir`);
         else if (reconstitues.length) {
-          f.progression = reconstitues;
+          Object.assign(f, gainsDeLaProgression(reconstitues));   // provisoire : les deux totaux de la répartition reconstituée (R73)
           remarques.push(`Gains de niveau reconstitués d'après les maximums du classeur ${lus} : à vérifier`);
         }
       }
@@ -1056,7 +1057,7 @@ export function bornesDuDe(texte) {
  * puis sur le chakra. null quand c'est impossible, ou qu'un dé ne se lit pas ; [] quand il n'y a rien à répartir.
  */
 export function gainsReconstitues(regles, fiche, maxSante, maxChakra) {
-  const sans = attributsDe(regles, { ...fiche, progression: [] });
+  const sans = attributsDe(regles, { ...fiche, gains_sante: 0, gains_chakra: 0 });
   const gainsSante = maxSante - sans.sante;
   const gainsChakra = maxChakra - sans.chakra;
   const attendue = progressionAttendue(regles, niveauGlobal(regles, fiche.xp));

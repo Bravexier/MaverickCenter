@@ -59,8 +59,14 @@ Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, q
 une colonne que les règles retirent exprès, `COLONNES_RETIREES` de `fiche-format.mjs` : le `statut` des fiches, migration 0038, perdu sans bloquer), une
 contrainte a changé — fait garder la base en place telle quelle (sans retrait ni note) :
 le service continue avec elle (règles d'avant) et `/api/etat` donne l'erreur, par exemple `personnage_classe.classe_id = « classes/x » absent de
-classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13 (`data/migrations/`) ou correction des règles. La base
-remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base d'avant les retraits.
+classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13 (`data/migrations/`) ou correction des règles.
+**Une table que les règles retirent de la section 13** (`TABLES_RETIREES` de `fiche-format.mjs`) n'est plus recopiée : ses lignes sont **converties**
+après la copie des fiches (`CONVERSIONS` de `serveur/base-vivante.mjs`), jamais perdues sans le dire. `personnage_progression` (une ligne par niveau
+atteint, jusqu'à la migration 0045) devient, pour chaque fiche, la somme de ses lignes dans `personnage.gains_sante` et `gains_chakra` (points du
+niveau, plus le dé sur la santé, le chakra ou les deux ; décision R73). Des règles qui ont encore la table alors que le service la sait retirée
+(service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
+section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
+d'avant les retraits et les conversions (les gains niveau par niveau compris).
 
 **Sauvegarde** : `db/` est la seule donnée du serveur qui ne se reconstruit pas. La copier avec `sqlite3 db/vivante.db ".backup sauvegarde.db"`
 (cohérente même pendant une écriture), ou copier le dossier `db/` pendant que le conteneur « serveur » est arrêté. `data/rows` garde les tables de la section 13 **vides** : aucune
@@ -83,8 +89,10 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `progression`, `capacites`, `sorts`, `maitrises_armes`, `armes`, `armures`, `bouclier_materiaux`,
-`accessoires`, `inventaire`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Rien de calculé n'y est stocké.
+(`classes`, `caracteristiques`, `competences`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`, `armures`, `bouclier_materiaux`,
+`accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Rien de calculé n'y est
+stocké. Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045), comme l'entraînement (`entrainement`,
+R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilite`, R74).
 
 ```json
 { "nom": "Aldric", "race_id": "races/humain", "magie_innee_id": "magies/magie-du-feu", "xp": 0,
@@ -92,8 +100,8 @@ service (qui accepte les deux formes).
   "caracteristiques": [{ "caracteristique_id": "force", "base": 4, "croix": 0 }] }
 ```
 
-- **Création** : les colonnes absentes prennent la valeur d'une fiche vide (`ficheVide` : mono-classe, 0 XP, alignement, bourse et
-  ambidextrie à zéro). Le service fixe l'identifiant (UUID), la nature (prétiré), le propriétaire (aucun), la visibilité (tous) et les dates.
+- **Création** : les colonnes absentes prennent la valeur d'une fiche vide (`ficheVide` : mono-classe, 0 XP, alignement, bourse,
+  ambidextrie et gains de niveau à zéro). Le service fixe l'identifiant (UUID), la nature (prétiré), le propriétaire (aucun), la visibilité (tous) et les dates.
 - **Modification** : `version` (celle de la fiche lue) est obligatoire ; si la fiche a changé depuis, rien n'est écrit et la réponse `409` rend la
   fiche à jour. Une colonne absente garde sa valeur ; une liste présente remplace toute la liste, une liste absente ne change pas. La version est
   l'empreinte du contenu : une fiche dont une règle supprimée est retirée (R42 : liste, notes et date changent) change de version ; un élément
@@ -101,6 +109,10 @@ service (qui accepte les deux formes).
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038) n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
+  La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
+  migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas, sinon ceux-ci font foi. Si la reconstruction a échoué et
+  que le service tourne sur une base vivante d'avant 0045, une page à jour qui envoie `gains_sante`, `entrainement` ou `armes[].durabilite` reçoit
+  « champ inconnu », comme pour toute colonne ajoutée : rien n'est écrit, rien n'est perdu.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.

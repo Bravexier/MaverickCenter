@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 44 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 45 : 191 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -189,6 +189,8 @@ Table « Expérience / Niveau global » du guide, une ligne par niveau, recoupé
 | `dons_brut` | TEXT | oui |  | cellule « Dons » telle qu'écrite (les <br> sont conservés) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `de_attributs_min` | INTEGER | non |  | au moins : 1 (le joueur fait 1) |
+| `de_attributs_max` | INTEGER | non |  | au plus : 8 (1d8 sur l'un, ou 4 sur chacun avec « 1d4 pour les deux ») |
 
 ### `niveau_deblocage`
 
@@ -3112,7 +3114,7 @@ Une armure sur chacune de ses six pièces (Casque, Torse, Bras Gauche, Bras Droi
 
 *vue*
 
-Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs par palier de la fiche. *_cumul : somme des dons des niveaux <= niveau (un don NULL compte 0 dans la SOMME : c'est un calcul, pas une donnée) caracteristiques_total / competence_naturel_max / puissance_magique_max_feuille : seuil_niveau (formules de la fiche) puissance_magique_max_guide : plus haute puissance écrite par le guide aux niveaux <= niveau
+Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs par palier de la fiche. *_cumul : somme des dons des niveaux <= niveau (un don NULL compte 0 dans la SOMME : c'est un calcul, pas une donnée) caracteristiques_total / competence_naturel_max / puissance_magique_max_feuille : seuil_niveau (formules de la fiche) puissance_magique_max_guide : plus haute puissance écrite par le guide aux niveaux <= niveau de_attributs_min_cumul / de_attributs_max_cumul : bornes des dés bonus des niveaux <= niveau (santé + chakra, décision R73) ; avec points_attributs_cumul, la plage des gains de niveau à saisir (règle gains_niveau de v_personnage_controle)
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3126,6 +3128,8 @@ Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs p
 | `niveaux_classe_cumul` | — | non |  |  |
 | `niveaux_maitrise_cumul` | — | non |  |  |
 | `des_attributs_cumul` | — | non |  |  |
+| `de_attributs_min_cumul` | — | non |  |  |
+| `de_attributs_max_cumul` | — | non |  |  |
 | `caracteristiques_total` | INTEGER | non |  |  |
 | `competence_naturel_max` | INTEGER | non |  |  |
 | `puissance_magique_max_feuille` | INTEGER | non |  |  |
@@ -3312,6 +3316,9 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `portrait_x` | REAL | non |  |  |
 | `portrait_y` | REAL | non |  |  |
 | `portrait_zoom` | REAL | non |  |  |
+| `gains_sante` | INTEGER | oui |  |  |
+| `gains_chakra` | INTEGER | oui |  |  |
+| `entrainement` | TEXT | non |  |  |
 
 ### `personnage_partage`
 
@@ -3365,19 +3372,6 @@ Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dan
 | `rang` | INTEGER | oui | PK 2 | rang du bonus dans metier_bonus (métier de la fiche) |
 | `competence_id` | TEXT | oui | → competence.id |  |
 
-### `personnage_progression`
-
-Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra (la fiche compte F14 + M14 : BDD!K40), et le dé bonus des niveaux qui en donnent un (niveau_global.de_attributs_bonus : « 1d8 santé OU 1d8 chakra OU 1d4 pour les deux »). La fiche ajoute tout à la main dans la formule de F14/M14 (« +0 ») : ici chaque gain est daté par son niveau.
-
-| Colonne | Type | Obligatoire | Clé | Description |
-| --- | --- | --- | --- | --- |
-| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
-| `niveau` | INTEGER | oui | PK 2, → niveau_global.niveau |  |
-| `points_sante` | INTEGER | oui |  |  |
-| `points_chakra` | INTEGER | oui |  |  |
-| `de_choix` | TEXT | non |  | NULL = pas de dé à ce niveau |
-| `de_resultat` | INTEGER | non |  | résultat du dé, ajouté à la santé, au chakra, ou aux deux (« 1d4 pour les deux ») |
-
 ### `personnage_capacite`
 
 Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seulement ceux qui demandent un CHOIX (v_capacite_exclusive : options d'une même ligne, une spécialité contre l'autre, paliers de l'Archimage). Les dons sans alternative se déduisent de la classe, du niveau et de la spécialité.
@@ -3424,6 +3418,7 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `arme_elementaire_id` | TEXT | non | → arme_elementaire.id | « Elément » (AI16) |
 | `amelioration_elementaire_id` | TEXT | non | → amelioration_equipement.id | amélioration de la pièce élémentaire (AI18) : cible 'arme_elementaire' |
 | `effet_en_plus` | TEXT | non |  | « Effet en plus » (AA12), texte libre |
+| `durabilite` | INTEGER | non |  |  |
 
 ### `personnage_armure`
 
@@ -3569,7 +3564,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

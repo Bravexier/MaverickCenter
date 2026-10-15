@@ -157,7 +157,7 @@ test('attributs des quatre personnages fil rouge : les mêmes que le guide (sant
   }
 });
 
-test('attributs : deux classes et deux magies comptent ; gains de niveau et dé ; accessoires « Attributs » signés par leur malédiction ; barrière = chakra ÷ 2', () => {
+test('attributs : deux classes et deux magies comptent ; gains de niveau (deux totaux, R73) ; accessoires « Attributs » signés par leur malédiction ; barrière = chakra ÷ 2', () => {
   const ecu = (cible, maudit = 0) => {
     const effet = regles.accessoires.find((e) => e.propriete === 'attributs' && e.cible === cible && e.valeur);
     return { effet, ligne: { emplacement: 'chef', accessoire_effet_id: effet.id, valeur: null, maudit } };
@@ -175,11 +175,12 @@ test('attributs : deux classes et deux magies comptent ; gains de niveau et dé 
   const chakra = ecu('Chakra', 1);
   const avecTout = attributsDe(regles, {
     ...base, xp: 1650,
-    progression: [{ niveau: 2, points_sante: 10, points_chakra: 5 }, { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 }],
+    gains_sante: 13, gains_chakra: 23,
     accessoires: [sante.ligne, { ...chakra.ligne, emplacement: 'collier' }],
   });
-  assert.equal(avecTout.sante, a0.sante + 10 + 3 + sante.effet.valeur);
-  assert.equal(avecTout.chakra, a0.chakra + 5 + 15 + 3 - chakra.effet.valeur, 'accessoire maudit : en moins');
+  assert.equal(avecTout.sante, a0.sante + 13 + sante.effet.valeur);
+  assert.equal(avecTout.chakra, a0.chakra + 23 - chakra.effet.valeur, 'accessoire maudit : en moins');
+  assert.deepEqual([avecTout.detail.sante.niveaux, avecTout.detail.chakra.niveaux], [13, 23]);
   assert.equal(avecTout.barriere, Math.floor(avecTout.chakra / 2) + avecTout.detail.barriere.classes + avecTout.detail.barriere.race + avecTout.detail.barriere.ethnie);
   assert.equal(avecTout.corruptionMax, avecTout.chakra);
   assert.deepEqual(attributsDe(regles, { ...base, magie_innee_id: 'magies/magie-du-sang' }).quatriemeBarre, { ressource: 'Sang', max: regles.magies.find((m) => m.id === 'magies/magie-du-sang').barre4.max });

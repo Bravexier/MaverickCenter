@@ -627,20 +627,6 @@ export function resistancesDe(regles, fiche) {
   };
 }
 
-/** Points gagnés par la progression (personnage_progression) : santé, chakra, et le dé (sur l'un, l'autre ou les deux, « 1d4 pour les deux »). */
-function gainsDeProgression(fiche) {
-  let sante = 0;
-  let chakra = 0;
-  for (const p of fiche.progression ?? []) {
-    sante += entier(p.points_sante);
-    chakra += entier(p.points_chakra);
-    const de = entier(p.de_resultat);
-    if (p.de_choix === 'sante' || p.de_choix === 'les_deux') sante += de;
-    if (p.de_choix === 'chakra' || p.de_choix === 'les_deux') chakra += de;
-  }
-  return { sante, chakra };
-}
-
 /**
  * Les attributs, comme la fiche automatique V15.2.2 (Personnage!F14, M14, T14 ; BDD!K30, K32, K34 ; guide, étape 6) :
  *   santé    = classes + race + magie innée + magie acquise + ethnie + accessoires « Santé » + gains de niveau
@@ -656,10 +642,10 @@ export function attributsDe(regles, fiche) {
   const magies = [fiche.magie_innee_id, fiche.magie_acquise_id].map((id) => trouver(regles.magies, id)).filter(Boolean);
   const classes = classesDe(regles, fiche).filter((c) => c.classe);
   const somme = (cle) => classes.reduce((s, c) => s + c.classe[cle], 0);
-  const progression = gainsDeProgression(fiche);
+  // gains de niveau : deux totaux saisis (personnage.gains_sante, gains_chakra : décision R73, migration 0045)
   const detail = {
-    sante: { classes: somme('sante'), race: race?.sante ?? 0, magies: magies.reduce((s, m) => s + m.sante, 0), ethnie: ethnie?.sante ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'sante'), niveaux: progression.sante },
-    chakra: { classes: somme('chakra'), race: race?.chakra ?? 0, magies: magies.reduce((s, m) => s + m.chakra, 0), ethnie: ethnie?.chakra ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'chakra'), niveaux: progression.chakra },
+    sante: { classes: somme('sante'), race: race?.sante ?? 0, magies: magies.reduce((s, m) => s + m.sante, 0), ethnie: ethnie?.sante ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'sante'), niveaux: entier(fiche.gains_sante) },
+    chakra: { classes: somme('chakra'), race: race?.chakra ?? 0, magies: magies.reduce((s, m) => s + m.chakra, 0), ethnie: ethnie?.chakra ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'chakra'), niveaux: entier(fiche.gains_chakra) },
   };
   const total = (d) => Object.values(d).reduce((s, v) => s + v, 0);
   const chakra = total(detail.chakra);

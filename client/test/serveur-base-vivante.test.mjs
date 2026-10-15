@@ -1,8 +1,9 @@
 // Base vivante du service (client/serveur/base-vivante.mjs, docs/serveur.md) : copie de la base des règles publiée par le site, où le service
 // écrit les fiches (section 13 de data/schema.sql). Quand les règles changent, elle est refaite et ses lignes reprises ; un don, une spécialité, un
 // sort ou un métier disparu est retiré des fiches avec une note datée (décision R42) ; une colonne que les règles ont retirée exprès (COLONNES_RETIREES :
-// le statut des fiches, migration 0038) se perd ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne change et l'erreur
-// dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
+// le statut des fiches, migration 0038) se perd ; une table que les règles ont retirée (TABLES_RETIREES : les gains de niveau par niveau, migration
+// 0045) est convertie (CONVERSIONS), jamais perdue sans le dire ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne
+// change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,7 +17,7 @@ import {
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
-import { COLONNES_RETIREES } from '../src/lib/fiche-format.mjs';
+import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -567,6 +568,111 @@ test('migration 0038 : une base vivante d’avant, dont les fiches ont encore le
   } finally {
     db.close();
   }
+});
+
+// Les règles d'avant la migration 0045 (data/schema.sql d'alors) : la table personnage_progression, sans les gains en deux totaux, l'entraînement ni la
+// durabilité des armes (la vue qui les lit d'abord : SQLite refuse de retirer une colonne qu'une vue cite).
+const AVANT_0045 = `DROP VIEW v_personnage_controle;
+  ALTER TABLE personnage DROP COLUMN gains_sante;
+  ALTER TABLE personnage DROP COLUMN gains_chakra;
+  ALTER TABLE personnage DROP COLUMN entrainement;
+  ALTER TABLE personnage_arme DROP COLUMN durabilite;
+  CREATE TABLE personnage_progression (
+    personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
+    points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
+    points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
+    de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),
+    de_resultat    INTEGER CHECK (de_resultat >= 1),
+    PRIMARY KEY (personnage_id, niveau),
+    CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
+  ) STRICT, WITHOUT ROWID;`;
+const COLONNES_0045 = { personnage: ['gains_sante', 'gains_chakra', 'entrainement'], personnage_arme: ['durabilite'] };
+/** Les lignes de la section 13 sans les colonnes de la migration 0045 : ce qu'une base d'avant doit retrouver à l'identique. */
+const sans0045 = (lignes) => Object.fromEntries(Object.entries(lignes).map(([t, l]) => [t, l.map((x) => {
+  const ligne = JSON.parse(x);
+  for (const c of COLONNES_0045[t] ?? []) delete ligne[c];
+  return JSON.stringify(ligne);
+}).sort()]));
+const gainsDe = (f) => {
+  const db = lecture(f);
+  try {
+    return Object.fromEntries(db.prepare('SELECT id, gains_sante, gains_chakra FROM personnage ORDER BY id').all().map((p) => [p.id, [p.gains_sante, p.gains_chakra]]));
+  } finally {
+    db.close();
+  }
+};
+const aLaTable = (f, t) => valeur(f, "SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?", t).n === 1;
+
+test('migration 0045 : une base vivante d’avant, avec ses gains niveau par niveau, est reprise ; chaque fiche reçoit leur somme (R73), rien d’autre ne change', () => {
+  assert.deepEqual(TABLES_RETIREES, { personnage_progression: 'progression' });
+  assert.equal(aLaTable(REGLES, 'personnage_progression'), false, 'les règles d’aujourd’hui n’ont plus la table');
+  const anciennes = regles(AVANT_0045);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: anciennes, dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  const gain = ecrire.prepare('INSERT INTO personnage_progression (personnage_id, niveau, points_sante, points_chakra, de_choix, de_resultat) VALUES (?, ?, ?, ?, ?, ?)');
+  // p1 : niveaux 2, 3, 4 (10 santé, 5 chakra) et 5 (15 santé, dé « les deux » 3) ; p2 : niveau 2 (15 santé) et 5 (15 chakra, dé chakra 7)
+  for (const n of [2, 3, 4]) gain.run('p1', n, 10, 5, null, null);
+  gain.run('p1', 5, 15, 0, 'les_deux', 3);
+  gain.run('p2', 2, 15, 0, null, null);
+  gain.run('p2', 5, 0, 15, 'chakra', 7);
+  const progression = ecrire.prepare('SELECT * FROM personnage_progression ORDER BY personnage_id, niveau').all().map((l) => ({ ...l }));
+  ecrire.close();
+  const avant = lignesVivantes(chemin);
+
+  // des règles qui ont encore la table (service et règles qui ne vont pas ensemble) : rien ne se perd sans le dire, la base reste en place
+  assert.throws(() => preparerBaseVivante({ regles: regles(`${AVANT_0045} UPDATE race SET nom = 'Humain (bis)' WHERE id = 'races/humain';`), dossier }), (e) => {
+    assert.ok(e instanceof ErreurBaseVivante, e.message);
+    assert.deepEqual(e.problemes, [
+      'personnage_progression : table retirée par les nouvelles règles (TABLES_RETIREES), mais encore dans la base des règles : ses lignes ne seraient pas reprises',
+    ]);
+    return true;
+  });
+  assert.deepEqual(lignesVivantes(chemin), avant, 'la base en place est gardée telle quelle');
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-15T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches, [], 'rien de retiré des fiches (R42), aucune note');
+  assert.equal(r.rejeu.conflits, 0, JSON.stringify(r.rejeu));
+  // 10 × 3 + 15 + 3 = 48 et 5 × 3 + 3 = 18 (« 1d4 pour les deux » compte sur chacun) ; 15 et 15 + 7 = 22
+  assert.deepEqual(gainsDe(chemin), { p1: [48, 18], p2: [15, 22] });
+  // la même somme en JavaScript (une page restée ouverte, un fichier d'avant : sansPartiesRetirees)
+  for (const id of ['p1', 'p2']) {
+    const g = gainsDeLaProgression(progression.filter((l) => l.personnage_id === id));
+    assert.deepEqual([g.gains_sante, g.gains_chakra], gainsDe(chemin)[id], id);
+  }
+  assert.equal(aLaTable(chemin, 'personnage_progression'), false, 'la table n’est plus dans la base vivante');
+  assert.deepEqual(sans0045(lignesVivantes(chemin)), avant, 'le reste de la section 13 repris à l’identique');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_progression').n, 6, 'l’archive garde les gains niveau par niveau');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const aldric = lireFiche(db, 'p1');
+    assert.equal('progression' in aldric, false);
+    assert.deepEqual([aldric.gains_sante, aldric.gains_chakra, aldric.entrainement], [48, 18, null]);
+  } finally {
+    db.close();
+  }
+
+  // une reconstruction suivante (d'autres règles) garde les totaux : il n'y a plus rien à convertir
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.deepEqual(gainsDe(chemin), { p1: [48, 18], p2: [15, 22] });
+});
+
+test('migration 0045 : une base vivante d’avant sans gain de niveau saisi : ses fiches reçoivent 0 et 0', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0045), dossier });
+  remplir(chemin);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_progression').n, 0);
+  const avant = lignesVivantes(chemin);
+  const r = preparerBaseVivante({ regles: REGLES, dossier });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(gainsDe(chemin), { p1: [0, 0], p2: [0, 0] });
+  assert.deepEqual(sans0045(lignesVivantes(chemin)), avant);
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {

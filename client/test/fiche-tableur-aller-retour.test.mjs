@@ -95,7 +95,6 @@ function canonique(fiche) {
     caracteristiques: parCle('caracteristique_id', caracs),
     competences: parCle('competence_id', competences),
     metier_bonus: (a, b) => a.rang - b.rang,
-    progression: (a, b) => a.niveau - b.niveau,
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
     maitrises_armes: parCle('arme_famille_id', familles),
     armes: (a, b) => a.rang - b.rang,
@@ -209,11 +208,9 @@ function ficheRiche() {
     ceinture: [{ rang: 1, ...objet(regles.ressources[90].nom, 12) }, { rang: 3, ...objet('Corde tressée de crins de licorne, longue de vingt pas, nouée tous les trois pieds pour grimper') }],
   };
   f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options.at(-1).id })));
-  const choix = ['sante', 'chakra', 'les_deux'];
-  f.progression = M.progressionAttendue(regles, M.niveauGlobal(regles, f.xp)).map((n, i) => ({
-    niveau: n.niveau, points_sante: Math.min(5 + (i % 3) * 5, n.points), points_chakra: n.points - Math.min(5 + (i % 3) * 5, n.points),
-    de_choix: n.de ? choix[i % 3] : null, de_resultat: n.de ? (i % 8) + 1 : null,
-  }));
+  // les gains de niveau, deux totaux (décision R73)
+  f.gains_sante = 37;
+  f.gains_chakra = 54;
   f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4, nm_livre: i % 4 >= 1 && i % 3 === 0 ? 1 : 0, nm_cadeau: i % 4 >= 2 && i % 5 === 0 ? 1 : 0 }));
   return f;
 }

@@ -155,7 +155,7 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   const enDouble = ficheDuClasseur(regles, ordinateur({ BA54: [MARQUEUR_DES_NOTES, 'Bi-classé : non', 'Bi-classé : oui', 'Gains de niveau : niv. 2 : santé 15, chakra 0',
     'Gains de niveau : niv. 2 : santé 0, chakra 15'].join('\n') }));
   assert.equal(enDouble.fiche.mode_classe, 'mono');
-  assert.deepEqual(enDouble.fiche.progression, [{ niveau: 2, points_sante: 15, points_chakra: 0, de_choix: null, de_resultat: null }]);
+  assert.deepEqual([enDouble.fiche.gains_sante, enDouble.fiche.gains_chakra], [15, 0]);
   assert.deepEqual(enDouble.nonRepris, ['Note : ligne « Bi-classé : oui » en double, seule la première de cette clé est lue',
     'Note : ligne « Gains de niveau : niv. 2 : santé 0, chakra 15 » en double, seule la première de cette clé est lue']);
   // la suite d'un texte coupé (lib/tableur-mesure.mjs) : par adresse, la première seulement ; une seconde pour la même case revient dans les notes
@@ -318,20 +318,12 @@ function verifierLeCommun(values, r) {
   // valeurs du moment au maximum (null), corruption 0 (null)
   assert.deepEqual([v('D14'), v('K14'), v('R14')], [v('F14'), v('M14'), v('T14')]);
   assert.deepEqual([f.sante_actuelle, f.chakra_actuel, f.barriere_actuelle, f.barre4_actuelle, f.corruption, f.posture_id], [null, null, null, null, null, null]);
-  // gains de niveau reconstitués : les maximums du classeur retrouvés, les points de chaque niveau, un dé aux niveaux qui en donnent un, dans ses bornes
+  // gains de niveau (deux totaux, décision R73) : les maximums du classeur retrouvés, un total dans la plage du niveau (points et dés atteints)
   const a = attributsDe(regles, f);
   assert.deepEqual([a.sante, a.chakra], [Number(v('F14')), Number(v('M14'))]);
-  const niveaux = regles.niveaux.filter((n) => n.niveau >= 2 && n.niveau <= Number(v('W8')));
-  assert.deepEqual(f.progression.map((p) => p.niveau), niveaux.map((n) => n.niveau));
-  for (const p of f.progression) {
-    const n = niveaux.find((x) => x.niveau === p.niveau);
-    assert.equal(p.points_sante + p.points_chakra, n.points_attributs);
-    assert.equal(p.de_choix !== null, Boolean(n.de_attributs_bonus), `dé du niveau ${p.niveau}`);
-    if (p.de_choix) {
-      const bornes = bornesDuDe(n.de_attributs_bonus);
-      assert.ok(p.de_resultat >= bornes.min && p.de_resultat <= bornes.max, `dé du niveau ${p.niveau} : ${p.de_resultat}`);
-    }
-  }
+  const n = regles.niveaux.find((x) => x.niveau === Number(v('W8')));
+  const total = f.gains_sante + f.gains_chakra;
+  assert.ok(total >= n.points_attributs_cumul + n.de_attributs_min_cumul && total <= n.points_attributs_cumul + n.de_attributs_max_cumul, `gains ${total}`);
   assert.equal(r.image, null);
   assert.equal(r.portraitGarde, false);
   assert.equal(f.notes, v('BA54') || null);
@@ -495,7 +487,7 @@ test('fiche auto : ce qui n’a pas de place sur le site part dans nonRepris, un
   assert.ok(r.nonRepris.includes(`Ethnie « Drakos Rouge » : remplacée par ${beige.nom}, la seule de la race qui aille avec la magie innée Lumière`));
   // des maximums que les règles n'expliquent pas : pas de gains de niveau, une remarque
   r = louise({ F14: '5' });
-  assert.deepEqual(r.fiche.progression, []);
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, 0]);
   assert.ok(r.remarques.includes('Gains de niveau non reconstitués : les maximums du classeur (santé 5, chakra 133) ne s\'expliquent pas par les points et les dés des niveaux ; à saisir'));
 });
 
@@ -512,7 +504,8 @@ test('modèle ordinateur vierge : une fiche vide, ses libellés figés ne sont p
   assert.deepEqual(r.fiche.maitrises_armes, [], 'les cases « 2d » à « 5d » du modèle ne sont pas des dés atteints');
   assert.equal(r.fiche.posture_id, null);
   assert.deepEqual(r.fiche.caracteristiques.map((c) => c.base), [1, 1, 1, 1, 1, 1]);
-  for (const cle_ of ['classes', 'competences', 'capacites', 'sorts', 'armes', 'armures', 'accessoires', 'inventaire', 'ceinture', 'progression']) assert.deepEqual(r.fiche[cle_], [], cle_);
+  for (const cle_ of ['classes', 'competences', 'capacites', 'sorts', 'armes', 'armures', 'accessoires', 'inventaire', 'ceinture']) assert.deepEqual(r.fiche[cle_], [], cle_);
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, 0]);
 });
 
 test('modèle ordinateur : maîtrises par remplissage et par marque, posture marquée, valeurs du moment « a / b »', () => {
@@ -586,7 +579,9 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   const equilibre = competencesDe(regles, f).find((k) => k.id === 'equilibre');
   assert.deepEqual([equilibre.naturel, equilibre.acquis, equilibre.metier, equilibre.accessoire], [5, 12 - rangAChoisir.valeur - 7, rangAChoisir.valeur, 7]);
   assert.deepEqual(f.competences.find((c) => c.competence_id === 'arc'), { competence_id: 'arc', naturel: 10, acquis: 0 });
-  assert.deepEqual(f.progression, lireGains(note.split('\n').find((l) => l.startsWith('Gains')).split(' : ').slice(1).join(' : ')));
+  // la note d'un classeur exporté avant la décision R73, niveau par niveau : sommée
+  assert.deepEqual({ gains_sante: f.gains_sante, gains_chakra: f.gains_chakra }, lireGains(note.split('\n').find((l) => l.startsWith('Gains')).split(' : ').slice(1).join(' : ')));
+  assert.deepEqual([f.gains_sante, f.gains_chakra], [30, 36]);
   assert.deepEqual(f.sorts, [
     { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3, nm_livre: 1, nm_cadeau: 1 },
     { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 },
@@ -988,10 +983,9 @@ test('ce qui a pu se perdre avant l’import : case relue finie par « … » sa
   assert.deepEqual(ficheDuClasseur(regles, ordinateur({ BA54: pleine })).remarques,
     [`Case NOTE (BA54) : ${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères finis par « … », la limite d'une case de tableur : sa fin a été coupée et n'est pas reprise`]);
   // des notes raccourcies par la page (lib/fiche-tableur-export.mjs#texteDeLaNote) : les données relues entières, et une remarque
-  const progression = M.progressionAttendue(regles, 5).map((n) => ({ niveau: n.niveau, points_sante: n.points, points_chakra: 0, de_choix: n.de ? 'sante' : null, de_resultat: n.de ? 4 : null }));
-  const longue = { ...fiche, xp: regles.niveaux.find((n) => n.niveau === 5).xp_min, mode_classe: 'mono', progression, notes: 'n'.repeat(40_000) };
+  const longue = { ...fiche, xp: regles.niveaux.find((n) => n.niveau === 5).xp_min, mode_classe: 'mono', gains_sante: 64, gains_chakra: 0, notes: 'n'.repeat(40_000) };
   const r = ficheDuClasseur(regles, deLaPage(longue));
-  assert.deepEqual(r.fiche.progression, progression, 'les gains de niveau relus, pas reconstitués');
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [64, 0], 'les gains de niveau relus, pas reconstitués');
   assert.ok(r.fiche.notes.endsWith('n…') && r.fiche.notes.length < 40_000);
   const raccourcies = `Notes : raccourcies à l'export (la case NOTE est pleine : ${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères) ; leur fin n'est pas dans le classeur`;
   assert.deepEqual(r.remarques, [raccourcies]);
@@ -1042,7 +1036,7 @@ test('gains de niveau reconstitués : les bornes du dé lues dans le texte du ni
   for (const n of regles.niveaux.filter((x) => x.de_attributs_bonus)) assert.ok(bornesDuDe(n.de_attributs_bonus), n.niveau);
   // un d12 : 12 par dé, ce que le d8 ne permet pas
   const f = importer(LOUISE).fiche;
-  const sans = attributsDe(regles, { ...f, progression: [] });
+  const sans = attributsDe(regles, { ...f, gains_sante: 0, gains_chakra: 0 });
   const attendue = M.progressionAttendue(regles, M.niveauGlobal(regles, f.xp));
   const points = attendue.reduce((s, n) => s + n.points, 0);
   const des = attendue.filter((n) => n.de).length;
@@ -1058,7 +1052,7 @@ test('gains de niveau reconstitués : les bornes du dé lues dans le texte du ni
   const n5 = illisible.niveaux.find((n) => n.de_attributs_bonus);
   n5.de_attributs_bonus = 'un dé au choix';
   const r = ficheDuClasseur(illisible, feuilleDeGrille(LOUISE));
-  assert.deepEqual(r.fiche.progression, []);
+  assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [0, 0]);
   assert.ok(r.remarques.includes(`Gains de niveau non reconstitués : le dé du niveau ${n5.niveau} (« un dé au choix ») ne se lit pas ; maximums du classeur (santé ${lue(LOUISE, 'F14')}, chakra ${lue(LOUISE, 'M14')}) : à saisir`));
 });
 

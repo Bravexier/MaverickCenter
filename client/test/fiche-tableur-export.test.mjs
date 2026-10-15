@@ -155,12 +155,10 @@ function ficheRiche() {
   };
   // un don à choix par groupe (la première option), comme la page le permet
   f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
-  // les gains de chaque niveau : 15 points (santé d'abord), et le dé quand le niveau en donne un
-  const choix = ['sante', 'chakra', 'les_deux'];
-  f.progression = M.progressionAttendue(regles, NIVEAU_RICHE).map((n, i) => ({
-    niveau: n.niveau, points_sante: Math.min(10, n.points), points_chakra: n.points - Math.min(10, n.points),
-    de_choix: n.de ? choix[i % 3] : null, de_resultat: n.de ? 3 : null,
-  }));
+  // les gains de niveau, deux totaux (décision R73) : 15 points par niveau atteint (10 en santé, 5 en chakra), et 3 en santé par dé
+  const attendus = M.progressionAttendue(regles, NIVEAU_RICHE);
+  f.gains_sante = attendus.reduce((somme, n) => somme + Math.min(10, n.points) + (n.de ? 3 : 0), 0);
+  f.gains_chakra = attendus.reduce((somme, n) => somme + n.points - Math.min(10, n.points), 0);
   // 25 sorts des deux magies, NM de niveau, d'un livre et du MJ
   f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => {
     const total = i % 4;
@@ -520,7 +518,8 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   const K = CLES_DE_LA_NOTE;
   assert.deepEqual(note.valeur(K.biClasse), [NON]);
   assert.deepEqual(note.valeur(K.caracteristiqueMagie), [], 'la Nécromancie a sa caractéristique');
-  assert.deepEqual(lireGains(note.valeur(K.gains)[0]), [...riche.progression].sort((a, b) => a.niveau - b.niveau));
+  assert.ok(riche.gains_sante && riche.gains_chakra);
+  assert.deepEqual(lireGains(note.valeur(K.gains)[0]), { gains_sante: riche.gains_sante, gains_chakra: riche.gains_chakra });
   const offerts = riche.sorts.filter((s) => s.nm_livre || s.nm_cadeau);
   assert.ok(offerts.some((s) => s.nm_livre) && offerts.some((s) => s.nm_cadeau));
   assert.deepEqual(lireNmOfferts(note.valeur(K.nmOfferts)[0]), offerts.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: s.nm_livre, cadeau: s.nm_cadeau })));
@@ -859,15 +858,22 @@ test('mise en forme de la note et des lignes : relue telle qu’écrite', () => 
   assert.equal(texteDObjet({ nom: 'Carquois normal (10)', quantite: 1 }), 'Carquois normal (10) ×1');
   for (const r of regles.ressources) for (const quantite of [1, 3]) assert.deepEqual(lireObjet(texteDObjet({ nom: r.nom, quantite })), { nom: r.nom, quantite }, r.nom);
   // gains, NM offerts, sorts en suite, améliorations, événements
-  const gains = [{ niveau: 2, points_sante: 10, points_chakra: 5, de_choix: null, de_resultat: null }, { niveau: 5, points_sante: 5, points_chakra: 10, de_choix: 'chakra', de_resultat: 6 },
-    { niveau: 9, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: null }];
-  assert.equal(texteDesGains(gains), 'niv. 2 : santé 10, chakra 5 ; niv. 5 : santé 5, chakra 10, dé chakra 6 ; niv. 9 : santé 0, chakra 15, dé les deux');
-  assert.deepEqual(lireGains(texteDesGains([...gains].reverse())), gains);
-  assert.deepEqual(lireGains('niveau 10 : santé 15, dé les deux 3'), [{ niveau: 10, points_sante: 15, points_chakra: 0, de_choix: 'les_deux', de_resultat: 3 }]);
-  assert.deepEqual(lireGains('niv. 5 : santé 5, chakra 10, dé chakra'), [{ niveau: 5, points_sante: 5, points_chakra: 10, de_choix: 'chakra', de_resultat: null }]);
+  // gains de niveau : deux totaux (décision R73) ; la note d'un classeur exporté avant, niveau par niveau, est sommée (« les deux » sur chacun)
+  assert.equal(texteDesGains({ gains_sante: 30, gains_chakra: 36 }), 'santé 30, chakra 36');
+  assert.equal(texteDesGains({ gains_sante: 0, gains_chakra: 5 }), 'santé 0, chakra 5');
+  assert.equal(texteDesGains({ gains_sante: 0, gains_chakra: 0 }), '', 'rien à noter');
+  assert.equal(texteDesGains({}), '');
+  for (const g of [{ gains_sante: 30, gains_chakra: 36 }, { gains_sante: 0, gains_chakra: 5 }]) assert.deepEqual(lireGains(texteDesGains(g)), g);
+  assert.deepEqual(lireGains('chakra 12'), { gains_sante: 0, gains_chakra: 12 }, 'une partie absente : 0');
+  assert.deepEqual(lireGains('Chakra 12, Santé 3'), { gains_sante: 3, gains_chakra: 12 });
+  assert.deepEqual(lireGains('niv. 2 : santé 10, chakra 5 ; niv. 5 : santé 5, chakra 10, dé chakra 6 ; niv. 9 : santé 0, chakra 15, dé les deux'),
+    { gains_sante: 15, gains_chakra: 36 }, 'l’ancienne note : un dé sans résultat compte 0');
+  assert.deepEqual(lireGains('niveau 10 : santé 15, dé les deux 3'), { gains_sante: 18, gains_chakra: 3 });
   assert.equal(lireGains('niv. 2 : beaucoup'), null, 'une partie illisible : null (l’import le dit)');
   assert.equal(lireGains('niv. 2 : santé 10 ; deux'), null);
-  assert.deepEqual(lireGains(''), []);
+  assert.equal(lireGains('santé 10, santé 3'), null, 'deux fois la santé');
+  assert.equal(lireGains('beaucoup'), null);
+  assert.deepEqual(lireGains(''), { gains_sante: 0, gains_chakra: 0 });
   const sorts = regles.sorts.slice(0, 3).map((s, i) => ({ sort_id: s.id, niveau_maitrise: 3, nm_livre: i === 1 ? 0 : 1, nm_cadeau: i }));
   assert.deepEqual(lireNmOfferts(texteDesNmOfferts(regles, sorts)), sorts.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: s.nm_livre, cadeau: s.nm_cadeau })));
   assert.equal(texteDesNmOfferts(regles, [{ sort_id: regles.sorts[0].id, niveau_maitrise: 2 }]), '');

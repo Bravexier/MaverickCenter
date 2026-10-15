@@ -10,7 +10,7 @@
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
@@ -1108,54 +1108,44 @@ function ouvrirSaisie(curseur) {
 
 // ------------------------------------------------------------------ progression et dons à choix
 /**
- * Gains de niveau, compacts (demande du propriétaire : « la liste des bonus est trop grande ») : une petite carte par niveau atteint, côte à côte —
- * santé et chakra (15 points exactement), le total, et aux niveaux qui en donnent un, le dé bonus (sur quoi, et son résultat). Le dé n'est décrit
- * qu'une fois, au-dessus (progressionAttendue : table niveau_global).
+ * Gains de niveau (décision R73, migration 0045) : deux totaux, la santé (case rouge) et le chakra (case bleue) gagnés par les niveaux atteints, jamais
+ * négatifs ni vides ; à côté, le total attribué et le total à saisir (ou sa plage quand un dé est atteint), en rouge hors plage. Les bornes sont celles
+ * de la règle gains_niveau de la base (regles.niveaux : points_attributs_cumul, de_attributs_min_cumul, de_attributs_max_cumul).
+ * Version provisoire : l'onglet Progression sera refait (champs du gabarit, aide détaillée) avec gainsAttendus / gainsDeNiveau du moteur.
  */
 function construireProgression() {
   const attendus = progressionAttendue(regles, calcul.niveau);
   const des = [...new Set(attendus.filter((n) => n.de).map((n) => n.de))];
   const niveauxDuDe = (de) => attendus.filter((n) => n.de === de).map((n) => n.niveau);
+  const bornesDuDe = (de) => {
+    const b = regles.niveaux.find((x) => x.niveau === niveauxDuDe(de)[0]);
+    return b && b.de_attributs_min !== null ? ` (de ${b.de_attributs_min} à ${b.de_attributs_max} chacun)` : '';
+  };
+  const n = regles.niveaux.find((x) => x.niveau === calcul.niveau) ?? null;
+  const min = n ? entier(n.points_attributs_cumul) + entier(n.de_attributs_min_cumul) : 0;
+  const max = n ? entier(n.points_attributs_cumul) + entier(n.de_attributs_max_cumul) : 0;
+  const aSaisir = max > min ? `entre ${min} et ${max}` : String(min);
   $('progression-aide').textContent = attendus.length
-    ? `À chaque niveau à partir du 2 : ${attendus[0].points} points d’attributs à répartir entre la santé (case rouge) et le chakra (case bleue), exactement.${des.map((de) => ` Dé bonus au${niveauxDuDe(de).length > 1 ? 'x' : ''} niveau${niveauxDuDe(de).length > 1 ? 'x' : ''} ${niveauxDuDe(de).join(', ')} : ${de}.`).join('')}`
+    ? `${attendus[0].points} points d’attributs par niveau à partir du 2, à répartir entre la santé (case rouge) et le chakra (case bleue) : les deux totaux.${des.map((de) => ` Dé bonus au${niveauxDuDe(de).length > 1 ? 'x' : ''} niveau${niveauxDuDe(de).length > 1 ? 'x' : ''} ${niveauxDuDe(de).join(', ')} : ${de}${bornesDuDe(de)}.`).join('')}`
     : 'Les gains commencent au niveau 2.';
-  reconstruire($('progression'), `${calcul.niveau}`, () => attendus.map((n) => {
-    const trouverLigne = () => ligne('progression', (x) => x.niveau === n.niveau, () => ({ niveau: n.niveau, points_sante: 0, points_chakra: 0, de_choix: null, de_resultat: null }));
+  reconstruire($('progression'), `${calcul.niveau}`, () => {
     const champ = (cle, nom) => el('input', {
-      type: 'number', min: '0', step: '1', class: `gain__${cle === 'points_sante' ? 'sante' : 'chakra'}`, 'aria-label': `Niveau ${n.niveau} : ${nom}`, title: nom,
-      oninput: (ev) => { trouverLigne()[cle] = entier(ev.target.value); changer(); },
+      type: 'number', min: '0', step: '1', class: `gain__${cle === 'gains_sante' ? 'sante' : 'chakra'}`, 'aria-label': `Gains de niveau : ${nom}`, title: nom,
+      oninput: (ev) => { fiche[cle] = Math.max(0, entier(ev.target.value)); changer(); },
     });
-    const sante = champ('points_sante', 'santé');
-    const chakra = champ('points_chakra', 'chakra');
+    const sante = champ('gains_sante', 'santé');
+    const chakra = champ('gains_chakra', 'chakra');
     const total = el('span', { class: 'gain__total' });
-    const de = n.de ? el('select', {
-      'aria-label': `Niveau ${n.niveau} : dé bonus (${n.de})`, title: n.de,
-      onchange: (ev) => {
-        const l = trouverLigne();
-        l.de_choix = ev.target.value || null;
-        if (!l.de_choix) l.de_resultat = null;
-        changer();
-      },
-    }, option('', 'Dé : —'), option('sante', 'Santé'), option('chakra', 'Chakra'), option('les_deux', 'Les deux')) : null;
-    const resultat = n.de ? el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Niveau ${n.niveau} : résultat du dé`, title: 'Résultat du dé', oninput: (ev) => { trouverLigne().de_resultat = ev.target.value === '' ? null : entier(ev.target.value); changer(); } }) : null;
     synchro(() => {
-      const l = ligneDe('progression', (x) => x.niveau === n.niveau);
-      poser(sante, l ? l.points_sante : '');
-      poser(chakra, l ? l.points_chakra : '');
-      const t = l ? entier(l.points_sante) + entier(l.points_chakra) : 0;
-      total.textContent = `${t}/${n.points}`;
-      total.toggleAttribute('data-hors', t !== n.points);
-      total.title = `${t} points répartis sur ${n.points}`;
-      if (de) poser(de, l?.de_choix ?? '');
-      if (resultat) {
-        poser(resultat, l?.de_resultat ?? '');
-        resultat.disabled = !l?.de_choix;
-      }
+      poser(sante, entier(fiche.gains_sante));
+      poser(chakra, entier(fiche.gains_chakra));
+      const t = entier(fiche.gains_sante) + entier(fiche.gains_chakra);
+      total.textContent = `${t} / ${max > min ? `${min} à ${max}` : min}`;
+      total.title = `Total attribué : ${t} / à saisir : ${aSaisir}`;
+      total.toggleAttribute('data-hors', t < min || t > max);
     });
-    return el('div', { class: `gain${n.de ? ' gain--de' : ''}` },
-      el('span', { class: 'gain__niveau' }, `Niv. ${n.niveau}`), sante, chakra, total,
-      n.de ? el('span', { class: 'gain__de' }, de, resultat) : null);
-  }));
+    return el('div', { class: 'gain' }, el('span', { class: 'gain__niveau' }, 'Total'), sante, chakra, total);
+  });
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
@@ -1621,7 +1611,7 @@ function aEnvoyer() {
 }
 
 function appliquer(donnees) {
-  fiche = { ...ficheVide(''), ...donnees.personnage };
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(donnees.personnage) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) fiche[cle] ??= [];
   id = fiche.id;
@@ -1851,7 +1841,7 @@ function cibleDeLImport() {
 
 /** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
 function remplacerLaFiche(nouvelle, cible) {
-  fiche = { ...ficheVide(''), ...nouvelle };
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle) };   // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73)
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
   controles = null;

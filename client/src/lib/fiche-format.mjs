@@ -12,7 +12,7 @@
  */
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
+  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
   'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
@@ -22,7 +22,6 @@ export const PARTIES_DE_FICHE = Object.freeze({
   caracteristiques: 'personnage_caracteristique',
   competences: 'personnage_competence',
   metier_bonus: 'personnage_metier_bonus',
-  progression: 'personnage_progression',
   capacites: 'personnage_capacite',
   sorts: 'personnage_sort',
   maitrises_armes: 'personnage_maitrise_arme',
@@ -51,8 +50,54 @@ export const CHAMP_VERSION = 'version';
 export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']) });
 
 /**
+ * Tables que les règles ont retirées de la section 13, avec leur ancienne clé dans le JSON d'une fiche (PARTIES_RETIREES : l'inverse). Leurs lignes ne
+ * se perdent jamais sans le dire : la base vivante les convertit à sa reconstruction (serveur/base-vivante.mjs, CONVERSIONS), et une fiche qui porte
+ * encore leur clé (fichier exporté avant, page restée ouverte) est convertie à sa lecture (sansPartiesRetirees : service et page /fiche/).
+ * `personnage_progression` (une ligne par niveau atteint) : les gains de niveau sont deux totaux, personnage.gains_sante et gains_chakra (décision R73,
+ * migration 0045), la somme de ses lignes (gainsDeLaProgression).
+ */
+export const TABLES_RETIREES = Object.freeze({ personnage_progression: 'progression' });
+export const PARTIES_RETIREES = Object.freeze(Object.fromEntries(Object.entries(TABLES_RETIREES).map(([table, cle]) => [cle, table])));
+
+const entierPositif = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.max(0, Math.trunc(Number(v))) : 0);
+
+/**
+ * Les gains de niveau d'une ancienne `progression` (lignes de personnage_progression : points_sante, points_chakra, de_choix, de_resultat), en deux
+ * totaux (décision R73) : les points de chaque niveau, plus le résultat du dé sur la santé (« sante »), le chakra (« chakra ») ou les deux
+ * (« les_deux » : « 1d4 pour les deux » compte sur chacun) ; un résultat absent compte 0. La même somme que la reconstruction de la base vivante
+ * (serveur/base-vivante.mjs, CONVERSIONS) et que la migration 0045. Une liste absente ou vide donne 0 et 0.
+ * @param {Array<{ points_sante?: number, points_chakra?: number, de_choix?: string | null, de_resultat?: number | null }> | null | undefined} lignes
+ * @returns {{ gains_sante: number, gains_chakra: number }}
+ */
+export function gainsDeLaProgression(lignes) {
+  let gains_sante = 0;
+  let gains_chakra = 0;
+  for (const l of Array.isArray(lignes) ? lignes : []) {
+    if (!l || typeof l !== 'object') continue;
+    const de = entierPositif(l.de_resultat);
+    gains_sante += entierPositif(l.points_sante) + (l.de_choix === 'sante' || l.de_choix === 'les_deux' ? de : 0);
+    gains_chakra += entierPositif(l.points_chakra) + (l.de_choix === 'chakra' || l.de_choix === 'les_deux' ? de : 0);
+  }
+  return { gains_sante, gains_chakra };
+}
+
+/**
+ * La fiche sans les clés des tables retirées (PARTIES_RETIREES), converties sans rien perdre : une `progression` reçue (page restée ouverte, fichier
+ * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas déjà ; si elle les a, ils font
+ * foi (ils ont été saisis depuis) et la progression n'est qu'un reste. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais
+ * modifiée en place.
+ */
+export function sansPartiesRetirees(fiche) {
+  if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return fiche;
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche)) return fiche;
+  const { progression, ...reste } = fiche;
+  if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
+  return reste;
+}
+
+/**
  * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (mono-classe, 0 XP,
- * alignement, bourse et ambidextrie à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
+ * alignement, bourse, ambidextrie et gains de niveau à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
  */
 export function ficheVide(nom = '') {
   return {
@@ -67,6 +112,8 @@ export function ficheVide(nom = '') {
     bourse_ro: 0,
     bourse_rf: 0,
     ambidextrie: 0,
+    gains_sante: 0,
+    gains_chakra: 0,
     ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])),
   };
 }
