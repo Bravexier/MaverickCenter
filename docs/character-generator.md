@@ -156,9 +156,135 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
-  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (version portable, service arrêté), la fiche se remplit, s'**exporte** en JSON et s'**imprime** ; un
-  fichier exporté se **réimporte** pour créer le prétiré.
+  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), la fiche se remplit, s'**exporte** (JSON ou tableur) et s'**imprime** ; un
+  fichier exporté se **réimporte** pour créer le prétiré. La version portable masque les exports et l'impression. Export et import en **tableur** : voir « Tableur » ci-dessous.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
+
+### Tableur : export et import (demande du propriétaire, 2026-10-15)
+
+> La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet et réexportée sous le même modèle.
+> Le portrait peut remplacer l'icône du logo en haut à gauche. Inutile de mettre les formules dans le fichier généré, seul le résultat.
+> Évidemment toutes les infos ne rentrent peut-être pas dans ces fiches-là. Toute info supplémentaire peut être notée dans les « Notes ».
+
+Dans la barre : **« Exporter (tableur) »** (un `.xlsx` ; infobulle « Classeur .xlsx au modèle de la fiche V15.2.2 : Excel, LibreOffice, Google Sheets
+(Fichier › Importer) »), **« Exporter (JSON) »** (le format d'échange ; infobulle « Sauvegarde complète de la fiche (.json), à réimporter sur le
+site ») et **« Importer »** (`.json`, `.xlsx`, `.ods`, `.csv`). La version portable masque les deux exports et l'impression (`tools/build-artifact.mjs`).
+
+- **Le modèle** : « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » du propriétaire, rangé en texte dans `client/src/modeles/fiche-personnage/`
+  (14 parties fabriquées par `tools/fiche/modele.py` depuis son `.ods` : aucun classeur binaire dans le dépôt ; fins de ligne LF, `.gitattributes`),
+  assemblé au build en `/fiche/modele.xlsx` (`lib/fiche-modele.mjs`, `pages/fiche/modele.xlsx.ts`, mêmes octets d'un build à l'autre). Feuille unique
+  « Personnage », A1:BZ75, aucune formule ; le logo (A1 → E5) est marqué « Logo » / « logo ». Les adresses des cases, de ce modèle et de la fiche
+  auto, sont dans `lib/fiche-tableur-cases.mjs`.
+- **Export** (`lib/fiche-tableur-export.mjs`, `cellulesDeLaFiche`) : les valeurs de la fiche, calculées par les mêmes fonctions du moteur que la
+  page, jamais une règle de plus. Deux sommes pour l'affichage, comme la fiche auto : bonus d'une caractéristique = magie + accessoires (G18,
+  correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = acquis du joueur + bonus du métier (R33, rogné au plafond : R38) +
+  accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
+  « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
+  sort ; paliers de résistance et leur effet tels que la base les écrit (voir les questions ouvertes). **Restent vides** les cases que la fiche ne
+  calcule pas : AP, AM et solidité des pièces d'armure et du bouclier, solidité d'une arme (la page « Armes » la calcule, R51, pas encore la fiche),
+  et la case « Entraînement » (L42), où la fiche auto note les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons » : 15 compétences,
+  10 % au plus), que le site ne distingue pas des autres acquis. Les dés de maîtrise atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la
+  posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du Potentiel Illimité, gains de niveau, NM offerts de livre et
+  du MJ (R26), accessoires de ceinture et « autre », dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
+  l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
+  que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
+  `lib/tableur-ecriture.mjs` (le modèle, ses styles gardés, les valeurs, les fonds, la taille des polices réduites, le portrait).
+- **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, son nom en première ligne, puis l'effet sur
+  une ligne, « <libellé>[ = valeur][ → compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas :
+  vide, comme « Attaque : », ou partagé par plusieurs propriétés, comme « MALÉDICTION »), « Effet : <texte> » pour l'effet hors table, « Maudit »
+  sur sa ligne ; une pièce d'armure par ligne (AQ21), « [<Emplacement> : ]<armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N
+  (effet) » (l'emplacement omis pour l'armure complète), avec les statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis
+  sans l'effet des améliorations ; « Nom Armure » (AD22) : l'armure complète, sinon les noms des pièces. Une case d'une seule rangée (description et
+  colonnes d'un sort, dons de base, de race et du métier) écrit ses parties sur une ligne, séparées par « · ». L'import lit aussi l'ancienne
+  écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … · Amélioration : niv. 1 — … » ; parties sur plusieurs lignes).
+- **Textes trop longs** (« toute info supplémentaire peut être notée dans les Notes ») : la page lit la taille des cases du modèle
+  (`zonesDuClasseur`) et mesure chaque texte (`lib/tableur-mesure.mjs` : chasses de Calibri et d'Arial). Une case de plusieurs rangées prend le retour
+  à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
+  toujours pas, la case en garde le début, fini par « … », écrit à 60 % (comme ses voisines réduites de la même colonne). Chaque case est **relue**
+  (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, pièces d'armure,
+  composition, améliorations, élément et effet en plus d'une arme, choix du métier…) ou **affichée** (un texte de règles ou un calcul que le site
+  refait : type, coût, portée, zone et description des sorts, type et effets des dons, textes de la race, don de base, artisanat, Mode Hyper,
+  résistances, dégâts, effet du catalogue d'une arme, titres…). Une case affichée coupée perd sa fin, **sans rien dans la note** ; seule la part
+  relue d'une case coupée a une suite dans la note (« Suite de la case AA51 : … », sauts de ligne en « ⏎ »), que l'import recolle avant de lire la
+  case. Une case à la fois relue et affichée écrit d'abord ses lignes relues : l'effet d'une arme (AA13, AN13) donne la composition, les
+  améliorations, l'élément et l'effet en plus, puis l'effet du catalogue, « Deux armes » et « Non compté » (`partiesDeLArme`) ; le métier (L41), les
+  rangs à choix « → compétence », puis les autres rangs et l'artisanat (`partiesDuMetier`). Un texte affiché coupé sert encore à départager deux
+  homonymes (sorts, armes) par son début. Une note qui déborde elle-même s'aligne en haut : ses premières lignes restent lisibles à l'impression.
+  Google Sheets ne réduit pas un texte : il rogne ce qui dépasse.
+- **Plus de 32 767 caractères** (ce qu'une case de tableur garde) : dans la case NOTE, le marqueur et les lignes qui le suivent restent toujours
+  entiers ; les notes du joueur sont raccourcies (fin remplacée par « … »), puis, s'il le faut encore, les dernières lignes de données retirées
+  (une dernière ligne « Lignes retirées (case NOTE pleine) : N » le dit, et l'import le rappelle).
+  Chaque perte est un avertissement (`avertissements` de `cellulesDeLaFiche`) que la page ajoute à son message : « Classeur exporté. Notes trop
+  longues pour une case de tableur (32 767 caractères) : les N derniers caractères ne sont pas dans le classeur. », sur le ton « attente » (au lieu
+  de « ok », `messageDExport`). À l'import, une remarque le dit.
+- **Portrait** : la vignette cadrée de la page (JPEG) remplace le logo en A1, décrite « portrait:<empreinte de l'image d'origine> » ; sans portrait,
+  le logo reste, décrit « logo ». Le fichier s'appelle « <nom> - Fiche Maverick V15.2.2.xlsx ».
+- **Lecture** (`lib/tableur-lecture.mjs`) : `.xlsx` (Excel, Google Sheets, LibreOffice), `.ods` (LibreOffice ; les blancs d'une case lus comme
+  LibreOffice les relit), `.csv` (« ; », « , » ou tabulation ; UTF-8, UTF-16 ou Windows-1252) ; aucune formule évaluée (le résultat en cache) ;
+  d'un `.xlsx`, une date se lit JJ/MM/AAAA et un pourcentage « 18 % » (un `.ods` porte le texte affiché) ; un `.xls` ou un classeur protégé par mot
+  de passe est refusé en le disant. Bornes, pour un onglet de navigateur : 16 Mio par partie et 64 Mio en tout une fois décompressés (tailles
+  annoncées vérifiées avant toute décompression, puis tailles réelles), 500 000 cases par feuille, 40 000 caractères par case (au-delà, la case est
+  coupée et l'import le dit).
+- **Import** (`lib/fiche-tableur-import.mjs`, `ficheDuClasseur`) : l'onglet « Personnage » s'il suit le modèle ordinateur ou la **fiche auto
+  V15.2.2** (voir [`fiche-auto.md`](fiche-auto.md)), sinon le premier onglet qui suit l'un des deux (`feuilleDeLaFiche` : un onglet renommé ou
+  déplacé est retrouvé à son contenu, et le message le nomme). Un nom se retrouve dans son contexte (sorts : les magies du personnage ; dons et
+  spécialités : la classe ; ethnie : la race…), par sa clé puis par l'ancienne graphie gardée dans l'identifiant (depuis la migration 0006, un nom
+  corrigé garde son identifiant : « Démon d'Eau Noire » mène à Eaunoire, R21, migration 0012) ; rien n'est rapproché par vraisemblance. Puis la même chaîne que la
+  page (caractéristiques complètes, ethnie imposée, magie acquise valable, classes selon la magie innée, dons et choix de métier valables,
+  maîtrises). Les écritures de la page (lignes de la note, objets, accessoires, armure, effet d'une arme, choix du métier) se relisent par les
+  lecteurs de `lib/fiche-tableur-export.mjs`, qui les écrit (un seul jeu de lecteurs ; la fiche auto a les siens). Ce que la fiche calcule n'est
+  pas relu, sauf pour retrouver un choix que le classeur n'écrit pas, dit dans `remarques` (sauf le mode bi-classe et la spécialité tirée d'un don
+  de spécialité) :
+  - **bi-classe** : la ligne de la note ; sinon deux classes au niveau global, sous le niveau 20 (R2 : en mono-classe, la classe 1 est à deux fois
+    le niveau global, 20 au plus ; au niveau 20, les deux s'écrivent pareil : mono-classe) ;
+  - **acquis du joueur** = acquis écrit − bonus du métier (R33, R38) − accessoires (R54) ; une remarque par compétence touchée pour un classeur qui
+    ne vient pas de la page (ses bonus peuvent être d'anciennes valeurs), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au
+    joueur ») ;
+  - **gains de niveau** (fiche faite à la main) : reconstitués d'après les maximums de santé et de chakra (les dés bornés par le dé écrit de chaque
+    niveau), « à vérifier » ; impossibles, les maximums lus sont dits ;
+  - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26) : tous comptés de niveau, et dit si cela dépasse ;
+  - élément d'armure écrit par sa magie (fiche auto) : l'armure élémentaire de cette magie et de la catégorie de l'armure ; caractéristique du
+    Potentiel Illimité d'après le bonus ; compétence d'un accessoire « Compétence X » de la fiche auto d'après la case « Entraînement » ; sans
+    remarque, la composition d'une arme absente : le fer (R49), comme sur la page.
+  Un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » = 20) ; un décimal où la fiche veut un entier est arrondi vers le bas (une
+  remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
+  de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
+  sans place sur le site (solidité, grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38, « Entraînement » en
+  L42), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une ligne de note en double (la première compte), une image hors de A1
+  ou une seconde image. Remarques encore : « Nom Armure » (AD22, toujours lu) qui ne nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
+  plus » (AA13) reprises comme effet en plus de l'arme ; case relue finie par « … » sans sa suite dans la note, quand la page a dû retirer des lignes de données (sinon le « … » est celui du joueur) ; case NOTE pleine ; un `.csv` du
+  modèle ordinateur ne porte pas les couleurs des maîtrises (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
+  dans son texte, « titre (type) : texte ». Dans la note, c'est le **dernier** marqueur qui compte (des notes collées peuvent en contenir un). Le
+  tout s'ajoute à la fin des notes, sous une ligne « [JJ/MM/AAAA] Import du classeur « <fichier> » : » ; pour un fichier exporté par la page, il
+  n'y a rien.
+- **Où va la fiche importée** : le message « Lecture du classeur… » est retiré, puis, si un prétiré enregistré est ouvert, le dialogue « Importer la
+  fiche » (`#import-cible`) propose de le **mettre à jour** (il garde son identifiant et sa version), de **créer un nouveau prétiré** (l'un et l'autre
+  oubliés) ou d'annuler, en rappelant la perte des modifications non enregistrées ; sinon, une confirmation s'il y a des modifications. De même
+  pour un JSON. Rien n'est enregistré avant « Enregistrer ». Le **portrait** (`portraitDeLImport`) : celui de la fiche ouverte, avec son cadrage,
+  quand le classeur porte son empreinte (exporté par la page avec ce portrait), ou pour une **mise à jour** depuis un classeur sans image (fiche
+  auto, `.csv`, export sans portrait) ; sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par
+  défaut ; illisible, elle est dite dans les notes et l'on fait comme sans elle) ; un **nouveau prétiré** tiré d'un classeur sans image n'a pas de
+  portrait.
+- **Messages** (`messageDImport`, `messageDExport`) : « Classeur importé (modèle ordinateur|auto[, onglet « <nom> »])[ : N informations sans
+  équivalent et N remarques ajoutées aux notes]. Enregistrez pour mettre à jour « <nom> » | créer le prétiré. » (l'onglet n'est nommé que si ce
+  n'est pas « Personnage » ; un `.csv` n'en a pas) ; une erreur : « Ce classeur n’a pas pu être lu : <raison> » ; l'export : « Classeur exporté. »,
+  suivi de ses avertissements.
+- **Aller-retour** (`test/fiche-tableur-aller-retour.test.mjs`) : export → `.xlsx` → lecture → import redonne la fiche, sans rien dans les notes, et
+  l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris), une bi-classe au Potentiel
+  Illimité, les personnages fil rouge du guide et les deux fiches auto du propriétaire ; des notes trop longues reviennent raccourcies, avec toutes
+  leurs données ; par un `.csv`, tout revient sauf les maîtrises (une remarque le dit). L'aller-retour exact vaut pour le `.xlsx` ; les blancs d'une
+  case d'un `.ods` se lisent comme LibreOffice les relit (`test/tableur-lecture.test.mjs`).
+- **Modules** : `zip.mjs`, `xml-mini.mjs`, `tableur-lecture.mjs`, `tableur-ecriture.mjs`, `tableur-mesure.mjs`, `fiche-tableur-cases.mjs`,
+  `fiche-tableur-export.mjs`, `fiche-tableur-import.mjs` (dans `client/src/lib/`) : purs, sans DOM ; parmi les scripts de page, seul
+  `src/scripts/fiche.mjs` les importe (un module partagé entre deux scripts de page casse la version portable), jamais `lib/text.mjs` (`cle()` de
+  `fiche-tableur-cases.mjs` le remplace) ; `fiche-modele.mjs` (Node : il importe `zip.mjs` pour assembler le modèle) ne sert qu'au build et aux
+  tests. Ce que la page fait d'un classeur hors du DOM (onglet, portrait, messages) est testé dans `test/fiche-tableur-page.test.mjs`.
+- **Questions ouvertes** : les paliers de résistance du modèle ordinateur (÷3, x3, x4) ne sont pas ceux de la fiche auto et de la base (÷4, x4,
+  x8) : l'export écrit ceux de la base, en attendant la réponse du propriétaire ([`sql/a-valider.md`](sql/a-valider.md), Q6) ; « Vague déferlante »
+  (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les deux. Questions Q7 à Q11 de
+  [`sql/a-valider.md`](sql/a-valider.md) : case « Entraînement », écarts de métier entre la fiche auto et la base, gains de niveau reconstitués,
+  solidité d'une arme (R51), textes de règles coupés.
 
 ## La page `/personnages/`
 

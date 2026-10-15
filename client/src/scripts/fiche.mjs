@@ -1,14 +1,24 @@
 // Formulaire de la page /fiche/ (pages/fiche/index.astro) : construit les étapes à partir des règles de la base (/fiche/regles.json), garde la
 // fiche en cours au format d'échange (lib/fiche-format.mjs), recalcule ce qui en découle à chaque saisie (lib/fiche-moteur.mjs) et l'enregistre
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
+// Export et import (demande du propriétaire, 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel
+// ou Google Sheet et réexportée sous le même modèle ») : en JSON (le format d'échange), ou en classeur au modèle « Fiche-de-personnage-Maverick-V15.2.2
+// ordinateur » (/fiche/modele.xlsx : lib/fiche-tableur-export.mjs remplit ses cases, lib/tableur-ecriture.mjs écrit le .xlsx, le portrait cadré à la
+// place du logo) ; l'import lit aussi la fiche auto V15.2.2 et les .ods et .csv (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs : l'onglet qui
+// suit l'un des deux modèles, « Personnage » d'abord), et ce qui n'a pas de place sur le site va dans les notes.
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
-import { cadrageDe } from '../lib/portrait.mjs';
+import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
+import { cellulesDeLaFiche, messageDExport } from '../lib/fiche-tableur-export.mjs';
+import { feuilleDeLaFiche, ficheDuClasseur, messageDImport, portraitDeLImport } from '../lib/fiche-tableur-import.mjs';
+import { ecrireXlsx, zonesDuClasseur } from '../lib/tableur-ecriture.mjs';
+import { lireClasseur } from '../lib/tableur-lecture.mjs';
+import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
@@ -1728,33 +1738,215 @@ function nouvelle() {
   message('', '');
 }
 
-function exporter() {
-  const f = aEnvoyer();
-  const lien = el('a', { href: URL.createObjectURL(new Blob([`${JSON.stringify(f, null, 2)}\n`], { type: 'application/json' })), download: `${(f.nom || 'personnage').replace(/[^\p{L}\p{N}-]+/gu, '-')}.json` });
+// ------------------------------------------------------------------ export et import (JSON, classeur)
+/** Fait télécharger un fichier. */
+function telecharger(blob, nom) {
+  const lien = el('a', { href: URL.createObjectURL(blob), download: nom });
   document.body.append(lien);
   lien.click();
   lien.remove();
   setTimeout(() => URL.revokeObjectURL(lien.href), 10000);
 }
 
-async function importer(fichier) {
+/** Le jour, « JJ/MM/AAAA » (la ligne d'export de la case NOTE, celle d'un import dans les notes). */
+function aujourdhui() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+function exporter() {
+  const f = aEnvoyer();
+  telecharger(new Blob([`${JSON.stringify(f, null, 2)}\n`], { type: 'application/json' }), `${(f.nom || 'personnage').replace(/[^\p{L}\p{N}-]+/gu, '-')}.json`);
+}
+
+const TYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** Le logo du modèle, à sa place dans l'archive (tools/fiche/modele.py) : l'import ne le prend pas pour un portrait. */
+const LOGO_DU_MODELE = 'xl/media/image1.png';
+let modeleDuClasseur = null;
+let zonesDuModele = null;
+
+/** Les octets du modèle (/fiche/modele.xlsx, lib/fiche-modele.mjs), lus une fois ; un échec se retente au prochain appel. */
+function octetsDuModele() {
+  if (!modeleDuClasseur) {
+    modeleDuClasseur = fetch(racine.dataset.modele).then(async (reponse) => {
+      if (!reponse.ok) throw new Error(`le modèle de la fiche n’a pas pu être chargé (HTTP ${reponse.status})`);
+      return new Uint8Array(await reponse.arrayBuffer());
+    });
+    modeleDuClasseur.catch(() => { modeleDuClasseur = null; });
+  }
+  return modeleDuClasseur;
+}
+
+/** La taille des cases du modèle (lib/tableur-ecriture.mjs#zonesDuClasseur), lue une fois : un texte trop long pour sa case y est coupé, la suite dans la note. */
+function zonesDesCases() {
+  if (!zonesDuModele) {
+    zonesDuModele = octetsDuModele().then(zonesDuClasseur);
+    zonesDuModele.catch(() => { zonesDuModele = null; });
+  }
+  return zonesDuModele;
+}
+
+/** Le logo du modèle (octets), que l'import ne prend pas pour un portrait ; null s'il ne se lit pas (l'import s'en passe). */
+async function logoDuModele() {
   try {
-    const objet = JSON.parse(await fichier.text());
-    if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
-    if (modifie && !confirm('Remplacer la fiche en cours par celle du fichier ?')) return;
-    for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
-    fiche = { ...ficheVide(''), ...objet };
-    versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
-    for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
+    return (await lireZip(await octetsDuModele())).get(LOGO_DU_MODELE) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Le classeur au modèle V15.2.2 ordinateur : les cases de la fiche (lib/fiche-tableur-export.mjs, sur la fiche telle qu'elle s'enregistre ; un texte
+ * trop long pour sa case y est coupé, la suite de sa part relue dans la note), le portrait cadré à la place du logo (la vignette de la page, JPEG),
+ * marqué « portrait:<empreinte de l'image d'origine> » pour qu'un import du fichier dans ce prétiré garde l'image d'origine et son cadrage ; sans
+ * portrait, le logo du modèle, marqué « logo ». Ce qui ne tient pas dans une case de tableur (notes de plus de 32 767 caractères…) est dit dans le
+ * message (messageDExport).
+ */
+async function exporterTableur() {
+  const bouton = $('fiche-exporter-tableur');
+  bouton.disabled = true;
+  message('Export du classeur…', 'attente');
+  try {
+    const f = aEnvoyer();
+    const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
+    let image = null;
+    let descriptionImage = 'logo';
+    if (fiche.portrait) {
+      const octets = octetsDuPortrait(await dessinerVignette(fiche.portrait, cadrageDuPortrait()));
+      if (octets) {
+        image = { octets, type: 'image/jpeg' };
+        descriptionImage = `portrait:${empreinte(fiche.portrait)}`;
+      }
+    }
+    const classeur = await ecrireXlsx(await octetsDuModele(), { cellules, remplis, alignements, image, descriptionImage, titre: f.nom || 'Personnage', date: new Date() });
+    // le nom du personnage tel quel, sans les caractères qu'un système de fichiers refuse
+    const nom = String(f.nom ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').trim() || 'Personnage';
+    telecharger(new Blob([classeur], { type: TYPE_XLSX }), `${nom} - Fiche Maverick V15.2.2.xlsx`);
+    // ce que le classeur n'a pas pu garder (une case de tableur : 32 767 caractères au plus) est dit, sur le ton « attente »
+    const { texte, ton } = messageDExport(avertissements);
+    message(texte, ton);
+  } catch (e) {
+    message(`Le classeur n’a pas pu être exporté : ${e?.message ?? e}`, 'erreur');
+  } finally {
+    bouton.disabled = false;
+  }
+}
+
+/**
+ * Où va la fiche d'un fichier importé (« à tout moment ») : un prétiré enregistré est ouvert → le dialogue « import-cible » (le mettre à jour, créer un
+ * nouveau prétiré, ou annuler ; la perte des modifications non enregistrées est dite) ; sinon, une confirmation s'il y a des modifications non
+ * enregistrées. 'mettre-a-jour' | 'creer' | null (annulé).
+ */
+function cibleDeLImport() {
+  if (!id) return Promise.resolve(!modifie || confirm('Remplacer la fiche en cours par celle du fichier ?') ? 'creer' : null);
+  const d = $('import-cible');
+  $('import-cible-maj').textContent = `Mettre à jour « ${fiche.nom || 'ce prétiré'} »`;
+  $('import-cible-perte').hidden = !modifie;
+  return new Promise((ok) => {
+    d.addEventListener('close', () => ok(['mettre-a-jour', 'creer'].includes(d.returnValue) ? d.returnValue : null), { once: true });
+    d.returnValue = '';
+    d.showModal();
+  });
+}
+
+/** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
+function remplacerLaFiche(nouvelle, cible) {
+  fiche = { ...ficheVide(''), ...nouvelle };
+  versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
+  for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
+  controles = null;
+  if (cible === 'creer') {
     id = null;
     version = null;
-    controles = null;
     history.replaceState(null, '', racine.dataset.fiche);
-    changer();
-    message('Fiche importée : enregistrez-la pour créer le prétiré.', 'attente');
+  }
+  changer();
+}
+
+/** « Enregistrez pour mettre à jour « X » » ou « … pour créer le prétiré ». */
+const suiteDeLImport = (cible, nom) => `Enregistrez pour ${cible === 'creer' ? 'créer le prétiré' : `mettre à jour « ${nom} »`}.`;
+
+/** Un fichier exporté en JSON (lib/fiche-format.mjs). */
+async function importerJson(texte) {
+  let objet;
+  try {
+    objet = JSON.parse(texte);
+    if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
   } catch {
     message('Ce fichier n’est pas une fiche exportée.', 'erreur');
+    return;
   }
+  const nom = fiche.nom || 'ce prétiré';
+  const cible = await cibleDeLImport();
+  if (!cible) return;
+  for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
+  remplacerLaFiche(objet, cible);
+  message(`Fiche importée. ${suiteDeLImport(cible, nom)}`, 'attente');
+}
+
+/**
+ * Un classeur (.xlsx, .ods, .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
+ * sinon le premier onglet qui suit l'un des deux modèles (feuilleDeLaFiche ; le message le nomme). Ce qui n'a pas de place sur le site (`nonRepris`) et
+ * ce que l'import a déduit (`remarques`) s'ajoutent à la fin des notes, sous une ligne datée qui nomme le fichier. Le message « Lecture du classeur… »
+ * est retiré avant le dialogue « import-cible ». Portrait (portraitDeLImport) : celui de la fiche ouverte, avec son cadrage, quand le classeur porte son
+ * empreinte (exporté par la page avec ce portrait), ou pour une mise à jour depuis un classeur sans image (fiche auto, .csv, export sans portrait) ;
+ * sinon l'image ancrée en A1 qui n'est pas le logo du modèle, réduite comme une image choisie (cadrage par défaut) ; un nouveau prétiré tiré d'un
+ * classeur sans image n'en a pas.
+ */
+async function importerClasseur(octets, nomFichier) {
+  const date = aujourdhui();
+  let lu;
+  let classeur;
+  let feuille;
+  try {
+    message('Lecture du classeur…', 'attente');
+    classeur = await lireClasseur(octets, { nom: nomFichier });
+    feuille = feuilleDeLaFiche(classeur);
+    lu = ficheDuClasseur(regles, feuille, {
+      nomFichier, date, format: classeur.format, logo: await logoDuModele(), empreintePortrait: fiche.portrait ? empreinte(fiche.portrait) : null,
+    });
+  } catch (e) {
+    message(`Ce classeur n’a pas pu être lu : ${e?.message ?? e}`, 'erreur');
+    return;
+  }
+  message('', '');   // le classeur est lu : rien n'est « en cours » pendant que le dialogue attend la réponse
+  const nom = fiche.nom || 'ce prétiré';
+  const cible = await cibleDeLImport();
+  if (!cible) return;
+  const nouvelle = { ...lu.fiche };
+  const nonRepris = [...lu.nonRepris];
+  const ouverte = { portrait: fiche.portrait ?? null, cible };
+  const portraitOuvert = { portrait: fiche.portrait, portrait_x: fiche.portrait_x ?? null, portrait_y: fiche.portrait_y ?? null, portrait_zoom: fiche.portrait_zoom ?? null };
+  let portrait = portraitDeLImport(lu, ouverte);
+  if (portrait === 'image') {
+    try {
+      Object.assign(nouvelle, { portrait: await reduireImage(new Blob([lu.image.octets], { type: lu.image.type })), portrait_x: null, portrait_y: null, portrait_zoom: null });
+    } catch {
+      nonRepris.push(`Portrait du classeur (${lu.image.type || 'image'}) : illisible ou trop lourd pour la fiche`);
+      portrait = portraitDeLImport({ ...lu, image: null }, ouverte);
+    }
+  }
+  if (portrait === 'garder') Object.assign(nouvelle, portraitOuvert);
+  const lignes = [...nonRepris, ...lu.remarques];
+  if (lignes.length) nouvelle.notes = ajouterAuxNotes(nouvelle.notes, [`[${date}] Import du classeur « ${nomFichier} » :`, ...lignes]);
+  remplacerLaFiche(nouvelle, cible);
+  const debut = messageDImport({ disposition: lu.disposition, format: classeur.format, onglet: feuille.nom, nonRepris: nonRepris.length, remarques: lu.remarques.length });
+  message(`${debut} ${suiteDeLImport(cible, nom)}`, 'attente');
+}
+
+/** Un fichier choisi par « Importer » : une fiche JSON (premier caractère non blanc « { »), sinon un classeur. */
+async function importer(fichier) {
+  let octets;
+  try {
+    octets = new Uint8Array(await fichier.arrayBuffer());
+  } catch {
+    message('Ce fichier n’a pas pu être lu.', 'erreur');
+    return;
+  }
+  const zip = octets[0] === 0x50 && octets[1] === 0x4b;
+  const texte = zip ? '' : new TextDecoder('utf-8').decode(octets).replace(/^\uFEFF/, '');
+  if (!zip && texte.trimStart().startsWith('{')) return importerJson(texte);
+  return importerClasseur(octets, fichier.name);
 }
 
 // ------------------------------------------------------------------ démarrage
@@ -1798,6 +1990,7 @@ async function demarrer() {
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
   $('fiche-exporter').addEventListener('click', exporter);
+  $('fiche-exporter-tableur').addEventListener('click', exporterTableur);
   $('fiche-imprimer').addEventListener('click', () => window.print());
   $('fiche-supprimer').addEventListener('click', supprimer);
   const fichier = $('fiche-importer');

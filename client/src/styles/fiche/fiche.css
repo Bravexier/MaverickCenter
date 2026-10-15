@@ -240,6 +240,15 @@ main:has(> .fiche) { max-width: 100rem; }
 
 /* le recadrage : styles/portrait/recadrage.css, inséré par src/scripts/portrait.mjs (partagé avec le portrait d'un monstre, mode modification du bestiaire) */
 
+/* où va une fiche importée quand un prétiré est ouvert (src/scripts/fiche.mjs#cibleDeLImport) : le dialogue sur le modèle du recadrage */
+.import-cible { width: min(30rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); color: var(--text); }
+.import-cible::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
+.import-cible__corps { display: grid; gap: 0.5rem; padding: 0.9rem; }
+.import-cible h2 { margin: 0; font-size: 1.05rem; }
+.import-cible p { margin: 0; }
+.import-cible__perte { color: var(--danger); }
+.import-cible__boutons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; margin-top: 0.3rem; }
+
 /* ----------------------------------------------------------------- IV. paramètres et suivi : des onglets (components/Onglets.astro) ; sans
    JavaScript et à l'impression, les panneaux se suivent, chacun avec son titre */
 .parametres { display: grid; gap: 0; }
@@ -902,7 +911,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 @media print {
   .site-header, .site-footer, .fiche-barre, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
-  .portrait__actions, .parametres__onglets, .recadrage, .tiroir__tete { display: none !important; }
+  .portrait__actions, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
   .fiche-zone { break-inside: auto; background: none; }

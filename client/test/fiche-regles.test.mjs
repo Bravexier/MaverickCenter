@@ -10,6 +10,7 @@ import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
@@ -184,16 +185,70 @@ test('postures (sélecteur de la page, demande du propriétaire) : les six de la
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage'").get().sql, /posture_id\s+TEXT\s+REFERENCES posture\(id\)/, 'la fiche garde sa posture (migration 0027)');
 });
 
-test('sorts : coût, portée, zone, D/S/B, effets et remarque tels qu’écrits, leurs modes (IC…), avec leurs expressions de NM de ces colonnes et du type (sort_bonus_maitrise)', () => {
-  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
+test('sorts : type, coût, portée, zone, D/S/B, effets et remarque tels qu’écrits, leurs modes (IC…), avec leurs expressions de NM de ces colonnes et du type (sort_bonus_maitrise)', () => {
+  const ligne = (id) => db.prepare('SELECT type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
   for (const s of regles.sorts) {
     const l = ligne(s.id);
-    assert.deepEqual([s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque], s.id);
+    assert.deepEqual([s.type, s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.type_brut, l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque], s.id);
     const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('type', 'cout', 'portee', 'zone', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
     assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
     assert.deepEqual(s.modes.map((m) => m.libelle), db.prepare('SELECT libelle FROM sort_mode WHERE sort_id = ? ORDER BY rang').all(s.id).map((m) => m.libelle), s.id);
   }
   assert.ok(regles.sorts.some((s) => s.modes.some((m) => m.mode === 'ic')) && regles.sorts.some((s) => s.bonus.some((b) => b.champ === 'type')));
+});
+
+// Ce que la fiche en tableur écrit en plus de la page (lib/fiche-tableur-export.mjs) : le type d'un sort (colonne « Type » de la liste de sorts, au NM du
+// sort), l'effet et la portée d'une arme (sous son nom), le nom de la propriété d'un accessoire (« Attributs : +25 Santé »). Tels que la base les écrit :
+// l'état courant contre les tables, les exemples par leur valeur d'import (le site de dev peut réécrire sorts et armes : lib/historique-site.mjs).
+test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de la propriété d’un accessoire, tels que la base les écrit', () => {
+  // sorts : sort.type_brut tel quel (saut de ligne compris), qui porte les expressions de NM du type (valeurAuNm(type, bonus, 'type', nm) les y trouve)
+  const types = new Map(db.prepare('SELECT id, type_brut FROM sort').all().map((r) => [r.id, r.type_brut]));
+  for (const s of regles.sorts) {
+    assert.equal(s.type, types.get(s.id), s.id);
+    for (const b of s.bonus.filter((x) => x.champ === 'type')) assert.ok(s.type.includes(b.texteBrut), `${s.id} : « ${b.texteBrut} » dans « ${s.type} »`);
+  }
+  const typeDImport = (id) => historique.valeurDImport('sort', { id }, 'type_brut');
+  assert.equal(typeDImport('magies/magie-de-la-corruption#sort:aiguisage-magique'), 'Amplification (IC pour 3 NM)');
+  assert.equal(typeDImport('magies/magie-de-la-foudre#sort:affutage'), 'Amplification\n(IC)');
+
+  // armes : arme.effet tel quel ; la portée de la page « Armes » (décision R50 : la portée écrite, portee_min / portee_max, « N » ou « N - M » ; 1 par défaut,
+  // lib/arme-champs.mjs#porteeDeLArme) ; rien d'autre de déduit (ni la portée du type)
+  const armes = new Map(db.prepare('SELECT id, effet, portee_min, portee_max FROM arme').all().map((r) => [r.id, r]));
+  for (const a of regles.armes) {
+    const l = armes.get(a.id);
+    assert.equal(a.effet, l.effet, a.id);
+    assert.ok(!('portee_min' in a) && !('portee_max' in a), `${a.id} : la portée seulement`);
+    assert.equal(a.portee, porteeDeLArme(l).replace('-', ' - '), a.id);
+    if (l.portee_min === null) {
+      assert.equal(a.portee, '1', `${a.id} : 1 par défaut (R50)`);
+      continue;
+    }
+    const m = /^(\d+)(?: - (\d+))?$/.exec(a.portee);
+    assert.ok(m, `${a.id} : « ${a.portee} »`);
+    assert.deepEqual([Number(m[1]), Number(m[2] ?? m[1])], [l.portee_min, l.portee_max], a.id);
+    assert.equal(m[2] === undefined, l.portee_min === l.portee_max, `${a.id} : « N » pour une portée d’une seule valeur`);
+  }
+  assert.ok(regles.armes.some((a) => a.portee.includes(' - ')) && regles.armes.some((a) => a.portee !== '1' && !a.portee.includes(' - ')));
+  assert.ok([...armes.values()].some((l) => l.portee_min === null), 'des armes sans portée écrite : 1 par défaut');
+  // armures élémentaires : leur magie (armure_elementaire.magie_id), par laquelle l'import d'une fiche auto les retrouve
+  const magiesDesArmures = new Map(db.prepare('SELECT id, magie_id FROM armure_elementaire').all().map((r) => [r.id, r.magie_id]));
+  for (const x of regles.armures_elementaires) assert.equal(x.magie_id, magiesDesArmures.get(x.id), x.id);
+  assert.ok(regles.armures_elementaires.every((x) => regles.magies.some((m) => m.id === x.magie_id)), 'chaque armure élémentaire a sa magie');
+  const armeDImport = (id) => ['effet', 'portee_min', 'portee_max'].map((c) => historique.valeurDImport('arme', { id }, c));
+  const [effetBras, ...porteeBras] = armeDImport('ressources/armes#arme:arbalete:arbalete-a-bras');
+  assert.match(effetBras, /1 - 7 portée/);
+  assert.deepEqual(porteeBras, [1, 7], 'Arbalète à bras : « 1 - 7 »');
+  assert.deepEqual(armeDImport('ressources/armes#arme:hache:hache-darmes-a-pointe').slice(1), [2, 2], 'Hache d’armes à pointe : « portée 2 » (migration 0034), « 2 »');
+  assert.deepEqual(armeDImport('ressources/armes#arme:epees:espadon').slice(1), [null, null], 'Espadon : pas de portée écrite');
+  assert.deepEqual(armeDImport('ressources/armes#arme:arme-de-monstres:aiguille-de-vitrail'), [null, null, null], 'une arme de monstre n’a pas d’effet');
+
+  // accessoires (non modifiables sur le site de dev) : accessoire_propriete.nom de l'effet
+  const proprietes = new Map(db.prepare('SELECT e.id, p.nom FROM accessoire_effet e JOIN accessoire_propriete p ON p.id = e.propriete_id').all().map((r) => [r.id, r.nom]));
+  for (const a of regles.accessoires) assert.equal(a.propriete_nom, proprietes.get(a.id), a.id);
+  const sante = regles.accessoires.find((a) => a.id === 'ressources/accessoires#effet:attributs:1');
+  assert.deepEqual([sante.libelle, sante.propriete, sante.propriete_nom], ['+25 Santé', 'attributs', 'Attributs']);
+  assert.deepEqual([...new Set(regles.accessoires.map((a) => a.propriete_nom))].sort((a, b) => a.localeCompare(b, 'fr')),
+    ['Attaque', 'Attributs', 'Autre', 'Caractéristique', 'Compétence', 'Défense', 'Jet de dé']);
 });
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {

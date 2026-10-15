@@ -75,3 +75,37 @@ Restent à tester avec l'accès autorisé (ils lisent les classeurs) : 6, 15, 16
 | 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | Question ouverte, `docs/sql/a-valider.md` §2 |
 | — | Ambidextrie : « Fausse Patte » et « Ravageur » (−5 % avec les armes légères ou lourdes), « Directrice » (main directrice) | La fiche ne distingue ni la catégorie d'arme ni la main directrice |
 | R23 | `BDD!B27` propose l'Archimage d'après la race (les 10 races qui ont le Potentiel Illimité en magie innée), sans regarder la magie innée choisie | Le propriétaire se concentre désormais sur la fiche du site (`/fiche/`), qui suit R23 |
+
+## Importer une fiche auto sur le site
+
+Demande du propriétaire (2026-10-15) : une fiche auto se reprend sur la page `/fiche/` (« Importer » ; détail dans
+[`character-generator.md`](character-generator.md), « Tableur »). Dans Google Sheets : **Fichier › Télécharger** au format `.xlsx` ou `.ods` (ou
+l'onglet « Personnage » en `.csv`), puis choisir le fichier. L'import (`client/src/lib/fiche-tableur-import.mjs`) reconnaît l'onglet à ses libellés
+(« COMPÉTENCES » en B21, « AP Base » en AA20) : l'onglet « Personnage » d'abord, sinon le premier onglet qui les porte (un onglet renommé ou déplacé
+est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/fiche-tableur-cases.mjs#AUTO`.
+
+- **Repris** : identité, race, ethnie (parmi celles de la race), magies, dieu choisi (« Démon d'Eau Noire » mène à Eaunoire, R21 : la migration
+  0012 a changé le nom, pas l'identifiant `demon-deau-noire` ; depuis la migration 0006, un nom corrigé garde son identifiant), alignement (L5:O5), bourse, XP, classes et spécialités, caractéristiques et croix (cases à cocher), naturel des
+  compétences, maîtrises (« Nd » en AI et AN), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
+  composition manque, R49), armure (AD21, AT20, AS21, AX21), bouclier et ses trois matériaux, accessoires (propriété, effet, valeur — « 18% » ou
+  0,18 : 18 —, malédiction), ceinture (AQ29, AQ32, AQ35, et leur quantité en AX), inventaire, sorts et NM, dons à choix, métier, événements
+  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes.
+- **Déduit**, et dit dans les notes : l'acquis du joueur (l'acquis écrit moins le bonus du métier, R33 rogné au plafond R38, et les accessoires,
+  R54 ; une remarque par compétence touchée, ces bonus pouvant différer de ceux de la base), les gains de niveau (d'après les maximums de santé et de
+  chakra, F14 et M14 ; « à vérifier »), la compétence d'un accessoire « Compétence X » (d'après la case « Entraînement », L42, où la fiche note les
+  bonus d'entraînement : guide « Fiche de personnage : Capacités/Dons »), l'élément d'une armure écrit par le nom de sa magie (l'armure élémentaire
+  de cette magie et de la catégorie de l'armure), la caractéristique de la magie au choix du Potentiel Illimité, les NM des sorts (tous comptés de
+  niveau : la fiche ne dit pas lesquels viennent d'un livre ou du MJ, R26 ; dit quand ils dépassent ceux du niveau). Déduits sans remarque : le
+  mode bi-classe (deux classes au niveau global, sous le niveau 20 : R2) et la spécialité d'après un don de spécialité. Un nombre décimal là où la
+  fiche veut un entier est arrondi vers le bas, avec une remarque.
+- **Pas repris**, et dit dans les notes : un nom introuvable dans les règles ou qui en désigne plusieurs sans rien pour les départager, la case
+  « Ambidextrie » cochée (AU8 : l'attaque à deux armes est calculée, décision R46), ce que les règles du site retirent. Les valeurs calculées
+  (totaux, dégâts, AP, AM, paliers de résistance…) ne sont pas relues : le site les recalcule. L'image en A1 (le logo de la fiche auto) est ignorée.
+- « Effet en plus » (AA13, AN13) n'est pas relu : dans les fiches du propriétaire, c'est une formule (`=BDD!AJ36`, relevée le 2026-10-15), qui ne
+  porte aucune saisie du joueur ; on y lit l'effet du catalogue de l'arme, puis celui de son matériau (Lucien, Laiton : « dégâts doublés contre la
+  barrière » ; Louise, Mythril : « Passe barrière »). L'effet en plus de la fiche importée reste vide.
+
+Les deux fiches du propriétaire servent d'essai (`client/test/fixtures/fiche-auto-lucien.json`, `fiche-auto-louise.json` : valeurs affichées,
+lues par l'API Google) : `test/fiche-tableur-import.test.mjs` vérifie ce qui est repris et ce qui part dans les notes, `test/fiche-tableur-aller-retour.test.mjs`
+qu'une fois importées, exportées au modèle ordinateur puis réimportées, elles ne changent plus, et `test/fiche-tableur-page.test.mjs` que la fiche de
+Lucien se retrouve dans un onglet renommé, rangé après d'autres.

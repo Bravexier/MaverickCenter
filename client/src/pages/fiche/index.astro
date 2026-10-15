@@ -14,7 +14,8 @@ import { htmlDePiece } from '../../lib/monnaies.mjs';
 // magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
 // docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw) ; onglets de la zone IV :
-// components/Onglets.astro.
+// components/Onglets.astro. Export et import en JSON ou en classeur au modèle V15.2.2 (demande du propriétaire, 2026-10-15) : le modèle est servi à
+// /fiche/modele.xlsx (data-modele ; pages/fiche/modele.xlsx.ts), le dialogue « import-cible » demande où va une fiche importée quand un prétiré est ouvert.
 const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
 const ZONES = [
   { id: 'identite', numero: 'I', titre: 'Identité', court: 'Identité', partie: 'creer' },
@@ -27,7 +28,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
 
 <Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, avec les règles de Maverick">
   <style is:inline set:html={ficheCss}></style>
-  <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
+  <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-modele={url('fiche/modele.xlsx')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
       <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
       <h1 class="visuellement-cache" id="fiche-titre">Nouveau prétiré</h1>
@@ -39,8 +40,10 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
       <p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p>
       <span class="fiche-barre__outils">
         <button type="button" id="fiche-nouvelle">Nouveau</button>
-        <button type="button" id="fiche-exporter">Exporter</button>
-        <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
+        {/* export : la fiche en JSON (le format d'échange) ou en classeur au modèle V15.2.2 ; import : l'un ou l'autre (src/scripts/fiche.mjs) */}
+        <button type="button" id="fiche-exporter-tableur" title="Classeur .xlsx au modèle de la fiche V15.2.2 : Excel, LibreOffice, Google Sheets (Fichier › Importer)">Exporter (tableur)</button>
+        <button type="button" id="fiche-exporter" title="Sauvegarde complète de la fiche (.json), à réimporter sur le site">Exporter (JSON)</button>
+        <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept=".json,.xlsx,.ods,.csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,text/csv" hidden /><span role="button" tabindex="0" title="Une fiche exportée (.json) ou un classeur au modèle V15.2.2, ordinateur ou auto (.xlsx, .ods, .csv ; Google Sheets : Fichier › Télécharger)">Importer</span></label>
         <button type="button" id="fiche-imprimer">Imprimer</button>
         <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
       </span>
@@ -331,6 +334,20 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
         </section>
       </div>
     </section>
+
+    {/* import d'un fichier quand un prétiré enregistré est ouvert : le mettre à jour (il garde son identifiant), en créer un nouveau, ou annuler */}
+    <dialog class="import-cible" id="import-cible" aria-labelledby="titre-import-cible">
+      <form method="dialog" class="import-cible__corps">
+        <h2 id="titre-import-cible">Importer la fiche</h2>
+        <p>La fiche du fichier remplace celle de la page.</p>
+        <p class="import-cible__perte" id="import-cible-perte" hidden>Les modifications non enregistrées seront perdues.</p>
+        <div class="import-cible__boutons">
+          <button type="submit" class="fiche-barre__principal" id="import-cible-maj" value="mettre-a-jour">Mettre à jour le prétiré</button>
+          <button type="submit" id="import-cible-creer" value="creer">Créer un nouveau prétiré</button>
+          <button type="submit" id="import-cible-annuler" value="annuler">Annuler</button>
+        </div>
+      </form>
+    </dialog>
 
     {/* recadrage du portrait : l'image se déplace au doigt ou à la souris, le curseur (ou la molette) zoome */}
     <dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">
