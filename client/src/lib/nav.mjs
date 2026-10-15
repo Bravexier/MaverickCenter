@@ -5,9 +5,9 @@
 // `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Ressources).
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
-// Les bâtons magiques iront dans « Objets à la ceinture » (bientôt, choix du propriétaire) ; hors menu, comme l'alchimie, leur page reste trouvable par
-// la recherche et les liens. Les boucliers sont l'onglet Boucliers de la page « Armures » (demande du propriétaire, 2026-10-15 : « Les deux seront dans la
-// page »).
+// « Objets à la ceinture » : potions, huiles, carquois et sacs, bâtons magiques (décision R81) ; hors menu, comme l'alchimie, la page des bâtons reste
+// trouvable par la recherche et les liens. Le bouclier ne va pas à la ceinture, son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers
+// de la page « Armures » (demande du propriétaire, 2026-10-15 : « Les deux seront dans la page »).
 export const NAV = [
   {
     key: 'regles',
@@ -30,7 +30,7 @@ export const NAV = [
       { label: 'Armures', path: 'ressources/armures/' },
       { label: 'Accessoires', path: 'ressources/accessoires/' },
       { label: 'Composants', path: 'ressources/composants/' },
-      { label: 'Objets à la ceinture' },
+      { label: 'Objets à la ceinture', path: 'ressources/objets-a-la-ceinture/' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
       { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
     ],

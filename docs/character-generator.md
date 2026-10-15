@@ -42,7 +42,10 @@ abandonne.
   Réduction et dialogue : `src/scripts/portrait.mjs` (CSS `styles/portrait/recadrage.css`, inséré à la première ouverture), partagé avec le portrait des
   monstres du bestiaire (mode modification, `docs/bestiaire.md`) ; bornes, formats et empreinte : `lib/portrait.mjs` (`test/portrait.test.mjs`).
 - **Ceinture** (guide « Fiche de personnage : Accessoires et Ceinture », migration `0031-fiche-zones`) : ses **3 emplacements** d'objets rapides, chacun un
-  objet (au catalogue des ressources ou non) et sa quantité (`personnage_ceinture`, rang 1 à 3).
+  objet (au catalogue des ressources ou non) et sa quantité (`personnage_ceinture`, rang 1 à 3). La page « Objets à la ceinture » liste des objets de
+  ceinture (décision R81 : potions, huiles, carquois et sacs, bâtons magiques ; vue `v_objet_ceinture`), mais la liste du guide est « non exhaustive »
+  (« Voyez avec votre mj ») : la fiche ne s'en sert pas encore, et ne doit pas en faire la seule liste permise sans l'avis du propriétaire. Un bâton
+  magique s'y écrit par son nom (`nom`, texte libre), mais ne peut pas encore y être lié au catalogue (pas de clé vers `baton_magique`).
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que

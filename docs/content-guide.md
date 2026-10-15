@@ -396,6 +396,45 @@ MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description 
 avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».
 Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-html.test.mjs` (site construit).
 
+## Objets à la ceinture (`/ressources/objets-a-la-ceinture/`) : potions, huiles, carquois et sacs, bâtons magiques
+
+Demande du propriétaire (2026-10-15) : « l'ensemble de tous les objets que les joueurs peuvent placer à la ceinture dans le but de pouvoir les utiliser
+comme un IC. De plus il faut parler aussi des bâtons magiques. Ils ne sont pas consommables mais ils tiennent tout de même un emplacement à la
+ceinture. » ; présentation choisie : des tableaux repliables, comme les armes. Le guide ne donne qu'une liste « non exhaustive » (« Voyez avec votre
+mj ») ; la page liste ce que le propriétaire a retenu (décision R81) : **toutes les potions** (fioles, philtres, remèdes et panacée, alchimie
+primitive), **toutes les huiles**, les **carquois, sacs de bombes et sacs de pierres** (que le guide oblige à mettre à la ceinture pour être utilisés) et
+les **bâtons magiques**. Le bouclier n'en est pas : son emplacement est dans l'armure (décision R82). Le matériel que le guide cite aussi (briquet,
+torche, lanterne, corde, kits) va à la ceinture mais n'est pas listé : il reste dans « Composants ». La page ne dit donc pas que rien d'autre ne va à la
+ceinture.
+
+Quels objets la page liste : la vue **`v_objet_ceinture`** (migration `0047-objets-a-la-ceinture`), une ligne par objet avec sa famille (`fiole`, `philtre`, `remede`,
+`primitive`, `huile`, `contenant`, `baton`) et sa potion ou son contenant (`ressource_id`) ou son bâton (`baton_id`) : les potions de la table `potion`,
+les ressources du matériel dont la clé du nom écrit « carquois », « sac de bombe » ou « sac de pierre », les bâtons de `baton_magique`. Une vue et non une
+table : elle suit les tables (un carquois créé sur la page « Composants » y entre). La fiche de personnage (ses trois emplacements, `personnage_ceinture`)
+ne s'en sert pas encore ; la liste du guide n'étant pas exhaustive, elle ne devra pas fermer la ceinture aux autres objets sans l'avis du propriétaire.
+
+La page n'a pas de page du wiki : elle est rendue depuis la base (`src/pages/ressources/objets-a-la-ceinture.astro`, `lib/ceinture-db.mjs`,
+`components/ceinture/`, `styles/ceinture/`, lignes : `lib/ceinture-rendu.mjs`) :
+
+- en tête, **les règles de la ceinture** : la section « La ceinture » du chapitre « L'équipement » du guide (`guide/l-equipement`), rendue depuis la base,
+  et, en dépliable, le texte de la source : la section « Ceinture » de la page de référence « Fiche de personnage : Accessoires et Ceinture » (la liste
+  « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
+- un tableau repliable par famille : **Fioles**, **Philtres**, **Remèdes**, **Alchimie primitive** (sous « Potions »), **Huiles** — une potion par ligne
+  (nom, niveau, prix, effet tel qu'écrit), groupées par page de potion (« Fiole rouge » et ses paliers, dans l'ordre où la page les écrit ; le titre de la
+  page en lien, son résumé dessous) — ; **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix, description) ;
+  **Bâtons magiques** : leurs règles (l'introduction de la page « Bâton magique » et sa ligne de fabrication), puis une ligne par magie, sa gemme et son
+  bois (liens vers « Composants »), et le bonus passif de chacun des trois niveaux, la recette du niveau en en-tête (« 1 Gemme Commune + 1 bois [magie] »).
+
+Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
+« Composants ») ; les prix et les textes montrent leurs monnaies en icônes (R63). Une recherche filtre les
+lignes de tous les tableaux (`src/scripts/ceinture.mjs` : une potion se trouve aussi par le titre et le résumé de sa page) ; sans JavaScript, tout est
+affiché. Les tableaux d'un groupe (« Potions ») sont dans une `<section>` avec leur titre, que la recherche cache avec eux. Les titres des pages citées
+sont lus dans la base ; une section de règles qu'une page n'écrit plus (titre renommé sur le site de dev) manque à la page, et le build le dit
+(avertissement `[ceinture]`). Pas encore modifiable sur le site de dev : les potions et les bâtons ont leurs pages (« Fiole rouge », « Bâton magique »),
+qu'une modification devra suivre, comme le fait `lib/corps-composants.mjs` pour les composants. Tests : `ceinture-db.test.mjs` (la vue, le chargement,
+les sections telles que l'import les écrivait), `ceinture-script.test.mjs` (la recherche, dans un faux navigateur), `ceinture-html.test.mjs` (site
+construit).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche
