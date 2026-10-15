@@ -19,9 +19,9 @@ Les suivre ; ne jamais en déduire d'autres.
 
 ## Équipe d'agents (`.claude/agents/`)
 
-Chaque agent a un rôle distinct ; ne pas cumuler. Détail et consignes dans leur fichier.
+Chaque agent a un rôle distinct ; ne pas cumuler. Présentation et circuit : `docs/equipe.md` ; consignes dans leur fichier.
 
-| Agent | Rôle |
+| Agent | Rôle (présentation de l'équipe : `docs/equipe.md`) |
 | --- | --- |
 | `ingenieur-site` | Code du site (`client/`) : pages, composants, scripts, fiche, service `/api/` |
 | `ingenieur-donnees` | Base SQLite, migrations, `data/rows`, importeurs, orthographe |
