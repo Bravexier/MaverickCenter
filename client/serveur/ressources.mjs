@@ -674,7 +674,7 @@ function exempleDe(db, vue) {
 }
 
 /**
- * La clé d'une ligne telle qu'on la saisit (valeurs brutes jointes par « , » : le testeur de la page Debug l'encode) et ses valeurs modifiables
+ * La clé d'une ligne telle qu'on la saisit (valeurs brutes jointes par « , » : un client encode chacune) et ses valeurs modifiables
  * (colonnes de TABLES, ou champs d'un PATCH traduit en opération du lot ; jamais une colonne figée pour cette ligne).
  */
 function exempleDeLigne(vue, ligne, parentSegmentBrut = null) {
@@ -772,7 +772,7 @@ function ressourceDecrite(db, r, { lesListes, exemples }) {
 
 /**
  * Le catalogue de l'API (GET /api/v1/) : { api, version, documentation, modules, ressources }. `exemples` : une clé et des valeurs réelles par
- * ressource (pour la description OpenAPI : les champs du testeur de la page Debug).
+ * ressource (pour la description OpenAPI : les exemples de ses paramètres et de ses corps).
  */
 export function catalogue(db, { version = null, exemples = false } = {}) {
   const lesListes = listes(db);

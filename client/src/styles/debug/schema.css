@@ -1,5 +1,5 @@
-/* Cadre « Schéma de la base » de la page Debug (components/debug/SchemaDeLaBase.astro, inséré par ?raw ; script : scripts/debug-schema.mjs ; rendu :
-   lib/debug-schema.mjs). Tons du site (styles/global/base.css), clair et sombre ; une teinte discrète par bloc de section (8, en boucle).
+/* Menu « DB » (le schéma de la base) de la page Debug (components/debug/SchemaDeLaBase.astro, inséré par ?raw ; script : scripts/debug-schema.mjs ;
+   rendu : lib/debug-schema.mjs). Tons du site (styles/global/base.css), clair et sombre ; une teinte discrète par bloc de section (8, en boucle).
    Niveaux de détail (attribut data-detail de la carte, posé par le script selon le zoom : lib/debug-schema.mjs#NIVEAUX) :
      loin  : boîtes et noms en grand, titres de section en grand, liens allégés sans flèche ;
      moyen : en-têtes, noms des colonnes et marques de clé ;

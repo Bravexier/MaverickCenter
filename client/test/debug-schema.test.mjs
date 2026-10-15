@@ -1,4 +1,4 @@
-// Cadre « Schéma de la base » de la page Debug (demande du propriétaire du 2026-10-15 : « un mappage vectoriel des tables […] zoomer et dézoomer […]
+// Menu « DB » (le schéma de la base) de la page Debug (demande du propriétaire du 2026-10-15 : « un mappage vectoriel des tables […] zoomer et dézoomer […]
 // D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) ») : structure du schéma calculée comme au
 // build (lib/schema-structure.mjs, sur la VRAIE base), mise en page et rendu purs (lib/debug-schema.mjs), contrat avec le service
 // (serveur/debug-tables.mjs), script et composant.
@@ -19,6 +19,7 @@ import {
   TAILLES_DE_LOIN, tailleDuNomDeLoin, titreCourt, traitsARefaire, triSuivant, valeurEnHtml, zoomAutour,
 } from '../src/lib/debug-schema.mjs';
 import { TABLES_DERIVEES } from '../serveur/debug-tables.mjs';
+import { descriptionOpenApi } from '../serveur/openapi.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
 const racine = trouverRacine();
@@ -620,13 +621,34 @@ test('le script : n’importe que lib/debug-schema.mjs (sans dépendance), qu’
   }
 });
 
+test('le menu s’appelle « DB » partout où l’on y renvoie : description OpenAPI servie de /debug/tables/, docs/api.md, commentaires (plus aucun renvoi à son ancien titre)', () => {
+  // titre visible « DB », sous-ligne « Schéma de la base : … » (demande du 2026-10-15) : un renvoi au cadre sous son ancien titre ne mène plus nulle part
+  const ancien = new RegExp(['cadre', '« Schéma de la base »'].join(' '), 'i'); // en deux morceaux : ce fichier ne se trouve pas lui-même
+  const spec = descriptionOpenApi({ modules: [], ressources: [], version: 'essai' });
+  assert.match(spec.paths['/debug/tables/'].get.description, /\(menu « DB », le schéma de la base, de la page Debug\)/);
+  assert.ok(!JSON.stringify(spec).includes('Schéma de la base'), 'la description servie (GET /api/v1/openapi.json) ne cite plus l’ancien titre');
+  const api = readFileSync(join(racine, 'docs', 'api.md'), 'utf8');
+  const route = api.split('\n').find((l) => l.startsWith('| `GET` | `/api/debug/tables/`'));
+  assert.match(route, /\(menu « DB », le schéma de la base, de la page Debug, plus bas\)/);
+  assert.match(api, /^4\. \*\*DB\*\*, le schéma de la base/m, 'le nom que lui donne la section « Page Debug », plus bas');
+  const trouves = [];
+  for (const dossier of ['client/src', 'client/serveur', 'client/test', 'docs', 'tools']) {
+    for (const nom of readdirSync(join(racine, dossier), { recursive: true })) {
+      if (/\.(mjs|ts|astro|css|md)$/.test(nom) && !nom.includes('node_modules') && ancien.test(readFileSync(join(racine, dossier, nom), 'utf8'))) trouves.push(`${dossier}/${nom}`);
+    }
+  }
+  if (ancien.test(readFileSync(join(racine, 'CLAUDE.md'), 'utf8'))) trouves.push('CLAUDE.md');
+  assert.deepEqual(trouves, []);
+});
+
 test('le composant : <details> fermé (ni open ni hidden), JSON et script seulement hors production et hors version portable, fenêtre étiquetée', () => {
   const composant = lire('../src/components/debug/SchemaDeLaBase.astro');
   assert.match(composant, /const actif = !site\.prod && process\.env\.INLINE_CSS !== '1';/);
   assert.match(composant, /const structure = actif \? structureDeLaBase\(\) : null;/, 'rien n’est calculé en production');
   assert.match(composant, /^\{\s*structure && \(/m, 'rien n’est rendu en production');
   assert.match(composant, /<details class="debug-bloc debug-schema" data-schema-cadre data-api=\{url\('api\/'\)\}>/, 'fermé par défaut, visible sans attendre le service');
-  assert.match(composant, /<h2 class="debug-bloc__titre" id="debug-schema-titre">Schéma de la base<\/h2>/);
+  // demande du propriétaire du 2026-10-15 : le menu s'appelle « DB » (« 4) DB (ton futur schéma) ») ; sa sous-ligne dit que c'est le schéma de la base
+  assert.match(composant, /<h2 class="debug-bloc__titre" id="debug-schema-titre">DB<\/h2>\s*<span class="debug-bloc__resume">Schéma de la base : \{resumeDuSchema\(structure\)\}<\/span>/);
   assert.match(composant, /<script is:inline type="application\/json" data-debug-schema set:html=\{jsonPourLaPage\(structure\)\}><\/script>/);
   assert.match(composant, /<script>\s*import '\.\.\/\.\.\/scripts\/debug-schema\.mjs';\s*<\/script>/);
   assert.match(composant, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
@@ -646,8 +668,8 @@ test('le composant : <details> fermé (ni open ni hidden), JSON et script seulem
   for (const [, id] of composant.matchAll(/<(?:input|select)[^>]*\sid="([^"]+)"/g)) assert.match(composant, new RegExp(`<label for="${id}">`), id);
   const page = lire('../src/pages/debug.astro');
   assert.match(page, /import SchemaDeLaBase from '\.\.\/components\/debug\/SchemaDeLaBase\.astro';/);
-  const ordre = ['data-debug-testeur', '<SchemaDeLaBase />', 'data-debug-perfs'].map((m) => page.indexOf(m));
-  assert.ok(ordre[0] >= 0 && ordre[0] < ordre[1] && ordre[1] < ordre[2], 'juste après « Tester l’API », avant « Performances »');
+  const ordre = ['data-debug-journaux', '<SchemaDeLaBase />', '</div>\n    ) : ('].map((m) => page.indexOf(m));
+  assert.ok(ordre[0] >= 0 && ordre[0] < ordre[1] && ordre[1] < ordre[2], 'le dernier menu, après « Journaux du serveur » (« 4) DB »)');
   assert.ok(page.indexOf('<SchemaDeLaBase />') > page.indexOf('actif ? (') && page.indexOf('<SchemaDeLaBase />') < page.indexOf('class="debug-reservee"'), 'dans la branche du site de dev');
   // la CSS : des niveaux de détail, des vues masquées par défaut, la géométrie des boîtes (celle des liens)
   const css = lire('../src/styles/debug/schema.css');

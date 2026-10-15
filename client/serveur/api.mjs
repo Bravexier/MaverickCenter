@@ -47,7 +47,7 @@
 //                                   X-Export-Tronque sinon) : ?instance=&periode=&format=csv|json
 //   GET  /api/debug/systeme/        processus, disque et sa répartition par type de données (jauge), fichiers, échantillons par minute, évènements,
 //                                   volume des métriques et alertes : ?instance=&periode=
-//   GET  /api/debug/tables/         chaque table et vue de la base vivante : { tables: [{ nom, genre, lignes }] } (cadre « Schéma de la base » ;
+//   GET  /api/debug/tables/         chaque table et vue de la base vivante : { tables: [{ nom, genre, lignes }] } (menu « DB » de la page Debug ;
 //                                   serveur/debug-tables.mjs, ni tables internes sqlite_… ni tables FTS5)
 //   GET  /api/debug/tables/<nom>/   une page de ses lignes, en lecture seule : ?limite=1..500 (100)&decalage=&tri=<colonne>&ordre=asc|desc →
 //                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés)

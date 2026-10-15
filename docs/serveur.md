@@ -25,7 +25,7 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
 | `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
 | `client/serveur/journal-du-service.mjs` | Journal du service gardé en mémoire (page Debug du site de dev, `GET /api/debug/journal/`) ; sans import |
-| `client/serveur/debug-tables.mjs` | Contenu des tables de la base vivante, en lecture seule (cadre « Schéma de la base » de la page Debug, `GET /api/debug/tables/` ; site de dev seulement) |
+| `client/serveur/debug-tables.mjs` | Contenu des tables de la base vivante, en lecture seule (menu « DB », le schéma de la base, de la page Debug, `GET /api/debug/tables/` ; site de dev seulement) |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -324,8 +324,8 @@ une valeur que le site a changée.
 
 ## API REST `/api/v1/` et page Debug (site de dev)
 
-Demande du propriétaire : un CRUD pour tous les éléments du jeu, à l'image d'un swagger. Détail complet (adresses, paramètres, formats, ETag,
-codes, exemples `curl`, ressources par module, comment rendre une ressource modifiable) : [`api.md`](api.md).
+Demande du propriétaire : un CRUD pour tous les éléments du jeu. Détail complet (adresses, paramètres, formats, ETag, codes, exemples `curl`,
+ressources par module, comment rendre une ressource modifiable) : [`api.md`](api.md).
 
 - **Site de dev seulement** : ouverte avec l'édition (`MAVERICK_EDITION=1`) ; ailleurs, **tout** `/api/v1/` répond `403`, lectures comprises
   (décision du propriétaire du 2026-10-15 : en production, la base n'est ouverte que par le front, c'est-à-dire les pages du site).
@@ -353,12 +353,14 @@ tourne (5 fichiers de 10 Mo par conteneur : « Métriques et volume », plus bas
 | `GET /api/debug/tables/`, `GET /api/debug/tables/<nom>/` | Les tables et vues de la base vivante (`{ tables: [{ nom, genre, lignes }] }`), puis une page des lignes de l'une d'elles, en lecture seule (images et textes longs résumés ; fiches, comptes et groupes de la section 13 : `403`, comme `/api/v1/`) : [`api.md`](api.md), « Contenu des tables ». `403` hors du site de dev |
 
 **Page Debug** (`/debug/`, menu Outils, site de dev seulement : absente du menu d'un build `SITE_MODE=prod`, où la page ne dit qu'une phrase, et de
-la version portable) : « Tester l'API » (menu déroulant fermé, construit depuis la description OpenAPI ; une écriture demande une case cochée),
-« Schéma de la base » (menu déroulant fermé : toutes les tables, leurs colonnes et leurs clés étrangères, zoom ; au double clic, le contenu d'une
-table de la base vivante), « Performances » (temps de réponse par route, pages vues, navigateurs, origines, requêtes récentes, export CSV ; production **ou** site de dev),
-« Système » (processus, disque, fichiers, évènements, volume, alertes), les « Journaux du serveur » (relevés toutes les 2 s, filtres par niveau,
-catégorie, texte et durée) et, tout en bas, l'« Espace disque du serveur » (jauge colorée par type de données) : [`api.md`](api.md), « Page
-Debug » ; métriques : « Métriques et volume », plus bas.
+la version portable) : quatre menus déroulants, **tous fermés par défaut**, dans l'ordre voulu par le propriétaire (2026-10-15) — « Système »
+(processus, disque, fichiers, évènements, volume, alertes, et la jauge « Espace disque du serveur », colorée par type de données ; production **ou**
+site de dev), « Performances » (temps de réponse par route, pages vues, navigateurs, origines, requêtes récentes, export CSV ; même instance), les
+« Journaux du serveur » (relevés toutes les 2 s, filtres par niveau, catégorie, texte et durée) et « DB » (le schéma de la base : toutes les tables,
+leurs colonnes et leurs clés étrangères, zoom ; au double clic, le contenu d'une table de la base vivante). Un menu fermé ne demande rien au
+service : il charge à son ouverture et ne relève que tant qu'il reste ouvert. Plus de testeur de l'API (« Tester l'API sera donc supprimé car
+devenu inutile après le schéma ») ; la description OpenAPI reste servie, pour des outils externes : [`api.md`](api.md), « Page Debug » ;
+métriques : « Métriques et volume », plus bas.
 
 ## Mise à jour (site de dev)
 

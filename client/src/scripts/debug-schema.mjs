@@ -1,4 +1,4 @@
-// Script du cadre « Schéma de la base » de la page Debug (components/debug/SchemaDeLaBase.astro ; site de dev seulement, jamais dans un build
+// Script du menu « DB » (le schéma de la base) de la page Debug (components/debug/SchemaDeLaBase.astro ; site de dev seulement, jamais dans un build
 // SITE_MODE=prod ni dans la version portable : le composant n'y est pas rendu). N'importe que lib/debug-schema.mjs (pur), qu'aucun autre script de
 // page n'importe ; aucun module commun avec scripts/debug.mjs (test/debug-schema.test.mjs).
 //

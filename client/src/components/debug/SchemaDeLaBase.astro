@@ -1,11 +1,13 @@
 ---
-// Cadre « Schéma de la base » de la page Debug (pages/debug.astro, juste après « Tester l'API » ; demande du propriétaire du 2026-10-15 : « En plus
-// d'un openapi, je veux un mappage vectoriel des tables. Ce cadre peut aussi être déroulé, masqué par défaut. Dans le cadre j'aimerais pouvoir zoomer et
-// dézoomer pour voir une représentation de l'ensemble des tables de la base, et des liens entre elles. Les tables montreraient une liste de toutes les
-// colonnes et des liens pour les FK vers une autre table, ainsi que le type de données. D'un double clic sur une de ces tables, ça ouvrirait une popup
-// avec le contenu dans un tableau (scrollable). »).
+// Menu « DB » de la page Debug, le schéma de la base (pages/debug.astro, le dernier des quatre menus, après « Journaux du serveur » ; demande du
+// propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un mappage vectoriel des tables. Ce cadre peut aussi être déroulé, masqué par défaut.
+// Dans le cadre j'aimerais pouvoir zoomer et dézoomer pour voir une représentation de l'ensemble des tables de la base, et des liens entre elles. Les
+// tables montreraient une liste de toutes les colonnes et des liens pour les FK vers une autre table, ainsi que le type de données. D'un double clic
+// sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable). » ; puis « L'ordre des menus est : 1) Système
+// 2) Performance 3) Journaux 4) DB (ton futur schéma) » : titre « DB », une sous-ligne dit que c'est le schéma de la base).
 //
-//   - un <details> FERMÉ par défaut ; le schéma n'est dessiné qu'à sa première ouverture (scripts/debug-schema.mjs) ;
+//   - un <details> FERMÉ par défaut ; le schéma n'est dessiné qu'à sa première ouverture (scripts/debug-schema.mjs), et la base vivante n'est lue
+//     qu'alors (nombre de lignes, une fois) ;
 //   - la structure (tables, vues, colonnes, types, clés, clés étrangères, sections, descriptions, nombre de lignes au build) est calculée AU BUILD
 //     (lib/schema-structure.mjs, depuis la base construite et data/schema.sql) et posée en JSON dans <script type="application/json"
 //     data-debug-schema> — jamais dans un build SITE_MODE=prod ni dans la version portable : le composant n'y rend rien (et pages/debug.astro ne
@@ -37,8 +39,8 @@ const communes = structure ? tablesCommunes(structure) : [];
       <style is:inline set:html={schemaCss}></style>
       <details class="debug-bloc debug-schema" data-schema-cadre data-api={url('api/')}>
         <summary>
-          <h2 class="debug-bloc__titre" id="debug-schema-titre">Schéma de la base</h2>
-          <span class="debug-bloc__resume">{resumeDuSchema(structure)}</span>
+          <h2 class="debug-bloc__titre" id="debug-schema-titre">DB</h2>
+          <span class="debug-bloc__resume">Schéma de la base : {resumeDuSchema(structure)}</span>
         </summary>
         <div class="debug-bloc__contenu">
           <p class="debug-petit">

@@ -2,8 +2,8 @@
 
 Demande du propriétaire : « une entrée pour TOUS les éléments possibles, avec une API REST et un CRUD ». Chaque élément du jeu rangé dans la base
 (races, classes, dons, sorts, armes, composants, monstres, événements de la chronologie, pages du guide…) a une adresse sous `/api/v1/`, où il se lit
-et, quand le service d'édition sait le faire, se crée, se modifie et se supprime. La page **Debug** du site de dev (menu Outils) permet de tout essayer
-depuis le navigateur.
+et, quand le service d'édition sait le faire, se crée, se modifie et se supprime. La description OpenAPI (`GET /api/v1/openapi.json`) sert aux outils
+externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur depuis qu'elle montre le schéma de la base (« Page Debug », plus bas).
 
 ## Principes
 
@@ -54,7 +54,7 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/journal/` | Le journal du service gardé en mémoire (page Debug, plus bas) |
 | `GET` | `/api/debug/metriques/`, `…/requetes/`, `…/export/` | Les métriques des appels `/api/` et des pages vues d'une instance ; les dernières requêtes une à une ; les agrégats horaires en pièce jointe (page Debug, plus bas) |
 | `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
-| `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles, en lecture seule (cadre « Schéma de la base » de la page Debug, plus bas) |
+| `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles, en lecture seule (menu « DB », le schéma de la base, de la page Debug, plus bas) |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
@@ -371,101 +371,95 @@ Ne jamais faire écrire l'API en SQL direct, ni déduire une valeur absente (rè
 
 ## Page Debug
 
-`/debug/` (menu Outils, **site de dev seulement** ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev […] un menu
-qui permettra de tester chaque requête à l'image d'un swagger. L'ensemble de ce swagger est caché dans un menu déroulant. En dessous on trouvera les
-logs du serveur (avec une possibilité de filtrer) ») :
+`/debug/` (menu Outils, **site de dev seulement** ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev ») : sous le
+titre et la ligne d'état du service, **quatre menus déroulants, tous fermés par défaut** (ni `open`, ni état mémorisé qui les rouvrirait), dans
+l'ordre voulu par le propriétaire (2026-10-15 : « Il faudra mettre les journaux du serveur dans un menu déroulant fermé de base. Performance et
+système aussi sont fermés par défaut. L'ordre des menus est : 1) Système 2) Performance 3) Journaux 4) DB (ton futur schéma). Tester l'API sera
+donc supprimé car devenu inutile après le schéma »), et rien d'autre. **Un menu fermé ne demande rien au service** : Système, Performances et
+Journaux chargent leurs données à leur ouverture (aussitôt), les relèvent tant qu'ils restent ouverts (et que l'onglet se voit) et s'arrêtent quand
+on les referme (`lib/debug-metriques.mjs#suivreLOuverture`) ; DB ne lit la base vivante qu'à sa première ouverture.
 
-- **Tester l'API** (menu déroulant fermé) : construit à son ouverture depuis `GET /api/v1/openapi.json` ; un groupe par module (et « Service »),
-  un filtre texte, une ligne par opération ; chaque opération ouverte donne ses paramètres (ceux d'une lecture ou d'une modification préremplis
-  d'une ligne réelle ; un filtre de liste se répète — une valeur par ligne, l'une OU l'autre — ou part vide, « colonne vide »), son corps d'exemple,
-  `If-Match` (seulement quand l'opération le déclare) repris de l'ETag du dernier `GET` de la même adresse, la réponse (statut, durée, en-têtes
-  utiles, corps) et la commande `curl` équivalente. Une écriture ne part qu'avec la case « Je sais que cette requête modifie la base du site de dev »
-  cochée : elle modifie la base du site de dev comme le mode modification (et apparaît dans la note en préparation de « Mise à jour »).
-  **Garde-fous** : un `DELETE` (ou une action) n'arrive jamais prérempli avec la clé d'une ligne réelle — seulement avec l'adresse (`Location`) d'un
-  élément créé dans la page, tant que ses champs n'ont pas été saisis à la main ; une création qu'aucune suppression ne défait (races, classes,
-  peuples) n'a pas de corps d'exemple ; une écriture sans retour le dit à côté de la case (`x-sans-retour` de la description). Les créations
-  d'exemple qui restent réussissent telles quelles (`201`) et se suppriment (test `serveur-api-v1`).
-- **Schéma de la base** (menu déroulant fermé, juste après « Tester l'API », dessiné à sa première ouverture ; demande du propriétaire du
-  2026-10-15 : « En plus d'un openapi, je veux un mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup
-  avec le contenu dans un tableau (scrollable) ») : une carte de **toutes les tables** (192, dont les 2 dérivées `lien` et `lien_candidat`) et
-  des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace aucune table), une boîte par table avec chaque
-  colonne, son type déclaré, `PK`, `NN` et une pastille par clé étrangère, et **un lien par clé étrangère** (411 ; une clé à plusieurs colonnes
-  reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à plusieurs colonnes part de la colonne qui la
-  distingue et arrive à la colonne visée au même rang (`indiceDuLien` : `race_don_tableau_cellule(race_id, ligne)` part de `ligne`, l'auto-référence
-  de `note_cellule` de `repond_a` vers `rang`), et l'infobulle d'une colonne dit **chaque** clé qui la contient, en entier
-  (« (race_id, colonne) → race_don_tableau_colonne(race_id, rang) »). Les tables sont rangées par section de `data/schema.sql` (un bloc teinté
-  par section ; de loin, son titre court en grand, au moins 11 px à l'écran, et le titre entier en infobulle) et, dans une section, en couches :
-  une table à droite de celles qu'elle cite. Les 155 liens vers `famille` sont allégés, une case les masque. **Zoom** (molette autour du
-  pointeur une fois le schéma activé — un clic ou le focus dedans, ou le plein cadre — ou avec Ctrl ; de passage, et quand le zoom est à sa
-  borne, la molette fait défiler la page ; pincement, boutons + et −, « Tout voir », « Plein cadre », où le reste de la page est inerte et
-  qu'Échap quitte) et **déplacement** (glisser) ; trois niveaux de détail selon le zoom (de loin : les noms en grand ; à partir de 0,7, quand
-  ils se lisent : les colonnes ; de près : les types) ; le zoom est une transformation CSS d'un seul conteneur (boîtes en HTML, liens en SVG : un
-  texte SVG serait remis en page à chaque image), l'épaisseur des traits suivant le zoom à la fin du geste (et par paliers pendant un grand zoom),
-  l'infobulle ouverte suivant sa ligne. Survol d'une table : ses liens entrants et sortants éclairés ; clic sur la **pastille** d'une clé
-  étrangère : la vue va aussitôt à la table visée (une colonne qui en vise plusieurs : la liste de ses clés) ; recherche d'une table (centrée,
-  lisible, mise en évidence) ; les messages s'écrivent par-dessus la carte, sans la déplacer ; clavier : une table dans l'ordre de tabulation,
-  flèches pour la voisine (dans la direction de la flèche, jamais de travers), Maj + flèches pour déplacer, + / − / 0, **L** pour la liste des
-  clés étrangères de la table (Entrée y va), Entrée pour le contenu. **Double clic** ailleurs que sur une pastille (Entrée, appui long au
-  toucher) : la fenêtre « Contenu de <table> » (`<dialog>`), lue dans la **base vivante** par `GET /api/debug/tables/<nom>/` par pages de 100
-  (« Charger plus », et au défilement), total, tri par en-tête, NULL visible, nombres tels qu'en base (seule la partie entière est groupée par
-  milliers), cellule coupée marquée d'un fondu et dépliée d'un clic ou au clavier ; Échap, « Fermer » ou un clic sur le fond la ferment ; un
-  `403` (fiches de la section 13, ou hors du site de dev) ou un service absent le disent en clair. Le nom d'une table n'est jamais coupé par
-  le nombre de lignes de la base vivante (l'en-tête garde la place de « 99 999 lignes »). La structure (tables,
-  colonnes, types, clés, sections, descriptions, nombre de lignes au build) est calculée **au build** (`lib/schema-structure.mjs`, depuis la base
-  construite et `data/schema.sql`) et posée dans la page en JSON (`<script type="application/json" data-debug-schema>`), jamais dans un build
-  `SITE_MODE=prod` ni dans la version portable ; les nombres de lignes des boîtes deviennent ceux de la base vivante dès que
-  `GET /api/debug/tables/` répond (« Contenu des tables », plus bas).
-- **Performances** (menu déroulant ouvert ; demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels
-  sont les appels les plus lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés —
-  décision du propriétaire), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux (appels, moyenne, médiane, p95,
-  p99, min/max, écart type, temps cumulé, erreurs 4xx/5xx, part des `304`, octets, requêtes SQL par appel) et courbe des appels et du p95 par pas
-  (5 min sur 1 h, heure sur 24 h et 7 j, jour au-delà), **sans les relèves automatiques** (journal, métriques et système de la page Debug,
-  maintenance de chaque page, balise : elles feraient l'essentiel des appels et mesureraient la page Debug elle-même ; leur nombre est dit à part,
-  chacune garde sa ligne), tableau des **routes** (une ligne par route × méthode, triable par chaque colonne ; les trois plus lentes en moyenne et
-  celles d'au moins 100 ms / 500 ms marquées ; un quantile au-delà de la dernière classe s'écrit « > 5 s »), **pages vues** (temps mesurés par le
-  navigateur : premier octet, `DOMContentLoaded`, chargement, LCP, moyenne / p95), **navigateurs et appareils**, **origines des appels** (quelle page
-  appelle quelle route ; ces trois listes sont comptées par heure : sur « 1 h », une phrase dit leur fenêtre, `depuis_horaire`), **requêtes
-  récentes** une à une (site de dev seulement, mémoire du service : phases, octets, SQL dont la requête la plus lente, page, navigateur ; filtres
-  « plus lentes que … ms » et route, le gabarit exact ; l'instance « Production » choisie, une phrase à la place : la page ne montre jamais la
-  mémoire du site de dev sous l'étiquette de la production), boutons **Exporter (CSV)** et **JSON** (agrégats bruts de la période affichée).
-  Relevé toutes les 30 s.
-- **Système** (menu déroulant ouvert, même instance) : alertes, processus (version, code, Node, PID, démarrage, mémoire RSS / tas / externe, CPU,
-  boucle d'événements p50 / p99 / max, charge), disque du dossier de la base vivante (sa jauge remplit la place **non disponible** : prise et
-  réserve de root), volume des métriques (taille, croissance en régime mesurée ou estimée, débit d'écriture avant purge, taille dans un an et à
-  rétention pleine calculées par le service table par table, réglages des requêtes brutes et de la balise — « — » s'ils sont inconnus —,
-  rétention), courbe mémoire / boucle (pas : la médiane des écarts, un échantillon d'arrêt ne la hache pas), fichiers suivis (base vivante,
-  archives, lots de mise à jour, métriques de chaque instance),
-  évènements du service avec leur durée (démarrage, base vivante et rejeu, fiches, lots d'édition, mise à jour, appels GitHub, maintenance,
-  `5xx` avec l'empreinte de la pile, purge, arrêt). D'une autre instance (production vue du site de dev), l'état vient de son fichier : son
-  dernier échantillon par minute et son dernier démarrage.
-- **Journaux du serveur** : le journal du service gardé en mémoire (`serveur/journal-du-service.mjs` : les 2 000 dernières entrées, niveau
-  info / avertissement / erreur, catégorie `service`, `http`, `base`, `fiches`, `edition`, `mise-a-jour`, `maintenance`), relevé toutes les 2 s
-  (`GET /api/debug/journal/?depuis=<n>`), filtré dans la page (niveaux, catégorie, texte), avec Pause (bouton bascule au libellé fixe,
-  `aria-pressed`) et « Effacer l'affichage ». Les nouvelles lignes s'ajoutent en haut sans refaire le tableau : la ligne lue reste à sa place et une
-  sélection en cours diffère l'affichage. Chaque réponse porte l'identité du processus (`processus`) : un redémarrage du service se voit même quand
-  la page n'a rien relevé entre-temps (onglet caché, pause), et tout est relu depuis le début. Chaque requête `/api/` y est notée (catégorie `http` :
-  méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves du journal et de l'état de maintenance (reconnues à leur
-  chemin, jamais à leur chaîne de requête) ; son entrée porte en plus des **champs isolés** `{ duree_ms, methode, route, statut, octets_sortie }`
-  (`route` : le gabarit sans identifiant, ci-dessous), d'où une colonne **Durée** triable (Heure / Durée) et le filtre « plus lent que … ms »
-  (`?min_ms=`, appliqué par le service, qui fait tout relire). En production, ni mémoire ni ligne par requête : la sortie du service
-  (`docker logs`) ne garde que ses événements et les échecs du service (`5xx`).
-- **Espace disque du serveur**, tout en bas (demande du propriétaire du 2026-10-15 : « la métrique de la place occupée sur le serveur sur la place
-  totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») : une jauge pleine largeur, un segment
-  coloré par type de données (`disque.repartition` de `/api/debug/systeme/`, même instance, même relève), la somme des segments faisant
-  **exactement la place totale du disque** ; en titre « X Go occupés sur T Go (p %) · L Go libres · R Go réservés au système » (la place occupée
-  est celle de `df`, *Used* ; la réserve de root à part) ; chaque segment a son infobulle habillée (nom, taille, part, ce qu'il compte) et la
-  légende dit tout (la couleur n'est jamais seule) ; survoler un segment ou un type de la légende met les deux en évidence. Types : base de
-  données, images importées, mises à jour, métriques, code, données, images et autres fichiers du site, puis, sur le VPS (relevé de l'hôte,
-  `deploy/vps/volume.sh`), Docker, journaux, installations et copies, puis système et autres, réservé au système, libre (détail et règles :
-  [`serveur.md`](serveur.md), « Jauge de l'espace disque »). Tailles en unités décimales (Go), comme les hébergeurs.
+1. **Système** (choix de l'instance en tête, le même qu'en tête de Performances, les deux listes se suivent ; une adaptation, pas une demande :
+   Performances étant fermé par défaut, sans elle il faudrait l'ouvrir, donc lancer ses relèves, pour changer l'instance de Système) : alertes,
+   processus (version, code, Node, PID, démarrage, mémoire RSS / tas / externe, CPU, boucle d'événements p50 / p99 / max, charge), disque du dossier
+   de la base vivante (sa jauge remplit la place **non disponible** : prise et réserve de root), volume des métriques (taille, croissance en régime
+   mesurée ou estimée, débit d'écriture avant purge, taille dans un an et à rétention pleine calculées par le service table par table, réglages des
+   requêtes brutes et de la balise — « — » s'ils sont inconnus —, rétention), courbe mémoire / boucle (pas : la médiane des écarts, un échantillon
+   d'arrêt ne la hache pas), fichiers suivis (base vivante, archives, lots de mise à jour, métriques de chaque instance), évènements du service avec
+   leur durée (démarrage, base vivante et rejeu, fiches, lots d'édition, mise à jour, appels GitHub, maintenance, `5xx` avec l'empreinte de la pile,
+   purge, arrêt). D'une autre instance (production vue du site de dev), l'état vient de son fichier : son dernier échantillon par minute et son
+   dernier démarrage. Relevé toutes les 30 s, menu ouvert. Dans Système, après le processus, le disque et le volume, la jauge **Espace disque du
+   serveur** (demande du propriétaire du 2026-10-15 : « la métrique de la place occupée sur le serveur sur la place totale sous forme de jauge,
+   colorée en fonction du type de données (DB, Code, Import images, etc.) », puis « Inclus-la directement dans Système ») : une jauge pleine largeur,
+   un segment coloré par type de données (`disque.repartition` de la même réponse `/api/debug/systeme/`), la somme des segments faisant **exactement
+   la place totale du disque** ; en titre « X Go occupés sur T Go (p %) · L Go libres · R Go réservés au système » (la place occupée est celle de
+   `df`, *Used* ; la réserve de root à part) ; chaque segment a son infobulle habillée (nom, taille, part, ce qu'il compte) et la légende dit tout (la
+   couleur n'est jamais seule) ; survoler un segment ou un type de la légende met les deux en évidence. Types : base de données, images importées,
+   mises à jour, métriques, code, données, images et autres fichiers du site, puis, sur le VPS (relevé de l'hôte, `deploy/vps/volume.sh`), Docker,
+   journaux, installations et copies, puis système et autres, réservé au système, libre (détail et règles : [`serveur.md`](serveur.md), « Jauge de
+   l'espace disque »). Tailles en unités décimales (Go), comme les hébergeurs.
+2. **Performances** (demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels sont les appels les plus
+   lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés — décision du propriétaire ; la
+   même liste qu'en tête de Système, les deux se suivent), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux
+   (appels, moyenne, médiane, p95, p99, min/max, écart type, temps cumulé, erreurs 4xx/5xx, part des `304`, octets, requêtes SQL par appel) et courbe
+   des appels et du p95 par pas (5 min sur 1 h, heure sur 24 h et 7 j, jour au-delà), **sans les relèves automatiques** (journal, métriques et système
+   de la page Debug, maintenance de chaque page, balise : elles feraient l'essentiel des appels et mesureraient la page Debug elle-même ; leur nombre
+   est dit à part, chacune garde sa ligne), tableau des **routes** (une ligne par route × méthode, triable par chaque colonne ; les trois plus lentes
+   en moyenne et celles d'au moins 100 ms / 500 ms marquées ; un quantile au-delà de la dernière classe s'écrit « > 5 s »), **pages vues** (temps
+   mesurés par le navigateur : premier octet, `DOMContentLoaded`, chargement, LCP, moyenne / p95), **navigateurs et appareils**, **origines des
+   appels** (quelle page appelle quelle route ; ces trois listes sont comptées par heure : sur « 1 h », une phrase dit leur fenêtre,
+   `depuis_horaire`), **requêtes récentes** une à une (site de dev seulement, mémoire du service : phases, octets, SQL dont la requête la plus lente,
+   page, navigateur ; filtres « plus lentes que … ms » et route, le gabarit exact ; l'instance « Production » choisie, une phrase à la place : la page
+   ne montre jamais la mémoire du site de dev sous l'étiquette de la production), boutons **Exporter (CSV)** et **JSON** (agrégats bruts de la période
+   affichée). Relevé toutes les 30 s, menu ouvert.
+3. **Journaux du serveur** : le journal du service gardé en mémoire (`serveur/journal-du-service.mjs` : les 2 000 dernières entrées, niveau info /
+   avertissement / erreur, catégorie `service`, `http`, `base`, `fiches`, `edition`, `mise-a-jour`, `maintenance`), relevé toutes les 2 s, menu ouvert
+   (`GET /api/debug/journal/?depuis=<n>` ; refermé puis rouvert, il reprend après la dernière entrée vue), filtré dans la page (niveaux, catégorie,
+   texte), avec Pause (bouton bascule au libellé fixe, `aria-pressed`) et « Effacer l'affichage ». Les nouvelles lignes s'ajoutent en haut sans
+   refaire le tableau : la ligne lue reste à sa place et une sélection en cours diffère l'affichage. Chaque réponse porte l'identité du processus
+   (`processus`) : un redémarrage du service se voit même quand la page n'a rien relevé entre-temps (onglet caché, pause), et tout est relu depuis le
+   début. Chaque requête `/api/` y est notée (catégorie `http` : méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves
+   du journal et de l'état de maintenance (reconnues à leur chemin, jamais à leur chaîne de requête) ; son entrée porte en plus des **champs isolés**
+   `{ duree_ms, methode, route, statut, octets_sortie }` (`route` : le gabarit sans identifiant, ci-dessous), d'où une colonne **Durée** triable
+   (Heure / Durée) et le filtre « plus lent que … ms » (`?min_ms=`, appliqué par le service, qui fait tout relire). En production, ni mémoire ni ligne
+   par requête : la sortie du service (`docker logs`) ne garde que ses événements et les échecs du service (`5xx`).
+4. **DB**, le schéma de la base (dessiné à la première ouverture du menu ; demande du propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un
+   mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »,
+   puis « 4) DB (ton futur schéma) » : titre « DB », la sous-ligne dit « Schéma de la base » et ses nombres) : une carte de **toutes les tables**
+   (192, dont les 2 dérivées `lien` et `lien_candidat`) et des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace
+   aucune table), une boîte par table avec chaque colonne, son type déclaré, `PK`, `NN` et une pastille par clé étrangère, et **un lien par clé
+   étrangère** (411 ; une clé à plusieurs colonnes reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à
+   plusieurs colonnes part de la colonne qui la distingue et arrive à la colonne visée au même rang (`indiceDuLien` :
+   `race_don_tableau_cellule(race_id, ligne)` part de `ligne`, l'auto-référence de `note_cellule` de `repond_a` vers `rang`), et l'infobulle d'une
+   colonne dit **chaque** clé qui la contient, en entier (« (race_id, colonne) → race_don_tableau_colonne(race_id, rang) »). Les tables sont rangées
+   par section de `data/schema.sql` (un bloc teinté par section ; de loin, son titre court en grand, au moins 11 px à l'écran, et le titre entier en
+   infobulle) et, dans une section, en couches : une table à droite de celles qu'elle cite. Les 155 liens vers `famille` sont allégés, une case les
+   masque. **Zoom** (molette autour du pointeur une fois le schéma activé — un clic ou le focus dedans, ou le plein cadre — ou avec Ctrl ; de passage,
+   et quand le zoom est à sa borne, la molette fait défiler la page ; pincement, boutons + et −, « Tout voir », « Plein cadre », où le reste de la
+   page est inerte et qu'Échap quitte) et **déplacement** (glisser) ; trois niveaux de détail selon le zoom (de loin : les noms en grand ; à partir de
+   0,7, quand ils se lisent : les colonnes ; de près : les types) ; le zoom est une transformation CSS d'un seul conteneur (boîtes en HTML, liens en
+   SVG : un texte SVG serait remis en page à chaque image), l'épaisseur des traits suivant le zoom à la fin du geste (et par paliers pendant un grand
+   zoom), l'infobulle ouverte suivant sa ligne. Survol d'une table : ses liens entrants et sortants éclairés ; clic sur la **pastille** d'une clé
+   étrangère : la vue va aussitôt à la table visée (une colonne qui en vise plusieurs : la liste de ses clés) ; recherche d'une table (centrée,
+   lisible, mise en évidence) ; les messages s'écrivent par-dessus la carte, sans la déplacer ; clavier : une table dans l'ordre de tabulation,
+   flèches pour la voisine (dans la direction de la flèche, jamais de travers), Maj + flèches pour déplacer, + / − / 0, **L** pour la liste des clés
+   étrangères de la table (Entrée y va), Entrée pour le contenu. **Double clic** ailleurs que sur une pastille (Entrée, appui long au toucher) : la
+   fenêtre « Contenu de <table> » (`<dialog>`), lue dans la **base vivante** par `GET /api/debug/tables/<nom>/` par pages de 100 (« Charger plus », et
+   au défilement), total, tri par en-tête, NULL visible, nombres tels qu'en base (seule la partie entière est groupée par milliers), cellule coupée
+   marquée d'un fondu et dépliée d'un clic ou au clavier ; Échap, « Fermer » ou un clic sur le fond la ferment ; un `403` (fiches de la section 13, ou
+   hors du site de dev) ou un service absent le disent en clair. Le nom d'une table n'est jamais coupé par le nombre de lignes de la base vivante
+   (l'en-tête garde la place de « 99 999 lignes »). La structure (tables, colonnes, types, clés, sections, descriptions, nombre de lignes au build)
+   est calculée **au build** (`lib/schema-structure.mjs`, depuis la base construite et `data/schema.sql`) et posée dans la page en JSON (`<script
+   type="application/json" data-debug-schema>`), jamais dans un build `SITE_MODE=prod` ni dans la version portable ; les nombres de lignes des boîtes
+   deviennent ceux de la base vivante dès que `GET /api/debug/tables/` répond (« Contenu des tables », plus bas).
 
 En production (`SITE_MODE=prod`) l'entrée n'est pas au menu et la page ne dit qu'une phrase, sans script ; la version portable ne l'emporte pas.
 La CI construit aussi le site de production et y relance `debug-page` et `site-html` (`ci.yml`, `CONTROLES_DE_LA_CI`).
 La page lit d'abord `GET /api/etat/` : sans `edition: true`, le service n'est pas celui du site de dev et elle s'arrête.
 
-Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (n'importe que `lib/debug-api.mjs`, `lib/debug-journaux.mjs` et `lib/debug-metriques.mjs`,
-purs), `styles/debug/` ; « Schéma de la base » : `components/debug/SchemaDeLaBase.astro`, son script `src/scripts/debug-schema.mjs` (n'importe que
-`lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendus échappés ; aucun module commun avec `debug.mjs`),
+Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (Système, Performances, Journaux ; n'importe que `lib/debug-journaux.mjs` et
+`lib/debug-metriques.mjs`, purs), `styles/debug/` ; DB : `components/debug/SchemaDeLaBase.astro`, son script `src/scripts/debug-schema.mjs` (n'importe
+que `lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendus échappés ; aucun module commun avec `debug.mjs`),
 `lib/schema-structure.mjs` (au build), `styles/debug/schema.css` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service :
 `serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
 `serveur/debug-tables.mjs` (contenu des tables).
@@ -537,7 +531,7 @@ production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUE
 ## Tests
 
 `ressources-registre` (chaque table rangée une fois, registre cohérent, `RESSOURCES_MODULE=<module>` pour un seul module), `serveur-api-v1` (fermeture
-en production, catalogue, description OpenAPI et ses exemples, listes, conditions, détail et ETag, sous-ressources, `405`, écritures par le journal,
+en production, catalogue, description OpenAPI et ses exemples envoyés tels quels par un client, `test/aide-openapi.mjs`, listes, conditions, détail et ETag, sous-ressources, `405`, écritures par le journal,
 `If-Match`, R42, images, `/api/debug/journal/`, serveur HTTP réel), `api-doc` (le tableau des ressources de ce document), `journal-du-service`,
 `debug-page`, `nav` ; `serveur-metriques` (routes normalisées, collecte, agrégats, quantiles, rétention, lectures, deux instances),
 `serveur-metriques-bornes` (quantiles au-delà de la dernière classe, migration du schéma 4, croissance logique et projections, échantillons d'une
@@ -548,5 +542,5 @@ réserve de root), `debug-metriques` (rendus purs de Performances, Système et d
 `serveur-debug-tables` (contenu des tables : `403` hors du site de dev, liste, noms piégés, `400`, pagination, ordre stable, images et textes
 longs résumés, vues, lecture seule, gabarits des métriques, vrai serveur), `debug-schema` (structure du build sur la vraie base, mêmes tables
 dérivées que le service, mise en page sans chevauchement, un lien par clé étrangère, niveaux de détail, caméra, clavier, recherche, rendus
-échappés, fenêtre du contenu, script et composant) ; `debug-page` place le cadre (fermé, juste après le testeur) et vérifie son absence en
-production ; `serveur-livraison` liste les modules livrés.
+échappés, fenêtre du contenu, script et composant) ; `debug-page` vérifie les quatre menus fermés et leur ordre, qu'un menu fermé ne demande rien
+(`suivreLOuverture`), et leur absence en production ; `serveur-livraison` liste les modules livrés.

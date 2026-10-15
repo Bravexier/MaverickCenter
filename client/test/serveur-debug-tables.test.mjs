@@ -1,4 +1,4 @@
-// Contenu des tables de la base vivante pour le cadre « Schéma de la base » de la page Debug (client/serveur/debug-tables.mjs, api.mjs ; docs/api.md,
+// Contenu des tables de la base vivante pour le menu « DB » (le schéma de la base) de la page Debug (client/serveur/debug-tables.mjs, api.mjs ; docs/api.md,
 // « Page Debug » ; demande du propriétaire du 2026-10-15 : « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un
 // tableau (scrollable) ») : site de dev seulement (403 ailleurs, avant 404 et 405), liste des tables et vues (ni internes ni FTS5), 404 pour un nom
 // inconnu ou piégé, 400 pour un tri ou une page hors bornes, pagination et total, ordre stable, images et textes longs résumés (jamais un portrait

@@ -17,11 +17,36 @@
 // Deux jeux de données séparés (décision du propriétaire du 2026-10-15) : la page montre l'instance choisie, dev OU production, jamais un mélange.
 // Les courbes sont du SVG en ligne, sans bibliothèque et sans <title> (une infobulle native : jamais, Infobulles.astro) : un aria-label les décrit.
 // Les coordonnées s'écrivent avec un point ; les nombres affichés à la française (virgule, espace fine insécable des milliers).
-// Sans dépendance hors du testeur de la même page (lib/debug-api.mjs) ; importé par le seul script de la page Debug (et par lib/debug-journaux.mjs).
-import { echapper } from './debug-api.mjs';
+// Sans dépendance ; importé par le seul script de la page Debug (et par lib/debug-journaux.mjs).
+
+/** Texte sûr dans du HTML (contenu et valeur d'attribut entre guillemets). */
+export function echapper(texte) {
+  return String(texte ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
 
 /** Intervalle de la relève des métriques et du système, en millisecondes (pas plus souvent : demande du coordinateur). */
 export const RELEVE_METRIQUES_MS = 30000;
+
+/**
+ * Un menu déroulant de la page qui ne travaille qu'ouvert (demande du propriétaire du 2026-10-15 : Système, Performances et Journaux « fermés par
+ * défaut » ; un menu fermé ne demande rien au service) : à son ouverture, `relever(true)` aussitôt, puis `relever(false)` toutes les `intervalle`
+ * ms ; à sa fermeture, la minuterie s'arrête. `menu` : un <details> (tout objet qui a `open` et émet `toggle`) ; `toggle` ne remonte pas, et seul
+ * le menu lui-même compte (pas un détail déplié dedans, comme une requête récente). Sert aux trois menus de scripts/debug.mjs.
+ */
+export function suivreLOuverture(menu, intervalle, relever) {
+  let minuterie = 0;
+  const suivre = () => {
+    clearInterval(minuterie);
+    minuterie = 0;
+    if (!menu.open) return;
+    relever(true);
+    minuterie = setInterval(() => relever(false), intervalle);
+  };
+  menu.addEventListener('toggle', (ev) => {
+    if (ev.target === menu) suivre();
+  });
+  suivre();
+}
 
 /** Les instances, dans l'ordre du choix ; `dev` quand le service a l'édition, `prod` sinon (serveur/metriques.mjs). */
 export const INSTANCES = [
@@ -288,7 +313,7 @@ const attributLenteur = (ms, seuils) => {
   return l ? ` data-lenteur="${l}"` : '';
 };
 
-/** La pastille d'une méthode HTTP (couleurs du testeur). */
+/** La pastille d'une méthode HTTP (une couleur par méthode : styles/debug/debug.css, .debug-methode--<méthode>). */
 export function pastilleDeMethode(methode) {
   const m = String(methode ?? '').toUpperCase();
   const classe = /^[A-Z]+$/.test(m) ? ` debug-methode--${m.toLowerCase()}` : '';
@@ -779,8 +804,9 @@ export function resumeDuSysteme(systeme) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Espace disque du serveur (tout en bas de la page ; demande du propriétaire du 2026-10-15 : « Tout en bas je veux aussi la métrique de la place
-// occupée sur le serveur sur la place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») :
+// Espace disque du serveur (dans le menu « Système » ; demande du propriétaire du 2026-10-15 : « la métrique de la place occupée sur le serveur
+// sur la place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) », puis « Inclus-la directement
+// dans Système ») :
 // une jauge horizontale pleine largeur, la place totale découpée en segments proportionnels, un par type de données (GET <base>api/debug/systeme/,
 // `disque.repartition` = [{ cle, libelle, octets }] dont la somme fait `disque.total` : serveur/metriques.mjs#REPARTITION), le libre en clair, et
 // une légende qui dit tout (nom, taille, part du total : jamais la couleur seule). Tailles en unités décimales (Go, Mo : celles des hébergeurs).

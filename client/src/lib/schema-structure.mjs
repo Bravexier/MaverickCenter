@@ -1,4 +1,4 @@
-// Structure du schéma de la base pour le cadre « Schéma de la base » de la page Debug (site de dev seulement ; demande du propriétaire du 2026-10-15 :
+// Structure du schéma de la base pour le menu « DB » de la page Debug (site de dev seulement ; demande du propriétaire du 2026-10-15 :
 // « un mappage vectoriel des tables […] Les tables montreraient une liste de toutes les colonnes et des liens pour les FK vers une autre table, ainsi
 // que le type de données »). Node seulement : appelée AU BUILD par components/debug/SchemaDeLaBase.astro, jamais dans un build SITE_MODE=prod (le
 // composant n'y est pas rendu) ; le JSON est posé dans la page (<script type="application/json" data-debug-schema>) et lu par scripts/debug-schema.mjs.

@@ -1,6 +1,7 @@
-// Contenu des tables de la base vivante pour le cadre « Schéma de la base » de la page Debug (demande du propriétaire du 2026-10-15 : « D'un double
-// clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »). Site de dev seulement : api.mjs répond 403
-// ailleurs, avant tout 404 ou 405 (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que par les pages du site).
+// Contenu des tables de la base vivante pour le menu « DB » (le schéma de la base) de la page Debug (demande du propriétaire du 2026-10-15 :
+// « D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »). Site de dev seulement :
+// api.mjs répond 403 ailleurs, avant tout 404 ou 405 (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que par les
+// pages du site).
 //
 //   GET /api/debug/tables/          { tables: [{ nom, genre, lignes }] } : chaque table et chaque vue de la base vivante, dans l'ordre des noms, ses
 //                                   lignes comptées maintenant ; genre 'table', 'derivee' (TABLES_DERIVEES : `-- @derivee` de data/schema.sql) ou

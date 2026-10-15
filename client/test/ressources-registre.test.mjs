@@ -6,7 +6,9 @@
 // module).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
@@ -190,4 +192,26 @@ test('registre : les descriptions citent la base telle qu’écrite (noms, déci
   assert.match(r('pages').description, /pages d’exemple hors du guide/);
   // la remarque d'un don racial : seulement sur un don dont l'onglet porte une note de cellule (le service refuse ailleurs)
   assert.match(r('races').enfants.find((e) => e.cle === 'dons').description, /la remarque ne se modifie que sur un don dont l’onglet porte une note de cellule/);
+});
+
+test('en-tête du registre : il ne nomme que ceux qui le lisent (le service, ses métriques, la description OpenAPI par le catalogue), et non plus la page Debug (son testeur est retiré)', () => {
+  const ici = (chemin) => fileURLToPath(new URL(chemin, import.meta.url));
+  const source = readFileSync(ici('../src/lib/ressources.mjs'), 'utf8');
+  const entete = source.slice(0, source.indexOf('\nimport '));
+  assert.doesNotMatch(entete, /page Debug|testeur/, 'aucune page du site ne lit le registre depuis le retrait du testeur (demande du 2026-10-15)');
+  // qui l'importe, dans le site et le service (ses modules lib/ressources/ mis à part)
+  const registre = ici('../src/lib/ressources.mjs');
+  const lecteurs = [];
+  for (const dossier of ['src', 'serveur']) {
+    for (const nom of readdirSync(ici(`../${dossier}/`), { recursive: true })) {
+      const chemin = `${dossier}/${nom}`;
+      if (!/\.(mjs|ts|astro)$/.test(nom) || chemin.startsWith('src/lib/ressources')) continue;
+      const fichier = ici(`../${chemin}`);
+      const imports = [...readFileSync(fichier, 'utf8').matchAll(/^\s*import\s[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]);
+      if (imports.some((i) => i.startsWith('.') && resolve(dirname(fichier), i) === registre)) lecteurs.push(chemin);
+    }
+  }
+  assert.deepEqual(lecteurs.sort(), ['serveur/metriques.mjs', 'serveur/ressources.mjs'], 'ni page, ni script, ni composant');
+  for (const l of [...lecteurs, 'serveur/openapi.mjs']) assert.ok(entete.includes(l), `${l} nommé dans l’en-tête`);
+  assert.match(readFileSync(ici('../serveur/openapi.mjs'), 'utf8'), /serveur\/ressources\.mjs#catalogue : registre lib\/ressources\.mjs/, 'la description OpenAPI le lit par le catalogue');
 });

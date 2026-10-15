@@ -1,5 +1,5 @@
-// Cadre « Schéma de la base » de la page Debug (pages/debug.astro, site de dev seulement ; demande du propriétaire du 2026-10-15 : « En plus d'un
-// openapi, je veux un mappage vectoriel des tables. Ce cadre peut aussi être déroulé, masqué par défaut. Dans le cadre j'aimerais pouvoir zoomer et
+// Menu « DB » (le schéma de la base) de la page Debug (pages/debug.astro, site de dev seulement ; demande du propriétaire du 2026-10-15 : « En plus
+// d'un openapi, je veux un mappage vectoriel des tables. Ce cadre peut aussi être déroulé, masqué par défaut. Dans le cadre j'aimerais pouvoir zoomer et
 // dézoomer pour voir une représentation de l'ensemble des tables de la base, et des liens entre elles. Les tables montreraient une liste de toutes les
 // colonnes et des liens pour les FK vers une autre table, ainsi que le type de données. D'un double clic sur une de ces tables, ça ouvrirait une popup
 // avec le contenu dans un tableau (scrollable). »).
