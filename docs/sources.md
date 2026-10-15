@@ -51,7 +51,7 @@ aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migr
 mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
 partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
 
-**Les originaux font foi (décision du propriétaire, 2026-10-15).** Les classeurs d'origine (propriétaire payoumorfot@hotmail.fr) sont toujours tenus
+**Les originaux font foi (décision R81 du propriétaire, 2026-10-15).** Les classeurs d'origine (ceux de l'ancien mainteneur) sont toujours tenus
 à jour (Magie V8 et Les races modifiés le 2026-10-12, une grosse mise à jour annoncée pour la fin d'octobre) ; les copies du 2026-10-10 ne le sont pas, et
 le compte Google connecté aux sessions cloud ne les voit pas. La vérification des tables et les mises à jour lisent donc les **originaux** ; les copies
 restent une trace (registre de la migration 0014). Voir « Rapprochement d'un classeur » plus bas.
@@ -142,32 +142,48 @@ relancer l'extracteur sur ces pages.
 ### Rapprochement d'un classeur (dans les deux sens)
 
 Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
-mises à jour du classeur. Outils : `tools/sources/` ; test : `client/test/sources-rapprochement.test.mjs`.
+mises à jour du classeur ; ses réponses sont la décision **R81** (`docs/decisions-regles.md`). Outils : `tools/sources/` ; test :
+`client/test/sources-rapprochement.test.mjs`.
 
 1. **Instantané** du classeur original : `download_file_content` du connecteur Google Drive avec l'export
    `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (la réponse, trop grande pour la conversation, est enregistrée dans un fichier : son
    champ `content` est le `.xlsx` en base64), puis `python3 -I tools/sheets/xlsx_to_json.py <classeur.xlsx> <dump.json>` et
-   `node --no-warnings tools/sources/instantane.mjs <dump.json> sources/raw/classeurs/<classeur>.json` (forme stable : une cellule par ligne, un diff
-   git montre exactement les cellules changées). Un classeur de plus de 10 Mo (« Les races ») passe par `get_spreadsheet` (voir plus haut). L'instantané est
-   inscrit dans `sources/raw/classeurs/registre.json` (identifiant Drive, date de dernière modification lue dans le Drive, empreinte de l'export).
+   `node --no-warnings tools/sources/instantane.mjs <dump.json> sources/raw/classeurs/<classeur>.json` (forme stable : une cellule par ligne, fusions et
+   validations triées, un diff git montre exactement les cellules changées). Un classeur de plus de 10 Mo (« Les races ») passe par `get_spreadsheet` (voir
+   plus haut). L'instantané est inscrit dans `sources/raw/classeurs/registre.json` (identifiant Drive, date de dernière modification lue dans le Drive,
+   empreinte de l'export, état `rapproche` ou `en_cours`).
 2. **Rapprochement** : `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump sources/raw/classeurs/<classeur>.json
-   --ignorer tools/sources/ignorer/<classeur>.json [--sortie <rapport.md>]` (base : `var/maverick.db`, depuis `npm run db:build`). Il vérifie :
+   --registre tools/sources/ignorer/<classeur>.json [--sortie <rapport.md>] [--json]` (base : `var/maverick.db`, depuis `npm run db:build`). La base est
+   lue dans son **état d'import** (`lib/historique-site.mjs#lignesDImport`) : une ligne supprimée par le site de dev compte encore, une ligne qu'il a créée
+   ne compte pas, une colonne qu'il a modifiée vaut sa valeur d'import (le site est la source de ce qu'il modifie : ce n'est pas un écart). Il vérifie :
    - **base → classeur** : chaque ligne typée lit, dans les cellules que cite son `source_ref`, chacun de ses textes et nombres, une fois défaites les
-     corrections d'orthographe des migrations (registres 0003, 0005, 0006) et appliqué `tools/sheets/corrections.json`, et avec la valeur d'import d'une
-     colonne que le site de dev a modifiée depuis (`historique_modification` : le site est la source de ce qu'il modifie, ce n'est pas un écart) ;
-   - **classeur → base** : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre des cellules ignorées
-     (`tools/sources/ignorer/<classeur>.json` : onglets, plages, motif de valeur, **raison** écrite) ;
-   - **notes de cellule** : les mêmes dans le classeur et dans `note_cellule`.
-   Le test fait échouer la CI au moindre écart, avec le relevé complet. Le passage des textes aux colonnes typées est garanti par les tests des
-   découpages (`classe-champs.mjs`, `sort-analyse.mjs`, `metier-champs.mjs`…, rejoués sur toute la base).
+     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
+     elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
+     cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
+     (listé, pas compté). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
+   - **classeur → base** : chaque cellule non vide est citée par au moins une ligne ou rangée dans le registre (`regles`) ; et **chaque mot d'une cellule
+     citée** se lit dans les valeurs des lignes qui la citent (libellés des lignes visées par leurs clés étrangères compris, jamais leurs identifiants ni
+     leur provenance) : sinon le classeur dit quelque chose que la base n'a pas ;
+   - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
+   Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
+   **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R81) ; sa réponse s'inscrit dans le registre (`conflits`).
+   Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs`), ne contient que des entrées
+   **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage, consignes de navigation),
+   `libelles` (intitulés de mise en page d'une cellule citée, bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `derivees` (colonnes que l'import
+   calcule, avec le test qui les garantit), `voulus` (écart voulu hors des registres d'orthographe : décision R…, migration de données), `conflits`.
+   Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le compte. Le test fait échouer la CI au moindre écart d'un
+   classeur `rapproche`, avec le relevé complet ; le passage des textes aux colonnes typées est garanti par les tests des découpages (`classe-champs.mjs`,
+   `sort-analyse.mjs`, `metier-champs.mjs`…, rejoués sur toute la base). Limites connues : deux nombres permutés entre deux cellules citées par la même
+   ligne, ou deux descriptions échangées dans une même cellule fusionnée citée par plusieurs lignes, ne se voient pas ; une formule et une liste de
+   validation ne sont pas lues (seulement la valeur de la cellule).
 3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané ; `git diff sources/raw/classeurs/<classeur>.json`
-   donne les cellules changées, le rapprochement les lignes qu'elles touchent (écarts) et les cellules nouvelles (non citées). La liste est présentée au
-   propriétaire ; une fois validée, une migration (`ingenieur-donnees`) applique les changements, le registre des cellules ignorées suit, et le test
-   redevient vert. Une valeur changée **à la fois** dans le classeur et sur le site de dev est un conflit : présenté avec les deux valeurs, jamais tranché
-   sans le propriétaire (sa décision du 2026-10-15). Une règle nouvelle ou changée suit la règle d'or : citée, jamais déduite.
+   donne les cellules changées, le rapprochement les lignes qu'elles touchent (écarts), les mots nouveaux et les cellules nouvelles (non citées). La liste
+   est présentée au propriétaire ; une fois validée, une migration (`ingenieur-donnees`) applique les changements, le registre suit, et le test redevient
+   vert. Une règle nouvelle ou changée suit la règle d'or : citée, jamais déduite.
 
-État (2026-10-15) : « Classe Maverick V7 » rapproché, 0 écart (1 228 lignes typées, 3 976 cellules, 43 notes ; 270 cellules ignorées : statistiques
-d'usage « Combo stat », bannières, consignes du Sommaire). Les autres classeurs suivent.
+État (2026-10-15) : « Classe Maverick V7 » rapproché, 0 écart (1 228 lignes typées, 3 964 cellules non vides, 43 notes ; 270 cellules ignorées :
+statistiques d'usage « Combo stat », bannières, consignes du Sommaire ; 2 libellés de mise en page). Les six autres classeurs sont enregistrés
+`en_cours` (instantané gardé, analyse des écarts en cours) : leurs écarts sont relevés dans `docs/sql/rapprochement-classeurs.md`.
 
 ## De la source au wiki
 

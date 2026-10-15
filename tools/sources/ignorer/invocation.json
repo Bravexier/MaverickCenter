@@ -1,5 +1,8 @@
 {
-  "$comment": "Registre du classeur pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit).",
+  "$comment": "Registre du classeur « Invocation » pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `libelles`, les intitulés de mise en page des cellules citées ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit). Chaque entrée a sa raison écrite.",
   "regles": [],
-  "derivees": {}
+  "derivees": {},
+  "libelles": [
+    {"valeurs": "^(Santé|Chakra|Barrière|Dégâts|Défense|Vitesse|FPVSIA|Capacité\\(s\\))$", "raison": "Intitulés de la carte d'une créature invoquée (répétés sur chaque carte des trois onglets) : la valeur est dans la case voisine, que cite la même ligne (`creature` : santé, chakra, barrière, dégâts, défense, vitesse, FPVSIA ; `creature_capacite` sous « Capacité(s) »)."}
+  ]
 }

@@ -1,5 +1,11 @@
 {
   "$comment": "Registre du classeur pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit).",
-  "regles": [],
+  "regles": [
+    { "onglets": ["Mode Hyper"], "plages": ["A1"], "valeurs": "^LISTE DES EFFETS MODE HYPER$", "raison": "Titre de l'onglet en capitales : la page guide/liste-des-effets-mode-hyper le porte (« Liste des effets mode hyper ») et cite l'onglet entier." },
+    { "onglets": ["Mode Hyper"], "plages": ["A2", "F2", "P2"], "valeurs": "^(Magie/Type|Mono magie|Bi magie)$", "raison": "En-têtes de colonne du tableau des magies : leur sens est la colonne `variante` de mode_hyper_effet (mono, bi, mono_et_bi pour une cellule fusionnée sur F:Y) et la portée (general / magie)." },
+    { "onglets": ["Mode Hyper"], "plages": ["A63", "F63"], "valeurs": "^(Race|Effet)$", "raison": "En-têtes de colonne du tableau des races (ligne 63) : les 27 lignes mode_hyper_effet de portée 'race' (version classeur_modes) citent A64:Y144, nom de la race et effet." },
+    { "onglets": ["Mode Super"], "plages": ["A1"], "valeurs": "^LISTE DES EFFETS MODE SUPER$", "raison": "Titre de l'onglet en capitales : la page guide/liste-des-effets-mode-super le porte (« Liste des effets mode super ») et cite l'onglet entier." },
+    { "onglets": ["Mode Super"], "plages": ["A2", "F2", "T2"], "valeurs": "^(Objet|Effets mode super|Description/apparence)$", "raison": "En-têtes de colonne du tableau des objets : colonnes nom, effets_brut (effet_passif, effet_actif) et description de mode_super_objet, dont les 15 lignes citent A3:AG62." }
+  ],
   "derivees": {}
 }
