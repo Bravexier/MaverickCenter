@@ -21,6 +21,10 @@ import { url } from '../lib/wiki';
 //     (GET <base>api/debug/systeme/), même instance, toutes les 30 s ;
 //   - « Journaux du serveur » : le journal du service en mémoire (GET <base>api/debug/journal/, serveur/journal-du-service.mjs ; rendu pur :
 //     lib/debug-journaux.mjs), relevé toutes les 2 s, filtré dans la page ; une colonne Durée (isolée, triable) et « plus lent que … ms » (?min_ms=).
+//   - « Espace disque du serveur », tout en bas (demande du propriétaire du 2026-10-15 : « la métrique de la place occupée sur le serveur sur la
+//     place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») : une jauge pleine largeur,
+//     un segment coloré par type (`disque.repartition` de GET <base>api/debug/systeme/, même instance, même relève que « Système »), le libre en
+//     clair, et la légende (nom, taille, part du total) ; rendu pur : lib/debug-metriques.mjs#htmlDeLEspaceDisque.
 // Le script (scripts/debug.mjs) lit d'abord GET <base>api/etat/ : sans `edition: true`, le service n'est pas celui du site de dev et il s'arrête.
 // Build de production (SITE_MODE=prod) et version portable (pas de service ; tools/build-artifact.mjs ne l'emporte pas) : une phrase, sans script.
 // Hors du menu ailleurs que sur le site de dev (lib/nav.mjs#entreesDuMenu). CSS : styles/debug/, inséré ici (?raw).
@@ -29,7 +33,7 @@ const portable = process.env.INLINE_CSS === '1';
 const actif = !site.prod && !portable;
 ---
 
-<Base title="Debug" description="Outils du serveur de dev : tester l’API du service, suivre ses performances, son système et ses journaux">
+<Base title="Debug" description="Outils du serveur de dev : tester l’API du service, suivre ses performances, son système, ses journaux et son espace disque">
   <style is:inline set:html={debugCss}></style>
   <h1>Debug</h1>
   {
@@ -279,6 +283,16 @@ const actif = !site.prod && !portable;
             </table>
             <p class="debug-journaux__vide" data-journaux-vide>Aucune entrée pour l’instant.</p>
           </div>
+        </section>
+
+        <section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre" hidden>
+          <h2 id="debug-espace-titre">Espace disque du serveur</h2>
+          <p class="debug-petit">
+            La place occupée sur la place totale du disque de l’instance choisie (« Instance », dans Performances), par type de données ; le
+            service relève la répartition toutes les 10 minutes. Survolez un segment ou un type de la légende pour le repérer.
+          </p>
+          <p class="debug-annonce" data-espace-annonce role="status" aria-live="polite"></p>
+          <div class="debug-espace__contenu" data-espace-jauge></div>
         </section>
       </div>
     ) : (

@@ -15,6 +15,12 @@
 //     User-Agent n'est pas gardé), requêtes simultanées ;
 //   - chaque minute : mémoire (RSS, tas, externe), délai de la boucle d'événements (p50, p99, max), CPU, charge, disque libre du dossier de la base
 //     vivante, tailles (base vivante et son WAL, archives/, mise-a-jour/, métriques), requêtes en cours, entrées du journal ;
+//   - toutes les 10 minutes : la répartition du disque par type de données (demande du propriétaire du 2026-10-15 : « la place occupée sur le serveur
+//     sur la place totale sous forme de jauge, colorée en fonction du type de données ») — REPARTITION, releverRepartition, repartitionDu : base de
+//     données, images importées, mises à jour, métriques, code, données, images et autres fichiers du site, système et autres, libre ; la somme fait
+//     exactement la taille du disque (statfs du dossier de la base vivante) ; le parcours des fichiers est mis en cache 10 minutes et borné (PARCOURS) ;
+//     sur le VPS, le relevé de l'hôte (deploy/vps/volume.sh → volume-hote.json du dossier des métriques, toutes les 15 minutes : lireReleveDeLHote)
+//     y ajoute ce que le conteneur ne voit pas — Docker, journaux, installations (REPARTITION_HOTE) et l'autre instance ;
 //   - les évènements du service avec leur durée (démarrage, base vivante, rejeu du journal, lots d'édition, mise à jour, appels GitHub, maintenance,
 //     erreurs 5xx avec l'empreinte de leur pile, purge) ;
 //   - les pages vues mesurées par le navigateur (POST /api/metriques/page/ : temps jusqu'au premier octet, DOMContentLoaded, chargement, LCP), ouverte
@@ -26,17 +32,28 @@
 // interpolation linéaire dans la classe), octets, requêtes et temps SQL, la requête SQL la plus lente ; pages vues par heure × page ; navigateurs et
 // origines par heure. Versement : une transaction par minute (et à l'arrêt). Rétention : RETENTION, purge et VACUUM incrémental une fois par jour.
 // Requêtes brutes : jamais persistées par défaut (les CAPACITE_REQUETES dernières en mémoire, site de dev) ; MAVERICK_METRIQUES_BRUTES=1 les garde
-// 30 jours (environ 150 octets chacune : 1,5 Mo par jour pour 10 000 requêtes).
+// 30 jours (environ 145 octets chacune : 1,4 Mo par jour pour 10 000 requêtes).
+//
+// Volume (mesuré le 2026-10-15 : trois jours simulés, octets des pages SQLite par table ; OCTETS_PAR_LIGNE_ESTIMES) : il suit le nombre de routes
+// et surtout de PAGES DISTINCTES vues par heure (page_heure ~255 octets et origine_heure ~56 octets par page × heure, agregat_heure ~150 octets par
+// route × méthode × heure), pas le nombre de requêtes ; le reste est fixe (échantillons ~140 Kio par jour gardés 14 jours, répartition du disque
+// ~23 Kio par jour). Par instance, à rétention pleine (400 jours) : calme (1 000 requêtes par jour, 10 routes et 10 pages par heure) ~400 Kio par
+// jour, ~60 Mio ; moyen (3 000, 25 routes, 30 pages) ~0,8 Mio par jour, ~160 Mio ; chargé (20 000, 40 routes, 100 pages) ~3 Mio par jour,
+// ~680 Mio (origine_heure ~380 Mio, page_heure ~180 Mio). Le service sert l'estimation (GET /api/debug/systeme/, `volume`) et une alerte prévient
+// au-delà de 200 Mio, mesurés ou attendus à rétention pleine.
 //
 // Une panne de la base des métriques (disque plein, fichier verrouillé, dossier absent) ne fait jamais échouer une requête ni le démarrage : elle est
 // notée une fois au journal (« ERREUR métriques : … »), la collecte continue en mémoire (bornée : MAX_EN_ATTENTE) et le versement suivant réessaie.
-// Node seulement (node:sqlite, node:perf_hooks…), sans dépendance ; le registre des ressources (pur) donne les routes de /api/v1/.
+// Node seulement (node:sqlite, node:perf_hooks…), sans dépendance ; le registre des ressources (pur) donne les routes de /api/v1/, le modèle de
+// l'édition et le format des fiches les colonnes d'image de la base vivante (octetsDesImages).
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, statfsSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync } from 'node:fs';
 import { loadavg, totalmem } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
+import { colonnesImage, TABLES } from '../src/lib/edition-modele.mjs';
+import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -57,6 +74,8 @@ export const RETENTION = Object.freeze({
   origines: 400, // page d'origine × route, par heure
   echantillons_minute: 14, // échantillons système par minute…
   echantillons_heure: 400, // … puis résumés par heure
+  repartition_10min: 14, // répartition du disque, toutes les 10 minutes…
+  repartition_jour: 400, // … puis la dernière de chaque jour
   evenements: 400,
   requetes_brutes: 30, // seulement si MAVERICK_METRIQUES_BRUTES=1
 });
@@ -68,7 +87,9 @@ export const INTERVALLE_PURGE = 86_400_000;
 /** Requêtes gardées en mémoire, une à une (site de dev : GET /api/debug/metriques/requetes/). */
 export const CAPACITE_REQUETES = 2000;
 /** Bornes de la mémoire tant que la base ne reçoit rien (panne) : au-delà, les plus anciennes entrées sont perdues (comptées). */
-export const MAX_EN_ATTENTE = Object.freeze({ agregats: 20_000, pages: 20_000, navigateurs: 5_000, origines: 20_000, minutes: 2_880, evenements: 2_000, brutes: 50_000 });
+export const MAX_EN_ATTENTE = Object.freeze({
+  agregats: 20_000, pages: 20_000, navigateurs: 5_000, origines: 20_000, minutes: 2_880, repartitions: 288, evenements: 2_000, brutes: 50_000,
+});
 /** Pages distinctes gardées par heure (balise et Referer) : au-delà, « {autres} » (cardinalité bornée même devant des adresses fabriquées). */
 export const PAGES_PAR_HEURE = 1000;
 /** Balise des pages : corps de 2 Kio au plus, valeurs de 0 à 120 000 ms, 600 balises par minute au plus (toutes pages confondues). */
@@ -98,8 +119,84 @@ export const SEUILS = Object.freeze({
   boucle_p99_ms: 100,
   memoire_part: 0.8,
 });
-/** Version du schéma de la base des métriques (PRAGMA user_version). */
-export const SCHEMA_METRIQUES = 1;
+/**
+ * Version du schéma de la base des métriques (PRAGMA user_version) ; 2 : table disque_repartition (créée dans une base plus ancienne à l'ouverture) ;
+ * 3 : sa colonne `reserve` (la réserve de root, ajoutée à l'ouverture d'une base plus ancienne ; absente, la réserve reste dans « Système et autres »).
+ */
+export const SCHEMA_METRIQUES = 3;
+
+/**
+ * La répartition du disque (GET /api/debug/systeme/, `disque.repartition` ; demande du propriétaire du 2026-10-15 : « la métrique de la place
+ * occupée sur le serveur sur la place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») : les
+ * catégories, dans l'ordre de la jauge (clés figées : la page Debug en tire ses couleurs).
+ *   base          base vivante (+ -wal, -shm) et archives/ de ses anciennes versions (fiches comprises), moins les images qu'elle contient
+ *   images        octets des colonnes d'image de la base vivante (portraits des prétirés et du bestiaire : octetsDesImages) et portraits publiés du site
+ *   mises-a-jour  lots figés de la page « Mise à jour » (db/mise-a-jour/)
+ *   metriques     le dossier des métriques (les fichiers des deux instances quand il est partagé)
+ *   site-code     _serveur/ (le service livré), .html, .js, .mjs, .css, .json (hors données) et .map du site
+ *   site-donnees  donnees/ du site hors pages (.db des règles et de la production, reference.json), index de recherche, règles de la fiche
+ *   site-images   .png .webp .jpg .jpeg .gif .svg .ico .avif hors portraits
+ *   site-autres   le reste du site (polices, textes…)
+ *   (docker, journaux, installations : REPARTITION_HOTE, seulement avec le relevé de l'hôte, juste avant « autres »)
+ *   autres        « Système et autres » : la place prise que rien de ce qui précède n'explique — système, et sans relevé de l'hôte Docker et ses
+ *                 journaux, l'autre instance, les autres fichiers de db/
+ *   reserve       « Réservé au système » : les blocs libres que le système de fichiers garde pour root (statfs : bfree − bavail ; ext4 : 5 % par
+ *                 défaut), ni pris ni disponibles pour le service — à part, pour que « occupé » soit la place prise de `df` (Used) et « libre » sa
+ *                 place disponible (Avail)
+ *   libre         la place libre pour le service (statfs : blocs disponibles), la même que `disque.libre`
+ */
+export const REPARTITION = Object.freeze([
+  { cle: 'base', libelle: 'Base de données' },
+  { cle: 'images', libelle: 'Images importées' },
+  { cle: 'mises-a-jour', libelle: 'Mises à jour' },
+  { cle: 'metriques', libelle: 'Métriques' },
+  { cle: 'site-code', libelle: 'Code du site' },
+  { cle: 'site-donnees', libelle: 'Données du site' },
+  { cle: 'site-images', libelle: 'Images du site' },
+  { cle: 'site-autres', libelle: 'Autres fichiers du site' },
+  { cle: 'autres', libelle: 'Système et autres' },
+  { cle: 'reserve', libelle: 'Réservé au système' },
+  { cle: 'libre', libelle: 'Libre' },
+].map((c) => Object.freeze(c)));
+/** Les catégories que le disque donne (statfs), sans compter de fichiers : « Système et autres » (le reste), la réserve de root et le libre. */
+const CATEGORIES_DU_DISQUE = 3;
+/** Les catégories comptées fichier par fichier (toutes sauf « autres », « reserve » et « libre », qui se déduisent du disque). */
+export const CATEGORIES_COMPTEES = Object.freeze(REPARTITION.slice(0, -CATEGORIES_DU_DISQUE).map((c) => c.cle));
+/**
+ * Les catégories que seul l'hôte voit (relevé de deploy/vps/volume.sh, `volume-hote.json` du dossier des métriques : lireReleveDeLHote), rangées
+ * juste avant « Système et autres » ; présentes dans la répartition seulement quand un relevé de l'hôte est pris en compte (sinon leur place reste
+ * dans « Système et autres » : jamais un « 0 » qui ferait croire à un disque sans Docker ni journaux).
+ *   docker         le dossier de Docker (images, conteneurs, volumes), moins les journaux des conteneurs
+ *   journaux       journaux des conteneurs (docker logs), /var/log (journal de systemd, Caddy), journaux des scripts des instances
+ *   installations  restes d'une installation (.installation.*, .db.copie.*), téléchargements des mises à jour, installateurs copiés à la main
+ */
+export const REPARTITION_HOTE = Object.freeze([
+  { cle: 'docker', libelle: 'Docker (images et conteneurs)' },
+  { cle: 'journaux', libelle: 'Journaux' },
+  { cle: 'installations', libelle: 'Installations et copies' },
+].map((c) => Object.freeze(c)));
+/** Les clés de REPARTITION_HOTE. */
+export const CATEGORIES_HOTE = Object.freeze(REPARTITION_HOTE.map((c) => c.cle));
+/**
+ * Le relevé de l'hôte (deploy/vps/volume.sh, toutes les 15 minutes) : `fichier` dans le dossier des métriques ; périmé au-delà de `perime_ms` (le
+ * minuteur ne tourne plus) ; ignoré si le disque qu'il décrit n'a pas la taille de celui du service (à `ecart_total` près : un autre disque).
+ */
+export const RELEVE_HOTE = Object.freeze({ fichier: 'volume-hote.json', format: 1, perime_ms: 3_600_000, ecart_total: 0.01 });
+/**
+ * Les éléments du relevé de l'hôte que le service de l'instance mesure déjà lui-même (base vivante, archives, lots de mise à jour, site : chemins
+ * écrits par volume.sh) : pour sa propre instance, ils ne sont pas repris (les images de sa base y sont séparées, à l'octet près).
+ */
+const DEJA_MESURES_PAR_LE_SERVICE = /\/db\/vivante\.db$|\/db\/archives$|\/db\/mise-a-jour$|\/site$/;
+/**
+ * Parcours des fichiers de la répartition : au plus une fois toutes les 10 minutes (le résultat est gardé), arrêté après `fichiers_max` fichiers ou
+ * `duree_max_ms` (le reste tombe dans « Système et autres », et une alerte le dit) ; les liens symboliques ne sont jamais suivis. Le site construit
+ * compte environ 1 800 fichiers : quelques dizaines de ms.
+ */
+export const PARCOURS = Object.freeze({ intervalle_ms: 600_000, fichiers_max: 50_000, duree_max_ms: 1_000 });
+/** Extensions des images du site. */
+const EXTENSIONS_IMAGES = new Set(['png', 'webp', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'avif']);
+/** Extensions du code du site. */
+const EXTENSIONS_CODE = new Set(['html', 'js', 'mjs', 'cjs', 'css', 'json', 'map']);
 /** Résolution du moniteur de la boucle d'événements (ms) : Node mesure l'intervalle entre deux réveils, la résolution en est retirée. */
 const RESOLUTION_BOUCLE = 20;
 
@@ -457,6 +554,8 @@ CREATE TABLE IF NOT EXISTS systeme_heure (debut INTEGER PRIMARY KEY, echantillon
   cpu_max_pct REAL, charge_1_moyenne REAL, en_cours_max INTEGER, simultanees_max INTEGER, requetes INTEGER, erreurs_5xx INTEGER,
   disque_libre_min INTEGER, disque_total INTEGER, taille_vivante_max INTEGER, taille_archives_max INTEGER, taille_mise_a_jour_max INTEGER,
   taille_metriques_max INTEGER) STRICT;
+CREATE TABLE IF NOT EXISTS disque_repartition (instant INTEGER PRIMARY KEY, total INTEGER NOT NULL, libre INTEGER NOT NULL, comptes TEXT NOT NULL,
+  partiel INTEGER NOT NULL DEFAULT 0, reserve INTEGER) STRICT;
 CREATE TABLE IF NOT EXISTS evenement (id INTEGER PRIMARY KEY, instant_ms INTEGER NOT NULL, type TEXT NOT NULL, duree_ms REAL, detail TEXT) STRICT;
 CREATE INDEX IF NOT EXISTS evenement_instant ON evenement (instant_ms);
 CREATE TABLE IF NOT EXISTS requete_brute (id INTEGER PRIMARY KEY, instant_ms INTEGER NOT NULL, methode TEXT NOT NULL, route TEXT NOT NULL,
@@ -474,6 +573,8 @@ const TABLES_DATEES = Object.freeze([
   { table: 'origine_heure', colonne: 'debut', retention: 'origines' },
   { table: 'systeme_minute', colonne: 'instant', retention: 'echantillons_minute' },
   { table: 'systeme_heure', colonne: 'debut', retention: 'echantillons_heure' },
+  // toutes les 10 minutes pendant 14 jours (purger : la dernière de chaque jour reste au-delà), puis 400 jours
+  { table: 'disque_repartition', colonne: 'instant', retention: 'repartition_jour' },
   { table: 'evenement', colonne: 'instant_ms', retention: 'evenements', ms: true },
   { table: 'requete_brute', colonne: 'instant_ms', retention: 'requetes_brutes', ms: true },
 ]);
@@ -557,17 +658,245 @@ export function tailleDossier(chemin, profondeur = 2) {
   return total;
 }
 
-/** Le disque d'un dossier : { dossier, libre, total, utilise, part_libre } (statfs : place disponible pour le service) ; null si illisible. */
+/**
+ * Le disque d'un dossier : { dossier, libre, total, utilise, reserve, part_libre } (statfs : `libre` = place disponible pour le service, `reserve` =
+ * blocs libres gardés pour root ; total = utilise + reserve + libre) ; null si illisible.
+ */
 export function disqueDe(dossier) {
   if (!dossier) return null;
   try {
     const s = statfsSync(dossier);
     const total = s.blocks * s.bsize;
     const libre = s.bavail * s.bsize;
-    return { dossier, libre, total, utilise: total - s.bfree * s.bsize, part_libre: total ? Math.round((libre / total) * 10_000) / 10_000 : null };
+    return {
+      dossier, libre, total, utilise: total - s.bfree * s.bsize, reserve: Math.max(0, (s.bfree - s.bavail) * s.bsize),
+      part_libre: total ? Math.round((libre / total) * 10_000) / 10_000 : null,
+    };
   } catch {
     return null;
   }
+}
+
+/** Les octets qu'un fichier occupe sur le disque : ses blocs alloués (st_blocks × 512) quand le système les donne, sinon sa taille (Windows). */
+export function octetsSurDisque(stat) {
+  if (!stat) return 0;
+  return Number.isFinite(stat.blocks) && stat.blocks > 0 ? stat.blocks * 512 : Number(stat.size) || 0;
+}
+
+/**
+ * La catégorie d'un fichier du site construit (REPARTITION), d'après son chemin relatif au dossier du site (« / » comme séparateur) :
+ * _serveur/… → site-code ; une image sous un dossier « portraits » (bestiaire/portraits/<empreinte>.webp : lib/portraits-publies.mjs) → images
+ * (importées) ; donnees/ hors pages .html, un .db, search-index.json, fiche/regles.json → site-donnees ; une autre image → site-images ; .html, .js,
+ * .mjs, .cjs, .css, .json, .map → site-code ; le reste → site-autres.
+ */
+export function categorieDuFichierDuSite(relatif) {
+  const chemin = String(relatif ?? '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (chemin.startsWith('_serveur/')) return 'site-code';
+  const nomFichier = chemin.slice(chemin.lastIndexOf('/') + 1);
+  const point = nomFichier.lastIndexOf('.');
+  const extension = point > 0 ? nomFichier.slice(point + 1).toLowerCase() : '';
+  if (EXTENSIONS_IMAGES.has(extension) && /(^|\/)portraits\//.test(chemin)) return 'images';
+  if ((chemin.startsWith('donnees/') && extension !== 'html') || extension === 'db' || nomFichier === 'search-index.json' || chemin === 'fiche/regles.json') return 'site-donnees';
+  if (EXTENSIONS_IMAGES.has(extension)) return 'site-images';
+  if (EXTENSIONS_CODE.has(extension)) return 'site-code';
+  return 'site-autres';
+}
+
+/**
+ * Parcourt un dossier sans jamais suivre un lien symbolique : `compter(relatif, octets)` pour chaque fichier ordinaire (relatif avec « / »), et
+ * `compterDossier(octets)` pour chaque dossier lu, la racine comprise (les blocs d'un dossier lui-même : comme `du`, et comme deploy/vps/volume.sh,
+ * pour que les deux mesures tombent à l'octet près).
+ * `borne` = { fichiers (restants), fin (performance.now() limite), exclus (dossiers absolus à sauter : déjà comptés ailleurs), partiel } est partagée
+ * par les parcours d'un même relevé ; une borne atteinte arrête le parcours et pose `partiel`.
+ */
+function parcourir(racine, compter, borne, compterDossier = () => {}) {
+  const pile = [''];
+  while (pile.length) {
+    const rel = pile.pop();
+    const dossier = rel ? join(racine, rel) : racine;
+    let noms;
+    try {
+      noms = readdirSync(dossier, { withFileTypes: true });
+      compterDossier(octetsSurDisque(lstatSync(dossier)));
+    } catch {
+      continue; // absent ou illisible
+    }
+    for (const n of noms) {
+      if (borne.fichiers <= 0 || performance.now() > borne.fin) {
+        borne.partiel = true;
+        return;
+      }
+      const relatif = rel ? `${rel}/${n.name}` : n.name;
+      const absolu = join(racine, relatif);
+      if (n.isDirectory()) {
+        if (!borne.exclus.has(resolve(absolu))) pile.push(relatif);
+        continue;
+      }
+      if (!n.isFile()) continue; // lien symbolique (jamais suivi), socket, tube…
+      borne.fichiers -= 1;
+      try {
+        compter(relatif, octetsSurDisque(lstatSync(absolu)));
+      } catch {
+        // disparu entre la lecture du dossier et la mesure
+      }
+    }
+  }
+}
+
+/**
+ * Le relevé des catégories comptées de la répartition du disque (CATEGORIES_COMPTEES) : base vivante (+ -wal, -shm) et archives/ moins les images
+ * qu'elle contient (`imagesDeLaBase`, octets : octetsDesImages), images (celles-ci + les portraits publiés du site), lots de mise à jour, dossier des
+ * métriques, fichiers du site (categorieDuFichierDuSite). Un dossier déjà compté n'est pas recompté sous un autre (ni db/ s'il était dans le site).
+ * Octets alloués sur le disque (octetsSurDisque), les blocs des dossiers eux-mêmes compris (avec leur contenu ; ceux du site avec ses autres
+ * fichiers), comme `du` et deploy/vps/volume.sh. Rend { comptes: { cle: octets }, partiel, fichiers (nombre mesuré), duree_ms }. Jamais d'exception.
+ * @param {{ vivante?: string|null, archives?: string|null, miseAJour?: string|null, metriques?: string|null, site?: string|null,
+ *   imagesDeLaBase?: number, bornes?: typeof PARCOURS }} o
+ */
+export function releverRepartition({ vivante = null, archives = null, miseAJour = null, metriques = null, site = null, imagesDeLaBase = 0, bornes = PARCOURS } = {}) {
+  const t0 = performance.now();
+  const comptes = Object.fromEntries(CATEGORIES_COMPTEES.map((c) => [c, 0]));
+  const exclus = new Set([archives, miseAJour, metriques, vivante ? dirname(vivante) : null].filter(Boolean).map((d) => resolve(d)));
+  const borne = { fichiers: bornes.fichiers_max, fin: t0 + bornes.duree_max_ms, exclus, partiel: false };
+  const octetsDe = (chemin) => {
+    try {
+      return octetsSurDisque(statSync(chemin));
+    } catch {
+      return 0;
+    }
+  };
+  let base = 0;
+  if (vivante) for (const suffixe of ['', '-wal', '-shm']) base += octetsDe(`${vivante}${suffixe}`);
+  const dans = (cle) => (_, o) => { comptes[cle] += o; };
+  if (archives) parcourir(archives, (_, o) => { base += o; }, borne, (o) => { base += o; });
+  const images = Math.max(0, Math.min(Math.round(Number(imagesDeLaBase) || 0), base));
+  comptes.base = base - images;
+  comptes.images = images;
+  if (miseAJour) parcourir(miseAJour, dans('mises-a-jour'), borne, (o) => dans('mises-a-jour')(null, o));
+  if (metriques) parcourir(metriques, dans('metriques'), borne, (o) => dans('metriques')(null, o));
+  // les dossiers du site (leurs blocs) : avec ses autres fichiers, comme l'hôte (« réglages, scripts et dossiers de l'instance »)
+  if (site && !exclus.has(resolve(site))) parcourir(site, (rel, o) => { comptes[categorieDuFichierDuSite(rel)] += o; }, borne, (o) => dans('site-autres')(null, o));
+  return { comptes, partiel: borne.partiel, fichiers: bornes.fichiers_max - borne.fichiers, duree_ms: arrondi(performance.now() - t0) };
+}
+
+/**
+ * La répartition d'un disque : { repartition: [{ cle, libelle, octets }] dans l'ordre de REPARTITION, depasse } — la somme fait EXACTEMENT `total`.
+ * « libre » = `libre` (borné à [0, total]) ; « reserve » = `reserve` (la réserve de root, bornée à ce qui reste ; 0 si inconnue : elle tombe alors
+ * dans « autres ») ; « autres » = total − libre − réserve − les catégories comptées (place prise que rien n'explique), jamais négatif : si les
+ * catégories comptées dépassent la place prise (un dossier sur un autre disque, un fichier compté deux fois…), elles y sont ramenées au prorata (à
+ * l'octet près, le reste aux plus grandes) et `depasse` = { compte, occupe } le dit (alerte) ; sinon `depasse` = null. La place prise (`df` : Used)
+ * est donc la somme de tout sauf « reserve » et « libre ».
+ * Les catégories de l'hôte (REPARTITION_HOTE) n'y sont, juste avant « autres », que si `comptes` en porte au moins une (relevé de l'hôte pris en
+ * compte : comptesAvecLHote).
+ */
+export function repartitionDu({ total, libre, reserve = 0, comptes = {} }) {
+  const t = Math.max(0, Math.round(Number(total) || 0));
+  const l = Math.min(t, Math.max(0, Math.round(Number(libre) || 0)));
+  const r = Math.min(t - l, Math.max(0, Math.round(Number(reserve) || 0)));
+  const occupe = t - l - r;
+  const avecHote = CATEGORIES_HOTE.some((c) => Object.hasOwn(comptes ?? {}, c));
+  const categories = avecHote ? [...CATEGORIES_COMPTEES, ...CATEGORIES_HOTE] : CATEGORIES_COMPTEES;
+  const libelles = avecHote ? [...REPARTITION.slice(0, -CATEGORIES_DU_DISQUE), ...REPARTITION_HOTE, ...REPARTITION.slice(-CATEGORIES_DU_DISQUE)] : REPARTITION;
+  let valeurs = categories.map((c) => Math.max(0, Math.round(Number(comptes?.[c]) || 0)));
+  const somme = valeurs.reduce((a, b) => a + b, 0);
+  let depasse = null;
+  if (somme > occupe) {
+    depasse = { compte: somme, occupe };
+    const reduites = valeurs.map((v) => Math.floor((v / somme) * occupe));
+    const ordre = valeurs.map((_, i) => i).sort((a, b) => valeurs[b] - valeurs[a] || a - b);
+    let ecart = occupe - reduites.reduce((a, b) => a + b, 0);
+    // l'arrondi laisse quelques octets (moins d'un par catégorie) : aux plus grandes ; jamais en dessous de zéro
+    for (let j = 0; ecart !== 0 && j < 10 * ordre.length; j += 1) {
+      const i = ordre[j % ordre.length];
+      if (ecart > 0) {
+        reduites[i] += 1;
+        ecart -= 1;
+      } else if (reduites[i] > 0) {
+        reduites[i] -= 1;
+        ecart += 1;
+      }
+    }
+    valeurs = reduites;
+  }
+  const autres = occupe - valeurs.reduce((a, b) => a + b, 0);
+  const octets = [...valeurs, autres, r, l];
+  return { repartition: libelles.map((c, i) => ({ cle: c.cle, libelle: c.libelle, octets: octets[i] })), depasse };
+}
+
+/**
+ * Le relevé de l'hôte (deploy/vps/volume.sh : `volume-hote.json` du dossier des métriques, format 1 ; docs/serveur.md, « Jauge de l'espace
+ * disque ») vu par l'instance `instance` : rend null sans fichier (NAS, développement), sinon { instant (ms), utilise, raison, comptes } —
+ * `utilise` faux avec sa `raison` s'il est illisible, d'un autre format, périmé (plus d'une heure : RELEVE_HOTE.perime_ms) ou s'il décrit un autre
+ * disque (taille à plus de 1 % de `total`, celle que mesure le service) ; `comptes` = { cle: octets } des éléments à AJOUTER aux mesures du
+ * service : ceux d'une autre instance ou d'aucune (Docker, journaux du système, sauvegardes…), et ceux de cette instance que le service ne voit pas
+ * (autres fichiers de db/, réglages et scripts du dossier de l'instance, ses journaux, restes d'installation : DEJA_MESURES_PAR_LE_SERVICE) ;
+ * jamais `metriques` (le service compte déjà tout le dossier partagé) ni `hors_disque` ; une clé inconnue est laissée à « Système et autres ».
+ */
+export function lireReleveDeLHote(chemin, { instance, maintenant = Date.now(), total = null } = {}) {
+  let texte;
+  try {
+    texte = readFileSync(chemin, 'utf8');
+  } catch {
+    return null;
+  }
+  const refus = (raison, instant = null) => ({ instant, utilise: false, raison, comptes: {} });
+  let r;
+  try {
+    r = JSON.parse(texte);
+  } catch {
+    return refus('relevé de l’hôte illisible (JSON invalide)');
+  }
+  if (!r || typeof r !== 'object' || r.format !== RELEVE_HOTE.format || !Array.isArray(r.elements)) return refus(`relevé de l’hôte d’un format inconnu (${r?.format ?? '?'})`);
+  const instant = Date.parse(r.instant);
+  if (!Number.isFinite(instant)) return refus('relevé de l’hôte sans instant');
+  if (maintenant - instant > RELEVE_HOTE.perime_ms) return refus(`relevé de l’hôte périmé (${isoMs(instant)}) : le minuteur maverick-volume.timer ne tourne plus`, instant);
+  const totalHote = Number(r.disque?.total);
+  if (total && (!Number.isFinite(totalHote) || Math.abs(totalHote - total) > RELEVE_HOTE.ecart_total * total)) {
+    return refus('relevé de l’hôte fait sur un autre disque que celui du service', instant);
+  }
+  const connues = new Set([...CATEGORIES_COMPTEES, ...CATEGORIES_HOTE]);
+  const comptes = Object.fromEntries(CATEGORIES_HOTE.map((c) => [c, 0]));
+  for (const e of r.elements) {
+    if (!e || typeof e !== 'object' || !connues.has(e.cle) || e.cle === 'metriques') continue;
+    const octets = Math.max(0, Math.round(Number(e.octets) || 0));
+    if (!octets) continue;
+    if (e.instance === instance && DEJA_MESURES_PAR_LE_SERVICE.test(String(e.chemin ?? ''))) continue;
+    comptes[e.cle] = (comptes[e.cle] ?? 0) + octets;
+  }
+  return { instant, utilise: true, raison: null, comptes };
+}
+
+/** Les comptes du service et ceux du relevé de l'hôte additionnés (lireReleveDeLHote ; les catégories de l'hôte toujours présentes, même à 0). */
+export function comptesAvecLHote(comptes, hote) {
+  if (!hote?.utilise) return comptes;
+  const somme = { ...comptes };
+  for (const [cle, octets] of Object.entries(hote.comptes)) somme[cle] = (somme[cle] ?? 0) + octets;
+  return somme;
+}
+
+/**
+ * Les colonnes d'image de la base vivante : celles de lib/edition-modele.mjs#colonnesImage (portraits des cartes et des espèces du bestiaire) et le
+ * « portrait » des tables de la section 13 (fiches de personnages) — seulement celles que la base a. [{ table, colonne }].
+ */
+export function colonnesImagesDe(db) {
+  const candidates = [
+    ...Object.keys(TABLES).flatMap((table) => colonnesImage(table).map((colonne) => ({ table, colonne }))),
+    ...TABLES_FICHES.map((table) => ({ table, colonne: 'portrait' })),
+  ];
+  const vues = new Set();
+  return candidates.filter(({ table, colonne }) => {
+    const k = `${table}.${colonne}`;
+    if (vues.has(k)) return false;
+    vues.add(k);
+    return db.prepare(`PRAGMA table_info("${table}")`).all().some((c) => c.name === colonne);
+  });
+}
+
+/** Les octets des images stockées dans la base vivante (colonnesImagesDe ; octet_length : sans lire les images) ; 0 sans base. */
+export function octetsDesImages(db) {
+  if (!db) return 0;
+  let total = 0;
+  for (const { table, colonne } of colonnesImagesDe(db)) total += Number(db.prepare(`SELECT coalesce(sum(octet_length("${colonne}")), 0) AS n FROM "${table}"`).get().n);
+  return total;
 }
 
 /** La mémoire dont le processus dispose : la limite du conteneur (cgroup) si elle est connue, sinon la mémoire de la machine. */
@@ -590,8 +919,9 @@ export function empreinteDePile(erreur) {
  * cellule, × 1,25 (remplissage des pages) ; une table encore vide prend OCTETS_PAR_LIGNE_ESTIMES.
  */
 export const OCTETS_PAR_LIGNE_ESTIMES = Object.freeze({
-  agregat_heure: 110, agregat_5min: 110, page_heure: 150, navigateur_heure: 35, origine_heure: 60, systeme_minute: 120, systeme_heure: 140, evenement: 130,
-  requete_brute: 150,
+  // mesurés le 2026-10-15 (pages SQLite comprises) sur trois jours simulés de 3 000 requêtes : docs/serveur.md, « Métriques et volume »
+  agregat_heure: 150, agregat_5min: 150, page_heure: 255, navigateur_heure: 56, origine_heure: 56, systeme_minute: 100, systeme_heure: 140,
+  disque_repartition: 160, evenement: 200, requete_brute: 145,
 });
 const INDEX_DES_TABLES = { evenement: ['evenement_instant'], requete_brute: ['requete_brute_instant'] };
 
@@ -604,7 +934,12 @@ function octetsParLigne(db) {
   }
   const resultat = {};
   for (const t of TABLES_DATEES) {
-    const lignes = Number(db.prepare(`SELECT count(*) AS n FROM ${t.table}`).get().n);
+    let lignes = 0;
+    try {
+      lignes = Number(db.prepare(`SELECT count(*) AS n FROM ${t.table}`).get().n);
+    } catch {
+      // table absente d'une base plus ancienne (lue en lecture seule) : l'estimation
+    }
     const noms = [t.table, ...(INDEX_DES_TABLES[t.table] ?? [])];
     const octets = noms.reduce((n, nom) => n + Number(parNom.get(nom)?.payload ?? 0) + 4 * Number(parNom.get(nom)?.cellules ?? 0), 0);
     resultat[t.table] = lignes >= 20 && octets ? Math.round((octets / lignes) * 1.25) : OCTETS_PAR_LIGNE_ESTIMES[t.table];
@@ -620,6 +955,7 @@ function octetsParLigne(db) {
 function lignesParJour(db, t, maintenantS, age) {
   if (t.table === 'systeme_minute') return 1440;
   if (t.table === 'systeme_heure') return 24;
+  if (t.table === 'disque_repartition') return 86_400_000 / PARCOURS.intervalle_ms;
   const pas = { agregat_5min: 300, agregat_heure: 3600, page_heure: 3600, navigateur_heure: 3600, origine_heure: 3600 }[t.table];
   if (age >= 86_400 || !pas) {
     const fenetre = Math.min(86_400, Math.max(age, 600));
@@ -635,12 +971,32 @@ function lignesParJour(db, t, maintenantS, age) {
  * Les alertes de l'état du système (GET /api/debug/systeme/) : [{ niveau: info | avertissement | erreur, message }], d'après SEUILS — disque libre
  * (moins de 10 % ou de 2 Gio ; grave sous 5 % ou 1 Gio), base des métriques de plus de 200 Mio (ou qui les atteindra à rétention pleine), archives
  * qui grossissent, boucle d'événements lente (p99), mémoire au-delà de 80 % de la limite connue, réponses 5xx de la dernière heure, panne de la
- * base des métriques, requêtes brutes gardées.
+ * base des métriques, requêtes brutes gardées ; répartition du disque (`repartition` = { depasse, partiel, hote }) : fichiers comptés au-delà de la
+ * place prise (ramenés à elle dans la jauge), parcours arrêté à sa borne, relevé de l'hôte présent mais écarté (périmé, illisible, autre disque).
  */
-export function alertesDu({ disque = null, processus = null, volume = {}, erreursRecentes = 0, panne = null, brutes = false, croissanceArchives = null } = {}) {
+export function alertesDu({ disque = null, processus = null, volume = {}, erreursRecentes = 0, panne = null, brutes = false, croissanceArchives = null, repartition = null } = {}) {
   const liste = [];
   const gio = (o) => `${(o / 1024 ** 3).toFixed(1)} Gio`;
   const mio = (o) => `${(o / 1024 ** 2).toFixed(1)} Mio`;
+  const lisible = (o) => (o >= 1024 ** 3 ? gio(o) : o >= 1024 ** 2 ? mio(o) : `${Math.round(o / 1024)} Kio`);
+  if (repartition?.depasse) {
+    liste.push({
+      niveau: 'avertissement',
+      message: `Répartition du disque : les fichiers comptés (${lisible(repartition.depasse.compte)}) dépassent la place prise sur le disque (${lisible(repartition.depasse.occupe)}) — un dossier est sans doute sur un autre disque, ou compté deux fois ; la jauge les ramène à la place prise.`,
+    });
+  }
+  if (repartition?.partiel) {
+    liste.push({
+      niveau: 'info',
+      message: `Répartition du disque partielle : le parcours des fichiers s’est arrêté à sa borne (${PARCOURS.fichiers_max} fichiers ou ${PARCOURS.duree_max_ms} ms) ; le reste est compté dans « Système et autres ».`,
+    });
+  }
+  if (repartition?.hote && !repartition.hote.utilise) {
+    liste.push({
+      niveau: 'info',
+      message: `Répartition du disque sans le relevé de l’hôte (${repartition.hote.raison}) : Docker, les journaux et l’autre instance restent dans « Système et autres ».`,
+    });
+  }
   if (panne) liste.push({ niveau: 'erreur', message: `La base des métriques est en panne (${panne}) : la collecte continue en mémoire.` });
   if (disque?.total) {
     const part = `${Math.round(disque.part_libre * 100)} %`;
@@ -662,7 +1018,7 @@ export function alertesDu({ disque = null, processus = null, volume = {}, erreur
   const limite = processus?.memoire_limite ?? null;
   if (limite && processus.rss > SEUILS.memoire_part * limite) liste.push({ niveau: 'avertissement', message: `Mémoire : ${mio(processus.rss)} sur ${mio(limite)} (plus de ${SEUILS.memoire_part * 100} %).` });
   if (erreursRecentes) liste.push({ niveau: 'avertissement', message: `${erreursRecentes} réponse(s) 5xx dans la dernière heure.` });
-  if (brutes) liste.push({ niveau: 'info', message: `Les requêtes brutes sont gardées ${RETENTION.requetes_brutes} jours (MAVERICK_METRIQUES_BRUTES=1) : environ 150 octets par requête.` });
+  if (brutes) liste.push({ niveau: 'info', message: `Les requêtes brutes sont gardées ${RETENTION.requetes_brutes} jours (MAVERICK_METRIQUES_BRUTES=1) : environ 145 octets par requête.` });
   return liste;
 }
 
@@ -691,12 +1047,15 @@ export function instanceDuService({ edition, instance = null }) {
  * @param {number} [o.intervalle] versement et échantillonnage, en ms ; 0 = aucune minuterie (tests : verser() et echantillonner() à la main)
  * @param {(message: string, options?: object) => void} [o.journal] le journal du service (une panne y est notée une fois)
  * @param {{ version?: string, code?: string|null }} [o.identite] version et code du service (évènement de démarrage, état du processus)
- * @param {{ vivante?: string, archives?: string, miseAJour?: string, disque?: string }} [o.fichiers] ce dont la taille et le disque sont mesurés
+ * @param {{ vivante?: string, archives?: string, miseAJour?: string, disque?: string, site?: string|null }} [o.fichiers] ce dont la taille et le
+ *   disque sont mesurés ; `site` : le dossier du site construit (répartition du disque : code, données, images du site)
+ * @param {() => number|null} [o.imagesDeLaBase] les octets des images de la base vivante (octetsDesImages ; appelé au plus toutes les 10 minutes)
  * @param {() => number} [o.compteurJournal] le numéro de la dernière entrée du journal (entrées par minute)
+ * @param {typeof PARCOURS} [o.parcours] bornes du parcours des fichiers de la répartition (tests)
  */
 export function creerMetriques({
   dossier, instance, horloge = () => Date.now(), brutes = false, pages = true, memoireRequetes = 0, intervalle = INTERVALLE_VERSEMENT,
-  journal = () => {}, identite = {}, fichiers = {}, compteurJournal = null,
+  journal = () => {}, identite = {}, fichiers = {}, compteurJournal = null, imagesDeLaBase = null, parcours = PARCOURS,
 }) {
   const nom = instanceDuService({ edition: false, instance });
   if (nom !== String(instance ?? '').trim().toLowerCase()) throw new ErreurMetriques(500, `Nom d’instance des métriques invalide : « ${instance} ».`);
@@ -709,7 +1068,9 @@ export function creerMetriques({
   let panne = null;
   let dernierePurge = null;
   const idsSql = new Map();
-  const attente = { heure: new Map(), cinq: new Map(), pages: new Map(), navigateurs: new Map(), origines: new Map(), minutes: [], evenements: [], brutes: [] };
+  const attente = { heure: new Map(), cinq: new Map(), pages: new Map(), navigateurs: new Map(), origines: new Map(), minutes: [], repartitions: [], evenements: [], brutes: [] };
+  let releve = null; // le dernier relevé de la répartition du disque : { instant (ms), comptes, partiel, fichiers, duree_ms } (au plus toutes les 10 minutes)
+  let releveNote = null; // l'instant (ms) de la dernière répartition gardée dans les échantillons
   let perdues = 0;
   const anneau = [];
   let enCours = 0;
@@ -765,7 +1126,11 @@ export function creerMetriques({
         if (neuve) d.exec('PRAGMA auto_vacuum = INCREMENTAL');
         d.exec('PRAGMA journal_mode = WAL');
         d.exec('PRAGMA synchronous = NORMAL');
+        // le WAL (jusqu'à ~4 Mio entre deux points de contrôle automatiques) est ramené à 1 Mio au plus après chacun : la place qu'il garde reste petite
+        d.exec('PRAGMA journal_size_limit = 1048576');
         d.exec(SCHEMA_SQL);
+        // une base de la version 2 : la colonne de la réserve de root
+        if (!d.prepare('PRAGMA table_info(disque_repartition)').all().some((c) => c.name === 'reserve')) d.exec('ALTER TABLE disque_repartition ADD COLUMN reserve INTEGER');
         d.exec(`PRAGMA user_version = ${SCHEMA_METRIQUES}`);
         const maintenant = String(horloge());
         d.prepare("INSERT OR IGNORE INTO meta (cle, valeur) VALUES ('instance', ?), ('cree_le_ms', ?), ('derniere_purge_ms', ?)").run(nom, maintenant, maintenant);
@@ -778,6 +1143,7 @@ export function creerMetriques({
             ON CONFLICT (debut, famille, appareil) DO UPDATE SET requetes = requetes + excluded.requetes, pages = pages + excluded.pages`),
           origine: d.prepare('INSERT INTO origine_heure (debut, page, route, n) VALUES (?, ?, ?, ?) ON CONFLICT (debut, page, route) DO UPDATE SET n = n + excluded.n'),
           minute: d.prepare(`INSERT OR REPLACE INTO systeme_minute (instant, ${COLONNES_MINUTE.join(', ')}) VALUES (?, ${COLONNES_MINUTE.map(() => '?').join(', ')})`),
+          repartition: d.prepare('INSERT OR REPLACE INTO disque_repartition (instant, total, libre, comptes, partiel, reserve) VALUES (?, ?, ?, ?, ?, ?)'),
           evenement: d.prepare('INSERT INTO evenement (instant_ms, type, duree_ms, detail) VALUES (?, ?, ?, ?)'),
           brute: d.prepare(`INSERT INTO requete_brute (${COLONNES_BRUTES.join(', ')}) VALUES (${COLONNES_BRUTES.map(() => '?').join(', ')})`),
           sqlId: d.prepare('SELECT id FROM sql_texte WHERE texte = ?'),
@@ -1003,6 +1369,37 @@ export function creerMetriques({
     };
   }
 
+  /**
+   * Le relevé de la répartition du disque (releverRepartition) : refait au plus toutes les `parcours.intervalle_ms` (10 minutes), sinon celui gardé.
+   * `frais` : refait s'il a plus de la moitié de cet intervalle (échantillon noté dans la base).
+   */
+  function releveActuel({ frais = false, disque = null } = {}) {
+    const maintenant = horloge();
+    const age = releve ? maintenant - releve.instant : Infinity;
+    if (age >= 0 && age < (frais ? parcours.intervalle_ms / 2 : parcours.intervalle_ms)) return releve;
+    let images = 0;
+    try {
+      images = Number(imagesDeLaBase?.() ?? 0) || 0;
+    } catch {
+      images = 0; // base vivante fermée ou en cours de reconstruction : comptée dans « base »
+    }
+    const r = releverRepartition({
+      vivante: fichiers.vivante ?? null, archives: fichiers.archives ?? null, miseAJour: fichiers.miseAJour ?? null, metriques: dossier, site: fichiers.site ?? null,
+      imagesDeLaBase: images, bornes: parcours,
+    });
+    // le relevé de l'hôte (VPS : deploy/vps/volume.sh), s'il est là : ce que le conteneur ne voit pas (Docker, journaux, l'autre instance…)
+    const hote = lireReleveDeLHote(join(dossier, RELEVE_HOTE.fichier), { instance: nom, maintenant, total: disque?.total ?? null });
+    releve = { instant: maintenant, ...r, comptes: comptesAvecLHote(r.comptes, hote), hote };
+    return releve;
+  }
+
+  /** La répartition d'un disque mesuré maintenant (disqueDe) d'après le relevé gardé : { repartition, depasse, releve } ; null sans disque. */
+  function repartitionActuelle(disque) {
+    if (!disque?.total) return null;
+    const r = releveActuel({ disque });
+    return { ...repartitionDu({ total: disque.total, libre: disque.libre, reserve: disque.reserve, comptes: r.comptes }), releve: r };
+  }
+
   /** L'état du processus en ce moment (sans remettre les compteurs à zéro). */
   function processusEnCeMoment() {
     const memoire = process.memoryUsage();
@@ -1039,6 +1436,15 @@ export function creerMetriques({
       erreursMinute = 0;
       dernierEchantillon = e;
       pousser(attente.minutes, e, MAX_EN_ATTENTE.minutes);
+      // la répartition du disque, une fois toutes les 10 minutes : le site de dev affiche celle de la production en lisant prod.db
+      const maintenant = horloge();
+      if (disque?.total && (releveNote === null || maintenant - releveNote >= parcours.intervalle_ms || maintenant < releveNote)) {
+        const r = releveActuel({ frais: true, disque });
+        pousser(attente.repartitions, {
+          instant: e.instant, total: disque.total, libre: disque.libre, reserve: disque.reserve ?? null, comptes: JSON.stringify(r.comptes), partiel: r.partiel ? 1 : 0,
+        }, MAX_EN_ATTENTE.repartitions);
+        releveNote = maintenant;
+      }
       return e;
     });
   }
@@ -1046,7 +1452,7 @@ export function creerMetriques({
   // ----- versement ----------------------------------------------------------------------------------------------------------------------------
 
   const enAttente = () => attente.heure.size + attente.cinq.size + attente.pages.size + attente.navigateurs.size + attente.origines.size
-    + attente.minutes.length + attente.evenements.length + attente.brutes.length;
+    + attente.minutes.length + attente.repartitions.length + attente.evenements.length + attente.brutes.length;
 
   /** L'identifiant d'un texte SQL normalisé (table sql_texte), dans la transaction du versement. */
   function idSql(texte) {
@@ -1082,6 +1488,7 @@ export function creerMetriques({
         for (const e of attente.navigateurs.values()) instructions.navigateur.run(e.debut, e.famille, e.appareil, e.requetes, e.pages);
         for (const e of attente.origines.values()) instructions.origine.run(e.debut, e.page, e.route, e.n);
         for (const e of attente.minutes) instructions.minute.run(e.instant, ...COLONNES_MINUTE.map((c) => e[c] ?? null));
+        for (const e of attente.repartitions) instructions.repartition.run(e.instant, e.total, e.libre, e.comptes, e.partiel, e.reserve ?? null);
         for (const e of attente.evenements) instructions.evenement.run(e.instant_ms, e.type, e.duree_ms, e.detail);
         for (const e of attente.brutes) {
           instructions.brute.run(e.instant_ms, e.methode, e.route, e.statut, e.duree_ms, e.phases.corps_ms, e.phases.traitement_ms, e.phases.envoi_ms,
@@ -1103,6 +1510,7 @@ export function creerMetriques({
     }
     for (const m of [attente.heure, attente.cinq, attente.pages, attente.navigateurs, attente.origines]) m.clear();
     attente.minutes.length = 0;
+    attente.repartitions.length = 0;
     attente.evenements.length = 0;
     attente.brutes.length = 0;
     if (panne) {
@@ -1133,10 +1541,15 @@ export function creerMetriques({
           max(coalesce(cpu_utilisateur_pct, 0) + coalesce(cpu_systeme_pct, 0)), avg(charge_1), max(en_cours), max(simultanees_max), sum(requetes),
           sum(erreurs_5xx), min(disque_libre), max(disque_total), max(taille_vivante), max(taille_archives), max(taille_mise_a_jour), max(taille_metriques)
           FROM systeme_minute WHERE instant < ? GROUP BY instant / 3600`).run(limiteMinutes);
+        // répartition du disque : au-delà de 14 jours, seulement la dernière de chaque jour (UTC)
+        const limiteRepartitions = s - RETENTION.repartition_10min * 86_400;
+        const eclaircies = Number(db.prepare(`DELETE FROM disque_repartition WHERE instant < ? AND instant NOT IN
+          (SELECT max(instant) FROM disque_repartition WHERE instant < ? GROUP BY instant / 86400)`).run(limiteRepartitions, limiteRepartitions).changes);
         for (const t of TABLES_DATEES) {
           const limite = t.table === 'systeme_minute' ? limiteMinutes : s - RETENTION[t.retention] * 86_400;
           lignes[t.table] = Number(db.prepare(`DELETE FROM ${t.table} WHERE ${t.colonne} < ?`).run(t.ms ? limite * 1000 : limite).changes);
         }
+        lignes.disque_repartition += eclaircies;
         lignes.sql_texte = Number(db.prepare(`DELETE FROM sql_texte WHERE id NOT IN (SELECT sql_max_id FROM agregat_heure WHERE sql_max_id IS NOT NULL
           UNION SELECT sql_max_id FROM agregat_5min WHERE sql_max_id IS NOT NULL UNION SELECT sql_lente_id FROM requete_brute WHERE sql_lente_id IS NOT NULL)`).run().changes);
         db.prepare("INSERT OR REPLACE INTO meta (cle, valeur) VALUES ('derniere_purge_ms', ?)").run(String(maintenant));
@@ -1177,11 +1590,15 @@ export function creerMetriques({
   }
   sur(() => ouvrir());
 
-  /** Arrête la collecte : un dernier versement, puis la base est fermée. */
+  /**
+   * Arrête la collecte : un dernier échantillon (les requêtes de la minute entamée ne sont pas perdues ; la répartition du disque, si aucune n'est
+   * encore notée, pour que le site de dev en ait une), un dernier versement, puis la base est fermée.
+   */
   function arreter() {
     if (arrete) return;
     arrete = true;
     if (minuterie) clearInterval(minuterie);
+    echantillonner();
     boucle.disable();
     sur(() => verser());
     if (db) {
@@ -1502,12 +1919,20 @@ export function creerMetriques({
       let parJour = 0;
       let aTerme = 0;
       for (const t of TABLES_DATEES) {
-        const jour = lignesParJour(src.db, t, maintenantS, age);
+        let jour = 0;
+        try {
+          jour = lignesParJour(src.db, t, maintenantS, age);
+        } catch {
+          // table absente d'une base plus ancienne (lue en lecture seule)
+        }
         resultat.lignes_par_jour[t.table] = Math.round(jour);
         resultat.octets_par_ligne[t.table] = parLigne[t.table];
         parJour += jour * parLigne[t.table];
-        // les échantillons par minute ne vivent que 14 jours, puis 24 résumés par jour (systeme_heure) restent 400 jours
-        aTerme += jour * parLigne[t.table] * RETENTION[t.retention];
+        // les échantillons par minute ne vivent que 14 jours, puis 24 résumés par jour (systeme_heure) restent 400 jours ; la répartition du disque :
+        // 144 par jour pendant 14 jours, puis une par jour jusqu'à 400 jours
+        aTerme += t.table === 'disque_repartition'
+          ? parLigne[t.table] * (jour * RETENTION.repartition_10min + (RETENTION.repartition_jour - RETENTION.repartition_10min))
+          : jour * parLigne[t.table] * RETENTION[t.retention];
       }
       resultat.croissance_estimee_octets_par_jour = Math.round(parJour);
       resultat.taille_a_terme_octets = Math.round(aTerme);
@@ -1554,9 +1979,38 @@ export function creerMetriques({
           en_cours: dernier?.en_cours ?? null, mesure_le: dernier ? iso(dernier.instant) : null,
         };
         disque = dernier?.disque_total ? {
-          dossier: null, libre: dernier.disque_libre, total: dernier.disque_total, utilise: null,
+          dossier: null, libre: dernier.disque_libre, total: dernier.disque_total, utilise: null, reserve: null,
           part_libre: Math.round((dernier.disque_libre / dernier.disque_total) * 10_000) / 10_000,
         } : null;
+      }
+      // la répartition du disque (jauge de la page Debug) : celle de cette instance d'après son relevé (10 minutes au plus), celle d'une autre
+      // d'après sa dernière notée dans son fichier, rapportée à son dernier échantillon du disque (la somme fait toujours `disque.total`)
+      let repartition = null;
+      if (disque) {
+        if (src.propre) {
+          const r = repartitionActuelle(disque);
+          if (r) repartition = { ...r, instant: r.releve.instant, partiel: r.releve.partiel, hote: r.releve.hote ?? null };
+        } else {
+          try {
+            // `SELECT *` : le fichier d'une version 2 n'a pas la colonne de la réserve (elle reste alors dans « Système et autres »)
+            const l = src.db.prepare('SELECT * FROM disque_repartition ORDER BY instant DESC LIMIT 1').get();
+            if (l) {
+              const reserve = l.reserve ?? null;
+              repartition = { ...repartitionDu({ total: disque.total, libre: disque.libre, reserve, comptes: JSON.parse(l.comptes) }), instant: l.instant * 1000, partiel: Boolean(l.partiel) };
+              if (reserve !== null) disque = { ...disque, reserve, utilise: Math.max(0, disque.total - disque.libre - reserve) };
+            }
+          } catch {
+            // fichier d'une version plus ancienne (sans répartition) ou illisible : pas de jauge
+          }
+        }
+        // `repartition_hote` : le relevé de l'hôte (VPS) pris en compte ou non, et pourquoi ; null sans relevé (NAS, développement) ou quand la
+        // répartition vient du fichier d'une autre instance (ses catégories de l'hôte, si elle en avait, sont dans `repartition`)
+        const hote = repartition?.hote ?? null;
+        disque = {
+          ...disque, repartition: repartition?.repartition ?? null, repartition_le: repartition ? isoMs(repartition.instant) : null,
+          repartition_partielle: repartition ? Boolean(repartition.partiel) : null,
+          repartition_hote: hote ? { releve_le: hote.instant === null ? null : isoMs(hote.instant), utilise: hote.utilise, raison: hote.raison } : null,
+        };
       }
       const vol = volume(src, maintenantS);
       const liste = echantillons(src, depuis, p.duree === null || p.duree > 86_400);
@@ -1577,6 +2031,7 @@ export function creerMetriques({
         alertes: alertesDu({
           disque, processus, volume: vol, erreursRecentes: recents.reduce((n, e) => n + (e.erreurs_5xx ?? 0), 0), panne: src.propre ? panne : null,
           brutes: src.propre && brutes, croissanceArchives,
+          repartition: repartition ? { depasse: repartition.depasse, partiel: repartition.partiel, hote: repartition.hote ?? null } : null,
         }),
         ...(src.propre ? { panne, perdues } : {}),
       };

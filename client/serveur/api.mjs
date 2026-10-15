@@ -44,7 +44,8 @@
 //                                   navigateurs, origines ; le site de dev lit aussi le fichier de la production (lecture seule) ; instance absente : 404
 //   GET  /api/debug/metriques/requetes/   les dernières requêtes une à une, gardées en mémoire (site de dev) : ?limite=&route=&min_ms=&statut=
 //   GET  /api/debug/metriques/export/     les agrégats horaires bruts en pièce jointe : ?instance=&periode=&format=csv|json
-//   GET  /api/debug/systeme/        processus, disque, fichiers, échantillons par minute, évènements, volume des métriques et alertes : ?instance=&periode=
+//   GET  /api/debug/systeme/        processus, disque et sa répartition par type de données (jauge), fichiers, échantillons par minute, évènements,
+//                                   volume des métriques et alertes : ?instance=&periode=
 // Mesure des pages vues, sur les DEUX instances (décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ;
 // MAVERICK_METRIQUES_PAGES=0 la ferme : 403) — chaque instance l'écrit dans SA base des métriques, jamais dans la base vivante :
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,

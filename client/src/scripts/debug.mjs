@@ -14,6 +14,9 @@
 //      page (lib/debug-journaux.mjs) ; les nouvelles lignes s'ajoutent en haut sans refaire les autres (planDAffichage), la ligne lue reste à sa place
 //      et une sélection dans le tableau diffère l'affichage ; un autre processus du service (redémarrage) fait tout relire ; Pause (bouton bascule,
 //      aria-pressed), Effacer l'affichage ; colonne Durée triable (Heure / Durée) ; « Plus lent que … ms » part au service (?min_ms=) et fait tout relire.
+//   5. « Espace disque du serveur », tout en bas : la jauge de la place occupée par type de données (disque.repartition), tirée de la même réponse
+//      que « Système » (même instance, même relève : le système est relevé tant que l'un ou l'autre se voit) ; survoler un type de la légende ou un
+//      segment met les deux en évidence (data-actif : un segment très fin se repère).
 // Script de page : il n'importe que lib/debug-api.mjs, lib/debug-journaux.mjs et lib/debug-metriques.mjs, qu'aucun autre script de page n'importe (la
 // version portable refuse un module partagé ; test/debug-page.test.mjs). Aucune infobulle native (pas de `title`).
 import {
@@ -26,7 +29,7 @@ import {
 } from '../lib/debug-journaux.mjs';
 import {
   INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques, adresseDesRequetes,
-  adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, htmlDesAlertes, htmlDesChiffres, htmlDesEvenements, htmlDesFichiers,
+  adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres, htmlDesEvenements, htmlDesFichiers,
   htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDuDisque, htmlDuProcessus, htmlDuVolume, optionsDesRoutes,
   plusLentes, resumeDesMetriques, resumeDuSysteme, seuilSaisi, sensParDefaut, trierRoutes,
 } from '../lib/debug-metriques.mjs';
@@ -331,6 +334,9 @@ function brancherLesMetriques(api) {
   const requetesRoute = champ(perfs, 'requetes-route');
   const requetesAnnonce = champ(perfs, 'requetes-annonce');
   const systemeAnnonce = champ(systeme, 'systeme-annonce');
+  const espace = racine.querySelector('[data-debug-espace]');
+  const espaceJauge = champ(espace, 'espace-jauge');
+  const espaceAnnonce = champ(espace, 'espace-annonce');
   /** Le tri du tableau des routes (dans la page) ; la clé part aussi au service quand il la connaît. */
   let tri = { cle: TRI_PAR_DEFAUT, sens: sensParDefaut(TRI_PAR_DEFAUT) };
   let routes = [];
@@ -340,6 +346,9 @@ function brancherLesMetriques(api) {
   const dernieres = { metriques: 0, systeme: 0 };
   perfs.hidden = false;
   systeme.hidden = false;
+  espace.hidden = false;
+  /** Le système se relève tant que son bloc est ouvert ou que la jauge de l'espace disque (toujours dépliée, tout en bas) se voit. */
+  const systemeVisible = () => systeme.open || !espace.hidden;
 
   const choix = () => ({ instance: instance.value || INSTANCES[0].cle, periode: periode.value || PERIODE_PAR_DEFAUT });
   const dire = (place, texte, erreur = false) => {
@@ -478,15 +487,21 @@ function brancherLesMetriques(api) {
     try {
       reponse = await lireJson(adresseDuSysteme(api, i));
     } catch (e) {
-      if (numero === demandes.systeme) dire(systemeAnnonce, `Système injoignable (${e.message}) : nouvel essai dans ${RELEVE_METRIQUES_MS / 1000} s.`, true);
+      if (numero === demandes.systeme) {
+        for (const place of [systemeAnnonce, espaceAnnonce]) dire(place, `Système injoignable (${e.message}) : nouvel essai dans ${RELEVE_METRIQUES_MS / 1000} s.`, true);
+      }
       return;
     }
     if (numero !== demandes.systeme) return;
     dernieres.systeme = Date.now();
     const { statut, corps } = reponse;
+    /** La même phrase dans « Système » et sous « Espace disque du serveur » (une réponse les remplit tous deux). */
+    const direAuxDeux = (texte, erreur = false) => {
+      for (const place of [systemeAnnonce, espaceAnnonce]) dire(place, texte, erreur);
+    };
     if (statut === 403) {
       fermes.systeme = true;
-      dire(systemeAnnonce, corps?.erreur ?? 'Le service refuse son état système : il n’est pas celui du site de dev.', true);
+      direAuxDeux(corps?.erreur ?? 'Le service refuse son état système : il n’est pas celui du site de dev.', true);
       return;
     }
     const vider = () => {
@@ -494,17 +509,18 @@ function brancherLesMetriques(api) {
       champ(systeme, 'systeme-fichiers').innerHTML = '';
       remplir('systeme-evenements', '');
       champ(systeme, 'systeme-resume').textContent = '';
+      espaceJauge.innerHTML = '';
     };
     if (statut === 404) {
       vider();
-      dire(systemeAnnonce, corps?.erreur ?? 'Aucun état système enregistré pour cette instance pour l’instant.');
+      direAuxDeux(corps?.erreur ?? 'Aucun état système enregistré pour cette instance pour l’instant.');
       return;
     }
     if (statut !== 200 || !corps || typeof corps !== 'object') {
-      dire(systemeAnnonce, `État système illisible (${corps?.erreur ?? `le service a répondu ${statut}`}).`, true);
+      direAuxDeux(`État système illisible (${corps?.erreur ?? `le service a répondu ${statut}`}).`, true);
       return;
     }
-    dire(systemeAnnonce, '');
+    direAuxDeux('');
     const maintenant = new Date();
     champ(systeme, 'systeme-resume').textContent = resumeDuSysteme(corps);
     champ(systeme, 'systeme-alertes').innerHTML = htmlDesAlertes(corps.alertes);
@@ -514,7 +530,24 @@ function brancherLesMetriques(api) {
     champ(systeme, 'systeme-echantillons').innerHTML = courbeDuSysteme(corps.echantillons);
     champ(systeme, 'systeme-fichiers').innerHTML = htmlDesFichiers(corps.fichiers);
     remplir('systeme-evenements', htmlDesEvenements(corps.evenements, maintenant));
+    const actif = espaceJauge.querySelector('[data-actif]')?.dataset.cle;
+    espaceJauge.innerHTML = htmlDeLEspaceDisque(corps.disque, { instance: corps.instance ?? i, maintenant });
+    if (actif) mettreEnEvidence(actif);
   }
+
+  /** Un type de données mis en évidence (survol d'un segment ou d'un type de la légende) : son segment et son type portent data-actif. */
+  function mettreEnEvidence(cle) {
+    let trouve = false;
+    for (const el of espaceJauge.querySelectorAll('[data-cle]')) {
+      const actif = Boolean(cle) && el.dataset.cle === cle;
+      el.toggleAttribute('data-actif', actif);
+      trouve ||= actif;
+    }
+    // un type absent (autre instance, jauge refaite) n'efface pas toute la barre
+    espaceJauge.classList.toggle('debug-espace--survol', trouve);
+  }
+  espaceJauge.addEventListener('pointerover', (ev) => mettreEnEvidence(ev.target.closest?.('[data-cle]')?.dataset.cle ?? ''));
+  espaceJauge.addEventListener('pointerleave', () => mettreEnEvidence(''));
 
   /** Une relève : chaque bloc ouvert, onglet visible ; `force` : même un bloc relevé il y a moins de 30 s (changement de choix, bouton). */
   function relever(force = false) {
@@ -524,7 +557,7 @@ function brancherLesMetriques(api) {
       chargerLesMetriques();
       chargerLesRequetes();
     }
-    if (systeme.open && (force || age(dernieres.systeme))) chargerLeSysteme();
+    if (systemeVisible() && (force || age(dernieres.systeme))) chargerLeSysteme();
   }
 
   instance.addEventListener('change', () => {

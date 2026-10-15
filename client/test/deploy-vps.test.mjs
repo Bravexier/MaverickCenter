@@ -20,7 +20,7 @@ const racine = mkdtempSync(join(tmpdir(), 'deploy-vps-test-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
 
 test('les scripts sont de la syntaxe bash valide', { skip: skipBash }, () => {
-  for (const f of ['durcir.sh', 'outils.sh', 'instances.sh']) {
+  for (const f of ['durcir.sh', 'outils.sh', 'instances.sh', 'volume.sh']) {
     const r = spawnSync('bash', ['-n', join(vps, f)], { encoding: 'utf8' });
     assert.equal(r.status, 0, `${f} : ${r.stderr}`);
   }
@@ -115,13 +115,15 @@ function lancerInstances(dossiers, args = [], outils = fauxOutils()) {
     MAVERICK_DIR_TEST: dossiers.test,
     MAVERICK_DIR_ETC_CADDY: dossiers.caddy,
     MAVERICK_DIR_ETC_SYSTEMD: dossiers.systemd,
+    MAVERICK_DIR_OUTILS: dossiers.outils,
   };
   const r = spawnSync('bash', [join(vps, 'instances.sh'), ...args], { encoding: 'utf8', env });
   return { code: r.status, out: r.stdout + r.stderr };
 }
 function dossiers() {
   const d = join(racine, `srv-${(n += 1)}`);
-  return { normal: join(d, 'maverick-center'), test: join(d, 'maverick-center-test'), caddy: join(d, 'etc-caddy'), systemd: join(d, 'etc-systemd') };
+  return { normal: join(d, 'maverick-center'), test: join(d, 'maverick-center-test'), caddy: join(d, 'etc-caddy'), systemd: join(d, 'etc-systemd'),
+    outils: join(d, 'usr-local-lib') };
 }
 const env = (fichier) => Object.fromEntries(readFileSync(fichier, 'utf8').trim().split('\n').map((l) => l.split(/=(.*)/s).slice(0, 2)));
 /** Le mot de passe interne de nginx (.htpasswd) correspond-il à celui que Caddy présentera ? */
@@ -175,6 +177,23 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.match(validation, /^caddy validate --config \S+Caddyfile --adapter caddyfile domaine=maverick-jdr\.com acces=present$/);
   assert.ok(!r.out.includes(Buffer.from(caddy.MAVERICK_ACCES_NORMAL, 'base64').toString().split(':')[1]), 'aucun mot de passe affiché');
 
+  // Répartition du disque vue de l'hôte (jauge de la page Debug ; docs/serveur.md, « Jauge de l'espace disque ») : volume.sh copié tel quel,
+  // lancé par un minuteur toutes les 15 minutes sur les deux instances, à basse priorité, et une première fois tout de suite.
+  assert.equal(lireFichier(join(d.outils, 'volume.sh')), lire('volume.sh'));
+  assert.equal(statSync(join(d.outils, 'volume.sh')).mode & 0o777, 0o755);
+  const service = lireFichier(join(d.systemd, 'maverick-volume.service'));
+  assert.ok(service.split('\n').includes(`ExecStart=/bin/bash ${join(d.outils, 'volume.sh')} ${d.normal} ${d.test}`), service);
+  assert.match(service, /^Type=oneshot$/m);
+  assert.match(service, /^Nice=19$/m);
+  assert.match(service, /^IOSchedulingClass=idle$/m);
+  assert.match(service, /^ProtectSystem=full$/m);
+  const minuteur = lireFichier(join(d.systemd, 'maverick-volume.timer'));
+  assert.match(minuteur, /^OnCalendar=\*:0\/15$/m);
+  assert.match(minuteur, /^WantedBy=timers\.target$/m);
+  const appels = lireFichier(join(racine, 'appels.log'));
+  assert.match(appels, /^systemctl enable --now maverick-volume\.timer /m);
+  assert.match(appels, /^systemctl start --no-block maverick-volume\.service /m);
+
   // Relance : les accès sont conservés, le réglage de port est rétabli s'il a été changé, le domaine peut changer ; les métriques écrites restent.
   writeFileSync(join(d.normal, '.env'), 'MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=8080\n');
   writeFileSync(join(metriques, 'prod.db'), 'mesures');
@@ -204,7 +223,8 @@ test('instances.sh : domaine invalide ou Caddy absent refusés sans rien écrire
   assert.ok(!existsSync(d.normal) && !existsSync(d.caddy));
   const sansCaddy = { bin: join(racine, 'bin-vide'), journal: join(racine, 'x.log') };
   mkdirSync(sansCaddy.bin, { recursive: true });
-  const env2 = { PATH: `${sansCaddy.bin}:/usr/bin:/bin`, MAVERICK_ESSAI: '1', MAVERICK_DIR_NORMAL: d.normal, MAVERICK_DIR_TEST: d.test, MAVERICK_DIR_ETC_CADDY: d.caddy, MAVERICK_DIR_ETC_SYSTEMD: d.systemd };
+  const env2 = { PATH: `${sansCaddy.bin}:/usr/bin:/bin`, MAVERICK_ESSAI: '1', MAVERICK_DIR_NORMAL: d.normal, MAVERICK_DIR_TEST: d.test, MAVERICK_DIR_ETC_CADDY: d.caddy,
+    MAVERICK_DIR_ETC_SYSTEMD: d.systemd, MAVERICK_DIR_OUTILS: d.outils };
   const r2 = spawnSync('/bin/bash', [join(vps, 'instances.sh')], { encoding: 'utf8', env: env2 });
   if (have('caddy')) return; // Caddy est installé sur cette machine : le refus ne peut pas être provoqué
   assert.equal(r2.status, 1);

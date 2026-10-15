@@ -19,10 +19,11 @@
 // pris chaque minute et les évènements du service (démarrage, base vivante, rejeu, lots, mise à jour, GitHub, maintenance, erreurs 5xx) sont notés
 // avec leur durée, dans la base des métriques de l'instance (<MAVERICK_DOSSIER_METRIQUES ou db/metriques>/<instance>.db), jamais dans la base
 // vivante. Une panne des métriques ne fait jamais échouer une requête ni le démarrage. L'entrée http du journal en mémoire porte ses champs
-// isolés (duree_ms, methode, route, statut, octets_sortie).
+// isolés (duree_ms, methode, route, statut, octets_sortie). La répartition du disque (jauge de la page Debug) compte aussi le site construit
+// (dossierDuSite) et les images de la base vivante (metriques.mjs#octetsDesImages).
 import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -30,7 +31,7 @@ import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBa
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 import {
-  CAPACITE_REQUETES, creerMetriques, empreinteDePile, instanceDuService, INTERVALLE_VERSEMENT, limiteMemoire, methodeNormalisee, routeNormalisee,
+  CAPACITE_REQUETES, creerMetriques, empreinteDePile, instanceDuService, INTERVALLE_VERSEMENT, limiteMemoire, methodeNormalisee, octetsDesImages, routeNormalisee,
 } from './metriques.mjs';
 import { creerMesureSql } from './metriques-sql.mjs';
 
@@ -44,6 +45,17 @@ function cheminGithub(adresse) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Le dossier du site construit (répartition du disque des métriques : code, données et images du site), d'après les chemins que le service connaît :
+ * la base des règles publiée (<site>/donnees/maverick.db) ou version.json du service livré (<site>/_serveur/version.json) ; null en développement
+ * (règles dans var/, sans version.json).
+ */
+export function dossierDuSite({ regles = null, fichierVersion = null } = {}) {
+  if (regles && basename(dirname(regles)) === 'donnees') return dirname(dirname(regles));
+  if (fichierVersion && basename(dirname(fichierVersion)) === '_serveur') return dirname(dirname(fichierVersion));
+  return null;
 }
 
 /** Rend une fonction qui dit, pour chaque valeur observée, s'il faut agir : la valeur a changé et elle était déjà la même à l'observation précédente. */
@@ -95,10 +107,12 @@ const inode = (chemin) => {
  * @param {ReturnType<typeof creerJournalDuService>} [o.journalDuService] le journal gardé en mémoire (par défaut, un neuf sur le site de dev, aucun
  *   en production : personne ne peut l'y lire)
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
- * @param {false | { dossier?: string, instance?: string, brutes?: boolean, pages?: boolean, intervalle?: number, horloge?: () => number }} [o.metriques]
+ * @param {false | { dossier?: string, instance?: string, brutes?: boolean, pages?: boolean, intervalle?: number, horloge?: () => number,
+ *   site?: string|null }} [o.metriques]
  *   la collecte des métriques (serveur/metriques.mjs) ; chaque réglage absent vient de l'environnement : MAVERICK_DOSSIER_METRIQUES (sinon
  *   <dossier>/metriques), MAVERICK_INSTANCE (sinon « dev » avec l'édition, « prod » sans), MAVERICK_METRIQUES_BRUTES=1 (requêtes brutes gardées 30
- *   jours), MAVERICK_METRIQUES_PAGES=0 (balise des pages vues fermée ; ouverte par défaut, décision du propriétaire) ; false : aucune collecte
+ *   jours), MAVERICK_METRIQUES_PAGES=0 (balise des pages vues fermée ; ouverte par défaut, décision du propriétaire) ; `site` : le dossier du site
+ *   construit (répartition du disque ; par défaut dossierDuSite) ; false : aucune collecte
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
@@ -149,8 +163,20 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         memoireRequetes: edition ? CAPACITE_REQUETES : 0,
         journal,
         identite: { version: version.version, code: version.empreinte ?? null },
-        // DOSSIER_LOTS de notes-de-version.mjs : les lots figés de la page « Mise à jour »
-        fichiers: { vivante: chemin, archives: join(dossier, DOSSIER_ARCHIVES), miseAJour: join(dossier, 'mise-a-jour'), disque: dossier },
+        // DOSSIER_LOTS de notes-de-version.mjs : les lots figés de la page « Mise à jour » ; le site construit (répartition du disque)
+        fichiers: {
+          vivante: chemin, archives: join(dossier, DOSSIER_ARCHIVES), miseAJour: join(dossier, 'mise-a-jour'), disque: dossier,
+          site: r.site !== undefined ? r.site : dossierDuSite({ regles, fichierVersion }),
+        },
+        // les images de la base vivante (portraits des prétirés et du bestiaire), comptées à part de la base : au plus toutes les 10 minutes, sur la
+        // vraie base et non sur son enveloppe mesurée (rien n'est compté dans les requêtes SQL d'une requête HTTP) ; base fermée ou en reconstruction : 0
+        imagesDeLaBase: () => {
+          try {
+            return octetsDesImages(etat.db);
+          } catch {
+            return 0;
+          }
+        },
         compteurJournal: () => lignesNotees,
       });
     } catch (e) {
@@ -469,10 +495,11 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       serveur.close(() => ok());
       serveur.closeAllConnections?.();
     });
-    fermer();
-    // dernier versement des métriques (l'arrêt en est un évènement), puis leur base est fermée
+    // dernier échantillon et dernier versement des métriques (l'arrêt en est un évènement), puis leur base est fermée ; avant la base vivante, que
+    // la répartition du disque lit encore (octets de ses images)
     evenement('arret', { detail: { duree_s: Math.round((performance.now() - lancementDuService) / 1000) } });
     if (metriques) sansEchec(() => metriques.arreter());
+    fermer();
   }
 
   if (intervalle > 0) {

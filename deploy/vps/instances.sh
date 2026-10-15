@@ -9,6 +9,8 @@
 #                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance,
 #                               MAVERICK_INSTANCE=dev, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques), .htpasswd, secrets/ (jeton de la page Mise à jour)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
+#   /usr/local/lib/maverick-center/volume.sh + minuteur systemd maverick-volume.timer : toutes les 15 minutes, la répartition du disque par type
+#                               de données vue de l'hôte (l'autre instance, Docker, journaux…) dans metriques/volume-hote.json (jauge de la page Debug)
 # Le site lui-même est posé ensuite par les installateurs (deploy/installateur/, voir README.md de ce dossier).
 set -euo pipefail
 
@@ -35,6 +37,7 @@ NORMAL=${MAVERICK_DIR_NORMAL:-/srv/maverick-center}
 TEST=${MAVERICK_DIR_TEST:-/srv/maverick-center-test}
 ETC_CADDY=${MAVERICK_DIR_ETC_CADDY:-/etc/caddy}
 ETC_SYSTEMD=${MAVERICK_DIR_ETC_SYSTEMD:-/etc/systemd/system}
+OUTILS=${MAVERICK_DIR_OUTILS:-/usr/local/lib/maverick-center}
 ENV_CADDY=$ETC_CADDY/maverick.env
 
 # Pose CLE=valeur dans un fichier .env (remplace la ligne si elle existe). Le .env d'une instance n'est jamais écrasé par un installateur.
@@ -117,6 +120,41 @@ systemctl daemon-reload
 (set -a; . "$ENV_CADDY"; set +a; caddy validate --config "$ETC_CADDY/Caddyfile" --adapter caddyfile)
 systemctl enable caddy
 systemctl restart caddy
+
+echo "== Répartition du disque (jauge de la page Debug)"
+# Le service de chaque instance ne voit, de son conteneur, que son site, sa base et le dossier des métriques ; volume.sh mesure le reste depuis
+# l'hôte (l'autre instance, Docker, les journaux, les restes d'installation) et l'écrit dans metriques/volume-hote.json, que les deux instances
+# lisent (docs/serveur.md, « Jauge de l'espace disque »). Lecture seule, à basse priorité, toutes les 15 minutes ; une première fois tout de suite.
+mkdir -p "$OUTILS"
+install -m 755 "$ici/volume.sh" "$OUTILS/volume.sh"
+cat > "$ETC_SYSTEMD/maverick-volume.service" <<UNITE
+[Unit]
+Description=Maverick Center : répartition du disque par type de données (docs/serveur.md)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $OUTILS/volume.sh $NORMAL $TEST
+Nice=19
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+UNITE
+cat > "$ETC_SYSTEMD/maverick-volume.timer" <<UNITE
+[Unit]
+Description=Maverick Center : répartition du disque, toutes les 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
+UNITE
+systemctl daemon-reload
+systemctl enable --now maverick-volume.timer
+systemctl start --no-block maverick-volume.service
 
 echo
 echo "Terminé. Instances prêtes : $NORMAL et $TEST (sans site pour l'instant)."

@@ -23,6 +23,23 @@
   --dbg-phase-0: #6a3d9a;
   --dbg-phase-1: #1f5f9e;
   --dbg-phase-2: #1f7a45;
+  /* Espace disque du serveur : un type de données par couleur (palette catégorielle validée pour le daltonisme, dans l'ordre de la jauge :
+     paires voisines distinctes) pour les données du site ; ce qui relève du système (Docker, journaux, installations : relevé de l'hôte, puis
+     « Système et autres ») en gris chauds, foncé et clair en alternance (voisins distincts, validés comme les autres) ; le libre en clair hachuré */
+  --dbg-disque-base: #2a78d6;
+  --dbg-disque-images: #eb6834;
+  --dbg-disque-mises-a-jour: #1baf7a;
+  --dbg-disque-metriques: #eda100;
+  --dbg-disque-site-code: #e87ba4;
+  --dbg-disque-site-donnees: #008300;
+  --dbg-disque-site-images: #6250d6;
+  --dbg-disque-site-autres: #e34948;
+  --dbg-disque-docker: #575046;
+  --dbg-disque-journaux: #bcb2a2;
+  --dbg-disque-installations: #6f675b;
+  --dbg-disque-autres: #a89e8f;
+  --dbg-disque-reserve: #d6cdbd;
+  --dbg-disque-libre: #ece4d5;
   max-width: 100%;
 }
 @media (prefers-color-scheme: dark) {
@@ -36,6 +53,10 @@
     --dbg-serie-0: #8ec1f0; --dbg-serie-1: #f2a19a;
     --dbg-lent-fond: #382a14; --dbg-tres-lent-fond: #3a1d1b;
     --dbg-phase-0: #c9a6ef; --dbg-phase-1: #8ec1f0; --dbg-phase-2: #7fd3a0;
+    --dbg-disque-base: #3987e5; --dbg-disque-images: #d95926; --dbg-disque-mises-a-jour: #199e70; --dbg-disque-metriques: #c98500;
+    --dbg-disque-site-code: #d55181; --dbg-disque-site-donnees: #008300; --dbg-disque-site-images: #9085e9; --dbg-disque-site-autres: #e66767;
+    --dbg-disque-docker: #d2c8b8; --dbg-disque-journaux: #5c544a; --dbg-disque-installations: #a69c8d;
+    --dbg-disque-autres: #766d61; --dbg-disque-reserve: #463e35; --dbg-disque-libre: #2e261e;
   }
 }
 :root[data-theme="dark"] .debug {
@@ -48,6 +69,10 @@
   --dbg-serie-0: #8ec1f0; --dbg-serie-1: #f2a19a;
   --dbg-lent-fond: #382a14; --dbg-tres-lent-fond: #3a1d1b;
   --dbg-phase-0: #c9a6ef; --dbg-phase-1: #8ec1f0; --dbg-phase-2: #7fd3a0;
+  --dbg-disque-base: #3987e5; --dbg-disque-images: #d95926; --dbg-disque-mises-a-jour: #199e70; --dbg-disque-metriques: #c98500;
+  --dbg-disque-site-code: #d55181; --dbg-disque-site-donnees: #008300; --dbg-disque-site-images: #9085e9; --dbg-disque-site-autres: #e66767;
+  --dbg-disque-docker: #d2c8b8; --dbg-disque-journaux: #5c544a; --dbg-disque-installations: #a69c8d;
+  --dbg-disque-autres: #766d61; --dbg-disque-reserve: #463e35; --dbg-disque-libre: #2e261e;
 }
 
 .debug-reservee { color: var(--muted); font-style: italic; }
@@ -318,6 +343,64 @@
 .debug-niveau--avertissement { background: var(--warn-bg); color: var(--warn-text); }
 .debug-niveau--erreur { background: var(--danger); color: var(--surface); }
 .debug-journaux__vide { margin: 0; padding: 0.8rem; color: var(--muted); font-style: italic; }
+
+/* Espace disque du serveur (tout en bas ; lib/debug-metriques.mjs#htmlDeLEspaceDisque) : une jauge pleine largeur, un segment par type de données
+   (flex-basis = sa part ; 2 px de la surface entre deux segments) ; aucun segment sous 6 px (les grands cèdent la place : un très fin, moins de
+   1 %, ne rétrécit jamais), puis la légende */
+.debug-espace { margin: 2rem 0 0; }
+.debug-espace h2 { margin-top: 0; }
+.debug-espace__titre { margin: 0.4rem 0 0.2rem; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.debug-espace__titre[data-niveau="alerte"] strong { color: var(--danger); }
+.debug-espace__jauge {
+  display: flex; gap: 2px; height: 1.8rem; margin: 0.6rem 0; padding: 2px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden;
+}
+.debug-espace__segment, .debug-espace__marque { background: var(--seg); }
+.debug-espace__segment { flex: 0 1 auto; min-width: 6px; border-radius: 3px; }
+.debug-espace__segment--fin { flex-shrink: 0; min-width: 6px; }
+.debug-espace__segment--base { --seg: var(--dbg-disque-base); }
+.debug-espace__segment--images { --seg: var(--dbg-disque-images); }
+.debug-espace__segment--mises-a-jour { --seg: var(--dbg-disque-mises-a-jour); }
+.debug-espace__segment--metriques { --seg: var(--dbg-disque-metriques); }
+.debug-espace__segment--site-code { --seg: var(--dbg-disque-site-code); }
+.debug-espace__segment--site-donnees { --seg: var(--dbg-disque-site-donnees); }
+.debug-espace__segment--site-images { --seg: var(--dbg-disque-site-images); }
+.debug-espace__segment--site-autres { --seg: var(--dbg-disque-site-autres); }
+.debug-espace__segment--docker { --seg: var(--dbg-disque-docker); }
+.debug-espace__segment--journaux { --seg: var(--dbg-disque-journaux); }
+.debug-espace__segment--installations { --seg: var(--dbg-disque-installations); }
+.debug-espace__segment--autres, .debug-espace__segment--occupe, .debug-espace__segment--inconnu { --seg: var(--dbg-disque-autres); }
+/* la réserve de root (ni prise ni disponible) : neutre, hachurée dans l'autre sens que le libre */
+.debug-espace__segment--reserve {
+  --seg: var(--dbg-disque-reserve);
+  background: repeating-linear-gradient(45deg, var(--dbg-disque-reserve) 0 4px, color-mix(in srgb, var(--text) 25%, var(--dbg-disque-reserve)) 4px 6px);
+}
+/* le libre : clair et hachuré (jamais une teinte de série), bordé pour se voir sur la surface */
+.debug-espace__segment--libre {
+  --seg: var(--dbg-disque-libre);
+  background: repeating-linear-gradient(135deg, var(--dbg-disque-libre) 0 6px, color-mix(in srgb, var(--border) 70%, var(--dbg-disque-libre)) 6px 8px);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+/* survol d'un segment ou d'un type de la légende : les autres s'effacent, le sien est cerclé */
+.debug-espace--survol .debug-espace__segment:not([data-actif]) { opacity: 0.3; }
+.debug-espace__segment[data-actif] { outline: 2px solid var(--text); outline-offset: 0; }
+.debug-espace__type[data-actif] { border-color: var(--text); }
+.debug-espace__legende {
+  display: grid; gap: 0.4rem 0.8rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  margin: 0.4rem 0 0.6rem; padding: 0; list-style: none; font-size: 0.88rem;
+}
+.debug-espace__type {
+  display: grid; grid-template-columns: auto 1fr; align-items: baseline; align-content: start; gap: 0 0.5rem;
+  padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
+}
+.debug-espace__type[data-vide] { opacity: 0.65; }
+.debug-espace__marque { grid-row: span 2; align-self: start; width: 0.95rem; height: 0.95rem; margin-top: 0.2rem; border-radius: 3px; }
+.debug-espace__nom { font-weight: bold; }
+.debug-espace__valeur { grid-column: 2; font-variant-numeric: tabular-nums; }
+.debug-espace__aide { grid-column: 1 / -1; margin-top: 0.15rem; font-size: 0.8rem; color: var(--muted); }
+@media (forced-colors: active) {
+  .debug-espace__segment, .debug-espace__marque { forced-color-adjust: none; }
+}
 
 /* Téléphone : une entrée du journal sur deux lignes (heure, niveau, catégorie, puis le message), sans défilement de côté */
 @media (max-width: 40rem) {

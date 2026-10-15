@@ -659,6 +659,68 @@ Soit **~140 Mo pour les deux fichiers** au bout de 13 mois, puis plus rien (rét
 heure** qui fait grossir la base (le site en a 1 713) ; à dix fois ce trafic (~150 pages par heure active), la production prendrait ~840 Ko par jour,
 ~340 Mo en 400 jours : il faudrait alors garder les agrégats de pages 90 jours, ou les regrouper par jour après 30 jours.
 
+### Jauge de l'espace disque
+
+Demande du propriétaire (2026-10-15) : « la métrique de la place occupée sur le serveur sur la place totale sous forme de jauge, colorée en fonction
+du type de données (DB, Code, Import images, etc.) ». Une jauge de toute la taille du disque, un segment par type de données, dont la somme fait
+exactement la taille du disque. Deux mesures, **avec les mêmes clés** :
+
+- **le service** de chaque instance (`GET /api/debug/systeme/`, `disque.repartition` ; [`api.md`](api.md), « Page Debug ») ne voit, de son
+  conteneur, que sa base, ses lots de mise à jour, le dossier des métriques et son site : le reste du disque (l'autre instance, Docker, les
+  journaux, le système) tombe chez lui dans « Système et autres » ;
+- **l'hôte** (VPS) : `deploy/vps/volume.sh` mesure tout le disque, avec les clés et les règles de classement des fichiers du site du service
+  (`serveur/metriques.mjs`, `REPARTITION` et `categorieDuFichierDuSite`, que `client/test/deploy-volume.test.mjs` compare au script), plus trois
+  clés que seul l'hôte voit. `instances.sh` le copie dans `/usr/local/lib/maverick-center/` et le fait lancer **toutes les 15 minutes** par le
+  minuteur systemd `maverick-volume.timer` (et une première fois tout de suite), en lecture seule, à basse priorité (`Nice=19`, entrées-sorties
+  `idle`) ; il écrit `volume-hote.json` dans le dossier des métriques partagé (`/srv/maverick-center/metriques/`, `/metriques/volume-hote.json`
+  dans les conteneurs des deux instances), d'un coup (fichier provisoire puis renommage), `644`. Sur le NAS et en développement, pas de relevé de
+  l'hôte : seule la mesure du service.
+
+| Clé | Libellé | Contenu (octets **alloués** sur le disque, comme `df` et `du`) | Service | Hôte |
+| --- | --- | --- | --- | --- |
+| `base` | Base de données | `db/vivante.db` (+ `-wal`, `-shm`) et `db/archives/` ; l'hôte y ajoute les autres fichiers de `db/` et les sauvegardes faites à la main (`/root/vivante-*.db`) | Oui, moins les images qu'elles contiennent | Oui, images comprises |
+| `images` | Images importées | Images des colonnes d'image de la base vivante (portraits des prétirés et du bestiaire) et portraits publiés du site (`…/portraits/*.webp`) | Oui | Les portraits publiés seulement (les images d'une base ne se voient pas de dehors) |
+| `mises-a-jour` | Mises à jour | Lots figés de la page « Mise à jour » (`db/mise-a-jour/`) | Oui | Oui |
+| `metriques` | Métriques | Le dossier des métriques (`prod.db`, `dev.db`, leur `-wal`, `volume-hote.json`) | Oui | Oui (une fois, sans instance) |
+| `site-code` | Code du site | `_serveur/` et `.html`, `.js`, `.mjs`, `.cjs`, `.css`, `.json`, `.map` | Oui | Oui |
+| `site-donnees` | Données du site | `donnees/` hors pages `.html` (bases des règles et de la production), toute `.db`, `search-index.json`, `fiche/regles.json` | Oui | Oui |
+| `site-images` | Images du site | `.png`, `.webp`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.ico`, `.avif` hors portraits | Oui | Oui |
+| `site-autres` | Autres fichiers du site | Polices, textes… ; l'hôte y ajoute le reste du dossier de l'instance (`docker-compose.yml`, `nginx.conf`, `.env`, scripts, dossiers) | Oui | Oui |
+| `docker` | Docker (images et conteneurs) | Le dossier de Docker (`docker info` : `DockerRootDir`, `/var/lib/docker`), sans changer de disque, moins les journaux des conteneurs | — | Oui |
+| `journaux` | Journaux | Journaux des conteneurs (`*-json.log*`), `/var/log` (journal de systemd, Caddy), journaux des scripts de l'instance (`*.log`) | — | Oui |
+| `installations` | Installations et copies | Restes d'une installation (`.installation.*`, `.db.copie.*`), téléchargements de `mise-a-jour.sh` et `update-site.sh` (`/tmp/maverick-*`), installateurs copiés à la main (`/root`, `/home/*`) | — | Oui |
+| `autres` | Système et autres | La place prise que rien de ce qui précède n'explique (système, paquets, Caddy… ; côté service sans relevé de l'hôte, aussi Docker, les journaux et l'autre instance) | Oui | Oui |
+| `reserve` | Réservé au système | La réserve du système de fichiers : blocs libres gardés pour root (ext4 : 5 % par défaut), que `df` ne compte ni dans *Used* ni dans *Avail* (`statfs` : `bfree − bavail`) ; à part, pour que la place occupée de la jauge soit celle de `df` (*Used*) | Oui | Oui |
+| `libre` | Libre | La place disponible (`df` : *Avail*, `statfs` : `bavail`) | Oui | Oui |
+
+**`volume-hote.json`** (`format` 1) :
+
+```json
+{
+  "format": 1, "instant": "2026-10-15T14:45:03Z", "duree_ms": 640,
+  "disque": { "dossier": "/srv/maverick-center", "point_de_montage": "/", "total": 0, "utilise": 0, "libre": 0, "reserve": 0 },
+  "depasse": null,
+  "repartition": [ { "cle": "base", "libelle": "Base de données", "octets": 0 }, "… les 13 clés dans l'ordre du tableau" ],
+  "elements": [ { "cle": "base", "nom": "base vivante", "instance": "prod", "chemin": "/srv/maverick-center/db/vivante.db", "octets": 0 }, "…" ],
+  "hors_disque": []
+}
+```
+
+- `repartition` : les clés dans l'ordre de la jauge (celles du service, puis `docker`, `journaux`, `installations` juste avant `autres`) ; leur
+  somme fait exactement `disque.total`, sauf si les clés comptées dépassent la place prise (`depasse` = `{ compte, occupe }`, `autres` à 0).
+- `elements` : le détail de chaque clé, avec l'**instance** qu'il concerne (`MAVERICK_INSTANCE` de son `.env` : `prod`, `dev` ; le nom du dossier
+  sans réglage) ou `null` (dossier partagé, Docker, système). Le dossier des métriques est mesuré avant que le relevé n'y soit écrit.
+- `hors_disque` : ce qui a été mesuré sur un autre disque que celui des instances (ex. `/var/lib/docker` sur un disque à part) : listé, jamais
+  dans la jauge.
+- **Combiner les deux mesures** : pour une instance, ses propres mesures (celles du service : les images de sa base y sont séparées) ; de
+  `volume-hote.json`, les éléments d'une autre instance ou sans instance, sauf `metriques` (le service compte déjà le dossier partagé) ; `autres`
+  = total − libre − le reste. Un relevé de plus d'une heure (`instant`) est périmé : le minuteur ne tourne plus (`systemctl list-timers`).
+
+**Coût et volume** : un relevé parcourt les deux dossiers d'instance (~1 800 fichiers par site), le dossier de Docker (quelques milliers de
+fichiers pour les deux images) et `/var/log` : une à quelques secondes de `du`, à basse priorité, quatre fois par heure. Le fichier pèse ~6 Ko
+et il est remplacé à chaque relevé (rien ne s'accumule) ; systemd note ~3 lignes par relevé dans son journal (~40 Ko par jour, borné par
+journald).
+
 ### Tout ce qui grossit sur le serveur
 
 | Quoi | Où (VPS) | Combien | Borné ? |
@@ -667,7 +729,7 @@ heure** qui fait grossir la base (le site en a 1 713) ; à dix fois ce trafic (~
 | Base vivante | `db/vivante.db` (+ `-wal` pendant une écriture) | ≈ la base des règles (23 Mo) + les fiches (un portrait : 700 000 caractères au plus, ~0,7 Mo) + le journal de l'édition (dev) | Suit les fiches ; refaite quand les règles changent |
 | Archives de la base vivante | `db/archives/` | `ARCHIVES_GARDEES` = 5 copies, ~25 Mo chacune : **≤ ~125 Mo par instance** | Oui (et seulement si la base avait des fiches ou un journal) |
 | Lots figés de la mise à jour | `/srv/maverick-center-test/db/mise-a-jour/` | Un JSON par lancement (journal en attente : quelques Ko, plus ~1 Mio par portrait modifié), 8 au plus par 24 h ; jamais effacés (gardés pour l'enquête) | **Non**, mais lent (~quelques Mo par an) : à purger à la main au-delà d'un an si besoin |
-| Métriques | `/srv/maverick-center/metriques/` | ~140 Mo au bout de 13 mois, puis stable (ci-dessus) | Oui (rétention) |
+| Métriques | `/srv/maverick-center/metriques/` | ~140 Mo au bout de 13 mois, puis stable (ci-dessus) ; `volume-hote.json` : ~6 Ko, remplacé toutes les 15 minutes | Oui (rétention) |
 | Journaux Docker | `/var/lib/docker/containers/*/…-json.log*` | nginx : une ligne (~250 o) par requête HTTP, ~2 Mo par jour et par instance ; service : production presque rien, dev une ligne par appel `/api/` (~0,5 Mo par jour). **Plafond : 4 conteneurs × 5 × 10 Mo = 200 Mo** | Oui depuis cette version (sinon ~1,5 Go par an, sans fin) ; s'applique quand le conteneur est recréé (`docker compose up -d`) |
 | Images Docker | `/var/lib/docker/` | `nginx:1.27-alpine` (~50 Mo) et `node:22-alpine` (~160 Mo), partagées par les deux instances | Oui : jamais retirées automatiquement ; après un `docker compose pull`, l'ancienne image reste : `docker image prune` |
 | Installateurs téléchargés par `mise-a-jour.sh` | `$TMPDIR` (`/tmp/maverick-mise-a-jour.*`), puis extraits dans `<instance>/.installation.<pid>/` | ~20 Mo, puis ~145 Mo extraits, **pendant l'installation seulement** (les deux instances peuvent s'installer dans les mêmes 5 minutes : ~330 Mo de pointe) | Oui : effacés à la fin ; restent seulement après un arrêt brutal (coupure, `kill -9`) : voir les commandes ci-dessous |
@@ -677,10 +739,13 @@ heure** qui fait grossir la base (le site en a 1 713) ; à dix fois ce trafic (~
 | Sauvegardes à la main | `/root/vivante-*.db` (`deploy/vps/README.md`, « Sauvegardes ») | Une base vivante chacune | **Non** : à faire tourner ou à sortir du serveur |
 | Système | journal de systemd (Caddy, mises à jour automatiques), `/var/cache/apt` | journald se borne seul (10 % du disque, 4 Gio au plus) | Oui ; `journalctl --vacuum-size=200M`, `apt-get clean` pour en reprendre |
 
-**Voir l'espace libre sur le VPS** (la page Debug le montre aussi, mesuré par le service : `GET /api/debug/systeme/`, `disque` et `fichiers`) :
+**Voir l'espace libre sur le VPS** (la page Debug le montre aussi, mesuré par le service : `GET /api/debug/systeme/`, `disque` et `fichiers`, et
+la jauge ci-dessus) :
 
 ```bash
 df -h / /srv                                                    # espace libre du disque (et de /srv s'il est à part)
+sudo cat /srv/maverick-center/metriques/volume-hote.json        # la répartition par type de données (relevé de l'hôte, ci-dessus)
+systemctl list-timers maverick-volume.timer                     # dernier et prochain relevé ; à la main : sudo systemctl start maverick-volume
 sudo du -sh /srv/maverick-center*/{site,db,metriques} /srv/maverick-center*/db/{archives,mise-a-jour} 2>/dev/null
 sudo du -sh /srv/maverick-center/metriques/*                    # prod.db et dev.db (et leur -wal)
 sudo docker system df                                           # images, conteneurs, volumes (détail : docker system df -v)
@@ -708,8 +773,9 @@ journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot fig
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
 (annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé, métriques jamais copiées ni effacées),
-`deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier) et `deploy-volume` (rotation des
-journaux Docker, métriques montées hors de `db/`, mesure des pages active par défaut, cette section fidèle au code), `ressources-registre`, `serveur-api-v1` et
+`deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte) et
+`deploy-volume` (rotation des journaux Docker, métriques montées hors de `db/`, mesure des pages active par défaut, `volume.sh` exécuté sur une
+arborescence factice : clés et classement du service, chaque octet compté une fois, cette section fidèle au code), `ressources-registre`, `serveur-api-v1` et
 `api-doc` (API REST `/api/v1/`, [`api.md`](api.md)), `journal-du-service` et `debug-page` (page Debug) ; `site-html` contrôle `dist/_serveur/`
 après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
 

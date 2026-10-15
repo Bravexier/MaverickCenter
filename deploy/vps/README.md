@@ -19,7 +19,8 @@ voient pas, mais les ports 8080 et 8081 ne servent à rien en direct. À la conn
 | --- | --- |
 | `durcir.sh` | Mises à jour de sécurité automatiques, SSH par clé uniquement, pare-feu (22, 80, 443), fail2ban |
 | `outils.sh` | Docker (+ compose), Caddy, `robots.txt` |
-| `instances.sh` | Les deux dossiers d'instance (`.env` avec ports sur `127.0.0.1`), dossiers partagés de la maintenance et des métriques, mots de passe internes, `Caddyfile` et son environnement |
+| `instances.sh` | Les deux dossiers d'instance (`.env` avec ports sur `127.0.0.1`), dossiers partagés de la maintenance et des métriques, mots de passe internes, `Caddyfile` et son environnement, minuteur de `volume.sh` |
+| `volume.sh` | Répartition du disque par type de données, vue de l'hôte (les deux instances, Docker, journaux, restes d'installation) : `metriques/volume-hote.json`, toutes les 15 minutes (jauge de la page Debug) |
 | `Caddyfile` | `maverick-jdr.com` → 8080, `dev.maverick-jdr.com` → 8081, `www.` → domaine principal |
 
 ## Avant de commencer
@@ -136,7 +137,8 @@ le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur 
 de nouveau ce dossier sur le serveur (étape 1) :
 
 ```
-sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/metriques, pose MAVERICK_INSTANCE et MAVERICK_DOSSIER_METRIQUES dans les deux .env
+sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/metriques, pose MAVERICK_INSTANCE et MAVERICK_DOSSIER_METRIQUES dans les deux .env,
+                                  # installe volume.sh et son minuteur (maverick-volume.timer)
 ```
 
 puis, comme pour la maintenance, `sudo docker compose up -d` dans chaque dossier d'instance **une fois que son installateur a posé le nouveau
@@ -144,11 +146,19 @@ puis, comme pour la maintenance, `sudo docker compose up -d` dans chaque dossier
 conteneur ; avant, `docker logs` grossissait sans fin). La mesure des pages par le navigateur est active sur les deux sites ; pour la couper sur
 une instance : `MAVERICK_METRIQUES_PAGES=0` dans son `.env`, puis `sudo docker compose up -d`.
 
+**Jauge de l'espace disque** (page Debug du site de dev, demande du propriétaire) : chaque service mesure ce qu'il voit de son conteneur ; le
+reste (l'autre instance, Docker, les journaux, les restes d'installation) est mesuré depuis le serveur par `volume.sh`, que `instances.sh` installe
+dans `/usr/local/lib/maverick-center/` avec le minuteur systemd `maverick-volume.timer` : toutes les 15 minutes, en lecture seule et à basse
+priorité, il écrit `/srv/maverick-center/metriques/volume-hote.json` ([`docs/serveur.md`](../../docs/serveur.md), « Jauge de l'espace disque »).
+Après une copie plus récente de ce dossier, relancer `instances.sh` reprend le script.
+
 **Espace libre** : tout ce qui grossit sur le serveur, combien et jusqu'où, est dans [`docs/serveur.md`](../../docs/serveur.md), « Tout ce qui
 grossit sur le serveur ». L'essentiel :
 
 ```
 df -h /                                                         # espace libre du disque
+sudo cat /srv/maverick-center/metriques/volume-hote.json        # répartition par type de données (dernier relevé)
+systemctl list-timers maverick-volume.timer                     # dernier et prochain relevé
 sudo du -sh /srv/maverick-center*/{site,db,metriques} 2>/dev/null
 sudo docker system df                                           # images, conteneurs, journaux compris
 ```

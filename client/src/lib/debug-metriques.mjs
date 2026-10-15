@@ -707,3 +707,185 @@ export function resumeDuSysteme(systeme) {
   if (alertes) morceaux.push(`${alertes} alerte${alertes > 1 ? 's' : ''}`);
   return morceaux.filter(Boolean).join(' · ');
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Espace disque du serveur (tout en bas de la page ; demande du propriétaire du 2026-10-15 : « Tout en bas je veux aussi la métrique de la place
+// occupée sur le serveur sur la place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») :
+// une jauge horizontale pleine largeur, la place totale découpée en segments proportionnels, un par type de données (GET <base>api/debug/systeme/,
+// `disque.repartition` = [{ cle, libelle, octets }] dont la somme fait `disque.total` : serveur/metriques.mjs#REPARTITION), le libre en clair, et
+// une légende qui dit tout (nom, taille, part du total : jamais la couleur seule). Tailles en unités décimales (Go, Mo : celles des hébergeurs).
+
+/**
+ * Les types de données de la jauge, dans son ordre (les clés de serveur/metriques.mjs#REPARTITION, et celles de REPARTITION_HOTE juste avant
+ * « Système et autres », figées : la CSS en tire les couleurs, `debug-espace__segment--<cle>`) ; `aide` : ce que le type compte (infobulle du
+ * segment et légende). Le libellé du service prévaut. Seuls les types que la réponse du service porte sont dessinés.
+ */
+export const TYPES_DU_DISQUE = [
+  { cle: 'base', libelle: 'Base de données', aide: 'La base vivante (règles et fiches) et les archives de ses anciennes versions, sans les images qu’elle contient.' },
+  { cle: 'images', libelle: 'Images importées', aide: 'Les portraits importés (prétirés et bestiaire, dans la base) et les portraits publiés du site.' },
+  { cle: 'mises-a-jour', libelle: 'Mises à jour', aide: 'Les lots figés de la page « Mise à jour ».' },
+  { cle: 'metriques', libelle: 'Métriques', aide: 'Le dossier des métriques (les fichiers des deux instances quand il est partagé).' },
+  { cle: 'site-code', libelle: 'Code du site', aide: 'Le service livré, les pages, scripts et styles du site construit.' },
+  { cle: 'site-donnees', libelle: 'Données du site', aide: 'Les bases publiées (règles, production), l’index de recherche et les règles de la fiche.' },
+  { cle: 'site-images', libelle: 'Images du site', aide: 'Les images du site construit (logo, icônes…), hors portraits.' },
+  { cle: 'site-autres', libelle: 'Autres fichiers du site', aide: 'Le reste du site construit (polices, textes, dossiers) ; avec le relevé de l’hôte, aussi les réglages et scripts des instances.' },
+  // les trois types que seul l'hôte voit (serveur/metriques.mjs#REPARTITION_HOTE : relevé de deploy/vps/volume.sh) : dans la répartition seulement
+  // quand le service a pris en compte ce relevé (VPS) ; sinon leur place est dans « Système et autres »
+  { cle: 'docker', libelle: 'Docker (images et conteneurs)', aide: 'Les images, conteneurs et volumes de Docker, sans leurs journaux (relevé de l’hôte).' },
+  { cle: 'journaux', libelle: 'Journaux', aide: 'Les journaux des conteneurs (docker logs), du système (/var/log) et des scripts des instances (relevé de l’hôte).' },
+  { cle: 'installations', libelle: 'Installations et copies', aide: 'Les restes d’une installation, les téléchargements des mises à jour et les installateurs copiés à la main (relevé de l’hôte).' },
+  { cle: 'autres', libelle: 'Système et autres', aide: 'La place prise que rien de ce qui précède n’explique : le système ; sans relevé de l’hôte, aussi Docker, les journaux et l’autre instance.' },
+  { cle: 'reserve', libelle: 'Réservé au système', aide: 'Les blocs que le système de fichiers garde pour root (5 % par défaut) : ni pris ni disponibles, comme pour df.' },
+  { cle: 'libre', libelle: 'Libre', aide: 'La place encore libre pour le service.' },
+];
+/** Sans répartition relevée (le service la relève toutes les 10 minutes) : la place prise, d'un seul tenant. */
+const OCCUPE_NON_REPARTI = { cle: 'occupe', libelle: 'Occupé (non réparti)', aide: 'Toute la place prise, d’un seul tenant.' };
+
+/** Un segment plus fin que cette part du total (1 %) garde une largeur minimale à l'écran (CSS) : il reste visible et se survole. */
+export const SEGMENT_FIN = 0.01;
+
+const UNITES_DECIMALES = ['ko', 'Mo', 'Go', 'To', 'Po'];
+
+/** Une taille en octets, en unités décimales (1 Go = 10⁹ octets, l'unité des hébergeurs) : « 512 o », « 1,5 ko », « 23,4 Go », « 80 Go ». */
+export function formaterOctetsDecimaux(octets) {
+  if (!fini(octets)) return '—';
+  const o = Number(octets);
+  if (Math.abs(o) < 1000) return `${nombre(o, 0)}${INSECABLE}o`;
+  let v = o;
+  let rang = -1;
+  while (rang < UNITES_DECIMALES.length - 1 && (Math.abs(v) >= 1000 || Number(Math.abs(v).toFixed(Math.abs(v) < 100 ? 1 : 0)) >= 1000)) {
+    v /= 1000;
+    rang += 1;
+  }
+  return `${nombreCourt(v, Math.abs(v) < 100 ? 1 : 0)}${INSECABLE}${UNITES_DECIMALES[rang]}`;
+}
+
+/** La part du disque (0 à 1) écrite : « 29 % », « 1,5 % » ; un reste non nul ne s'écrit jamais « 0 % » ni « 100 % » (« < 0,1 % », « > 99,9 % »). */
+export function pourcentDuDisque(part) {
+  if (!fini(part)) return '—';
+  const p = Math.min(1, Math.max(0, Number(part)));
+  if (p > 0 && p < 0.001) return `<${INSECABLE}0,1${INSECABLE}%`;
+  if (p < 1 && p > 0.999) return `>${INSECABLE}99,9${INSECABLE}%`;
+  const pct = p * 100;
+  return `${nombreCourt(pct, pct < 10 || pct > 90 ? 1 : 0)}${INSECABLE}%`;
+}
+
+const cleSure = (cle) => (/^[a-z0-9][a-z0-9-]{0,40}$/.test(String(cle ?? '')) ? String(cle) : 'inconnu');
+
+/**
+ * Les segments de la jauge de l'espace disque, d'après `disque` (GET <base>api/debug/systeme/) : null si la place totale est inconnue ou nulle.
+ * Rend { total, occupe, reserve, libre, part_occupee, repartie, segments: [{ cle, libelle, aide, octets, part, largeur, fin }] } :
+ *   - un segment par type, dans l'ordre de TYPES_DU_DISQUE (un type inconnu du module avant « Système et autres »), le libre toujours en dernier ;
+ *     les types du service à 0 octet restent (la légende les dit) ; sans répartition (`repartie` faux), « Occupé (non réparti) », la réserve de
+ *     root (`disque.reserve`) et le libre ;
+ *   - `occupe` = la place prise comme `df` (Used) : tout sauf la réserve de root et le libre ;
+ *   - la somme des segments fait la place totale : un manque (somme < total) va à « Système et autres » ; un excès fait de la somme le total ;
+ *   - `part` = octets / total (exacte) ; `largeur` = la part en pour cent arrondie au centième, par la méthode des plus forts restes : les
+ *     largeurs font exactement 100 ; `fin` = un segment non vide de moins de SEGMENT_FIN, qui garde une largeur minimale à l'écran.
+ */
+export function segmentsDuDisque(disque) {
+  if (!disque || typeof disque !== 'object' || !fini(disque.total) || Number(disque.total) <= 0) return null;
+  const octetsDe = (v) => (fini(v) ? Math.max(0, Math.round(Number(v))) : 0);
+  let total = octetsDe(disque.total);
+  if (total <= 0) return null;
+  const connus = new Map(TYPES_DU_DISQUE.map((t, i) => [t.cle, { ...t, rang: i }]));
+  const rangDesAutres = connus.get('autres').rang;
+  const parCle = new Map();
+  const ajouter = (cle, libelle, octets) => {
+    const c = cleSure(cle);
+    const type = connus.get(c) ?? (c === OCCUPE_NON_REPARTI.cle ? { ...OCCUPE_NON_REPARTI, rang: -1 } : { cle: c, libelle: c, aide: '', rang: rangDesAutres - 0.5 });
+    const existant = parCle.get(c);
+    if (existant) existant.octets += octets;
+    else parCle.set(c, { cle: c, libelle: String(libelle || type.libelle), aide: type.aide, rang: type.rang, octets });
+  };
+  const repartition = Array.isArray(disque.repartition) ? disque.repartition.filter((r) => r && typeof r === 'object') : [];
+  const repartie = repartition.length > 0;
+  const libreDuDisque = Math.min(total, octetsDe(disque.libre));
+  const reserveDuDisque = Math.min(total - libreDuDisque, octetsDe(disque.reserve));
+  if (repartie) {
+    for (const r of repartition) ajouter(r.cle, r.libelle, octetsDe(r.octets));
+    if (!parCle.has('libre')) ajouter('libre', '', libreDuDisque);
+  } else {
+    ajouter(OCCUPE_NON_REPARTI.cle, '', total - libreDuDisque - reserveDuDisque);
+    if (reserveDuDisque > 0) ajouter('reserve', '', reserveDuDisque);
+    ajouter('libre', '', libreDuDisque);
+  }
+  const somme = [...parCle.values()].reduce((s, x) => s + x.octets, 0);
+  if (somme < total) ajouter(repartie ? 'autres' : OCCUPE_NON_REPARTI.cle, '', total - somme);
+  else total = somme;
+  const segments = [...parCle.values()].sort((a, b) => (a.cle === 'libre') - (b.cle === 'libre') || a.rang - b.rang);
+  // largeurs au centième de pour cent (10 000 unités), plus forts restes : la somme fait 100 exactement
+  const UNITES = 10000;
+  const brutes = segments.map((s) => (s.octets / total) * UNITES);
+  const entieres = brutes.map(Math.floor);
+  let reste = UNITES - entieres.reduce((a, b) => a + b, 0);
+  const ordre = brutes.map((b, i) => i).filter((i) => segments[i].octets > 0)
+    .sort((a, b) => (brutes[b] - entieres[b]) - (brutes[a] - entieres[a]) || segments[b].octets - segments[a].octets || a - b);
+  for (let j = 0; reste > 0 && ordre.length; j += 1, reste -= 1) entieres[ordre[j % ordre.length]] += 1;
+  const libre = parCle.get('libre')?.octets ?? 0;
+  const reserve = parCle.get('reserve')?.octets ?? 0;
+  return {
+    total,
+    // la place prise, comme `df` (Used) : ni le libre ni la réserve de root
+    occupe: total - libre - reserve,
+    reserve,
+    libre,
+    part_occupee: (total - libre - reserve) / total,
+    repartie,
+    segments: segments.map((s, i) => {
+      const part = s.octets / total;
+      return { cle: s.cle, libelle: s.libelle, aide: s.aide, octets: s.octets, part, largeur: entieres[i] / 100, fin: s.octets > 0 && part < SEGMENT_FIN };
+    }),
+  };
+}
+
+/** La phrase d'un segment : « Base de données : 1,2 Go (1,5 % du disque) » (titre de la jauge, infobulle, légende). */
+const texteDuSegment = (s) => `${s.libelle} : ${formaterOctetsDecimaux(s.octets)} (${pourcentDuDisque(s.part)} du disque)`;
+
+/**
+ * La section « Espace disque du serveur » : en titre la place occupée sur la place totale (« 23,4 Go occupés sur 80 Go (29 %) »), une alerte écrite
+ * si le disque est bas (niveauDuDisque ; sans role="alert" : celle du bloc « Système » l'annonce déjà), la jauge (role="img", son aria-label dit tout ; chaque segment porte son infobulle habillée du site,
+ * `data-infobulle`, jamais un `title`) et la légende (un élément par type : marque de couleur, nom, taille, part du total, ce qu'il compte).
+ * `instance` (dev, prod) et `maintenant` : la ligne de contexte (instance, dossier, heure du relevé, relevé partiel).
+ */
+export function htmlDeLEspaceDisque(disque, { instance = '', maintenant = new Date() } = {}) {
+  const jaugeDuDisque = segmentsDuDisque(disque);
+  if (!jaugeDuDisque) return '<p class="debug-vide">Espace disque inconnu.</p>';
+  const { total, occupe, reserve, libre, part_occupee: partOccupee, repartie, segments } = jaugeDuDisque;
+  // du texte (« < 0,1 % ») : échappé à chaque emploi dans le HTML
+  const titre = `${formaterOctetsDecimaux(occupe)} occupés sur ${formaterOctetsDecimaux(total)} (${pourcentDuDisque(partOccupee)})`;
+  const niveau = niveauDuDisque(disque);
+  const alerte = niveau === 'alerte'
+    ? `<p class="debug-alerte debug-alerte--erreur">Disque presque plein : ${echapper(`${formaterOctetsDecimaux(libre)} libres (${pourcentDuDisque(libre / total)})`)}.</p>`
+    : niveau === 'attention' ? '<p class="debug-alerte debug-alerte--avertissement">Moins de 20 % du disque libre.</p>' : '';
+  const nomDeLInstance = INSTANCES.find((i) => i.cle === instance)?.libelle ?? instance;
+  // le relevé de l'hôte (VPS : deploy/vps/volume.sh), pris en compte ou écarté (serveur/metriques.mjs#lireReleveDeLHote) ; null ailleurs
+  const hote = disque.repartition_hote && typeof disque.repartition_hote === 'object' ? disque.repartition_hote : null;
+  const contexte = [
+    nomDeLInstance ? echapper(nomDeLInstance) : '',
+    disque.dossier ? `disque du dossier <code>${echapper(disque.dossier)}</code>` : '',
+    repartie && disque.repartition_le ? `répartition relevée à <time datetime="${echapper(disque.repartition_le)}">${echapper(instantLisible(disque.repartition_le, maintenant))}</time>` : '',
+    repartie && hote?.utilise && hote.releve_le ? `relevé de l’hôte à <time datetime="${echapper(hote.releve_le)}">${echapper(instantLisible(hote.releve_le, maintenant))}</time>` : '',
+  ].filter(Boolean).join(' · ');
+  const notes = [
+    repartie ? '' : 'La répartition par type n’a pas encore été relevée (le service la relève toutes les 10 minutes) : la place prise est d’un seul tenant.',
+    repartie && disque.repartition_partielle === true ? 'Relevé partiel : le parcours des fichiers s’est arrêté à sa borne ; le reste est compté dans « Système et autres ».' : '',
+    repartie && hote && !hote.utilise ? `Relevé de l’hôte écarté (${echapper(hote.raison ?? 'raison inconnue')}) : Docker, les journaux et l’autre instance restent dans « Système et autres ».` : '',
+  ].filter(Boolean);
+  const visibles = segments.filter((s) => s.octets > 0);
+  const label = `Espace disque : ${titre}. ${visibles.map(texteDuSegment).join(' ; ')}.`;
+  const barre = visibles.map((s) => `<span class="debug-espace__segment debug-espace__segment--${s.cle}${s.fin ? ' debug-espace__segment--fin' : ''}" `
+    + `data-cle="${s.cle}" style="flex-basis: ${s.largeur}%" data-infobulle="${echapper(`${texteDuSegment(s)}${s.aide ? ` — ${s.aide}` : ''}`)}"></span>`).join('');
+  const legende = segments.map((s) => `<li class="debug-espace__type" data-cle="${s.cle}"${s.octets > 0 ? '' : ' data-vide'}>`
+    + `<span class="debug-espace__marque debug-espace__segment--${s.cle}" aria-hidden="true"></span>`
+    + `<span class="debug-espace__nom">${echapper(s.libelle)}</span>`
+    + `<span class="debug-espace__valeur">${echapper(`${formaterOctetsDecimaux(s.octets)} · ${pourcentDuDisque(s.part)}`)}</span>`
+    + `${s.aide ? `<span class="debug-espace__aide">${echapper(s.aide)}</span>` : ''}</li>`).join('');
+  const suite = [`${formaterOctetsDecimaux(libre)} libres`, reserve > 0 ? `${formaterOctetsDecimaux(reserve)} réservés au système` : ''].filter(Boolean).join(' · ');
+  return `${alerte}<p class="debug-espace__titre"${niveau ? ` data-niveau="${niveau}"` : ''}><strong>${echapper(titre)}</strong> · ${echapper(suite)}</p>`
+    + `${contexte ? `<p class="debug-petit">${contexte}</p>` : ''}`
+    + `<div class="debug-espace__jauge" role="img" aria-label="${echapper(label)}">${barre}</div>`
+    + `<ul class="debug-espace__legende">${legende}</ul>`
+    + notes.map((n) => `<p class="debug-petit">${n}</p>`).join('')
+    + '<p class="debug-petit">Tailles en unités décimales (1 Go = 1 000 000 000 octets, comme les hébergeurs) ; le bloc « Système » compte en Gio.</p>';
+}

@@ -103,13 +103,17 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     const installateur = fichier.includes('installateur');
     // maintenance pendant une mise à jour (docs/serveur.md) : un dossier d'annonce monté, celui de l'instance sauf réglage (serveur de test : celui du
     // serveur normal) ; le NAS d'avant la 0.2.0 n'a qu'un site, sans mise à jour depuis la page
+    // métriques (serveur/metriques.mjs ; docs/serveur.md, « Métriques et volume ») : un dossier monté hors de db/ (partagé par les deux instances du
+    // VPS), le nom de l'instance (vide : déduit de l'édition), requêtes brutes gardées sur disque seulement à la demande, balise des pages ouverte par
+    // défaut (décision du propriétaire du 2026-10-15) et fermée par MAVERICK_METRIQUES_PAGES=0
     const edition = installateur
       ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
-        MAVERICK_MAINTENANCE: '/maintenance' }
+        MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
+        MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
-      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance'] : [])], fichier);
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,

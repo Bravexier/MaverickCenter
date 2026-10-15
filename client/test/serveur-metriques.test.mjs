@@ -474,24 +474,26 @@ test('rétention (horloge injectée) : agrégats 400 jours, 5 min 2 jours, écha
       assert.equal(m.verser(), true);
     };
     ecrire(); // T0 : 401 jours avant la purge
+    t = T0 + (401 - 40) * JOUR;
+    ecrire(); // 40 jours avant la purge
     t = T0 + (401 - 15) * JOUR;
     ecrire(); // 15 jours avant la purge
     t = T0 + (401 - 1) * JOUR;
     ecrire(); // la veille
     t = T0 + 401 * JOUR + 3600_000;
-    assert.deepEqual(['agregat_heure', 'agregat_5min', 'systeme_minute', 'evenement', 'requete_brute', 'page_heure'].map(compte), [3, 3, 3, 3, 3, 3]);
+    assert.deepEqual(['agregat_heure', 'agregat_5min', 'systeme_minute', 'evenement', 'requete_brute', 'page_heure'].map(compte), [4, 4, 4, 4, 4, 4]);
     const r = m.purger();
     assert.ok(r, 'purge faite');
     assert.equal(m.verser(), true, 'l’évènement de la purge');
-    assert.equal(compte('agregat_heure'), 2, '400 jours');
-    assert.equal(compte('page_heure'), 2);
-    assert.equal(compte('navigateur_heure'), 2);
+    assert.equal(compte('agregat_heure'), 3, '400 jours : 40 jours, 15 jours et la veille');
+    assert.equal(compte('page_heure'), 3);
+    assert.equal(compte('navigateur_heure'), 3);
     assert.equal(compte('origine_heure'), 0, 'aucune page d’origine dans ces requêtes');
     assert.equal(compte('agregat_5min'), 1, '2 jours : la veille seulement');
     assert.equal(compte('systeme_minute'), 1, '14 jours : la veille seulement');
-    assert.equal(compte('systeme_heure'), 1, 'les échantillons d’il y a 15 jours résumés par heure ; ceux d’il y a 401 jours, hors des 400 jours');
-    assert.equal(compte('evenement'), 3, 'les deux récents et l’évènement de la purge');
-    assert.equal(compte('requete_brute'), 1, '30 jours');
+    assert.equal(compte('systeme_heure'), 2, 'les échantillons d’il y a 40 et 15 jours résumés par heure ; ceux d’il y a 401 jours, hors des 400 jours');
+    assert.equal(compte('evenement'), 4, 'les trois récents et l’évènement de la purge');
+    assert.equal(compte('requete_brute'), 2, '30 jours : 15 jours et la veille (pas 40 jours)');
     const d = db();
     assert.equal(Number(d.prepare("SELECT valeur FROM meta WHERE cle = 'derniere_purge_ms'").get().valeur), t);
     assert.equal(d.prepare("SELECT type FROM evenement ORDER BY id DESC LIMIT 1").get().type, 'purge_metriques');
@@ -502,12 +504,15 @@ test('rétention (horloge injectée) : agrégats 400 jours, 5 min 2 jours, écha
     requete(m, { adresse: '/api/etat/' });
     t += 23 * 3600_000;
     m.minute();
-    assert.equal(compte('evenement'), 3, 'pas encore');
+    assert.equal(compte('evenement'), 4, 'pas encore');
     t += 2 * 3600_000;
     m.minute();
-    assert.equal(compte('evenement'), 4, 'une purge par jour');
+    assert.equal(compte('evenement'), 5, 'une purge par jour');
     // les rétentions publiées
-    assert.deepEqual({ ...RETENTION }, { agregats_heure: 400, agregats_5min: 2, pages: 400, navigateurs: 400, origines: 400, echantillons_minute: 14, echantillons_heure: 400, evenements: 400, requetes_brutes: 30 });
+    assert.deepEqual({ ...RETENTION }, {
+      agregats_heure: 400, agregats_5min: 2, pages: 400, navigateurs: 400, origines: 400, echantillons_minute: 14, echantillons_heure: 400, repartition_10min: 14,
+      repartition_jour: 400, evenements: 400, requetes_brutes: 30,
+    });
   } finally {
     m.arreter();
   }

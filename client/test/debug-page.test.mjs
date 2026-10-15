@@ -481,11 +481,15 @@ test('la page : une phrase sans script en production et dans la version portable
   // demande du 2026-10-15 : « Performances » puis « Système », deux menus déroulants ouverts, entre le testeur et les journaux
   assert.match(page, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-perfs-titre">Performances<\/h2>/);
   assert.match(page, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-systeme-titre">Système<\/h2>/);
-  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux'].map((m) => page.indexOf(m));
-  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, performances, système, journaux');
+  // demande du 2026-10-15 : « Tout en bas […] la place occupée sur le serveur sur la place totale sous forme de jauge » (après les journaux)
+  assert.match(page, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre" hidden>\s*<h2 id="debug-espace-titre">Espace disque du serveur<\/h2>/);
+  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => page.indexOf(m));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, performances, système, journaux, espace disque');
+  assert.ok(page.lastIndexOf('</section>') > page.indexOf('data-debug-espace') && page.indexOf('data-debug-espace') > page.lastIndexOf('data-journaux-vide'), 'tout en bas');
   for (const m of ['data-perfs-instance', 'data-perfs-periode', 'data-perfs-tri', 'data-perfs-routes', 'data-perfs-serie', 'data-perfs-pages',
     'data-perfs-navigateurs', 'data-perfs-origines', 'data-requetes-liste', 'data-requetes-min', 'data-systeme-processus', 'data-systeme-disque',
-    'data-systeme-fichiers', 'data-systeme-volume', 'data-systeme-echantillons', 'data-systeme-evenements', 'data-systeme-alertes']) {
+    'data-systeme-fichiers', 'data-systeme-volume', 'data-systeme-echantillons', 'data-systeme-evenements', 'data-systeme-alertes', 'data-espace-jauge',
+    'data-espace-annonce']) {
     assert.ok(page.includes(m), m);
   }
   assert.match(page, /<a class="debug-bouton" data-perfs-export="csv" href=\{url\(`api\/debug\/metriques\/export\/\?instance=dev&periode=\$\{PERIODE_PAR_DEFAUT\}&format=csv`\)\} download>Exporter \(CSV\)<\/a>/);
@@ -525,7 +529,10 @@ test('le script de la page n’importe que lib/debug-api.mjs, lib/debug-journaux
   assert.match(script, /setInterval\(\(\) => relever\(\), RELEVE_METRIQUES_MS\)/);
   assert.match(script, /if \(document\.hidden\) return;/);
   assert.match(script, /if \(perfs\.open && /);
-  assert.match(script, /if \(systeme\.open && /);
+  // le système (et la jauge de l'espace disque, tirée de la même réponse) : relevé tant que son bloc est ouvert OU que la jauge, tout en bas, se voit
+  assert.match(script, /const systemeVisible = \(\) => systeme\.open \|\| !espace\.hidden;/);
+  assert.match(script, /if \(systemeVisible\(\) && /);
+  assert.match(script, /espaceJauge\.innerHTML = htmlDeLEspaceDisque\(corps\.disque, /, 'la jauge, de la réponse du système');
   assert.match(script, /if \(numero !== demandes\.metriques\) return;/);
   assert.match(script, /statut === 403/, 'un service qui refuse (pas le site de dev) : la page s’arrête de demander');
 });
@@ -574,8 +581,8 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
   assert.ok(main.indexOf('data-debug-testeur') < main.indexOf('data-debug-journaux'));
   assert.match(main, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>/, 'Performances, ouvert (caché tant que le service n’a pas répondu)');
   assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>/);
-  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux'].map((m) => main.indexOf(m));
-  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre);
+  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => main.indexOf(m));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'l’espace disque tout en bas');
   assert.match(main, /<option value="dev" selected>Site de dev<\/option><option value="prod">Production<\/option>/, 'deux instances, jamais mélangées');
   assert.match(main, /<th scope="col" aria-sort="descending"><button type="button" class="debug-tri" data-tri-colonne="moyenne">Moyenne<\/button><\/th>/, 'trié par moyenne décroissante');
   assert.match(main, /href="\/api\/debug\/metriques\/export\/\?instance=dev&amp;periode=24h&amp;format=csv" download>Exporter \(CSV\)<\/a>/);

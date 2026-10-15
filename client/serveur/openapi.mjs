@@ -491,7 +491,7 @@ function cheminsDuService() {
           { name: 'format', in: 'query', description: 'csv ou json.', schema: { type: 'string', enum: ['csv', 'json'], default: 'csv' } }],
       }),
     '/debug/systeme/': lectureDuService('systeme', 'État du système',
-      `Processus (mémoire, tas, boucle d’événements, CPU, charge), disque, fichiers (base vivante, archives, lots de mise à jour, métriques), échantillons par minute, évènements du service avec leur durée, volume des métriques (taille, croissance par jour, taille à terme, rétention) et alertes.${SITE_DE_DEV}`, {
+      `Processus (mémoire, tas, boucle d’événements, CPU, charge), disque et sa répartition par type de données (disque.repartition : [{ cle, libelle, octets }] dans l’ordre base, images, mises-a-jour, metriques, site-code, site-donnees, site-images, site-autres, [docker, journaux, installations : avec le relevé de l’hôte du VPS, volume-hote.json], autres, reserve (la réserve de root, comme df), libre ; la somme fait exactement disque.total, la place prise (df : Used) est tout sauf reserve et libre ; relevé gardé 10 minutes ; disque.repartition_hote = { releve_le, utilise, raison } ou null), fichiers (base vivante, archives, lots de mise à jour, métriques), échantillons par minute, évènements du service avec leur durée, volume des métriques (taille, croissance par jour, taille à terme, rétention) et alertes.${SITE_DE_DEV}`, {
         parameters: [INSTANCE, PERIODE],
         responses: { 200: reponse('L’état du système.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
       }),

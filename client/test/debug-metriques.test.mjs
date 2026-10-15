@@ -11,7 +11,10 @@ import {
   htmlDesEvenements, htmlDesFichiers, htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesPhases, htmlDesRequetes, htmlDesRoutes,
   htmlDuDisque, htmlDuProcessus, htmlDuVolume, instantLisible, jauge, lenteur, mesureDePage, niveauDuDisque, nombre, optionsDesRoutes, plafondRond,
   plusLentes, resumeDesMetriques, resumeDuSysteme, seuilSaisi, sensParDefaut, texteDuDetail, trierRoutes, valeurDeTri,
+  SEGMENT_FIN, TYPES_DU_DISQUE, formaterOctetsDecimaux, htmlDeLEspaceDisque, pourcentDuDisque, segmentsDuDisque,
 } from '../src/lib/debug-metriques.mjs';
+import { readFileSync } from 'node:fs';
+import { comptesAvecLHote, REPARTITION, REPARTITION_HOTE, repartitionDu } from '../serveur/metriques.mjs';
 
 const F = '\u202f'; // espace fine insécable (milliers)
 const I = '\u00a0'; // espace insécable (avant l'unité)
@@ -302,4 +305,187 @@ test('système : jauge (role="meter"), disque bas signalé par écrit, processus
   assert.equal(resumeDuSysteme({ instance: 'prod', disque: { libre: 1.5 * Gio, part_libre: 0.15 }, alertes: [{ message: 'a' }, { message: 'b' }] }),
     `Production · disque libre 1,5${I}Gio (15${I}%) · 2 alertes`);
   for (const morceau of [disque, processus, fichiers, volume, evenements, alertes]) assert.doesNotMatch(morceau, /\stitle=|<title/);
+});
+
+// ---- Espace disque du serveur (demande du propriétaire du 2026-10-15 : « Tout en bas je veux aussi la métrique de la place occupée sur le serveur
+// sur la place totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») ----------------------------
+
+const Go = 1e9;
+const somme = (liste) => liste.reduce((a, b) => a + b, 0);
+/** Arrondi à 1e-9 près (les largeurs sont des centièmes de pour cent). */
+const proche = (a, b, message) => assert.ok(Math.abs(a - b) < 1e-9, `${message ?? ''} ${a} ≠ ${b}`);
+
+test('espace disque : tailles en unités décimales (Go, Mo : celles des hébergeurs), parts écrites sans « 0 % » ni « 100 % » trompeurs', () => {
+  assert.equal(formaterOctetsDecimaux(512), `512${I}o`);
+  assert.equal(formaterOctetsDecimaux(1500), `1,5${I}ko`);
+  assert.equal(formaterOctetsDecimaux(30e6), `30${I}Mo`);
+  assert.equal(formaterOctetsDecimaux(23.4 * Go), `23,4${I}Go`);
+  assert.equal(formaterOctetsDecimaux(80 * Go), `80${I}Go`, 'sans zéro inutile');
+  assert.equal(formaterOctetsDecimaux(150 * Go), `150${I}Go`);
+  assert.equal(formaterOctetsDecimaux(999.96e6), `1${I}Go`, 'jamais « 1 000 Mo »');
+  assert.equal(formaterOctetsDecimaux(1.2e12), `1,2${I}To`);
+  assert.equal(formaterOctetsDecimaux(null), '—');
+  assert.equal(pourcentDuDisque(0.2925), `29${I}%`);
+  assert.equal(pourcentDuDisque(0.015), `1,5${I}%`);
+  assert.equal(pourcentDuDisque(0), `0${I}%`);
+  assert.equal(pourcentDuDisque(1), `100${I}%`);
+  assert.equal(pourcentDuDisque(1e-8), `<${I}0,1${I}%`, 'un segment minuscule n’est jamais « 0 % »');
+  assert.equal(pourcentDuDisque(0.9996), `>${I}99,9${I}%`, 'un disque presque plein n’est jamais « 100 % »');
+  assert.equal(pourcentDuDisque(0.955), `95,5${I}%`, 'une décimale au-delà de 90 %');
+  assert.equal(pourcentDuDisque(undefined), '—');
+});
+
+test('espace disque : les types de la jauge sont ceux du service (serveur/metriques.mjs#REPARTITION, ceux de l’hôte avant « Système et autres »), dans son ordre, chacun avec sa couleur claire et sombre', () => {
+  const service = [...REPARTITION.slice(0, -3), ...REPARTITION_HOTE, ...REPARTITION.slice(-3)];
+  assert.deepEqual(TYPES_DU_DISQUE.map((t) => t.cle), service.map((r) => r.cle), 'mêmes clés, même ordre');
+  assert.deepEqual(TYPES_DU_DISQUE.map((t) => t.libelle), service.map((r) => r.libelle), 'mêmes libellés');
+  assert.equal(TYPES_DU_DISQUE.at(-1).cle, 'libre', 'le libre en dernier');
+  for (const t of TYPES_DU_DISQUE) assert.ok(t.aide && t.aide.endsWith('.'), `${t.cle} : ce que le type compte`);
+  const css = readFileSync(new URL('../src/styles/debug/debug.css', import.meta.url), 'utf8');
+  for (const { cle } of TYPES_DU_DISQUE) {
+    assert.match(css, new RegExp(`\\.debug-espace__segment--${cle}\\b[^{]*\\{[^}]*--seg: var\\(--dbg-disque-${cle}\\)`), `${cle} : sa couleur`);
+    assert.equal((css.match(new RegExp(`--dbg-disque-${cle}: #[0-9a-f]{6}`, 'g')) ?? []).length, 3, `${cle} : clair, sombre (préférence du système) et sombre (thème choisi)`);
+  }
+  const couleurs = TYPES_DU_DISQUE.map(({ cle }) => css.match(new RegExp(`--dbg-disque-${cle}: (#[0-9a-f]{6})`))[1]);
+  assert.equal(new Set(couleurs).size, couleurs.length, 'une couleur par type');
+  assert.match(css, /\.debug-espace__segment--fin \{[^}]*min-width: 6px/, 'un segment très fin reste visible');
+});
+
+test('espace disque : segments proportionnels (largeurs au centième, somme exactement 100), dans l’ordre, le libre en dernier, d’après la VRAIE répartition du service', () => {
+  const total = 80 * Go;
+  const libre = 56.6 * Go;
+  const { repartition } = repartitionDu({ total, libre, comptes: { base: 1.2 * Go, images: 0.3 * Go, 'site-code': 0.03 * Go, metriques: 0.012 * Go } });
+  const j = segmentsDuDisque({ total, libre, repartition });
+  assert.equal(j.total, total);
+  assert.equal(j.libre, libre);
+  assert.equal(j.occupe, total - libre);
+  proche(j.part_occupee, 0.2925);
+  assert.equal(j.repartie, true);
+  assert.deepEqual(j.segments.map((x) => x.cle), REPARTITION.map((r) => r.cle), 'tous les types, même vides (la légende les dit)');
+  assert.equal(somme(j.segments.map((x) => x.octets)), total, 'la somme fait la place totale');
+  proche(somme(j.segments.map((x) => x.largeur)), 100, 'les largeurs font 100');
+  for (const x of j.segments) {
+    proche(x.part, x.octets / total, x.cle);
+    assert.ok(Math.abs(x.largeur - x.part * 100) <= 0.01 + 1e-9, `${x.cle} : largeur ${x.largeur} pour ${x.part * 100}`);
+    assert.equal(Math.round(x.largeur * 100), x.largeur * 100, `${x.cle} : au centième`);
+  }
+  const base = j.segments.find((x) => x.cle === 'base');
+  assert.deepEqual([base.libelle, base.octets, base.largeur, base.fin], ['Base de données', 1.2 * Go, 1.5, false]);
+  const metriques = j.segments.find((x) => x.cle === 'metriques');
+  assert.equal(metriques.fin, true, '12 Mo sur 80 Go : très fin');
+  assert.equal(j.segments.find((x) => x.cle === 'mises-a-jour').fin, false, 'un type vide n’est pas « fin » : il n’est pas dans la barre');
+});
+
+test('espace disque : arrondis par les plus forts restes, segments minuscules, total nul ou inconnu, sans répartition, somme qui ne fait pas le total', () => {
+  // trois tiers : 33,34 + 33,33 + 33,33 (jamais 99,99)
+  const tiers = segmentsDuDisque({ total: 3, libre: 1, repartition: [{ cle: 'base', octets: 1 }, { cle: 'autres', octets: 1 }, { cle: 'libre', octets: 1 }] });
+  assert.deepEqual(tiers.segments.map((x) => x.largeur).sort(), [33.33, 33.33, 33.34]);
+  proche(somme(tiers.segments.map((x) => x.largeur)), 100);
+  // minuscule : 1 ko sur 80 Go — part exacte, largeur 0 (la CSS lui garde 6 px), « fin », jamais « 0 % »
+  const minuscule = segmentsDuDisque({ total: 80 * Go, libre: 40 * Go, repartition: [{ cle: 'images', octets: 1000 }, { cle: 'autres', octets: 40 * Go - 1000 }, { cle: 'libre', octets: 40 * Go }] });
+  const images = minuscule.segments.find((x) => x.cle === 'images');
+  assert.equal(images.fin, true);
+  assert.equal(images.largeur, 0);
+  proche(images.part, 1000 / (80 * Go));
+  assert.ok(images.part < SEGMENT_FIN);
+  proche(somme(minuscule.segments.map((x) => x.largeur)), 100);
+  // total nul, négatif ou inconnu : pas de jauge
+  for (const d of [null, undefined, {}, { total: 0, libre: 0 }, { total: -5 }, { total: 'x' }, { total: 0.2 }]) {
+    assert.equal(segmentsDuDisque(d), null, JSON.stringify(d));
+    assert.equal(htmlDeLEspaceDisque(d), '<p class="debug-vide">Espace disque inconnu.</p>');
+  }
+  // sans répartition (pas encore relevée) : l'occupé d'un seul tenant, puis le libre
+  const brut = segmentsDuDisque({ total: 100 * Go, libre: 75 * Go, repartition: null });
+  assert.equal(brut.repartie, false);
+  assert.deepEqual(brut.segments.map((x) => [x.cle, x.octets, x.largeur]), [['occupe', 25 * Go, 25], ['libre', 75 * Go, 75]]);
+  // une somme plus petite que le total : le manque va à « Système et autres » ; plus grande : elle devient le total
+  const manque = segmentsDuDisque({ total: 100, libre: 50, repartition: [{ cle: 'base', octets: 20 }, { cle: 'libre', octets: 50 }] });
+  assert.deepEqual(manque.segments.map((x) => [x.cle, x.octets]), [['base', 20], ['autres', 30], ['libre', 50]]);
+  const exces = segmentsDuDisque({ total: 100, libre: 50, repartition: [{ cle: 'base', octets: 100 }, { cle: 'libre', octets: 50 }] });
+  assert.equal(exces.total, 150);
+  proche(somme(exces.segments.map((x) => x.largeur)), 100);
+  // un libre absent de la répartition est pris au disque ; une clé inconnue ou dangereuse reste (« inconnu »), avant « Système et autres »
+  const bizarre = segmentsDuDisque({ total: 100, libre: 10, repartition: [{ cle: 'autres', octets: 30 }, { cle: '"><script>', libelle: 'Étrange <b>', octets: 40 }, { cle: 'cache', octets: 20 }] });
+  assert.deepEqual(bizarre.segments.map((x) => x.cle), ['inconnu', 'cache', 'autres', 'libre']);
+  assert.equal(bizarre.segments.at(-1).octets, 10);
+  const html = htmlDeLEspaceDisque({ total: 100, libre: 10, repartition: [{ cle: '"><script>', libelle: 'Étrange <b>', octets: 90 }, { cle: 'libre', octets: 10 }] });
+  assert.doesNotMatch(html, /<script|<b>/);
+  assert.match(html, /Étrange &lt;b&gt;/);
+});
+
+test('espace disque : le rendu — titre « occupés sur », jauge role="img" qui dit tout, infobulle habillée par segment (jamais title), légende complète, libre en clair, alerte, relevé', () => {
+  const total = 80 * Go;
+  const libre = 56.6 * Go;
+  const maintenant = new Date(2026, 9, 15, 18, 0, 0);
+  const releve = new Date(2026, 9, 15, 17, 50, 0).toISOString();
+  const { repartition } = repartitionDu({ total, libre, comptes: { base: 1.2 * Go, images: 1000, 'site-code': 0.03 * Go } });
+  const html = htmlDeLEspaceDisque({ total, libre, dossier: '/srv/maverick/db', part_libre: libre / total, repartition, repartition_le: releve, repartition_partielle: false }, { instance: 'prod', maintenant });
+  assert.match(html, new RegExp(`^<p class="debug-espace__titre"><strong>23,4${I}Go occupés sur 80${I}Go \\(29${I}%\\)</strong> · 56,6${I}Go libres</p>`), 'la place occupée sur la place totale');
+  assert.match(html, /<p class="debug-petit">Production · disque du dossier <code>\/srv\/maverick\/db<\/code> · répartition relevée à <time datetime="[^"]+">17:50:00<\/time><\/p>/);
+  const barre = html.match(/<div class="debug-espace__jauge" role="img" aria-label="([^"]+)">(.*?)<\/div>/);
+  assert.ok(barre, 'une jauge');
+  assert.match(barre[1], new RegExp(`^Espace disque : 23,4${I}Go occupés sur 80${I}Go \\(29${I}%\\)\\. Base de données : 1,2${I}Go \\(1,5${I}% du disque\\) ; Images importées : 1${I}ko \\(&lt;${I}0,1${I}% du disque\\) ;`));
+  const segments = [...barre[2].matchAll(/<span class="debug-espace__segment debug-espace__segment--([a-z-]+)( debug-espace__segment--fin)?" data-cle="\1" style="flex-basis: ([\d.]+)%" data-infobulle="([^"]+)"><\/span>/g)];
+  assert.deepEqual(segments.map((m) => m[1]), ['base', 'images', 'site-code', 'autres', 'libre'], 'seuls les types non vides, dans l’ordre, le libre au bout');
+  assert.equal(barre[2], segments.map((m) => m[0]).join(''), 'rien d’autre dans la barre');
+  assert.deepEqual(segments.filter((m) => m[2]).map((m) => m[1]), ['images', 'site-code'], 'les segments très fins (largeur minimale à l’écran)');
+  proche(somme(segments.map((m) => Number(m[3]))), 100);
+  assert.match(segments[0][4], new RegExp(`^Base de données : 1,2${I}Go \\(1,5${I}% du disque\\) — La base vivante`), 'infobulle : nom, taille, part, ce qu’il compte');
+  // la légende : chaque type (vides compris, atténués), sa marque de couleur, son nom, sa taille et sa part — la couleur n'est jamais seule
+  const legende = [...html.matchAll(/<li class="debug-espace__type" data-cle="([a-z-]+)"( data-vide)?><span class="debug-espace__marque debug-espace__segment--\1" aria-hidden="true"><\/span><span class="debug-espace__nom">([^<]+)<\/span><span class="debug-espace__valeur">([^<]+)<\/span>/g)];
+  assert.deepEqual(legende.map((m) => m[1]), REPARTITION.map((r) => r.cle));
+  assert.deepEqual(legende.filter((m) => m[2]).map((m) => m[1]), ['mises-a-jour', 'metriques', 'site-donnees', 'site-images', 'site-autres', 'reserve']);
+  assert.deepEqual(legende.find((m) => m[1] === 'libre').slice(3), ['Libre', `56,6${I}Go · 71${I}%`]);
+  assert.deepEqual(legende.find((m) => m[1] === 'images').slice(3), ['Images importées', `1${I}ko · &lt;${I}0,1${I}%`], 'le minuscule reste lisible dans la légende');
+  assert.doesNotMatch(html, /\stitle=|<title|role="alert"/, 'jamais d’infobulle native ; l’alerte est annoncée par le bloc Système');
+  assert.match(html, /unités décimales \(1 Go = 1 000 000 000 octets/);
+  // disque bas : l'alerte écrite et le titre marqué ; relevé partiel et répartition absente : dits en clair
+  const bas = htmlDeLEspaceDisque({ total: 100 * Go, libre: 1.5 * Go, repartition: null, repartition_partielle: null });
+  assert.match(bas, new RegExp(`^<p class="debug-alerte debug-alerte--erreur">Disque presque plein : 1,5${I}Go libres \\(1,5${I}%\\)\\.</p><p class="debug-espace__titre" data-niveau="alerte">`));
+  assert.match(bas, /data-cle="occupe"/);
+  assert.match(bas, /La répartition par type n’a pas encore été relevée/);
+  const partiel = htmlDeLEspaceDisque({ total: 100, libre: 50, repartition: [{ cle: 'base', octets: 50 }, { cle: 'libre', octets: 50 }], repartition_partielle: true });
+  assert.match(partiel, /Relevé partiel : le parcours des fichiers s’est arrêté à sa borne/);
+  assert.doesNotMatch(htmlDeLEspaceDisque({ total: 100, libre: 50, repartition: [{ cle: 'libre', octets: 50 }] }), /Relevé partiel/);
+});
+
+test('espace disque : avec le relevé de l’hôte (VPS), Docker, journaux et installations ont leur segment avant « Système et autres » et la ligne de contexte le date ; écarté, une phrase le dit', () => {
+  const total = 80 * Go;
+  const libre = 50 * Go;
+  const hote = { utilise: true, comptes: { docker: 2 * Go, journaux: 0.3 * Go, installations: 0 } };
+  const { repartition } = repartitionDu({ total, libre, comptes: comptesAvecLHote({ base: 1.2 * Go, 'site-code': 0.1 * Go }, hote) });
+  const j = segmentsDuDisque({ total, libre, repartition });
+  assert.deepEqual(j.segments.map((x) => x.cle), TYPES_DU_DISQUE.map((t) => t.cle), 'les 13 types, dans l’ordre');
+  assert.equal(somme(j.segments.map((x) => x.octets)), total);
+  const maintenant = new Date(2026, 9, 15, 18, 0, 0);
+  const html = htmlDeLEspaceDisque({ total, libre, repartition, repartition_le: new Date(2026, 9, 15, 17, 55).toISOString(),
+    repartition_hote: { releve_le: new Date(2026, 9, 15, 17, 45).toISOString(), utilise: true, raison: null } }, { instance: 'prod', maintenant });
+  const barre = html.match(/<div class="debug-espace__jauge"[^>]*>(.*?)<\/div>/)[1];
+  assert.deepEqual([...barre.matchAll(/data-cle="([a-z-]+)"/g)].map((m) => m[1]), ['base', 'site-code', 'docker', 'journaux', 'autres', 'libre']);
+  assert.match(html, /relevé de l’hôte à <time datetime="[^"]+">17:45:00<\/time>/);
+  assert.match(html, /data-cle="installations" data-vide/, 'un type de l’hôte vide reste dans la légende, atténué');
+  const ecarte = htmlDeLEspaceDisque({ total, libre, repartition: repartitionDu({ total, libre, comptes: { base: Go } }).repartition,
+    repartition_hote: { releve_le: null, utilise: false, raison: 'relevé de l’hôte périmé <vieux>' } }, { instance: 'prod', maintenant });
+  assert.match(ecarte, /Relevé de l’hôte écarté \(relevé de l’hôte périmé &lt;vieux&gt;\)/);
+  assert.doesNotMatch(ecarte, /data-cle="docker"/, 'sans relevé pris en compte, pas de type de l’hôte');
+});
+
+test('espace disque : la réserve de root à part — « occupés » = la place prise de df (Used), la réserve dite dans le titre, sa marque hachurée', () => {
+  // le disque de l'essai réel du 2026-10-15 (df -B1 : 270 553 174 016 au total, 13 969 199 104 pris, 27 854 659 584 disponibles)
+  const total = 270_553_174_016;
+  const libre = 27_854_659_584;
+  const reserve = total - 13_969_199_104 - libre;
+  const { repartition } = repartitionDu({ total, libre, reserve, comptes: { base: 22_800_000, 'site-code': 100_000_000 } });
+  const j = segmentsDuDisque({ total, libre, reserve, repartition });
+  assert.equal(j.occupe, 13_969_199_104, 'la place prise de df');
+  assert.equal(j.reserve, reserve);
+  proche(j.part_occupee, 13_969_199_104 / total);
+  assert.equal(j.segments.at(-2).cle, 'reserve');
+  const html = htmlDeLEspaceDisque({ total, libre, reserve, repartition });
+  assert.match(html, new RegExp(`<strong>14${I}Go occupés sur 271${I}Go \\(5,2${I}%\\)</strong> · 27,9${I}Go libres · 229${I}Go réservés au système</p>`));
+  // sans répartition : l'occupé d'un seul tenant, la réserve, le libre
+  const brut = segmentsDuDisque({ total: 100, libre: 30, reserve: 5, repartition: null });
+  assert.deepEqual(brut.segments.map((x) => [x.cle, x.octets]), [['occupe', 65], ['reserve', 5], ['libre', 30]]);
+  const css = readFileSync(new URL('../src/styles/debug/debug.css', import.meta.url), 'utf8');
+  assert.match(css, /\.debug-espace__segment--reserve \{[^}]*repeating-linear-gradient\(45deg/, 'hachurée dans l’autre sens que le libre');
 });
