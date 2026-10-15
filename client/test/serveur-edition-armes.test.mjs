@@ -97,7 +97,7 @@ test('matériau : ses effets (modifiés depuis la page « Composants », R62) re
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, apres)));
 });
 
-test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; une autre cible est refusée', () => {
+test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; celle d’une pièce élémentaire est refusée', () => {
   const avant = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme' AND niveau = 3");
   const r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs: { cout_brut: '1 Matériel + 120 RO', effet_brut: '+7 dégâts, +1 cran de solidité' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
@@ -107,8 +107,9 @@ test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et cr
   assert.equal(ligne("SELECT total_brut FROM amelioration_total WHERE cible = 'arme'").total_brut, total);
   assert.ok(corps().split('\n').includes(ligneDAmelioration(apres)));
   assert.ok(corps().split('\n').includes(ligneDuTotal(total)));
-  const armure = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'armure' LIMIT 1");
-  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: armure.id }, valeurs: { cout_brut: '1 RO' } }]).statut, 400);
+  // celles d'armure et de bouclier se modifient sur la page des armures (test/serveur-edition-armures.test.mjs) ; celles des pièces élémentaires, nulle part
+  const elementaire = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme_elementaire' LIMIT 1");
+  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: elementaire.id }, valeurs: { cout_brut: '1 RO' } }]).statut, 400);
 });
 
 test('matériau renommé (même ressource que les armures et les boucliers) : le nom suit partout, pages des armures et des boucliers comprises', () => {

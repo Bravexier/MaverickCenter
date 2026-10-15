@@ -10,7 +10,7 @@ export const echapper = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ENTITE
 
 export const TITRES_DOMAINES = {
   sorts: 'Sorts', magies: 'Magies', classes: 'Classes', races: 'Races', metiers: 'Métiers', guide: 'Guide', codex: 'Codex', bestiaire: 'Bestiaire', armes: 'Armes',
-  composants: 'Composants', chronologie: 'Chronologie', 'mots-cles': 'Mots-clés',
+  armures: 'Armures et boucliers', composants: 'Composants', chronologie: 'Chronologie', 'mots-cles': 'Mots-clés',
 }; // les domaines de lib/notes-de-version.mjs#DOMAINES, dans leur ordre (test/notes-de-version.test.mjs) : ce module n'importe rien
 const ORDRE_DOMAINES = Object.keys(TITRES_DOMAINES);
 const LIBELLES_SENS = { amelioration: 'amélioration', affaiblissement: 'affaiblissement', neutre: '' };

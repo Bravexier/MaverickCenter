@@ -156,8 +156,9 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
 
   const AMELIORATION_EQUIPEMENT = {
     colonnes(_ctx, ligne) {
-      // les améliorations d'armure, de bouclier et des pièces élémentaires sont sur des pages qui ne se modifient pas (Markdown)
-      if (ligne.cible !== 'arme') throw refus('Seules les améliorations d’arme se modifient ici.');
+      // celles d'armure et de bouclier vont au domaine de la page des armures (serveur/edition-armures.mjs#ameliorationsParCible) ; celles des pièces
+      // élémentaires sont sur une page qui ne se modifie pas (Markdown)
+      if (ligne.cible !== 'arme') throw refus('Seules les améliorations d’arme, d’armure et de bouclier se modifient ici.');
       const cout = analyserCoutDAmelioration(ligne.cout_brut);
       const effet = analyserEffetDAmelioration(ligne.effet_brut);
       return { cout_ro: cout.cout_ro, cout_materiaux: cout.cout_materiaux, bonus_degats: effet.bonus_degats, bonus_cran: effet.bonus_cran };

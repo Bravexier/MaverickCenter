@@ -19,13 +19,13 @@ const depot = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(join(depot, chemin), 'utf8');
 const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 
-test('modules livrés : l’entrée, le service, son journal, ses métriques (collecteur, mesure SQL), le contenu des tables pour la page Debug, l’import en ligne d’une feuille Google Sheets, le format des fiches, l’édition (modèle, découpages et rendus du bestiaire, des armes et des composants partagés avec les pages) et l’API REST v1 (registre des ressources et ses modules, description OpenAPI) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
+test('modules livrés : l’entrée, le service, son journal, ses métriques (collecteur, mesure SQL), le contenu des tables pour la page Debug, l’import en ligne d’une feuille Google Sheets, le format des fiches, l’édition (modèle, découpages et rendus du bestiaire, des armes, des armures et des composants partagés avec les pages) et l’API REST v1 (registre des ressources et ses modules, description OpenAPI) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
-    'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/classeur.mjs', 'serveur/debug-tables.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
+    'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/classeur.mjs', 'serveur/debug-tables.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-armures.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
     'serveur/edition-composants.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
-    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs',
+    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs', 'src/lib/armure-champs.mjs',
     'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/chronologie.mjs', 'src/lib/class-groups.mjs',
-    'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-classes.mjs',
+    'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-armures.mjs', 'src/lib/corps-classes.mjs',
     'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs', 'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs',
     'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/google-sheets.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs',
     'src/lib/materiaux-couleurs.mjs', 'src/lib/metier-champs.mjs', 'src/lib/monnaies.mjs', 'src/lib/monstre-champs.mjs', 'src/lib/monstre-rendu.mjs',

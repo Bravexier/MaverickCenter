@@ -57,6 +57,8 @@ import {
   operationsDuBestiaire,
 } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
+import { ameliorationsParCible, domainesDesArmures } from './edition-armures.mjs';
+import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne as pageDesArmuresDeLaLigne, TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
 import { categoriesDeLaChronologie, domainesDeLaChronologie } from './edition-chronologie.mjs';
@@ -1195,6 +1197,10 @@ function apercuDe(op, corps) {
 /** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
 const CHRONOLOGIE = domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, motCleDe });
 
+/** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
+const ARMES = domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye });
+const ARMURES = domainesDesArmures({ refus, ErreurEdition, synchroniser });
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
@@ -1203,7 +1209,10 @@ const DOMAINES = {
   // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
   ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant, reference }),
   // la page des armes : armes, matériaux, améliorations d'arme (serveur/edition-armes.mjs)
-  ...domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
+  ...ARMES,
+  // la page des armures : armures, pièces, formes, boucliers, poids (serveur/edition-armures.mjs) ; une amélioration va au domaine de sa cible
+  ...ARMURES.domaines,
+  amelioration_equipement: ameliorationsParCible(ARMES.amelioration_equipement, ARMURES.amelioration),
   // la page des composants : matériaux, gemmes, bois, ingrédients d'alchimie, objets de l'équipement, monnaies (serveur/edition-composants.mjs)
   ...domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
   // la chronologie (événements, blocs de description) et le vocabulaire des mots-clés (serveur/edition-chronologie.mjs)
@@ -1273,6 +1282,7 @@ export function recalculerLesPages(db, modifications) {
   const dons = new Map();
   const metiers = new Set();
   const armes = []; // lignes des tables de la page des armes (lib/corps-armes.mjs)
+  const armures = []; // lignes des tables des pages des armures et des boucliers (lib/corps-armures.mjs)
   const composants = []; // lignes des composants (lib/corps-composants.mjs)
   const titres = [];
   const ajouter = (carte, id, ligne) => {
@@ -1295,6 +1305,7 @@ export function recalculerLesPages(db, modifications) {
     if (l.table === 'metier') metiers.add(ligne.id);
     if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.genre === 'materiau' && l.avant.nom !== l.apres.nom))) armes.push(l);
     if (TABLES_DES_COMPOSANTS.includes(l.table)) composants.push(l);
+    if (TABLES_DES_PAGES_DES_ARMURES.includes(l.table) && pageDesArmuresDeLaLigne(l.table, ligne)) armures.push(l);
     if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
     const anciennes = l.avant ?? l.inseree;
     const colonnes = anciennes && l.apres ? Object.keys(l.apres).filter((c) => (anciennes[c] ?? null) !== (l.apres[c] ?? null)) : null;
@@ -1412,6 +1423,31 @@ export function recalculerLesPages(db, modifications) {
   for (const id of renommes.length ? PAGES_DES_MATERIAUX : []) {
     const page = pageDe(id);
     if (page) ecrire(page, { corps_md: renommes.reduce((c, l) => corpsAvecMateriauRenomme(c, l.avant.nom, l.apres.nom), page.corps_md) });
+  }
+  // les pages des armures et des boucliers : la ligne Markdown de chaque armure, pièce, forme, bouclier, poids ou amélioration rejoués, et la ligne TOTAL
+  // (ni création ni suppression : une ligne a sa ligne d'avant ; modifiée puis remise : rien ne change)
+  if (armures.length) {
+    const rang = (t) => TABLES_DES_PAGES_DES_ARMURES.indexOf(t);
+    const corpsDe = new Map();
+    const enErreur = new Set();
+    for (const l of [...armures].sort((a, b) => rang(a.table) - rang(b.table))) {
+      if (!l.avant || !l.apres) continue;
+      const id = pageDesArmuresDeLaLigne(l.table, l.apres);
+      if (enErreur.has(id)) continue;
+      if (!corpsDe.has(id)) {
+        const page = pageDe(id);
+        if (!page) continue;
+        corpsDe.set(id, page.corps_md);
+      }
+      try {
+        corpsDe.set(id, corpsDesArmuresApres(corpsDe.get(id), l.table, l.avant, l.apres));
+      } catch (e) {
+        if (!(e instanceof ErreurCorpsArmures)) throw e;
+        enErreur.add(id);
+        illisibles.push({ page: id, raison: e.message });
+      }
+    }
+    for (const [id, corps] of corpsDe) if (!enErreur.has(id)) ecrire(pageDe(id), { corps_md: corps });
   }
   // les composants (page « Composants ») : leurs lignes dans les pages qui les écrivent (équipement, armures, boucliers, bâtons, accessoires, ingrédients)
   if (composants.length) {

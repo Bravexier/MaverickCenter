@@ -249,14 +249,16 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `familles-d-armes/` | Familles d’armes | `arme_famille` | lecture seule | — |
 | `types-d-armes/` | Types d’armes | `arme_type` | lecture seule | — |
 | `armes-elementaires/` | Armes élémentaires | `arme_elementaire` | lecture seule | — |
-| `emplacements-d-armure/` | Emplacements d’armure | `armure_emplacement` | lecture seule | — |
-| `armures/` | Armures | `armure` | lecture seule | — |
+| `emplacements-d-armure/` | Emplacements d’armure | `armure_emplacement` | modifier | — |
+| `armures/` | Armures | `armure` | modifier | — |
 | `armures-elementaires/` | Armures élémentaires | `armure_elementaire` | lecture seule | — |
-| `classes-de-bouclier/` | Classes de bouclier | `bouclier_classe` | lecture seule | — |
-| `poids-de-bouclier/` | Poids de bouclier | `bouclier_poids` | lecture seule | — |
-| `boucliers/` | Boucliers | `bouclier` | lecture seule | — |
+| `classes-de-bouclier/` | Classes de bouclier | `bouclier_classe` | modifier | — |
+| `poids-de-bouclier/` | Poids de bouclier | `bouclier_poids` | modifier | — |
+| `boucliers/` | Boucliers | `bouclier` | modifier | — |
 | `ameliorations-d-arme/` | Améliorations d’arme | `amelioration_equipement` (partie) | modifier | — |
-| `autres-ameliorations/` | Améliorations d’armure, de bouclier et de pièce élémentaire | `amelioration_equipement` (partie) | lecture seule | — |
+| `ameliorations-d-armure/` | Améliorations d’armure | `amelioration_equipement` (partie) | modifier | — |
+| `ameliorations-de-bouclier/` | Améliorations de bouclier | `amelioration_equipement` (partie) | modifier | — |
+| `autres-ameliorations/` | Améliorations de pièce élémentaire | `amelioration_equipement` (partie) | lecture seule | — |
 | `emplacements-d-accessoire/` | Emplacements d’accessoire | `accessoire_emplacement` | lecture seule | — |
 | `proprietes-d-accessoire/` | Propriétés d’accessoire | `accessoire_propriete` | lecture seule | — |
 | `effets-d-accessoire/` | Effets d’accessoire | `accessoire_effet` | lecture seule | — |
@@ -339,7 +341,7 @@ Chaque opération du lot du service est joignable par une ressource (`test/resso
 requête) restent sur `POST /api/edition/` : [`serveur.md`](serveur.md), « Édition ».
 
 Une table partagée par condition peut avoir la même dérivée dans chacune de ses ressources (`amelioration_total`, la ligne TOTAL de chaque cible
-d'amélioration, dans `ameliorations-d-arme` et `autres-ameliorations`) ; le test du registre exige que chaque ligne d'un enfant, d'une dérivée ou
+d'amélioration, dans `ameliorations-d-arme`, `ameliorations-d-armure`, `ameliorations-de-bouclier` et `autres-ameliorations`) ; le test du registre exige que chaque ligne d'un enfant, d'une dérivée ou
 d'une extension ait son parent dans une ressource, condition comprise.
 
 ## Rendre une ressource modifiable

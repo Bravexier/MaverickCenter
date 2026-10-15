@@ -16,11 +16,21 @@ export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
 /**
+ * Pages servies par une autre, qui n'ont pas d'adresse à elles : la page « Bouclier » est l'onglet Boucliers de la page des armures (demande du
+ * propriétaire, 2026-10-15 : « Les deux seront dans la page » ; components/armures/ArmuresPage.astro). Elle reste dans la base (recherche, [[liens]]).
+ */
+const PAGES_DANS_UNE_AUTRE = Object.freeze({ 'ressources/bouclier': Object.freeze({ chemin: 'ressources/armures/', ancre: 'boucliers' }) });
+
+/** Vrai si la page d'id donné n'est pas construite : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
+export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
+
+/**
  * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour le premier
- * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs).
+ * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs) ; pour la page « Bouclier », l'onglet Boucliers de la page des armures.
  */
 export function adresseDePage(id) {
   if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };
+  if (pageSansAdresse(id)) return { ...PAGES_DANS_UNE_AUTRE[id] };
   return { chemin: id === PREMIER_CHAPITRE ? 'guide/' : `${id}/`, ancre: '' };
 }
 

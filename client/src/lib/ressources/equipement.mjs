@@ -2,10 +2,11 @@
 // types, pièces élémentaires), armures (emplacements, pièces élémentaires), boucliers (classes, poids, préfabriqués), améliorations, accessoires
 // (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre. Les matériaux d'arme, d'armure et de bouclier sont
 // dans le module « artisanat » (décision R62 : la page Composants en est la seule source).
-// Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs) : une arme se
-// crée, se modifie et se supprime (décision R52), une amélioration d'arme se modifie, rien d'autre. Deux tables sont donc partagées par une condition :
-// `arme` (les armes de monstres, que le service refuse : décision R45, en lecture seule à part) et `amelioration_equipement` (le service refuse les
-// cibles autres que l'arme : en lecture seule à part). Les tables tirées d'un texte de la ligne (types de dégâts et minimums d'une arme, résistances
+// Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs,
+// edition-armures.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une amélioration d'arme, d'armure ou de bouclier, une armure, une
+// pièce d'armure, une forme, un poids et un bouclier préfabriqué se modifient ; rien d'autre. Deux tables sont donc partagées par une condition :
+// `arme` (les armes de monstres, que le service refuse : décision R45, en lecture seule à part) et `amelioration_equipement` (une ressource par cible
+// modifiable ; le service refuse celles des pièces élémentaires : en lecture seule à part). Les tables tirées d'un texte de la ligne (types de dégâts et minimums d'une arme, résistances
 // d'une armure, effets d'une armure élémentaire, gemmes et cibles d'un effet d'accessoire, ligne TOTAL des tableaux d'amélioration) sont des
 // `derivees`, jamais écrites par l'API ; la ligne TOTAL (`amelioration_total`, une par cible) est la dérivée des deux ressources d'amélioration, chacune
 // pour ses cibles.
@@ -97,7 +98,8 @@ export const RESSOURCES = [
     description:
       'Les emplacements du tableau FABRICATION de l’onglet « Armures », noms tels qu’écrits (« Armure Complète », « Casque », « Torse », « Bras ' +
       'Gauche », « Bras Droit », « Jambe Gauche », « Jambe Droit », « Bouclier »), et leur coût de fabrication (« 150 RF / 1,5 RO », « 250 RF / ' +
-      'Classe ») ; la source ne donne pas d’AP ni d’AM par emplacement ; en lecture seule.',
+      'Classe ») ; la source ne donne pas d’AP ni d’AM par emplacement ; une pièce coûte sa fabrication et 1 unité de chaque matériau de l’armure ' +
+      '(décision R75) ; le nom et le coût se modifient (le service en tire le coût en RF), ni création ni suppression.',
     table: 'armure_emplacement',
     liste: ['id', 'nom', 'cout_brut', 'cout_rf', 'ordre'],
     recherche: ['nom'],
@@ -109,9 +111,10 @@ export const RESSOURCES = [
     noms: 'Armures',
     description:
       'Les armures de l’onglet « Armures » : les combinaisons de deux matières (grille matière × matière) et les armures particulières (vêtements, ' +
-      'cottes de mailles, armure montagne, armures de familiers) : type, prix (unité non écrite), AP et AM, solidité, résistances et faiblesses (une ' +
+      'cottes de mailles, armure montagne, armures de familiers) : type, prix (en RO : décision R79), AP et AM, solidité, résistances et faiblesses (une ' +
       'ligne par type de dégâts dans le détail, le multiplicateur « x2 » tel qu’écrit), effet ; le nom d’une combinaison ne suit pas le renommage ' +
-      'd’une matière ; en lecture seule.',
+      'd’une matière ; les cases se modifient (nom, type, défense, solidité, résistance et faiblesse d’une combinaison, effet d’une armure ' +
+      'particulière, prix) et le service en tire le prix, l’AP, l’AM et les résistances ; ni création ni suppression (les fiches les citent).',
     table: 'armure',
     derivees: [{ table: 'armure_degats', parent: { armure_id: 'id' } }],
     liste: ['id', 'nom', 'sorte', 'type', 'ap', 'am', 'solidite', 'prix_brut'],
@@ -139,7 +142,8 @@ export const RESSOURCES = [
     noms: 'Classes de bouclier',
     description:
       'Les classes de boucliers de l’onglet « Bouclier » (Bocle, Targe, Bouclier Rond, Écu, Pavois) : la classe, de 1 à 5 (un bouclier de classe N ' +
-      'demande N matériaux), et le prix (unité non écrite) ; en lecture seule.',
+      'demande N matériaux), et le prix (en RO : décision R79) ; un bouclier est une forme et une matière (décision R78) ; le nom et le prix se modifient, ni ' +
+      'création ni suppression.',
     table: 'bouclier_classe',
     liste: ['id', 'nom', 'classe', 'prix_brut'],
     recherche: ['nom'],
@@ -151,7 +155,8 @@ export const RESSOURCES = [
     noms: 'Poids de bouclier',
     description:
       'Les poids de boucliers de l’onglet « Bouclier » (Léger, Moyen, Lourd, Très lourd) et la Force minimum de chacun, d’une liste marquée « A ' +
-      'refaire » dans la source, qui ne les relie pas aux classes ; en lecture seule.',
+      'refaire » dans la source, qui ne les relie pas aux classes ; le nom et la Force se modifient (le service en tire la Force minimum), ni ' +
+      'création ni suppression.',
     table: 'bouclier_poids',
     liste: ['id', 'nom', 'force_min', 'force_brut'],
     recherche: ['nom'],
@@ -162,8 +167,9 @@ export const RESSOURCES = [
     nom: 'Bouclier',
     noms: 'Boucliers',
     description:
-      'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière) : nom, prix, défense telle qu’écrite (« +20AP +25AM ») et ses AP ' +
-      'et AM ; le nom ne suit pas le renommage d’une matière ; en lecture seule.',
+      'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière, décision R78) : nom, prix, défense telle qu’écrite (« +20AP ' +
+      '+25AM ») et ses AP et AM ; le nom ne suit pas le renommage d’une matière ; le nom, la défense et le prix se modifient (le service en tire le ' +
+      'prix, l’AP et l’AM), ni création ni suppression.',
     table: 'bouclier',
     liste: ['id', 'nom', 'classe_id', 'materiau_id', 'prix_brut', 'ap', 'am'],
     recherche: ['nom'],
@@ -189,17 +195,48 @@ export const RESSOURCES = [
     tri: 'niveau',
   },
   {
-    cle: 'autres-ameliorations',
-    nom: 'Amélioration d’armure, de bouclier ou de pièce élémentaire',
-    noms: 'Améliorations d’armure, de bouclier et de pièce élémentaire',
+    cle: 'ameliorations-d-armure',
+    nom: 'Amélioration d’armure',
+    noms: 'Améliorations d’armure',
     description:
-      'Les améliorations des armures (onglet « Armures »), des boucliers (onglet « Bouclier ») et des armes et armures élémentaires (onglet « Pièces ' +
-      'élémentaires »), une ligne par niveau : coût (« 100 + 1 Matériau », « 2 gemmes communes », « 1 pièce élémentaire ») et effet (« +4 AP/AM », ' +
-      '« +2 AP, +1 cran de solidité ») tels qu’écrits, avec leurs valeurs typées, et la ligne TOTAL du tableau de leur cible (dans le détail) ; le site ' +
-      'de dev ne modifie que les améliorations d’arme : en lecture seule.',
+      'Les améliorations d’armure (+1 à +5) du tableau AMÉLIORATION de l’onglet « Armures » : le coût (« 100 + 1 Matériau ») et l’effet (« +4 AP/AM », ' +
+      '« +8 AP/AM, +1 cran de solidité » : la ligne écrit le total au niveau choisi, décision R77) se modifient ; le service en tire le coût en RO, le ' +
+      'nombre de matériaux, l’AP, l’AM et les crans, et refait la ligne TOTAL du tableau (dans le détail) ; ni création ni suppression.',
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
-    condition: { cible: { sauf: ['arme'] } },
+    condition: { cible: ['armure'] },
+    derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
+    liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_am', 'bonus_cran'],
+    recherche: ['effet_brut', 'cout_brut'],
+    tri: 'niveau',
+  },
+  {
+    cle: 'ameliorations-de-bouclier',
+    nom: 'Amélioration de bouclier',
+    noms: 'Améliorations de bouclier',
+    description:
+      'Les améliorations de bouclier (+1 à +5) du tableau AMÉLIORATION de l’onglet « Bouclier » : le coût (« 1000 », en RO) et l’effet (« +4 AP + ' +
+      'matériaux » : 1 matériau de la matière du bouclier, crans cumulés, décision R76) se modifient ; le service en tire le coût en RO, le nombre de ' +
+      'matériaux, l’AP et les crans, et refait la ligne TOTAL du tableau (dans le détail) ; ni création ni suppression.',
+    table: 'amelioration_equipement',
+    libelle: 'effet_brut',
+    condition: { cible: ['bouclier'] },
+    derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
+    liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran'],
+    recherche: ['effet_brut', 'cout_brut'],
+    tri: 'niveau',
+  },
+  {
+    cle: 'autres-ameliorations',
+    nom: 'Amélioration de pièce élémentaire',
+    noms: 'Améliorations de pièce élémentaire',
+    description:
+      'Les améliorations des armes et armures élémentaires (onglet « Pièces élémentaires »), une ligne par niveau : coût (« 2 gemmes communes », « 1 ' +
+      'pièce élémentaire ») et effet tels qu’écrits, avec leurs valeurs typées, et la ligne TOTAL du tableau de leur cible (dans le détail) ; le site ' +
+      'de dev ne les modifie pas : en lecture seule.',
+    table: 'amelioration_equipement',
+    libelle: 'effet_brut',
+    condition: { cible: { sauf: ['arme', 'armure', 'bouclier'] } },
     lectureSeule: true,
     derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
     liste: ['id', 'cible', 'niveau', 'cout_brut', 'effet_brut'],

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { adresseDePage, ancreDeMetier, chargerMetiers, cheminDePage, estUnMetier, PAGE_DES_REGLES } from '../src/lib/metiers.mjs';
+import { adresseDePage, ancreDeMetier, chargerMetiers, cheminDePage, estUnMetier, PAGE_DES_REGLES, pageSansAdresse } from '../src/lib/metiers.mjs';
 import { buildIndex, entryUrl } from '../src/lib/wikilinks.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -29,6 +29,10 @@ test('un lien vers un métier mène à sa ligne du tableau ; les autres pages ga
   assert.equal(cheminDePage('metiers/forgeron'), 'metiers/#metier-forgeron');
   assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `${PAGE_DES_REGLES}/`, ancre: '' });
   assert.equal(cheminDePage('races/elfe'), 'races/elfe/');
+  // la page « Bouclier » est l'onglet Boucliers de la page des armures (demande du propriétaire, 2026-10-15) : elle n'est pas construite
+  assert.equal(cheminDePage('ressources/bouclier'), 'ressources/armures/#boucliers');
+  assert.equal(pageSansAdresse('ressources/bouclier'), true);
+  assert.equal(pageSansAdresse('ressources/armures'), false);
 });
 
 test('les [[liens]] vers un métier mènent à sa ligne, préfixe de déploiement compris', () => {

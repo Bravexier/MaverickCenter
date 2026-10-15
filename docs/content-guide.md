@@ -288,6 +288,46 @@ modification (`lib/corps-armes.mjs`).
   construit : filtre, seconde ligne des effets, panneau, règles mises en forme).
 
 
+## Armures et boucliers (`/ressources/armures/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier
+
+Demandes du propriétaire (2026-10-15) : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les Armes. […] Les deux seront dans la
+page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une
+liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les
+boucliers » ; « Pour les bouclier c'est forme + matière ». La page est rendue depuis les tables (`lib/armures-db.mjs`, `components/armures/ArmuresPage.astro`,
+`styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles (le texte avant les tableaux)
+s'affichent, repliées ; le reste ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
+**La page « Bouclier » n'est plus construite** : ses liens mènent à l'onglet Boucliers (`lib/metiers.mjs#adresseDePage`, `pageSansAdresse`), son ancienne
+adresse aussi (page 404, `lib/nav.mjs#PAGES_RENOMMEES`) ; le seul lien écrit à la main vers elle (chapitre du guide « L'équipement ») mène à l'onglet
+depuis la migration `0046-armures-boucliers` (seule l'adresse a changé).
+
+- **Deux onglets** (`components/Onglets.astro` ; sans JavaScript, ils se suivent) : Armures et Boucliers, chacun avec ses règles repliées ; dessous, pour
+  les deux, le tableau **MATÉRIAUX** de l'onglet (prix, description, fabrication), en lecture (la page « Composants » en est la seule source : R62).
+- **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
+  jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `COULEURS_DES_TYPES` ; description en infobulle ; défense, solidité, prix). Un
+  matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
+  des armures de la grille par type (Nom, Matériaux, Type, Défense, Solidité, Résistance, Faiblesse, Prix) puis les **armures particulières** (Nom, Type,
+  Défense, Solidité « uni », Effet, Prix) ; une ligne choisit l'armure (et ses deux matériaux).
+- **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement ; sur un écran étroit, par-dessus la page ; `src/scripts/armures.mjs`, calcul
+  `lib/armure-forge.mjs`) : AP, AM, solidité, coût, résistance et faiblesse (ou effet), puis la **pièce** (tableau FABRICATION : l'armure complète coûte le
+  prix de la grille, une pièce sa fabrication + 1 unité de chaque matériau, achetés ou fournis : décision R75 ; défense et solidité ne dépendent pas de la
+  pièce) et l'**amélioration** (+1 à +5 : coût des niveaux +1 à +N, AP, AM et crans écrits au niveau N ; pour l'armure entière seulement, pas pour une
+  pièce : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel des deux). Une armure particulière n'a que le prix de l'armure entière,
+  et s'améliore aussi (R80).
+- **Boucliers** : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et un des **matières** (fiche des matières pour
+  boucliers) ; une forme et une matière donnent le bouclier préfabriqué (décision R78 : prix et défense tels qu'écrits, **solidité de la matière**). Dessous,
+  la liste des boucliers par forme. À côté, la fiche, les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la
+  matière : R76, matériaux achetés ou fournis) et les **poids** (la source ne les relie pas aux formes). La page compose un bouclier d'une seule matière ;
+  les règles de l'onglet permettent d'en mêler jusqu'à 3 (non composé ici).
+- Les prix de la grille, des boucliers et des formes sont des RO (décision R79, exception à R63) : décomposés en monnaies ; « ???? » et un prix vide
+  restent tels qu'écrits, sans calcul. Un écart de la source noté à l'import (la fiche des Écailles en tête de ligne écrit Solidité 4, celle en tête de
+  colonne 3) s'affiche sous les tableaux des matériaux, tel qu'écrit (`ecartsDeLaSource`).
+- État dans l'adresse : `?materiau1=…&materiau2=…&piece=…&amelioration=N` (ou `?armure=<ancre>` pour une armure particulière),
+  `&forme=…&matiere=…&amelioration-bouclier=N` ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
+- **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent ; les cases des armures, pièces, formes, boucliers, poids et
+  améliorations se modifient, les matériaux restent en lecture (R62) ; ni création ni suppression. Voir `docs/serveur.md`, « Édition ».
+- `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80), `corps-armures.test.mjs`,
+  `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `armures-html.test.mjs` (site construit).
+
 ## Accessoires (`/ressources/accessoires/`) : le générateur d'accessoire
 
 Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :

@@ -5,8 +5,9 @@
 // `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Ressources).
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
-// Boucliers et bâtons magiques iront dans « Objets à la ceinture » (bientôt, choix du propriétaire) ; hors menu, comme l'alchimie, leurs pages restent
-// trouvables par la recherche et les liens.
+// Les bâtons magiques iront dans « Objets à la ceinture » (bientôt, choix du propriétaire) ; hors menu, comme l'alchimie, leur page reste trouvable par
+// la recherche et les liens. Les boucliers sont l'onglet Boucliers de la page « Armures » (demande du propriétaire, 2026-10-15 : « Les deux seront dans la
+// page »).
 export const NAV = [
   {
     key: 'regles',
@@ -114,8 +115,11 @@ export function legacyWikiRedirect(pathname, base = '/') {
   return root + (pathname.slice(old.length + 1).replace(/^\/+/, '') || 'pages/');
 }
 
-/** Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la recherche. */
-export const PAGES_RENOMMEES = { 'generateur/': 'fiche/', 'tags/': 'recherche/' };
+/**
+ * Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la recherche ; la
+ * page « Bouclier » est l'onglet Boucliers de la page des armures (lib/metiers.mjs#adresseDePage).
+ */
+export const PAGES_RENOMMEES = { 'generateur/': 'fiche/', 'tags/': 'recherche/', 'ressources/bouclier/': 'ressources/armures/#boucliers' };
 
 /**
  * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect), les pages renommées (le générateur
@@ -125,7 +129,13 @@ export const PAGES_RENOMMEES = { 'generateur/': 'fiche/', 'tags/': 'recherche/' 
  */
 export function nouvelleAdresse(pathname, base = '/') {
   const wiki = legacyWikiRedirect(pathname, base);
-  if (wiki) return wiki;
+  // une ancienne adresse du wiki d'une page renommée depuis (« /wiki/ressources/bouclier/ ») : la nouvelle, sans second passage par la page 404
+  if (wiki) return adresseRenommee(wiki, base) ?? wiki;
+  return adresseRenommee(pathname, base);
+}
+
+/** La nouvelle adresse d'une page renommée ou d'un mot-clé (voir nouvelleAdresse), `null` sinon. */
+function adresseRenommee(pathname, base) {
   const root = base.replace(/\/$/, '') + '/';
   if (!pathname.startsWith(root)) return null;
   const rel = pathname.slice(root.length).replace(/\/?$/, '/');
@@ -135,13 +145,15 @@ export function nouvelleAdresse(pathname, base = '/') {
 }
 
 /**
- * L'adresse où renvoyer : `cible` (qui peut avoir sa propre requête, « /recherche/?mot-cle=feu »), plus les paramètres de la requête d'origine (`search`)
- * qu'elle n'a pas déjà, puis l'ancre (`hash`) : jamais deux « ? ».
+ * L'adresse où renvoyer : `cible` (qui peut avoir sa propre requête, « /recherche/?mot-cle=feu », et sa propre ancre, « /ressources/armures/#boucliers »),
+ * plus les paramètres de la requête d'origine (`search`) qu'elle n'a pas déjà, puis l'ancre (`hash`, sinon celle de la cible) : jamais deux « ? » ni deux
+ * « # », la requête toujours avant l'ancre.
  */
 export function adresseComplete(cible, search = '', hash = '') {
-  const [chemin, requete = ''] = cible.split('?');
+  const [sansAncre, ancreDeLaCible = ''] = cible.split('#');
+  const [chemin, requete = ''] = sansAncre.split('?');
   const parametres = new URLSearchParams(requete);
   for (const [nom, valeur] of new URLSearchParams(search)) if (!parametres.has(nom)) parametres.append(nom, valeur);
   const texte = parametres.toString();
-  return `${chemin}${texte ? `?${texte}` : ''}${hash}`;
+  return `${chemin}${texte ? `?${texte}` : ''}${hash || (ancreDeLaCible ? `#${ancreDeLaCible}` : '')}`;
 }
