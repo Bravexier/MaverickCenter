@@ -29,7 +29,7 @@ const attributsDeLigne = (entite, cle, citations, textes) => {
 };
 
 /** Pastille d'une magie dans sa couleur (gemmes, bois). */
-export const htmlDeMagie = (magie) => {
+const htmlDeMagie = (magie) => {
   const fond = couleurDeMagie(magie?.nom);
   return `<span class="comp-magie" style="--c: ${fond}; --c-texte: ${texteSurCouleur(fond)}">${e(magie?.nom ?? '')}</span>`;
 };

@@ -185,7 +185,7 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
 
 const citeesPar = new WeakMap(); // db -> Map(table visée -> tables qui la citent)
 /** Les tables dont une clé étrangère vise `table`. */
-export function tablesQuiCitent(db, table) {
+function tablesQuiCitent(db, table) {
   let carte = citeesPar.get(db);
   if (!carte) {
     carte = new Map();

@@ -70,7 +70,7 @@ import {
 } from './fiches-retraits.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
-export const OPERATIONS_MAX = 2000;
+const OPERATIONS_MAX = 2000;
 
 export class ErreurEdition extends Error {
   /** @param {number} statut @param {string} message @param {object} [details] */
@@ -848,7 +848,7 @@ function lignesDesDons(db, classeId) {
  * `page.donnees` de la fiche de chaque don d'une classe, refait depuis les tables (lib/dons-edition.mjs#donneesDeDon, qui redonne les 660 fiches de
  * l'import à l'octet près) : Map(id du don → texte JSON). Colonne dérivée (colonneDerivee) : le rejeu la refait aussi (recalculerLesPages).
  */
-export function donneesDesDons(db, classeId) {
+function donneesDesDons(db, classeId) {
   const { specialites, dons, alternatives } = lignesDesDons(db, classeId);
   return new Map(dons.map((d) => [d.id, jsonCommePython(donneesDeDon(d, { specialites, donsDeLaClasse: dons, alternatives: alternatives.get(d.id) ?? [] }))]));
 }
@@ -1145,7 +1145,7 @@ const CAPACITE = {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Taille maximale de l'aperçu HTML d'une page (le corps du plus long chapitre rendu fait une centaine de kilo-octets). */
-export const APERCU_MAX = 2_000_000;
+const APERCU_MAX = 2_000_000;
 
 const premiereSource = (db, pageId) =>
   db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? ORDER BY ps.ordre LIMIT 1').get(pageId)?.texte ?? null;

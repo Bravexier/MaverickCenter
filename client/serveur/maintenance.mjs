@@ -21,11 +21,11 @@ import { auMoins, DUREE_MAX_RUN } from './notes-de-version.mjs';
 export const FICHIER_ANNONCE = 'annonce.json';
 export const FORMAT_ANNONCE = 'maverick-maintenance/1';
 /** États d'une VRAIE mise à jour pendant lesquels les sites sont en maintenance (« termine » : livrée sur master, installateurs en route). */
-export const ETATS_DE_MAINTENANCE = ['envoi', 'lance', 'en_cours', 'fusionne', 'termine'];
+const ETATS_DE_MAINTENANCE = ['envoi', 'lance', 'en_cours', 'fusionne', 'termine'];
 /** Au plus, depuis le lancement : un run dure au plus DUREE_MAX_RUN, puis les installateurs ont une heure pour arriver (≈ 20 min d'habitude). */
 export const DUREE_MAX_MAINTENANCE = DUREE_MAX_RUN + 3_600_000;
 /** L'étape montrée par la page de maintenance, d'après l'état du lancement. */
-export const ETAPES = { envoi: 'preparation', lance: 'preparation', en_cours: 'preparation', fusionne: 'livraison', termine: 'installation' };
+const ETAPES = { envoi: 'preparation', lance: 'preparation', en_cours: 'preparation', fusionne: 'livraison', termine: 'installation' };
 
 const ID_LOT = /^[0-9a-f-]{36}$/;
 const VERSION_CIBLE = /^\d+\.\d+$/;
@@ -45,7 +45,7 @@ export function annonceDuLancement(l, { instant }) {
 }
 
 /** L'annonce est-elle bien formée (écrite par un service de cette version) ? Une annonce douteuse ne met rien en maintenance. */
-export function annonceValable(a) {
+function annonceValable(a) {
   return Boolean(a) && typeof a === 'object' && a.format === FORMAT_ANNONCE && ID_LOT.test(String(a.lot)) && VERSION_CIBLE.test(String(a.version_cible))
     && !Number.isNaN(Date.parse(a.depuis)) && ETATS_DE_MAINTENANCE.includes(a.etat);
 }

@@ -116,7 +116,7 @@ function pastilleDeCible(option, ctx) {
  * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décisions R33, R37 : chaque option vise une compétence
  * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
  */
-export function htmlDesBonus(lignes, ctx = {}) {
+function htmlDesBonus(lignes, ctx = {}) {
   const rangs = [];
   for (const l of lignes) (rangs[l.rang - 1] ??= []).push(l);
   return rangs
@@ -132,14 +132,14 @@ export function htmlDesBonus(lignes, ctx = {}) {
 }
 
 /** Une caractéristique de l'artisanat (décision R34) : sa pastille, dans sa couleur ; rien sans caractéristique. */
-export function htmlDeCaracteristique(id, ctx = {}) {
+function htmlDeCaracteristique(id, ctx = {}) {
   if (!id) return '';
   const nom = (ctx.caracteristiques ?? []).find((c) => c.id === id)?.nom ?? id;
   return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
 }
 
 /** Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre. */
-export function htmlDesObjets(objets, ctx = {}) {
+function htmlDesObjets(objets, ctx = {}) {
   if (!objets.length) return VIDE;
   const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
   const rangs = [];

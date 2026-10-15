@@ -136,7 +136,7 @@ export const artisanatBrut = (texte, test) => (!texte ? RIEN : test ? `${texte} 
 export const decouperEquipement = (brut, objets) => (String(brut ?? '').trim() === RIEN ? [] : decouperInventaire(brut, objets));
 
 /** Les seuls mots du champ « Artisanat possible » qui désignent une famille de recettes de la base (table metier_recette_famille). */
-export const FAMILLES_DE_RECETTE = [
+const FAMILLES_DE_RECETTE = [
   { mot: 'fioles', famille: 'fiole' },
   { mot: 'philtres', famille: 'philtre' },
   { mot: 'remèdes', famille: 'remede' },

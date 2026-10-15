@@ -60,7 +60,7 @@ export class ErreurCorpsComposants extends Error {
 }
 
 /** Une case de tableau : lignes jointes par <br>, « | » échappé ; une adresse web seule entre chevrons (l'importeur l'écrit ainsi). */
-export function celluleDeComposant(valeur) {
+function celluleDeComposant(valeur) {
   const texte = String(valeur ?? '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.trim()).join('<br>').replace(/\|/g, '\\|');
   return /^https?:\/\/\S+$/.test(texte) ? `<${texte}>` : texte;
 }
@@ -71,7 +71,7 @@ export const cleDeCase = (t) =>
     .replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** La ligne d'un objet de l'onglet : Nom | Prix (| Description). */
-export const ligneDObjet = (r, avecDescription) =>
+const ligneDObjet = (r, avecDescription) =>
   `| ${celluleDeComposant(r.nom)} | ${celluleDeComposant(r.prix_brut)} |${avecDescription ? ` ${celluleDeComposant(r.description)} |` : ''}`;
 
 const estUneLigneDeTableau = (l) => l.startsWith('|') && !/^\|[\s:|-]+\|$/.test(l);
@@ -140,7 +140,7 @@ export function corpsAvecMonnaies(corps, monnaies) {
 }
 
 /** Une gemme renommée dans les cases d'un corps qui l'écrivent seule ou dans une combinaison (« Ambre + Grenat », « Grenat/Malachite », « A ou B »). */
-export function corpsAvecGemmeRenommee(corps, ancien, nouveau, bornes = (lignes) => [-1, lignes.length]) {
+function corpsAvecGemmeRenommee(corps, ancien, nouveau, bornes = (lignes) => [-1, lignes.length]) {
   const cle = cleDeCase(ancien);
   if (!cle || ancien === nouveau) return corps;
   const lignes = corps.split('\n');

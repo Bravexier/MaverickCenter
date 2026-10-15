@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 /** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance) : nom → source. La configuration nginx est celle du NAS. */
-export const FICHIERS_LIVRES = {
+const FICHIERS_LIVRES = {
   'docker-compose.yml': join(ICI, 'docker-compose.yml'),
   'nginx.conf': join(ICI, '..', 'nginx.conf'),
   'README.md': join(ICI, 'README.md'),

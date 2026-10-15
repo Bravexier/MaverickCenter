@@ -138,7 +138,7 @@ export function htmlDesSpecialites(classe) {
 }
 
 /** Les colonnes du plateau : une par spécialité qui a des dons ({ specialite, cartouche, choix }). */
-export const colonnesDeSpecialites = (classe) => classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+const colonnesDeSpecialites = (classe) => classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
 
 /** Le lien « Spécialités » de la navigation de la page (ClassePage.astro) : quand une spécialité qui a des dons a une description. */
 export const lienDesSpecialites = (classe) => colonnesDeSpecialites(classe).some((c) => c.specialite.description.length > 0);

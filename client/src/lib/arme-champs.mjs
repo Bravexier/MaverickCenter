@@ -141,7 +141,7 @@ function lireClause(brute, caracteristiques) {
 }
 
 /** Caractéristiques connues par défaut (table caracteristique) : pour les minimums « 3 de Force et Agilité minimum ». */
-export const CARACTERISTIQUES = [
+const CARACTERISTIQUES = [
   { id: 'agilite', nom: 'Agilité' }, { id: 'force', nom: 'Force' }, { id: 'intelligence', nom: 'Intelligence' },
   { id: 'perception', nom: 'Perception' }, { id: 'social', nom: 'Social' }, { id: 'volonte', nom: 'Volonté' },
 ];
@@ -150,7 +150,7 @@ export const CARACTERISTIQUES = [
  * L'effet d'une arme découpé : ses lignes, chacune avec son mode (« Une main », null hors mode) et ses clauses (texte tel qu'écrit, lecture).
  * @returns {{ mode: string | null, prefixe: string, clauses: { texte: string, lu: object | null }[] }[]}
  */
-export function lignesDEffet(effet, caracteristiques = CARACTERISTIQUES) {
+function lignesDEffet(effet, caracteristiques = CARACTERISTIQUES) {
   return String(effet ?? '')
     .replace(/\r\n?/g, '\n')
     .split('\n')
@@ -233,7 +233,7 @@ export function analyserEffetDArme(effet, caracteristiques = CARACTERISTIQUES) {
 }
 
 /** Le dé de l'arme et sa provenance : celui de l'effet (« D8 au lieu du D10 », « tape dans le D6 »), sinon celui de son type ; null pour le Pugilat. */
-export function deDeLArme(deDeLEffet, deDuType) {
+function deDeLArme(deDeLEffet, deDuType) {
   const de = deDeLEffet ?? deDuType ?? null;
   return { de, de_faces: de ? Number(de.slice(1)) : null, de_source: deDeLEffet ? 'effet' : de ? 'type' : null };
 }

@@ -22,7 +22,7 @@ export const COULEURS_DES_MATERIAUX = {
 };
 
 /** Couleur d'un matériau absent de la liste (un matériau ajouté plus tard) : neutre. */
-export const COULEUR_DE_MATERIAU_NEUTRE = { fond: '#cccccc', texte: '#000000' };
+const COULEUR_DE_MATERIAU_NEUTRE = { fond: '#cccccc', texte: '#000000' };
 
 /** Clé d'un matériau : « fer-noir » pour « ressources/armures#materiau:fer-noir ». */
 export const cleDeMateriau = (ressourceId) => String(ressourceId).slice(String(ressourceId).lastIndexOf(':') + 1);

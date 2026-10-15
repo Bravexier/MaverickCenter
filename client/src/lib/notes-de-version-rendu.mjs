@@ -17,7 +17,7 @@ const LIBELLES_SENS = { amelioration: 'amélioration', affaiblissement: 'affaibl
 const LIBELLES_PARTIES = { valeur: '', nm: 'NM' };
 
 /** Au-delà, un texte est « long » : replié, avec ce qui a changé mot à mot. */
-export const TEXTE_LONG = 140;
+const TEXTE_LONG = 140;
 const estLong = (t) => t !== null && t !== undefined && (String(t).length > TEXTE_LONG || String(t).includes('\n'));
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

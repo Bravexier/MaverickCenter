@@ -64,7 +64,7 @@ export const cleDEffet = (id) => String(id).slice(String(id).indexOf('#effet:') 
  * en cocher une, les quatre gemmes de l'Intelligence en laissent cocher deux. `rangs` : listes de clés de gemme (« onix »).
  * { imposees: [clé], auChoix: [clé], max } ; `max` = 0 quand rien n'est au choix.
  */
-export const GEMMES_PAR_ACCESSOIRE = 2;
+const GEMMES_PAR_ACCESSOIRE = 2;
 
 export function gemmesAuChoix(rangs) {
   const imposees = rangs.filter((r) => r.length === 1).map((r) => r[0]);
