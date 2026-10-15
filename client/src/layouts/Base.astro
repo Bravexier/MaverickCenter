@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
-import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
+import { NAV, activeGroup, entreesDuMenu, groupIsCurrent } from '../lib/nav.mjs';
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
@@ -23,6 +23,8 @@ const base = import.meta.env.BASE_URL;
 const active = activeGroup(Astro.url.pathname, base);
 const here = Astro.url.pathname.replace(/\/?$/, '/');
 const site = modeDuSite(process.env, packageInfo.version);
+// Entrées du site de dev seulement (la page Debug : lib/nav.mjs#entreesDuMenu) : ni en production ni dans la version portable (sans service)
+const dev = !site.prod && !portable;
 ---
 
 <!doctype html>
@@ -95,8 +97,8 @@ const site = modeDuSite(process.env, packageInfo.version);
             {
               NAV.map((group) => (
                 <ul class="site-nav__items" data-group={group.key} hidden={group.key !== active.key}>
-                  {group.items.length === 0 && <li class="nav-soon">À compléter</li>}
-                  {group.items.map((item) => (
+                  {entreesDuMenu(group, { dev }).length === 0 && <li class="nav-soon">À compléter</li>}
+                  {entreesDuMenu(group, { dev }).map((item) => (
                     <li>
                       {item.path ? (
                         <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : undefined}>{item.label}</a>
