@@ -4,12 +4,11 @@ import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import type { groupRaces } from '../../lib/race-kinds.mjs';
 import { idBulle } from '../../lib/magies';
 import { entryHref } from '../../lib/wiki';
-import Bulles from '../magie/Bulles.astro';
 
 // /races/ : races pures et races hybrides côte à côte (lib/race-kinds.mjs#groupRaces, ordre du propriétaire), chaque groupe dans sa couleur (celle du
 // bandeau des pages de race, RACE_COLORS), et une PASTILLE par race sur le modèle de la carte des magies et de la page des classes
 // (components/classes/ClassesPastilles.astro) : pilule bordée et teintée de la couleur, point de couleur, nom en gras. L'accroche de la race est dans une
-// infobulle (components/magie/Bulles.astro ; sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les groupes passent l'un sous l'autre.
+// infobulle (components/Infobulles.astro ; sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les groupes passent l'un sous l'autre.
 interface Props {
   groups: ReturnType<typeof groupRaces>;
 }
@@ -61,4 +60,3 @@ const css = [listeCss, magieTooltipsCss].join('\n');
     ))
   }
 </div>
-<Bulles />

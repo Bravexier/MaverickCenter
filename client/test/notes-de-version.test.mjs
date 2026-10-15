@@ -6,9 +6,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
-import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
-  diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, markdownDeLaNote, neutraliserMarqueur,
+  TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 
 const magies = [
@@ -99,7 +100,182 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles']);
+});
+
+test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
+  assert.deepEqual(Object.entries(TITRES_DOMAINES), DOMAINES.map((d) => [d.id, d.titre]));
+  const ligne = (domaine) => ({ domaine, groupe: null, entite: 'X', champ: 'nom', partie: 'valeur', avant: 'a', apres: 'b', sens: 'neutre' });
+  const titres = [...markdownDeLaNote({ version: '0.3', texte: '' }, [ligne('chronologie'), ligne('composants'), ligne('sorts')]).matchAll(/^### (.+)$/gm)].map((m) => m[1]);
+  assert.deepEqual(titres, ['Sorts', 'Composants', 'Chronologie']);
+});
+
+test('armes (migration 0034) : une arme sous sa famille, un matériau, une amélioration d’arme ; « Oui/Non », mains et type en toutes lettres', () => {
+  const famille = { id: 'epees', nom: 'ÉPÉES', ordre: 1 };
+  const types = [{ id: 'epee', nom: 'Épée' }, { id: 'dague', nom: 'Dague' }];
+  const arme = (valeurs = {}) => ({ id: 'ressources/armes#arme:epees:katana', famille_id: 'epees', ordre: 11, nom: 'Katana', mains: null, competence_brut: 'Arme Légère',
+    type_id: 'epee', cout_brut: '15 Ro', effet: 'Dégâts taille, +3 dégâts', description: 'Une épée.', depart_possible: 0, ...valeurs });
+  const ressource = { id: 'ressources/armures#materiau:titane', genre: 'materiau', nom: 'Titane' };
+  const materiau = (effet) => ({ ressource_id: ressource.id, ordre: 13, prix_brut: '200 RO', effet_brut: effet });
+  const amelioration = (cible, cout) => ({ id: `x#amelioration:${cible}:5`, cible, niveau: 5, cout_brut: cout, effet_brut: '+10 dégâts' });
+  const base = (a, m, am) => ({ tables: { arme: [a], arme_famille: [famille], arme_type: types, ressource: [ressource], materiau_arme: [m], amelioration_equipement: am } });
+  const ref = base(arme(), materiau("Dégâts +9 pour l'arme"), [amelioration('arme', '200 RO'), amelioration('armure', '1 RO')]);
+  const dev = base(arme({ depart_possible: 1, mains: 'deux', type_id: 'dague', effet: 'Dégâts taille, +4 dégâts' }), materiau("Dégâts +10 pour l'arme"),
+    [amelioration('arme', '210 RO'), amelioration('armure', '2 RO')]);
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'armes');
+  const champ = (c) => lignes.find((l) => l.champ === c);
+  assert.deepEqual([champ('Arme de départ').avant, champ('Arme de départ').apres, champ('Arme de départ').groupe], ['Non', 'Oui', 'ÉPÉES']);
+  assert.deepEqual([champ('Mains').nature, champ('Mains').apres], ['ajoute', 'deux mains']);
+  assert.deepEqual([champ('Type d’arme').avant, champ('Type d’arme').apres], ['Épée', 'Dague']);
+  // les effets d'un matériau sur une arme : domaine des composants (décision R62)
+  assert.ok(!lignes.some((l) => l.table_nom === 'materiau_arme'));
+  assert.equal(comparerBases(ref, dev).find((l) => l.table_nom === 'materiau_arme' && l.domaine === 'composants').entite, 'Titane');
+  // seule l'amélioration d'arme est listée
+  assert.deepEqual(lignes.filter((l) => l.table_nom === 'amelioration_equipement').map((l) => [l.entite, l.apres]), [['Amélioration +5', '210 RO']]);
+});
+
+test('composants (migration 0040) : monnaie, objet de l’onglet sous son tableau, prix d’une gemme ; une gemme créée en une ligne ; pas les potions', () => {
+  const r = (id, genre, nom, valeurs = {}) => ({ id, genre, section: null, nom, description: null, prix_brut: null, ordre: 1, ...valeurs });
+  const gemme = (id, prix) => ({ ressource_id: id, magie_id: 'magies/magie-du-feu', prix_commune_brut: prix, prix_raffinee_brut: null, prix_parfaite_brut: null,
+    quart_commune_brut: null, quart_raffinee_brut: null, quart_parfaite_brut: null });
+  const ref = { tables: {
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse', abreviation: 'PP', valeur_rf: 100000 }],
+    ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '10 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
+      r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '1 RO' })],
+    gemme: [gemme('x#gemme:rubis', '40 RO')],
+  } };
+  const dev = { tables: {
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PP', valeur_rf: 100000 }],
+    ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '12 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
+      r('x#gemme:quartz', 'gemme', 'Quartz'), r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '2 RO' })],
+    gemme: [gemme('x#gemme:rubis', '45 RO'), gemme('x#gemme:quartz', '1 RO')],
+  } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'composants');
+  const de = (entite, champ = null) => lignes.find((l) => l.entite === entite && l.champ === champ);
+  assert.deepEqual([de('Pierre précieuse taillée', 'Nom').avant, de('Pierre précieuse taillée', 'Nom').apres], ['Pierre précieuse', 'Pierre précieuse taillée']);
+  assert.equal(de('Briquet', 'Prix (« 2 RO », « 100 RF / 1 RO »)').groupe, 'Matos › MATOS AVENTURES');
+  assert.equal(de('Rubis', 'Prix de la gemme commune (« 50 RO »)').apres, '45 RO');
+  assert.equal(lignes.filter((l) => l.entite === 'Quartz').length, 1, 'la gemme créée : une ligne (sa ressource), pas une de plus pour ses prix');
+  assert.ok(!lignes.some((l) => l.entite === 'Petite fiole rouge'), 'une potion n’est pas un composant');
+});
+
+test('Codex et bestiaire : champs modifiés, carte ajoutée ou retirée (pas ses rubriques), contenu entièrement nouveau en une ligne', () => {
+  const page = (id, titre, corps, origine = 'docs') => ({ id, type: 'lore', statut: 'draft', origine, titre, corps_md: corps, donnees: null });
+  const espece = (id, nom, ordre, valeurs = {}) => ({ id, nom, ordre, ep_brut: 'EP2', description: null, lieu_brut: 'Marais', complement: null, ...valeurs });
+  const monstre = (id, espece_id, rang, nom, valeurs = {}) => ({ id, espece_id, rang, nom, echelle_brut: '2', categorie: 'ennemi_simple', type_brut: 'Bête', alignement_brut: null, variable: 0, ...valeurs });
+  const rubrique = (monstre_id, rang, titre, texte) => ({ monstre_id, rang, rubrique: 'degats', titre, texte });
+  const ref = {
+    tables: {
+      page: [page('lore/eaunoire', 'Eaunoire', 'Déesse.'), page('lore/relations-entre-les-races', 'Relations', 'a', 'races')],
+      monstre_espece: [espece('monstres/blob', 'Blob', 1), espece('monstres/zombi', 'Zombi', 2)],
+      monstre: [monstre('monstres/blob#carte:blob', 'monstres/blob', 1, 'Blob'), monstre('monstres/zombi#carte:zombi', 'monstres/zombi', 1, 'Zombi')],
+      monstre_rubrique: [rubrique('monstres/blob#carte:blob', 1, 'Dégâts', 'Gifle - 1d4'), rubrique('monstres/zombi#carte:zombi', 1, 'Dégâts', 'Morsure - 1d6')],
+      monstre_butin: [{ espece_id: 'monstres/blob', rang: 1, categorie: 'boss', score_brut: '3-15', texte: 'Gelée x 1' }],
+    },
+  };
+  const dev = structuredClone(ref);
+  const t = dev.tables;
+  t.page[0] = { ...t.page[0], corps_md: 'Déesse de la Corruption.' };
+  t.page[1] = { ...t.page[1], corps_md: 'b' }; // tirée du classeur des races : pas une page du Codex
+  t.monstre_espece[0] = { ...t.monstre_espece[0], lieu_brut: 'Marais, Grotte' };
+  t.monstre[0] = { ...t.monstre[0], categorie: 'boss', variable: 1 };
+  t.monstre_rubrique[0] = { ...t.monstre_rubrique[0], texte: 'Gifle - 2d4' };
+  t.monstre_butin[0] = { ...t.monstre_butin[0], texte: 'Gelée x 2' };
+  t.monstre.splice(1, 1); // le zombi retiré, avec sa rubrique
+  t.monstre_rubrique.splice(1, 1);
+  t.monstre.push(monstre('monstres/blob#carte:roi-blob', 'monstres/blob', 2, 'Roi blob', { categorie: 'boss' }));
+  t.monstre_rubrique.push(rubrique('monstres/blob#carte:roi-blob', 1, 'Dégâts', 'Écrasement - 2d10'));
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'codex |  | Eaunoire | Texte | modifie | Déesse. → Déesse de la Corruption.',
+    'bestiaire | Blob | Blob | Lieu de rencontre (lieux séparés par des virgules) | modifie | Marais → Marais, Grotte',
+    'bestiaire | Blob | Blob | Catégorie | modifie | Ennemi simple → Boss',
+    'bestiaire | Blob | Blob | Stats selon l’échelle de puissance | modifie | Non → Oui : « Ses stats varient selon son échelle de puissance. »',
+    'bestiaire | Blob | Blob › Dégâts | Texte de la rubrique | modifie | Gifle - 1d4 → Gifle - 2d4',
+    'bestiaire | Blob | Roi blob | (entité) | ajoute |  → Roi blob',
+    'bestiaire | Blob | Blob › butin 3-15 (Boss) | Butin possible | modifie | Gelée x 1 → Gelée x 2',
+    'bestiaire | Zombi | Zombi | (entité) | retire | Zombi → ',
+  ]);
+  // à leur première livraison (rien en production), le Codex et le bestiaire tiennent en une ligne chacun ; leurs rubriques ne sont pas listées
+  const vide = { tables: { page: ref.tables.page.filter((p) => p.origine !== 'docs') } };
+  assert.deepEqual(comparerBases(vide, ref).map(cle), [
+    'codex |  | Eaunoire | (entité) | ajoute |  → Eaunoire',
+    'bestiaire |  | 2 espèces | (entité) | ajoute |  → 2 espèces',
+    'bestiaire |  | 2 monstres | (entité) | ajoute |  → 2 monstres',
+  ]);
+});
+
+test('bestiaire : un groupe d’espèces (décision R64) renommé est listé avant ses espèces ; ajouté contre une production sans la table ; toute table modifiable est lue', () => {
+  const groupe = { id: 'monstres/ottar', nom: 'Ottar', description: 'Avant.' };
+  const espece = { id: 'monstres/ottar-chariot', nom: 'Ottar Chariot', ordre: 1, ep_brut: 'EP2', description: null, lieu_brut: 'Neige', complement: null, groupe_id: 'monstres/ottar' };
+  const ref = { tables: { monstre_groupe: [groupe], monstre_espece: [espece] } };
+  const dev = structuredClone(ref);
+  Object.assign(dev.tables.monstre_groupe[0], { nom: 'Ottars', description: 'Après.' });
+  dev.tables.monstre_espece[0].lieu_brut = 'Neige, Glacier';
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'bestiaire | Ottars | Ottars | Nom de l’espèce (le groupe) | modifie | Ottar → Ottars',
+    'bestiaire | Ottars | Ottars | Description de l’espèce | modifie | Avant. → Après.',
+    'bestiaire | Ottar Chariot | Ottar Chariot | Lieu de rencontre (lieux séparés par des virgules) | modifie | Neige → Neige, Glacier',
+  ]);
+  assert.deepEqual(comparerBases({ tables: { monstre_espece: [espece] } }, ref).map(cle), ['bestiaire | Ottar | Ottar | Groupe d’espèces | ajoute |  → Ottar']);
+  // une table modifiable sur le site de dev est lue dans chaque base (sinon ses changements manqueraient à la note)
+  assert.deepEqual(Object.keys(TABLES).filter((t) => !TABLES_LUES.includes(t)), []);
+});
+
+test('capacités de monstre (décisions R66, R69) : description commune modifiée, capacité ajoutée à une carte ou retirée, valeur propre ; première livraison en une ligne par table', () => {
+  const espece = { id: 'monstres/gobelin', nom: 'Gobelin', ordre: 1, ep_brut: 'EP1', description: null, lieu_brut: null, complement: null };
+  const monstre = { id: 'monstres/gobelin#carte:chef', espece_id: 'monstres/gobelin', rang: 1, nom: 'Gobelin chef', echelle_brut: '1', categorie: 'boss', type_brut: null, alignement_brut: null, variable: 0 };
+  const commune = (id, nom, description) => ({ id, nom, nom_cle: id, description, liste_de_sorts: 0 });
+  const place = (rang, capacite_commune_id, valeurs = {}) => ({ monstre_id: monstre.id, rang, prefixe: null, ep_min: null, capacite_commune_id, sorts: null, ...valeurs });
+  const ref = {
+    tables: {
+      monstre_espece: [espece],
+      monstre: [monstre],
+      monstre_capacite_commune: [commune('minus', 'Minus', 'Malus de {10}%.'), commune('vol', 'Vol', 'Vole.'), commune('nage', 'Nage', 'Nage.'),
+        commune('anti-mal', 'Anti-mal', '+5.'), { ...commune('anti-mal-2', 'Anti-mal', '+8.'), nom_cle: 'anti-mal' }],
+      monstre_capacite: [place(1, 'minus'), place(2, 'vol')],
+      monstre_capacite_valeur: [],
+    },
+  };
+  const dev = structuredClone(ref);
+  const t = dev.tables;
+  t.monstre_capacite_commune[0].description = 'Malus de {12}%.';
+  t.monstre_capacite.splice(1, 1);
+  t.monstre_capacite.push(place(3, 'nage', { prefixe: '[EP2]', ep_min: 2 }));
+  t.monstre_capacite.push(place(4, 'anti-mal-2'));
+  t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 1, numero: 1, valeur: 20 });
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  // dans l'ordre de la carte (rang, puis emplacement), la capacité commune après les espèces
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'bestiaire | Gobelin | Gobelin chef › Minus › valeur 1 (20) | (entité) | ajoute |  → Gobelin chef › Minus › valeur 1 (20)',
+    'bestiaire | Gobelin | Gobelin chef › Vol | (entité) | retire | Gobelin chef › Vol → ',
+    'bestiaire | Gobelin | Gobelin chef › Nage | (entité) | ajoute |  → Gobelin chef › Nage',
+    // deux capacités du même nom (décision R68) : l'identifiant dit laquelle
+    'bestiaire | Gobelin | Gobelin chef › Anti-mal (anti-mal-2) | (entité) | ajoute |  → Gobelin chef › Anti-mal (anti-mal-2)',
+    'bestiaire | Capacités de monstre | Minus | Description (sur toutes ses cartes ; « {10} » : une valeur que chaque carte peut changer) | modifie | Malus de {10}%. → Malus de {12}%.',
+  ]);
+  // une carte retirée (ou ajoutée) : la carte seule, pas une ligne de plus par capacité et par valeur propre (« dit par l'entité qui la porte »)
+  const avecAutre = structuredClone(dev);
+  avecAutre.tables.monstre.push({ ...monstre, id: 'monstres/gobelin#carte:autre', nom: 'Gobelin autre', rang: 2 });
+  avecAutre.tables.monstre_capacite.push({ ...place(1, 'vol'), monstre_id: 'monstres/gobelin#carte:autre' });
+  const sansCarte = structuredClone(avecAutre);
+  const autreQueLeChef = (l) => l.monstre_id !== monstre.id && l.id !== monstre.id;
+  for (const t of ['monstre', 'monstre_capacite', 'monstre_capacite_valeur']) sansCarte.tables[t] = sansCarte.tables[t].filter(autreQueLeChef);
+  assert.deepEqual(comparerBases(avecAutre, sansCarte).map((l) => `${l.nature} ${l.entite}`), ['retire Gobelin chef']);
+  assert.deepEqual(comparerBases(sansCarte, avecAutre).map((l) => `${l.nature} ${l.entite}`), ['ajoute Gobelin chef']);
+  // une capacité commune homonyme retirée : nommée avec son identifiant
+  const sansHomonyme = structuredClone(ref);
+  sansHomonyme.tables.monstre_capacite_commune.pop();
+  assert.deepEqual(comparerBases(ref, sansHomonyme).map((l) => l.entite), ['Anti-mal (anti-mal-2)']);
+  // la première livraison (la production n'a pas ces tables) : une ligne par table, pas une par capacité
+  t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 3, numero: 1, valeur: 4 });
+  const avant = { tables: { monstre_espece: [espece], monstre: [monstre] } };
+  assert.deepEqual(comparerBases(avant, dev).map(cle), [
+    'bestiaire |  | 5 capacités de monstre | (entité) | ajoute |  → 5 capacités de monstre',
+    'bestiaire |  | 3 capacités sur les cartes | (entité) | ajoute |  → 3 capacités sur les cartes',
+    'bestiaire |  | 2 valeurs de capacité propres à une carte | (entité) | ajoute |  → 2 valeurs de capacité propres à une carte',
+  ]);
 });
 
 test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne comptent pas', () => {
@@ -215,6 +391,37 @@ test('rendu : ancienne valeur barrée, nouvelle à côté, couleur du sens ; tou
   assert.match(note, /Version 0\.1 <span class="nv-date">1 octobre 2026<\/span> <span class="nv-depuis">depuis la V0\.0<\/span>/);
   assert.match(note, /class="nv-exemple"/);
   assert.match(note, /<p>Bonjour <strong>à tous<\/strong><\/p>/);
+  // sans liste : « Aucune modification des règles » si la note n'a pas de texte ; avec un texte (V0.2, migration 0028), le texte seul
+  const vide = { version: '0.2', publiee_le: '2026-10-11', depuis: '0.1', texte: null, exemple: 0 };
+  assert.match(htmlDeLaNote(vide, []), /Aucune modification des règles\./);
+  const importInitial = htmlDeLaNote({ ...vide, texte: 'Import initial depuis les sources historiques.' }, []);
+  assert.match(importInitial, /<p>Import initial depuis les sources historiques\.<\/p>/);
+  assert.doesNotMatch(importInitial, /nv-aucune/);
+});
+
+test('lancementAffiche : l’encart « Dernier lancement » ne parle que de la version en préparation, sauf s’il pèse encore sur la page', () => {
+  const termine = { lot: 'a', version_cible: '0.2', etat: 'termine' };
+  // demande du propriétaire : la livraison précédente, terminée, ne s'affiche plus pendant la préparation de la suivante
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', occupe: false, liberable: false, brouillon: { lot: null } }), null);
+  assert.equal(lancementAffiche({ lancement: { ...termine, etat: 'simulation_reussie' }, version_cible: '0.3' }), null);
+  assert.equal(lancementAffiche({ lancement: null, version_cible: '0.3' }), null);
+  // la version en préparation : toujours montré (simulation, échec, terminé…)
+  for (const etat of ['simulation_reussie', 'simulation_echouee', 'echec', 'annule', 'termine', 'en_cours']) {
+    const l = { lot: 'b', version_cible: '0.3', etat };
+    assert.equal(lancementAffiche({ lancement: l, version_cible: '0.3' }), l, etat);
+  }
+  // une autre version, mais il bloque, tient le texte figé ou son lot s'annule encore : la page doit dire pourquoi
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', occupe: true }), termine);
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', brouillon: { lot: 'a' } }), termine);
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', brouillon: { lot: 'autre' } }), null);
+  for (const etat of ['envoi', 'manuel', 'erreur', 'echec', 'lance', 'en_cours']) {
+    const l = { lot: 'c', version_cible: '0.2', etat };
+    assert.equal(lancementAffiche({ lancement: l, version_cible: '0.3', liberable: true }), l, `${etat} annulable`);
+  }
+  // un lot déjà dans dev ou livré, resté sans nouvelles 3 h, est « liberable » pour toujours (estLiberable) : sans texte à rendre, il disparaît
+  for (const etat of ['fusionne', 'echec_livraison', 'termine']) {
+    assert.equal(lancementAffiche({ lancement: { ...termine, etat }, version_cible: '0.3', liberable: true, brouillon: { lot: null } }), null, etat);
+  }
 });
 
 test('rendu : un long texte montre ce qui a changé mot à mot', () => {
@@ -272,4 +479,57 @@ test('TABLES_DES_NOTES : exactement les tables de la section 15 de data/schema.s
   const suite = schema.slice(debut + 1).search(/^-- 1[6-9]\. /m);
   const section = suite < 0 ? schema.slice(debut) : schema.slice(debut, debut + 1 + suite);
   assert.deepEqual([...TABLES_DES_NOTES], [...section.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]));
+});
+
+test('chronologie et mots-clés (migration 0043) : en une ligne tant que la production ne les a pas ; puis date, Impact, lien d’une description, catégories d’un événement et de la chronologie, vocabulaire', () => {
+  const evenement = (id, valeurs = {}) => ({ id, rang: 1, titre: 'La Chute', titre_cle: 'la-chute', epoque: 'datee', annee: 12, annee_fin: null, portee: null, lieu: null, ...valeurs });
+  const bloc = (evenement_id, rang, valeurs = {}) => ({ evenement_id, rang, page_id: 'lore/erisia', section: null, texte: 'Il tombe.', date_brut: null, ...valeurs });
+  const page = [{ id: 'lore/erisia', titre: 'Erisia' }, { id: 'lore/mrode', titre: 'Mrode' }];
+  const categorie = (id, libelle) => ({ id, libelle, libelle_cle: id });
+  const mot = (id, libelle) => ({ id, libelle, libelle_cle: id });
+  // la production d'avant la chronologie : une ligne par table, pas une par entité
+  const neuves = comparerBases({ tables: { page } }, {
+    tables: {
+      page, evenement: [evenement('a'), evenement('b', { rang: 2 })], evenement_extrait: [bloc('a', 1), bloc('b', 1)], evenement_categorie: [],
+      categorie_chronologie: [categorie('guerre', 'Guerre'), categorie('paix', 'Paix')], mot_cle: [mot('demo', 'Démo'), mot('aide', 'Aide')],
+    },
+  });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite]), [
+    ['chronologie', '2 événements de la chronologie'], ['chronologie', '2 descriptions d’événements'], ['chronologie', '2 catégories de la chronologie'], ['mots-cles', '2 mots-clés'],
+  ]);
+  // ensuite : chaque changement, dans les termes de la page
+  const ref = {
+    tables: {
+      page, evenement: [evenement('a'), evenement('b', { rang: 2, titre: 'Retirée' })], evenement_extrait: [bloc('a', 1), bloc('b', 1)],
+      evenement_categorie: [{ evenement_id: 'a', categorie_id: 'guerre' }, { evenement_id: 'a', categorie_id: 'vieille' }],
+      categorie_chronologie: [categorie('guerre', 'Guerre'), categorie('paix', 'Paix'), categorie('vieille', 'Vieille')],
+      mot_cle: [mot('demo', 'Démo'), mot('vieux', 'Vieux')],
+    },
+  };
+  const dev = {
+    tables: {
+      page, evenement: [evenement('a', { epoque: 'inconnue', annee: null, portee: 'majeur' }), evenement('c', { rang: 3, titre: 'Nouvelle' })],
+      evenement_extrait: [bloc('a', 1, { page_id: 'lore/mrode' }), bloc('a', 2, { texte: 'Puis il se relève.' }), bloc('c', 1)],
+      evenement_categorie: [{ evenement_id: 'a', categorie_id: 'guerre' }, { evenement_id: 'a', categorie_id: 'paix' }],
+      categorie_chronologie: [categorie('guerre', 'Guerres'), categorie('paix', 'Paix')],
+      mot_cle: [mot('demo', 'Démos')],
+    },
+  };
+  const lignes = comparerBases(ref, dev).map((l) => [l.domaine, l.entite, l.champ, l.nature, l.avant, l.apres]);
+  const enSemble = (l) => new Set(l.map((x) => JSON.stringify(x)));
+  assert.deepEqual(enSemble(lignes.filter(([d]) => d === 'chronologie')), enSemble([
+    ['chronologie', 'Guerres', 'Catégorie', 'modifie', 'Guerre', 'Guerres'],
+    ['chronologie', 'Vieille', null, 'retire', 'Vieille', null],
+    ['chronologie', 'La Chute', 'Date : époque', 'modifie', 'Événement daté (une année)', 'Date inconnue'],
+    ['chronologie', 'La Chute', 'Année (événement daté)', 'retire', '12', null],
+    ['chronologie', 'La Chute', 'Impact (liste du Codex)', 'ajoute', null, 'Impact majeur'],
+    ['chronologie', 'La Chute › description 1', 'Lien', 'modifie', 'Erisia', 'Mrode'],
+    ['chronologie', 'La Chute › description 2', null, 'ajoute', null, 'La Chute › description 2'],
+    ['chronologie', 'La Chute', 'Catégories', 'modifie', 'Guerres, Vieille', 'Guerres, Paix'],
+    ['chronologie', 'Nouvelle', null, 'ajoute', null, 'Nouvelle'],
+    ['chronologie', 'Retirée', null, 'retire', 'Retirée', null],
+  ]), 'la description d’un événement ajouté ou retiré est dite par lui ; une catégorie supprimée, par elle et par ses événements');
+  // les catégories d'abord (avant les événements, dans l'ordre de leur écriture)
+  assert.deepEqual(lignes.filter(([d]) => d === 'chronologie').slice(0, 2).map(([, e]) => e), ['Guerres', 'Vieille']);
+  assert.deepEqual(lignes.filter(([d]) => d === 'mots-cles'), [['mots-cles', 'Démos', 'Mot-clé', 'modifie', 'Démo', 'Démos'], ['mots-cles', 'Vieux', null, 'retire', 'Vieux', null]]);
 });

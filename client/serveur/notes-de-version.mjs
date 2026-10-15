@@ -16,8 +16,8 @@ import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/li
 import { signature } from './base-vivante.mjs';
 import { journalExporte } from './edition-journal.mjs';
 
-export const DOSSIER_LOTS = 'mise-a-jour';
-export const FICHIER_LANCEMENT = 'etat.json';
+const DOSSIER_LOTS = 'mise-a-jour';
+const FICHIER_LANCEMENT = 'etat.json';
 /** Le mot à taper pour confirmer le lancement (la page le demande). */
 export const CONFIRMATION = 'METTRE A JOUR';
 /** Le workflow déclenché, sur la branche dev (sa branche par défaut : un workflow_dispatch n'existe que s'il y est). */
@@ -74,7 +74,7 @@ function tablesDeReference(chemin) {
 }
 
 /** Le brouillon de la note (champ libre) : { texte, modifie_le, lot }. */
-export function lireBrouillon(db) {
+function lireBrouillon(db) {
   const b = db.prepare('SELECT texte, modifie_le, lot FROM note_version_brouillon WHERE id = 1').get();
   return { texte: b?.texte ?? null, modifie_le: b?.modifie_le ?? null, lot: b?.lot ?? null };
 }
@@ -131,20 +131,20 @@ const ID_LOT = /^[0-9a-f-]{36}$/;
 export const JOB_LIVRER = 'livrer';
 export const ETAPE_FUSION_DEV = 'Fusion dans dev';
 /** États où un run peut encore changer quelque chose : le service le suit (une relance « Re-run » d'un échec est vue aussi). */
-const SUIVIS = ['lance', 'en_cours', 'fusionne', 'echec', 'echec_livraison'];
+export const SUIVIS = ['lance', 'en_cours', 'fusionne', 'echec', 'echec_livraison'];
 /** États qui empêchent un nouveau lancement (le lot occupe la place ou attend sa livraison). */
 const OCCUPANTS = ['envoi', 'lance', 'en_cours', 'fusionne', 'echec_livraison'];
 /** États dont le lot n'est plus servi au workflow. */
 const LOT_RETIRE = ['annule', 'simulation_reussie', 'simulation_echouee'];
 /** Délai minimal entre deux lancements, et au plus tant de lancements par 24 h (le bouton n'a pas d'authentification avant la 1.0). */
-export const DELAI_ENTRE_LANCEMENTS = 2 * 60_000;
+const DELAI_ENTRE_LANCEMENTS = 2 * 60_000;
 export const LANCEMENTS_PAR_JOUR = 8;
 /** Appels à GitHub : jamais sans délai (un réseau pendu ne doit pas bloquer le suivi). */
-export const DELAI_GITHUB = 30_000;
+const DELAI_GITHUB = 30_000;
 
 const versionNumerique = (v) => String(v ?? '').split('.').slice(0, 2).map((n) => Number.parseInt(n, 10) || 0);
 /** La version `a` (X.Y ou X.Y.Z) est-elle au moins `b` (X.Y) ? */
-const auMoins = (a, b) => {
+export const auMoins = (a, b) => {
   const [x1, y1] = versionNumerique(a);
   const [x2, y2] = versionNumerique(b);
   return x1 > x2 || (x1 === x2 && y1 >= y2);
@@ -304,6 +304,17 @@ export function libererLot(db, dossier, { instant, lot, annulerRun = null }) {
   retirerLot(dossier, l.lot, '.annule');
   if (l.run?.id && annulerRun) annulerRun(l.run.id).catch(() => {});
   return ecrireLancement(dossier, { ...l, etat: 'annule', libere_le: instant });
+}
+
+/**
+ * « Lever la maintenance » (page de maintenance du site de dev ; serveur/maintenance.mjs) : le lancement du lot `lot` ne met plus les sites en
+ * maintenance, sans rien changer d'autre (le run continue, la livraison aussi). `lot` : celui que la page affiche (un onglet périmé : 409).
+ */
+export function leverMaintenance(dossier, { lot, instant }) {
+  const l = lireLancement(dossier);
+  if (!l?.lot || lot !== l.lot) throw new ErreurNotes(409, 'Ce lancement n’est plus le dernier : rechargez la page.', { lancement: l });
+  if (l.maintenance_levee_le) return l;
+  return modifierLancement(dossier, l.lot, null, () => ({ maintenance_levee_le: instant }));
 }
 
 /**

@@ -39,12 +39,14 @@ const versImport = (e) => {
 };
 // les pages que le site a supprimées (D11 : un don, une spécialité et ses dons), telles que l'import les a écrites
 const tagsImport = historique.lignesDImport('page_tag');
+// l'écriture d'un mot-clé vit dans le vocabulaire (mot_cle, migration 0043) ; une ligne de page_tag notée avant gardait la sienne (`libelle`)
+const motsClesImport = new Map(historique.lignesDImport('mot_cle').map((m) => [m.id, m.libelle]));
 const pagesSupprimees = historique.lignesDImport('page')
   .filter((p) => historique.supprimee('page', { id: p.id }) && p.statut !== 'example' && ['classes', 'capacites'].includes(p.type))
   .map((p) => ({
     id: p.id,
     body: p.corps_md,
-    data: { ...JSON.parse(p.donnees ?? '{}'), title: p.titre, status: p.statut, tags: tagsImport.filter((t) => t.page_id === p.id).sort((a, b) => a.ordre - b.ordre).map((t) => t.libelle) },
+    data: { ...JSON.parse(p.donnees ?? '{}'), title: p.titre, status: p.statut, tags: tagsImport.filter((t) => t.page_id === p.id).sort((a, b) => a.ordre - b.ordre).map((t) => t.libelle ?? motsClesImport.get(t.tag_id) ?? t.tag_id) },
   }));
 const allImport = [...all.filter((e) => !historique.creee('page', { id: e.id })).map(versImport), ...pagesSupprimees];
 // les classes dont le site a créé ou supprimé une spécialité ou un don, ou changé la nature, la ligne ou la spécialité d'un don : leurs formes de

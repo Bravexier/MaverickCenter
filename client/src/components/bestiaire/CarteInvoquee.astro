@@ -1,0 +1,169 @@
+---
+// Carte d'une créature invoquée (lib/bestiaire-db.mjs#chargerInvocations), sur le modèle de la carte d’un monstre (lib/bestiaire-rendu.mjs) : en-tête, portrait
+// (le logo en attendant), santé / chakra / barrière en tuiles, F.P.V.S.I.A. en cases colorées, puis le texte tel qu'écrit : défense, vitesse, dégâts,
+// capacités (et celles communes à son invocation), effets, résistances écrites et celles de sa magie (« Élémentaire »), le sort qui l'invoque et son coût.
+// `bulle` (un identifiant) : la même carte en infobulle, sur une page de magie (demande du propriétaire : « La carte sera à garder et servirait de tooltip
+// dans leur correspondance dans les tableaux des magies et leurs sorts associés » ; components/Infobulles.astro) : dans une bulle `role="tooltip"`
+// cachée, sans identifiant interne ni élément interactif (ni « Fermer », ni liens : une infobulle n'en a pas), le nom en titre simple. CSS :
+// styles/bestiaire/carte.css.
+import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
+import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { url } from '../../lib/wiki';
+import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
+
+interface Props {
+  ligne: ReturnType<typeof chargerInvocations>['lignes'][number];
+  bulle?: string;
+}
+const { ligne: l, bulle } = Astro.props;
+// en infobulle, la carte est dans sa bulle ; sinon, seule
+const Enveloppe = bulle ? 'div' : Fragment;
+const enveloppe = bulle ? { class: 'bulle bulle--carte', role: 'tooltip', id: bulle, 'data-placement': 'cote', 'data-fermer-au-toucher': true, hidden: true } : {};
+const id = `carte-${l.ancre}`;
+const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
+const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocation.magieId}/`)}#sort-${l.invocation.sortId.slice(l.invocation.sortId.indexOf('#sort:') + 6)}` : null;
+---
+
+<Enveloppe {...enveloppe}>
+<article class="bcarte" id={bulle ? undefined : id} aria-labelledby={bulle ? undefined : `${id}-titre`} aria-label={bulle ? `Carte de ${l.nom}` : undefined} data-carte={bulle ? undefined : l.ancre}>
+  <header class="bcarte__tete">
+    <div class="bcarte__titres">
+      {bulle ? <p class="bcarte__titre">{l.nom}</p> : <h3 id={`${id}-titre`}>{l.nom}</h3>}
+      <p class="bcarte__espece">
+        {l.invocation.nom} <span class="muted">({l.bloc})</span>
+      </p>
+      <p class="bcarte__badges">
+        {
+          l.magies.map((m) => (
+            <span class="bmagie" style={pastille(m)}>
+              {m}
+            </span>
+          ))
+        }
+      </p>
+    </div>
+    {/* le cadre des portraits des monstres (lib/bestiaire-rendu.mjs#htmlDuPortrait), le logo en attendant : une créature invoquée n'a pas encore de portrait */}
+    <figure class="bcarte__portrait" data-vide>
+      <div class="bcarte__cadre"><img src={url('logo.webp')} alt="" width="319" height="320" loading="lazy" decoding="async" /></div>
+      <figcaption>Portrait à venir</figcaption>
+    </figure>
+    {!bulle && <a class="bcarte__fermer" href={`#${l.ancre}`} aria-label={`Fermer la carte de ${l.nom}`}>Fermer</a>}
+  </header>
+
+  <section class="bcarte__section" aria-label="La carte">
+    <dl class="brubriques">
+      <div class="brubrique brubrique--attributs">
+        <dt>Santé, chakra, barrière</dt>
+        <dd>
+          <span class="bstats">
+            <span class="bstat bstat--sante"><span class="bstat__nom">Santé</span><span class="bstat__val">{l.sante}</span></span>
+            <span class="bstat bstat--chakra"><span class="bstat__nom">Chakra</span><span class="bstat__val">{l.chakra ?? '—'}</span></span>
+            <span class="bstat bstat--barriere"><span class="bstat__nom">Barrière</span><span class="bstat__val">{l.barriere ?? '—'}</span></span>
+          </span>
+        </dd>
+      </div>
+      {
+        l.ressources.map((r) => (
+          <div class="brubrique">
+            <dt>{r.libelle}</dt>
+            <dd>{r.brut}</dd>
+          </div>
+        ))
+      }
+      <div class="brubrique">
+        <dt>Défense</dt>
+        <dd>{l.defense ?? '—'}</dd>
+      </div>
+      <div class="brubrique">
+        <dt>Vitesse</dt>
+        <dd>{l.vitesse ?? '—'}</dd>
+      </div>
+      <div class="brubrique brubrique--caracteristiques">
+        <dt>Caractéristiques (F.P.V.S.I.A.)</dt>
+        <dd>
+          <Fragment set:html={htmlDesCaracteristiques(l.fpvsia)} />
+          {l.bonus.length > 0 && <span class="muted bcarte__bonus">{l.bonus.join(', ')}</span>}
+        </dd>
+      </div>
+      <div class="brubrique">
+        <dt>Dégâts</dt>
+        <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a) => <li>{a.brut}</li>)}</ul> : '—'}</dd>
+      </div>
+      <div class="brubrique brubrique--capacites">
+        <dt>Capacité(s)</dt>
+        <dd>
+          <Fragment
+            set:html={htmlDesCapacites([
+              ...l.capacites.map((x) => ({ prefixes: [...(x.npm ? [{ texte: `NPM ${x.npm}` }] : []), ...(x.etiquette ? [{ texte: `[${x.etiquette}]` }] : [])], nom: x.nom, texte: x.texte })),
+              ...l.communes.map((x) => ({ prefixes: [{ texte: 'commune', titre: `Commune à toutes les créatures de « ${l.invocation.nom} »` }], nom: x.nom, texte: x.texte, commune: true })),
+            ])}
+          />
+        </dd>
+      </div>
+      {
+        l.effets.map((e) => (
+          <div class="brubrique">
+            <dt>{e.libelle}</dt>
+            <dd class="texte">{e.texte}</dd>
+          </div>
+        ))
+      }
+      {
+        l.defensesEcrites.length > 0 && (
+          <div class="brubrique">
+            <dt>Résistances et immunités écrites</dt>
+            <dd>
+              <span class="bcibles">
+                {l.defensesEcrites.map((x) => (
+                  <span class={`bcible bcible--${x.sens}`}>{x.libelle}</span>
+                ))}
+              </span>
+            </dd>
+          </div>
+        )
+      }
+      {
+        l.defensesParMagie.map((d) => (
+          <div class="brubrique">
+            <dt>Selon sa magie {d.magie} (« Élémentaire »)</dt>
+            <dd>
+              {d.resiste.length > 0 && <>Résiste à : {d.resiste.join(', ')}</>}
+              {d.resiste.length > 0 && d.vulnerable.length > 0 && ' · '}
+              {d.vulnerable.length > 0 && <>Vulnérable à : {d.vulnerable.join(', ')}</>}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="bcarte__section" aria-label="Description et invocation">
+    {l.description && <p class="texte">{l.description}</p>}
+    <p>
+      <strong>Invoquée par</strong> {sort && !bulle ? <a href={sort}>{l.invocation.sortNom}</a> : l.invocation.sortNom}
+      {l.invocation.magie && <> ({l.invocation.magie})</>}
+      {l.cout && <> · coût : {l.cout}</>}
+    </p>
+    {
+      l.memeBloc.length > 0 && (
+        <p data-hors-recherche>
+          <strong>Même combinaison :</strong>{' '}
+          {l.memeBloc.map((m, k) => (
+            <>
+              {k > 0 && ', '}
+              {bulle ? m.nom : <a href={`#invoquee-${m.id.slice(m.id.indexOf('/') + 1)}`}>{m.nom}</a>}
+            </>
+          ))}
+        </p>
+      )
+    }
+    {
+      !bulle && (
+        <p>
+          <a href={url(`${l.id}/`)}>Page de la créature</a>
+        </p>
+      )
+    }
+  </section>
+</article>
+</Enveloppe>

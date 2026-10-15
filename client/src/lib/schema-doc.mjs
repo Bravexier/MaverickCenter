@@ -1,7 +1,7 @@
 // Lecture des commentaires de data/schema.sql : sections, tables, vues, description de chaque objet et de chaque colonne.
 // Node seulement (aucune dépendance). Partagé par `scripts/db-doc.mjs` (documents docs/sql/*.md) et par l'explorateur de données du site (`src/pages/donnees/`).
 //
-// Format lu (celui du schéma) : un en-tête de section `-- N. TITRE` entre deux filets `-- ====` ; un bloc de lignes `--` juste avant un `CREATE` décrit l'objet
+// Format lu (celui du schéma) : un en-tête de section `-- N. TITRE` (ou `-- N bis. TITRE`) entre deux filets `-- ====` ; un bloc de lignes `--` juste avant un `CREATE` décrit l'objet
 // (`-- @derivee <commande>` le marque comme table dérivée) ; le commentaire de fin de ligne d'une colonne la décrit, et des lignes `--` très indentées le prolongent.
 
 /** @returns {{titre: string, objets: {nom: string, genre: 'table'|'vue'|string, description: string, derivee: string|null, colonnes: Map<string,string>}[]}[]} */
@@ -13,7 +13,7 @@ export function lireSchema(texte) {
   let bloc = [];
   for (let i = 0; i < lignes.length; i++) {
     const l = lignes[i];
-    const titre = /^-- (\d+)\. (.+)$/.exec(l);
+    const titre = /^-- (\d+(?: bis)?)\. (.+)$/.exec(l);   // « 8 bis. » : section insérée après la 8 sans renuméroter les suivantes
     if (titre) {
       section = { titre: `${titre[1]}. ${titre[2]}`, objets: [] };
       sections.push(section);

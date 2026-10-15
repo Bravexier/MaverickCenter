@@ -281,7 +281,7 @@ const lignesDElement = (libelle, valeur) => {
  * Colonnes de magie écrites dans « Données » : libellé reconnu (sans accents ni casse, tel que l'onglet l'écrit), libellé d'une ligne ajoutée, et
  * équivalence d'un nombre : la cellule du classeur était un nombre en cache (« 5.0 ») que la base garde en entier (5).
  */
-export const DONNEES_DE_MAGIE = [
+const DONNEES_DE_MAGIE = [
   { colonne: 'sante_offerte', motif: /^sante offert/, libelle: 'Santé offerte', nombre: true },
   { colonne: 'chakra_offert', motif: /^chakra offert/, libelle: 'Chakra offert', nombre: true },
   { colonne: 'caracteristique_brut', motif: /^caracteri?s?tiques? bonus/, libelle: 'Caractéristiques bonus' },
@@ -417,7 +417,7 @@ function poserModeHyper(morceaux, effet) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Colonnes de `sort` écrites dans la ligne du tableau « ## Sorts », avec leur case (Niveau, Nom, Type, Coût, Portée, Zone, D/S/B, Effets secondaires). */
-export const CASES_DU_SORT = { nom: 1, type_brut: 2, cout_brut: 3, portee_brut: 4, zone_brut: 5, dsb_brut: 6, effets: 7 };
+const CASES_DU_SORT = { nom: 1, type_brut: 2, cout_brut: 3, portee_brut: 4, zone_brut: 5, dsb_brut: 6, effets: 7 };
 /** Colonnes de `sort` qui ont une place dans le corps de la page de sa magie. */
 export const COLONNES_DE_SORT = [...Object.keys(CASES_DU_SORT), 'remarque', 'texte_niveau5'];
 

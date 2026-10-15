@@ -21,6 +21,7 @@ import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { journalSansImage } from '../src/lib/edition-modele.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { bilan, comparerBases, TABLES_DES_NOTES, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -52,11 +53,26 @@ export function verifierLot(lot) {
   // ni HTML brut ni lien non sûr ajouté au Markdown d'une page (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
   for (const l of lot.journal.lots) {
     for (const m of l.modifications ?? []) {
-      if (m.table !== 'page' || typeof m.apres?.corps_md !== 'string') continue;
-      const ajoutes = fragmentsAjoutes(typeof m.avant?.corps_md === 'string' ? m.avant.corps_md : '', m.apres.corps_md);
-      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : page ${m.cle?.id ?? JSON.stringify(m.cle)} : ${messageDeRefus(ajoutes)}`);
+      // le texte d'une page (guide, Codex) ou d'un bloc de description de la chronologie (migration 0043) : du Markdown que le build rend tel quel
+      const colonne = { page: 'corps_md', evenement_extrait: 'texte' }[m.table];
+      if (!colonne || typeof m.apres?.[colonne] !== 'string') continue;
+      const ajoutes = fragmentsAjoutes(typeof m.avant?.[colonne] === 'string' ? m.avant[colonne] : '', m.apres[colonne]);
+      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : ${m.table === 'page' ? 'page' : 'description'} ${m.cle?.id ?? JSON.stringify(m.cle)} : ${messageDeRefus(ajoutes)}`);
     }
   }
+}
+
+/** Les textes des blocs de description de la chronologie (Map « evenement_id#rang » → texte), pour blocNonSur. */
+export const textesDesBlocs = (db) => new Map(db.prepare('SELECT evenement_id, rang, texte FROM evenement_extrait').all().map((b) => [`${b.evenement_id}#${b.rang}`, b.texte]));
+
+/** Le premier bloc de description dont le texte a gagné du HTML brut ou un lien non sûr depuis `avant` (textesDesBlocs) : { id, fragments } ; sinon null. */
+export function blocNonSur(db, avant) {
+  for (const [id, texte] of textesDesBlocs(db)) {
+    if (avant.get(id) === texte) continue;
+    const fragments = fragmentsAjoutes(avant.get(id) ?? '', texte);
+    if (fragments.length) return { id, fragments };
+  }
+  return null;
 }
 
 /** La première page dont le corps a gagné du HTML brut ou un lien non sûr depuis `corpsAvant` (Map id → corps_md) : { id, fragments } ; sinon null. */
@@ -129,6 +145,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       dejaLivres = lot.journal.lots.filter((l) => livres.has(l.id)).map((l) => l.id);
       const journal = { ...lot.journal, lots: lot.journal.lots.filter((l) => !livres.has(l.id)) };
       const corpsAvant = new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md]));
+      const blocsAvant = textesDesBlocs(db);
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
       chargerJournal(db, journal);
@@ -145,6 +162,11 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       if (nonSure) {
         db.exec('ROLLBACK');
         throw new ErreurMiseAJour(2, `lot : page ${nonSure.id} après le rejeu : ${messageDeRefus(nonSure.fragments)}`);
+      }
+      const blocNonSurApres = blocNonSur(db, blocsAvant);
+      if (blocNonSurApres) {
+        db.exec('ROLLBACK');
+        throw new ErreurMiseAJour(2, `lot : description ${blocNonSurApres.id} après le rejeu : ${messageDeRefus(blocNonSurApres.fragments)}`);
       }
       const production = new DatabaseSync(ref.chemin, { readOnly: true });
       try {
@@ -176,7 +198,11 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       const insererHistorique = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-      for (const m of historique) insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, m.avant, m.apres);
+      // une image (portrait) n'y est que résumée : la ligne de sa table la garde
+      for (const m of historique) {
+        insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant),
+          journalSansImage(m.table_nom, m.apres));
+      }
       db.exec('DELETE FROM modification; DELETE FROM modification_lot; DELETE FROM note_version_brouillon');
       const rompues = db.prepare('PRAGMA foreign_key_check').all();
       if (rompues.length) {

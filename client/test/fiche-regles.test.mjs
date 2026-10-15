@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
+import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -136,6 +137,20 @@ test('dons à choix : chaque don « choix » qui a une alternative est dans un s
   assert.equal(vus.size, choixAvecAlternative);
 });
 
+test('dons de classe : la précision de la cellule de type (limite d’usage « N fois/période »…), telle qu’écrite, comme la page de la classe', () => {
+  const dons = new Map(regles.classes.flatMap((c) => c.dons.map((d) => [d.id, d])));
+  const lignes = db.prepare('SELECT id, type_brut, limite_nombre, limite_periode FROM capacite').all();
+  assert.ok(lignes.some((k) => k.limite_nombre !== null), 'des dons ont un nombre d’usages limité');
+  for (const k of lignes) {
+    const d = dons.get(k.id);
+    assert.equal(d.precision, typeDeDon(k.type_brut).precision, k.id);
+    if (k.limite_nombre !== null) {
+      assert.ok(d.precision?.includes(String(k.limite_nombre)), `${k.id} : ${d.precision}`);
+      assert.ok(d.precision.toLowerCase().includes(k.limite_periode), `${k.id} : ${d.precision}`);
+    }
+  }
+});
+
 test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R20), caractéristique au choix du Potentiel Illimité', () => {
   const pi = regles.magies.find((m) => m.id === 'magies/potentiel-illimite');
   assert.equal(pi.mono_magie, true);
@@ -169,14 +184,16 @@ test('postures (sélecteur de la page, demande du propriétaire) : les six de la
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage'").get().sql, /posture_id\s+TEXT\s+REFERENCES posture\(id\)/, 'la fiche garde sa posture (migration 0027)');
 });
 
-test('sorts : coût, portée, D/S/B, effets et remarque tels qu’écrits, avec leurs expressions de NM de ces colonnes (sort_bonus_maitrise)', () => {
-  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
+test('sorts : coût, portée, zone, D/S/B, effets et remarque tels qu’écrits, leurs modes (IC…), avec leurs expressions de NM de ces colonnes et du type (sort_bonus_maitrise)', () => {
+  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
   for (const s of regles.sorts) {
     const l = ligne(s.id);
-    assert.deepEqual([s.cout, s.portee, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.dsb_brut, l.effets, l.remarque], s.id);
-    const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('cout', 'portee', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
+    assert.deepEqual([s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque], s.id);
+    const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('type', 'cout', 'portee', 'zone', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
     assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
+    assert.deepEqual(s.modes.map((m) => m.libelle), db.prepare('SELECT libelle FROM sort_mode WHERE sort_id = ? ORDER BY rang').all(s.id).map((m) => m.libelle), s.id);
   }
+  assert.ok(regles.sorts.some((s) => s.modes.some((m) => m.mode === 'ic')) && regles.sorts.some((s) => s.bonus.some((b) => b.champ === 'type')));
 });
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {

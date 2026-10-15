@@ -1,0 +1,60 @@
+---
+// Recherche et filtres d'un tableau de /bestiaire/ (lib/bestiaire-filtres.mjs) : un champ de recherche, puis un menu par filtre, à cases à cocher (plusieurs
+// valeurs : l'une OU l'autre ; plusieurs filtres : l'un ET l'autre). Le formulaire est caché sans JavaScript (le tableau reste lisible tel quel) ; le script
+// de la page (src/scripts/bestiaire.mjs) le montre, tient les effectifs de chaque valeur à jour et écrit l'état dans l'adresse (préfixe du tableau).
+interface Facette {
+  cle: string;
+  libelle: string;
+  options: { valeur: string; libelle: string; nombre: number }[];
+}
+interface Props {
+  id: string;
+  facettes: Facette[];
+  recherche: string; // libellé du champ de recherche
+  aide: string; // texte d'aide sous le champ
+}
+const { id, facettes, recherche, aide } = Astro.props;
+---
+
+<form class="bfiltres" role="search" aria-label={recherche} data-filtres hidden>
+  <div class="bfiltres__recherche">
+    <label for={`${id}-q`}>{recherche}</label>
+    <input id={`${id}-q`} type="search" name="q" autocomplete="off" spellcheck="false" placeholder="Nom, capacité, lieu, texte…" aria-describedby={`${id}-aide`} />
+    <p class="bfiltres__aide" id={`${id}-aide`}>{aide}</p>
+  </div>
+  <div class="bfiltres__facettes">
+    {
+      facettes.map((f) => (
+        <details class="bfacette" data-facette={f.cle}>
+          <summary>
+            <span class="bfacette__nom">{f.libelle}</span>
+            <span class="bfacette__compte" data-facette-compte hidden />
+          </summary>
+          <div class="bfacette__panneau">
+            {f.options.length > 12 && (
+              <input type="search" class="bfacette__chercher" placeholder={`Chercher (${f.options.length})…`} aria-label={`Chercher dans ${f.libelle}`} data-facette-chercher />
+            )}
+            <ul class="bfacette__options" role="list">
+              {f.options.map((o) => (
+                <li>
+                  <label>
+                    <input type="checkbox" name={f.cle} value={o.valeur} />
+                    <span class="bfacette__libelle">{o.libelle}</span>
+                    <span class="bfacette__nombre" data-nombre>
+                      {o.nombre}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      ))
+    }
+  </div>
+  <div class="bfiltres__actifs" aria-live="polite">
+    <p class="bfiltres__compte" data-compte></p>
+    <ul class="bfiltres__puces" role="list" data-puces></ul>
+    <button type="reset" class="bfiltres__effacer" data-effacer hidden>Tout effacer</button>
+  </div>
+</form>

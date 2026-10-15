@@ -1,0 +1,157 @@
+---
+// Page /bestiaire/ (demande du propriétaire, 2026-10-11) : deux catégories en onglets, les monstres du « Bestiaire 2.0 » et, à part, les créatures invoquées
+// (« elles ne fonctionnent pas tout à fait pareillement ») ; chacune son tableau, sa recherche et ses filtres (lib/bestiaire-filtres.mjs, script
+// src/scripts/bestiaire.mjs). Au-dessus du tableau des monstres, replié : les règles des échelles de puissance (introduction du doc : règles générales,
+// attributs moyens et expérience reçue, règles par échelle avec un curseur). Le glossaire du butin n'est plus affiché ici : ses définitions sont les
+// infobulles des cases de butin (components/bestiaire/TableauMonstres.astro). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css et carte.css (la carte, partagée avec les pages de magie) (?raw).
+import Onglets from '../Onglets.astro';
+import ScriptDuBestiaire from './ScriptDuBestiaire.astro';
+import TableauMonstres from './TableauMonstres.astro';
+import TableauInvocations from './TableauInvocations.astro';
+import bestiaireCss from '../../styles/bestiaire/bestiaire.css?raw';
+import carteCss from '../../styles/bestiaire/carte.css?raw';
+import type { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
+
+interface Props {
+  bestiaire: ReturnType<typeof chargerBestiaire>;
+}
+const { bestiaire } = Astro.props;
+const { monstres, invocations } = bestiaire;
+const ONGLETS = [
+  { id: 'monstres', libelle: 'Monstres', detail: `${monstres.cartes} cartes · ${monstres.especes} espèces` },
+  { id: 'invoquees', libelle: 'Créatures invoquées', detail: `${invocations.lignes.length} créatures · appelées par un sort` },
+];
+const CATEGORIES_XP = [
+  ['ennemi_simple', 'Ennemi simple'],
+  ['mini_boss', 'Mini-boss'],
+  ['boss', 'Boss'],
+] as const;
+// Règles par échelle (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : chaque paragraphe d'une cellule du
+// tableau de l'introduction devient une ligne de liste, au texte identique ; seuls les nombres (« 26 », « +5 », « 2d10 ») sont mis en gras.
+const paragraphesDe = (texte: string | null) => String(texte ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const ENTITES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const echapper = (t: string) => t.replace(/[&<>"']/g, (c) => ENTITES[c]);
+const avecNombres = (p: string) => p.split(/([+-]?\d+(?:d\d+)?)/).map((m, k) => (k % 2 ? `<b>${echapper(m)}</b>` : echapper(m))).join('');
+---
+
+<style is:inline set:html={`${bestiaireCss}\n${carteCss}`}></style>
+<Onglets />
+<div class="bestiaire" data-onglets="Catégories du bestiaire">
+  <nav class="bonglets" aria-label="Catégories du bestiaire">
+    {
+      ONGLETS.map((o, i) => (
+        <a class:list={['onglet', { 'is-active': i === 0 }]} id={`onglet-${o.id}`} href={`#${o.id}`}>
+          <span class="onglet__nom">{o.libelle}</span>
+          <span class="onglet__detail">{o.detail}</span>
+        </a>
+      ))
+    }
+  </nav>
+
+  <section class="bpanneau is-active" id="monstres" aria-labelledby="titre-monstres">
+    <h2 id="titre-monstres" class="bpanneau__titre">Monstres</h2>
+    <p class="bpanneau__intro">
+      D’après le Google Doc « Bestiaire 2.0 ». Chaque espèce a jusqu’à trois cartes (ennemi simple, mini-boss, boss), une échelle de puissance (EP) et, souvent, un
+      tableau de butin.
+    </p>
+    <div class="breperes">
+      <details class="brepere" id="echelles">
+        <summary>
+          Échelles de puissance <span class="brepere__sous">règles de création des monstres · EP {monstres.echelles[0]?.ep} à {monstres.echelles.at(-1)?.ep}</span>
+        </summary>
+        <div class="brepere__corps bregles" data-regles-ep>
+          <div class="bregles__general">
+            <p class="bregles__intitule">Quelques règles qui marchent dans toutes les échelles de puissance :</p>
+            <ul>{monstres.regles.map((r) => <li>{r.texte}</li>)}</ul>
+          </div>
+
+          <h3 class="bregles__titre">Attributs moyens et expérience reçue</h3>
+          <div class="bregles__defile" tabindex="0" role="region" aria-label="Attributs moyens et expérience reçue, par échelle (défile)">
+            <table class="bregles__table">
+              <colgroup span="2" />
+              <colgroup span="3" />
+              <colgroup span="3" />
+              <thead>
+                <tr>
+                  <th scope="col" rowspan="2">EP</th>
+                  <th scope="col" rowspan="2">Niveaux</th>
+                  <th scope="colgroup" colspan="3">Attributs moyens</th>
+                  <th scope="colgroup" colspan="3" class="bregles__groupe">Expérience reçue</th>
+                </tr>
+                <tr>
+                  {[...CATEGORIES_XP, ...CATEGORIES_XP].map(([k, v], i) => (
+                    <th scope="col" class:list={['nombre', { bregles__groupe: i === 3 }]}>
+                      <span class:list={['bcat', `bcat--${k}`]}>{v}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  monstres.echelles.map((e) => (
+                    <tr id={`ep-${e.ep}`}>
+                      <th scope="row">
+                        <span class="bbadge bbadge--ep">EP {e.ep}</span>
+                      </th>
+                      <td class="nombre">
+                        {e.niveau_min}-{e.niveau_max}
+                      </td>
+                      {CATEGORIES_XP.map(([k]) => (
+                        <td class="nombre">{e[`attributs_${k}`] ?? '—'}</td>
+                      ))}
+                      {CATEGORIES_XP.map(([k], i) => (
+                        <td class:list={['nombre', { bregles__groupe: i === 0 }]}>{e[`xp_${k}`] ?? '—'}</td>
+                      ))}
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="bregles__titre">Règles par échelle</h3>
+          <p class="bregles__curseur js-seul">
+            <label>
+              <span>Échelle</span>
+              <input type="range" min={monstres.echelles[0]?.ep} max={monstres.echelles.at(-1)?.ep} step="1" value={monstres.echelles[0]?.ep} data-regles-curseur />
+            </label>
+            <output class="bregles__choix" data-regles-choix>EP {monstres.echelles[0]?.ep} · niveaux {monstres.echelles[0]?.niveau_min}-{monstres.echelles[0]?.niveau_max}</output>
+          </p>
+          <div class="bregles__echelles">
+            {
+              monstres.echelles.map((e) => (
+                <article class="bregle" id={`regles-ep-${e.ep}`} data-eps={String(e.ep)} data-libelle={`EP ${e.ep} · niveaux ${e.niveau_min}-${e.niveau_max}`}>
+                  <h4 class="bregle__titre">
+                    <span class="bbadge bbadge--ep">EP {e.ep}</span> <span class="muted">niveaux {e.niveau_min}-{e.niveau_max}</span>
+                  </h4>
+                  <div class="bregle__cases">
+                    <section class="bregle__case">
+                      <h5>Règle carac/comp</h5>
+                      <ul>{paragraphesDe(e.regle_brut).map((p) => <li set:html={avecNombres(p)} />)}</ul>
+                    </section>
+                    <section class="bregle__case">
+                      <h5>Dégâts moyens</h5>
+                      <ul>{paragraphesDe(e.degats_brut).map((p) => <li set:html={avecNombres(p)} />)}</ul>
+                    </section>
+                  </div>
+                </article>
+              ))
+            }
+          </div>
+        </div>
+      </details>
+    </div>
+    <TableauMonstres monstres={monstres} />
+  </section>
+
+  <section class="bpanneau" id="invoquees" aria-labelledby="titre-invoquees">
+    <h2 id="titre-invoquees" class="bpanneau__titre">Créatures invoquées</h2>
+    <p class="bpanneau__intro">
+      À part des monstres : elles ne fonctionnent pas tout à fait pareillement. D’après le classeur « Invocation » : golems et poupées, non-morts, marionnettes de
+      l’ombre.
+    </p>
+    <TableauInvocations invocations={invocations} />
+  </section>
+</div>
+
+<ScriptDuBestiaire />

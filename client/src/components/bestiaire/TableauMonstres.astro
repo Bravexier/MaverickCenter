@@ -1,0 +1,79 @@
+---
+// Tableau des monstres du « Bestiaire 2.0 » (lib/bestiaire-db.mjs#chargerMonstres) : une ligne par carte (ennemi simple, mini-boss, boss) et une par espèce
+// sans carte. Demandes du propriétaire : « Le reste est dans le détail » (un clic sur une ligne ouvre sa carte à côté du tableau, dans un panneau qui suit
+// le défilement ; sur un petit écran, la page du monstre, voir plus bas) ; puis « du 50/50 avec la tuile du monstre choisi », les colonnes « Espèce | Nom | Type |
+// Catégorie | EP | Lieux » dans cet ordre, et « Inutile de filtrer par les colonnes non affichées » (lib/bestiaire-db.mjs : un filtre par colonne).
+// Le nom est un lien vers la page du monstre (pages/bestiaire/monstres/[...chemin].astro, lib/bestiaire-rendu.mjs#cheminDeMonstre) : sur un grand écran, le
+// script ouvre la carte à côté du tableau ; sur un écran où le tableau et la carte ne tiennent pas côte à côte (demande du propriétaire : « Prévoir une
+// page spécifique pour chaque monstre dans le cas où on ne peut pas faire apparaître le tableau et la tuile en même temps »), le lien mène à la page.
+// La ligne et la carte sont celles de lib/bestiaire-rendu.mjs : le même HTML que le mode modification du site de dev (monstre créé depuis la construction),
+// sauf le lien du nom, qui y mène à la carte dans la page (#carte-…) : un tel monstre n'a pas de page.
+// Le glossaire du butin n'est plus affiché (demande du propriétaire : « Tu peux aussi retirer le glossaire du butin, on le mettra ailleurs. Mais tu peux
+// récupérer leur contenu pour faire un tooltip […] sur le butin concerné ») : une bulle par objet, écrite une fois ici, hors des cartes (la recherche ne lit
+// pas les définitions), et le nom de l'objet en bouton dans chaque case de butin qui le cite (lib/monstre-rendu.mjs#htmlDuButin, components/Infobulles.astro).
+import Filtres from './Filtres.astro';
+import BullesDuButin from './BullesDuButin.astro';
+import type { chargerMonstres } from '../../lib/bestiaire-db.mjs';
+import { cheminDeMonstre, htmlDeCarteMonstre, htmlDeLigneMonstre } from '../../lib/bestiaire-rendu.mjs';
+import { url } from '../../lib/wiki';
+import { adresseDuPortrait } from '../../lib/portraits-publies.mjs';
+
+interface Props {
+  monstres: ReturnType<typeof chargerMonstres>;
+}
+const { monstres } = Astro.props;
+const { lignes, facettes, echelles, glossaire, elements, magiesDesCibles } = monstres;
+const logo = url('logo.webp');
+const page = (id: string) => {
+  const chemin = cheminDeMonstre(id);
+  return chemin ? url(chemin) : null;
+};
+
+const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string }[] = [
+  { cle: 'espece', libelle: 'Espèce' },
+  { cle: 'nom', libelle: 'Nom' },
+  { cle: 'type', libelle: 'Type' },
+  { cle: 'categorie', libelle: 'Catégorie' },
+  { cle: 'ep', libelle: 'EP', titre: 'Échelle de puissance', classe: 'nombre' },
+  { cle: 'lieu', libelle: 'Lieux' },
+];
+---
+
+<section class="btableau" data-bestiaire-tableau data-prefixe="" data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris={JSON.stringify(COLONNES.map((c) => c.cle))} data-singulier="ligne" data-pluriel="lignes" aria-label="Monstres">
+  <Filtres
+    id="monstres"
+    facettes={facettes}
+    recherche="Rechercher un monstre"
+    aide="Tous les mots, où qu’ils soient, carte comprise : nom, espèce, capacités, tactique, butin… Un filtre par colonne ; plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
+  />
+  <p class="btableau__aide muted">
+    {monstres.cartes} cartes de {monstres.especes} espèces, dans l’ordre du doc{lignes.length > monstres.cartes && ` ; ${lignes.length - monstres.cartes} titres du doc sans carte de combat ont une ligne à eux`}.{' '}
+    <span class="js-seul">Cliquez sur une ligne pour ouvrir sa carte ; cliquez sur un en-tête pour trier.</span>
+  </p>
+  <div class="bvue">
+    <div class="btableau__defile" tabindex="0" role="region" aria-label="Tableau des monstres (défile)">
+      <table class="btable">
+        <thead>
+          <tr>
+            {
+              COLONNES.map((c) => (
+                <th scope="col" class={c.classe} title={c.titre} data-tri={c.cle} aria-sort="none">
+                  {c.libelle}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {lignes.map((l, i) => <Fragment set:html={htmlDeLigneMonstre(l, i, { page: page(l.id) })} />)}
+        </tbody>
+      </table>
+      <p class="btableau__vide" data-aucune hidden>Aucun monstre ne correspond à ces critères.</p>
+    </div>
+    <aside class="bcartes" aria-label="Carte du monstre choisi" data-cartes>
+      <p class="bcartes__invite js-seul">Choisissez un monstre dans le tableau pour ouvrir sa carte.</p>
+      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait: adresseDuPortrait(url), echelles, glossaire, elements, magiesDesCibles })} />)}
+    </aside>
+  </div>
+  <BullesDuButin objets={glossaire} />
+</section>

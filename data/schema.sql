@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 27;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 44;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -108,20 +108,33 @@ CREATE INDEX alias_cle   ON alias (cle);
 
 CREATE INDEX alias_texte ON alias (texte);
 
--- Mots-clés d'une page (frontmatter `tags`). tag_id = normalize(libelle) : c'est la clé de l'URL /tags/<tag_id>/ (les
--- écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé). Il n'y a pas de table `tag` :
--- les mots-clés n'ont aucun attribut dans les sources, ils se déduisent de page_tag (voir la vue `tag` plus bas),
--- donc ni orphelin à nettoyer après une réimportation, ni règle d'écriture à maintenir.
+-- Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots
+-- clés » ; une suppression le retire de tous les endroits qui le citent). Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé
+-- sur les pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis FIGÉ : un
+-- renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site). libelle_cle = normalize(libelle) :
+-- les écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
+-- Les importeurs (tools/db/maverick.py, pages_md.py) et le service (serveur/edition.mjs#motCleDe) cherchent un libellé par libelle_cle et ne créent un
+-- mot-clé que s'il manque (jamais sur un id déjà employé) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
+-- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
+CREATE TABLE mot_cle (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/)
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                                 -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
+-- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
+-- cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev).
 CREATE TABLE page_tag (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
-  ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:`
-  tag_id  TEXT    NOT NULL CHECK (length(tag_id) > 0),   -- normalize(libelle), calculé par l'importeur ; client/scripts/db-derive.mjs le vérifie
-  libelle TEXT    NOT NULL,                          -- écriture sur CETTE page (conserve la source sans perte)
+  ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas)
+  tag_id  TEXT    NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
   PRIMARY KEY (page_id, ordre),
   UNIQUE (page_id, tag_id)
 ) STRICT;
 
-CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /tags/<id>/ : toutes les pages d'un mot-clé
+CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<id> : toutes les pages d'un mot-clé
 
 -- Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact).
 -- Deux natures : une URL (https://docs.google.com/…) ou un libellé (« Google Sheet « Invocation », onglet « Appel aux golems » »).
@@ -335,6 +348,9 @@ CREATE TABLE posture_effet (
   texte      TEXT    NOT NULL,                               -- version 'fiche' : la ligne sans le tiret ; versions guide : l'explication après « : »
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- Colonne ajoutée par la migration 0031 (une colonne ajoutée va en dernier)
+  inconvenient INTEGER CHECK (inconvenient IS NULL OR inconvenient IN (0, 1)),   -- version 'fiche' : 1 = un inconvénient de la posture (en rouge sur la
+                                                             -- fiche), 0 = un avantage (en vert), décision R47 ; NULL pour les versions du guide
   PRIMARY KEY (posture_id, version, rang),
   CHECK ((version = 'fiche') = (intitule IS NULL))
 ) STRICT, WITHOUT ROWID;
@@ -990,6 +1006,79 @@ CREATE TABLE dieu (
 ) STRICT;
 
 -- ====================================================================================================================
+-- 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
+-- Pages /chronologie/<id>/ : une par événement, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas (client/src/lib/chronologie.mjs).
+-- Les lignes viennent du registre tools/chronologie/evenements.json, résolu contre le texte des pages par tools/chronologie/chronologie.mjs :
+-- le texte d'un extrait est COPIÉ d'une page du Codex (lore/…) ou d'une race (races/…), jamais réécrit.
+-- ====================================================================================================================
+
+-- Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois
+-- premières races), les « Date inconnue » de la liste des Impacts et « Aujourd'hui » (Situation actuelle). Le titre d'un événement de la page « Les Impacts
+-- mineur et majeur » est la ligne de la liste, telle quelle ; les autres titres sont du site, faits des mots de leurs extraits.
+CREATE TABLE evenement (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+                                                     -- adresse /chronologie/<id>/ ; court, choisi dans tools/chronologie/evenements.json, puis figé
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre à date égale (la frise trie par époque, année, rang : lib/chronologie.mjs#ordonner) ;
+                                                               -- un événement créé sur le site prend le plus grand + 1 (migration 0043 : plus forcément contigu)
+  titre      TEXT    NOT NULL CHECK (length(titre) > 0),
+  titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
+  epoque     TEXT    NOT NULL CHECK (epoque IN ('debut', 'datee', 'inconnue', 'aujourdhui')),   -- place dans la frise (EPOQUES de lib/chronologie.mjs)
+  annee      INTEGER,                                          -- année écrite par la source (signe moins compris) ; NULL hors de l'époque 'datee'
+  annee_fin  INTEGER,                                          -- seconde année d'un intervalle écrit (« dans les ans -400 à -350 ») ; NULL sinon
+  portee     TEXT    CHECK (portee IN ('majeur', 'mineur')),   -- « Impact majeur » / « Impact mineur » : liste de la page « Les Impacts mineur et majeur »
+  lieu       TEXT    CHECK (lieu IS NULL OR length(lieu) > 0), -- le lieu entre parenthèses de cette liste, tel quel (« Erisia », « Ici et là »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'chronologie'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),  -- provenance du premier extrait
+  CHECK ((epoque = 'datee') = (annee IS NOT NULL)),
+  CHECK (annee_fin IS NULL OR annee_fin > annee),
+  CHECK (lieu IS NULL OR portee IS NOT NULL)
+) STRICT;
+CREATE INDEX evenement_titre ON evenement (titre_cle);
+
+-- Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page).
+-- À l'import, un bloc est un extrait : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import ; une modification de la
+-- page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import). Depuis la migration 0043, un bloc se
+-- modifie, s'ajoute et se retire sur le site de dev (serveur/edition-chronologie.mjs) : son texte, et son lien vers une page du wiki (ou aucun).
+CREATE TABLE evenement_extrait (
+  evenement_id TEXT    NOT NULL REFERENCES evenement(id),
+  rang         INTEGER NOT NULL CHECK (rang >= 1),
+  page_id      TEXT    REFERENCES page(id),                -- le lien du bloc (légende sous le texte) ; NULL : aucun (bloc écrit sur le site de dev)
+  section      TEXT    CHECK (section IS NULL OR length(section) > 0),   -- titre de la section de la page où commence le passage ; NULL = avant tout titre,
+                                                                         -- ou lien changé sur le site de dev
+  texte        TEXT    NOT NULL CHECK (length(texte) > 0),
+  date_brut    TEXT    CHECK (date_brut IS NULL OR instr(texte, date_brut) > 0),   -- l'expression de date du passage, surlignée ; NULL = aucune
+  origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'chronologie'),
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> »,
+                                                                  -- « Site de dev › édition du AAAA-MM-JJ »
+  PRIMARY KEY (evenement_id, rang),
+  CHECK (page_id IS NOT NULL OR section IS NULL)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX evenement_extrait_page_fk ON evenement_extrait (page_id);
+
+-- Les catégories de la chronologie (migration 0043, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies
+-- catégories stables. Le filtre sera donc sous forme de liste déroulante sur un champ catégorie. On peut choisir plusieurs catégories pour chaque entrée,
+-- mais pas pour le filtre. Le mode édition ajoute un bouton pour pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de
+-- l'entrée. ») : un vocabulaire à part, créé sur le site de dev (aucune à l'import : rien dans les sources ne range les événements). id = normalize(libelle)
+-- à la création, puis FIGÉ (adresse /chronologie/?filtre=<id>) ; jamais « sans-categorie », la valeur du filtre « Sans catégorie (à trier) » (site de dev
+-- seulement) ; un id n'est jamais réutilisé (historique du site). Deux catégories n'ont jamais la même écriture (libelle_cle). Affichées dans l'ordre de
+-- leur libellé.
+CREATE TABLE categorie_chronologie (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-' AND id <> 'sans-categorie'),
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Les catégories d'un événement (plusieurs au choix). Un événement sans catégorie est « Sans catégorie (à trier) ». Supprimer une catégorie retire ses
+-- lignes (ON DELETE CASCADE : le service les note une à une).
+CREATE TABLE evenement_categorie (
+  evenement_id TEXT    NOT NULL REFERENCES evenement(id),
+  categorie_id TEXT    NOT NULL REFERENCES categorie_chronologie(id) ON DELETE CASCADE,
+  PRIMARY KEY (evenement_id, categorie_id)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX evenement_categorie_categorie ON evenement_categorie (categorie_id);
+
+-- ====================================================================================================================
 -- 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 -- id d'une classe = id de sa page ; id d'une capacité = id de SA page ('capacites/<classe>-<nom>') : une page par capacité, une ligne par page.
 -- ====================================================================================================================
@@ -1640,15 +1729,17 @@ CREATE INDEX invocation_resistance_cible ON invocation_resistance (sens, cible_t
 -- BLOC : une ligne de marge du classeur (A13:C16, A42:C45…) = une combinaison de magies avec ses deux créatures
 -- Onglets « Appel aux golems » (15 blocs) et « Animation des morts » (14) : la marge dit la ou les magies (« Terre Mono »,
 -- « Terre + Sang », « Nécromancie + Espace/Temps »), la carte de gauche et celle de droite sont les deux créatures du bloc.
--- Onglet « Marionette de lombre » (5 blocs) : la marge est un palier « EP1 » à « EP5 », UNE créature par bloc.
+-- Onglet « Marionette de lombre » (5 blocs) : la marge écrit « EP1 » à « EP5 », une faute du classeur pour le NPM de la créature, « NPM 1 » à
+-- « NPM 5 » (décision R53 : les créatures invoquées n'ont pas d'échelle de puissance) ; UNE créature par bloc.
 CREATE TABLE invocation_bloc (
   id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#bloc:<cle>'
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   rang          INTEGER NOT NULL CHECK (rang >= 1),   -- ordre des blocs dans l'onglet (de haut en bas)
-  cle           TEXT    NOT NULL CHECK (cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),                     -- normalize(marge_brut) : 'terre-feu', 'terre-mono', 'ep3'
-  marge_brut    TEXT    NOT NULL,                     -- libellé de marge, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1'
-  ep            INTEGER CHECK (ep BETWEEN 1 AND 5),   -- N de « EPN » (onglet Marionette seulement). Le sigle EP n'est défini nulle part
-                                                      -- dans le classeur : conservé tel quel, sans traduction.
+  cle           TEXT    NOT NULL CHECK (cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),                     -- normalize(marge_brut) à l'import : 'terre-feu', 'terre-mono', 'ep3' (dans l'id : ne change plus)
+  marge_brut    TEXT    NOT NULL,                     -- libellé de marge tel qu'écrit, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1' (trace de la source)
+  npm           INTEGER CHECK (npm BETWEEN 1 AND 5),  -- niveau de puissance magique de la créature du bloc (onglet Marionette seulement) : N de « EPN », une
+                                                      -- faute du classeur pour « NPM N » (décision R53, migration 0036 : les créatures invoquées n'ont pas
+                                                      -- d'échelle de puissance, leur rang est le NPM)
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -1681,7 +1772,7 @@ CREATE TABLE creature (
   nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
-  bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas
+  bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou NPM de la marionnette) ; FK composite plus bas
   rang          INTEGER NOT NULL CHECK (rang IN (1, 2)),   -- 1 = carte de gauche, 2 = carte de droite du bloc (2 seulement en onglets « duo »)
   description   TEXT,                       -- cellule de description (D3 / T3) ; NULL = absente
   -- Santé / Chakra / Barrière : ligne « Santé » de la carte. `*_forme` dit la forme du texte, `*_valeur` le nombre quand il y en a un.
@@ -1930,6 +2021,297 @@ CREATE TABLE creature_effet (
 CREATE INDEX creature_effet_sort ON creature_effet (sort_id) WHERE sort_id IS NOT NULL;
 
 -- ====================================================================================================================
+-- 8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)
+-- Source : le Google Doc « Bestiaire 2.0 » (copie du propriétaire, sources/sources.json), exporté en texte dans sources/raw/bestiaire-2-0.txt et découpé
+-- par tools/bestiaire/extraire.mjs ; source_ref = « Bestiaire 2.0 › ligne(s) N » de cet export. Les créatures INVOQUÉES (section 8) sont à part :
+-- elles ne fonctionnent pas comme les monstres (demande du propriétaire, 2026-10-11).
+-- id d'une espèce = 'monstres/<normalize(nom)>' (« Golem de corail » est écrit deux fois dans le doc : la seconde est 'monstres/golem-de-corail-2') ;
+-- id d'une carte = '<id de l'espèce>#carte:<normalize(nom écrit sur la carte)>'. Pas de page du wiki par monstre (pas de clé vers `page`).
+-- ====================================================================================================================
+
+-- Règles générales de l'introduction (« Quelques règles qui marchent dans toutes les échelles de puissance »), dans l'ordre de la liste.
+CREATE TABLE monstre_regle (
+  rang       INTEGER NOT NULL PRIMARY KEY CHECK (rang >= 1),
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- Échelles de puissance (EP 1 à 10) : les deux tableaux de l'introduction. Cellules telles qu'écrites (*_brut) ; les nombres de « Ennemi simple : 35 /
+-- Mini boss : 70 / Boss : 140 » (attributs moyens à répartir, expérience reçue) sont repris par catégorie.
+CREATE TABLE monstre_echelle (
+  ep                      INTEGER NOT NULL PRIMARY KEY CHECK (ep BETWEEN 1 AND 10),
+  regle_brut              TEXT    NOT NULL,       -- cellule « Règle carac/comp » (points de carac à répartir, plafond, bonus de compétences)
+  degats_brut             TEXT    NOT NULL,       -- cellule « Dégâts moyen »
+  niveau_min              INTEGER NOT NULL CHECK (niveau_min >= 1),   -- « (Niveau 1-2) »
+  niveau_max              INTEGER NOT NULL CHECK (niveau_max >= niveau_min),
+  attributs_brut          TEXT    NOT NULL,       -- cellule « Attributs moyens »
+  xp_brut                 TEXT    NOT NULL,       -- cellule « Expérience reçu »
+  attributs_ennemi_simple INTEGER CHECK (attributs_ennemi_simple >= 0),
+  attributs_mini_boss     INTEGER CHECK (attributs_mini_boss >= 0),
+  attributs_boss          INTEGER CHECK (attributs_boss >= 0),
+  xp_ennemi_simple        INTEGER CHECK (xp_ennemi_simple >= 0),
+  xp_mini_boss            INTEGER CHECK (xp_mini_boss >= 0),
+  xp_boss                 INTEGER CHECK (xp_boss >= 0),
+  origine                 TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref              TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- Glossaire du butin (fin du doc, « GLOSSAIRE BUTIN ») : « Nom. Définition ».
+CREATE TABLE monstre_butin_objet (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- normalize(nom)
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),
+  nom        TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),
+  texte      TEXT    NOT NULL,
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- GROUPE D'ESPÈCES (décision R64, migration 0042) : des espèces du doc qui n'en font qu'une pour le propriétaire (« regrouper tous les Ottar (et le
+-- presqu'Ottar) sous la même espèce d'Ottar, dont la description était auparavant perdue dans la mauvaise fiche ») ; un titre « Nom (explication) » du
+-- doc, sa description (les paragraphes qui le suivent), et les espèces qui le suivent dont le nom contient le sien (aujourd'hui : « Ottar », 22 espèces).
+-- Ni carte ni ligne à lui : le tableau écrit son nom dans la colonne Espèce de ses espèces, la carte de chacune montre sa description.
+CREATE TABLE monstre_groupe (
+  id          TEXT    NOT NULL PRIMARY KEY,                      -- « monstres/<nom_cle> »
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),          -- titre tel qu'écrit, sans « (explication) »
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  description TEXT,                                              -- paragraphes qui suivent le titre, jusqu'au trait, séparés par une ligne vide
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple,
+-- mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin ; son groupe éventuel (« Ottar »).
+CREATE TABLE monstre_espece (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),          -- titre tel qu'écrit, sans « (EPx) »
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),        -- rang du titre dans le doc
+  lettre      TEXT    NOT NULL CHECK (length(lettre) = 1),       -- lettre de l'index sous laquelle le titre est rangé
+  ep_brut     TEXT    NOT NULL,                                  -- « EP2 », « EP1 - 10 », « EP3, 5, 7 »
+  ep_min      INTEGER CHECK (ep_min BETWEEN 1 AND 10),
+  ep_max      INTEGER CHECK (ep_max BETWEEN 1 AND 10),
+  description TEXT,                                              -- paragraphes avant « Lieu de rencontre », séparés par une ligne vide
+  lieu_brut   TEXT,                                              -- « Marais », « Mer, Océan, Lac, Plage » ; NULL = pas de ligne « Lieu de rencontre »
+  complement  TEXT,                                              -- texte entre le lieu de rencontre et la première carte (rare)
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- portrait (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de personnage », migration 0033) : l'image réduite par
+  -- la page (data URL WebP ou JPEG, 700 000 caractères au plus) et son cadrage (centre du cadre carré dans l'image, de 0 à 1 ; zoom de 1 à 4). NULL = le logo.
+  portrait    TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x  REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y  REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom REAL  CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
+  groupe_id   TEXT    REFERENCES monstre_groupe(id),             -- son groupe (décision R64, migration 0042) ; NULL = aucun
+  CHECK (ep_min IS NULL OR ep_min <= ep_max)
+) STRICT;
+
+CREATE INDEX monstre_espece_nom ON monstre_espece (nom_cle);
+
+-- Lieux de rencontre : `lieu_brut` découpé aux virgules, tel qu'écrit (« Ruines », « ruines » et « Ruines brûlées » restent distincts).
+CREATE TABLE monstre_espece_lieu (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  lieu       TEXT    NOT NULL CHECK (length(lieu) > 0),
+  lieu_cle   TEXT    NOT NULL CHECK (lieu_cle NOT GLOB '*[^a-z0-9-]*'),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_espece_lieu_cle ON monstre_espece_lieu (lieu_cle);
+
+-- Blocs qui suivent les cartes d'une espèce, ouverts par un titre en capitales (aujourd'hui : les quinze tableaux du Presque-Ottar, un par magie).
+CREATE TABLE monstre_espece_bloc (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  titre      TEXT    NOT NULL CHECK (length(titre) > 0),         -- « POTENTIEL ILLIMITÉ », « SANG »
+  texte      TEXT    NOT NULL,
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Butin d'une espèce : le tableau « Score (3d100) | Butin possible », une ligne par (tranche de score, catégorie) ; une cellule vide n'a pas de ligne.
+CREATE TABLE monstre_butin (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),                 -- rang de la tranche dans le tableau
+  categorie  TEXT    NOT NULL CHECK (categorie IN ('ennemi_simple', 'mini_boss', 'boss')),
+  score_min  INTEGER NOT NULL CHECK (score_min >= 3),
+  score_max  INTEGER NOT NULL CHECK (score_max <= 300 AND score_max >= score_min),
+  score_brut TEXT    NOT NULL,                                   -- « 3-15 »
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),         -- « Petite chitine x 2d8 », « RIEN ! »
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang, categorie)
+) STRICT, WITHOUT ROWID;
+
+-- MONSTRE : une carte « NOM   Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante.
+-- Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) :
+--   sante / chakra / barriere : la ligne « Santé : 70  Chakra : 0  Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ;
+--   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » :
+--     le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ;
+--   vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
+CREATE TABLE monstre (
+  id              TEXT    NOT NULL PRIMARY KEY,
+  espece_id       TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang            INTEGER NOT NULL CHECK (rang >= 1),            -- rang de la carte dans l'espèce
+  nom             TEXT    NOT NULL CHECK (length(nom) > 0),      -- nom de la carte remis en minuscules (voir tools/bestiaire/extraire.mjs) : « Amblypyge de brai »
+  nom_brut        TEXT    NOT NULL CHECK (length(nom_brut) > 0), -- tel qu'écrit, en capitales : « AMBLYPYGE DE BRAI »
+  nom_cle         TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  echelle_brut    TEXT    NOT NULL,                              -- après « Créature échelle » : « 2 », « 1-10 »
+  ep_min          INTEGER CHECK (ep_min BETWEEN 1 AND 10),
+  ep_max          INTEGER CHECK (ep_max BETWEEN 1 AND 10),
+  type_brut       TEXT,                                          -- « Vermine », « Non-mort », « Mécanique »
+  alignement_brut TEXT,                                          -- « Neutre », « Chaotique Mauvais »
+  categorie_brut  TEXT    NOT NULL,                              -- « Ennemi simple », « Mini boss », « Mini-Boss », « Boss »
+  categorie       TEXT    NOT NULL CHECK (categorie IN ('ennemi_simple', 'mini_boss', 'boss')),
+  variable        INTEGER NOT NULL CHECK (variable IN (0, 1)),   -- 1 : « Ses stats varient selon son échelle de puissance. »
+  sante           INTEGER CHECK (sante >= 0),
+  chakra          INTEGER CHECK (chakra >= 0),
+  barriere        INTEGER CHECK (barriere >= 0),
+  armure_physique INTEGER CHECK (armure_physique >= 0),
+  armure_magique  INTEGER CHECK (armure_magique >= 0),
+  vitesse_sol     INTEGER CHECK (vitesse_sol >= 0),
+  vitesse_nage    INTEGER CHECK (vitesse_nage >= 0),
+  origine         TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- portrait (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de personnage », migration 0033) : l'image réduite par
+  -- la page (data URL WebP ou JPEG, 700 000 caractères au plus) et son cadrage (centre du cadre carré dans l'image, de 0 à 1 ; zoom de 1 à 4). NULL = le logo.
+  portrait        TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x      REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y      REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom   REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
+  -- la description de la créature elle-même, après celle de son espèce (décision R65, migration 0042) ; le doc n'en écrit aucune (NULL), le site de dev la
+  -- modifie. Une espèce d'un groupe (les Ottar) est elle-même la créature : sa description est celle de `monstre_espece`
+  description     TEXT,
+  UNIQUE (espece_id, rang),
+  CHECK (ep_min IS NULL OR ep_min <= ep_max),
+  CHECK ((sante IS NULL) = (chakra IS NULL) AND (sante IS NULL) = (barriere IS NULL)),
+  CHECK ((armure_physique IS NULL) = (armure_magique IS NULL)),
+  CHECK ((vitesse_sol IS NULL) = (vitesse_nage IS NULL))
+) STRICT;
+
+CREATE INDEX monstre_par_espece ON monstre (espece_id);
+
+CREATE INDEX monstre_categorie ON monstre (categorie);
+
+CREATE INDEX monstre_ep ON monstre (ep_min, ep_max);
+
+-- Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … »
+-- (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre
+-- (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des
+-- capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
+CREATE TABLE monstre_rubrique (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  rubrique   TEXT    NOT NULL CHECK (rubrique IN ('attributs', 'sante', 'chakra', 'barriere', 'degats', 'defense', 'vitesse', 'caracteristiques', 'competences',
+                                                  'vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite',
+                                                  'reflexion', 'capacites', 'tactique')),
+  titre      TEXT,                                               -- « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 »
+  texte      TEXT    NOT NULL,                                   -- paragraphes séparés par une ligne vide ; '' = rubrique vide
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang),
+  CHECK (rubrique <> 'capacites' OR texte = '')
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_rubrique_rubrique ON monstre_rubrique (rubrique);
+
+-- F.P.V.S.I.A. d'une carte quand la rubrique est UNE ligne « F : 6 / P : 4 / V : 6 / S : 2 / I : 3 / A : 6 » (le sigle est écrit en clair sur la carte ;
+-- même ordre que creature_caracteristique). Une carte qui varie selon l'échelle n'a pas de ligne ici.
+CREATE TABLE monstre_caracteristique (
+  monstre_id         TEXT    NOT NULL REFERENCES monstre(id),
+  caracteristique_id TEXT    NOT NULL REFERENCES caracteristique(id),
+  rang               INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 6),
+  valeur             INTEGER NOT NULL CHECK (valeur >= 0),
+  origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, caracteristique_id),
+  UNIQUE (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_caracteristique_valeur ON monstre_caracteristique (caracteristique_id, valeur);
+
+-- Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dégâts dont le texte porte un nombre (« Pince - 2d10 + 2 dégâts d’estoc »).
+CREATE TABLE monstre_attaque (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Capacités de monstre communes (décision R66 : « notées dans des tables à part (pour l'instant juste Nom et Description) histoire de mutualiser les
+-- capacités communes », « Elle change pour tous ») : le nom et la description d'une capacité, écrits une fois et cités par chaque carte qui l'a
+-- (monstre_capacite). Les capacités des créatures invoquées et les bonus du Mage Bleu restent à part (R67). Deux capacités peuvent porter le même nom avec
+-- deux textes (« Les textes doivent rester différents », R68). Registre : tools/bestiaire/capacites.json (chaque écriture du doc -> sa capacité), lu par
+-- l'extracteur. Une description peut porter des emplacements « {N} » (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
+-- slider ») : N, un entier, est la valeur commune ; une carte qui en a une autre l'écrit dans monstre_capacite_valeur.
+-- id : normalize(nom) à la création (« + » écrit « plus »), suffixe -2, -3… si l'id est pris ou a déjà servi ; FIGÉ (un renommage ne le change pas).
+CREATE TABLE monstre_capacite_commune (
+  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),        -- « Inerte », « Science du critique+ », « Tome de l’ombre niv. 1 »
+  nom_cle        TEXT    NOT NULL,                                -- normalize(nom) ; non unique (deux textes d'une même capacité, R68)
+  description    TEXT    NOT NULL CHECK (length(description) > 0), -- paragraphes séparés par une ligne vide ; « {N} » = emplacement de valeur commune N (R69)
+  liste_de_sorts INTEGER NOT NULL DEFAULT 0 CHECK (liste_de_sorts IN (0, 1)),   -- 1 : chaque carte écrit sa liste de sorts (monstre_capacite.sorts) : « Lanceur de
+                                                                                 -- sorts », seule capacité à liste (R66 : « Tout doit être unifié, sauf "Lanceur de sort" »)
+  origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0)  -- la première carte du doc qui l'écrit ; « Décision R68 » pour un texte du propriétaire ;
+                                                                  -- « Site de dev › … » pour une capacité créée sur le site
+) STRICT;
+
+CREATE INDEX monstre_capacite_commune_nom ON monstre_capacite_commune (nom_cle);
+
+-- Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de
+-- monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée
+-- laisse un trou, une capacité ajoutée va à la fin.
+CREATE TABLE monstre_capacite (
+  monstre_id          TEXT    NOT NULL REFERENCES monstre(id),
+  rang                INTEGER NOT NULL CHECK (rang >= 1),
+  prefixe             TEXT    CHECK (prefixe IS NULL OR length(prefixe) > 0),  -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
+  ep_min              INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe (R56) ; recalculé, jamais saisi
+  capacite_commune_id TEXT    NOT NULL REFERENCES monstre_capacite_commune(id),
+  sorts               TEXT    CHECK (sorts IS NULL OR length(sorts) > 0), -- la liste de CETTE carte, telle qu'écrite (« Boule de feu, Souffle chaud. »), pour une
+                                                                          -- capacité à liste_de_sorts seulement ; affichée après la description
+  origine             TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref          TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_capacite_commune_id ON monstre_capacite (capacite_commune_id);
+
+-- Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas la valeur commune (R69 : « Minus » à 15 % pour le Gobelin demi-vie, la
+-- description écrivant {10}) ; sans ligne, la carte a la valeur commune. numero = le rang de l'emplacement dans la description (1 = le premier « {…} »).
+CREATE TABLE monstre_capacite_valeur (
+  monstre_id TEXT    NOT NULL,
+  rang       INTEGER NOT NULL,
+  numero     INTEGER NOT NULL CHECK (numero >= 1),
+  valeur     INTEGER NOT NULL CHECK (valeur >= 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang, numero),
+  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts
+-- (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
+CREATE TABLE monstre_defense (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  sens       TEXT    NOT NULL CHECK (sens IN ('vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion')),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  cible      TEXT    NOT NULL CHECK (length(cible) > 0),         -- « Brûlure », « Terre », « Estoc »
+  cible_cle  TEXT    NOT NULL CHECK (cible_cle NOT GLOB '*[^a-z0-9-]*'),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, sens, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_defense_cible ON monstre_defense (cible_cle, sens);
+
+-- ====================================================================================================================
 -- 9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)
 -- Un catalogue unique `ressource` (tout ce qui a un nom et un prix) + une table de détail par genre ; id = '<id de la page>#<sorte>:<slug>'.
 -- ====================================================================================================================
@@ -1996,7 +2378,9 @@ CREATE TABLE arme_famille (
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang du bandeau de gauche à droite
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  remarque TEXT,  -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1))   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES :
+                                                    -- des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030)
 ) STRICT;
 
 -- Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de dégâts et portée par défaut. C'est le « type » que la
@@ -2095,6 +2479,16 @@ CREATE TABLE materiau_bouclier (
   am            INTEGER,
   solidite      INTEGER NOT NULL CHECK (solidite >= 0),
   ordre         INTEGER NOT NULL CHECK (ordre >= 1),
+  origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- La fiche d'un matériau sur la page « Composants » (décision R62, migration 0041 : « La table des matériaux de l'onglet Composants devient désormais la
+-- seule source de vérité ») : son type, d'après l'armure (« Léger, Intermédiaire, Lourd et autres pour tout ce qui ne rentre pas dans ces catégories » ;
+-- inutile pour l'arme). Une ligne par ressource de genre 'materiau' ; le type d'un matériau d'armure est aussi materiau_armure.type, que l'édition suit.
+CREATE TABLE materiau (
+  ressource_id  TEXT    NOT NULL PRIMARY KEY REFERENCES ressource(id),
+  type          TEXT    NOT NULL CHECK (type IN ('Léger', 'Intermédiaire', 'Lourd', 'Autres')),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
@@ -2687,6 +3081,8 @@ CREATE TABLE accessoire_effet (
   origine              TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref           TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  usage                TEXT    CHECK (usage IS NULL OR usage IN ('action', 'limite')),   -- rappel sous les dons de la fiche (décision R54, migration 0037) :
+                                                      -- 'action' = effet écrit « (Action) … » ; 'limite' = usage compté (« 1 fois par combat », « l'objet se brise »…)
   CHECK ((bonus_valeur IS NULL) = (bonus_cible IS NULL)),
   CHECK ((bonus_min IS NULL) = (bonus_max IS NULL)),
   -- identifiant : l'entier final est une valeur ÉCRITE dans la source, pas un rang (insérer une ligne ne le décale pas) : résultat du dé (colonne « Jet »),
@@ -2720,6 +3116,34 @@ CREATE TABLE accessoire_effet_gemme (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX accessoire_effet_gemme_gemme ON accessoire_effet_gemme (gemme_id);
+
+-- Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » :
+-- comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base).
+-- Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 :
+-- Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en
+-- Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe.
+--   cible       : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme),
+--                 armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes
+--                 choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran)
+--   valeur      : NULL = la valeur tirée de l'accessoire (compétence)
+--   choix       : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
+CREATE TABLE accessoire_effet_cible (
+  effet_id     TEXT    NOT NULL REFERENCES accessoire_effet(id),
+  rang         INTEGER NOT NULL CHECK (rang >= 1),
+  cible        TEXT    NOT NULL CHECK (cible IN ('caracteristique', 'competence', 'sante', 'chakra', 'barriere', 'initiative', 'vitesse', 'barre4_max',
+                                                 'armure_ap', 'armure_am', 'degats_physiques', 'degats_magie', 'degats_famille', 'portee_distance',
+                                                 'portee_sorts', 'maitrise_arme', 'mode_hyper_tours', 'resistance')),
+  cible_id     TEXT,
+  valeur       INTEGER,
+  choix        INTEGER NOT NULL CHECK (choix IN (0, 1)),
+  origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (effet_id, rang),
+  CHECK ((cible IN ('caracteristique', 'competence', 'resistance')) = (cible_id IS NOT NULL)),
+  CHECK (valeur IS NOT NULL OR cible = 'competence')
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX accessoire_effet_cible_par_cible ON accessoire_effet_cible (cible, cible_id);
 
 -- Montures d'accessoires (onglet Accessoires › Monture : 5 niveaux ; « Un lingot permet de faire 2 montures d'anneau, 2 de collier… »).
 CREATE TABLE accessoire_monture (
@@ -2996,14 +3420,11 @@ CREATE VIEW lien_page AS
 CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
--- Dictionnaire des mots-clés, déduit de page_tag. Libellé d'affichage = écriture de la page de plus petit (titre_cle, id)
--- qui porte le mot-clé : une règle fixe, reproductible par n'importe quel importeur ou client.
-CREATE VIEW tag AS
-  SELECT DISTINCT
-    pt.tag_id AS id,
-    first_value(pt.libelle) OVER (PARTITION BY pt.tag_id ORDER BY p.titre_cle, p.id, pt.ordre) AS libelle,
-    count(*) OVER (PARTITION BY pt.tag_id) AS nb_pages
-  FROM page_tag pt JOIN page p ON p.id = pt.page_id;
+-- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages).
+CREATE VIEW v_mot_cle AS
+  SELECT m.id, m.libelle, m.libelle_cle,
+    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
+  FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
 CREATE VIEW v_magie_incompatible AS
@@ -3110,7 +3531,7 @@ CREATE VIEW v_creature_sort AS
 CREATE VIEW v_creature_cout_invocation AS
   SELECT c.id AS creature_id, i.id AS invocation_id, s.id AS sort_id, s.nom AS sort_nom,
          s.cout_brut AS cout_brut, s.cout_chakra AS cout_chakra, s.cout_ressource AS cout_ressource,
-         s.cout_ressource_valeur AS cout_ressource_valeur, b.ep AS ep
+         s.cout_ressource_valeur AS cout_ressource_valeur, b.npm AS npm
   FROM creature c
   JOIN invocation i ON i.id = c.invocation_id
   JOIN invocation_bloc b ON b.id = c.bloc_id
@@ -3388,11 +3809,10 @@ CREATE TABLE personnage (
                                                     -- qui la voit EN PLUS du propriétaire, des administrateurs, des membres des groupes où elle est inscrite
                                                     -- et des utilisateurs désignés (personnage_partage) : 'privee' personne d'autre, 'mj' tous les MJ,
                                                     -- 'tous' tout utilisateur connecté (toujours le cas d'un prétiré) ; calcul : v_personnage_visible
-  statut                TEXT    NOT NULL CHECK (statut IN ('brouillon', 'valide', 'archive')),   -- 'valide' : v_personnage_controle doit être vide pour elle
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),   -- « NOM » (F1)
   surnom                TEXT,                         -- « Surnom » (P1)
   lieu_origine          TEXT,                         -- « Lieu origine » (F3)
-  race_id               TEXT    REFERENCES race(id),  -- « RACE » (I2) ; NULL tant que le brouillon ne l'a pas choisie
+  race_id               TEXT    REFERENCES race(id),  -- « RACE » (I2) ; NULL tant que la fiche ne l'a pas choisie (contrôle race_manquante)
   ethnie_id             TEXT    REFERENCES ethnie(id),   -- don racial de la ligne « R » (C40, onglet « Bonus Race ») : l'ethnie, de la race choisie
   magie_innee_id        TEXT    REFERENCES magie(id), -- « Magie inn » (S2)
   magie_acquise_id      TEXT    REFERENCES magie(id), -- « Magie acq » (S3) ; NULL = pas de magie acquise (facultative, guide « Personnage »)
@@ -3424,10 +3844,15 @@ CREATE TABLE personnage (
   modifie_le            TEXT    NOT NULL CHECK (modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z' AND modifie_le >= cree_le),
   posture_id            TEXT    REFERENCES posture(id),   -- posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ;
                                                     -- migration 0027) ; NULL = aucune choisie
+  -- Portrait (demande du propriétaire, migration 0031) : l'image choisie, réduite par la page /fiche/ (data URL WebP ou JPEG, 700 000 caractères au plus),
+  -- et son cadrage, pour la recadrer plus tard : centre du cadre carré dans l'image (portrait_x, portrait_y, de 0 à 1) et zoom (de 1 à 4). NULL = le logo.
+  portrait              TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x            REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y            REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom         REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
-  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
-  CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL))
+  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
 ) STRICT;
 
 CREATE INDEX personnage_proprietaire ON personnage (proprietaire_id) WHERE proprietaire_id IS NOT NULL;   -- « mes personnages »
@@ -3529,7 +3954,8 @@ CREATE TABLE personnage_sort (
 CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
 
 -- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise
--- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016).
+-- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016) ; jamais sur
+-- ARME DE MONSTRES (arme_famille.maitrisable = 0, décision R45 : règle 'maitrise_arme_exclue' de v_personnage_controle).
 CREATE TABLE personnage_maitrise_arme (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
@@ -3582,6 +4008,8 @@ CREATE TABLE personnage_accessoire (
   valeur              INTEGER,                        -- valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette
   texte               TEXT,                           -- effet tel qu'écrit sur la fiche quand il n'est pas dans la table
   maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
+  competence_id       TEXT    REFERENCES competence(id),     -- effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037)
+  arme_famille_id     TEXT    REFERENCES arme_famille(id),   -- effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037)
   PRIMARY KEY (personnage_id, emplacement),
   CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
 ) STRICT, WITHOUT ROWID;
@@ -3590,6 +4018,18 @@ CREATE TABLE personnage_accessoire (
 CREATE TABLE personnage_inventaire (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang >= 1),
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),
+  quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+  ressource_id   TEXT    REFERENCES ressource(id),
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage :
+-- Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le
+-- nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+CREATE TABLE personnage_ceinture (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),   -- l'emplacement
   nom            TEXT    NOT NULL CHECK (length(nom) > 0),
   quantite       INTEGER NOT NULL CHECK (quantite >= 1),
   ressource_id   TEXT    REFERENCES ressource(id),
@@ -3672,15 +4112,24 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33) ; ce qui
--- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
--- avoir des lignes, une fiche 'valide' non (test).
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45) ; ce qui
+-- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
+-- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
   SELECT pc.personnage_id, 'classe_inaccessible' AS regle, pc.classe_id AS detail
   FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
   WHERE p.race_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM race_classe rc WHERE rc.race_id = p.race_id AND rc.classe_id = pc.classe_id AND rc.accessible = 1)
+  UNION ALL
+  -- Race et magie innée : toute fiche en a une (jusqu'à la migration 0038, une contrainte de la table pour toute fiche hors brouillon)
+  SELECT p.id, 'race_manquante', NULL
+  FROM personnage p
+  WHERE p.race_id IS NULL
+  UNION ALL
+  SELECT p.id, 'magie_innee_manquante', NULL
+  FROM personnage p
+  WHERE p.magie_innee_id IS NULL
   UNION ALL
   -- Classe réservée à une magie innée, qui l'impose en classe 1 (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décision R23)
   SELECT pc.personnage_id, 'classe_reservee', pc.classe_id
@@ -3725,10 +4174,11 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p JOIN race r ON r.id = p.race_id
   WHERE r.mono_magie = 1 AND p.magie_acquise_id IS NOT NULL
   UNION ALL
-  -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2)
+  -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2). Sans race ou sans magie
+  -- innée, rien à comparer : race_manquante, magie_innee_manquante le disent (migration 0038)
   SELECT p.id, 'ethnie_hors_race', p.ethnie_id
   FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
-  WHERE p.race_id IS NULL OR e.race_id <> p.race_id
+  WHERE e.race_id <> p.race_id
   UNION ALL
   SELECT p.id, 'ethnie_manquante', p.race_id
   FROM personnage p
@@ -3736,7 +4186,7 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT p.id, 'ethnie_magie', p.ethnie_id
   FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
-  WHERE e.magie_id IS NOT NULL AND (p.magie_innee_id IS NULL OR e.magie_id <> p.magie_innee_id)
+  WHERE e.magie_id <> p.magie_innee_id
   UNION ALL
   -- Point de caractéristique de la magie innée : à choisir seulement quand la magie ne le fixe pas
   SELECT p.id, 'caracteristique_magie', COALESCE(p.caracteristique_magie_id, '(absente)')
@@ -3746,8 +4196,7 @@ CREATE VIEW v_personnage_controle AS
   -- Caractéristiques : les six, dans les bornes de la race, total exact du niveau (seuil 'caracteristiques_total', décision R3)
   SELECT p.id, 'caracteristique_manquante', c.id
   FROM personnage p CROSS JOIN caracteristique c
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = p.id AND pc.caracteristique_id = c.id)
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = p.id AND pc.caracteristique_id = c.id)
   UNION ALL
   SELECT pc.personnage_id, 'caracteristique_hors_bornes', pc.caracteristique_id || ' = ' || pc.base
   FROM personnage_caracteristique pc
@@ -3771,10 +4220,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT n.personnage_id, 'competences_total', COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) || ' / ' || v.points_competences_cumul
   FROM v_personnage_niveau n
-  JOIN personnage p ON p.id = n.personnage_id
   JOIN v_niveau v ON v.niveau = n.niveau_global
-  WHERE p.statut <> 'brouillon'
-    AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
+  WHERE COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
   -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
   -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur). Plafond : 5 par point de la caractéristique totale, le +1 de la magie innée
@@ -3794,7 +4241,7 @@ CREATE VIEW v_personnage_controle AS
              GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pl.personnage_id AND mb.competence_id = co.id
   WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond) > pl.plafond
   UNION ALL
-  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)
+  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien
   SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id
   FROM personnage_metier_bonus c JOIN personnage p ON p.id = c.personnage_id
   WHERE NOT EXISTS (SELECT 1 FROM metier_bonus b WHERE b.metier_id = p.metier_id AND b.rang = c.rang AND b.competence_id = c.competence_id
@@ -3802,8 +4249,7 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT p.id, 'metier_bonus_manquant', b.texte
   FROM personnage p JOIN metier_bonus b ON b.metier_id = p.metier_id AND b.option = 1
-  WHERE p.statut <> 'brouillon'
-    AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
+  WHERE (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
     AND NOT EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang)
   UNION ALL
   -- Progression : un gain par niveau atteint (2 à niveau global), points d'attributs exacts (R3), dé seulement aux niveaux qui en donnent un
@@ -3813,10 +4259,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   SELECT n.personnage_id, 'progression_manquante', CAST(g.niveau AS TEXT)
   FROM v_personnage_niveau n
-  JOIN personnage p ON p.id = n.personnage_id
   JOIN niveau_global g ON g.niveau BETWEEN 2 AND n.niveau_global
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
   UNION ALL
   SELECT pp.personnage_id, 'progression_points', pp.niveau || ' : ' || (pp.points_sante + pp.points_chakra) || ' / ' || COALESCE(g.points_attributs, 0)
   FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
@@ -3828,8 +4272,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
   SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)
-  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
-  WHERE p.statut <> 'brouillon' AND n.niveau_classe_2 > 0
+  FROM v_personnage_niveau n
+  WHERE n.niveau_classe_2 > 0
     AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 2)
   UNION ALL
   SELECT n.personnage_id, 'classe_2_en_trop', pc.classe_id
@@ -3837,9 +4281,8 @@ CREATE VIEW v_personnage_controle AS
   WHERE n.niveau_classe_2 = 0
   UNION ALL
   SELECT n.personnage_id, 'classe_1_manquante', NULL
-  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
-  WHERE p.statut <> 'brouillon'
-    AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 1)
+  FROM v_personnage_niveau n
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 1)
   UNION ALL
   SELECT pc.personnage_id, 'specialite_trop_tot', pc.specialite_id
   FROM personnage_classe pc JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
@@ -3895,6 +4338,11 @@ CREATE VIEW v_personnage_controle AS
   LEFT JOIN bouclier_classe bc ON bc.id = p.bouclier_classe_id
   GROUP BY p.id
   HAVING SUM(m.quantite) > COALESCE(MAX(bc.classe), 0)
+  UNION ALL
+  -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
+  SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id
+  FROM personnage_maitrise_arme pm JOIN arme_famille f ON f.id = pm.arme_famille_id
+  WHERE f.maitrisable = 0
   UNION ALL
   -- Équipement : chaque amélioration vise le bon genre d'objet
   SELECT pa.personnage_id, 'amelioration_cible', pa.rang || ' : ' || ae.id
@@ -3994,14 +4442,14 @@ CREATE TABLE note_version (
 ) STRICT;
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
--- (sorts, magies, classes et leurs dons, races, métiers, guide), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
 CREATE TABLE note_version_ligne (
   version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
   rang        INTEGER NOT NULL CHECK (rang >= 1),                    -- ordre d'affichage
-  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide')),
+  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles')),
   groupe      TEXT    CHECK (groupe IS NULL OR length(groupe) > 0),
   entite      TEXT    NOT NULL CHECK (length(entite) > 0),
   champ       TEXT    CHECK (champ IS NULL OR length(champ) > 0),    -- libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée)

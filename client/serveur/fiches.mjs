@@ -1,10 +1,19 @@
 // Fiches de personnages dans la base vivante, au format de src/lib/fiche-format.mjs (docs/serveur.md, « Une fiche en JSON »).
 // Avant la 1.0, il n'y a pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
 // (v_personnage_visible) ; une fiche de joueur n'est ni listée ni lisible ici. Ce que la base contrôle (types, bornes, références aux règles) refuse
-// l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche et empêchent seulement de la passer « valide ».
+// l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
+// n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { createHash, randomUUID } from 'node:crypto';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
+import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
+import { instant } from './instant.mjs';
+
+/**
+ * Valeur de départ d'une colonne que les règles ont retirée (COLONNES_RETIREES) quand la base vivante l'a encore : le service retombe sur sa base
+ * d'avant si la reconstruction échoue (docs/serveur.md), et cette base exigerait la colonne (NOT NULL) à chaque création.
+ */
+const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -19,8 +28,7 @@ export class ErreurFiche extends Error {
   }
 }
 
-/** Instant ISO 8601 en UTC à la seconde, le format des colonnes `cree_le` / `modifie_le`. */
-export const instant = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+export { instant };
 
 const infos = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all();
 const colonnesDeDetail = (db, table) => infos(db, table).map((c) => c.name).filter((c) => c !== 'personnage_id');
@@ -90,10 +98,49 @@ export function niveauDe(db, id) {
   return n ? { ...n } : null;
 }
 
-/** Résumé de chaque prétiré, pour la recherche : identité, race, magies, classes, niveau, statut, nombre de règles enfreintes. */
+/**
+ * Clé SQL de l'image d'un portrait, sans la lire : l'instant de la dernière modification de la fiche (chaque enregistrement par le service le change)
+ * et la taille de l'image en octets (octet_length la tire de l'en-tête de la ligne ; length ou substr reliraient les 700 000 caractères). NULL sans
+ * portrait.
+ */
+const CLE_DU_PORTRAIT = "p.modifie_le || ':' || octet_length(p.portrait)";
+
+/**
+ * Ce que la liste et l'adresse d'un portrait tirent de l'image — lisible ou non, empreinte, type, dimensions —, gardé d'un appel à l'autre par fiche :
+ * le calcul relit toute la data URL (jusqu'à 700 000 caractères, une quinzaine de millisecondes par fiche, pendant lesquelles le service ne répond à
+ * rien d'autre), la clé (CLE_DU_PORTRAIT) ne la lit pas. Une entrée par fiche, refaite quand son image change ; null sans image lisible.
+ */
+const IMAGES = new Map();
+function imageDuPortrait(db, id, cle) {
+  if (cle === null || cle === undefined) return null;
+  const connue = IMAGES.get(id);
+  if (connue?.cle === cle) return connue.image;
+  const { portrait } = db.prepare('SELECT portrait FROM personnage WHERE id = ?').get(id) ?? {};
+  const image = estUnPortrait(portrait)
+    ? { empreinte: empreinte(portrait), type: portrait.slice('data:'.length, portrait.indexOf(';')), dimensions: dimensionsDuPortrait(portrait) }
+    : null;
+  IMAGES.set(id, { cle, image });
+  return image;
+}
+
+/**
+ * Le portrait d'une fiche dans la liste des personnages : l'empreinte de l'image (adresse de portraitDeFiche, qui change avec elle) et le style qui en
+ * montre le carré cadré dans un cadre carré (lib/portrait.mjs#styleDuCadrage, comme les cartes du bestiaire) ; null sans image lisible (le logo).
+ */
+function portraitDansLaListe(db, ligne) {
+  const image = imageDuPortrait(db, ligne.id, ligne.portrait_cle);
+  if (!image) return null;
+  const cadrage = cadrageDe({ x: ligne.portrait_x, y: ligne.portrait_y, zoom: ligne.portrait_zoom });
+  return { empreinte: image.empreinte, style: styleDuCadrage(cadrage, image.dimensions) };
+}
+
+/**
+ * Résumé de chaque prétiré, pour la recherche : identité, portrait (portraitDansLaListe : l'image elle-même se lit par portraitDeFiche), race, magies,
+ * classes, niveau, nombre de règles enfreintes.
+ */
 export function listerFiches(db) {
   const fiches = db.prepare(`
-    SELECT p.id, p.nom, p.surnom, p.statut, p.lieu_origine, p.xp, p.mode_classe,
+    SELECT p.id, p.nom, p.surnom, p.lieu_origine, p.xp, p.mode_classe, ${CLE_DU_PORTRAIT} AS portrait_cle, p.portrait_x, p.portrait_y, p.portrait_zoom,
            p.race_id, r.nom AS race, p.ethnie_id, e.nom AS ethnie,
            p.magie_innee_id, mi.nom AS magie_innee, p.magie_acquise_id, ma.nom AS magie_acquise,
            p.dieu_choisi_id, d.nom AS dieu, p.metier_id, me.nom AS metier,
@@ -107,8 +154,11 @@ export function listerFiches(db) {
     LEFT JOIN metier me ON me.id = p.metier_id
     LEFT JOIN v_personnage_niveau n ON n.personnage_id = p.id
     WHERE p.nature = 'pretire'
-    ORDER BY p.nom COLLATE NOCASE, p.id`).all().map((r) => ({ ...r, classes: [], anomalies: 0 }));
+    ORDER BY p.nom COLLATE NOCASE, p.id`).all().map(({ portrait_cle, portrait_x, portrait_y, portrait_zoom, ...r }) => ({
+    ...r, portrait: portraitDansLaListe(db, { id: r.id, portrait_cle, portrait_x, portrait_y, portrait_zoom }), classes: [], anomalies: 0,
+  }));
   const parId = new Map(fiches.map((f) => [f.id, f]));
+  for (const id of IMAGES.keys()) if (!parId.has(id)) IMAGES.delete(id); // fiches supprimées : leur entrée part
   for (const c of db.prepare(`
     SELECT pc.personnage_id, pc.rang, pc.classe_id, c.nom AS classe, pc.specialite_id, s.nom AS specialite
     FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id AND p.nature = 'pretire'
@@ -121,6 +171,22 @@ export function listerFiches(db) {
     if (parId.has(a.id)) parId.get(a.id).anomalies = a.n;
   }
   return fiches;
+}
+
+/**
+ * L'image du portrait du prétiré `id` (GET /api/personnages/<id>/portrait/ : la liste des personnages la montre sans recevoir les data URL de toutes
+ * les fiches) : son empreinte et son type (imageDuPortrait), et `octets()`, qui ne la décode que si on la sert (pas pour un 304) ; null sans fiche,
+ * sans portrait ou si l'image ne se décode pas.
+ */
+export function portraitDeFiche(db, id) {
+  const ligne = db.prepare(`SELECT ${CLE_DU_PORTRAIT} AS cle FROM personnage p WHERE p.id = ? AND p.nature = 'pretire'`).get(id);
+  const image = imageDuPortrait(db, id, ligne?.cle);
+  if (!image) return null;
+  return {
+    empreinte: image.empreinte,
+    type: image.type,
+    octets: () => octetsDuPortrait(db.prepare('SELECT portrait FROM personnage WHERE id = ?').get(id)?.portrait),
+  };
 }
 
 /** Valeur d'une cellule : texte, nombre, booléen (0/1) ou null ; « "" » vaut null (champ laissé vide). */
@@ -158,6 +224,7 @@ function verifierForme(db, entree, problemes) {
   const modifiables = new Set(colonnesModifiables(db));
   for (const cle of Object.keys(entree)) {
     if (modifiables.has(cle) || COLONNES_DU_SERVICE.includes(cle) || cle === CHAMP_VERSION) continue;
+    if (COLONNES_RETIREES.personnage.includes(cle)) continue; // colonne que les règles ont retirée (fichier exporté avant, page restée ouverte) : ignorée
     if (cle in PARTIES_DE_FICHE) {
       const liste = entree[cle];
       if (!Array.isArray(liste)) problemes.push(`${cle} : une liste est attendue`);
@@ -178,7 +245,7 @@ function verifierForme(db, entree, problemes) {
 /**
  * Crée (sans `id`) ou modifie (avec `id`) un prétiré à partir du JSON `entree`. Une colonne absente du JSON garde sa valeur (création : celle
  * d'une fiche vide) ; une liste présente remplace toute la liste, une liste absente ne change pas. Modifier exige la `version` lue : si la fiche a
- * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 404, 409, 422).
+ * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 404, 409).
  */
 export function enregistrerFiche(db, entree, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
@@ -206,7 +273,7 @@ export function enregistrerFiche(db, entree, { id = null, maintenant = new Date(
     if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
     if (creation) {
       id = randomUUID();
-      const depart = ficheVide();
+      const depart = { ...ficheVide(), ...Object.fromEntries(COLONNES_RETIREES.personnage.map((c) => [c, DEPART_DES_COLONNES_RETIREES[c] ?? null])) };
       const complete = { ...Object.fromEntries(modifiables.filter((c) => c in depart).map((c) => [c, valeurDeCellule(depart[c], c, problemes)])), ...ligne };
       const valeurs = { id, nature: 'pretire', proprietaire_id: null, visibilite: 'tous', cree_le: t, modifie_le: t, ...complete };
       const cols = Object.keys(valeurs);
@@ -256,10 +323,6 @@ export function enregistrerFiche(db, entree, { id = null, maintenant = new Date(
     if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 
     const controles = controlesDe(db, id);
-    const statut = db.prepare('SELECT statut FROM personnage WHERE id = ?').get(id).statut;
-    if (statut === 'valide' && controles.length) {
-      throw new ErreurFiche(422, 'La fiche enfreint des règles : corrigez-les, ou enregistrez-la en brouillon (rien n’a été enregistré).', { controles });
-    }
     try {
       db.exec('COMMIT');
     } catch (e) {

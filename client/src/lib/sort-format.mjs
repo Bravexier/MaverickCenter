@@ -178,11 +178,6 @@ export function morceauxAvecEtats(texte, restantes) {
   return out;
 }
 
-/**
- * Valeur d'une ligne de la carte d'une créature, une ligne par élément : « 10 Armure Physique | 10 Armure Magique » et
- * « 4 cases sol / 8 cases nage » donnent deux lignes ; « 5/NPM » et « Magique/NPM » (barre collée) ne sont pas coupés.
- */
-export const lignesDeStat = (brut) => String(brut).split(/\s*\|\s*|\s+\/\s+/).map((x) => x.trim()).filter(Boolean);
 
 /**
  * Contenu de l'infobulle d'une altération d'état : son type, sa ou ses magies liées, l'effet de chaque stade (le stade cité dans le texte est mis en avant).

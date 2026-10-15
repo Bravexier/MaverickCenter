@@ -13,7 +13,7 @@
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
+  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
@@ -31,6 +31,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
   bouclier_materiaux: 'personnage_bouclier_materiau',
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
+  ceinture: 'personnage_ceinture',
 });
 
 /** Tables qui citent une fiche sans en faire partie : le partage d'une fiche de joueur et les inscriptions dans les groupes de jeu. */
@@ -43,13 +44,19 @@ export const COLONNES_DU_SERVICE = Object.freeze(['id', 'nature', 'proprietaire_
 export const CHAMP_VERSION = 'version';
 
 /**
- * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (brouillon,
- * mono-classe, 0 XP, alignement, bourse et ambidextrie à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
+ * Colonnes que les règles ont retirées d'une table de la section 13, par table : la base vivante les perd à sa reconstruction sans bloquer
+ * (serveur/base-vivante.mjs), et une fiche qui en porte encore une (fichier exporté avant, page restée ouverte) se lit sans elle (page /fiche/, service).
+ * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038).
+ */
+export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']) });
+
+/**
+ * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (mono-classe, 0 XP,
+ * alignement, bourse et ambidextrie à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
  */
 export function ficheVide(nom = '') {
   return {
     nom,
-    statut: 'brouillon',
     mode_classe: 'mono',
     xp: 0,
     alignement_loyal: 0,
@@ -73,8 +80,8 @@ export function ficheVide(nom = '') {
 /** Ce qui suit la date d'une ligne de retrait : la page /fiche/ reconnaît ces lignes à ce préfixe. */
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
-/** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort. */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort']);
+/** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42). */
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -95,8 +102,10 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   don        : « le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) » ;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ) » (des faits, rien sur ce qu'ils deviennent) ;
- *   métier     : « le métier « Forgeron » ».
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort', id: string, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *   métier     : « le métier « Forgeron » » ;
+ *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
+ *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[] }} d
  */
@@ -124,6 +133,13 @@ export function descriptionDuRetrait(d) {
     }
   } else if (d.nature === 'metier') {
     tete = `le métier « ${nom} »`;
+  } else if (d.nature === 'arme') {
+    tete = `l’arme « ${nom} »`;
+    if (d.famille) parties.push(d.famille);
+    if (d.rang !== null && d.rang !== undefined) parties.push(`arme ${d.rang}`);
+  } else if (d.nature === 'objet') {
+    tete = `l’objet « ${nom} »`;
+    if (d.emplacement) parties.push(d.emplacement);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }
@@ -135,7 +151,10 @@ export function descriptionDuRetrait(d) {
  * reconstruction n'a pas été « supprimée »), et sans dire quoi choisir (un choix dissous donne le survivant d'office).
  */
 export const ligneDeRetrait = (d, instant) =>
-  `[${jourDuRetrait(instant)}] ${PREFIXE_DE_RETRAIT}${descriptionDuRetrait(d)} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`;
+  `[${jourDuRetrait(instant)}] ${PREFIXE_DE_RETRAIT}${descriptionDuRetrait(d)} ${d.nature === 'objet'
+    // décision R60 : l'objet reste dans la fiche sous son nom (« objet supprimé de la base, veuillez la mettre à jour »)
+    ? 'a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour.'
+    : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

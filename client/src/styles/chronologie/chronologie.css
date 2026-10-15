@@ -1,0 +1,652 @@
+/* Chargé uniquement depuis components/chronologie/Chronologie.astro (?raw) : les pages de la chronologie (/chronologie/ et /chronologie/<événement>/).
+   Demande du propriétaire : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé, la date à gauche de la barre, le titre à
+   droite ; un clic fait apparaître la page de l'événement à côté (75 % de la largeur) ; tout à l'extrémité droite, deux chevrons, Haut et Bas.
+   Couleur de l'événement affiché (lib/chronologie.mjs#couleursDesEvenements), posée par `--couleur-evenement` : --chrono pour les aplats (texte blanc
+   dessus), --chrono-texte pour un texte coloré (éclairci en thème sombre). Chaque ligne de la frise porte la sienne (--c) et celles de ses voisines. */
+.chrono {
+  --chrono: var(--couleur-evenement, var(--accent));
+  /* texte coloré sur la feuille : la couleur assombrie en thème clair, éclaircie en sombre */
+  --chrono-texte: color-mix(in srgb, var(--chrono) 82%, #000);
+  --chrono-soft: color-mix(in srgb, var(--chrono) 12%, var(--surface));
+  --chrono-line: color-mix(in srgb, var(--chrono) 40%, var(--border));
+  /* teinte des infobulles (styles/global/infobulles.css) : celle de l'événement */
+  --mag: var(--chrono);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chrono { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
+}
+:root[data-theme="dark"] .chrono { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
+
+/* Toute la largeur de l'écran : la frise sur le quart gauche, la page sur les trois quarts à droite (demande du propriétaire), la place des chevrons
+   au bord droit. */
+main:has(> .chrono) { max-width: none; }
+.chrono {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 3fr);
+  grid-template-areas: 'frise page';
+  column-gap: clamp(1rem, 2.5vw, 2.25rem);
+  align-items: start;
+  padding-right: 3.5rem;
+}
+/* Un glissement horizontal du doigt change d'événement : le navigateur ne doit pas en faire, en plus, un retour dans l'historique (comme le guide). */
+html { overscroll-behavior-x: none; }
+/* La page suit le doigt (décalage borné à 64 px) : sans ce clip, elle élargirait l'écran. */
+main { overflow-x: clip; }
+
+.chrono-invisible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- La frise : une ligne par événement, la date | la barre | le titre ---------- */
+/* Elle défile seule, de l'en-tête au bas de l'écran, et reste en place pendant qu'on lit la page (collée en haut de l'écran). */
+.frise {
+  --date: 5.5rem;
+  --barre: 1.9rem;
+  grid-area: frise;
+  position: sticky;
+  top: 0;
+  /* la hauteur de l'écran sous l'en-tête (--frise-haut : la place au-dessus de la frise, mesurée par le script de Frise.astro ; sans lui, l'écran) */
+  height: 100vh;
+  height: calc(100dvh - var(--frise-haut, 0px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  /* la ligne qui reçoit le focus (Maj+Tab) s'arrête sous l'en-tête collant (filtre et légende), pas dessous (WCAG 2.4.11) */
+  scroll-padding-block: 5.5rem 1rem;
+  padding: 0 0.2rem 2.5rem 0;
+}
+/* En haut de la frise, collés pendant qu'elle défile : le filtre par type d'événement (avec JavaScript seulement) et la légende. */
+.frise__tete {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.55rem 0 0.75rem;
+  background: linear-gradient(var(--bg) 80%, transparent);
+}
+.frise__filtre { display: none; }
+html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.45rem; padding: 0 0.15rem; }
+.frise__filtre-libelle { flex: none; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.frise__filtre-choix {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--chrono-line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.frise__filtre-choix:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 1px; }
+.frise[data-filtre]:not([data-filtre='']) .frise__filtre-choix { border-color: var(--chrono); background: var(--chrono-soft); font-weight: 600; }
+.frise__legende {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem 0.9rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.frise__legende .frise__repere { position: static; display: inline-block; translate: none; }
+.frise__liste { margin: 0; padding: 0; list-style: none; }
+
+/* Couleurs d'une ligne : la sienne (--c) et celles de ses voisines, éclaircies en thème sombre (--vif) pour rester visibles sur le fond. */
+.frise__evenement,
+.frise__legende-item {
+  --vif: 0%;
+  --trait: color-mix(in srgb, var(--c, var(--muted)), #fff var(--vif));
+  --trait-avant: color-mix(in srgb, var(--c-avant, var(--c)), #fff var(--vif));
+  --trait-apres: color-mix(in srgb, var(--c-apres, var(--c)), #fff var(--vif));
+  --texte: color-mix(in srgb, var(--c, var(--muted)) 82%, #000);
+  /* hauteur du point : le milieu de la première ligne du titre */
+  --y: 1.1rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .frise__evenement { --vif: 42%; --texte: color-mix(in srgb, var(--c) 45%, #fff); }
+}
+:root[data-theme="dark"] .frise__evenement { --vif: 42%; --texte: color-mix(in srgb, var(--c) 45%, #fff); }
+
+.frise__lien {
+  display: grid;
+  grid-template-columns: var(--date) var(--barre) minmax(0, 1fr);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+.frise__date {
+  padding: 0.55rem 0.1rem 0.5rem 0;
+  color: var(--texte);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-align: right;
+}
+.frise__titre {
+  padding: 0.5rem 0.65rem 0.5rem 0.15rem;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+/* La barre : chaque ligne en peint un morceau, du mélange avec la couleur précédente (en haut) au mélange avec la suivante (en bas) en passant par
+   la sienne au niveau du point ; les morceaux se raccordent sans à-coup (le bas de l'un est le haut du suivant). */
+.frise__barre { position: relative; }
+.frise__barre::before {
+  content: '';
+  position: absolute;
+  /* un demi-pixel de chevauchement : à une échelle d'affichage de 125 % ou 150 %, le bord lissé de deux morceaux ne laisse pas voir le fond */
+  top: -0.5px;
+  bottom: -0.5px;
+  left: 50%;
+  width: 0.6rem;
+  margin-left: -0.3rem;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--trait-avant), var(--trait)) 0,
+    var(--trait) var(--y),
+    color-mix(in oklab, var(--trait), var(--trait-apres)) 100%
+  );
+}
+/* les bouts de la barre : la première et la dernière ligne (visibles, une fois la frise filtrée : classes posées par le script de Frise.astro) */
+.frise__evenement:first-child .frise__barre::before,
+.frise__evenement.est-premier .frise__barre::before { top: calc(var(--y) - 0.6rem); border-radius: 0.3rem 0.3rem 0 0; }
+.frise__evenement:last-child .frise__barre::before,
+.frise__evenement.est-dernier .frise__barre::before { bottom: auto; height: calc(var(--y) + 0.6rem); border-radius: 0 0 0.3rem 0.3rem; }
+.frise__evenement.est-premier.est-dernier .frise__barre::before { top: calc(var(--y) - 0.6rem); height: 1.2rem; border-radius: 0.3rem; }
+/* l'événement affiché quand le filtre ne le retient pas : il reste (on lit sa page), en retrait */
+.frise__evenement.est-hors-filtre .frise__lien { opacity: 0.6; }
+.frise__evenement.est-hors-filtre .frise__titre::after { content: ' (hors du filtre)'; color: var(--muted); font-size: 0.8em; font-weight: 400; }
+/* « Date inconnue » : la barre en pointillés */
+.frise__evenement--inconnue .frise__barre::before {
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 0.4rem, transparent 0.4rem 0.7rem);
+  mask: repeating-linear-gradient(to bottom, #000 0 0.4rem, transparent 0.4rem 0.7rem);
+}
+/* Le point : rond ; plus grand pour un Impact mineur ; un losange pour un Impact majeur. */
+.frise__repere {
+  position: absolute;
+  top: var(--y);
+  left: 50%;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 0.85rem;
+  height: 0.85rem;
+  translate: -50% -50%;
+  border: 2.5px solid var(--trait);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: scale 0.12s, background-color 0.12s;
+}
+.frise__repere--mineur { width: 1.05rem; height: 1.05rem; border-width: 3px; }
+.frise__repere--majeur { width: 0.95rem; height: 0.95rem; border-width: 3px; border-radius: 2px; rotate: 45deg; }
+.frise__lien:hover { background: color-mix(in srgb, var(--trait) 9%, transparent); }
+.frise__lien:hover .frise__repere { scale: 1.2; }
+.frise__lien:focus-visible { outline: 2px solid var(--trait); outline-offset: -2px; }
+/* L'événement affiché : sa ligne teintée, un filet du côté de sa page, le point plein. De même pour la ligne où mène le milieu de la barre du bas du
+   téléphone sans JavaScript (/chronologie/#evenement-<id>), arrêtée vers le milieu de l'écran. */
+.frise__lien[aria-current='page'],
+.frise__evenement:target > .frise__lien {
+  background: color-mix(in srgb, var(--trait) 15%, var(--surface));
+  box-shadow: inset -4px 0 0 var(--trait);
+}
+:is(.frise__lien[aria-current='page'], .frise__evenement:target > .frise__lien) .frise__titre { color: var(--texte); font-weight: 700; }
+:is(.frise__lien[aria-current='page'], .frise__evenement:target > .frise__lien) .frise__repere { background: var(--trait); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--trait); }
+.frise__evenement { scroll-margin-block: 35vh; }
+
+/* ---------- La page ---------- */
+.chrono-page {
+  grid-area: page;
+  min-width: 0;
+  margin-top: 0.5rem;
+  padding: 1.5rem clamp(1rem, 4vw, 2.75rem) 2rem;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--chrono);
+  border-radius: calc(var(--radius) * 1.5);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgb(0 0 0 / 0.05);
+}
+.chrono-numero {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chrono-date {
+  margin: 0.6rem 0 0;
+  color: var(--chrono-texte);
+  font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.chrono-page h1 {
+  margin: 0.1rem 0 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--chrono);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+.chrono-etiquettes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: -0.3rem 0 1.1rem; }
+.chrono-portee,
+.chrono-lieu {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--chrono-line);
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.chrono-portee--majeur { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+.chrono-portee--mineur { background: var(--chrono-soft); color: var(--chrono-texte); }
+.chrono-lieu { color: var(--text); text-decoration: none; }
+a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); background: var(--chrono-soft); }
+.chrono-etiquettes[hidden], .chrono-lieu[hidden] { display: none; }
+
+/* Les catégories de l'événement : une pastille par catégorie, qui ouvre la frise filtrée sur elle (/chronologie/?filtre=…) ; sans catégorie (hors de la
+   production), « Sans catégorie (à trier) », en pointillés. */
+.chrono-categories { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: -0.3rem 0 1rem; padding: 0; list-style: none; }
+.chrono-categories[hidden] { display: none; }
+.chrono-categorie {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--chrono-line);
+  border-radius: var(--radius-pill);
+  background: var(--chrono-soft);
+  color: var(--chrono-texte);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.chrono-categorie:hover, .chrono-categorie:focus-visible { border-color: var(--chrono); background: color-mix(in srgb, var(--chrono) 22%, var(--surface)); }
+.chrono-categorie:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }
+.chrono-categorie--a-trier { border-style: dashed; background: none; color: var(--muted); font-weight: 400; }
+
+/* Mode modification du site de dev (src/scripts/edition/chronologie.mjs) : les saisies de la date, de l'Impact et du lieu n'apparaissent qu'en mode
+   modification (body.ed-mode) ; le crayon et « Enregistrer » descendent en bas à droite, sous les chevrons qu'ils couvriraient. */
+.chrono-ed { display: none; }
+body.ed-mode .chrono-ed { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0.5rem 0 0.75rem; padding: 0.5rem 0.65rem; border: 1px dashed var(--chrono-line); border-radius: var(--radius); }
+.chrono-ed__champ { display: grid; gap: 0.15rem; min-width: 9rem; }
+.chrono-ed__libelle { color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+body:has(.chrono) .ed-cote { top: auto; bottom: 1rem; transform: none; }
+/* l'Impact et le lieu se lisent dans leurs pastilles, se modifient dans leurs champs (.chrono-ed--impact) : en mode modification, les pastilles partent */
+body.ed-mode .chrono-etiquettes { display: none; }
+/* une description en cours de modification : sous elle, son lien (une page du wiki) et « Retirer » ; la légende par page revient à l'enregistrement */
+body.ed-mode .chrono-legende { display: none; }
+.chrono-ed-bloc { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; margin: 0.35rem 0 0.8rem; }
+.chrono-ed-bloc__lien { display: grid; flex: 1; gap: 0.15rem; min-width: 14rem; }
+.chrono-ed--categories { display: none; }
+body.ed-mode .chrono-ed--categories { display: grid; gap: 0.3rem; }
+body.ed-mode .chrono-ed--categories + * { margin-top: 0.75rem; }
+body.ed-mode [data-chrono-categories] { display: none; }
+
+/* Les extraits : une citation par passage, regroupés par page source (légende sous le groupe). */
+.chrono-source { margin: 1.1rem 0 0; }
+.chrono-extrait {
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border-left: 4px solid var(--chrono);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--chrono-soft);
+}
+.chrono-extrait + .chrono-extrait { margin-top: 0.5rem; }
+.chrono-extrait > :first-child { margin-top: 0.2rem; }
+.chrono-extrait > :last-child { margin-bottom: 0.2rem; }
+.chrono-extrait p { margin: 0.45rem 0; }
+.chrono-extrait ul, .chrono-extrait ol { margin: 0.35rem 0; padding-left: 1.25rem; }
+.chrono-extrait blockquote { margin: 0.5rem 0; padding-left: 0.8rem; border-left: 2px solid var(--chrono-line); }
+mark.chrono-surligne {
+  padding: 0 0.15em;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--chrono) 22%, var(--surface));
+  color: inherit;
+  font-weight: 700;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.chrono-legende { margin-top: 0.35rem; color: var(--muted); font-size: 0.85rem; text-align: right; }
+.chrono-legende::before { content: '— '; }
+.chrono-legende__sections { margin-left: 0.25rem; }
+.chrono-legende a { color: var(--chrono-texte); font-weight: 600; }
+
+/* /chronologie/ : le mode d'emploi à la place de la page d'un événement */
+.chrono-accueil h1 { margin-top: 0; }
+.chrono-accueil p { max-width: 44rem; }
+.chrono-commencer {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--chrono);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.chrono-commencer:hover, .chrono-commencer:focus-visible { background: color-mix(in srgb, var(--chrono) 78%, #000); }
+.chrono-commencer:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 3px; }
+
+/* ---------- Les chevrons, tout à l'extrémité droite : Haut = précédent, Bas = suivant ---------- */
+.chrono-chevrons {
+  position: fixed;
+  z-index: 3;
+  top: 50%;
+  right: max(0.75rem, env(safe-area-inset-right));
+  translate: 0 -50%;
+  display: grid;
+  gap: 0.6rem;
+}
+.chrono-chevron {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border: 2px solid var(--chrono-line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--chrono-texte);
+  box-shadow: var(--ombre-flottante);
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.chrono-chevron svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: translate 0.15s; }
+/* un chevron grisé (au bord de la frise ou de la catégorie choisie) est aussi un <a>, sans adresse : il ne s'allume pas */
+a.chrono-chevron:not([aria-disabled='true']):hover,
+a.chrono-chevron:not([aria-disabled='true']):focus-visible { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+a.chrono-chevron:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 3px; }
+a.chrono-chevron[rel='prev']:not([aria-disabled='true']):hover svg { translate: 0 -2px; }
+a.chrono-chevron[rel='next']:not([aria-disabled='true']):hover svg { translate: 0 2px; }
+.chrono-chevron[aria-disabled='true'] { border-color: var(--border); background: var(--bg); color: var(--border); box-shadow: none; cursor: not-allowed; }
+
+/* ---------- D'une page à l'autre : la page de l'événement arrive par la droite (navigateurs qui le savent) ---------- */
+/* La frise, elle, n'a pas de nom de transition : elle reste dans le fondu de la page entière, où ses lignes ne bougent pas (le script de Frise.astro
+   les remet à la même place à l'écran). */
+@view-transition { navigation: auto; }
+.chrono-page { view-transition-name: chrono-page; }
+/* depuis le tiroir du téléphone (ouvert par-dessus la page) : pas d'article à part, sinon l'ancien passerait par-dessus le tiroir pendant la transition */
+html.frise-ouverte .chrono-page { view-transition-name: none; }
+::view-transition-group(chrono-page) { animation: none; }
+::view-transition-old(chrono-page) { animation: chrono-sortie 0.14s ease-in both; }
+::view-transition-new(chrono-page) { animation: chrono-entree 0.24s ease-out both; }
+@keyframes chrono-sortie { to { opacity: 0; } }
+@keyframes chrono-entree { from { opacity: 0; translate: 1.5rem 0; } }
+
+/* ---------- Petit écran (téléphone, <= 56rem) ----------
+   Demande du propriétaire : « la mini-frise, en plus du tiroir ». /chronologie/ est la frise ; sur la page d'un événement, la frise réduite à sa barre
+   et à ses points (la mini-frise) reste collée à gauche, un appui l'ouvre en grand par-dessus la page (le tiroir), et une barre en bas de l'écran porte
+   les chevrons et, entre eux, l'événement affiché (un appui ouvre aussi le tiroir). La mini-frise et le tiroir demandent JavaScript (`html.js`) : sans
+   lui, la page d'un événement garde la barre du bas, dont le bouton du milieu est un lien vers sa ligne de /chronologie/. Rien de tout cela ne
+   s'affiche sur ordinateur. */
+.chrono-accueil__court, .frise-ouvrir, .frise__entete, .chrono-barre__frise { display: none; }
+.frise-voile { display: none; }
+
+@media (max-width: 56rem) {
+  .chrono { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'page' 'frise'; row-gap: 0.25rem; padding-right: 0; }
+  .frise { position: static; height: auto; overflow: visible; padding: 0; }
+  .chrono-page { margin-top: 0; }
+
+  /* La frise en grand (/chronologie/ et le tiroir) : des lignes d'au moins 44 px à toucher, le point au milieu de la première ligne du titre. */
+  .frise { --date: 4.6rem; --barre: 1.75rem; }
+  .frise__evenement { --y: 1.32rem; }
+  .frise__lien { min-height: 2.75rem; }
+  .frise__date { padding-block: 0.8rem 0.7rem; }
+  .frise__titre { padding-block: 0.72rem 0.7rem; }
+  .frise__lien:active { background: color-mix(in srgb, var(--trait) 14%, transparent); }
+
+  /* ---------- /chronologie/ : la frise est la page, sous un titre et une phrase ---------- */
+  .chrono--accueil .chrono-page { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .chrono--accueil .chrono-page h1 { margin: 0 0 0.3rem; padding: 0; border: 0; font-size: 1.6rem; }
+  .chrono--accueil .chrono-page > p { display: none; }
+  .chrono--accueil .chrono-page > p.chrono-accueil__court { display: block; max-width: none; margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+  /* le filtre et la légende restent en haut de l'écran pendant qu'on parcourt la frise (fond plein : aucune ligne à moitié dessous) */
+  .chrono--accueil .frise__tete {
+    position: sticky;
+    top: 0;
+    margin: 0 -1rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .chrono--accueil .frise__legende { justify-content: flex-start; }
+  /* le défilement vers un lien qui prend le focus (Maj+Tab) ou vers une ancre s'arrête sous l'en-tête collant (filtre et légende) */
+  html:has(.chrono--accueil) { scroll-padding-top: 5.5rem; }
+  .chrono--accueil .chrono-chevrons { display: none; }
+
+  /* ---------- Page d'un événement : la barre du bas ---------- */
+  /* la page réserve la place de la barre : plus rien n'est recouvert, pied de page compris */
+  body:has(.chrono--evenement) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+  /* … et le défilement vers un lien qui prend le focus s'arrête au-dessus d'elle (WCAG 2.4.11) */
+  html:has(.chrono--evenement) { scroll-padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  .chrono--evenement .frise { display: none; }
+  .chrono--evenement .chrono-chevrons {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    translate: none;
+    grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem max(0.75rem, env(safe-area-inset-right)) calc(0.55rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -4px 18px rgb(0 0 0 / 0.08);
+  }
+  /* en haut de la barre, un filet : la place de l'événement dans la frise (rang / nombre d'événements) */
+  .chrono--evenement .chrono-chevrons::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(to right, var(--chrono) var(--progression), color-mix(in srgb, var(--chrono) 18%, transparent) var(--progression));
+  }
+  .chrono--evenement .chrono-chevron { width: 3rem; height: 3rem; box-shadow: none; }
+  .chrono--evenement a.chrono-chevron:not([aria-disabled='true']):active { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+  /* au milieu, l'événement affiché (une ligne pour la date et le rang, une pour le titre, coupé au besoin : il est en entier en haut de la page) */
+  .chrono-barre__frise {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-self: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 30rem;
+    min-width: 0;
+    min-height: 3rem;
+    padding: 0.3rem 0.9rem 0.3rem 0.55rem;
+    border: 1px solid var(--chrono-line);
+    border-radius: 0.9rem;
+    background: var(--chrono-soft);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .chrono-barre__frise:active { background: color-mix(in srgb, var(--chrono) 24%, var(--surface)); }
+  .chrono-barre__frise:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }
+  .chrono-barre__icone { flex: none; width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--chrono-texte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .chrono-barre__texte { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; line-height: 1.2; }
+  .chrono-barre__date { overflow: hidden; color: var(--chrono-texte); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+  .chrono-barre__rang { color: var(--muted); font-weight: 400; }
+  .chrono-barre__titre { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- Page d'un événement, avec JavaScript : la mini-frise à gauche, la page à côté ---------- */
+  html.js .chrono--evenement {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-areas: 'frise page';
+    column-gap: 0.85rem;
+    /* collée au bord gauche de l'écran et sous l'en-tête (marges de <main> reprises) ; au moins jusqu'à la barre du bas : la mini-frise va jusque-là
+       même à côté d'un article court (--frise-haut : la place au-dessus de la grille, mesurée par le script de Frise.astro) */
+    margin: -1.5rem -1rem 0;
+    padding: 0 max(1rem, env(safe-area-inset-right)) 0 env(safe-area-inset-left);
+    min-height: calc(100vh - 4.25rem - var(--frise-haut, 0px));
+    min-height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom) - var(--frise-haut, 0px));
+    align-items: stretch;
+  }
+  /* la page, sans cadre : toute la largeur à côté de la mini-frise va au texte */
+  html.js .chrono--evenement .chrono-page { align-self: start; margin: 1.1rem 0 0; padding: 0 0 1.5rem; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  html.js .chrono--evenement .chrono-date { margin-top: 0.3rem; font-size: 1.45rem; }
+  html.js .chrono--evenement .chrono-page h1 { font-size: 1.55rem; }
+  html.js .chrono--evenement .chrono-extrait { padding-inline: 0.8rem; }
+  /* la mini-frise et le bouton posé dessus : fixés au bord gauche de l'écran (la première colonne de la grille leur garde la place), du haut de la
+     grille (sous l'en-tête, tant qu'il est visible) jusqu'à la barre du bas ou au bas de la grille (--mini-haut, --mini-bas : le script de
+     Chronologie.astro, à chaque défilement) */
+  html.js .chrono--evenement :is(.frise, .frise-ouvrir) {
+    position: fixed;
+    top: var(--mini-haut, var(--frise-haut, 0px));
+    bottom: var(--mini-bas, calc(4.25rem + env(safe-area-inset-bottom)));
+    left: env(safe-area-inset-left, 0px);
+    width: 2.25rem;
+    height: auto;
+  }
+  html.js .chrono--evenement .frise {
+    z-index: 1;
+    display: block;
+    overflow: hidden;
+    border-right: 1px solid var(--chrono-line);
+    background: color-mix(in srgb, var(--chrono) 7%, var(--bg));
+  }
+  html.js .chrono--evenement .frise:not(.est-ouverte) :is(.frise__tete, .frise__entete) { display: none; }
+  /* la liste est ce qui défile (le script y centre l'événement), réduite : la barre et les points, dates et titres cachés (lus dans le tiroir) */
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__liste { height: 100%; overflow: hidden; padding: 2.9rem 0 55vh; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__evenement { --y: 0.525rem; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__lien {
+    position: relative;
+    display: block;
+    min-height: 0;
+    height: 1.05rem;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__barre { position: absolute; inset: 0; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) :is(.frise__date, .frise__titre) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__barre::before { width: 0.42rem; margin-left: -0.21rem; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere { width: 0.55rem; height: 0.55rem; border-width: 2px; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere--mineur { width: 0.7rem; height: 0.7rem; border-width: 2.5px; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere--majeur { width: 0.62rem; height: 0.62rem; border-width: 2.5px; }
+  /* l'événement affiché : une ligne plus haute et teintée, un filet du côté de sa page, un point plein et cerclé (comme sur la grande frise) */
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__evenement:has(> [aria-current='page']) { --y: 0.95rem; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__lien[aria-current='page'] {
+    height: 1.9rem;
+    background: color-mix(in srgb, var(--trait) 16%, transparent);
+    box-shadow: inset -3px 0 0 var(--trait);
+  }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__lien[aria-current='page'] .frise__repere {
+    width: 1rem;
+    height: 1rem;
+    background: var(--trait);
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5.5px var(--trait);
+  }
+  /* le bouton qui couvre la mini-frise : un appui ouvre le tiroir ; une poignée en haut le dit, un fondu en haut et en bas dit que la frise continue */
+  html.js .chrono--evenement .frise-ouvrir {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 0.55rem 0 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--chrono-texte);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html.js .chrono--evenement .frise-ouvrir::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(color-mix(in srgb, var(--chrono) 7%, var(--bg)) 2.6rem, transparent 4rem) top / 100% 4rem no-repeat,
+      linear-gradient(transparent, color-mix(in srgb, var(--chrono) 7%, var(--bg))) bottom / 100% 2.5rem no-repeat;
+    pointer-events: none;
+  }
+  .frise-ouvrir__poignee {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 1.5px solid var(--chrono-line);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  }
+  .frise-ouvrir__poignee svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  html.js .chrono--evenement .frise-ouvrir:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: -3px; }
+
+  /* ---------- Le tiroir : la frise en grand, par-dessus la page ; l'en-tête (titre, croix) et la légende restent en haut, la liste défile ---------- */
+  html.js .chrono--evenement .frise.est-ouverte {
+    position: fixed;
+    z-index: 41;
+    inset: 0 auto 0 0;
+    display: flex;
+    flex-direction: column;
+    width: min(24rem, calc(100vw - 3.25rem));
+    height: auto;
+    padding: 0 0 0 env(safe-area-inset-left);
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    box-shadow: 10px 0 34px rgb(0 0 0 / 0.28);
+    animation: frise-tiroir 0.22s ease-out;
+  }
+  html.js .chrono--evenement .frise.est-ouverte .frise__liste {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 0.15rem calc(1.5rem + env(safe-area-inset-bottom)) 0;
+    scroll-padding-block: 0.5rem;
+  }
+  @keyframes frise-tiroir { from { clip-path: inset(0 calc(100% - 2.25rem) 0 0); } to { clip-path: inset(0); } }
+  html.js .frise.est-ouverte .frise__entete { flex: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.25rem 0.1rem 0.85rem; }
+  .frise__entete-titre { flex: 1; margin: 0; font-size: 1.15rem; font-weight: 700; }
+  .frise__entete-titre small { display: block; color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+  .frise__fermer { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text); cursor: pointer; }
+  .frise__fermer:hover, .frise__fermer:focus-visible { background: color-mix(in srgb, var(--chrono) 12%, transparent); }
+  .frise__fermer:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }
+  .frise__fermer svg { width: 1.3rem; height: 1.3rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  html.js .frise.est-ouverte .frise__tete {
+    position: static;
+    flex: none;
+    padding: 0.15rem 0.85rem 0.55rem;
+    border-bottom: 1px solid var(--border);
+    background: none;
+  }
+  html.js .frise.est-ouverte .frise__legende { justify-content: flex-start; gap: 0.2rem 0.8rem; }
+  /* le voile sur le reste de l'écran : un appui ferme le tiroir */
+  html.js .frise-voile:not([hidden]) { position: fixed; z-index: 40; inset: 0; display: block; background: rgb(24 18 12 / 0.48); animation: frise-voile 0.22s ease-out; }
+  @keyframes frise-voile { from { opacity: 0; } }
+  html.frise-ouverte { overflow: hidden; }
+}
+/* Téléphone couché : une barre du bas plus basse (la hauteur de l'écran est comptée). */
+@media (max-width: 56rem) and (max-height: 30rem) {
+  body:has(.chrono--evenement) { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
+  .chrono--evenement .chrono-chevrons { grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem; padding-block: 0.3rem calc(0.3rem + env(safe-area-inset-bottom)); }
+  .chrono--evenement .chrono-chevron { width: 2.75rem; height: 2.75rem; }
+  .chrono-barre__frise { min-height: 2.75rem; }
+  html:has(.chrono--evenement) { scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  html.js .chrono--evenement { min-height: calc(100vh - 3.5rem - var(--frise-haut, 0px)); min-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom) - var(--frise-haut, 0px)); }
+  .chrono-barre__texte { grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
+}
+@media (max-width: 56rem) and (prefers-reduced-motion: reduce) {
+  html.js .chrono--evenement .frise.est-ouverte, html.js .frise-voile:not([hidden]) { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .frise__repere, .chrono-chevron, .chrono-chevron svg { transition: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+@media print {
+  .frise, .chrono-chevrons { display: none; }
+  .chrono { display: block; padding: 0; }
+}

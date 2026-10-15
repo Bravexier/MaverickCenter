@@ -73,7 +73,13 @@ function enLigne(noeuds, o = {}) {
       case 'a':
       case 'span': {
         const cible = attribut(n, 'data-cible');
-        if (cible !== null && classes(n).includes('wikilink')) {
+        if (n.nom === 'span' && classes(n).includes('montant') && attribut(n, 'data-montant') !== null) {
+          // un montant décomposé en icônes (lib/monnaies.mjs#htmlDeMontant) : tel qu'écrit dans le Markdown
+          sortie += attribut(n, 'data-montant');
+        } else if (n.nom === 'span' && classes(n).includes('piece') && attribut(n, 'data-monnaie')) {
+          // une monnaie en icône (lib/markdown-monnaies.mjs) : son abréviation telle qu'écrite dans le Markdown
+          sortie += attribut(n, 'data-monnaie');
+        } else if (cible !== null && classes(n).includes('wikilink')) {
           const libelle = texteBrut(n).replace(/\s+/g, ' ').trim();
           sortie += libelle === cible ? `[[${cible}]]` : `[[${cible}|${libelle}]]`;
         } else if (n.nom === 'a' && attribut(n, 'href')) {
@@ -156,13 +162,14 @@ function tableau(n, o) {
   return [ligne(tete.cases), separateur, ...corps.map((l) => ligne(l.cases))].join('\n');
 }
 
-function liste(n, o, profondeur) {
+/** `alterne` : la liste suit une liste de même sorte ; elle change de marque (« * » au lieu de « - », « 1) » au lieu de « 1. »), sinon le Markdown n'en ferait qu'une. */
+function liste(n, o, profondeur, alterne = false) {
   const ordonnee = n.nom === 'ol';
   let numero = Number(attribut(n, 'start') ?? 1) || 1;
   const items = (n.enfants ?? []).filter((c) => estElement(c) && c.nom === 'li');
   const lache = items.some((li) => (li.enfants ?? []).some((c) => estElement(c) && c.nom === 'p'));
   const sorties = items.map((li) => {
-    const marque = ordonnee ? `${numero++}. ` : '- ';
+    const marque = ordonnee ? `${numero++}${alterne ? ')' : '.'} ` : alterne ? '* ' : '- ';
     const retrait = ' '.repeat(marque.length);
     const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache }).replace(/^\n+/, '');
     const [premiere = '', ...suite] = corps.split('\n');
@@ -171,7 +178,7 @@ function liste(n, o, profondeur) {
   return sorties.join(lache ? '\n\n' : '\n');
 }
 
-function bloc(n, o, profondeur) {
+function bloc(n, o, profondeur, alterne = false) {
   switch (n.nom) {
     case 'h1':
     case 'h2':
@@ -182,7 +189,7 @@ function bloc(n, o, profondeur) {
       return `${'#'.repeat(Number(n.nom[1]))} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}`;
     case 'ul':
     case 'ol':
-      return liste(n, o, profondeur);
+      return liste(n, o, profondeur, alterne);
     case 'blockquote':
       return blocs(n.enfants ?? [], o, profondeur).split('\n').map((l) => (l ? `> ${l}` : '>')).join('\n');
     case 'pre': {
@@ -208,10 +215,19 @@ function bloc(n, o, profondeur) {
 }
 
 function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
-  return morceaux(enfants)
-    .map((n) => bloc(n, o, profondeur))
-    .filter((t) => t.trim() !== '')
-    .join(serre ? '\n' : '\n\n');
+  const sorties = [];
+  let precedent = null;
+  let alterne = false;
+  for (const n of morceaux(enfants)) {
+    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque
+    const suit = estElement(n) && (n.nom === 'ul' || n.nom === 'ol') && precedent?.nom === n.nom;
+    const t = bloc(n, o, profondeur, suit && !alterne);
+    if (t.trim() === '') continue;
+    sorties.push(t);
+    alterne = suit && !alterne;
+    precedent = n;
+  }
+  return sorties.join(serre ? '\n' : '\n\n');
 }
 
 /**
@@ -301,7 +317,22 @@ function attributsSurs(n, nom) {
     const lien = classes(n).filter((c) => c === 'wikilink' || c === 'wikilink--missing');
     if (lien.length) garder('class', lien.join(' '));
     if (attribut(n, 'data-cible') !== null && lien.length) garder('data-cible', attribut(n, 'data-cible'));
-    if (attribut(n, 'title') !== null) garder('title', attribut(n, 'title'));
+    // le `title` d'un lien est dans `data-infobulle` sur la page (components/Infobulles.astro) : il redevient `title`
+    const titre = attribut(n, 'title') ?? attribut(n, 'data-infobulle');
+    if (titre !== null) garder('title', titre);
+    // une monnaie en icône (lib/monnaies.mjs) : sa classe, son nom et son abréviation, rien d'autre
+    // un montant décomposé (lib/monnaies.mjs#htmlDeMontant) : sa classe et son écriture d'origine
+    if (nom === 'span' && classes(n).includes('montant') && attribut(n, 'data-montant') !== null) {
+      garder('class', 'montant');
+      garder('data-montant', attribut(n, 'data-montant'));
+    }
+    const piece = classes(n).find((c) => /^piece--(rf|ro|pp)$/.test(c));
+    if (nom === 'span' && piece && /^(R[OoFf]|PP)$/.test(attribut(n, 'data-monnaie') ?? '')) {
+      garder('class', `piece ${piece}`);
+      garder('role', 'img');
+      if (attribut(n, 'aria-label')) garder('aria-label', attribut(n, 'aria-label'));
+      garder('data-monnaie', attribut(n, 'data-monnaie'));
+    }
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
   return a.join('');

@@ -55,6 +55,9 @@
 .tableau-magies__marque--fort { color: var(--good); }
 .tableau-magies__marque--faible { color: var(--danger); }
 .tableau-magies__marque--incompatible { color: var(--muted); }
+/* épée et bouclier (IconeRelation.astro) : à la taille du texte, dans la couleur de la marque */
+.icone-relation { width: 1.2em; height: 1.2em; vertical-align: -0.25em; fill: currentColor; }
+.icone-relation__arete { fill: none; stroke: var(--bg); stroke-width: 1.6; stroke-linecap: round; }
 .tableau-magies__vide { color: var(--muted); }
 
 /* lu par les lecteurs d'écran seulement */

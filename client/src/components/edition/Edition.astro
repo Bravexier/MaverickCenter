@@ -1,9 +1,8 @@
 ---
 import { url } from '../../lib/wiki';
 
-// Mode modification des pages (demande du propriétaire) : sur le SITE DE DEV seulement, et sur un ordinateur seulement (pas sur mobile). Rien ne
-// s'affiche ailleurs : le script demande au service (/api/etat/) si l'édition est ouverte (MAVERICK_EDITION=1, serveur de test), et seulement sur un
-// écran large avec une souris ; alors seulement il charge l'éditeur (src/scripts/edition/editeur.mjs) : crayon à cocher pour passer en mode
+// Mode modification des pages (demande du propriétaire) : sur le SITE DE DEV seulement, sur tous les écrans. Rien ne
+// s'affiche ailleurs : le script demande au service (/api/etat/) si l'édition est ouverte (MAVERICK_EDITION=1, serveur de test) ; alors seulement il charge l'éditeur (src/scripts/edition/editeur.mjs) : crayon à cocher pour passer en mode
 // modification, bouton de confirmation flottant à droite pour enregistrer et repasser en lecture. Les champs modifiables sont les éléments `data-ed`
 // des gabarits (lib/edition-modele.mjs). Absent de la version portable (tools/build-artifact.mjs : pas de service).
 interface Props {

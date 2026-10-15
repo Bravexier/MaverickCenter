@@ -3,9 +3,10 @@
 //   node --test test/site-html.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -51,10 +52,10 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['regles Règles', 'personnages Personnages', 'inventaire Inventaire', 'codex Codex', 'outils Outils']);
+    ['regles Règles', 'ressources Ressources', 'personnages Personnages', 'codex Codex', 'outils Outils']);
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="inventaire" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Inventaire');
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="ressources" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Ressources');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
@@ -76,8 +77,11 @@ test('/galeries/ : toutes les images ; /archives/ : les documents sources et l�
   for (const titre of ['Classeurs et documents du jeu', 'Fiches de personnage automatiques', 'L’ancien wiki']) assert.ok(archives.includes(`>${titre}</h2>`), titre);
   assert.ok(!archives.includes('Documents introuvables') && !archives.includes('sans titre'), 'chaque document a son titre');
   assert.match(archives, /<a href="https:\/\/docs\.google\.com\/spreadsheets\/d\/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I\/edit[^"]*" rel="noopener noreferrer" target="_blank">Classe Maverick V7<\/a>/);
-  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M\/edit[^"]*" rel="noopener noreferrer" target="_blank">CODEX Maverick<\/a>/);
-  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\/edit[^"]*" rel="noopener noreferrer" target="_blank">Bestiaire 2\.0<\/a>/);
+  // CODEX Maverick et Bestiaire 2.0 : les copies du propriétaire (2026-10-11), l'original en « Document d'origine »
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg\/edit[^"]*" rel="noopener noreferrer" target="_blank">CODEX Maverick<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M\/edit[^"]*" rel="noopener noreferrer" target="_blank">Document d’origine<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE\/edit[^"]*" rel="noopener noreferrer" target="_blank">Bestiaire 2\.0<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\/edit[^"]*" rel="noopener noreferrer" target="_blank">Document d’origine<\/a>/);
   assert.match(archives, /href="https:\/\/maverick-jdr\.fandom\.com\/fr\/wiki\/Progression"/);
   assert.ok(!archives.includes('payoumorfot'), 'pas d’adresse de courriel du registre');
 });
@@ -92,17 +96,55 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et tous les mots-clés ; plus de /tags/ (la page 404 y renvoie), la page d’un mot-clé ramène à la recherche', options, () => {
+test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cle=<id>, nombre de pages) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
-  const motsCles = [...html.matchAll(/<li data-cle="([^"]+)"><a class="badge" href="\/tags\/([^"/]+)\/">/g)];
-  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
-  for (const [, cle, adresse] of motsCles) {
-    assert.equal(cle, adresse);
-    assert.ok(existsSync(join(dist, 'tags', cle, 'index.html')), `tags/${cle}/`);
+  assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
+  assert.match(html, /<noscript><p class="banner">La recherche [^<]*JavaScript[^<]*<a href="\/pages\/">index de toutes les pages<\/a>/, 'sans JavaScript : l’index des pages');
+  // plus de « Sans catégorie (à trier) » ni d'événements dans la vue d'un mot-clé : les événements ont des catégories (filtre de la frise), pas de mot-clé
+  for (const reste of ['data-sans-categorie', 'data-libelle-sans-categorie', 'data-reserve', 'badge--sans-categorie', 'mot-cle-evenements']) assert.ok(!html.includes(reste), reste);
+  assert.match(html, /<ul id="mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
+  // l'index : chaque page porte les ids de ses mots-clés ; un événement n'en porte aucun, ses `tags` sont les libellés de ses catégories
+  const index = JSON.parse(lire('search-index.json'));
+  assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
+  const evenements = index.filter((e) => e.type === 'Événement');
+  assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
+  assert.ok(evenements.every((e) => e.motsCles.length === 0), 'aucun mot-clé sur un événement');
+  const base = ouvrirBase();
+  const categories = new Map();
+  for (const c of base.prepare('SELECT ec.evenement_id AS id, c.libelle FROM evenement_categorie ec JOIN categorie_chronologie c ON c.id = ec.categorie_id').all()) {
+    categories.set(c.id, [...(categories.get(c.id) ?? []), c.libelle]);
   }
-  assert.ok(!existsSync(join(dist, 'tags', 'index.html')), 'ancienne liste des mots-clés');
-  assert.match(lire(`tags/${motsCles[0][1]}/index.html`), /<a href="\/recherche\/#mots-cles">Mots-clés<\/a> ›/);
+  for (const e of evenements) {
+    const id = e.path.slice('chronologie/'.length, -1);
+    assert.deepEqual([...e.tags].sort(), [...(categories.get(id) ?? [])].sort(), `${id} : ses tags = les libellés de ses catégories`);
+  }
+  const comptes = new Map();
+  for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
+  // la liste : tout le vocabulaire, un mot-clé qu'aucune page visible ne porte caché
+  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => [m.id, m]));
+  const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
+  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( hidden)?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>\s*<\/li>/g)];
+  assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
+  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
+  for (const [, id, cle, n, cache, lien, texte] of motsCles) {
+    assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
+    assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
+    assert.equal(Boolean(cache), Number(n) === 0, `${id} : caché si aucune page visible ne le porte`);
+    assert.ok(texte.endsWith(` (${n})`), texte);
+    assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
+  }
+  assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
+  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.filter((m) => !m[4]).length}\\)</small>`), 'le nombre de mots-clés affichés');
+  // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
+  assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
+  // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
+  const nain = lire('races/nain/index.html');
+  const pastilles = [...nain.slice(nain.indexOf('<ul class="tags" aria-label="Mots-clés">')).split('</ul>')[0].matchAll(/<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>/g)];
+  assert.ok(pastilles.length > 0, 'pastilles de la page du Nain');
+  for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
+  const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
 });
 
 test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {
@@ -137,7 +179,7 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
   const html = lire('mise-a-jour/index.html');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1>Mise à jour<\/h1>/);
-  assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-version="\d+\.\d+\.\d+">/);
+  assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-maintenance="\/maintenance\/" data-version="\d+\.\d+\.\d+">/);
   assert.match(main, /<section class="nv-dev" data-nv-dev hidden aria-live="polite"><\/section>/, 'note en préparation : remplie par le script sur le site de dev');
   // les notes de la base, lues et non supposées : les notes d'exemple (lorem ipsum) tant qu'aucune livraison n'a eu lieu, puis les vraies — la
   // première mise à jour retire les exemples, et pendant une mise à jour (job preparer) data/rows porte la note du lot, pas encore livrée
@@ -168,4 +210,58 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
     assert.match(ref.commit, /^[0-9a-f]{40}$/);
     assert.ok(existsSync(join(dist, 'donnees', 'reference.db')), 'base de la production (master)');
   }
+});
+
+test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) demande au service et part vers /maintenance/ ; sinon rien', options, async () => {
+  const pages = walk(dist).filter((f) => f.endsWith('.html')).map((f) => relative(dist, f).split('\\').join('/'));
+  const SCRIPT = /<script data-maintenance-api="([^"]+)" data-maintenance-page="([^"]+)">([\s\S]*?)<\/script>/;
+  assert.deepEqual(pages.filter((rel) => !SCRIPT.test(lire(rel))), ['maintenance/index.html'], 'toutes les pages, page 404 comprise');
+  const [, api, page, code] = lire('races/index.html').match(SCRIPT);
+  assert.deepEqual([api, page], ['/api/maintenance/', '/maintenance/']);
+  assert.ok(lire('races/index.html').indexOf(SCRIPT.exec(lire('races/index.html'))[0]) < lire('races/index.html').indexOf('</head>'), 'dans <head> : la question part tôt');
+  /** Exécute le script de la page dans un faux navigateur ; `reponse` : ce que rend fetch. */
+  const executer = async (reponse) => {
+    const vu = { appels: [], remplacements: [], attributs: {}, entete: { inert: false } };
+    vm.runInNewContext(code, {
+      document: {
+        currentScript: { getAttribute: (n) => ({ 'data-maintenance-api': api, 'data-maintenance-page': page })[n] },
+        hidden: false,
+        documentElement: { setAttribute: (n, v) => { vu.attributs[n] = v; } },
+        querySelector: (sel) => (sel === '.site-header__inner' ? vu.entete : null),
+        addEventListener: () => {},
+      },
+      location: { pathname: '/races/elfe/', search: '?a=1', hash: '#don', replace: (u) => vu.remplacements.push(u) },
+      fetch: async (url, o) => { vu.appels.push([url, o.cache]); return reponse(); },
+      setInterval: () => 0,
+      addEventListener: () => {},
+    });
+    await new Promise((ok) => setTimeout(ok, 20));
+    return vu;
+  };
+  const en = await executer(() => ({ ok: true, json: async () => ({ active: true, version_cible: '0.3', etape: 'preparation' }) }));
+  assert.deepEqual(en.appels, [['/api/maintenance/', 'no-store']]);
+  assert.deepEqual(en.remplacements, ['/maintenance/?retour=%2Fraces%2Felfe%2F%3Fa%3D1%23don'], 'retour à la même page, paramètres et ancre compris');
+  assert.equal(en.attributs['data-maintenance'], '', 'menus grisés tout de suite');
+  assert.equal(en.entete.inert, true);
+  for (const [nom, reponse] of [['pas en maintenance', () => ({ ok: true, json: async () => ({ active: false }) })],
+    ['service arrêté (502)', () => ({ ok: false, json: async () => ({}) })], ['site sans service', () => { throw new Error('réseau'); }],
+    ['réponse inattendue', () => ({ ok: true, json: async () => 'oui' })]]) {
+    const vu = await executer(reponse);
+    assert.deepEqual([vu.remplacements, vu.attributs, vu.entete.inert], [[], {}, false], nom);
+  }
+});
+
+test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », menus grisés et inertes, les étapes ; hors du menu', options, () => {
+  const html = lire('maintenance/index.html');
+  assert.match(html, /<title>Maintenance en cours — Maverick Center<\/title>/);
+  assert.match(html, /<header class="site-header site-header--maintenance"><div class="site-header__inner" inert>/, 'ni clic ni clavier dans l’en-tête');
+  assert.match(html, /<h1>Maintenance en cours<\/h1>/);
+  assert.match(html, /<p class="maintenance__message">En travaux, merci de revenir dans quelques minutes\.<\/p>/);
+  assert.deepEqual([...html.matchAll(/<li data-etape="([^"]+)">/g)].map((m) => m[1]), ['preparation', 'livraison', 'installation']);
+  assert.match(html, /data-maintenance data-api="\/api\/" data-accueil="\/"/);
+  assert.match(html, /<script type="module"/, 'le script qui ramène à la page quand c’est fini');
+  const css = readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.css')).map((f) => lire(`_astro/${f}`)).join('\n');
+  const grise = css.match(/\.site-header--maintenance \.site-nav,html\[data-maintenance\] \.site-nav\{([^}]*)\}/);
+  assert.ok(grise && /opacity:/.test(grise[1]) && /pointer-events:none/.test(grise[1]), 'menu grisé, sur la page de maintenance et sur une page qui y part');
+  assert.ok(!lire('index.html').includes('href="/maintenance/"'), 'pas dans le menu');
 });

@@ -158,7 +158,7 @@ test('refus : lot entier annulé ; colonne hors du modèle, valeur obligatoire, 
     [[{ op: 'modifier', table: 'metier', cle, valeurs: { description: 'Nouvelle' } },
       { op: 'modifier', table: 'metier', cle, valeurs: { nom: METIER_B.nom } }], 422, /déjà utilisée/],
     [[{ op: 'modifier', table: 'metier', cle, valeurs: { description: 'X' }, avant: { description: 'pas ça' } }], 409, /entre-temps/],
-    [[{ op: 'modifier', table: 'arme', cle: { id: 'x' }, valeurs: { nom: 'X' } }], 400, /pas modifiable/],
+    [[{ op: 'modifier', table: 'armure', cle: { id: 'x' }, valeurs: { nom: 'X' } }], 400, /pas modifiable/],
     [[{ op: 'modifier', table: 'race', cle: { id: 'races/humain' }, valeurs: { nom: 'X' } }], 400, /ne se modifie pas/],
     [[{ op: 'inconnue' }], 400, /opération inconnue/],
     [[], 400, /Aucune/],
@@ -191,7 +191,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   assert.deepEqual(lignes('SELECT texte, competence_id FROM metier_bonus WHERE metier_id = ? ORDER BY rang', id).map((b) => [b.texte, b.competence_id]),
     decouperBonus('+3% Calme, +2% Fermeté', competences).map((b) => [b.texte, b.competence_id]));
   assert.deepEqual(lignes('SELECT texte FROM metier_objet_depart WHERE metier_id = ?', id).map((o) => o.texte), ['Canne']);
-  assert.equal(ligne('SELECT libelle FROM page_tag WHERE page_id = ?', id).libelle, 'métier');
+  assert.equal(ligne('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', id).libelle, 'métier');
   assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'metier' AND entite_id = ?", id).principale, 1);
   assert.ok(appel('GET', '/api/edition/en-attente/').corps.lignes.some((l) => l.table === 'metier' && l.creee && l.cle.id === id));
 
@@ -209,8 +209,8 @@ test('R42 — supprimer un métier cité par une fiche : retiré de la fiche ave
   // un métier créé ici (METIER_B, que lit le test suivant, reste en place)
   const id = creerMetier({ nom: 'Métier d’une fiche', description: 'Un métier d’essai.' });
   const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
-  db.prepare(`INSERT INTO personnage (id, nature, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
-    bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'brouillon', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  db.prepare(`INSERT INTO personnage (id, nature, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
+    bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
     '2026-10-10T12:00:00Z', '2026-10-10T12:00:00Z', ?)`).run(id);
   // le choix d'un bonus « A OU B » du métier (personnage_metier_bonus, rang dans metier_bonus) part avec lui
   db.prepare("INSERT INTO personnage_metier_bonus (personnage_id, rang, competence_id) VALUES ('p-ed', 1, 'esquive')").run();

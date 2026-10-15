@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 /** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance) : nom → source. La configuration nginx est celle du NAS. */
-export const FICHIERS_LIVRES = {
+const FICHIERS_LIVRES = {
   'docker-compose.yml': join(ICI, 'docker-compose.yml'),
   'nginx.conf': join(ICI, '..', 'nginx.conf'),
   'README.md': join(ICI, 'README.md'),
@@ -24,7 +24,7 @@ export const FICHIERS_LIVRES = {
 
 const FORMATS = {
   mode: /^(prod|test)$/,
-  tag: /^[vV]\d+\.\d+(\.\d+)?(-[0-9A-Za-z.-]+)?$/, // V0.2 (production), V0.2.3-test, V0.2-hotfix.1… (tools/flux-git/regles.mjs)
+  tag: /^[vV]\d+\.\d+(\.\d+)?(-[0-9A-Za-z.-]+)?$/, // V0.2 (production), V0.2.3 (serveur de test), V0.2-hotfix.1… (tools/flux-git/regles.mjs)
   version: /^\d+\.\d+\.\d+$/,
   sha: /^([0-9a-f]{7,40}|local)$/,
 };
@@ -43,8 +43,10 @@ function valider(o) {
   for (const [cle, format] of Object.entries(FORMATS)) {
     if (!format.test(o[cle] ?? '')) throw new Error(`--${cle} invalide ou absent (reçu « ${o[cle] ?? ''} »)`);
   }
-  if (o.mode === 'test' && !o.tag.includes('-test')) throw new Error(`une étiquette de test contient « -test » (reçu « ${o.tag} »)`);
-  if (o.mode === 'prod' && o.tag.includes('-test')) throw new Error(`une étiquette de production ne contient pas « -test » (reçu « ${o.tag} »)`);
+  // La forme de l'étiquette dit le serveur (mise-a-jour.sh s'y fie) : VX.Y.Z…, la version complète de dev, pour le test ; VX.Y… pour la production.
+  const complete = /^[vV]\d+\.\d+\.\d+(-|$)/.test(o.tag);
+  if (o.mode === 'test' && !complete) throw new Error(`une étiquette de test porte la version complète, VX.Y.Z (reçu « ${o.tag} »)`);
+  if (o.mode === 'prod' && complete) throw new Error(`une étiquette de production est de la forme VX.Y, sans troisième nombre (reçu « ${o.tag} »)`);
   if (!o.site || !existsSync(join(o.site, 'index.html'))) throw new Error(`--site : pas de index.html dans « ${o.site ?? ''} »`);
   if (!o.sortie) throw new Error('--sortie manquant');
 }

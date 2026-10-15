@@ -7,7 +7,7 @@
 .regards > summary h3 { margin: 0; font-size: 1.1rem; }
 .regards__blocs { display: grid; gap: 0.9rem; margin-top: 0.6rem; }
 .regards__blocs--plusieurs { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
-.regards__bloc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 1rem 0.8rem; }
+.regards__bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.8rem; }
 .regards__bloc h4 { margin: 0 0 0.4rem; font-size: 1rem; color: var(--rac-readable); }
 .regards__qui { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); }
 .regards__niveaux { margin: 0; display: grid; gap: 0.35rem; }

@@ -1,0 +1,56 @@
+---
+import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
+import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
+
+// Le tableau d'UNE famille d'armes (bandeau de l'onglet « Armes »), repliable (demande du propriétaire : « chaque tableau peut être réduit si besoin ») :
+// Nom (la description en infobulle : « La description prend trop de place dans le tableau. Mets-la en tooltip »), Compétence (pastille dans la couleur
+// de sa caractéristique : Force pour l'Arme Lourde et l'Arc, Agilité pour l'Arme Légère, Perception pour l'Arbalète, dégradé pour deux ; décision R48),
+// Type, Dégâts, Type de dégâts, Portée (1 par défaut, décision R50), Durabilité, Origine ; les effets supplémentaires sur une seconde ligne, sous l'arme
+// (« à l'instar des sorts choisis de la fiche de personnage »). Une arme de départ (nom sur fond bleu dans la source) a ses lignes en bleu, avec
+// l'infobulle « Arme de départ ». Cliquer une arme la sélectionne : sa fiche s'ouvre à côté (src/scripts/armes.mjs).
+// La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
+// rendus que le mode modification réécrit après un enregistrement.
+// Mode modification (site de dev) : chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`, recalculées
+// par le service) ; quatre colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où
+// les colonnes tirées viennent), Arme de départ.
+type Armes = ReturnType<typeof chargerArmes>;
+interface Props {
+  famille: Armes['familles'][number];
+  contexte: ReturnType<typeof contexteDesArmes>;
+}
+const { famille, contexte } = Astro.props;
+const id = `famille-${famille.id}`;
+const unite = famille.cout_libelle.includes('(unité)');
+---
+
+<details class="armes-famille" id={id} open data-note={famille.note_brut ?? ''} data-unite={unite ? '1' : undefined}>
+  <summary class="armes-famille__titre">
+    <span class="armes-famille__nom" id={`${id}-titre`}>{famille.nom}</span>
+    {famille.de_brut && <span class="armes-famille__de" title="Dé de la famille, sauf indication contraire">{famille.de_brut}</span>}
+    <span class="armes-famille__compte">{famille.armes.length} arme{famille.armes.length > 1 ? 's' : ''}</span>
+  </summary>
+  {famille.note_brut && <p class="armes-famille__note">{famille.note_brut.split('\n').join(' · ')}</p>}
+  <div class="armes-wrap">
+    <table class="armes-table" aria-labelledby={`${id}-titre`}>
+      <thead>
+        <tr>
+          <th scope="col">Nom</th>
+          <th scope="col">Compétence</th>
+          <th scope="col">Type</th>
+          <th scope="col">Dégâts</th>
+          <th scope="col">Type de dégâts</th>
+          <th scope="col">Portée</th>
+          <th scope="col">Durabilité</th>
+          <th scope="col">Origine</th>
+          <th scope="col" class="ed-seul">Description</th>
+          <th scope="col" class="ed-seul">{famille.cout_libelle}</th>
+          <th scope="col" class="ed-seul">Effet (texte de l’onglet)</th>
+          <th scope="col" class="ed-seul">Arme de départ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {famille.armes.map((a) => <Fragment set:html={htmlDeLigneDArme(a, contexte)} />)}
+      </tbody>
+    </table>
+  </div>
+</details>

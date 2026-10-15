@@ -26,7 +26,7 @@ const ligne = (sql, ...p) => db.prepare(sql).get(...p);
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((r) => ({ ...r }));
 const INSTANT = '2026-10-11T08:30:00Z';
 const inserer = (t, l) => db.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
-const FICHE = { visibilite: 'tous', statut: 'brouillon', mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0,
+const FICHE = { visibilite: 'tous', mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0,
   alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: '2026-10-10T12:00:00Z', modifie_le: '2026-10-10T12:00:00Z' };
 /** Un nom que la table n'a pas encore (ni l'id de page `<type>/<slug>`). */
 const nomLibre = (nom, table, type) => {
@@ -36,8 +36,8 @@ const nomLibre = (nom, table, type) => {
 };
 const lot = (operations) => enregistrer(db, { page: 'essai', operations });
 
-test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, capacite et sort (colonnes dans l’ordre)', () => {
-  const vers = new Set(['metier', 'specialite', 'capacite', 'sort']);
+test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, capacite, sort et arme (colonnes dans l’ordre)', () => {
+  const vers = new Set(['metier', 'specialite', 'capacite', 'sort', 'arme']);
   const cles = [];
   for (const t of TABLES_FICHES) {
     const parId = new Map();
@@ -48,7 +48,7 @@ test('RETRAITS : exactement les clés étrangères des fiches vers metier, speci
     }
     cles.push(...parId.values());
   }
-  assert.equal(cles.length, 4);
+  assert.equal(cles.length, 5);
   assert.deepEqual(RETRAITS.map((r) => ({ table: r.table, vise: r.vise, colonnes: [...r.colonnes] })), cles);
   for (const r of RETRAITS) {
     assert.ok(['vider', 'supprimer'].includes(r.action), r.table);

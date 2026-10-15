@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+import Chronologie from '../../components/chronologie/Chronologie.astro';
+import { chargerChronologie } from '../../lib/chronologie-db.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// La chronologie (menu Codex › Chronologie ; lib/chronologie.mjs) : la frise seule, et à sa droite le mode d'emploi ; chaque événement est à
+// /chronologie/<id>/ ([slug].astro).
+const evenements = chargerChronologie(ouvrirBase());
+---
+
+<Base title="Chronologie" description="Les événements de la chronologie (Codex, pages de race, ajouts du site), du plus ancien au plus récent." edition="chronologie/">
+  <Chronologie evenements={evenements} id={null} />
+</Base>

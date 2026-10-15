@@ -38,7 +38,8 @@ une refusion en conflit (voir plus bas). Une `feature` créée depuis `master` e
 
 ## Les versions
 
-Une seule version, `X.Y.Z`, dans `client/package.json` (et `package-lock.json`) ; le site l'affiche en pied de page. Le bot (`livraison.yml`, job `Version`)
+Une seule version, `X.Y.Z`, dans `client/package.json` (et `package-lock.json`) ; le site l'affiche en pied de page (`VX.Y.Z` sur le serveur de
+test, `VX.Y` sur le serveur normal : l'étiquette de sa livraison). Le bot (`livraison.yml`, job `Version`)
 la tient après chaque fusion ; **personne ne la change à la main**.
 
 | Fusion | `dev` | `master` |
@@ -75,6 +76,11 @@ l'historique des fusions (une refusion faite par *squash* laisserait `master` ho
 sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
 `master` est dans l'historique de `dev`).
 
+**Avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire) : `git fetch --prune origin` ; si `origin/dev` (ou
+`origin/master` pour un hotfix) a bougé depuis le départ de la branche (`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle,
+relancer les contrôles que le rebase touche, puis pousser (`git push --force-with-lease` si la branche était déjà poussée). Même sans conflit : la PR
+est ainsi toujours testée sur la base du moment.
+
 Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
 une branche, *Actions → Version et livraison → Run workflow*.
@@ -101,15 +107,20 @@ Le serveur de test du VPS (`dev.maverick-jdr.com`) suit la même branche avec le
 
 La solution est alors hébergée (le NAS est temporaire ; le serveur : [`deploy/vps/`](../deploy/vps/README.md)). Après chaque fusion, le job
 `Installateur` construit le site et publie un **installateur** (`deploy/installateur/`) : un script `.sh` autonome qui contient le site et l'installe
-sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
+sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (publique comme lui depuis le 2026-10-14). La branche `site` n'est plus mise à jour.
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |
-| `dev` (feature, ou refusion après livraison ou hotfix) | **test** | `VX.Y.Z-test` (pré-version), à côté de l'étiquette de version `VX.Y.Z` |
+| `dev` (feature, ou refusion après livraison ou hotfix) | **test** | `VX.Y.Z` : l'étiquette de version de `dev` elle-même (publiée en pré-version) |
 | `master` (livraison) | **normal** (production) | `VX.Y` : l'étiquette de version de `master` elle-même |
 | `master` (hotfix : même version) | **normal** (production) | `VX.Y-hotfix.N` |
 
-- **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de test » sur chaque page, `[TEST]` dans le titre de l'onglet).
+Deux serveurs, deux formes d'étiquette, sans suffixe (décision du propriétaire, 2026-10-11 : le serveur de `dev` **est** le serveur de test, il
+n'y a pas de version « de test » à part) : trois nombres pour `dev`, deux pour `master`. `mise-a-jour.sh` reconnaît les livraisons de son
+serveur à cette forme. Seule la toute première livraison de test s'est appelée `V0.2.0-test`.
+
+- **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de dev » sur chaque page — il renvoie à la page « Mise à jour », qui
+  liste les modifications en cours —, `[TEST]` dans le titre de l'onglet).
   À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
   production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit). Rien de ce qui est fait en
   test ne revient en production.
@@ -122,6 +133,8 @@ depuis `data/rows` à chaque version.
 
 **Le premier jour hébergé (0.2.0)** : sur l'hôte, lancer l'installateur `V0.2` (serveur normal), puis `V0.2.0-test` (serveur de test, qui copie sa base) ;
 la mise à jour automatique de chaque instance est `mise-a-jour.sh`. Le NAS n'est pas touché (sa branche `site` cesse simplement d'avancer).
+Un serveur de test posé par `V0.2.0-test` ne cherche que des étiquettes « -test » : il faut y lancer **une fois à la main** l'installateur de
+test suivant (`VX.Y.Z`), qui apporte le `mise-a-jour.sh` d'aujourd'hui ; les mises à jour redeviennent ensuite automatiques.
 Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). Republier une branche sans changer sa version :
 *Actions → Version et livraison → Run workflow* (le site avant la 0.2.0, une étiquette `…-rebuild.N` ensuite).
 

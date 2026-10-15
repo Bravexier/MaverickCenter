@@ -4,8 +4,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   COULEUR_NEUTRE,
+  COULEURS_ALIGNEMENTS,
   COULEURS_CARACTERISTIQUES,
   COULEURS_POSTURES,
+  couleurDAlignement,
   couleurDeCaracteristique,
   couleurDePosture,
   styleDeCouleur,
@@ -47,4 +49,14 @@ test('couleurs claires : le texte posé dessus est foncé, dans les deux thèmes
     assert.equal(texteSurCouleur(couleur), '#171210', couleur);
   }
   assert.equal(styleDeCouleur('#ff6666'), '--c: #ff6666; --c-texte: #171210');
+});
+
+test('alignements : la couleur de leur titre dans « Les neuf alignements » du guide pour MJ (demande du propriétaire)', () => {
+  assert.deepEqual(COULEURS_ALIGNEMENTS, {
+    'Loyal Bon': '#45818e', 'Loyal Neutre': '#3c78d8', 'Loyal Mauvais': '#674ea7',
+    'Neutre Bon': '#6aa84f', Neutre: '#999999', 'Neutre Mauvais': '#783f04',
+    'Chaotique Bon': '#f1c232', 'Chaotique Neutre': '#e69138', 'Chaotique Mauvais': '#cc0000',
+  });
+  assert.equal(couleurDAlignement('Chaotique Mauvais'), '#cc0000');
+  assert.equal(couleurDAlignement('Neutre Pur'), COULEUR_NEUTRE);
 });

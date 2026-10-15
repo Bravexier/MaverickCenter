@@ -1,4 +1,5 @@
 ---
+import Icone from './IconeRelation.astro';
 import tableauxCss from '../../styles/magie/tableaux.css?raw';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../../lib/magie-relations.mjs';
 import { loadMagies, ordreDesMagies } from '../../lib/magies';
@@ -9,6 +10,7 @@ import { entryHref, type WikiEntry } from '../../lib/wiki';
 // colonne = l'autre magie, toutes deux dans l'ordre du classeur. Résistances, vulnérabilités et incompatibilités sont celles de la base, comme sur les pages
 // de magie (entriesAvecRelationsDeLaBase). En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
 // Le Potentiel Illimité n'y a ni ligne ni colonne (demande du propriétaire : « ne sert pas vraiment ») ; sa page de magie garde ses relations.
+// Résistance = bouclier, vulnérabilité = épée (demande du propriétaire), les dessins de la carte (IconeRelation.astro).
 interface Props {
   entries: WikiEntry[];
 }
@@ -20,8 +22,8 @@ const relations = relationMatrix(
 );
 const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_court)}`;
 const MARQUES = [
-  { cle: 'fort', signe: '▲', texte: 'fort contre' },
-  { cle: 'faible', signe: '▼', texte: 'faible contre' },
+  { cle: 'fort', icone: 'bouclier', texte: 'résiste face à' },
+  { cle: 'faible', icone: 'epee', texte: 'vulnérable face à' },
   { cle: 'incompatible', signe: '✕', texte: 'incompatible avec' },
 ] as const;
 ---
@@ -31,8 +33,8 @@ const MARQUES = [
   relations.magies.length > 0 && (
     <>
       <p class="legend">
-        Ligne = la magie décrite, colonne = l’autre magie. <span class="tableau-magies__marque--fort">▲ fort contre</span> (résistance magique),{' '}
-        <span class="tableau-magies__marque--faible">▼ faible contre</span> (vulnérabilité magique),{' '}
+        Ligne = la magie décrite, colonne = l’autre magie. <span class="tableau-magies__marque--fort"><Icone nom="bouclier" /> résiste face à</span> (résistance magique),{' '}
+        <span class="tableau-magies__marque--faible"><Icone nom="epee" /> vulnérable face à</span> (vulnérabilité magique),{' '}
         <span class="tableau-magies__marque--incompatible">✕ incompatible</span> (ne se combine pas).
       </p>
       <div class="tableau-magies">
@@ -65,7 +67,7 @@ const MARQUES = [
                     <td title={marques.map((x) => `${ligne.data.nom_court} ${x.texte} ${autre}`).join(' ; ')}>
                       {marques.map((x) => (
                         <>
-                          <span class={`tableau-magies__marque tableau-magies__marque--${x.cle}`} aria-hidden="true">{x.signe}</span>{' '}
+                          <span class={`tableau-magies__marque tableau-magies__marque--${x.cle}`} aria-hidden="true">{'icone' in x ? <Icone nom={x.icone} /> : x.signe}</span>{' '}
                         </>
                       ))}
                       <span class="tableau-magies__lecteur">{marques.map((x) => `${x.texte} ${autre}`).join(', ')}</span>

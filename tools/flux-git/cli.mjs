@@ -35,7 +35,7 @@ import {
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
-export const FICHIERS_VERSION = ['client/package.json', 'client/package-lock.json'];
+const FICHIERS_VERSION = ['client/package.json', 'client/package-lock.json'];
 const PACKAGE = FICHIERS_VERSION[0];
 
 class Refus extends Error {}
@@ -357,7 +357,8 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
     const refs = [];
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
-    // Une étiquette par nom : l'installateur de production d'une livraison porte l'étiquette de version de master (même nom, même commit).
+    // Une étiquette par nom : un installateur porte l'étiquette de version de sa branche (VX.Y pour la production d'une livraison,
+    // VX.Y.Z pour le serveur de test : même nom, même commit).
     const aPoser = new Map();
     for (const { tag, sha } of [...livraisons.filter((l) => l.tag && l !== prodDuHotfix), ...etiquettes]) {
       if (aPoser.has(tag) && aPoser.get(tag) !== sha) throw new Error(`étiquette ${tag} demandée sur deux commits (${aPoser.get(tag).slice(0, 7)}, ${sha.slice(0, 7)})`);

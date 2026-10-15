@@ -1,6 +1,6 @@
 /* Galeries (/galeries/) : toutes les images de lib/galerie.mjs en vignettes ; inséré par pages/galeries.astro (?raw). */
 .galerie-chantier { color: var(--muted); }
-.galerie-chantier__badge { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text);
+.galerie-chantier__badge { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn-text);
   font-size: 0.75rem; font-weight: bold; letter-spacing: 0.03em; text-transform: uppercase; }
 .galerie { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
 .galerie li { scroll-margin-top: 1rem; }

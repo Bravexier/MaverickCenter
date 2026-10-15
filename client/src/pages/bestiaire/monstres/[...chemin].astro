@@ -1,0 +1,30 @@
+---
+import Base from '../../../layouts/Base.astro';
+import PageMonstre from '../../../components/bestiaire/PageMonstre.astro';
+import { chargerMonstres } from '../../../lib/bestiaire-db.mjs';
+import { cheminDeMonstre } from '../../../lib/bestiaire-rendu.mjs';
+import { ouvrirBase } from '../../../lib/donnees.mjs';
+
+// La page d'un monstre (une carte, ou une espèce sans carte) : bestiaire/monstres/<espèce>/<carte>/ (lib/bestiaire-rendu.mjs#cheminDeMonstre, tiré de
+// l'identifiant figé). Le bestiaire est lu une fois : chaque page reçoit sa ligne et le reste en props.
+export function getStaticPaths() {
+  const monstres = chargerMonstres(ouvrirBase());
+  return monstres.lignes.map((ligne) => ({
+    params: { chemin: cheminDeMonstre(ligne.id)!.replace(/^bestiaire\/monstres\//, '').replace(/\/$/, '') },
+    props: { ligne, monstres },
+  }));
+}
+
+const { ligne, monstres } = Astro.props;
+// l'espèce : son groupe s'il en a un (« Ottar », décision R64)
+const espece = ligne.espece.groupe?.nom ?? ligne.espece.nom;
+const description = ligne.carte
+  ? `${ligne.nom} (${espece}) : la carte du bestiaire.`
+  : ligne.espece.groupe
+    ? `${ligne.nom} (${espece}) : sans carte de combat, dans le bestiaire.`
+    : `${ligne.nom} : l’espèce du bestiaire.`;
+---
+
+<Base title={`${ligne.nom} — Bestiaire`} description={description}>
+  <PageMonstre ligne={ligne} monstres={monstres} />
+</Base>

@@ -22,6 +22,8 @@ entre sources, trace des corrections orthographiques : voir [`structure.md`](str
 | --- | --- | --- |
 | Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | `npm run db:sync-pages` depuis les `.md` fabriqués (modifiés à la main ou réécrits par un extracteur) | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
 | **Lignes typées** (sorts, capacités, races, créatures, armes…) | ⚠️ lignes validées en séance, produites par des chargeurs de **prototype** qui lisaient les classeurs ; ils ne sont pas dans le dépôt | aucune : si un classeur change, ces lignes ne bougent pas tant que l'importeur de la famille n'est pas porté |
+| **Monstres du « Bestiaire 2.0 »** (tables `monstre_*`, famille `monstres`) | `tools/bestiaire/extraire.mjs` relit l'export texte du doc (`sources/raw/bestiaire-2-0.txt`) ; une nouvelle version du doc = un nouvel export puis une migration ([`../bestiaire.md`](../bestiaire.md)) | `client/test/bestiaire-extraction.test.mjs` échoue si la base n'est plus l'extraction de l'export |
+| **Chronologie** (tables `evenement`, `evenement_extrait`, famille `chronologie`) | le registre `tools/chronologie/evenements.json` (extraits repérés dans les pages du Codex et des races), résolu par `tools/chronologie/chronologie.mjs --sql` en une migration ([`../chronologie.md`](../chronologie.md)) ; un nouvel export du Codex : `--verifier` dit les extraits à reprendre | `client/test/chronologie.test.mjs` échoue si la base n'est plus le registre résolu sur les pages d'import |
 | **Ajout ou retrait d'une page** `docs` ou `exemple` | à la main : créer ou supprimer le `.md` puis `db:sync-pages` | idem |
 | **Ajout ou retrait d'une autre page** (magie, classe, race…) | importeur de sa famille (lots 4 à 10 de [`conception.md`](conception.md) §11) | `db:sync-pages` refuse et le dit |
 
@@ -86,6 +88,8 @@ pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` e
 `0022-lamia-une-seule-magie.sql` (structure et données, décision R28 : colonne `race.mono_magie`, à 1 pour la Lamia seule — « Une seule magie autorisé », inconvénients de son onglet —, table reconstruite comme `magie` en 0010 ; règle `race_mono_magie` de `v_personnage_controle`).
 `0026-acquis-caracteristique-totale.sql` (structure, décision R41 : la règle `competence_acquis_max` de `v_personnage_controle` compte la caractéristique totale, le +1 de la magie innée compris).
 `0027-posture-du-moment.sql` (structure, demande du propriétaire : colonne `personnage.posture_id`, la posture du moment, choisie parmi les six de `posture`).
+`0028-note-0-2-import-initial.sql` (données, demande du propriétaire : la note de la V0.2 ne liste plus ses modifications — `note_version_ligne` de la V0.2 retirées — et son
+texte dit « Import initial depuis les sources historiques » au lieu de « Pour le moment en V0.2 » ; `historique_modification` reste).
 
 ## La colonne `remarque`
 

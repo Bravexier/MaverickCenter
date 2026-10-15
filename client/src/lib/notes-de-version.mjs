@@ -1,13 +1,15 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
 // Fonctions pures, sans dépendance navigateur : le service (serveur/notes-de-version.mjs) et le processus de mise à jour
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
-import { TABLES } from './edition-modele.mjs';
+import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
+import { MAINS } from './arme-champs.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
+import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
@@ -18,6 +20,12 @@ export const DOMAINES = [
   { id: 'races', titre: 'Races' },
   { id: 'metiers', titre: 'Métiers' },
   { id: 'guide', titre: 'Guide' },
+  { id: 'codex', titre: 'Codex' },
+  { id: 'bestiaire', titre: 'Bestiaire' },
+  { id: 'armes', titre: 'Armes' },
+  { id: 'composants', titre: 'Composants' },
+  { id: 'chronologie', titre: 'Chronologie' },
+  { id: 'mots-cles', titre: 'Mots-clés' },
 ];
 
 /**
@@ -34,10 +42,25 @@ export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_lig
 export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
-  'metier', 'caracteristique', 'page',
+  'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
+  'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
+  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle',
 ];
 
+/** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
+const GROUPES_DE_COMPOSANT = {
+  materiau: 'Matériaux', gemme: 'Gemmes', bois: 'Bois', ingredient_alchimie: 'Ingrédients d’alchimie', produit: 'Produits non monétaires', materiel: 'Matos',
+};
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
+/** Le cadrage d'un portrait n'est pas une ligne à lui : il est dit avec l'image (portraitDit). */
+const CADRAGE = ['portrait_x', 'portrait_y', 'portrait_zoom'];
+const sansCadrage = (table) => colonnesDe(table).filter((c) => !CADRAGE.includes(c.colonne));
+/**
+ * Un portrait (migration 0033) dit sans recopier l'image : son empreinte, son poids et son cadrage (« image 3f2a9c01 (84 Ko), cadrage 0.5 × 0.5,
+ * zoom 1 ») — une image changée ou seulement recadrée fait une ligne de la note ; null sans image.
+ */
+const portraitDit = (v, ligne) => (v ? `${resumeDuPortrait(v)}, cadrage ${ligne?.portrait_x ?? 0.5} × ${ligne?.portrait_y ?? 0.5}, zoom ${ligne?.portrait_zoom ?? 1}` : null);
 const texte = (v) => (v === null || v === undefined ? null : String(v).replace(/\r\n?/g, '\n').trim() || null);
 const pareil = (a, b) => texte(a) === texte(b);
 const cleTriee = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
@@ -45,9 +68,15 @@ const lignesDe = (base, table) => base?.tables?.[table] ?? null;
 const indexer = (rows, cle) => new Map((rows ?? []).map((r) => [cle.map((c) => String(r[c])).join('\u0000'), r]));
 const parId = (rows) => new Map((rows ?? []).map((r) => [r.id, r]));
 
+/** Libellés des catégories de monstre et de la phrase « varie selon l'échelle » (lib/edition-modele.mjs : CATEGORIES_DE_MONSTRE, STATS_VARIABLES). */
+const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.libelle ?? v;
+
 /**
  * Définition de chaque table comparée : domaine, clé, colonnes listées, filtre des lignes, groupe et nom de l'entité, ordre d'affichage.
  * `ctx` = { dev, ref } : tables indexées des deux bases (une ligne se nomme d'après la base où elle existe, de préférence dev).
+ * `detail` : une ligne qui n'existe qu'avec une autre (la rubrique d'une carte, le butin d'une espèce) ; seul un champ modifié est listé, son ajout ou
+ * son retrait est dit par l'entité qui la porte. `resume(n)` : un contenu entièrement nouveau (aucune ligne en production : le Codex, le bestiaire
+ * à leur première livraison) est dit en une ligne (« 116 pages du Codex »), pas entité par entité.
  */
 const DEFINITIONS = [
   {
@@ -127,7 +156,145 @@ const DEFINITIONS = [
     },
     entite: (r) => r.titre, ordre: (r) => [chapitreDe(r) ?? 999, r.titre],
   },
+  {
+    // les pages du Codex (lore tiré du Google Doc « CODEX Maverick », famille docs : lib/edition-modele.mjs#texteDePageModifiable)
+    table: 'page', domaine: 'codex', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du Codex',
+    filtre: (r) => r.type === 'lore' && r.origine === 'docs' && r.statut !== 'example',
+    groupe: () => null, entite: (r) => r.titre, ordre: (r) => [r.titre], resume: (n) => `${n} pages du Codex`,
+  },
+  {
+    // un groupe d'espèces (décision R64 : « Ottar ») : avant les espèces
+    table: 'monstre_groupe', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_groupe'), genre: 'Groupe d’espèces',
+    groupe: (r) => r.nom, entite: (r) => r.nom, ordre: () => [0, 0], resume: (n) => `${n} groupes d’espèces`,
+  },
+  {
+    table: 'monstre_espece', domaine: 'bestiaire', cle: ['id'], colonnes: sansCadrage('monstre_espece'), genre: 'Espèce',
+    groupe: (r) => r.nom, entite: (r) => r.nom, ordre: (r) => [r.ordre ?? 0, 0], resume: (n) => `${n} espèces`,
+    valeur: (colonne, v, _x, ligne) => (colonne === 'portrait' ? portraitDit(v, ligne) : v),
+  },
+  {
+    table: 'monstre', domaine: 'bestiaire', cle: ['id'], colonnes: sansCadrage('monstre'), genre: 'Monstre',
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r) => r.nom,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 1, r.rang ?? 0, 0], resume: (n) => `${n} monstres`,
+    valeur: (colonne, v, _x, ligne) => (colonne === 'categorie' ? libelleDeChoix(CATEGORIES_DE_MONSTRE, v)
+      : colonne === 'variable' ? libelleDeChoix(STATS_VARIABLES, v) : colonne === 'portrait' ? portraitDit(v, ligne) : v),
+  },
+  {
+    table: 'monstre_rubrique', domaine: 'bestiaire', cle: ['monstre_id', 'rang'], colonnes: colonnesDe('monstre_rubrique'), genre: 'Rubrique', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${r.titre ?? 'Santé, chakra, barrière'}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 1, r.rang],
+  },
+  // les capacités (décisions R66 à R69) : une capacité commune (toutes ses cartes), sa place sur une carte, la valeur d'un emplacement propre à une carte
+  {
+    table: 'monstre_capacite_commune', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_capacite_commune'), genre: 'Capacité de monstre',
+    groupe: () => 'Capacités de monstre', entite: (r, x) => x.capacite(r.id, r), ordre: (r) => [Number.MAX_SAFE_INTEGER, r.nom, r.id],
+    resume: (n) => `${n} capacités de monstre`,
+  },
+  {
+    table: 'monstre_capacite', domaine: 'bestiaire', cle: ['monstre_id', 'rang'], colonnes: colonnesDe('monstre_capacite'), genre: 'Capacité de la carte',
+    groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    // une capacité ajoutée ou retirée avec sa carte est dite par la carte (comme ses rubriques)
+    suit: (r, x) => !x.dans('ref', 'monstre', r.monstre_id) || !x.dans('dev', 'monstre', r.monstre_id),
+    entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${x.capacite(r.capacite_commune_id)}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 2, r.rang],
+    resume: (n) => `${n} capacités sur les cartes`,
+    // deux capacités communes peuvent porter le même nom (R68) : leur identifiant les distingue
+    valeur: (colonne, v, x) => (colonne === 'capacite_commune_id' && v ? `${x.nom('monstre_capacite_commune', v)} (${v})` : v),
+  },
+  {
+    table: 'monstre_capacite_valeur', domaine: 'bestiaire', cle: ['monstre_id', 'rang', 'numero'], colonnes: colonnesDe('monstre_capacite_valeur'),
+    genre: 'Valeur d’une capacité', groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    // une valeur ajoutée ou retirée avec sa capacité (ou sa carte) est dite par elle
+    suit: (r, x) => !x.dans('ref', 'monstre_capacite', `${r.monstre_id}\u0000${r.rang}`) || !x.dans('dev', 'monstre_capacite', `${r.monstre_id}\u0000${r.rang}`),
+    entite: (r, x) => {
+      const p = x.ligne('monstre_capacite', `${r.monstre_id}\u0000${r.rang}`);
+      return `${x.nom('monstre', r.monstre_id)} › ${p ? x.capacite(p.capacite_commune_id) : 'capacité'} › valeur ${r.numero} (${r.valeur})`;
+    },
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 2, r.rang, r.numero],
+    resume: (n) => `${n} valeurs de capacité propres à une carte`,
+  },
+  {
+    table: 'monstre_espece_bloc', domaine: 'bestiaire', cle: ['espece_id', 'rang'], colonnes: colonnesDe('monstre_espece_bloc'), genre: 'Bloc', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › ${r.titre}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 2, r.rang],
+  },
+  {
+    table: 'monstre_butin', domaine: 'bestiaire', cle: ['espece_id', 'rang', 'categorie'], colonnes: colonnesDe('monstre_butin'), genre: 'Butin', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id),
+    entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › butin ${r.score_brut} (${libelleDeChoix(CATEGORIES_DE_MONSTRE, r.categorie)})`,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 3, r.rang, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(r.categorie)],
+  },
+  // la page des armes (migration 0034) : une arme sous sa famille, puis les améliorations d'arme (les matériaux : domaine des composants, décision R62)
+  {
+    table: 'arme', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('arme'), genre: 'Arme',
+    groupe: (r, x) => x.nom('arme_famille', r.famille_id), entite: (r) => r.nom, ordre: (r, x) => [1, x.ordre('arme_famille', r.famille_id), r.ordre ?? 0],
+    valeur: (colonne, v, x) =>
+      colonne === 'depart_possible' ? libelleDeChoix(OUI_NON, v)
+        : colonne === 'mains' ? (v ? libelleDeChoix(MAINS, v) : v)
+          : colonne === 'type_id' ? x.nom('arme_type', v) : v,
+  },
+  {
+    table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    filtre: (r) => r.cible === 'arme', groupe: () => 'Améliorations', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
+  },
+  // la page des composants (migration 0040) : monnaies, puis les ressources par tableau (matériaux, gemmes et leurs prix, bois, ingrédients d'alchimie,
+  // objets de l'onglet « Équipement inventaire ») ; les potions, livres et parchemins (consommables) n'en sont pas
+  {
+    table: 'monnaie', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('monnaie'), genre: 'Monnaie',
+    groupe: () => 'Monnaie', entite: (r) => r.nom, ordre: (r) => [0, r.valeur_rf ?? 0],
+  },
+  {
+    table: 'ressource', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Composant', filtre: (r) => GROUPES_DE_COMPOSANT[r.genre] !== undefined,
+    groupe: (r) => (['produit', 'materiel'].includes(r.genre) && r.section ? `${GROUPES_DE_COMPOSANT[r.genre]} › ${r.section}` : GROUPES_DE_COMPOSANT[r.genre]),
+    entite: (r) => r.nom, ordre: (r) => [1, Object.keys(GROUPES_DE_COMPOSANT).indexOf(r.genre), r.section ?? '', r.ordre ?? 0],
+  },
+  // un matériau (décision R62 : la page « Composants » en est la seule source) : son type, ses effets sur une arme
+  {
+    table: 'materiau', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('materiau'), genre: 'Matériau', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.materiau, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 0, '', x.ordre('ressource', r.ressource_id)],
+  },
+  {
+    table: 'materiau_arme', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
+    groupe: () => GROUPES_DE_COMPOSANT.materiau, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 0, '', x.ordre('ressource', r.ressource_id)],
+  },
+  {
+    table: 'gemme', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('gemme'), genre: 'Gemme', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.gemme, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 1, '', x.ordre('ressource', r.ressource_id)],
+  },
+  {
+    table: 'ingredient_alchimie', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('ingredient_alchimie'), genre: 'Ingrédient', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.ingredient_alchimie, entite: (r, x) => x.nom('ressource', r.ressource_id),
+    ordre: (r, x) => [1, 3, x.ligne('ressource', r.ressource_id)?.section ?? '', x.ordre('ressource', r.ressource_id)],
+  },
+  // la chronologie (migration 0043) : un événement (date, titre, Impact, lieu) ; ses blocs de description sous lui (un bloc d'un événement ajouté ou retiré est
+  // dit par l'événement : `suit`) ; ses catégories en ensemble (comparerCategoriesDesEvenements)
+  {
+    table: 'evenement', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('evenement'), genre: 'Événement',
+    groupe: () => null, entite: (r) => r.titre, ordre: (r) => ordreDEvenement(r), resume: (n) => `${n} événements de la chronologie`,
+    valeur: (colonne, v) => (colonne === 'epoque' ? libelleDeChoix(EPOQUES_SAISIE, v) : colonne === 'portee' && v ? libelleDeChoix(PORTEES_SAISIE, v) : v),
+  },
+  {
+    table: 'evenement_extrait', domaine: 'chronologie', cle: ['evenement_id', 'rang'], colonnes: colonnesDe('evenement_extrait'), genre: 'Description',
+    suit: (r, x) => !x.dans('ref', 'evenement', r.evenement_id) || !x.dans('dev', 'evenement', r.evenement_id),
+    groupe: (r, x) => x.ligne('evenement', r.evenement_id)?.titre ?? r.evenement_id, entite: (r, x) => `${x.ligne('evenement', r.evenement_id)?.titre ?? r.evenement_id} › description ${r.rang}`,
+    ordre: (r, x) => [...ordreDEvenement(x.ligne('evenement', r.evenement_id) ?? {}), 1, r.rang], resume: (n) => `${n} descriptions d’événements`,
+    valeur: (colonne, v, x) => (colonne === 'page_id' && v ? x.ligne('page', v)?.titre ?? v : v),
+  },
+  // les catégories de la chronologie (migration 0043, bouton « Catégories » sur le site de dev) : ajoutée, renommée, retirée (de tous ses événements)
+  {
+    table: 'categorie_chronologie', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('categorie_chronologie'), genre: 'Catégorie',
+    groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
+  },
+  // le vocabulaire des mots-clés (migration 0043, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
+  {
+    table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
+    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.libelle_cle], resume: (n) => `${n} mots-clés`,
+  },
 ];
+
+/** L'ordre de lecture d'un événement dans une note : époque, année, rang (lib/chronologie.mjs#ordonner). */
+const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.epoque), e.annee ?? 0, e.rang ?? 0];
 
 function chapitreDe(page) {
   try {
@@ -139,21 +306,41 @@ function chapitreDe(page) {
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
-  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique'].map((t) => [t, parId(lignesDe(base, t))]));
+  const index = (base) => ({
+    ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune']
+      .map((t) => [t, parId(lignesDe(base, t))])),
+    // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
+    monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),
+  });
   const d = index(dev);
   const r = index(ref);
   const ligne = (table, id) => d[table].get(id) ?? r[table].get(id) ?? null;
+  // les capacités communes de chaque nom (production et dev réunies) : deux du même nom (« Anti-mal » +5 et +8 : décision R68) se nomment avec leur id
+  const capacitesParNom = new Map();
+  for (const c of [...r.monstre_capacite_commune.values(), ...d.monstre_capacite_commune.values()]) {
+    if (!capacitesParNom.has(c.nom_cle)) capacitesParNom.set(c.nom_cle, new Set());
+    capacitesParNom.get(c.nom_cle).add(c.id);
+  }
   const entetes = (base) => indexer(lignesDe(base, 'race_don_tableau_colonne'), ['race_id', 'rang']);
   const cellules = (base) => indexer(lignesDe(base, 'race_don_tableau_cellule'), ['race_id', 'ligne', 'colonne']);
   const tetes = [entetes(dev), entetes(ref)];
   const cases = [cellules(dev), cellules(ref)];
   const trouver = (maps, cle) => maps.map((m) => m.get(cle)).find(Boolean) ?? null;
   return {
+    ligne,
+    /** La ligne existe-t-elle dans la base de production (`ref`) ou de dev (`dev`) ? */
+    dans: (cote, table, id) => (cote === 'ref' ? r : d)[table].has(id),
     nom: (table, id) => {
       const l = ligne(table, id);
       return l?.nom ?? l?.libelle ?? (id ? String(id) : null);
     },
     ordre: (table, id) => ligne(table, id)?.ordre ?? 0,
+    /** Le nom d'une capacité de monstre commune, suivi de son identifiant si une autre porte le même nom (`l` : sa ligne, si on l'a). */
+    capacite: (id, l = ligne('monstre_capacite_commune', id)) => {
+      if (!l) return id ? String(id) : null;
+      return (capacitesParNom.get(l.nom_cle)?.size ?? 0) > 1 ? `${l.nom} (${l.id})` : l.nom;
+    },
     ordreClasse: (id) => {
       const c = ligne('classe', id);
       return [ligne('categorie_classe', c?.categorie_id)?.ordre ?? 0, c?.ordre ?? 0];
@@ -195,26 +382,32 @@ function comparerTable(def, ref, dev, x) {
     const domaine = typeof def.domaine === 'function' ? def.domaine(r) : def.domaine;
     return { def, domaine, groupe: def.groupe(r, x), entite: def.entite(r, x) || '—', ordre: def.ordre(r, x), cle: Object.fromEntries(def.cle.map((c) => [c, r[c]])) };
   };
+  // un contenu entièrement nouveau : une ligne, pas une par entité
+  if (def.resume && !a.size && b.size > 1) {
+    const domaine = typeof def.domaine === 'function' ? def.domaine([...b.values()][0]) : def.domaine;
+    return [ligneDeNote({ def, domaine, groupe: null, entite: def.resume(b.size), ordre: [-1], champ: null, nature: 'ajoute', avant: null, apres: def.resume(b.size), cle: {} })];
+  }
   for (const [k, r] of b) {
     const avant = a.get(k);
     const base = decrire(r);
     if (!avant) {
+      if (def.detail || def.suit?.(r, x)) continue; // dit par l'entité qui la porte
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
       sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
     }
     def.colonnes.forEach(({ colonne, libelle }, i) => {
       const absente = colonnesRef && !colonnesRef.has(colonne);
-      const lire = (v) => (def.valeur ? def.valeur(colonne, v, x) : v);
-      const v1 = lire(absente ? null : avant[colonne]);
-      const v2 = lire(r[colonne]);
+      const lire = (v, ligne) => (def.valeur ? def.valeur(colonne, v, x, ligne) : v);
+      const v1 = lire(absente ? null : avant[colonne], avant);
+      const v2 = lire(r[colonne], r);
       if (pareil(v1, v2)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
       sortie.push(ligneDeNote({ ...base, ordre: [...base.ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
     });
   }
   for (const [k, r] of a) {
-    if (b.has(k)) continue;
+    if (b.has(k) || def.detail || def.suit?.(r, x)) continue;
     sortie.push(ligneDeNote({ ...decrire(r), champ: devRows ? null : def.genre, nature: 'retire', avant: def.entite(r, x), apres: null }));
   }
   return sortie;
@@ -252,6 +445,38 @@ function comparerMagiesInnees(ref, dev, x) {
     sortie.push(ligneDeNote({
       def, domaine: 'races', groupe: x.nom('race', race), entite: x.nom('race', race), ordre: [x.ordreRace(race), 5], champ: 'Magies innées',
       colonne: null, nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1 || null, apres: v2 || null, cle: { race_id: race },
+    }));
+  }
+  return sortie;
+}
+
+/**
+ * Les catégories d'un événement de la chronologie (migration 0043), dites en ensemble : « Catégories : Guerre → Guerre, Fondation » (aucune : sans
+ * catégorie). Un événement ajouté ou retiré est dit par la table evenement, une catégorie supprimée par la sienne (ses événements la perdent aussi :
+ * dit ici) ; tant que la production n'a pas la chronologie, rien.
+ */
+function comparerCategoriesDesEvenements(ref, dev, x) {
+  const devRows = lignesDe(dev, 'evenement_categorie');
+  const refRows = lignesDe(ref, 'evenement_categorie');
+  if (!devRows || !refRows) return [];
+  const parEvenement = (rows) => {
+    const m = new Map();
+    for (const l of rows) (m.get(l.evenement_id) ?? m.set(l.evenement_id, []).get(l.evenement_id)).push(x.nom('categorie_chronologie', l.categorie_id));
+    return m;
+  };
+  const a = parEvenement(refRows);
+  const b = parEvenement(devRows);
+  const dire = (noms) => (noms?.length ? [...noms].sort((p, q) => p.localeCompare(q, 'fr')).join(', ') : null);
+  const sortie = [];
+  for (const id of new Set([...a.keys(), ...b.keys()])) {
+    if (!x.dans('ref', 'evenement', id) || !x.dans('dev', 'evenement', id)) continue;
+    const v1 = dire(a.get(id));
+    const v2 = dire(b.get(id));
+    if (v1 === v2) continue;
+    const e = x.ligne('evenement', id);
+    sortie.push(ligneDeNote({
+      def: { table: 'evenement_categorie' }, domaine: 'chronologie', groupe: null, entite: e.titre, ordre: [...ordreDEvenement(e), 2], champ: 'Catégories',
+      colonne: null, nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1, apres: v2, cle: { evenement_id: id },
     }));
   }
   return sortie;
@@ -311,6 +536,7 @@ export function comparerBases(ref, dev) {
     ...DEFINITIONS.flatMap((def) => comparerTable(def, ref, dev, x)),
     ...comparerMagiesInnees(ref, dev, x),
     ...comparerRelations(ref, dev, x),
+    ...comparerCategoriesDesEvenements(ref, dev, x),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

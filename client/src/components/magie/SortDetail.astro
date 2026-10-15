@@ -1,13 +1,17 @@
 ---
-import { pageHref, sortAncre, type Magies, type SortDb } from '../../lib/magies';
-import { lignesDeStat } from '../../lib/sort-format.mjs';
+import { bulleDeCreature, carteDeCreature, pageHref, sortAncre, titreDeCreature, type Magies, type SortDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
 import Texte from './Texte.astro';
 
 // Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets (le texte des effets secondaires, puis la remarque du classeur
 // (note de cellule) et le texte du sort de niveau 5, à la ligne, dans le même cadre ; les altérations d'état y sont des pastilles avec infobulle, placées
-// dans le texte) et, quand le sort a **ses propres règles**, un bloc dédié : pour une invocation, ses règles (repliées), les créatures invoquées et,
-// au clic sur l'une d'elles, sa fiche minimale (stats, dégâts, capacités) juste sous son bloc ; le lien « Bestiaire » mène à sa page.
+// dans le texte) et, quand le sort a **ses propres règles**, un bloc dédié : pour une invocation, ses règles (repliées) et les créatures invoquées ; le
+// nom d'une créature montre sa carte du bestiaire en infobulle (demande du propriétaire : « La carte sera à garder et servirait de tooltip dans leur
+// correspondance dans les tableaux des magies et leurs sorts associés » : CarteInvoquee.astro, une bulle par créature et par page, posée par
+// MagiePage.astro), sans lien « Bestiaire » à côté (demande du propriétaire), sur la couleur de sa magie, en dégradé quand il en a deux. De même pour la
+// créature d'un effet de carte (« Manteau noir ») : un bouton, pas un lien à bulle (au toucher, la carte couvre l'écran d'un téléphone, et un second
+// appui sur le lien tomberait sur elle).
 // `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies (TableauNpm.astro).
 interface Props {
   sort: SortDb;
@@ -21,7 +25,16 @@ const aPlacer = sort.etats.filter((e) => e.champ === 'effets');
 const memeNom = sort.memeNom.map((id) => magies.sorts.get(id)!).map((o) => ({ sort: o, magie: magies.magies.get(o.magieId)! }));
 const aDesEffets = sort.effets.length > 0 || sort.remarque.length > 0 || Boolean(sort.incantation);
 const titre = `detail-${prefixe}${sort.slug}-titre`;
-const fiche = (c: { id: string }) => `fiche-${prefixe}${c.id.split('/')[1]}`;
+// l'infobulle d'une créature (sa carte) : `data-bulle` pour components/Infobulles.astro, `title` en repli sans JavaScript
+const bulle = (id: string) => {
+  const carte = carteDeCreature(id);
+  return carte ? { 'data-bulle': bulleDeCreature(id), 'aria-describedby': bulleDeCreature(id), title: titreDeCreature(carte) } : {};
+};
+// couleur du nom d'une créature : sa magie, ou ses deux magies de gauche à droite (styles/magie/creatures.css)
+const couleurs = (magiesDeLaCreature: string[]) => {
+  const [premiere, seconde = premiere] = magiesDeLaCreature.map(couleurDeMagie);
+  return premiere ? `--creature-1: ${premiere}; --creature-2: ${seconde}` : undefined;
+};
 // champs modifiables sur le site de dev : effets, remarque et texte du sort de niveau 5 (vides : cachés en lecture, affichés en mode modification)
 const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
 ---
@@ -74,73 +87,20 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         )}
         <h6 class="texte-titre">Créatures invoquées ({i.creatures.length})</h6>
         <ul class="invoque">
-          {[...new Set(i.creatures.map((c) => c.bloc))].map((bloc) => {
-            const duBloc = i.creatures.filter((c) => c.bloc === bloc);
-            return (
-              <>
-                <li>
-                  <span class="invoque__bloc">{bloc}</span>
-                  <span class="invoque__creatures">
-                    {duBloc.map((c) => (
-                      <span class="creature">
-                        <button type="button" class="chip creature__bouton" aria-controls={fiche(c)}>{c.nom}</button>
-                        <a class="chip creature__lien" href={pageHref(c.id)} aria-label={`Page de ${c.nom} dans le bestiaire`}>Bestiaire</a>
-                      </span>
-                    ))}
-                  </span>
-                </li>
-                <li class="creature__rangee" hidden>
-                  {duBloc.map((c) => (
-                    <article class="creature__fiche" id={fiche(c)} hidden aria-label={`Fiche de ${c.nom}`}>
-                      <h6>{c.nom}</h6>
-                      <div class="creature__colonnes">
-                        <section>
-                          <h6 class="texte-titre">Stats</h6>
-                          <dl class="creature__stats">
-                            {c.stats.map((st) => (
-                              <div>
-                                <dt>{st.libelle}</dt>
-                                <dd>{lignesDeStat(st.brut).map((l) => <span class="creature__ligne">{l}</span>)}</dd>
-                              </div>
-                            ))}
-                            {c.attaques.length > 0 && (
-                              <div>
-                                <dt>Dégâts</dt>
-                                <dd>{c.attaques.map((a) => <span class="creature__ligne">{a}</span>)}</dd>
-                              </div>
-                            )}
-                            {c.caracteristiques.length > 0 && (
-                              <div>
-                                <dt>Caractéristiques</dt>
-                                <dd>{c.caracteristiques.map((k) => <span class="creature__ligne">{k.nom} <span class="val">{k.valeur}</span></span>)}{c.bonus.map((b) => <span class="creature__ligne muted">{b}</span>)}</dd>
-                              </div>
-                            )}
-                          </dl>
-                        </section>
-                        <section>
-                          <h6 class="texte-titre">Capacités</h6>
-                          {c.capacites.length === 0 ? (
-                            <p class="muted">Aucune</p>
-                          ) : (
-                            <ul class="creature__capacites">
-                              {c.capacites.map((k) => (
-                                <li>
-                                  <strong>{k.nom}</strong>
-                                  {k.npmMin ? <span class="repere">NPM {k.npmMin}</span> : null}
-                                  {k.etiquette ? <span class="repere">{k.etiquette}</span> : null}
-                                  <Texte blocs={k.blocs} />
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </section>
-                      </div>
-                    </article>
+          {[...new Set(i.creatures.map((c) => c.bloc))].map((bloc) => (
+            <li>
+              <span class="invoque__bloc">{bloc}</span>
+              <span class="invoque__creatures">
+                {i.creatures
+                  .filter((c) => c.bloc === bloc)
+                  .map((c) => (
+                    <span class="creature">
+                      <button type="button" class="chip creature__bouton" {...bulle(c.id)} style={couleurs(c.magies)}>{c.nom}</button>
+                    </span>
                   ))}
-                </li>
-              </>
-            );
-          })}
+              </span>
+            </li>
+          ))}
         </ul>
       </section>
     ))
@@ -150,7 +110,12 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
     sort.effetsDeCarte.map((e) => (
       <section class="sort-detail__regles">
         <h5>Règles propres : {e.libelle}</h5>
-        <p>Carte de <a href={pageHref(e.id)}>{e.nom}</a></p>
+        <p>
+          Carte de{' '}
+          <span class="creature">
+            {carteDeCreature(e.id) ? <button type="button" class="chip creature__bouton" {...bulle(e.id)} style={couleurs(e.magies)}>{e.nom}</button> : e.nom}
+          </span>
+        </p>
         <Texte blocs={e.blocs} />
       </section>
     ))

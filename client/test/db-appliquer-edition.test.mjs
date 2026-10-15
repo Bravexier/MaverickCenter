@@ -150,7 +150,7 @@ test('un journal rapatrié une seconde fois ne remet jamais une valeur annulée 
   assert.ok(!apres['metier.sql'].includes("'+7% Essai'"), 'la valeur annulée (B) ne revient pas');
 });
 
-test('un don créé puis supprimé avant que la base vivante soit refaite (lots « intégrés ») entre dans l’historique : son identifiant n’est pas repris', () => {
+test('un don créé puis supprimé avant que la base vivante soit refaite (lignes « fantômes », toujours en attente) entre dans l’historique : son identifiant n’est pas repris', () => {
   const dossier = join(tmp, 'db-f');
   const { chemin: cf } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier });
   let v = ouvrirBaseVivante(cf);
@@ -161,7 +161,8 @@ test('un don créé puis supprimé avant que la base vivante soit refaite (lots 
   const id = creer(v).crees[0].id;
   enregistrer(v, { page: 'classes/guerrier', operations: [{ op: 'supprimer', entite: 'capacite', cle: { id } }] });
   v.close();
-  // une livraison sans rapport : la base vivante est refaite, la paire créer / supprimer n'a rien à rejouer (« intégrée »)
+  // une livraison sans rapport : la base vivante est refaite, la paire créer / supprimer n'a rien à rejouer ; rien n'en est noté (lignes « fantômes »,
+  // serveur/edition-journal.mjs#rejouer : réévaluées à chaque rejeu, elles restent en attente jusqu'à leur livraison)
   const regles = join(tmp, 'regles-f.db');
   cpSync(cheminBase({ sansExemples: false }), regles);
   const r = new DatabaseSync(regles);
@@ -171,7 +172,8 @@ test('un don créé puis supprimé avant que la base vivante soit refaite (lots 
   v = ouvrirBaseVivante(cf);
   const lots = v.prepare("SELECT DISTINCT lot_id FROM modification WHERE json_extract(cle, '$.id') = ?").all(id).map((m) => m.lot_id);
   assert.equal(lots.length, 2);
-  assert.deepEqual(v.prepare(`SELECT DISTINCT etat FROM modification WHERE lot_id IN (${lots.map(() => '?').join(', ')})`).all(...lots).map((m) => m.etat), ['integree']);
+  assert.deepEqual(v.prepare(`SELECT DISTINCT etat FROM modification WHERE lot_id IN (${lots.map(() => '?').join(', ')})`).all(...lots).map((m) => m.etat), ['en_attente']);
+  assert.equal(v.prepare('SELECT 1 FROM capacite WHERE id = ?').get(id), undefined, 'le don n’est pas dans la base vivante');
   const j = journalExporte(v);
   v.close();
   assert.deepEqual(lots.filter((l) => j.lots.some((x) => x.id === l)), lots, 'les deux lots sont dans le journal exporté');

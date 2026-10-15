@@ -18,9 +18,10 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | --- | --- |
 | `client/serveur/index.mjs` | Point d'entrée livré (variables d'environnement ci-dessous) |
 | `client/serveur/service.mjs` | Serveur HTTP (`node:http`), surveillance des fichiers, arrêt propre |
-| `client/serveur/api.mjs` | Routes : une requête lue → une réponse JSON, sans réseau (testé directement) |
+| `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait), sans réseau (testé directement) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
+| `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -44,12 +45,13 @@ Pourquoi une copie des règles : les fiches citent les règles (race, classe, so
 
 **Quand une livraison change les règles**, le service le voit (empreinte différente) et refait la base vivante : nouvelle copie des règles, puis
 toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut), et le journal de l'édition
-est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier** que les nouvelles
-règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décision R42, « Fiches de personnage (R42) »
+est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort, un métier ou une arme** que les nouvelles
+règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décisions R42, R52, « Fiches de personnage (R42) »
 ci-dessous) ; `/api/etat` en donne la liste (`base.retraits` : `{ le, fiches }`, la dernière liste non vide, datée, gardée dans `vivante.json` par les
 reconstructions qui ne retirent rien et au redémarrage). **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
 n'existe plus (y compris un don, une spécialité ou un sort dont la classe ou la magie a disparu : un sort d'une magie supprimée chez un Potentiel
-Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, qui ne sont pas retirés), une colonne remplie a disparu du schéma, une
+Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, qui ne sont pas retirés), une colonne remplie a disparu du schéma (sauf
+une colonne que les règles retirent exprès, `COLONNES_RETIREES` de `fiche-format.mjs` : le `statut` des fiches, migration 0038, perdu sans bloquer), une
 contrainte a changé — fait garder la base en place telle quelle (sans retrait ni note) :
 le service continue avec elle (règles d'avant) et `/api/etat` donne l'erreur, par exemple `personnage_classe.classe_id = « classes/x » absent de
 classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13 (`data/migrations/`) ou correction des règles. La base
@@ -63,12 +65,14 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 
 | Requête | Réponse |
 | --- | --- |
+| `GET /api/maintenance/` | `{ active }` : ce serveur est-il en maintenance (« Maintenance pendant une mise à jour », plus bas) ; en maintenance, aussi `version_cible`, `depuis`, `etape` (et, sur le site de dev, `lot`, `run`, `levable`). Répond sans la base |
 | `GET /api/etat/` | Version du service, état de la base vivante (`disponible`, `a_jour`, `erreur`, `regles`, `schema`, `refaite_le`, `retraits` : les fiches adaptées par la dernière reconstruction qui a retiré quelque chose, R42, ou `null` ; `pretires`) |
-| `GET /api/personnages/` | `{ personnages: [...] }` : résumé de chaque prétiré (nom, statut, race, ethnie, magies, dieu, métier, classes et spécialités, niveaux, nombre de règles enfreintes, dates) |
+| `GET /api/personnages/` | `{ personnages: [...] }` : résumé de chaque prétiré (nom, portrait — `null` ou `{ empreinte, style }` : l'empreinte de l'image et le style qui en montre le carré cadré, `lib/portrait.mjs#styleDuCadrage` —, race, ethnie, magies, dieu, métier, classes et spécialités, niveaux, nombre de règles enfreintes, dates) |
 | `POST /api/personnages/` | Crée un prétiré → `201`, `Location`, `{ personnage, controles, niveau }` |
 | `GET /api/personnages/<id>/` | `{ personnage, controles, niveau }` |
 | `PUT /api/personnages/<id>/` | Modifie → `{ personnage, controles, niveau }` |
 | `DELETE /api/personnages/<id>/` | Supprime, corps `{ "version": … }` (celle de la fiche lue) → `{ supprime }` ; `409` si elle a changé entre-temps |
+| `GET /api/personnages/<id>/portrait/` | L'image du portrait, telle quelle (pas du JSON : `Content-Type` de l'image, WebP, JPEG ou PNG), pour la liste des personnages qui n'en reçoit que l'empreinte ; `ETag` = l'empreinte, `304` si le navigateur l'a déjà (`If-None-Match`) ; `404` sans fiche ou sans portrait |
 
 Les adresses finissent par « / », comme celles du site : en développement, Astro refuse une adresse sans « / » finale avant de la transmettre au
 service (qui accepte les deux formes).
@@ -78,29 +82,31 @@ service (qui accepte les deux formes).
 `accessoires`, `inventaire`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Rien de calculé n'y est stocké.
 
 ```json
-{ "nom": "Aldric", "statut": "brouillon", "race_id": "races/humain", "magie_innee_id": "magies/magie-du-feu", "xp": 0,
+{ "nom": "Aldric", "race_id": "races/humain", "magie_innee_id": "magies/magie-du-feu", "xp": 0,
   "classes": [{ "rang": 1, "classe_id": "classes/guerrier", "specialite_id": null }],
   "caracteristiques": [{ "caracteristique_id": "force", "base": 4, "croix": 0 }] }
 ```
 
-- **Création** : les colonnes absentes prennent la valeur d'une fiche vide (`ficheVide` : brouillon, mono-classe, 0 XP, alignement, bourse et
+- **Création** : les colonnes absentes prennent la valeur d'une fiche vide (`ficheVide` : mono-classe, 0 XP, alignement, bourse et
   ambidextrie à zéro). Le service fixe l'identifiant (UUID), la nature (prétiré), le propriétaire (aucun), la visibilité (tous) et les dates.
 - **Modification** : `version` (celle de la fiche lue) est obligatoire ; si la fiche a changé depuis, rien n'est écrit et la réponse `409` rend la
   fiche à jour. Une colonne absente garde sa valeur ; une liste présente remplace toute la liste, une liste absente ne change pas. La version est
   l'empreinte du contenu : une fiche dont une règle supprimée est retirée (R42 : liste, notes et date changent) change de version ; un élément
   seulement renommé ne la change pas (la fiche n'a que des identifiants).
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
-  hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…).
-- **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; un brouillon peut en avoir, une fiche ne
-  passe `valide` que sans aucune (sinon `422` avec la liste). On peut archiver un prétiré (`statut: "archive"`) ou le **supprimer** (demande du
-  propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
+  hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
+  retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038) n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
+- **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
+  les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
+  On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe.
 
 ## Édition des règles (site de dev)
 
-Demande du propriétaire : sur le **site de dev seulement**, et **sur ordinateur seulement** (écran large et pointeur précis : ni téléphone ni
-tablette), les pages du guide, des races, des magies, des classes et des métiers se modifient en place. Le service n'ouvre ses routes
+Demande du propriétaire : sur le **site de dev seulement**, sur tous les écrans (téléphone et tablette compris depuis le 2026-10-15 : un outil pour
+ceux qui bidouillent déjà, pas pour les utilisateurs finaux), les pages du guide, des races, des magies, des classes, des métiers et des armes se modifient en place, et celles du Codex (pages du Codex et
+bestiaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »). Le service n'ouvre ses routes
 `/api/edition/` que s'il est lancé avec `MAVERICK_EDITION=1` (le `.env` du serveur de test, posé par `deploy/vps/instances.sh` ou l'installateur
 de test ; `npm run serveur` l'ouvre par défaut, `MAVERICK_EDITION=0` le ferme) : ailleurs elles répondent `403` et `/api/etat/` dit
 `edition: false`, et la page ne charge même pas l'éditeur (`src/scripts/edition.mjs`).
@@ -115,7 +121,13 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
 | Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
+| Codex | Titre et texte des pages tirées du Google Doc « CODEX Maverick » (`lib/edition-modele.mjs#texteDePageModifiable` ; pas la description des relations entre les peuples, tirée du classeur des races), avec l'éditeur du guide (toute la page est un seul morceau de texte) ; `tools/docs/codex.py --verifier` contrôle une page que le site a modifiée dans son état d'import, et une nouvelle écriture des pages la garde telle quelle (docs/codex.md) |
+| Bestiaire | Les monstres (`docs/bestiaire.md`, « Modifier le bestiaire ») : les champs de la carte ouverte (nom, catégorie, type, alignement, échelle, description de la créature (R65), texte de chaque rubrique ; de l'espèce : nom, échelles, description, lieu, complément, blocs, cases de butin ; du groupe d'espèces, « Ottar » : nom et description, R64 ; les capacités : nom et description d'une capacité commune, pour toutes ses cartes, son préfixe et la liste de sorts d'un « Lanceur de sorts » sur la carte, la valeur de chaque « {N} » au curseur, ajout et retrait d'une capacité, décisions R66 à R69) ; ajouter un monstre (une carte dans une espèce, rubriques vides) ou une espèce, supprimer une carte ou une espèce sans carte ; bornes des échelles, écriture de la catégorie, lieux de rencontre, valeurs typées et tables de détail d'une carte recalculés par les fonctions de l'extraction (`lib/monstre-champs.mjs`, `serveur/edition-bestiaire.mjs`) ; le portrait d'une carte ou d'une espèce sans carte (choisi, recadré ou retiré comme sur la fiche de personnage, `src/scripts/portrait.mjs` ; enregistré tout de suite, seul dans son lot ; cadrage gardé dans l'image par le service) ; le curseur d'échelle de la carte et les infobulles du butin refaits avec la carte (rendus `monstre-echelle`, `monstre-butin` : le tableau de l'introduction et le glossaire du butin viennent de `GET /api/edition/listes/`, `echellesDePuissance`, `objetsDuButin`, `renvoisAuxDegatsMoyens`). Les créatures invoquées ne se modifient pas ici |
+| Armes | `/ressources/armes/` (« tout peut être éditable à l'instar des autres pages ») : en mode modification, rien ne se sélectionne et tous les tableaux s'ouvrent. Chaque arme (sauf les armes de monstres) : nom, mains, compétence (une écriture de l'onglet), type, coût, effet, description, arme de départ ; dé, bonus, portée, solidité, provenance, types de dégâts et minimums de caractéristique en sont recalculés (`lib/arme-champs.mjs`, rejoué sur toute la base), les colonnes tirées se réaffichent après l'enregistrement. Ajouter une arme (famille, nom, catégorie, type, effet… : à la fin du tableau de sa famille) ou la supprimer (retirée des fiches qui l'ont, avec une note datée : R52, comme R42). Les matériaux sont en lecture (décision R62 : ils se modifient sur la page « Composants », la page des armes suit). Chaque amélioration d'arme : coût et effet (la ligne TOTAL est refaite). Le corps Markdown de la page suit, ligne à ligne (`lib/corps-armes.mjs`, `serveur/edition-armes.mjs`) |
+| Composants | `/ressources/composants/` (`docs/content-guide.md`, « Composants ») : monnaies, matériaux, gemmes, bois, ingrédients d'alchimie (fruits compris), objets de l'onglet « Équipement inventaire ». Chaque case se modifie (prix en RF, CONVERTISSEUR, type, marque majeur et affinité d'un ingrédient recalculés : `lib/composants-champs.mjs`) ; ajouter dans chaque tableau ; supprimer ce que rien d'autre ne cite (refus 409 qui nomme les règles qui le citent) ; un objet supprimé reste dans l'inventaire et la ceinture des fiches sous son nom, sans lien au catalogue (`ressource_id` = NULL), avec une note datée (décision R60 ; aussi à la reconstruction de la base vivante, `fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Les valeurs des monnaies ne se modifient pas (R61) ; les matériaux ne se modifient qu'ici (R62 : type, prix recopié dans `materiau_arme`, effets sur une arme). Le corps des pages qui écrivent ces composants suit (`lib/corps-composants.mjs`, `serveur/edition-composants.mjs`) |
 | Métiers | Ajouter, modifier, supprimer (retiré des fiches qui l'ont, avec une note : R42) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
+| Chronologie | Chaque événement (`/chronologie/<id>/`, [`chronologie.md`](chronologie.md), « Modifier la chronologie ») : date (époque, année, année de fin ; l'événement prend sa place d'après elle), titre, portée et lieu d'un Impact, catégories (cases à cocher, plusieurs au choix ; opération `categories`), descriptions (blocs modifiés en place avec l'éditeur du guide — leur rendu dans le navigateur, `lib/chronologie-rendu.mjs`, redonne le Markdown du build, `test/chronologie-rendu.test.mjs` —, leur lien vers une page du wiki ; en ajouter, en retirer, une au moins) ; créer un événement (« + Nouvel événement », affiché sur `/chronologie/?evenement=<id>` jusqu'à la version suivante du site) ou le supprimer (avec ses blocs et ses catégories) ; le bouton « Catégories » : créer, renommer, supprimer une catégorie (`categorie_chronologie` : id figé, écriture unique, jamais `sans-categorie` ; supprimée, elle quitte ses événements), enregistré d'un bloc à part. La frise et l'événement affiché sont refaits d'après la base vivante au chargement (`GET /api/edition/chronologie/`). Service : `serveur/edition-chronologie.mjs` ; page : `src/scripts/edition/chronologie.mjs` |
+| Mots-clés | Sur la page Recherche (`/recherche/`, extension `src/scripts/edition/mots-cles.mjs`), en mode modification : la liste relue dans la base vivante (`GET /api/edition/mots-cles/`), chaque libellé modifiable, « Fusionner dans… » et « Supprimer » mis en file et envoyés avec « Enregistrer » (ordre du lot : fusions, suppressions, renommages : `lib/mots-cles-edition.mjs`, confirmés une fois avec ce qu'ils retirent), « + Ajouter un mot-clé » créé tout de suite ; un renommage vers l'écriture d'un autre mot-clé propose la fusion (`fusionner_mots_cles`, sinon `409`). Créer, renommer, fusionner et supprimer un mot-clé du vocabulaire (`mot_cle`, migration `0043`) ; une suppression le retire de toutes les pages qui le portent (clé étrangère `ON DELETE CASCADE`, et le service les retire d'abord pour le journal ; les événements de la chronologie n'ont pas de mots-clés mais des catégories). Les mots-clés qui rangent les pages du site (catégories des classes, « classe », « race », « race hybride », « capacité de classe », « métier », « codex » : `lib/mots-cles.mjs#MOTS_CLES_PROTEGES`) ne se suppriment, ne se renomment (pas même leur casse : les règles lisent leur écriture exacte), ne se fusionnent ni ne se créent seuls (`409`, avec la raison). Son identifiant est figé. Un renommage, une fusion ou un retrait sur une page du Codex la fait compter comme « modifiée par le site » par `tools/docs/codex.py` (gardée telle quelle, ses mots-clés non comparés au document) |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
 `sort-etats`) : une page créée (race, classe, métier) a pour seule source sa provenance « Site de dev › édition du AAAA-MM-JJ » (tables `source`,
@@ -180,13 +192,15 @@ construites par `classe-dons-rendu.test.mjs`), puis rebranche ses onglets (évè
 chargement l'élément que vise l'adresse (`#don-…`) est ouvert et montré. Limite : jusqu'à la construction suivante,
 `/capacites/<slug>/` d'un don supprimé reste en ligne (l'adresse d'un don créé mène à son ancre sur la page de sa classe) et `/fiche/regles.json` ne
 change pas : la page `/fiche/` propose encore un don, une spécialité ou un métier supprimé, et son envoi est refusé (`400`, problème nommé : la règle
-n'existe plus) ; un élément renommé y garde son ancien nom, alors que `/personnages/` montre déjà le nouveau ; la fiche écarte un don qu'aucun choix
-des règles ne range (`donsValables`). En production (et sur le serveur de test), une fiche qui cite un don, une spécialité, un sort ou un métier
-supprimé par une livraison en est retirée, avec une note datée, quand la base vivante est refaite (R42).
+n'existe plus) ; un élément renommé y garde son ancien nom, alors que `/personnages/` montre déjà le nouveau nom d'une race, d'une magie (colonnes) ou d'une classe
+(filtre) ; la fiche écarte un don qu'aucun choix
+des règles ne range (`donsValables`). En production (et sur le serveur de test), une fiche qui cite un don, une spécialité, un sort, un métier ou une
+arme supprimé par une livraison en est retirée, avec une note datée, quand la base vivante est refaite (R42, R52).
 
 **Fiches de personnage (R42)** (décision du propriétaire : « juste supprimer le don des fiches », « Même en dev il faut supprimer [le don] des
-fiches », « Il en va de même pour les sorts ou métiers supprimés » ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don, une spécialité
-ou un métier qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` part, `personnage_classe.specialite_id`
+fiches », « Il en va de même pour les sorts ou métiers supprimés » ; une arme aussi : R52 ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don,
+une spécialité, un métier ou une arme qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` (ou `personnage_arme`, avec
+la composition, l'amélioration et l'élément de cet emplacement) part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
 y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
 encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
@@ -206,8 +220,9 @@ fiches de joueur de la base par date de création, `numerosDesFichesDeJoueur`, d
 de la page d'une classe, réponse du lot, `/api/etat` — ; une fiche créée ensuite prend le numéro suivant, seule la suppression d'une fiche de joueur
 plus ancienne décale les suivantes), annoncée après l'enregistrement
 par le message commun de l'éditeur (`annonceDesFiches`, qui reste affiché) ; sur la page d'une classe, l'infobulle de « Supprimer » et la confirmation
-des conséquences nomment d'avance les fiches qui perdront la ligne (`libelleDeRetrait`, `consequences`). Une fiche « valide » le reste : aucun
-contrôle ne signale un manque, la note est le seul signal. Un élément **seulement modifié** (renommé, type, effet…) ne touche pas les fiches (ni
+des conséquences nomment d'avance les fiches qui perdront la ligne (`libelleDeRetrait`, `consequences`). Aucun contrôle de la base ne signale le
+manque : la note est le signal (la page `/fiche/` remet aussi une spécialité ou un don à choix retiré dans ses choix à faire, pas un métier, un sort ni
+une arme). Un élément **seulement modifié** (renommé, type, effet…) ne touche pas les fiches (ni
 ligne, ni note, ni version) : une fiche ne garde que des identifiants, qui ne changent jamais (migration 0006) ; le nouveau nom se lit dans les règles
 (`serveur-edition-fiches`). Une modification qui rend une fiche non conforme (don passé dans une autre spécialité) n'est pas un retrait :
 `v_personnage_controle` le signale. Limites : sur le site de dev, aucune archive n'est faite au moment de l'édition (la note est la seule trace) ; à
@@ -226,7 +241,33 @@ réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit`,
 instant du lot, puis son identifiant, puis le rang) est le même pour le service, `db:appliquer-edition` et la mise à jour des règles ; l'instant
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
-« déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) ; une ligne créée puis supprimée par le journal n'a rien à rejouer. Le
+« déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) — sauf si elle vaut encore ce que la modification avait trouvé (`avant`) :
+elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compter sur B, un nom de catégorie ou de mot-clé libéré, une date intermédiaire ;
+les lots déjà livrés, eux, ne sont jamais rejoués). **Point fixe** : un lot en conflit le reste — la reconstruction suivante ne le relit pas, le
+journal exporté (mise à jour, `db:appliquer-edition`) ne l'emporte pas. Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté et
+la passe recommence sans lui (ni parmi les modifications « plus récentes » d'une ligne, ni parmi les lignes fantômes), jusqu'à ce qu'une passe n'en
+écarte plus. Le résultat est celui des seuls lots qui passent : la reconstruction suivante et le rejeu du journal exporté le redonnent, sans conflit
+nouveau (`test/serveur-edition-rejeu-fantomes.test.mjs`, dont les scénarios des revues adverses). Une ligne créée puis supprimée par le journal en
+attente est « fantôme » le temps de cette vie : elle n'est pas insérée (ses modifications non plus), et une ligne qui la citait entre-temps (un bloc
+de la chronologie lié à la page d'un métier créé puis supprimé) ne met pas son lot en conflit. Rien n'en est noté : ses modifications restent en
+attente jusqu'à la livraison et sont réévaluées à chaque rejeu. À la fin d'une passe, un fantôme qu'une référence cite encore (le lot qui retirait la
+citation est en conflit ; une clé étrangère qui ne vise pas la clé primaire, comme `capacite(specialite_id, classe_id)`, est comparée aux valeurs de
+ses insertions) est écarté : la passe recommence avec sa ligne rejouée comme une autre — créée, modifiée, et supprimée seulement si plus rien ne la
+cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière. Le service ne vide le
+dictionnaire des sources que de ses orphelins (`supprimerPage`) : rejouée alors qu'une page la cite encore (sa suppression est en conflit), la
+suppression d'une source n'est pas faite (`siOrphelines`). Un bloc de description de la chronologie ne reprend jamais le rang d'un bloc supprimé
+(`rangLibre` : table, journal et historique). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`, que la mise à jour
+des règles a donc le droit d'écrire. Un lot noté avant la migration 0043 (page_tag avec sa colonne `libelle`, un mot-clé que le vocabulaire n'a pas)
+est lu dans la forme nouvelle au rejeu (`adapter` de `rejouer` : `ancienneEcritureDesMotsCles`) : le mot-clé manquant est retrouvé par son écriture,
+ou créé sous l'id noté (`-2`… seulement si l'historique l'a déjà employé : un renommage noté depuis vise cette création) dans chaque lot qui le pose,
+s'il manque — par le premier qui passe, avec son écriture, même si la ligne de `page_tag` est retirée ensuite (le site de dev l'a eu : un renommage,
+une fiche de don créés depuis s'en servent) —, annulé avec un lot en conflit, jamais noté au journal, et jamais retiré ensuite (son id et son écriture
+ne resservent pas) ; table `mot_cle` alors écrite par la mise à jour. Un lot noté avant la migration 0044 qui touche les capacités d'une carte (une
+capacité avec son `nom` et son `texte`, ou le texte de la rubrique « Capacité(s) », que 0044 vide : décision R66) n'a pas d'équivalent sûr (laquelle
+des capacités communes, et à quel rang : 0044 a détaché « Tome de la corruption niv.1. ») : l'adaptateur (`ancienneEcritureDesCapacites`,
+`serveur/edition-bestiaire.mjs`) rend un `conflit`, et le lot passe en conflit avec un message qui dit quoi refaire, au lieu d'un conflit qui ne
+s'explique pas — rien n'en est écrit, ni dans les règles ni dans l'historique. Les autres modifications des monstres notées avant 0044 passent. Le
+journal stocké garde sa forme. Le
 **corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
@@ -263,9 +304,14 @@ une valeur que le site a changée.
 | `POST /api/edition/lignes/` | `{ lignes: [{ table, cle }] }` → la ligne actuelle de chacune (passage en mode modification) |
 | `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
+| `GET /api/edition/mots-cles/` | `{ motsCles: [{ id, libelle, libelle_cle, pages, protege }] }` : le vocabulaire dans la base vivante (`pages` : le nombre de pages qui le portent) (vue `v_mot_cle` ; `protege` : la raison qui interdit de le supprimer ou d'en changer la clé, sinon `null`) |
+| `GET /api/edition/chronologie/` | `{ evenements: [...], categories: [...] }` : les événements dans l'ordre de lecture, avec leur date, leur portée et leurs catégories, et les catégories avec leur nombre d'événements (la frise refaite au chargement, la gestion des catégories) |
+| `POST /api/edition/evenement/` | `{ evenement }` → l'événement, ses blocs (texte, lien, titre de la page liée) et ses catégories ; `404` s'il n'existe pas (ou plus) |
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
 | `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent (qui en seront retirées), dans la base vivante (D11) |
-| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
+| `POST /api/edition/bestiaire/` | `{ connues, logo }` → l'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants) et, pour celles que la page n'a pas (`connues`), la ligne et la carte en HTML (`lib/bestiaire-rendu.mjs`, comme la page construite, sauf le lien du nom, qui mène à la carte dans la page (`#carte-…`) : un monstre créé depuis la construction n'a pas de page ; le logo à la place du portrait, que le mode modification charge ensuite) ; `{ capacites: [ids des cartes] }` → `{ capacites: { id: html } }` : le bloc des capacités de ces cartes (`htmlDesCapacitesDeLaCarte`), après une modification de leurs capacités ou d'une capacité commune qu'elles ont (décision R66) |
+| `POST /api/edition/portrait/` | `{ table, cle }` → le portrait d'une carte de monstre ou d'une espèce, en entier (`portrait` : data URL, ou null) et son cadrage. Les autres réponses (lignes lues, en attente, d'un lot, d'un conflit) ne donnent d'une image que `{ image: true, empreinte, resume }` (`lib/edition-modele.mjs#ligneSansImage`) : 700 000 caractères par image |
+| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
 
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
@@ -278,7 +324,9 @@ Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour
 **Sur le serveur normal** (et partout sans service : version portable, site statique) : la page construite montre la **note de version** de la
 dernière livraison (`note_version`, `note_version_ligne`, section 15 de `data/schema.sql`), puis l'**historique** des précédentes. Une note est
 la liste des modifications des règles d'une version X.Y à la suivante (toutes les versions X.Y.Z de dev entre les deux), par domaine (sorts par
-magie, magies, classes et leurs dons, races, métiers, guide), l'ancienne valeur **barrée** mais lisible et la nouvelle à côté, en **vert**
+magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0032-notes-codex-bestiaire` ; armes, matériaux et améliorations
+d'arme : migration `0034-armes-modifiables` ; chronologie et mots-clés : migration `0043-chronologie-modifiable-mots-cles`), l'ancienne valeur **barrée**
+mais lisible et la nouvelle à côté, en **vert**
 (amélioration) ou **rouge** (affaiblissement) d'après la décision R29 (`docs/decisions-regles.md`, `lib/notes-de-version-sens.mjs`), plus le
 champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemple (lorem ipsum, `exemple = 1`, migration `0023`) tiennent la place ;
 la première vraie mise à jour les retire.
@@ -286,11 +334,15 @@ la première vraie mise à jour les retire.
 **Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
 (`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
 `site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
-Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé. Le **champ libre** (Markdown simple :
+Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
+(événements, descriptions, catégories) et le vocabulaire des mots-clés en sont : domaines « Chronologie » et « Mots-clés » ; les catégories d'un événement sont comparées comme un ensemble). Une ligne qui n'existe qu'avec une
+autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
+dit par la carte ou l'espèce qui la porte ; un contenu entièrement absent de la production (le Codex et le bestiaire à leur première livraison) tient en
+une ligne (« 116 pages du Codex », « 144 espèces », « 315 monstres », « 469 capacités de monstre ») au lieu d'une par entité (`lib/notes-de-version.mjs`, `resume` et `detail`). Le **champ libre** (Markdown simple :
 paragraphes, listes, gras, italique, liens web) s'enregistre dans `note_version_brouillon` (section 14 : il suit la base vivante quand les
 règles changent ; `409` si quelqu'un l'a changé entre-temps).
 
-**« Effectuer la mise à jour »** (ordinateur seulement ; pas de protection avant la connexion Discord, décision du propriétaire) : après
+**« Effectuer la mise à jour »** (et « Simulation de mise à jour », sur tous les écrans ; pas de protection avant la connexion Discord, décision du propriétaire) : après
 confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
 versions — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
 bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il déclenche le workflow GitHub **`mise-a-jour.yml`** sur `dev`
@@ -362,6 +414,11 @@ pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `si
   brouillon, sans annuler le lot) ;
 - le lot dit s'il est une simulation (`simulation`, couvert par l'empreinte) : le workflow refuse un lot lancé dans l'autre mode.
 
+La page ne montre l'encart « Dernier lancement » / « Dernière simulation » que pour la **version en préparation** (demande du propriétaire :
+la livraison précédente, terminée, disparaît) ; un lancement d'une autre version reste affiché tant qu'il pèse sur la page — `occupe`, son lot
+tient le texte figé, ou ce lot, pas encore dans dev, s'annule encore (`liberable`) — pour qu'elle dise pourquoi (`lancementAffiche`,
+`lib/notes-de-version-rendu.mjs`, testé).
+
 **Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
 avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`
 (lot, rang, date, table, clé, opération, avant, après). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
@@ -428,6 +485,39 @@ et, sur le serveur de test, le fichier `secrets/github-actions-token` (jeton fin
 pas dans [`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ quatre passages de la CI (préparation, PR,
 livraison, publication) en minutes GitHub Actions ; une simulation, un seul (la préparation).
 
+## Maintenance pendant une mise à jour
+
+Demande du propriétaire : une mise à jour prend du temps (préparation, deux PR et leur CI, puis les installateurs : plusieurs dizaines de minutes). Dès que
+**« Effectuer la mise à jour »** est lancé (la vraie, pas la simulation), **les deux sites** — le site de dev et la production — passent en
+**« Maintenance en cours »** : chaque page part vers `/maintenance/` (« En travaux, merci de revenir dans quelques minutes »), où **tout le menu est
+grisé** et inerte. L'écran disparaît **dès que c'est terminé, pour chaque serveur indépendamment** : celui qui s'installe le premier rouvre le premier.
+
+| Où | Ce qui se passe |
+| --- | --- |
+| Service du site de dev | Il tient le lancement (`db/mise-a-jour/etat.json`) : une vraie mise à jour dans les états `envoi`, `lance`, `en_cours`, `fusionne` ou `termine` en fait une **annonce** (`annonceDuLancement` : lot, version cible X.Y, début, état), publiée dans le **dossier partagé** (`MAVERICK_MAINTENANCE`, fichier `annonce.json`) au lancement, à l'annulation, et à chaque tour de sa minuterie ; un lancement fini sans livraison (`echec`, `echec_livraison`, `erreur`, `annule`), une simulation ou un lancement à la main (`manuel` : la page « Mise à jour » doit rester ouverte pour en donner les valeurs) la retirent |
+| Service de la production | Il lit l'annonce dans le même dossier (monté dans les deux instances : le `maintenance/` du serveur normal) ; il n'écrit rien |
+| Chaque service | `GET /api/maintenance/` : en maintenance tant que **sa** version (celle qui tourne, `version.json` lu au démarrage) est plus ancienne que la version cible (`etatDeMaintenance`). Le serveur de test reçoit d'abord la version de dev qui porte le lot (0.2.Z+1 pour une livraison 0.3 : toujours en maintenance), puis la livraison (0.3.0, comme la production). La nouvelle version installée, le service redémarre et refait sa base vivante avant de répondre : ce serveur rouvre, l'autre reste en maintenance tant qu'il n'a pas la sienne |
+| Chaque page (`layouts/Base.astro`) | Un script en ligne, dans `<head>`, demande `/api/maintenance/` au chargement, au retour sur l'onglet et toutes les 30 s ; en maintenance, il grise le menu et part vers `/maintenance/?retour=<la page>`. Sans service (site statique seul) ou service arrêté, rien ne se passe. Ni sur `/maintenance/`, ni dans la version portable |
+| `/maintenance/` (`pages/maintenance.astro`, `scripts/maintenance.mjs`) | Redemande toutes les 3 s ; montre la version, l'heure du début et l'étape (préparation et contrôles, livraison, installation sur ce serveur) ; fini, ramène à la page d'où l'on venait (`lib/maintenance-retour.mjs` : une page de ce site seulement), sinon à l'accueil. Service injoignable (il redémarre) : il attend |
+| Page « Mise à jour » | Après une vraie mise à jour lancée (pas « manuel »), elle part tout de suite vers `/maintenance/` ; la confirmation le dit |
+
+Le site de dev **suit la mise à jour sans personne sur sa page** (ses pages renvoient vers `/maintenance/`) : sa minuterie (`MAVERICK_INTERVALLE`)
+relit le run GitHub (au plus toutes les 20 s, tant qu'il est dans les états suivis et sans nouvelles depuis moins de 3 h) et ce que disent les
+règles (`actualiserLancement` : note arrivée → `fusionne`, version livrée sur master → `termine`), puis republie l'annonce ; sans minuterie
+(`npm run serveur`), c'est l'interrogation de la page de maintenance qui le fait. Un « Re-run » d'une livraison échouée repasse le lancement
+`fusionne` : les deux sites se referment.
+
+**Garde-fous** : une annonce mal formée ne compte pas ; au-delà de **4 h après le lancement** (`DUREE_MAX_MAINTENANCE` : 3 h de run au plus, puis
+1 h pour les installateurs), plus rien n'est en maintenance, même si un installateur n'est jamais arrivé ; sur le site de dev, la page de
+maintenance a un bouton **« Lever la maintenance (les deux sites) »** (`POST /api/maintenance/lever/`, `{ lot }` : le lot affiché ; noté
+`maintenance_levee_le` dans le lancement, qui continue). Rien d'autre n'est bloqué : l'API reste ouverte (une fiche ouverte avant peut être enregistrée).
+
+**Mise en place** (une fois) : `docker-compose.yml` monte le dossier hôte `${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}` sur `/maintenance` ; sur
+le VPS, `deploy/vps/instances.sh` crée `/srv/maverick-center/maintenance` et pose `MAVERICK_DOSSIER_MAINTENANCE=/srv/maverick-center/maintenance`
+dans le `.env` du serveur de test ; puis `docker compose up -d` dans les deux dossiers ([`deploy/vps/README.md`](../deploy/vps/README.md)). Sans ce
+réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais. La production ne connaît la maintenance qu'à partir
+de la version qui apporte ce code sur master.
+
 ## Hébergement
 
 Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/README.md) ; à partir de la 1.0 : les
@@ -441,7 +531,8 @@ Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
   « Mise à jour » du serveur de test : `MAVERICK_REFERENCE` (base de la production, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
-  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`).
+  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
+  dossier partagé de l'annonce de maintenance, ci-dessus).
 
 **Mises à jour, sans rien relancer à la main** : le service surveille trois fichiers (un changement compte quand il a été vu deux fois de suite,
 pour ne pas agir au milieu d'une copie) :
@@ -466,9 +557,10 @@ Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, 
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
 journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
-`mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+`mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
+(annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
-après le build.
+après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
 
 ## Suite
 

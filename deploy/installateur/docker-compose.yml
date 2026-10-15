@@ -34,7 +34,12 @@ services:
       # Actions seulement), déposé dans secrets/ de l'instance : sans lui, la page dit comment lancer le workflow à la main.
       MAVERICK_ADRESSE_PUBLIQUE: ${MAVERICK_ADRESSE_PUBLIQUE:-}
       MAVERICK_GITHUB_JETON_FICHIER: /secrets/github-actions-token
+      # Maintenance pendant une mise à jour (docs/serveur.md, « Maintenance pendant une mise à jour ») : le site de dev y publie l'annonce que les deux
+      # serveurs lisent. Dossier de l'hôte : maintenance/ de l'instance par défaut ; le serveur de test prend celui du serveur normal
+      # (MAVERICK_DOSSIER_MAINTENANCE dans son .env, posé par deploy/vps/instances.sh), sinon la production n'est jamais mise en maintenance.
+      MAVERICK_MAINTENANCE: /maintenance
     volumes:
       - ./site:/site:ro
       - ./db:/db
       - ./secrets:/secrets:ro
+      - ${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance

@@ -1,15 +1,20 @@
 // Formulaire de la page /fiche/ (pages/fiche/index.astro) : construit les étapes à partir des règles de la base (/fiche/regles.json), garde la
 // fiche en cours au format d'échange (lib/fiche-format.mjs), recalcule ce qui en découle à chaque saisie (lib/fiche-moteur.mjs) et l'enregistre
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
-// Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé).
+// Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
+// choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
+// portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
-import { valeurAuNm } from '../lib/sort-maitrise.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { RAISONS } from '../lib/degats-texte.mjs';
+import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
+import { cadrageDe } from '../lib/portrait.mjs';
+import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
-  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
+  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
@@ -134,8 +139,7 @@ function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null
     bouton.toggleAttribute('data-verrou', Boolean(impose));
     if (impose) bouton.setAttribute('aria-disabled', 'true');
     else bouton.removeAttribute('aria-disabled');
-    if (non || impose) bouton.title = non || impose;
-    else bouton.removeAttribute('title');
+    bouton.title = non || impose || ''; // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
   });
   return el('li', {}, bouton);
 }
@@ -195,11 +199,13 @@ function construireRaces() {
   const imposee = ethnieImposee(regles, fiche);
   const pourquoi = () => (ethniesDeLaRace(regles, fiche.race_id).length === 1 ? 'seule ethnie de la race' : 'seule ethnie de la magie innée');
   afficherChoix('race', [race && { nom: race.nom, couleur: race.couleur }]);
+  $('choix-ethnie').toggleAttribute('data-a-choisir', aChoisir('ethnie'));
   afficherChoix('ethnie', [ethnie && {
     nom: ethnie.nom, couleur: race?.couleur ?? '#8a7a66',
     refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
     verrou: imposee === ethnie.id ? pourquoi() : null,
   }]);
+  $('ethnies').dataset.choixCle = 'ethnie';   // sa tuile dans l'infobulle du tiroir des choix (choixEnAttente)
   reconstruire($('ethnies'), `${fiche.race_id}`, () => ethnies.map((e) => pastille({
     texte: e.nom, couleur: race.couleur, choisie: () => fiche.ethnie_id === e.id,
     refus: () => (ethnieCompatible(e, fiche.magie_innee_id) ? null : `seulement avec la ${trouver(regles.magies, e.magie_id)?.nom ?? 'magie de l’ethnie'} innée`),
@@ -226,6 +232,10 @@ function construireAlignement() {
   const a = alignementDe(regles, fiche);
   const sortie = $('alignement-resultat');
   sortie.textContent = a.nom;
+  // la couleur de son titre dans le guide pour MJ (demande du propriétaire ; regles.alignements)
+  const teinte = regles.alignements?.[a.nom];
+  sortie.style.setProperty('--c', teinte?.couleur ?? '');
+  sortie.style.setProperty('--c-texte', teinte?.texte ?? '');
   sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
 }
 
@@ -247,6 +257,7 @@ function construireMagies() {
   })));
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   $('bloc-carac-magie').hidden = !innee || Boolean(innee.caracteristique_id);
+  $('bloc-carac-magie').toggleAttribute('data-a-choisir', aChoisir('carac_magie'));
   const acquiseChoisie = trouver(regles.magies, fiche.magie_acquise_id);
   afficherChoix('magie-innee', [innee && {
     nom: innee.nom, couleur: innee.couleur, texte: innee.texte,
@@ -300,13 +311,8 @@ function construireResistances() {
 
 // ------------------------------------------------------------------ classes
 function construireClasses() {
-  reconstruire($('modes'), 'fixe', () => [['mono', 'Une classe'], ['bi', 'Deux classes']].map(([mode, texte]) => pastille({
-    texte, couleur: '#2e7d4f', choisie: () => fiche.mode_classe === mode,
-    surClic: () => {
-      fiche.mode_classe = mode;
-      changer();
-    },
-  })));
+  // une case « Bi-classé » (demande du propriétaire) : cochée, deux classes au niveau global ; décochée, une seule (la seconde au niveau 11, R2)
+  poser($('bi-classe'), fiche.mode_classe === 'bi');
   const groupes = [];
   for (const k of regles.classes) {
     let g = groupes.find((x) => x.key === k.groupe.key);
@@ -316,8 +322,8 @@ function construireClasses() {
   groupes.sort((a, b) => a.ordre - b.ordre);
   const imposee = classeImposee(regles, fiche);
   const magieImposante = imposee && trouver(regles.magies, imposee.magie_innee_id);
-  $('classe-imposee').hidden = !imposee;
-  $('classe-imposee').textContent = imposee ? `Classe imposée par la magie innée ${magieImposante.nom} : ${imposee.nom}, qui lui est réservée.` : '';
+  // l'explication d'une classe imposée : en infobulle sur sa pastille « · imposée » (demande du propriétaire), pas en texte sous les classes
+  const pourquoiImposee = (classe) => `Classe imposée par la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? ''} : ${classe.nom}, qui lui est réservée.`;
   for (const c of calcul.classes) {
     const rang = c.rang;
     $(`choix-classe-${rang}`).hidden = rang === 2 && c.niveau === 0 && !c.choix;
@@ -326,17 +332,19 @@ function construireClasses() {
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     afficherChoix(`classe-${rang}`, [c.classe && {
       nom: c.classe.nom, couleur: c.classe.couleur, refus: refusClasse(regles, fiche, c.classe.id, rang),
-      verrou: rang === 1 && imposee?.id === c.classe.id ? `imposée par la magie innée ${magieImposante.nom}` : null,
+      verrou: rang === 1 && imposee?.id === c.classe.id && magieImposante ? pourquoiImposee(imposee) : null,
     }]);
     const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
     $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
     afficherChoix(`specialite-${rang}`, [specialite && {
       nom: specialite.nom, couleur: c.classe.couleur, refus: c.niveau < 10 ? 'au niveau de classe 10' : null,
     }], c.niveau >= 10 ? 'À choisir' : 'Au niveau de classe 10');
+    // un choix qui reste à faire est surligné (demande du propriétaire : « mettre en surbrillance le champ à saisir »)
+    $(`choix-specialite-${rang}`).toggleAttribute('data-a-choisir', aChoisir('specialite', rang));
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g.couleur, g.classes.map((k) => pastille({
       texte: k.nom, couleur: k.couleur, choisie: () => choixDe(rang)?.classe_id === k.id,
       refus: () => refusClasse(regles, fiche, k.id, rang),
-      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? `imposée par la magie innée ${trouver(regles.magies, fiche.magie_innee_id).nom}` : null),
+      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
         const deja = choixDe(rang)?.classe_id === k.id;
         retirer('classes', (l) => l.rang === rang);
@@ -403,7 +411,10 @@ function construireCaracteristiques() {
       poser(croix2, c.croix >= 2);
       valeur.textContent = c.base === null ? '—' : String(c.valeur);
       valeur.toggleAttribute('data-hors', c.base !== null && (c.base < c.min || c.base > c.max));
-      bonus.textContent = c.bonus ? `base ${c.base} +${c.bonus} (magie)` : `de ${c.min} à ${c.max}`;
+      // +1 de la magie innée, ± l'accessoire (décision R54 : rogné à 4 et à la borne de la race)
+      const plus = [c.bonus ? `+${c.bonus} (magie)` : null, c.accessoire ? `${signe(c.accessoire)} (accessoire)` : null].filter(Boolean);
+      bonus.textContent = plus.length ? `base ${c.base} ${plus.join(' ')}` : `de ${c.min} à ${c.max}`;
+      bonus.title = c.accessoireBrut > c.accessoire ? `Accessoire : ${signe(c.accessoireBrut)}, rogné à ${Math.min(regles.constantes['accessoire.caracteristique_max'], c.max)} (« Ne peut dépasser 4 » ni les limites de la race)` : '';
     });
     return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom', title: k.nom }, k.nom), valeur, bonus, base, croix);
   }));
@@ -442,11 +453,17 @@ function construireCaracteristiques() {
           acquis.max = String(c.maxAcquis);
           poser(acquis, c.acquis);
           // le bonus du métier est de l'Acquis (décision R33) : affiché à côté, compté dans le plafond et le score, jamais saisi
-          valeurAcquis.textContent = c.metier ? `${c.acquis} +${c.metier}` : String(c.acquis);
-          valeurAcquis.toggleAttribute('data-hors', c.acquis + c.metier > c.plafondAcquis);
+          // et celui d'un accessoire « Compétence X » (décision R54), de l'Acquis lui aussi, rogné au plafond après le métier
+          const enPlus = c.metier + c.accessoire;
+          valeurAcquis.textContent = enPlus ? `${c.acquis} ${signe(enPlus)}` : String(c.acquis);
+          valeurAcquis.toggleAttribute('data-hors', c.acquis + Math.max(0, enPlus) > c.plafondAcquis);
           // le plafond prévaut sur le bonus du métier (décision R38) : au-delà, il est rogné
-          valeurAcquis.title = c.metier || c.metierBrut ? `${c.acquis} saisi(s) + ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : '';
-          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
+          valeurAcquis.title = c.metier || c.metierBrut || c.accessoireBrut ? [
+            `${c.acquis} saisi(s)`,
+            c.metier || c.metierBrut ? `+ ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : null,
+            c.accessoireBrut ? `${signe(c.accessoire)} d’accessoire${c.accessoireBrut > c.accessoire ? ` (${c.accessoireBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : null,
+          ].filter(Boolean).join(' ') : '';
+          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${enPlus > 0 ? `, moins les ${enPlus} du métier et des accessoires` : ''}`;
           score.textContent = c.score === null ? 'N/A' : `${c.score} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
           score.title = c.score === null ? 'Deux croix : compétence inutilisable' : '';
         });
@@ -474,8 +491,10 @@ function changerDeMetier(nouveau) {
 
 function construireMetier() {
   const bloc = $('metier-bloc');
-  bloc.hidden = !trouver(regles.metiers, fiche.metier_id);
-  reconstruire(bloc, `${fiche.metier_id}`, () => {
+  const choisi = trouver(regles.metiers, fiche.metier_id);
+  bloc.hidden = !choisi;
+  $('metier-titre').textContent = choisi ? `Métier : ${choisi.nom}` : 'Métier';
+  reconstruire($('metier-detail'), `${fiche.metier_id}`, () => {
     const { metier, rangs } = bonusDuMetier(regles, fiche);
     if (!metier) return [];
     const competence = (id) => trouver(regles.competences, id);
@@ -485,7 +504,7 @@ function construireMetier() {
     const nomDeCible = (o) => ATTRIBUTS[o.attribut] ?? competence(o.competence_id)?.nom ?? o.competence_id;
     const lignesDeBonus = rangs.map((b) => {
       if (b.aChoisir) {
-        return el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
+        const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierBonus(b.rang) } }, el('strong', {}, `${valeur(b)} au choix `),
           el('ul', { class: 'pastilles pastilles--etroites' }, b.options.filter((o) => o.competence_id).map((o) => {
             const k = couleurDe(o.competence_id);
             return pastille({
@@ -499,6 +518,8 @@ function construireMetier() {
               },
             });
           })));
+        synchro(() => li.toggleAttribute('data-a-choisir', !(fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang)));
+        return li;
       }
       if (b.retenue) return el('li', {}, el('strong', {}, `${valeur(b)} `), nomDeCible(b.retenue), b.retenue.competence_id ? el('small', { class: 'muted' }, ' (acquis)') : null);
       return el('li', { class: 'muted', title: 'Texte libre : sans effet automatique sur la fiche' }, b.texte);
@@ -516,7 +537,8 @@ function construireMetier() {
     });
     const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
       ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
-      : el('li', { class: 'metier-fiche__choix' }, el('strong', {}, 'Objet de départ au choix '),
+      : (() => {
+        const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierObjet(r.rang) } }, el('strong', {}, 'Objet de départ au choix '),
         el('ul', { class: 'pastilles pastilles--etroites' }, r.options.map((o, i) => pastille({
           texte: o.texte, couleur: '#8a7a66', choisie: () => objetChoisi(fiche, r) === i,
           surClic: () => {
@@ -524,7 +546,10 @@ function construireMetier() {
             versionInventaire += 1;
             changer();
           },
-        }))))));
+        }))));
+        synchro(() => li.toggleAttribute('data-a-choisir', objetChoisi(fiche, r) < 0));
+        return li;
+      })()));
     return el('ul', { class: 'fiche-resume metier-fiche', 'aria-label': `Ce que donne le métier ${metier.nom}` }, lignesDeBonus, artisanat, objets);
   });
 }
@@ -533,7 +558,8 @@ function construireMetier() {
 /**
  * Maîtrises d'armes, dans leur bloc (demande du propriétaire). La base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur étroit de
  * points de maîtrise (4 au plus), un dé de plus chacun, et les dés à côté ; le Pugilat montre le seul dé de la Force du personnage (deDeLaFamille). Dans
- * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32).
+ * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32). Pas de ligne pour ARME DE MONSTRES,
+ * des armes exclusives aux monstres (famillesMaitrisables, décision R45).
  */
 function construireMaitrises() {
   const maitrise = maitriseDArme(regles);
@@ -543,7 +569,7 @@ function construireMaitrises() {
   badge.title = quota.sources.length
     ? `Points de maîtrise répartis / quota des classes et de leurs dons : ${quota.sources.map((x) => `${x.nom} ${x.points > 0 ? '+' : ''}${x.points}`).join(' · ')}`
     : 'Quota de maîtrise : choisissez une classe (ses maîtrises et celles de ses dons)';
-  reconstruire($('maitrises'), 'fixe', () => regles.familles_armes.map((f) => {
+  reconstruire($('maitrises'), 'fixe', () => famillesMaitrisables(regles).map((f) => {
     const curseur = el('input', {
       type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
       title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
@@ -592,11 +618,13 @@ function construireSorts() {
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
   reconstruire($('sorts'), cle, () => [
-    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', {}, 'Coût'), el('th', {}, 'Portée'),
+    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'),
+      el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
+      el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', {}, 'Zone'),
       el('th', { title: 'Dégâts, soins ou barrière' }, 'D/S/B'),
       el('th', { title: 'NM de niveau, d’un livre (un par sort), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
     el('tbody', {}, lignes.length === 0
-      ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
+      ? el('tr', {}, el('td', { colspan: '8', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.flatMap((l) => {
         // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
@@ -636,9 +664,12 @@ function construireSorts() {
         const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
           oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
         const total = el('output', { class: 'curseur__valeur' });
-        // coût, portée, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm)
+        // coût, portée, zone, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm) ; l'indication IC (et
+        // imparable, inesquivable) au NM du sort, une condition pas encore atteinte (« IC pour 3 NM ») en grisé (modesAuNm)
+        const modes = el('td', { class: 'sort-modes' });
         const cout = el('td', { class: 'sort-valeur' });
         const portee = el('td', { class: 'sort-valeur' });
+        const zone = el('td', { class: 'sort-valeur' });
         const dsb = el('td', { class: 'sort-valeur' });
         const effet = el('span', { class: 'sort-effet__texte' });
         const remarque = l.sort?.remarque
@@ -648,8 +679,18 @@ function construireSorts() {
           const nm = nmDuSort(fiche.sorts[l.index]);
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
           cout.textContent = auNm(l.sort?.cout, 'cout');
-          portee.textContent = auNm(l.sort?.portee, 'portee');
-          dsb.textContent = auNm(l.sort?.dsb, 'dsb');
+          // accessoires (décision R54) : « Augmente la portée des sorts de +N » ; « Dégâts magie +N » sur un sort d'attaque
+          const acc = accessoiresDesSorts(regles, fiche);
+          portee.textContent = auNm(l.sort?.portee, 'portee') + (l.sort && acc.portee ? ` ${signe(acc.portee)}` : '');
+          portee.title = l.sort && acc.portee ? `${signe(acc.portee)} de portée (accessoires)` : '';
+          zone.textContent = auNm(l.sort?.zone, 'zone');
+          modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nm.total) : []).map((m) => el('span', {
+            class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
+            title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
+          }, m.texte)));
+          const degatsEnPlus = l.sort?.attaque && auNm(l.sort.dsb, 'dsb') ? acc.degats : 0;
+          dsb.textContent = auNm(l.sort?.dsb, 'dsb') + (degatsEnPlus ? ` ${signe(degatsEnPlus)}` : '');
+          dsb.title = degatsEnPlus ? `${signe(degatsEnPlus)} de dégâts (accessoires : ${acc.sources.filter((x) => x.cible === 'degats_magie').map((x) => x.nom).join(', ')})` : '';
           effet.textContent = auNm(l.sort?.effets, 'effets');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
           if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
@@ -664,10 +705,10 @@ function construireSorts() {
         return [
           el('tr', { class: classe, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
             el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
-            cout, portee, dsb,
+            modes, cout, portee, zone, dsb,
             el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total)),
           // l'effet secondaire du sort, sur sa propre ligne (demande du propriétaire)
-          l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '5' }, effet)) : null,
+          l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '7' }, effet)) : null,
         ];
       })),
   ]);
@@ -676,13 +717,13 @@ function construireSorts() {
 // ------------------------------------------------------------------ rappel des dons
 const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
 
-/** Un don de la liste : son niveau (s'il en a un), son nom, son type, et son texte. */
-function elementDeDon({ niveau = null, nom, type = null, texte }) {
+/** Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), et son texte. */
+function elementDeDon({ niveau = null, nom, type = null, precision = null, texte }) {
   return el('li', { class: 'don' },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
-      type ? el('span', { class: 'don__type', dataset: { type } }, TYPES_DE_DON[type] ?? type) : null),
+      type || precision ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' ')) : null),
     texte ? el('span', { class: 'don__texte' }, texte) : null);
 }
 
@@ -692,14 +733,17 @@ function elementDeDon({ niveau = null, nom, type = null, texte }) {
  */
 function construireDons() {
   const race = donsDeRace(regles, fiche);
-  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id]);
+  const actions = actionsDesAccessoires(regles, fiche);
+  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id, actions]);
   reconstruire($('dons-race'), cleRace, () => {
-    if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
+    if (!fiche.race_id) return [el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.'), actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte }))];
     return [
-      race.base ? elementDeDon({ nom: 'Don de base', texte: race.base }) : null,
+      race.base ? elementDeDon(donDeBase(race.base)) : null,   // « Méditation » ou « Repos » plutôt que « Don de base » (demande du propriétaire)
       race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
       race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
       race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
+      // à la suite, les effets d'accessoire « (Action) » et à usage compté, sous le même format (demande du propriétaire, décision R54)
+      actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.maudit ? `${x.texte} (maudit : l’effet est le contraire)` : x.texte })),
     ];
   });
   const classes = donsAcquis(regles, fiche);
@@ -709,7 +753,7 @@ function construireDons() {
     : classes.map((c) => el('div', { class: 'dons-classe', style: `--c: ${c.classe.couleur}` },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, texte: d.effet })))
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet })))
         : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
 }
 
@@ -816,33 +860,200 @@ function construireAttributs() {
   const a = calcul.attributs;
   const pastilles = [
     // 1D20 + le bonus de l'Agilité + celui du métier (« +X INI », décision R33)
-    ['Initiative', a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
-      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · ')],
+    ['Initiative', a.initiative || a.initiativeMetier || a.initiativeAccessoires ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
+      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
+        a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null].filter(Boolean).join(' · ')],
     // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
-    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''})`],
+    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''})`],
     ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
   ];
   reconstruire($('attributs-pastilles'), JSON.stringify(pastilles), () => pastilles.map(([nom, valeur, titre]) => el('li', { title: titre }, el('strong', {}, `${nom} `), String(valeur))));
 }
 
 /**
- * La posture du moment (demande du propriétaire : « un sélecteur des 6 postures ») : une pastille par posture, dans sa couleur
- * (lib/caracteristiques-postures.mjs, par regles.json), ses effets du tableau de la fiche en infobulle et sous le sélecteur ; un second clic la retire.
+ * Les six postures (demande du propriétaire), chacune dans sa case avec ses effets du tableau de la fiche, toujours lisibles, avantages en vert et
+ * inconvénients en rouge, sur deux lignes : un clic choisit la posture du moment (personnage.posture_id), un second la retire. À droite, une fois débloqués
+ * (modeHyperDe : niveaux 2 et 10), les cases du Mode Hyper (effets de base, de la magie et de la race) et du Mode Hyper 100 % (demande du propriétaire),
+ * pour lecture.
  */
 function construirePostures() {
-  reconstruire($('postures'), 'fixe', () => regles.postures.map((p) => {
+  const hyper = modeHyperDe(regles, fiche);
+  const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom, hyper.toursAccessoires]);
+  // dans l'ordre des cases de la fiche (regles.ordre_postures) ; chaque effet en vert (avantage) ou en rouge (inconvénient : `inconvenients`, par rang)
+  const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
+  reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
     const bouton = el('button', {
-      type: 'button', class: 'posture', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false', title: p.effets.join('\n'),
+      type: 'button', class: 'posture-carte', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false',
       onclick: () => {
         fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
         changer();
       },
-    }, p.nom);
+    }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
+      const inconvenient = (p.inconvenients ?? []).includes(i + 1);
+      return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
+    })));
     synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
     return bouton;
   }));
-  const choisie = trouver(regles.postures, fiche.posture_id);
-  $('posture-effets').textContent = choisie ? choisie.effets.join(' · ') : 'Aucune posture choisie.';
+  const cartesHyper = $('postures-hyper');
+  cartesHyper.hidden = !hyper?.debloque;
+  reconstruire(cartesHyper, cleHyper, () => [
+    hyper?.debloque ? el('div', { class: 'posture-carte posture-carte--hyper' },
+      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
+      el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
+        hyper.magies.map((m) => el('li', { class: 'posture-carte__magie', style: `--m: ${m.magie.couleur}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
+        hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
+        // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
+        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
+    hyper?.cent.debloque ? el('div', { class: 'posture-carte posture-carte--hyper posture-carte--cent' },
+      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
+      el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
+        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null)) : null,
+  ]);
+}
+
+// ------------------------------------------------------------------ les choix qui restent à faire, en tiroir (demande du propriétaire)
+/** Le choix `nature` (et de la classe `rang`) reste à faire (choixEnAttente, refait à chaque rafraîchissement) : son champ est surligné. */
+const aChoisir = (nature, rang = null) => (calcul?.attente ?? []).some((c) => c.nature === nature && (rang === null || c.rang === rang));
+
+/**
+ * La spécialité de chaque classe qui y a droit (niveau de son don de spécialité atteint), aussi choisie dans le cadre « Choix » (demande du propriétaire :
+ * « le doubler dans le menu de choix ») : les mêmes pastilles que le menu de l'identité, surlignées tant qu'elle n'est pas choisie.
+ */
+function construireChoixSpecialites() {
+  const classes = calcul.classes.filter((c) => c.classe?.specialites.length && c.niveau >= niveauDeSpecialite(c.classe));
+  const bloc = $('choix-specialites');
+  bloc.hidden = classes.length === 0;
+  reconstruire(bloc, JSON.stringify(classes.map((c) => [c.rang, c.classe.id])), () => classes.map((c) => {
+    const choixDe = () => calcul.classes.find((x) => x.rang === c.rang)?.choix;
+    const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe.couleur, c.classe.specialites.map((s) => pastille({
+      texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
+      choisie: () => choixDe()?.specialite_id === s.id,
+      surClic: () => {
+        const l = ligneDe('classes', (x) => x.rang === c.rang);
+        if (!l) return;
+        l.specialite_id = l.specialite_id === s.id ? null : s.id;
+        fiche.capacites = donsValables(regles, fiche);
+        changer();
+      },
+    })));
+    cadre.dataset.choixCle = cleDeChoix.specialite(c.rang);
+    synchro(() => cadre.toggleAttribute('data-a-choisir', aChoisir('specialite', c.rang)));
+    return cadre;
+  }));
+}
+
+/**
+ * Tant qu'il reste des choix à faire (choixEnAttente), le panneau « Choix » de la zone IV sort en tiroir en bas de l'écran, par-dessus la fiche, avec la
+ * liste de ce qui manque ; il ne se range que quand la zone IV est à l'écran (son onglet « Choix » compte alors ce qui manque). « Réduire » le replie sur sa
+ * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV et ouvre l'onglet.
+ */
+let zoneParametresVisible = false;
+let tiroirReduit = false;
+function construireChoixEnAttente() {
+  const attente = calcul?.attente ?? choixEnAttente(regles, fiche);
+  const panneau = $('etape-choix');
+  const compte = $('choix-compte');
+  compte.hidden = attente.length === 0;
+  compte.textContent = String(attente.length);
+  compte.title = attente.length ? `${attente.length} choix à faire` : '';
+  $('choix-tete').hidden = attente.length === 0;
+  $('choix-titre').textContent = attente.length > 1 ? `${attente.length} choix à faire` : 'Un choix à faire';
+  // au survol (ou au focus) d'un choix, sa tuile dans une infobulle (demande du propriétaire ; bulleDeChoix)
+  reconstruire($('choix-attente'), JSON.stringify(attente), () => attente.map((c) => {
+    const tuile = () => tuileDeChoix(c.cle);
+    const remplir = () => remplirBulleDeChoix(c.cle);
+    return el('li', {
+      dataset: { nature: c.nature, ...(tuile() ? { bulle: bulleDeChoix().id } : {}) }, tabindex: c.nature === 'ethnie' ? null : '0',
+      onpointerover: remplir, onpointerdown: remplir, onfocusin: remplir,
+    }, c.nature === 'ethnie'
+      ? el('button', { type: 'button', class: 'tiroir__lien', 'aria-label': `${c.libelle} : ouvrir le menu de l’ethnie`, onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }, c.libelle)
+      : c.libelle);
+  }));
+  const bulle = document.getElementById('bulle-choix');
+  if (bulle && !bulle.hidden) remplirBulleDeChoix(bulle.dataset.cle);
+  const tiroir = attente.length > 0 && !zoneParametresVisible;
+  panneau.classList.toggle('est-tiroir', tiroir);
+  panneau.toggleAttribute('data-reduit', tiroir && tiroirReduit);
+  $('choix-aller').hidden = !tiroir;
+  $('choix-reduire').hidden = !tiroir;
+  $('choix-reduire').textContent = tiroirReduit ? 'Déplier' : 'Réduire';
+  $('choix-reduire').setAttribute('aria-expanded', String(!tiroirReduit));
+}
+
+/**
+ * L'infobulle d'un choix du tiroir (demande du propriétaire : « la tuile correspondant au choix qui apparaît dans la tooltip au survol ») : une copie de
+ * la tuile du choix (`data-choix-cle` = la clé de choixEnAttente : pastilles de l'ethnie ou de la spécialité, groupe de dons, choix du métier, +1 de la
+ * magie innée), dans une bulle riche de components/Infobulles.astro, remplie juste avant qu'elle s'ouvre. Ses boutons, cases et listes renvoient leur clic
+ * ou leur valeur à la tuile de la page : le choix se fait aussi depuis la bulle. Une seule bulle, posée dans la zone IV hors du tiroir (son `transform`
+ * fausserait la position fixe).
+ */
+const tuileDeChoix = (cle) => (cle ? [...racine.querySelectorAll('[data-choix-cle]')].find((t) => t.dataset.choixCle === cle && !t.closest('#bulle-choix')) ?? null : null);
+const CHAMPS_DE_TUILE = 'button, input, select';
+
+function bulleDeChoix() {
+  let bulle = document.getElementById('bulle-choix');
+  if (bulle) return bulle;
+  bulle = el('span', { class: 'bulle bulle--tuile', role: 'tooltip', id: 'bulle-choix', hidden: true });
+  const original = (champ) => {
+    const copie = bulle.querySelector('[data-copie]');
+    const tuile = tuileDeChoix(bulle.dataset.cle);
+    if (!copie || !tuile) return null;
+    const i = [...copie.querySelectorAll(CHAMPS_DE_TUILE)].indexOf(champ);
+    return i < 0 ? null : tuile.querySelectorAll(CHAMPS_DE_TUILE)[i] ?? null;
+  };
+  bulle.addEventListener('click', (ev) => {
+    const champ = ev.target instanceof Element ? ev.target.closest('button, input') : null;
+    const cible = champ && original(champ);
+    if (!cible) return;
+    ev.preventDefault();
+    cible.click();
+  });
+  bulle.addEventListener('change', (ev) => {
+    const cible = ev.target instanceof HTMLSelectElement ? original(ev.target) : null;
+    if (!cible) return;
+    cible.value = ev.target.value;
+    cible.dispatchEvent(new Event('input', { bubbles: true }));
+    cible.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  ($('etape-choix').closest('.fiche-zone') ?? racine).append(bulle);   // les couleurs de la zone IV, hors du tiroir
+  return bulle;
+}
+
+/** Remplit la bulle avec la copie de la tuile du choix `cle`, dans un conteneur comme le sien (ses styles), sans identifiant ni nom de groupe partagés. */
+function remplirBulleDeChoix(cle) {
+  const tuile = tuileDeChoix(cle);
+  const bulle = bulleDeChoix();
+  if (!tuile) return;
+  bulle.dataset.cle = cle;
+  const copie = tuile.cloneNode(true);
+  copie.removeAttribute('data-choix-cle');
+  copie.hidden = false;
+  copie.setAttribute('data-copie', '');
+  for (const n of [copie, ...copie.querySelectorAll('[id]')]) n.removeAttribute('id');
+  for (const n of copie.querySelectorAll('input[name]')) n.name = `bulle-${n.name}`;
+  for (const n of [copie, ...copie.querySelectorAll('[data-champ]')]) n.removeAttribute('data-champ');   // la tuile de la page reste le seul champ de la fiche
+  // l'état coché ou choisi d'un champ n'est pas toujours un attribut : on le recopie
+  const sources = tuile.querySelectorAll(CHAMPS_DE_TUILE);
+  copie.querySelectorAll(CHAMPS_DE_TUILE).forEach((n, i) => {
+    if (n instanceof HTMLInputElement) n.checked = sources[i].checked;
+    if (n instanceof HTMLSelectElement) n.value = sources[i].value;
+  });
+  const parent = tuile.parentElement;
+  const enveloppe = parent && parent.matches('ul, ol') ? parent.cloneNode(false) : null;
+  enveloppe?.removeAttribute('id');
+  enveloppe?.removeAttribute('aria-label');
+  if (enveloppe) enveloppe.append(copie);
+  bulle.replaceChildren(enveloppe ?? copie);
+}
+
+/** Ouvre un menu déroulant de la fiche (la spécialité d'une classe, depuis le tiroir des choix) et l'amène à l'écran. */
+function ouvrirMenu(id) {
+  const menu = $(id);
+  if (!menu || menu.hidden) return;
+  menu.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  menu.open = true;
+  menu.querySelector('summary')?.focus({ preventScroll: true });
 }
 
 // ------------------------------------------------------------------ saisie d'un curseur (demande du propriétaire)
@@ -959,11 +1170,17 @@ function construireProgression() {
             });
             return r;
           };
-          return el('fieldset', { class: 'dons-groupe' },
+          const cadre = el('fieldset', { class: 'dons-groupe', dataset: { choixCle: cleDeChoix.don(d.rang, g) } },
             el('legend', {}, `Niveau de classe ${g.niveau}${specialite ? ` · ${specialite.nom}` : ''} : un seul au choix`),
             el('div', { class: 'dons-options' },
               el('label', {}, radio(null), 'Pas encore choisi'),
               g.options.map((o) => el('label', {}, radio(o), o.nom, el('small', { class: 'muted' }, ` (${o.type})`)))));
+          // un groupe encore sans choix est surligné (demande du propriétaire)
+          synchro(() => {
+            const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
+            cadre.toggleAttribute('data-a-choisir', !g.options.some((o) => choisis.has(o.id)));
+          });
+          return cadre;
         })));
   });
 }
@@ -985,14 +1202,30 @@ const optionsGroupees = (liste, cleGroupe, texte) => {
 };
 const ameliorations = (cible) => regles.ameliorations.filter((a) => a.cible === cible).map((a) => option(a.id, `Niveau ${a.niveau} : ${a.effet ?? ''}`.slice(0, 120)));
 const stats = (x) => [x.ap && `${x.ap} AP`, x.am && `${x.am} AM`].filter(Boolean).join(', ');
-const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['bracelet-1', 'Bracelet 1'], ['bracelet-2', 'Bracelet 2'], ['bague-1', 'Bague 1'], ['bague-2', 'Bague 2'], ['ceinture', 'Ceinture'], ['autre', 'Autre']];
+const NOMS_DES_CIBLES = {
+  sante: 'Santé', chakra: 'Chakra', barriere: 'Barrière', initiative: 'Initiative', vitesse: 'Vitesse', barre4_max: 'Sang ou Âme max', armure_ap: 'AP de base',
+  armure_am: 'AM de base', degats_physiques: 'Dégâts des armes', degats_magie: 'Dégâts des sorts d’attaque', portee_distance: 'Portée des armes à distance',
+  portee_sorts: 'Portée des sorts', maitrise_arme: 'Point de maîtrise d’arme', mode_hyper_tours: 'Tour de Mode Hyper',
+};
+/** Ce qu'un effet d'accessoire change, en quelques mots (« Initiative +5 », « Acquis Arme lourde +7 », « Résistance Feu +1 »). */
+function texteDEffet(e) {
+  const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
+  const quoi = e.cible === 'caracteristique' ? nomDe(regles.caracteristiques, e.cible_id)
+    : e.cible === 'competence' ? `Acquis ${nomDe(regles.competences, e.cible_id)}`
+      : e.cible === 'degats_famille' ? `Dégâts ${nomDe(regles.familles_armes, e.cible_id)}`
+        : e.cible === 'resistance' ? `Résistance ${nomDe([...regles.magies, ...(regles.etats ?? [])], e.cible_id)}`
+          : NOMS_DES_CIBLES[e.cible] ?? e.cible;
+  return `${quoi} ${signe(e.valeur)}`;
+}
+
 
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
+    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49)
     const poserChamp = (cle) => (v) => {
-      if (cle === 'arme_id' && !v) retirer('armes', (x) => x.rang === rang);
-      else if (cle === 'arme_id' || l()) ligne('armes', (x) => x.rang === rang, () => ({ rang, arme_id: null }))[cle] = v;
+      if (cle === 'arme_id') fiche.armes = armesApresChoix(regles, fiche, rang, v);
+      else if (l()) l()[cle] = v;
       changer();
     };
     const familles = new Map(regles.familles_armes.map((f) => [f.id, f.nom]));
@@ -1003,17 +1236,48 @@ function construireEquipement() {
       details.push(select);
       return label;
     };
+    // les dégâts de l'arme, « XDY+Z » (degatsDArme, demande du propriétaire) : les dés de sa maîtrise et son dé, plus les bonus de l'équipement et des dons
+    // passifs qui la visent, le détail en infobulle (avec les bonus de dons qui ne se comptent pas) ; avec deux armes de mêlée, une étoile à côté dit le
+    // malus d'attaque de cette main (attaqueADeuxArmes, décision du propriétaire : « −10 % si ambidextre » ; l'arme 1 est l'arme principale)
+    const des = el('strong', { class: 'objet__des' });
+    const etoile = el('span', { class: 'objet__etoile', tabindex: '0', role: 'img' }, '★');
+    const resume = el('span', { class: 'objet__resume' });
     synchro(() => {
-      poser(effet, l()?.effet_en_plus ?? '');
-      for (const d of [effet, ...details]) d.disabled = !l();
+      const x = l();
+      poser(effet, x?.effet_en_plus ?? '');
+      for (const d of [effet, ...details]) d.disabled = !x;
+      const d = degatsDArme(regles, fiche, rang);
+      des.hidden = !d;
+      if (d) {
+        des.textContent = d.texte;
+        des.title = [
+          `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
+          ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
+          ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
+          ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
+        ].join('\n');
+      }
+      const deux = attaqueADeuxArmes(regles, fiche);
+      const main = deux?.mains[rang - 1];
+      etoile.hidden = !main;
+      if (main) {
+        const texte = `−${String(main.malus).replace('.', ',')} % si ambidextre`;
+        const pourquoi = [main.dague ? 'dague' : null, deux.bimane ? 'Bimane' : null].filter(Boolean);
+        etoile.title = `${texte} (main ${main.main}${pourquoi.length ? ` ; moitié : ${pourquoi.join(', ')}` : ''})${deux.aPreciser.length ? `\nÀ appliquer à la main : ${deux.aPreciser.join(', ')}` : ''}`;
+        etoile.setAttribute('aria-label', texte);
+      }
+      const choisis = [trouver(regles.materiaux_armes, x?.materiau_id)?.nom, x?.amelioration_id && 'amélioration', trouver(regles.armes_elementaires, x?.arme_elementaire_id)?.nom, x?.effet_en_plus && 'effet en plus'].filter(Boolean);
+      resume.textContent = choisis.length ? choisis.join(' · ') : 'composition, amélioration, élément…';
     });
-    return el('div', { class: 'objet' }, el('h4', {}, `Arme ${rang}`), el('div', { class: 'fiche-champs' },
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+    // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition, améliorations, élément et effet en plus repliés
+    return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
+      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+      el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
       champ('Composition', selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` })),
       champ('Amélioration', selecteur(() => l()?.amelioration_id, ameliorations('arme'), poserChamp('amelioration_id'), { etiquette: `Arme ${rang} : amélioration` })),
       champ('Élément', selecteur(() => l()?.arme_elementaire_id, regles.armes_elementaires.map((a) => option(a.id, a.nom)), poserChamp('arme_elementaire_id'), { etiquette: `Arme ${rang} : élément` })),
       champ('Amélioration de l’élément', selecteur(() => l()?.amelioration_elementaire_id, ameliorations('arme_elementaire'), poserChamp('amelioration_elementaire_id'), { etiquette: `Arme ${rang} : amélioration de l’élément` })),
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet)));
+      el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet))));
   }));
 
   reconstruire($('armures'), 'fixe', () => [
@@ -1072,9 +1336,44 @@ function construireEquipement() {
       const valeur = el('input', { type: 'number', step: '1', 'aria-label': `${nom} : valeur tirée`, oninput: (ev) => { obtenir().valeur = ev.target.value === '' ? null : entier(ev.target.value); changer(); } });
       const texte = el('input', { 'aria-label': `${nom} : effet hors table`, oninput: (ev) => { obtenir().texte = ev.target.value || null; nettoyer(); changer(); } });
       const maudit = el('input', { type: 'checkbox', 'aria-label': `${nom} : maudit`, onchange: (ev) => { obtenir().maudit = ev.target.checked ? 1 : 0; nettoyer(); changer(); } });
+      // l'effet à choix (décision R54) : « Compétence X » → une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » → une famille
+      const choixCompetence = el('select', { 'aria-label': `${nom} : compétence de l’accessoire`,
+        onchange: (ev) => { obtenir().competence_id = ev.target.value || null; changer(); } });
+      const choixFamille = el('select', { 'aria-label': `${nom} : famille d’armes de l’accessoire`,
+        onchange: (ev) => { obtenir().arme_famille_id = ev.target.value || null; changer(); } });
+      const resumeEffet = el('span', { class: 'accessoire-effet' });
       synchro(() => {
         const x = l();
         const effet = trouver(regles.accessoires, x?.accessoire_effet_id);
+        const cibles = (effet?.effets ?? []).map((c) => c.cible);
+        const caracId = effet?.effets.find((c) => c.cible === 'competence')?.cible_id ?? null;
+        choixCompetence.hidden = !caracId;
+        if (caracId) {
+          const options = regles.competences.filter((k) => k.caracteristique_id === caracId);
+          const cleOptions = `${caracId}`;
+          if (choixCompetence.dataset.options !== cleOptions) {
+            choixCompetence.replaceChildren(el('option', { value: '' }, '— compétence —'), ...options.map((k) => el('option', { value: k.id }, k.nom)));
+            choixCompetence.dataset.options = cleOptions;
+          }
+          choixCompetence.value = options.some((k) => k.id === x?.competence_id) ? x.competence_id : '';
+          choixCompetence.toggleAttribute('data-a-choisir', !choixCompetence.value);
+        }
+        choixFamille.hidden = !cibles.includes('degats_famille');
+        if (!choixFamille.hidden) {
+          if (!choixFamille.options.length) {
+            choixFamille.replaceChildren(el('option', { value: '' }, '— famille d’armes —'), ...regles.familles_armes.filter((f) => f.maitrisable !== false).map((f) => el('option', { value: f.id }, f.nom)));
+          }
+          choixFamille.value = x?.arme_famille_id ?? '';
+          choixFamille.toggleAttribute('data-a-choisir', !choixFamille.value);
+        }
+        // la tuile du choix dans le tiroir (choixEnAttente) : la liste affichée
+        for (const liste of [choixCompetence, choixFamille]) {
+          if (liste.hidden) delete liste.dataset.choixCle;
+          else liste.dataset.choixCle = cleDeChoix.accessoire(cle);
+        }
+        // ce que l'accessoire change sur la fiche (effetsDesAccessoires)
+        const effets = effetsDesAccessoires(regles, { ...fiche, accessoires: x ? [x] : [] });
+        resumeEffet.textContent = effets.filter((e) => !e.aChoisir && e.valeur !== null).map(texteDEffet).join(' · ');
         poser(nomObjet, x?.nom ?? '');
         poser(valeur, x?.valeur ?? '');
         valeur.disabled = !effet || effet.min === null;
@@ -1085,8 +1384,16 @@ function construireEquipement() {
         poser(maudit, x?.maudit);
       });
       return el('tr', {}, el('td', {}, nom), el('td', {}, nomObjet),
-        el('td', {}, selecteur(() => l()?.accessoire_effet_id, optionsGroupees(regles.accessoires, (a) => a.propriete, (a) => a.libelle + (a.min !== null ? ` (${a.min} à ${a.max})` : '')),
-          (v) => { const x = obtenir(); x.accessoire_effet_id = v; if (!v || trouver(regles.accessoires, v)?.min === null) x.valeur = null; nettoyer(); changer(); }, { etiquette: `${nom} : effet` })),
+        el('td', { class: 'accessoire-cellule' }, selecteur(() => l()?.accessoire_effet_id, optionsGroupees(regles.accessoires, (a) => a.propriete, (a) => a.libelle + (a.min !== null ? ` (${a.min} à ${a.max})` : '')),
+          (v) => {
+            const x = obtenir();
+            x.accessoire_effet_id = v;
+            if (!v || trouver(regles.accessoires, v)?.min === null) x.valeur = null;
+            x.competence_id = null;
+            x.arme_famille_id = null;
+            nettoyer();
+            changer();
+          }, { etiquette: `${nom} : effet` }), choixCompetence, choixFamille, resumeEffet),
         el('td', { class: 'nombre' }, valeur), el('td', {}, texte), el('td', {}, maudit));
     })),
   ]);
@@ -1112,12 +1419,87 @@ function construireEquipement() {
   ]);
 }
 
+// ------------------------------------------------------------------ portrait et ceinture (demandes du propriétaire)
+/**
+ * Le portrait (le logo en attendant une image, recadrable une fois choisie : personnage.portrait et son cadrage, migration 0031) et les 3 emplacements
+ * de la ceinture (objets rapides, guide « Fiche de personnage : Accessoires et Ceinture » : personnage_ceinture), enregistrés avec la fiche.
+ */
+const PLACES_DE_CEINTURE = 3;
+/** La vignette affichée (le carré cadré), refaite quand l'image ou son cadrage changent. */
+let vignette = { cle: null };
+
+function construirePortrait() {
+  const figure = $('portrait');
+  const image = $('portrait-image');
+  const p = fiche.portrait;
+  figure.toggleAttribute('data-vide', !p);
+  image.alt = p ? `Portrait de ${fiche.nom || 'ce personnage'}` : 'Portrait du personnage (logo en attendant une image)';
+  $('portrait-choisir').textContent = p ? 'Changer' : 'Choisir une image';
+  $('portrait-recadrer').hidden = !p;
+  $('portrait-retirer').hidden = !p;
+  if (!p) {
+    vignette = { cle: null };
+    if (image.getAttribute('src') !== image.dataset.defaut) image.src = image.dataset.defaut;
+    return;
+  }
+  const cadrage = cadrageDuPortrait();
+  const cle = `${p.length}:${p.slice(-48)}:${cadrage.x}:${cadrage.y}:${cadrage.zoom}`;
+  if (vignette.cle === cle) return;
+  vignette = { cle };
+  dessinerVignette(p, cadrage).then((url) => { if (vignette.cle === cle) image.src = url; }).catch(() => { image.src = image.dataset.defaut; });
+}
+
+/** Le cadrage enregistré (centré, sans zoom quand la fiche n'en a pas). */
+const cadrageDuPortrait = () => cadrageDe({ x: fiche.portrait_x, y: fiche.portrait_y, zoom: fiche.portrait_zoom });
+
+/** Le recadrage (src/scripts/portrait.mjs) : l'image d'origine et son cadrage validé entrent dans la fiche (annulé : rien ne change). */
+async function recadrerPortrait(source, cadrage) {
+  const c = await ouvrirRecadrage(source, cadrage);
+  if (!c) return;
+  Object.assign(fiche, { portrait: source, portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom });
+  changer();
+}
+
+/** Les 3 emplacements de la ceinture : un objet (au catalogue des ressources ou non) et sa quantité (le nombre de flèches d'un carquois…). */
+function construireCeinture() {
+  reconstruire($('ceinture'), 'fixe', () => Array.from({ length: PLACES_DE_CEINTURE }, (_, i) => {
+    const rang = i + 1;
+    const l = () => ligneDe('ceinture', (x) => entier(x.rang) === rang);
+    const ecrire = (cle, valeur) => {
+      const x = ligne('ceinture', (y) => entier(y.rang) === rang, () => ({ rang, nom: '', quantite: 1, ressource_id: null }));
+      x[cle] = valeur;
+      if (cle === 'nom') x.ressource_id = regles.ressources.find((r) => r.nom === valeur)?.id ?? null;
+      if (!String(x.nom ?? '').trim()) retirer('ceinture', (y) => y === x);
+      changer();
+    };
+    const nom = el('input', { list: 'liste-ressources', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Libre', oninput: (ev) => ecrire('nom', ev.target.value) });
+    const quantite = el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Ceinture, emplacement ${rang} : quantité`, title: 'Quantité (flèches d’un carquois…)', oninput: (ev) => ecrire('quantite', entier(ev.target.value, 1)) });
+    const vider = el('button', { type: 'button', class: 'retirer', 'aria-label': `Vider l’emplacement ${rang} de la ceinture`, title: 'Vider', onclick: () => { retirer('ceinture', (y) => entier(y.rang) === rang); changer(); } }, '✕');
+    const li = el('li', { class: 'ceinture__emplacement' }, el('span', { class: 'ceinture__numero', 'aria-hidden': 'true' }, String(rang)), nom, quantite, vider);
+    synchro(() => {
+      const x = l();
+      if (document.activeElement !== nom) poser(nom, x?.nom ?? '');
+      if (document.activeElement !== quantite) poser(quantite, x ? x.quantite : '');
+      quantite.disabled = !x;
+      vider.hidden = !x;
+      li.toggleAttribute('data-plein', Boolean(x));
+    });
+    return li;
+  }));
+}
+
 // ------------------------------------------------------------------ contrôles rendus par le service
 /** Un détail de contrôle (« classes/guerrier », « force = 5 », « a / b ») avec les noms des règles à la place des identifiants. */
 const avecNoms = (texte) => String(texte).split(/( \/ | : | = |« | »)/).map((x) => noms.get(x) ?? x).join('');
 
 function construireControles() {
   const liste = $('controles');
+  // l'onglet « Contrôle » de la zone IV compte les règles à revoir (vert quand il n'y en a aucune)
+  const compte = $('controles-compte');
+  compte.hidden = controles === null;
+  compte.textContent = controles === null ? '' : controles.length ? String(controles.length) : '✓';
+  compte.toggleAttribute('data-ok', controles !== null && controles.length === 0);
+  compte.title = controles === null ? '' : controles.length ? `${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir` : 'Aucune règle enfreinte';
   if (controles === null) {
     delete liste.dataset.vide;
     liste.replaceChildren(el('li', {}, id ? 'Enregistrez pour revoir le contrôle.' : 'La fiche n’a pas encore été enregistrée.'));
@@ -1138,6 +1520,7 @@ function construireXp() {
   const p = progressionXp(regles, fiche.xp);
   $('xp-niveau').textContent = `Niveau ${p.niveau}`;
   $('fiche-niveau').textContent = `Niveau ${p.niveau}`;
+  $('identite-niveau').textContent = String(p.niveau);   // le niveau seul dans l'identité (demande du propriétaire)
   $('xp-objectif').textContent = p.suivant === null ? 'XP · niveau maximal' : `/ ${p.suivant} XP`;
   const jauge = $('xp-jauge');
   jauge.setAttribute('aria-valuemin', String(p.debut));
@@ -1171,6 +1554,7 @@ function rafraichir() {
     attributs: attributsDe(regles, fiche),
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
+  calcul.attente = choixEnAttente(regles, fiche);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
   const innee = trouver(regles.magies, fiche.magie_innee_id);
@@ -1188,6 +1572,7 @@ function rafraichir() {
   construireMagies();
   construireResistances();
   construireClasses();
+  construireChoixSpecialites();
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
@@ -1196,26 +1581,32 @@ function rafraichir() {
   construirePostures();
   construireProgression();
   construireEquipement();
+  construireCeinture();
+  construirePortrait();
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
   construireRetraits();
+  construireChoixEnAttente();
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
 }
 
 // ------------------------------------------------------------------ enregistrement, chargement
-/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés). */
+/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés, pas de maîtrise sur ARME DE MONSTRES : décision R45). */
 function aEnvoyer() {
   const f = structuredClone(fiche);
   for (const c of COLONNES_DU_SERVICE) delete f[c];
   delete f[CHAMP_VERSION];
   f.caracteristiques = (f.caracteristiques ?? []).filter((c) => c.base !== null && c.base !== undefined);
   f.competences = (f.competences ?? []).filter((c) => c.naturel || c.acquis);
+  f.maitrises_armes = maitrisesValables(regles, f);
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id || a.texte);
+  // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent
+  f.ceinture = (f.ceinture ?? []).filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
   return f;
 }
 
@@ -1241,7 +1632,7 @@ async function enregistrer() {
     if (reponse.ok) {
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (en bas de la fiche).` : 'Enregistré ✓', 'ok');
+      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
     if (reponse.status === 409 && donnees.personnage) {
@@ -1250,10 +1641,6 @@ async function enregistrer() {
       const avertissement = n ? `Les règles ont changé : ${n} élément(s) retiré(s) de cette fiche depuis son ouverture (voir les notes après rechargement). ` : '';
       message(`${avertissement}${donnees.erreur} `, 'erreur');
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
-    } else if (reponse.status === 422) {
-      controles = donnees.controles ?? [];
-      construireControles();
-      message(donnees.erreur, 'erreur');
     } else if (donnees.erreur) {
       message(`${donnees.erreur}${donnees.problemes ? ` ${donnees.problemes.map(avecNoms).join(' ; ')}` : ''}`, 'erreur');
     } else {
@@ -1355,7 +1742,7 @@ async function importer(fichier) {
     const objet = JSON.parse(await fichier.text());
     if (!objet || typeof objet !== 'object' || Array.isArray(objet)) throw new Error('pas une fiche');
     if (modifie && !confirm('Remplacer la fiche en cours par celle du fichier ?')) return;
-    for (const c of [...COLONNES_DU_SERVICE, CHAMP_VERSION]) delete objet[c];
+    for (const c of [...COLONNES_DU_SERVICE, ...COLONNES_RETIREES.personnage, CHAMP_VERSION]) delete objet[c]; // le statut d'un fichier d'avant : ignoré
     fiche = { ...ficheVide(''), ...objet };
     versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
     for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
@@ -1459,6 +1846,46 @@ async function demarrer() {
       changer();
     }
     montrerAjoutXp(false);
+  });
+  // portrait : choisir une image ouvre le recadrage ; « Recadrer » rouvre l'image d'origine avec son cadrage
+  const fichierPortrait = $('portrait-fichier');
+  fichierPortrait.addEventListener('change', async () => {
+    const f = fichierPortrait.files?.[0];
+    fichierPortrait.value = '';
+    if (!f) return;
+    try {
+      recadrerPortrait(await reduireImage(f));
+    } catch {
+      message('Cette image n’a pas pu être lue (ou reste trop lourde une fois réduite).', 'erreur');
+    }
+  });
+  $('portrait-choisir').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      fichierPortrait.click();
+    }
+  });
+  $('portrait-recadrer').addEventListener('click', () => fiche.portrait && recadrerPortrait(fiche.portrait, cadrageDuPortrait()));
+  $('portrait-retirer').addEventListener('click', () => {
+    Object.assign(fiche, { portrait: null, portrait_x: null, portrait_y: null, portrait_zoom: null });
+    changer();
+  });
+  $('bi-classe').addEventListener('change', (ev) => {
+    fiche.mode_classe = ev.target.checked ? 'bi' : 'mono';
+    changer();
+  });
+  // le tiroir des choix : il se range quand la zone IV est à l'écran ; « Aller aux choix » y descend et ouvre l'onglet « Choix »
+  new IntersectionObserver(([entree]) => {
+    zoneParametresVisible = entree.isIntersecting;
+    construireChoixEnAttente();
+  }, { rootMargin: '0px 0px -15% 0px' }).observe(racine.querySelector('.parametres'));
+  $('choix-aller').addEventListener('click', () => {
+    $('onglet-choix').click();
+    $('zone-parametres').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+  $('choix-reduire').addEventListener('click', () => {
+    tiroirReduit = !tiroirReduit;
+    construireChoixEnAttente();
   });
   $('bouton-ajout-objet').addEventListener('click', () => {
     fiche.inventaire.push({ rang: fiche.inventaire.length + 1, nom: '', quantite: 1, ressource_id: null });

@@ -1,7 +1,7 @@
 // deploy/installateur/mise-a-jour.sh, la mise à jour automatique des instances posées par un installateur (à partir de la 1.0 ; le NAS d'avant
 // a la sienne, testée par update-site.test.mjs).
 // Contre un faux GitHub (API des livraisons, aucun accès réseau réel, aucun NAS) : il choisit la dernière livraison de son mode
-// (production : « latest » ; test : la plus récente étiquette « -test »), télécharge son installateur (fabriqué pour de vrai par
+// (production : « latest » ; test : la plus récente étiquette de version complète, VX.Y.Z), télécharge son installateur (fabriqué pour de vrai par
 // deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
@@ -20,7 +20,9 @@ const skip = !(have('curl') && have('tar') && have('gzip')) && 'sh, curl, tar ou
 const TOKEN = 'github_pat_TESTTOKEN123';
 const root = mkdtempSync(join(tmpdir(), 'mise-a-jour-test-'));
 /** Les livraisons publiées, de la plus récente à la plus ancienne : { tag, installateur (octets) ou null }. */
-const state = { livraisons: [], token: TOKEN, telechargements: 0, auth: [] };
+const state = { livraisons: [], token: TOKEN, telechargements: 0, auth: [], latest: null };
+/** Mode d'une étiquette, d'après sa forme (tools/flux-git/regles.mjs) : VX.Y.Z… = serveur de test, VX.Y… = production. */
+const modeDe = (tag) => (/^[vV]\d+\.\d+\.\d+(-|$)/.test(tag) ? 'test' : 'prod');
 let server;
 let apiUrl;
 
@@ -37,7 +39,7 @@ function site(label, pages = 5, extra = {}) {
 }
 /** Une livraison avec son installateur ; `abime` corrompt l'archive, `sansInstallateur` simule une construction en cours. */
 function livraison(tag, { label = tag, pages, extra, abime = false, sansInstallateur = false } = {}) {
-  const mode = tag.includes('-test') ? 'test' : 'prod';
+  const mode = modeDe(tag);
   const [, x, y, z = '0'] = tag.match(/^[vV](\d+)\.(\d+)(?:\.(\d+))?/); // V1.2 : production, version 1.2.0 (tools/flux-git/regles.mjs)
   const version = `${x}.${y}.${z}`;
   let octets = null;
@@ -49,6 +51,7 @@ function livraison(tag, { label = tag, pages, extra, abime = false, sansInstalla
 }
 function publier(...livraisons) {
   state.livraisons = livraisons;
+  state.latest = null;
 }
 
 /** Une livraison telle que la renvoie l'API GitHub (indentée, avec les champs « url » qui ne sont pas l'installateur). */
@@ -57,7 +60,7 @@ function json(l) {
     url: `${apiUrl}/repos/o/r/releases/${l.id}`,
     assets_url: `${apiUrl}/repos/o/r/releases/${l.id}/assets`,
     tag_name: l.tag,
-    prerelease: l.tag.includes('-test'),
+    prerelease: modeDe(l.tag) === 'test',
     author: { login: 'github-actions[bot]', url: `${apiUrl}/users/github-actions%5Bbot%5D` },
     assets: l.octets ? [{ url: `${apiUrl}/repos/o/r/releases/assets/${l.id}`, id: l.id, name: `maverick-center-${l.tag}-install.sh`, uploader: { url: `${apiUrl}/users/x` } }] : [],
     tarball_url: `${apiUrl}/repos/o/r/tarball/${l.tag}`,
@@ -75,7 +78,8 @@ before(async () => {
     }
     if (req.headers.authorization !== `Bearer ${state.token}`) return envoyer(401, { message: 'Bad credentials' });
     if (req.url === '/repos/o/r/releases/latest') {
-      const l = state.livraisons.find((x) => !x.tag.includes('-test'));
+      // « latest » : la production la plus récente (les livraisons de test sont des pré-versions) ; state.latest simule un mauvais marquage.
+      const l = state.latest ?? state.livraisons.find((x) => modeDe(x.tag) === 'prod');
       return l ? envoyer(200, json(l)) : envoyer(404, { message: 'Not Found' });
     }
     if (req.url === '/repos/o/r/releases?per_page=30') return envoyer(200, state.livraisons.map(json));
@@ -116,19 +120,19 @@ function nas(name, { token = TOKEN, mode = 'prod', env: envInstance = {} } = {})
 }
 
 test('production : installation initiale, puis « à jour » sans retélécharger, puis --force', { skip }, async () => {
-  publier(livraison('v1.2.0', { label: 'v1' }), livraison('v1.1.9'));
+  publier(livraison('v1.2', { label: 'v1' }), livraison('v1.1'));
   const n = nas('initial');
   const first = await n.run();
   assert.equal(first.code, 0, first.out);
-  assert.match(first.out, /Installé : v1\.2\.0/);
+  assert.match(first.out, /Installé : v1\.2\./);
   assert.equal(n.read('site/index.html'), '<h1>accueil v1</h1>');
-  assert.equal(n.tag(), 'v1.2.0');
+  assert.equal(n.tag(), 'v1.2');
   assert.ok(!n.log().includes(TOKEN), 'le jeton ne doit jamais figurer dans le journal');
 
   const avant = state.telechargements;
   const second = await n.run();
   assert.equal(second.code, 0);
-  assert.match(second.out, /À jour \(v1\.2\.0\)/);
+  assert.match(second.out, /À jour \(v1\.2\)/);
   assert.equal(state.telechargements, avant, 'aucun téléchargement quand la livraison est déjà installée');
 
   const forced = await n.run(['--force']);
@@ -137,7 +141,7 @@ test('production : installation initiale, puis « à jour » sans retélécharge
 });
 
 test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tout appel réseau', { skip }, async () => {
-  publier(livraison('v1.0.0', { label: 'un' }), livraison('v1.0.0-test', { label: 'test' }));
+  publier(livraison('v1.0', { label: 'un' }), livraison('v1.0.0', { label: 'test' }));
   const prod = join(root, 'serveur-normal');
   writeFileSync(join(root, 'prod.sh'), state.livraisons[0].octets);
   assert.equal(spawnSync('sh', [join(root, 'prod.sh'), '--dossier', prod]).status, 0);
@@ -152,28 +156,28 @@ test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tou
   writeFileSync(join(root, 'test.sh'), state.livraisons[1].octets);
   const r = spawnSync('sh', [join(root, 'test.sh'), '--dossier', n.base, '--dossier-prod', prod], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  publier(livraison('v1.0.1-test', { label: 'test suivant' }), livraison('v1.0.0'));
+  publier(livraison('v1.0.1', { label: 'test suivant' }), livraison('v1.0'));
   const res = await n.run();
   assert.equal(res.code, 0, res.out);
-  assert.equal(n.tag(), 'v1.0.1-test');
+  assert.equal(n.tag(), 'v1.0.1');
   assert.equal(n.read('site/index.html'), '<h1>accueil test suivant</h1>');
 });
 
 test('production : un hotfix (même version, nouvelle étiquette) est installé ; les pages retirées disparaissent', { skip }, async () => {
-  publier(livraison('v1.2.0', { label: 'v1' }));
+  publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('hotfix');
   assert.equal((await n.run()).code, 0);
   assert.ok(n.has('site/wiki/p3/index.html'));
-  publier(livraison('v1.2.0-hotfix.1', { label: 'v2', pages: 2 }), livraison('v1.3.0-test'), livraison('v1.2.0'));
+  publier(livraison('v1.2-hotfix.1', { label: 'v2', pages: 2 }), livraison('v1.3.0'), livraison('v1.2'));
   const res = await n.run();
   assert.equal(res.code, 0, res.out);
-  assert.equal(n.tag(), 'v1.2.0-hotfix.1');
+  assert.equal(n.tag(), 'v1.2-hotfix.1');
   assert.equal(n.read('site/index.html'), '<h1>accueil v2</h1>');
   assert.ok(!n.has('site/wiki/p3/index.html'));
 });
 
-test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, test VX.Y.Z-test', { skip }, async () => {
-  publier(livraison('V1.2-hotfix.1', { label: 'correctif' }), livraison('V1.2.4-test', { label: 'test' }), livraison('V1.2'));
+test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, test VX.Y.Z', { skip }, async () => {
+  publier(livraison('V1.2-hotfix.1', { label: 'correctif' }), livraison('V1.2.4', { label: 'test' }), livraison('V1.2'));
   const n = nas('etiquettes-v');
   const prod = await n.run();
   assert.equal(prod.code, 0, prod.out);
@@ -183,20 +187,48 @@ test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, te
   const t = nas('etiquettes-v-test', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
   const test_ = await t.run();
   assert.equal(test_.code, 0, test_.out);
-  assert.equal(t.tag(), 'V1.2.4-test');
+  assert.equal(t.tag(), 'V1.2.4');
 });
 
-test('test : la livraison « -test » la plus récente, avec copie de la base de la production', { skip }, async () => {
-  publier(livraison('v1.2.0', { label: 'prod' }));
+test('test : la version complète la plus récente (VX.Y.Z ou sa régénération), jamais une production ; la production refuse une livraison de test', { skip }, async () => {
+  // De la plus récente à la plus ancienne. V1.2.0-test : la forme d'avant (seule la 0.2.0 l'a portée), encore reconnue comme une livraison de test.
+  publier(livraison('V1.3', { label: 'production plus récente' }), livraison('V1.2.4-rebuild.1', { label: 'régénérée' }), livraison('V1.2.4'),
+    livraison('V1.2.0-test', { label: 'ancienne forme' }), livraison('V1.2'));
+  const t = nas('formes-test', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const res = await t.run();
+  assert.equal(res.code, 0, res.out);
+  assert.equal(t.tag(), 'V1.2.4-rebuild.1');
+  assert.equal(t.read('site/index.html'), '<h1>accueil régénérée</h1>');
+
+  publier(livraison('V1.2.0-test', { label: 'ancienne forme' }), livraison('V1.2'));
+  const ancien = nas('forme-ancienne', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  assert.equal((await ancien.run()).code, 0);
+  assert.equal(ancien.tag(), 'V1.2.0-test');
+
+  // Garde-fou du serveur normal : une livraison de test marquée « latest » par erreur n'est pas installée.
+  publier(livraison('V1.3', { label: 'prod' }));
+  const prod = nas('prod-garde');
+  assert.equal((await prod.run()).code, 0);
+  publier(livraison('V1.3.1', { label: 'dev' }), livraison('V1.3'));
+  state.latest = state.livraisons[0];
+  const refus = await prod.run();
+  assert.equal(refus.code, 1);
+  assert.match(refus.out, /V1\.3\.1 est une livraison de test, pas de production/);
+  assert.equal(prod.tag(), 'V1.3');
+  assert.equal(prod.read('site/index.html'), '<h1>accueil prod</h1>');
+});
+
+test('test : la livraison de test la plus récente, avec copie de la base de la production', { skip }, async () => {
+  publier(livraison('v1.2', { label: 'prod' }));
   const prod = nas('maverick-center');
   assert.equal((await prod.run()).code, 0);
   writeFileSync(join(prod.base, 'db', 'fiches.json'), '{"fiches": 2}');
 
-  publier(livraison('v1.3.0', { label: 'prod' }), livraison('v1.2.4-test', { label: 'test récent' }), livraison('v1.2.3-test'), livraison('v1.2.0'));
+  publier(livraison('v1.3', { label: 'prod' }), livraison('v1.2.4', { label: 'test récent' }), livraison('v1.2.3'), livraison('v1.2'));
   const t = nas('maverick-center-test', { mode: 'test', env: { DOSSIER_PROD: prod.base } });
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
-  assert.equal(t.tag(), 'v1.2.4-test');
+  assert.equal(t.tag(), 'v1.2.4');
   assert.equal(t.read('site/index.html'), '<h1>accueil test récent</h1>');
   assert.equal(t.read('db/fiches.json'), '{"fiches": 2}');
   assert.match(t.read('VERSION'), /^mode=test$/m);
@@ -204,16 +236,16 @@ test('test : la livraison « -test » la plus récente, avec copie de la base de
 });
 
 test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
-  publier(livraison('v1.2.0', { label: 'v1' }));
+  publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('jeton-refuse');
   assert.equal((await n.run()).code, 0);
   writeFileSync(join(n.base, '.github-token'), 'github_pat_MAUVAISJETON');
-  publier(livraison('v1.3.0', { label: 'v2' }));
+  publier(livraison('v1.3', { label: 'v2' }));
   const res = await n.run();
   assert.equal(res.code, 1);
   assert.match(res.out, /impossible de lire la dernière livraison/);
   assert.equal(n.read('site/index.html'), '<h1>accueil v1</h1>');
-  assert.equal(n.tag(), 'v1.2.0');
+  assert.equal(n.tag(), 'v1.2');
 });
 
 test('aucune livraison publiée, ou installateur pas encore joint : erreur claire', { skip }, async () => {
@@ -224,26 +256,26 @@ test('aucune livraison publiée, ou installateur pas encore joint : erreur clair
   res = await nas('rien-test', { mode: 'test' }).run();
   assert.equal(res.code, 1);
   assert.match(res.out, /aucune livraison de test/);
-  publier(livraison('v1.2.0', { sansInstallateur: true }));
+  publier(livraison('v1.2', { sansInstallateur: true }));
   res = await nas('en-construction').run();
   assert.equal(res.code, 1);
   assert.match(res.out, /pas encore d'installateur joint/);
 });
 
 test('installateur corrompu : refusé, site inchangé', { skip }, async () => {
-  publier(livraison('v1.2.0', { label: 'v1' }));
+  publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('corrompu');
   assert.equal((await n.run()).code, 0);
-  publier(livraison('v1.3.0', { label: 'v2', abime: true }));
+  publier(livraison('v1.3', { label: 'v2', abime: true }));
   const res = await n.run();
   assert.equal(res.code, 1);
-  assert.match(res.out, /installateur v1\.3\.0 refusé/);
+  assert.match(res.out, /installateur v1\.3 refusé/);
   assert.equal(n.read('site/index.html'), '<h1>accueil v1</h1>');
-  assert.equal(n.tag(), 'v1.2.0');
+  assert.equal(n.tag(), 'v1.2');
 });
 
 test('jeton absent ou mal formé, réglages invalides : refus avant tout appel réseau', { skip }, async () => {
-  publier(livraison('v1.2.0'));
+  publier(livraison('v1.2'));
   state.auth.length = 0;
   let res = await nas('sans-jeton', { token: null }).run();
   assert.equal(res.code, 1);
@@ -261,7 +293,7 @@ test('jeton absent ou mal formé, réglages invalides : refus avant tout appel r
 });
 
 test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip }, async () => {
-  publier(livraison('v1.2.0'));
+  publier(livraison('v1.2'));
   const n = nas('verrou');
   mkdirSync(join(n.base, '.mise-a-jour.lock'));
   writeFileSync(join(n.base, '.mise-a-jour.lock', 'pid'), String(process.pid)); // processus vivant
@@ -279,21 +311,21 @@ test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou pé
 });
 
 test('GELER suspend les mises à jour (retour à une version précédente) ; SANS_BASE_PROD pour un test sans serveur normal', { skip }, async () => {
-  publier(livraison('v1.3.0-test', { label: 'test seul' }));
+  publier(livraison('v1.3.0', { label: 'test seul' }));
   const t = nas('test-seul', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
-  assert.equal(t.tag(), 'v1.3.0-test');
+  assert.equal(t.tag(), 'v1.3.0');
 
   writeFileSync(join(t.base, 'GELER'), '');
-  publier(livraison('v1.3.1-test', { label: 'suivant' }));
+  publier(livraison('v1.3.1', { label: 'suivant' }));
   const avant = state.telechargements;
   const gel = await t.run();
   assert.equal(gel.code, 0, gel.out);
   assert.match(gel.out, /suspendues/);
   assert.equal(state.telechargements, avant);
-  assert.equal(t.tag(), 'v1.3.0-test');
+  assert.equal(t.tag(), 'v1.3.0');
   rmSync(join(t.base, 'GELER'));
   assert.equal((await t.run()).code, 0);
-  assert.equal(t.tag(), 'v1.3.1-test');
+  assert.equal(t.tag(), 'v1.3.1');
 });

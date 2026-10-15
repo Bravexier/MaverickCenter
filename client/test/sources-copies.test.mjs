@@ -65,8 +65,11 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // les renvois des pages tels que la migration les a laissés (le site de dev, source des données qu'il modifie, peut créer ou supprimer une page)
   const ids = new Set(attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`));
   assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1069);
-  // aujourd'hui : tout renvoi vers un document Google cite une copie du registre ou l'un des deux documents non copiés
-  const permis = new Set([...registre.copies.map((c) => c.apres), ...registre.non_copies.map((c) => c.id)]);
+  // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
+  // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
+  const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);
+  assert.deepEqual(copiesUlterieures, ['1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg', '1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE'], 'CODEX Maverick, Bestiaire 2.0');
+  const permis = new Set([...registre.copies.map((c) => c.apres), ...registre.non_copies.map((c) => c.id), ...copiesUlterieures]);
   for (const r of db.prepare('SELECT p.page_id, s.google_id FROM page_source p JOIN source s ON s.id = p.source_id WHERE s.google_id IS NOT NULL').all()) {
     assert.ok(permis.has(r.google_id), `${r.page_id} : ${r.google_id}`);
   }
@@ -76,13 +79,20 @@ test('liens : les 9 ressources vers la copie du Doc « Alchimie » (le lien du M
   assert.equal(db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(parTitre.get('Alchimie').apres).n, 9);
 });
 
-test('manifeste : chaque document copié pointe sur sa copie et garde l’URL d’origine ; les deux non copiés restent sur l’original, avec leur titre', () => {
+test('manifeste : chaque document copié pointe sur sa copie et garde l’URL d’origine ; les non copiés restent sur l’original, avec leur titre', () => {
   const avant = new Map(registre.copies.map((c) => [c.avant, c]));
   const apres = new Map(registre.copies.map((c) => [c.apres, c]));
   const nonCopies = new Set(registre.non_copies.map((c) => c.id));
   for (const g of manifeste.google) {
     if (nonCopies.has(g.id)) {
       assert.ok(g.url.includes(g.id) && g.note && g.title, g.id);
+      continue;
+    }
+    // copié par le propriétaire après la migration (CODEX Maverick, 2026-10-11) : la copie, son titre, l'adresse d'origine d'un document non copié
+    const origine = registre.non_copies.find((n) => g.original?.includes(`/d/${n.id}/`));
+    if (origine) {
+      assert.ok(g.url.includes(`/d/${g.id}/`) && g.title && g.note, g.id);
+      assert.ok(!manifeste.google.some((x) => x.id === origine.id), `${g.title} : l’original n’est plus une entrée du manifeste`);
       continue;
     }
     const c = apres.get(g.id);

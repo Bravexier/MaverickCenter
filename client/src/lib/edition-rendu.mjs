@@ -2,6 +2,8 @@
 // construite avant une modification, ou juste après l'enregistrement, le script réécrit l'élément `data-ed` avec ces fonctions : elles produisent le
 // même HTML que les gabarits Astro (components/magie/Texte.astro, components/metier/MetiersTableau.astro…), à partir des mêmes fonctions pures.
 // Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance navigateur : testées dans test/edition-rendu.test.mjs.
+import { dateCourte, libelleDeDate } from './chronologie.mjs';
+import { htmlDeLaPortee } from './chronologie-rendu.mjs';
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
 import { styleDeCouleur, couleurDeCaracteristique } from './caracteristiques-postures.mjs';
@@ -9,6 +11,10 @@ import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
+import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
+import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
+import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
+import { htmlAvecMonnaies } from './monnaies.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -16,7 +22,7 @@ export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (
 /** Un texte avec ses adresses web en liens (comme Texte.astro). */
 const avecLiens = (texte) =>
   morceauxAvecLiens(texte)
-    .map((m) => (m.lien ? `<a href="${echapperHtml(m.lien)}" rel="noopener noreferrer">${echapperHtml(m.lien)}</a>` : echapperHtml(m.texte)))
+    .map((m) => (m.lien ? `<a href="${echapperHtml(m.lien)}" rel="noopener noreferrer">${echapperHtml(m.lien)}</a>` : htmlAvecMonnaies(m.texte)))
     .join('');
 
 /** Longueur du texte qui précède une pastille, relevé avec elle pour la replacer au même endroit (voir placerPastilles). */
@@ -110,7 +116,7 @@ function pastilleDeCible(option, ctx) {
  * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décisions R33, R37 : chaque option vise une compétence
  * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
  */
-export function htmlDesBonus(lignes, ctx = {}) {
+function htmlDesBonus(lignes, ctx = {}) {
   const rangs = [];
   for (const l of lignes) (rangs[l.rang - 1] ??= []).push(l);
   return rangs
@@ -126,14 +132,14 @@ export function htmlDesBonus(lignes, ctx = {}) {
 }
 
 /** Une caractéristique de l'artisanat (décision R34) : sa pastille, dans sa couleur ; rien sans caractéristique. */
-export function htmlDeCaracteristique(id, ctx = {}) {
+function htmlDeCaracteristique(id, ctx = {}) {
   if (!id) return '';
   const nom = (ctx.caracteristiques ?? []).find((c) => c.id === id)?.nom ?? id;
   return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
 }
 
 /** Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre. */
-export function htmlDesObjets(objets, ctx = {}) {
+function htmlDesObjets(objets, ctx = {}) {
   if (!objets.length) return VIDE;
   const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
   const rangs = [];
@@ -199,7 +205,7 @@ export const RENDUS = {
         .join('')}</li>`)
       .join('');
   },
-  // type d'un don : nom et définition du guide (ctx.typesDon : table type_don, listes du service) en infobulle native, comme DonCarte.astro
+  // type d'un don : nom et définition du guide (ctx.typesDon : table type_don, listes du service) en infobulle (`title`, components/Infobulles.astro), comme DonCarte.astro
   'don-type': (valeur, _ligne, ctx = {}) => {
     if (!valeur) return '';
     const { type } = analyserTypeDeDon(valeur);
@@ -212,6 +218,17 @@ export const RENDUS = {
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),
   'sort-dsb': valeurDeCase('dsb', true),
+  // Bestiaire (lib/bestiaire-rendu.mjs : la ligne du tableau et la carte d'un monstre) : rubrique d'une carte, catégorie, cellules, lieux…
+  ...RENDUS_DU_BESTIAIRE,
+  // Chronologie (components/chronologie/ : la page d'un événement et sa ligne de la frise) : la date d'après l'époque et les années de la ligne, la portée
+  'evenement-date': (_valeur, ligne) => echapperHtml(libelleDeDate(ligne)),
+  'evenement-date-courte': (_valeur, ligne) => echapperHtml(dateCourte(ligne)),
+  'evenement-portee': (valeur) => htmlDeLaPortee(valeur),
+  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
+  // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
+  ...RENDUS_DES_ARMES,
+  // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
+  ...RENDUS_DES_COMPOSANTS,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */

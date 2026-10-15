@@ -1,5 +1,5 @@
-// Édition des pages du guide depuis le site de dev (client/serveur/edition.mjs, domaine PAGE) : titre et texte Markdown (écrit par l'éditeur visuel,
-// lib/markdown-edition.mjs), seulement pour les pages du guide ; un bloc tiré de la base inconnu est refusé, un ancien titre devient un alias, l'aperçu
+// Édition des pages du guide et du Codex depuis le site de dev (client/serveur/edition.mjs, domaine PAGE) : titre et texte Markdown (écrit par l'éditeur
+// visuel, lib/markdown-edition.mjs), seulement pour ces pages (lib/edition-modele.mjs#texteDePageModifiable) ; un bloc tiré de la base inconnu est refusé, un ancien titre devient un alias, l'aperçu
 // HTML de l'éditeur est noté avec le corps et rendu par /api/edition/en-attente/ tant que la page construite ne l'a pas.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -50,9 +50,11 @@ test('titre changé : clé de titre recalculée, l’ancien titre devient un ali
   assert.match(refus.corps.erreur, /races\/humain/);
 });
 
-test('refus : page hors du guide, bloc inconnu, texte vide, aperçu qui ne correspond pas au corps, conflit de modification', () => {
+test('refus : page hors du guide et du Codex, bloc inconnu, texte vide, aperçu qui ne correspond pas au corps, conflit de modification', () => {
   const cas = [
-    [{ table: 'page', cle: { id: 'races/humain' }, valeurs: { corps_md: 'x' } }, 400, /seules les pages du guide/],
+    [{ table: 'page', cle: { id: 'races/humain' }, valeurs: { corps_md: 'x' } }, 400, /seules les pages du guide et du Codex/],
+    // du lore, mais tirée du classeur des races, pas du CODEX
+    [{ table: 'page', cle: { id: 'lore/relations-entre-les-races' }, valeurs: { corps_md: 'x' } }, 400, /seules les pages du guide et du Codex/],
     [{ table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: 'Texte\n\n<!-- guide:inconnu -->\n' } }, 400, /bloc inconnu/],
     [{ table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: '  \n' } }, 400, /obligatoire/],
     [{ table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: 'Un seul morceau.\n' }, apercu: ['<p>a</p>', '<p>b</p>'] }, 400, /un texte HTML par morceau/],
@@ -92,4 +94,18 @@ test('pages du wiki, cibles d’un lien posé dans le texte : toutes sauf les ex
   assert.ok(pages.length > 900);
   assert.ok(pages.some((p) => p.id === 'races/humain' && p.titre === 'Humain'));
   assert.ok(!pages.some((p) => db.prepare('SELECT statut FROM page WHERE id = ?').get(p.id).statut === 'example'));
+});
+
+test('page du Codex (lore tiré du Google Doc « CODEX Maverick ») : titre et texte modifiés comme une page du guide, ni HTML brut ni lien non sûr', () => {
+  const id = 'lore/eaunoire';
+  const avant = page(id);
+  const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les [[races/nain|nains]].\n`;
+  const r = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: corps, titre: 'Eaunoire la déesse' }, avant: { corps_md: avant.corps_md } }] });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(page(id).corps_md, corps);
+  assert.equal(page(id).titre_cle, 'eaunoire-la-deesse');
+  // l'ancien titre est l'adresse de la page : les [[liens]] qui l'écrivent y mènent toujours (sinon il deviendrait un alias)
+  assert.equal(db.prepare("SELECT page_id FROM cle_page WHERE cle = 'eaunoire'").get().page_id, id);
+  const html = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: `${corps}\n<script>alert(1)</script>\n` } }] });
+  assert.equal(html.statut, 400);
 });

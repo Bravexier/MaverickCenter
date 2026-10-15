@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41, R45) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, famillesMaitrisables, maitrisesValables, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
@@ -54,7 +54,7 @@ test('niveau global et niveaux de classe : mêmes valeurs que v_personnage_nivea
 });
 
 test('une fiche que le moteur dit dans ses budgets n’a aucune ligne de contrôle dans la base ; hors budget, la base dit la même chose', () => {
-  const fiche = ficheConforme({ statut: 'valide' });
+  const fiche = ficheConforme();
   assert.deepEqual(budgetCaracteristiques(regles, fiche), { total: 14, attendu: 14 });
   assert.deepEqual(budgetCompetences(regles, fiche), { total: 100, attendu: 100 });
   const { controles } = enregistrerFiche(vivante, fiche);
@@ -104,7 +104,7 @@ test('caractéristiques complètes : les six, au minimum de la race (1) quand el
 
 test('caractéristiques : +1 de la magie innée sur sa caractéristique (ou celle choisie pour le Potentiel Illimité), bornes de la race', () => {
   const feu = caracteristiquesDe(regles, ficheConforme());
-  assert.deepEqual(feu.find((c) => c.id === 'social'), { id: 'social', nom: 'Social', lettre: feu.find((c) => c.id === 'social').lettre, base: 2, croix: 0, bonus: 1, valeur: 3, min: 1, max: 4 });
+  assert.deepEqual(feu.find((c) => c.id === 'social'), { id: 'social', nom: 'Social', lettre: feu.find((c) => c.id === 'social').lettre, base: 2, croix: 0, bonus: 1, accessoire: 0, accessoireBrut: 0, valeur: 3, min: 1, max: 4 });
   assert.equal(feu.filter((c) => c.bonus).length, 1);
   const pi = caracteristiquesDe(regles, ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'agilite' }));
   assert.equal(pi.find((c) => c.id === 'agilite').valeur, 3);
@@ -301,6 +301,18 @@ test('maîtrise d’arme : 1 dé sans maîtrise, un de plus par point, 4 points 
   assert.deepEqual(controles, []);
   assert.deepEqual(personnage.maitrises_armes, [{ arme_famille_id: 'epees', des: 5 }], '4 points : 5 dés');
   assert.throws(() => enregistrerFiche(vivante, avec(m.pointsMax + 1)), (e) => e.statut === 400 && /maitrises_armes\[0\] : valeur hors des bornes/.test(e.details.problemes.join()));
+});
+
+test('décision R45 : pas de ligne de maîtrise pour ARME DE MONSTRES (des armes exclusives aux monstres) ; une maîtrise déjà posée n’est ni comptée ni enregistrée', () => {
+  const ids = (familles) => familles.map((f) => f.id);
+  assert.deepEqual(ids(famillesMaitrisables(regles)), ids(regles.familles_armes.filter((f) => f.id !== 'arme-de-monstres')), 'toutes les autres, dans leur ordre');
+  assert.ok(regles.familles_armes.some((f) => f.id === 'arme-de-monstres'), 'la famille reste dans les règles : elle nomme ses armes dans l’équipement');
+  const fiche = ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'arme-de-monstres', des: 5 }] });
+  assert.deepEqual(maitrisesValables(regles, fiche), [{ arme_famille_id: 'epees', des: 3 }]);
+  assert.equal(quotaDeMaitrise(regles, fiche).utilises, 2, 'les 4 points sur ARME DE MONSTRES ne comptent pas');
+  // la vue de la base, par le service : la règle maitrise_arme_exclue
+  assert.deepEqual(enregistrerFiche(vivante, fiche).controles, [{ regle: 'maitrise_arme_exclue', detail: 'arme-de-monstres' }]);
+  assert.deepEqual(enregistrerFiche(vivante, { ...fiche, maitrises_armes: maitrisesValables(regles, fiche) }).controles, []);
 });
 
 test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corruption de l’Elfe Noir Charbon et du Felfe Noir (R20)', () => {
@@ -537,6 +549,10 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   const combinaisons = new Set();
   for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
   assert.deepEqual([...combinaisons].sort(), [...titres].sort());
+  // la pastille : une couleur par alignement possible (demande du propriétaire : celle de son titre dans le guide pour MJ), et le texte lisible dessus
+  assert.deepEqual(Object.keys(regles.alignements).sort(), [...combinaisons].sort());
+  assert.deepEqual(regles.alignements['Loyal Bon'], { couleur: '#45818e', texte: '#171210' });
+  assert.deepEqual(regles.alignements['Chaotique Mauvais'], { couleur: '#cc0000', texte: '#ffffff' });
 });
 
 test('dé de la famille d’armes : le Pugilat selon la Force (« D6 1-2 Force, D8 3-4 Force, D10 5 Force »), +1 de la magie innée compris ; les autres leur dé', () => {

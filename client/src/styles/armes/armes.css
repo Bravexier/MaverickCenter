@@ -1,0 +1,231 @@
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page /ressources/armes/. Un tableau repliable par famille, à la manière des
+   tableaux de sorts, aéré (« l'affichage est trop serré »), les effets supplémentaires d'une arme sur une seconde ligne ; à côté, la fiche de l'arme
+   choisie dans un seul cadre large, puis les matériaux et les améliorations côte à côte (panneau qui suit le défilement ; sur un écran étroit, il
+   passe par-dessus la page). Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le contenu à la suite, colonnes `ed-seul` visibles. */
+main:has(.armes) { max-width: 120rem; }
+.armes {
+  --arm: var(--accent);
+  --arm-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --arm-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » */
+  --depart: #3c78d8;
+  --depart-fond: color-mix(in srgb, var(--depart) 16%, var(--surface));
+  --depart-fond-fort: color-mix(in srgb, var(--depart) 26%, var(--surface));
+  margin: 0 0 2rem;
+}
+.armes .js-seul { display: none; }
+html.js .armes .js-seul { display: revert; }
+html:not(.js) .armes .js-seul-ligne { display: none; }
+.armes .muted { color: var(--muted); }
+.armes .vide { color: var(--muted); opacity: 0.6; }
+.armes [hidden] { display: none !important; }
+.armes__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
+
+/* Règles de l'onglet (texte de la cellule du classeur, avec sa mise en forme : définitions en italique, sous-titres en gras), repliées ; sur un grand
+   écran, le texte en deux colonnes ; le prix d'une arme à part, sa formule encadrée */
+.armes-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.armes-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.armes-regles__corps { display: grid; gap: 0.9rem; padding: 0.2rem 1.2rem 1rem; }
+.armes-regles__texte { max-width: none; line-height: 1.55; }
+@media (min-width: 64rem) { .armes-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
+.armes-regles__texte > * { break-inside: avoid; }
+.armes-regles__texte > :first-child { margin-top: 0; }
+.armes-regles__texte p { margin: 0 0 0.75rem; }
+.armes-regles__texte em { color: color-mix(in srgb, var(--text) 82%, var(--arm)); }
+.armes-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
+.armes-regles__texte li > p { margin: 0 0 0.35rem; }
+.armes-regles__texte p:has(+ ul) { margin-bottom: 0.3rem; }
+/* « Les armes en bleu sont les armes possibles en arme de départ » : en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
+.armes-regles__depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
+  color: color-mix(in srgb, var(--depart) 70%, var(--text)); }
+.armes-regles__prix { border-top: 1px solid var(--border); padding-top: 0.7rem; }
+.armes-regles__prix h2 { margin: 0 0 0.45rem; font-size: 1rem; }
+.armes-regles__prix p { display: inline-block; margin: 0; padding: 0.4rem 0.85rem; border: 1px solid var(--arm-line); border-radius: var(--radius); background: var(--arm-soft); font-weight: 600; }
+
+/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ », boutons Tout déplier /
+   Tout replier. Choisir une compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
+.armes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
+html.js .armes .armes-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.armes-filtre__titre { font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
+.armes-filtre__choix { display: inline-block; min-width: 0; font: inherit; font-size: 0.82rem; font-weight: 600; border: 2px solid transparent; cursor: pointer; }
+.armes-filtre__choix:hover { border-color: color-mix(in srgb, var(--text) 35%, transparent); }
+.armes-filtre__choix:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+.armes-filtre__choix[aria-pressed="true"] { border-color: var(--text); }
+.armes-filtre__choix[aria-pressed="true"]::before { content: '✓ '; }
+.armes-filtre.est-actif .armes-filtre__choix[aria-pressed="false"] { opacity: 0.45; }
+.armes-filtre__tout { font: inherit; font-size: 0.8rem; padding: 0.1rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-filtre__tout:hover { border-color: var(--arm); }
+.armes-filtre__sep { width: 1px; align-self: stretch; margin: 0 0.35rem; background: var(--border); }
+/* « Arme de départ » (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences */
+.armes-filtre__depart { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 0.12rem 0.65rem; border: 2px solid transparent; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); color: var(--text); }
+.armes-filtre__depart:hover { border-color: color-mix(in srgb, var(--depart) 55%, transparent); }
+.armes-filtre__depart:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+.armes-filtre__depart[aria-pressed="true"] { border-color: var(--depart); }
+.armes-filtre__depart[aria-pressed="true"]::before { content: '✓ '; }
+.armes .est-filtree, .armes .est-filtree + .arme-suite { display: none; }
+body.ed-mode .armes-filtre { display: none !important; }
+body.ed-mode .armes .est-filtree { display: revert; }
+html.js .armes .sans-js { display: none; }
+.armes-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0; }
+.armes-legende__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.8rem; border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
+.armes-outils__boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
+html.js .armes-outils__boutons { display: flex; }
+.armes-aide { color: var(--muted); font-size: 0.88rem; margin-right: 0.4rem; }
+.armes-bouton { font: inherit; font-size: 0.82rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-bouton:hover { border-color: var(--arm); }
+
+/* Vue : les tableaux, et à côté le panneau de l'arme choisie (ouvert par le script), large (« laisser plus de place pour l'arme sur la droite ») */
+.armes-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+html.js .armes-vue.est-ouverte { grid-template-columns: minmax(0, 1fr) minmax(38rem, 46%); }
+html.js .armes-vue:not(.est-ouverte) .armes-cote { display: none; }
+.armes-tableaux { display: grid; gap: 1.4rem; min-width: 0; }
+html.js .armes-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; }
+.armes-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
+/* les matériaux et les améliorations côte à côte, sous la fiche */
+.armes-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
+.armes-cote__fermer { font: inherit; font-size: 0.8rem; padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-cote__fermer:hover { border-color: var(--arm); }
+
+/* Une famille (repliable) */
+.armes-famille { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
+.armes-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.55rem 0.9rem; cursor: pointer; list-style: none; }
+.armes-famille__titre::-webkit-details-marker { display: none; }
+.armes-famille__titre::before { content: '▸'; color: var(--arm); transition: transform 0.15s; }
+.armes-famille[open] > .armes-famille__titre::before { transform: rotate(90deg); }
+.armes-famille__nom { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; }
+.armes-famille__de { font-size: 0.78rem; font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
+.armes-famille__compte { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
+.armes-famille__note { margin: -0.2rem 0.9rem 0.5rem; font-size: 0.85rem; color: var(--muted); }
+.armes-famille[open] > .armes-famille__titre { border-bottom: 1px solid var(--arm-line); }
+.armes-famille[open] > .armes-famille__note { margin-top: 0.45rem; }
+
+/* Tableaux (inspirés des tableaux de sorts : styles/magie/sorts.css) */
+.armes-wrap { overflow-x: auto; }
+.armes-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; line-height: 1.5; }
+.armes-table thead th { text-align: left; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted);
+  padding: 0.6rem 0.85rem; background: var(--arm-soft); border-bottom: 1px solid var(--arm-line); white-space: nowrap; }
+.armes-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
+.armes-table tbody > tr > * { padding: 0.7rem 0.85rem; vertical-align: top; text-align: left; }
+.armes-table tfoot th, .armes-table tfoot td { padding: 0.6rem 0.85rem; border-top: 1px solid var(--arm-line); font-weight: 600; background: var(--arm-soft); text-align: left; }
+/* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
+.armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
+.armes-table tbody > tr.arme-suite:has(> .arme__effets > .vide:only-child) { display: none; }
+.arme__effets { color: color-mix(in srgb, var(--text) 78%, var(--muted)); font-size: 0.88rem; }
+.arme-suite__marge { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+/* la fiche ouverte prend de la place : les cases se resserrent un peu sur les côtés */
+html.js .armes-vue.est-ouverte .armes-tableaux .armes-table :is(thead th, tbody > tr > *) { padding-left: 0.6rem; padding-right: 0.6rem; }
+.ed-seul { display: none; }
+
+/* Une arme */
+/* une arme et la ligne de ses effets se survolent, se sélectionnent et se colorent ensemble */
+html.js .arme, html.js .arme-suite, html.js .materiau, html.js .amelioration { cursor: pointer; }
+.arme__nom { min-width: 10rem; position: sticky; left: 0; z-index: 1; background: var(--surface); }
+html.js :is(.arme:hover, .arme:has(+ .arme-suite:hover)) > *, html.js .arme:hover + .arme-suite > *, html.js .arme-suite:hover > *,
+html.js .materiau:hover > :not(.materiau__nom), html.js .amelioration:hover > * { background: var(--arm-soft); }
+.arme--depart > *, .arme--depart + .arme-suite > * { background: var(--depart-fond); }
+.arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--depart); }
+html.js :is(.arme--depart:hover, .arme--depart:has(+ .arme-suite:hover)) > *, html.js .arme--depart:hover + .arme-suite > *,
+html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fort); }
+.arme.est-choisie > *, .arme.est-choisie + .arme-suite > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
+.arme.est-choisie > .arme__nom, .arme.est-choisie + .arme-suite > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--arm); }
+.arme.ed-supprime + .arme-suite { opacity: 0.45; text-decoration: line-through; }
+.arme__libelle { display: block; }
+.arme__choisir, .materiau__choisir, .amelioration__choisir { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
+.arme__choisir:hover, .amelioration__choisir:hover { text-decoration: underline dotted; }
+.arme__choisir:focus-visible, .materiau__choisir:focus-visible, .amelioration__choisir:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; border-radius: var(--radius-xs); }
+.arme__mains { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.arme__mains:empty { display: none; }
+.arme__remarque { color: var(--arm); cursor: help; margin-left: 0.2rem; }
+.arme__competence { min-width: 7.5rem; }
+.arme__degats, .arme__durabilite { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.arme-degats { font-weight: 700; }
+.arme__durabilite { text-align: center !important; }
+.arme__description { min-width: 18rem; white-space: pre-line; font-size: 0.86rem; }
+/* la description de l'arme est l'infobulle de son nom */
+.arme__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 3px; }
+.arme__portee { white-space: nowrap; text-align: center !important; font-variant-numeric: tabular-nums; }
+.arme__effet { min-width: 18rem; white-space: pre-line; }
+.arme-effet { display: block; }
+.arme-effet + .arme-effet { margin-top: 0.2rem; }
+
+/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux */
+.arme-comp { display: block; padding: 0.12rem 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+  background: linear-gradient(90deg, var(--c1), var(--c2)); color: var(--c-texte, #171210); }
+.arme-comp--texte { background: none; color: inherit; font-weight: 400; }
+
+/* Types de dégâts */
+.arme-dgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: 0.78rem; border-radius: var(--radius-pill); border: 1px solid var(--arm-line); background: var(--surface); }
+.arme-dgt--taille { border-color: color-mix(in srgb, #c0392b 45%, var(--border)); }
+.arme-dgt--estoc { border-color: color-mix(in srgb, #2471a3 45%, var(--border)); }
+.arme-dgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
+
+/* Matériaux : la case Matière dans la couleur du matériau (comme l'onglet du classeur) */
+.materiau__nom { background: var(--mat) !important; color: var(--mat-texte); min-width: 6.5rem; }
+.materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.materiau-effet { display: grid; gap: 0.1rem; }
+.materiau-effet__rien { color: var(--muted); }
+.materiau.est-choisie > :not(.materiau__nom) { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
+.materiau.est-choisie > .materiau__nom { box-shadow: inset 0 0 0 3px var(--arm), inset 0 0 0 5px var(--surface); }
+.amelioration__niveau { white-space: nowrap; }
+.amelioration.est-choisie > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
+.amelioration.est-choisie > .amelioration__niveau { box-shadow: inset 4px 0 0 var(--arm); }
+.amelioration__cout { white-space: nowrap; }
+
+/* Fiche de l'arme choisie (remplie par src/scripts/armes.mjs) : un seul cadre, son bouton Fermer en haut à droite, le détail sur deux colonnes */
+.arme-fiche { padding: 1.1rem 1.3rem 1.2rem; background: var(--surface); border: 1px solid var(--arm-line); border-radius: var(--radius-lg); font-size: 0.94rem;
+  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
+.arme-fiche__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.arme-fiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
+.arme-fiche__sous-titre { margin: 0.2rem 0 0.6rem; color: var(--muted); }
+.arme-fiche__badges { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; }
+.arme-fiche__badges .arme-comp { display: inline-block; }
+.arme-fiche__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.78rem; border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
+.arme-fiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; font-size: 0.85rem; }
+.arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--mat); color: var(--mat-texte); border: 1px solid var(--border); font-weight: 600; }
+.arme-fiche__niveau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--arm-line); font-weight: 600; }
+.arme-fiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.6rem; margin: 0 0 0.2rem; }
+.arme-fiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.15rem; padding: 0.6rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); text-align: center; }
+.arme-fiche__tuile-nom { font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.arme-fiche__tuile-val { font-size: 1.3rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.arme-fiche__tuile-detail { font-size: 0.74rem; color: var(--muted); }
+.arme-fiche__sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 1.6rem; }
+.arme-fiche__section { padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); min-width: 0; }
+.arme-fiche__section h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+.arme-fiche__section p { margin: 0 0 0.35rem; }
+.arme-fiche__lignes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.arme-fiche__lignes li { display: flex; justify-content: space-between; gap: 0.8rem; }
+.arme-fiche__lignes li > :last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.arme-fiche__lignes .arme-fiche__total { font-weight: 700; border-top: 1px solid var(--border); padding-top: 0.15rem; }
+.arme-fiche__ou { color: var(--muted); }
+.arme-fiche__effets { display: grid; gap: 0.2rem; }
+/* l'effet du matériau, dans la fiche : en vert (demande du propriétaire) */
+.arme-fiche__effet-materiau { color: var(--good); font-weight: 600; }
+.arme-fiche__note { font-size: 0.8rem; color: var(--muted); }
+.arme-fiche__description { color: var(--muted); white-space: pre-line; }
+
+/* Écran étroit : la fiche et ses tableaux passent par-dessus la page */
+@media (max-width: 80rem) {
+  html.js .armes-vue.est-ouverte { grid-template-columns: minmax(0, 1fr); }
+  html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; padding: 0.75rem 1rem 2rem; background: var(--bg); }
+}
+
+/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres */
+body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
+body.ed-mode .armes-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
+body.ed-mode .arme-fiche, body.ed-mode .amelioration--aucune, body.ed-mode .armes-outils__boutons .armes-aide { display: none !important; }
+body.ed-mode .ed-seul { display: table-cell; }
+body.ed-mode .armes .arme, body.ed-mode .armes .materiau, body.ed-mode .armes .amelioration { cursor: default; }
+body.ed-mode .armes :is(.arme, .materiau, .amelioration).est-choisie > * { background: none; box-shadow: none; }
+body.ed-mode .armes .arme--depart > *, body.ed-mode .armes .arme--depart + .arme-suite > * { background: var(--depart-fond); }
+body.ed-mode .armes :is(.arme__choisir, .materiau__choisir, .amelioration__choisir) { pointer-events: none; }
+body.ed-mode .armes .arme__nom { position: static; }
+body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }
+body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
+
+@media print {
+  .armes-outils__boutons, .armes-filtre, .arme-fiche { display: none !important; }
+  .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
+  .armes-cote { display: grid !important; position: static !important; max-height: none !important; }
+  .armes-wrap { overflow: visible; }
+}

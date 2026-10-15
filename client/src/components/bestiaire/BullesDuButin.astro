@@ -1,0 +1,22 @@
+---
+// Les bulles du glossaire du butin (components/Infobulles.astro) : une par objet, écrite une fois dans la page, hors des cartes (la recherche du bestiaire ne
+// lit pas les définitions) ; chaque case de butin qui cite l'objet y renvoie (lib/monstre-rendu.mjs#htmlDuButin). /bestiaire/ : tout le glossaire ; la
+// page d'un monstre : les objets que cite sa carte (lib/bestiaire-rendu.mjs#objetsDuButinDe).
+import { idDeBulleDuButin } from '../../lib/monstre-rendu.mjs';
+
+interface Props {
+  objets: { id: string; nom: string; texte: string }[];
+}
+const { objets } = Astro.props;
+---
+
+<div class="bbulles-butin">
+  {
+    objets.map((g) => (
+      <span class="bulle" role="tooltip" id={idDeBulleDuButin(g.id)} hidden>
+        <strong class="bulle__titre">{g.nom}</strong>
+        <span class="bulle__texte">{g.texte}</span>
+      </span>
+    ))
+  }
+</div>

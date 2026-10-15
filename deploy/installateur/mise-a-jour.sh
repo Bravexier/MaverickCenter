@@ -1,7 +1,7 @@
 #!/bin/sh
 # Mise à jour automatique d'une instance posée par un installateur (à partir de la 1.0, voir docs/flux-git.md et README.md à côté).
 # Chaque fusion dans master publie un installateur du serveur normal (VX.Y, puis VX.Y-hotfix.N), chaque fusion dans dev un
-# installateur du serveur de test (VX.Y.Z-test). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
+# installateur du serveur de test (VX.Y.Z, la version de dev). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
 # VERSION) et l'exécute s'il n'est pas déjà installé ; le serveur de test reprend alors une copie fraîche de la base du serveur normal.
 # (Le NAS d'avant la 1.0 a sa propre mise à jour : deploy/update-site.sh, qui suit la branche « site ».)
 #
@@ -100,26 +100,34 @@ gh_curl() {
 # Champs d'une réponse JSON de GitHub (compacte ou indentée), sans jq : une valeur texte par ligne.
 champ() { grep -o "\"$1\": *\"[^\"]*\"" | sed 's/^.*: *"//; s/"$//'; }
 
-# Production : la dernière livraison publiée (« latest ») ; test : la plus récente dont l'étiquette porte « -test ».
+# Forme des étiquettes de livraison (tools/flux-git/regles.mjs) : la version complète de dev, VX.Y.Z (puis VX.Y.Z-rebuild.N), pour le
+# serveur de test ; VX.Y (puis VX.Y-hotfix.N) pour la production.
+FORME_TEST='^[vV][0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+FORME_PROD='^[vV][0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+mode_de_etiquette() {
+  if printf '%s\n' "$1" | grep -Eq "$FORME_TEST"; then echo test
+  elif printf '%s\n' "$1" | grep -Eq "$FORME_PROD"; then echo prod
+  fi
+}
+
+# Production : la dernière livraison publiée (« latest ») ; test : la plus récente dont l'étiquette porte la version complète (VX.Y.Z).
 if [ "$MODE" = prod ]; then
   gh_curl -H 'Accept: application/vnd.github+json' -o "$TMP/livraison.json" "$GITHUB_API/repos/$REPO/releases/latest" ||
     die "impossible de lire la dernière livraison de production de $REPO (jeton invalide ou expiré, aucune livraison encore publiée, réseau ?)"
 else
   gh_curl -H 'Accept: application/vnd.github+json' -o "$TMP/liste.json" "$GITHUB_API/repos/$REPO/releases?per_page=30" ||
     die "impossible de lire les livraisons de $REPO (jeton invalide ou expiré, réseau ?)"
-  TAG_TEST=$(champ tag_name < "$TMP/liste.json" | grep -- '-test' | head -n 1 || true)
+  TAG_TEST=$(champ tag_name < "$TMP/liste.json" | grep -E "$FORME_TEST" | head -n 1 || true)
   [ -n "$TAG_TEST" ] || die "aucune livraison de test publiée pour l'instant"
   gh_curl -H 'Accept: application/vnd.github+json' -o "$TMP/livraison.json" "$GITHUB_API/repos/$REPO/releases/tags/$TAG_TEST" ||
     die "impossible de lire la livraison $TAG_TEST"
 fi
 TAG=$(champ tag_name < "$TMP/livraison.json" | head -n 1)
-case "$TAG" in
-  [vV][0-9]*) ;;
+case "$(mode_de_etiquette "$TAG")" in
+  "$MODE") ;;
+  test) die "la livraison $TAG est une livraison de test, pas de production" ;;
+  prod) die "la livraison $TAG n'est pas une livraison de test" ;;
   *) die "réponse inattendue de GitHub (étiquette « $TAG »)" ;;
-esac
-case "$TAG" in
-  *-test*) [ "$MODE" = test ] || die "la livraison $TAG est une livraison de test, pas de production" ;;
-  *) [ "$MODE" = prod ] || die "la livraison $TAG n'est pas une livraison de test" ;;
 esac
 
 INSTALLE=$(sed -n 's/^tag=//p' "$BASE_DIR/VERSION" 2>/dev/null | head -n 1 || true)

@@ -23,6 +23,9 @@
 		X-Robots-Tag "noindex, nofollow"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
+		# Aucune page du site n'est faite pour être affichée dans le cadre d'un autre site (clickjacking) ni n'utilise ces capteurs.
+		X-Frame-Options "SAMEORIGIN"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}

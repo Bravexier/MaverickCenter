@@ -1,14 +1,14 @@
 // Page « Mise à jour » (pages/mise-a-jour.astro) sur le site de dev : si le service répond `edition: true` (MAVERICK_EDITION=1), la note EN
 // PRÉPARATION s'affiche au-dessus de la note de production — les modifications des règles de la production (master) à la base dev, calculées par
-// le service (GET /api/mise-a-jour/), le champ libre des admins et, sur ordinateur seulement (comme le mode modification), le bouton
+// le service (GET /api/mise-a-jour/), le champ libre des admins et, sur tous les écrans (comme le mode modification), le bouton
 // « Effectuer la mise à jour » : après confirmation, le service fige le lot et déclenche le workflow GitHub (rebase sur dev, PR, fusion
 // automatique si tout est vert, puis livraison dev → master) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
-// La page suit leur avancement. Ailleurs (production, service absent) : rien ne change.
+// La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
+// vers /maintenance/, qui y revient quand la nouvelle version est installée. Ailleurs (production, service absent) : rien ne change.
 // Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
-import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre } from '../lib/notes-de-version-rendu.mjs';
+import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
-const BUREAU = matchMedia('(min-width: 60rem) and (hover: hover) and (pointer: fine)');
 const api = racine?.dataset.api ?? '/api/';
 
 async function appel(methode, chemin, corps) {
@@ -60,7 +60,7 @@ function htmlDuLancement(l, github, liberable) {
   // le service dit si le lancement est annulable (mêmes règles des deux côtés : estLiberable) ; un lot dans dev ou livré, resté sans nouvelles plus
   // de 3 h, libère seulement le texte
   const tardif = ['fusionne', 'echec_livraison', 'termine', 'lance', 'en_cours'].includes(l.etat);
-  const liberer = liberable && BUREAU.matches
+  const liberer = liberable
     ? `<button type="button" data-nv-liberer data-lot="${echapper(l.lot)}">${tardif ? 'Libérer le texte (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
     <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
@@ -70,7 +70,6 @@ function htmlDuLancement(l, github, liberable) {
 function rendre() {
   const d = donnees;
   const zone = racine.querySelector('[data-nv-dev]');
-  const bureau = BUREAU.matches;
   // un lot figé (brouillon.lot) verrouille le texte et le bouton jusqu'à ce que la version livrée arrive sur ce site (ou que le lancement soit annulé)
   const verrouille = Boolean(d.brouillon?.lot);
   const occupe = verrouille || Boolean(d.occupe); // règle du service (occupe : lancement en cours ou en attente de livraison)
@@ -83,22 +82,20 @@ function rendre() {
       + `${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}`
     : `La base de production (référence) manque sur ce serveur : la liste ne peut pas être calculée.`;
   const texte = d.brouillon?.texte ?? '';
-  const note = bureau && !verrouille
+  const note = !verrouille
     ? `<label for="nv-texte"><strong>Informations supplémentaires</strong> (champ libre, ajouté à la note : paragraphes, listes « - », **gras**, *italique*, liens)</label>
        <textarea id="nv-texte" data-nv-texte>${echapper(texte)}</textarea>
        <div class="nv-dev__actions"><button type="button" data-nv-enregistrer>Enregistrer le texte</button><span data-nv-etat-texte></span></div>
        <div class="nv-dev__apercu nv-texte" data-nv-apercu ${texte ? '' : 'hidden'}>${htmlDuTexteLibre(texte)}</div>`
     : texte ? `<div class="nv-texte">${htmlDuTexteLibre(texte)}</div>` : '';
-  const bouton = bureau
-    ? `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
+  const bouton = `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
        <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
-       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`
-    : `<p class="nv-bascule">Le bouton « Effectuer la mise à jour » est sur la version ordinateur du site.</p>`;
+       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`;
   zone.innerHTML = `<h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>
     <p class="nv-dev__bilan">${bilan}</p>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
-    ${htmlDuLancement(d.lancement, d.github, d.liberable)}
+    ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   zone.hidden = false;
   brancher(zone);
@@ -166,6 +163,8 @@ function confirmer({ simulation }) {
     <h2>Effectuer la mise à jour V${echapper(donnees.version_cible)}</h2>
     <p>Les modifications du site de dev (${modifications}) et la note de version partent sur GitHub : une branche à jour de dev, une PR qui
     apporte la base modifiée, fusionnée automatiquement si les tests passent et qu’il n’y a aucun conflit, puis la <strong>livraison dev → master</strong> (production).</p>
+    <p>Pendant ce temps, <strong>les deux sites (production et dev) affichent « Maintenance en cours »</strong> ; chacun rouvre de lui-même dès que la
+    nouvelle version y est installée (ou si la mise à jour s’arrête avant).</p>
     <p>Pour confirmer, tapez <strong>${echapper(mot)}</strong> :</p>
     <input name="mot" autocomplete="off" required>
     <p class="nv-message nv-message--erreur" data-erreur hidden></p>
@@ -186,6 +185,10 @@ function confirmer({ simulation }) {
     try {
       await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation });
       dialogue.close();
+      if (!simulation && (await enMaintenance())) {
+        location.replace(`${racine.dataset.maintenance}?retour=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
       await charger(); // le brouillon est maintenant figé (lot) : texte et boutons verrouillés jusqu'à la fin
     } catch (err) {
       erreur.textContent = err.message;
@@ -213,6 +216,15 @@ function suivre() {
       // service relancé (nouvelle version livrée) : on réessaiera
     }
   }, 15000);
+}
+
+/** Ce serveur est-il en maintenance (vraie mise à jour lancée) ? Sans jeton GitHub (lancement à la main), non : la page garde ses valeurs. */
+async function enMaintenance() {
+  try {
+    return (await appel('GET', 'maintenance/'))?.active === true;
+  } catch {
+    return false;
+  }
 }
 
 async function charger() {

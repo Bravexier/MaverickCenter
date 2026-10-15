@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../src/lib/magie-relations.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
@@ -19,7 +20,6 @@ import {
   elementsDeTexte,
   lignes,
   infobulleDEtat,
-  lignesDeStat,
   marquesDeMode,
   morceauxAvecEtats,
   morceauxAvecLiens,
@@ -175,13 +175,6 @@ test('morceauxAvecEtats : l’altération d’état devient une pastille placée
   const absente = [{ etatId: 'poison', forme: 'poison', extrait: 'Inflige stade 1' }];
   assert.deepEqual(morceauxAvecEtats('Inflige stade 1', absente), [{ texte: 'Inflige stade 1' }]);
   assert.equal(absente.length, 1);
-});
-
-test('lignesDeStat : une ligne par élément (« | » et « / » entouré d’espaces), « /NPM » collé reste entier', () => {
-  assert.deepEqual(lignesDeStat('10 Armure Physique | 10 Armure Magique'), ['10 Armure Physique', '10 Armure Magique']);
-  assert.deepEqual(lignesDeStat('4 cases sol / 8 cases nage'), ['4 cases sol', '8 cases nage']);
-  assert.deepEqual(lignesDeStat('1 Armure Physique et Magique/NPM'), ['1 Armure Physique et Magique/NPM']);
-  assert.deepEqual(lignesDeStat('20/NPM'), ['20/NPM']);
 });
 
 test('infobulleDEtat : type, magie liée et effet de chaque stade ; le stade cité dans le texte est mis en avant', () => {
@@ -432,24 +425,47 @@ test('altérations d’état dans le texte : sur le chemin réel du gabarit (blo
   assert.equal(placees, db.prepare('SELECT count(*) AS n FROM sort_etat').get().n);
 });
 
-test('créatures invoquées : fiche minimale (stats et capacités) pour chacune, lue dans la base', () => {
+test('créatures invoquées : chacune a sa carte du bestiaire (l’infobulle de son nom sur la page de magie), lue dans la base', () => {
+  // la carte qu'une page de magie montre en infobulle est celle du bestiaire (lib/magies.ts#carteDeCreature : lib/bestiaire-db.mjs#chargerInvocations)
+  const cartes = new Map(chargerInvocations(db).lignes.map((l) => [l.id, l]));
   let n = 0;
   for (const s of m.sorts.values()) for (const i of s.invoque) for (const c of i.creatures) {
     n += 1;
-    assert.ok(c.stats.length >= 3, `${c.id} : stats`);
-    assert.ok(c.stats.every((st) => st.brut && ['Santé', 'Chakra', 'Barrière', 'Défense', 'Vitesse'].includes(st.libelle)));
-    assert.equal(c.caracteristiques.length, 6, `${c.id} : six caractéristiques`);
-    assert.deepEqual(c.caracteristiques.map((k) => k.nom), ['Force', 'Perception', 'Volonté', 'Social', 'Intelligence', 'Agilité'], `${c.id} : ordre de la carte`);
-    assert.equal(c.capacites.length, db.prepare('SELECT count(*) AS n FROM creature_capacite WHERE creature_id = ?').get(c.id).n, `${c.id} : capacités`);
-    assert.deepEqual(c.attaques, db.prepare('SELECT brut FROM creature_attaque WHERE creature_id = ? ORDER BY rang').all(c.id).map((a) => a.brut), `${c.id} : dégâts (les attaques de la carte, telles qu'écrites)`);
-    assert.ok(c.attaques.length >= 1, `${c.id} : au moins une attaque`);
+    const carte = cartes.get(c.id);
+    assert.ok(carte, `${c.id} : sa carte`);
+    assert.equal(carte.nom, c.nom);
+    assert.equal(carte.bloc, c.bloc);
+    // les six caractéristiques, dans l'ordre F.P.V.S.I.A., avec leur valeur de la base (absente : null)
+    const caracs = new Map(db.prepare('SELECT caracteristique_id AS k, valeur FROM creature_caracteristique WHERE creature_id = ?').all(c.id).map((r) => [r.k, r.valeur]));
+    assert.deepEqual(carte.fpvsia, ['force', 'perception', 'volonte', 'social', 'intelligence', 'agilite'].map((k) => caracs.get(k) ?? null), `${c.id} : F.P.V.S.I.A.`);
+    // les capacités, dans l'ordre, avec leur NPM minimum et leur qualificatif (« [Non enflammé] » : il change leur sens)
+    assert.deepEqual(
+      carte.capacites.map((k) => [k.nom, k.npm, k.etiquette]),
+      db.prepare('SELECT nom, npm_min, etiquette FROM creature_capacite WHERE creature_id = ? ORDER BY rang').all(c.id).map((k) => [k.nom, k.npm_min, k.etiquette]),
+      `${c.id} : capacités`,
+    );
+    assert.deepEqual(carte.attaques.map((a) => a.brut), db.prepare('SELECT brut FROM creature_attaque WHERE creature_id = ? ORDER BY rang').all(c.id).map((a) => a.brut), `${c.id} : dégâts`);
   }
   assert.equal(n, db.prepare('SELECT count(*) AS n FROM creature').get().n, 'toutes les créatures sont invoquées par un des trois sorts');
-  const boue = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-boue');
-  assert.deepEqual(boue.capacites.map((k) => [k.nom, k.npmMin]), [['Gluant', null], ['Frappe confuse', 3], ['Camouflage', 5]]);
-  // le qualificatif d'une capacité (« [Non enflammé] ») change son sens : il est dans la fiche
-  const petrole = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-petrole');
-  assert.ok(petrole.capacites.some((k) => k.etiquette === 'Non enflammé'), 'étiquette « Non enflammé » du Golem de pétrole');
+  // la carte porte bien des caractéristiques, des NPM minimum et des qualificatifs (sinon les comparaisons ci-dessus le seraient à vide)
+  const toutes = [...cartes.values()];
+  assert.ok(toutes.some((l) => l.fpvsia.every((v) => v !== null)), 'des caractéristiques');
+  assert.ok(toutes.some((l) => l.capacites.some((k) => k.npm !== null)), 'des NPM minimum');
+  assert.ok(toutes.some((l) => l.capacites.some((k) => k.etiquette)), 'des qualificatifs');
+  // l'ordre des créatures d'un sort : celui du classeur (bloc, puis carte de gauche et de droite)
+  const golems = m.sorts.get('magies/magie-de-la-terre#sort:appel-aux-golems').invoque[0].creatures;
+  const ordre = db.prepare(
+    "SELECT c.id FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id WHERE c.invocation_id = 'bestiaire/appel-aux-golems' ORDER BY b.rang, c.rang",
+  ).all().map((r) => r.id);
+  assert.deepEqual(golems.map((c) => c.id), ordre);
+  // effets de carte (« Manteau noir ») : dans l'ordre des NPM 1 à 5, comme les cartes du classeur ; les marionnettes, sous leur NPM (décision R53)
+  const manteau = m.sorts.get('magies/magie-de-lombre#sort:manteau-noir').effetsDeCarte;
+  const npms = db.prepare('SELECT c.id FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id WHERE c.id IN (SELECT creature_id FROM creature_effet WHERE sort_id IS NOT NULL) ORDER BY b.rang, c.rang')
+    .all().map((r) => r.id);
+  assert.deepEqual(manteau.map((e) => e.id), npms);
+  const marionnettes = m.sorts.get('magies/magie-de-lombre#sort:marionnette-de-lombre')?.invoque[0]?.creatures ?? [];
+  assert.equal(marionnettes.length, npms.length);
+  assert.ok(marionnettes.every((c) => /^NPM \d$/.test(c.bloc)), 'bloc des marionnettes : « NPM N », jamais « EPN »');
 });
 
 test('une seule source pour les relations entre magies : le tableau de /magies/ lit la base comme les pages de magie', () => {

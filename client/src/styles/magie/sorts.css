@@ -2,13 +2,13 @@
 .npm { margin: 1.4rem 0 2rem; scroll-margin-top: 1rem; }
 .sort { scroll-margin-top: 1rem; }
 .npm__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.6rem; font-size: 1.1rem; }
-.npm__badge { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.1rem 0.7rem; border-radius: 999px; background: var(--mag); color: var(--couleur-texte-magie, #fff); }
+.npm__badge { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); background: var(--mag); color: var(--couleur-texte-magie, #fff); }
 /* texte du titre et pastille « i » de la règle du niveau : un seul bloc, pour que le « i » ne passe jamais seul à la ligne */
 .npm__intitule { display: inline-flex; align-items: center; gap: 0.5rem; }
 .npm__pips { display: inline-flex; gap: 0.2rem; margin-left: auto; }
 .npm__pips i { width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1px solid var(--mag-line); background: transparent; }
 .npm__pips i.on { background: var(--mag); border-color: var(--mag); }
-.sorts-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.sorts-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .sorts { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 .sorts thead th { text-align: left; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--mag-soft); border-bottom: 1px solid var(--mag-line); white-space: nowrap; }
 .sorts tbody.sort + tbody.sort > tr:first-child > * { border-top: 1px solid var(--border); }
@@ -21,19 +21,19 @@
 .sort__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--mag-readable); transition: transform 0.15s; }
 .sort__choisir[aria-expanded="true"]::before { transform: rotate(90deg); }
 .sort__choisir:hover { text-decoration: underline dotted; }
-.sort__choisir:focus-visible { outline: 2px solid var(--mag-readable); outline-offset: 2px; border-radius: 4px; }
+.sort__choisir:focus-visible { outline: 2px solid var(--mag-readable); outline-offset: 2px; border-radius: var(--radius-xs); }
 .sort__reperes { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
-.repere { font-size: 0.66rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 0 0.45rem; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.repere { font-size: 0.66rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 0 0.45rem; border-radius: var(--radius-xs); background: var(--accent-soft); color: var(--accent); }
 .sort__cout, .sort__portee, .sort__zone { white-space: nowrap; }
 .sort__dsb { min-width: 9rem; }
 /* bonus de niveau de maîtrise écrit dans la cellule (« (+1/NM) », « IC pour 3 NM ») : pastille à côté de la valeur ; casse de la source gardée (« 1d6 ») */
-.nm { display: inline-block; padding: 0 0.4rem; font-size: 0.72rem; line-height: 1.45; font-weight: 400; border-radius: 4px; border: 1px solid var(--mag-line); color: var(--muted); white-space: nowrap; }
+.nm { display: inline-block; padding: 0 0.4rem; font-size: 0.72rem; line-height: 1.45; font-weight: 400; border-radius: var(--radius-xs); border: 1px solid var(--mag-line); color: var(--muted); white-space: nowrap; }
 .sort__type .nm { margin: 0 0.25rem 0.2rem 0; }
 .val { font-weight: 600; }
 .mod { color: var(--muted); font-size: 0.82em; }
 .supplement { font-size: 0.85em; color: var(--muted); }
 .vide { color: var(--muted); opacity: 0.6; }
-.genre { --gh: 30; --gs: 60%; display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0.04rem 0.6rem; font-size: 0.78rem; border-radius: 999px; border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
+.genre { --gh: 30; --gs: 60%; display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0.04rem 0.6rem; font-size: 0.78rem; border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
 .genre[data-genre="attaque"] { --gh: 5; }
 .genre[data-genre="entrave"] { --gh: 275; }
 .genre[data-genre="soin"] { --gh: 55; }
@@ -44,6 +44,6 @@
 .genre[data-genre="construction"] { --gh: 22; }
 .genre[data-genre="meteo"] { --gh: 232; }
 .genre[data-genre="aleatoire"] { --gs: 0%; }
-.marque { display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0 0.45rem; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+.marque { display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0 0.45rem; font-size: 0.7rem; border-radius: var(--radius-xs); border: 1px solid var(--border); color: var(--muted); }
 .marque--ic { border-color: var(--accent); color: var(--accent); }
 .marque--imparable, .marque--inesquivable { border-style: dashed; }

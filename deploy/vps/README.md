@@ -72,19 +72,19 @@ chaque instance ; rien n'est affiché. Relancer le script les conserve (`--regen
 > Avant la 0.2.0, il n'y a pas encore d'installateur : voir [« Avant la 0.2.0 »](#avant-la-020--le-serveur-de-test-suit-la-branche-site) plus bas,
 > qui remplace les étapes 5 et 6 pour le serveur de test.
 
-1. Dans GitHub, page **Releases** du dépôt (privé : connexion nécessaire), télécharger les deux fichiers de la dernière version :
-   `maverick-center-VX.Y-install.sh` (normal) et `maverick-center-VX.Y.Z-test-install.sh` (test).
+1. Dans GitHub, page **Releases** du dépôt (public depuis le 2026-10-14), télécharger les deux fichiers de la dernière version :
+   `maverick-center-VX.Y-install.sh` (normal) et `maverick-center-VX.Y.Z-install.sh` (test : la version complète de `dev`).
 2. Les copier sur le serveur : `scp -i .ssh\maverick_key maverick-center-*-install.sh ubuntu@<IP>:~/`
 3. Sur le serveur, **le normal d'abord** (le test en copie la base) :
 
 ```
 sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
-sudo sh ~/maverick-center-VX.Y.Z-test-install.sh --dossier /srv/maverick-center-test
+sudo sh ~/maverick-center-VX.Y.Z-install.sh --dossier /srv/maverick-center-test
 cd /srv/maverick-center && sudo docker compose up -d
 cd /srv/maverick-center-test && sudo docker compose up -d
 ```
 
-Ouvrir `https://maverick-jdr.com` et `https://dev.maverick-jdr.com` (bandeau « Serveur de test »).
+Ouvrir `https://maverick-jdr.com` et `https://dev.maverick-jdr.com` (bandeau « Serveur de dev »).
 
 ## 6. Mises à jour automatiques
 
@@ -103,6 +103,29 @@ sudo crontab -e                                       # puis ajouter :
 
 Chaque fusion dans `dev` met à jour le serveur de test dans les 5 minutes, chaque livraison `dev` → `master` met à jour le serveur normal. La base du
 test n'est pas touchée par ces mises à jour ; celle du normal non plus. Un fichier `GELER` dans le dossier d'une instance suspend ses mises à jour.
+
+## 7. Maintenance pendant une mise à jour
+
+Pendant une vraie mise à jour (bouton « Effectuer la mise à jour » du site de dev, pas la simulation), **les deux sites affichent « Maintenance en
+cours »** et chacun rouvre de lui-même dès que sa nouvelle version y tourne ([`docs/serveur.md`](../../docs/serveur.md), « Maintenance pendant une
+mise à jour »). Le service du serveur de test écrit l'annonce dans `/srv/maverick-center/maintenance/`, que les deux instances montent
+(`docker-compose.yml`). À faire une fois, en copiant de nouveau ce dossier sur le serveur (étape 1) :
+
+```
+sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/maintenance, pose MAVERICK_DOSSIER_MAINTENANCE dans le .env du test
+```
+
+puis, dans chaque dossier d'instance, **une fois que son installateur a posé le nouveau `docker-compose.yml`** (le test après la fusion dans `dev`
+qui apporte la maintenance, le normal après la livraison suivante ; l'installateur l'écrit dans `installation.log` : « docker-compose.yml mis à jour
+par cette livraison ») :
+
+```
+cd /srv/maverick-center-test && sudo docker compose up -d
+cd /srv/maverick-center && sudo docker compose up -d
+```
+
+Jusque-là, seul le site de dev se met en maintenance. Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la
+maintenance (les deux sites) »** sur `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
 
 ## Avant la 0.2.0 : le serveur de test suit la branche `site`
 
@@ -177,7 +200,7 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
 
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 
-- **Pas de bandeau « Serveur de test »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.
+- **Pas de bandeau « Serveur de dev »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.
   Le bandeau arrive avec l'installateur de test.
 - **`https://maverick-jdr.com` répond 502** tant que le serveur normal n'est pas installé (Caddy est prêt, l'instance n'existe pas encore) : c'est attendu.
 - `sudo docker ps` montre 2 conteneurs (`maverick-center-test` et `maverick-center-test-serveur`), pas 4.
@@ -214,5 +237,6 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 | `caddy_legacy_user_removed` dans le journal de Caddy | Sans conséquence : le Caddy 2.6 des paquets Ubuntu ne sait plus demander de certificat de secours à ZeroSSL ; Let's Encrypt suffit |
 | 401 sur le site | Les mots de passe de Caddy et de l'instance ne concordent plus : `sudo bash ~/vps/instances.sh --regenerer-acces` puis `docker compose restart` dans les deux dossiers |
 | 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
+| « Maintenance en cours » qui ne finit pas | `sudo tail /srv/maverick-center*/mise-a-jour.log` (l'installateur est-il arrivé ?) ; bouton « Lever la maintenance » sur `https://dev.maverick-jdr.com/maintenance/`, sinon elle se lève seule 4 h après le lancement |
 | Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
 | Verrouillé hors du serveur | Console VNC d'Infomaniak (page du serveur) |

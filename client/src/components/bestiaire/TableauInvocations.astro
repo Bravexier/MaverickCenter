@@ -1,0 +1,127 @@
+---
+// Les créatures invoquées (lib/bestiaire-db.mjs#chargerInvocations) : à part des monstres (demande du propriétaire : elles ne fonctionnent pas tout à fait
+// pareillement : un sort les appelle, leurs valeurs suivent souvent le niveau de puissance magique, « /NPM »), et présentées par invocation (demande du
+// propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre deux cases
+// à chaque fois côte à côte pour chaque combinaison de magie (avec le mono en premier). Quant à ceux de la manipulation de l'ombre une seule ligne par
+// NM. La carte sera à garder ») :
+//   - trois tableaux dépliables (<details>, repliés au départ), dans l'ordre du classeur ;
+//   - golems et non-morts : une ligne par combinaison de magies (le mono d'abord, comme la marge du classeur), ses deux créatures dans deux cases côte à
+//     côte (la carte de gauche et celle de droite du classeur, qui n'a pas d'en-tête pour elles) ;
+//   - marionnettes : une ligne par NPM, « NPM 1 » à « NPM 5 », et sa créature (le classeur écrit « EP1 »…, une faute : décision R53, les créatures
+//     invoquées n'ont pas d'échelle de puissance ; lib/bestiaire-db.mjs#libelleDuBloc) ;
+//   - un clic sur une créature ouvre sa carte à côté (CarteInvoquee.astro), comme pour les monstres ; une recherche et un filtre par magie (la seule
+//     colonne filtrable affichée) portent sur les trois tableaux ; pas de tri : l'ordre du classeur.
+// Le script de la page (src/scripts/bestiaire.mjs) lit une ligne (`tr[data-ligne]`, filtrée) et ses cases (`[data-case]`, une carte chacune).
+import Filtres from './Filtres.astro';
+import CarteInvoquee from './CarteInvoquee.astro';
+import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
+import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { url } from '../../lib/wiki';
+
+interface Props {
+  invocations: ReturnType<typeof chargerInvocations>;
+}
+const { invocations } = Astro.props;
+const { lignes, tableaux, facettes } = invocations;
+const P = 'i-'; // préfixe de l'état dans l'adresse (le tableau des monstres n'en a pas)
+
+const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
+const lienDuSort = (i: (typeof tableaux)[number]['invocation']) =>
+  i.magieId && i.sortId ? `${url(`${i.magieId}/`)}#sort-${i.sortId.slice(i.sortId.indexOf('#sort:') + 6)}` : null;
+const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
+// les NPM d'un tableau de marionnettes : « NPM 1 à 5 »
+const npms = (t: (typeof tableaux)[number]) => {
+  const n = t.lignes.map((l) => l.npm).filter((x): x is number => x !== null);
+  const [min, max] = [Math.min(...n), Math.max(...n)];
+  return min === max ? `NPM ${min}` : `NPM ${min} à ${max}`;
+};
+---
+
+<section class="btableau" data-bestiaire-tableau data-prefixe={P} data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris="[]" data-singulier="créature" data-pluriel="créatures" aria-label="Créatures invoquées">
+  <Filtres
+    id="invoquees"
+    facettes={facettes}
+    recherche="Rechercher une créature invoquée"
+    aide="Tous les mots, où qu’ils soient, carte comprise : nom, magie, capacités, effets… Le filtre porte sur la seule colonne filtrable affichée, la magie ; plusieurs valeurs : l’une ou l’autre."
+  />
+  <p class="btableau__aide muted">
+    {lignes.length} créatures appelées par trois sorts, un tableau chacun. « /NPM » : par niveau de puissance magique. <span class="js-seul">Dépliez un tableau, puis cliquez sur une créature pour ouvrir sa carte.</span>
+  </p>
+  <div class="bvue">
+    <div class="binvocations">
+      {
+        tableaux.map((t) => {
+          const sort = lienDuSort(t.invocation);
+          return (
+            <details class="binvocation" id={`tableau-${t.invocation.nomCle}`} data-repli>
+              <summary>
+                <span class="binvocation__nom">{t.invocation.nom}</span>
+                <span class="binvocation__compte muted" data-repli-compte data-total={t.creatures}>
+                  {t.duo ? `${t.lignes.length} combinaisons · ` : `${npms(t)} · `}
+                  {nombre(t.creatures)}
+                </span>
+              </summary>
+              <p class="binvocation__sort muted">
+                Sort : {sort ? <a href={sort}>{t.invocation.sortNom}</a> : t.invocation.sortNom}
+                {t.invocation.magie && <> ({t.invocation.magie})</>} · <a href={url(`${t.invocation.id}/`)}>règles de l’invocation</a>
+              </p>
+              <div class="btableau__defile" tabindex="0" role="region" aria-label={`Tableau « ${t.invocation.nom} » (défile)`}>
+                <table class={`btable btable--invocation${t.duo ? ' btable--duo' : ''}`}>
+                  <thead>
+                    <tr>
+                      {t.duo ? (
+                        <th scope="col" title="La marge du classeur : la magie du sort, seule (mono) ou avec une seconde magie">
+                          Magies
+                        </th>
+                      ) : (
+                        <th scope="col" title="Niveau de puissance magique de la créature">
+                          NPM
+                        </th>
+                      )}
+                      <th scope="col" colspan={t.duo ? 2 : 1}>
+                        {t.duo ? 'Créatures' : 'Créature'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {t.lignes.map((l) => (
+                      <tr class="bligne bligne--bloc" data-ligne data-ordre={l.ordre} data-facettes={JSON.stringify(l.facettes)} data-tri="{}">
+                        <th scope="row" class="bligne__bloc" title={l.libelle}>
+                          {t.duo ? (
+                            <span class="bmagies">
+                              {l.magies.map((m) => (
+                                <span class="bmagie" style={pastille(m)}>
+                                  {m}
+                                </span>
+                              ))}
+                              {l.mono && <span class="muted"> mono</span>}
+                            </span>
+                          ) : (
+                            l.libelle
+                          )}
+                        </th>
+                        {l.cases.map((c) => (
+                          <td class="bcase" id={c.ancre} data-case data-carte={`carte-${c.ancre}`}>
+                            <a class="bligne__ouvrir" href={`#carte-${c.ancre}`} aria-controls={`carte-${c.ancre}`}>
+                              {c.nom}
+                            </a>
+                          </td>
+                        ))}
+                        {t.duo && l.cases.length < 2 && <td class="bcase bcase--vide" />}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          );
+        })
+      }
+      <p class="btableau__vide" data-aucune hidden>Aucune créature invoquée ne correspond à ces critères.</p>
+    </div>
+    <aside class="bcartes" aria-label="Carte de la créature choisie" data-cartes>
+      <p class="bcartes__invite js-seul">Choisissez une créature dans un tableau pour ouvrir sa carte.</p>
+      {lignes.map((l) => <CarteInvoquee ligne={l} />)}
+    </aside>
+  </div>
+</section>

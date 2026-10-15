@@ -1,6 +1,7 @@
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { buildIndex, remarkWikilinks } from './wikilinks.mjs';
 import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
+import { remarkMonnaies } from './markdown-monnaies.mjs';
 import { avecPrefixe } from './guide.mjs';
 import { loadWiki, slugOf, typeOf } from './wiki';
 
@@ -12,7 +13,7 @@ let processeur: ReturnType<typeof createMarkdownProcessor> | undefined;
 async function creer() {
   const { entries } = await loadWiki();
   const index = buildIndex(entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })));
-  return createMarkdownProcessor({ syntaxHighlight: false, remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase] });
+  return createMarkdownProcessor({ syntaxHighlight: false, remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase, remarkMonnaies] });
 }
 
 /** HTML d'un morceau de Markdown. `id` (« guide/le-combat ») sert aux avertissements des liens cassés. */

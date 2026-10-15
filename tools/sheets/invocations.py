@@ -36,7 +36,8 @@ Onglets :
   * « Animation des morts » : 14 blocs, deux créatures par bloc, colonne A = magie(s). Bandeau « INVOCATION NON-MORT »
     (AP1), texte général (AP3) et, dans le panneau de droite à partir de la ligne 40, un tableau sans en-tête
     « AMELIORATION CADAVERIQUE » (nom en AP puis texte en AU ; deuxième colonne de paires en BF/BK).
-  * « Marionette de lombre » : 5 blocs, UNE créature par bloc (carte de gauche seulement, un palier EP1 à EP5 en A),
+  * « Marionette de lombre » : 5 blocs, UNE créature par bloc (carte de gauche seulement, « EP1 » à « EP5 » en A : une faute du
+    classeur pour le NPM de la créature, écrite « NPM 1 » à « NPM 5 » dans les pages, décision R53),
     sans ligne Chakra (Santé puis Barrière en I/L), plus un panneau « Effet "Manteau noir" » (libellé en S r0+11, texte
     en S r0+12). Bandeau « INVOCATION MARIONETTE » (Z1) et texte général (Z3).
 
@@ -120,6 +121,10 @@ URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 
 BLOCK = 29              # hauteur d'un bloc, en lignes
 COL_MARGIN = 1          # colonne A : libellé de marge du bloc
+# Décision R53 du propriétaire (2026-10-13 : « Les créatures invoquées n'ont pas de EP. c'est les pets invoqués par les joueurs. Leur "rang" c'est
+# directement lié au Niveau de Puissance Magique » ; « C'est pour le coup une faute sur le classeur ») : la marge « EP3 » de l'onglet Marionette
+# s'écrit « NPM 3 » dans les pages (margin_text) ; la marge lue reste telle quelle pour le reste (base : invocation_bloc.marge_brut, migration 0036).
+EP_DE_MARGE = re.compile(r"^EP\s*(\d+)$")
 COL_LEFT, COL_RIGHT = 4, 20      # colonnes de base des cartes (D et T)
 STAT_OFFSETS = (0, 5, 10)        # libellés de la ligne Santé / de la ligne supplémentaire, par rapport à la base
 VALUE_SHIFT = 3                  # la valeur est 3 colonnes à droite de son libellé
@@ -556,6 +561,12 @@ def tab_tags(tab):
     return tags
 
 
+def margin_text(cfg, margin):
+    """La marge d'un bloc telle que l'écrit une page : « NPM 3 » pour le « EP3 » de l'onglet Marionette (décision R53), sinon telle qu'écrite."""
+    m = EP_DE_MARGE.match(margin) if cfg["kind"] == "solo" else None
+    return "NPM %s" % m.group(1) if m else margin
+
+
 def magic_tags(margin):
     tags = []
     for part in norm_ws(margin).split("+"):
@@ -587,7 +598,7 @@ def render_creature(tab, block, side):
     L = front_matter(title, aliases, tags, summary, cfg["name"])
 
     L += ["**Invocation** : %s (onglet du classeur « %s »)" % (esc_inline(cfg["name"]), esc_inline(WORKBOOK)), ""]
-    L += ["**%s** : %s" % (esc_inline(cfg["margin_label"]), esc_inline(block["margin"])), ""]
+    L += ["**%s** : %s" % (esc_inline(cfg["margin_label"]), esc_inline(margin_text(cfg, block["margin"]))), ""]
     if cfg["kind"] == "duo":
         other = block["cards"][1 - side]
         L += ["**Autre créature du bloc** : %s" % esc_inline(other["name"]), ""]
@@ -630,7 +641,7 @@ def render_intro(tab):
         L += ["## Texte général", ""] + md_text(tab["text"]) + [""]
     L += ["## Créatures", ""]
     for block in tab["blocks"]:
-        L.append("- %s : %s" % (esc_inline(block["margin"]), ", ".join(esc_inline(c["name"]) for c in block["cards"])))
+        L.append("- %s : %s" % (esc_inline(margin_text(cfg, block["margin"])), ", ".join(esc_inline(c["name"]) for c in block["cards"])))
     L.append("")
     if tab["table"]:
         ttitle, columns = tab["table"]

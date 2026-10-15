@@ -82,7 +82,7 @@ test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « si
   const jeton = section.match(/^\s*(ssh -t .*\.github-token.*)$/m)[1];
   assert.match(jeton, /^ssh -t -i \S+ ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > \S+\.github-token; stty echo; chmod 600 /, 'le jeton se colle sans s\'afficher, jamais en argument');
   assert.doesNotMatch(jeton.slice(jeton.indexOf('"') + 1, jeton.lastIndexOf('"')), /[$%"]/);
-  assert.match(section, /bandeau « Serveur de test »/);
+  assert.match(section, /bandeau « Serveur de dev »/);
   assert.match(section, /répond 502/);
 });
 
@@ -139,8 +139,11 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.deepEqual(normal, { MAVERICK_CONTENEUR: 'maverick-center', MAVERICK_PORT: '127.0.0.1:8080' });
   const test_ = env(join(d.test, '.env'));
   assert.deepEqual(test_, { MAVERICK_CONTENEUR: 'maverick-center-test', MAVERICK_PORT: '127.0.0.1:8081', MAVERICK_BASE_TEST: 'conservee', MAVERICK_EDITION: '1',
-    MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.maverick-jdr.com' });
+    MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.maverick-jdr.com', MAVERICK_DOSSIER_MAINTENANCE: join(d.normal, 'maintenance') });
   assert.equal(statSync(join(d.test, 'secrets')).mode & 0o777, 0o700, 'dossier du jeton de la page Mise à jour, lisible par root seulement');
+  // maintenance pendant une mise à jour : le serveur de test publie l'annonce dans le dossier du serveur normal, que les deux montent
+  assert.ok(statSync(join(d.normal, 'maintenance')).isDirectory());
+  assert.ok(!existsSync(join(d.test, 'maintenance')), 'un seul dossier d’annonce, celui du serveur normal');
   assert.ok(!existsSync(join(d.normal, 'secrets')), 'pas de jeton sur le serveur normal');
   assert.ok(!existsSync(join(d.normal, 'site')) && !existsSync(join(d.test, 'site')), 'pas de site : un dossier avec site/ compterait comme une production');
 

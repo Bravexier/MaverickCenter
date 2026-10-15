@@ -1,0 +1,20 @@
+---
+import Base from '../../layouts/Base.astro';
+import Chronologie from '../../components/chronologie/Chronologie.astro';
+import { chargerChronologie } from '../../lib/chronologie-db.mjs';
+import { libelleDeDate } from '../../lib/chronologie.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// Un événement de la chronologie (lib/chronologie.mjs) : la frise à gauche, sa page à droite.
+export function getStaticPaths() {
+  return chargerChronologie(ouvrirBase()).map((e) => ({ params: { slug: e.id } }));
+}
+
+const { slug } = Astro.params as { slug: string };
+const evenements = chargerChronologie(ouvrirBase());
+const evenement = evenements.find((e) => e.id === slug)!;
+---
+
+<Base title={`Chronologie : ${evenement.titre}`} description={`${libelleDeDate(evenement)} : ${evenement.titre}`} edition={`chronologie/${evenement.id}/`}>
+  <Chronologie evenements={evenements} id={evenement.id} />
+</Base>

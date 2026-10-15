@@ -38,7 +38,7 @@ export function searchIndex(index, query) {
 
 /**
  * Mots-clés qui correspondent à la recherche (page /recherche/, où la liste des mots-clés est mêlée à la recherche) : ceux dont la clé (`normalize`
- * du libellé, celle des adresses /tags/<clé>/) contient chaque mot cherché. Recherche vide : tous. Garde l'ordre reçu.
+ * du libellé : son écriture, `mot_cle.libelle_cle`, pas son id) contient chaque mot cherché. Recherche vide : tous. Garde l'ordre reçu.
  * @param {string[]} cles
  */
 export function filtrerMotsCles(cles, query) {

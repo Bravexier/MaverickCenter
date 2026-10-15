@@ -13,7 +13,7 @@ Les catégories sont définies dans `client/src/lib/types.mjs` (`races`, `classe
 ---
 title: Elfe sylvestre          # obligatoire
 aliases: [Elfes des bois]       # autres noms, utilisables dans [[ ]]
-tags: [peuple, forêt]           # pages /tags/<mot-clé>/
+tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<id>
 summary: Une phrase de résumé.  # affichée dans les listes et la recherche
 sources: [Discord #lien-pour-races, https://docs.google.com/document/d/…]
 status: draft                   # example | draft | verified
@@ -69,7 +69,7 @@ voir l'exception ci-dessus).
 carte des magies et de la page des classes (demande du propriétaire), en deux groupes côte à côte, races pures à gauche et hybrides à droite, l'un sous l'autre
 sur un écran étroit. Chaque groupe a sa couleur, celle du bandeau des pages de race (`RACE_COLORS` dans `lib/race-kinds.mjs`, source unique : `RacePage.astro`
 la pose aussi) ; repère visuel sans valeur de règle. L'ordre est celui du propriétaire (`ORDRE_DES_RACES`, différent de l'ordre de l'onglet « Race » de la fiche) ;
-une race absente de cette liste vient après les autres, par titre. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Bulles.astro`,
+une race absente de cette liste vient après les autres, par titre. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Infobulles.astro`,
 `title` sans JavaScript) ; ni magies innées ni classe raciale : le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/races/`, les magies innées
@@ -129,12 +129,19 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/guide/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
   Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
-  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc : **un clic sur le nom d'une créature ouvre sa fiche minimale juste sous son bloc** (stats : santé, chakra, barrière, défense, vitesse ; dégâts : ses attaques,
-  telles qu'écrites ; les six caractéristiques ; capacités avec leur NPM minimum et leur qualificatif « [Non enflammé] »), un bouton « Bestiaire » à côté du nom mène à sa page. Sans JavaScript, les panneaux des sorts, les fiches et la règle du NPM 5 sont affichés ;
+  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
+  dans leur correspondance dans les tableaux des magies et leurs sorts associés ») : au survol, au focus clavier ou au toucher de son nom (un bouton, dans la liste des créatures et dans les effets « Manteau noir » de la Marionnette de l'ombre),
+  la carte entière (`components/bestiaire/CarteInvoquee.astro` en mode `bulle` : sans lien ni bouton ni identifiant, CSS commun `styles/bestiaire/carte.css`) s'ouvre à côté du nom (`data-placement="cote"`), sinon dessous ou dessus comme les autres bulles,
+  sa hauteur bornée à l'espace qui reste pour ne pas cacher le nom ; plus haute que sa place, elle défile (molette, ou au clavier les flèches, pages, début et fin tant que le nom a le focus) ; un clic dedans ne la ferme pas.
+  Au toucher, elle couvre presque l'écran d'un téléphone : un appui dedans la referme (`data-fermer-au-toucher`), et le nom n'est jamais un lien (le second appui tomberait sur la carte). Une carte par créature et par page (dans `.cartes-creatures`, après les tableaux de sorts, avant « Disponibilité par race »), y compris dans les onglets du Potentiel Illimité ;
+  le nom est sur la couleur de sa magie (de la marge du bloc, sinon celle du sort), en dégradé quand il en a deux, sans lien « Bestiaire » à côté (demandes du propriétaire). Sans JavaScript, les panneaux des sorts et la règle du NPM 5 sont affichés, la carte reste cachée et l'attribut `title` du nom en donne les valeurs (santé, chakra, barrière, défense, vitesse, dégâts) ;
   les règles d'invocation et l'annexe restent dans leur `<details>` replié.
-- **Infobulles** (`components/Bulles.astro`, `Info.astro`, `EtatPastille.astro`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
+- **Infobulles** (`components/Infobulles.astro`, commun à tout le site, `Info.astro`, `EtatPastille.astro` ; habillage `styles/global/infobulles.css`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
   un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
-  d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`).
+  d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`) ;
+  seule exception, la carte d'une créature invoquée (`<div class="bulle bulle--carte">`), posée hors de tout paragraphe, après les tableaux de sorts.
+  Avec JavaScript, **jamais l'infobulle du navigateur** (demande du propriétaire) : tout attribut `title` du site, écrit dans la page ou posé par un script, est
+  aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir `CLAUDE.md`, « Infobulles »).
 - **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
   section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
   `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande
@@ -186,7 +193,7 @@ colonnes partagent une même rangée (sous-grille), si bien que leurs souligneme
 Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
 Chaque colonne prend la couleur de sa catégorie (celle des pages de classe) ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
 une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ;
-le résumé de la page (`summary`) est dans une **infobulle** (`components/magie/Bulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
+le résumé de la page (`summary`) est dans une **infobulle** (`components/Infobulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/classes/#raciales`…).
 
 ## Métiers (`/metiers/`) : un tableau, pas de page par métier
@@ -222,6 +229,133 @@ et **tout lien vers un métier mène à sa ligne** (`[[Forgeron]]` → `/metiers
 le plugin des `[[liens]]`, l'index de recherche et l'onglet DB. Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page, citée au-dessus du tableau.
 `test/metiers.test.mjs` vérifie que les autres pages du type sont exactement les lignes de `metier` ; `test/metiers-html.test.mjs` contrôle le site construit (CI après le build).
 
+## Bestiaire (`/bestiaire/`) : deux tableaux filtrables
+
+Les monstres du Google Doc « Bestiaire 2.0 » et, à part, les créatures invoquées : un onglet chacun, avec recherche et filtres à cases ; un grand tableau
+trié par en-tête pour les monstres, trois tableaux dépliables (un par invocation) pour les créatures invoquées ; la carte d'une ligne (ou d'une case) à
+côté ; rendus depuis les tables (`lib/bestiaire-db.mjs`), jamais depuis un Markdown. Les monstres n'ont pas de page.
+La page, l'extraction du doc et les questions en attente : [`bestiaire.md`](bestiaire.md).
+
+## Chronologie (`/chronologie/`) : une page par événement daté
+
+Les événements que datent le Codex et les pages de race, une page chacun, ouverte à droite d'une frise verticale en dégradé (date à gauche de la barre, titre à droite) ; deux chevrons, Haut et Bas, passent au précédent ou au suivant ; rendus depuis les tables
+`evenement`, `evenement_extrait`, `categorie_chronologie` et `evenement_categorie` (`lib/chronologie-db.mjs`), jamais depuis un Markdown : un événement n'a pas de page du wiki. À l'import,
+ses descriptions ont été **copiées** des pages (registre `tools/chronologie/evenements.json`, aujourd'hui la trace de l'import) ; depuis, elles se modifient
+sur le site de dev, avec la date, le titre, le lien de chaque description et les catégories (plusieurs par événement ; sans catégorie, « Sans catégorie
+(à trier) », sur le site de dev seulement) ; la frise se filtre par catégorie (une à la fois).
+Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
+## Armes (`/ressources/armes/`) : un tableau par famille, la fiche de l'arme forgée
+
+Demande du propriétaire (2026-10-13) : « Pas de tableau markdown, inspire-toi des sorts et fais un tableau par type d'arme. » La page est rendue depuis
+les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown, dont seules les règles de l'onglet (introduction, « Comment déterminer le
+prix de votre arme ? ») s'affichent, repliées ; le reste du Markdown (tableaux) ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque
+modification (`lib/corps-armes.mjs`).
+
+- **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction porte la mise en forme de la cellule A1 de l'onglet (lue dans le
+  classeur, perdue à l'import) — définitions en italique (*Recharge longue*, *Recharge très longue*, *Mordhau ou Demi-épée*, l'*Exemple*), « Les armes en
+  bleu… » en gras (et en bleu sur la page, le bleu des armes de départ : `lib/armes-db.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras
+  italique, **Dague** et **Arme de jet** en gras ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes ; le prix à part, sa formule encadrée.
+
+- **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45), aéré (« l'affichage est trop
+  serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; les **effets
+  supplémentaires** sur une seconde ligne, sous l'arme (« à l'instar des sorts choisis de la fiche de personnage » : `tr.arme-suite`, cachée quand l'arme
+  n'en a pas ; survol, sélection et couleur avec l'arme). Les colonnes Dégâts (dé de l'arme, « D8 au lieu du D10 » de son effet, sinon celui de son type ;
+  plus son bonus), Type de dégâts, Portée (1 par défaut, décision R50), Durabilité (2 crans de base, corrigés par « 1 seul cran » ou « ±1 cran »), Origine
+  (« Origine X » ou « Facture X ») sont tirées de l'effet (`lib/arme-champs.mjs`) ; les effets supplémentaires = l'effet sans les clauses montrées ailleurs
+  (une clause qui en contredit une autre reste écrite).
+- **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
+  (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception).
+- **Filtre par compétence** (« filtrer les armes par compétence arc / arbalète / légère et lourde ») : quatre boutons à bascule, Lourde, Légère, Arc,
+  Arbalète, dans leur couleur (ils servent aussi de légende) ; une arme reste si l'UNE de ses compétences est choisie (« Arc / Arme Légère » sous Arc comme
+  sous Légère), « Toutes » efface le choix, une famille sans arme affichée se cache, les comptes disent « N armes sur M » ; une arme ouverte qui disparaît
+  se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
+  l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
+- **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
+- **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme (ou la ligne de ses effets) ouvre à côté, dans un panneau large, sa fiche en **un seul
+  cadre** (son bouton Fermer en haut à droite ; type et mains sans rappeler la famille ; tuiles Dégâts, Durabilité « Solidité : X », Coût ; le détail sur
+  deux colonnes), puis côte à côte les **matériaux** (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et
+  les **améliorations** (+1 à +10, ligne TOTAL).
+  Choisir un matériau (le fer par défaut) et une amélioration ajuste la fiche (`lib/arme-forge.mjs`, décision R49) : dégâts = dé de l'arme + bonus de
+  l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration, au moins 1 (R51) ; coût = arme + niveaux +1 à +N
+  + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
+  avec `competence=…` et `depart=1` du filtre).
+  Sans JavaScript, tous les tableaux s'affichent, sans fiche.
+- **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, quatre colonnes de plus (Description, Coût, Effet, Arme de
+  départ) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
+  boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
+- `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
+  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs`, `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site
+  construit : filtre, seconde ligne des effets, panneau, règles mises en forme).
+
+
+## Accessoires (`/ressources/accessoires/`) : le générateur d'accessoire
+
+Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
+un bloc d'explication, plusieurs tableaux et, sur le côté, un encart qui décrit l'accessoire créé d'après ce qui a été sélectionné. La page est rendue
+depuis les tables (`lib/accessoires-db.mjs`, `components/accessoires/AccessoiresPage.astro`, `styles/accessoires/`), jamais depuis son Markdown, dont
+seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge »,
+« Ne peut dépasser 4 »…) s'affichent ; le reste (tableaux) ne sert qu'à la recherche et aux `[[liens]]`. La page n'est pas modifiable sur le site de dev.
+
+- **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
+  repliable par propriété (`accessoire_effet`), la Compétence en une ligne par compétence et par niveau (« plusieurs lignes pour chaque niveau et pas des cases », demande du propriétaire : bonus d'acquis « 1 % à 5 % »…, niveau, gemmes, prix),
+  la Malédiction sans tableau —, puis la Monture (`accessoire_monture`). Le dé de chaque table est son plus grand jet écrit (1d4, 1d100, 1d6, 1d20).
+- **Dé** (« dans chaque tableau une case avec un icône de dé ») : l'en-tête de la première colonne des tableaux des étapes, pas la Monture (« Pas de
+  random à faire sur la table des Montures ») ; un clic tire une ligne au hasard et affiche le jet ;
+  la Compétence tire 1d6 (la ligne) puis 1d20 (le bonus d'acquis, donc la colonne), le bonus tiré est écrit dans l'encart. « Tirer un accessoire » suit
+  les étapes 1 à 3 ; une malédiction (propriété 96-100 ou ligne MALÉDICTION d'un tableau d'effets) rend l'accessoire maudit et fait relancer depuis
+  l'étape 1 (« on relance les dés au début des étapes et l'effet sera le contraire de ce qui est indiqué »). Rien n'est inversé ni calculé : l'encart le dit.
+- **Encart** (`src/scripts/accessoires.mjs`) : identité, propriété, effet (et sa remarque), niveau, gemmes avec la qualité de leur niveau (phrase des règles :
+  classique aux niveaux 1 et 2, raffinée aux 3 et 4, parfaite au 5) et le prix d'un quart de chacune, monture, prix écrit dans le tableau, case « Maudit ».
+  Choisir un effet choisit d'office la monture de son niveau tant qu'on n'en a pas choisi une (le prix écrit d'un effet compte les quarts de gemme de la
+  qualité de son niveau et la monture de ce niveau : vrai pour 115 des 116 effets à prix ; « Grenat + Onyx » au niveau 4, 179 Ro, fait exception).
+  **Gemmes au choix** (« Dans le cas où les gemmes sont au choix, laisser la possibilité d'en cocher 2 », « Cela mettra alors le prix à jour ») : une
+  case par gemme au choix, deux gemmes en tout — les quatre de l'Intelligence en laissent cocher deux, « Onyx + Grenat/Malachite » une
+  (`gemmesAuChoix`, `gemmesCochees`) ; les gemmes cochées et la monture choisies, le prix se calcule (`prixDeLAccessoire` : les quarts à la qualité du
+  niveau + la monture, la composition des prix écrits, que `test/accessoires-db.test.mjs` vérifie sur chaque effet à gemmes imposées).
+  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1`).
+- **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
+  « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
+  (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
+- Sans JavaScript : tous les tableaux, ouverts, sans encart ni dé. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
+  chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit).
+
+## Composants (`/ressources/composants/`) : tout ce qui sert à fabriquer sans être consommé
+
+Demandes du propriétaire (2026-10-14) : « un onglet "Composants". Il comprendra les tableaux des gemmes, des matériaux, la monnaie, et l'ensemble des
+tables de l'onglet "équipement inventaire". […] chaque élément est modifiable en édition, supprimable, ajoutable » ; « Il faut aussi y mettre la table des
+fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui peut servir pour fabriquer les potions / fioles et autres ». La page n'a pas
+de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
+`styles/composants/`, lignes : `lib/composants-rendu.mjs`), un tableau repliable par liste :
+
+- **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
+  sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
+  supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
+- **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
+  l'onglet « Armes »), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
+  arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). Les pages des armes et des armures les reprennent en
+  lecture : le nom suit partout, le type la fiche d'armure (`materiau_armure.type`, « Autres » refusé pour un matériau d'armure), le prix `materiau_arme`.
+- **Gemmes** (`gemme`) : magie, gemme, description, prix de la gemme entière (bâton magique) et d'un quart (accessoires), par qualité.
+- **Bois** (`bois`) des bâtons magiques : magie, bois, description, prix.
+- **Ingrédients d'alchimie** (`ingredient_alchimie`, doc « Alchimie » › Liste d'ingrédients) : la **table des fruits** (les ingrédients de type
+  « Fruit » : catégorie — amplificateur majeur ou catalyseur —, type, affinité), puis un tableau par catégorie (Solvant, Essence, Amplificateur,
+  Catalyseur, Stabilisateur) sans les fruits.
+- **Équipement** : les six tableaux de l'onglet « Équipement inventaire » (Végétaux, Animaux, Autres, Matos aventures, Matos fabrication — fioles de
+  verre et kits d'alchimie compris —, Matos projectile).
+
+Les potions, livres et parchemins (des consommables) n'y sont pas. Une recherche filtre les lignes de tous les tableaux (`src/scripts/composants.mjs`).
+
+**Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : chaque case se modifie (nom, prix,
+description, prix d'une gemme, type et affinité d'un ingrédient, nom, abréviation et valeur d'une monnaie) ; ce qui en est tiré est recalculé (prix en RF,
+ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
+gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
+rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
+supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue, avec une note datée qui demande de mettre
+la fiche à jour (décision R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Partout, les prix montrent leurs monnaies en icônes (R61) et un montant se décompose en PP / RO / RF (« 1245,5 RO » : 1 PP 245 RO 50 RF ; R63, `lib/monnaies.mjs`).
+Le corps Markdown des pages qui écrivent ces composants suit, case par case (`lib/corps-composants.mjs`) : « Équipement inventaire » (lignes des objets,
+MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
+avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».
+Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-html.test.mjs` (site construit).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche
@@ -244,7 +378,7 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   sans JavaScript et à l'impression, les deux spécialités se suivent avec leur titre ; une classe qui n'a qu'une spécialité (l'autre supprimée sur le site de dev) la montre seule,
   sans « Au choix » (« Niveau 10 : la spécialité de la classe. »). **Chaque choix est encadré** (« Au choix · Niveau N : un seul des deux »), ses options **côte à côte**
   (l'une sous l'autre sur un téléphone) avec une pastille « ou » entre elles ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
-  vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle native) et sa précision telle qu'écrite (« 2 fois/Combat »),
+  vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle, un `title`) et sa précision telle qu'écrite (« 2 fois/Combat »),
   effet, remarque du classeur. Ancre `#don-<slug>` : la fiche d'un don y renvoie.
 - Le CSS est dans `client/src/styles/classe/` (et `styles/magie/tooltips.css` pour les infobulles), injecté par `ClassePage.astro` (`?raw`) seulement. `test/classes-html.test.mjs` contrôle
   le site construit (la CI le lance après le build).
@@ -351,6 +485,13 @@ magique »). Pour une classe raciale, c'est sa 2ᵉ spécialité, le pendant lan
 une classe magique : la fiche V15.2.2 (BDD!H40, I40, BB2) le range parmi elles pour ce bonus et le propriétaire du projet le confirme ; le Sommaire le classe « spéciale » parce que
 ses règles diffèrent de celles des autres classes (pas de spécialité, des groupes de choix par palier). La page de l'Archimage donne cette explication.
 
+## Codex (type `lore`) : le Google Doc « CODEX Maverick »
+
+Les pages du Codex (116) sont fabriquées par `tools/docs/codex.py` depuis l'export du document rangé dans `sources/raw/` : une page par section
+(divinité, temple ou guilde, nation ou région, objet légendaire), des pages de sommaire et `lore/codex` pour tout le document. Le texte est celui du
+document ; seules les corrections du registre `tools/docs/codex-corrections.json` s'y appliquent. Ne pas modifier ces pages à la main : un nouvel export
+les réécrit (`codex.py`, `--verifier`, `npm run db:sync-pages`). Détail, corrections et questions ouvertes : [`codex.md`](codex.md).
+
 ## Coquilles et fautes d'orthographe
 
 Les classeurs sources contiennent des coquilles ; elles se corrigent (demande du propriétaire du projet), **jamais dans la page** mais dans le
@@ -365,6 +506,15 @@ sens le plus probable, graphie majoritaire pour un nom propre ; le nom change pa
 refaire la correction par une migration. Les citations « telles quelles » de la fiche (tableaux des écarts des races) gardent leurs fautes. Les points qui demandent une décision
 (mot manquant, accord douteux) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
+
+## Mots-clés
+
+Les mots-clés forment un **vocabulaire** (table `mot_cle`, migration `0043`) que portent les pages (`tags:` du frontmatter, écrits par leur libellé).
+Chacun a un identifiant figé, tiré de son premier libellé : son adresse est `/recherche/?mot-cle=<id>`, qui liste les pages qui le portent ; renommé, il
+garde son adresse. Sur le site de dev, la page Recherche en mode modification crée, renomme, fusionne et supprime un mot-clé (supprimé, il est retiré de
+toutes les pages) ; les mots-clés dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité
+de classe », « métier », « codex ») ne bougent pas. Les événements de la chronologie n'ont pas de mots-clés (« trop nombreux et trop libres », demande du
+propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie »).
 
 ## Liens entre pages
 

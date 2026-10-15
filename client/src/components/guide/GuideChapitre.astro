@@ -6,12 +6,11 @@ import { rendreMarkdown } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { WikiEntry } from '../../lib/wiki';
-import Bulles from '../magie/Bulles.astro';
 import GuideBloc from './GuideBloc.astro';
 
 // Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). La page prend toute la largeur ; une
 // flèche de chaque côté (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre) passe par-dessus son bord, en bas de l'écran,
-// et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre du chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
+// et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre du chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/Infobulles.astro ; sans JavaScript, `title`).
 // Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
 // Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
 interface Props {
@@ -136,7 +135,6 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     </ol>
   </nav>
 </div>
-<Bulles />
 <script is:inline>
   // ← et → : chapitre précédent ou suivant, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
   document.addEventListener('keydown', function (e) {

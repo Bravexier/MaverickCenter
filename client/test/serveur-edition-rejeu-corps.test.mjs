@@ -73,10 +73,12 @@ const FEU = 'magies/magie-du-feu';
 const HUMAIN = 'races/humain';
 const DRAKOS = 'races/drakos';
 
-test('colonnes dérivées : corps et résumé des pages typées, pas ceux du guide ni les autres colonnes', () => {
+test('colonnes dérivées : corps et résumé des pages typées, pas ceux du guide et du Codex ni les autres colonnes', () => {
   assert.equal(colonneDerivee('page', { id: FEU }, 'corps_md'), true);
   assert.equal(colonneDerivee('page', { id: HUMAIN }, 'resume'), true);
   assert.equal(colonneDerivee('page', { id: 'guide/bienvenue' }, 'corps_md'), false);
+  // les pages du Codex : leur texte est modifié lui-même (lib/edition-modele.mjs#texteDePageModifiable)
+  assert.equal(colonneDerivee('page', { id: 'lore/eaunoire' }, 'corps_md'), false);
   assert.equal(colonneDerivee('page', { id: FEU }, 'titre'), false);
   assert.equal(colonneDerivee('race', { id: HUMAIN }, 'presentation'), false);
   // D11 : `donnees` des fiches de dons (classe, spécialité, choix…) est tiré des tables ; celui des pages de race (magies innées) ne l'est pas

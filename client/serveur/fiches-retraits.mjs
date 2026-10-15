@@ -1,5 +1,5 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
-// choisis qui en dépendent), un sort ou un métier que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
+// choisis qui en dépendent), un sort, un métier ou une arme (décision R52) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
 // et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
@@ -27,6 +27,8 @@ export const RETRAITS = Object.freeze([
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
   Object.freeze({ table: 'personnage_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
+  // une arme supprimée (décision R52, comme R42) : son emplacement (arme 1 ou 2) part, avec sa composition, son amélioration et son élément
+  Object.freeze({ table: 'personnage_arme', colonnes: Object.freeze(['arme_id']), vise: 'arme', action: 'supprimer', cle: Object.freeze(['personnage_id', 'rang']) }),
 ]);
 
 /**
@@ -92,7 +94,7 @@ function appliquer(db, aRetirer, acc) {
  * @param {{ metiers?: string[], specialites?: string[], capacites?: string[], sorts?: string[] }} cibles
  * @param {Map} acc nouveauxRetraitsDeFiches()
  */
-export function retirerDesFiches(db, { metiers = [], specialites = [], capacites = [], sorts = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
+export function retirerDesFiches(db, { metiers = [], specialites = [], capacites = [], sorts = [], armes = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
   const aRetirer = [];
   const capacitesDonnees = new Set(capacites);
   const regroupes = new Set(); // `${fiche}\u0000${don}` : dons nommés sur la ligne de leur spécialité
@@ -133,7 +135,58 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
       aRetirer.push({ ...f, vise: 'metier', cle: [f.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom } });
     }
   }
+  for (const id of armes) {
+    const a = db.prepare('SELECT a.id, a.nom, f.nom AS famille FROM main.arme a LEFT JOIN main.arme_famille f ON f.id = a.famille_id WHERE a.id = ?').get(id);
+    if (!a) continue;
+    for (const f of db.prepare(`SELECT ${champsDeFiche}, pa.rang FROM main.personnage_arme pa JOIN main.personnage p ON p.id = pa.personnage_id WHERE pa.arme_id = ?`).all(a.id)) {
+      aRetirer.push({ ...f, vise: 'arme', cle: [f.personnage, f.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom, famille: a.famille ?? null, rang: f.rang } });
+    }
+  }
   return appliquer(db, aRetirer, acc);
+}
+
+/**
+ * Les tables des fiches dont un objet peut citer une ressource du catalogue (« INVENTAIRE | SAC », la ceinture : `ressource_id` quand l'objet est au
+ * catalogue, sinon le nom seul), et le mot qui situe l'objet dans la note. Un composant supprimé des règles (page « Composants ») n'y est pas retiré :
+ * l'objet reste dans la fiche, sous son nom, seul son lien au catalogue part (`ressource_id` = NULL), et une ligne datée le dit dans les notes
+ * (décision R60 : « objet supprimé de la base, veuillez la mettre à jour » ; lib/fiche-format.mjs#ligneDeRetrait).
+ */
+export const OBJETS_AU_CATALOGUE = Object.freeze({ personnage_inventaire: 'inventaire', personnage_ceinture: 'ceinture' });
+
+/** Détache les objets trouvés par `sql` (personnage, rang, nom, id de la ressource) et range leur descripteur dans `acc`, une fois par fiche, objet et emplacement. */
+function detacher(db, table, lignes, acc) {
+  const emplacement = OBJETS_AU_CATALOGUE[table];
+  for (const l of lignes) {
+    db.prepare(`UPDATE main."${table}" SET ressource_id = NULL WHERE personnage_id = ? AND rang = ?`).run(l.personnage, l.rang);
+    let e = acc.get(l.personnage);
+    if (!e) acc.set(l.personnage, (e = { personnage: l.personnage, nom: l.fiche, nature: l.nature, retraits: [] }));
+    if (!e.retraits.some((d) => d.nature === 'objet' && d.id === l.id && d.emplacement === emplacement)) {
+      e.retraits.push({ nature: 'objet', id: l.id, nom: l.objet, emplacement });
+    }
+  }
+  return acc;
+}
+
+/** Site de dev : détache des fiches les ressources données, qui vont être supprimées des règles (à appeler AVANT leur suppression), avec une note (R60). */
+export function detacherDesFiches(db, ressources = [], acc = nouveauxRetraitsDeFiches()) {
+  for (const table of Object.keys(OBJETS_AU_CATALOGUE)) {
+    if (!aLaTable(db, table)) continue;
+    for (const id of ressources) {
+      detacher(db, table, db.prepare(`SELECT ${champsDeFiche}, x.rang, x.nom AS objet, x.ressource_id AS id FROM main."${table}" x
+        JOIN main.personnage p ON p.id = x.personnage_id WHERE x.ressource_id = ? ORDER BY p.id, x.rang`).all(id), acc);
+    }
+  }
+  return acc;
+}
+
+/** Reconstruction de la base vivante : détache des fiches les ressources absentes des nouvelles règles, avec une note (R60, OBJETS_AU_CATALOGUE). */
+function detacherLesManquantes(db, acc) {
+  for (const table of Object.keys(OBJETS_AU_CATALOGUE)) {
+    if (!aLaTable(db, table)) continue;
+    detacher(db, table, db.prepare(`SELECT ${champsDeFiche}, x.rang, x.nom AS objet, x.ressource_id AS id FROM main."${table}" x
+      JOIN main.personnage p ON p.id = x.personnage_id
+      WHERE x.ressource_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.ressource r WHERE r.id = x.ressource_id) ORDER BY p.id, x.rang`).all(), acc);
+  }
 }
 
 /**
@@ -200,6 +253,17 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ORDER BY p.id`).all()) {
     aRetirer.push({ ...m, vise: 'metier', cle: [m.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom ?? null } });
   }
+  // armes : absentes des nouvelles règles (décision R52) ; nom et famille lus dans l'ancienne base
+  for (const a of db.prepare(`SELECT ${champsDeFiche}, pa.rang, pa.arme_id AS id, x.nom AS nom, f.nom AS famille
+    FROM main.personnage_arme pa JOIN main.personnage p ON p.id = pa.personnage_id
+    LEFT JOIN ancienne.arme x ON x.id = pa.arme_id
+    LEFT JOIN ancienne.arme_famille f ON f.id = x.famille_id
+    WHERE NOT EXISTS (SELECT 1 FROM main.arme y WHERE y.id = pa.arme_id)
+    ORDER BY p.id, pa.rang`).all()) {
+    aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
+  }
+  // composants : l'objet reste sous son nom, sans lien au catalogue, avec une note (R60, OBJETS_AU_CATALOGUE)
+  detacherLesManquantes(db, acc);
   return appliquer(db, aRetirer, acc);
 }
 

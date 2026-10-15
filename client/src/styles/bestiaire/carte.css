@@ -1,0 +1,163 @@
+/* La carte d'un monstre ou d'une créature invoquée (lib/bestiaire-rendu.mjs, components/bestiaire/CarteInvoquee.astro) : sur /bestiaire/, à côté du
+   tableau (components/bestiaire/Bestiaire.astro, après bestiaire.css) ; sur une page de magie, en infobulle sur le nom d'une créature invoquée
+   (components/magie/MagiePage.astro, après styles/magie/tooltips.css ; demande du propriétaire : « La carte sera à garder et servirait de tooltip dans leur
+   correspondance dans les tableaux des magies et leurs sorts associés »). Ses couleurs ne dépendent que de la carte. */
+.bcarte {
+  --bes: var(--accent);
+  --bes-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --bes-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.bcarte .muted { color: var(--muted); }
+.bcarte .vide { color: var(--muted); opacity: 0.6; }
+.bcarte .texte { white-space: pre-line; }
+.bcarte [hidden] { display: none !important; }
+.bcible { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
+.bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
+.bcible--reflexion { font-style: italic; }
+/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état ; deux magies : moitié-moitié) */
+.bcible--magie { background: var(--c); color: var(--c-texte); border-color: color-mix(in srgb, var(--c) 55%, var(--text)); }
+/* deux magies liées (« Surcharge magique » : Arcane et Corruption) : la seconde en bande à droite, le texte sur la première */
+.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--c2); }
+/* à l'impression, le fond d'une pastille de magie s'imprime (sinon son texte blanc devient illisible) */
+@media print { .bcible--magie { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+/* une défense écrite par forme ou sur plusieurs lignes (« Guerrier : … », « Absorbe(s) … ») : une ligne chacune */
+.bdef-lignes { display: grid; gap: 0.2rem; }
+.bdef-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.bdef-ligne--vide { height: 0.15rem; }
+.bcibles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.bcat { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--border); }
+.bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
+.bcat--boss { background: var(--bes); border-color: var(--bes); color: var(--surface); font-weight: 700; }
+.bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
+.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
+
+/* La carte */
+.bcarte { padding: 0.9rem 1rem 1.1rem; font-size: 0.92rem; }
+.bcarte__tete { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "titres portrait" "fermer portrait"; gap: 0.3rem 0.9rem; align-items: start;
+  padding-bottom: 0.8rem; border-bottom: 2px solid var(--bes-line); }
+.bcarte__titres { grid-area: titres; min-width: 0; }
+.bcarte__tete :is(h1, h3) { margin: 0; font-size: 1.25rem; line-height: 1.2; }
+.bcarte__tete h1 { font-size: 1.6rem; }
+.bcarte__espece { margin: 0.15rem 0 0.4rem; color: var(--muted); }
+.bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.bbadge { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
+.bbadge--ep { border-style: dashed; }
+/* la description, repliée sous les tags, au-dessus du filet de l'en-tête (demande du propriétaire ; lib/bestiaire-rendu.mjs#htmlDeCarteMonstre) : entre les
+   titres et « Fermer », à gauche du portrait ; sur un téléphone, toute la largeur sous le portrait. Seulement la carte d'un monstre (`:has`) : les
+   créatures invoquées et leur infobulle gardent leur en-tête */
+.bcarte__tete:has(> .bcarte__description) { grid-template-areas: "titres portrait" "description portrait" "fermer portrait"; grid-template-rows: auto auto 1fr; }
+.bcarte__description { grid-area: description; min-width: 0; }
+.bcarte__description > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: 0.85rem; color: var(--bes); font-weight: 700; }
+/* « déroulable » : ▸ repliée, ▾ dépliée, comme les tableaux des créatures invoquées */
+.bcarte__description > summary::-webkit-details-marker { display: none; }
+.bcarte__description > summary::before { content: '▸'; width: 0.8em; }
+.bcarte__description[open] > summary::before { content: '▾'; }
+.bcarte__description > summary:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: var(--radius-xs); }
+.bcarte .bcarte__description > p { margin: 0.35rem 0 0; }
+/* l'espèce, puis la créature, à la ligne (décision R65) */
+.bcarte .bcarte__description > p + p { margin-top: 0.8rem; }
+/* en mode modification, les deux champs à la suite, chacun avec son intitulé (demande du propriétaire : « il faut bien qu'on ait les deux champs
+   description espèce et description créature à la suite l'un de l'autre ») : la saisie n'a qu'un texte indicatif, qui s'efface une fois remplie. En
+   pseudo-élément, l'intitulé n'entre pas dans le texte que lit la recherche */
+body.ed-mode .bcarte__description > p::before { display: block; margin-bottom: 0.2rem; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+body.ed-mode .bcarte__description > .bcarte__desc-espece::before { content: 'Description de l’espèce'; }
+body.ed-mode .bcarte__description > .bcarte__desc-creature::before { content: 'Description de la créature'; }
+@media (max-width: 30rem) {
+  .bcarte__tete:has(> .bcarte__description) { grid-template-areas: "titres portrait" "description description" "fermer fermer"; grid-template-rows: auto; }
+}
+/* à l'impression, dépliée (le script de la page l'ouvre aussi avant d'imprimer : src/scripts/bestiaire.mjs) */
+@media print { .bcarte__description::details-content { content-visibility: visible; } .bcarte__description > summary { display: none; } }
+/* le portrait (migration 0033, lib/bestiaire-rendu.mjs#htmlDuPortrait) : un cadre carré qui montre le carré cadré de l'image (l'image y est placée en
+   pourcentages, comme la vignette de la fiche de personnage) ; sans image, le logo en filigrane */
+.bcarte__portrait { grid-area: portrait; margin: 0; width: 8.5rem; display: grid; gap: 0.3rem; justify-items: center; }
+.bcarte__cadre { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--bes-line); border-radius: var(--radius-lg); background: var(--bes-soft); }
+.bcarte__cadre img { position: absolute; display: block; max-width: none; }
+.bcarte__portrait[data-vide] .bcarte__cadre { border-style: dashed; display: grid; place-items: center; }
+.bcarte__portrait[data-vide] .bcarte__cadre img { position: static; width: 70%; height: auto; opacity: 0.55; }
+.bcarte__portrait figcaption { font-size: 0.68rem; color: var(--muted); text-align: center; }
+.bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: 0.8rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  color: var(--text); text-decoration: none; background: var(--bg); }
+.bcarte__fermer:hover { border-color: var(--bes); }
+html:not(.js) .bcarte__fermer { display: none; }
+.bcarte__section { padding-top: 0.8rem; }
+.bcarte__section + .bcarte__section { margin-top: 0.8rem; border-top: 1px solid var(--border); }
+.bcarte :is(h2, h4) { margin: 0 0 0.35rem; font-size: 0.98rem; }
+.bcarte p { margin: 0 0 0.45rem; }
+.bcarte__bonus { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
+.brubriques { margin: 0; display: grid; gap: 0.5rem; }
+.brubrique { display: grid; gap: 0.15rem; }
+.brubrique dt { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.brubrique dd { margin: 0; }
+.brubrique dd ul { margin: 0; padding-left: 1.1rem; }
+.bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+.bstat { display: grid; justify-items: center; padding: 0.35rem 0.3rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); }
+.bstat__nom { font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.bstat__val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
+.bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
+.bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
+/* santé, chakra, barrière écrites à part (cartes à plusieurs échelles) : une colonne chacune, comme la ligne de tuiles d'une carte à une seule échelle ;
+   le titre de chaque rubrique est celui de sa tuile (montré en mode modification, au-dessus de sa saisie) */
+.btrio__cases { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; align-items: start; }
+.btrio__cases > .brubrique > dt { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* le titre se montre en mode modification (au-dessus de la saisie) et quand la rubrique n'a plus de tuile (une seule valeur, ou vide) */
+.btrio__cases > .brubrique:has(.ed-champ) > dt,
+.btrio__cases > .brubrique:not(:has(.bstat)) > dt { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
+.btrio .bstats--ep { grid-template-columns: minmax(0, 1fr); }
+/* sans échelle choisie (sans JavaScript, impression) : « · EP n » à la ligne, les tuiles des trois colonnes gardent la même hauteur */
+.bcarte:not([data-ep]) .btrio .bep-ep { display: block; }
+.bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
+.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: var(--radius); background: var(--c); color: var(--c-texte); }
+.bcarac__sigle { font-size: 0.7rem; font-weight: 700; }
+.bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Capacités : une tuile chacune, comme les dons de classe (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière
+   que le font les dons de classe » ; lib/monstre-rendu.mjs#htmlDeCapacite) : pastilles pleines ([EP3], NPM 2, commune), nom en gras ; sur une colonne ;
+   tailles en em, qui suivent la carte (0,86rem dans l'infobulle d'une page de magie). Toutes celles d'une carte dans le même encadré (demande du
+   propriétaire : « il faudrait que les capacités de chaque monstre soient contenues dans le même encadré ») : le filet de couleur à gauche est celui de
+   l'encadré, un trait fin sépare les tuiles (l'espace d'un pixel de la grille, sur le fond de l'encadré : une capacité cachée par le curseur d'échelle,
+   R56, ne laisse ni trait en trop ni vide) */
+.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 1px; border: 1px solid var(--border); border-left: 4px solid var(--bes);
+  border-radius: var(--radius-md); background: var(--border); overflow: hidden; }
+.bcapacite { min-width: 0; padding: 0.45rem 0.75rem 0.55rem; background: var(--bg); break-inside: avoid; }
+.bcarte .bcapacite__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.4rem; margin: 0 0 0.2rem; }
+.bcapacite__nom { font-size: 1.08em; color: var(--bes); }
+.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: var(--radius-pill); background: var(--bes); color: var(--surface); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+/* une capacité commune à toutes les créatures d'une invocation : un fond teinté (avec sa pastille « commune ») */
+.bcapacite--commune { background: var(--bes-soft); }
+/* dans l'infobulle d'une page de magie : tout l'encadré dans la couleur de la magie, comme un don de classe (--cla, --cla-readable) : le filet
+   pur, le nom et les pastilles dans sa version lisible (--bulle-lisible, styles/global/infobulles.css) */
+.bulle--carte .bcapacites { --bes: var(--bulle-lisible); border-left-color: var(--mag, var(--bes)); }
+@media print { .bcapacite .prefixe { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+.varie-note { font-style: italic; color: var(--muted); }
+.bbloc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 0.3rem; }
+.bbloc > summary { cursor: pointer; padding: 0.35rem 0.7rem; font-weight: 600; }
+.bbloc > p { padding: 0 0.7rem 0.5rem; }
+.bbutin__defile { overflow-x: auto; }
+.bbutin { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+.bbutin th, .bbutin td { border: 1px solid var(--border); padding: 0.25rem 0.45rem; text-align: left; vertical-align: top; background: var(--surface); }
+.bbutin thead th { background: var(--bes-soft); }
+.bbutin .est-sienne { box-shadow: inset 0 0 0 2px var(--bes-line); }
+.bbutin thead th.est-sienne { background: var(--bes); color: var(--surface); }
+
+/* un texte dont la place n'est pas décidée (ce qui suit un trait du doc dans une rubrique, lib/monstre-champs.mjs#apresUnTrait) : panneau « Attention »
+   (demande du propriétaire) */
+.battention { display: block; margin-top: 0.5rem; padding: 0.45rem 0.65rem; border: 1px solid color-mix(in srgb, var(--warn-text) 35%, transparent);
+  border-left-width: 4px; border-radius: var(--radius); background: var(--warn-bg); }
+.battention__titre { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--warn-text); }
+.battention__titre::before { content: '⚠ '; }
+.battention__motif { font-style: italic; color: var(--warn-text); }
+.battention > .texte { display: block; margin-top: 0.35rem; }
+@media print { .battention { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+@media (max-width: 30rem) {
+  .bcarte__portrait { width: 6rem; }
+}
+
+/* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche) : la bulle prend la
+   largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
+.bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; overscroll-behavior: contain; }
+.bulle--carte .bcarte { display: block; font-size: 0.86rem; }
+.bulle--carte .bcarte__titre { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
+.bulle--carte .bcarte__tete { grid-template-areas: "titres portrait"; }
+.bulle--carte .bcarte__portrait { width: 6.5rem; }
+.bulle--carte ul { margin: 0; }

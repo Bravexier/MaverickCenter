@@ -1,24 +1,30 @@
 /* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
-   Un bloc par étape du guide (« Créer son personnage », puis progresser et jouer), teinté de la couleur de sa partie (lib/guide.mjs#PARTIES, --etape),
-   sans numéro ; les blocs côte à côte en rangées sur un écran large (demandes du propriétaire) ; races, magies et classes en PASTILLES comme sur
-   /races/, /magies/ et /classes/ (pilule bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles
-   ferment grisées et barrées.
+   Quatre zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la situation, IV. paramètres et suivi (en onglets), chacune
+   teintée de sa couleur (--etape : une partie du guide, lib/guide.mjs#PARTIES) ; dans une zone, des blocs dont le cadre prend la couleur de la magie
+   innée, en dégradé vers l'acquise (demande du propriétaire) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule
+   bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
    Compacte (demande du propriétaire : « c'est TROP GROS ») : texte et marges réduits, choix dans des menus déroulants, curseurs. */
-/* les rangées de blocs ont besoin de place : la fiche prend plus que la largeur des autres pages */
+/* les zones ont besoin de place : la fiche prend plus que la largeur des autres pages */
 main:has(> .fiche) { max-width: 100rem; }
+/* lu par les lecteurs d'écran, pas affiché (le titre de la page : le nom, déjà en grand dans l'identité) */
+.fiche .visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fiche {
   --vert: #2e7d4f;
+  --a-choisir: #b45309;   /* un choix qui reste à faire : champ surligné, tiroir des choix */
   display: grid;
   gap: 0.75rem;
   font-size: 0.9rem;
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .fiche { --a-choisir: #f0a14a; }
+}
+:root[data-theme='dark'] .fiche { --a-choisir: #f0a14a; }
 /* l'attribut hidden l'emporte sur les display des blocs (un champ caché par le script reste caché) */
 .fiche [hidden] { display: none !important; }
 .fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: 0.85rem; }
 
 /* ----------------------------------------------------------------- en-tête : titre */
 .fiche-entete { display: grid; gap: 0.1rem; }
-.fiche-entete h1 { margin: 0; font-size: clamp(1.25rem, 3vw, 1.6rem); line-height: 1.15; }
 .fiche-surtitre { margin: 0; color: var(--vert); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .fiche-surtitre a { color: inherit; }
 
@@ -28,8 +34,8 @@ main:has(> .fiche) { max-width: 100rem; }
 .xp__niveau { margin-right: auto; color: var(--vert); }
 .fiche .xp__ligne input { width: 6.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 .xp__objectif { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); border-radius: 999px; }
-.xp__jauge { height: 0.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--vert) 45%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
+.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); border-radius: var(--radius-pill); }
+.xp__jauge { height: 0.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--vert) 45%, var(--border)); border-radius: var(--radius-pill); background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
 .xp__rempli { display: block; width: 0; height: 100%; background: var(--vert); transition: width 200ms ease; }
 .xp__ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 .xp__ajout label { display: flex; align-items: center; gap: 0.35rem; color: var(--muted); }
@@ -72,96 +78,313 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-message[data-ton='attente'] { color: var(--muted); }
 .fiche-niveau-badge {
   padding: 0.05rem 0.6rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--vert) 14%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--vert) 50%, var(--border));
   font-size: 0.85rem;
   font-weight: 700;
 }
 
-/* sommaire des blocs : une pastille par bloc, point dans la couleur de sa partie (sans numéro) */
-.fiche-etapes { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
-.fiche-etapes a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.1rem 0.6rem 0.1rem 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--cadre) 45%, var(--border));
-  border-radius: 999px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 10%, var(--surface)), color-mix(in srgb, var(--cadre-2) 10%, var(--surface)));
-  color: var(--text);
-  font-size: 0.78rem;
-  text-decoration: none;
-}
-.fiche-etapes a:hover { border-color: var(--cadre-trait); }
-.fiche-etapes a::before {
-  content: '';
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  border: 1px solid var(--cadre-trait);
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--cadre) 50%, var(--cadre-2) 50%);
-}
+.fiche-barre__outils { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-left: auto; }
+.fiche-barre__outils > button, .fiche-barre__outils .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
 
-/* cadres des blocs (bordure, bandeau du titre) et sommaire : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
-   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la partie du guide (--etape). Seuls les cadres changent :
+/* cadres des blocs (bordure, bandeau du titre), portrait et niveau : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
+   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la zone (--etape). Seuls les cadres changent :
    caractéristiques, attributs, pastilles et curseurs gardent leurs couleurs. --cadre-trait : la couleur mêlée d'un peu de texte, pour qu'un trait
    blanc (Vide) ou noir (Corruption) reste visible. */
-.fiche-etape, .fiche-etapes a {
+.fiche-etape {
   --cadre: var(--etape);
   --cadre-2: var(--cadre);
   --cadre-trait: color-mix(in srgb, var(--cadre) 80%, var(--text));
   --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
 }
-.fiche[data-magie] :is(.fiche-etape, .fiche-etapes a) { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
+.fiche[data-magie] .fiche-etape { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
 
-/* rangées de blocs (demande du propriétaire) : 1-2-3, attributs-progression, caractéristiques-sorts, maîtrises, équipement-notes. position : le
-   panneau d'un menu déroulant s'étend sur toute la rangée, par-dessus les blocs voisins */
-.fiche-rangee { position: relative; display: grid; gap: 0.75rem; }
-@media (min-width: 48rem) {
-  .fiche-rangee--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ----------------------------------------------------------------- zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la
+   situation, IV. paramètres et suivi ; sans cadre ni titre visibles (demande du propriétaire : « retirer les grands cadres ») : les blocs se suivent, la
+   couleur de la zone (--etape) reste celle de leurs accents. position : le panneau d'un menu déroulant s'étend sur sa rangée de menus. */
+.fiche-zone {
+  --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
+  --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  scroll-margin-top: 4.5rem;
 }
-@media (min-width: 58rem) {
-  .fiche-rangee--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fiche-rangee--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-}
-@media (min-width: 72rem) {
-  .fiche-rangee--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
+.fiche-zone__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.fiche-zone__grille { display: grid; gap: 0.75rem; align-items: start; }
+.zp-colonne { display: grid; gap: 0.75rem; align-content: start; }
 
-/* ----------------------------------------------------------------- étapes */
+/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté les armes, les maîtrises et la ceinture ; les
+   sorts, à côté les dons débloqués */
+@media (min-width: 64rem) {
+  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car col' 'sor don'; }
+  .zp-attributs { grid-area: attr; }
+  .zp-caracs { grid-area: car; }
+  .zp-colonne { grid-area: col; }
+  .zp-sorts { grid-area: sor; }
+  .zp-dons { grid-area: don; }
+  /* III. selon la situation : les postures (et le Mode Hyper) sur toute la largeur ; armure et accessoires, à côté initiative, résistances et bouclier */
+  .zone-situation { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'pos pos' 'gau dro'; }
+  .zs-posture { grid-area: pos; }
+  .zs-gauche { grid-area: gau; }
+  .zs-droite { grid-area: dro; }
+}
+.zs-gauche, .zs-droite { display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
+
+/* ----------------------------------------------------------------- blocs */
 .fiche-etape {
   --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
   --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
-  scroll-margin-top: 3.5rem;
+  scroll-margin-top: 4.5rem;
+  min-width: 0;
   /* bordure en dégradé, coins arrondis : le dégradé peint sous la bordure transparente, la surface par-dessus le reste */
   border: 1px solid transparent;
   border-radius: calc(var(--radius) + 3px);
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
     linear-gradient(90deg, color-mix(in srgb, var(--cadre-trait) 50%, var(--border)), color-mix(in srgb, var(--cadre-trait-2) 50%, var(--border))) border-box;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--text) 6%, transparent);
 }
-.fiche-etape > h2 {
+.fiche-etape > h3 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  padding: 0.35rem 0.7rem;
+  padding: 0.3rem 0.7rem;
   border-radius: calc(var(--radius) + 2px) calc(var(--radius) + 2px) 0 0;
   background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 16%, var(--surface)), color-mix(in srgb, var(--cadre-2) 16%, var(--surface)));
   border-bottom: 2px solid var(--cadre-trait);
   border-image: linear-gradient(90deg, var(--cadre-trait), var(--cadre-trait-2)) 1;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
 }
-/* un compteur dans le coin du bloc (quota de maîtrise, décision R32) */
-.fiche-etape--coin { position: relative; }
-.fiche-etape--coin > h2 { padding-right: 11rem; }
-.fiche-etape__coin { position: absolute; top: 0.35rem; right: 0.7rem; background: var(--surface); }
-.fiche-etape__corps { display: grid; align-content: start; gap: 0.65rem; padding: 0.6rem 0.75rem 0.75rem; }
-.fiche-etape h3 { margin: 0 0 0.3rem; font-size: 0.9rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+.fiche-etape__corps { display: grid; align-content: start; gap: 0.6rem; padding: 0.55rem 0.7rem 0.7rem; }
+.fiche-sous-titre { margin: 0 0 0.25rem; font-size: 0.86rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
 .fiche-aide { margin: 0; color: var(--muted); font-size: 0.82rem; }
 .fiche-aide a { color: inherit; }
+
+/* ----------------------------------------------------------------- I. identité : le portrait à gauche, le nom en grand et le niveau à droite,
+   surnom, origine et alignement, puis race, magies et classes en trois colonnes de menus */
+.identite { display: grid; gap: 0.9rem; padding: 0.8rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 48rem) {
+  .identite { grid-template-columns: 11rem minmax(0, 1fr); align-items: start; }
+}
+.identite__corps { display: grid; gap: 0.6rem; min-width: 0; }
+.identite__tete { display: flex; align-items: center; gap: 0.75rem; }
+.identite__nom { flex: 1; min-width: 0; }
+.fiche .identite__nom input {
+  width: 100%;
+  padding: 0.1rem 0.2rem;
+  border: 0;
+  border-bottom: 2px solid var(--etape-ligne);
+  border-radius: 0;
+  background: none;
+  font-size: clamp(1.35rem, 3.2vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.fiche .identite__nom input:focus { outline: none; border-bottom-color: var(--cadre-trait); }
+.fiche .identite__nom input::placeholder { color: var(--muted); font-weight: normal; font-style: italic; }
+/* le niveau, seul (demande du propriétaire) : un médaillon cerclé du dégradé des magies */
+.identite__niveau {
+  flex: none;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 4.4rem;
+  height: 4.4rem;
+  margin: 0;
+  border: 4px solid transparent;
+  border-radius: 50%;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--cadre-trait), var(--cadre-trait-2)) border-box;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 14%, transparent);
+  line-height: 1;
+  cursor: help;
+}
+.identite__niveau small { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.identite__niveau strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
+.identite__ligne { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); align-items: end; }
+.identite__ligne .alignement { grid-column: span 2; }
+@media (max-width: 40rem) {
+  .identite__ligne .alignement { grid-column: auto; }
+}
+.identite__choix { position: relative; display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); align-items: start; }
+.identite__colonne { display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
+.identite__dieux { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+.identite__dieux p { margin: 0; }
+.identite__dieux strong { font-size: 0.85rem; line-height: 2rem; }
+.identite__bi { justify-self: start; font-size: 0.82rem; font-weight: 700; }
+
+/* le portrait (demande du propriétaire) : un carré arrondi cerclé du dégradé des magies ; sans image, le logo sur un fond teinté */
+.portrait { display: grid; gap: 0.35rem; justify-items: center; margin: 0; }
+.portrait__cadre {
+  width: min(11rem, 60vw);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 3px solid transparent;
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(color-mix(in srgb, var(--cadre) 10%, var(--surface)), color-mix(in srgb, var(--cadre-2) 14%, var(--surface))) padding-box,
+    linear-gradient(135deg, var(--cadre-trait), var(--cadre-trait-2)) border-box;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--text) 14%, transparent);
+}
+@media (max-width: 48rem) {
+  .portrait__cadre { width: 8.5rem; }
+}
+.portrait__image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.portrait[data-vide] .portrait__image { padding: 14%; object-fit: contain; opacity: 0.55; filter: grayscale(0.35); }
+.portrait__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; }
+.portrait__actions button, .portrait__actions .fiche-bouton-fichier span { padding: 0.15rem 0.5rem; font-size: 0.76rem; }
+
+/* le recadrage : styles/portrait/recadrage.css, inséré par src/scripts/portrait.mjs (partagé avec le portrait d'un monstre, mode modification du bestiaire) */
+
+/* ----------------------------------------------------------------- IV. paramètres et suivi : des onglets (components/Onglets.astro) ; sans
+   JavaScript et à l'impression, les panneaux se suivent, chacun avec son titre */
+.parametres { display: grid; gap: 0; }
+.parametres__onglets { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0 0.3rem; border-bottom: 2px solid var(--etape); }
+.parametres .onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: -2px;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--etape-ligne);
+  border-bottom: 2px solid var(--etape);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--etape-doux);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.parametres .onglet:hover { background: color-mix(in srgb, var(--etape) 18%, var(--surface)); }
+.parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
+.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 0.7rem; }
+.onglet__compte[data-ok] { background: var(--good); }
+.onglet__compte--attente { background: #b45309; }
+.parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
+html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
+html.js .parametres[data-onglets] .parametres__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html:not(.js) .parametres__onglets { display: none; }
+html:not(.js) .parametres { gap: 0.75rem; }
+.parametres__deux { display: grid; gap: 0.75rem 1.25rem; align-items: start; }
+.parametres__pile { display: grid; gap: 0.6rem; align-content: start; }
+@media (min-width: 58rem) {
+  .parametres__deux { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .parametres__deux--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+.bourse { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ----------------------------------------------------------------- un choix qui reste à faire (choixEnAttente) : son champ surligné (demande du
+   propriétaire : « mettre en surbrillance le champ à saisir ») — menu de la spécialité ou de l'ethnie, groupe de dons, bonus ou objet du métier, +1 de la
+   magie innée — dans la couleur du tiroir des choix */
+.choix[data-a-choisir] > summary {
+  border: 2px solid var(--a-choisir);
+  background: color-mix(in srgb, var(--a-choisir) 12%, var(--surface));
+  animation: a-choisir 1.4s ease-in-out infinite alternate;
+}
+.choix[data-a-choisir] .choix__etiquette, .choix[data-a-choisir] .choix__vide { color: var(--a-choisir); font-weight: 700; font-style: normal; }
+.choix[data-a-choisir] .choix__vide::before { content: '⚠ '; }
+.fiche [data-a-choisir]:is(.groupe-pastilles, .dons-groupe, .metier-fiche__choix, .fiche-champ) {
+  outline: 2px solid var(--a-choisir);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--a-choisir) 9%, var(--surface));
+}
+.fiche [data-a-choisir].dons-groupe { border-color: var(--a-choisir); }
+.fiche [data-a-choisir].dons-groupe legend::before, .fiche [data-a-choisir].groupe-pastilles > h4::after, .fiche [data-a-choisir].fiche-champ > span::after {
+  content: ' · à choisir';
+  color: var(--a-choisir);
+  font-weight: 700;
+}
+@keyframes a-choisir {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-choisir) 0%, transparent); }
+  to { box-shadow: 0 0 0 4px color-mix(in srgb, var(--a-choisir) 35%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .choix[data-a-choisir] > summary { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-choisir) 30%, transparent); }
+}
+.choix-specialites { display: grid; gap: 0.5rem; }
+.choix-specialites .pastilles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr)); }
+
+/* ----------------------------------------------------------------- le tiroir des choix à faire (demande du propriétaire) : tant qu'il en reste, le
+   panneau « Choix » sort en bas de l'écran, par-dessus la fiche ; il se range quand la zone IV est à l'écran. Réduit, il ne montre que sa poignée (la
+   liste de ce qui manque) et se rouvre au survol. */
+.tiroir__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--a-choisir) 40%, var(--border));
+  background: color-mix(in srgb, var(--a-choisir) 10%, var(--surface));
+}
+.tiroir__titre { color: color-mix(in srgb, var(--a-choisir) 75%, var(--text)); font-size: 0.88rem; }
+.tiroir__titre::before { content: '⚠ '; }
+.tiroir__attente { display: flex; flex: 1 1 18rem; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.tiroir__attente li { padding: 0.05rem 0.55rem; border: 1px dashed color-mix(in srgb, var(--a-choisir) 60%, var(--border)); border-radius: var(--radius-pill); background: var(--surface); font-size: 0.76rem; }
+/* un choix du tiroir : sa tuile en infobulle (demande du propriétaire ; src/scripts/fiche.mjs#remplirBulleDeChoix), où le choix se fait aussi */
+.tiroir__attente li[data-bulle] { cursor: help; }
+.tiroir__attente li[data-bulle]:focus-visible { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
+.fiche .bulle--tuile { width: min(34rem, calc(100vw - 1rem)); max-width: min(34rem, calc(100vw - 1rem)); padding: 0.55rem 0.7rem; font: inherit; font-size: 0.85rem; white-space: normal; }
+.fiche .bulle--tuile .fiche-champ { display: grid; gap: 0.2rem; }
+.fiche .tiroir__lien { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; }
+.tiroir__boutons { display: inline-flex; gap: 0.3rem; margin-left: auto; }
+.tiroir__boutons button { padding: 0.15rem 0.55rem; font-size: 0.78rem; }
+/* en tiroir : fixé en bas, par-dessus la fiche, quel que soit l'onglet ouvert */
+html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__panneau.est-tiroir {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: 0;
+  display: block;
+  width: min(98rem, calc(100vw - 1rem));
+  max-height: min(48vh, 30rem);
+  overflow: auto;
+  transform: translateX(-50%);
+  border: 2px solid var(--a-choisir);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -8px 30px color-mix(in srgb, var(--text) 25%, transparent);
+  animation: tiroir-sort 260ms ease-out;
+}
+.parametres__panneau.est-tiroir .tiroir__tete { position: sticky; top: 0; z-index: 1; }
+/* le focus sur la poignée (le bouton « Déplier ») ne le rouvre pas ; le focus dans le panneau, si (clavier) */
+.parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) { max-height: none; overflow: hidden; }
+.parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) > :not(.tiroir__tete) { display: none; }
+@keyframes tiroir-sort { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .parametres__panneau.est-tiroir { animation: none; }
+}
+
+/* ----------------------------------------------------------------- la ceinture : trois emplacements d'objets rapides */
+.ceinture { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; counter-reset: ceinture; }
+.ceinture__emplacement {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) 4rem auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.35rem;
+  border: 1px dashed var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ceinture__emplacement[data-plein] { border-style: solid; background: var(--etape-doux); }
+.ceinture__numero {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--etape);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.fiche .ceinture__emplacement input { width: 100%; max-width: none; }
 
 /* champs */
 .fiche-champs { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }
@@ -195,11 +418,25 @@ main:has(> .fiche) { max-width: 100rem; }
 .choix[open] > summary::after { content: '▴'; }
 .choix > summary:hover, .choix > summary:focus-visible { border-color: var(--etape); outline: none; }
 .choix__etiquette { flex: none; color: var(--muted); font-size: 0.78rem; }
+/* une liste simple présentée comme les menus des choix (le métier, facultatif, sous l'ethnie : demande du propriétaire) */
+.choix-liste {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.1rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.55rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.choix-liste:focus-within { border-color: var(--etape); box-shadow: 0 0 0 1px var(--etape); }
+.fiche .choix-liste select { flex: 1; min-width: 0; border: 0; background: none; font-weight: 700; }
+.fiche .choix-liste select:focus { outline: none; }
 .choix__valeur { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
 .choix__pastille {
   --c: var(--etape);
   padding: 0.05rem 0.6rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--c);
   color: var(--texte-sur-c, #fff);
   font-size: 0.84rem;
@@ -254,7 +491,7 @@ main:has(> .fiche) { max-width: 100rem; }
   gap: 0.35rem;
   padding: 0.2rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--c) 68%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--c) 10%, var(--surface));
   box-shadow: 0 1px 5px color-mix(in srgb, var(--text) 8%, transparent);
   color: var(--text);
@@ -262,7 +499,7 @@ main:has(> .fiche) { max-width: 100rem; }
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  transition: transform var(--duree) ease, box-shadow var(--duree) ease, background var(--duree) ease;
 }
 .pastille__point {
   flex: 0 0 0.55rem;
@@ -298,15 +535,15 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-resume li {
   padding: 0.05rem 0.5rem;
   border: 1px solid var(--etape-ligne);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--etape-doux);
 }
 .fiche-resume strong { color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
 /* ce que donne le métier (décisions R33 à R35) : un rang à choix ou un objet à choisir montre ses options en pastilles, sur toute la largeur */
 #metier-bloc[hidden] { display: none; }
 .metier-fiche { margin-top: 0.4rem; }
-.metier-fiche li.metier-fiche__choix { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; border-radius: 10px; }
-.metier-fiche li.metier-fiche__artisanat { flex-basis: 100%; border-radius: 10px; }
+.metier-fiche li.metier-fiche__choix { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; border-radius: var(--radius-md); }
+.metier-fiche li.metier-fiche__artisanat { flex-basis: 100%; border-radius: var(--radius-md); }
 .metier-fiche li[hidden] { display: none; }
 .metier-fiche .pastilles { margin: 0; }
 .metier-fiche .pastilles li { padding: 0; border: 0; background: none; }
@@ -317,14 +554,14 @@ main:has(> .fiche) { max-width: 100rem; }
   align-items: baseline;
   gap: 0.3rem;
   padding: 0.05rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
   font-size: 0.82rem;
   font-weight: 700;
 }
 .budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
-.budget[data-etat='manque'] { border-color: color-mix(in srgb, #b45309 60%, var(--border)); color: #b45309; }
+.budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: #b45309; }
 .budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
 /* NM donnés par le MJ en plus de ceux gagnés : permis (décision R24), signalés sans alarme */
 .budget[data-etat='info'] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); color: var(--accent); }
@@ -356,9 +593,9 @@ main:has(> .fiche) { max-width: 100rem; }
 .alignement__resultat {
   margin-left: auto;
   padding: 0.05rem 0.7rem;
-  border-radius: 999px;
-  background: var(--etape);
-  color: #fff;
+  border-radius: var(--radius-pill);
+  background: var(--c, var(--etape));
+  color: var(--c-texte, #fff);
   font-size: 0.88rem;
   font-weight: 700;
   white-space: nowrap;
@@ -376,10 +613,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-table--fixe .etroite { width: 5rem; }
 .fiche-table--sorts td:nth-child(2) { width: 30%; }
 .fiche-table--sorts td.sort-valeur { font-size: 0.8rem; }
+/* l'indication IC (et imparable, inesquivable) au NM du sort, comme les marques des pages de magie ; une condition pas encore atteinte en grisé, en pointillés */
+.sort-modes { white-space: nowrap; }
+.sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--muted); font-size: 0.7rem; }
+.sort-mode[data-mode='ic'] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sort-mode[data-mode='imparable'], .sort-mode[data-mode='inesquivable'] { border-style: dashed; }
+.sort-mode[data-attente] { border-color: var(--border); border-style: dotted; color: var(--muted); font-weight: normal; cursor: help; }
 /* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
 .fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
 .fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
-/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; l'infobulle du navigateur, que le cadre défilant ne coupe pas) */
+/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
 .sort-choix select { flex: 1; min-width: 0; }
 .sort-remarque { flex: none; color: #c99a06; font-size: 0.95rem; line-height: 1; cursor: help; }
@@ -439,7 +682,7 @@ main:has(> .fiche) { max-width: 100rem; }
   overflow: hidden;
   padding: 0 0.4rem;
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--c);
   color: var(--c-texte, #fff);
   font-size: 0.76rem;
@@ -459,7 +702,12 @@ main:has(> .fiche) { max-width: 100rem; }
 }
 
 /* compétences : six blocs de cinq, chacun dans la couleur de sa caractéristique (en-tête en aplat, lignes à peine teintées) */
-.competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+.competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: minmax(0, 1fr); align-items: start; }
+/* deux colonnes remplies de haut en bas (demande du propriétaire, comme la fiche auto) : Force, Volonté, Intelligence à gauche ; Perception, Social,
+   Agilité à droite */
+@media (min-width: 44rem) {
+  .competences { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); grid-auto-flow: column; }
+}
 .competences__groupe {
   --c: var(--etape);
   border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
@@ -521,25 +769,75 @@ main:has(> .fiche) { max-width: 100rem; }
 .attribut[data-a='chakra'] { --a: #1e5bb8; }
 .attribut[data-a='corruption'] { --a: #111; }
 .attribut[data-a='barre4'] { --a: #8a1c1c; }
-/* initiative, vitesse et nage : de simples pastilles (demande du propriétaire), à côté de la corruption */
-.attributs-bas { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.45rem; }
-.attributs-pastilles { flex: 1 1 14rem; align-content: center; }
-.attributs-corruption { flex: 0 1 15rem; display: grid; }
-/* les six postures (demande du propriétaire) : une pastille chacune, dans sa couleur ; la choisie pleine, ses effets dessous */
-.postures { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
-.postures__titre { color: var(--muted); font-size: 0.78rem; }
-.postures__choix { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+/* santé, barrière, chakra (et 4ᵉ barre) puis la corruption, sur une ligne */
+.attributs-ligne { display: grid; gap: 0.45rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 48rem) {
+  .attributs-ligne { grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.33fr); }
+}
+.attributs-corruption { display: grid; }
+.attributs .attribut__valeur, .attributs-corruption .attribut__valeur { font-size: 1.35rem; }
+/* initiative, vitesse et nage (zone III) : trois tuiles, le nom en petit au-dessus de la valeur */
+.fiche .attributs-pastilles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; font-size: 1.2rem; }
+.fiche .attributs-pastilles li {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.3rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-align: center;
+  cursor: help;
+}
+.fiche .attributs-pastilles strong { color: var(--muted); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+/* les six postures (demande du propriétaire) : une case chacune, dans sa couleur, avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
+   Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs) */
+.postures { display: grid; gap: 0.45rem; align-items: start; }
+.postures__cartes { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); align-items: stretch; }
+.postures__hyper { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; }
+/* grand écran : trois cases par ligne (Offensif, Neutre, Défensif ; Focus, Vigilance, Symbiose), le Mode Hyper et le Mode Hyper 100 % à droite */
+@media (min-width: 64rem) {
+  .postures:has(> .postures__hyper:not([hidden])) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .postures__cartes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.fiche .posture-carte {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--c, var(--etape)) 65%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c, var(--etape)) 8%, var(--surface));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.posture-carte__nom { padding: 0.2rem 0.55rem; background: color-mix(in srgb, var(--c, var(--etape)) 30%, var(--surface)); font-size: 0.85rem; font-weight: 700; }
+.posture-carte__nom small { font-weight: normal; color: var(--muted); }
+.posture-carte__effets { display: grid; gap: 0.15rem; margin: 0; padding: 0.1rem 0.6rem 0.45rem 1.4rem; font-size: 0.76rem; line-height: 1.3; }
+.fiche .posture-carte:hover { border-color: var(--c); }
+.fiche .posture-carte[aria-pressed='true'] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent); }
+.fiche .posture-carte[aria-pressed='true'] .posture-carte__nom { background: var(--c); color: var(--c-texte); }
+.fiche .posture-carte[aria-pressed='true'] .posture-carte__nom::after { content: ' ✓'; }
+.posture-carte--hyper { --c: #7c3aed; }
+.posture-carte--cent { --c: #c026d3; }
+.posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--m); }
+.posture-carte__race, .posture-carte__suite { list-style: none; margin-left: -0.8rem; }
+/* avantages en vert, inconvénients en rouge (décision du propriétaire) */
+.posture-carte__effets li.est-avantage { color: var(--good); }
+.posture-carte__effets li.est-inconvenient { color: var(--danger); font-weight: 600; }
 .fiche .posture {
-  padding: 0.05rem 0.6rem;
+  padding: 0.15rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--c) 70%, var(--text));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--c) 18%, var(--surface));
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 700;
 }
 .fiche .posture[aria-pressed='true'] { background: var(--c); color: var(--c-texte); box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
-.postures__effets { flex: 1 1 100%; margin: 0; color: var(--muted); font-size: 0.76rem; }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
@@ -557,7 +855,7 @@ main:has(> .fiche) { max-width: 100rem; }
 .don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: 0.8rem; }
 .don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
 .don__niveau { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
-.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 0.68rem; }
+.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--muted); font-size: 0.68rem; }
 .don__type:not([data-type='passif']) { border-color: color-mix(in srgb, var(--c, var(--etape)) 60%, var(--border)); color: var(--text); font-weight: 700; }
 .don__texte { color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
 .dons-classes { display: grid; gap: 0.5rem; }
@@ -574,6 +872,19 @@ main:has(> .fiche) { max-width: 100rem; }
 .objet h4 { margin: 0; font-size: 0.88rem; }
 .objet .fiche-champs { grid-template-columns: 1fr; gap: 0.35rem; }
 .objet .fiche-champs--paire { grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: end; }
+.equipement--armes { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 0.45rem; }
+.objet__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.objet__degats { display: inline-flex; align-items: center; gap: 0.2rem; }
+.objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: #fff; font-size: 0.85rem; font-variant-numeric: tabular-nums; cursor: help; }
+.objet__etoile { color: #c99a06; font-size: 1rem; line-height: 1; cursor: help; }
+.objet__etoile:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
+.objet__details > summary { color: var(--muted); font-size: 0.76rem; cursor: pointer; overflow-wrap: anywhere; }
+.objet__details[open] > summary { margin-bottom: 0.35rem; }
+.zp-colonne .maitrises { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: 0.1rem 0.9rem; }
+.zp-colonne .maitrise { font-size: 0.78rem; gap: 0.35rem; }
+.zp-colonne .maitrise .curseur { width: 3.6rem; }
+/* le bouclier a son bloc : plus de cadre autour */
+#bouclier .objet { padding: 0; border: 0; background: none; }
 
 /* contrôles de la base */
 .controles { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; }
@@ -581,6 +892,7 @@ main:has(> .fiche) { max-width: 100rem; }
 .controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
 
 @media (max-width: 40rem) {
+  .fiche-zone { padding: 0.45rem 0.4rem 0.5rem; }
   .fiche-etape__corps { padding: 0.5rem; }
   .fiche-barre { position: static; }
   .maitrise .curseur { width: 5rem; }
@@ -589,8 +901,13 @@ main:has(> .fiche) { max-width: 100rem; }
   .pastille, .xp__rempli { transition: none; }
 }
 @media print {
-  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout { display: none !important; }
+  .site-header, .site-footer, .fiche-barre, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
+  .portrait__actions, .parametres__onglets, .recadrage, .tiroir__tete { display: none !important; }
+  .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
+  .fiche-zone { break-inside: auto; background: none; }
+  html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: block; }
+  html.js .parametres[data-onglets] .parametres__titre { position: static; width: auto; height: auto; clip-path: none; }
   .choix > summary::after { content: none; }
   .choix__panneau { display: none; }
 }
@@ -609,9 +926,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .resistances__table tr[data-palier='grande_vulnerabilite'] { --r: #e53935; }
 .resistances__table tr[data-palier='sensibilite'] { --r: #8e0000; }
 .resistances__cibles { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
-.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: 999px; font-size: 0.75rem; line-height: 1.5; cursor: help; }
+.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: 0.75rem; line-height: 1.5; cursor: help; }
 .resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
 .resistance--etat { background: var(--surface); color: var(--text); }
 .resistances__vide { color: var(--muted); }
 #resistances-choix { margin: 0.3rem 0 0; }
 #resistances-choix[hidden] { display: none; }
+
+/* Accessoires (décision R54) : sous l'effet, le choix qu'il demande (compétence, famille d'armes) et ce qu'il change sur la fiche */
+.accessoire-cellule { display: grid; gap: 0.25rem; }
+.accessoire-cellule > select[hidden] { display: none; }
+.accessoire-effet { font-size: 0.8rem; color: var(--good, #2e7d32); }
+.accessoire-effet:empty { display: none; }
+.accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
