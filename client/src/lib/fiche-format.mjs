@@ -82,10 +82,24 @@ export function gainsDeLaProgression(lignes) {
 }
 
 /**
+ * Vrai si la fiche porte à la fois une `progression` non vide et l'un des deux totaux (gains_sante, gains_chakra) : les deux formes des gains de niveau,
+ * qu'on ne sait pas concilier. C'est l'envoi d'une page d'avant la migration 0045 restée ouverte, après un premier enregistrement auprès du service à
+ * jour : elle a repris les deux totaux de sa réponse (sans `progression`, d'où sa liste vidée) et renvoie avec eux les lignes saisies depuis, qui
+ * peuvent être des gains nouveaux ou les anciens saisis de nouveau. Le service refuse alors d'enregistrer (409, serveur/fiches.mjs) : la page doit
+ * être rechargée.
+ */
+export function progressionAvecGains(fiche) {
+  if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return false;
+  return Array.isArray(fiche.progression) && fiche.progression.length > 0 && ('gains_sante' in fiche || 'gains_chakra' in fiche);
+}
+
+/**
  * La fiche sans les clés des tables retirées (PARTIES_RETIREES), converties sans rien perdre : une `progression` reçue (page restée ouverte, fichier
- * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas déjà ; si elle les a, ils font
- * foi (ils ont été saisis depuis) et la progression n'est qu'un reste. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais
- * modifiée en place.
+ * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas. Si elle les a, ils sont
+ * gardés et la progression est jetée : une progression vide n'est que le reste de la fiche vide d'une page d'avant, qui a repris les deux totaux d'une
+ * réponse du service ; une progression NON vide ne se concilie pas avec eux (progressionAvecGains) et le service la refuse avant de convertir (409) ;
+ * seule la page /fiche/, pour un fichier importé, la jette. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais modifiée en
+ * place.
  */
 export function sansPartiesRetirees(fiche) {
   if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return fiche;

@@ -1,10 +1,13 @@
 // Tables que les règles ont retirées de la section 13 (lib/fiche-format.mjs : TABLES_RETIREES, PARTIES_RETIREES) : la progression niveau par niveau
 // (personnage_progression, migration 0045) devient deux totaux, gains_sante et gains_chakra (décision R73). Une fiche qui porte encore sa clé (page
 // restée ouverte, fichier exporté avant) est convertie sans rien perdre (sansPartiesRetirees : service et page /fiche/) ; la base vivante fait la même
-// somme en SQL (serveur/base-vivante.mjs, test/serveur-base-vivante.test.mjs).
+// somme en SQL (serveur/base-vivante.mjs, test/serveur-base-vivante.test.mjs). Une progression non vide envoyée avec les deux totaux ne se concilie pas
+// avec eux (progressionAvecGains) : le service la refuse (test/serveur-api.test.mjs).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
+import {
+  PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression, progressionAvecGains, sansPartiesRetirees,
+} from '../src/lib/fiche-format.mjs';
 
 test('tables retirées : progression (migration 0045), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
   assert.deepEqual(TABLES_RETIREES, { personnage_progression: 'progression' });
@@ -28,7 +31,7 @@ test('gainsDeLaProgression (R73) : les points de chaque niveau, plus le dé sur 
   for (const vide of [[], null, undefined, 'pas une liste']) assert.deepEqual(gainsDeLaProgression(vide), { gains_sante: 0, gains_chakra: 0 }, String(vide));
 });
 
-test('sansPartiesRetirees : une `progression` sans gains devient les deux totaux ; avec eux, ils font foi ; sans clé retirée, la fiche telle quelle ; jamais modifiée en place', () => {
+test('sansPartiesRetirees : une `progression` sans gains devient les deux totaux ; avec eux, ils sont gardés et elle est jetée ; sans clé retirée, la fiche telle quelle ; jamais modifiée en place', () => {
   const sans = { nom: 'Aldric', gains_sante: 4, gains_chakra: 0, classes: [] };
   assert.equal(sansPartiesRetirees(sans), sans, 'le même objet');
   const progression = [{ niveau: 2, points_sante: 10, points_chakra: 5 }, { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 }];
@@ -38,4 +41,15 @@ test('sansPartiesRetirees : une `progression` sans gains devient les deux totaux
   assert.deepEqual(sansPartiesRetirees({ nom: 'Cyrielle', progression, gains_sante: 1, gains_chakra: 2 }), { nom: 'Cyrielle', gains_sante: 1, gains_chakra: 2 });
   assert.deepEqual(sansPartiesRetirees({ nom: 'Dorian', progression: [] }), { nom: 'Dorian', gains_sante: 0, gains_chakra: 0 });
   for (const autre of [null, undefined, 'texte', [1, 2]]) assert.equal(sansPartiesRetirees(autre), autre);
+});
+
+test('progressionAvecGains : une `progression` non vide ET un des deux totaux (page d’avant 0045 qui a repris les totaux d’une réponse) ; une progression vide, ou sans totaux, n’en est pas une', () => {
+  const progression = [{ niveau: 3, points_sante: 15, points_chakra: 0, de_choix: null, de_resultat: null }];
+  assert.equal(progressionAvecGains({ nom: 'Aldric', progression, gains_sante: 10, gains_chakra: 5 }), true);
+  assert.equal(progressionAvecGains({ nom: 'Aldric', progression, gains_sante: 10 }), true, 'un seul des deux totaux suffit');
+  assert.equal(progressionAvecGains({ nom: 'Aldric', progression, gains_chakra: 0 }), true, 'même à 0 : la page l’a reçu du service');
+  assert.equal(progressionAvecGains({ nom: 'Aldric', progression }), false, 'sans totaux : la conversion (sansPartiesRetirees)');
+  assert.equal(progressionAvecGains({ nom: 'Aldric', progression: [], gains_sante: 10, gains_chakra: 5 }), false, 'une progression vide : un reste, jetée sans rien dire');
+  assert.equal(progressionAvecGains({ ...ficheVide('Aldric') }), false, 'la page à jour n’envoie jamais de progression');
+  for (const autre of [null, undefined, 'texte', [1, 2], { progression: 'pas une liste', gains_sante: 1 }]) assert.equal(progressionAvecGains(autre), false, JSON.stringify(autre));
 });
