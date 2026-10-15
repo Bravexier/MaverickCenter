@@ -9,6 +9,7 @@
 // src/lib/fiche-format.mjs : le statut des fiches, migration 0038, perdu sans bloquer —, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
 // pourquoi. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières) : l'archive garde donc la base
 // d'avant les retraits.
+// Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
 // Node seulement (node:sqlite), sans dépendance.
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -129,8 +130,9 @@ function verifierRegles(db) {
  * autre référence rompue est relevée avec son détail, et rien n'est écrit (ni retrait, ni note). Une modification que les nouvelles règles contredisent
  * n'empêche rien : elle passe « conflit ». Rend { rejeu (bilan du rejeu), fiches (les fiches adaptées : noterLesRetraits) }.
  * @param {string} instant ISO 8601 UTC à la seconde
+ * @param {(type: string, o: { duree_ms?: number, detail?: object }) => void} [evenement] métriques : durée du rejeu et des retraits
  */
-function transferer(db, ancienne, instant) {
+function transferer(db, ancienne, instant, evenement = null) {
   let rejeu = null;
   let fiches = [];
   const problemes = [];
@@ -165,15 +167,22 @@ function transferer(db, ancienne, instant) {
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
       if (!problemes.length) integrerLivrees(db);
       // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
-      if (!problemes.length) rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
+      if (!problemes.length) {
+        const t0 = performance.now();
+        rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
+        evenement?.('rejeu', { duree_ms: performance.now() - t0, detail: { lots: rejeu?.lots ?? 0, appliquees: rejeu?.appliquees ?? 0, integrees: rejeu?.integrees ?? 0, conflits: rejeu?.conflits ?? 0 } });
+      }
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
       // R42 : un don, une spécialité, un sort ou un métier disparu est retiré des fiches (noms lus dans l'ancienne base, encore attachée), une note
       // datée dans chacune ; ce qui reste rompu ensuite (race, classe, magie…) bloque, et l'annulation emporte aussi ces retraits
       if (!problemes.length) {
+        const t0 = performance.now();
         const retraits = nouveauxRetraitsDeFiches();
         retirerLesManquants(db, retraits);
         fiches = noterLesRetraits(db, retraits, instant);
+        // un compte, jamais les noms des fiches
+        evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length } });
       }
       if (!problemes.length) {
         for (const t of TABLES_VIVANTES) {
@@ -244,9 +253,10 @@ function archiver(dossier, chemin, instant) {
  * Prépare la base vivante du dossier `dossier` pour la base des règles `regles` (celle que publie le site) : la crée au premier lancement, la
  * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
  * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
- * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte.
+ * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte. `evenement` (facultatif) : les métriques du
+ * service (durées du rejeu, des retraits des fiches et de l'archivage).
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
@@ -268,12 +278,16 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
     const db = new DatabaseSync(neuve);
     try {
       verifierRegles(db);
-      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso));
+      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement));
       schema = db.prepare('PRAGMA user_version').get().user_version;
     } finally {
       db.close();
     }
-    if (existsSync(chemin)) archive = archiver(dossier, chemin, instant);
+    if (existsSync(chemin)) {
+      const t0 = performance.now();
+      archive = archiver(dossier, chemin, instant);
+      if (archive) evenement?.('archive_base_vivante', { duree_ms: performance.now() - t0, detail: { octets: statSync(archive).size } });
+    }
     renameSync(neuve, chemin);
     // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
     const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;

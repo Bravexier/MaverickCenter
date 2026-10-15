@@ -38,7 +38,20 @@
 // répond 403, lectures comprises) :
 //   GET  /api/v1/ , /api/v1/openapi.json, /api/v1/<ressource>/[<cle>/[<enfant>/[<cle>/]]]   le CRUD des éléments du jeu (serveur/ressources.mjs,
 //                                   registre lib/ressources.mjs ; description OpenAPI : serveur/openapi.mjs) ; POST, PATCH, DELETE par le service d'édition
-//   GET  /api/debug/journal/        le journal du service gardé en mémoire (serveur/journal-du-service.mjs) : ?depuis=&niveau=&categorie=&q=&limite=
+//   GET  /api/debug/journal/        le journal du service gardé en mémoire (serveur/journal-du-service.mjs) : ?depuis=&niveau=&categorie=&q=&limite=&min_ms=
+//   GET  /api/debug/metriques/      les métriques d'une instance (serveur/metriques.mjs#lire) : ?instance=dev|prod&periode=1h|24h|7j|30j|365j|tout&tri=
+//                                   moyenne|mediane|p95|p99|max|n|erreurs|total|sql — statistiques globales et par route, série, pages vues,
+//                                   navigateurs, origines ; le site de dev lit aussi le fichier de la production (lecture seule) ; instance absente : 404
+//   GET  /api/debug/metriques/requetes/   les dernières requêtes une à une, gardées en mémoire (site de dev) : ?limite=&route=&route_exacte=&min_ms=&statut=
+//   GET  /api/debug/metriques/export/     les agrégats bruts en pièce jointe (la fenêtre de la page ; « 1h » : par 5 minutes ; 100 000 lignes au plus,
+//                                   X-Export-Tronque sinon) : ?instance=&periode=&format=csv|json
+//   GET  /api/debug/systeme/        processus, disque et sa répartition par type de données (jauge), fichiers, échantillons par minute, évènements,
+//                                   volume des métriques et alertes : ?instance=&periode=
+// Mesure des pages vues, sur les DEUX instances (décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ;
+// MAVERICK_METRIQUES_PAGES=0 la ferme : 403) — chaque instance l'écrit dans SA base des métriques, jamais dans la base vivante :
+//   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
+//                                   2 Kio au plus, Sec-Fetch-Site same-origin, sinon Origin du même hôte) → 204 ; 400 invalide, 413 trop gros,
+//                                   429 trop de balises cette minute
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
@@ -57,6 +70,7 @@ import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, ni
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
 import { traiterApiV1 } from './ressources.mjs';
+import { BALISE, ErreurMetriques } from './metriques.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -138,6 +152,7 @@ export function traiter(requete, service) {
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
   if (ressource === 'debug') return traiterDebug(service, brut, reste, permis, params);
+  if (ressource === 'metriques') return traiterMetriques(requete, service, brut, reste, permis);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
   if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
 
@@ -162,13 +177,17 @@ export function traiter(requete, service) {
   const { valeur, refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
   return repondre(ErreurFiche, () => {
+    const t0 = performance.now();
     if (methode === 'DELETE') {
       supprimerFiche(db, id, valeur?.[CHAMP_VERSION]);
       service.journal?.(`suppression du prétiré ${id}`);
+      // métriques : l'écriture et sa durée, jamais l'identifiant de la fiche
+      service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'suppression' } });
       return json(200, { supprime: id });
     }
     const resultat = enregistrerFiche(db, valeur, { id });
     service.journal?.(`${id === null ? 'création' : 'modification'} du prétiré ${resultat.personnage.id}`);
+    service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: id === null ? 'creation' : 'modification' } });
     if (id === null) return json(201, resultat, { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });
     return json(200, resultat);
   });
@@ -228,30 +247,103 @@ function traiterEdition(requete, service, action, reste, permis) {
       const donnees = donneesDEvenement(db, valeur?.evenement);
       return donnees ? json(200, donnees) : erreur(404, `Événement introuvable : ${valeur?.evenement}`);
     }
+    const t0 = performance.now();
     const resultat = enregistrer(db, valeur);
     // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);
+    service.evenement?.('lot_edition', {
+      duree_ms: performance.now() - t0,
+      detail: { lot: resultat.lot ?? null, operations: Array.isArray(valeur?.operations) ? valeur.operations.length : null, modifications: resultat.modifications ?? 0,
+        page: typeof valeur?.page === 'string' ? valeur.page.slice(0, 200) : null, fiches_adaptees: resultat.fiches?.length ?? 0 },
+    });
     return json(200, resultat);
   });
 }
 
+/** Les paramètres d'adresse nommés : leur première valeur, s'ils sont donnés. */
+function parametres(params, noms) {
+  const o = {};
+  for (const nom of noms) if (params.has(nom)) o[nom] = params.get(nom);
+  return o;
+}
+
 /**
- * GET /api/debug/journal/ (page Debug, site de dev seulement) : les entrées du journal du service gardé en mémoire qui suivent ?depuis=<n>, filtrées
- * (?niveau=, ?categorie= : une valeur, « a,b » ou répétée ; ?q= ; ?limite=) — journal-du-service.mjs#lire, tel quel.
+ * Les routes /api/debug/… (page Debug, site de dev seulement ; 403 ailleurs, avant tout 404) :
+ *   GET /api/debug/journal/ : les entrées du journal du service gardé en mémoire qui suivent ?depuis=<n>, filtrées (?niveau=, ?categorie= : une
+ *     valeur, « a,b » ou répétée ; ?q= ; ?limite= ; ?min_ms=) — journal-du-service.mjs#lire, tel quel ;
+ *   GET /api/debug/metriques/, …/requetes/, …/export/ et /api/debug/systeme/ : les métriques (serveur/metriques.mjs).
  */
 function traiterDebug(service, action, reste, permis, params) {
-  if (!service.edition) return erreur(403, 'Le journal du service ne se lit que sur le site de dev (page Debug).');
-  if (action !== 'journal' || reste.length) return erreur(404, 'Adresse inconnue.');
+  if (!service.edition) {
+    return erreur(403, action === 'journal' ? 'Le journal du service ne se lit que sur le site de dev (page Debug).' : 'Les métriques ne se lisent que sur le site de dev (page Debug).');
+  }
+  const metriques = action === 'metriques' && (!reste.length || (reste.length === 1 && ['requetes', 'export'].includes(reste[0])));
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length)) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
-  if (!service.journalDuService) return erreur(503, 'Le journal du service n’est pas disponible.');
-  const filtres = {};
-  for (const nom of ['depuis', 'niveau', 'categorie', 'q', 'limite']) {
-    const valeurs = params.getAll(nom);
-    if (valeurs.length) filtres[nom] = valeurs.length > 1 ? valeurs : valeurs[0];
+  if (action === 'journal') {
+    if (!service.journalDuService) return erreur(503, 'Le journal du service n’est pas disponible.');
+    const filtres = {};
+    for (const nom of ['depuis', 'niveau', 'categorie', 'q', 'limite', 'min_ms']) {
+      const valeurs = params.getAll(nom);
+      if (valeurs.length) filtres[nom] = valeurs.length > 1 ? valeurs : valeurs[0];
+    }
+    return json(200, service.journalDuService.lire(filtres));
   }
-  return json(200, service.journalDuService.lire(filtres));
+  if (!service.metriques) return erreur(503, 'Les métriques ne sont pas disponibles sur ce service.');
+  return repondre(ErreurMetriques, () => {
+    if (action === 'systeme') return json(200, service.metriques.systeme(parametres(params, ['instance', 'periode'])));
+    if (!reste.length) return json(200, service.metriques.lire(parametres(params, ['instance', 'periode', 'tri'])));
+    if (reste[0] === 'requetes') return json(200, service.metriques.requetes(parametres(params, ['limite', 'route', 'route_exacte', 'min_ms', 'statut'])));
+    const e = service.metriques.exporter(parametres(params, ['instance', 'periode', 'format']));
+    // X-Export-Tronque : l'export s'est arrêté aux EXPORT_LIGNES_MAX lignes les plus récentes
+    const entetes = { 'Content-Type': e.type, 'Content-Disposition': `attachment; filename="${e.nom}"`, ...(e.tronque ? { 'X-Export-Tronque': '1' } : {}) };
+    return { statut: 200, corps: null, brut: e.contenu, entetes };
+  });
+}
+
+/**
+ * POST /api/metriques/page/ : la balise d'une page vue (navigator.sendBeacon), sur les deux instances (décision du propriétaire du 2026-10-15) ;
+ * MAVERICK_METRIQUES_PAGES=0 la ferme (403). Corps JSON de BALISE.octets_max au plus, en application/json ou text/plain (ce qu'envoie sendBeacon avec
+ * une chaîne), d'une page de ce site : Sec-Fetch-Site same-origin quand le navigateur le donne ; sans lui (navigateur sans Fetch Metadata), un en-tête
+ * Origin d'un autre hôte que la requête est refusé (memeOrigine : un POST text/plain est une requête « simple », qu'une page tierce peut envoyer sans
+ * requête préalable). Rien n'est écrit dans la base vivante : la mesure va aux agrégats de la base des métriques de CETTE instance
+ * (serveur/metriques.mjs#recevoirPage). → 204 sans corps.
+ */
+function traiterMetriques(requete, service, action, reste, permis) {
+  if (action !== 'page' || reste.length) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('POST');
+  if (refus) return refus;
+  if (!service.metriques) return erreur(503, 'Les métriques ne sont pas disponibles sur ce service.');
+  if (!service.metriques.pagesOuvertes) return erreur(403, 'La mesure des pages est fermée sur ce serveur (MAVERICK_METRIQUES_PAGES=0).');
+  const entetes = requete.entetes ?? {};
+  const type = String(entetes['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json' && type !== 'text/plain') return erreur(415, 'Corps JSON attendu (Content-Type: application/json ou text/plain).');
+  const site = String(entetes['sec-fetch-site'] ?? '').toLowerCase();
+  if (site ? site !== 'same-origin' : !memeOrigine(entetes)) return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
+  if (Buffer.byteLength(String(requete.corps ?? '')) > BALISE.octets_max) return erreur(413, `Mesure trop volumineuse (${BALISE.octets_max} octets au plus).`);
+  const { valeur, refus: illisible } = lireCorps(requete.corps);
+  if (illisible) return illisible;
+  return repondre(ErreurMetriques, () => {
+    service.metriques.recevoirPage(valeur, entetes);
+    return { statut: 204, corps: null, entetes: {} };
+  });
+}
+
+/**
+ * Vrai si l'en-tête Origin est absent (un outil, un vieux navigateur sur une requête du même site) ou désigne l'hôte de la requête
+ * (X-Forwarded-Host derrière le mandataire, sinon Host) ; « null » (page sans origine : fichier, cadre isolé) ou un autre hôte : faux.
+ */
+export function memeOrigine(entetes) {
+  const origine = entetes.origin;
+  if (origine === undefined || origine === '') return true;
+  const hote = String(entetes['x-forwarded-host'] ?? entetes.host ?? '').split(',')[0].trim().toLowerCase();
+  try {
+    return Boolean(hote) && new URL(String(origine)).host.toLowerCase() === hote;
+  } catch {
+    return false;
+  }
 }
 
 const sansMaintenance = { active: false };
@@ -271,6 +363,7 @@ function traiterMaintenance(requete, service, action, reste, permis) {
   return repondre(ErreurNotes, () => {
     const lancement = leverMaintenance(service.dossier, { lot: valeur?.lot, instant: instant() });
     service.journal?.(`maintenance levée depuis la page (lot ${lancement.lot})`);
+    service.evenement?.('maintenance', { detail: { action: 'levee', lot: lancement.lot } });
     return json(200, service.maintenance?.() ?? sansMaintenance);
   });
 }
@@ -322,9 +415,11 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     if (action === 'liberer') {
       // `lot` : le lancement que la page affiche (un onglet périmé n'annule pas le suivant) ; le run éventuel est annulé sur GitHub
       const lancement = libererLot(db, service.dossier, { instant: maintenant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });
+      service.evenement?.('mise_a_jour', { detail: { etape: 'liberer', lot: lancement?.lot ?? null, etat: lancement?.etat ?? null } });
       service.maintenance?.(); // annulé : l'annonce de maintenance est retirée tout de suite (les deux serveurs rouvrent)
       return json(200, { lancement, liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) });
     }
+    const t0 = performance.now();
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
@@ -333,6 +428,10 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
       ...(service.limites ? { limites: service.limites } : {}),
     });
     service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
+    service.evenement?.('mise_a_jour', {
+      duree_ms: performance.now() - t0,
+      detail: { etape: 'figer', lot: lancement.lot, simulation: Boolean(lancement.simulation), modifications: lancement.modifications ?? null, version_cible: note.version_cible ?? null, etat: lancement.etat },
+    });
     // vraie mise à jour : l'annonce de maintenance part tout de suite (les deux serveurs passent en maintenance), et suit le déclenchement
     service.maintenance?.();
     if (github.configure) service.github.declencher().then(() => service.maintenance?.()).catch(() => {});

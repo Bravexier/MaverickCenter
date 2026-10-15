@@ -24,7 +24,10 @@ Docker) : deux conteneurs, `maverick-center` (nginx) et `maverick-center-serveur
 Sur Synology : *Container Manager → Projet → Créer*, choisissez le dossier décompressé : il détecte `docker-compose.yml`.
 
 Le dossier `db/` (créé au premier lancement) contient la base vivante du service : **les fiches enregistrées**. C'est la seule donnée qui ne se
-reconstruit pas : sauvegardez-le (par exemple avec *Hyper Backup*), de préférence conteneur `maverick-center-serveur` arrêté.
+reconstruit pas : sauvegardez-le (par exemple avec *Hyper Backup*), de préférence conteneur `maverick-center-serveur` arrêté. Le service y range
+aussi ses métriques (`db/metriques/prod.db` : temps de réponse, pages, serveur ; [`docs/serveur.md`](../docs/serveur.md), « Métriques et
+volume »), qui se perdent sans dommage. Les journaux des conteneurs tournent (5 fichiers de 10 Mo au plus par conteneur) une fois le
+`docker-compose.yml` de cette version en place et le projet relancé (`docker compose up -d`).
 
 ## Passage au mode client / serveur (une seule fois, NAS installé avant ce changement)
 

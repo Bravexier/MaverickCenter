@@ -1,7 +1,7 @@
 // `npm run serveur` : le service en développement, à lancer à côté de `npm run dev` (qui lui transmet /api/ : astro.config.mjs).
 // Règles : la base reconstruite depuis data/rows, comme celle du site en développement (HIDE_EXAMPLES=1 : sans les pages d'exemple) ;
 // base vivante : var/serveur/ (ignoré par git). Pas de surveillance : relancer après un changement de data/rows.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { construireReference } from '../scripts/db-reference.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
@@ -25,6 +25,9 @@ const service = await demarrerService({
   intervalle: 0,
   // en développement, l'édition est ouverte (comme sur le site de dev) sauf MAVERICK_EDITION=0
   edition: process.env.MAVERICK_EDITION !== '0',
+  // métriques (serveur/metriques.mjs ; réglages de l'environnement, dossier var/serveur/metriques/ par défaut) : la répartition du disque compte le
+  // dernier site construit (client/dist/), s'il existe, comme le site publié d'une instance
+  metriques: { site: existsSync(new URL('../dist/index.html', import.meta.url)) ? join(trouverRacine(), 'client', 'dist') : null },
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

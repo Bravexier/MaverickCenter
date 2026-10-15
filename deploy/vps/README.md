@@ -19,7 +19,8 @@ voient pas, mais les ports 8080 et 8081 ne servent à rien en direct. À la conn
 | --- | --- |
 | `durcir.sh` | Mises à jour de sécurité automatiques, SSH par clé uniquement, pare-feu (22, 80, 443), fail2ban |
 | `outils.sh` | Docker (+ compose), Caddy, `robots.txt` |
-| `instances.sh` | Les deux dossiers d'instance (`.env` avec ports sur `127.0.0.1`), mots de passe internes, `Caddyfile` et son environnement |
+| `instances.sh` | Les deux dossiers d'instance (`.env` avec ports sur `127.0.0.1`), dossiers partagés de la maintenance et des métriques, mots de passe internes, `Caddyfile` et son environnement, minuteur de `volume.sh` |
+| `volume.sh` | Répartition du disque par type de données, vue de l'hôte (les deux instances, Docker, journaux, restes d'installation) : `metriques/volume-hote.json`, toutes les 15 minutes (jauge de la page Debug) |
 | `Caddyfile` | `maverick-jdr.com` → 8080, `dev.maverick-jdr.com` → 8081, `www.` → domaine principal |
 
 ## Avant de commencer
@@ -127,6 +128,41 @@ cd /srv/maverick-center && sudo docker compose up -d
 Jusque-là, seul le site de dev se met en maintenance. Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la
 maintenance (les deux sites) »** sur `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
 
+## 8. Métriques et espace disque
+
+Le service de chaque instance mesure ses temps de réponse, ses pages et le serveur ([`docs/serveur.md`](../../docs/serveur.md), « Métriques et
+volume » ; la page Debug du site de dev les montre). **Deux jeux de données séparés** (décision du propriétaire) : `prod.db` pour le serveur normal,
+`dev.db` pour le serveur de test, côte à côte dans `/srv/maverick-center/metriques/`, que les deux instances montent ; chacune n'écrit que le sien,
+le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur de test ne les copie ni ne les efface. À faire une fois, en copiant
+de nouveau ce dossier sur le serveur (étape 1) :
+
+```
+sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/metriques, pose MAVERICK_INSTANCE et MAVERICK_DOSSIER_METRIQUES dans les deux .env,
+                                  # installe volume.sh et son minuteur (maverick-volume.timer)
+```
+
+puis, comme pour la maintenance, `sudo docker compose up -d` dans chaque dossier d'instance **une fois que son installateur a posé le nouveau
+`docker-compose.yml`**. Ce même `docker compose up -d` applique la **rotation des journaux des conteneurs** (5 fichiers de 10 Mo au plus par
+conteneur ; avant, `docker logs` grossissait sans fin). La mesure des pages par le navigateur est active sur les deux sites ; pour la couper sur
+une instance : `MAVERICK_METRIQUES_PAGES=0` dans son `.env`, puis `sudo docker compose up -d`.
+
+**Jauge de l'espace disque** (page Debug du site de dev, demande du propriétaire) : chaque service mesure ce qu'il voit de son conteneur ; le
+reste (l'autre instance, Docker, les journaux, les restes d'installation) est mesuré depuis le serveur par `volume.sh`, que `instances.sh` installe
+dans `/usr/local/lib/maverick-center/` avec le minuteur systemd `maverick-volume.timer` : toutes les 15 minutes, en lecture seule et à basse
+priorité, il écrit `/srv/maverick-center/metriques/volume-hote.json` ([`docs/serveur.md`](../../docs/serveur.md), « Jauge de l'espace disque »).
+Après une copie plus récente de ce dossier, relancer `instances.sh` reprend le script.
+
+**Espace libre** : tout ce qui grossit sur le serveur, combien et jusqu'où, est dans [`docs/serveur.md`](../../docs/serveur.md), « Tout ce qui
+grossit sur le serveur ». L'essentiel :
+
+```
+df -h /                                                         # espace libre du disque
+sudo cat /srv/maverick-center/metriques/volume-hote.json        # répartition par type de données (dernier relevé)
+systemctl list-timers maverick-volume.timer                     # dernier et prochain relevé
+sudo du -sh /srv/maverick-center*/{site,db,metriques} 2>/dev/null
+sudo docker system df                                           # images, conteneurs, journaux compris
+```
+
 ## Avant la 0.2.0 : le serveur de test suit la branche `site`
 
 Tant que `dev` est en 0.1.x, il n'y a ni installateur ni *release* : après chaque fusion dans `dev`, le bot publie le site construit sur la
@@ -218,6 +254,7 @@ curl -s https://maverick-jdr.com/robots.txt               # Disallow: /
 curl -s -m 5 -o /dev/null -w '%{http_code}\n' http://<IP>:8080/   # doit échouer : le port est fermé de l'extérieur
 sudo docker ps                                            # les 4 conteneurs (nginx et service, normal et test)
 sudo systemctl status caddy
+df -h /                                                   # espace libre (étape 8)
 ```
 
 ## Sauvegardes (à faire avant d'y mettre de vraies données)
@@ -239,4 +276,5 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 | 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
 | « Maintenance en cours » qui ne finit pas | `sudo tail /srv/maverick-center*/mise-a-jour.log` (l'installateur est-il arrivé ?) ; bouton « Lever la maintenance » sur `https://dev.maverick-jdr.com/maintenance/`, sinon elle se lève seule 4 h après le lancement |
 | Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
+| Disque presque plein | Commandes de l'étape 8, puis la liste de [`docs/serveur.md`](../../docs/serveur.md), « Tout ce qui grossit sur le serveur » : restes d'une installation interrompue (`.installation.*`, `.db.copie.*`, `/tmp/maverick-mise-a-jour.*`), installateurs copiés dans `~`, sauvegardes `/root/vivante-*.db`, `sudo docker image prune`, `sudo journalctl --vacuum-size=200M` ; les journaux des conteneurs ne tournent qu'après `docker compose up -d` avec le nouveau `docker-compose.yml` |
 | Verrouillé hors du serveur | Console VNC d'Infomaniak (page du serveur) |

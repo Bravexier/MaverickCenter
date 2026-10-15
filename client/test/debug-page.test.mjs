@@ -12,9 +12,10 @@ import {
   requeteDe, resoudre, segmentDeChemin, valeursDuChemin,
 } from '../src/lib/debug-api.mjs';
 import {
-  AFFICHEES_MAX, GARDEES_MAX, NIVEAUX, RELEVE_MS, adresseDuJournal, categoriesDes, etatVide, filtrerEntrees, fusionner, heureDe, htmlDesLignes,
-  planDAffichage, resumeDuJournal,
+  AFFICHEES_MAX, GARDEES_MAX, NIVEAUX, RELEVE_MS, TRIS_DU_JOURNAL, TRI_DU_JOURNAL_PAR_DEFAUT, adresseDuJournal, categoriesDes, dureeDe, etatVide,
+  filtrerEntrees, fusionner, heureDe, htmlDesLignes, planDAffichage, resumeDuJournal,
 } from '../src/lib/debug-journaux.mjs';
+import { COLONNES_DES_ROUTES, INSTANCES, PERIODES, TRIS } from '../src/lib/debug-metriques.mjs';
 import { NIVEAUX as NIVEAUX_DU_SERVICE, creerJournalDuService } from '../serveur/journal-du-service.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
@@ -384,11 +385,53 @@ test('journaux : filtres de la page (niveaux, catégorie, texte), la plus récen
   assert.equal(heureDe('pas une date', maintenant), 'pas une date');
   const html = htmlDesLignes([{ n: 7, instant: '2026-10-15T12:00:00Z', niveau: 'erreur', categorie: 'base', message: 'ERREUR <b> & co\n  at x' }], maintenant);
   assert.match(html, /^<tr class="debug-ligne debug-ligne--erreur" data-n="7"><td class="debug-ligne__heure"><time datetime="2026-10-15T12:00:00Z">[^<]+<\/time><\/td>/);
-  assert.match(html, /<td class="debug-ligne__niveau"><span class="debug-niveau debug-niveau--erreur">erreur<\/span><\/td><td class="debug-ligne__categorie">base<\/td><td class="debug-ligne__message">ERREUR &lt;b&gt; &amp; co\n {2}at x<\/td><\/tr>$/);
+  assert.match(html, /<td class="debug-ligne__niveau"><span class="debug-niveau debug-niveau--erreur">erreur<\/span><\/td><td class="debug-ligne__categorie">base<\/td><td class="debug-ligne__duree"><\/td><td class="debug-ligne__message">ERREUR &lt;b&gt; &amp; co\n {2}at x<\/td><\/tr>$/, 'sans durée isolée : une case vide');
   assert.match(htmlDesLignes([{ n: 1, instant: '', niveau: '"><script>', categorie: '', message: '' }]), /debug-ligne--info.*&quot;&gt;&lt;script&gt;/, 'niveau inconnu : classe info, texte échappé');
   assert.equal(resumeDuJournal({ affichees: 1, total: 1, gardees: 1 }), '1 ligne affichée ; 1 entrée reçue depuis l’ouverture ou le dernier effacement.');
   assert.equal(resumeDuJournal({ affichees: 1000, total: 1500, gardees: 1800, perdues: 3, enPause: true }),
     '1000 lignes affichées (les 1000 plus récentes sur 1500) ; 1800 entrées reçues depuis l’ouverture ou le dernier effacement ; 3 entrées plus anciennes ne sont plus dans la mémoire du service. Relève en pause.');
+});
+
+test('journaux : durée isolée des entrées http (demande du 2026-10-15) — colonne Durée triable, « plus lent que … ms » envoyé au service (?min_ms=) et appliqué dans la page', () => {
+  assert.deepEqual(TRIS_DU_JOURNAL, ['instant', 'duree']);
+  assert.deepEqual(TRI_DU_JOURNAL_PAR_DEFAUT, { cle: 'instant', sens: 'desc' });
+  assert.equal(adresseDuJournal('/api/', 0, { minMs: 250 }), '/api/debug/journal/?min_ms=250');
+  assert.equal(adresseDuJournal('/api/', 12, { minMs: 12.5 }), '/api/debug/journal/?depuis=12&min_ms=12.5');
+  assert.equal(adresseDuJournal('/api/', 12, { minMs: 0 }), '/api/debug/journal/?depuis=12', 'sans seuil : rien de plus');
+  // les champs isolés d'une entrée http (contrat du journal : duree_ms, methode, route, statut, octets_sortie), gardés par la fusion
+  const http = (n, duree_ms, extra = {}) => ({ n, instant: '2026-10-15T12:00:00Z', niveau: 'info', categorie: 'http', message: `GET /api/x/ 200 ${duree_ms} ms`,
+    duree_ms, methode: 'GET', route: '/api/x/', statut: 200, octets_sortie: 120, ...extra });
+  const entrees = [
+    http(1, 12.34), { n: 2, instant: '2026-10-15T12:00:01Z', niveau: 'info', categorie: 'service', message: 'base des règles changée' },
+    http(3, 640), http(4, 150.5), http(5, 0.42), http(6, 150.5),
+  ];
+  const { etat } = fusionner(etatVide(), { processus: 'p', dernier: 6, entrees });
+  assert.equal(etat.entrees[0].duree_ms, 12.34, 'la fusion garde les champs isolés');
+  assert.equal(dureeDe(etat.entrees[1]), null);
+  assert.equal(dureeDe({ duree_ms: '12' }), null, 'seulement un nombre');
+  const n = (filtres) => filtrerEntrees(etat.entrees, filtres).lignes.map((e) => e.n);
+  assert.deepEqual(n(), [6, 5, 4, 3, 2, 1], 'par défaut : la plus récente en haut');
+  assert.deepEqual(n({ tri: { cle: 'instant', sens: 'asc' } }), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(n({ tri: { cle: 'duree', sens: 'desc' } }), [3, 6, 4, 1, 5, 2], 'la plus lente en haut ; à égalité la plus récente ; sans durée à la fin');
+  assert.deepEqual(n({ tri: { cle: 'duree', sens: 'asc' } }), [5, 1, 6, 4, 3, 2], 'la plus rapide en haut ; sans durée toujours à la fin');
+  assert.deepEqual(n({ minMs: 150 }), [6, 4, 3], 'plus lent que 150 ms (inclus) ; une entrée sans durée n’en est pas');
+  assert.deepEqual(n({ minMs: 150, tri: { cle: 'duree' } }), [3, 6, 4]);
+  assert.deepEqual(filtrerEntrees(etat.entrees, { minMs: 150 }).total, 3);
+  // la case Durée : formatée, marquée lente (≥ 100 ms) ou très lente (≥ 500 ms)
+  const html = htmlDesLignes([http(3, 640), http(4, 150.5), http(1, 12.34), http(5, 0.42)]);
+  assert.match(html, /<td class="debug-ligne__duree" data-lenteur="tres-lent">640\u00a0ms<\/td>/);
+  assert.match(html, /<td class="debug-ligne__duree" data-lenteur="lent">151\u00a0ms<\/td>/);
+  assert.match(html, /<td class="debug-ligne__duree">12,3\u00a0ms<\/td>/);
+  assert.match(html, /<td class="debug-ligne__duree">0,42\u00a0ms<\/td>/);
+  // la page : un champ « plus lent que » étiqueté, des en-têtes Heure et Durée qui trient (aria-sort), le seuil envoyé au service
+  const page = lire('../src/pages/debug.astro');
+  assert.match(page, /<label for="debug-journaux-min-ms">Plus lent que \(ms\)<\/label>\s*<input type="number" id="debug-journaux-min-ms" data-journaux-min-ms/);
+  assert.match(page, /<th scope="col" aria-sort="descending"><button type="button" class="debug-tri" data-journaux-tri="instant">Heure<\/button><\/th>/);
+  assert.match(page, /<th scope="col" aria-sort="none"><button type="button" class="debug-tri" data-journaux-tri="duree">Durée<\/button><\/th>/);
+  const script = lire('../src/scripts/debug.mjs');
+  assert.match(script, /adresseDuJournal\(api, etat\.dernier, \{ minMs: seuilDeLaDemande \}\)/, 'le seuil part au service');
+  assert.match(script, /filtrerEntrees\(etat\.entrees, \{ niveaux: niveaux\(\), categorie: choisie, texte: texte\.value, minMs: seuil, tri \}\)/, 'et s’applique dans la page');
+  assert.match(script, /if \(seuilDeLaDemande !== seuil\)/, 'une réponse demandée avec un autre seuil ne se mêle pas aux nouvelles');
 });
 
 test('journaux : affichage incrémental — les nouvelles lignes s’ajoutent en haut sans refaire les autres (la ligne lue et une sélection restent) ; sinon tout se refait', () => {
@@ -435,6 +478,30 @@ test('la page : une phrase sans script en production et dans la version portable
   assert.match(page, /<style is:inline set:html=\{debugCss\}><\/style>/);
   assert.match(page, /<details class="debug-testeur" data-debug-testeur hidden>\s*<summary>\s*<span class="debug-testeur__titre">Tester l’API<\/span>/, 'le testeur dans un menu déroulant fermé');
   assert.ok(page.indexOf('data-debug-testeur') < page.indexOf('data-debug-journaux'), 'les journaux en dessous');
+  // demande du 2026-10-15 : « Performances » puis « Système », deux menus déroulants ouverts, entre le testeur et les journaux
+  assert.match(page, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-perfs-titre">Performances<\/h2>/);
+  assert.match(page, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-systeme-titre">Système<\/h2>/);
+  // demande du 2026-10-15 : « Tout en bas […] la place occupée sur le serveur sur la place totale sous forme de jauge » (après les journaux)
+  assert.match(page, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre" hidden>\s*<h2 id="debug-espace-titre">Espace disque du serveur<\/h2>/);
+  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => page.indexOf(m));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, performances, système, journaux, espace disque');
+  assert.ok(page.lastIndexOf('</section>') > page.indexOf('data-debug-espace') && page.indexOf('data-debug-espace') > page.lastIndexOf('data-journaux-vide'), 'tout en bas');
+  for (const m of ['data-perfs-instance', 'data-perfs-periode', 'data-perfs-tri', 'data-perfs-routes', 'data-perfs-serie', 'data-perfs-pages',
+    'data-perfs-navigateurs', 'data-perfs-origines', 'data-requetes-liste', 'data-requetes-min', 'data-systeme-processus', 'data-systeme-disque',
+    'data-systeme-fichiers', 'data-systeme-volume', 'data-systeme-echantillons', 'data-systeme-evenements', 'data-systeme-alertes', 'data-espace-jauge',
+    'data-espace-annonce']) {
+    assert.ok(page.includes(m), m);
+  }
+  assert.match(page, /<a class="debug-bouton" data-perfs-export="csv" href=\{url\(`api\/debug\/metriques\/export\/\?instance=dev&periode=\$\{PERIODE_PAR_DEFAUT\}&format=csv`\)\} download>Exporter \(CSV\)<\/a>/);
+  // les listes de la page viennent du module (instances, périodes, tris), les en-têtes du tableau des routes aussi
+  assert.match(page, /INSTANCES\.map\(/);
+  assert.match(page, /PERIODES\.map\(/);
+  assert.match(page, /TRIS\.map\(/);
+  assert.match(page, /COLONNES_DES_ROUTES\.map\(/);
+  assert.deepEqual(INSTANCES.map((i) => i.cle), ['dev', 'prod'], 'deux jeux de données séparés (décision du 2026-10-15)');
+  assert.deepEqual(PERIODES.map((p) => p.cle), ['1h', '24h', '7j', '30j', '365j', 'tout']);
+  assert.deepEqual(TRIS.slice(0, 9).map((t) => t.cle), ['n', 'moyenne', 'mediane', 'p95', 'p99', 'max', 'total', 'erreurs', 'sql'], 'les tris du service d’abord');
+  assert.equal(COLONNES_DES_ROUTES.length, TRIS.length, 'chaque colonne se trie');
   assert.match(page, /data-api=\{url\('api\/'\)\} data-base=\{url\(\)\}/);
   assert.doesNotMatch(page, /<(?!Base\b)[A-Za-z][^>]*\stitle=/, 'jamais d’infobulle native (le title de <Base> est celui de la page)');
   // chaque champ des filtres des journaux a son étiquette
@@ -443,20 +510,31 @@ test('la page : une phrase sans script en production et dans la version portable
   assert.match(lire('../../tools/build-artifact.mjs'), /if \(rel\.startsWith\('debug\/'\)\) continue;/);
 });
 
-test('le script de la page n’importe que lib/debug-api.mjs et lib/debug-journaux.mjs, qu’aucun autre script de page n’importe', () => {
+test('le script de la page n’importe que lib/debug-api.mjs, lib/debug-journaux.mjs et lib/debug-metriques.mjs, qu’aucun autre script de page n’importe', () => {
   const imports = (url) => [...readFileSync(url, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   const scripts = new URL('../src/scripts/', import.meta.url);
-  assert.deepEqual(imports(new URL('debug.mjs', scripts)), ['../lib/debug-api.mjs', '../lib/debug-journaux.mjs']);
-  assert.deepEqual(imports(new URL('../src/lib/debug-journaux.mjs', import.meta.url)), ['./debug-api.mjs']);
+  assert.deepEqual(imports(new URL('debug.mjs', scripts)), ['../lib/debug-api.mjs', '../lib/debug-journaux.mjs', '../lib/debug-metriques.mjs']);
+  assert.deepEqual(imports(new URL('../src/lib/debug-journaux.mjs', import.meta.url)), ['./debug-api.mjs', './debug-metriques.mjs']);
+  assert.deepEqual(imports(new URL('../src/lib/debug-metriques.mjs', import.meta.url)), ['./debug-api.mjs'], 'pas de boucle avec debug-journaux');
   assert.deepEqual(imports(new URL('../src/lib/debug-api.mjs', import.meta.url)), [], 'sans dépendance');
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'debug.mjs')) {
-    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/debug-(api|journaux)\.mjs$/.test(m)), [], nom);
+    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/debug-(api|journaux|metriques)\.mjs$/.test(m)), [], nom);
   }
   const script = lire('../src/scripts/debug.mjs');
   assert.doesNotMatch(script, /\.title\b|getAttribute\('title'\)|setAttribute\('title'/, 'aucune infobulle native');
   assert.match(script, /`\$\{api\}etat\/`/, 'l’état du service d’abord');
   assert.match(script, /etat\.edition !== true/, 'hors du site de dev : la page s’arrête');
   assert.match(script, /`\$\{api\}v1\/openapi\.json`/);
+  // performances et système : relevés toutes les 30 s au plus, ni onglet caché ni bloc replié ; une réponse périmée (choix changé) ignorée
+  assert.match(script, /setInterval\(\(\) => relever\(\), RELEVE_METRIQUES_MS\)/);
+  assert.match(script, /if \(document\.hidden\) return;/);
+  assert.match(script, /if \(perfs\.open && /);
+  // le système (et la jauge de l'espace disque, tirée de la même réponse) : relevé tant que son bloc est ouvert OU que la jauge, tout en bas, se voit
+  assert.match(script, /const systemeVisible = \(\) => systeme\.open \|\| !espace\.hidden;/);
+  assert.match(script, /if \(systemeVisible\(\) && /);
+  assert.match(script, /espaceJauge\.innerHTML = htmlDeLEspaceDisque\(corps\.disque, /, 'la jauge, de la réponse du système');
+  assert.match(script, /if \(numero !== demandes\.metriques\) return;/);
+  assert.match(script, /statut === 403/, 'un service qui refuse (pas le site de dev) : la page s’arrête de demander');
 });
 
 test('la CI construit aussi le site de production et y relance ce contrôle (sinon sa branche « production » ne tournerait jamais)', () => {
@@ -490,7 +568,7 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
     const accueil = readFileSync(new URL('index.html', dist), 'utf8');
     assert.doesNotMatch(accueil, /href="\/debug\/"/, 'ni au menu de l’accueil');
     const duDebug = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js'))
-      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return code.includes('v1/openapi.json') || code.includes('debug/journal/'); });
+      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['v1/openapi.json', 'debug/journal/', 'debug/metriques/', 'debug/systeme/'].some((a) => code.includes(a)); });
     for (const page of [html, accueil]) {
       const charges = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].split('/').at(-1));
       assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'le script du testeur ou des journaux chargé en production');
@@ -501,9 +579,17 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
   assert.match(main, /<div class="debug" data-debug data-api="\/api\/" data-base="\/">/);
   assert.match(main, /<details class="debug-testeur" data-debug-testeur hidden>/, 'le testeur, fermé (et caché tant que le service n’a pas répondu)');
   assert.ok(main.indexOf('data-debug-testeur') < main.indexOf('data-debug-journaux'));
+  assert.match(main, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>/, 'Performances, ouvert (caché tant que le service n’a pas répondu)');
+  assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>/);
+  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => main.indexOf(m));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'l’espace disque tout en bas');
+  assert.match(main, /<option value="dev" selected>Site de dev<\/option><option value="prod">Production<\/option>/, 'deux instances, jamais mélangées');
+  assert.match(main, /<th scope="col" aria-sort="descending"><button type="button" class="debug-tri" data-tri-colonne="moyenne">Moyenne<\/button><\/th>/, 'trié par moyenne décroissante');
+  assert.match(main, /href="\/api\/debug\/metriques\/export\/\?instance=dev&amp;periode=24h&amp;format=csv" download>Exporter \(CSV\)<\/a>/);
   assert.match(main, /<script type="module"/, 'le script de la page');
   // le script construit est bien celui qui lit la description et le journal (le contrôle de production le cherche par ces adresses)
   const construits = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js')).map((n) => readFileSync(new URL(`_astro/${n}`, dist), 'utf8'));
-  assert.ok(construits.some((code) => code.includes('v1/openapi.json') && code.includes('debug/journal/')), 'le script de la page Debug dans dist/_astro/');
+  assert.ok(construits.some((code) => code.includes('v1/openapi.json') && code.includes('debug/journal/') && code.includes('debug/metriques/') && code.includes('debug/systeme/')),
+    'le script de la page Debug dans dist/_astro/');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

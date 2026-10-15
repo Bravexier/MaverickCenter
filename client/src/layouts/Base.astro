@@ -25,6 +25,13 @@ const here = Astro.url.pathname.replace(/\/?$/, '/');
 const site = modeDuSite(process.env, packageInfo.version);
 // Entrées du site de dev seulement (la page Debug : lib/nav.mjs#entreesDuMenu) : ni en production ni dans la version portable (sans service)
 const dev = !site.prod && !portable;
+// Balise des pages (métriques du navigateur, page Debug) : dans tous les builds, production comprise (décision du propriétaire du 2026-10-15 :
+// « Active-le aussi en prod dans un premier temps ») ; SITE_METRIQUES_PAGES=0 au build la retire (l'interrupteur pour plus tard, comme
+// MAVERICK_METRIQUES_PAGES=0 côté service). Ni dans la version portable (pas de service) ni sur la page de maintenance.
+const balise = !portable && !maintenance && process.env.SITE_METRIQUES_PAGES !== '0';
+// La page mesurée : son chemin construit (jamais l'adresse de la barre, ses paramètres ni ce qu'une adresse inconnue fait servir à la page 404) :
+// autant de pages que le site en construit, pas plus.
+const pageMesuree = Astro.url.pathname;
 ---
 
 <!doctype html>
@@ -123,6 +130,48 @@ const dev = !site.prod && !portable;
     </footer>
     {edition && !portable && <Edition page={edition} />}
     <Infobulles />
+    {
+      /* Balise des pages (demande du propriétaire du 2026-10-15 : métriques « dans un but de suivi, maintenance et évolutions » ; serveur/metriques.mjs,
+         page Debug) : une fois la page chargée, ses temps vus par le navigateur — premier octet (TTFB), DOMContentLoaded, chargement complet, LCP
+         (PerformanceObserver quand il existe) — partent UNE fois, par navigator.sendBeacon (texte JSON : { page, ttfb_ms, dom_ms, charge_ms, lcp_ms },
+         un temps absent est omis), 5 s après le chargement ou plus tôt si l'on quitte la page (pagehide, ou onglet masqué APRÈS le chargement). Un
+         onglet masqué AVANT la fin du chargement n'envoie rien tout de suite : la balise part dès le chargement fini, même en arrière-plan (sinon le
+         chargement complet manquerait justement aux pages les plus lentes, celles qu'on quitte en attendant) ; seule la page quittée (pagehide)
+         l'envoie avant, sans les temps qui manquent. Rien d'autre : ni adresse complète, ni paramètres, ni identifiant. Chaque instance l'écrit dans SON fichier de métriques, jamais dans la base vivante ; le service peut la refuser (403,
+         MAVERICK_METRIQUES_PAGES=0) sans que la page le voie. Script en ligne : aucun module partagé entre pages (tools/build-artifact.mjs). */
+      balise && (
+        <script is:inline data-metriques-page={url('api/metriques/page/')} data-metriques-chemin={pageMesuree}>
+          (function () {
+            var s = document.currentScript, adresse = s && s.getAttribute('data-metriques-page'), page = s && s.getAttribute('data-metriques-chemin');
+            var perf = typeof performance === 'object' ? performance : null, nav = navigator;
+            if (!adresse || !page || !perf || !perf.getEntriesByType || !nav.sendBeacon) return;
+            var lcp, parti = false, charge = false, minuterie = 0;
+            try {
+              new PerformanceObserver(function (liste) {
+                var e = liste.getEntries(), d = e[e.length - 1];
+                if (d) lcp = d.renderTime || d.startTime;
+              }).observe({ type: 'largest-contentful-paint', buffered: true });
+            } catch (e) {}
+            function ms(v) { return typeof v === 'number' && isFinite(v) && v > 0 ? Math.min(Math.round(v * 100) / 100, 120000) : undefined; }
+            function envoyer() {
+              if (parti) return;
+              var n = perf.getEntriesByType('navigation')[0];
+              if (!n) return;
+              parti = true;
+              clearTimeout(minuterie);
+              try {
+                nav.sendBeacon(adresse, JSON.stringify({ page: page.slice(0, 200), ttfb_ms: ms(n.responseStart), dom_ms: ms(n.domContentLoadedEventEnd), charge_ms: ms(n.loadEventEnd), lcp_ms: ms(lcp) }));
+              } catch (e) {}
+            }
+            // chargée en arrière-plan : la balise part aussitôt la fin du chargement notée (loadEventEnd n'est posé qu'après les écouteurs de « load »)
+            function apresLeChargement() { charge = true; minuterie = setTimeout(envoyer, document.visibilityState === 'hidden' ? 0 : 5000); }
+            if (document.readyState === 'complete') apresLeChargement(); else addEventListener('load', apresLeChargement);
+            addEventListener('pagehide', envoyer);
+            document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && charge) envoyer(); });
+          })();
+        </script>
+      )
+    }
     <script is:inline>
       (function () {
         var toggles = document.querySelectorAll('.nav-group__toggle');

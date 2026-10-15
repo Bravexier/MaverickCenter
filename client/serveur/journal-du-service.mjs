@@ -7,19 +7,27 @@
 //   n          numéro croissant depuis le démarrage du service, jamais réutilisé (même après `vider`) : la page relève les suivantes par ?depuis=<n>
 //   instant    ISO 8601 en UTC à la seconde, le format de serveur/instant.mjs (recopié ici : ce module n'importe rien ; le test les compare)
 //   niveau     info, avertissement ou erreur (NIVEAUX)
-//   categorie  service, http, base, fiches, edition, mise-a-jour, maintenance (CATEGORIES), ou celle que l'appelant donne
+//   categorie  service, http, base, fiches, edition, mise-a-jour, maintenance, metriques (CATEGORIES), ou celle que l'appelant donne
+// Une entrée http (une requête /api/, service.mjs) porte en plus ses champs isolés (CHAMPS_ISOLES : duree_ms, methode, route, statut,
+// octets_sortie ; demande du propriétaire du 2026-10-15, « isole les informations de temps de réponse ») : `lire({ min_ms })` ne garde que les
+// entrées d'au moins tant de millisecondes. La route est le gabarit de serveur/metriques.mjs#routeNormalisee (sans identifiant ni requête).
 // Niveau et catégorie se donnent (`ecrire(message, { niveau, categorie })`) ou se déduisent du message, d'après l'écriture des lignes que le service
 // note déjà (service.mjs, api.mjs, notes-de-version.mjs) : niveauDuMessage, categorieDuMessage.
 //
-// Les relèves réussies du journal lui-même (la page Debug le lit toutes les 2 s) et de l'état de maintenance (chaque page ouverte le lit toutes les
-// 30 s : layouts/Base.astro) ne sont notées nulle part : elles noieraient le reste et le pousseraient hors de la mémoire (estUneReleve).
+// Les relèves réussies du journal lui-même (la page Debug le lit toutes les 2 s), des métriques et de l'état du système (page Debug), de l'état de
+// maintenance (chaque page ouverte le lit toutes les 30 s : layouts/Base.astro) et la balise des pages vues (POST /api/metriques/page/, une par page
+// ouverte) ne sont notées nulle part : elles noieraient le reste et le pousseraient hors de la mémoire (estUneReleve). Les métriques, elles, les
+// comptent (serveur/metriques.mjs).
 // Module sans import (ni node: ni autre) : service.mjs et api.mjs le branchent.
 
 /** Les niveaux, du moins grave au plus grave. */
 export const NIVEAUX = ['info', 'avertissement', 'erreur'];
 
 /** Les catégories que le service écrit (dans l'ordre de la liste de la page) ; un appelant peut en donner une autre. */
-export const CATEGORIES = ['service', 'http', 'base', 'fiches', 'edition', 'mise-a-jour', 'maintenance'];
+export const CATEGORIES = ['service', 'http', 'base', 'fiches', 'edition', 'mise-a-jour', 'maintenance', 'metriques'];
+
+/** Les champs isolés d'une entrée (requête /api/ : service.mjs), recopiés tels quels s'ils ont le bon type ; tout autre champ donné est ignoré. */
+export const CHAMPS_ISOLES = Object.freeze({ duree_ms: 'number', methode: 'string', route: 'string', statut: 'number', octets_sortie: 'number' });
 
 /** Longueur gardée en mémoire d'un message (une pile d'erreur, un corps cité) : la sortie console, elle, l'a en entier. */
 export const MESSAGE_MAX = 16000;
@@ -39,6 +47,7 @@ const REGLES_DE_CATEGORIE = [
   [/^édition\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » (api.mjs)
   [/^(simulation de )?mise à jour\b/i, 'mise-a-jour'], // lot figé, workflow déclenché ou annulé (api.mjs, notes-de-version.mjs)
   [/^maintenance\b/i, 'maintenance'], // annonce publiée ou retirée, levée depuis la page, suivi du lancement (service.mjs, api.mjs)
+  [/^métriques\b/i, 'metriques'], // base des métriques en panne ou de nouveau disponible (serveur/metriques.mjs, service.mjs)
   [/prétiré|^fiches\b/i, 'fiches'], // création, modification, suppression d'un prétiré (api.mjs) ; fiches adaptées aux nouvelles règles (R42)
   [/base vivante|base des règles|^journal des modifications rejoué/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs)
   [/^service des personnages|^nouvelle version du service/i, 'service'], // démarrage, relance après livraison (service.mjs)
@@ -69,12 +78,27 @@ export function niveauDuMessage(message, categorie = categorieDuMessage(message)
 }
 
 /**
- * Vrai pour la ligne d'une relève réussie (2xx ou 304) du journal (GET /api/debug/journal/) ou de l'état de maintenance (GET /api/maintenance/) :
- * elle n'est notée ni en mémoire ni sur la sortie. Seul le chemin compte (préfixe de déploiement compris), jamais la chaîne de requête.
+ * Vrai pour la ligne d'une relève réussie (2xx ou 304) du journal (GET /api/debug/journal/), des métriques et de l'état du système (GET
+ * /api/debug/metriques/, …/requetes/, /api/debug/systeme/ ; pas l'export, demandé à la main) ou de l'état de maintenance (GET /api/maintenance/), et
+ * pour la balise d'une page vue reçue (POST /api/metriques/page/ 204) : elle n'est notée ni en mémoire ni sur la sortie. Seul le chemin compte
+ * (préfixe de déploiement compris), jamais la chaîne de requête.
  */
 export function estUneReleve(message) {
+  const texte = String(message ?? '');
   // le chemin s'arrête au « ? » : une chaîne de requête qui finirait par « /api/maintenance/ » ne fait pas d'une autre adresse une relève
-  return /^GET [^\s?]*\/api\/(?:debug\/journal|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(String(message ?? ''));
+  return /^GET [^\s?]*\/api\/(?:debug\/(?:journal|metriques(?:\/requetes)?|systeme)|maintenance)\/?(?:\?\S*)? (?:2\d\d|304)\b/.test(texte)
+    || /^POST [^\s?]*\/api\/metriques\/page\/?(?:\?\S*)? 204\b/.test(texte);
+}
+
+/** Les champs isolés valables de `champs` (CHAMPS_ISOLES), ou un objet vide. */
+function champsIsoles(champs) {
+  const gardes = {};
+  if (!champs || typeof champs !== 'object') return gardes;
+  for (const [nom, type] of Object.entries(CHAMPS_ISOLES)) {
+    const v = champs[nom];
+    if (typeof v === type && (type !== 'number' || Number.isFinite(v))) gardes[nom] = v;
+  }
+  return gardes;
 }
 
 /**
@@ -116,8 +140,11 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
   let entrees = [];
   let dernier = 0;
 
-  /** Note `message` : sur la sortie (la ligne d'avant), puis en mémoire. Rend l'entrée (une copie), ou null pour une relève (estUneReleve). */
-  function ecrire(message, { niveau, categorie } = {}) {
+  /**
+   * Note `message` : sur la sortie (la ligne d'avant), puis en mémoire, avec ses champs isolés (`champs` : CHAMPS_ISOLES). Rend l'entrée (une copie),
+   * ou null pour une relève (estUneReleve).
+   */
+  function ecrire(message, { niveau, categorie, champs } = {}) {
     const texte = String(message ?? '');
     if (estUneReleve(texte)) return null;
     const date = horloge();
@@ -130,6 +157,7 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
       niveau: NIVEAUX.includes(niveau) ? niveau : niveauDuMessage(texte, rangee),
       categorie: rangee,
       message: texte.length > MESSAGE_MAX ? `${texte.slice(0, MESSAGE_MAX)}… (${texte.length - MESSAGE_MAX} caractères de plus sur la sortie du service)` : texte,
+      ...champsIsoles(champs),
     };
     entrees.push(entree);
     if (entrees.length > taille) entrees.splice(0, entrees.length - taille);
@@ -140,13 +168,15 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
    * Les entrées en mémoire qui suivent `depuis` (n > depuis) et passent les filtres, de la plus ancienne à la plus récente, au plus `limite` (les
    * plus récentes) :
    *   niveau, categorie : une valeur, « a,b » ou un tableau (l'une OU l'autre) ; q : un texte cherché dans le message et la catégorie (sans
-   *   accents ni majuscules). Un filtre vide laisse tout passer.
+   *   accents ni majuscules) ; min_ms : seulement les entrées qui ont une durée (duree_ms) d'au moins tant de ms. Un filtre vide laisse tout passer.
    * Rend { processus (l'identité du journal : une autre après un redémarrage du service, même si la numérotation a déjà dépassé le curseur de la
    * page), entrees, dernier (le n de la dernière écriture, filtres ou non : le curseur de la relève suivante), capacite, perdues (entrées écrites
    * qui ne sont plus en mémoire) }.
    */
-  function lire({ depuis, niveau, categorie, q, limite } = {}) {
+  function lire({ depuis, niveau, categorie, q, limite, min_ms: minMs } = {}) {
     const apres = entier(depuis, 0);
+    const seuil = minMs === undefined || minMs === null || minMs === '' ? null : Number(Array.isArray(minMs) ? minMs[0] : minMs);
+    const duree = Number.isFinite(seuil) ? seuil : null;
     const niveaux = ensemble(niveau);
     const categories = ensemble(categorie);
     const texte = cle(q).trim();
@@ -154,7 +184,8 @@ export function creerJournalDuService({ capacite = 2000, sortie = (ligne) => con
     const trouvees = entrees.filter((e) => e.n > apres
       && (!niveaux || niveaux.has(e.niveau))
       && (!categories || categories.has(e.categorie))
-      && (!texte || cle(`${e.message} ${e.categorie}`).includes(texte)));
+      && (!texte || cle(`${e.message} ${e.categorie}`).includes(texte))
+      && (duree === null || (typeof e.duree_ms === 'number' && e.duree_ms >= duree)));
     return { processus: String(processus), entrees: trouvees.slice(-max).map((e) => ({ ...e })), dernier, capacite: taille, perdues: dernier - entrees.length };
   }
 

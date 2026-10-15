@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
@@ -18,11 +19,11 @@ const depot = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(join(depot, chemin), 'utf8');
 const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 
-test('modules livrés : l’entrée, le service, son journal, le format des fiches, l’édition (modèle, découpages et rendus du bestiaire, des armes et des composants partagés avec les pages) et l’API REST v1 (registre des ressources et ses modules, description OpenAPI) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
+test('modules livrés : l’entrée, le service, son journal, ses métriques (collecteur, mesure SQL), le format des fiches, l’édition (modèle, découpages et rendus du bestiaire, des armes et des composants partagés avec les pages) et l’API REST v1 (registre des ressources et ses modules, description OpenAPI) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
     'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
     'serveur/edition-composants.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
-    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs',
+    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs',
     'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/chronologie.mjs', 'src/lib/class-groups.mjs',
     'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-classes.mjs',
     'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs', 'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs',
@@ -77,6 +78,14 @@ test('le service livré démarre tel quel depuis dist/_serveur/ (variables d’e
     enfant.kill('SIGTERM');
     assert.equal(await fin, 0, sortie);
   }
+  // métriques (serveur/metriques.mjs) : sans MAVERICK_EDITION, l'instance « prod », dans db/metriques/ ; versées à l'arrêt (SIGTERM)
+  const metriques = new DatabaseSync(join(racine, 'db', 'metriques', 'prod.db'), { readOnly: true });
+  try {
+    assert.deepEqual(metriques.prepare("SELECT type FROM evenement WHERE type IN ('demarrage', 'arret') ORDER BY id").all().map((e) => e.type), ['demarrage', 'arret']);
+    assert.deepEqual({ ...metriques.prepare("SELECT route, methode, n FROM agregat_heure WHERE route = '/api/etat/'").get() }, { route: '/api/etat/', methode: 'GET', n: 1 });
+  } finally {
+    metriques.close();
+  }
 });
 
 test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur » qui exécute le service livré, sans port publié', () => {
@@ -94,13 +103,17 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     const installateur = fichier.includes('installateur');
     // maintenance pendant une mise à jour (docs/serveur.md) : un dossier d'annonce monté, celui de l'instance sauf réglage (serveur de test : celui du
     // serveur normal) ; le NAS d'avant la 0.2.0 n'a qu'un site, sans mise à jour depuis la page
+    // métriques (serveur/metriques.mjs ; docs/serveur.md, « Métriques et volume ») : un dossier monté hors de db/ (partagé par les deux instances du
+    // VPS), le nom de l'instance (vide : déduit de l'édition), requêtes brutes gardées sur disque seulement à la demande, balise des pages ouverte par
+    // défaut (décision du propriétaire du 2026-10-15) et fermée par MAVERICK_METRIQUES_PAGES=0
     const edition = installateur
       ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
-        MAVERICK_MAINTENANCE: '/maintenance' }
+        MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
+        MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
-      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance'] : [])], fichier);
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,
