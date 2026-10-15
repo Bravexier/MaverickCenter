@@ -6,12 +6,18 @@ import { modeDuSite } from '../lib/mode-site.mjs';
 import { NIVEAUX } from '../lib/debug-journaux.mjs';
 import { COLONNES_DES_ROUTES, INSTANCES, MESURES_DE_PAGE, PERIODES, PERIODE_PAR_DEFAUT, TRIS, TRI_PAR_DEFAUT, ariaSort, sensParDefaut } from '../lib/debug-metriques.mjs';
 import { url } from '../lib/wiki';
+import SchemaDeLaBase from '../components/debug/SchemaDeLaBase.astro';
 
 // Debug (menu Outils, site de dev seulement ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev. Dedans tu y mettras
 // un menu qui permettra de tester chaque requête à l'image d'un swagger. L'ensemble de ce swagger est caché dans un menu déroulant. En dessous on
 // trouvera les logs du serveur (avec une possibilité de filtrer) ») :
 //   - « Tester l'API » (details fermé) : le testeur, construit par le script depuis la description OpenAPI du service (GET <base>api/v1/openapi.json,
 //     serveur/openapi.mjs ; rendu pur : lib/debug-api.mjs) ;
+//   - « Schéma de la base » (details fermé, juste après le testeur ; demande du propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un
+//     mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau ») : toutes les
+//     tables et vues, leurs colonnes, types et clés étrangères (structure calculée au build : lib/schema-structure.mjs), dessinées à la première
+//     ouverture, zoom et déplacement ; le contenu d'une table par GET <base>api/debug/tables/<nom>/ (components/debug/SchemaDeLaBase.astro, son
+//     script scripts/debug-schema.mjs, rendu pur lib/debug-schema.mjs) ;
 //   - « Performances » (details ouvert ; demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels sont les
 //     appels les plus lents en moyenne ») : les métriques de l'instance choisie — dev OU production, deux jeux de données séparés (décision du
 //     propriétaire) — sur une période : routes (triables, les plus lentes mises en évidence), courbe, pages vues mesurées par le navigateur
@@ -33,7 +39,7 @@ const portable = process.env.INLINE_CSS === '1';
 const actif = !site.prod && !portable;
 ---
 
-<Base title="Debug" description="Outils du serveur de dev : tester l’API du service, suivre ses performances, son système, ses journaux et son espace disque">
+<Base title="Debug" description="Outils du serveur de dev : tester l’API du service, parcourir le schéma de la base, suivre ses performances, son système, ses journaux et son espace disque">
   <style is:inline set:html={debugCss}></style>
   <h1>Debug</h1>
   {
@@ -65,6 +71,8 @@ const actif = !site.prod && !portable;
             </div>
           </div>
         </details>
+
+        <SchemaDeLaBase />
 
         <details class="debug-bloc debug-perfs" data-debug-perfs open hidden>
           <summary>

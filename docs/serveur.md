@@ -25,6 +25,7 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/ressources.mjs` | API REST `/api/v1/` (site de dev seulement) : le CRUD des éléments du jeu que décrit le registre `src/lib/ressources.mjs`, écritures par le service d'édition ([`api.md`](api.md)) |
 | `client/serveur/openapi.mjs` | Description OpenAPI 3.1 du service (`GET /api/v1/openapi.json`), tirée du catalogue ; module pur |
 | `client/serveur/journal-du-service.mjs` | Journal du service gardé en mémoire (page Debug du site de dev, `GET /api/debug/journal/`) ; sans import |
+| `client/serveur/debug-tables.mjs` | Contenu des tables de la base vivante, en lecture seule (cadre « Schéma de la base » de la page Debug, `GET /api/debug/tables/` ; site de dev seulement) |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -349,10 +350,12 @@ tourne (5 fichiers de 10 Mo par conteneur : « Métriques et volume », plus bas
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/debug/journal/` | `{ processus, entrees, dernier, capacite, perdues }` : les entrées qui suivent `?depuis=<n>`, filtrées par `?niveau=`, `?categorie=` (une valeur, « a,b » ou répétée), `?q=` (texte, sans accents ni majuscules) et `?limite=` ; `dernier` = le curseur de la relève suivante, `perdues` = les entrées sorties de la mémoire. `403` hors du site de dev, `503` sans journal |
+| `GET /api/debug/tables/`, `GET /api/debug/tables/<nom>/` | Les tables et vues de la base vivante (`{ tables: [{ nom, genre, lignes }] }`), puis une page des lignes de l'une d'elles, en lecture seule (images et textes longs résumés ; fiches, comptes et groupes de la section 13 : `403`, comme `/api/v1/`) : [`api.md`](api.md), « Contenu des tables ». `403` hors du site de dev |
 
 **Page Debug** (`/debug/`, menu Outils, site de dev seulement : absente du menu d'un build `SITE_MODE=prod`, où la page ne dit qu'une phrase, et de
 la version portable) : « Tester l'API » (menu déroulant fermé, construit depuis la description OpenAPI ; une écriture demande une case cochée),
-« Performances » (temps de réponse par route, pages vues, navigateurs, origines, requêtes récentes, export CSV ; production **ou** site de dev),
+« Schéma de la base » (menu déroulant fermé : toutes les tables, leurs colonnes et leurs clés étrangères, zoom ; au double clic, le contenu d'une
+table de la base vivante), « Performances » (temps de réponse par route, pages vues, navigateurs, origines, requêtes récentes, export CSV ; production **ou** site de dev),
 « Système » (processus, disque, fichiers, évènements, volume, alertes), les « Journaux du serveur » (relevés toutes les 2 s, filtres par niveau,
 catégorie, texte et durée) et, tout en bas, l'« Espace disque du serveur » (jauge colorée par type de données) : [`api.md`](api.md), « Page
 Debug » ; métriques : « Métriques et volume », plus bas.

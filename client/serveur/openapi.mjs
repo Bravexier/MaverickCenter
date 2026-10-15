@@ -495,6 +495,21 @@ function cheminsDuService() {
         parameters: [INSTANCE, PERIODE],
         responses: { 200: reponse('L’état du système.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
       }),
+    '/debug/tables/': lectureDuService('tables_de_la_base', 'Tables de la base vivante',
+      `Chaque table et vue de la base vivante, dans l’ordre des noms : { tables: [{ nom, genre (table, derivee ou vue), lignes (comptées maintenant) }] } ; ni les tables internes de SQLite (sqlite_…) ni les tables FTS5 (cadre « Schéma de la base » de la page Debug).${SITE_DE_DEV}`),
+    '/debug/tables/{table}/': {
+      parameters: [{ name: 'table', in: 'path', required: true, description: 'Nom exact d’une table ou d’une vue (GET /api/debug/tables/) ; tout autre nom : 404.', example: 'metier', schema: { type: 'string' } }],
+      ...lectureDuService('contenu_d_une_table', 'Contenu d’une table',
+        `Une page des lignes d’une table ou d’une vue, en lecture seule : { table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes }. Ordre stable : la colonne de tri, puis la clé primaire, puis le rowid (une vue : toutes ses colonnes) ; « desc » renverse tout l’ordre. Une image n’est jamais rendue entière : { image: true, type, octets, empreinte } ; une image dans un texte (le JSON du journal de l’édition) devient « [image <type>, N octets, empreinte <e>] » ; un texte de plus de 2 000 caractères est coupé (« … (N caractères) ») ; un BLOB : { octets } ; une colonne d’image se trie par sa taille. Les fiches de personnages, les comptes et les groupes (section 13, et les vues qui les lisent) : 403, comme /api/v1/ (ils passent par /api/personnages/).${SITE_DE_DEV}`, {
+          parameters: [
+            { name: 'limite', in: 'query', description: 'Taille de la page (1 à 500).', schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 } },
+            { name: 'decalage', in: 'query', description: 'Nombre de lignes sautées.', schema: { type: 'integer', minimum: 0, default: 0 } },
+            { name: 'tri', in: 'query', description: 'Une colonne de la table (sans elle : la clé primaire, puis le rowid ; une colonne d’image : par sa taille) ; colonne inconnue : 400.', schema: { type: 'string' } },
+            { name: 'ordre', in: 'query', description: 'Sens de tout l’ordre.', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+          ],
+          responses: { 200: reponse('Les lignes.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 503: ref('responses', 'Indisponible') },
+        }),
+    },
     '/metriques/page/': {
       post: {
         operationId: 'metriques_page', tags: [SERVICE], summary: 'Mesure d’une page vue',

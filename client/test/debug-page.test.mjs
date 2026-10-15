@@ -483,8 +483,11 @@ test('la page : une phrase sans script en production et dans la version portable
   assert.match(page, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>\s*<summary>\s*<h2 class="debug-bloc__titre" id="debug-systeme-titre">Système<\/h2>/);
   // demande du 2026-10-15 : « Tout en bas […] la place occupée sur le serveur sur la place totale sous forme de jauge » (après les journaux)
   assert.match(page, /<section class="debug-espace" data-debug-espace aria-labelledby="debug-espace-titre" hidden>\s*<h2 id="debug-espace-titre">Espace disque du serveur<\/h2>/);
-  const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => page.indexOf(m));
-  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, performances, système, journaux, espace disque');
+  // demande du 2026-10-15 : « un mappage vectoriel des tables […] masqué par défaut » (components/debug/SchemaDeLaBase.astro, test/debug-schema.test.mjs),
+  // juste après le testeur
+  const ordre = ['data-debug-testeur', '<SchemaDeLaBase />', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => page.indexOf(m));
+  assert.ok(ordre.every((i) => i >= 0));
+  assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'testeur, schéma de la base, performances, système, journaux, espace disque');
   assert.ok(page.lastIndexOf('</section>') > page.indexOf('data-debug-espace') && page.indexOf('data-debug-espace') > page.lastIndexOf('data-journaux-vide'), 'tout en bas');
   for (const m of ['data-perfs-instance', 'data-perfs-periode', 'data-perfs-tri', 'data-perfs-routes', 'data-perfs-serie', 'data-perfs-pages',
     'data-perfs-navigateurs', 'data-perfs-origines', 'data-requetes-liste', 'data-requetes-min', 'data-systeme-processus', 'data-systeme-disque',
@@ -564,11 +567,13 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
     // charger.
     assert.match(main, /<p class="debug-reservee">Cette page est réservée au serveur de dev\.<\/p>/);
     assert.doesNotMatch(html, /data-debug\b|data-journaux|data-testeur/);
+    // ni le cadre « Schéma de la base », ni la structure de la base (JSON), ni sa fenêtre
+    assert.doesNotMatch(html, /data-debug-schema|data-schema-cadre|data-schema-dialogue|schema-contenu/);
     assert.equal(auMenu, false, 'pas au menu en production');
     const accueil = readFileSync(new URL('index.html', dist), 'utf8');
     assert.doesNotMatch(accueil, /href="\/debug\/"/, 'ni au menu de l’accueil');
     const duDebug = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js'))
-      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['v1/openapi.json', 'debug/journal/', 'debug/metriques/', 'debug/systeme/'].some((a) => code.includes(a)); });
+      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['v1/openapi.json', 'debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/'].some((a) => code.includes(a)); });
     for (const page of [html, accueil]) {
       const charges = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].split('/').at(-1));
       assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'le script du testeur ou des journaux chargé en production');
@@ -580,6 +585,17 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
   assert.match(main, /<details class="debug-testeur" data-debug-testeur hidden>/, 'le testeur, fermé (et caché tant que le service n’a pas répondu)');
   assert.ok(main.indexOf('data-debug-testeur') < main.indexOf('data-debug-journaux'));
   assert.match(main, /<details class="debug-bloc debug-perfs" data-debug-perfs open hidden>/, 'Performances, ouvert (caché tant que le service n’a pas répondu)');
+  // « Schéma de la base » : fermé par défaut, juste après le testeur ; la structure du build en JSON, relue telle quelle ; sa fenêtre et son script
+  assert.match(main, /<details class="debug-bloc debug-schema" data-schema-cadre data-api="\/api\/">/, 'le schéma, fermé (ni open ni hidden)');
+  assert.ok(main.indexOf('data-debug-testeur') < main.indexOf('data-schema-cadre') && main.indexOf('data-schema-cadre') < main.indexOf('data-debug-perfs'));
+  const json = main.match(/<script type="application\/json" data-debug-schema>([^<]*)<\/script>/);
+  assert.ok(json, 'la structure du schéma, en JSON');
+  const structure = JSON.parse(json[1]);
+  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 192);
+  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 35);
+  assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
+  assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
+  assert.match(main, /<div class="schema-carte" data-schema-carte data-detail="loin" role="application" aria-roledescription="schéma de la base"/);
   assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme open hidden>/);
   const ordre = ['data-debug-testeur', 'data-debug-perfs', 'data-debug-systeme', 'data-debug-journaux', 'data-debug-espace'].map((m) => main.indexOf(m));
   assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'l’espace disque tout en bas');
@@ -591,5 +607,7 @@ test('site construit : /debug/ selon le mode — testeur fermé, journaux et scr
   const construits = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js')).map((n) => readFileSync(new URL(`_astro/${n}`, dist), 'utf8'));
   assert.ok(construits.some((code) => code.includes('v1/openapi.json') && code.includes('debug/journal/') && code.includes('debug/metriques/') && code.includes('debug/systeme/')),
     'le script de la page Debug dans dist/_astro/');
+  assert.ok(construits.some((code) => code.includes('debug/tables/') && code.includes('data-schema-monde')), 'le script du schéma dans dist/_astro/');
+  assert.equal((main.match(/<script type="module"/g) ?? []).length, 2, 'les deux scripts de la page (testeur… et schéma), aucun module partagé');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

@@ -54,6 +54,7 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/journal/` | Le journal du service gardé en mémoire (page Debug, plus bas) |
 | `GET` | `/api/debug/metriques/`, `…/requetes/`, `…/export/` | Les métriques des appels `/api/` et des pages vues d'une instance ; les dernières requêtes une à une ; les agrégats horaires en pièce jointe (page Debug, plus bas) |
 | `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
+| `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles, en lecture seule (cadre « Schéma de la base » de la page Debug, plus bas) |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
@@ -384,6 +385,36 @@ logs du serveur (avec une possibilité de filtrer) ») :
   élément créé dans la page, tant que ses champs n'ont pas été saisis à la main ; une création qu'aucune suppression ne défait (races, classes,
   peuples) n'a pas de corps d'exemple ; une écriture sans retour le dit à côté de la case (`x-sans-retour` de la description). Les créations
   d'exemple qui restent réussissent telles quelles (`201`) et se suppriment (test `serveur-api-v1`).
+- **Schéma de la base** (menu déroulant fermé, juste après « Tester l'API », dessiné à sa première ouverture ; demande du propriétaire du
+  2026-10-15 : « En plus d'un openapi, je veux un mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup
+  avec le contenu dans un tableau (scrollable) ») : une carte de **toutes les tables** (192, dont les 2 dérivées `lien` et `lien_candidat`) et
+  des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace aucune table), une boîte par table avec chaque
+  colonne, son type déclaré, `PK`, `NN` et une pastille par clé étrangère, et **un lien par clé étrangère** (411 ; une clé à plusieurs colonnes
+  reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à plusieurs colonnes part de la colonne qui la
+  distingue et arrive à la colonne visée au même rang (`indiceDuLien` : `race_don_tableau_cellule(race_id, ligne)` part de `ligne`, l'auto-référence
+  de `note_cellule` de `repond_a` vers `rang`), et l'infobulle d'une colonne dit **chaque** clé qui la contient, en entier
+  (« (race_id, colonne) → race_don_tableau_colonne(race_id, rang) »). Les tables sont rangées par section de `data/schema.sql` (un bloc teinté
+  par section ; de loin, son titre court en grand, au moins 11 px à l'écran, et le titre entier en infobulle) et, dans une section, en couches :
+  une table à droite de celles qu'elle cite. Les 155 liens vers `famille` sont allégés, une case les masque. **Zoom** (molette autour du
+  pointeur une fois le schéma activé — un clic ou le focus dedans, ou le plein cadre — ou avec Ctrl ; de passage, et quand le zoom est à sa
+  borne, la molette fait défiler la page ; pincement, boutons + et −, « Tout voir », « Plein cadre », où le reste de la page est inerte et
+  qu'Échap quitte) et **déplacement** (glisser) ; trois niveaux de détail selon le zoom (de loin : les noms en grand ; à partir de 0,7, quand
+  ils se lisent : les colonnes ; de près : les types) ; le zoom est une transformation CSS d'un seul conteneur (boîtes en HTML, liens en SVG : un
+  texte SVG serait remis en page à chaque image), l'épaisseur des traits suivant le zoom à la fin du geste (et par paliers pendant un grand zoom),
+  l'infobulle ouverte suivant sa ligne. Survol d'une table : ses liens entrants et sortants éclairés ; clic sur la **pastille** d'une clé
+  étrangère : la vue va aussitôt à la table visée (une colonne qui en vise plusieurs : la liste de ses clés) ; recherche d'une table (centrée,
+  lisible, mise en évidence) ; les messages s'écrivent par-dessus la carte, sans la déplacer ; clavier : une table dans l'ordre de tabulation,
+  flèches pour la voisine (dans la direction de la flèche, jamais de travers), Maj + flèches pour déplacer, + / − / 0, **L** pour la liste des
+  clés étrangères de la table (Entrée y va), Entrée pour le contenu. **Double clic** ailleurs que sur une pastille (Entrée, appui long au
+  toucher) : la fenêtre « Contenu de <table> » (`<dialog>`), lue dans la **base vivante** par `GET /api/debug/tables/<nom>/` par pages de 100
+  (« Charger plus », et au défilement), total, tri par en-tête, NULL visible, nombres tels qu'en base (seule la partie entière est groupée par
+  milliers), cellule coupée marquée d'un fondu et dépliée d'un clic ou au clavier ; Échap, « Fermer » ou un clic sur le fond la ferment ; un
+  `403` (fiches de la section 13, ou hors du site de dev) ou un service absent le disent en clair. Le nom d'une table n'est jamais coupé par
+  le nombre de lignes de la base vivante (l'en-tête garde la place de « 99 999 lignes »). La structure (tables,
+  colonnes, types, clés, sections, descriptions, nombre de lignes au build) est calculée **au build** (`lib/schema-structure.mjs`, depuis la base
+  construite et `data/schema.sql`) et posée dans la page en JSON (`<script type="application/json" data-debug-schema>`), jamais dans un build
+  `SITE_MODE=prod` ni dans la version portable ; les nombres de lignes des boîtes deviennent ceux de la base vivante dès que
+  `GET /api/debug/tables/` répond (« Contenu des tables », plus bas).
 - **Performances** (menu déroulant ouvert ; demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels
   sont les appels les plus lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés —
   décision du propriétaire), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux (appels, moyenne, médiane, p95,
@@ -433,8 +464,42 @@ La CI construit aussi le site de production et y relance `debug-page` et `site-h
 La page lit d'abord `GET /api/etat/` : sans `edition: true`, le service n'est pas celui du site de dev et elle s'arrête.
 
 Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (n'importe que `lib/debug-api.mjs`, `lib/debug-journaux.mjs` et `lib/debug-metriques.mjs`,
-purs), `styles/debug/` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service : `serveur/metriques.mjs` (collecte, base des métriques,
-lectures) et `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP).
+purs), `styles/debug/` ; « Schéma de la base » : `components/debug/SchemaDeLaBase.astro`, son script `src/scripts/debug-schema.mjs` (n'importe que
+`lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendus échappés ; aucun module commun avec `debug.mjs`),
+`lib/schema-structure.mjs` (au build), `styles/debug/schema.css` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service :
+`serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
+`serveur/debug-tables.mjs` (contenu des tables).
+
+### Contenu des tables
+
+Site de dev seulement : ailleurs, `403` avant tout le reste (décision du propriétaire du 2026-10-15 : en production, la base ne s'ouvre que par les
+pages du site). Lecture seule : toute autre méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/debug/tables/` | `{ tables: [{ nom, genre, lignes }] }` : chaque table et vue de la **base vivante**, dans l'ordre des noms, ses lignes comptées maintenant ; `genre` = `table`, `derivee` (`-- @derivee` de `data/schema.sql`, hors FTS5) ou `vue` ; ni les tables internes de SQLite (`sqlite_…`), ni les tables FTS5 (virtuelles et leurs tables de *shadow*) |
+| `GET /api/debug/tables/<nom>/?limite=1..500&decalage=&tri=<colonne>&ordre=asc\|desc` | `{ table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes: [{ <colonne>: valeur }] }` (100 lignes par défaut ; `tri` : `null` sans tri demandé) ; `404` pour un nom qui n'est pas **exactement** celui d'une table ou d'une vue de la liste (interne, FTS5, casse, guillemets, « / » encodé…), `403` pour une table ou une vue des fiches (section 13, ci-dessous), `400` pour un tri qui n'est pas une colonne, un ordre inconnu, une limite hors de 1..500 ou un décalage qui n'est pas un entier positif |
+
+Un nom n'entre dans le SQL qu'après avoir été trouvé tel quel dans `PRAGMA table_list` ; une colonne de tri, dans `PRAGMA table_info` ; la route
+n'exécute que des `SELECT` et ces deux `PRAGMA`. Ordre **stable** d'une page à l'autre : la colonne de tri, puis la clé primaire, puis le rowid
+(une vue : toutes ses colonnes) ; `desc` renverse tout l'ordre. Valeurs : une image (data URL `data:image/…`) n'est **jamais** rendue entière :
+`{ image: true, type, octets, empreinte }` (l'empreinte de `lib/portrait.mjs`, comme `ligneSansImage`) ; une image **dans** un texte (le JSON de
+`modification.avant` / `apres` : le portrait d'une carte de monstre modifié sur le site de dev) devient « [image <type>, N octets, empreinte <e>] » ;
+un texte de plus de 2 000 caractères est coupé et suivi de « … (N caractères) » ; un BLOB devient `{ octets }` ; un entier hors de la plage sûre de
+JavaScript, son écriture en texte. **Ce qui serait jeté n'est pas lu** : le SQL ne rend d'un texte long que ses 2 000 premiers caractères et sa
+longueur (`substr`, `length`), d'un BLOB que sa taille ; seules les images (colonnes contraintes par `GLOB 'data:image/*'`, et un texte qui en
+contient une) sont lues en entier, pour leur empreinte, et chaque ligne est résumée dès sa lecture. Une colonne d'image se **trie par sa taille**
+(`length`), et avec un tri la page de clés (rowid ou clé primaire) se choisit d'abord, puis chaque ligne se lit par sa clé : le tri de SQLite ne
+porte jamais d'image (311 portraits de 700 000 caractères, le plafond : 100 lignes en ~0,3 s, sans hausse de mémoire ; triées par portrait,
+~0,45 s au lieu de 0,7 à 1,4 s).
+
+**Fiches (section 13)** : les tables des fiches de personnages, des comptes et des groupes (`TABLES_FICHES` de `lib/fiche-format.mjs`) et les vues
+qui les lisent (`v_personnage_visible`, `v_personnage_controle`…) sont **listées** (nombre de lignes, dessinées par le schéma) mais leur contenu
+répond **`403`** avec la raison : comme pour `/api/v1/` (« jamais servi »), elles ne se lisent que par `/api/personnages/` et ses règles de
+visibilité — avec la connexion Discord (1.0), les fiches de joueur et les comptes seront privés, et le mot de passe du site de dev, que Caddy
+présente, n'en protégerait pas l'accès. Le journal de l'édition (section 14) et les notes de version (15) se lisent (`GET /api/edition/journal/`
+exporte déjà le journal sur le site de dev). Choix fait sans le propriétaire, à confirmer ; `test/serveur-debug-tables.test.mjs` épingle les deux
+listes (une table ajoutée à la section 13 oblige à revoir ce point). Métriques : gabarits `/api/debug/tables/` et `/api/debug/tables/{table}/`.
 
 ### Routes des métriques
 
@@ -456,7 +521,7 @@ interpolation dans la classe — **jamais** dans la dernière (au-delà de 5 000
 le p95) : le quantile y est la borne basse de la classe (ou le minimum, plus haut) et son nom est dans `au_dela` (« > 5 s » sur la page). Les
 pages vues ont leurs propres bornes (`bornes_page_ms` : 10 ms à 60 s, dont les seuils du LCP, 2,5 s et 4 s). **Route** : le gabarit de l'adresse,
 jamais un identifiant ni la chaîne de requête (`/api/personnages/{id}/`, `/api/v1/metiers/{cle}/`, `/api/v1/races/{cle}/dons/{cle}/`,
-`/api/mise-a-jour/lots/{lot}/` ; toute adresse inconnue : `/api/{inconnue}` ; une requête **refusée avant tout traitement**, `403` ou `405` :
+`/api/mise-a-jour/lots/{lot}/`, `/api/debug/tables/{table}/` ; toute adresse inconnue : `/api/{inconnue}` ; une requête **refusée avant tout traitement**, `403` ou `405` :
 `/api/<premier segment>/{refusee}/`, par exemple `/api/v1/{refusee}/` pour tout `/api/v1/` en production) : le nombre de routes est borné par le
 code, même devant des requêtes fabriquées (une requête anonyme par gabarit × méthode en production : 70 lignes par heure, au lieu de 2 600).
 **Jamais gardés** : adresse IP, corps, chaîne de requête, identifiant de fiche, `Authorization`, cookie, User-Agent entier (seulement sa famille
@@ -479,5 +544,9 @@ en production, catalogue, description OpenAPI et ses exemples, listes, condition
 même seconde, fenêtres « 1h » et export, `iterate`, relèves hors du global, cardinalité : pages du site, couples, refus, plafond ; lectures
 classées par SQLite, images de l'autre instance),
 `serveur-metriques-http` (vrai serveur : routes des métriques et balise), `serveur-metriques-disque` (répartition du disque, relevé de l'hôte,
-réserve de root), `debug-metriques` (rendus purs de Performances, Système et de la jauge), `debug-balise` (balise des pages) ; `serveur-livraison`
-liste les modules livrés.
+réserve de root), `debug-metriques` (rendus purs de Performances, Système et de la jauge), `debug-balise` (balise des pages) ;
+`serveur-debug-tables` (contenu des tables : `403` hors du site de dev, liste, noms piégés, `400`, pagination, ordre stable, images et textes
+longs résumés, vues, lecture seule, gabarits des métriques, vrai serveur), `debug-schema` (structure du build sur la vraie base, mêmes tables
+dérivées que le service, mise en page sans chevauchement, un lien par clé étrangère, niveaux de détail, caméra, clavier, recherche, rendus
+échappés, fenêtre du contenu, script et composant) ; `debug-page` place le cadre (fermé, juste après le testeur) et vérifie son absence en
+production ; `serveur-livraison` liste les modules livrés.

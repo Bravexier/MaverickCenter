@@ -368,7 +368,7 @@
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
 | `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot? |
 
-## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev
 
 **Relations dans cette section** : `historique_modification→note_version`, `note_version_ligne→note_version`
 

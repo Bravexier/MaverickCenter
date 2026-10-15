@@ -4423,8 +4423,8 @@ CREATE TABLE note_version_brouillon (
 ) STRICT;
 
 -- ====================================================================================================================
--- 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
--- site de dev (migration 0023 ; demande du propriétaire). Écrites par le processus « Effectuer la mise à jour » (.github/workflows/mise-a-jour.yml,
+-- 15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev
+-- Page /mise-a-jour/ ; migration 0023 ; demande du propriétaire. Écrites par le processus « Effectuer la mise à jour » (.github/workflows/mise-a-jour.yml,
 -- client/scripts/mise-a-jour-regles.mjs) dans la PR qui apporte les modifications du site, juste avant la livraison dev → master : la production
 -- montre la dernière note, et l'historique de toutes. Versionnées dans data/rows comme les règles (elles en font partie : le site les lit au build).
 -- ====================================================================================================================
