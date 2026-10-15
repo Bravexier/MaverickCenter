@@ -53,6 +53,27 @@ test('entraînement (décision R71) : l’aide du champ cite le paragraphe du gu
   assert.equal(limitesDeLEntrainement('## La case **Entraînement**\n\n- dans la case Entraînement\n\n<!-- case Entraînement -->\n\nUn [[guide/x|texte]] noté\ndans la case __Entraînement__.'), 'Un texte noté dans la case Entraînement.');
   assert.equal(limitesDeLEntrainement('Rien sur la case des dons.'), null);
   assert.equal(limitesDeLEntrainement(null), null);
+  // l'italique simple aussi (28 pages du guide l'emploient : « *Survie* »), à l'étoile comme au soulignement, entre limites de mot ; le mot lui-même en italique
+  assert.equal(limitesDeLEntrainement('Une *limite* dans la case Entraînement, voir _ici_.'), 'Une limite dans la case Entraînement, voir ici.');
+  assert.equal(limitesDeLEntrainement('Les bonus se notent dans la case *Entraînement* des dons.'), 'Les bonus se notent dans la case Entraînement des dons.');
+  assert.equal(limitesDeLEntrainement('La case _Entraînement_ des dons, ***15 compétences*** au plus.'), 'La case Entraînement des dons, 15 compétences au plus.');
+  assert.equal(limitesDeLEntrainement('Un *texte\nsur deux lignes* : case Entraînement.'), 'Un texte sur deux lignes : case Entraînement.');
+  // ni un signe isolé, ni un soulignement dans un mot, ni ce qui n'est pas de l'italique
+  assert.equal(limitesDeLEntrainement('2 * 3 * 4 dans la case Entraînement, nom_de_fichier, * seul.'), '2 * 3 * 4 dans la case Entraînement, nom_de_fichier, * seul.');
+  // un lien du wiki sans texte : le titre de la page qu'il vise (la base), sinon le dernier segment de son identifiant, jamais l'identifiant brut
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y]] : case Entraînement.'), 'Voir x y : case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Voir [[Règles des métiers]] : case Entraînement.'), 'Voir Règles des métiers : case Entraînement.', 'une cible écrite comme un titre');
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y]] : case Entraînement.', (c) => (c === 'guide/x-y' ? 'Le titre de X' : null)), 'Voir Le titre de X : case Entraînement.');
+  assert.equal(limitesDeLEntrainement('Voir [[guide/x-y|ce texte]] : case Entraînement.', () => 'Le titre de X'), 'Voir ce texte : case Entraînement.', 'le texte écrit d’abord');
+  // aideDeLEntrainement les cherche dans la base : par identifiant, puis par titre, nom court ou alias (comme les [[liens]] du wiki), une seule page
+  const corpsAvecLien = `Voir [[${PAGE_DE_L_ENTRAINEMENT}]] et [[Règles des métiers]] : case Entraînement.`;
+  const ici = page.titre;
+  const regles_ = db.prepare("SELECT DISTINCT p.id, p.titre FROM cle_page c JOIN page p ON p.id = c.page_id WHERE c.cle = 'regles-des-metiers'").all();
+  assert.equal(regles_.length, 1, 'une seule page « Règles des métiers »');
+  const faux = { prepare: (sql) => (/FROM page WHERE id = \?$/.test(sql.trim()) && /corps_md/.test(sql)
+    ? { get: () => ({ titre: ici, corps_md: corpsAvecLien, chapitre: 21 }) }
+    : db.prepare(sql)) };
+  assert.deepEqual(aideDeLEntrainement(faux), { titre: ici, chapitre: 21, texte: `Voir ${ici} et ${regles_[0].titre} : case Entraînement.` });
 });
 
 test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 dés au plus (liste « 1d » à « 5d » de la fiche auto), soit 4 points', () => {

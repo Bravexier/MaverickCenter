@@ -14,6 +14,7 @@ import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { normalize } from './text.mjs';
 
 const lignes = (db, sql, ...params) => db.prepare(sql).all(...params).map((r) => ({ ...r }));
 const parCle = (rows, cle, valeur = (r) => r) => {
@@ -363,29 +364,62 @@ export function chargerReglesDeFiche(db) {
 /** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (chapitre « S’entraîner et exercer un métier » ; décision R71). */
 export const PAGE_DE_L_ENTRAINEMENT = 'guide/s-entrainer-et-exercer-un-metier';
 
-/** Un paragraphe Markdown en texte : sans gras ni italique, un lien du wiki ou du site par son texte, les sauts de ligne en espaces. */
-const enTexte = (paragraphe) => paragraphe
+/**
+ * Le texte d'un lien du wiki écrit sans texte (`[[cible]]`) : le titre de la page qu'il vise quand `titreDe` le donne (aideDeLEntrainement le cherche
+ * dans la base), sinon, pour une cible écrite comme un identifiant (« guide/s-entrainer »), son dernier segment, tirets en espaces, jamais
+ * l'identifiant brut ; une autre cible (un titre, un alias : « Règles des métiers ») telle qu'écrite.
+ */
+function texteDuLien(cible, titreDe) {
+  const c = cible.trim();
+  const titre = titreDe?.(c);
+  if (titre) return titre;
+  return /^[a-z0-9-]+(?:\/[a-z0-9-]+)+$/.test(c) ? c.slice(c.lastIndexOf('/') + 1).replace(/-/g, ' ') : c;
+}
+
+/**
+ * Un paragraphe Markdown en texte : un lien du site ou du wiki par son texte (texteDuLien pour un lien du wiki sans texte), sans couleur de case,
+ * les sauts de ligne en espaces, sans gras (`**…**`, `__…__`) ni italique (`*…*`, `_…_`, seulement entre limites de mot : ni « 2 * 3 », ni
+ * « nom_de_fichier »).
+ */
+const enTexte = (paragraphe, titreDe) => paragraphe
   .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
-  .replace(/\[\[([^\]]+)\]\]/g, '$1')
+  .replace(/\[\[([^\]]+)\]\]/g, (_, cible) => texteDuLien(cible, titreDe))
   .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
   .replace(/\{couleur:[^}]*\}/g, '')
-  .replace(/\*\*|__/g, '')
   .replace(/\s+/g, ' ')
+  .replace(/\*\*|__/g, '')
+  .replace(/(^|[^\p{L}\p{N}*])\*(?=\S)([^*]*?\S)\*(?![\p{L}\p{N}*])/gu, '$1$2')
+  .replace(/(^|[^\p{L}\p{N}_])_(?=\S)([^_]*?\S)_(?![\p{L}\p{N}_])/gu, '$1$2')
   .trim();
 
 /**
  * Le paragraphe du corps de cette page qui renvoie à la case « Entraînement » des dons (« Les bonus se notent dans la case **Entraînement** des dons »,
- * avec les limites qui le précèdent : « il ne peut améliorer que **15 compétences** au plus, et de **10 %** au plus chacune »), tel qu'écrit, en texte ;
- * null quand la page ne l'écrit plus (elle se modifie sur le site de dev : l'aide de la fiche se passe alors de citation, rien n'est réécrit ici).
+ * avec les limites qui le précèdent : « il ne peut améliorer que **15 compétences** au plus, et de **10 %** au plus chacune »), tel qu'écrit, en texte
+ * (enTexte : la case peut être écrite en gras ou en italique) ; null quand la page ne l'écrit plus (elle se modifie sur le site de dev : l'aide de la
+ * fiche se passe alors de citation, rien n'est réécrit ici). `titreDe(cible)` : le titre de la page que vise un lien du wiki sans texte, ou null.
  */
-export function limitesDeLEntrainement(corps) {
+export function limitesDeLEntrainement(corps, titreDe = null) {
   for (const bloc of String(corps ?? '').split(/\n[ \t]*\n/)) {
     const t = bloc.trim();
     if (!t || /^(#|<!--|\||- |\* |\d+\. )/.test(t)) continue;
-    const texte = enTexte(t);
+    const texte = enTexte(t, titreDe);
     if (/\bcase Entraînement\b/i.test(texte)) return texte;
   }
   return null;
+}
+
+/**
+ * Le titre de la page que vise un lien du wiki (`[[cible]]`), d'après la base, comme lib/wikilinks.mjs#resolve : une cible avec « / » par son
+ * identifiant ; sinon (ou cet identifiant absent) par la clé de son titre, de son nom court ou d'un alias (vue cle_page), quand une seule page la
+ * porte ; null sinon (introuvable ou ambiguë).
+ */
+function titreDeLaCible(db, cible) {
+  if (cible.includes('/')) {
+    const page = db.prepare('SELECT titre FROM page WHERE id = ?').get(cible.toLowerCase());
+    if (page) return page.titre;
+  }
+  const pages = db.prepare('SELECT DISTINCT p.id, p.titre FROM cle_page c JOIN page p ON p.id = c.page_id WHERE c.cle = ?').all(normalize(cible));
+  return pages.length === 1 ? pages[0].titre : null;
 }
 
 /**
@@ -395,6 +429,6 @@ export function limitesDeLEntrainement(corps) {
  */
 export function aideDeLEntrainement(db) {
   const page = db.prepare("SELECT titre, corps_md, json_extract(donnees, '$.chapitre') AS chapitre FROM page WHERE id = ?").get(PAGE_DE_L_ENTRAINEMENT);
-  const texte = page ? limitesDeLEntrainement(page.corps_md) : null;
+  const texte = page ? limitesDeLEntrainement(page.corps_md, (cible) => titreDeLaCible(db, cible)) : null;
   return texte ? { titre: page.titre, chapitre: page.chapitre ?? null, texte } : null;
 }
