@@ -3,7 +3,9 @@
 //
 // `envelopper(db)` rend une enveloppe (Proxy) de la base vivante que service.base() donne aux routes, SANS changer son comportement : chaque appel
 // passe tel quel à la vraie base (même `this`, mêmes arguments, mêmes exceptions) ; seuls `prepare`, `exec` et les `run`, `get`, `all`, `iterate`
-// des instructions préparées sont chronométrés (performance.now, deux lectures d'horloge par appel). L'enveloppe d'une base est toujours la même
+// des instructions préparées sont chronométrés (performance.now, deux lectures d'horloge par appel). `iterate` rend un itérateur PARESSEUX (SQLite
+// n'exécute la requête qu'aux appels de next()) : l'itérateur rendu est lui aussi enveloppé, et chaque next() / return() compte dans le temps de
+// cette exécution (une seule au nombre des requêtes), la plus lente comparée à la fin du parcours (envelopperIterateur). L'enveloppe d'une base est toujours la même
 // (WeakMap) : les caches indexés par la base (edition-journal.mjs, chronologie-db.mjs…) la reconnaissent d'une requête à l'autre.
 // La mesure ne compte que pendant une requête : `debuter()` avant le traitement (api.mjs#traiter, synchrone), `terminer()` après ; hors de ces
 // bornes (minuterie, reconstruction de la base), rien n'est compté. Un seul traitement à la fois : Node n'exécute qu'une requête synchrone à la fois.
@@ -29,7 +31,7 @@ export function normaliserSql(sql) {
   return texte.length > SQL_MAX ? `${texte.slice(0, SQL_MAX - 1)}…` : texte;
 }
 
-const METHODES_D_INSTRUCTION = new Set(['run', 'get', 'all', 'iterate']);
+const METHODES_D_INSTRUCTION = new Set(['run', 'get', 'all']);
 
 /**
  * Crée la mesure SQL du service. Rend { envelopper(db), debuter(), terminer() } :
@@ -69,10 +71,64 @@ export function creerMesureSql({ maintenant = () => performance.now() } = {}) {
     return typeof v === 'function' ? v.bind(cible) : v;
   }
 
+  /**
+   * L'itérateur de `iterate()` enveloppé : la création et chaque next() / return() sont chronométrés et ajoutés au temps SQL de la mesure ouverte à
+   * la création (rien si elle est fermée entre-temps : la requête HTTP est finie) ; la durée totale du parcours est comparée à la plus lente quand
+   * il s'achève (dernier next(), return(), ou exception). Même prototype que l'itérateur natif (aides des itérateurs : map, toArray…).
+   */
+  function envelopperIterateur(appel, sql) {
+    const mesure = courant;
+    if (!mesure) return appel();
+    let duree = 0;
+    let fini = false;
+    const compte = (d) => {
+      duree += d;
+      if (courant === mesure) mesure.ms += d;
+    };
+    const finir = () => {
+      if (fini) return;
+      fini = true;
+      if (courant === mesure && duree > mesure.lenteMs) {
+        mesure.lenteMs = duree;
+        mesure.lente = sql;
+      }
+    };
+    const pas = (f) => {
+      const t0 = maintenant();
+      let resultat;
+      try {
+        resultat = f();
+      } catch (e) {
+        compte(maintenant() - t0);
+        finir();
+        throw e;
+      }
+      compte(maintenant() - t0);
+      if (!resultat || resultat.done) finir();
+      return resultat;
+    };
+    const t0 = maintenant();
+    let iterateur;
+    try {
+      iterateur = appel();
+    } finally {
+      compte(maintenant() - t0);
+      if (courant === mesure) mesure.n += 1;
+    }
+    const enveloppe = Object.create(Object.getPrototypeOf(iterateur));
+    enveloppe.next = (...args) => pas(() => iterateur.next(...args));
+    enveloppe.return = (valeur) => pas(() => (typeof iterateur.return === 'function' ? iterateur.return(valeur) : { done: true, value: valeur }));
+    enveloppe[Symbol.iterator] = function iterateurLuiMeme() {
+      return this;
+    };
+    return enveloppe;
+  }
+
   function envelopperInstruction(instruction, sql) {
     return new Proxy(instruction, {
       get(cible, nom) {
         if (METHODES_D_INSTRUCTION.has(nom)) return (...args) => chronometrer(() => cible[nom](...args), sql, true);
+        if (nom === 'iterate') return (...args) => envelopperIterateur(() => cible.iterate(...args), sql);
         return lue(cible, nom);
       },
     });

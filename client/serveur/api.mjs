@@ -42,14 +42,16 @@
 //   GET  /api/debug/metriques/      les métriques d'une instance (serveur/metriques.mjs#lire) : ?instance=dev|prod&periode=1h|24h|7j|30j|365j|tout&tri=
 //                                   moyenne|mediane|p95|p99|max|n|erreurs|total|sql — statistiques globales et par route, série, pages vues,
 //                                   navigateurs, origines ; le site de dev lit aussi le fichier de la production (lecture seule) ; instance absente : 404
-//   GET  /api/debug/metriques/requetes/   les dernières requêtes une à une, gardées en mémoire (site de dev) : ?limite=&route=&min_ms=&statut=
-//   GET  /api/debug/metriques/export/     les agrégats horaires bruts en pièce jointe : ?instance=&periode=&format=csv|json
+//   GET  /api/debug/metriques/requetes/   les dernières requêtes une à une, gardées en mémoire (site de dev) : ?limite=&route=&route_exacte=&min_ms=&statut=
+//   GET  /api/debug/metriques/export/     les agrégats bruts en pièce jointe (la fenêtre de la page ; « 1h » : par 5 minutes ; 100 000 lignes au plus,
+//                                   X-Export-Tronque sinon) : ?instance=&periode=&format=csv|json
 //   GET  /api/debug/systeme/        processus, disque et sa répartition par type de données (jauge), fichiers, échantillons par minute, évènements,
 //                                   volume des métriques et alertes : ?instance=&periode=
 // Mesure des pages vues, sur les DEUX instances (décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ;
 // MAVERICK_METRIQUES_PAGES=0 la ferme : 403) — chaque instance l'écrit dans SA base des métriques, jamais dans la base vivante :
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
-//                                   2 Kio au plus, Sec-Fetch-Site same-origin) → 204 ; 400 invalide, 413 trop gros, 429 trop de balises cette minute
+//                                   2 Kio au plus, Sec-Fetch-Site same-origin, sinon Origin du même hôte) → 204 ; 400 invalide, 413 trop gros,
+//                                   429 trop de balises cette minute
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
@@ -293,17 +295,21 @@ function traiterDebug(service, action, reste, permis, params) {
   return repondre(ErreurMetriques, () => {
     if (action === 'systeme') return json(200, service.metriques.systeme(parametres(params, ['instance', 'periode'])));
     if (!reste.length) return json(200, service.metriques.lire(parametres(params, ['instance', 'periode', 'tri'])));
-    if (reste[0] === 'requetes') return json(200, service.metriques.requetes(parametres(params, ['limite', 'route', 'min_ms', 'statut'])));
+    if (reste[0] === 'requetes') return json(200, service.metriques.requetes(parametres(params, ['limite', 'route', 'route_exacte', 'min_ms', 'statut'])));
     const e = service.metriques.exporter(parametres(params, ['instance', 'periode', 'format']));
-    return { statut: 200, corps: null, brut: e.contenu, entetes: { 'Content-Type': e.type, 'Content-Disposition': `attachment; filename="${e.nom}"` } };
+    // X-Export-Tronque : l'export s'est arrêté aux EXPORT_LIGNES_MAX lignes les plus récentes
+    const entetes = { 'Content-Type': e.type, 'Content-Disposition': `attachment; filename="${e.nom}"`, ...(e.tronque ? { 'X-Export-Tronque': '1' } : {}) };
+    return { statut: 200, corps: null, brut: e.contenu, entetes };
   });
 }
 
 /**
  * POST /api/metriques/page/ : la balise d'une page vue (navigator.sendBeacon), sur les deux instances (décision du propriétaire du 2026-10-15) ;
  * MAVERICK_METRIQUES_PAGES=0 la ferme (403). Corps JSON de BALISE.octets_max au plus, en application/json ou text/plain (ce qu'envoie sendBeacon avec
- * une chaîne), d'une page de ce site (Sec-Fetch-Site same-origin quand le navigateur le donne). Rien n'est écrit dans la base vivante : la mesure va
- * aux agrégats de la base des métriques de CETTE instance (serveur/metriques.mjs#recevoirPage). → 204 sans corps.
+ * une chaîne), d'une page de ce site : Sec-Fetch-Site same-origin quand le navigateur le donne ; sans lui (navigateur sans Fetch Metadata), un en-tête
+ * Origin d'un autre hôte que la requête est refusé (memeOrigine : un POST text/plain est une requête « simple », qu'une page tierce peut envoyer sans
+ * requête préalable). Rien n'est écrit dans la base vivante : la mesure va aux agrégats de la base des métriques de CETTE instance
+ * (serveur/metriques.mjs#recevoirPage). → 204 sans corps.
  */
 function traiterMetriques(requete, service, action, reste, permis) {
   if (action !== 'page' || reste.length) return erreur(404, 'Adresse inconnue.');
@@ -315,7 +321,7 @@ function traiterMetriques(requete, service, action, reste, permis) {
   const type = String(entetes['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   if (type !== 'application/json' && type !== 'text/plain') return erreur(415, 'Corps JSON attendu (Content-Type: application/json ou text/plain).');
   const site = String(entetes['sec-fetch-site'] ?? '').toLowerCase();
-  if (site && site !== 'same-origin') return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
+  if (site ? site !== 'same-origin' : !memeOrigine(entetes)) return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
   if (Buffer.byteLength(String(requete.corps ?? '')) > BALISE.octets_max) return erreur(413, `Mesure trop volumineuse (${BALISE.octets_max} octets au plus).`);
   const { valeur, refus: illisible } = lireCorps(requete.corps);
   if (illisible) return illisible;
@@ -323,6 +329,21 @@ function traiterMetriques(requete, service, action, reste, permis) {
     service.metriques.recevoirPage(valeur, entetes);
     return { statut: 204, corps: null, entetes: {} };
   });
+}
+
+/**
+ * Vrai si l'en-tête Origin est absent (un outil, un vieux navigateur sur une requête du même site) ou désigne l'hôte de la requête
+ * (X-Forwarded-Host derrière le mandataire, sinon Host) ; « null » (page sans origine : fichier, cadre isolé) ou un autre hôte : faux.
+ */
+export function memeOrigine(entetes) {
+  const origine = entetes.origin;
+  if (origine === undefined || origine === '') return true;
+  const hote = String(entetes['x-forwarded-host'] ?? entetes.host ?? '').split(',')[0].trim().toLowerCase();
+  try {
+    return Boolean(hote) && new URL(String(origine)).host.toLowerCase() === hote;
+  } catch {
+    return false;
+  }
 }
 
 const sansMaintenance = { active: false };

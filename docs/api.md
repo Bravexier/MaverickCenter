@@ -52,6 +52,9 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET`, `PATCH`, `DELETE` | `/api/v1/<ressource>/<clé>/<sous-ressource>/<clé>/` | Une ligne liée |
 | `POST` | `/api/v1/<ressource>/<clé>/<action>/` | Une action sur l'élément (`actions` du catalogue : fusionner un mot-clé dans un autre) |
 | `GET` | `/api/debug/journal/` | Le journal du service gardé en mémoire (page Debug, plus bas) |
+| `GET` | `/api/debug/metriques/`, `…/requetes/`, `…/export/` | Les métriques des appels `/api/` et des pages vues d'une instance ; les dernières requêtes une à une ; les agrégats horaires en pièce jointe (page Debug, plus bas) |
+| `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
+| `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
 
@@ -381,6 +384,29 @@ logs du serveur (avec une possibilité de filtrer) ») :
   élément créé dans la page, tant que ses champs n'ont pas été saisis à la main ; une création qu'aucune suppression ne défait (races, classes,
   peuples) n'a pas de corps d'exemple ; une écriture sans retour le dit à côté de la case (`x-sans-retour` de la description). Les créations
   d'exemple qui restent réussissent telles quelles (`201`) et se suppriment (test `serveur-api-v1`).
+- **Performances** (menu déroulant ouvert ; demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels
+  sont les appels les plus lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés —
+  décision du propriétaire), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux (appels, moyenne, médiane, p95,
+  p99, min/max, écart type, temps cumulé, erreurs 4xx/5xx, part des `304`, octets, requêtes SQL par appel) et courbe des appels et du p95 par pas
+  (5 min sur 1 h, heure sur 24 h et 7 j, jour au-delà), **sans les relèves automatiques** (journal, métriques et système de la page Debug,
+  maintenance de chaque page, balise : elles feraient l'essentiel des appels et mesureraient la page Debug elle-même ; leur nombre est dit à part,
+  chacune garde sa ligne), tableau des **routes** (une ligne par route × méthode, triable par chaque colonne ; les trois plus lentes en moyenne et
+  celles d'au moins 100 ms / 500 ms marquées ; un quantile au-delà de la dernière classe s'écrit « > 5 s »), **pages vues** (temps mesurés par le
+  navigateur : premier octet, `DOMContentLoaded`, chargement, LCP, moyenne / p95), **navigateurs et appareils**, **origines des appels** (quelle page
+  appelle quelle route ; ces trois listes sont comptées par heure : sur « 1 h », une phrase dit leur fenêtre, `depuis_horaire`), **requêtes
+  récentes** une à une (site de dev seulement, mémoire du service : phases, octets, SQL dont la requête la plus lente, page, navigateur ; filtres
+  « plus lentes que … ms » et route, le gabarit exact ; l'instance « Production » choisie, une phrase à la place : la page ne montre jamais la
+  mémoire du site de dev sous l'étiquette de la production), boutons **Exporter (CSV)** et **JSON** (agrégats bruts de la période affichée).
+  Relevé toutes les 30 s.
+- **Système** (menu déroulant ouvert, même instance) : alertes, processus (version, code, Node, PID, démarrage, mémoire RSS / tas / externe, CPU,
+  boucle d'événements p50 / p99 / max, charge), disque du dossier de la base vivante (sa jauge remplit la place **non disponible** : prise et
+  réserve de root), volume des métriques (taille, croissance en régime mesurée ou estimée, débit d'écriture avant purge, taille dans un an et à
+  rétention pleine calculées par le service table par table, réglages des requêtes brutes et de la balise — « — » s'ils sont inconnus —,
+  rétention), courbe mémoire / boucle (pas : la médiane des écarts, un échantillon d'arrêt ne la hache pas), fichiers suivis (base vivante,
+  archives, lots de mise à jour, métriques de chaque instance),
+  évènements du service avec leur durée (démarrage, base vivante et rejeu, fiches, lots d'édition, mise à jour, appels GitHub, maintenance,
+  `5xx` avec l'empreinte de la pile, purge, arrêt). D'une autre instance (production vue du site de dev), l'état vient de son fichier : son
+  dernier échantillon par minute et son dernier démarrage.
 - **Journaux du serveur** : le journal du service gardé en mémoire (`serveur/journal-du-service.mjs` : les 2 000 dernières entrées, niveau
   info / avertissement / erreur, catégorie `service`, `http`, `base`, `fiches`, `edition`, `mise-a-jour`, `maintenance`), relevé toutes les 2 s
   (`GET /api/debug/journal/?depuis=<n>`), filtré dans la page (niveaux, catégorie, texte), avec Pause (bouton bascule au libellé fixe,
@@ -388,19 +414,70 @@ logs du serveur (avec une possibilité de filtrer) ») :
   sélection en cours diffère l'affichage. Chaque réponse porte l'identité du processus (`processus`) : un redémarrage du service se voit même quand
   la page n'a rien relevé entre-temps (onglet caché, pause), et tout est relu depuis le début. Chaque requête `/api/` y est notée (catégorie `http` :
   méthode, adresse avec sa requête, statut, durée ; jamais les corps), sauf les relèves du journal et de l'état de maintenance (reconnues à leur
-  chemin, jamais à leur chaîne de requête). En production, ni mémoire ni ligne par requête : la sortie du service (`docker logs`) ne garde que ses
-  événements et les échecs du service (`5xx`).
+  chemin, jamais à leur chaîne de requête) ; son entrée porte en plus des **champs isolés** `{ duree_ms, methode, route, statut, octets_sortie }`
+  (`route` : le gabarit sans identifiant, ci-dessous), d'où une colonne **Durée** triable (Heure / Durée) et le filtre « plus lent que … ms »
+  (`?min_ms=`, appliqué par le service, qui fait tout relire). En production, ni mémoire ni ligne par requête : la sortie du service
+  (`docker logs`) ne garde que ses événements et les échecs du service (`5xx`).
+- **Espace disque du serveur**, tout en bas (demande du propriétaire du 2026-10-15 : « la métrique de la place occupée sur le serveur sur la place
+  totale sous forme de jauge, colorée en fonction du type de données (DB, Code, Import images, etc.) ») : une jauge pleine largeur, un segment
+  coloré par type de données (`disque.repartition` de `/api/debug/systeme/`, même instance, même relève), la somme des segments faisant
+  **exactement la place totale du disque** ; en titre « X Go occupés sur T Go (p %) · L Go libres · R Go réservés au système » (la place occupée
+  est celle de `df`, *Used* ; la réserve de root à part) ; chaque segment a son infobulle habillée (nom, taille, part, ce qu'il compte) et la
+  légende dit tout (la couleur n'est jamais seule) ; survoler un segment ou un type de la légende met les deux en évidence. Types : base de
+  données, images importées, mises à jour, métriques, code, données, images et autres fichiers du site, puis, sur le VPS (relevé de l'hôte,
+  `deploy/vps/volume.sh`), Docker, journaux, installations et copies, puis système et autres, réservé au système, libre (détail et règles :
+  [`serveur.md`](serveur.md), « Jauge de l'espace disque »). Tailles en unités décimales (Go), comme les hébergeurs.
 
 En production (`SITE_MODE=prod`) l'entrée n'est pas au menu et la page ne dit qu'une phrase, sans script ; la version portable ne l'emporte pas.
 La CI construit aussi le site de production et y relance `debug-page` et `site-html` (`ci.yml`, `CONTROLES_DE_LA_CI`).
 La page lit d'abord `GET /api/etat/` : sans `edition: true`, le service n'est pas celui du site de dev et elle s'arrête.
 
-Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (n'importe que `lib/debug-api.mjs` et `lib/debug-journaux.mjs`, purs), `styles/debug/` ;
-menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`).
+Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (n'importe que `lib/debug-api.mjs`, `lib/debug-journaux.mjs` et `lib/debug-metriques.mjs`,
+purs), `styles/debug/` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service : `serveur/metriques.mjs` (collecte, base des métriques,
+lectures) et `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP).
+
+### Routes des métriques
+
+Site de dev seulement : ailleurs, `403` avant tout le reste (comme `/api/debug/journal/` et `/api/v1/`). Chaque instance a **son** fichier
+(`prod.db`, `dev.db` : [`serveur.md`](serveur.md), « Métriques et volume ») ; le site de dev lit celui de la production en lecture seule.
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/debug/metriques/?instance=dev\|prod&periode=1h\|24h\|7j\|30j\|365j\|tout&tri=moyenne\|mediane\|p95\|p99\|max\|n\|erreurs\|total\|sql` | `{ instance, instances, periode, tri, depuis, jusqua, depuis_horaire, pas, bornes_ms, bornes_page_ms, global: STATS, global_avec_releves: STATS, releves: { n, routes }, routes: [{ route, methode, ...STATS }], serie: [{ debut, n, moyenne_ms, p95_ms, erreurs, erreurs_5xx }], pages: [{ page, n, ttfb_ms, ttfb_p95_ms, dom_ms, dom_p95_ms, charge_ms, charge_p95_ms, lcp_ms, lcp_p95_ms, au_dela }], navigateurs: [{ famille, appareil, n, pages }], origines: [{ page, route, n }], restreintes }` ; `global` et `serie` **sans les relèves automatiques** (`releves` les compte et les nomme, `global_avec_releves` les inclut) ; pages, navigateurs et origines (gardés par heure) depuis `depuis_horaire` ; les 500 pages et origines les plus nombreuses ; `instances` = celles dont le fichier existe ; `restreintes` = `{ raison, depuis }` pendant la restriction (plafond de la base ou disque bas : [`serveur.md`](serveur.md), « Volume estimé des métriques ») ; `404` pour une instance sans fichier, `400` pour une période ou un tri inconnu. Une période de 7 jours et plus, ou une lecture de l'autre instance, est gardée une minute |
+| `GET /api/debug/metriques/requetes/?limite=&route=&route_exacte=&min_ms=&statut=` | `{ instance, capacite, requetes: [{ instant, methode, route, adresse, statut, duree_ms, phases: { corps_ms, traitement_ms, envoi_ms }, octets_entree, octets_sortie, sql: { n, ms, plus_lente: { sql, ms } }, page, navigateur, appareil, simultanees }] }` : les 2 000 dernières requêtes gardées en mémoire du site de dev (les relèves réussies de la page Debug, de la maintenance et la balise n'y sont pas), les plus récentes d'abord ; `route` : le gabarit contient ce texte, `route_exacte` : le gabarit est celui-ci (la liste « Route » de la page) ; `statut` = un code (`404`) ou une classe (`4xx`) ; `adresse` : le chemin, jamais l'identifiant d'une fiche (`/api/personnages/{id}/…`, ou `/api/personnages/…` pour une adresse inconnue dessous) |
+| `GET /api/debug/metriques/export/?instance=&periode=&format=csv\|json` | Les agrégats bruts de la **même fenêtre que la page** (sommes, histogramme `h_le_<borne>ms`, octets, SQL, quantiles et `au_dela`) en pièce jointe (`Content-Disposition: attachment`) : par tranche de 5 minutes pour « 1h » (`pas` du JSON), par heure sinon ; 100 000 lignes au plus, les plus récentes (`X-Export-Tronque: 1` et `tronque` du JSON au-delà) |
+| `GET /api/debug/systeme/?instance=dev\|prod` | `{ instance, instances, maintenant, periode, processus, disque: { dossier, libre, total, utilise, reserve, part_libre, repartition: [{ cle, libelle, octets }], repartition_le, repartition_partielle, repartition_hote }, fichiers, echantillons, evenements, volume: { metriques_octets, taille_logique_octets, croissance_octets_par_jour, croissance_source, croissance_mesuree_octets_par_jour, croissance_mesuree_jours, croissance_estimee_octets_par_jour, debit_ecriture_octets_par_jour, projection_un_an_octets, taille_a_terme_octets, lignes_par_jour, octets_par_ligne, retention, brutes, pages }, alertes: [{ niveau, message }] }` ; `volume` : voir [`serveur.md`](serveur.md), « Volume estimé des métriques » (`brutes` et `pages` d'une autre instance : lus dans son dernier démarrage, `null` s'il ne les dit pas) |
+| `POST /api/metriques/page/` | La balise d'une page vue : `{ page, ttfb_ms, dom_ms, charge_ms, lcp_ms }` (chemin du site seulement, 200 caractères au plus ; une page que le site construit n'a pas est comptée dans `{autres}` ; valeurs de 0 à 120 000 ms ; corps de 2 Kio au plus ; `application/json` ou `text/plain` pour `navigator.sendBeacon` ; `Sec-Fetch-Site` du même site, et sans lui un en-tête `Origin` du même hôte ou aucun) → `204` ; acceptée sur **les deux instances** par défaut (décision du propriétaire : « Active-le aussi en prod dans un premier temps »), chacune dans son fichier, jamais dans la base vivante ; `MAVERICK_METRIQUES_PAGES=0` la ferme (`403`) ; 600 par minute au plus (`429`) |
+
+`STATS` = `{ n, erreurs_4xx, erreurs_5xx, part_304, moyenne_ms, mediane_ms, p95_ms, p99_ms, min_ms, max_ms, ecart_type_ms, total_ms, octets_entree,
+octets_sortie, sql_requetes_moyen, sql_ms_moyen, phases: { corps_ms, traitement_ms, envoi_ms }, sql_plus_lente: { sql, ms } | null, au_dela }`, au
+centième de ms ; médiane et quantiles tirés d'un histogramme à bornes fixes (1, 2, 5, 10, 20, 50, 100, 200, 500, 1 000, 2 000, 5 000 ms, +∞), par
+interpolation dans la classe — **jamais** dans la dernière (au-delà de 5 000 ms, sans borne haute : une seule valeur extrême y ferait la médiane et
+le p95) : le quantile y est la borne basse de la classe (ou le minimum, plus haut) et son nom est dans `au_dela` (« > 5 s » sur la page). Les
+pages vues ont leurs propres bornes (`bornes_page_ms` : 10 ms à 60 s, dont les seuils du LCP, 2,5 s et 4 s). **Route** : le gabarit de l'adresse,
+jamais un identifiant ni la chaîne de requête (`/api/personnages/{id}/`, `/api/v1/metiers/{cle}/`, `/api/v1/races/{cle}/dons/{cle}/`,
+`/api/mise-a-jour/lots/{lot}/` ; toute adresse inconnue : `/api/{inconnue}` ; une requête **refusée avant tout traitement**, `403` ou `405` :
+`/api/<premier segment>/{refusee}/`, par exemple `/api/v1/{refusee}/` pour tout `/api/v1/` en production) : le nombre de routes est borné par le
+code, même devant des requêtes fabriquées (une requête anonyme par gabarit × méthode en production : 70 lignes par heure, au lieu de 2 600).
+**Jamais gardés** : adresse IP, corps, chaîne de requête, identifiant de fiche, `Authorization`, cookie, User-Agent entier (seulement sa famille
+et l'appareil : ordinateur, téléphone, tablette, robot).
+
+**Balise des pages** (`layouts/Base.astro`, script en ligne) : une fois par page vue, 5 s après le chargement ou plus tôt si l'on quitte la page
+(ou masque l'onglet APRÈS le chargement ; un onglet masqué avant attend la fin du chargement, même en arrière-plan, pour que les chargements les
+plus lents — ceux qu'on abandonne — comptent), une mesure d'environ 150 octets (`navigator.sendBeacon`) : temps jusqu'au premier octet,
+`DOMContentLoaded`, chargement complet et LCP. Présente dans **tous** les builds,
+production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUES_PAGES=0` au build (l'interrupteur côté site ; côté service :
+`MAVERICK_METRIQUES_PAGES=0`).
 
 ## Tests
 
 `ressources-registre` (chaque table rangée une fois, registre cohérent, `RESSOURCES_MODULE=<module>` pour un seul module), `serveur-api-v1` (fermeture
 en production, catalogue, description OpenAPI et ses exemples, listes, conditions, détail et ETag, sous-ressources, `405`, écritures par le journal,
 `If-Match`, R42, images, `/api/debug/journal/`, serveur HTTP réel), `api-doc` (le tableau des ressources de ce document), `journal-du-service`,
-`debug-page`, `nav` ; `serveur-livraison` liste les modules livrés.
+`debug-page`, `nav` ; `serveur-metriques` (routes normalisées, collecte, agrégats, quantiles, rétention, lectures, deux instances),
+`serveur-metriques-bornes` (quantiles au-delà de la dernière classe, migration du schéma 4, croissance logique et projections, échantillons d'une
+même seconde, fenêtres « 1h » et export, `iterate`, relèves hors du global, cardinalité : pages du site, couples, refus, plafond ; lectures
+classées par SQLite, images de l'autre instance),
+`serveur-metriques-http` (vrai serveur : routes des métriques et balise), `serveur-metriques-disque` (répartition du disque, relevé de l'hôte,
+réserve de root), `debug-metriques` (rendus purs de Performances, Système et de la jauge), `debug-balise` (balise des pages) ; `serveur-livraison`
+liste les modules livrés.

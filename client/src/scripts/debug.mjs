@@ -28,10 +28,11 @@ import {
   resumeDuJournal,
 } from '../lib/debug-journaux.mjs';
 import {
-  INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques, adresseDesRequetes,
-  adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres, htmlDesEvenements, htmlDesFichiers,
-  htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDuDisque, htmlDuProcessus, htmlDuVolume, optionsDesRoutes,
-  plusLentes, resumeDesMetriques, resumeDuSysteme, seuilSaisi, sensParDefaut, trierRoutes,
+  INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_AUTRE_INSTANCE, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques,
+  adresseDesRequetes, adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres,
+  htmlDesEvenements, htmlDesFichiers, htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDuDisque,
+  htmlDuProcessus, htmlDuVolume, noteDeFenetreHoraire, optionsDesRoutes, plusLentes, requetesDeLInstance, resumeDesMetriques, resumeDuSysteme,
+  seuilSaisi, sensParDefaut, trierRoutes,
 } from '../lib/debug-metriques.mjs';
 
 const racine = document.querySelector('[data-debug]');
@@ -333,6 +334,9 @@ function brancherLesMetriques(api) {
   const requetesMin = champ(perfs, 'requetes-min');
   const requetesRoute = champ(perfs, 'requetes-route');
   const requetesAnnonce = champ(perfs, 'requetes-annonce');
+  const requetesContenu = champ(perfs, 'requetes-contenu');
+  const requetesAutre = champ(perfs, 'requetes-autre');
+  const fenetre = champ(perfs, 'perfs-fenetre');
   const systemeAnnonce = champ(systeme, 'systeme-annonce');
   const espace = racine.querySelector('[data-debug-espace]');
   const espaceJauge = champ(espace, 'espace-jauge');
@@ -340,6 +344,8 @@ function brancherLesMetriques(api) {
   /** Le tri du tableau des routes (dans la page) ; la clé part aussi au service quand il la connaît. */
   let tri = { cle: TRI_PAR_DEFAUT, sens: sensParDefaut(TRI_PAR_DEFAUT) };
   let routes = [];
+  /** L'instance du serveur qui répond (la première de `instances`, celle des requêtes une à une) : le site de dev. */
+  let instanceDuServeur = INSTANCES[0].cle;
   /** Un numéro par demande : une réponse arrivée après un changement d'instance ou de période est ignorée. */
   const demandes = { metriques: 0, requetes: 0, systeme: 0 };
   const fermes = { metriques: false, requetes: false, systeme: false }; // 403 : ce service n'est pas celui du site de dev
@@ -399,6 +405,8 @@ function brancherLesMetriques(api) {
     champ(perfs, 'perfs-global').innerHTML = '';
     champ(perfs, 'perfs-serie').innerHTML = '';
     champ(perfs, 'perfs-resume').textContent = '';
+    fenetre.textContent = '';
+    fenetre.hidden = true;
     for (const nom of ['perfs-pages', 'perfs-navigateurs', 'perfs-origines']) remplir(nom, '');
   }
 
@@ -433,21 +441,38 @@ function brancherLesMetriques(api) {
     }
     dire(annonce, '');
     majDesInstances(corps.instances);
+    if (Array.isArray(corps.instances) && corps.instances[0]) instanceDuServeur = corps.instances[0];
     routes = Array.isArray(corps.routes) ? corps.routes : [];
     afficherLesRoutes();
     champ(perfs, 'perfs-resume').textContent = resumeDesMetriques(corps);
-    champ(perfs, 'perfs-global').innerHTML = htmlDesChiffres(corps.global);
+    champ(perfs, 'perfs-global').innerHTML = htmlDesChiffres(corps.global, corps.releves);
     champ(perfs, 'perfs-serie').innerHTML = courbeDeLaSerie(corps.serie);
+    // pages vues, navigateurs et origines : par heure, une fenêtre parfois plus large que celle des routes (période « 1h »)
+    fenetre.textContent = noteDeFenetreHoraire(corps);
+    fenetre.hidden = !fenetre.textContent;
     remplir('perfs-pages', htmlDesPages(corps.pages));
     remplir('perfs-navigateurs', htmlDesNavigateurs(corps.navigateurs));
     remplir('perfs-origines', htmlDesOrigines(corps.origines));
-    const choisie = requetesRoute.value;
-    requetesRoute.innerHTML = optionsDesRoutes(routes, choisie);
+    // la liste « Route » des requêtes une à une : les routes du serveur qui les garde (le site de dev), jamais celles d'une autre instance
+    if (requetesDeLInstance(i, instanceDuServeur)) requetesRoute.innerHTML = optionsDesRoutes(routes, requetesRoute.value);
+  }
+
+  /** Les requêtes une à une ne sont que celles du serveur qui répond : pour une autre instance, une phrase à la place (requetesDeLInstance). */
+  function montrerLesRequetes() {
+    const visibles = requetesDeLInstance(choix().instance, instanceDuServeur);
+    requetesContenu.hidden = !visibles;
+    requetesAutre.hidden = visibles;
+    requetesAutre.textContent = visibles ? '' : REQUETES_AUTRE_INSTANCE;
+    return visibles;
   }
 
   async function chargerLesRequetes() {
     if (fermes.requetes) return;
     const numero = ++demandes.requetes;
+    if (!montrerLesRequetes()) {
+      dire(requetesAnnonce, '');
+      return;
+    }
     let reponse;
     try {
       reponse = await lireJson(adresseDesRequetes(api, { limite: REQUETES_LIMITE, route: requetesRoute.value, minMs: seuilSaisi(requetesMin.value) }));
@@ -455,7 +480,7 @@ function brancherLesMetriques(api) {
       if (numero === demandes.requetes) dire(requetesAnnonce, `Requêtes récentes injoignables (${e.message}).`, true);
       return;
     }
-    if (numero !== demandes.requetes) return;
+    if (numero !== demandes.requetes || !montrerLesRequetes()) return;
     const { statut, corps } = reponse;
     if (statut === 403) {
       fermes.requetes = true;

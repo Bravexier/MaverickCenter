@@ -49,7 +49,7 @@ function executer(o = {}) {
   contexte.window = contexte;
   vm.runInNewContext(code, contexte);
   const lancer = (type, cible = vu.evenements) => (cible[type] ?? []).forEach((f) => f());
-  return { ...vu, lancer };
+  return { ...vu, lancer, document: contexte.document };
 }
 
 test('Base.astro : la balise est un script en ligne (aucun import), sauf version portable, page de maintenance et SITE_METRIQUES_PAGES=0', () => {
@@ -113,4 +113,30 @@ test('temps bornés (0 à 120 000 ms), chemin coupé à 200 caractères ; sans s
   assert.equal(sansObservateur.minuteries.length, 1, 'déjà chargée : la minuterie part tout de suite');
   sansObservateur.minuteries[0][0]();
   assert.deepEqual(JSON.parse(sansObservateur.envois[0][1]), { page: '/races/elfe/', ttfb_ms: 85.12, dom_ms: 420.5, charge_ms: 980.26 });
+});
+
+test('onglet masqué AVANT la fin du chargement : rien ne part encore ; le chargement fini en arrière-plan, la balise part aussitôt avec le chargement complet', () => {
+  // une page lente sur téléphone : on change d'onglet à 4 s, elle finit de charger à 9 s en arrière-plan
+  const navigation = { responseStart: 300, domContentLoadedEventEnd: 2000, loadEventEnd: 0 };
+  const vu = executer({ navigation, lcp: [] });
+  vu.observe();
+  vu.document.visibilityState = 'hidden';
+  vu.lancer('visibilitychange', vu.documentEvenements);
+  assert.deepEqual(vu.envois, [], 'pas encore : le chargement complet manquerait (les pages les plus lentes seraient sous-comptées)');
+  vu.lancer('load');
+  assert.equal(vu.minuteries.length, 1);
+  assert.equal(vu.minuteries[0][1], 0, 'masquée : aussitôt après les écouteurs de « load » (loadEventEnd posé), sans attendre 5 s');
+  navigation.loadEventEnd = 9000;
+  vu.minuteries[0][0]();
+  assert.equal(vu.envois.length, 1);
+  assert.deepEqual(JSON.parse(vu.envois[0][1]), { page: '/races/elfe/', ttfb_ms: 300, dom_ms: 2000, charge_ms: 9000 });
+  vu.lancer('pagehide');
+  assert.equal(vu.envois.length, 1, 'une seule fois');
+  // masquée APRÈS le chargement : la balise part tout de suite (la minuterie de 5 s n'attend pas)
+  const apres = executer();
+  apres.lancer('load');
+  apres.document.visibilityState = 'hidden';
+  apres.lancer('visibilitychange', apres.documentEvenements);
+  assert.equal(apres.envois.length, 1);
+  assert.equal(JSON.parse(apres.envois[0][1]).charge_ms, 980.26);
 });

@@ -5,14 +5,16 @@
 // Docker n'est pas lancé ici : les fichiers sont lus et comparés ; volume.sh est exécuté pour de bon sur une arborescence factice.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { ARCHIVES_GARDEES } from '../serveur/base-vivante.mjs';
-import { categorieDuFichierDuSite, CATEGORIES_HOTE, creerMetriques, REPARTITION, REPARTITION_HOTE } from '../serveur/metriques.mjs';
+import {
+  categorieDuFichierDuSite, CATEGORIES_HOTE, creerMetriques, ORIGINES_PAR_HEURE, PAGES_PAR_HEURE, PLAFOND_METRIQUES_OCTETS, REPARTITION, REPARTITION_HOTE,
+} from '../serveur/metriques.mjs';
 import { LANCEMENTS_PAR_JOUR } from '../serveur/notes-de-version.mjs';
 
 const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../../${chemin}`, import.meta.url)), 'utf8');
@@ -85,6 +87,14 @@ test('docs/serveur.md, « Métriques et volume » : fidèle au code (archives, l
   assert.match(section, /\| 14 jours, puis un résumé par heure 400 jours \|/);
   assert.match(section, /Jamais sur disque ; 30 jours avec `MAVERICK_METRIQUES_BRUTES=1`/);
   assert.doesNotMatch(doc, /log Docker n'a\s+pas de rotation/, 'plus de phrase périmée sur les journaux Docker');
+  // les métriques sont bornées par un plafond dur, pas seulement par la rétention (une page fabriquée par heure suffisait à les faire grossir)
+  const ligne = section.split('\n').find((l) => l.startsWith('| Métriques |'));
+  assert.ok(ligne, 'la ligne des métriques dans « Tout ce qui grossit »');
+  assert.match(ligne, /`PLAFOND_METRIQUES_OCTETS`/);
+  assert.ok(ligne.includes(`${PLAFOND_METRIQUES_OCTETS / 1024 ** 2} Mio`), `plafond écrit : ${PLAFOND_METRIQUES_OCTETS / 1024 ** 2} Mio`);
+  assert.doesNotMatch(ligne, /\| Oui \(rétention\) \|$/, 'jamais « borné par la rétention » seulement');
+  assert.match(section, new RegExp(`\`PAGES_PAR_HEURE\` = ${PAGES_PAR_HEURE} pages`));
+  assert.match(section, new RegExp(`\`ORIGINES_PAR_HEURE\` = ${ORIGINES_PAR_HEURE.toLocaleString('fr-FR').replace(/\s/g, ' ')} couples`));
 });
 
 test('docs/serveur.md, « Jauge de l\'espace disque » : chaque clé de la répartition, dans l\'ordre, avec son libellé ; le minuteur tel que le pose instances.sh', () => {
@@ -380,4 +390,33 @@ test('le service de chaque instance lit volume-hote.json : sa jauge = celle de l
       m.arreter();
     }
   }
+});
+
+test('volume.sh : un lien posé à l’avance dans le dossier partagé (que les conteneurs modifient) n’est jamais suivi — le fichier provisoire a un nom imprévisible, créé en exclusivité', { skip: skipVolume }, () => {
+  const a = arborescence();
+  const victime = join(a.normal, 'db', 'vivante.db');
+  writeFileSync(victime, 'SQLite format 3\u0000CONTENU-PRECIEUX', { mode: 0o600 });
+  chmodSync(victime, 0o600);
+  const sortie = join(a.metriques, 'volume-hote.json');
+  // l'attaque du constat : le lien porte le nom que le script prenait (« <sortie>.<pid>.tmp ») ; exec garde le PID du shell qui le pose
+  const enveloppe = `ln -s "$1" "$2.$$.tmp" && exec bash "$3" "$4" "$5"`;
+  const r = spawnSync('bash', ['-c', enveloppe, 'enveloppe', victime, sortie, VOLUME, a.normal, a.essai], {
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH, MAVERICK_DIR_DOCKER: a.docker, MAVERICK_DIR_VARLOG: a.varlog, MAVERICK_DIR_TMP: a.tmp, MAVERICK_DIR_ROOT: a.root, MAVERICK_DIR_HOME: a.home },
+  });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(readFileSync(victime, 'utf8'), 'SQLite format 3\u0000CONTENU-PRECIEUX', 'la base vivante n’est ni tronquée ni remplacée');
+  assert.equal(statSync(victime).mode & 0o777, 0o600, 'ni ses droits changés');
+  assert.equal(JSON.parse(readFileSync(sortie, 'utf8')).format, 1, 'le relevé est écrit à sa place');
+  assert.ok(!lstatSync(sortie).isSymbolicLink());
+  assert.equal(statSync(sortie).mode & 0o777, 0o644);
+  const restes = readdirSync(a.metriques).filter((f) => f.endsWith('.tmp'));
+  assert.equal(restes.length, 1, `seul le lien posé reste : ${restes}`);
+  assert.ok(lstatSync(join(a.metriques, restes[0])).isSymbolicLink());
+  // le code : un nom imprévisible (mktemp -u), ouvert en création exclusive (noclobber) une seule fois, jamais un nom fait du PID ni un chmod
+  const code = lire('deploy/vps/volume.sh');
+  assert.doesNotMatch(code, /provisoire="\$SORTIE\.\$\$/);
+  assert.match(code, /provisoire=\$\(mktemp -u /);
+  assert.match(code, /set -o noclobber\nexec 3> "\$provisoire"/);
+  assert.doesNotMatch(code, /chmod [0-7]+ "\$provisoire"/);
 });

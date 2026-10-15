@@ -9,7 +9,7 @@
 #
 # Lancé toutes les 15 minutes par le minuteur systemd « maverick-volume.timer » que pose instances.sh ; à la main :
 #   sudo bash volume.sh [--sortie <fichier>] [<dossier d'instance>...]      (défaut : /srv/maverick-center et /srv/maverick-center-test)
-# Ne fait que lire, sauf le fichier de sortie, remplacé d'un coup (fichier temporaire puis renommage). Octets alloués sur le disque (blocs, comme
+# Ne fait que lire, sauf le fichier de sortie, remplacé d'un coup (fichier provisoire au nom imprévisible, créé en exclusivité, puis renommage). Octets alloués sur le disque (blocs, comme
 # df, du et le service), pas la taille apparente des fichiers.
 set -euo pipefail
 shopt -s nullglob
@@ -211,7 +211,16 @@ SOMMES[reserve]=$DISQUE_RESERVE
 SOMMES[libre]=$DISQUE_LIBRE
 duree_ms=$(( ($(date +%s%N) - debut_ns) / 1000000 ))
 
-provisoire="$SORTIE.$$.tmp"
+# Le fichier provisoire. Le dossier des métriques est modifiable par les conteneurs des deux instances (root dans le conteneur) : un nom
+# prévisible (« .$$.tmp ») leur laisserait y poser à l'avance un lien vers un fichier de l'hôte (la base vivante de la production…) que root, ici,
+# suivrait et tronquerait. Donc : un nom imprévisible (mktemp -u), ouvert UNE fois en création exclusive (noclobber : O_CREAT|O_EXCL, qui refuse
+# tout nom déjà pris, lien compris) sur le descripteur 3, par lequel tout s'écrit — jamais rouvert par son nom ; lisible de tous par l'umask (pas
+# de chmod, qui suivrait un lien) ; puis mv -f, qui remplace le nom de la sortie lui-même (rename ne suit pas un lien).
+umask 022
+provisoire=$(mktemp -u "$SORTIE.XXXXXXXXXXXX.tmp")
+set -o noclobber
+exec 3> "$provisoire"
+set +o noclobber
 trap 'rm -f "$provisoire"' EXIT
 {
   printf '{\n  "format": 1,\n  "instant": "%s",\n  "duree_ms": %s,\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$duree_ms"
@@ -243,7 +252,7 @@ trap 'rm -f "$provisoire"' EXIT
   done
   if [ -n "$separateur" ]; then printf '\n  '; fi
   printf ']\n}\n'
-} > "$provisoire"
-chmod 644 "$provisoire"
+} >&3
+exec 3>&-
 mv -f "$provisoire" "$SORTIE"
 trap - EXIT

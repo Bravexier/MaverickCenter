@@ -15,6 +15,7 @@ import { after, test } from 'node:test';
 import { REPARTITION } from '../serveur/metriques.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { RESSOURCES } from '../src/lib/ressources.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-metriques-http-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -24,7 +25,10 @@ const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebK
 const STATS = ['n', 'erreurs_4xx', 'erreurs_5xx', 'part_304', 'moyenne_ms', 'mediane_ms', 'p95_ms', 'p99_ms', 'min_ms', 'max_ms', 'ecart_type_ms', 'total_ms',
   'octets_entree', 'octets_sortie', 'sql_requetes_moyen', 'sql_ms_moyen'];
 
-/** Une instance disposée comme sur le serveur : <nom>/site (règles publiées, service livré, une page, un portrait publié) et <nom>/db. */
+/**
+ * Une instance disposée comme sur le serveur : <nom>/site (règles publiées, service livré, des pages — celles que la balise et le Referer citent :
+ * le service ne garde que les pages que le site construit a —, un portrait publié) et <nom>/db.
+ */
 function instance(nom) {
   const site = join(racine, nom, 'site');
   mkdirSync(join(site, 'donnees'), { recursive: true });
@@ -33,6 +37,10 @@ function instance(nom) {
   copyFileSync(REGLES, join(site, 'donnees', 'maverick.db'));
   writeFileSync(join(site, '_serveur', 'version.json'), JSON.stringify({ version: '0.3.2', empreinte: `code-${nom}` }));
   writeFileSync(join(site, 'index.html'), '<!doctype html><title>Maverick</title>'.repeat(200));
+  for (const page of ['classes', 'races/elfe', 'fiche']) {
+    mkdirSync(join(site, page), { recursive: true });
+    writeFileSync(join(site, page, 'index.html'), `<!doctype html><title>${page}</title>`);
+  }
   writeFileSync(join(site, 'bestiaire', 'portraits', 'a1b2c3.webp'), Buffer.alloc(9000, 1));
   return { regles: join(site, 'donnees', 'maverick.db'), dossier: join(racine, nom, 'db'), fichierVersion: join(site, '_serveur', 'version.json') };
 }
@@ -193,7 +201,9 @@ test('deux instances, un dossier des métriques partagé : chaque instance n’�
     try {
       const routes = p.prepare('SELECT route, methode, sum(n) AS n, sum(erreurs_4xx) AS e FROM agregat_heure GROUP BY route, methode ORDER BY route, methode').all().map((l) => ({ ...l }));
       assert.ok(routes.some((l) => l.route === '/api/personnages/{id}/' && l.n === 1 && l.e === 1), JSON.stringify(routes));
-      assert.ok(routes.some((l) => l.route === '/api/debug/metriques/' && l.e === 1), 'le refus (403) compté');
+      // un refus avant tout traitement (403, 405) : sous « /api/<premier segment>/{refusee}/ » (cardinalité bornée), compté
+      assert.ok(routes.some((l) => l.route === '/api/debug/{refusee}/' && l.e === 4), `les refus (403) comptés : ${JSON.stringify(routes)}`);
+      assert.ok(!routes.some((l) => l.route === '/api/debug/metriques/'), 'jamais une ligne par route refusée');
       assert.ok(!routes.some((l) => l.route.startsWith('/api/v1/metiers/{cle}')), 'jamais les requêtes du site de dev');
       assert.deepEqual(p.prepare('SELECT page, n FROM page_heure').all().map((l) => [l.page, l.n]), [['/races/elfe/', 2]], 'la balise reçue par la production, dans prod.db');
       assert.ok(p.prepare("SELECT 1 FROM navigateur_heure WHERE famille = 'Safari' AND appareil = 'telephone' AND pages = 1").get());
@@ -219,7 +229,7 @@ test('deux instances, un dossier des métriques partagé : chaque instance n’�
     assert.equal(mp.corps.instance, 'prod');
     assert.ok(mp.corps.routes.some((x) => x.route === '/api/personnages/{id}/'));
     assert.ok(!mp.corps.routes.some((x) => x.route === '/api/v1/metiers/{cle}/' || x.route === '/api/{inconnue}'), 'jamais mélangées : les routes que seul le site de dev a reçues');
-    assert.equal(mp.corps.routes.find((x) => x.route === '/api/v1/metiers/')?.erreurs_4xx, 1, 'le 403 de la production, compté chez elle');
+    assert.equal(mp.corps.routes.find((x) => x.route === '/api/v1/{refusee}/')?.erreurs_4xx, 1, 'le 403 de la production, compté chez elle (sous sa route de refus)');
     assert.deepEqual(mp.corps.pages.map((x) => [x.page, x.n]), [['/races/elfe/', 2]]);
     const sp = await appel(dev, '/api/debug/systeme/?instance=prod');
     assert.equal(sp.statut, 200);
@@ -262,7 +272,7 @@ test('MAVERICK_METRIQUES_PAGES=0 ferme la balise (403) — l’interrupteur pour
   const db = lecture(join(partage, 'prod.db'));
   try {
     assert.equal(db.prepare('SELECT count(*) AS n FROM page_heure').get().n, 0, 'aucune page vue');
-    assert.equal(db.prepare("SELECT n FROM agregat_heure WHERE route = '/api/metriques/page/'").get().n, 1, 'le refus est compté');
+    assert.equal(db.prepare("SELECT n FROM agregat_heure WHERE route = '/api/metriques/{refusee}/'").get().n, 1, 'le refus est compté (route de refus)');
     assert.equal(db.prepare("SELECT n FROM agregat_heure WHERE route = '/api/etat/'").get().n, 1);
   } finally {
     db.close();
@@ -280,11 +290,77 @@ test('panne des métriques (dossier impossible) : le service démarre, répond e
     const m = await appel(s, '/api/debug/metriques/?periode=1h');
     assert.equal(m.statut, 200);
     assert.ok(m.corps.panne, 'la panne est dite');
-    assert.ok(m.corps.global.n >= 4, 'la collecte continue en mémoire');
+    assert.ok(m.corps.global.n >= 3, 'la collecte continue en mémoire');
+    assert.ok(m.corps.global_avec_releves.n >= 4, 'la balise y est, comptée à part (relève automatique)');
     const sys = await appel(s, '/api/debug/systeme/');
     assert.ok(sys.corps.alertes.some((a) => a.niveau === 'erreur' && /panne/.test(a.message)));
   } finally {
     await s.arreter();
   }
   assert.equal(lignes.filter((l) => l.startsWith('ERREUR métriques')).length, 1, lignes.join('\n'));
+});
+
+test('balise sans Sec-Fetch-Site (navigateur sans Fetch Metadata) : un en-tête Origin d’un autre site est refusé (403) ; le même hôte ou aucun Origin passe', async () => {
+  const partage = join(racine, 'metriques-origine');
+  const s = await avecEnvironnement({ MAVERICK_DOSSIER_METRIQUES: partage }, () => demarrerService({ ...instance('prod-origine'), port: 0, intervalle: 0, journal: () => {}, relancer: () => {} }));
+  try {
+    const envoyer = (entetes) => appel(s, '/api/metriques/page/', {
+      methode: 'POST', corps: JSON.stringify({ page: '/races/elfe/', ttfb_ms: 99 }), entetes: { 'Content-Type': 'text/plain', ...entetes },
+    });
+    assert.equal((await envoyer({ Origin: 'https://evil.example' })).statut, 403, 'une page tierce, requête « simple » sans requête préalable');
+    assert.equal((await envoyer({ Origin: 'null' })).statut, 403);
+    const hote = new URL(s.url).host;
+    assert.equal((await envoyer({ Origin: `http://${hote}` })).statut, 204, 'le même hôte');
+    assert.equal((await envoyer({ Origin: 'https://maverick-jdr.com', 'X-Forwarded-Host': 'maverick-jdr.com' })).statut, 204, 'derrière le mandataire');
+    assert.equal((await envoyer({})).statut, 204, 'sans Origin (un outil)');
+    assert.equal((await envoyer({ Origin: `http://${hote}`, 'Sec-Fetch-Site': 'cross-site' })).statut, 403, 'Sec-Fetch-Site prévaut');
+  } finally {
+    await s.arreter();
+  }
+  const db = lecture(join(partage, 'prod.db'));
+  try {
+    assert.equal(db.prepare('SELECT sum(n) AS n FROM page_heure').get().n, 3, 'seules les mesures acceptées');
+  } finally {
+    db.close();
+  }
+});
+
+test('production : chaque gabarit du service × chaque méthode, une requête anonyme chacun — le nombre de lignes par heure reste borné (refus regroupés)', async () => {
+  const partage = join(racine, 'metriques-cardinalite');
+  const s = await avecEnvironnement({ MAVERICK_DOSSIER_METRIQUES: partage }, () => demarrerService({ ...instance('prod-cardinalite'), port: 0, intervalle: 0, journal: () => {}, relancer: () => {} }));
+  const adresses = ['/api/etat/', '/api/maintenance/', '/api/maintenance/lever/', '/api/personnages/', '/api/personnages/x/', '/api/personnages/x/portrait/',
+    '/api/edition/', ...['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', 'portrait'].map((a) => `/api/edition/${a}/`), '/api/mise-a-jour/',
+    '/api/mise-a-jour/lancer/', '/api/mise-a-jour/lots/0f0e2c1a-1111-2222-3333-444455556666/', '/api/debug/journal/', '/api/debug/metriques/',
+    '/api/debug/metriques/requetes/', '/api/debug/metriques/export/', '/api/debug/systeme/', '/api/metriques/page/', '/api/v1/', '/api/v1/openapi.json'];
+  for (const r of RESSOURCES) {
+    adresses.push(`/api/v1/${r.cle}/`, `/api/v1/${r.cle}/x/`);
+    for (const e of r.enfants ?? []) adresses.push(`/api/v1/${r.cle}/x/${e.cle}/`, `/api/v1/${r.cle}/x/${e.cle}/y/`);
+    for (const a of r.actions ?? []) adresses.push(`/api/v1/${r.cle}/x/${a.cle}/`);
+  }
+  const methodes = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'PROPFIND'];
+  const statuts = new Map();
+  try {
+    const travaux = adresses.flatMap((a) => methodes.map((m) => [a, m]));
+    for (let i = 0; i < travaux.length; i += 64) {
+      await Promise.all(travaux.slice(i, i + 64).map(async ([a, m]) => {
+        const r = await fetch(`${s.url}${a}`, { method: m, headers: { 'User-Agent': 'curl/8.5.0' } });
+        await r.arrayBuffer();
+        statuts.set(r.status, (statuts.get(r.status) ?? 0) + 1);
+      }));
+    }
+  } finally {
+    await s.arreter();
+  }
+  const db = lecture(join(partage, 'prod.db'));
+  try {
+    const lignes = db.prepare('SELECT route, methode, n FROM agregat_heure').all();
+    const total = lignes.reduce((n, l) => n + l.n, 0);
+    assert.equal(total, adresses.length * methodes.length, `toutes comptées (${JSON.stringify([...statuts])})`);
+    // avant : une ligne par gabarit × méthode (plus de 2 600) ; refus regroupés par premier segment, les routes servies seules gardent leur gabarit
+    assert.ok(lignes.length <= 150, `${lignes.length} lignes pour ${total} requêtes : ${lignes.map((l) => `${l.methode} ${l.route}`).join(', ')}`);
+    assert.ok(!lignes.some((l) => /^\/api\/v1\/[a-z]/.test(l.route)), 'aucun gabarit de /api/v1/ (fermé en production)');
+    assert.equal(db.prepare('SELECT count(*) AS n FROM agregat_5min').get().n, lignes.length, 'de même par tranche de 5 minutes');
+  } finally {
+    db.close();
+  }
 });

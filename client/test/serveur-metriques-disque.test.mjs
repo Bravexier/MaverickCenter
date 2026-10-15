@@ -13,7 +13,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
   alertesDu, CATEGORIES_COMPTEES, CATEGORIES_HOTE, categorieDuFichierDuSite, colonnesImagesDe, comptesAvecLHote, creerMetriques, disqueDe, lireReleveDeLHote,
-  octetsDesImages, octetsSurDisque, PARCOURS, RELEVE_HOTE, releverRepartition, REPARTITION, REPARTITION_HOTE, repartitionDu, RETENTION,
+  octetsDesImages, octetsSurDisque, PARCOURS, RELEVE_HOTE, releverRepartition, REPARTITION, REPARTITION_HOTE, repartitionDu, RETENTION, SCHEMA_METRIQUES,
 } from '../serveur/metriques.mjs';
 import { dossierDuSite } from '../serveur/service.mjs';
 
@@ -484,7 +484,7 @@ test('réserve de root : notée avec la répartition (schéma 3) ; un fichier de
   const t = 1_792_000_060_000;
   creerMetriques({ dossier, instance: 'prod', intervalle: 0, horloge: () => t }).arreter();
   const ancien = new DatabaseSync(join(dossier, 'prod.db'));
-  ancien.exec('ALTER TABLE disque_repartition DROP COLUMN reserve; PRAGMA user_version = 2;');
+  ancien.exec('ALTER TABLE disque_repartition DROP COLUMN reserve; ALTER TABLE disque_repartition DROP COLUMN images_base; PRAGMA user_version = 2;');
   // après l'échantillon que l'arrêt vient de noter (le dernier est celui qui compte)
   ancien.prepare('INSERT INTO systeme_minute (instant, disque_libre, disque_total) VALUES (?, ?, ?)').run(1_792_000_100, 600, 1000);
   ancien.prepare('INSERT INTO disque_repartition VALUES (?, ?, ?, ?, 0)').run(1_792_000_100, 1000, 600, JSON.stringify({ base: 100 }));
@@ -496,7 +496,7 @@ test('réserve de root : notée avec la répartition (schéma 3) ; un fichier de
   } finally {
     dev.arreter();
   }
-  // la production rouvre son fichier : la colonne est ajoutée, la réserve notée (schéma 3)
+  // la production rouvre son fichier : les colonnes sont ajoutées, la réserve notée (schéma 3, puis 4)
   const prod = creerMetriques({ dossier, instance: 'prod', intervalle: 0, horloge: () => t, fichiers: { disque: dossier } });
   try {
     prod.echantillonner();
@@ -506,7 +506,7 @@ test('réserve de root : notée avec la répartition (schéma 3) ; un fichier de
   }
   const lu = new DatabaseSync(join(dossier, 'prod.db'), { readOnly: true });
   try {
-    assert.equal(lu.prepare('PRAGMA user_version').get().user_version, 3);
+    assert.equal(lu.prepare('PRAGMA user_version').get().user_version, SCHEMA_METRIQUES);
     const l = lu.prepare('SELECT total, libre, reserve FROM disque_repartition WHERE instant = ?').get(t / 1000);
     const disque = disqueDe(dossier);
     assert.equal(l.reserve, disque.reserve, 'la réserve de statfs');

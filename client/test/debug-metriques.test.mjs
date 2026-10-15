@@ -12,9 +12,10 @@ import {
   htmlDuDisque, htmlDuProcessus, htmlDuVolume, instantLisible, jauge, lenteur, mesureDePage, niveauDuDisque, nombre, optionsDesRoutes, plafondRond,
   plusLentes, resumeDesMetriques, resumeDuSysteme, seuilSaisi, sensParDefaut, texteDuDetail, trierRoutes, valeurDeTri,
   SEGMENT_FIN, TYPES_DU_DISQUE, formaterOctetsDecimaux, htmlDeLEspaceDisque, pourcentDuDisque, segmentsDuDisque,
+  LIBELLES_DE_RETENTION, REQUETES_AUTRE_INSTANCE, dureeDuQuantile, noteDeFenetreHoraire, requetesDeLInstance,
 } from '../src/lib/debug-metriques.mjs';
 import { readFileSync } from 'node:fs';
-import { comptesAvecLHote, REPARTITION, REPARTITION_HOTE, repartitionDu } from '../serveur/metriques.mjs';
+import { comptesAvecLHote, REPARTITION, REPARTITION_HOTE, repartitionDu, RETENTION } from '../serveur/metriques.mjs';
 
 const F = '\u202f'; // espace fine insécable (milliers)
 const I = '\u00a0'; // espace insécable (avant l'unité)
@@ -43,7 +44,7 @@ test('adresses : métriques, requêtes récentes, système, export — paramètr
   assert.equal(adresseDesMetriques('/api/', { tri: 'route' }), '/api/debug/metriques/?instance=dev&periode=24h', 'la page trie elle-même');
   assert.equal(adresseDesRequetes('/api/'), '/api/debug/metriques/requetes/?limite=100');
   assert.equal(adresseDesRequetes('/api/', { limite: 20, route: '/api/v1/metiers/{cle}/', minMs: 150 }),
-    '/api/debug/metriques/requetes/?limite=20&route=%2Fapi%2Fv1%2Fmetiers%2F%7Bcle%7D%2F&min_ms=150');
+    '/api/debug/metriques/requetes/?limite=20&route_exacte=%2Fapi%2Fv1%2Fmetiers%2F%7Bcle%7D%2F&min_ms=150', 'le gabarit choisi, cherché exactement');
   assert.equal(adresseDesRequetes('/api/', { minMs: 0 }), '/api/debug/metriques/requetes/?limite=100');
   assert.equal(adresseDuSysteme('/api/', 'prod'), '/api/debug/systeme/?instance=prod');
   assert.equal(adresseDeLExport('/api/', { instance: 'prod', periode: '30j', format: 'csv' }), '/api/debug/metriques/export/?instance=prod&periode=30j&format=csv');
@@ -162,10 +163,12 @@ test('routes : rendu du tableau — gabarit échappé, pastille de méthode, dur
 });
 
 test('pages vues, navigateurs, origines : mesures des pages (deux écritures lues), parts, tri par nombre, texte échappé', () => {
-  assert.deepEqual(mesureDePage({ ttfb_ms: { moyenne: 120, p95: 300 } }, 'ttfb'), { moyenne: 120, p95: 300 });
-  assert.deepEqual(mesureDePage({ lcp_ms: { moyenne_ms: 1800, p95_ms: 3100 } }, 'lcp'), { moyenne: 1800, p95: 3100 });
-  assert.deepEqual(mesureDePage({ dom_ms: 400, dom_p95_ms: 900 }, 'dom'), { moyenne: 400, p95: 900 });
-  assert.deepEqual(mesureDePage({}, 'charge'), { moyenne: null, p95: null });
+  assert.deepEqual(mesureDePage({ ttfb_ms: { moyenne: 120, p95: 300 } }, 'ttfb'), { moyenne: 120, p95: 300, auDela: false });
+  assert.deepEqual(mesureDePage({ lcp_ms: { moyenne_ms: 1800, p95_ms: 3100 } }, 'lcp'), { moyenne: 1800, p95: 3100, auDela: false });
+  assert.deepEqual(mesureDePage({ dom_ms: 400, dom_p95_ms: 900 }, 'dom'), { moyenne: 400, p95: 900, auDela: false });
+  assert.deepEqual(mesureDePage({}, 'charge'), { moyenne: null, p95: null, auDela: false });
+  assert.deepEqual(mesureDePage({ charge_ms: 9000, charge_p95_ms: 60000, au_dela: ['charge_p95_ms'] }, 'charge'), { moyenne: 9000, p95: 60000, auDela: true });
+  assert.match(htmlDesPages([{ page: '/lente/', n: 1, charge_ms: 9000, charge_p95_ms: 60000, au_dela: ['charge_p95_ms'] }]), /9\u00a0s \/ >\u00a01\u00a0min 00\u00a0s/, 'p95 au-delà : « > »');
   const pages = htmlDesPages([
     { page: '/races/', n: 3, ttfb_ms: { moyenne: 50, p95: 80 }, lcp_ms: { moyenne: 1200, p95: 1500 } },
     { page: '/bestiaire/<x>', n: 12, lcp_ms: { moyenne: 3000, p95: 4500 } },
@@ -264,7 +267,7 @@ test('système : jauge (role="meter"), disque bas signalé par écrit, processus
   assert.equal(niveauDuDisque({ libre: 1.5 * Gio, total: 10 * Gio }), 'alerte', 'moins de 2 Gio (part calculée : 15 %)');
   assert.equal(niveauDuDisque(null), '');
   const disque = htmlDuDisque({ dossier: '/srv/maverick/db', libre: 1.5 * Gio, total: 10 * Gio, utilise: 8.5 * Gio, part_libre: 0.15 });
-  assert.match(disque, /^<p class="debug-alerte debug-alerte--erreur" role="alert">Disque presque plein : 1,5\u00a0Gio libres \(15\u00a0%\)\.<\/p><div class="debug-jauge debug-jauge--alerte" role="meter" aria-label="Disque utilisé"[^>]*aria-valuenow="85"/);
+  assert.match(disque, /^<p class="debug-alerte debug-alerte--erreur" role="alert">Disque presque plein : 1,5\u00a0Gio libres \(15\u00a0%\)\.<\/p><div class="debug-jauge debug-jauge--alerte" role="meter" aria-label="Disque non disponible \(pris ou réservé\)"[^>]*aria-valuenow="85"/);
   assert.match(disque, /<p class="debug-jauge__texte">8,5\u00a0Gio utilisés sur 10\u00a0Gio, 1,5\u00a0Gio libres \(15\u00a0%\)<\/p>/, 'la valeur écrite, pas seulement la jauge');
   assert.match(disque, /<code>\/srv\/maverick\/db<\/code>/);
   assert.equal(htmlDuDisque(undefined), '<p class="debug-vide">Espace disque inconnu.</p>');
@@ -283,13 +286,28 @@ test('système : jauge (role="meter"), disque bas signalé par écrit, processus
   assert.match(fichiers, /Métriques &lt;dev&gt;/);
   assert.match(fichiers, /<tr class="debug-total"><th scope="row">Total<\/th><td><\/td><td class="debug-nombre">120\u00a0Mio<\/td><\/tr>$/);
   assert.equal(htmlDesFichiers([]), '');
-  const volume = htmlDuVolume({ metriques_octets: 10 * 1024 ** 2, croissance_octets_par_jour: 300 * 1024, retention: { agregats_horaires_jours: 400, echantillons_minute: 14 }, brutes: false });
-  assert.match(volume, /<dt>Croissance<\/dt><dd>300\u00a0Kio par jour<\/dd>/);
-  assert.match(volume, /<dt>Dans un an au rythme actuel<\/dt><dd>≈ 117\u00a0Mio<\/dd>/, '10 Mio + 365 × 300 Kio');
-  assert.match(volume, /<dt>Rétention : Agregats horaires<\/dt><dd>400\u00a0jours<\/dd>/);
-  assert.match(volume, /<dt>Rétention : Echantillons minute<\/dt><dd>14\u00a0jours<\/dd>/);
+  // la taille dans un an et à rétention pleine sont celles du service (table par table, à leur rétention) : jamais taille + croissance × 365,
+  // qui compterait ce que la rétention purge (agrégats de 5 minutes, échantillons par minute) — ici 10 Mio + 365 × 300 Kio ≈ 117 Mio
+  const volume = htmlDuVolume({
+    metriques_octets: 10 * 1024 ** 2, croissance_octets_par_jour: 50 * 1024, croissance_source: 'estimee', debit_ecriture_octets_par_jour: 300 * 1024,
+    projection_un_an_octets: 25 * 1024 ** 2, taille_a_terme_octets: 26 * 1024 ** 2, retention: { agregats_heure: 400, echantillons_minute: 14, inconnue_x: 3 }, brutes: false, pages: true,
+  });
+  assert.match(volume, /<dt>Croissance en régime<\/dt><dd>50\u00a0Kio par jour \(estimée\)<\/dd>/);
+  assert.match(volume, /<dt>Écrit par jour \(avant purge\)<\/dt><dd>300\u00a0Kio par jour<\/dd>/);
+  assert.match(volume, /<dt>Dans un an \(rétention appliquée\)<\/dt><dd>≈ 25\u00a0Mio<\/dd>/);
+  assert.match(volume, /<dt>À rétention pleine \(400 jours\)<\/dt><dd>≈ 26\u00a0Mio<\/dd>/);
+  assert.doesNotMatch(volume, /117|au rythme actuel/, 'jamais la projection linéaire');
+  assert.match(volume, /<dt>Rétention : Agrégats par heure<\/dt><dd>400\u00a0jours<\/dd>/, 'libellés accentués');
+  assert.match(volume, /<dt>Rétention : Échantillons système par minute<\/dt><dd>14\u00a0jours<\/dd>/);
+  assert.match(volume, /<dt>Rétention : inconnue_x<\/dt><dd>3\u00a0jours<\/dd>/, 'une clé inconnue : la clé elle-même');
   assert.match(volume, /<dt>Requêtes brutes persistées<\/dt><dd>non \(mémoire du site de dev seulement\)<\/dd>/);
+  assert.match(volume, /<dt>Mesure des pages \(balise\)<\/dt><dd>ouverte<\/dd>/);
   assert.match(htmlDuVolume({ brutes: true }), /oui \(30 jours\)/);
+  assert.match(htmlDuVolume({ croissance_octets_par_jour: 1024, croissance_source: 'mesuree', croissance_mesuree_jours: 9.5 }), /1\u00a0Kio par jour \(mesurée sur 9,5\u00a0jours\)/);
+  // les réglages d'une autre instance qu'elle n'a pas dits (null) : « — », jamais « non »
+  const inconnu = htmlDuVolume({ brutes: null, pages: null });
+  assert.match(inconnu, /<dt>Requêtes brutes persistées<\/dt><dd>—<\/dd>/);
+  assert.match(inconnu, /<dt>Mesure des pages \(balise\)<\/dt><dd>—<\/dd>/);
   assert.equal(texteDuDetail({ lots: 3, conflits: 0, sous: { a: 1 } }), 'lots : 3 · conflits : 0 · sous : {"a":1}');
   assert.equal(texteDuDetail('texte'), 'texte');
   assert.equal(texteDuDetail(null), '');
@@ -488,4 +506,80 @@ test('espace disque : la réserve de root à part — « occupés » = la place 
   assert.deepEqual(brut.segments.map((x) => [x.cle, x.octets]), [['occupe', 65], ['reserve', 5], ['libre', 30]]);
   const css = readFileSync(new URL('../src/styles/debug/debug.css', import.meta.url), 'utf8');
   assert.match(css, /\.debug-espace__segment--reserve \{[^}]*repeating-linear-gradient\(45deg/, 'hachurée dans l’autre sens que le libre');
+});
+
+// ---- Correctifs de la relecture du 2026-10-15 -------------------------------------------------------------------------------------------------
+
+test('quantiles au-delà de la dernière classe : écrits « > 5 s » (le service ne les donne que comme borne basse), dans les chiffres, les routes et le résumé', () => {
+  const stats = { n: 100, moyenne_ms: 7080, mediane_ms: 6000, p95_ms: 6000, p99_ms: 6000, au_dela: ['p95_ms', 'p99_ms'] };
+  assert.equal(dureeDuQuantile(stats, 'mediane_ms'), `6${I}s`);
+  assert.equal(dureeDuQuantile(stats, 'p95_ms'), `>${I}6${I}s`);
+  assert.equal(dureeDuQuantile({ p95_ms: null, au_dela: ['p95_ms'] }, 'p95_ms'), '—');
+  assert.match(htmlDesChiffres(stats), new RegExp(`<dt>p99</dt><dd>>${I}6${I}s</dd>`));
+  assert.match(htmlDesRoutes([route('GET', '/api/x/', stats)]), new RegExp(`>>${I}6${I}s</td>`));
+  assert.match(resumeDesMetriques({ instance: 'dev', periode: '1h', global: stats }), new RegExp(`p95 >${I}6${I}s`));
+});
+
+test('global sans les relèves automatiques : la page dit combien en sont exclues, et le résumé « hors relèves »', () => {
+  const html = htmlDesChiffres({ n: 70, moyenne_ms: 111 }, { n: 2280, routes: ['GET /api/debug/journal/'] });
+  assert.match(html, /<dt>Appels<\/dt><dd>70<\/dd><\/div><div><dt>Relèves automatiques \(exclues\)<\/dt><dd>2 280<\/dd>/);
+  assert.doesNotMatch(htmlDesChiffres({ n: 3 }, { n: 0 }), /Relèves/);
+  assert.match(resumeDesMetriques({ instance: 'dev', periode: '1h', global: { n: 70 }, releves: { n: 2280 } }), /70 appels \(hors relèves\)/);
+});
+
+test('période « 1h » : la fenêtre (horaire) des pages vues, navigateurs et origines est dite quand elle dépasse celle des routes', () => {
+  const maintenant = new Date(2026, 9, 15, 10, 54, 0);
+  const depuis = new Date(2026, 9, 15, 9, 55, 0).toISOString();
+  const horaire = new Date(2026, 9, 15, 9, 0, 0).toISOString();
+  assert.equal(noteDeFenetreHoraire({ depuis, depuis_horaire: horaire }, maintenant),
+    'Pages vues, navigateurs et origines sont comptés par heure : depuis 09:00:00, soit plus que la période des routes (depuis 09:55:00).');
+  assert.equal(noteDeFenetreHoraire({ depuis: horaire, depuis_horaire: horaire }, maintenant), '', 'même fenêtre : rien');
+  assert.equal(noteDeFenetreHoraire({}, maintenant), '');
+});
+
+test('requêtes une à une : seulement pour l’instance du serveur qui répond (le site de dev) ; « Production » choisie, une phrase à la place', () => {
+  assert.equal(requetesDeLInstance('dev'), true);
+  assert.equal(requetesDeLInstance('prod'), false, 'jamais la mémoire du site de dev sous l’étiquette « Production »');
+  assert.equal(requetesDeLInstance('prod', 'prod'), true);
+  assert.match(REQUETES_AUTRE_INSTANCE, /site de dev/);
+  const script = readFileSync(new URL('../src/scripts/debug.mjs', import.meta.url), 'utf8');
+  assert.match(script, /if \(!montrerLesRequetes\(\)\) \{\s*dire\(requetesAnnonce, ''\);\s*return;/, 'aucune relève des requêtes pour une autre instance');
+  assert.match(script, /if \(requetesDeLInstance\(i, instanceDuServeur\)\) requetesRoute\.innerHTML = optionsDesRoutes\(routes/, 'la liste « Route » : les routes du serveur qui garde les requêtes');
+  const page = readFileSync(new URL('../src/pages/debug.astro', import.meta.url), 'utf8');
+  assert.match(page, /<p class="debug-petit" data-requetes-autre hidden><\/p>\s*<div data-requetes-contenu>/);
+});
+
+test('courbe : le pas est la médiane des écarts — un échantillon pris à l’arrêt du service, 20 s après un autre, ne réduit pas les courbes à des points', () => {
+  const debut = Date.UTC(2026, 9, 15, 0, 0, 0);
+  const points = Array.from({ length: 120 }, (_, i) => ({ instant: new Date(debut + i * 60_000).toISOString(), rss: 80e6 + i * 1e4, boucle_p99_ms: 10 + (i % 5) }));
+  // l'arrêt : un dernier échantillon 20 s après celui de la minute 60, puis le nouveau processus repart sur sa propre phase
+  points.push({ instant: new Date(debut + 60 * 60_000 + 20_000).toISOString(), rss: 81e6, boucle_p99_ms: 11 });
+  const html = courbeDuSysteme(points);
+  assert.equal((html.match(/<circle /g) ?? []).length, 0, 'aucun point isolé');
+  assert.equal((html.match(/<polyline /g) ?? []).length, 2, 'une ligne par série, d’un seul tenant');
+  // un pas donné par l'appelant prévaut ; un vrai trou (plus d'un pas et demi) coupe toujours la ligne
+  const troue = courbe(points.filter((_, i) => i < 50 || i > 70), { series: [{ cle: 'rss', libelle: 'RSS', forme: 'ligne' }], x: (p) => p.instant, pas: 60_000 });
+  assert.equal((troue.match(/<polyline /g) ?? []).length, 2, 'le trou de 20 minutes coupe la ligne');
+});
+
+test('disque du bloc Système : la jauge remplit la place NON disponible (prise et réserve de root), comme le texte et l’alerte qui parlent du libre', () => {
+  const Gio = 1024 ** 3;
+  // 80 Go : 68 utilisés, 4 réservés à root, 8 libres (10 %)
+  const html = htmlDuDisque({ total: 80 * Gio, utilise: 68 * Gio, reserve: 4 * Gio, libre: 8 * Gio, part_libre: 0.1 });
+  assert.match(html, /role="meter" aria-label="Disque non disponible \(pris ou réservé\)"[^>]*aria-valuenow="90"/);
+  assert.match(html, /style="width: 90%"/);
+  assert.match(html, new RegExp(`68${I}Gio utilisés et 4${I}Gio réservés au système sur 80${I}Gio, 8${I}Gio libres \\(10${I}%\\)`));
+  // le bac à sable du constat : 252 Gio, 13,9 utilisés, 213 réservés, 25,1 libres — la jauge n'est plus presque vide à côté de « presque plein »
+  const reserve = htmlDuDisque({ total: 252 * Gio, utilise: 13.9 * Gio, reserve: 213 * Gio, libre: 25.1 * Gio, part_libre: 0.0996 });
+  assert.match(reserve, /aria-valuenow="90"/);
+  assert.match(reserve, /Disque presque plein/);
+});
+
+test('rétention : un libellé accentué pour chaque clé du service (jamais « Agregats », « Evenements »…)', () => {
+  for (const cle of Object.keys(RETENTION)) {
+    assert.ok(LIBELLES_DE_RETENTION[cle], `libellé de ${cle}`);
+    assert.match(htmlDuVolume({ retention: { [cle]: RETENTION[cle] } }), new RegExp(`Rétention : ${LIBELLES_DE_RETENTION[cle].replace(/[()]/g, '\\$&')}<`));
+  }
+  const html = htmlDuVolume({ retention: RETENTION });
+  for (const faute of ['Agregats', 'Evenements', 'Echantillons', 'Repartition', 'Requetes brutes', '5min', '10min']) assert.ok(!html.includes(faute), faute);
 });

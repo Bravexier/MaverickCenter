@@ -17,8 +17,9 @@
 //     vivante, tailles (base vivante et son WAL, archives/, mise-a-jour/, métriques), requêtes en cours, entrées du journal ;
 //   - toutes les 10 minutes : la répartition du disque par type de données (demande du propriétaire du 2026-10-15 : « la place occupée sur le serveur
 //     sur la place totale sous forme de jauge, colorée en fonction du type de données ») — REPARTITION, releverRepartition, repartitionDu : base de
-//     données, images importées, mises à jour, métriques, code, données, images et autres fichiers du site, système et autres, libre ; la somme fait
-//     exactement la taille du disque (statfs du dossier de la base vivante) ; le parcours des fichiers est mis en cache 10 minutes et borné (PARCOURS) ;
+//     données, images importées, mises à jour, métriques, code, données, images et autres fichiers du site, système et autres, réservé au système
+//     (la réserve de root, à part : « occupé » = Used de df), libre ; la somme fait exactement la taille du disque (statfs du dossier de la base
+//     vivante) ; le parcours des fichiers est mis en cache 10 minutes et borné (PARCOURS) ;
 //     sur le VPS, le relevé de l'hôte (deploy/vps/volume.sh → volume-hote.json du dossier des métriques, toutes les 15 minutes : lireReleveDeLHote)
 //     y ajoute ce que le conteneur ne voit pas — Docker, journaux, installations (REPARTITION_HOTE) et l'autre instance ;
 //   - les évènements du service avec leur durée (démarrage, base vivante, rejeu du journal, lots d'édition, mise à jour, appels GitHub, maintenance,
@@ -28,19 +29,24 @@
 // JAMAIS : adresse IP, corps, chaîne de requête, identifiant de fiche, Authorization ou cookie, User-Agent entier.
 //
 // Agrégats persistés (tables ci-dessous) : par heure × route × méthode (et par tranche de 5 minutes, gardée 2 jours, pour la période « 1h ») : n,
-// erreurs 4xx et 5xx, 304, somme et somme des carrés, min, max, histogramme à bornes fixes (BORNES_MS) d'où sortent les quantiles (quantile :
-// interpolation linéaire dans la classe), octets, requêtes et temps SQL, la requête SQL la plus lente ; pages vues par heure × page ; navigateurs et
-// origines par heure. Versement : une transaction par minute (et à l'arrêt). Rétention : RETENTION, purge et VACUUM incrémental une fois par jour.
+// erreurs 4xx et 5xx, 304, somme et somme des carrés, min, max, histogramme à bornes fixes (BORNES_MS) d'où sortent les quantiles (quantileDetaille :
+// interpolation linéaire dans la classe, jamais dans la dernière, sans borne haute : une borne basse marquée `au_dela`), octets, requêtes et temps
+// SQL, la requête SQL la plus lente ; pages vues par heure × page (histogrammes à leurs propres bornes : BORNES_PAGE_MS) ; navigateurs et origines
+// par heure. Versement : une transaction par minute (et à l'arrêt). Rétention : RETENTION, purge et VACUUM incrémental une fois par jour.
+// Cardinalité bornée quel que soit le trafic, même fabriqué : routes = gabarits du code (routeNormalisee), refus avant tout traitement (403, 405)
+// regroupés par premier segment (routeGardee) ; pages = celles du site construit (pagesDuSite), PAGES_PAR_HEURE et ORIGINES_PAR_HEURE par heure ;
+// et un plafond dur (PLAFOND_METRIQUES_OCTETS, ou disque bas) au-delà duquel la collecte est restreinte. Les lectures lourdes sont classées et
+// coupées par SQLite (LIGNES_LUES_MAX) et gardées CACHE_LECTURE_MS ; l'export s'arrête à EXPORT_LIGNES_MAX lignes.
 // Requêtes brutes : jamais persistées par défaut (les CAPACITE_REQUETES dernières en mémoire, site de dev) ; MAVERICK_METRIQUES_BRUTES=1 les garde
 // 30 jours (environ 145 octets chacune : 1,4 Mo par jour pour 10 000 requêtes).
 //
-// Volume (mesuré le 2026-10-15 : trois jours simulés, octets des pages SQLite par table ; OCTETS_PAR_LIGNE_ESTIMES) : il suit le nombre de routes
-// et surtout de PAGES DISTINCTES vues par heure (page_heure ~255 octets et origine_heure ~56 octets par page × heure, agregat_heure ~150 octets par
-// route × méthode × heure), pas le nombre de requêtes ; le reste est fixe (échantillons ~140 Kio par jour gardés 14 jours, répartition du disque
-// ~23 Kio par jour). Par instance, à rétention pleine (400 jours) : calme (1 000 requêtes par jour, 10 routes et 10 pages par heure) ~400 Kio par
-// jour, ~60 Mio ; moyen (3 000, 25 routes, 30 pages) ~0,8 Mio par jour, ~160 Mio ; chargé (20 000, 40 routes, 100 pages) ~3 Mio par jour,
-// ~680 Mio (origine_heure ~380 Mio, page_heure ~180 Mio). Le service sert l'estimation (GET /api/debug/systeme/, `volume`) et une alerte prévient
-// au-delà de 200 Mio, mesurés ou attendus à rétention pleine.
+// Volume (mesuré le 2026-10-15 avec le vrai collecteur, une minute simulée après l'autre ; docs/serveur.md, « Volume estimé des métriques ») : il
+// suit le nombre de routes et surtout de PAGES DISTINCTES vues par heure (page_heure, origine_heure), pas le nombre de requêtes. Trois chiffres
+// (volume) : ce qui s'écrit par jour (purgé vite compris : échantillons par minute ~140 Ko par jour gardés 14 jours, agrégats de 5 minutes), la
+// croissance en régime (estimée sur les tables gardées un an ou plus, ou mesurée sur la TAILLE LOGIQUE de la base, jamais sur le WAL), la taille
+// dans un an et à rétention pleine (table par table). Par instance : 1 000 requêtes par jour (20 routes, 40 pages) ~0,28 Mo écrits et ~57 Ko de
+// croissance par jour, ~25 Mo à 400 jours ; 20 000 (40 routes, 100 pages) ~0,36 Mo par jour, ~150 Mo ; 50 000 (40 routes, 400 pages) ~1,2 Mo par
+// jour : le plafond vers le 9ᵉ mois. Une alerte prévient au-delà de 200 Mio, mesurés ou attendus à rétention pleine.
 //
 // Une panne de la base des métriques (disque plein, fichier verrouillé, dossier absent) ne fait jamais échouer une requête ni le démarrage : elle est
 // notée une fois au journal (« ERREUR métriques : … »), la collecte continue en mémoire (bornée : MAX_EN_ATTENTE) et le versement suivant réessaie.
@@ -64,6 +70,13 @@ import { RESSOURCES } from '../src/lib/ressources.mjs';
 export const BORNES_MS = Object.freeze([1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]);
 /** Nombre de classes de l'histogramme (les bornes, plus +∞). */
 export const CLASSES = BORNES_MS.length + 1;
+/**
+ * Bornes hautes (ms) de l'histogramme des temps d'une page vue (premier octet, DOMContentLoaded, chargement, LCP : de quelques dizaines de ms à
+ * plusieurs secondes sur téléphone ; 2 500 et 4 000 : les seuils du LCP) ; une dernière classe va au-delà de 60 000 ms (la balise s'arrête à 120 000).
+ */
+export const BORNES_PAGE_MS = Object.freeze([10, 20, 50, 100, 200, 300, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000, 30000, 60000]);
+/** Nombre de classes de l'histogramme d'une page vue. */
+export const CLASSES_PAGE = BORNES_PAGE_MS.length + 1;
 
 /** Rétention, en jours (purge une fois par jour). */
 export const RETENTION = Object.freeze({
@@ -90,8 +103,30 @@ export const CAPACITE_REQUETES = 2000;
 export const MAX_EN_ATTENTE = Object.freeze({
   agregats: 20_000, pages: 20_000, navigateurs: 5_000, origines: 20_000, minutes: 2_880, repartitions: 288, evenements: 2_000, brutes: 50_000,
 });
-/** Pages distinctes gardées par heure (balise et Referer) : au-delà, « {autres} » (cardinalité bornée même devant des adresses fabriquées). */
-export const PAGES_PAR_HEURE = 1000;
+/**
+ * Pages distinctes gardées par heure (balise ; et, à part, pages d'origine du Referer) : au-delà, « {autres} ». Une page n'est d'ailleurs gardée
+ * que si le site construit l'a (pagesDuSite, pageDuSite : sinon « {autres} »), quand le service connaît son dossier.
+ */
+export const PAGES_PAR_HEURE = 300;
+/** Couples (page d'origine, route) gardés par heure : au-delà, la page devient « {autres} ». */
+export const ORIGINES_PAR_HEURE = 1000;
+/** La page (ou l'origine) qui regroupe tout ce qui dépasse une borne, n'est pas une page du site, ou arrive pendant la restriction. */
+export const PAGE_AUTRES = '{autres}';
+/**
+ * Plafond dur de la base des métriques d'une instance (fichier + WAL) : au-delà — ou quand le disque n'a plus que SEUILS.disque_libre_octets libres
+ * — la collecte est RESTREINTE : plus aucune nouvelle page ni page d'origine (tout va dans « {autres} »), plus de requêtes brutes ; les agrégats des
+ * routes continuent (leur nombre est borné par le code : routeNormalisee, routeGardee ; en production, ~80 lignes par heure au pire, ~9 Mio par
+ * mois). Un évènement et une alerte le disent ; la restriction se lève d'elle-même quand la purge repasse sous le plafond. Avec la rétention, la
+ * base ne dépasse donc le plafond que de ce que ces routes ajoutent, quel que soit le trafic (même fabriqué).
+ */
+export const PLAFOND_METRIQUES_OCTETS = 300 * 1024 ** 2;
+/** Lignes au plus d'un export (les plus récentes ; au-delà, l'export le dit : `tronque`). */
+export const EXPORT_LIGNES_MAX = 100_000;
+/**
+ * Les lectures lourdes (période de 7 jours ou plus, ou fichier de l'autre instance) sont gardées CACHE_LECTURE_MS (par instance et période) : une
+ * page Debug ouverte, ou des appels répétés, ne refont pas le calcul plus d'une fois par minute.
+ */
+export const CACHE_LECTURE_MS = 60_000;
 /** Balise des pages : corps de 2 Kio au plus, valeurs de 0 à 120 000 ms, 600 balises par minute au plus (toutes pages confondues). */
 export const BALISE = Object.freeze({ octets_max: 2048, ms_max: 120_000, par_minute: 600, page_max: 200 });
 /** Les mesures d'une page vue envoyées par le navigateur. */
@@ -121,9 +156,12 @@ export const SEUILS = Object.freeze({
 });
 /**
  * Version du schéma de la base des métriques (PRAGMA user_version) ; 2 : table disque_repartition (créée dans une base plus ancienne à l'ouverture) ;
- * 3 : sa colonne `reserve` (la réserve de root, ajoutée à l'ouverture d'une base plus ancienne ; absente, la réserve reste dans « Système et autres »).
+ * 3 : sa colonne `reserve` (la réserve de root, ajoutée à l'ouverture d'une base plus ancienne ; absente, la réserve reste dans « Système et autres ») ;
+ * 4 : histogrammes des pages vues à leurs propres bornes (BORNES_PAGE_MS : colonnes `<mesure>_c<i>` de page_heure, refaite à l'ouverture d'une base
+ * plus ancienne : migrerPagesVues), taille logique de la base des métriques (systeme_minute.taille_logique, systeme_heure.taille_logique_max :
+ * croissance mesurée sans le WAL) et octets des images de la base vivante (disque_repartition.images_base : lus par l'autre instance).
  */
-export const SCHEMA_METRIQUES = 3;
+export const SCHEMA_METRIQUES = 4;
 
 /**
  * La répartition du disque (GET /api/debug/systeme/, `disque.repartition` ; demande du propriétaire du 2026-10-15 : « la métrique de la place
@@ -293,15 +331,54 @@ export function routeNormalisee(adresse) {
   }
 }
 
+/** Les routes que les pages relèvent sans cesse, en GET : état de maintenance (chaque page, toutes les 30 s), journal (2 s), métriques et système (30 s). */
+const RELEVES_GET = new Set(['/api/maintenance/', '/api/debug/journal/', '/api/debug/metriques/', '/api/debug/metriques/requetes/', '/api/debug/systeme/']);
+
 /**
- * Vrai pour une relève réussie que les pages font sans cesse (journal, métriques et état du système de la page Debug ; état de maintenance de
- * chaque page ; balise des pages vues) : comptée dans les agrégats, mais pas gardée une à une dans la mémoire des requêtes (elle la noierait).
+ * Vrai pour une route × méthode de relève automatique (RELEVES_GET, et la balise des pages vues en POST) : comptée dans sa ligne du tableau des
+ * routes, mais ni dans le « global » ni dans la série de la période (lire : elles feraient l'essentiel des appels et mesureraient surtout la page
+ * Debug elle-même), ni, réussie, dans la mémoire des requêtes (estUnSuivi).
+ */
+export function estUneReleve(methode, route) {
+  if (methode === 'POST') return route === '/api/metriques/page/';
+  return methode === 'GET' && RELEVES_GET.has(route);
+}
+
+/** La même règle que estUneReleve, en SQL (colonnes `methode` et `route` des tables d'agrégats). */
+const SQL_RELEVE = `(methode = 'POST' AND route = '/api/metriques/page/') OR (methode = 'GET' AND route IN (${[...RELEVES_GET].map((r) => `'${r}'`).join(', ')}))`;
+/** Lignes au plus des listes lues (pages vues, origines) : les plus nombreuses, classées et coupées par SQLite. */
+export const LIGNES_LUES_MAX = 500;
+
+/**
+ * Vrai pour une relève réussie que les pages font sans cesse (estUneReleve, statut 2xx ou 304) : comptée dans les agrégats, mais pas gardée une à
+ * une dans la mémoire des requêtes (elle la noierait).
  */
 export function estUnSuivi(methode, route, statut) {
   const reussi = (statut >= 200 && statut < 300) || statut === 304;
-  if (!reussi) return false;
-  if (methode === 'POST') return route === '/api/metriques/page/';
-  return methode === 'GET' && (route === '/api/maintenance/' || ['/api/debug/journal/', '/api/debug/metriques/', '/api/debug/metriques/requetes/', '/api/debug/systeme/'].includes(route));
+  return reussi && estUneReleve(methode, route);
+}
+
+/**
+ * La route gardée pour une requête REFUSÉE avant tout traitement — 403 (en production : /api/v1/, /api/debug/, l'édition, la mise à jour… ; une
+ * page d'un autre site) ou 405 (méthode que la route ne sert pas) : « /api/<premier segment>/{refusee}/ » (« /api/v1/{refusee}/ »…), la méthode
+ * gardée. Sans cela, n'importe qui pourrait créer chaque heure une ligne par gabarit × méthode (331 × 8, même refusées). Les autres statuts gardent
+ * leur gabarit (un 404 d'une fiche absente reste « /api/personnages/{id}/ ») ; ROUTE_INCONNUE reste elle-même.
+ */
+export function routeGardee(route, statut) {
+  if ((statut !== 403 && statut !== 405) || route === ROUTE_INCONNUE) return route;
+  const segment = /^\/api\/([^/]+)\//.exec(String(route))?.[1];
+  return segment ? `/api/${segment}/{refusee}/` : ROUTE_INCONNUE;
+}
+
+/**
+ * L'adresse d'une requête telle que la garde la mémoire des requêtes (site de dev) : son chemin, sans chaîne de requête ; sous /api/personnages/,
+ * jamais l'identifiant d'une fiche — le gabarit de la route si elle est connue (« /api/personnages/{id}/portrait/ »), sinon
+ * « /api/personnages/… » (une adresse inconnue sous les fiches).
+ */
+export function adresseGardee(chemin, route) {
+  const c = cheminSeul(chemin);
+  if (!/^\/api\/personnages\/[^/]/.test(c)) return c;
+  return route.startsWith('/api/personnages/') ? route : '/api/personnages/…';
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -346,6 +423,57 @@ export function cheminDePage(valeur, { couper = false } = {}) {
   return chemin;
 }
 
+/**
+ * Les pages du site construit (`site` : son dossier) : le chemin de chaque page HTML — « <dossier>/index.html » → « /<dossier>/ », « a/b.html » →
+ * « /a/b/ », « /a/b » et « /a/b.html » (la page 404). null sans dossier lisible (le service ne connaît pas le site : toute page est acceptée).
+ * Parcours borné (`fichiersMax`), liens symboliques jamais suivis, sans _serveur/ ni _astro/. Le service sert le site à la racine (NAS, VPS) : la
+ * page qu'envoie la balise (Astro.url.pathname) et celle du Referer sont donc ces chemins mêmes.
+ */
+export function pagesDuSite(site, { fichiersMax = PARCOURS.fichiers_max } = {}) {
+  if (!site) return null;
+  const pages = new Set();
+  const pile = [''];
+  let restants = fichiersMax;
+  let lu = false;
+  while (pile.length && restants > 0) {
+    const rel = pile.pop();
+    let noms;
+    try {
+      noms = readdirSync(rel ? join(site, rel) : site, { withFileTypes: true });
+      lu = true;
+    } catch {
+      continue;
+    }
+    for (const n of noms) {
+      if (restants-- <= 0) break;
+      const relatif = rel ? `${rel}/${n.name}` : n.name;
+      if (n.isDirectory()) {
+        if (!(rel === '' && (n.name === '_serveur' || n.name === '_astro'))) pile.push(relatif);
+        continue;
+      }
+      if (!n.isFile() || !n.name.endsWith('.html')) continue;
+      if (n.name === 'index.html') pages.add(rel ? `/${rel}/` : '/');
+      else {
+        const sans = relatif.slice(0, -'.html'.length);
+        pages.add(`/${sans}/`).add(`/${sans}`).add(`/${relatif}`);
+      }
+    }
+  }
+  return lu ? pages : null;
+}
+
+/**
+ * Une page gardée telle quelle si le site construit l'a (`pages` : pagesDuSite ; la « / » finale ajoutée au besoin), null sinon (elle comptera dans
+ * « {autres} ») ; sans liste des pages (null), le chemin tel quel. Une page fabriquée (balise ou Referer d'un script) ne crée donc jamais de clé.
+ */
+export function pageDuSite(chemin, pages) {
+  if (!chemin) return null;
+  if (!pages) return chemin;
+  if (pages.has(chemin)) return chemin;
+  const avecBarre = chemin.endsWith('/') ? null : `${chemin}/`;
+  return avecBarre && pages.has(avecBarre) ? avecBarre : null;
+}
+
 /** La page d'origine d'une requête : le chemin du Referer s'il vient du même site (même hôte que la requête), sinon null. */
 export function pageDuReferent(referent, hote) {
   if (!referent || !hote) return null;
@@ -362,35 +490,46 @@ export function pageDuReferent(referent, hote) {
 // Histogrammes, quantiles, statistiques
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-/** La classe d'une durée : la première borne qui la contient (classe i = ]borne i-1, borne i]), la dernière au-delà de 5 000 ms. */
-export function classeDe(ms) {
-  for (let i = 0; i < BORNES_MS.length; i++) if (ms <= BORNES_MS[i]) return i;
-  return BORNES_MS.length;
+/** La classe d'une durée : la première borne qui la contient (classe i = ]borne i-1, borne i]), la dernière au-delà de la dernière borne. */
+export function classeDe(ms, bornes = BORNES_MS) {
+  for (let i = 0; i < bornes.length; i++) if (ms <= bornes[i]) return i;
+  return bornes.length;
 }
 
 /**
- * Le quantile `q` (0 à 1) d'un histogramme à bornes BORNES_MS : la classe qui contient le rang q × n, puis une interpolation linéaire dans la
- * classe, bornée par le minimum et le maximum observés (la dernière classe va jusqu'au maximum). null sans valeur.
+ * Le quantile `q` (0 à 1) d'un histogramme : { valeur, au_dela } — la classe qui contient le rang q × n, puis une interpolation linéaire dans la
+ * classe, bornée par le minimum et le maximum observés. La dernière classe (au-delà de la dernière borne : ]5 000 ms, +∞[ pour les requêtes) n'a pas
+ * de borne haute : on n'y interpole JAMAIS jusqu'au maximum (une seule valeur extrême ferait la médiane, le p95 et le p99) ; la valeur est alors la
+ * borne basse de la classe (ou le minimum observé, s'il est plus haut) et `au_dela` vaut vrai : le quantile est « > valeur » (la page Debug l'écrit
+ * ainsi), sauf si toutes les valeurs de la classe sont égales (min = max : la valeur exacte). { valeur: null } sans valeur.
  */
-export function quantile(histogramme, q, min, max) {
+export function quantileDetaille(histogramme, q, min, max, bornes = BORNES_MS) {
   const n = histogramme.reduce((s, c) => s + c, 0);
-  if (!n) return null;
-  if (q <= 0) return min;
-  if (q >= 1) return max;
+  if (!n) return { valeur: null, au_dela: false };
+  const derniere = bornes.length;
+  // q = 0 : le minimum ; q = 1 : le maximum observé (s'il est dans la dernière classe, il est exact : c'est une valeur vue)
+  if (q <= 0) return { valeur: min, au_dela: false };
+  if (q >= 1) return { valeur: max, au_dela: false };
   const rang = q * n;
   let avant = 0;
   for (let i = 0; i < histogramme.length; i++) {
     const c = histogramme[i];
     if (!c) continue;
     if (avant + c >= rang) {
-      const bas = Math.max(i === 0 ? 0 : BORNES_MS[i - 1], min);
-      const haut = Math.min(i < BORNES_MS.length ? BORNES_MS[i] : max, max);
-      if (haut <= bas) return Math.min(Math.max(bas, min), max);
-      return bas + ((rang - avant) / c) * (haut - bas);
+      const bas = Math.max(i === 0 ? 0 : bornes[i - 1], min);
+      if (i >= derniere) return { valeur: Math.min(bas, max), au_dela: max > bas };
+      const haut = Math.min(bornes[i], max);
+      if (haut <= bas) return { valeur: Math.min(Math.max(bas, min), max), au_dela: false };
+      return { valeur: bas + ((rang - avant) / c) * (haut - bas), au_dela: false };
     }
     avant += c;
   }
-  return max;
+  return { valeur: max, au_dela: false };
+}
+
+/** La valeur seule de quantileDetaille (une borne basse quand le rang tombe dans la dernière classe). */
+export function quantile(histogramme, q, min, max, bornes = BORNES_MS) {
+  return quantileDetaille(histogramme, q, min, max, bornes).valeur;
 }
 
 const H = Array.from({ length: CLASSES }, (_, i) => `h${i}`);
@@ -442,7 +581,9 @@ function fusionnerAgregats(a, b) {
 /**
  * Les statistiques d'un agrégat (STATS du contrat) : { n, erreurs_4xx, erreurs_5xx, part_304, moyenne_ms, mediane_ms, p95_ms, p99_ms, min_ms,
  * max_ms, ecart_type_ms, total_ms, octets_entree, octets_sortie, sql_requetes_moyen, sql_ms_moyen, phases: { corps_ms, traitement_ms, envoi_ms }
- * (moyennes), sql_plus_lente: { sql, ms } | null } ; quantiles tirés de l'histogramme, valeurs arrondies au centième.
+ * (moyennes), sql_plus_lente: { sql, ms } | null, au_dela: [] } ; quantiles tirés de l'histogramme, valeurs arrondies au centième ; `au_dela` : les
+ * quantiles (« mediane_ms », « p95_ms », « p99_ms ») qui tombent au-delà de la dernière borne (5 000 ms) et ne sont qu'une borne basse (« > 5 000 ms » :
+ * quantileDetaille).
  */
 export function statistiques(a) {
   const n = a.n;
@@ -450,19 +591,21 @@ export function statistiques(a) {
     return {
       n: 0, erreurs_4xx: 0, erreurs_5xx: 0, part_304: 0, moyenne_ms: null, mediane_ms: null, p95_ms: null, p99_ms: null, min_ms: null, max_ms: null,
       ecart_type_ms: null, total_ms: 0, octets_entree: 0, octets_sortie: 0, sql_requetes_moyen: 0, sql_ms_moyen: 0,
-      phases: { corps_ms: null, traitement_ms: null, envoi_ms: null }, sql_plus_lente: null,
+      phases: { corps_ms: null, traitement_ms: null, envoi_ms: null }, sql_plus_lente: null, au_dela: [],
     };
   }
   const moyenne = a.somme_ms / n;
+  const quantiles = { mediane_ms: 0.5, p95_ms: 0.95, p99_ms: 0.99 };
+  const q = Object.fromEntries(Object.entries(quantiles).map(([cle, x]) => [cle, quantileDetaille(a.h, x, a.min_ms, a.max_ms)]));
   return {
     n,
     erreurs_4xx: a.erreurs_4xx,
     erreurs_5xx: a.erreurs_5xx,
     part_304: Math.round((a.n_304 / n) * 10_000) / 10_000,
     moyenne_ms: arrondi(moyenne),
-    mediane_ms: arrondi(quantile(a.h, 0.5, a.min_ms, a.max_ms)),
-    p95_ms: arrondi(quantile(a.h, 0.95, a.min_ms, a.max_ms)),
-    p99_ms: arrondi(quantile(a.h, 0.99, a.min_ms, a.max_ms)),
+    mediane_ms: arrondi(q.mediane_ms.valeur),
+    p95_ms: arrondi(q.p95_ms.valeur),
+    p99_ms: arrondi(q.p99_ms.valeur),
     min_ms: arrondi(a.min_ms),
     max_ms: arrondi(a.max_ms),
     ecart_type_ms: arrondi(Math.sqrt(Math.max(0, a.somme2_ms / n - moyenne * moyenne))),
@@ -473,6 +616,7 @@ export function statistiques(a) {
     sql_ms_moyen: arrondi(a.sql_ms / n),
     phases: { corps_ms: arrondi(a.corps_ms / n), traitement_ms: arrondi(a.traitement_ms / n), envoi_ms: arrondi(a.envoi_ms / n) },
     sql_plus_lente: a.sql_max === null || a.sql_max === undefined ? null : { sql: a.sql_max, ms: arrondi(a.sql_max_ms) },
+    au_dela: Object.keys(quantiles).filter((cle) => q[cle].au_dela),
   };
 }
 
@@ -492,15 +636,15 @@ function valeurDeTri(s, tri) {
   }
 }
 
-/** Une mesure de page vide (même forme pour les quatre mesures de MESURES_PAGE). */
-const nouvelleMesure = () => ({ n: 0, somme: 0, somme2: 0, min: Infinity, max: -Infinity, h: new Array(CLASSES).fill(0) });
+/** Une mesure de page vide (même forme pour les quatre mesures de MESURES_PAGE ; histogramme à BORNES_PAGE_MS). */
+const nouvelleMesure = () => ({ n: 0, somme: 0, somme2: 0, min: Infinity, max: -Infinity, h: new Array(CLASSES_PAGE).fill(0) });
 function ajouterMesure(m, v) {
   m.n += 1;
   m.somme += v;
   m.somme2 += v * v;
   if (v < m.min) m.min = v;
   if (v > m.max) m.max = v;
-  m.h[classeDe(v)] += 1;
+  m.h[classeDe(v, BORNES_PAGE_MS)] += 1;
 }
 function fusionnerMesures(a, b) {
   a.n += b.n;
@@ -508,7 +652,7 @@ function fusionnerMesures(a, b) {
   a.somme2 += b.somme2;
   if (b.min < a.min) a.min = b.min;
   if (b.max > a.max) a.max = b.max;
-  for (let i = 0; i < CLASSES; i++) a.h[i] += b.h[i] ?? 0;
+  for (let i = 0; i < CLASSES_PAGE; i++) a.h[i] += b.h[i] ?? 0;
 }
 const nouvellePage = () => ({ n: 0, ...Object.fromEntries(MESURES_PAGE.map((m) => [m, nouvelleMesure()])) });
 
@@ -523,12 +667,16 @@ const tableAgregat = (nom) => `CREATE TABLE IF NOT EXISTS ${nom} (
   ${COLONNES_SOMMES.map((c) => `${c} ${TYPE_AGREGAT(c)} NOT NULL DEFAULT 0`).join(', ')},
   min_ms REAL NOT NULL, max_ms REAL NOT NULL, sql_max_ms REAL, sql_max_id INTEGER,
   PRIMARY KEY (debut, route, methode)) STRICT, WITHOUT ROWID;`;
-const COLONNES_PAGE = MESURES_PAGE.flatMap((m) => [`${m}_n`, `${m}_somme`, `${m}_somme2`, `${m}_min`, `${m}_max`, ...H.map((h) => `${m}_${h}`)]);
+/** Les classes de l'histogramme d'une page vue (BORNES_PAGE_MS) : colonnes `<mesure>_c0` à `<mesure>_c21` (schéma 4 ; avant : `_h0` à `_h12`, aux bornes des requêtes). */
+const HP = Array.from({ length: CLASSES_PAGE }, (_, i) => `c${i}`);
+const COLONNES_PAGE = MESURES_PAGE.flatMap((m) => [`${m}_n`, `${m}_somme`, `${m}_somme2`, `${m}_min`, `${m}_max`, ...HP.map((h) => `${m}_${h}`)]);
 const TYPE_PAGE = (c) => (/_(somme2?|min|max)$/.test(c) ? 'REAL' : 'INTEGER');
 const COLONNES_MINUTE = [
   'rss', 'tas_utilise', 'tas_total', 'externe', 'boucle_p50_ms', 'boucle_p99_ms', 'boucle_max_ms', 'cpu_utilisateur_pct', 'cpu_systeme_pct',
   'charge_1', 'charge_5', 'charge_15', 'duree_s', 'en_cours', 'simultanees_max', 'requetes', 'erreurs_5xx', 'journal_entrees', 'disque_libre',
   'disque_total', 'taille_vivante', 'taille_archives', 'taille_mise_a_jour', 'taille_metriques',
+  // schéma 4 : la taille logique de la base des métriques ((page_count − freelist_count) × page_size), sans le WAL : sa croissance mesurée
+  'taille_logique',
 ];
 const REEL_MINUTE = new Set(['boucle_p50_ms', 'boucle_p99_ms', 'boucle_max_ms', 'cpu_utilisateur_pct', 'cpu_systeme_pct', 'charge_1', 'charge_5', 'charge_15']);
 const COLONNES_BRUTES = [
@@ -553,9 +701,9 @@ CREATE TABLE IF NOT EXISTS systeme_heure (debut INTEGER PRIMARY KEY, echantillon
   tas_utilise_moyen REAL, tas_utilise_max INTEGER, boucle_p99_moyen_ms REAL, boucle_p99_max_ms REAL, boucle_max_ms REAL, cpu_moyen_pct REAL,
   cpu_max_pct REAL, charge_1_moyenne REAL, en_cours_max INTEGER, simultanees_max INTEGER, requetes INTEGER, erreurs_5xx INTEGER,
   disque_libre_min INTEGER, disque_total INTEGER, taille_vivante_max INTEGER, taille_archives_max INTEGER, taille_mise_a_jour_max INTEGER,
-  taille_metriques_max INTEGER) STRICT;
+  taille_metriques_max INTEGER, taille_logique_max INTEGER) STRICT;
 CREATE TABLE IF NOT EXISTS disque_repartition (instant INTEGER PRIMARY KEY, total INTEGER NOT NULL, libre INTEGER NOT NULL, comptes TEXT NOT NULL,
-  partiel INTEGER NOT NULL DEFAULT 0, reserve INTEGER) STRICT;
+  partiel INTEGER NOT NULL DEFAULT 0, reserve INTEGER, images_base INTEGER) STRICT;
 CREATE TABLE IF NOT EXISTS evenement (id INTEGER PRIMARY KEY, instant_ms INTEGER NOT NULL, type TEXT NOT NULL, duree_ms REAL, detail TEXT) STRICT;
 CREATE INDEX IF NOT EXISTS evenement_instant ON evenement (instant_ms);
 CREATE TABLE IF NOT EXISTS requete_brute (id INTEGER PRIMARY KEY, instant_ms INTEGER NOT NULL, methode TEXT NOT NULL, route TEXT NOT NULL,
@@ -589,13 +737,29 @@ function upsertAgregat(table) {
     sql_max_ms = CASE WHEN ${plusLente} THEN excluded.sql_max_ms ELSE sql_max_ms END`;
 }
 
+/**
+ * L'écriture d'un échantillon par minute (systeme_minute, clé : la seconde) : un second échantillon de la même seconde (arrêt du service juste après
+ * la minute) s'ajoute au premier — requêtes, erreurs 5xx et entrées du journal additionnées, simultanées au plus haut — et prend sa place pour le
+ * reste (l'état le plus récent) : ni requête ni erreur perdue (résumé par heure, alerte des 5xx de la dernière heure).
+ */
+function instructionMinute() {
+  const additionnees = new Set(['requetes', 'erreurs_5xx', 'journal_entrees']);
+  const maj = COLONNES_MINUTE.map((c) => {
+    if (additionnees.has(c)) return `${c} = coalesce(${c}, 0) + coalesce(excluded.${c}, 0)`;
+    if (c === 'simultanees_max') return `${c} = max(coalesce(${c}, 0), coalesce(excluded.${c}, 0))`;
+    return `${c} = excluded.${c}`;
+  });
+  return `INSERT INTO systeme_minute (instant, ${COLONNES_MINUTE.join(', ')}) VALUES (?, ${COLONNES_MINUTE.map(() => '?').join(', ')})
+    ON CONFLICT (instant) DO UPDATE SET ${maj.join(', ')}`;
+}
+
 function upsertPage() {
   const colonnes = ['debut', 'page', 'n', ...COLONNES_PAGE];
   const maj = ['n = n + excluded.n'];
   for (const m of MESURES_PAGE) {
     maj.push(`${m}_n = coalesce(${m}_n, 0) + coalesce(excluded.${m}_n, 0)`, `${m}_somme = coalesce(${m}_somme, 0) + coalesce(excluded.${m}_somme, 0)`,
       `${m}_somme2 = coalesce(${m}_somme2, 0) + coalesce(excluded.${m}_somme2, 0)`, `${m}_min = min(coalesce(${m}_min, excluded.${m}_min), coalesce(excluded.${m}_min, ${m}_min))`,
-      `${m}_max = max(coalesce(${m}_max, excluded.${m}_max), coalesce(excluded.${m}_max, ${m}_max))`, ...H.map((h) => `${m}_${h} = coalesce(${m}_${h}, 0) + coalesce(excluded.${m}_${h}, 0)`));
+      `${m}_max = max(coalesce(${m}_max, excluded.${m}_max), coalesce(excluded.${m}_max, ${m}_max))`, ...HP.map((h) => `${m}_${h} = coalesce(${m}_${h}, 0) + coalesce(excluded.${m}_${h}, 0)`));
   }
   return `INSERT INTO page_heure (${colonnes.join(', ')}) VALUES (${colonnes.map(() => '?').join(', ')}) ON CONFLICT (debut, page) DO UPDATE SET ${maj.join(', ')}`;
 }
@@ -621,12 +785,66 @@ function mesureDeLigne(l, m) {
   r.somme2 = Number(l[`${m}_somme2`] ?? 0);
   r.min = l[`${m}_min`] ?? Infinity;
   r.max = l[`${m}_max`] ?? -Infinity;
-  r.h = H.map((h) => Number(l[`${m}_${h}`] ?? 0));
+  r.h = HP.map((h) => Number(l[`${m}_${h}`] ?? 0));
   return r;
 }
 
 const SOMMES_PAGE = ['sum(n) AS n', ...MESURES_PAGE.flatMap((m) => [`sum(${m}_n) AS ${m}_n`, `sum(${m}_somme) AS ${m}_somme`, `sum(${m}_somme2) AS ${m}_somme2`,
-  `min(${m}_min) AS ${m}_min`, `max(${m}_max) AS ${m}_max`, ...H.map((h) => `sum(${m}_${h}) AS ${m}_${h}`)])].join(', ');
+  `min(${m}_min) AS ${m}_min`, `max(${m}_max) AS ${m}_max`, ...HP.map((h) => `sum(${m}_${h}) AS ${m}_${h}`)])].join(', ');
+/** La même lecture sur une table page_heure d'avant le schéma 4 (fichier de l'autre instance, en lecture seule) : sans les histogrammes. */
+const SOMMES_PAGE_SANS_HISTOGRAMME = ['sum(n) AS n', ...MESURES_PAGE.flatMap((m) => [`sum(${m}_n) AS ${m}_n`, `sum(${m}_somme) AS ${m}_somme`,
+  `sum(${m}_somme2) AS ${m}_somme2`, `min(${m}_min) AS ${m}_min`, `max(${m}_max) AS ${m}_max`])].join(', ');
+
+/** L'expression SQL de la classe d'une valeur (`expression`) parmi `bornes` (0 à bornes.length). */
+const classeSql = (expression, bornes) => `CASE ${bornes.map((b, i) => `WHEN ${expression} <= ${b} THEN ${i}`).join(' ')} ELSE ${bornes.length} END`;
+
+/**
+ * Migration du schéma 4 (une base plus ancienne, à l'ouverture) : page_heure est refaite avec les histogrammes à BORNES_PAGE_MS. Chaque ligne garde
+ * son nombre de vues, ses sommes, son minimum et son maximum (les moyennes restent exactes) ; une classe ancienne (bornes des requêtes) contenue
+ * dans une nouvelle y est reportée telle quelle ; une classe ancienne plus large que les nouvelles (]200, 500], ]500, 1 000], ]1 000, 2 000],
+ * ]2 000, 5 000], ]5 000, +∞[) l'est dans la nouvelle classe qui contient la plus petite de sa borne haute et du maximum observé de la ligne :
+ * une estimation par excès, jamais au-delà de ce qui a été mesuré. Dans une transaction ; rien si la table est déjà au schéma 4.
+ */
+function migrerPagesVues(d) {
+  const colonnes = new Set(d.prepare('PRAGMA table_info(page_heure)').all().map((c) => c.name));
+  if (colonnes.has(`${MESURES_PAGE[0]}_c0`) || !colonnes.has(`${MESURES_PAGE[0]}_h0`)) return false;
+  const anciennes = BORNES_MS.length + 1;
+  const expressions = MESURES_PAGE.flatMap((m) => {
+    const parClasse = HP.map(() => []);
+    for (let i = 0; i < anciennes; i++) {
+      const bas = i === 0 ? 0 : BORNES_MS[i - 1];
+      const haut = i < BORNES_MS.length ? BORNES_MS[i] : Infinity;
+      // k : la nouvelle classe des valeurs juste au-dessus de la borne basse ; j : celle de la borne haute (la dernière pour ]5 000, +∞[)
+      const k = classeDe(bas + 1e-9, BORNES_PAGE_MS);
+      const j = haut === Infinity ? CLASSES_PAGE - 1 : classeDe(haut, BORNES_PAGE_MS);
+      const ancienne = `coalesce(${m}_h${i}, 0)`;
+      if (j === k) parClasse[j].push(ancienne);
+      else {
+        const cible = haut === Infinity ? `coalesce(${m}_max, ${bas + 1})` : `min(${haut}, coalesce(${m}_max, ${haut}))`;
+        const classe = classeSql(`max(${bas + 1e-6}, ${cible})`, BORNES_PAGE_MS);
+        for (let x = k; x <= j; x++) parClasse[x].push(`CASE WHEN ${classe} = ${x} THEN ${ancienne} ELSE 0 END`);
+      }
+    }
+    return [`${m}_n`, `${m}_somme`, `${m}_somme2`, `${m}_min`, `${m}_max`, ...parClasse.map((termes) => (termes.length ? termes.join(' + ') : '0'))];
+  });
+  d.exec('BEGIN IMMEDIATE');
+  try {
+    d.exec(`CREATE TABLE page_heure_schema_4 (debut INTEGER NOT NULL, page TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0,
+      ${COLONNES_PAGE.map((c) => `${c} ${TYPE_PAGE(c)}`).join(', ')}, PRIMARY KEY (debut, page)) STRICT, WITHOUT ROWID`);
+    d.exec(`INSERT INTO page_heure_schema_4 (debut, page, n, ${COLONNES_PAGE.join(', ')}) SELECT debut, page, n, ${expressions.join(', ')} FROM page_heure`);
+    d.exec('DROP TABLE page_heure');
+    d.exec('ALTER TABLE page_heure_schema_4 RENAME TO page_heure');
+    d.exec('COMMIT');
+  } catch (e) {
+    try {
+      d.exec('ROLLBACK');
+    } catch {
+      // déjà annulée
+    }
+    throw e;
+  }
+  return true;
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Système : disque, tailles, mémoire
@@ -748,7 +966,8 @@ function parcourir(racine, compter, borne, compterDossier = () => {}) {
  * qu'elle contient (`imagesDeLaBase`, octets : octetsDesImages), images (celles-ci + les portraits publiés du site), lots de mise à jour, dossier des
  * métriques, fichiers du site (categorieDuFichierDuSite). Un dossier déjà compté n'est pas recompté sous un autre (ni db/ s'il était dans le site).
  * Octets alloués sur le disque (octetsSurDisque), les blocs des dossiers eux-mêmes compris (avec leur contenu ; ceux du site avec ses autres
- * fichiers), comme `du` et deploy/vps/volume.sh. Rend { comptes: { cle: octets }, partiel, fichiers (nombre mesuré), duree_ms }. Jamais d'exception.
+ * fichiers), comme `du` et deploy/vps/volume.sh. Rend { comptes: { cle: octets }, partiel, fichiers (nombre mesuré), duree_ms,
+ * images_base (les images de la base vivante comptées, sans les portraits publiés du site) }. Jamais d'exception.
  * @param {{ vivante?: string|null, archives?: string|null, miseAJour?: string|null, metriques?: string|null, site?: string|null,
  *   imagesDeLaBase?: number, bornes?: typeof PARCOURS }} o
  */
@@ -775,7 +994,7 @@ export function releverRepartition({ vivante = null, archives = null, miseAJour 
   if (metriques) parcourir(metriques, dans('metriques'), borne, (o) => dans('metriques')(null, o));
   // les dossiers du site (leurs blocs) : avec ses autres fichiers, comme l'hôte (« réglages, scripts et dossiers de l'instance »)
   if (site && !exclus.has(resolve(site))) parcourir(site, (rel, o) => { comptes[categorieDuFichierDuSite(rel)] += o; }, borne, (o) => dans('site-autres')(null, o));
-  return { comptes, partiel: borne.partiel, fichiers: bornes.fichiers_max - borne.fichiers, duree_ms: arrondi(performance.now() - t0) };
+  return { comptes, partiel: borne.partiel, fichiers: bornes.fichiers_max - borne.fichiers, duree_ms: arrondi(performance.now() - t0), images_base: images };
 }
 
 /**
@@ -830,8 +1049,11 @@ export function repartitionDu({ total, libre, reserve = 0, comptes = {} }) {
  * service : ceux d'une autre instance ou d'aucune (Docker, journaux du système, sauvegardes…), et ceux de cette instance que le service ne voit pas
  * (autres fichiers de db/, réglages et scripts du dossier de l'instance, ses journaux, restes d'installation : DEJA_MESURES_PAR_LE_SERVICE) ;
  * jamais `metriques` (le service compte déjà tout le dossier partagé) ni `hors_disque` ; une clé inconnue est laissée à « Système et autres ».
+ * La base vivante d'une AUTRE instance (élément « base » de son db/vivante.db) contient ses portraits : `imagesDesInstances(nom)` (les octets des
+ * images de sa base, qu'elle note avec sa répartition dans <nom>.db ; null si inconnus) les en retire pour les ranger dans « images », comme chez
+ * elle — les deux jauges du même disque s'accordent sur ce que le propriétaire appelle « Import images ».
  */
-export function lireReleveDeLHote(chemin, { instance, maintenant = Date.now(), total = null } = {}) {
+export function lireReleveDeLHote(chemin, { instance, maintenant = Date.now(), total = null, imagesDesInstances = null } = {}) {
   let texte;
   try {
     texte = readFileSync(chemin, 'utf8');
@@ -860,6 +1082,17 @@ export function lireReleveDeLHote(chemin, { instance, maintenant = Date.now(), t
     const octets = Math.max(0, Math.round(Number(e.octets) || 0));
     if (!octets) continue;
     if (e.instance === instance && DEJA_MESURES_PAR_LE_SERVICE.test(String(e.chemin ?? ''))) continue;
+    if (e.cle === 'base' && e.instance && e.instance !== instance && /\/db\/vivante\.db$/.test(String(e.chemin ?? '')) && imagesDesInstances) {
+      let images = 0;
+      try {
+        images = Math.max(0, Math.min(octets, Math.round(Number(imagesDesInstances(String(e.instance))) || 0)));
+      } catch {
+        images = 0; // le fichier des métriques de l'autre instance est illisible : sa base reste entière dans « base »
+      }
+      comptes.base = (comptes.base ?? 0) + octets - images;
+      comptes.images = (comptes.images ?? 0) + images;
+      continue;
+    }
     comptes[e.cle] = (comptes[e.cle] ?? 0) + octets;
   }
   return { instant, utilise: true, raison: null, comptes };
@@ -971,10 +1204,13 @@ function lignesParJour(db, t, maintenantS, age) {
  * Les alertes de l'état du système (GET /api/debug/systeme/) : [{ niveau: info | avertissement | erreur, message }], d'après SEUILS — disque libre
  * (moins de 10 % ou de 2 Gio ; grave sous 5 % ou 1 Gio), base des métriques de plus de 200 Mio (ou qui les atteindra à rétention pleine), archives
  * qui grossissent, boucle d'événements lente (p99), mémoire au-delà de 80 % de la limite connue, réponses 5xx de la dernière heure, panne de la
- * base des métriques, requêtes brutes gardées ; répartition du disque (`repartition` = { depasse, partiel, hote }) : fichiers comptés au-delà de la
- * place prise (ramenés à elle dans la jauge), parcours arrêté à sa borne, relevé de l'hôte présent mais écarté (périmé, illisible, autre disque).
+ * base des métriques, requêtes brutes gardées, collecte restreinte (`restriction` = { raison, depuis } : PLAFOND_METRIQUES_OCTETS ou disque bas) ;
+ * répartition du disque (`repartition` = { depasse, partiel, hote }) : fichiers comptés au-delà de la place prise (ramenés à elle dans la jauge),
+ * parcours arrêté à sa borne, relevé de l'hôte présent mais écarté (périmé, illisible, autre disque).
  */
-export function alertesDu({ disque = null, processus = null, volume = {}, erreursRecentes = 0, panne = null, brutes = false, croissanceArchives = null, repartition = null } = {}) {
+export function alertesDu({
+  disque = null, processus = null, volume = {}, erreursRecentes = 0, panne = null, brutes = false, croissanceArchives = null, repartition = null, restriction = null,
+} = {}) {
   const liste = [];
   const gio = (o) => `${(o / 1024 ** 3).toFixed(1)} Gio`;
   const mio = (o) => `${(o / 1024 ** 2).toFixed(1)} Mio`;
@@ -998,6 +1234,12 @@ export function alertesDu({ disque = null, processus = null, volume = {}, erreur
     });
   }
   if (panne) liste.push({ niveau: 'erreur', message: `La base des métriques est en panne (${panne}) : la collecte continue en mémoire.` });
+  if (restriction) {
+    liste.push({
+      niveau: 'avertissement',
+      message: `Métriques restreintes depuis ${isoMs(restriction.depuis)} (${restriction.raison}) : plus aucune nouvelle page ni page d’origine (tout va dans « {autres} »), plus de requêtes brutes ; les routes continuent.`,
+    });
+  }
   if (disque?.total) {
     const part = `${Math.round(disque.part_libre * 100)} %`;
     if (disque.part_libre < SEUILS.disque_part_libre_grave || disque.libre < SEUILS.disque_libre_octets_grave) {
@@ -1052,10 +1294,13 @@ export function instanceDuService({ edition, instance = null }) {
  * @param {() => number|null} [o.imagesDeLaBase] les octets des images de la base vivante (octetsDesImages ; appelé au plus toutes les 10 minutes)
  * @param {() => number} [o.compteurJournal] le numéro de la dernière entrée du journal (entrées par minute)
  * @param {typeof PARCOURS} [o.parcours] bornes du parcours des fichiers de la répartition (tests)
+ * @param {number} [o.plafond] plafond de la base des métriques (PLAFOND_METRIQUES_OCTETS) : au-delà, la collecte est restreinte (tests : plus petit)
+ * @param {number} [o.disqueMinimum] place libre sous laquelle la collecte est restreinte (SEUILS.disque_libre_octets ; tests : 0)
  */
 export function creerMetriques({
   dossier, instance, horloge = () => Date.now(), brutes = false, pages = true, memoireRequetes = 0, intervalle = INTERVALLE_VERSEMENT,
   journal = () => {}, identite = {}, fichiers = {}, compteurJournal = null, imagesDeLaBase = null, parcours = PARCOURS,
+  plafond = PLAFOND_METRIQUES_OCTETS, disqueMinimum = SEUILS.disque_libre_octets,
 }) {
   const nom = instanceDuService({ edition: false, instance });
   if (nom !== String(instance ?? '').trim().toLowerCase()) throw new ErreurMetriques(500, `Nom d’instance des métriques invalide : « ${instance} ».`);
@@ -1086,9 +1331,14 @@ export function creerMetriques({
   let dernierEchantillon = null;
   const derniersErreurs = new Map(); // clé d'un évènement d'erreur → { instant, omis }
   const balises = { minute: -1, n: 0 };
-  const pagesDeLHeure = { heure: -1, pages: new Set(), origines: new Set() };
+  // les clés créées dans l'heure : pages vues (balise), pages d'origine (Referer) et couples (page d'origine, route) — bornées (PAGES_PAR_HEURE…)
+  const clesDeLHeure = { heure: -1, pages: new Set(), origines: new Set(), couples: new Set() };
   const cacheNavigateurs = new Map();
   const volumes = new Map(); // instance → { instant, valeur } : volume() calculé au plus toutes les 10 minutes
+  const lectures = new Map(); // lectures lourdes gardées CACHE_LECTURE_MS (lire)
+  let versements = 0; // versements qui ont écrit quelque chose : une lecture gardée de cette instance n'est valable que s'il n'y en a pas eu depuis
+  let restriction = null; // { raison, depuis (ms) } : collecte restreinte (PLAFOND_METRIQUES_OCTETS, disque bas)
+  let pagesConnues = { instant: -Infinity, pages: null }; // les pages du site construit (pagesDuSite), relues toutes les 10 minutes
   let minuterie = null;
   let arrete = false;
 
@@ -1129,8 +1379,16 @@ export function creerMetriques({
         // le WAL (jusqu'à ~4 Mio entre deux points de contrôle automatiques) est ramené à 1 Mio au plus après chacun : la place qu'il garde reste petite
         d.exec('PRAGMA journal_size_limit = 1048576');
         d.exec(SCHEMA_SQL);
-        // une base de la version 2 : la colonne de la réserve de root
-        if (!d.prepare('PRAGMA table_info(disque_repartition)').all().some((c) => c.name === 'reserve')) d.exec('ALTER TABLE disque_repartition ADD COLUMN reserve INTEGER');
+        // une base plus ancienne : les colonnes ajoutées depuis (version 3 : la réserve de root ; version 4 : taille logique, images de la base
+        // vivante) et les histogrammes des pages vues à leurs propres bornes (migrerPagesVues)
+        const ajouterColonne = (table, colonne) => {
+          if (!d.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === colonne)) d.exec(`ALTER TABLE ${table} ADD COLUMN ${colonne} INTEGER`);
+        };
+        ajouterColonne('disque_repartition', 'reserve');
+        ajouterColonne('disque_repartition', 'images_base');
+        ajouterColonne('systeme_minute', 'taille_logique');
+        ajouterColonne('systeme_heure', 'taille_logique_max');
+        migrerPagesVues(d);
         d.exec(`PRAGMA user_version = ${SCHEMA_METRIQUES}`);
         const maintenant = String(horloge());
         d.prepare("INSERT OR IGNORE INTO meta (cle, valeur) VALUES ('instance', ?), ('cree_le_ms', ?), ('derniere_purge_ms', ?)").run(nom, maintenant, maintenant);
@@ -1142,8 +1400,9 @@ export function creerMetriques({
           navigateur: d.prepare(`INSERT INTO navigateur_heure (debut, famille, appareil, requetes, pages) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (debut, famille, appareil) DO UPDATE SET requetes = requetes + excluded.requetes, pages = pages + excluded.pages`),
           origine: d.prepare('INSERT INTO origine_heure (debut, page, route, n) VALUES (?, ?, ?, ?) ON CONFLICT (debut, page, route) DO UPDATE SET n = n + excluded.n'),
-          minute: d.prepare(`INSERT OR REPLACE INTO systeme_minute (instant, ${COLONNES_MINUTE.join(', ')}) VALUES (?, ${COLONNES_MINUTE.map(() => '?').join(', ')})`),
-          repartition: d.prepare('INSERT OR REPLACE INTO disque_repartition (instant, total, libre, comptes, partiel, reserve) VALUES (?, ?, ?, ?, ?, ?)'),
+          // deux échantillons de la même seconde (l'arrêt juste après la minute) : fusionnés, jamais l'un à la place de l'autre (instructionMinute)
+          minute: d.prepare(instructionMinute()),
+          repartition: d.prepare('INSERT OR REPLACE INTO disque_repartition (instant, total, libre, comptes, partiel, reserve, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)'),
           evenement: d.prepare('INSERT INTO evenement (instant_ms, type, duree_ms, detail) VALUES (?, ?, ?, ?)'),
           brute: d.prepare(`INSERT INTO requete_brute (${COLONNES_BRUTES.join(', ')}) VALUES (${COLONNES_BRUTES.map(() => '?').join(', ')})`),
           sqlId: d.prepare('SELECT id FROM sql_texte WHERE texte = ?'),
@@ -1191,18 +1450,49 @@ export function creerMetriques({
     liste.push(valeur);
   }
 
-  /** La page gardée pour cette heure : au-delà de PAGES_PAR_HEURE pages distinctes, « {autres} ». */
-  function pageBornee(page, heure, quoi = 'pages') {
-    if (pagesDeLHeure.heure !== heure) {
-      pagesDeLHeure.heure = heure;
-      pagesDeLHeure.pages.clear();
-      pagesDeLHeure.origines.clear();
+  /** Les pages du site construit (pagesDuSite), relues au plus toutes les 10 minutes ; null si le service ne connaît pas le site. */
+  function pagesDuSiteConnues() {
+    const maintenant = horloge();
+    if (!fichiers.site) return null;
+    if (maintenant - pagesConnues.instant >= parcours.intervalle_ms || maintenant < pagesConnues.instant) {
+      pagesConnues = { instant: maintenant, pages: pagesDuSite(fichiers.site, { fichiersMax: parcours.fichiers_max }) };
     }
-    const ensemble = pagesDeLHeure[quoi];
-    if (ensemble.has(page)) return page;
-    if (ensemble.size >= PAGES_PAR_HEURE) return '{autres}';
-    ensemble.add(page);
-    return page;
+    return pagesConnues.pages;
+  }
+
+  function clesDe(heure) {
+    if (clesDeLHeure.heure !== heure) {
+      clesDeLHeure.heure = heure;
+      clesDeLHeure.pages.clear();
+      clesDeLHeure.origines.clear();
+      clesDeLHeure.couples.clear();
+    }
+    return clesDeLHeure;
+  }
+
+  /**
+   * La page gardée pour cette heure (`quoi` : « pages », la balise ; « origines », le Referer) : « {autres} » si le site construit ne l'a pas
+   * (pageDuSite), au-delà de PAGES_PAR_HEURE pages distinctes, ou pendant la restriction (sauf une page déjà vue dans l'heure).
+   */
+  function pageBornee(page, heure, quoi = 'pages') {
+    const connue = pageDuSite(page, pagesDuSiteConnues());
+    if (!connue) return PAGE_AUTRES;
+    const ensemble = clesDe(heure)[quoi];
+    if (ensemble.has(connue)) return connue;
+    if (restriction || ensemble.size >= PAGES_PAR_HEURE) return PAGE_AUTRES;
+    ensemble.add(connue);
+    return connue;
+  }
+
+  /** La page d'origine gardée pour une route, cette heure : au-delà de ORIGINES_PAR_HEURE couples (page, route), « {autres} ». */
+  function origineBornee(page, route, heure) {
+    const gardee = pageBornee(page, heure, 'origines');
+    const couples = clesDe(heure).couples;
+    const k = `${gardee}\u0000${route}`;
+    if (couples.has(k)) return gardee;
+    if (couples.size >= ORIGINES_PAR_HEURE) return PAGE_AUTRES;
+    couples.add(k);
+    return gardee;
   }
 
   const cacheOrigines = new Map();
@@ -1264,32 +1554,34 @@ export function creerMetriques({
     const sec = Math.floor(instantMs / 1000);
     const heure = tranche(sec, 3600);
     const cinq = tranche(sec, 300);
-    ajouterRequete(cle(attente.heure, `${heure}\u0000${m.route}\u0000${m.methode}`, () => ({ debut: heure, route: m.route, methode: m.methode, a: nouvelAgregat() }), MAX_EN_ATTENTE.agregats).a, r);
-    ajouterRequete(cle(attente.cinq, `${cinq}\u0000${m.route}\u0000${m.methode}`, () => ({ debut: cinq, route: m.route, methode: m.methode, a: nouvelAgregat() }), MAX_EN_ATTENTE.agregats).a, r);
+    // une requête refusée avant tout traitement (403, 405) : sous « /api/<premier segment>/{refusee}/ » (cardinalité bornée : routeGardee)
+    const route = routeGardee(m.route, s);
+    ajouterRequete(cle(attente.heure, `${heure}\u0000${route}\u0000${m.methode}`, () => ({ debut: heure, route, methode: m.methode, a: nouvelAgregat() }), MAX_EN_ATTENTE.agregats).a, r);
+    ajouterRequete(cle(attente.cinq, `${cinq}\u0000${route}\u0000${m.methode}`, () => ({ debut: cinq, route, methode: m.methode, a: nouvelAgregat() }), MAX_EN_ATTENTE.agregats).a, r);
     const nav = navigateur(m.ua);
     cle(attente.navigateurs, `${heure}\u0000${nav.famille}\u0000${nav.appareil}`, () => ({ debut: heure, ...nav, requetes: 0, pages: 0 }), MAX_EN_ATTENTE.navigateurs).requetes += 1;
     let page = origine(m.referent, m.hote);
     if (page) {
-      page = pageBornee(page, heure, 'origines');
-      cle(attente.origines, `${heure}\u0000${page}\u0000${m.route}`, () => ({ debut: heure, page, route: m.route, n: 0 }), MAX_EN_ATTENTE.origines).n += 1;
+      page = origineBornee(page, route, heure);
+      cle(attente.origines, `${heure}\u0000${page}\u0000${route}`, () => ({ debut: heure, page, route, n: 0 }), MAX_EN_ATTENTE.origines).n += 1;
     }
     requetesMinute += 1;
     if (s >= 500) erreursMinute += 1;
     const requete = {
-      instant: isoMs(instantMs), methode: m.methode, route: m.route,
-      // le chemin seulement ; celui d'une fiche garde son gabarit (jamais l'identifiant d'une fiche)
-      adresse: m.route.startsWith('/api/personnages/{id}') ? m.route : m.chemin,
+      instant: isoMs(instantMs), methode: m.methode, route,
+      // le chemin seulement, jamais l'identifiant d'une fiche (adresseGardee)
+      adresse: adresseGardee(m.chemin, route),
       statut: s, duree_ms: arrondi(duree),
       phases: { corps_ms: arrondi(r.corps), traitement_ms: arrondi(r.traitement), envoi_ms: arrondi(r.envoi) },
       octets_entree: r.octets_entree, octets_sortie: r.octets_sortie,
       sql: { n: sql.n, ms: arrondi(sql.ms), plus_lente: sql.plus_lente ? { sql: sql.plus_lente.sql, ms: arrondi(sql.plus_lente.ms) } : null },
       page, navigateur: nav.famille, appareil: nav.appareil, simultanees: m.simultanees,
     };
-    if (capacite && !estUnSuivi(m.methode, m.route, s)) {
+    if (capacite && !estUnSuivi(m.methode, route, s)) {
       anneau.push(requete);
       if (anneau.length > capacite) anneau.splice(0, anneau.length - capacite);
     }
-    if (brutes) pousser(attente.brutes, { instant_ms: instantMs, ...requete }, MAX_EN_ATTENTE.brutes);
+    if (brutes && !restriction) pousser(attente.brutes, { instant_ms: instantMs, ...requete }, MAX_EN_ATTENTE.brutes);
     return requete;
   }
 
@@ -1358,7 +1650,22 @@ export function creerMetriques({
 
   // ----- échantillons système -----------------------------------------------------------------------------------------------------------------
 
-  /** Les tailles mesurées : base vivante (+ WAL et mémoire partagée), archives/, mise-a-jour/, métriques de cette instance (+ WAL). */
+  /**
+   * La taille logique de la base des métriques : (page_count − freelist_count) × page_size — les pages qui portent des données, WAL compris (SQLite
+   * y lit la dernière version), sans les pages libres ni la place que le WAL garde : ce qui grossit vraiment (croissance mesurée : volume). null si
+   * la base est fermée.
+   */
+  function tailleLogique() {
+    if (!db) return null;
+    try {
+      const pragma = (nom) => Number(Object.values(db.prepare(`PRAGMA ${nom}`).get())[0]);
+      return Math.max(0, (pragma('page_count') - pragma('freelist_count')) * pragma('page_size'));
+    } catch {
+      return null;
+    }
+  }
+
+  /** Les tailles mesurées : base vivante (+ WAL et mémoire partagée), archives/, mise-a-jour/, métriques de cette instance (+ WAL ; et logique). */
   function tailles() {
     const vivante = fichiers.vivante ? tailleFichier(fichiers.vivante) + tailleFichier(`${fichiers.vivante}-wal`) + tailleFichier(`${fichiers.vivante}-shm`) : 0;
     return {
@@ -1366,7 +1673,55 @@ export function creerMetriques({
       taille_archives: fichiers.archives ? tailleDossier(fichiers.archives) : 0,
       taille_mise_a_jour: fichiers.miseAJour ? tailleDossier(fichiers.miseAJour) : 0,
       taille_metriques: tailleFichier(fichier) + tailleFichier(`${fichier}-wal`),
+      taille_logique: tailleLogique(),
     };
+  }
+
+  /**
+   * La collecte restreinte ou non, d'après la taille de la base des métriques (fichier + WAL, PLAFOND_METRIQUES_OCTETS) et la place libre du disque
+   * (SEUILS.disque_libre_octets) : un changement est noté (évènement « metriques_restreintes », journal) ; voir PLAFOND_METRIQUES_OCTETS.
+   */
+  function evaluerRestriction(disque, taille) {
+    const mio = (o) => `${(o / 1024 ** 2).toFixed(1)} Mio`;
+    let raison = null;
+    if (Number.isFinite(taille) && taille >= plafond) raison = `la base des métriques fait ${mio(taille)}, plafond ${mio(plafond)}`;
+    else if (Number.isFinite(disque?.libre) && disque.libre < disqueMinimum) raison = `le disque n’a plus que ${mio(disque.libre)} libres`;
+    if (raison && !restriction) {
+      restriction = { raison, depuis: horloge() };
+      pousserEvenement('metriques_restreintes', null, { actif: true, raison });
+      try {
+        journal(`métriques restreintes (${raison}) : plus de nouvelle page ni page d’origine, plus de requêtes brutes`, { categorie: 'metriques' });
+      } catch {
+        // le journal ne doit pas faire échouer la collecte
+      }
+    } else if (!raison && restriction) {
+      pousserEvenement('metriques_restreintes', null, { actif: false, depuis: isoMs(restriction.depuis) });
+      restriction = null;
+    } else if (raison) restriction.raison = raison;
+    return restriction;
+  }
+
+  /** Les octets des images de la base vivante d'une autre instance, notés avec sa dernière répartition dans <nom>.db (lecture seule) ; null sinon. */
+  function imagesDeLInstance(nomAutre) {
+    if (!NOM_D_INSTANCE.test(nomAutre) || nomAutre === nom) return null;
+    const chemin = join(dossier, `${nomAutre}.db`);
+    if (!existsSync(chemin)) return null;
+    let autre = null;
+    try {
+      autre = new DatabaseSync(chemin, { readOnly: true });
+      autre.exec('PRAGMA busy_timeout = 200');
+      if (!autre.prepare('PRAGMA table_info(disque_repartition)').all().some((c) => c.name === 'images_base')) return null;
+      const l = autre.prepare('SELECT images_base FROM disque_repartition WHERE images_base IS NOT NULL ORDER BY instant DESC LIMIT 1').get();
+      return l ? Number(l.images_base) : null;
+    } catch {
+      return null;
+    } finally {
+      try {
+        autre?.close();
+      } catch {
+        // déjà fermée
+      }
+    }
   }
 
   /**
@@ -1387,9 +1742,11 @@ export function creerMetriques({
       vivante: fichiers.vivante ?? null, archives: fichiers.archives ?? null, miseAJour: fichiers.miseAJour ?? null, metriques: dossier, site: fichiers.site ?? null,
       imagesDeLaBase: images, bornes: parcours,
     });
-    // le relevé de l'hôte (VPS : deploy/vps/volume.sh), s'il est là : ce que le conteneur ne voit pas (Docker, journaux, l'autre instance…)
-    const hote = lireReleveDeLHote(join(dossier, RELEVE_HOTE.fichier), { instance: nom, maintenant, total: disque?.total ?? null });
-    releve = { instant: maintenant, ...r, comptes: comptesAvecLHote(r.comptes, hote), hote };
+    // le relevé de l'hôte (VPS : deploy/vps/volume.sh), s'il est là : ce que le conteneur ne voit pas (Docker, journaux, l'autre instance — dont
+    // les images de la base, lues dans son fichier des métriques…)
+    const hote = lireReleveDeLHote(join(dossier, RELEVE_HOTE.fichier), { instance: nom, maintenant, total: disque?.total ?? null, imagesDesInstances: imagesDeLInstance });
+    // `images_base` : les images de SA base vivante (bornées par ce que la base occupe), notées avec la répartition pour l'autre instance
+    releve = { instant: maintenant, ...r, comptes: comptesAvecLHote(r.comptes, hote), hote, images_base: r.images_base };
     return releve;
   }
 
@@ -1436,12 +1793,14 @@ export function creerMetriques({
       erreursMinute = 0;
       dernierEchantillon = e;
       pousser(attente.minutes, e, MAX_EN_ATTENTE.minutes);
+      evaluerRestriction(disque, e.taille_metriques);
       // la répartition du disque, une fois toutes les 10 minutes : le site de dev affiche celle de la production en lisant prod.db
       const maintenant = horloge();
       if (disque?.total && (releveNote === null || maintenant - releveNote >= parcours.intervalle_ms || maintenant < releveNote)) {
         const r = releveActuel({ frais: true, disque });
         pousser(attente.repartitions, {
           instant: e.instant, total: disque.total, libre: disque.libre, reserve: disque.reserve ?? null, comptes: JSON.stringify(r.comptes), partiel: r.partiel ? 1 : 0,
+          images_base: r.images_base ?? null,
         }, MAX_EN_ATTENTE.repartitions);
         releveNote = maintenant;
       }
@@ -1488,7 +1847,7 @@ export function creerMetriques({
         for (const e of attente.navigateurs.values()) instructions.navigateur.run(e.debut, e.famille, e.appareil, e.requetes, e.pages);
         for (const e of attente.origines.values()) instructions.origine.run(e.debut, e.page, e.route, e.n);
         for (const e of attente.minutes) instructions.minute.run(e.instant, ...COLONNES_MINUTE.map((c) => e[c] ?? null));
-        for (const e of attente.repartitions) instructions.repartition.run(e.instant, e.total, e.libre, e.comptes, e.partiel, e.reserve ?? null);
+        for (const e of attente.repartitions) instructions.repartition.run(e.instant, e.total, e.libre, e.comptes, e.partiel, e.reserve ?? null, e.images_base ?? null);
         for (const e of attente.evenements) instructions.evenement.run(e.instant_ms, e.type, e.duree_ms, e.detail);
         for (const e of attente.brutes) {
           instructions.brute.run(e.instant_ms, e.methode, e.route, e.statut, e.duree_ms, e.phases.corps_ms, e.phases.traitement_ms, e.phases.envoi_ms,
@@ -1509,6 +1868,7 @@ export function creerMetriques({
       return false;
     }
     for (const m of [attente.heure, attente.cinq, attente.pages, attente.navigateurs, attente.origines]) m.clear();
+    versements += 1;
     attente.minutes.length = 0;
     attente.repartitions.length = 0;
     attente.evenements.length = 0;
@@ -1539,8 +1899,8 @@ export function creerMetriques({
         db.prepare(`INSERT OR REPLACE INTO systeme_heure SELECT (instant / 3600) * 3600, count(*), avg(rss), max(rss), avg(tas_utilise), max(tas_utilise),
           avg(boucle_p99_ms), max(boucle_p99_ms), max(boucle_max_ms), avg(coalesce(cpu_utilisateur_pct, 0) + coalesce(cpu_systeme_pct, 0)),
           max(coalesce(cpu_utilisateur_pct, 0) + coalesce(cpu_systeme_pct, 0)), avg(charge_1), max(en_cours), max(simultanees_max), sum(requetes),
-          sum(erreurs_5xx), min(disque_libre), max(disque_total), max(taille_vivante), max(taille_archives), max(taille_mise_a_jour), max(taille_metriques)
-          FROM systeme_minute WHERE instant < ? GROUP BY instant / 3600`).run(limiteMinutes);
+          sum(erreurs_5xx), min(disque_libre), max(disque_total), max(taille_vivante), max(taille_archives), max(taille_mise_a_jour), max(taille_metriques),
+          max(taille_logique) FROM systeme_minute WHERE instant < ? GROUP BY instant / 3600`).run(limiteMinutes);
         // répartition du disque : au-delà de 14 jours, seulement la dernière de chaque jour (UTC)
         const limiteRepartitions = s - RETENTION.repartition_10min * 86_400;
         const eclaircies = Number(db.prepare(`DELETE FROM disque_repartition WHERE instant < ? AND instant NOT IN
@@ -1589,6 +1949,8 @@ export function creerMetriques({
     minuterie.unref?.();
   }
   sur(() => ouvrir());
+  // une base déjà au plafond (ou un disque déjà bas) au démarrage : restreinte tout de suite, sans attendre le premier échantillon
+  sur(() => evaluerRestriction(disqueDe(fichiers.disque ?? dossier), tailleFichier(fichier) + tailleFichier(`${fichier}-wal`)));
 
   /**
    * Arrête la collecte : un dernier échantillon (les requêtes de la minute entamée ne sont pas perdues ; la répartition du disque, si aucune n'est
@@ -1681,17 +2043,17 @@ export function creerMetriques({
     return groupes;
   }
 
-  /** La série d'une période : un point par pas, de `depuis` à `jusqua` (pas vides compris). */
+  /** La série d'une période : un point par pas, de `depuis` à `jusqua` (pas vides compris), sans les relèves automatiques (estUneReleve). */
   function serie(src, table, depuis, jusqua, pas) {
     const points = new Map();
     const point = (t) => cle(points, t, () => nouvelAgregat(), Infinity);
     if (src.db) {
       const nomTable = table === 'cinq' ? 'agregat_5min' : 'agregat_heure';
-      for (const l of src.db.prepare(`SELECT (debut / ${pas}) * ${pas} AS t, ${SOMMES_AGREGAT} FROM ${nomTable} WHERE debut >= ? GROUP BY t`).all(depuis)) {
+      for (const l of src.db.prepare(`SELECT (debut / ${pas}) * ${pas} AS t, ${SOMMES_AGREGAT} FROM ${nomTable} WHERE debut >= ? AND NOT (${SQL_RELEVE}) GROUP BY t`).all(depuis)) {
         fusionnerAgregats(point(l.t), agregatDeLigne(l));
       }
     }
-    if (src.memoire) for (const e of attente[table].values()) if (e.debut >= depuis) fusionnerAgregats(point(tranche(e.debut, pas)), e.a);
+    if (src.memoire) for (const e of attente[table].values()) if (e.debut >= depuis && !estUneReleve(e.methode, e.route)) fusionnerAgregats(point(tranche(e.debut, pas)), e.a);
     const resultat = [];
     for (let t = tranche(depuis, pas); t <= jusqua; t += pas) {
       const a = points.get(t) ?? nouvelAgregat();
@@ -1701,11 +2063,18 @@ export function creerMetriques({
     return resultat;
   }
 
+  /**
+   * Les pages vues d'une période (les LIGNES_LUES_MAX plus vues : classées par SQLite, seules leurs sommes et leurs histogrammes sont lus), avec la
+   * moyenne et le p95 de chaque mesure (BORNES_PAGE_MS ; `au_dela` : les p95 qui ne sont qu'une borne basse, au-delà de 60 000 ms). Le fichier d'une
+   * autre instance d'avant le schéma 4 (lecture seule) : sans histogramme, les moyennes seules.
+   */
   function pagesVues(src, depuis) {
     const groupes = new Map();
     const groupe = (page) => cle(groupes, page, () => nouvellePage(), Infinity);
     if (src.db) {
-      for (const l of src.db.prepare(`SELECT page, ${SOMMES_PAGE} FROM page_heure WHERE debut >= ? GROUP BY page`).all(depuis)) {
+      const avecHistogramme = src.db.prepare('PRAGMA table_info(page_heure)').all().some((c) => c.name === `${MESURES_PAGE[0]}_c0`);
+      const plusVues = `SELECT page FROM page_heure WHERE debut >= ? GROUP BY page ORDER BY sum(n) DESC, page LIMIT ${LIGNES_LUES_MAX}`;
+      for (const l of src.db.prepare(`SELECT page, ${avecHistogramme ? SOMMES_PAGE : SOMMES_PAGE_SANS_HISTOGRAMME} FROM page_heure WHERE debut >= ? AND page IN (${plusVues}) GROUP BY page`).all(depuis, depuis)) {
         const p = groupe(l.page);
         p.n += Number(l.n ?? 0);
         for (const m of MESURES_PAGE) fusionnerMesures(p[m], mesureDeLigne(l, m));
@@ -1721,14 +2090,18 @@ export function creerMetriques({
     }
     return [...groupes].map(([page, p]) => {
       const ligne = { page, n: p.n };
+      const auDela = [];
       for (const m of MESURES_PAGE) {
         const x = p[m];
+        const q = quantileDetaille(x.h, 0.95, x.min, x.max, BORNES_PAGE_MS);
         ligne[`${m}_ms`] = x.n ? arrondi(x.somme / x.n) : null;
-        ligne[`${m}_p95_ms`] = x.n ? arrondi(quantile(x.h, 0.95, x.min, x.max)) : null;
+        ligne[`${m}_p95_ms`] = x.n ? arrondi(q.valeur) : null;
         ligne[`${m}_n`] = x.n;
+        if (x.n && q.au_dela) auDela.push(`${m}_p95_ms`);
       }
+      ligne.au_dela = auDela;
       return ligne;
-    }).sort((a, b) => b.n - a.n || a.page.localeCompare(b.page)).slice(0, 500);
+    }).sort((a, b) => b.n - a.n || a.page.localeCompare(b.page)).slice(0, LIGNES_LUES_MAX);
   }
 
   function navigateurs(src, depuis) {
@@ -1756,9 +2129,14 @@ export function creerMetriques({
     const ajouter = (page, route, n) => {
       cle(groupes, `${page}\u0000${route}`, () => ({ page, route, n: 0 }), Infinity).n += n;
     };
-    if (src.db) for (const l of src.db.prepare('SELECT page, route, sum(n) AS n FROM origine_heure WHERE debut >= ? GROUP BY page, route').all(depuis)) ajouter(l.page, l.route, Number(l.n));
+    // classées et coupées par SQLite : jamais toutes les lignes de la période en mémoire
+    if (src.db) {
+      for (const l of src.db.prepare(`SELECT page, route, sum(n) AS n FROM origine_heure WHERE debut >= ? GROUP BY page, route ORDER BY n DESC, page, route LIMIT ${LIGNES_LUES_MAX}`).all(depuis)) {
+        ajouter(l.page, l.route, Number(l.n));
+      }
+    }
     if (src.memoire) for (const e of attente.origines.values()) if (e.debut >= depuis) ajouter(e.page, e.route, e.n);
-    return [...groupes.values()].sort((a, b) => b.n - a.n || a.page.localeCompare(b.page) || a.route.localeCompare(b.route)).slice(0, 500);
+    return [...groupes.values()].sort((a, b) => b.n - a.n || a.page.localeCompare(b.page) || a.route.localeCompare(b.route)).slice(0, LIGNES_LUES_MAX);
   }
 
   /** Le début d'une période (secondes, début d'une tranche du pas) ; « tout » : la première donnée. */
@@ -1777,33 +2155,74 @@ export function creerMetriques({
     return { ...p, depuis, jusqua: maintenant };
   }
 
-  /** GET /api/debug/metriques/ : les statistiques d'une instance sur une période (voir l'en-tête du module et docs/api.md). */
+  /**
+   * La clé de la lecture gardée d'une période (CACHE_LECTURE_MS), ou null quand elle n'est pas gardée : les périodes de 7 jours et plus de cette
+   * instance (valables tant qu'aucun versement n'a rien écrit depuis) ; toutes celles d'une autre instance (valables tant que son fichier et son
+   * WAL n'ont pas changé).
+   */
+  function cleDeLecture(src, periode, tri) {
+    if (src.propre) return ['24h', '1h'].includes(periode) ? null : `${src.nom}\u0000${periode}\u0000${tri}\u0000${versements}\u0000${enAttente()}`;
+    const chemin = join(dossier, `${src.nom}.db`);
+    const date = (c) => {
+      try {
+        return statSync(c).mtimeMs;
+      } catch {
+        return 0;
+      }
+    };
+    return `${src.nom}\u0000${periode}\u0000${tri}\u0000${date(chemin)}\u0000${date(`${chemin}-wal`)}`;
+  }
+
+  /**
+   * GET /api/debug/metriques/ : les statistiques d'une instance sur une période (voir l'en-tête du module et docs/api.md). `global` et `serie` sont
+   * SANS les relèves automatiques (estUneReleve : journal, métriques et système de la page Debug, maintenance, balise), qui restent chacune sur sa
+   * ligne de `routes` ; `global_avec_releves` les compte, `releves` = { n, routes } les nomme. Les pages vues, navigateurs et origines n'existent
+   * que par heure : leur fenêtre commence à `depuis_horaire` (le début de l'heure de `depuis` : une heure de plus au plus pour « 1h »).
+   */
   function lire({ instance: demandee, periode = '24h', tri = 'moyenne' } = {}) {
     if (!TRIS.includes(tri)) throw new ErreurMetriques(400, `Tri inconnu : « ${tri} » (${TRIS.join(', ')}).`);
     if (!PERIODES[periode]) throw new ErreurMetriques(400, `Période inconnue : « ${periode} » (${Object.keys(PERIODES).join(', ')}).`);
     return avecSource(demandee, (src) => {
       const maintenant = secondes();
+      const k = cleDeLecture(src, periode, tri);
+      const gardee = k === null ? null : lectures.get(k);
+      if (gardee && horloge() - gardee.instant < CACHE_LECTURE_MS && horloge() >= gardee.instant) return structuredClone(gardee.valeur);
       const b = bornes(src, periode, maintenant);
       const groupes = agregatsParRoute(src, b.table, b.depuis);
       const global = nouvelAgregat();
+      const avecReleves = nouvelAgregat();
+      const releves = [];
       const routes = [];
       for (const g of groupes.values()) {
-        fusionnerAgregats(global, g.a);
+        fusionnerAgregats(avecReleves, g.a);
+        if (estUneReleve(g.methode, g.route)) releves.push({ methode: g.methode, route: g.route, n: g.a.n });
+        else fusionnerAgregats(global, g.a);
         routes.push({ route: g.route, methode: g.methode, ...statistiques(g.a) });
       }
       routes.sort((x, y) => (valeurDeTri(y, tri) ?? -Infinity) - (valeurDeTri(x, tri) ?? -Infinity) || x.route.localeCompare(y.route) || x.methode.localeCompare(y.methode));
-      return {
-        instance: src.nom, instances: instances(), periode, tri, depuis: iso(b.depuis), jusqua: iso(b.jusqua),
-        pas: b.pas === 300 ? '5min' : b.pas === 3600 ? 'heure' : 'jour', bornes_ms: BORNES_MS,
-        global: statistiques(global), routes, serie: serie(src, b.table, b.depuis, b.jusqua, b.pas),
-        pages: pagesVues(src, tranche(b.depuis, 3600)), navigateurs: navigateurs(src, tranche(b.depuis, 3600)), origines: origines(src, tranche(b.depuis, 3600)),
-        ...(src.propre ? { panne, perdues } : {}),
+      const horaire = tranche(b.depuis, 3600);
+      const valeur = {
+        instance: src.nom, instances: instances(), periode, tri, depuis: iso(b.depuis), jusqua: iso(b.jusqua), depuis_horaire: iso(horaire),
+        pas: b.pas === 300 ? '5min' : b.pas === 3600 ? 'heure' : 'jour', bornes_ms: BORNES_MS, bornes_page_ms: BORNES_PAGE_MS,
+        global: statistiques(global), global_avec_releves: statistiques(avecReleves),
+        releves: { n: releves.reduce((n, r) => n + r.n, 0), routes: releves.sort((x, y) => y.n - x.n).map((r) => `${r.methode} ${r.route}`) },
+        routes, serie: serie(src, b.table, b.depuis, b.jusqua, b.pas),
+        pages: pagesVues(src, horaire), navigateurs: navigateurs(src, horaire), origines: origines(src, horaire),
+        ...(src.propre ? { panne, perdues, restreintes: restriction ? { raison: restriction.raison, depuis: isoMs(restriction.depuis) } : null } : {}),
       };
+      if (k !== null) {
+        if (lectures.size >= 32) lectures.clear();
+        lectures.set(k, { instant: horloge(), valeur: structuredClone(valeur) });
+      }
+      return valeur;
     });
   }
 
-  /** GET /api/debug/metriques/requetes/ : les dernières requêtes gardées en mémoire (les plus récentes d'abord), filtrées. */
-  function requetes({ limite, route, min_ms: minMs, statut } = {}) {
+  /**
+   * GET /api/debug/metriques/requetes/ : les dernières requêtes gardées en mémoire (les plus récentes d'abord), filtrées : `route` (le gabarit
+   * contient ce texte), `route_exacte` (le gabarit est exactement celui-ci : la liste « Route » de la page Debug), `min_ms`, `statut`.
+   */
+  function requetes({ limite, route, route_exacte: routeExacte, min_ms: minMs, statut } = {}) {
     const max = Math.min(capacite || CAPACITE_REQUETES, Math.max(1, Math.floor(Number(limite) || 200)));
     const seuil = Number(minMs);
     const filtreStatut = String(statut ?? '').trim().toLowerCase();
@@ -1814,6 +2233,7 @@ export function creerMetriques({
     for (let i = anneau.length - 1; i >= 0 && resultat.length < max; i--) {
       const r = anneau[i];
       if (route && !r.route.includes(String(route))) continue;
+      if (routeExacte && r.route !== String(routeExacte)) continue;
       if (Number.isFinite(seuil) && minMs !== undefined && minMs !== '' && r.duree_ms < seuil) continue;
       if (classe !== null && Math.floor(r.statut / 100) !== classe) continue;
       if (exact !== null && r.statut !== exact) continue;
@@ -1892,31 +2312,64 @@ export function creerMetriques({
   }
 
   /**
-   * Le volume de la base des métriques d'une instance : sa taille, sa croissance mesurée (taille il y a au moins un jour, d'après les échantillons)
-   * et estimée (lignes écrites par jour × octets par ligne, table par table), la taille à terme (chaque table à sa rétention) et la rétention.
-   * Calculé au plus une fois toutes les 10 minutes par instance (dbstat lit toute la base).
+   * Le volume de la base des métriques d'une instance (GET /api/debug/systeme/, `volume`) — calculé au plus une fois toutes les 10 minutes par
+   * instance (dbstat lit toute la base) :
+   *   metriques_octets            la taille actuelle : fichier + WAL ;
+   *   taille_logique_octets       les pages qui portent des données ((page_count − freelist_count) × page_size), sans le WAL ni les pages libres ;
+   *   debit_ecriture_octets_par_jour  ce qui s'écrit par jour, toutes tables (lignes par jour × octets par ligne), y compris ce que la rétention
+   *                               purge vite (5 minutes : 2 jours ; échantillons par minute : 14 jours) — un débit, pas une croissance ;
+   *   croissance_estimee_octets_par_jour  la croissance EN RÉGIME : les seules tables gardées un an ou plus (agrégats horaires, pages, navigateurs,
+   *                               origines, résumés par heure, une répartition par jour, évènements) ;
+   *   croissance_mesuree_octets_par_jour  la taille LOGIQUE d'aujourd'hui comparée à celle d'il y a au moins 7 jours (jamais le WAL, qui va de 0 à
+   *                               ~4 Mio au fil des points de contrôle ; null avant 7 jours de mesures) ;
+   *   croissance_octets_par_jour  celle qu'on retient : la mesurée si elle porte sur 7 jours au moins et ne s'écarte pas de l'estimée de plus d'un
+   *                               facteur 2 (sinon l'estimée : les premières semaines, la mesure compte encore le remplissage des tables courtes) ;
+   *                               `croissance_source` = « mesuree » ou « estimee » ;
+   *   projection_un_an_octets     la taille dans un an, table par table, chaque table à sa rétention (min(rétention, âge + 365 jours)) ;
+   *   taille_a_terme_octets       la taille à rétention pleine (400 jours), table par table ;
+   *   lignes_par_jour, octets_par_ligne, retention, brutes, pages (les réglages de l'instance : ceux d'une autre lus dans son dernier démarrage).
    */
   function volume(src, maintenantS) {
     const chemin = join(dossier, `${src.nom}.db`);
     const octets = tailleFichier(chemin) + tailleFichier(`${chemin}-wal`);
     const deja = volumes.get(src.nom);
     if (deja && maintenantS - deja.instant < 600 && maintenantS >= deja.instant) return { ...deja.valeur, metriques_octets: octets };
+    let reglages = { brutes: src.propre ? Boolean(brutes) : null, pages: src.propre ? Boolean(pages) : null };
+    if (!src.propre && src.db) {
+      try {
+        const d = JSON.parse(src.db.prepare("SELECT detail FROM evenement WHERE type = 'demarrage' ORDER BY instant_ms DESC, id DESC LIMIT 1").get()?.detail ?? '{}');
+        reglages = { brutes: typeof d.brutes === 'boolean' ? d.brutes : null, pages: typeof d.pages === 'boolean' ? d.pages : null };
+      } catch {
+        // pas de démarrage lisible : réglages inconnus
+      }
+    }
     const resultat = {
-      metriques_octets: octets, croissance_octets_par_jour: null, croissance_mesuree_octets_par_jour: null, croissance_estimee_octets_par_jour: null,
-      taille_a_terme_octets: null, lignes_par_jour: {}, octets_par_ligne: {}, retention: RETENTION, brutes: src.propre ? Boolean(brutes) : null, pages: src.propre ? Boolean(pages) : null,
+      metriques_octets: octets, taille_logique_octets: null, croissance_octets_par_jour: null, croissance_source: null,
+      croissance_mesuree_octets_par_jour: null, croissance_mesuree_jours: null, croissance_estimee_octets_par_jour: null, debit_ecriture_octets_par_jour: null,
+      projection_un_an_octets: null, taille_a_terme_octets: null, lignes_par_jour: {}, octets_par_ligne: {}, retention: RETENTION, ...reglages,
     };
     if (!src.db) return resultat;
     try {
-      const ancien = src.db.prepare('SELECT instant, taille_metriques FROM systeme_minute WHERE instant <= ? AND taille_metriques IS NOT NULL ORDER BY instant DESC LIMIT 1').get(maintenantS - 86_400)
-        ?? src.db.prepare('SELECT debut AS instant, taille_metriques_max AS taille_metriques FROM systeme_heure WHERE debut <= ? ORDER BY debut DESC LIMIT 1').get(maintenantS - 86_400);
-      const recent = src.db.prepare('SELECT instant, taille_metriques FROM systeme_minute WHERE taille_metriques IS NOT NULL ORDER BY instant DESC LIMIT 1').get();
-      if (ancien && recent && recent.instant > ancien.instant) {
-        resultat.croissance_mesuree_octets_par_jour = Math.round(((recent.taille_metriques - ancien.taille_metriques) * 86_400) / (recent.instant - ancien.instant));
+      const colonnes = new Set(src.db.prepare('PRAGMA table_info(systeme_minute)').all().map((c) => c.name));
+      if (colonnes.has('taille_logique')) {
+        const logique = src.propre ? tailleLogique() : null;
+        const recent = src.db.prepare('SELECT instant, taille_logique AS t FROM systeme_minute WHERE taille_logique IS NOT NULL ORDER BY instant DESC LIMIT 1').get();
+        resultat.taille_logique_octets = logique ?? (recent ? Number(recent.t) : null);
+        const limite = (recent?.instant ?? maintenantS) - 7 * 86_400;
+        const ancien = src.db.prepare('SELECT instant, taille_logique AS t FROM systeme_minute WHERE instant <= ? AND taille_logique IS NOT NULL ORDER BY instant DESC LIMIT 1').get(limite)
+          ?? src.db.prepare('SELECT debut AS instant, taille_logique_max AS t FROM systeme_heure WHERE debut <= ? AND taille_logique_max IS NOT NULL ORDER BY debut DESC LIMIT 1').get(limite);
+        if (ancien && recent && recent.instant > ancien.instant) {
+          resultat.croissance_mesuree_octets_par_jour = Math.round(((Number(recent.t) - Number(ancien.t)) * 86_400) / (recent.instant - ancien.instant));
+          resultat.croissance_mesuree_jours = Math.round(((recent.instant - ancien.instant) / 86_400) * 10) / 10;
+        }
       }
       const parLigne = octetsParLigne(src.db);
       const creeLe = Number(src.db.prepare("SELECT valeur FROM meta WHERE cle = 'cree_le_ms'").get()?.valeur ?? maintenantS * 1000) / 1000;
       const age = Math.max(60, maintenantS - creeLe);
-      let parJour = 0;
+      const ageJours = age / 86_400;
+      let debit = 0;
+      let regime = 0;
+      let unAn = 0;
       let aTerme = 0;
       for (const t of TABLES_DATEES) {
         let jour = 0;
@@ -1927,21 +2380,44 @@ export function creerMetriques({
         }
         resultat.lignes_par_jour[t.table] = Math.round(jour);
         resultat.octets_par_ligne[t.table] = parLigne[t.table];
-        parJour += jour * parLigne[t.table];
-        // les échantillons par minute ne vivent que 14 jours, puis 24 résumés par jour (systeme_heure) restent 400 jours ; la répartition du disque :
-        // 144 par jour pendant 14 jours, puis une par jour jusqu'à 400 jours
-        aTerme += t.table === 'disque_repartition'
-          ? parLigne[t.table] * (jour * RETENTION.repartition_10min + (RETENTION.repartition_jour - RETENTION.repartition_10min))
-          : jour * parLigne[t.table] * RETENTION[t.retention];
+        debit += jour * parLigne[t.table];
+        // la taille d'une table après `jours` de collecte : chacune à sa rétention ; la répartition du disque : 144 par jour pendant 14 jours, puis
+        // une par jour jusqu'à 400 jours ; les échantillons par minute ne vivent que 14 jours (puis 24 résumés par jour : systeme_heure)
+        const apres = (jours) => (t.table === 'disque_repartition'
+          ? parLigne[t.table] * (jour * Math.min(jours, RETENTION.repartition_10min) + Math.max(0, Math.min(jours, RETENTION.repartition_jour) - RETENTION.repartition_10min))
+          : jour * parLigne[t.table] * Math.min(jours, RETENTION[t.retention]));
+        unAn += apres(ageJours + 365);
+        aTerme += apres(Infinity);
+        // en régime : les tables gardées un an ou plus (la répartition : une ligne par jour)
+        if (t.table === 'disque_repartition') regime += parLigne[t.table];
+        else if (RETENTION[t.retention] >= 365) regime += jour * parLigne[t.table];
       }
-      resultat.croissance_estimee_octets_par_jour = Math.round(parJour);
+      resultat.debit_ecriture_octets_par_jour = Math.round(debit);
+      resultat.croissance_estimee_octets_par_jour = Math.round(regime);
+      resultat.projection_un_an_octets = Math.round(unAn);
       resultat.taille_a_terme_octets = Math.round(aTerme);
     } catch {
       // une base plus ancienne ou verrouillée : le volume reste partiel
     }
-    resultat.croissance_octets_par_jour = resultat.croissance_mesuree_octets_par_jour ?? resultat.croissance_estimee_octets_par_jour;
+    const estimee = resultat.croissance_estimee_octets_par_jour;
+    const mesuree = resultat.croissance_mesuree_octets_par_jour;
+    const accord = mesuree !== null && resultat.croissance_mesuree_jours >= 7
+      && (estimee === null || estimee <= 0 ? true : mesuree >= estimee / 2 && mesuree <= estimee * 2);
+    resultat.croissance_octets_par_jour = accord ? mesuree : estimee ?? mesuree;
+    resultat.croissance_source = resultat.croissance_octets_par_jour === null ? null : accord ? 'mesuree' : 'estimee';
     volumes.set(src.nom, { instant: maintenantS, valeur: resultat });
     return resultat;
+  }
+
+  /** La restriction d'une autre instance, d'après son dernier évènement « metriques_restreintes » (actif : { raison, depuis }) ; null sinon. */
+  function restrictionDe(src) {
+    try {
+      const l = src.db?.prepare("SELECT instant_ms, detail FROM evenement WHERE type = 'metriques_restreintes' ORDER BY instant_ms DESC, id DESC LIMIT 1").get();
+      const d = l?.detail ? JSON.parse(l.detail) : null;
+      return d?.actif ? { raison: String(d.raison ?? ''), depuis: Number(l.instant_ms) } : null;
+    } catch {
+      return null;
+    }
   }
 
   /** GET /api/debug/systeme/ : l'état du processus, du disque et des fichiers, les échantillons, les évènements, le volume et les alertes. */
@@ -2030,47 +2506,67 @@ export function creerMetriques({
         echantillons: liste, evenements: evenements(src, depuis * 1000), volume: vol,
         alertes: alertesDu({
           disque, processus, volume: vol, erreursRecentes: recents.reduce((n, e) => n + (e.erreurs_5xx ?? 0), 0), panne: src.propre ? panne : null,
-          brutes: src.propre && brutes, croissanceArchives,
+          brutes: src.propre ? Boolean(brutes) && !restriction : vol.brutes === true, croissanceArchives,
           repartition: repartition ? { depasse: repartition.depasse, partiel: repartition.partiel, hote: repartition.hote ?? null } : null,
+          restriction: src.propre ? restriction : restrictionDe(src),
         }),
         ...(src.propre ? { panne, perdues } : {}),
       };
     });
   }
 
-  /** GET /api/debug/metriques/export/ : les agrégats horaires bruts d'une période, en CSV ou en JSON (pièce jointe). */
+  /**
+   * GET /api/debug/metriques/export/ : les agrégats bruts d'une période, en CSV ou en JSON (pièce jointe) — la MÊME fenêtre que lire() (bornes) :
+   * pour « 1h », les tranches de 5 minutes (agregat_5min, `pas` = « 5min ») ; sinon les heures (agregat_heure). Au plus EXPORT_LIGNES_MAX lignes,
+   * les plus récentes (`tronque` le dit : en-tête de la réponse et champ du JSON), lues une à une (iterate) et écrites ligne à ligne.
+   */
   function exporter({ instance: demandee, periode = 'tout', format = 'csv' } = {}) {
     if (!['csv', 'json'].includes(format)) throw new ErreurMetriques(400, `Format inconnu : « ${format} » (csv, json).`);
     if (!PERIODES[periode]) throw new ErreurMetriques(400, `Période inconnue : « ${periode} » (${Object.keys(PERIODES).join(', ')}).`);
     return avecSource(demandee, (src) => {
       const maintenant = secondes();
-      const p = PERIODES[periode];
-      const depuis = p.duree === null ? 0 : tranche(maintenant, 3600) - p.duree + 3600;
+      const b = bornes(src, periode, maintenant);
+      const cinq = b.table === 'cinq';
+      const depuis = b.depuis;
       const lignes = [];
       const ajouter = (debut, route, methode, a) => {
-        const s = statistiques(a);
+        const st = statistiques(a);
         lignes.push({
           debut: iso(debut), route, methode, n: a.n, erreurs_4xx: a.erreurs_4xx, erreurs_5xx: a.erreurs_5xx, n_304: a.n_304, somme_ms: arrondi(a.somme_ms),
           somme2_ms: arrondi(a.somme2_ms), min_ms: arrondi(a.min_ms), max_ms: arrondi(a.max_ms),
           ...Object.fromEntries(a.h.map((c, i) => [i < BORNES_MS.length ? `h_le_${BORNES_MS[i]}ms` : `h_plus_${BORNES_MS.at(-1)}ms`, c])),
           octets_entree: a.octets_entree, octets_sortie: a.octets_sortie, sql_requetes: a.sql_requetes, sql_ms: arrondi(a.sql_ms), corps_ms: arrondi(a.corps_ms),
           traitement_ms: arrondi(a.traitement_ms), envoi_ms: arrondi(a.envoi_ms), sql_max_ms: arrondi(a.sql_max_ms), sql_max: a.sql_max ?? null,
-          moyenne_ms: s.moyenne_ms, mediane_ms: s.mediane_ms, p95_ms: s.p95_ms, p99_ms: s.p99_ms,
+          moyenne_ms: st.moyenne_ms, mediane_ms: st.mediane_ms, p95_ms: st.p95_ms, p99_ms: st.p99_ms, au_dela: st.au_dela.join(' '),
         });
       };
+      let tronque = false;
       if (src.db) {
-        for (const l of src.db.prepare('SELECT * FROM agregat_heure WHERE debut >= ? ORDER BY debut, route, methode').all(depuis)) {
+        const table = cinq ? 'agregat_5min' : 'agregat_heure';
+        // les plus récentes d'abord (pour couper à EXPORT_LIGNES_MAX), remises dans l'ordre ensuite ; une ligne de plus dit qu'il y en avait trop
+        const lues = [];
+        for (const l of src.db.prepare(`SELECT * FROM ${table} WHERE debut >= ? ORDER BY debut DESC, route DESC, methode DESC LIMIT ?`).iterate(depuis, EXPORT_LIGNES_MAX + 1)) {
+          if (lues.length >= EXPORT_LIGNES_MAX) {
+            tronque = true;
+            break;
+          }
           const a = agregatDeLigne(l);
           a.sql_max_ms = l.sql_max_ms ?? null;
           a.sql_max = texteSql(src, l.sql_max_id);
-          ajouter(l.debut, l.route, l.methode, a);
+          lues.push([l.debut, l.route, l.methode, a]);
         }
+        for (let i = lues.length - 1; i >= 0; i--) ajouter(...lues[i]);
       }
-      if (src.memoire) for (const e of attente.heure.values()) if (e.debut >= depuis) ajouter(e.debut, e.route, e.methode, e.a);
+      if (src.memoire) for (const e of attente[cinq ? 'cinq' : 'heure'].values()) if (e.debut >= depuis && lignes.length < EXPORT_LIGNES_MAX) ajouter(e.debut, e.route, e.methode, e.a);
       const jour = isoMs(horloge()).slice(0, 10);
       const nomFichier = `metriques-${src.nom}-${periode}-${jour}.${format}`;
+      const pas = cinq ? '5min' : 'heure';
       if (format === 'json') {
-        return { type: 'application/json; charset=utf-8', nom: nomFichier, contenu: `${JSON.stringify({ instance: src.nom, periode, depuis: iso(depuis), jusqua: iso(maintenant), bornes_ms: BORNES_MS, lignes }, null, 1)}\n` };
+        const tete = JSON.stringify({ instance: src.nom, periode, pas, depuis: iso(depuis), jusqua: iso(maintenant), bornes_ms: BORNES_MS, tronque, lignes_max: EXPORT_LIGNES_MAX });
+        const morceaux = [`${tete.slice(0, -1)},"lignes":[`];
+        lignes.forEach((l, i) => morceaux.push(`${i ? ',' : ''}\n${JSON.stringify(l)}`));
+        morceaux.push('\n]}\n');
+        return { type: 'application/json; charset=utf-8', nom: nomFichier, contenu: morceaux.join(''), tronque };
       }
       const colonnes = lignes.length ? Object.keys(lignes[0]) : ['debut', 'route', 'methode', 'n'];
       const cellule = (v) => {
@@ -2078,8 +2574,9 @@ export function creerMetriques({
         const t = String(v);
         return /[",\n\r;]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
       };
-      const csv = [colonnes.join(','), ...lignes.map((l) => colonnes.map((c) => cellule(l[c])).join(','))].join('\r\n');
-      return { type: 'text/csv; charset=utf-8', nom: nomFichier, contenu: `${csv}\r\n` };
+      const morceaux = [colonnes.join(',')];
+      for (const l of lignes) morceaux.push(colonnes.map((c) => cellule(l[c])).join(','));
+      return { type: 'text/csv; charset=utf-8', nom: nomFichier, contenu: `${morceaux.join('\r\n')}\r\n`, tronque };
     });
   }
 

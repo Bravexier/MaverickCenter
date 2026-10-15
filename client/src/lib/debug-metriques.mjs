@@ -1,15 +1,17 @@
 // Performances et système sur la page Debug (demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels
 // sont les appels les plus lents en moyenne […] extraire absolument tout ce qui est possible d'extraire dans un but de suivi, maintenance et
 // évolutions » ; pages/debug.astro, src/scripts/debug.mjs) : fonctions pures sur les réponses du service (serveur/metriques.mjs), site de dev seulement :
-//   GET <base>api/debug/metriques/?instance=dev|prod&periode=…&tri=…  → { instance, instances, periode, depuis, jusqua, global: STATS,
-//       routes: [{ route, methode, ...STATS }], serie: [{ debut, n, moyenne_ms, p95_ms, erreurs }], pages: [{ page, n, ttfb_ms, dom_ms, charge_ms,
-//       lcp_ms }], navigateurs: [{ famille, appareil, n }], origines: [{ page, route, n }] }
+//   GET <base>api/debug/metriques/?instance=dev|prod&periode=…&tri=…  → { instance, instances, periode, depuis, jusqua, depuis_horaire,
+//       global: STATS (sans les relèves automatiques), global_avec_releves: STATS, releves: { n, routes }, routes: [{ route, methode, ...STATS }],
+//       serie: [{ debut, n, moyenne_ms, p95_ms, erreurs }] (sans les relèves), pages: [{ page, n, ttfb_ms, dom_ms, charge_ms, lcp_ms, au_dela }],
+//       navigateurs: [{ famille, appareil, n }], origines: [{ page, route, n }] } — pages, navigateurs et origines depuis `depuis_horaire` (par heure)
 //       STATS = { n, erreurs_4xx, erreurs_5xx, part_304 (0 à 1), moyenne_ms, mediane_ms, p95_ms, p99_ms, min_ms, max_ms, ecart_type_ms, total_ms,
-//       octets_entree, octets_sortie (cumulés sur la période), sql_requetes_moyen, sql_ms_moyen (par appel) }
+//       octets_entree, octets_sortie (cumulés sur la période), sql_requetes_moyen, sql_ms_moyen (par appel), au_dela (les quantiles qui ne sont
+//       qu'une borne basse : « > 5 s », au-delà de la dernière classe de l'histogramme) }
 //       une mesure de page : { moyenne, p95 } (ou `ttfb_ms` = la moyenne et `ttfb_p95_ms` : mesureDePage lit les deux écritures)
-//   GET <base>api/debug/metriques/requetes/?limite=&route=&min_ms=  → { requetes: [{ instant, methode, route, adresse, statut, duree_ms,
+//   GET <base>api/debug/metriques/requetes/?limite=&route_exacte=&min_ms=  → { requetes: [{ instant, methode, route, adresse, statut, duree_ms,
 //       phases: { corps_ms, traitement_ms, envoi_ms }, octets_entree, octets_sortie, sql: { n, ms, plus_lente: { sql, ms } }, page, navigateur,
-//       appareil, simultanees }] } (la mémoire du site de dev)
+//       appareil, simultanees }] } (la mémoire du serveur qui répond, le site de dev : rien pour l'instance « Production », requetesDeLInstance)
 //   GET <base>api/debug/systeme/?instance=…  → { instance, maintenant, processus, disque, fichiers, echantillons, evenements, volume, alertes }
 //   GET <base>api/debug/metriques/export/?instance=&periode=&format=csv|json  (lien « Exporter »)
 // Deux jeux de données séparés (décision du propriétaire du 2026-10-15) : la page montre l'instance choisie, dev OU production, jamais un mélange.
@@ -172,10 +174,22 @@ export function adresseDesMetriques(api, { instance = 'dev', periode = PERIODE_P
   return avecParametres(`${api}debug/metriques/`, { instance, periode, tri: CLES_DE_TRI_DU_SERVICE.has(tri) ? tri : undefined });
 }
 
-/** L'adresse des requêtes récentes (mémoire du site de dev) ; min_ms : seulement les plus lentes que ce seuil. */
+/**
+ * L'adresse des requêtes récentes (mémoire du site de dev) ; `route` : un gabarit de la liste « Route », cherché EXACTEMENT (route_exacte : le
+ * gabarit d'une liste ne ramène pas ceux de ses éléments) ; min_ms : seulement les plus lentes que ce seuil.
+ */
 export function adresseDesRequetes(api, { limite = REQUETES_LIMITE, route = '', minMs = 0 } = {}) {
-  return avecParametres(`${api}debug/metriques/requetes/`, { limite, route, min_ms: Number(minMs) > 0 ? Number(minMs) : undefined });
+  return avecParametres(`${api}debug/metriques/requetes/`, { limite, route_exacte: route, min_ms: Number(minMs) > 0 ? Number(minMs) : undefined });
 }
+
+/**
+ * Les requêtes une à une ne sont gardées que dans la mémoire du serveur qui répond (le site de dev : `instanceDuServeur`) : vrai si l'instance
+ * choisie est celle-là ; pour une autre (« Production »), la page ne les montre pas (deux jeux de données jamais mélangés).
+ */
+export const requetesDeLInstance = (instanceChoisie, instanceDuServeur = INSTANCES[0].cle) => instanceChoisie === instanceDuServeur;
+
+/** La phrase qui remplace les requêtes récentes quand l'instance choisie n'est pas celle du serveur qui répond. */
+export const REQUETES_AUTRE_INSTANCE = 'Les requêtes une à une ne sont gardées que dans la mémoire du site de dev : choisissez l’instance « Site de dev » pour les voir.';
 
 /** L'adresse du système d'une instance. */
 export function adresseDuSysteme(api, instance = 'dev') {
@@ -263,6 +277,12 @@ export function lenteur(ms, seuils = SEUILS_DE_LENTEUR_MS) {
   return '';
 }
 
+/** Un quantile des STATS (« mediane_ms », « p95_ms », « p99_ms ») écrit, « > 5 s » s'il n'est qu'une borne basse (`au_dela` du service). */
+export function dureeDuQuantile(stats, cle) {
+  const auDela = Array.isArray(stats?.au_dela) && stats.au_dela.includes(cle);
+  return `${auDela && fini(stats?.[cle]) ? `>${INSECABLE}` : ''}${formaterDuree(stats?.[cle])}`;
+}
+
 const attributLenteur = (ms, seuils) => {
   const l = lenteur(ms, seuils);
   return l ? ` data-lenteur="${l}"` : '';
@@ -301,9 +321,9 @@ export function htmlDesRoutes(routes, { lentes = plusLentes(routes) } = {}) {
       + `<td>${pastilleDeMethode(r.methode)}</td>`
       + `<td class="debug-nombre">${nombre(r.n)}</td>`
       + `<td class="debug-nombre"${attributLenteur(r.moyenne_ms)}>${formaterDuree(r.moyenne_ms)}</td>`
-      + `<td class="debug-nombre"${attributLenteur(r.mediane_ms)}>${formaterDuree(r.mediane_ms)}</td>`
-      + `<td class="debug-nombre"${attributLenteur(r.p95_ms)}>${formaterDuree(r.p95_ms)}</td>`
-      + `<td class="debug-nombre"${attributLenteur(r.p99_ms)}>${formaterDuree(r.p99_ms)}</td>`
+      + `<td class="debug-nombre"${attributLenteur(r.mediane_ms)}>${dureeDuQuantile(r, 'mediane_ms')}</td>`
+      + `<td class="debug-nombre"${attributLenteur(r.p95_ms)}>${dureeDuQuantile(r, 'p95_ms')}</td>`
+      + `<td class="debug-nombre"${attributLenteur(r.p99_ms)}>${dureeDuQuantile(r, 'p99_ms')}</td>`
       + `<td class="debug-nombre"${attributLenteur(r.max_ms)}>${formaterDuree(r.max_ms)}</td>`
       + `<td class="debug-nombre">${formaterDuree(valeurDeTri(r, 'total'))}</td>`
       + `<td class="debug-nombre"><span${quatre ? ' class="debug-err4"' : ''}>${nombre(quatre)}</span> / <span${cinq ? ' class="debug-err5"' : ''}>${nombre(cinq)}</span></td>`
@@ -313,15 +333,18 @@ export function htmlDesRoutes(routes, { lentes = plusLentes(routes) } = {}) {
   }).join('');
 }
 
-/** Les chiffres d'ensemble (STATS de la période) : une liste de définitions. */
-export function htmlDesChiffres(global) {
+/**
+ * Les chiffres d'ensemble (STATS de la période, SANS les relèves automatiques : `releves` = { n, routes } de la réponse) : une liste de définitions.
+ */
+export function htmlDesChiffres(global, releves = null) {
   if (!global || typeof global !== 'object') return '';
   const lignes = [
     ['Appels', nombre(global.n)],
+    ...(releves && Number(releves.n) > 0 ? [['Relèves automatiques (exclues)', nombre(releves.n)]] : []),
     ['Moyenne', formaterDuree(global.moyenne_ms), global.moyenne_ms],
-    ['Médiane', formaterDuree(global.mediane_ms), global.mediane_ms],
-    ['p95', formaterDuree(global.p95_ms), global.p95_ms],
-    ['p99', formaterDuree(global.p99_ms), global.p99_ms],
+    ['Médiane', dureeDuQuantile(global, 'mediane_ms'), global.mediane_ms],
+    ['p95', dureeDuQuantile(global, 'p95_ms'), global.p95_ms],
+    ['p99', dureeDuQuantile(global, 'p99_ms'), global.p99_ms],
     ['Min / max', `${formaterDuree(global.min_ms)} / ${formaterDuree(global.max_ms)}`],
     ['Écart type', formaterDuree(global.ecart_type_ms)],
     ['Temps cumulé', formaterDuree(global.total_ms)],
@@ -340,8 +363,9 @@ export function resumeDesMetriques(reponse) {
   const periode = PERIODES.find((p) => p.cle === reponse.periode)?.libelle ?? reponse.periode ?? '';
   const g = reponse.global ?? {};
   const appels = Number(g.n) || 0;
-  const morceaux = [instance, periode, `${nombre(appels)} appel${appels > 1 ? 's' : ''}`];
-  if (appels) morceaux.push(`moyenne ${formaterDuree(g.moyenne_ms)}`, `p95 ${formaterDuree(g.p95_ms)}`);
+  const releves = Number(reponse.releves?.n) || 0;
+  const morceaux = [instance, periode, `${nombre(appels)} appel${appels > 1 ? 's' : ''}${releves ? ' (hors relèves)' : ''}`];
+  if (appels) morceaux.push(`moyenne ${formaterDuree(g.moyenne_ms)}`, `p95 ${dureeDuQuantile(g, 'p95_ms')}`);
   const erreurs = (Number(g.erreurs_5xx) || 0);
   if (erreurs) morceaux.push(`${nombre(erreurs)} erreur${erreurs > 1 ? 's' : ''} 5xx`);
   return morceaux.filter(Boolean).join(' · ');
@@ -365,10 +389,12 @@ export const MESURES_DE_PAGE = [
 export function mesureDePage(page, cle) {
   const nb = (v) => (fini(v) ? Number(v) : null);
   const brut = page?.[`${cle}_ms`] ?? page?.[cle];
+  // le p95 au-delà de la dernière classe (60 s) n'est qu'une borne basse (`au_dela` : « charge_p95_ms »…)
+  const auDela = Array.isArray(page?.au_dela) && page.au_dela.includes(`${cle}_p95_ms`);
   if (brut && typeof brut === 'object') {
-    return { moyenne: nb(brut.moyenne ?? brut.moyenne_ms), p95: nb(brut.p95 ?? brut.p95_ms) };
+    return { moyenne: nb(brut.moyenne ?? brut.moyenne_ms), p95: nb(brut.p95 ?? brut.p95_ms), auDela };
   }
-  return { moyenne: nb(brut), p95: nb(page?.[`${cle}_p95_ms`] ?? page?.[`${cle}_p95`]) };
+  return { moyenne: nb(brut), p95: nb(page?.[`${cle}_p95_ms`] ?? page?.[`${cle}_p95`]), auDela };
 }
 
 /** Les lignes du tableau des pages vues (temps mesurés par le navigateur), les plus vues d'abord ; le LCP lent est marqué. */
@@ -378,7 +404,7 @@ export function htmlDesPages(pages) {
   return liste.map((p) => `<tr><th scope="row"><code>${echapper(p.page)}</code></th><td class="debug-nombre">${nombre(p.n)}</td>${MESURES_DE_PAGE.map(({ cle }) => {
     const m = mesureDePage(p, cle);
     const seuils = cle === 'lcp' ? SEUILS_LCP_MS : null;
-    return `<td class="debug-nombre"${seuils ? attributLenteur(m.p95 ?? m.moyenne, seuils) : ''}>${formaterDuree(m.moyenne)} / ${formaterDuree(m.p95)}</td>`;
+    return `<td class="debug-nombre"${seuils ? attributLenteur(m.p95 ?? m.moyenne, seuils) : ''}>${formaterDuree(m.moyenne)} / ${m.auDela && m.p95 !== null ? `>${INSECABLE}` : ''}${formaterDuree(m.p95)}</td>`;
   }).join('')}</tr>`).join('');
 }
 
@@ -408,6 +434,17 @@ export function htmlDesOrigines(origines, max = 100) {
     .sort((a, b) => (Number(b.n) || 0) - (Number(a.n) || 0)).slice(0, max)
     .map((x) => `<tr><th scope="row"><code>${echapper(x.page || '(aucune)')}</code></th><td><code>${echapper(x.route)}</code></td>`
       + `<td class="debug-nombre">${nombre(x.n)}</td></tr>`).join('');
+}
+
+/**
+ * La phrase qui dit la fenêtre des pages vues, navigateurs et origines quand elle n'est pas celle des routes (période « 1h » : ils ne sont gardés
+ * que par heure, depuis `depuis_horaire`) ; '' sinon.
+ */
+export function noteDeFenetreHoraire(reponse, maintenant = new Date()) {
+  const depuis = Date.parse(reponse?.depuis);
+  const horaire = Date.parse(reponse?.depuis_horaire);
+  if (!Number.isFinite(depuis) || !Number.isFinite(horaire) || horaire >= depuis) return '';
+  return `Pages vues, navigateurs et origines sont comptés par heure : depuis ${instantLisible(reponse.depuis_horaire, maintenant)}, soit plus que la période des routes (depuis ${instantLisible(reponse.depuis, maintenant)}).`;
 }
 
 /** Les options de la liste des routes des requêtes récentes : « Toutes », puis les gabarits connus (sans doublon), la choisie gardée. */
@@ -485,18 +522,21 @@ const c = (v) => String(Math.round(v * 10) / 10);
 /**
  * Une courbe en SVG en ligne : `points` (les objets de la série), `series` [{ cle, libelle, forme: 'barres'|'ligne', format }] — chacune sur sa
  * propre échelle (de 0 au plafond rond de son maximum), la première graduée à gauche, la deuxième à droite ; en abscisse le temps (`x`, par défaut
- * `debut` ou `instant`) si chaque point en a un, sinon le rang. Un trou de plus d'un pas et demi coupe une ligne. Aucune donnée : une phrase.
+ * `debut` ou `instant`) si chaque point en a un, sinon le rang. Le pas : `pas` (ms) s'il est donné, sinon la MÉDIANE des écarts entre deux points
+ * (jamais le plus petit : un échantillon pris à l'arrêt du service, quelques secondes après le précédent, ferait de chaque écart normal un trou) ;
+ * un trou de plus d'un pas et demi coupe une ligne. Aucune donnée : une phrase.
  * Rend un <div class="debug-courbe"> : le SVG (role="img", aria-label = `etiquette` et l'étendue de chaque série ; jamais de <title>, qui serait une
  * infobulle native) et sa légende.
  */
-export function courbe(points, { series = [], x = (p) => p.debut ?? p.instant, largeur = 640, hauteur = 180, etiquette = 'Courbe' } = {}) {
+export function courbe(points, { series = [], x = (p) => p.debut ?? p.instant, largeur = 640, hauteur = 180, etiquette = 'Courbe', pas: pasDonne = null } = {}) {
   const liste = (Array.isArray(points) ? points : []).filter((p) => p && typeof p === 'object');
   if (!liste.length || !series.length) return '<p class="debug-vide">Aucune donnée sur la période.</p>';
   const temps = liste.map((p) => Date.parse(x(p)));
   const parTemps = temps.every(Number.isFinite);
   const ordre = liste.map((p, i) => ({ p, t: parTemps ? temps[i] : i })).sort((a, b) => a.t - b.t);
-  const ecarts = ordre.slice(1).map((o, i) => o.t - ordre[i].t).filter((d) => d > 0);
-  const pas = ecarts.length ? Math.min(...ecarts) : (parTemps ? 60000 : 1);
+  const ecarts = ordre.slice(1).map((o, i) => o.t - ordre[i].t).filter((d) => d > 0).sort((a, b) => a - b);
+  const mediane = ecarts.length ? ecarts[Math.floor((ecarts.length - 1) / 2)] : null;
+  const pas = Number(pasDonne) > 0 ? Number(pasDonne) : mediane ?? (parTemps ? 60000 : 1);
   const t0 = ordre[0].t;
   const t1 = ordre.at(-1).t + pas;
   const M = { haut: 12, bas: 22, gauche: 58, droite: 58 };
@@ -603,19 +643,24 @@ export function niveauDuDisque(disque) {
   return '';
 }
 
-/** Le disque du dossier de la base : jauge de l'espace utilisé, libre et total, et une alerte écrite s'il est bas. */
+/**
+ * Le disque du dossier de la base : jauge de la place qui n'est PAS disponible pour le service (1 − libre / total : la place prise et la réserve de
+ * root, comme le texte et l'alerte, qui parlent du libre), utilisé, réservé au système, libre et total, et une alerte écrite s'il est bas.
+ */
 export function htmlDuDisque(disque) {
   if (!disque || typeof disque !== 'object' || !fini(disque.total)) return '<p class="debug-vide">Espace disque inconnu.</p>';
   const total = Number(disque.total);
-  const libre = Number(disque.libre) || 0;
-  const utilise = fini(disque.utilise) ? Number(disque.utilise) : total - libre;
+  const libre = Math.min(total, Math.max(0, Number(disque.libre) || 0));
+  const reserve = fini(disque.reserve) ? Math.max(0, Number(disque.reserve)) : 0;
+  const utilise = fini(disque.utilise) ? Number(disque.utilise) : Math.max(0, total - libre - reserve);
   const partLibre = fini(disque.part_libre) ? Number(disque.part_libre) : total > 0 ? libre / total : 0;
   const niveau = niveauDuDisque(disque);
-  const texte = `${formaterOctets(utilise)} utilisés sur ${formaterOctets(total)}, ${formaterOctets(libre)} libres (${formaterPart(partLibre)})`;
+  const texte = `${formaterOctets(utilise)} utilisés${reserve > 0 ? ` et ${formaterOctets(reserve)} réservés au système` : ''} sur ${formaterOctets(total)}, `
+    + `${formaterOctets(libre)} libres (${formaterPart(partLibre)})`;
   const alerte = niveau === 'alerte'
     ? `<p class="debug-alerte debug-alerte--erreur" role="alert">Disque presque plein : ${formaterOctets(libre)} libres (${formaterPart(partLibre)}).</p>`
     : niveau === 'attention' ? `<p class="debug-alerte debug-alerte--avertissement">Moins de 20 % du disque libre.</p>` : '';
-  return `${alerte}${jauge({ part: total > 0 ? utilise / total : 0, libelle: 'Disque utilisé', texte, niveau })}`
+  return `${alerte}${jauge({ part: total > 0 ? 1 - libre / total : 0, libelle: 'Disque non disponible (pris ou réservé)', texte, niveau })}`
     + `<p class="debug-jauge__texte">${texte}</p>${disque.dossier ? `<p class="debug-petit">Dossier : <code>${echapper(disque.dossier)}</code></p>` : ''}`;
 }
 
@@ -659,24 +704,49 @@ export function htmlDesFichiers(fichiers) {
     + `<td class="debug-nombre">${formaterOctets(f.octets)}</td></tr>`).join('')}<tr class="debug-total"><th scope="row">Total</th><td></td><td class="debug-nombre">${formaterOctets(total)}</td></tr>`;
 }
 
-/** Le libellé d'une clé de rétention (« agregats_horaires_jours » → « Agregats horaires »). */
-const libelleDeCle = (cle) => {
-  const t = String(cle).replace(/_(jours|j)$/, '').replace(/_/g, ' ').trim();
-  return t ? t[0].toUpperCase() + t.slice(1) : '';
+/** Les libellés des clés de rétention du service (serveur/metriques.mjs#RETENTION), en français accentué. */
+export const LIBELLES_DE_RETENTION = {
+  agregats_heure: 'Agrégats par heure',
+  agregats_5min: 'Agrégats par tranche de 5 minutes',
+  pages: 'Pages vues (par heure)',
+  navigateurs: 'Navigateurs et appareils (par heure)',
+  origines: 'Origines des appels (par heure)',
+  echantillons_minute: 'Échantillons système par minute',
+  echantillons_heure: 'Échantillons système résumés par heure',
+  repartition_10min: 'Répartition du disque (toutes les 10 minutes)',
+  repartition_jour: 'Répartition du disque (une par jour)',
+  evenements: 'Évènements du service',
+  requetes_brutes: 'Requêtes brutes',
 };
 
-/** Le volume des métriques : taille, croissance par jour, projection à un an au rythme actuel, rétention, requêtes brutes. */
+/** Le libellé d'une clé de rétention : celui de LIBELLES_DE_RETENTION, sinon la clé elle-même (une clé inconnue de la page). */
+export const libelleDeRetention = (cle) => LIBELLES_DE_RETENTION[cle] ?? String(cle);
+
+/** Un réglage vrai, faux ou inconnu (null : celui d'une autre instance qui ne l'a pas dit) : `oui`, `non` ou « — ». */
+const reglage = (valeur, oui, non) => (valeur === true ? oui : valeur === false ? non : '—');
+
+/**
+ * Le volume des métriques (GET /api/debug/systeme/, `volume`) : taille, croissance par jour en régime (mesurée ou estimée), débit d'écriture brut
+ * (ce que la rétention purge vite compris), taille dans un an et à rétention pleine (calculées par le service, table par table, chaque table à sa
+ * rétention : jamais taille + croissance × 365), réglages (requêtes brutes, balise des pages ; « — » s'ils sont inconnus), rétention.
+ */
 export function htmlDuVolume(volume) {
   if (!volume || typeof volume !== 'object') return '<p class="debug-vide">Volume inconnu.</p>';
-  const croissance = fini(volume.croissance_octets_par_jour) ? Number(volume.croissance_octets_par_jour) : null;
-  const taille = fini(volume.metriques_octets) ? Number(volume.metriques_octets) : null;
+  const octetsOuTiret = (v) => (fini(v) ? formaterOctets(v) : '—');
+  const parJour = (v) => (fini(v) ? `${formaterOctets(v)} par jour` : '—');
+  const source = volume.croissance_source === 'mesuree'
+    ? ` (mesurée sur ${nombreCourt(volume.croissance_mesuree_jours, 1)}${INSECABLE}jours)`
+    : volume.croissance_source === 'estimee' ? ' (estimée)' : '';
   const retention = volume.retention && typeof volume.retention === 'object' ? Object.entries(volume.retention) : [];
   const lignes = [
-    ['Base des métriques', formaterOctets(taille)],
-    ['Croissance', croissance === null ? '—' : `${formaterOctets(croissance)} par jour`],
-    ['Dans un an au rythme actuel', taille === null || croissance === null ? '—' : `≈ ${formaterOctets(taille + croissance * 365)}`],
-    ['Requêtes brutes persistées', volume.brutes ? 'oui (30 jours)' : 'non (mémoire du site de dev seulement)'],
-    ...retention.map(([k, v]) => [`Rétention : ${echapper(libelleDeCle(k))}`, fini(v) ? `${nombre(v)}${INSECABLE}jours` : echapper(v)]),
+    ['Base des métriques', octetsOuTiret(volume.metriques_octets)],
+    ['Croissance en régime', fini(volume.croissance_octets_par_jour) ? `${parJour(volume.croissance_octets_par_jour)}${source}` : '—'],
+    ['Écrit par jour (avant purge)', parJour(volume.debit_ecriture_octets_par_jour)],
+    ['Dans un an (rétention appliquée)', fini(volume.projection_un_an_octets) ? `≈ ${formaterOctets(volume.projection_un_an_octets)}` : '—'],
+    ['À rétention pleine (400 jours)', fini(volume.taille_a_terme_octets) ? `≈ ${formaterOctets(volume.taille_a_terme_octets)}` : '—'],
+    ['Requêtes brutes persistées', reglage(volume.brutes, 'oui (30 jours)', 'non (mémoire du site de dev seulement)')],
+    ['Mesure des pages (balise)', reglage(volume.pages, 'ouverte', 'fermée (MAVERICK_METRIQUES_PAGES=0)')],
+    ...retention.map(([k, v]) => [`Rétention : ${echapper(libelleDeRetention(k))}`, fini(v) ? `${nombre(v)}${INSECABLE}jours` : echapper(v)]),
   ];
   return `<dl class="debug-definitions">${lignes.map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`).join('')}</dl>`;
 }

@@ -98,6 +98,10 @@ const actif = !site.prod && !portable;
               </div>
             </form>
             <p class="debug-annonce" data-perfs-annonce role="status" aria-live="polite"></p>
+            <p class="debug-petit">
+              Chiffres d’ensemble et courbe sans les relèves automatiques (journal, métriques et système de cette page, état de maintenance de chaque
+              page, balise des pages vues) : chacune garde sa ligne dans le tableau des routes. « > 5 s » : au-delà de la dernière classe mesurée.
+            </p>
             <dl class="debug-chiffres" data-perfs-global></dl>
             <div class="debug-figure" data-perfs-serie></div>
 
@@ -125,7 +129,8 @@ const actif = !site.prod && !portable;
             </div>
 
             <h3 id="debug-pages-titre">Pages vues (temps mesurés par le navigateur)</h3>
-            <p class="debug-petit">Moyenne / p95 de chaque temps, depuis le début de la navigation ; LCP marqué au-delà de 2,5 s (lent) et 4 s (très lent).</p>
+            <p class="debug-petit">Moyenne / p95 de chaque temps, depuis le début de la navigation ; LCP marqué au-delà de 2,5 s (lent) et 4 s (très lent) ; « > 60 s » : au-delà de la dernière classe mesurée.</p>
+            <p class="debug-petit" data-perfs-fenetre hidden></p>
             <div class="debug-cadre" tabindex="0" role="region" aria-labelledby="debug-pages-titre">
               <table class="debug-tableau">
                 <thead>
@@ -169,6 +174,8 @@ const actif = !site.prod && !portable;
 
             <section class="debug-requetes" aria-labelledby="debug-requetes-titre">
               <h3 id="debug-requetes-titre">Requêtes récentes <small>(site de dev, en mémoire)</small></h3>
+              <p class="debug-petit" data-requetes-autre hidden></p>
+              <div data-requetes-contenu>
               <form class="debug-choix" data-requetes-filtres>
                 <div class="debug-choix__champ">
                   <label for="debug-requetes-min">Plus lentes que (ms)</label>
@@ -184,6 +191,7 @@ const actif = !site.prod && !portable;
               <p class="debug-annonce" data-requetes-annonce role="status" aria-live="polite"></p>
               <ul class="debug-requetes__liste" data-requetes-liste></ul>
               <p class="debug-vide" data-requetes-vide>Aucune requête en mémoire.</p>
+              </div>
             </section>
           </div>
         </details>

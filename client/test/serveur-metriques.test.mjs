@@ -12,7 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
   alertesDu, BALISE, BORNES_MS, CLASSES, classeDe, creerMetriques, empreinteDePile, estUnSuivi, instanceDuService, methodeNormalisee, navigateurDe,
-  PAGES_PAR_HEURE, pageDuReferent, quantile, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques,
+  PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques,
 } from '../serveur/metriques.mjs';
 import { creerMesureSql, normaliserSql } from '../serveur/metriques-sql.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
@@ -145,7 +145,7 @@ test('classes de l’histogramme : ]borne précédente, borne], la dernière au-
   assert.equal(classeDe(1e9), 12);
 });
 
-test('quantiles tirés de l’histogramme : interpolation linéaire dans la classe, bornée par le min et le max observés', () => {
+test('quantiles tirés de l’histogramme : interpolation linéaire dans la classe, bornée par le min et le max observés ; jamais jusqu’au maximum dans la dernière classe', () => {
   const h = (valeurs) => valeurs.reduce((t, v) => { t[classeDe(v)] += 1; return t; }, new Array(CLASSES).fill(0));
   assert.equal(quantile(new Array(CLASSES).fill(0), 0.5, 0, 0), null, 'sans valeur');
   // dix valeurs dans ]2, 5], min 2,5, max 4,5 : la classe est réduite à [2,5 ; 4,5] et le rang 5 tombe au milieu
@@ -156,8 +156,10 @@ test('quantiles tirés de l’histogramme : interpolation linéaire dans la clas
   assert.equal(quantile(dix, 1, 2.5, 4.5), 4.5, 'q = 1 : le maximum');
   // toutes égales : le quantile est la valeur
   assert.equal(quantile(h([3, 3, 3, 3]), 0.95, 3, 3), 3);
-  // la dernière classe va jusqu'au maximum observé
-  assert.equal(quantile(h([6000, 8000]), 0.5, 6000, 8000), 7000);
+  // la dernière classe (au-delà de 5 000 ms) n'a pas de borne haute : sa borne basse (ou le minimum, plus haut), marquée « au-delà »
+  assert.equal(quantile(h([6000, 8000]), 0.5, 6000, 8000), 6000);
+  assert.deepEqual(quantileDetaille(h([6000, 8000]), 0.5, 6000, 8000), { valeur: 6000, au_dela: true });
+  assert.deepEqual(quantileDetaille(h([7000, 7000]), 0.5, 7000, 7000), { valeur: 7000, au_dela: false }, 'toutes égales : exacte');
   // deux classes : 90 valeurs ≤ 1 ms, 10 valeurs dans ]100, 200] → p95 au milieu de la seconde
   const deux = new Array(CLASSES).fill(0);
   deux[0] = 90;
