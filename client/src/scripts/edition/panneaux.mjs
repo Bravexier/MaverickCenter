@@ -1,4 +1,4 @@
-// Extension de l'éditeur : les panneaux de règles (components/equipement/PanneauDeRegles.astro, migration 0055 ; demande du propriétaire, 2026-10-16 :
+// Extension de l'éditeur : les panneaux de règles (components/equipement/PanneauDeRegles.astro, migration 0056 ; demande du propriétaire, 2026-10-16 :
 // « Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours
 // insérables / modifiables en mode édition) »). Service : serveur/edition-panneaux.mjs. Active dès qu'un panneau est dans la page (aujourd'hui les cinq de
 // /ressources/equipement/, à côté des extensions armes.mjs et armures.mjs, qui ne les touchent pas).

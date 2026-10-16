@@ -4,7 +4,7 @@
 // gardé dans l'adresse (history.pushState, retour arrière compris, adresse lue au chargement). Un id que le vocabulaire n'a pas (mot-clé supprimé ou
 // fusionné depuis) : « Ce mot-clé n'existe plus ». Taper ou chercher depuis la vue d'un mot-clé ouverte par un clic de la liste revient à la liste par un
 // retour arrière (l'entrée poussée par le clic est retirée, l'historique ne garde pas deux fois la liste) ; ouverte par son adresse, la vue est remplacée.
-// La liste est le glossaire (migration 0055) : tous les mots-clés, même sans page ; la vue d'un mot-clé montre son libellé, sa définition, puis ses pages.
+// La liste est le glossaire (migration 0056) : tous les mots-clés, même sans page ; la vue d'un mot-clé montre son libellé, sa définition, puis ses pages.
 // Sur le site de dev, l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) redessine la liste (comptes et définitions de la base vivante, liste de
 // gestion en mode modification) et l'annonce par l'évènement « recherche:mots-cles » (detail.gestion : la liste de gestion est affichée) : la page la
 // relit alors. Chaque mot-clé de la liste est un <li data-id data-cle data-n data-libelle data-definition> (data-cle : son écriture, que filtre la

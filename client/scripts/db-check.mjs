@@ -190,7 +190,7 @@ const iTypes = process.argv.indexOf('--types');
   bilan.types_page = reels.length;
 }
 
-// Glossaire des mots-clés (migration 0055, lib/mots-cles-balises.mjs) : la base ne garde que des ids. Toute balise « {{…}} » d'un texte de la base vise
+// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : la base ne garde que des ids. Toute balise « {{…}} » d'un texte de la base vise
 // un mot-clé du vocabulaire PAR SON ID (aucune orpheline : un mot-clé supprimé quitte les textes qui le citent, serveur/edition.mjs ; aucune écriture : le
 // service met chaque texte en forme canonique) et est écrite comme formeCanonique l'écrirait pour sa colonne (formesNonCanoniques, la même règle :
 // dans un texte de case, son texte écrit, « | », jamais le mode complet ; dans un texte mis en forme, « \| » sur une ligne de tableau et « | »

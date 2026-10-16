@@ -1,7 +1,7 @@
 // Ressources de l'API REST du module « equipement » (format : lib/ressources.mjs) : l'équipement de la section 9 de data/schema.sql — armes (familles,
 // types, pièces élémentaires), armures (emplacements, pièces élémentaires), boucliers (classes, poids, préfabriqués), améliorations, accessoires
 // (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre ; et les panneaux de règles en tête des onglets de
-// /ressources/equipement/ (section 1, migration 0055 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
+// /ressources/equipement/ (section 1, migration 0056 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
 // dans le module « artisanat » (décision R62 : la page Composants en est la seule source).
 // Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs,
 // edition-armures.mjs, edition-panneaux.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une amélioration d'arme, d'armure ou de
@@ -320,14 +320,14 @@ export const RESSOURCES = [
     recherche: ['bonus_brut'],
     tri: 'magie_id',
   },
-  // ▸ Panneaux de règles (migration 0055)
+  // ▸ Panneaux de règles (migration 0056)
   {
     cle: 'panneaux-de-regles',
     nom: 'Panneau de règles',
     noms: 'Panneaux de règles',
     description:
       'Les encarts repliés en tête des onglets de /ressources/equipement/ (un par onglet : son identifiant est l’ancre de l’onglet), remplis par la ' +
-      'migration 0055 des règles que le site tirait du corps des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » (ce ' +
+      'migration 0056 des règles que le site tirait du corps des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » (ce ' +
       'corps n’en est plus que la trace) : le titre du panneau (modifiable) et sa page (contexte des [[liens]], en lecture) ; ses blocs dans l’ordre de ' +
       'lecture en sous-ressource.',
     table: 'panneau_regles',

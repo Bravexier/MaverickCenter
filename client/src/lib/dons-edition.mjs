@@ -100,7 +100,7 @@ export function donneesDeDon(don, { specialites, donsDeLaClasse, alternatives = 
 
 /**
  * Mots-clés de la fiche d'un nouveau don : « capacité de classe » seul, le mot-clé dont le site se sert pour ranger les fiches de dons (lib/mots-cles.mjs).
- * Depuis la migration 0055 (les mots-clés deviennent un glossaire, ceux des pages retirés), ni la classe ni la spécialité.
+ * Depuis la migration 0056 (les mots-clés deviennent un glossaire, ceux des pages retirés), ni la classe ni la spécialité.
  */
 export const motsClesDeDon = () => [MOT_CLE_DES_DONS];
 

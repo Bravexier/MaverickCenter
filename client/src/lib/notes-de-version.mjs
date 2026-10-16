@@ -279,7 +279,7 @@ const DEFINITIONS = [
     table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
   },
-  // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0055) : un panneau sous le nom de son onglet (son titre ; l'ordre
+  // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0056) : un panneau sous le nom de son onglet (son titre ; l'ordre
   // de ses blocs : comparerOrdreDesBlocs), puis ses blocs dans l'ordre de lecture, nommés par leur titre de tuile, sinon par leurs premiers mots
   // (nomDuBloc) ; leur place (`ordre`) n'est pas listée bloc par bloc ; un bloc d'un panneau ajouté ou retiré est dit par le panneau (`suit`)
   {
@@ -595,7 +595,7 @@ function comparerCategoriesDesEvenements(ref, dev, x) {
 }
 
 /**
- * L'ordre des blocs d'un panneau de règles (migration 0055), dit en une ligne par panneau quand les blocs présents des deux côtés ne se lisent plus dans
+ * L'ordre des blocs d'un panneau de règles (migration 0056), dit en une ligne par panneau quand les blocs présents des deux côtés ne se lisent plus dans
  * le même ordre : « Ordre des blocs : Dague · Arme de jet → Arme de jet · Dague », de la première à la dernière place qui diffère. La colonne `ordre`
  * n'est pas listée bloc par bloc : une tuile insérée en tête repousse les suivantes sans changer leur ordre de lecture (son ajout le dit, rien d'autre),
  * un bloc retiré non plus. Un panneau ajouté ou retiré est dit par la table panneau_regles.

@@ -1,7 +1,7 @@
 // Onglet Armes de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armes/ : test/equipement-html.test.mjs pour la page et
 // ses onglets) : rendu depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
 // monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
-// en couleur (décision R48) et leur filtre, le panneau de règles (migration 0055 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
+// en couleur (décision R48) et leur filtre, le panneau de règles (migration 0056 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
 // en forme du classeur), les matériaux dans leur couleur, les améliorations, les champs du mode modification. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
@@ -102,7 +102,7 @@ test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans
   assert.match(main, /<p class="armes-legende sans-js"><span class="armes-legende__depart" title="Arme de départ">Arme de départ<\/span><\/p>/);
 });
 
-test('panneau de règles (migration 0055) : son titre, ses blocs dans l’ordre de la base (texte ou tuile, titres des tuiles), la mise en forme du classeur, la phrase des armes de départ en bleu', options, () => {
+test('panneau de règles (migration 0056) : son titre, ses blocs dans l’ordre de la base (texte ou tuile, titres des tuiles), la mise en forme du classeur, la phrase des armes de départ en bleu', options, () => {
   const panneau = chargerPanneau(base, 'armes');
   const debut = main.indexOf('<details class="preg" id="regles-armes" data-panneau-regles="armes">');
   assert.ok(debut > 0 && panneau);

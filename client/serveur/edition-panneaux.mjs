@@ -1,4 +1,4 @@
-// Édition des panneaux de règles depuis le site de dev (migration 0055 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit
+// Édition des panneaux de règles depuis le site de dev (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit
 // modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode
 // édition) ») : le domaine de la table panneau_regles_bloc pour serveur/edition.mjs (DOMAINES) — le titre d'un panneau n'a rien qui en dépende (colonne
 // de TABLES seulement). Un bloc :

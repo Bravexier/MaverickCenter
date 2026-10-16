@@ -67,7 +67,7 @@ export const EPOQUES_SAISIE = EPOQUES.map((e) => ({ valeur: e.id, libelle: e.id 
 /** La portée d'un Impact de la chronologie (colonne `evenement.portee` : lib/chronologie.mjs#PORTEES ; vide : ni l'un ni l'autre). */
 export const PORTEES_SAISIE = Object.entries(PORTEES).map(([valeur, libelle]) => ({ valeur, libelle }));
 
-/** Le genre d'un bloc de panneau de règles (colonne `panneau_regles_bloc.tuile`, migration 0055) : du texte qui suit les colonnes, ou une tuile. */
+/** Le genre d'un bloc de panneau de règles (colonne `panneau_regles_bloc.tuile`, migration 0056) : du texte qui suit les colonnes, ou une tuile. */
 export const GENRES_DE_BLOC = [
   { valeur: '0', libelle: 'Texte' },
   { valeur: '1', libelle: 'Tuile' },
@@ -502,7 +502,7 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0055) : renommer un mot-clé ne réécrit aucun texte (son id
+  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0056) : renommer un mot-clé ne réécrit aucun texte (son id
   // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
   // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
   // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
@@ -514,7 +514,7 @@ export const TABLES = {
       description: { type: 'texte', libelle: 'Définition' },
     },
   },
-  // Panneaux de règles (migration 0055 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
+  // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
   // contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) ») : le titre d'un panneau
   // (son `<summary>`) ; le texte d'un bloc (Markdown sûr, modifié en place comme le guide), le titre d'une tuile (refusé sur un bloc de texte) et sa place
   // (`ordre` : « ↑ », « ↓ » ; jamais unique, à égalité le rang départage) : serveur/edition-panneaux.mjs

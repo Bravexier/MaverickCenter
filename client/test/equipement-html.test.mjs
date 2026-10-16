@@ -1,7 +1,7 @@
 // Page /ressources/equipement/ construite (dist/ ; demandes du propriétaire, 2026-10-16) : cinq onglets dans l'ordre (Armes, Armures, Boucliers,
 // Ceinture, Accessoires), un panneau par onglet, le premier ouvert ; des identifiants uniques sur toute la page ; en tête de chaque onglet ou
 // sous-onglet qui sert une page du wiki (Armes, Armures, Boucliers, Accessoires, et Bâtons magiques dans la ceinture), son panneau de règles (migration
-// 0055 : titre, blocs et tuiles dans l'ordre de la base, deux colonnes sur un grand écran, plus de phrase au-dessus ; son texte dans l'index de la
+// 0056 : titre, blocs et tuiles dans l'ordre de la base, deux colonnes sur un grand écran, plus de phrase au-dessus ; son texte dans l'index de la
 // recherche) ; le sous-onglet des bâtons magiques de la ceinture (une ligne par magie, liens vers « Composants ») ; les anciennes pages ne sont plus
 // construites et aucun lien du site n'y mène ; chaque onglet garde son script, et la page n'a qu'un script d'onglets. Le contenu des onglets Armes,
 // Armures et Boucliers, Ceinture (et ses règles, tirées du guide), Accessoires : test/armes-html.test.mjs, armures-html.test.mjs, ceinture-html.test.mjs,
@@ -58,7 +58,7 @@ test('identifiants uniques sur toute la page (les onglets réunis : matériaux, 
   for (const id of ['materiaux-armes', 'ameliorations-arme', 'ameliorations-armure', 'ameliorations-bouclier']) assert.ok(ids.includes(id), id);
 });
 
-test('panneaux de règles (migration 0055) : un par page servie (onglet ou sous-onglet), en tête de son panneau, sans phrase au-dessus ; replié sauf celui des accessoires ; son titre et ses blocs dans l’ordre de la base', options, () => {
+test('panneaux de règles (migration 0056) : un par page servie (onglet ou sous-onglet), en tête de son panneau, sans phrase au-dessus ; replié sauf celui des accessoires ; son titre et ses blocs dans l’ordre de la base', options, () => {
   for (const { ancre: id } of PAGES_SERVIES_PAR_L_EQUIPEMENT) {
     const panneau = chargerPanneau(base, id);
     assert.ok(panneau, `${id} : son panneau dans la base`);

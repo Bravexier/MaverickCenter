@@ -6,7 +6,7 @@
 // d'étiquette : il a des catégories (categorie_chronologie, filtre de la frise), dont les libellés sont ses `tags`, cherchés comme le texte ; ses
 // `motsCles` ne sont que ceux que citent les balises de ses descriptions. La page /recherche/ en tire aussi le nombre de pages de chaque mot-clé, par le
 // même calcul que le navigateur (comptesDesMotsCles).
-// Une page qu'un panneau de règles sert (son `page_id` : « Armes », « Armures », « Bouclier », « Bâton magique », « Accessoires » ; migration 0055,
+// Une page qu'un panneau de règles sert (son `page_id` : « Armes », « Armures », « Bouclier », « Bâton magique », « Accessoires » ; migration 0056,
 // lib/panneaux-regles-db.mjs) est aussi cherchée dans le titre et les blocs de ses panneaux, en tête de son texte (avant son corps, qui peut dépasser
 // la limite du texte), et ses `motsCles` comptent leurs balises : le site de dev les modifie, son corps (page.corps_md) n'en garde que le texte de
 // l'import, qui reste aussi cherché.

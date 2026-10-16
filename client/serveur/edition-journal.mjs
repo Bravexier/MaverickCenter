@@ -428,7 +428,7 @@ const decodee = (m) => ({
  * ([{ table, valeurs }]) créées juste avant elle si elles manquent — dans son lot, annulées avec lui, jamais notées ni comptées
  * (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043 et son mot-clé), avec `sansEffet` : une écriture que les
  * règles n'ont plus de raison de faire, « intégrée » sans rien écrire ni rompre son lot (serveur/edition.mjs#ancienneEcritureDuGlossaire : avant la
- * migration 0055, l'étiquette d'une page qui cite un mot-clé que le glossaire n'a plus) — ou avec `conflit` : le message d'une forme ancienne qui n'a
+ * migration 0056, l'étiquette d'une page qui cite un mot-clé que le glossaire n'a plus) — ou avec `conflit` : le message d'une forme ancienne qui n'a
  * pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant la migration 0044).
  * `apresLeLot(modifications)` : appelée après les modifications de chaque lot qui passe, dans son lot (avant le contrôle de ses clés étrangères, annulée
  * avec lui), avec ses modifications (telles qu'adaptées) ; elle écrit ce que le lot entraîne au-delà de ce qu'il note et rend ces écritures, décodées

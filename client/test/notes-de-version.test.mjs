@@ -534,7 +534,7 @@ test('chronologie et mots-clés (migration 0043) : en une ligne tant que la prod
   assert.deepEqual(lignes.filter(([d]) => d === 'mots-cles'), [['mots-cles', 'Démos', 'Mot-clé', 'modifie', 'Démo', 'Démos'], ['mots-cles', 'Vieux', null, 'retire', 'Vieux', null]]);
 });
 
-test('équipement (migration 0055) : les panneaux de règles en une ligne tant que la production ne les a pas ; puis le titre d’un panneau, un bloc par son titre de tuile ou ses premiers mots', () => {
+test('équipement (migration 0056) : les panneaux de règles en une ligne tant que la production ne les a pas ; puis le titre d’un panneau, un bloc par son titre de tuile ou ses premiers mots', () => {
   const panneau = (id, titre) => ({ id, titre, page_id: `ressources/${id}` });
   const bloc = (panneau_id, rang, valeurs = {}) => ({ panneau_id, rang, ordre: rang, tuile: 0, titre: null, texte: 'Texte.', ...valeurs });
   const neuves = comparerBases({ tables: {} }, { tables: { panneau_regles: [panneau('armes', 'Règles des armes'), panneau('accessoires', 'Règles')], panneau_regles_bloc: [bloc('armes', 1), bloc('accessoires', 1)] } });

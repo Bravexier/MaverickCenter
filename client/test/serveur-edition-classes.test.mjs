@@ -177,7 +177,7 @@ test('D11 — créer une spécialité : ligne, page_entite, don de spécialité 
   const p = ligne('SELECT * FROM page WHERE id = ?', k.id);
   assert.deepEqual([p.type, p.slug, p.titre, p.statut, p.origine, p.resume, p.corps_md],
     ['capacites', `${C1.slug}-lame-courbe`, `Lame courbe (${C1.nom})`, 'draft', 'classes', 'Frappe deux fois.', 'Frappe deux fois.\n']);
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', k.id).map((t) => t.libelle), ['capacité de classe'], 'migration 0055 : ni la classe ni la spécialité');
+  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', k.id).map((t) => t.libelle), ['capacité de classe'], 'migration 0056 : ni la classe ni la spécialité');
   const sources = lignes('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?', k.id);
   assert.equal(sources.length, 1);
   assert.match(sources[0].texte, /^Site de dev › édition du /);

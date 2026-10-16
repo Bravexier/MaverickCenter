@@ -5,7 +5,7 @@
 // pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Domaines des tables
 // evenement, evenement_extrait (les blocs de description : texte et lien), categorie_chronologie et mot_cle pour serveur/edition.mjs (DOMAINES), et deux
-// opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`. Les mots-clés sont un glossaire (migration 0055 ; demande du
+// opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`. Les mots-clés sont un glossaire (migration 0056 ; demande du
 // propriétaire du 2026-10-16) : un libellé et une définition (NULL tant qu'il n'est pas décrit) ; un texte les cite par une balise (lib/mots-cles-balises.mjs) ;
 // un mot-clé supprimé quitte aussi les textes qui le citent, un mot-clé fusionné y est remplacé par l'autre (serveur/edition.mjs#reecrireLesBalises).
 // Rien n'est déduit : un événement n'a que ce qu'on saisit ; l'ordre de lecture suit la date (lib/chronologie.mjs#ordonner), un événement créé vient après

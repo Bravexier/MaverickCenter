@@ -2,7 +2,7 @@
 // page des accessoires. Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire », présenté comme la page des armes) : chargée depuis les
 // tables de la base (accessoire_emplacement, accessoire_propriete, accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais
 // depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche et aux [[liens]] ; de ce Markdown, seules les consignes écrites sous chaque
-// étape s'affichent (les règles, avant « ## CRÉATION D'ACCESSOIRE », copiées par la migration 0055, sont le panneau de règles `accessoires` :
+// étape s'affichent (les règles, avant « ## CRÉATION D'ACCESSOIRE », copiées par la migration 0056, sont le panneau de règles `accessoires` :
 // lib/panneaux-regles-db.mjs).
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerAccessoires` reçoit la base ouverte par lib/donnees.mjs.
 import { normalize } from './text.mjs';

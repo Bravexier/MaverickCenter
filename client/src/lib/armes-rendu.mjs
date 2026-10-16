@@ -25,7 +25,7 @@ const capitale = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 
 /**
  * La phrase « Les armes en bleu sont les armes possibles en arme de départ » du panneau de règles de l'onglet (en gras et en bleu dans la cellule du
- * classeur ; en gras dans le Markdown du bloc : migration 0055) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML (par remark au
+ * classeur ; en gras dans le Markdown du bloc : migration 0056) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML (par remark au
  * build, par lib/chronologie-rendu.mjs#htmlDuTexte dans le navigateur du site de dev), reçoit la classe `armes__phrase-depart` (styles/armes/armes.css).
  * Rien d'autre ne change.
  */

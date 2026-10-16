@@ -89,7 +89,7 @@ export const RESSOURCES = [
     nom: 'Mot-clé',
     noms: 'Mots-clés',
     description:
-      'Le glossaire des mots-clés (migrations 0043 et 0055, demandes du propriétaire) : un libellé et une définition (`description`, NULL tant qu’il ' +
+      'Le glossaire des mots-clés (migrations 0043 et 0056, demandes du propriétaire) : un libellé et une définition (`description`, NULL tant qu’il ' +
       'n’est pas décrit), cités dans les textes par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » : enregistrée sous sa forme canonique, l’id ' +
       'seul dans un texte mis en forme, « {{id|texte}} » toujours dans un texte de case, où le mode complet est refusé ; une balise qui ne cite aucun ' +
       'mot-clé, ou dont la ref est à la fois l’id d’un mot-clé et l’écriture d’un autre, refusée en 400), posés sur quelques pages et listés sur ' +

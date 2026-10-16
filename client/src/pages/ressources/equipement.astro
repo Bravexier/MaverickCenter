@@ -15,7 +15,7 @@ import { url } from '../../lib/wiki';
 // /ressources/equipement/ (menu Ressources ; demandes du propriétaire, 2026-10-16) : une page sans page du wiki, cinq onglets rendus depuis la base
 // (components/equipement/EquipementPage.astro, lib/equipement.mjs). En tête de chaque onglet ou sous-onglet qui sert une page du wiki (Armes, Armures,
 // Boucliers, Accessoires, et le sous-onglet Bâtons magiques de la ceinture : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT), son panneau de règles
-// (migration 0055 : tables panneau_regles et panneau_regles_bloc, lib/panneaux-regles-db.mjs ; components/equipement/PanneauDeRegles.astro), dont l'id
+// (migration 0056 : tables panneau_regles et panneau_regles_bloc, lib/panneaux-regles-db.mjs ; components/equipement/PanneauDeRegles.astro), dont l'id
 // est l'ancre de l'onglet ou du sous-onglet : le Markdown de chaque bloc est rendu ici ([[liens]], couleurs, monnaies en icônes : lib/guide-rendu.ts),
 // avec la page du panneau (« Armes »…, qui n'est plus construite) comme contexte des [[liens]] ; dans celui des armes, « Les armes en bleu… » prend le
 // bleu des armes de départ (avecPhraseDesArmesDeDepart). L'onglet Ceinture garde ses règles tirées des sections des pages du guide (décisions R81 et

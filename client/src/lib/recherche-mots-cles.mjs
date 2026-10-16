@@ -2,7 +2,7 @@
 // et liste les éléments qui ont ce mot clé ») : un mot-clé se désigne par son id (mot_cle.id, figé : un renommage ne change pas son adresse), dans
 // l'adresse `?mot-cle=<id>` ; ses éléments sont les pages de l'index de recherche qui le portent ou le citent (pages/search-index.json.ts,
 // lib/recherche-index.ts : `motsCles` = les ids de leurs étiquettes et des mots-clés que citent leurs balises du glossaire, « {{id}} » ; un événement
-// de la chronologie n'a que les seconds : ses catégories, que filtre la frise, ne sont pas des mots-clés). Depuis la migration 0055, la liste est le
+// de la chronologie n'a que les seconds : ses catégories, que filtre la frise, ne sont pas des mots-clés). Depuis la migration 0056, la liste est le
 // glossaire : tous les mots-clés, avec leur définition (demande du propriétaire du 2026-10-16).
 // Fonctions pures, sans dépendance navigateur ni Astro : le script de /recherche/ (src/scripts/recherche.mjs, seul script de page à l'importer) et la page
 // construite (le nombre de pages de chaque mot-clé : le même calcul des deux côtés).
@@ -62,7 +62,7 @@ export function vueDuMotCle(index, id, vocabulaire) {
 /**
  * Les mots-clés de la liste que la page affiche : ceux dont l'écriture (`cle` : normalize du libellé, jamais l'id) contient chaque mot cherché
  * (lib/search.mjs#filtrerMotsCles) et que porte au moins une page visible (`n`) ; `tous` : aussi ceux qu'aucune ne porte (le glossaire de /recherche/,
- * qui les montre tous depuis la migration 0055).
+ * qui les montre tous depuis la migration 0056).
  * @param {{ cle: string, n: number }[]} motsCles
  */
 export function motsClesAffiches(motsCles, query, { tous = false } = {}) {

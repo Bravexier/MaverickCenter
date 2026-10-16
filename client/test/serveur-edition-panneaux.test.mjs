@@ -1,4 +1,4 @@
-// Édition des panneaux de règles depuis le site de dev (serveur/edition-panneaux.mjs, migration 0055 ; demande du propriétaire, 2026-10-16 : « Il faudrait
+// Édition des panneaux de règles depuis le site de dev (serveur/edition-panneaux.mjs, migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait
 // que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables /
 // modifiables en mode édition) ») : le titre d'un panneau, le texte d'un bloc (Markdown sûr), le titre d'une tuile (jamais d'un bloc de texte), une tuile
 // insérée après un bloc (les suivants décalés, au journal), un déplacement (deux ordres échangés), une suppression (pas du dernier bloc), un rang jamais
@@ -246,7 +246,7 @@ test('rapatriement et mise à jour sur data/rows : les panneaux reviennent tels 
   const appliquee = construire(rows, 'rapatriement');
   for (const t of ['panneau_regles', 'panneau_regles_bloc']) assert.deepEqual(lire(appliquee, t), lire(db, t), t);
   appliquee.close();
-  // « Effectuer la mise à jour » : la note de version (domaine « equipement », admis par la contrainte depuis la migration 0055)
+  // « Effectuer la mise à jour » : la note de version (domaine « equipement », admis par la contrainte depuis la migration 0056)
   const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
   const maj = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '33333333-4444-5555-6666-777777777777', cree_le: '2026-10-16T08:00:00Z', version_dev: '0.3.40', version_cible: '0.4', texte: null, journal },
     { rows: rowsMaj, reference: 'HEAD', date: '2026-10-16', versionDev: '0.3.40' });

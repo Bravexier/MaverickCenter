@@ -1,4 +1,4 @@
-// Panneaux de règles (migration 0055 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que sert
+// Panneaux de règles (migration 0056 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que sert
 // /ressources/equipement/ (son id = l'ancre de l'onglet ou du sous-onglet de cette page, sa page : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT ;
 // l'onglet Ceinture, qui ne sert pas de page, n'en a pas), ses blocs dans l'ordre de lecture (ordre, puis rang), la place d'un bloc inséré et les ordres après un déplacement
 // (le service et le mode modification s'en servent), le HTML d'un bloc (texte, tuile, titre échappé, champ du mode modification), et la copie de
@@ -42,13 +42,13 @@ test('chargerPanneau : le titre, la page et les blocs dans l’ordre de lecture 
   }
   assert.equal(chargerPanneau(db, 'aucun-panneau'), null);
   const vide = new DatabaseSync(':memory:');
-  assert.equal(chargerPanneau(vide, 'armes'), null, 'une base d’avant la migration 0055');
+  assert.equal(chargerPanneau(vide, 'armes'), null, 'une base d’avant la migration 0056');
   assert.deepEqual(chargerPanneaux(vide), []);
   vide.close();
   assert.deepEqual(ordonnerBlocs([{ rang: 3, ordre: 2 }, { rang: 1, ordre: 2 }, { rang: 2, ordre: 1 }]).map((b) => b.rang), [2, 1, 3], 'à ordre égal, le rang');
 });
 
-test('l’import (migration 0055) : les huit blocs des armes dans l’ordre, en tuiles Recharge longue, Recharge très longue, Mordhau, Dague, Arme de jet et le prix', () => {
+test('l’import (migration 0056) : les huit blocs des armes dans l’ordre, en tuiles Recharge longue, Recharge très longue, Mordhau, Dague, Arme de jet et le prix', () => {
   const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'armes'));
   assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [
     [0, null], [1, null], [1, null], [1, null], [0, null], [1, 'Dague'], [1, 'Arme de jet'], [1, 'Comment déterminer le prix de votre arme ?'],

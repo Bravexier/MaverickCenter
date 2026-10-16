@@ -37,7 +37,7 @@ test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, 
   assert.match(main, /^<div class="armures" data-armures>/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
-  // le panneau de règles de chaque onglet (migration 0055), en tête, replié, sans phrase au-dessus
+  // le panneau de règles de chaque onglet (migration 0056), en tête, replié, sans phrase au-dessus
   for (const id of ['armures', 'boucliers']) {
     assert.match(panneau(id), new RegExp(`^<section class="armures-panneau equipement-panneau" id="${id}"[^>]*><h2 class="equipement-panneau__titre" id="titre-${id}">[^<]*</h2><details class="preg" id="regles-${id}" data-panneau-regles="${id}">`), id);
   }

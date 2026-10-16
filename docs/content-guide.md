@@ -292,7 +292,7 @@ inclure des tuiles génériques (toujours insérables / modifiables en mode édi
 Sinon une seule. Dans le cas présent pour les armes les blocs modulaires à séparer (et garder à part) seraient les définitions sur Recharge longue,
 Recharge très longue, Mordhau, Dague et Arme de jet. »
 
-- **Données** (migration `0055-glossaire-et-panneaux-de-regles`) : `panneau_regles` (un par page du wiki que la page sert,
+- **Données** (migration `0056-glossaire-et-panneaux-de-regles`) : `panneau_regles` (un par page du wiki que la page sert,
   `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'ancre de l'onglet ou du sous-onglet de cette page : `armes`, `armures`,
   `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de l'onglet Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
   `panneau_regles_bloc` (ses blocs : `rang`, la clé, jamais redonné ; `ordre`, la place de lecture, non unique, à égalité le rang ; `tuile` 0 ou 1 ; le titre facultatif d'une tuile,
@@ -336,7 +336,7 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
 - **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction portait la mise en forme de la cellule A1 de l'onglet (lue dans le
   classeur, perdue à l'import), que les blocs du panneau gardent — « Les armes en bleu… » en gras (et en bleu sur la page, le bleu des armes de départ :
   `lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras italique ; Recharge longue, Recharge très longue et Mordhau, Dague,
-  Arme de jet et le prix sont des tuiles (migration 0055) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
+  Arme de jet et le prix sont des tuiles (migration 0056) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
 
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45), aéré (« l'affichage est trop
   serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; les **effets
@@ -389,7 +389,7 @@ page » ; « les autres armures étant composées de deux matériaux il faut don
 liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les
 boucliers » ; « Pour les bouclier c'est forme + matière ». La page est rendue depuis les tables (`lib/armures-db.mjs`, `components/armures/ArmuresPage.astro`,
 `styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; leurs règles sont le panneau de règles de chaque
-onglet (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0055) ; le Markdown ne sert qu'à la recherche et aux
+onglet (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
 `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
 **Les pages « Armures » et « Bouclier » ne sont plus construites** : leurs liens mènent à leur onglet de la page « Équipement » (voir plus haut) ; le
 lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration
@@ -757,7 +757,7 @@ niveau (Élémentaliste / Occultiste ; Création vivante / Tempus Figus / Obédi
 `test/capacites-content.test.mjs` rejoue ces exemples sur les pages de l'import (le site de dev peut ajouter ou retirer des dons).
 
 **Dons et spécialités créés sur le site de dev** (D11, `docs/serveur.md`, « Édition ») : la fiche d'un don créé a pour seule source sa provenance
-« Site de dev › édition du AAAA-MM-JJ », son seul mot-clé « capacité de classe » (depuis la migration 0055 : ni la classe ni la spécialité), son corps et
+« Site de dev › édition du AAAA-MM-JJ », son seul mot-clé « capacité de classe » (depuis la migration 0056 : ni la classe ni la spécialité), son corps et
 son résumé tirés de sa ligne ; ses champs structurés (`classe`, `specialite`, `niveau`, `nature`, `rang`, `ligne`, `type_capacite`,
 `choix_exclusif_avec`) sont **tirés des tables** (`lib/dons-edition.mjs#donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près) et refaits
 quand un voisin change : le `rang` d'un don reçu sans choix est sa place de haut en bas parmi ceux de sa classe, celui d'un cartouche le rang de sa
@@ -796,8 +796,8 @@ coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : 
 
 Demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un glossaire. Le mot-clé aura son ID, son texte et une
 description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible. » La table `mot_cle`
-(migrations `0043`, `0055`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
-une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0055` a retiré les anciens mots-clés des pages : il reste ceux dont le
+(migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
+une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
 ceux du glossaire (Mordhau, Recharge longue, Recharge très longue…).
 

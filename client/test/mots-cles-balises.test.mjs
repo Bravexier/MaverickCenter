@@ -1,4 +1,4 @@
-// Le glossaire des mots-clés dans les textes (migration 0055 ; demande du propriétaire du 2026-10-16 : « Partout où un mot-clé est utilisé, il sera affiché
+// Le glossaire des mots-clés dans les textes (migration 0056 ; demande du propriétaire du 2026-10-16 : « Partout où un mot-clé est utilisé, il sera affiché
 // en gras. Une infobulle de sa définition sera visible », marquage explicite, « une seconde balise pour le mode complet, à savoir nom et définition séparés
 // d'un ':' ») : la syntaxe (lib/mots-cles-balises.mjs), le texte sans balises, la forme canonique, le HTML (exclusions, attributs, une bulle par mot-clé),
 // le middleware du site (src/middleware.mjs, avec un faux `next()`), la recherche (mots-clés cités), le contrôle db:check (aucune balise orpheline) ;

@@ -3,7 +3,7 @@
 // composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est
 // disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les
 // bouclier c'est forme + matière ») : chargée depuis les tables de la base, jamais depuis les Markdown des pages « Armures » et « Bouclier » (qui ne
-// servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs) ; leurs règles (le texte avant les tableaux, copié par la migration 0055)
+// servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs) ; leurs règles (le texte avant les tableaux, copié par la migration 0056)
 // sont les panneaux de règles `armures` et `boucliers` (lib/panneaux-regles-db.mjs). Les pages « Armures » et « Bouclier » ne sont plus construites :
 // leurs liens mènent à leur onglet (lib/metiers.mjs#adresseDePage).
 // Sans dépendance (sauf des modules purs) : `chargerArmures` reçoit la base ouverte par lib/donnees.mjs.

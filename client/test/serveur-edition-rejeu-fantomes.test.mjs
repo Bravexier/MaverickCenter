@@ -21,7 +21,7 @@ import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-fantomes-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
 let compteur = 0;
-// les règles : data/rows et les mots-clés d'essai posés sur des pages (test/aide-mots-cles.mjs : depuis la migration 0055, le vocabulaire importé n'est
+// les règles : data/rows et les mots-clés d'essai posés sur des pages (test/aide-mots-cles.mjs : depuis la migration 0056, le vocabulaire importé n'est
 // presque plus posé sur les pages)
 const REGLES = reglesAvecDesMotsClesDEssai(join(racine, 'regles'));
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES.base, dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
@@ -218,7 +218,7 @@ const lotDAvant0043 = (base, id, fait, rang, operation, ligne) => {
 };
 const ordreLibre = (base, page) => base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
 /**
- * Le site de dev d'avant la migration 0055 : l'ancien rejeu y avait créé le mot-clé libre d'un lot d'avant 0043, avec son étiquette (des lignes
+ * Le site de dev d'avant la migration 0056 : l'ancien rejeu y avait créé le mot-clé libre d'un lot d'avant 0043, avec son étiquette (des lignes
  * synthétiques, jamais notées au journal) ; elles lui sont rendues, pour que ses lots suivants (renommage, fusion, suppression de la page) s'en servent.
  */
 const commeLAncienRejeu = (base, ligne) => {
@@ -226,12 +226,12 @@ const commeLAncienRejeu = (base, ligne) => {
   base.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(ligne.page_id, ligne.ordre, ligne.tag_id);
 };
 
-test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0055 — le mot-clé n’est pas créé, et les lots qui s’en servaient sur le site de dev (renommage, fusion) non plus, sans conflit ; pareil à chaque reconstruction, rapatriement sans conflit', () => {
+test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0056 — le mot-clé n’est pas créé, et les lots qui s’en servaient sur le site de dev (renommage, fusion) non plus, sans conflit ; pareil à chaque reconstruction, rapatriement sans conflit', () => {
   const page = REGLES_PAGE();
   const libelle = libre(vivanteOuverte(), 'mot_cle', 'libelle_cle', 'Voie fantôme');
   const v = normalize(libelle);
-  /** Un site de dev d'avant 0055 : le lot d'avant 0043 en attente, et le mot-clé que l'ancien rejeu en avait tiré. */
-  const siteDAvant0055 = () => {
+  /** Un site de dev d'avant 0056 : le lot d'avant 0043 en attente, et le mot-clé que l'ancien rejeu en avait tiré. */
+  const siteDAvant0056 = () => {
     const base = vivanteOuverte();
     const ligne = { page_id: page, ordre: ordreLibre(base, page), tag_id: v, libelle };
     lotDAvant0043(base, '2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
@@ -241,7 +241,7 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   const etats = (b) => b.prepare('SELECT m.lot_id, m.table_nom, m.operation, m.etat FROM modification m ORDER BY m.lot_id, m.rang').all().map((x) => `${x.table_nom}:${x.operation}=${x.etat}`);
 
   // A : le site de dev renomme ce mot-clé ; les règles neuves posent un autre mot-clé sur la page, à la place que le lot d'avant 0043 prenait
-  const a = siteDAvant0055();
+  const a = siteDAvant0056();
   const autre = a.base.prepare('SELECT id FROM mot_cle WHERE id NOT IN (SELECT tag_id FROM page_tag WHERE page_id = ?) AND id <> ? ORDER BY id LIMIT 1').get(page, v).id;
   const reglesChangees = (db) => db.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(page, a.ligne.ordre, autre);
   serviceDe(a.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: v }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
@@ -255,8 +255,8 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   assert.deepEqual(rapatrier(a.base).conflits, [], 'rapatriement du journal du site de dev');
   assert.deepEqual(rapatrier(a2.base).conflits, [], 'et de la base reconstruite');
 
-  // B : le site de dev fusionne un mot-clé S dans ce mot-clé : S part (la fusion le voulait), ses étiquettes ne passent pas à un mot-clé que 0055 n'a pas
-  const b = siteDAvant0055();
+  // B : le site de dev fusionne un mot-clé S dans ce mot-clé : S part (la fusion le voulait), ses étiquettes ne passent pas à un mot-clé que 0056 n'a pas
+  const b = siteDAvant0056();
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
   const s = b.base.prepare(`SELECT m.id FROM mot_cle m WHERE m.libelle_cle NOT IN (${proteges.map(() => '?').join(', ')}) AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag t WHERE t.tag_id = m.id AND t.page_id = ?) ORDER BY m.id LIMIT 1`).get(...proteges, page).id;
@@ -319,7 +319,7 @@ test('clé étrangère composite capacite(specialite_id, classe_id) → speciali
   assert.deepEqual(etatsParLot(r.base), ['en_attente', 'en_attente', 'conflit', 'conflit'], 'la création (L2) passe, comme sur dev');
 });
 
-test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal (D4) : sans effet depuis 0055, ni mot-clé ni étiquette ; le site de dev peut ensuite le créer, une seule fois, et ce mot-clé tient à chaque reconstruction et au rapatriement (qui rejoue avec lui les lots d’avant)', () => {
+test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal (D4) : sans effet depuis 0056, ni mot-clé ni étiquette ; le site de dev peut ensuite le créer, une seule fois, et ce mot-clé tient à chaque reconstruction et au rapatriement (qui rejoue avec lui les lots d’avant)', () => {
   const base = vivanteOuverte();
   const page = REGLES_PAGE();
   const libelle = libre(base, 'mot_cle', 'libelle_cle', 'zz fantome pose retire');
@@ -328,7 +328,7 @@ test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal
   lotDAvant0043(base, '2026-10-01T09:00:00.000Z-l1', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
   lotDAvant0043(base, '2026-10-01T10:00:00.000Z-l2', '2026-10-01T10:00:00Z', 1, 'supprimer', ligne);
   const r1 = rebatir(base);
-  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE id = ?', id), false, 'le mot-clé libre n’est pas créé (0055)');
+  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE id = ?', id), false, 'le mot-clé libre n’est pas créé (0056)');
   assert.equal(existe(r1.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?', page, ligne.ordre), false, 'la ligne posée puis retirée n’existe pas');
   assert.deepEqual(etatsParLot(r1.base), ['integree', 'integree']);
   // après la livraison, le site de dev crée ce mot-clé (sous le même id : rien du journal ne l'a noté) et le renomme
@@ -347,7 +347,7 @@ test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal
   assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`'${id}', '${libelle} renommé'`), 'data/rows a le mot-clé, renommé');
 });
 
-test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : libre, aucun effet depuis 0055 (D4) ; dont le site se sert, l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre', () => {
+test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : libre, aucun effet depuis 0056 (D4) ; dont le site se sert, l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre', () => {
   // « race hybride » : un mot-clé dont le site se sert, que les règles n'ont pas (test/serveur-edition-chronologie.test.mjs le vérifie aussi)
   for (const [ecrit, protege] of [[libre(vivanteOuverte(), 'mot_cle', 'libelle_cle', 'Élan fantôme'), false], ['Race Hybride', true]]) {
     const base = vivanteOuverte();
@@ -427,7 +427,7 @@ test('rang d’un bloc de description : jamais redonné ; un bloc supprimé dont
   assert.deepEqual(etatsParLot(r.base), ['en_attente', 'conflit', 'en_attente']);
 });
 
-test('mot-clé libre d’un lot d’avant 0043 sur une page que le site de dev supprime ensuite, puis renommé (D4) : sans effet depuis 0055, la suppression passe, rien de rompu ; rapatriement sans conflit', () => {
+test('mot-clé libre d’un lot d’avant 0043 sur une page que le site de dev supprime ensuite, puis renommé (D4) : sans effet depuis 0056, la suppression passe, rien de rompu ; rapatriement sans conflit', () => {
   const base = vivanteOuverte();
   const metier = base.prepare("SELECT m.id, pe.page_id AS page FROM metier m JOIN page_entite pe ON pe.entite_id = m.id JOIN page p ON p.id = pe.page_id WHERE p.statut <> 'example' ORDER BY m.id LIMIT 1").get();
   const libelle = libre(base, 'mot_cle', 'libelle_cle', 'Voie fantôme métier');

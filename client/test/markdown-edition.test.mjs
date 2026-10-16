@@ -1,7 +1,7 @@
 // Éditeur visuel du guide (lib/markdown-edition.mjs, couleur des cases : lib/markdown-couleurs.mjs) : le HTML d'une page, réécrit en Markdown, doit
 // redonner le même rendu. Aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide et du Codex, avec les plugins du site ([[liens]], couleurs) ;
 // puis les écritures propres à l'éditeur (liens, couleurs, échappements, listes, tableaux) et le découpage du corps aux blocs tirés de la base ; enfin le
-// même aller-retour sur tous les blocs des panneaux de règles (migration 0055), balises du glossaire comprises.
+// même aller-retour sur tous les blocs des panneaux de règles (migration 0056), balises du glossaire comprises.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -152,7 +152,7 @@ test('une monnaie en icône, un montant décomposé (lib/markdown-monnaies.mjs) 
   assert.equal(versMarkdown(enfants(sur)).trim(), md, 'l’aperçu assaini se relit aussi');
 });
 
-// Le glossaire des mots-clés (migration 0055, lib/mots-cles-balises.mjs) : le HTML de la page porte les mots-clés rendus par le middleware ; l'éditeur
+// Le glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : le HTML de la page porte les mots-clés rendus par le middleware ; l'éditeur
 // les relit en balises (ni « **gras** » ni texte simple), le mode complet en « {{id:}} ».
 const GLOSSAIRE = [
   { id: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' },
@@ -197,7 +197,7 @@ test('aperçu assaini : un mot-clé et le mode complet gardent leurs classes, le
   assert.doesNotMatch(htmlSur(enfants('<strong class="mot-cle" data-mot-cle="X Y" data-balise="{{x}}">t</strong>')), /data-mot-cle/, 'un id qui n’en est pas un');
 });
 
-// Les panneaux de règles (migration 0055) : le texte de chaque bloc se modifie en place (src/scripts/edition/panneaux.mjs, même éditeur que la
+// Les panneaux de règles (migration 0056) : le texte de chaque bloc se modifie en place (src/scripts/edition/panneaux.mjs, même éditeur que la
 // chronologie) ; le HTML de la page = le Markdown du bloc rendu au build (lib/guide-rendu.ts#rendreMarkdown : mêmes plugins), « Les armes en bleu… »
 // retouché (avecPhraseDesArmesDeDepart), puis les balises du glossaire (le middleware). L'extension compare le Markdown relu à celui relu au départ,
 // jamais au texte de la base (test/edition-panneaux.test.mjs) : ce test épingle qu'ils diffèrent pour certains blocs (espaces doublés, retours forcés).

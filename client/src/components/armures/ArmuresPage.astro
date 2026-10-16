@@ -18,7 +18,8 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
 // aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendus depuis les tables de la base
 // (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; en tête de chaque onglet, son panneau de règles, replié
-// (components/equipement/PanneauDeRegles.astro, migration 0055 : le texte avant les tableaux de la page).
+// (components/equipement/PanneauDeRegles.astro, migration 0056 : le texte avant les tableaux de la page, sans la création par pièces que la
+// décision R95 a retirée, migration 0055).
 // Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
 //   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
 //     fiche s'ouvre à côté, avec l'amélioration à choisir (décision R77) ; une armure ne se fabrique plus pièce par pièce, seulement complète (décision

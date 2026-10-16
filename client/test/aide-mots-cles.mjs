@@ -1,4 +1,4 @@
-// Mots-clés d'essai posés sur des pages, pour les tests du vocabulaire (fusion, suppression, rejeu, rapatriement) : depuis la migration 0055 (les mots-clés
+// Mots-clés d'essai posés sur des pages, pour les tests du vocabulaire (fusion, suppression, rejeu, rapatriement) : depuis la migration 0056 (les mots-clés
 // deviennent un glossaire), le vocabulaire importé ne garde presque plus de mot-clé sur les pages, et le site de dev ne pose sur une page créée que les
 // mots-clés dont il se sert. Ces tests ont donc leurs propres mots-clés, ajoutés à une copie de data/rows (lignes de mot_cle et de page_tag écrites comme
 // l'exporteur, triées par clé), dont on construit les règles (db-build, db-derive) : la base vivante, les reconstructions et le rapatriement partent des

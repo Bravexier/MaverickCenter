@@ -1,4 +1,4 @@
-// Le glossaire des mots-clés dans les textes (migration 0055 ; demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un
+// Le glossaire des mots-clés dans les textes (migration 0056 ; demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un
 // glossaire. Le mot-clé aura son ID, son texte et une description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa
 // définition sera visible » ; marquage explicite, jamais de repérage automatique du texte ; sur tout le site ; « il faudra une seconde balise pour le mode
 // complet, à savoir nom et définition séparés d'un ':' »). Un texte cite un mot-clé du vocabulaire (table mot_cle) par une balise :

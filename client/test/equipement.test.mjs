@@ -113,7 +113,7 @@ test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de l
   assert.deepEqual(vue, db.prepare('SELECT id FROM baton_magique').all().map((b) => b.id).sort());
 });
 
-test('bâtons : leurs règles (migration 0055) sont le panneau du sous-onglet — l’introduction de la page « Bâton magique », puis « Comment fabriquer un bâton magique ? » en tuile, copiées de l’import', () => {
+test('bâtons : leurs règles (migration 0056) sont le panneau du sous-onglet — l’introduction de la page « Bâton magique », puis « Comment fabriquer un bâton magique ? » en tuile, copiées de l’import', () => {
   const importe = historique.valeurDImport('page', { id: PAGE_DES_BATONS }, 'corps_md');
   const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'batons-magiques'));
   assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [[0, null], [1, 'Comment fabriquer un bâton magique ?']]);

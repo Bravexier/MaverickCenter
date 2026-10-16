@@ -48,7 +48,7 @@ test('l’onglet Ceinture : ses trois sous-onglets dans l’ordre, chacun un lie
   // l'ancienne page n'est plus construite, ni dans le menu ; son adresse mène à l'onglet par la page 404 (test/equipement.test.mjs)
   assert.ok(!existsSync(join(dist, 'ressources', 'objets-a-la-ceinture')), 'pas de page /ressources/objets-a-la-ceinture/');
   assert.ok(!html.includes('ressources/objets-a-la-ceinture/'), 'aucun lien vers l’ancienne page');
-  // seul le panneau de règles du sous-onglet Bâtons magiques (migration 0055) se modifie sur le site de dev (src/scripts/edition/panneaux.mjs)
+  // seul le panneau de règles du sous-onglet Bâtons magiques (migration 0056) se modifie sur le site de dev (src/scripts/edition/panneaux.mjs)
   const horsDuPanneauDeRegles = onglet.replace(/<details class="preg" [\s\S]*?<\/details>/g, '');
   assert.ok(!horsDuPanneauDeRegles.includes('data-edition') && !horsDuPanneauDeRegles.includes('data-ed='), 'pas encore modifiable sur le site de dev');
 });

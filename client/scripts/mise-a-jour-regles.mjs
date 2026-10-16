@@ -64,7 +64,7 @@ export function verifierLot(lot) {
 
 /**
  * Les blocs dont le texte est du Markdown que le build rend tel quel, par table : la colonne de leur parent (leur clé est parent + rang) et leur nom dans
- * un message. Les blocs de description de la chronologie (migration 0043) et ceux des panneaux de règles (migration 0055 ; le titre d'une tuile est du
+ * un message. Les blocs de description de la chronologie (migration 0043) et ceux des panneaux de règles (migration 0056 ; le titre d'une tuile est du
  * texte simple, échappé au rendu : lib/panneaux-regles-rendu.mjs).
  */
 export const BLOCS_EN_MARKDOWN = Object.freeze({

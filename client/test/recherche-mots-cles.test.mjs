@@ -63,7 +63,7 @@ test('vue d’un mot-clé : son libellé et ses pages ; un id que le vocabulaire
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
   assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', definition: '', pages: [] }, 'un mot-clé sans page visible existe');
-  // le glossaire (migration 0055) : la définition avec le libellé
+  // le glossaire (migration 0056) : la définition avec le libellé
   const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
   assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', definition: 'Rien dedans.', pages: [] });
   assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
@@ -89,7 +89,7 @@ test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux 
 test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son écriture', () => {
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);
-  // depuis la migration 0055, un glossaire : les mots-clés dont le site se sert et ceux du glossaire, chacun avec sa définition (NULL : pas encore
+  // depuis la migration 0056, un glossaire : les mots-clés dont le site se sert et ceux du glossaire, chacun avec sa définition (NULL : pas encore
   // décrit, lue telle quelle, comme dans la base et le service ; jamais '')
   assert.ok(vocabulaire.length > 0, `${vocabulaire.length} mots-clés`);
   assert.ok(vocabulaire.every((m) => m.description === null || (typeof m.description === 'string' && m.description !== '')), 'une définition, ou NULL, pour chacun');

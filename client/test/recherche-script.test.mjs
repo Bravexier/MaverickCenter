@@ -2,7 +2,7 @@
 // chronologie, qui n'a pas de mot-clé mais des catégories), l'adresse suit (?mot-cle=<id>, pushState) et le retour arrière ramène la liste ; ?mot-cle= est
 // lu au chargement ; un id inconnu (« sans-categorie » compris) « n'existe plus » ; la liste se filtre par l'écriture des mots-clés ; un événement se
 // trouve par une catégorie ; taper depuis la vue d'un mot-clé ouverte par un clic revient en arrière (pas deux entrées identiques dans l'historique) ;
-// la liste redessinée par l'éditeur (évènement « recherche:mots-cles ») est relue. Depuis la migration 0055, la liste est le glossaire : tous les
+// la liste redessinée par l'éditeur (évènement « recherche:mots-cles ») est relue. Depuis la migration 0056, la liste est le glossaire : tous les
 // mots-clés, même sans page, et la vue d'un mot-clé montre sa définition.
 //   node --test test/recherche-script.test.mjs
 import assert from 'node:assert/strict';

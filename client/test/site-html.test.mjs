@@ -227,7 +227,7 @@ test('glossaire des mots-clés : aucune balise brute sur le site construit (le m
   const autres = pages.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/<([a-z]+)([^>]*) id="mot-cle-[^"]*"/g)]
     .filter((m) => !(m[1] === 'span' && / class="bulle"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
   assert.deepEqual(autres, []);
-  // les blocs des panneaux de règles écrivent des balises (migration 0055) : la table brute les garde
+  // les blocs des panneaux de règles écrivent des balises (migration 0056) : la table brute les garde
   const brute = 'donnees/panneau_regles_bloc/index.html';
   if (existsSync(join(dist, brute))) {
     const html = lire(brute);

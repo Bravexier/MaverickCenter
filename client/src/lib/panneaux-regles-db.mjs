@@ -1,4 +1,4 @@
-// Panneaux de règles (migration 0055 ; demande du propriétaire, 2026-10-16 : « refaçonner tous les encarts de début des onglets des équipements. La
+// Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « refaçonner tous les encarts de début des onglets des équipements. La
 // première ligne serait à supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu.
 // Son contenu peut d'ailleurs inclure des tuiles génériques ») : l'encart replié en tête d'un onglet (aujourd'hui, les cinq de /ressources/equipement/),
 // un titre et des blocs dans l'ordre de lecture — du texte, qui suit les colonnes du panneau, ou une tuile au titre facultatif. Tables panneau_regles et
@@ -14,7 +14,7 @@ export const ordonnerBlocs = (blocs) => [...blocs].sort((a, b) => a.ordre - b.or
 
 /**
  * Un panneau et ses blocs dans l'ordre de lecture : { id, titre, page_id, blocs: [{ panneau_id, rang, ordre, tuile, titre, texte }] } ; null s'il
- * n'existe pas (une base d'avant la migration 0055 n'a pas la table : null aussi).
+ * n'existe pas (une base d'avant la migration 0056 n'a pas la table : null aussi).
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function chargerPanneau(db, id) {
@@ -25,7 +25,7 @@ export function chargerPanneau(db, id) {
   return { ...panneau, blocs: lignes(db, 'SELECT * FROM panneau_regles_bloc WHERE panneau_id = ? ORDER BY ordre, rang', panneau.id) };
 }
 
-/** Tous les panneaux (chargerPanneau), par id ; [] pour une base d'avant la migration 0055. */
+/** Tous les panneaux (chargerPanneau), par id ; [] pour une base d'avant la migration 0056. */
 export function chargerPanneaux(db) {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'panneau_regles'").get()) return [];
   return db.prepare('SELECT id FROM panneau_regles ORDER BY id').all().map((p) => chargerPanneau(db, p.id));

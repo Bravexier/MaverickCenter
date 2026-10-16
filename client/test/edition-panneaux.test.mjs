@@ -1,4 +1,4 @@
-// L'extension de l'éditeur pour les panneaux de règles (src/scripts/edition/panneaux.mjs, migration 0055 ; demande du propriétaire, 2026-10-16 : « Il
+// L'extension de l'éditeur pour les panneaux de règles (src/scripts/edition/panneaux.mjs, migration 0056 ; demande du propriétaire, 2026-10-16 : « Il
 // faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours
 // insérables / modifiables en mode édition) »), exécutée dans un faux navigateur (test/aide-faux-dom.mjs) avec un faux éditeur, sur des blocs rendus
 // comme au build (test/aide-rendu-du-site.mjs) : l'entrée en mode modification (panneau ouvert, outils, flèches), les opérations du lot après « ↑ » / « ↓ »,

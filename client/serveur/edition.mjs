@@ -19,7 +19,7 @@
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 //   { op: 'categories', evenement, categories: [ids], avant?: [ids] }                                        catégories d'un événement de la chronologie
 //   { op: 'fusionner_mots_cles', mot_cle, dans }                                                             un mot-clé rejoint un autre (ses pages le suivent)
-// Glossaire des mots-clés (migration 0055, lib/mots-cles-balises.mjs) : toute valeur texte d'un lot (CHAMPS_DE_TEXTE de lib/edition-modele.mjs : colonnes
+// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : toute valeur texte d'un lot (CHAMPS_DE_TEXTE de lib/edition-modele.mjs : colonnes
 // « ligne », « texte », « markdown » d'une modification ou d'une création) est enregistrée sous sa forme canonique, l'id du mot-clé pour ref — « {{id}} »,
 // « {{id|texte}} » si un autre texte que le libellé est écrit, « {{id:}} » dans un texte mis en forme (markdown) ; « {{id|texte}} » toujours dans un texte
 // de case (ligne, texte), qui se lit ainsi sans le vocabulaire — : ce que voient les dérivations et ce que note le journal. Refusés (400) : une balise dont
@@ -183,7 +183,7 @@ function supprimerPage(ctx, pageId) {
 
 /**
  * Un mot-clé neuf du vocabulaire (noté au journal) : il prend la clé de son libellé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi
- * (historique, journal : un id de mot-clé n'est jamais réutilisé ; les 400 retirés par la migration 0055 peuvent resservir, ils n'y sont pas) ; sa
+ * (historique, journal : un id de mot-clé n'est jamais réutilisé ; les 400 retirés par la migration 0056 peuvent resservir, ils n'y sont pas) ; sa
  * définition, NULL tant qu'il n'est pas décrit. Rend son id.
  */
 export function creerMotCle(ctx, libelle, description = null) {
@@ -1086,7 +1086,7 @@ const SPECIALITE = {
     suivrePageDeClasse(ctx, apres.classe_id, (L) => ({ ...L, specialites: L.specialites.map((s) => (s.id === avant.id ? avant : s)) }));
     if (apres.nom === avant.nom) return;
     // les fiches de dons de la spécialité la citent par son nom (`donnees.specialite`, refait depuis les tables) ; plus de mot-clé de spécialité (migration
-    // 0055 : une fiche de don ne porte que « capacité de classe »)
+    // 0056 : une fiche de don ne porte que « capacité de classe »)
     suivreDonneesDesDons(ctx, apres.classe_id);
   },
   /**
@@ -1320,7 +1320,7 @@ const DOMAINES = {
   ...domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
   // la chronologie (événements, blocs de description) et le vocabulaire des mots-clés (serveur/edition-chronologie.mjs)
   ...CHRONOLOGIE.domaines,
-  // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0055)
+  // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
   ...domainesDesPanneaux({ refus, ErreurEdition, rangLibre }),
 };
 
@@ -1600,7 +1600,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes) et 0055 (glossaire)
+    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes) et 0056 (glossaire)
     adapter: () => {
       const motsCles = ancienneEcritureDesMotsCles(db);
       const glossaire = ancienneEcritureDuGlossaire(db);
@@ -1748,23 +1748,23 @@ function cibleReportee(lot, id) {
 }
 
 /**
- * Les écritures du glossaire notées avant la migration 0055 (journal du site de dev en attente, lot figé, journal exporté), sans effet sur les règles
+ * Les écritures du glossaire notées avant la migration 0056 (journal du site de dev en attente, lot figé, journal exporté), sans effet sur les règles
  * d'après (edition-journal.mjs#rejouer : `sansEffet`, « intégrée » sans rien écrire ni mettre son lot en conflit) — la migration a retiré des pages tous
  * les mots-clés sauf ceux dont le site se sert (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), et le service n'en pose plus d'autre :
- *   - l'insertion d'un mot-clé non protégé sans définition (la colonne n'existait pas : un lot d'avant 0055 ; l'ancien code créait le mot-clé d'une
+ *   - l'insertion d'un mot-clé non protégé sans définition (la colonne n'existait pas : un lot d'avant 0056 ; l'ancien code créait le mot-clé d'une
  *     classe ou d'une spécialité), et celui que la forme d'avant 0043 faisait créer (ancienneEcritureDesMotsCles : `aCreer`) s'il n'est pas protégé —
  *     et les modifications suivantes de ce mot-clé (un renommage) ;
  *   - une étiquette de page (page_tag) insérée qui cite un mot-clé absent des règles, non protégé, qu'aucune insertion gardée du journal ne crée
- *     (l'étiquette de sa classe sur la fiche d'un don créé par l'ancien code : le service d'après 0055 n'en insère jamais d'autre que protégée) ;
+ *     (l'étiquette de sa classe sur la fiche d'un don créé par l'ancien code : le service d'après 0056 n'en insère jamais d'autre que protégée) ;
  *   - une étiquette modifiée vers un mot-clé dont la création est sautée, ou notée dans la forme d'avant 0043 vers un mot-clé libre absent, ou dont la
  *     ligne n'est plus dans les règles avec son mot-clé (absent, non protégé : la migration a retiré l'une et l'autre) — et les modifications suivantes
  *     de la même ligne. Une étiquette existante passée à un mot-clé que les règles n'ont plus (une fusion dans un mot-clé retiré depuis) reste en conflit.
  * Rien d'autre du lot ne change : le don, sa page et ses autres lignes passent. Un mot-clé protégé (« race hybride » d'une race créée) est rejoué comme
- * avant, mot-clé à créer compris. Une insertion qui suit est jugée pour elle-même : un mot-clé créé d'après 0055 sous l'id d'un mot-clé sauté (le
+ * avant, mot-clé à créer compris. Une insertion qui suit est jugée pour elle-même : un mot-clé créé d'après 0056 sous l'id d'un mot-clé sauté (le
  * journal rapatrié rejoue les lots déjà intégrés avec les suivants), ou une étiquette reposée à la place d'une étiquette sautée, passent.
  * Ces écritures, « intégrées », sont versées dans historique_modification comme les autres (scripts/db-appliquer-edition.mjs#historiser,
  * mise-a-jour-regles.mjs) : leur lot compte alors comme livré et journalExporte ne le réexporte plus. Ne pas les y verser laisserait un lot sans effet
- * repartir à chaque mise à jour, et prendre effet le jour où les règles auraient son mot-clé (une étiquette d'avant 0055 reposée) ; le schéma ne permet
+ * repartir à chaque mise à jour, et prendre effet le jour où les règles auraient son mot-clé (une étiquette d'avant 0056 reposée) ; le schéma ne permet
  * pas non plus de les marquer à part (modification.detail est NULL pour une intégrée).
  * Fabriqué au début de chaque passe (base dans l'état des règles), comme les autres adaptateurs.
  */
@@ -1795,7 +1795,7 @@ function ancienneEcritureDuGlossaire(db) {
           motsClesSautes.add(id);
           return sansEffet(m, k);
         }
-        // un mot-clé créé d'après 0055 (ou dont le site se sert) : un autre que celui qu'un lot d'avant a pu faire sauter sous le même id (un journal
+        // un mot-clé créé d'après 0056 (ou dont le site se sert) : un autre que celui qu'un lot d'avant a pu faire sauter sous le même id (un journal
         // rapatrié rejoue les deux), ses suites et ses étiquettes comptent
         motsClesSautes.delete(id);
         creesParLeJournal.add(id);

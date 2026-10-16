@@ -2,7 +2,7 @@
 // Modifier des mots clés », une suppression le retirant de tout ce qui le porte), exécutée dans un faux navigateur avec un faux éditeur : la liste relue
 // dans la base vivante (des pages seulement : les événements de la chronologie ont des catégories, pas de mot-clé), la liste de gestion (libellé
 // modifiable, protégés sans saisie ni bouton, suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot,
-// le retour à la liste de lecture ; depuis la migration 0055 (glossaire), la définition de chaque mot-clé (saisie commune, protégés compris), sa balise à
+// le retour à la liste de lecture ; depuis la migration 0056 (glossaire), la définition de chaque mot-clé (saisie commune, protégés compris), sa balise à
 // copier et l'infobulle de sa définition dans la liste de lecture. Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en
 // chaîne, noms échangés, fusions en chaîne — le lot que la page envoie est accepté, ou refusé avant toute question.
 //   node --test test/edition-mots-cles.test.mjs

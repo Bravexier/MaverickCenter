@@ -1,6 +1,6 @@
 // Extension de l'éditeur : le glossaire des mots-clés sur /recherche/ (pages/recherche.astro) — demandes du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent » ; puis (2026-10-16,
-// migration 0055) « Le mot-clé aura son ID, son texte et une description ».
+// migration 0056) « Le mot-clé aura son ID, son texte et une description ».
 //   - au chargement (surcouche) : la liste relue dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
 //     définitions et bulles comprises (mots-cles-vivants.mjs suit le vocabulaire relu) ;
 //   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :

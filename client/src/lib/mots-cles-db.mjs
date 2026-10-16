@@ -1,4 +1,4 @@
-// Le vocabulaire des mots-clés lu dans la base construite (table mot_cle, migrations 0043 et 0055) : le glossaire de la page Recherche, l'adresse des
+// Le vocabulaire des mots-clés lu dans la base construite (table mot_cle, migrations 0043 et 0056) : le glossaire de la page Recherche, l'adresse des
 // pastilles des pages du wiki (/recherche/?mot-cle=<id>) et les balises des textes (lib/mots-cles-balises.mjs : le middleware du site, la recherche, les
 // règles de la fiche). Un mot-clé : son id (figé), son libellé, son écriture (libelle_cle = normalize du libellé) et sa définition (`description` : NULL
 // tant qu'il n'est pas décrit, ici comme dans la base, le service et GET /api/edition/mots-cles/ ; qui l'affiche écrit `?? ''`). Les pages portent les
@@ -17,7 +17,7 @@ const colonneExiste = (db, table, colonne) => db.prepare(`PRAGMA table_info("${t
 
 function lire(db) {
   if (caches.has(db)) return caches.get(db);
-  // une base d'avant la migration 0055 n'a pas de définitions : NULL (pas encore décrit)
+  // une base d'avant la migration 0056 n'a pas de définitions : NULL (pas encore décrit)
   const description = tableExiste(db, 'mot_cle') && colonneExiste(db, 'mot_cle', 'description') ? 'description' : 'NULL AS description';
   const vocabulaire = tableExiste(db, 'mot_cle')
     ? db.prepare(`SELECT id, libelle, libelle_cle, ${description} FROM mot_cle`).all().map((m) => ({ ...m })).sort(parLibelle)

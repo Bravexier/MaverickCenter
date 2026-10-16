@@ -1,4 +1,4 @@
-// Le HTML des blocs d'un panneau de règles (lib/panneaux-regles-db.mjs ; migration 0055) : le même à la construction du site
+// Le HTML des blocs d'un panneau de règles (lib/panneaux-regles-db.mjs ; migration 0056) : le même à la construction du site
 // (components/equipement/PanneauDeRegles.astro, le Markdown de chaque bloc rendu par remark : lib/guide-rendu.ts) et dans le navigateur du site de dev
 // (src/scripts/edition/panneaux.mjs : un bloc modifié ou créé depuis la construction, son Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte).
 // Un bloc est un élément `.preg-bloc` (du texte : `--texte`, qui suit les colonnes du panneau ; une tuile : `--tuile`, encadrée, jamais coupée entre deux
