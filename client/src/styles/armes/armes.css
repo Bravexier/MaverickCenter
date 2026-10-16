@@ -177,7 +177,7 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .materiau-effet { display: inline; }
-.materiau-effet > * + *::before { content: ' | '; opacity: 0.6; font-weight: 400; }
+.materiau-effet > * + *::before { content: ' | '; content: ' | ' / ''; opacity: 0.6; font-weight: 400; }
 .materiau-effet__bonus { font-weight: 700; }
 .materiau-effet__mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .materiau-effet__rien { opacity: 0.7; }
@@ -187,7 +187,7 @@ html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srg
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie > :last-child { box-shadow: inset -3px 0 0 var(--arm), inset -5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
-.materiau.est-choisie .materiau__choisir::after { content: ' ✓'; }
+.materiau.est-choisie .materiau__choisir::after { content: ' ✓'; content: ' ✓' / ''; }
 .amelioration__niveau { white-space: nowrap; }
 .amelioration.est-choisie > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
 .amelioration.est-choisie > .amelioration__niveau { box-shadow: inset 4px 0 0 var(--arm); }
@@ -211,7 +211,7 @@ html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srg
 /* les tuiles : leur détail est leur infobulle (components/Infobulles.astro), d'où le curseur d'aide et le soulignement au survol */
 .arme-fiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.5rem; margin: 0.7rem 0 0; }
 .arme-fiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.1rem; padding: 0.5rem 0.5rem 0.55rem; border-radius: var(--radius-md); border: 1px solid var(--border);
-  background: var(--bg); text-align: center; cursor: help; }
+  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; }
 .arme-fiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--arm); }
 .arme-fiche__tuile:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
 .arme-fiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }

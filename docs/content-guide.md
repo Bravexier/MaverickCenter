@@ -304,17 +304,17 @@ modification (`lib/corps-armes.mjs`).
   se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
   l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
-- **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et sous la fiche de l'arme) ; à l'import, seule la Bombe perçante en avait une,
+- **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et dans la fiche de l'arme) ; à l'import, seule la Bombe perçante en avait une,
   supprimée par la décision R91 (elle datait des armes à feu).
 - **Panneau de l'arme** (`src/scripts/armes.mjs`) : à côté des tableaux, **toujours affiché** sur un grand écran et **de la largeur de celui des
   armures** (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même
-  largeur ») ; sous 80rem, il passe par-dessus la page une fois une arme choisie, comme celui des armures. Il suit le défilement ; au bout du sien, la
-  molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
+  largeur ») ; sous 80rem, il passe par-dessus la page une fois une arme choisie, comme celui des armures. Il suit le défilement et remonte à la fiche
+  quand on choisit une arme ; au bout de son défilement, la molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
   accessoires). Cliquer une arme (ou la ligne de ses effets) remplit sa fiche, **un seul cadre réduit à son minimum** (« Pas besoin de détailler les calculs
   en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») : son bouton Fermer (qui la vide) en haut à droite ; type et mains,
   compétence, arme de départ ; ce dont elle est forgée ; trois tuiles, Dégâts, Durabilité « Solidité : X », Coût, dont le **détail du calcul est
   l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
-  supplémentaires, celui du matériau en vert), la description et l'origine (« On en garderait que l'effet, la description et l'origine »). Plus de
+  supplémentaires, celui du matériau en vert), la description et l'origine (« Origine X » ou « Facture X », le mot de la source) (« On en garderai que l'effet la description et l'origine »). Plus de
   « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
   **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`), prix en RO seulement, effets sur une seule ligne : le bonus
   aux dégâts sans le mot « Dégâts » (gardé pour les lecteurs d'écran), puis les autres effets, séparés par « | » (« +7 | dégâts doublés contre la

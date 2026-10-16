@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { COMPETENCES_D_ARME } from '../src/lib/arme-champs.mjs';
 import { ancreDArme, ancreDeMateriau, chargerArmes } from '../src/lib/armes-db.mjs';
-import { COLONNES_D_UNE_ARME, htmlDesEffets } from '../src/lib/armes-rendu.mjs';
+import { COLONNES_D_UNE_ARME, htmlDesEffets, RENDUS_DES_ARMES } from '../src/lib/armes-rendu.mjs';
 import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -132,8 +132,12 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
     assert.ok(main.includes(`id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''} style="--mat: ${c.fond}; --mat-texte: ${c.texte}">`), m.nom);
   }
   assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
-  // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets ; le mot « Dégâts » reste pour les lecteurs d'écran
-  assert.match(main, /<span class="materiau-effet" data-bonus="7" data-cran="0"><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>\+7<\/span><span class="materiau-effet__secondaire">dégâts doublés contre la barrière<\/span><\/span>/);
+  // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets, en morceaux frères ; le mot « Dégâts » reste pour
+  // les lecteurs d'écran (les effets se modifient sur la page Composants, R62 : le test lit ceux de la base)
+  for (const m of armes.materiaux) assert.ok(main.includes(RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)), `${m.nom} : ses effets`);
+  const avecBonus = armes.materiaux.map((m) => RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)).filter((h) => h.includes('materiau-effet__bonus'));
+  assert.ok(avecBonus.length > 0);
+  for (const h of avecBonus) assert.match(h, /^<span class="materiau-effet"[^>]*><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>[+−]\d+<\/span>(<span class="materiau-effet__(cran|secondaire)">[^<]+<\/span>)*<\/span>$/);
   assert.deepEqual(armes.materiaux.filter((m) => m.defaut).map((m) => m.nom), ['Fer']);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);
   // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16)

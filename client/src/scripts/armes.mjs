@@ -93,7 +93,9 @@ if (racine) {
       effets: effets?.innerHTML ?? '',
       sansEffets: !effets || Boolean(effets.querySelector(':scope > .vide')),
       description: infobulle(ligne.querySelector('.arme__choisir')),
+      // l'origine telle que l'effet l'écrit : « Origine X » ou « Facture X » (le mot de la source, dans l'infobulle de la case), le nom avec sa capitale
       origine: ligne.querySelector('.arme-origine')?.textContent.trim() ?? '',
+      origineMot: infobulle(ligne.querySelector('.arme-origine')).split(' ')[0] || 'Origine',
       depart: ligne.classList.contains('arme--depart'),
       remarque: infobulle(ligne.querySelector('.arme__remarque')),
     };
@@ -133,8 +135,9 @@ if (racine) {
     const ligne = (nom, valeur, classe = '') => `<span class="arme-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
     const bulle = (id, titre, lignes, note = '') =>
       `<span class="bulle bulle--large arme-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="arme-bulle__lignes">${lignes}</span>${note ? `<span class="arme-bulle__note">${note}</span>` : ''}</span>`;
+    // une tuile est un bouton (au clic, au toucher et au clavier, components/Infobulles.astro ouvre sa bulle ; la description est lue avec lui)
     const tuile = (id, nom, valeur, detail = '') =>
-      `<div class="arme-fiche__tuile" tabindex="0" data-bulle="${id}" aria-describedby="${id}"><span class="arme-fiche__tuile-nom">${nom}</span><span class="arme-fiche__tuile-val">${valeur}</span>${detail ? `<span class="arme-fiche__tuile-detail">${detail}</span>` : ''}</div>`;
+      `<button type="button" class="arme-fiche__tuile" data-bulle="${id}" aria-describedby="${id}"><span class="arme-fiche__tuile-nom">${nom}</span><span class="arme-fiche__tuile-val">${valeur}</span>${detail ? `<span class="arme-fiche__tuile-detail">${detail}</span>` : ''}</button>`;
     // dégâts : chaque bonus qui se cumule (« tous les bonus se cumulent une fois l'arme forgée »)
     const degats = [
       ligne(e(a.nom), e(a.bonus ? `${a.de}${a.bonus > 0 ? '+' : '−'}${Math.abs(a.bonus)}` : a.de)),
@@ -190,7 +193,7 @@ if (racine) {
         <p class="arme-fiche__effets"><span class="arme-fiche__types">${a.types}${a.portee ? `<span class="arme-fiche__portee">portée ${e(a.portee)}</span>` : ''}</span>${a.sansEffets ? '' : a.effets}${effetsDuMateriau}</p>
         ${a.remarque ? `<p class="arme-fiche__remarque">★ ${e(a.remarque)}</p>` : ''}
         ${a.description ? `<p class="arme-fiche__description">${e(a.description)}</p>` : ''}
-        ${a.origine ? `<p class="arme-fiche__origine"><span class="arme-fiche__etiquette">Origine :</span> ${e(a.origine)}</p>` : ''}
+        ${a.origine ? `<p class="arme-fiche__origine"><span class="arme-fiche__etiquette">${e(a.origineMot)} :</span> ${e(a.origine)}</p>` : ''}
       </div>`;
     fiche.setAttribute('aria-labelledby', 'arme-fiche-titre');
   }
@@ -229,6 +232,8 @@ if (racine) {
     arme = ligne;
     // sur un écran étroit, le panneau passe alors par-dessus la page (styles/armes/armes.css)
     vue.classList.add('est-ouverte');
+    // le panneau, toujours affiché, garde son défilement d'un choix à l'autre : il remonte à la fiche, qui est en haut
+    racine.querySelector('.armes-cote')?.scrollTo({ top: 0 });
     const famille = ligne.closest('details');
     if (famille && !famille.open) famille.open = true;
     rendreFiche();

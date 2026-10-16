@@ -80,7 +80,6 @@ html.js .armures-bloc.est-inactif tr.ppiece { cursor: default; }
 .armures-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
 .armures-table tbody > tr > * { padding: 0.5rem 0.75rem; vertical-align: top; text-align: left; }
 .armures-table--choix tbody > tr > * { padding-top: 0.35rem; padding-bottom: 0.35rem; vertical-align: middle; }
-.armures-table tfoot th, .armures-table tfoot td { padding: 0.55rem 0.75rem; border-top: 1px solid var(--pro-line); font-weight: 600; background: var(--pro-soft); text-align: left; }
 .armures-table--materiaux td { font-size: var(--fs-md); }
 
 /* Lignes sélectionnables */
