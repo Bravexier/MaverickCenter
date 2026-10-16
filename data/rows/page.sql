@@ -25725,8 +25725,6 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Méga bombe perçante | 10 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d''estoc, cercle de 2 en zone de dégâts, +8 dégâts, Ignore 4AP. |  |
 | Méga bombe taillante | 10 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de taille, cercle de 2 en zone de dégâts, +8 dégâts, Ignore 4AP. |  |
 
-**Commentaire résolu de la cellule « Effet (Bombe perçante) »** : Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n''est pas considéré comme un Canon d''artifice.
-
 ## ARME DE MONSTRES - Se référer à la catégorie d''arme
 
 | Nom | Coût en plus/moins (unité) | Catégorie | Effet | Description |

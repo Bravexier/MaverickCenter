@@ -271,6 +271,8 @@ modification (`lib/corps-armes.mjs`).
   se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
   l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
+- **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et sous la fiche de l'arme) ; aucune arme n'en a depuis la décision R91 (celle de la
+  Bombe perçante, qui datait des armes à feu, est supprimée).
 - **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme (ou la ligne de ses effets) ouvre à côté, dans un panneau large, sa fiche en **un seul
   cadre** (son bouton Fermer en haut à droite ; type et mains sans rappeler la famille ; tuiles Dégâts, Durabilité « Solidité : X », Coût ; le détail sur
   deux colonnes), puis côte à côte les **matériaux** (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et
@@ -280,8 +282,8 @@ modification (`lib/corps-armes.mjs`).
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
   avec `competence=…` et `depart=1` du filtre).
   Sans JavaScript, tous les tableaux s'affichent, sans fiche.
-- **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, quatre colonnes de plus (Description, Coût, Effet, Arme de
-  départ) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
+- **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, cinq colonnes de plus (Description, Coût, Effet, Arme de
+  départ, Remarque : saisie, l'étoile apparaît ; vidée, elle part, R91) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
   boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
   en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs`, `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site

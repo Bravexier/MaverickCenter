@@ -77,7 +77,8 @@ un libellé attendu manque ou si une cellule non vide n'a été reprise nulle pa
     effet, TOTAL) ; « COMMENT DÉTERMINER LE PRIX DE VOTRE ARME ? » (formule en une ligne) ; puis douze bandeaux d'armes (ÉPÉES,
     DAGUES, …, ARME DE MONSTRES) à partir de la colonne AE, chacun avec ses en-têtes de ligne 2 (Nom, Coût…, Catégorie, Effet,
     Description) et une arme par couple de lignes fusionnées. Le commentaire de cellule QA6 (plage fusionnée QA5:QL6 = effet de
-    « Bombe perçante ») est cité sous le tableau, avec l'intitulé « Effet (Bombe perçante) ».
+    « Bombe perçante ») était cité sous le tableau, avec l'intitulé « Effet (Bombe perçante) » ; il ne l'est plus (décision R91 :
+    il datait des armes à feu ; COMMENTS_REMOVED).
   « Armures » : A1 = règles ; MATERIAUX (21 matières : prix, description, fabrication) ; FABRICATION (pièces d'armure et
     coût) ; AMELIORATION (+1 à +5) ; puis la grille matière × matière (escalier : la ligne k contient les combinaisons de la
     matière k avec les matières k à 21, une cellule de 7 lignes « nom / Prix / Type / Stats / Solidité / Résistance /
@@ -135,6 +136,23 @@ CATEGORY = "ressources"
 
 # Commentaires de cellule du dump (clés `note` et `threads`) : genres, libellés rendus dans la page, réponses automatiques d'un fil.
 KIND_NOTE, KIND_THREAD, KIND_THREAD_DONE = "note", "thread", "thread_done"
+
+# Commentaires de cellule que le site ne cite plus, par décision du propriétaire : onglet -> {adresse du dump : début attendu du texte}. Ils ne
+# sont ni rendus ni attendus dans la page (lecture du dump et contrôles de couverture et de placement) ; un autre texte à la même adresse est
+# cité comme d'habitude.
+#   Armes!QA6 : le fil résolu sur l'effet de la Bombe perçante (« Il faut perdre un bras pour avoir cette arme… »), qui datait des armes à feu
+#   (décision R91 : la remarque de l'arme et son entrée dans la page sont retirées par une modification rapatriée du site de dev,
+#   historique_modification ; la note de cellule de la base reste, trace du classeur que le rapprochement relit).
+COMMENTS_REMOVED = {
+    "Armes": {"QA6": "Il faut perdre un bras pour avoir cette arme"},
+}
+
+
+def comment_removed(tab, ref, text):
+    """Vrai pour un commentaire que le site ne cite plus (COMMENTS_REMOVED : son onglet, son adresse dans le dump, le début de son texte)."""
+    start = COMMENTS_REMOVED.get(tab, {}).get(ref)
+    return start is not None and isinstance(text, str) and text.strip().startswith(start)
+
 LABELS = {
     KIND_NOTE: "Note de la cellule « %s »",
     KIND_THREAD: "Commentaire de la cellule « %s »",
@@ -268,7 +286,7 @@ class Sheet:
         pending = []      # [(cellule, [(genre, texte)])] commentaires du dump, avant rattachement
         for c in raw["cells"]:
             key = (c["r"], c["c"])
-            items = comment_items(self.name, c)
+            items = [it for it in comment_items(self.name, c) if not comment_removed(self.name, ref_of(*key), it[1])]
             if items:
                 pending.append((key, items))
             if is_blank(c["v"]):
@@ -1167,7 +1185,8 @@ def canon_page(text):
 
 def raw_comments(data, tabs):
     """[(onglet, adresse, genre, texte)] : notes et fils non blancs des onglets `tabs`, lus dans le JSON brut du dump, sans le code de
-    lecture ni de rendu de ce script (l'adresse est celle du dump : QA6 pour une cellule fusionnée non principale)."""
+    lecture ni de rendu de ce script (l'adresse est celle du dump : QA6 pour une cellule fusionnée non principale), sans ceux que le site ne
+    cite plus (COMMENTS_REMOVED)."""
     out = []
     for sheet in data["sheets"]:
         if sheet["name"] not in tabs:
@@ -1175,11 +1194,11 @@ def raw_comments(data, tabs):
         for cell in sheet["cells"]:
             ref = ref_of(cell["r"], cell["c"])
             note = cell.get("note")
-            if isinstance(note, str) and note.strip():
+            if isinstance(note, str) and note.strip() and not comment_removed(sheet["name"], ref, note):
                 out.append((sheet["name"], ref, KIND_NOTE, note))
             for thread in cell.get("threads") or []:
                 text = thread.get("text")
-                if isinstance(text, str) and text.strip():
+                if isinstance(text, str) and text.strip() and not comment_removed(sheet["name"], ref, text):
                     out.append((sheet["name"], ref, KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, text))
     return out
 
