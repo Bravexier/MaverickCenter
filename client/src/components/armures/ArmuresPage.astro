@@ -24,7 +24,9 @@ import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnai
 //     amélioration (R76) ; dessous, la liste des boucliers par forme, et les poids de bouclier.
 // Puis, pour les deux, le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62) ;
 // hors des panneaux, il ne s'affiche qu'avec l'un des deux (styles/armures/armures.css).
-// Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs).
+// Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs) ; les
+// fiches sont réduites à quatre tuiles dont le détail du calcul est l'infobulle (demande du propriétaire, 2026-10-16, comme celle des armes), écrite
+// dans `[data-armures-bulles]`, hors du panneau de côté qui défile.
 // Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
 // pièces, des formes, des boucliers, des poids et des améliorations modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
 // (?raw, inséré ici seulement).
@@ -171,6 +173,8 @@ const legende = (
         </div>
       </aside>
     </div>
+    {/* les infobulles des tuiles de la fiche (le détail du calcul), écrites par le script hors du panneau de côté, qui défile */}
+    <div class="armures-bulles" data-armures-bulles="armure"></div>
   </section>
 
   {/* ── Boucliers ─────────────────────────────────────────────────────────────────────────────────────────────────────── */}
@@ -286,6 +290,7 @@ const legende = (
         </div>
       </aside>
     </div>
+    <div class="armures-bulles" data-armures-bulles="bouclier"></div>
   </section>
 
   {/* ── Matériaux (pour les deux onglets : « la table de l'onglet Bouclier est identique mot pour mot ») ────────────────── */}

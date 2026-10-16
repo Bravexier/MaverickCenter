@@ -251,10 +251,11 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 
 /* Le tableau à gauche, la carte à droite, moitié-moitié (demande du propriétaire : « du 50/50 avec la tuile du monstre choisi ») ; la carte est un panneau qui
    suit le défilement, à la hauteur de la partie visible de sa vue (--bcartes-max, posée par le script : ni son haut ni son bas coupés), et défile dans
-   son cadre ; sur un écran étroit, elle passe par-dessus la page */
+   son cadre ; au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16,
+   « Il faut que ce problème ne se reproduise nulle part », test/defilement.test.mjs) ; sur un écran étroit, elle passe par-dessus la page */
 .bvue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
 .bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); max-height: var(--bcartes-max, calc(100dvh - 1.5rem)); overflow-y: auto;
-  overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .bcartes__invite { margin: 0; padding: 2.5rem 1.5rem; text-align: center; color: var(--muted); }
 html.js .bestiaire .bcartes__invite.js-seul { display: block; }
 html.js .bcartes.est-ouverte .bcartes__invite { display: none; }
@@ -283,7 +284,7 @@ html:not(.js) .bcartes { position: static; max-height: none; }
 
 @media (max-width: 70rem) {
   .bvue { grid-template-columns: minmax(0, 1fr); }
-  html.js .bcartes { position: fixed; inset: 0; z-index: 60; max-height: none; border-radius: 0; border: 0; display: none; }
+  html.js .bcartes { position: fixed; inset: 0; z-index: 60; max-height: none; overscroll-behavior: contain; border-radius: 0; border: 0; display: none; }
   html.js .bcartes.est-ouverte { display: block; }
   html.js .bcarte:not(.bcarte--seule) { max-width: 40rem; margin: 0 auto; }
 }

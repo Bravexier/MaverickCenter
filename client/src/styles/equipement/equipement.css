@@ -1,6 +1,7 @@
 /* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les cinq onglets (Armes, Armures,
    Boucliers, Bâtons magiques, Accessoires : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux
-   se suivent, chacun sous son titre) ; l'onglet Bâtons magiques (components/equipement/BatonsMagiques.astro). Le contenu des autres onglets a son
+   se suivent, chacun sous son titre) ; l'infobulle des tuiles des fiches (arme, armure, bouclier) ; l'onglet Bâtons magiques
+   (components/equipement/BatonsMagiques.astro). Le contenu des autres onglets a son
    CSS : styles/armes/armes.css, styles/armures/armures.css, styles/accessoires/accessoires.css. */
 main:has(.equipement) { max-width: 120rem; }
 .equipement {
@@ -30,6 +31,15 @@ html.js .equipement-panneau:not(.is-active) { display: none; }
 /* le titre d'un panneau : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
 html.js .equipement-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipement-panneau + .armures { margin-top: 2rem; }
+
+/* ── L'infobulle d'une tuile des fiches (arme, armure, bouclier : src/scripts/armes.mjs, armures.mjs) : le détail de son calcul, une ligne par
+   élément, le total en gras sous un filet, puis les notes (styles/global/infobulles.css pour la bulle elle-même) ── */
+.eq-bulle { white-space: normal; }
+.eq-bulle__lignes { display: grid; gap: 0.1rem; margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--bulle-ligne); }
+.eq-bulle__ligne { display: flex; justify-content: space-between; gap: 1.2rem; }
+.eq-bulle__ligne > :last-child { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.eq-bulle__total { font-weight: 700; border-top: 1px solid var(--bulle-ligne); padding-top: 0.15rem; margin-top: 0.1rem; }
+.eq-bulle__note { display: block; margin-top: 0.35rem; color: var(--muted); font-size: var(--fs-sm); }
 
 /* ── Bâtons magiques ── */
 .batons { margin: 0 0 2rem; }

@@ -83,6 +83,11 @@ test('armures : à côté, la fiche (remplie par le script), les pièces (l’ar
   assert.deepEqual(niveaux, armures.ameliorations.armure.map((x) => x.niveau));
   // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16) : ni pour les armures, ni pour les boucliers
   assert.ok(!html.includes('data-armures-total') && !panneau('boucliers').includes('<tfoot>') && !p.includes('<tfoot>'));
+  // les fiches sont réduites à leurs tuiles (demande du propriétaire, 2026-10-16) : le détail du calcul est leur infobulle, écrite par le script hors
+  // du panneau qui défile, dans le panneau de l'onglet
+  for (const [onglet, quoi] of [['armures', 'armure'], ['boucliers', 'bouclier']]) {
+    assert.match(panneau(onglet), new RegExp(`</aside>\\s*</div>\\s*<div class="armures-bulles" data-armures-bulles="${quoi}"></div>`), `${onglet} : le conteneur des infobulles`);
+  }
 });
 
 test('boucliers : les formes et les matières à choisir, la liste par forme (une ligne par bouclier préfabriqué), les améliorations et les poids', options, () => {
