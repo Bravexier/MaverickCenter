@@ -233,7 +233,8 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
             <h3 id="titre-armure">Armure</h3>
             <div class="fiche-etape__corps">
-              <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div>
+              {/* une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
+              <div id="armures" class="equipement"></div>
             </div>
           </section>
           <section class="fiche-etape" id="etape-accessoires" aria-labelledby="titre-accessoires">

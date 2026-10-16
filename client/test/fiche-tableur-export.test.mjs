@@ -133,14 +133,13 @@ function ficheRiche() {
     ],
     // le texte libre de l'entraînement (décision R71), sur deux lignes
     entrainement: '2 Magie | 10 Concentration\nLivre de magie lu : Boule de feu',
-    armures: [
-      { emplacement_id: 'casque', armure_id: regles.armures[2].id, amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 1, 'armure 1').id },
-      {
-        emplacement_id: 'torse', armure_id: regles.armures[1].id, armure_elementaire_id: regles.armures_elementaires[0].id,
-        amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
-      },
-      { emplacement_id: 'jambe-gauche', armure_id: trouve('armures', (a) => a.am === null, 'armure sans AM').id },
-    ],
+    // l'armure portée (décision R95) : une armure complète (sans AM), son amélioration, son élément et l'amélioration de l'élément ; le casque abîmé,
+    // le torse cassé
+    armure_id: trouve('armures', (a) => a.am === null && a.solidite >= 3 && Number(a.solidite_uni) !== 1, 'armure sans AM, solidité 3').id,
+    armure_amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 1, 'armure 1').id,
+    armure_elementaire_id: regles.armures_elementaires[0].id,
+    armure_amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
+    armure_parties: [{ emplacement_id: 'casque', solidite: 1 }, { emplacement_id: 'torse', solidite: 0 }],
     bouclier_classe_id: 'ecu',
     bouclier_materiaux: [{ rang: 2, materiau_id: 'ressources/armures#materiau:fer', quantite: 1 }, { rang: 1, materiau_id: 'ressources/armures#materiau:bois', quantite: 2 }],
     accessoires: [
@@ -311,32 +310,34 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   assert.ok(nonComptes.length, 'le Contact du Guerrier ne se compte pas (armes visées non écrites)');
   for (const n of nonComptes) assert.ok(l1.some((x) => x.startsWith(`Non compté : ${n.nom} ${signe(n.valeur)} (`)), n.nom);
   assert.ok(c[ORDINATEUR.armes[0].effet].endsWith(parties.affichees.join('\n')), 'ce qui n’est qu’affiché, en dernier');
-  // armure : la complète absente, les pièces nommées ; une ligne par pièce, dans l'ordre des emplacements ; rien de calculé dans la grille
-  const ordre = regles.emplacements_armure.map((e) => e.id);
-  const portees = [...riche.armures].sort((x, y) => ordre.indexOf(x.emplacement_id) - ordre.indexOf(y.emplacement_id));
-  assert.equal(c[ORDINATEUR.armure.nom], portees.map((x) => nomDe('armures', x.armure_id)).join(', '));
+  // armure (décision R95) : son nom, une ligne (l'armure, son amélioration, son élément et l'amélioration de l'élément), sans emplacement ; la solidité
+  // de chaque partie dans la ligne « Sol. » de la grille, « N / M » ; rien de calculé en AP ni en AM
+  const armure = M.trouver(regles.armures, riche.armure_id);
+  assert.equal(c[ORDINATEUR.armure.nom], armure.nom);
   const lignes = c[ORDINATEUR.armure.bonus].split('\n');
   assert.deepEqual(lignes, lignesDArmure(regles, riche));
-  assert.equal(lignes.length, 3);
-  portees.forEach((x, i) => assert.ok(lignes[i].startsWith(`${regles.emplacements_armure.find((e) => e.id === x.emplacement_id).nom} : ${nomDe('armures', x.armure_id)}`)));
-  const torse = lignes.find((x) => x.startsWith('Torse'));
+  assert.equal(lignes.length, 1);
   const element = regles.armures_elementaires[0];
-  const ameliorationElement = M.trouver(regles.ameliorations, riche.armures.find((x) => x.emplacement_id === 'torse').amelioration_elementaire_id);
-  assert.ok(torse.includes(` · ${LIGNES_D_ARMURE.element} ${element.nom} (AP ${element.ap}, AM ${element.am})`));
-  assert.ok(torse.endsWith(` · ${LIGNES_D_ARMURE.ameliorationElement} niv. 1 (${ameliorationElement.effet})`));
-  const casque = lignes.find((x) => x.startsWith('Casque'));
-  assert.match(casque, new RegExp(` · ${LIGNES_D_ARMURE.amelioration} niv\\. 1 \\(`));
-  const sansAm = lignes.find((x) => x.startsWith('Jambe Gauche'));
-  assert.doesNotMatch(sansAm, /AM/, 'un AM absent n’est pas écrit');
-  // sans les statistiques du catalogue, puis sans l'effet des améliorations (pour tenir dans la case : voir « textes trop longs »)
+  const ameliorationElement = M.trouver(regles.ameliorations, riche.armure_amelioration_elementaire_id);
+  assert.ok(lignes[0].startsWith(`${armure.nom} (AP ${armure.ap}) · `), 'un AM absent n’est pas écrit');
+  assert.match(lignes[0], new RegExp(` · ${LIGNES_D_ARMURE.amelioration} niv\\. 1 \\(`));
+  assert.ok(lignes[0].includes(` · ${LIGNES_D_ARMURE.element} ${element.nom} (AP ${element.ap}, AM ${element.am})`));
+  assert.ok(lignes[0].endsWith(` · ${LIGNES_D_ARMURE.ameliorationElement} niv. 1 (${ameliorationElement.effet})`));
+  // sans les statistiques du catalogue, puis sans l'effet des améliorations (pour tenir dans la case : voir « armure portée »)
   const sansStats = lignesDArmure(regles, riche, { stats: false });
   assert.ok(sansStats.every((l) => !/\((?:AP|AM) /.test(l)) && sansStats.some((l) => l.includes('(')));
-  assert.deepEqual(lignesDArmure(regles, riche, { stats: false, effets: false }).find((l) => l.startsWith('Torse')),
-    `Torse : ${nomDe('armures', riche.armures[1].armure_id)} · ${LIGNES_D_ARMURE.element} ${element.nom} · ${LIGNES_D_ARMURE.ameliorationElement} niv. 1`);
-  // l'armure complète : sans son emplacement
-  const complete = lignesDArmure(regles, { armures: [{ emplacement_id: ARMURE_COMPLETE, armure_id: regles.armures[0].id }] });
-  assert.deepEqual(complete, [`${regles.armures[0].nom} (AP ${regles.armures[0].ap})`]);
-  for (const col of ['AI', 'AJ', 'AK', 'AL', 'AM', 'AN']) for (const l of [22, 23, 24]) assert.equal(c[`${col}${l}`], undefined, `${col}${l}`);
+  assert.deepEqual(lignesDArmure(regles, riche, { stats: false, effets: false }),
+    [`${armure.nom} · ${LIGNES_D_ARMURE.amelioration} niv. 1 · ${LIGNES_D_ARMURE.element} ${element.nom} · ${LIGNES_D_ARMURE.ameliorationElement} niv. 1`]);
+  assert.deepEqual(lignesDArmure(regles, { armure_id: null }), [], 'sans armure');
+  const max = M.soliditeMaxDeLArmure(regles, riche);
+  const solidites = Object.fromEntries(Object.entries(ORDINATEUR.armure.colonnes).map(([e, col]) => [e, c[`${col}${ORDINATEUR.armure.lignes.solidite}`]]));
+  assert.deepEqual(solidites, { casque: `1 / ${max}`, torse: `0 / ${max}`, 'bras-gauche': `${max} / ${max}`, 'bras-droit': `${max} / ${max}`,
+    'jambe-gauche': `${max} / ${max}`, 'jambe-droit': `${max} / ${max}` });
+  for (const col of ['AI', 'AJ', 'AK', 'AL', 'AM', 'AN']) for (const l of [22, 23]) assert.equal(c[`${col}${l}`], undefined, `${col}${l}`);
+  // une armure à solidité unifiée : sa solidité sur les six parties
+  const uni = trouve('armures', (a) => Number(a.solidite_uni) === 1 && a.solidite >= 2, 'armure à solidité unifiée');
+  const solUni = cellulesDeLaFiche(regles, { ...riche, armure_id: uni.id, armure_amelioration_id: null, armure_parties: [{ emplacement_id: ARMURE_COMPLETE, solidite: 1 }] }, { date: DATE }).cellules;
+  for (const col of Object.values(ORDINATEUR.armure.colonnes)) assert.equal(solUni[`${col}${ORDINATEUR.armure.lignes.solidite}`], `1 / ${uni.solidite}`, col);
   // bouclier : nom, matériaux dans l'ordre des rangs, classe ; ni AP, ni AM, ni solidité
   const bouclier = M.trouver(regles.boucliers, 'ecu');
   assert.equal(c[ORDINATEUR.bouclier.nom], bouclier.nom);
@@ -731,21 +732,18 @@ test('lecteurs de l’export : en temps linéaire sur une case faite surtout d�
 
 test('armure portée : sans les statistiques du catalogue, puis sans l’effet des améliorations, quand la case ne les tient pas', async () => {
   const zones = await zonesDuClasseur(await modeleXlsx());
-  const avecToutes = { ...riche, armures: regles.emplacements_armure.filter((e) => e.id !== ARMURE_COMPLETE).map((e, i) => ({
-    emplacement_id: e.id, armure_id: regles.armures[i + 1].id,
-    amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 1 + (i % 3), 'armure').id,
-  })) };
-  const v = cellulesDeLaFiche(regles, avecToutes, { date: DATE, zones }).cellules[ORDINATEUR.armure.bonus];
-  const ecrite = (options) => lignesDArmure(regles, avecToutes, options).join('\n');
-  assert.notEqual(v, ecrite({}), 'avec leurs statistiques, six pièces ne tiennent pas');
+  // l'armure, son amélioration, son élément et l'amélioration de l'élément (décision R95 : une ligne) : avec leurs statistiques, la case ne les tient pas
+  const v = cellulesDeLaFiche(regles, riche, { date: DATE, zones }).cellules[ORDINATEUR.armure.bonus];
+  const ecrite = (fiche, options) => lignesDArmure(regles, fiche, options).join('\n');
+  assert.notEqual(v, ecrite(riche, {}), 'avec ses statistiques, la ligne ne tient pas');
   assert.doesNotMatch(v, /\((?:AP|AM) /, 'les statistiques retirées');
   const montre = sansLaCoupure(v) ?? v;
-  assert.ok(ecrite({ stats: false, effets: false }).startsWith(montre), 'puis l’effet des améliorations : la case en montre le plus possible');
-  // une seule pièce : tout tient, statistiques et effets compris
-  const une = { ...riche, armures: [riche.armures[0]] };
-  const seule = cellulesDeLaFiche(regles, une, { date: DATE, zones }).cellules[ORDINATEUR.armure.bonus];
-  assert.equal(seule, lignesDArmure(regles, une).join('\n'));
-  assert.match(seule, /\(AP /);
+  assert.ok(ecrite(riche, { stats: false, effets: false }).startsWith(montre), 'puis l’effet des améliorations : la case en montre le plus possible');
+  // l'armure seule : tout tient, statistiques comprises
+  const seule = { ...riche, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null };
+  const s = cellulesDeLaFiche(regles, seule, { date: DATE, zones }).cellules[ORDINATEUR.armure.bonus];
+  assert.equal(s, ecrite(seule, {}));
+  assert.match(s, /\(AP /);
 });
 
 test('fiche vide : rien d’inventé, les libellés du modèle restent', () => {
@@ -948,19 +946,16 @@ test('mise en forme de la note et des lignes : relue telle qu’écrite', () => 
 });
 
 test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’écrits (écriture courte et ancienne, case coupée)', () => {
-  // armure : l'écriture de lignesDArmure, avec ou sans statistiques et effets ; l'ancienne
+  // armure : l'écriture de lignesDArmure (une ligne, décision R95), avec ou sans statistiques et effets ; l'ancienne (une ligne par pièce)
   for (const options of [{}, { stats: false }, { stats: false, effets: false }]) {
-    const lignes = lignesDArmure(regles, riche, options);
-    for (const [k, x] of [...riche.armures].sort((a, b) => regles.emplacements_armure.findIndex((e) => e.id === a.emplacement_id)
-      - regles.emplacements_armure.findIndex((e) => e.id === b.emplacement_id)).entries()) {
-      const lu = lireLigneDArmure(regles, lignes[k]);
-      const amelioration = M.trouver(regles.ameliorations, x.amelioration_id);
-      const ameliorationElement = M.trouver(regles.ameliorations, x.amelioration_elementaire_id);
-      assert.deepEqual([lu.emplacement_id, lu.armure, lu.element, lireNiveauDAmelioration(lu.amelioration), lireNiveauDAmelioration(lu.ameliorationElement), lu.autres],
-        [x.emplacement_id, nomDe('armures', x.armure_id), x.armure_elementaire_id ? nomDe('armures_elementaires', x.armure_elementaire_id) : null,
-          amelioration?.niveau ?? null, ameliorationElement?.niveau ?? null, []], JSON.stringify(options));
-      if (options.effets !== false && amelioration) assert.equal(lireEffetDAmelioration(lu.amelioration), amelioration.effet);
-    }
+    const [ligne] = lignesDArmure(regles, riche, options);
+    const lu = lireLigneDArmure(regles, ligne);
+    const amelioration = M.trouver(regles.ameliorations, riche.armure_amelioration_id);
+    const ameliorationElement = M.trouver(regles.ameliorations, riche.armure_amelioration_elementaire_id);
+    assert.deepEqual([lu.emplacement_id, lu.emplacementEcrit, lu.armure, lu.element, lireNiveauDAmelioration(lu.amelioration), lireNiveauDAmelioration(lu.ameliorationElement), lu.autres],
+      [ARMURE_COMPLETE, false, nomDe('armures', riche.armure_id), nomDe('armures_elementaires', riche.armure_elementaire_id), amelioration.niveau, ameliorationElement.niveau, []],
+      JSON.stringify(options));
+    if (options.effets !== false) assert.equal(lireEffetDAmelioration(lu.amelioration), amelioration.effet);
   }
   assert.deepEqual(lireLigneDArmure(regles, 'Torse : Cuir (AP 3, AM 1) · Amélioration : niv. 1 — +2 AP/AM · Élément : Garde coeur (AP 7, AM 3) · Amélioration de l’élément : niv. 2 — +4 AP/AM · Gravée'),
     { emplacement_id: 'torse', emplacementEcrit: true, armure: 'Cuir', amelioration: 'niv. 1 — +2 AP/AM', element: 'Garde coeur', ameliorationElement: 'niv. 2 — +4 AP/AM', autres: ['Gravée'] });

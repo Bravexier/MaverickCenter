@@ -219,14 +219,15 @@ export const AUTO = Object.freeze({
 export const MODELE_DE_LA_SOLIDITE = '/';
 
 /**
- * Modèle ordinateur : les zones de saisie dont le site ne garde rien — l'AP, l'AM et la solidité de chaque pièce d'armure (grille AI22:AN24, colonnes de
- * ORDINATEUR.armure.colonnes, lignes de ORDINATEUR.armure.lignes) et du bouclier : la fiche ne les calcule pas (la solidité des armes a sa place depuis
- * la décision R74 : ORDINATEUR.armes[].solidite). `modele` : le texte du modèle (« / » : MODELE_DE_LA_SOLIDITE), qui n'est pas une valeur ; une autre
- * valeur part dans les notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am',
- * 'solidite') ; les autres : `quoi`.
+ * Modèle ordinateur : les zones de saisie dont le site ne garde rien — l'AP et l'AM de chaque partie de l'armure (grille AI22:AN23, colonnes de
+ * ORDINATEUR.armure.colonnes, lignes ap et am de ORDINATEUR.armure.lignes) et l'AP, l'AM et la solidité du bouclier : la fiche ne les calcule pas (la
+ * solidité des armes a sa place depuis la décision R74 : ORDINATEUR.armes[].solidite ; celle des parties de l'armure, la ligne « Sol. » de la grille,
+ * depuis la décision R95). `modele` : le texte du modèle (« / » : MODELE_DE_LA_SOLIDITE), qui n'est pas une valeur ; une autre valeur part dans les
+ * notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am') ; les autres : `quoi`.
  */
 export const SAISIES_SANS_PLACE = Object.freeze([
   ...Object.entries(ORDINATEUR.armure.colonnes).flatMap(([emplacement, colonne]) => Object.entries(ORDINATEUR.armure.lignes)
+    .filter(([valeur]) => valeur !== 'solidite')
     .map(([valeur, ligne]) => ({ adresse: `${colonne}${ligne}`, emplacement, valeur, modele: '' }))),
   { adresse: ORDINATEUR.bouclier.ap, quoi: 'Bouclier, armure physique', modele: '' },
   { adresse: ORDINATEUR.bouclier.am, quoi: 'Bouclier, armure magique', modele: '' },

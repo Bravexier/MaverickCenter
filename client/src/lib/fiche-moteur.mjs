@@ -1374,6 +1374,105 @@ export function armesValables(regles, fiche) {
   return (fiche.armes ?? []).map((x) => ('durabilite' in x ? { ...x, durabilite: durabiliteAEcrire(regles, x, x.durabilite) } : x));
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Armure portée (décision R95, migration 0055 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme
+// pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque partie est à réparer individuellement pour remonter (utilisation d'un kit
+// de réparation ou métier adapté + matériau) 2) L'amélioration est pour l'armure complète ») : une armure complète (fiche.armure_id), son amélioration,
+// son élément et l'amélioration de l'élément ; la solidité du moment de chacune de ses six parties (fiche.armure_parties : une ligne par partie
+// abîmée, { emplacement_id, solidite }), ou d'elle seule pour une armure à solidité unifiée (emplacement « armure-complete »). La réparation (kit,
+// métier, matériau) n'est pas calculée : la solidité se remonte au curseur.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** L'emplacement de la solidité d'une armure à solidité unifiée (personnage_armure_partie, décision R95), aussi l'« armure complète » de la fiche auto. */
+export const ARMURE_ENTIERE = 'armure-complete';
+
+/**
+ * Solidité maximale de chaque partie de l'armure de la fiche, en crans (décision R95) : la solidité de l'armure (`regles.armures[].solidite`, la même sur
+ * chaque partie : la fiche auto la recopie sur les six pièces) et les crans de son amélioration, ceux écrits au niveau choisi (décision R77 : « +1 cran au
+ * +4 et au +5 » ; `regles.ameliorations[].bonus_cran`, une amélioration d'armure seulement). L'élément n'est pas compté, comme pour une arme (Q12). null
+ * sans armure.
+ */
+export function soliditeMaxDeLArmure(regles, fiche) {
+  const armure = trouver(regles.armures, fiche?.armure_id);
+  if (!armure) return null;
+  const amelioration = trouver(regles.ameliorations, fiche.armure_amelioration_id);
+  return Math.max(0, entier(armure.solidite) + (amelioration?.cible === 'armure' ? entier(amelioration.bonus_cran) : 0));
+}
+
+/** Les emplacements qui ont une solidité pour l'armure `armure` (décision R95) : l'armure entière si elle est à solidité unifiée, sinon les six parties. */
+function emplacementsDeSolidite(regles, armure) {
+  if (Number(armure?.solidite_uni) === 1) return (regles.emplacements_armure ?? []).filter((e) => e.id === ARMURE_ENTIERE);
+  return (regles.emplacements_armure ?? []).filter((e) => e.id !== ARMURE_ENTIERE);
+}
+
+/**
+ * Les parties de l'armure de la fiche, pour leurs curseurs (décision R95) : null sans armure ; sinon { armure, uni, max, detail: [{ nom, valeur }],
+ * parties: [{ emplacement_id, nom, actuelle, cassee }] } — les six parties (casque, torse, bras, jambes), ou la seule armure entière (« Armure
+ * entière ») pour une armure à solidité unifiée ; `actuelle` de 0 au maximum (sans ligne enregistrée : le maximum), `cassee` à 0 ; `detail` : la
+ * solidité de l'armure et les crans de son amélioration.
+ */
+export function partiesDeLArmure(regles, fiche) {
+  const max = soliditeMaxDeLArmure(regles, fiche);
+  if (max === null) return null;
+  const armure = trouver(regles.armures, fiche.armure_id);
+  const uni = Number(armure.solidite_uni) === 1;
+  const amelioration = trouver(regles.ameliorations, fiche.armure_amelioration_id);
+  const detail = [{ nom: armure.nom, valeur: entier(armure.solidite) }];
+  if (amelioration?.cible === 'armure' && entier(amelioration.bonus_cran)) detail.push({ nom: `Amélioration niveau ${amelioration.niveau}`, valeur: entier(amelioration.bonus_cran) });
+  const lignes = fiche.armure_parties ?? [];
+  const parties = emplacementsDeSolidite(regles, armure).map((e) => {
+    const l = lignes.find((x) => x.emplacement_id === e.id);
+    const v = l?.solidite;
+    const enregistree = v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Math.round(Number(v));
+    const actuelle = enregistree === null ? max : Math.min(max, Math.max(0, enregistree));
+    return { emplacement_id: e.id, nom: uni ? 'Armure entière' : e.nom, actuelle, cassee: actuelle === 0 };
+  });
+  return { armure, uni, max, detail, parties };
+}
+
+/**
+ * La solidité du moment des parties de l'armure à enregistrer (personnage_armure_partie, décision R95) : une ligne par partie abîmée, de 0 (cassée) à
+ * moins que le maximum ; une partie à son maximum (ou au-delà), sans valeur ou illisible n'a pas de ligne, ni une partie que l'armure n'a pas (une
+ * armure à solidité unifiée n'a que « armure-complete », une autre que ses six parties) ; rien sans armure. Dans l'ordre des emplacements.
+ */
+export function partiesValables(regles, fiche) {
+  const max = soliditeMaxDeLArmure(regles, fiche);
+  if (max === null) return [];
+  const lignes = fiche.armure_parties ?? [];
+  return emplacementsDeSolidite(regles, trouver(regles.armures, fiche.armure_id)).flatMap((e) => {
+    const v = lignes.find((x) => x.emplacement_id === e.id)?.solidite;
+    if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return [];
+    const crans = Math.max(0, Math.round(Number(v)));
+    return crans >= max ? [] : [{ emplacement_id: e.id, solidite: crans }];
+  });
+}
+
+/** Les parties de l'armure après le réglage de la partie `emplacementId` à `valeur` crans (le curseur, ou une saisie) : partiesValables. */
+export function partiesApresReglage(regles, fiche, emplacementId, valeur) {
+  const autres = (fiche.armure_parties ?? []).filter((x) => x.emplacement_id !== emplacementId);
+  return partiesValables(regles, { ...fiche, armure_parties: [...autres, { emplacement_id: emplacementId, solidite: valeur }] });
+}
+
+/**
+ * Les colonnes de l'armure de la fiche après le choix de `champ` (armure_id, armure_amelioration_id, armure_elementaire_id,
+ * armure_amelioration_elementaire_id) à `valeur` : { armure_id, armure_amelioration_id, armure_elementaire_id, armure_amelioration_elementaire_id,
+ * armure_parties }. Une autre armure est neuve (ses parties à leur maximum : comme une autre arme, R74) ; sans armure, ni amélioration ni élément ; une
+ * autre amélioration borne les parties abîmées au nouveau maximum (partiesValables).
+ */
+export function armureApresChoix(regles, fiche, champ, valeur) {
+  const v = valeur === '' || valeur === undefined ? null : valeur;
+  const apres = {
+    armure_id: fiche.armure_id ?? null, armure_amelioration_id: fiche.armure_amelioration_id ?? null,
+    armure_elementaire_id: fiche.armure_elementaire_id ?? null, armure_amelioration_elementaire_id: fiche.armure_amelioration_elementaire_id ?? null,
+    armure_parties: fiche.armure_parties ?? [],
+    [champ]: v,
+  };
+  if (champ === 'armure_id' && v !== (fiche.armure_id ?? null)) apres.armure_parties = [];
+  if (!apres.armure_id) Object.assign(apres, { armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_parties: [] });
+  apres.armure_parties = partiesValables(regles, apres);
+  return apres;
+}
+
 /**
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
  * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son

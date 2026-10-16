@@ -5,7 +5,7 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -20,12 +20,17 @@ const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
 
 /**
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
- * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74). Quand le service retombe sur sa base d'avant (reconstruction
- * échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) : une de ces colonnes que la base n'a pas est ignorée
- * tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ inconnu » (ce qu'elle porte serait perdu).
+ * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74) et de la migration 0055 (l'armure de la fiche, R95). Quand le
+ * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
+ * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
+ * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 :
+ * partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
-  personnage: Object.freeze({ gains_sante: 0, gains_chakra: 0, entrainement: null }),
+  personnage: Object.freeze({
+    gains_sante: 0, gains_chakra: 0, entrainement: null,
+    armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+  }),
   personnage_arme: Object.freeze({ durabilite: null }),
 });
 
@@ -38,7 +43,8 @@ function ajouteeSansRien(table, colonne, valeur) {
 
 /** Message d'un envoi qui porte les deux formes des gains de niveau (progressionAvecGains de src/lib/fiche-format.mjs). */
 export const PAGE_D_AVANT = 'La page vient d’une version précédente du site : rien n’a été enregistré. Rechargez-la, puis saisissez de nouveau ce '
-  + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra).';
+  + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra ; '
+  + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -51,6 +57,11 @@ export { instant };
 const infos = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all();
 const colonnesDeDetail = (db, table) => infos(db, table).map((c) => c.name).filter((c) => c !== 'personnage_id');
 const colonnesModifiables = (db) => infos(db, 'personnage').map((c) => c.name).filter((c) => !COLONNES_DU_SERVICE.includes(c));
+/**
+ * Les parties de la fiche (PARTIES_DE_FICHE) dont la base a la table : toutes, sauf dans une base vivante d'avant qu'une nouvelle table de la section
+ * 13 ne connaît pas encore (le service y retombe si la reconstruction échoue : DEPART_DES_COLONNES_AJOUTEES).
+ */
+const partiesDeLaBase = (db) => Object.entries(PARTIES_DE_FICHE).filter(([, table]) => infos(db, table).length > 0);
 const annuler = (db) => {
   try {
     db.exec('ROLLBACK');
@@ -75,8 +86,8 @@ function versionDe(fiche) {
 export function lireFiche(db, id) {
   const ligne = db.prepare(`SELECT * FROM personnage WHERE id = ? AND nature = 'pretire'`).get(id);
   if (!ligne) return null;
-  const fiche = { ...ligne };
-  for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+  const fiche = { ...ligne, ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])) };
+  for (const [cle, table] of partiesDeLaBase(db)) {
     const cols = colonnesDeDetail(db, table).map((c) => `"${c}"`).join(', ');
     fiche[cle] = db.prepare(`SELECT ${cols} FROM "${table}" WHERE personnage_id = ? ORDER BY ${ordreDe(db, table)}`).all(id).map((r) => ({ ...r }));
   }
@@ -250,7 +261,10 @@ function verifierForme(db, entree, problemes) {
       const table = PARTIES_DE_FICHE[cle];
       if (!Array.isArray(liste)) problemes.push(`${cle} : une liste est attendue`);
       else if (liste.length > LIGNES_MAX) problemes.push(`${cle} : ${liste.length} lignes, au plus ${LIGNES_MAX}`);
-      else {
+      else if (!infos(db, table).length) {
+        // une table que la base vivante n'a pas encore (base d'avant) : une liste vide ne porte rien, une autre serait perdue
+        if (liste.length) problemes.push(`${cle} : pas encore dans cette base, ses lignes seraient perdues`);
+      } else {
         const colonnes = new Set(colonnesDeDetail(db, table));
         liste.forEach((l, i) => {
           if (!l || typeof l !== 'object' || Array.isArray(l)) problemes.push(`${cle}[${i}] : un objet est attendu`);
@@ -270,12 +284,15 @@ function verifierForme(db, entree, problemes) {
  * La clé d'une table que les règles ont retirée est convertie d'abord (sansPartiesRetirees de src/lib/fiche-format.mjs) : une page restée ouverte
  * qui envoie encore `progression` enregistre ses gains de niveau en deux totaux (décision R73), sans « champ inconnu ». Une `progression` non vide
  * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
- * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire.
+ * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire. De même une liste `armures` (une armure par emplacement, avant la
+ * migration 0055) donne l'armure de la fiche, chaque autre pièce une ligne datée dans les notes (décision R95) ; envoyée avec les nouvelles clés de
+ * l'armure (armuresAvecArmure) : refus 409.
  */
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
-  if (progressionAvecGains(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
-  const entree = sansPartiesRetirees(recue);
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
+  const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
+  const entree = sansPartiesRetirees(recue, { instant: instant(maintenant), noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement') } });
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 
@@ -320,7 +337,7 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
     }
 
     if (!problemes.length) {
-      for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+      for (const [cle, table] of partiesDeLaBase(db)) {
         if (!(cle in entree)) continue;
         db.prepare(`DELETE FROM "${table}" WHERE personnage_id = ?`).run(id);
         const colonnes = colonnesDeDetail(db, table);
@@ -341,7 +358,7 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
       for (const r of clesRompues(db, 'personnage', { ou: 't.id = ?', valeurs: [id] })) {
         problemes.push(`« ${r.colonnes.join(', ')} » : « ${r.valeur} » n’existe pas dans les règles (${r.parent})`);
       }
-      for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+      for (const [cle, table] of partiesDeLaBase(db)) {
         for (const r of clesRompues(db, table, { ou: 't.personnage_id = ?', valeurs: [id] })) {
           problemes.push(`${cle} : « ${r.colonnes.join(', ')} » = « ${r.valeur} » n’existe pas dans les règles (${r.parent})`);
         }

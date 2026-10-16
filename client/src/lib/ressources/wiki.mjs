@@ -317,7 +317,7 @@ export const HORS_RESSOURCE = {
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,
   personnage_maitrise_arme: `Maîtrises d’armes d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_arme: `Armes d’une fiche (partie de la fiche) : ${FICHES}.`,
-  personnage_armure: `Armure d’une fiche, par emplacement (partie de la fiche) : ${FICHES}.`,
+  personnage_armure_partie: `Solidité du moment des parties de l’armure d’une fiche (partie de la fiche ; décision R95) : ${FICHES}.`,
   personnage_bouclier_materiau: `Matériaux du bouclier d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_accessoire: `Accessoires d’une fiche et leurs choix (partie de la fiche, R54) : ${FICHES}.`,
   personnage_inventaire: `Inventaire d’une fiche (partie de la fiche, R60) : ${FICHES}.`,

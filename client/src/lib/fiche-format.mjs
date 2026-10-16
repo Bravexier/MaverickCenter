@@ -12,7 +12,7 @@
  */
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
+  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
   'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
@@ -26,7 +26,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
   sorts: 'personnage_sort',
   maitrises_armes: 'personnage_maitrise_arme',
   armes: 'personnage_arme',
-  armures: 'personnage_armure',
+  armure_parties: 'personnage_armure_partie',
   bouclier_materiaux: 'personnage_bouclier_materiau',
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
@@ -55,8 +55,11 @@ export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['sta
  * encore leur clé (fichier exporté avant, page restée ouverte) est convertie à sa lecture (sansPartiesRetirees : service et page /fiche/).
  * `personnage_progression` (une ligne par niveau atteint) : les gains de niveau sont deux totaux, personnage.gains_sante et gains_chakra (décision R73,
  * migration 0045), la somme de ses lignes (gainsDeLaProgression).
+ * `personnage_armure` (une armure par emplacement : armure complète, casque, torse…) : la fiche porte une seule armure complète, son amélioration, son
+ * élément et l'amélioration de l'élément (décision R95, migration 0055 : COLONNES_DE_L_ARMURE de personnage), la ligne du premier emplacement
+ * (armureDesArmures) ; chaque autre pièce différente est notée, datée, dans la fiche (lignesDesPiecesRetirees).
  */
-export const TABLES_RETIREES = Object.freeze({ personnage_progression: 'progression' });
+export const TABLES_RETIREES = Object.freeze({ personnage_progression: 'progression', personnage_armure: 'armures' });
 export const PARTIES_RETIREES = Object.freeze(Object.fromEntries(Object.entries(TABLES_RETIREES).map(([table, cle]) => [cle, table])));
 
 const entierPositif = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.max(0, Math.trunc(Number(v))) : 0);
@@ -94,18 +97,86 @@ export function progressionAvecGains(fiche) {
 }
 
 /**
+ * Colonnes de `personnage` qui portent l'armure de la fiche (décision R95, migration 0055), et la colonne de l'ancienne personnage_armure dont chacune
+ * reprend la valeur (armureDesArmures, serveur/base-vivante.mjs#CONVERSIONS).
+ */
+export const COLONNES_DE_L_ARMURE = Object.freeze({
+  armure_id: 'armure_id',
+  armure_amelioration_id: 'amelioration_id',
+  armure_elementaire_id: 'armure_elementaire_id',
+  armure_amelioration_elementaire_id: 'amelioration_elementaire_id',
+});
+
+/**
+ * Les emplacements d'armure dans l'ordre du tableau FABRICATION (armure_emplacement.ordre, sans le bouclier ; test/fiche-armure.test.mjs les compare à
+ * la base) : la conversion d'une ancienne liste `armures` garde la ligne du premier. « armure-complete » est aussi, dans personnage_armure_partie, la
+ * solidité unique d'une armure à solidité unifiée (décision R95).
+ */
+export const EMPLACEMENTS_D_ARMURE = Object.freeze(['armure-complete', 'casque', 'torse', 'bras-gauche', 'bras-droit', 'jambe-gauche', 'jambe-droit']);
+export const ARMURE_ENTIERE = EMPLACEMENTS_D_ARMURE[0];
+
+const rangDEmplacement = (id) => (EMPLACEMENTS_D_ARMURE.includes(id) ? EMPLACEMENTS_D_ARMURE.indexOf(id) : EMPLACEMENTS_D_ARMURE.length);
+const vide = (v) => v === null || v === undefined || v === '';
+const memeArmure = (a, b) => Object.values(COLONNES_DE_L_ARMURE).every((c) => (vide(a[c]) ? null : a[c]) === (vide(b[c]) ? null : b[c]));
+
+/**
+ * L'armure d'une ancienne liste `armures` (lignes de personnage_armure : emplacement_id, armure_id, amelioration_id, armure_elementaire_id,
+ * amelioration_elementaire_id) dans le nouveau format (décision R95) : { colonnes (COLONNES_DE_L_ARMURE : la ligne du premier emplacement, l'armure
+ * complète d'abord ; toutes à null sans ligne), retirees (les autres lignes qui ne portent pas la même armure, ou pas la même amélioration ou le même
+ * élément, dans l'ordre des emplacements) }. La même règle que la reconstruction de la base vivante et que la migration 0055.
+ */
+export function armureDesArmures(lignes) {
+  const portees = (Array.isArray(lignes) ? lignes : []).filter((l) => l && typeof l === 'object' && !vide(l.armure_id))
+    .sort((a, b) => rangDEmplacement(a.emplacement_id) - rangDEmplacement(b.emplacement_id));
+  const gardee = portees[0] ?? {};
+  const colonnes = Object.fromEntries(Object.entries(COLONNES_DE_L_ARMURE).map(([cle, ancienne]) => [cle, vide(gardee[ancienne]) ? null : gardee[ancienne]]));
+  return { colonnes, retirees: portees.slice(1).filter((l) => !memeArmure(l, gardee)) };
+}
+
+/**
+ * Les lignes datées de `instant` à ajouter aux notes pour les pièces d'une ancienne liste `armures` que la fiche ne garde pas (armureDesArmures :
+ * « retirees ») ; `noms` : { armure(id), emplacement(id) } rendent les noms (l'id sinon). Une ligne de retrait (préfixe PREFIXE_DE_RETRAIT), de nature
+ * « piece_armure » : la page /fiche/ la compte dans son bandeau.
+ */
+export function lignesDesPiecesRetirees(retirees, instant, noms = {}) {
+  return (retirees ?? []).map((l) => ligneDeRetrait({
+    nature: 'piece_armure', id: l.armure_id, nom: noms.armure?.(l.armure_id) ?? null, emplacement: noms.emplacement?.(l.emplacement_id) ?? l.emplacement_id,
+  }, instant));
+}
+
+/**
+ * Vrai si la fiche porte à la fois une liste `armures` non vide (une armure par emplacement, avant la migration 0055) et l'une des nouvelles clés de
+ * l'armure (COLONNES_DE_L_ARMURE, `armure_parties`) : comme progressionAvecGains, l'envoi d'une page d'avant restée ouverte, qui a repris les nouvelles
+ * clés d'une réponse du service ; le service refuse (409) plutôt que de choisir entre les deux.
+ */
+export function armuresAvecArmure(fiche) {
+  if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return false;
+  return Array.isArray(fiche.armures) && fiche.armures.length > 0 && [...Object.keys(COLONNES_DE_L_ARMURE), 'armure_parties'].some((c) => c in fiche);
+}
+
+/**
  * La fiche sans les clés des tables retirées (PARTIES_RETIREES), converties sans rien perdre : une `progression` reçue (page restée ouverte, fichier
  * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas. Si elle les a, ils sont
  * gardés et la progression est jetée : une progression vide n'est que le reste de la fiche vide d'une page d'avant, qui a repris les deux totaux d'une
  * réponse du service ; une progression NON vide ne se concilie pas avec eux (progressionAvecGains) et le service la refuse avant de convertir (409) ;
- * seule la page /fiche/, pour un fichier importé, la jette. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais modifiée en
- * place.
+ * seule la page /fiche/, pour un fichier importé, la jette. De même une liste `armures` (avant la migration 0055) donne l'armure de la fiche
+ * (armureDesArmures) quand la fiche n'a aucune des nouvelles clés, et chaque pièce qu'elle ne garde pas, une ligne datée de `instant` dans les notes
+ * (lignesDesPiecesRetirees, `noms` pour les nommer) ; une liste vide est jetée, une liste non vide avec les nouvelles clés est refusée par le service
+ * (armuresAvecArmure) et jetée par la page. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais modifiée en place.
+ * @param {object} fiche
+ * @param {{ instant?: string, noms?: { armure?: (id: string) => string | null, emplacement?: (id: string) => string | null } }} [options]
+ *   `instant` : ISO 8601 UTC à la seconde (la date des lignes ajoutées aux notes) ; sans lui, une pièce retirée n'est pas notée
  */
-export function sansPartiesRetirees(fiche) {
+export function sansPartiesRetirees(fiche, { instant = null, noms = {} } = {}) {
   if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return fiche;
   if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche)) return fiche;
-  const { progression, ...reste } = fiche;
+  const { progression, armures, ...reste } = fiche;
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
+  if (armures !== undefined && ![...Object.keys(COLONNES_DE_L_ARMURE), 'armure_parties'].some((c) => c in reste)) {
+    const { colonnes, retirees } = armureDesArmures(armures);
+    Object.assign(reste, colonnes);
+    if (retirees.length && instant) reste.notes = ajouterAuxNotes(reste.notes, lignesDesPiecesRetirees(retirees, instant, noms));
+  }
   return reste;
 }
 
@@ -141,8 +212,11 @@ export function ficheVide(nom = '') {
 /** Ce qui suit la date d'une ligne de retrait : la page /fiche/ reconnaît ces lignes à ce préfixe. */
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
-/** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42). */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet']);
+/**
+ * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42),
+ * objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète).
+ */
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -165,8 +239,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ) » (des faits, rien sur ce qu'ils deviennent) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
- *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60).
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60) ;
+ *   pièce      : « la pièce d'armure « Armure Cuir/Peau » (Torse) » : une pièce que la fiche ne porte plus, elle n'a plus qu'une armure (décision R95).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[] }} d
  */
@@ -201,6 +276,9 @@ export function descriptionDuRetrait(d) {
   } else if (d.nature === 'objet') {
     tete = `l’objet « ${nom} »`;
     if (d.emplacement) parties.push(d.emplacement);
+  } else if (d.nature === 'piece_armure') {
+    tete = `la pièce d’armure « ${nom} »`;
+    if (d.emplacement) parties.push(d.emplacement);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }
@@ -215,7 +293,10 @@ export const ligneDeRetrait = (d, instant) =>
   `[${jourDuRetrait(instant)}] ${PREFIXE_DE_RETRAIT}${descriptionDuRetrait(d)} ${d.nature === 'objet'
     // décision R60 : l'objet reste dans la fiche sous son nom (« objet supprimé de la base, veuillez la mettre à jour »)
     ? 'a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour.'
-    : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
+    : d.nature === 'piece_armure'
+      // décision R95 : une seule armure complète par fiche, avec son amélioration et son élément ; ses parties n'ont plus que leur solidité
+      ? 'n’est plus portée : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.'
+      : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

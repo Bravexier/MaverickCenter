@@ -337,8 +337,10 @@ export function chargerReglesDeFiche(db) {
     ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau')
       .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_cran: a.bonus_cran })),
     armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
+    // les parties de l'armure portée (décision R95) : chacune a sa solidité du moment ; « armure-complete », celle d'une armure à solidité unifiée
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
-    armures: lignes(db, 'SELECT id, nom, type, ap, am FROM armure ORDER BY ordre'),
+    // `solidite` et `solidite_uni` : le maximum de chaque partie et l'armure à solidité unifiée (« Solidité uni ») (décision R95 : lib/fiche-moteur.mjs#partiesDeLArmure)
+    armures: lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni FROM armure ORDER BY ordre'),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
     armures_elementaires: lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre'),

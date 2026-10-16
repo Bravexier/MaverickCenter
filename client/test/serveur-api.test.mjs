@@ -533,8 +533,33 @@ test('repli sur une base vivante d’avant la migration 0038 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par la migration 0045 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
-  assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, { personnage: { gains_sante: 0, gains_chakra: 0, entrainement: null }, personnage_arme: { durabilite: null } });
+test('une page d’avant la migration 0055 envoie une armure par emplacement (`armures`) : l’armure de la fiche, les autres pièces notées (R95) ; avec les nouvelles clés, refus 409', () => {
+  const [a, b] = db.prepare("SELECT id, nom FROM armure WHERE sorte = 'combinaison' ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
+  const casque = db.prepare("SELECT nom FROM armure_emplacement WHERE id = 'casque'").get().nom;
+  // la fiche vide d'une page d'avant n'a pas les nouvelles clés de l'armure
+  const { armure_parties: _parties, ...davant } = ficheConforme('Ancienne armure');
+  const c = appel('POST', '/api/personnages', { ...davant, armures: [
+    { emplacement_id: 'casque', armure_id: b.id }, { emplacement_id: 'armure-complete', armure_id: a.id },
+  ] });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  const p = c.corps.personnage;
+  assert.deepEqual([p.armure_id, p.armure_amelioration_id, 'armures' in p], [a.id, null, false]);
+  assert.match(p.notes, new RegExp(`^\\[\\d{2}/\\d{2}/\\d{4}\\] Retrait \\(règles modifiées\\) : la pièce d’armure « ${b.nom.replace(/[/()]/g, '\\$&')} » \\(${casque}\\) n’est plus portée`));
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, armures: [{ emplacement_id: 'torse', armure_id: b.id }] });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /l’armure est une seule armure complète/);
+});
+
+test('colonnes ajoutées par les migrations 0045 et 0055 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+  assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
+    personnage: {
+      gains_sante: 0, gains_chakra: 0, entrainement: null,
+      armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+    },
+    personnage_arme: { durabilite: null },
+  });
   for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
     const colonnes = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.dflt_value]));
     for (const [colonne, depart] of Object.entries(departs)) {
@@ -542,6 +567,36 @@ test('colonnes ajoutées par la migration 0045 (DEPART_DES_COLONNES_AJOUTEES) : 
       assert.equal(colonnes.get(colonne), depart === null ? null : String(depart), `${table}.${colonne} : défaut du schéma`);
       if (table === 'personnage') assert.equal(ficheVide()[colonne] ?? null, depart, `${colonne} : fiche vide`);
     }
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0055 (sa reconstruction a échoué) : sans la table de la solidité des parties, la fiche se lit avec une liste vide, s’enregistre avec une liste vide, et une liste non vide est refusée', () => {
+  // la base vivante d'aujourd'hui, ramenée à ses tables d'avant 0055 : une armure par emplacement, pas de solidité des parties
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0055') });
+  const ancienne = new DatabaseSync(avant);
+  ancienne.exec(`DROP TABLE personnage_armure_partie;
+    CREATE TABLE personnage_armure (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, emplacement_id TEXT NOT NULL REFERENCES armure_emplacement(id),
+      armure_id TEXT NOT NULL REFERENCES armure(id), amelioration_id TEXT REFERENCES amelioration_equipement(id),
+      armure_elementaire_id TEXT REFERENCES armure_elementaire(id), amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
+      PRIMARY KEY (personnage_id, emplacement_id)
+    ) STRICT, WITHOUT ROWID;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0055'), armure_parties: [] });
+    assert.deepEqual(cree.personnage.armure_parties, [], 'lue vide');
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.deepEqual(lue.armure_parties, []);
+    assert.equal(enregistrerFiche(base, { ...lue, surnom: 'de secours' }, { id: lue.id }).personnage.surnom, 'de secours');
+    const avantEnvoi = lireFiche(base, lue.id);
+    assert.throws(() => enregistrerFiche(base, { version: avantEnvoi.version, armure_parties: [{ emplacement_id: 'torse', solidite: 1 }] }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['armure_parties : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), avantEnvoi, 'rien n’est écrit');
+  } finally {
+    base.close();
   }
 });
 
