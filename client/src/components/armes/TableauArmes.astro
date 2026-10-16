@@ -11,8 +11,8 @@ import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
 // La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
 // rendus que le mode modification réécrit après un enregistrement.
 // Mode modification (site de dev) : chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`, recalculées
-// par le service) ; quatre colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où
-// les colonnes tirées viennent), Arme de départ.
+// par le service) ; cinq colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où
+// les colonnes tirées viennent), Arme de départ, Remarque (l'étoile ★ à côté du nom ; vidée, l'étoile part).
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   famille: Armes['familles'][number];
@@ -46,6 +46,7 @@ const unite = famille.cout_libelle.includes('(unité)');
           <th scope="col" class="ed-seul">{famille.cout_libelle}</th>
           <th scope="col" class="ed-seul">Effet (texte de l’onglet)</th>
           <th scope="col" class="ed-seul">Arme de départ</th>
+          <th scope="col" class="ed-seul">Remarque</th>
         </tr>
       </thead>
       <tbody>

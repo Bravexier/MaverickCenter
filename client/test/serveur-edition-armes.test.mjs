@@ -77,6 +77,25 @@ test('arme : nom, mains, type, catégorie et case de départ ; la cellule Nom et
   assert.equal(enregistrer([{ op: 'modifier', table: 'arme', cle: { id: avant.id }, valeurs: { type_id: 'lance-pierre' } }]).statut, 400);
 });
 
+test('arme : la remarque (décision R91 : sa présence et son contenu) se saisit, se modifie et se vide ; l’entrée du corps suit', () => {
+  const avant = ligne("SELECT a.* FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 AND a.effet IS NOT NULL ORDER BY a.id DESC LIMIT 1");
+  assert.equal(lireAttributEd(attributEd('arme', { id: avant.id }, 'remarque'))?.champ.type, 'texte', 'la remarque se saisit');
+  const texte = `Remarque d’essai ${process.pid}.`;
+  const poser = (remarque, ancienne) => enregistrer([{ op: 'modifier', table: 'arme', cle: { id: avant.id }, valeurs: { remarque }, avant: { remarque: ancienne } }]);
+  let r = poser(texte, avant.remarque);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(ligne('SELECT remarque FROM arme WHERE id = ?', avant.id).remarque, texte);
+  const entree = `**Remarque de l’arme « ${avant.nom} »** : ${texte}`;
+  assert.equal(corps().split('\n').filter((l) => l === entree).length, 1, 'une entrée dans le corps');
+  r = poser('Remarque\n\nrécrite.', texte);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.ok(!corps().includes(texte) && corps().includes(`**Remarque de l’arme « ${avant.nom} »** : Remarque récrite.`));
+  r = poser('', 'Remarque\n\nrécrite.');
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(ligne('SELECT remarque FROM arme WHERE id = ?', avant.id).remarque, null, 'vidée : pas de remarque (ni d’étoile)');
+  assert.ok(!corps().includes(`**Remarque de l’arme « ${avant.nom} »**`), 'l’entrée du corps part');
+});
+
 test('les armes de monstres ne se modifient pas ici (décision R45)', () => {
   const monstre = ligne("SELECT a.* FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 0 LIMIT 1");
   if (!monstre) return;
@@ -137,6 +156,7 @@ test('arme créée : id tiré du nom, à la fin de sa famille ; colonnes, détai
   const r = enregistrer([{ op: 'creer', entite: 'arme', valeurs: {
     famille_id: famille, nom, mains: 'une', competence_brut: 'Arme Légère', type_id: 'dague', cout_brut: '12 Ro',
     effet: 'Dégâts estoc, 2 de Agilité minimum, +3 dégâts, Origine Elfe, siffle', description: 'Une dague d’essai.', depart_possible: '1',
+    remarque: 'Une remarque d’essai.',
   } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const id = r.corps.crees[0].id;
@@ -152,6 +172,8 @@ test('arme créée : id tiré du nom, à la fin de sa famille ; colonnes, détai
   const suivante = l.findIndex((x, k) => k > titre && x.startsWith('## '));
   const tableau = l.slice(titre, suivante).filter((x) => x.startsWith('|'));
   assert.equal(tableau.at(-1), ligneDArme(a), 'à la fin du tableau de sa famille');
+  assert.equal(a.remarque, 'Une remarque d’essai.');
+  assert.ok(l.includes(`**Remarque de l’arme « ${nom} »** : Une remarque d’essai.`), 'sa remarque sous le tableau');
   assert.ok(l.some((x) => x.startsWith('- Sous « DAGUES') && x.includes(`${nom} (une main)`)), 'dans la liste des armes de départ');
   // refus
   const creer = (valeurs) => enregistrer([{ op: 'creer', entite: 'arme', valeurs: { competence_brut: 'Arme Légère', type_id: 'dague', depart_possible: '0', ...valeurs } }]);

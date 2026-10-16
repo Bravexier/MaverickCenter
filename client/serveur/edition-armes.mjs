@@ -3,7 +3,8 @@
 // (table ressource) est du domaine des composants (serveur/edition-composants.mjs), qui fait suivre cette page par suivreLeMateriauRenomme. Ce que la base tire des
 // cellules (colonnes typées de l'arme, types de dégâts, minimums de caractéristique, bonus et crans d'un matériau, coût et effet d'une amélioration, ligne
 // TOTAL) est recalculé par les découpages de l'importeur (lib/arme-champs.mjs, rejoués sur toute la base par test/arme-champs.test.mjs), jamais saisi ; le
-// corps de la page suit (lib/corps-armes.mjs). Ni création ni suppression : la fiche de personnage cite les armes, matériaux et améliorations.
+// corps de la page suit (lib/corps-armes.mjs), remarque de l'arme comprise. Une arme se crée et se supprime (décision R52) ; matériaux et améliorations, non :
+// la fiche de personnage les cite.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmes), sans import en retour.
 import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
@@ -120,7 +121,8 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
       const ligne = {
         id, famille_id: famille.id, type_id: type.id, nom: valeurs.nom, nom_cle: cle, mains: valeurs.mains ?? null, competence_brut: valeurs.competence_brut,
         cout_brut: valeurs.cout_brut ?? null, effet: valeurs.effet ?? null, description: valeurs.description ?? null,
-        depart_possible: Number(valeurs.depart_possible ?? 0), ordre, origine: ORIGINE, source_ref: `${provenance(instant)} › ${valeurs.nom}`, remarque: null,
+        depart_possible: Number(valeurs.depart_possible ?? 0), ordre, origine: ORIGINE, source_ref: `${provenance(instant)} › ${valeurs.nom}`,
+        remarque: valeurs.remarque ?? null,
       };
       const arme = w.inserer('arme', { ...ligne, ...colonnesDeLArme(ligne, type, caracteristiques(db)) });
       w.inserer('page_entite', { entite_table: 'arme', entite_id: id, page_id: PAGE_DES_ARMES, principale: 0, origine: ORIGINE });
