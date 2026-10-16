@@ -47,7 +47,6 @@ const DE_SVG =
 {/* Onglets pose aussi `html.js` (sans JavaScript, ni dé, ni encart, ni curseur) */}
 <Onglets />
 <div class="acc" data-accessoires>
-  {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les prix qu'il écrit dans l'encart (aucun module partagé avec lui) */}
   <h1>{accessoires.page?.titre ?? 'Accessoires'} <span class="badge">Ressource</span></h1>
   {resume && <p class="acc__chapo" set:html={htmlAvecMonnaies(resume)} />}
   <details class="acc-regles" open>
@@ -112,7 +111,7 @@ const DE_SVG =
       <section class="acc-bloc acc-bloc--effets" aria-labelledby="acc-etape-3">
         <h2 class="acc-bloc__titre" id="acc-etape-3"><span class="acc-bloc__etape">Étape 3</span> Effet <span class="acc-bloc__niveaux" aria-label="Couleurs des niveaux">{[1, 2, 3, 4, 5].map((n) => <span class="acc-niveau-pastille" style={styleDeNiveau(n)}>Niveau {n}</span>)}</span></h2>
         <p class="acc-bloc__note js-seul">L’onglet de la propriété choisie s’ouvre. Gemmes : survolez-les pour leur magie et le prix d’un quart de gemme ; celles au choix se cochent, deux en tout, pour en calculer le prix.</p>
-        {/* un onglet par propriété à effets (demande du propriétaire, 2026-10-16 : « plutôt que des menus déroulants, ces tableaux derrière des onglets » ;
+        {/* un onglet par propriété à effets (demande du propriétaire, 2026-10-16 : « Et plutôt que des menus déroulants : ces tableau soient derrière des onglets » ;
             components/Onglets.astro, que src/scripts/accessoires.mjs ouvre aussi quand une propriété est choisie) ; sans JavaScript, les tableaux se suivent */}
         <div class="acc-effets" data-onglets="Effets par propriété">
           <nav class="acc-onglets" aria-label="Effets par propriété">
@@ -127,7 +126,7 @@ const DE_SVG =
             const competence = p.id === 'competence';
             const de = deDeLaPropriete(p);
             return (
-              <section class={`acc-famille${i === 0 ? ' is-active' : ''}`} id={ancreDeLaPropriete(p.id)} data-propriete={p.id} data-table="effet" aria-label={`Si ${p.nom.toLowerCase()}`}>
+              <section class={`acc-famille${i === 0 ? ' is-active' : ''}`} id={ancreDeLaPropriete(p.id)} data-propriete={p.id} data-table="effet">
                 <h3 class="acc-famille__titre"><span class="acc-famille__nom">Si {p.nom.toLowerCase()}</span><span class="acc-famille__de">{de}</span></h3>
                 {consignes[p.id]?.map((c) => <p class="acc-famille__note">{c}</p>)}
                 <div class="acc-wrap">
@@ -144,29 +143,30 @@ const DE_SVG =
                         </tr>
                       </thead>
                       <tbody>
-                        {/* une ligne par compétence (demande du propriétaire, 2026-10-16 : « lignes trop longues et trop nombreuses ») : le bonus d'acquis au
+                        {/* une ligne par compétence (demande du propriétaire, 2026-10-16 : « Lignes trop longues et trop nombreuses ») : le bonus d'acquis au
                             curseur, au dé (1d20) ou saisi, donne le niveau de sa plage écrite, donc l'effet (data-valeur), sa couleur et son prix
                             (data-niveaux : les effets de la ligne, un par niveau, prix écrits ; src/scripts/accessoires.mjs#reglerLAcquis ; avant data-prix-html,
                             dont le « > » couperait la balise pour les tests qui lisent le texte visible) ; la ligne s'affiche au
-                            plus petit bonus. Le 1d6 donne la compétence (data-jet), le 1d20 le bonus. Sans JavaScript : les plages, niveaux et prix de la ligne. */}
+                            plus petit bonus. Le 1d6 donne la compétence (data-jet), le 1d20 le bonus. Sans JavaScript : chaque plage du bonus, son niveau et
+                            son prix écrit, dans la case du bonus. */}
                         {accessoires.competences.lignes.map((l) => {
                           const e = l.effets[0];
-                          const prix = [...new Set(l.effets.map((x) => x.prix_brut ?? ''))];
+                          const plage = (x: { bonus_min: number; bonus_max: number }) => `${x.bonus_min} % à ${x.bonus_max} %`;
                           return (
                             <tr class="acc-ligne acc-effet acc-competence" style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-jet={l.jet} data-acquis={bonus.min} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.titre} data-niveaux={JSON.stringify(l.effets.map((x) => ({ valeur: cleDEffet(x.id), niveau: x.niveau, brut: x.niveau_brut, min: x.bonus_min, max: x.bonus_max, prix: x.prix_brut, style: styleDeNiveau(x.niveau) ?? null })))} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined} data-au-choix={auChoix(e) || undefined}>
                               <td class="acc-jet">{l.jet}</td>
                               <th scope="row" class="acc-effet__libelle"><button type="button" class="acc-choisir" aria-pressed="false">{l.titre}</button></th>
                               <td class="acc-effet__bonus">
-                                <span class="sans-js">{bonus.min} % à {bonus.max} %</span>
+                                <ul class="acc-plages sans-js">{l.effets.map((x) => <li>{plage(x)} : {x.niveau_brut}{x.prix_brut && <>, <Fragment set:html={htmlAvecMonnaies(x.prix_brut)} /></>}</li>)}</ul>
                                 <span class="acc-acquis js-seul">
-                                  <input type="range" class="acc-acquis__curseur" min={bonus.min} max={bonus.max} step="1" value={bonus.min} data-acc-acquis aria-label={`Bonus d’acquis : ${l.titre}`} />
+                                  <input type="range" class="acc-acquis__curseur" min={bonus.min} max={bonus.max} step="1" value={bonus.min} data-acc-acquis aria-label={`Bonus d’acquis : ${l.titre}`} aria-valuetext={`${bonus.min} % : ${e.niveau_brut}`} />
                                   <input type="number" class="acc-acquis__saisie" min={bonus.min} max={bonus.max} step="1" value={bonus.min} inputmode="numeric" data-acc-acquis-saisie aria-label={`Bonus d’acquis saisi : ${l.titre}`} /><span class="acc-acquis__unite">%</span>
                                   <button type="button" class="acc-de acc-de--acquis" data-acc-acquis-de={facesDuBonus} aria-label={`Lancer 1d${facesDuBonus} : bonus d’acquis, ${l.titre}`} title={`Lancer 1d${facesDuBonus}`}><Fragment set:html={DE_SVG} /></button>
                                 </span>
                               </td>
-                              <td class="acc-effet__niveau"><span class="sans-js">Niveaux {l.effets[0].niveau} à {l.effets.at(-1)?.niveau}</span><span class="js-seul" data-acc-niveau>{e.niveau_brut ?? ''}</span></td>
+                              <td class="acc-effet__niveau"><span class="js-seul" data-acc-niveau title={plage(e)}>{e.niveau_brut ?? ''}</span></td>
                               <td class="acc-gemmes" data-gemmes><GemmesDeLEffet rangs={l.gemmes} libelle={l.titre} /></td>
-                              <td class="acc-effet__prix"><span class="sans-js" set:html={prix.map((x) => htmlAvecMonnaies(x)).join(' · ')} /><span class="js-seul" data-acc-prix set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : ''} /></td>
+                              <td class="acc-effet__prix"><span class="js-seul" data-acc-prix set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : ''} /></td>
                             </tr>
                           );
                         })}

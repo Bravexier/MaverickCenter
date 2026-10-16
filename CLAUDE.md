@@ -323,8 +323,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   l'en-tête écrit l'unité, « Coût(RO) », lit ses nombres seuls comme des montants), déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts` (et le test `markdown-edition`).
   Un montant décomposé garde son écriture d'origine dans `data-montant`, une icône seule dans `data-monnaie` : `lib/markdown-edition.mjs` les relit tels qu'écrits.
   « 100 RF / 1 RO » (même somme) n'en fait qu'un ; une conversion (« 1 PP = 1 000 RO ») ne se décompose pas ; un nombre sans monnaie écrite reste un nombre.
-  Un script de page n'importe jamais `monnaies.mjs` (un module partagé entre scripts de page) : la page des armes décompose par `lib/arme-forge.mjs#piecesDuMontant`
-  (même calcul, testé) avec les icônes de ses `<template data-armes-piece>`, celle des accessoires lit des prix déjà rendus (`data-prix-html`, `data-quarts`).
+  Un script de page n'importe pas `monnaies.mjs` (un module partagé entre scripts de page), sauf celui des accessoires, le seul à l'importer (prix calculés
+  et prix écrit du niveau d'une compétence ; testé) : la page des armes décompose par `lib/arme-forge.mjs#piecesDuMontant` (même calcul, testé) avec les
+  icônes de ses `<template data-armes-piece>`.
   Les valeurs ne se modifient pas (`MONNAIES_DU_JEU`, comparées à la base).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,

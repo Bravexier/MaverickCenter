@@ -62,8 +62,7 @@ html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-hei
 .acc-effets { display: grid; gap: 0.7rem; margin: 0 0.8rem; min-width: 0; }
 /* une seule rangée d'onglets, qui défile sur un écran étroit */
 .acc-onglets { display: flex; gap: 0.35rem; border-bottom: 2px solid var(--acc-line); overflow-x: auto; scrollbar-width: thin; }
-.acc-onglets .onglet { flex: none; }
-.acc-onglets .onglet { display: flex; flex-direction: column; gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem; border: 1px solid var(--border); border-bottom: 0;
+.acc-onglets .onglet { flex: none; display: flex; flex-direction: column; gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem; border: 1px solid var(--border); border-bottom: 0;
   border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--surface); color: var(--text); text-decoration: none; }
 .acc-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
 .acc-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
@@ -112,6 +111,7 @@ html.js .acc .acc-acquis { display: inline-flex; align-items: center; gap: 0.35r
 .acc .acc-de--acquis:hover { background: rgb(255 255 255 / 0.85); }
 .acc-de--acquis svg { width: 1.05rem; height: 1.05rem; }
 html:not(.js) .acc-ligne.acc-competence > * { background: none; color: inherit; }
+.acc-plages { margin: 0; padding: 0; list-style: none; font-size: var(--fs-md); }
 
 /* La case du dé (en-tête de la première colonne) : l'icône et le dernier jet */
 .acc-de-case { width: 1%; }
@@ -145,10 +145,12 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; line-height: 1.45;
   background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
 .acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: var(--fs-xs); }
-/* une gemme au choix dans sa ligne : sa case à cocher devant elle (deux en tout ; grisée une fois le compte atteint) */
-.acc-gemme-choix { display: inline-flex; align-items: center; gap: 0.2rem; margin-right: 0.4rem; cursor: pointer; }
-.acc-gemme-choix input { margin: 0; accent-color: var(--sur-niveau); cursor: pointer; }
-.acc-gemme-choix:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+/* une gemme au choix dans sa ligne : sa case à cocher devant elle, à côté et non autour (un appui sur la gemme ouvre son infobulle) ; deux en tout,
+   les autres cases grisées une fois le compte atteint */
+.acc-gemme-choix { display: inline-flex; align-items: center; gap: 0.2rem; margin-right: 0.4rem; }
+.acc-gemme-choix input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--sur-niveau); cursor: pointer; }
+.acc-gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-gemme-choix input:disabled { cursor: not-allowed; }
 .acc-gemmes__ou { font-style: italic; }
 .acc-bulles { display: contents; }
 
@@ -183,5 +185,7 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 
 /* Gemmes au choix dans l'accessoire créé (demande du propriétaire : « laisser la possibilité d'en cocher 2 ») : une case par gemme au choix */
 .acc-produit__choix { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; }
-.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
-.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; }
+.acc-produit__gemme-choix input { width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
+.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-produit__gemme-choix input:disabled { cursor: not-allowed; }

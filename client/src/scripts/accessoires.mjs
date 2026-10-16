@@ -2,14 +2,14 @@
 // ligne la choisit ; le dé d'un tableau en tire une au hasard (le tableau des compétences : 1d6 pour la ligne, puis 1d20 pour son bonus d'acquis) ;
 // « Tirer un accessoire » suit les étapes de l'onglet. Les tableaux d'effets sont dans des onglets (components/Onglets.astro) : choisir une propriété
 // ouvre le sien. Une ligne du tableau des compétences a son bonus d'acquis au curseur, au dé ou saisi (demande du propriétaire, 2026-10-16), qui en
-// donne le niveau, donc l'effet, la couleur et le prix (`reglerLAcquis`) ; les gemmes au choix se cochent dans la ligne comme dans l'encart, et le prix
-// calculé s'écrit dans la ligne (avec la monture de son niveau, comme les prix écrits) et dans l'encart (avec la monture choisie). L'encart à côté décrit
-// l'accessoire ainsi créé, dans la couleur du niveau de son effet. Modules importés : lib/accessoires-generateur.mjs et lib/monnaies.mjs (qu'aucun autre
-// script de page n'importe).
+// donne le niveau, donc l'effet, la couleur et le prix (`reglerLAcquis`, lib/accessoires-generateur.mjs#effetDuBonus) ; les gemmes au choix se cochent
+// dans la ligne comme dans l'encart, et le prix calculé s'écrit dans la ligne (avec la monture de son niveau, comme les prix écrits) et dans l'encart
+// (avec la monture choisie). L'encart à côté décrit l'accessoire ainsi créé, dans la couleur du niveau de son effet. Modules importés :
+// lib/accessoires-generateur.mjs et lib/monnaies.mjs (qu'aucun autre script de page n'importe : test/accessoires-html.test.mjs).
 // Les valeurs viennent des lignes telles qu'affichées (attributs `data-…`) ; état dans l'adresse (lib/accessoires-generateur.mjs#PARAMETRES).
 // Malédiction (règles de la page) : « Dans le cas d'une malédiction, on relance les dés au début des étapes et l'effet sera le contraire de ce qui est
 // indiqué à la base » : tomber sur une malédiction marque l'accessoire maudit ; « Tirer un accessoire » relance alors depuis l'étape 1.
-import { bonusBorne, dansLaPlage, ecrireEtat, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme } from '../lib/accessoires-generateur.mjs';
+import { ancreGardee, bonusDeLAdresse, dansLaPlage, ecrireEtat, effetDuBonus, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme } from '../lib/accessoires-generateur.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from '../lib/monnaies.mjs';
 
 const racine = document.querySelector('[data-accessoires]');
@@ -27,35 +27,31 @@ if (racine) {
   const etat = { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] };
 
   /**
-   * Ouvre l'onglet du tableau d'effets d'une propriété (sans propriété ou pour la Malédiction, qui n'en a pas : l'onglet ouvert reste). Les classes et
-   * l'ARIA sont ceux de components/Onglets.astro (qui, branché après ce script, garde l'onglet `is-active`) ; l'ancre n'est pas écrite : la propriété
-   * de l'adresse dit l'onglet (`ecrire`).
+   * Ouvre l'onglet du tableau d'effets d'une propriété (sans propriété ou pour la Malédiction, qui n'en a pas : l'onglet ouvert reste), par l'évènement
+   * « onglets:ouvrir » de components/Onglets.astro (branché avant ce script : il est plus haut dans la page), qui ne touche ni à l'adresse ni au
+   * défilement ; l'onglet est ramené dans sa bande s'il en dépasse (téléphone). L'ancre n'est pas écrite : la propriété de l'adresse dit l'onglet.
    */
   function ouvrirLaFamille(propriete) {
     const ouverte = familles.find((f) => f.dataset.propriete === propriete);
     if (!ouverte) return;
-    for (const f of familles) {
-      const actif = f === ouverte;
-      f.classList.toggle('is-active', actif);
-      const onglet = racine.querySelector(`.onglet[data-onglet-propriete="${f.dataset.propriete}"]`);
-      if (!onglet) continue;
-      onglet.classList.toggle('is-active', actif);
-      if (onglet.hasAttribute('role')) {
-        onglet.setAttribute('aria-selected', String(actif));
-        onglet.tabIndex = actif ? 0 : -1;
-      }
-    }
+    ouverte.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true }));
+    const onglet = racine.querySelector(`.onglet[data-onglet-propriete="${propriete}"]`);
+    const bande = onglet?.parentElement;
+    if (!bande || bande.scrollWidth <= bande.clientWidth) return;
+    const o = onglet.getBoundingClientRect();
+    const b = bande.getBoundingClientRect();
+    if (o.left < b.left || o.right > b.right) bande.scrollLeft += o.left - b.left - (b.width - o.width) / 2;
   }
 
   /**
    * Règle le bonus d'acquis d'une ligne du tableau des compétences (curseur, saisie, dé) : borné aux plages écrites, il donne le niveau dont la plage le
-   * contient, et la ligne prend l'effet de ce niveau (data-niveaux : son identifiant, son niveau, sa couleur, son prix écrit).
+   * contient, et la ligne prend l'effet de ce niveau (data-niveaux : son identifiant, son niveau, sa couleur, son prix écrit ; effetDuBonus). `saisi` :
+   * le champ où l'on tape, qui n'est pas réécrit (« 07 » reste tel quel jusqu'à ce qu'on le quitte).
    */
-  function reglerLAcquis(x, valeur) {
-    const niveaux = JSON.parse(x.dataset.niveaux ?? '[]');
-    if (!niveaux.length) return;
-    const v = bonusBorne(valeur, Math.min(...niveaux.map((n) => n.min)), Math.max(...niveaux.map((n) => n.max)));
-    const n = dansLaPlage(niveaux, v) ?? niveaux[0];
+  function reglerLAcquis(x, valeur, saisi = null) {
+    const r = effetDuBonus(JSON.parse(x.dataset.niveaux ?? '[]'), valeur);
+    if (!r) return;
+    const { bonus: v, effet: n } = r;
     Object.assign(x.dataset, { acquis: String(v), valeur: n.valeur, niveau: String(n.niveau), niveauBrut: n.brut ?? '' });
     if (n.prix) Object.assign(x.dataset, { prix: n.prix, prixHtml: htmlAvecMonnaies(n.prix) });
     else {
@@ -64,14 +60,24 @@ if (racine) {
     }
     if (n.style) x.setAttribute('style', n.style);
     else x.removeAttribute('style');
-    for (const champ of x.querySelectorAll('[data-acc-acquis], [data-acc-acquis-saisie]')) if (champ.value !== String(v)) champ.value = String(v);
+    for (const champ of x.querySelectorAll('[data-acc-acquis], [data-acc-acquis-saisie]')) if (champ !== saisi && champ.value !== String(v)) champ.value = String(v);
+    x.querySelector('[data-acc-acquis]')?.setAttribute('aria-valuetext', `${v} % : ${n.brut ?? ''}`);
     const niveau = x.querySelector('[data-acc-niveau]');
-    if (niveau) niveau.textContent = n.brut ?? '';
+    if (niveau) {
+      niveau.textContent = n.brut ?? '';
+      niveau.title = `${n.min} % à ${n.max} %`;
+    }
     if (x === etat.effet) {
       etat.acquis = v;
       montureDuNiveau();
     }
   }
+
+  /** Le dernier jet du dé du tableau d'une ligne, effacé quand on règle son bonus à la main ou à son propre dé (il ne la décrit plus). */
+  const effacerLeJetDuTableau = (x) => {
+    const r = x.closest('table')?.querySelector('[data-de-resultat]');
+    if (r) r.textContent = '';
+  };
 
   /** La monture du niveau de l'effet, choisie d'office tant qu'on n'en a pas choisi une soi-même (le prix d'un effet compte la monture de son niveau). */
   function montureDuNiveau() {
@@ -97,7 +103,8 @@ if (racine) {
         montureDuNiveau();
       }
       ouvrirLaFamille(x.dataset.valeur);
-      if (defiler) racine.querySelector(`.acc-famille[data-propriete="${x.dataset.valeur}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // jusqu'à la bande des onglets (le titre du tableau est caché : l'onglet le dit)
+      if (defiler) racine.querySelector('.acc-onglets')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else if (sorte === 'effet') {
       if (etat.effet !== x) etat.gemmes = [];
       etat.effet = x;
@@ -205,7 +212,9 @@ if (racine) {
       pastilles = `${choix.imposees.map(pastille).join(' <span class="acc-gemmes__plus">+</span> ')}${choix.imposees.length ? ' <span class="acc-gemmes__plus">+</span>' : ''}
         <span class="acc-produit__choix" role="group" aria-label="Gemmes au choix">${choix.auChoix.map((g) => {
           const coche = cochees.includes(g);
-          return `<label class="acc-produit__gemme-choix"><input type="checkbox" data-acc-gemme="${e(g)}"${coche ? ' checked' : ''}${!coche && plein ? ' disabled' : ''}> ${pastille(g)}</label>`;
+          // la case à côté de la gemme, pas autour : un appui sur la gemme ouvre son infobulle sans la cocher
+          const nom = cellule.querySelector(`.acc-gemme[data-gemme="${g}"]`)?.textContent ?? g;
+          return `<span class="acc-produit__gemme-choix"><input type="checkbox" data-acc-gemme="${e(g)}" aria-label="${e(nom)} : gemme au choix"${coche ? ' checked' : ''}${!coche && plein ? ' disabled' : ''}> ${pastille(g)}</span>`;
         }).join('')}</span>
         <span class="acc-produit__sous">Au choix : cochez-en ${choix.max === 1 ? 'une' : choix.max} (${cochees.length}/${choix.max})</span>`;
     }
@@ -257,8 +266,11 @@ if (racine) {
       const cellule = x.querySelector('[data-acc-prix]');
       if (!cellule) continue;
       const calcule = x.dataset.auChoix ? prixCalcule(x, trouver('monture', x.dataset.niveau)) : null;
-      const html = calcule !== null ? `<strong>${htmlDuPrix(calcule)}</strong>` : (x.dataset.prixHtml ?? e(x.dataset.prix ?? ''));
-      if (cellule.innerHTML !== html) cellule.innerHTML = html;
+      // la case n'est réécrite que si son prix change (`data-rendu` : ce qu'elle montre ; pas `innerHTML`, dont components/Infobulles.astro change les `title`)
+      const rendu = calcule !== null ? `calcule:${calcule}` : `ecrit:${x.dataset.prix ?? ''}`;
+      if (cellule.dataset.rendu === rendu) continue;
+      cellule.innerHTML = calcule !== null ? `<strong>${htmlDuPrix(calcule)}</strong>` : (x.dataset.prixHtml ?? e(x.dataset.prix ?? ''));
+      cellule.dataset.rendu = rendu;
     }
   }
 
@@ -292,10 +304,9 @@ if (racine) {
     else if (x) titre = x.dataset.libelle || '(ligne vide du tableau)';
     let effet = aChoisir;
     if (x) {
-      const sous = x.dataset.sous ? ` <span class="acc-produit__sous">${e(x.dataset.sous)}</span>` : '';
       const bonus = x.dataset.propriete === 'competence' && etat.acquis !== null ? `<span class="acc-produit__sous">Bonus d’acquis : <strong>${etat.acquis} %</strong></span>` : '';
       const remarque = x.dataset.remarque ? `<span class="acc-produit__remarque">${e(x.dataset.remarque)}</span>` : '';
-      effet = `${e(x.dataset.libelle || '(ligne vide du tableau)')}${sous}${bonus}${remarque}`;
+      effet = `${e(x.dataset.libelle || '(ligne vide du tableau)')}${bonus}${remarque}`;
     }
     const m = etat.monture;
     const monture = m
@@ -324,7 +335,22 @@ if (racine) {
 
   // --- adresse -------------------------------------------------------------------------------------------------------------------------------------
 
+  // l'adresse suit l'état, au plus une écriture tous les ÉCRITURE ms (un curseur qu'on fait glisser en ferait une par cran : les navigateurs limitent
+  // `history.replaceState` en rafale) ; écrite tout de suite en quittant la page. L'encart (aria-live) se tait pendant qu'on fait glisser un curseur
+  // (aria-busy, posé par l'évènement `input`) et n'est lu qu'une fois, avec l'adresse.
+  const ECRITURE = 250;
+  let ecritureEnAttente = null;
   function ecrire() {
+    clearTimeout(ecritureEnAttente);
+    ecritureEnAttente = setTimeout(ecrireMaintenant, ECRITURE);
+  }
+  addEventListener('pagehide', () => {
+    clearTimeout(ecritureEnAttente);
+    ecrireMaintenant();
+  });
+
+  function ecrireMaintenant() {
+    produit.removeAttribute('aria-busy');
     const s = ecrireEtat(location.search, {
       emplacement: etat.emplacement?.dataset.valeur,
       propriete: etat.propriete?.dataset.valeur,
@@ -335,7 +361,7 @@ if (racine) {
       maudit: etat.maudit,
     });
     // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée
-    const ancre = location.hash.startsWith('#effets-') ? '' : location.hash;
+    const ancre = ancreGardee(location.hash);
     if (s !== location.search || ancre !== location.hash) history.replaceState(history.state, '', `${location.pathname}${s}${ancre}`);
   }
 
@@ -347,13 +373,9 @@ if (racine) {
     if (a.effet) {
       // une ligne du tableau des compétences porte les effets de ses quatre niveaux : le bonus d'acquis de l'adresse, s'il est dans la plage de l'effet,
       // sinon le plus petit de cette plage
-      const competence = [...racine.querySelectorAll('tr[data-niveaux]')].find((l) => JSON.parse(l.dataset.niveaux).some((n) => n.valeur === a.effet));
+      const competence = [...racine.querySelectorAll('tr[data-niveaux]')].find((l) => bonusDeLAdresse(JSON.parse(l.dataset.niveaux), a.effet, a.acquis) !== null);
       const x = competence ?? trouver('effet', a.effet);
-      if (competence) {
-        const n = JSON.parse(competence.dataset.niveaux).find((y) => y.valeur === a.effet);
-        const acquis = Number(a.acquis);
-        reglerLAcquis(competence, Number.isInteger(acquis) && acquis >= n.min && acquis <= n.max ? acquis : n.min);
-      }
+      if (competence) reglerLAcquis(competence, bonusDeLAdresse(JSON.parse(competence.dataset.niveaux), a.effet, a.acquis));
       if (x) choisir(x);
       if (x && a.gemmes) etat.gemmes = gemmesCochees(rangsDe(x), a.gemmes.split(','));
     }
@@ -394,12 +416,13 @@ if (racine) {
       // le dé d'une ligne du tableau des compétences : son bonus d'acquis (1d20), et la ligne choisie
       const x = deDuBonus.closest('[data-choix]');
       reglerLAcquis(x, lancer(Number(deDuBonus.dataset.accAcquisDe)));
+      effacerLeJetDuTableau(x);
       if (x !== etat.effet) choisir(x);
       rendre();
       return;
     }
-    // un réglage d'une ligne (curseur, saisie, case d'une gemme) ne la choisit ni ne la retire par le clic : `input` et `change` s'en chargent
-    if (cible.closest('summary, .acc-produit, a, input, label, .acc-acquis')) return;
+    // un réglage d'une ligne (curseur, saisie, case d'une gemme et sa gemme) ne la choisit ni ne la retire par le clic : `input` et `change` s'en chargent
+    if (cible.closest('summary, .acc-produit, a, input, label, .acc-acquis, .acc-gemme-choix')) return;
     const x = cible.closest('[data-choix]');
     if (!x) return;
     if ([etat.emplacement, etat.propriete, etat.effet, etat.monture].includes(x)) retirer(x.dataset.choix);
@@ -414,7 +437,9 @@ if (racine) {
     const x = champ.closest('[data-choix]');
     const v = Number(champ.value);
     if (champ.matches('[data-acc-acquis-saisie]') && (!Number.isInteger(v) || v < Number(champ.min) || v > Number(champ.max))) return;
-    reglerLAcquis(x, v);
+    produit.setAttribute('aria-busy', 'true');
+    reglerLAcquis(x, v, champ.matches('[data-acc-acquis-saisie]') ? champ : null);
+    effacerLeJetDuTableau(x);
     if (x !== etat.effet) choisir(x);
     rendre();
   });
@@ -422,8 +447,10 @@ if (racine) {
   racine.addEventListener('change', (ev) => {
     if (!(ev.target instanceof HTMLInputElement)) return;
     if (ev.target.matches('[data-acc-acquis-saisie]')) {
+      // saisie quittée : bornée ; vidée, elle reprend le bonus d'avant
       const x = ev.target.closest('[data-choix]');
-      reglerLAcquis(x, ev.target.value);
+      reglerLAcquis(x, String(ev.target.value).trim() === '' ? x.dataset.acquis : ev.target.value);
+      effacerLeJetDuTableau(x);
       if (x !== etat.effet) choisir(x);
       rendre();
       return;
@@ -446,6 +473,11 @@ if (racine) {
     rendre();
   });
 
+  // les cases des prix telles que construites (le prix écrit de la ligne)
+  for (const x of racine.querySelectorAll('tr[data-au-choix], tr[data-niveaux]')) {
+    const cellule = x.querySelector('[data-acc-prix]');
+    if (cellule) cellule.dataset.rendu = `ecrit:${x.dataset.prix ?? ''}`;
+  }
   lire();
   rendre();
 }

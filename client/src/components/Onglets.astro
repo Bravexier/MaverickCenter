@@ -1,7 +1,8 @@
 ---
-// Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro) et les
-// magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page,
-// que le build écrit dans la page (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
+// Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro), les
+// magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, les armures et boucliers, et les tableaux d'effets des accessoires
+// (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
+// (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
 //
 // HTML attendu : un groupe `[data-onglets]` dont les onglets `.onglet` sont des liens vers leur panneau (`href="#id-du-panneau"`), l'onglet ouvert au
 // départ portant `is-active` (de même que son panneau) ; la valeur de `data-onglets`, si elle est donnée, nomme la liste d'onglets. Les rôles ARIA sont
@@ -9,7 +10,9 @@
 // `html.js`, classe posée ici avant l'affichage (pas de saut de mise en page au chargement).
 // Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet.
 // Des onglets dessinés après le chargement (mode modification du site de dev, D11 : src/scripts/edition/classes.mjs) se branchent par l'évènement
-// « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts.
+// « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts. Un script de page
+// ouvre l'onglet d'un panneau (ou d'un élément qu'il contient) par l'évènement « onglets:ouvrir » envoyé sur cet élément (src/scripts/accessoires.mjs :
+// la propriété choisie), sans toucher à l'adresse ni faire défiler la page.
 ---
 
 <script is:inline>
@@ -97,6 +100,10 @@
     } catch {
       // ancre mal formée : le navigateur s'en charge
     }
+  });
+  document.addEventListener('onglets:ouvrir', (e) => {
+    const cible = e.target instanceof HTMLElement ? e.target : null;
+    if (cible?.id) ouvrirPour(cible.id, false);
   });
   window.addEventListener('hashchange', depuisAdresse);
   depuisAdresse();

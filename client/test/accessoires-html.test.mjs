@@ -94,7 +94,7 @@ test('compétences : une ligne par compétence (« Compétence Force »), le bon
     const attributs = Object.fromEntries([...t.slice(0, fin).matchAll(/ ([\w-]+)="([^"]*)"/g)].map((m) => [m[1], decoder(m[2])]));
     return { ...attributs, contenu: t.slice(fin, t.indexOf('</tr>')) };
   });
-  assert.equal(lignes.length, a.competences.lignes.length, 'une ligne par compétence, plus une par niveau');
+  assert.equal(lignes.length, a.competences.lignes.length, 'une ligne par compétence, et non plus une par niveau');
   assert.equal((table.match(/<tr class="acc-ligne/g) ?? []).length, a.competences.lignes.length);
   const min = Math.min(...a.competences.colonnes.map((c) => c.min));
   const max = Math.max(...a.competences.colonnes.map((c) => c.max));
@@ -113,7 +113,11 @@ test('compétences : une ligne par compétence (« Compétence Force »), le bon
     assert.match(contenu, new RegExp(`<input type="range" class="acc-acquis__curseur" min="${min}" max="${max}" step="1" value="${min}" data-acc-acquis`));
     assert.match(contenu, new RegExp(`<input type="number" class="acc-acquis__saisie" min="${min}" max="${max}" step="1" value="${min}"`));
     assert.match(contenu, /data-acc-acquis-de="20"/, 'un dé (1d20) par ligne');
-    assert.match(contenu, /<span class="sans-js">1 % à 20 %<\/span>/, 'sans JavaScript : la plage du bonus');
+    // sans JavaScript : chaque plage écrite du bonus, son niveau et son prix écrit
+    const plages = contenu.slice(contenu.indexOf('<ul class="acc-plages sans-js">'), contenu.indexOf('</ul>'));
+    assert.deepEqual([...plages.matchAll(/<li>(\d+) % à (\d+) % : (Niveau \d)/g)].map((m) => [Number(m[1]), Number(m[2]), m[3]]),
+      l.effets.map((e) => [e.bonus_min, e.bonus_max, e.niveau_brut]));
+    assert.match(contenu, new RegExp(`aria-valuetext="${min} % : ${l.effets[0].niveau_brut}"`));
   });
 });
 
@@ -143,5 +147,12 @@ test('gemmes au choix : une case à cocher dans la ligne de l’effet, pour chaq
     }
   }
   assert.ok(effets.some((e) => e.id.endsWith('competence:intelligence:1')), 'l’Intelligence de la compétence');
+  // la ligne de l'Intelligence : ses quatre gemmes au choix, deux à cocher (« au moins deux » lu « deux », comme le 2026-10-14 : question posée au propriétaire)
+  const i = main.indexOf('data-valeur="competence:intelligence:1"');
+  const intelligence = main.slice(main.lastIndexOf('<tr', i), main.indexOf('</tr>', i));
+  assert.equal((intelligence.match(/<input type="checkbox" class="js-seul" data-acc-gemme="/g) ?? []).length, 4);
+  assert.ok(intelligence.includes('data-au-choix="2"'));
+  assert.ok(intelligence.includes('role="group" aria-label="Gemmes au choix, 2 en tout"'));
+  assert.ok(!/<label class="acc-gemme-choix"/.test(main), 'la case à côté de la gemme, pas autour');
   assert.equal((main.match(/data-acc-gemme="/g) ?? []).length, attendues.length, 'aucune autre case');
 });
