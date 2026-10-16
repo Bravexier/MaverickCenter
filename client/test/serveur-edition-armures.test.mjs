@@ -128,7 +128,7 @@ test('améliorations d’armure et de bouclier : coût et effet refont RO, maté
   const bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
   assert.deepEqual([bApres.cout_materiaux, bApres.bonus_ap, bApres.bonus_am], [1, 6, null], '« + matériaux » : 1 matériau (R76)');
   const totalB = totalDesAmeliorationsDeProtection('bouclier', lignes("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier'"));
-  assert.match(totalB, /^\d+$/, 'les RO seuls, comme l’onglet (« 15500 ») : les matériaux sont comptés par la page');
+  assert.match(totalB, /^\d+$/, 'les RO seuls, comme l’onglet (« 1550 ») : les matériaux sont comptés par la page');
   assert.equal(ligne("SELECT total_brut FROM amelioration_total WHERE cible = 'bouclier'").total_brut, totalB);
   assert.ok(corps(PAGE_DES_BOUCLIERS).split('\n').includes(ligneDuTotal(totalB)));
 });

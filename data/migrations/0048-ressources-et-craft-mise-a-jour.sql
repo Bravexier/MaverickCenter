@@ -27,12 +27,19 @@ WHERE id = 'ressources/accessoires#effet:defense:9' AND libelle = 'Résistance S
 UPDATE accessoire_effet SET libelle = 'Résistance Corruption et Surcharge Magique'
 WHERE id = 'ressources/accessoires#effet:defense:11' AND libelle = 'Résistance Surcharge Magique';
 
-DELETE FROM accessoire_effet_cible WHERE effet_id IN ('ressources/accessoires#effet:defense:9', 'ressources/accessoires#effet:defense:11');
-INSERT INTO accessoire_effet_cible (effet_id, rang, cible, cible_id, valeur, choix, origine, source_ref) VALUES
-  ('ressources/accessoires#effet:defense:9', 1, 'resistance', 'magies/magie-de-larcane', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG60:CY60'),
-  ('ressources/accessoires#effet:defense:9', 2, 'resistance', 'guide/liste-des-alterations-d-etat#etat:surcharge-magique', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG60:CY60'),
-  ('ressources/accessoires#effet:defense:11', 1, 'resistance', 'magies/magie-de-la-corruption', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG64:CY64'),
-  ('ressources/accessoires#effet:defense:11', 2, 'resistance', 'guide/liste-des-alterations-d-etat#etat:surcharge-magique', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG64:CY64');
+-- Les cibles d'un effet ne sont refaites que si son libellé a bien changé (même garde que l'UPDATE ci-dessus).
+DELETE FROM accessoire_effet_cible WHERE effet_id = 'ressources/accessoires#effet:defense:9'
+  AND EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:9' AND libelle = 'Résistance Arcane et Surcharge Magique');
+INSERT INTO accessoire_effet_cible (effet_id, rang, cible, cible_id, valeur, choix, origine, source_ref)
+  SELECT 'ressources/accessoires#effet:defense:9', 1, 'resistance', 'magies/magie-de-larcane', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG60:CY60' WHERE EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:9' AND libelle = 'Résistance Arcane et Surcharge Magique')
+  UNION ALL
+  SELECT 'ressources/accessoires#effet:defense:9', 2, 'resistance', 'guide/liste-des-alterations-d-etat#etat:surcharge-magique', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG60:CY60' WHERE EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:9' AND libelle = 'Résistance Arcane et Surcharge Magique');
+DELETE FROM accessoire_effet_cible WHERE effet_id = 'ressources/accessoires#effet:defense:11'
+  AND EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:11' AND libelle = 'Résistance Corruption et Surcharge Magique');
+INSERT INTO accessoire_effet_cible (effet_id, rang, cible, cible_id, valeur, choix, origine, source_ref)
+  SELECT 'ressources/accessoires#effet:defense:11', 1, 'resistance', 'magies/magie-de-la-corruption', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG64:CY64' WHERE EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:11' AND libelle = 'Résistance Corruption et Surcharge Magique')
+  UNION ALL
+  SELECT 'ressources/accessoires#effet:defense:11', 2, 'resistance', 'guide/liste-des-alterations-d-etat#etat:surcharge-magique', 1, 0, 'equipement', 'Ressources et Craft › Accessoires › CG64:CY64' WHERE EXISTS (SELECT 1 FROM accessoire_effet WHERE id = 'ressources/accessoires#effet:defense:11' AND libelle = 'Résistance Corruption et Surcharge Magique');
 
 UPDATE page SET corps_md = replace(replace(corps_md,
     '| 9.0 | Résistance Surcharge Magique | Niveau 3 | Perle + Perle | 74 Ro |',

@@ -3270,7 +3270,7 @@ CREATE TABLE ecart_source (
   nature       TEXT    NOT NULL CHECK (nature IN ('valeur_differente', 'texte_different', 'nom_different', 'valeur_absente', 'calcul_different',
                                                   'coquille_rapprochee', 'prix_incoherent', 'doublon_de_nom', 'ecart_entre_onglets',
                                                   'ecart_avec_fiche', 'forme_non_reconnue', 'conflit_entre_sources')),
-  source_a     TEXT    NOT NULL,                             -- 'fiche', 'guide', 'v8', 'modes', 'statistiques', 'ressources_craft'…
+  source_a     TEXT    NOT NULL,                             -- 'fiche', 'guide', 'v8', 'modes', 'ressources_craft'…
   valeur_a     TEXT,
   source_b     TEXT,
   valeur_b     TEXT,
@@ -3671,12 +3671,13 @@ CREATE VIEW v_resistance_ecart AS
 -- Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou
 -- s'annulent si opposées) », « Il en faut une liste ») : les listes des deux magies (magie_resistance, cibles de type magie : celles de leurs onglets de
 -- « Magie Maverick V8 ») s'additionnent cran par cran, résistance +1, faiblesse -1. Une ligne par couple et par magie cible dont la somme `valeur` n'est
--- pas nulle : +2 grande_resistance, +1 resistance, -1 vulnerabilite, -2 grande_vulnerabilite (identifiants de resistance_palier) ; une résistance et une
--- faiblesse à la même magie s'annulent (somme nulle : pas de ligne) ; aucune limite du nombre de magies par palier. Rien n'est stocké : l'onglet
+-- pas nulle, rangée dans le palier de resistance_palier dont les bornes la contiennent (+2 grande_resistance, +1 resistance, -1 vulnerabilite,
+-- -2 grande_vulnerabilite : la même table que la fiche de personnage) ; une résistance et une faiblesse à la même magie s'annulent (somme nulle : aucun
+-- palier, pas de ligne) ; aucune limite du nombre de magies par palier. Rien n'est stocké : l'onglet
 -- « Statistiques », qui les écrivait à la main (au plus 4 magies par palier), est ignoré (R86).
 -- Couple NON ORDONNÉ, une seule ligne : magie_a_id est celle des deux magies qui vient la première dans l'ordre des onglets du classeur (magie.ordre,
 -- 1 = Potentiel Illimité, puis Sang, Arcane…), magie_b_id l'autre (« Nécromancie + Feu », jamais « Feu + Nécromancie » ; l'ordre du tableau de
--- l'onglet Statistiques). Un couple donné dans un ordre quelconque : WHERE :x IN (magie_a_id, magie_b_id) AND :y IN (magie_a_id, magie_b_id).
+-- l'onglet Statistiques). Un couple donné dans un ordre quelconque : WHERE magie_a_id IN (:x, :y) AND magie_b_id IN (:x, :y) (aucune ligne si x = y).
 -- Tous les couples de deux magies distinctes sont calculés, y compris ceux que les règles interdisent (magie.mono_magie, v_magie_incompatible : à
 -- joindre au besoin) ; un couple dont tous les crans s'annulent n'a aucune ligne (Lumière + Ombre, Espace/Temps + Vide).
 CREATE VIEW v_resistance_combinaison AS
@@ -3692,11 +3693,9 @@ somme AS (
   JOIN cran c ON c.magie_id = a.id OR c.magie_id = b.id
   GROUP BY a.id, b.id, c.cible_magie_id
 )
-SELECT magie_a_id, magie_b_id, cible_magie_id, valeur,
-       CASE valeur WHEN 2 THEN 'grande_resistance' WHEN 1 THEN 'resistance'
-                   WHEN -1 THEN 'vulnerabilite' WHEN -2 THEN 'grande_vulnerabilite' END AS palier_id
-FROM somme
-WHERE valeur <> 0;
+SELECT s.magie_a_id, s.magie_b_id, s.cible_magie_id, s.valeur, p.id AS palier_id
+FROM somme s
+JOIN resistance_palier p ON (p.valeur_min IS NULL OR s.valeur >= p.valeur_min) AND (p.valeur_max IS NULL OR s.valeur <= p.valeur_max);
 
 -- Les cinq LECTURES du mode hyper (mode_hyper_effet.version) sur une même ligne : une ligne par cible (magie, couple de magies ou race) et variante.
 -- Chaque colonne est le texte de la source, NULL quand cette source ne dit rien de cette cible ; `nb_textes` = nombre de textes distincts (1 = les

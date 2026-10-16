@@ -85,6 +85,9 @@ test('la vue sur des listes synthétiques : cumul, annulation, grande résistanc
   const m = new DatabaseSync(':memory:');
   m.exec(`CREATE TABLE magie (id TEXT PRIMARY KEY, ordre INTEGER NOT NULL UNIQUE);
           CREATE TABLE magie_resistance (magie_id TEXT, sens TEXT, cible_type TEXT, cible_magie_id TEXT, cible_etat_id TEXT);
+          CREATE TABLE resistance_palier (id TEXT PRIMARY KEY, valeur_min INTEGER, valeur_max INTEGER);
+          INSERT INTO resistance_palier VALUES ('immunite', 3, NULL), ('grande_resistance', 2, 2), ('resistance', 1, 1), ('vulnerabilite', -1, -1),
+            ('grande_vulnerabilite', -2, -2), ('sensibilite', NULL, -3);
           ${SQL_DE_LA_VUE}`);
   const ajouter = m.prepare('INSERT INTO magie_resistance VALUES (?, ?, ?, ?, ?)');
   for (const [id, ordre] of [['x', 2], ['y', 1], ['z', 3]]) m.prepare('INSERT INTO magie VALUES (?, ?)').run(id, ordre);

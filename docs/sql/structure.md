@@ -2664,7 +2664,7 @@ Notes et commentaires de cellule du classeur (lus dans le .xlsx : le dump JSON l
 | `entite_id` | TEXT | oui |  |  |
 | `champ` | TEXT | oui |  | colonne ou notion concernée |
 | `nature` | TEXT | oui |  |  |
-| `source_a` | TEXT | oui |  | 'fiche', 'guide', 'v8', 'modes', 'statistiques', 'ressources_craft'… |
+| `source_a` | TEXT | oui |  | 'fiche', 'guide', 'v8', 'modes', 'ressources_craft'… |
 | `valeur_a` | TEXT | non |  |  |
 | `source_b` | TEXT | non |  |  |
 | `valeur_b` | TEXT | non |  |  |
@@ -3166,7 +3166,7 @@ Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la 
 
 *vue*
 
-Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou s'annulent si opposées) », « Il en faut une liste ») : les listes des deux magies (magie_resistance, cibles de type magie : celles de leurs onglets de « Magie Maverick V8 ») s'additionnent cran par cran, résistance +1, faiblesse -1. Une ligne par couple et par magie cible dont la somme `valeur` n'est pas nulle : +2 grande_resistance, +1 resistance, -1 vulnerabilite, -2 grande_vulnerabilite (identifiants de resistance_palier) ; une résistance et une faiblesse à la même magie s'annulent (somme nulle : pas de ligne) ; aucune limite du nombre de magies par palier. Rien n'est stocké : l'onglet « Statistiques », qui les écrivait à la main (au plus 4 magies par palier), est ignoré (R86). Couple NON ORDONNÉ, une seule ligne : magie_a_id est celle des deux magies qui vient la première dans l'ordre des onglets du classeur (magie.ordre, 1 = Potentiel Illimité, puis Sang, Arcane…), magie_b_id l'autre (« Nécromancie + Feu », jamais « Feu + Nécromancie » ; l'ordre du tableau de l'onglet Statistiques). Un couple donné dans un ordre quelconque : WHERE :x IN (magie_a_id, magie_b_id) AND :y IN (magie_a_id, magie_b_id). Tous les couples de deux magies distinctes sont calculés, y compris ceux que les règles interdisent (magie.mono_magie, v_magie_incompatible : à joindre au besoin) ; un couple dont tous les crans s'annulent n'a aucune ligne (Lumière + Ombre, Espace/Temps + Vide).
+Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou s'annulent si opposées) », « Il en faut une liste ») : les listes des deux magies (magie_resistance, cibles de type magie : celles de leurs onglets de « Magie Maverick V8 ») s'additionnent cran par cran, résistance +1, faiblesse -1. Une ligne par couple et par magie cible dont la somme `valeur` n'est pas nulle, rangée dans le palier de resistance_palier dont les bornes la contiennent (+2 grande_resistance, +1 resistance, -1 vulnerabilite, -2 grande_vulnerabilite : la même table que la fiche de personnage) ; une résistance et une faiblesse à la même magie s'annulent (somme nulle : aucun palier, pas de ligne) ; aucune limite du nombre de magies par palier. Rien n'est stocké : l'onglet « Statistiques », qui les écrivait à la main (au plus 4 magies par palier), est ignoré (R86). Couple NON ORDONNÉ, une seule ligne : magie_a_id est celle des deux magies qui vient la première dans l'ordre des onglets du classeur (magie.ordre, 1 = Potentiel Illimité, puis Sang, Arcane…), magie_b_id l'autre (« Nécromancie + Feu », jamais « Feu + Nécromancie » ; l'ordre du tableau de l'onglet Statistiques). Un couple donné dans un ordre quelconque : WHERE magie_a_id IN (:x, :y) AND magie_b_id IN (:x, :y) (aucune ligne si x = y). Tous les couples de deux magies distinctes sont calculés, y compris ceux que les règles interdisent (magie.mono_magie, v_magie_incompatible : à joindre au besoin) ; un couple dont tous les crans s'annulent n'a aucune ligne (Lumière + Ombre, Espace/Temps + Vide).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3174,7 +3174,7 @@ Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décisio
 | `magie_b_id` | TEXT | non |  |  |
 | `cible_magie_id` | TEXT | non |  |  |
 | `valeur` | — | non |  |  |
-| `palier_id` | — | non |  |  |
+| `palier_id` | TEXT | non |  |  |
 
 ### `v_mode_hyper_lectures`
 

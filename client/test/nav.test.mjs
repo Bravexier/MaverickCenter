@@ -92,6 +92,7 @@ test('/generateur/ est devenu /fiche/ : l’ancienne adresse mène à la nouvell
 
 test('la page « Bouclier » est l’onglet Boucliers de la page des armures : l’ancienne adresse y mène, la requête avant l’ancre, jamais deux « # »', () => {
   assert.equal(nouvelleAdresse('/ressources/bouclier/'), '/ressources/armures/#boucliers');
+  assert.equal(nouvelleAdresse('/guide/statistiques-resistance-faiblesse/'), '/magies/', 'page retirée par la migration 0049 (R86)');
   assert.equal(nouvelleAdresse('/wiki/ressources/bouclier/'), '/ressources/armures/#boucliers', 'une ancienne adresse du wiki : un seul saut');
   assert.equal(nouvelleAdresse('/wiki/generateur/'), '/fiche/');
   assert.equal(nouvelleAdresse('/MaverickCenter/ressources/bouclier', '/MaverickCenter/'), '/MaverickCenter/ressources/armures/#boucliers');

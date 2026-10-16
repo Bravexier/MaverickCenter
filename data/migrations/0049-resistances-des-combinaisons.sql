@@ -45,8 +45,6 @@ somme AS (
   JOIN cran c ON c.magie_id = a.id OR c.magie_id = b.id
   GROUP BY a.id, b.id, c.cible_magie_id
 )
-SELECT magie_a_id, magie_b_id, cible_magie_id, valeur,
-       CASE valeur WHEN 2 THEN 'grande_resistance' WHEN 1 THEN 'resistance'
-                   WHEN -1 THEN 'vulnerabilite' WHEN -2 THEN 'grande_vulnerabilite' END AS palier_id
-FROM somme
-WHERE valeur <> 0;
+SELECT s.magie_a_id, s.magie_b_id, s.cible_magie_id, s.valeur, p.id AS palier_id
+FROM somme s
+JOIN resistance_palier p ON (p.valeur_min IS NULL OR s.valeur >= p.valeur_min) AND (p.valeur_max IS NULL OR s.valeur <= p.valeur_max);

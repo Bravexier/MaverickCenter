@@ -115,7 +115,7 @@ export function domainesDesArmures({ refus, ErreurEdition, synchroniser }) {
     deriver(ctx, avant, apres) {
       const { db, w } = ctx;
       suivreLeCorps(ctx, 'amelioration_equipement', avant, apres);
-      // la ligne TOTAL de son tableau, refaite depuis les niveaux (« 1 300 Ro + 2 Matériaux », « 15500 »)
+      // la ligne TOTAL de son tableau, refaite depuis les niveaux (« 1 300 Ro + 2 Matériaux », « 1550 »)
       const total = totalDesAmeliorationsDeProtection(apres.cible, db.prepare('SELECT * FROM amelioration_equipement WHERE cible = ? ORDER BY niveau').all(apres.cible));
       const ligne = lireLigne(db, 'amelioration_total', { cible: apres.cible });
       if (ligne && ligne.total_brut !== total) {
