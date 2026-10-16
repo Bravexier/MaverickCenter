@@ -21,34 +21,40 @@ Les faux écarts de l'outil sont corrigés dans l'outil, pas listés ici.
 | Classe Maverick V7 | 2026-09-30 | 1 228 | 3 964 (270) | **0 : rapproché** | 0 | — |
 | Invocation | 2026-09-03 | 1 128 | 1 207 (26) | **0 : rapproché** | 0 | le tableau des améliorations cadavériques, copie déclarée de celui de Magie V8 |
 | Mode hyper et co | 2026-09-30 | 133 | 159 (10) | 56 | 0 | (d2) provenance |
-| Magie Maverick V8 | 2026-10-12 | 2 413 | 6 129 (1 629) | 487 | 0 (deux commentaires, ignorés) | (d2) provenance ; onglet « Statistiques » à retirer |
-| Ressources et Craft | 2026-10-11 | 2 981 | 4 005 (284) | 491 | **9 cellules** | (d2) provenance ; (d1) validé, à appliquer |
-| Fiche auto V15.2.2 | 2026-03-31 | 2 188 | 17 181 (14 090) | 453 | 0 | (d2) provenance ; ses règles ignorées (fiche plus maintenue) |
+| Magie Maverick V8 | 2026-10-12 | 1 898 | 6 129 (2 302) | 55 | 0 (deux commentaires, ignorés) | (d2) provenance ; onglet « Statistiques » ignoré (R86) |
+| Ressources et Craft | 2026-10-11 | 2 983 | 4 005 (284) | 464 | 9 cellules, **appliquées** (migration 0048) | (d2) provenance |
+| Fiche auto V15.2.2 | 2026-03-31 | 2 188 | 17 181 (14 397) | 145 | 0 | (d2) provenance ; ses règles ignorées (R87) |
 | Les races | 2026-10-12 | 5 226 | 6 203 (593) | 1 267 | 0 | (d2) provenance en libellés de zone |
 
 « Cellules ignorées » : cellules qu'aucune ligne ne cite pour une raison écrite dans le registre du classeur (statistiques d'usage, titres, copies
 vérifiées, consignes). **Aucune valeur de règle de la base n'est fausse au regard du classeur lu à l'import** : hors (d1), les écarts sont de provenance,
 de colonnes fabriquées ou de cellules recopiées ailleurs.
 
-## Réponses du propriétaire (2026-10-15)
+## Réponses du propriétaire (2026-10-15) et ce qui en est fait
 
 1. **« Ressources et Craft » a changé depuis l'import (2026-10-11)** : « Oui met à jour les objets tel que la dernière version des ressources les fait. »
-   À appliquer par une migration :
+   Appliqué par la migration `0048-ressources-et-craft-mise-a-jour` :
    - Accessoires, effet de défense 9 (CI60) : « Résistance Arcane et Surcharge Magique » ; effet de défense 11 (CI64) : « Résistance Corruption et
-     Surcharge Magique » (la fiche compte alors une résistance de plus : Arcane, Corruption) ;
-   - Pièces élémentaires, Arbalète d'eau (BU64) : « Recharge fluide (actif) : Munition infini avec cette arme. » ;
+     Surcharge Magique » (la fiche compte une résistance de plus : Arcane, Corruption) ;
+   - Pièces élémentaires, Arbalète d'eau (BU64) : « Recharge fluide (actif) : Munition infinie avec cette arme. » (orthographe corrigée comme le fait
+     déjà 0005 ; registre `0048-ressources-et-craft-mise-a-jour.json`) ;
    - Pièces élémentaires, Épée de lumière (DD8) : « Louons le Soleil » ;
-   - Bouclier, améliorations +1 à +5 (BJ4:BJ12) : 50, 100, 200, 400, 800 (total 1 550 ; la base avait 500 à 8 000).
+   - Bouclier, améliorations +1 à +5 (BJ4:BJ12) : 50, 100, 200, 400, 800 (total 1 550 ; la base avait 500 à 8 000) : la page « Armures et boucliers »
+     les suit.
 2. **Lien vers le Google Doc « Alchimie »** (9 descriptions, Équipement inventaire!BA4:BA22) : « On reviens vers l'original en cas de MAJ. » : le lien
-   suit l'original écrit par le classeur, pas la copie de la migration 0014.
+   suit l'original écrit par le classeur, pas la copie de la migration 0014 : décision **R84**, appliquée par 0048 (descriptions et page
+   « Équipement inventaire » ; le manifeste et les archives gardent la copie).
 3. **« Magie Maverick V8 »** :
    - les deux fils « ICI » (Altération d'états!AV42) et « +1 » (Statistiques!AQ20) : « Tu peux les ignorer tous les deux. » (registre, `commentaires`) ;
    - l'onglet **« Statistiques »** : « tu peux ignorer l'onglet "Statistiques" c'est des données mise à la main il y a longtemps » ; les combinaisons de
      deux magies ne s'y lisent plus : « Les résistance/ faiblesses des deux magies se cumulent (ou s'annulent si opposées) », et « Il en faut une liste »
-     (pas de limite de 4 magies par palier). Calculées depuis les listes de chaque magie (onglets de Magie V8), les 73 combinaisons du tableau sont
-     exactes, sauf Nécromancie + Feu, à qui manquait « Terre » (Statistiques!AN265). À faire : les tables `resistance_duo` et `resistance_combinaison`
-     (tirées de cet onglet, lues par aucune page) laissent la place à une vue calculée par cette règle.
-4. **« Fiche auto V15.2.2 »** : « Ignore les règles de la fiche auto. Elle s'écarte beaucoup car plus maintenue depuis longtemps. » Ses règles absentes
+     (pas de limite de 4 magies par palier) : décisions **R85** et **R86**. Calculées depuis les listes de chaque magie (onglets de Magie V8), les 73
+     combinaisons du tableau étaient exactes, sauf Nécromancie + Feu, à qui manquait « Terre » (Statistiques!AN265). Appliqué par la migration
+     `0049-resistances-des-combinaisons` : les tables `resistance_duo` et `resistance_combinaison` (tirées de cet onglet) et la page
+     `guide/statistiques-resistance-faiblesse` qui les recopiait (aucune page n'y renvoyait) laissent la place à la vue `v_resistance_combinaison`,
+     calculée par cette règle pour tous les couples (105, dont Lumière + Ombre et Espace/Temps + Vide qui s'annulent entièrement).
+4. **« Fiche auto V15.2.2 »** : « Ignore les règles de la fiche auto. Elle s'écarte beaucoup car plus maintenue depuis longtemps. » (décision **R87**,
+   inscrite au registre du classeur). Ses règles absentes
    des classeurs ou différentes (maîtrise « Hast/Bâton », « Masse/Hache » ; solidité d'un bouclier ; crans des armures élémentaires d'Arcane et de
    Corruption ; Potentiel Illimité dans les incompatibilités, que R15 retire déjà ; six effets d'accessoire) ne sont pas reprises. Les décisions plus
    anciennes qui retiennent explicitement la fiche (R8 : matrice des magies innées…) ne changent pas sans le propriétaire.
@@ -64,7 +70,7 @@ les écrit) :
 | Mode hyper et co | `mode_hyper_effet` (classeur_modes, 36 lignes) | l'étiquette de la ligne en colonne A (« Général », « Arcane »…) |
 | Fiche auto V15.2.2 | `mode_hyper_effet` (fiche, 27 races) | `source_ref` tronqué : « Race › W7 » pour W27 (le chiffre des dizaines perdu), « Race › W » sans ligne |
 | Fiche auto V15.2.2 | `mode_hyper_effet` (fiche : magies, effets de base), `seuil_niveau`, `caracteristique`, `arme_type` (pugilat) | l'étiquette ou l'en-tête d'où vient le libellé (Magie!A, Personnage!BA32, BDD!K35, K27, AK1…) |
-| Magie Maverick V8 | `sort` (17 sorts de niveau 5), `mode_hyper_effet` (3) | le bloc du texte de niveau 5 (T79:BR88) ; le titre du panneau |
+| Magie Maverick V8 | `sort` (17 sorts de niveau 5), `mode_hyper_effet` (3) | le bloc du texte de niveau 5 (T79:BR88) ; le titre du panneau « Avantages de base » (AZ2) |
 | Ressources et Craft | `ressource`, `recette`, `baton_magique`, `arme_famille`, `accessoire_effet(_gemme)`, `arme_elementaire`, `armure_elementaire` | l'en-tête de section, de magie, de colonne ou du bloc d'où vient la valeur (406 écarts, 296 valeurs vérifiées égales) |
 
 **Colonnes fabriquées par l'import sans test** (à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
@@ -77,8 +83,8 @@ Fiche de tour!L12) n'a pas de ligne dans `note_cellule` ; 58 cellules de règles
 
 Inscrits dans le registre du classeur avec leur raison : « Eaunoire » (R21, migration 0012 : Les races, Fiche auto), Lamia et Corruption (R22, migration
 0013), six notes corrigées par `0003-orthographe-magies.sql` hors de son registre (`voulus`) ; cinq commentaires écartés (`commentaires`) ; le tableau des
-améliorations cadavériques d'« Invocation », copie de celui de Magie V8 (`copies`). Reste à déclarer : « Elfe Noir Salé » retiré de la liste des ethnies
-de la Corruption (R15, Fiche auto!U5).
+améliorations cadavériques d'« Invocation », copie de celui de Magie V8 (`copies`) ; « Elfe Noir Salé » retiré de la liste des ethnies de la Corruption
+(R15, Fiche auto!U5) ; les règles de la fiche auto (R87) et l'onglet « Statistiques » (R86).
 
 ## L'outil, après relecture
 

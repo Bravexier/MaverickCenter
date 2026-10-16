@@ -122,7 +122,7 @@ const milliers = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 /**
  * La ligne TOTAL du tableau des améliorations d'une cible, refaite depuis ses niveaux, dans la forme de l'onglet : armures « 1 300 Ro + 2 Matériaux »,
- * boucliers « 15500 » (les RO seuls, comme l'onglet : ses « + matériaux » sont écrits dans l'effet ; la page compte leurs matériaux à part, décision R76).
+ * boucliers « 1550 » (les RO seuls, comme l'onglet : ses « + matériaux » sont écrits dans l'effet ; la page compte leurs matériaux à part, décision R76).
  */
 export function totalDesAmeliorationsDeProtection(cible, niveaux) {
   const ro = niveaux.reduce((s, n) => s + (n.cout_ro ?? 0), 0);

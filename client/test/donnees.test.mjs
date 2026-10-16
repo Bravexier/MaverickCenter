@@ -14,14 +14,14 @@ const db = ouvrirBase({ sansExemples: false });
 const sections = lister(db);
 const objets = sections.flatMap((s) => s.objets);
 
-test('lireSchema : 18 sections (dont la 5 bis de la chronologie et la 8 bis des monstres), 191 tables, 36 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
+test('lireSchema : 18 sections (dont la 5 bis de la chronologie et la 8 bis des monstres), 189 tables, 37 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
   const lues = lireSchema(schemaTexte).filter((s) => s.objets.length);
   assert.equal(lues.length, 18);
   assert.ok(lues.some((s) => s.titre.startsWith('5 bis. CHRONOLOGIE')), 'section 5 bis (migration 0035)');
   assert.ok(lues.some((s) => s.titre.startsWith('8 bis. BESTIAIRE 2.0')), 'section 8 bis (migration 0029)');
   const tous = lues.flatMap((s) => s.objets);
-  assert.equal(tous.filter((o) => o.genre === 'table').length, 191);
-  assert.equal(tous.filter((o) => o.genre === 'vue').length, 36);
+  assert.equal(tous.filter((o) => o.genre === 'table').length, 189);
+  assert.equal(tous.filter((o) => o.genre === 'vue').length, 37);
   assert.equal(tous.filter((o) => o.genre.startsWith('table de recherche')).length, 2);
   const page = tous.find((o) => o.nom === 'page');
   assert.match(page.description, /fichier client\/src\/content\/wiki/);
@@ -30,7 +30,7 @@ test('lireSchema : 18 sections (dont la 5 bis de la chronologie et la 8 bis des 
 });
 
 test('lister : toutes les tables et vues explorables (hors recherche plein texte), avec leur nombre de lignes', () => {
-  assert.equal(objets.length, 191 + 36);
+  assert.equal(objets.length, 189 + 37);
   assert.ok(!objets.some((o) => /_fts$/.test(o.nom)), 'les tables de recherche ne sont pas explorables');
   const n = (nom) => objets.find((o) => o.nom === nom).nbLignes;
   assert.equal(n('page'), readdirSync(join(racine, 'client', 'src', 'content', 'wiki')).reduce((s, t) => s + readdirSync(join(racine, 'client', 'src', 'content', 'wiki', t)).length, 0));

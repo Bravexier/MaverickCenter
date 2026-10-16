@@ -12,12 +12,7 @@
     {"onglets": ["Altération détats"], "plages": ["A1"], "valeurs": "^L I S T E\\s+D E S\\s+A L T É R A T I O N S\\s+D ' É T A T$", "raison": "Titre de l'onglet en lettres espacées (« Liste des altérations d'état »), le titre de la page `guide/liste-des-alterations-d-etat`."},
     {"onglets": ["Altération détats"], "plages": ["A2:AV2"], "valeurs": "^(Nom|Magie Liée|Type|Stade 1|Stade 2|Stade 3|Résistances/Vulnérabilités)$", "raison": "En-têtes de colonne du tableau des altérations : colonnes de `etat`, `etat_magie`, `etat_stade` (stade = rang), `etat_palier`."},
     {"onglets": ["Météo"], "plages": ["B1", "H1", "T1"], "valeurs": "^(Météo|Description|Effet\\(s\\))$", "raison": "En-têtes de colonne du tableau des météos : colonnes `meteo.nom`, `meteo.description`, `meteo_effet`."},
-    {"onglets": ["Statistiques"], "plages": ["A1:BI38"], "raison": "Compteurs d'usage (nombre de fois qu'une magie ou une combinaison a été prise, totaux et classement, en partie des formules) : pas des règles, non publiés (tools/sheets/annexes-magie.py : « compteurs… NON PUBLIÉS »)."},
-    {"onglets": ["Statistiques"], "plages": ["AR38:BI52"], "raison": "Compteurs « TR R E TE » (« Résultat combien de fois la magie est très résisté, résisté, efficace, très efficace ») et leurs « = » : décomptes, non publiés (tools/sheets/annexes-magie.py)."},
-    {"onglets": ["Statistiques"], "plages": ["F40"], "valeurs": "^Résistance Faiblesse$", "raison": "Titre du tableau « Résistance Faiblesse » (page `guide/statistiques-resistance-faiblesse`), dont les lignes sont `resistance_duo` et `resistance_combinaison`."},
-    {"onglets": ["Statistiques"], "plages": ["N42:N477"], "valeurs": "^(D\\.Résistance|Résistance|Faiblesse|D\\.Faiblesse)$", "raison": "Libellé de palier de chaque ligne du tableau « Résistance Faiblesse » : recopié dans `resistance_combinaison.palier_brut` (et `palier_id`) de chaque magie de la ligne, qui ne cite que la case de la magie (citation incomplète, signalée par l'écart sur palier_brut) ; vérifié : même palier pour les 431 lignes ; les lignes « AUCUNE » n'ont pas de ligne en base."},
-    {"onglets": ["Statistiques"], "plages": ["S42:S477"], "valeurs": "^=$", "raison": "Signe « = » de mise en page (formule =\"=\") entre le palier et ses magies."},
-    {"onglets": ["Statistiques"], "plages": ["T42:T477"], "valeurs": "^AUCUNE$", "raison": "« AUCUNE » : aucune magie à ce palier pour cette combinaison, que la base dit par l'absence de ligne `resistance_combinaison` (duo, palier) ; vérifié pour les 124 cases (aucune ligne pour ces paliers, autant de lignes que de noms pour les autres)."}
+    {"onglets": ["Statistiques"], "raison": "Onglet ignoré (décision R86 : « des données mises à la main il y a longtemps ») : compteurs d'usage et tableau « Résistance Faiblesse » des couples ; les combinaisons de deux magies se calculent depuis les listes de chaque magie (R85, vue `v_resistance_combinaison`)."}
   ],
   "libelles": [
     {"onglets": ["Lumière"], "plages": ["N1"], "valeurs": "^MAGIE DE LA LUMIERE$", "raison": "Bannière de l'onglet : le nom de la magie en capitales sans accent (« LUMIERE »), que porte `magie.nom` (« Lumière ») ; cellule couverte par la plage large de la ligne `magie` (A1:AJ…)."},
@@ -40,9 +35,9 @@
   ],
   "commentaires": [
     {"onglet": "Eau", "cellule": "AN46", "texte": "salut viens en vocal stp", "raison": "Message de conversation sans rapport avec les règles, écarté à l'import (tools/sheets/magies.py#EXCLUDED_COMMENTS)."},
-    {"onglet": "Statistiques", "cellule": "BH27", "texte": "augmentation a 39 ducoup :3", "raison": "Fil sur un compteur d'usage de l'onglet Statistiques, non publié (tools/sheets/annexes-magie.py, en-tête)."},
-    {"onglet": "Statistiques", "cellule": "AR52", "texte": "c'est 22 pour les 2", "raison": "Fil sur un compteur d'usage de l'onglet Statistiques, non publié (tools/sheets/annexes-magie.py, en-tête)."},
+    {"onglet": "Statistiques", "cellule": "BH27", "texte": "augmentation a 39 ducoup :3", "raison": "Fil de l'onglet Statistiques, ignoré (décision R86), sans règle."},
+    {"onglet": "Statistiques", "cellule": "AR52", "texte": "c'est 22 pour les 2", "raison": "Fil de l'onglet Statistiques, ignoré (décision R86), sans règle."},
     {"onglet": "Altération détats", "cellule": "AV42", "texte": "ICI", "raison": "Repère de relecture sans règle (fil résolu sur l'effet « Grande résistance » de Peur, inchangé) : à ignorer, demande du propriétaire du 2026-10-15."},
-    {"onglet": "Statistiques", "cellule": "AQ20", "texte": "+1", "raison": "Fil résolu sur le compteur d'usage « Terre = 26 », sans règle : à ignorer, demande du propriétaire du 2026-10-15."}
+    {"onglet": "Statistiques", "cellule": "AQ20", "texte": "+1", "raison": "Fil de l'onglet Statistiques, ignoré (décision R86), sans règle."}
   ]
 }

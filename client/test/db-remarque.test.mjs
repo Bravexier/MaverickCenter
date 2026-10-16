@@ -37,6 +37,9 @@ const APRES_REMARQUE = {
 };
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
 const CREEES_APRES_0002 = ['race_don'];
+// Tables d'entités que 0002 a dotées d'une `remarque` puis qu'une migration ultérieure a retirées (0049 : les couples de magies de l'onglet
+// « Statistiques », décisions R85 et R86 : la vue v_resistance_combinaison les remplace).
+const RETIREES_APRES_0002 = ['resistance_duo'];
 
 test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier (sauf colonnes ajoutées ensuite par migration) ; aucune autre table n’en a (la table page non plus)', () => {
   assert.ok(entites.length >= 60, `tables d'entités : ${entites.length}`);
@@ -120,7 +123,8 @@ test('db:migrate : refuse un schéma précédent dont la version ne précède pa
 test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
   const sql = readFileSync(join(racine, 'data', 'migrations', '0002-remarque.sql'), 'utf8');
   const instructions = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--') && !l.startsWith('  WHERE'));
-  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length);
+  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length + RETIREES_APRES_0002.length);
+  for (const t of RETIREES_APRES_0002) assert.ok(instructions.includes(`ALTER TABLE ${t} ADD COLUMN remarque TEXT;`) && !entites.includes(t), t);
   assert.ok(!/\b(DROP|DELETE|RENAME)\b/i.test(sql), 'migration additive');
   assert.equal(instructions.filter((l) => l.startsWith('UPDATE ')).length, tablesAvecNotes.filter((t) => !CREEES_APRES_0002.includes(t)).length);
 });

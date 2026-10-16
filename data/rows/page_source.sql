@@ -1730,8 +1730,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-e
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 5, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/situations-avancees', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/situations-avancees', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/statistiques-resistance-faiblesse', 0, 'ref:google-sheet-magie-maverick-v8-onglet-statistiques');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/statistiques-resistance-faiblesse', 1, 'google-sheet:1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/un-maitre-du-jeu', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/un-maitre-du-jeu', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/utiliser-ce-wiki', 0, 'ref:page-de-demonstration-a-remplacer');
