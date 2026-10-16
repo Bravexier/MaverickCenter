@@ -73,7 +73,7 @@ test('armures : la liste par type puis les armures particulières, une ligne par
   assert.ok(p.includes('id="armures-particulieres"'));
 });
 
-test('armures : à côté, la fiche (remplie par le script), les pièces (l’armure complète d’abord) et les améliorations +1 à +5 avec leur total', options, () => {
+test('armures : à côté, la fiche (remplie par le script), les pièces (l’armure complète d’abord) et les améliorations +1 à +5, sans ligne Total', options, () => {
   const p = panneau('armures');
   assert.match(p, /<section class="pfiche" data-fiche="armure" aria-label="Fiche de l’armure" aria-live="polite">/);
   const pieces = [...p.matchAll(/<tr class="ppiece" data-piece="([^"]+)"( data-complete="1")?>/g)].map((m) => [m[1], Boolean(m[2])]);
@@ -81,7 +81,8 @@ test('armures : à côté, la fiche (remplie par le script), les pièces (l’ar
   assert.ok(!pieces.some(([id]) => id === 'bouclier'), 'la ligne du bouclier n’est pas une pièce d’armure');
   const niveaux = [...p.matchAll(/<tr class="pamelioration" data-cible="armure" data-niveau="(\d+)">/g)].map((m) => Number(m[1]));
   assert.deepEqual(niveaux, armures.ameliorations.armure.map((x) => x.niveau));
-  assert.match(p, /data-armures-total="armure"/);
+  // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16) : ni pour les armures, ni pour les boucliers
+  assert.ok(!html.includes('data-armures-total') && !panneau('boucliers').includes('<tfoot>') && !p.includes('<tfoot>'));
 });
 
 test('boucliers : les formes et les matières à choisir, la liste par forme (une ligne par bouclier préfabriqué), les améliorations et les poids', options, () => {

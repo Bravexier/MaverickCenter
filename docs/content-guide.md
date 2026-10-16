@@ -306,14 +306,24 @@ modification (`lib/corps-armes.mjs`).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
 - **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et sous la fiche de l'arme) ; à l'import, seule la Bombe perçante en avait une,
   supprimée par la décision R91 (elle datait des armes à feu).
-- **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme (ou la ligne de ses effets) ouvre à côté, dans un panneau large, sa fiche en **un seul
-  cadre** (son bouton Fermer en haut à droite ; type et mains sans rappeler la famille ; tuiles Dégâts, Durabilité « Solidité : X », Coût ; le détail sur
-  deux colonnes), puis côte à côte les **matériaux** (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et
-  les **améliorations** (+1 à +10, ligne TOTAL).
+- **Panneau de l'arme** (`src/scripts/armes.mjs`) : à côté des tableaux, **toujours affiché** sur un grand écran et **de la largeur de celui des
+  armures** (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même
+  largeur ») ; sous 80rem, il passe par-dessus la page une fois une arme choisie, comme celui des armures. Il suit le défilement ; au bout du sien, la
+  molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
+  accessoires). Cliquer une arme (ou la ligne de ses effets) remplit sa fiche, **un seul cadre réduit à son minimum** (« Pas besoin de détailler les calculs
+  en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») : son bouton Fermer (qui la vide) en haut à droite ; type et mains,
+  compétence, arme de départ ; ce dont elle est forgée ; trois tuiles, Dégâts, Durabilité « Solidité : X », Coût, dont le **détail du calcul est
+  l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
+  supplémentaires, celui du matériau en vert), la description et l'origine (« On en garderait que l'effet, la description et l'origine »). Plus de
+  « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
+  **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`), prix en RO seulement, effets sur une seule ligne : le bonus
+  aux dégâts sans le mot « Dégâts » (gardé pour les lecteurs d'écran), puis les autres effets, séparés par « | » (« +7 | dégâts doublés contre la
+  barrière »), lignes basses — et les **améliorations** (+1 à +10, sans ligne TOTAL : « La ligne "total" des amélioration est inutile », de même pour
+  les armures et les boucliers). Le matériau et l'amélioration choisis restent marqués sans arme choisie.
   Choisir un matériau (le fer par défaut) et une amélioration ajuste la fiche (`lib/arme-forge.mjs`, décision R49) : dégâts = dé de l'arme + bonus de
   l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration, au moins 1 (R51) ; coût = arme + niveaux +1 à +N
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
-  avec `competence=…` et `depart=1` du filtre).
+  avec `competence=…` et `depart=1` du filtre ; le matériau et l'amélioration y restent sans arme).
   Sans JavaScript, tous les tableaux s'affichent, sans fiche.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, cinq colonnes de plus (Description, Coût, Effet, Arme de
   départ, Remarque : saisie, l'étoile apparaît ; vidée, elle part, R91) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
@@ -348,7 +358,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   prix de la grille, une pièce sa fabrication + 1 unité de chaque matériau, achetés ou fournis : décision R75 ; défense et solidité ne dépendent pas de la
   pièce) et l'**amélioration** (+1 à +5 : coût des niveaux +1 à +N, AP, AM et crans écrits au niveau N ; pour l'armure entière seulement, pas pour une
   pièce : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel des deux). Une armure particulière n'a que le prix de l'armure entière,
-  et s'améliore aussi (R80).
+  et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
+  armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
 - **Boucliers** : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et un des **matières** (fiche des matières pour
   boucliers) ; une forme et une matière donnent le bouclier préfabriqué (décision R78 : prix et défense tels qu'écrits, **solidité de la matière**). Dessous,
   la liste des boucliers par forme. À côté, la fiche, les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la
