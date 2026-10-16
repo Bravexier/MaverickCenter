@@ -1,6 +1,27 @@
-// Un faux navigateur minimal pour exécuter un script de page dans les tests (test/recherche-script.test.mjs, test/edition-mots-cles.test.mjs) :
-// des éléments avec attributs, enfants et écouteurs (EventTarget de Node), et les sélecteurs dont ces scripts se servent — « li », « #id », « .classe »,
-// « [attr] », « [attr="valeur"] » et leurs combinaisons sans espace (pas de descendant, pas de virgule).
+// Un faux navigateur minimal pour exécuter un script de page dans les tests (test/recherche-script.test.mjs, test/edition-mots-cles.test.mjs,
+// test/accessoires-script.test.mjs…) : des éléments avec attributs, enfants et écouteurs (EventTarget de Node), et les sélecteurs dont ces scripts se
+// servent — « li », « #id », « .classe », « [attr] », « [attr="valeur"] », leurs combinaisons sans espace, le descendant « a b » et la liste « a, b »
+// (une valeur d'attribut peut porter espaces et virgules : test/aide-faux-dom.test.mjs).
+
+/** `selecteur` découpé là où `separe(caractère)`, hors des […] et des guillemets ; morceaux sans espaces autour, vides retirés. */
+function decouper(selecteur, separe) {
+  const morceaux = [''];
+  let crochets = 0;
+  let guillemet = null;
+  for (const c of selecteur) {
+    if (guillemet) {
+      if (c === guillemet) guillemet = null;
+    } else if (c === '"' || c === "'") guillemet = c;
+    else if (c === '[') crochets += 1;
+    else if (c === ']') crochets -= 1;
+    else if (crochets === 0 && separe(c)) {
+      morceaux.push('');
+      continue;
+    }
+    morceaux[morceaux.length - 1] += c;
+  }
+  return morceaux.map((m) => m.trim()).filter(Boolean);
+}
 
 /** Un élément : attributs, enfants, texte, dataset, et les méthodes du DOM que les scripts emploient. */
 export class Element extends EventTarget {
@@ -81,6 +102,17 @@ export class Element extends EventTarget {
     this.parentElement = null;
   }
   correspond(selecteur) {
+    // une liste « a, b » et le descendant « a b », découpés hors des […] et des guillemets ([aria-label="Fermer la fenêtre"] reste entier)
+    const liste = decouper(selecteur, (c) => c === ',');
+    if (liste.length > 1) return liste.some((s) => this.correspond(s));
+    const parties = decouper(selecteur, (c) => /\s/.test(c));
+    if (parties.some((p) => /^[>+~]$/.test(p))) throw new Error(`sélecteur non pris en charge : ${selecteur}`);
+    if (parties.length > 1) {
+      if (!this.correspond(parties.at(-1))) return false;
+      let reste = parties.slice(0, -1);
+      for (let e = this.parentElement; e && reste.length; e = e.parentElement) if (e.correspond(reste.at(-1))) reste = reste.slice(0, -1);
+      return reste.length === 0;
+    }
     const m = selecteur.match(/^([a-z]+)?((?:#[\w-]+|\.[\w-]+|\[[\w-]+(?:="[^"]*")?\])*)$/);
     if (!m) throw new Error(`sélecteur non pris en charge : ${selecteur}`);
     if (m[1] && this.tagName !== m[1].toUpperCase()) return false;
@@ -97,6 +129,7 @@ export class Element extends EventTarget {
       yield* c.descendants();
     }
   }
+  matches(selecteur) { return this.correspond(selecteur); }
   querySelectorAll(selecteur) { return [...this.descendants()].filter((e) => e.correspond(selecteur)); }
   querySelector(selecteur) { return this.querySelectorAll(selecteur)[0] ?? null; }
   closest(selecteur) {

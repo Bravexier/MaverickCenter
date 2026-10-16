@@ -7,9 +7,13 @@
 // (avec la monture choisie). L'encart à côté décrit l'accessoire ainsi créé, dans la couleur du niveau de son effet. Modules importés :
 // lib/accessoires-generateur.mjs et lib/monnaies.mjs (qu'aucun autre script de page n'importe : test/accessoires-html.test.mjs).
 // Les valeurs viennent des lignes telles qu'affichées (attributs `data-…`) ; état dans l'adresse (lib/accessoires-generateur.mjs#PARAMETRES).
-// Malédiction (règles de la page) : « Dans le cas d'une malédiction, on relance les dés au début des étapes et l'effet sera le contraire de ce qui est
-// indiqué à la base » : tomber sur une malédiction marque l'accessoire maudit ; « Tirer un accessoire » relance alors depuis l'étape 1.
-import { ancreGardee, bonusDeLAdresse, dansLaPlage, ecrireEtat, effetDuBonus, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme } from '../lib/accessoires-generateur.mjs';
+// Malédiction (règles de la page : « Dans le cas d'une malédiction, on relance les dés au début des étapes et l'effet sera le contraire de ce qui est
+// indiqué à la base » ; décision R94) : un jet qui tombe sur une malédiction (dé de l'étape 2 ou 3, « Tirer un accessoire ») rend l'accessoire maudit et
+// fait relancer depuis l'étape 2, même emplacement ; un second jet de malédiction le détruit, il tombe en poussière (lib/accessoires-generateur.mjs :
+// apresUnJet, tirerUnAccessoire). Le dé de l'étape 1, ou un dé jeté sur un accessoire détruit, commence un nouvel accessoire (ni maudit ni détruit) ; le
+// dé de l'étape 2 retire un effet « MALÉDICTION » choisi. Choisir une ligne de malédiction d'un clic le rend maudit, jamais détruit (ce n'est pas un
+// jet) ; « détruit » ne tient que tant qu'une malédiction est choisie (etatDeMalediction) ; l'adresse est lue telle quelle, sans transition.
+import { ancreGardee, apresUnJet, bonusDeLAdresse, dansLaPlage, ecrireEtat, effetDuBonus, etatDeMalediction, gemmesAuChoix, gemmesCochees, lancer, lireEtat, noteDeMalediction, prixDeLAccessoire, qualiteDeGemme, tirerUnAccessoire } from '../lib/accessoires-generateur.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from '../lib/monnaies.mjs';
 
 const racine = document.querySelector('[data-accessoires]');
@@ -23,8 +27,14 @@ if (racine) {
   const trouver = (sorte, valeur) => choix(sorte).find((x) => x.dataset.valeur === String(valeur)) ?? null;
   const plage = (x) => ({ min: Number(x.dataset.min), max: Number(x.dataset.max), x });
 
-  // gemmes : celles cochées parmi les gemmes au choix de l'effet (lib/accessoires-generateur.mjs#gemmesAuChoix)
-  const etat = { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] };
+  // gemmes : celles cochées parmi les gemmes au choix de l'effet (lib/accessoires-generateur.mjs#gemmesAuChoix) ; detruit : une seconde malédiction
+  // tirée (R94)
+  const etat = {};
+  const toutRemettreAZero = () =>
+    Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, detruit: false, gemmes: [] });
+  toutRemettreAZero();
+  /** Une malédiction est choisie : la propriété « Malédiction » ou une ligne « MALÉDICTION » d'un tableau d'effets. */
+  const maledictionChoisie = () => Boolean(etat.propriete?.dataset.malediction || etat.effet?.dataset.malediction);
 
   /**
    * Ouvre l'onglet du tableau d'effets d'une propriété (sans propriété ou pour la Malédiction, qui n'en a pas : l'onglet ouvert reste), par l'évènement
@@ -87,6 +97,7 @@ if (racine) {
     etat.montureAuto = Boolean(etat.monture);
   }
 
+  /** Choisit une ligne, sans rien changer à la malédiction (`choisirUneLigne` : un clic ; `choisirLaLigneTiree` : un jet ; `lire` : l'adresse). */
   function choisir(x, { defiler = false } = {}) {
     const sorte = x.dataset.choix;
     if (sorte === 'emplacement') etat.emplacement = x;
@@ -95,7 +106,6 @@ if (racine) {
       etat.montureAuto = false;
     } else if (sorte === 'propriete') {
       etat.propriete = x;
-      if (x.dataset.malediction) etat.maudit = true;
       if (etat.effet && etat.effet.dataset.propriete !== x.dataset.valeur) {
         etat.effet = null;
         etat.acquis = null;
@@ -110,10 +120,37 @@ if (racine) {
       etat.effet = x;
       etat.acquis = x.dataset.acquis ? Number(x.dataset.acquis) : null;
       etat.propriete = trouver('propriete', x.dataset.propriete);
-      if (x.dataset.malediction) etat.maudit = true;
       ouvrirLaFamille(x.dataset.propriete);
       montureDuNiveau();
     }
+  }
+
+  /**
+   * Choisit une ligne d'un clic (ou d'un réglage de sa ligne : curseur, saisie, gemme), et en tire la malédiction (R94) : un clic n'est pas un jet, il ne
+   * commence pas un nouvel accessoire ; une propriété ou un effet qui n'est pas une malédiction lève « détruit » (l'accessoire reste maudit) ; une ligne
+   * de malédiction rend l'accessoire maudit, jamais détruit (deux clics ne sont pas deux jets).
+   */
+  function choisirUneLigne(x, { defiler = false } = {}) {
+    choisir(x, { defiler });
+    if (x.dataset.choix !== 'propriete' && x.dataset.choix !== 'effet') return;
+    if (!x.dataset.malediction) etat.detruit = false;
+    else etat.maudit = true;
+  }
+
+  /** L'étape d'une ligne tirée au dé (la Monture n'a pas de dé). */
+  const ETAPES = { emplacement: 1, propriete: 2, effet: 3 };
+
+  /**
+   * Choisit une ligne tirée au dé de son tableau (étape 1, 2 ou 3 ; le dé d'acquis d'une ligne des compétences compte pour l'étape 3), R94 : le dé de
+   * l'étape 2 retire d'abord un effet « MALÉDICTION » choisi (relancer l'étape 2, c'est refaire les étapes 2 et 3 ; un autre effet reste si la
+   * propriété est la même) ; puis les drapeaux suivent `apresUnJet` (le dé de l'étape 1, ou un jet sur un accessoire détruit, commence un nouvel
+   * accessoire ; une malédiction tirée rend maudit, ou détruit un accessoire déjà maudit, par une malédiction ou par la case « Maudit »).
+   */
+  function choisirLaLigneTiree(x) {
+    const etape = ETAPES[x.dataset.choix];
+    if (etape === 2 && etat.effet?.dataset.malediction) retirer('effet');
+    choisir(x);
+    Object.assign(etat, apresUnJet(etat, { etape, malediction: Boolean(x.dataset.malediction) }));
   }
 
   function retirer(sorte) {
@@ -128,23 +165,22 @@ if (racine) {
     }
   }
 
-  /** Tire une ligne d'un tableau (son dé) ; rend l'élément choisi et le texte du jet. */
+  /**
+   * Tire une ligne d'un tableau (son dé), sans la choisir (le dé d'un tableau la choisit par `choisirLaLigneTiree`, « Tirer un accessoire » d'après
+   * `tirerUnAccessoire`) ; rend la ligne tirée et le texte du jet.
+   */
   function tirer(bouton) {
     const faces = Number(bouton.dataset.de);
     const table = bouton.closest('table');
     const jet = lancer(faces);
     if (bouton.dataset.deBonus) {
-      // compétence : 1d6 pour la compétence (data-jet), puis 1d20 pour son bonus d'acquis, qui en donne le niveau
+      // compétence : 1d6 pour la compétence (data-jet), puis 1d20 pour son bonus d'acquis, qui en donne le niveau (la ligne prend l'effet de ce niveau)
       const bonus = lancer(Number(bouton.dataset.deBonus));
       const x = [...table.querySelectorAll('[data-choix]')].find((l) => Number(l.dataset.jet) === jet) ?? null;
-      if (x) {
-        reglerLAcquis(x, bonus);
-        choisir(x);
-      }
+      if (x) reglerLAcquis(x, bonus);
       return { x, texte: `${jet} · ${bonus}` };
     }
     const x = dansLaPlage([...table.querySelectorAll('[data-choix]')].map(plage), jet)?.x ?? null;
-    if (x) choisir(x);
     return { x, texte: String(jet) };
   }
 
@@ -157,23 +193,28 @@ if (racine) {
   const remettreLesAcquis = () => racine.querySelectorAll('tr[data-niveaux]').forEach((x) => reglerLAcquis(x, -Infinity));
   const deDe = (selecteur) => racine.querySelector(selecteur)?.querySelector('[data-de]');
 
-  /** Tout l'accessoire : étapes 1 à 3 (une malédiction le rend maudit et fait relancer depuis l'étape 1), la monture du niveau de l'effet. */
+  /**
+   * Tout l'accessoire (lib/accessoires-generateur.mjs#tirerUnAccessoire, R94) : l'étape 1 une fois, puis les étapes 2 et 3 ; une malédiction le rend
+   * maudit et fait relancer les étapes 2 et 3 (même emplacement), une seconde le détruit. Chaque jet s'affiche sur le dé de son tableau ; l'état vient
+   * du résultat (la monture : celle du niveau de l'effet).
+   */
   function toutTirer() {
-    Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] });
+    toutRemettreAZero();
     effacerLesJets();
     remettreLesAcquis();
-    for (let essai = 0; essai < 50; essai++) {
-      const d1 = deDe('[data-table="emplacement"]');
-      montrerLeJet(d1, tirer(d1).texte);
-      const d2 = deDe('[data-table="propriete"]');
-      const p = tirer(d2);
-      montrerLeJet(d2, p.texte);
-      if (!p.x || p.x.dataset.malediction) continue;
-      const d3 = deDe(`.acc-famille[data-propriete="${p.x.dataset.valeur}"]`);
-      const r = tirer(d3);
-      montrerLeJet(d3, r.texte);
-      if (r.x && !r.x.dataset.malediction) break;
-    }
+    const lancerLeDe = (bouton) => {
+      if (!bouton) return null;
+      const { x, texte } = tirer(bouton);
+      montrerLeJet(bouton, texte);
+      return x ? { x, malediction: Boolean(x.dataset.malediction) } : null;
+    };
+    const r = tirerUnAccessoire({
+      emplacement: () => lancerLeDe(deDe('[data-table="emplacement"]')),
+      propriete: () => lancerLeDe(deDe('[data-table="propriete"]')),
+      effet: (p) => lancerLeDe(deDe(`.acc-famille[data-propriete="${p.x.dataset.valeur}"]`)),
+    });
+    for (const tiree of [r.emplacement, r.propriete, r.effet]) if (tiree) choisir(tiree.x);
+    Object.assign(etat, { maudit: r.maudit, detruit: r.detruit });
   }
 
   // --- rendu ---------------------------------------------------------------------------------------------------------------------------------------
@@ -278,6 +319,8 @@ if (racine) {
   const aChoisir = '<span class="acc-produit__manque">à choisir</span>';
 
   function rendre() {
+    // « détruit » ne tient que tant que la propriété ou l'effet choisi est une malédiction (R94) : retirer la ligne de malédiction le lève aussi
+    Object.assign(etat, etatDeMalediction({ maudit: etat.maudit, detruit: etat.detruit, malediction: maledictionChoisie() }));
     for (const x of racine.querySelectorAll('[data-choix]')) {
       const choisi = [etat.emplacement, etat.propriete, etat.effet, etat.monture].includes(x);
       x.classList.toggle('est-choisi', choisi);
@@ -287,20 +330,24 @@ if (racine) {
     const rien = !etat.emplacement && !etat.propriete && !etat.effet && !etat.monture && !etat.maudit;
     if (rien) {
       produit.removeAttribute('style');
+      produit.classList.remove('est-maudit', 'est-detruit');
       produit.innerHTML = '<p class="acc-produit__vide">Choisissez une ligne dans les tableaux, ou tirez un accessoire : sa description apparaît ici.</p>';
       ecrire();
       return;
     }
     const x = etat.effet;
-    const niveau = x?.dataset.niveau ?? null;
-    const couleur = x ? getComputedStyle(x).getPropertyValue('--niv').trim() : '';
+    const { detruit } = etat;
+    const niveau = detruit ? null : (x?.dataset.niveau ?? null);
+    const couleur = x && !detruit ? getComputedStyle(x).getPropertyValue('--niv').trim() : '';
     if (couleur) produit.style.setProperty('--niv', couleur);
     else produit.style.removeProperty('--niv');
     produit.classList.toggle('est-maudit', etat.maudit);
+    produit.classList.toggle('est-detruit', detruit);
 
     const emplacement = etat.emplacement?.dataset.libelle ?? null;
     let titre = 'Accessoire';
-    if (x?.dataset.malediction) titre = 'Malédiction';
+    if (detruit) titre = 'Accessoire détruit';
+    else if (x?.dataset.malediction) titre = 'Malédiction';
     else if (x) titre = x.dataset.libelle || '(ligne vide du tableau)';
     let effet = aChoisir;
     if (x) {
@@ -312,23 +359,34 @@ if (racine) {
     const monture = m
       ? `${e(m.dataset.libelle)} <span class="acc-produit__sous">Niveau ${e(m.dataset.niveau)} · ${(m.dataset.prixHtml ?? e(m.dataset.prix))} · ${e(m.dataset.effet)}${etat.montureAuto ? ' · celle du niveau de l’effet' : ''}</span>`
       : aChoisir;
-    const malediction = x?.dataset.malediction || etat.propriete?.dataset.malediction;
-    produit.innerHTML = `
-      <p class="acc-produit__sur">${e(emplacement ?? 'Accessoire')}${niveau ? ` · Niveau ${e(niveau)}` : ''}${etat.maudit ? ' · <strong>Maudit</strong>' : ''}</p>
-      <h2 class="acc-produit__titre">${e(titre)}</h2>
-      <dl class="acc-produit__liste">
-        ${ligne('Identité', emplacement ? e(emplacement) : aChoisir)}
-        ${ligne('Propriété', etat.propriete ? e(etat.propriete.dataset.libelle) : aChoisir)}
+    const identite = `${ligne('Identité', emplacement ? e(emplacement) : aChoisir)}${ligne('Propriété', etat.propriete ? e(etat.propriete.dataset.libelle) : aChoisir)}`;
+    let details;
+    if (detruit) {
+      // détruit (R94) : l'emplacement gardé, la propriété et l'effet de la seconde malédiction (pas d'effet quand c'est la propriété), la monture
+      // choisie à la main (pas celle d'office) ; ni niveau, ni gemmes, ni prix
+      details = `${identite}${x ? ligne('Effet', effet) : ''}${etat.monture && !etat.montureAuto ? ligne('Monture', monture) : ''}`;
+    } else {
+      details = `${identite}
         ${ligne('Effet', effet)}
         ${x?.dataset.niveauBrut ? ligne('Niveau', e(x.dataset.niveauBrut)) : ''}
         ${x ? ligne('Gemmes', htmlDesGemmes(x) || '<span class="acc-produit__manque">aucune</span>') : ''}
         ${ligne('Monture', monture)}
         ${x && prixCalcule(x, etat.monture) !== null
           ? ligne('Prix', `<strong>${htmlDuPrix(prixCalcule(x, etat.monture))}</strong><span class="acc-produit__sous">Quarts des gemmes choisies et monture${x.dataset.prix ? ` (tableau : ${x.dataset.prixHtml ?? e(x.dataset.prix)})` : ''}</span>`)
-          : x?.dataset.prix ? ligne('Prix indiqué', `<strong>${(x.dataset.prixHtml ?? e(x.dataset.prix))}</strong>`) : ''}
+          : x?.dataset.prix ? ligne('Prix indiqué', `<strong>${(x.dataset.prixHtml ?? e(x.dataset.prix))}</strong>`) : ''}`;
+    }
+    let marque = '';
+    if (detruit) marque = ' · <strong>Détruit</strong>';
+    else if (etat.maudit) marque = ' · <strong>Maudit</strong>';
+    // la malédiction : détruit, relancer depuis l'étape 2 (une ligne de malédiction choisie), ou maudit (lib/accessoires-generateur.mjs#noteDeMalediction)
+    const note = noteDeMalediction({ maudit: etat.maudit, detruit, malediction: maledictionChoisie() });
+    produit.innerHTML = `
+      <p class="acc-produit__sur">${e(emplacement ?? 'Accessoire')}${niveau ? ` · Niveau ${e(niveau)}` : ''}${marque}</p>
+      <h2 class="acc-produit__titre">${e(titre)}</h2>
+      <dl class="acc-produit__liste">
+        ${details}
       </dl>
-      ${malediction ? '<p class="acc-produit__note">Malédiction : relancez les dés depuis l’étape 1 ; l’effet obtenu sera le contraire de ce qui est indiqué.</p>' : ''}
-      ${etat.maudit && !malediction ? '<p class="acc-produit__note">Accessoire maudit : l’effet est le contraire de ce qui est indiqué (exemple : +1 force devient -1 force).</p>' : ''}
+      ${note ? `<p class="acc-produit__note">${e(note)}</p>` : ''}
       <label class="acc-produit__maudit"><input type="checkbox" data-acc-maudit${etat.maudit ? ' checked' : ''}> Maudit</label>`;
     ecrire();
   }
@@ -359,6 +417,7 @@ if (racine) {
       monture: etat.montureAuto ? null : etat.monture?.dataset.valeur,
       gemmes: etat.gemmes.join(',') || null,
       maudit: etat.maudit,
+      detruit: etat.detruit,
     });
     // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée, celle de
     // l'onglet Accessoires de la page « Équipement » la remplace (sans elle, la page rouvrirait son premier onglet)
@@ -367,11 +426,14 @@ if (racine) {
     if (s !== location.search || ancre !== location.hash) history.replaceState(history.state, '', `${location.pathname}${s}${ancre}`);
   }
 
+  /**
+   * L'état d'après l'adresse, tel quel : ni transition ni malédiction déduite (R94) ; `detruit=1` n'est retenu que si la propriété ou l'effet choisi est
+   * une malédiction, et il implique maudit (etatDeMalediction).
+   */
   function lire() {
     const a = lireEtat(location.search);
     if (a.emplacement) etat.emplacement = trouver('emplacement', a.emplacement);
     if (a.propriete) etat.propriete = trouver('propriete', a.propriete);
-    etat.maudit = a.maudit === '1';
     if (a.effet) {
       // une ligne du tableau des compétences porte les effets de ses quatre niveaux : le bonus d'acquis de l'adresse, s'il est dans la plage de l'effet,
       // sinon le plus petit de cette plage
@@ -385,7 +447,7 @@ if (racine) {
       etat.monture = trouver('monture', a.monture);
       etat.montureAuto = false;
     }
-    if (etat.maudit === false && (etat.propriete?.dataset.malediction || etat.effet?.dataset.malediction)) etat.maudit = true;
+    Object.assign(etat, etatDeMalediction({ maudit: a.maudit === '1', detruit: a.detruit === '1', malediction: maledictionChoisie() }));
     ouvrirLaFamille(etat.propriete?.dataset.valeur ?? null);
   }
 
@@ -396,8 +458,11 @@ if (racine) {
     if (!cible) return;
     const de = cible.closest('[data-de]');
     if (de) {
+      // le dé d'un tableau : la ligne tirée est choisie, et la malédiction suit le jet (R94, choisirLaLigneTiree)
       ev.preventDefault();
-      montrerLeJet(de, tirer(de).texte);
+      const r = tirer(de);
+      montrerLeJet(de, r.texte);
+      if (r.x) choisirLaLigneTiree(r.x);
       rendre();
       return;
     }
@@ -407,7 +472,7 @@ if (racine) {
       return;
     }
     if (cible.closest('[data-acc-effacer]')) {
-      Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] });
+      toutRemettreAZero();
       effacerLesJets();
       remettreLesAcquis();
       rendre();
@@ -419,7 +484,7 @@ if (racine) {
       const x = deDuBonus.closest('[data-choix]');
       reglerLAcquis(x, lancer(Number(deDuBonus.dataset.accAcquisDe)));
       effacerLeJetDuTableau(x);
-      if (x !== etat.effet) choisir(x);
+      choisirLaLigneTiree(x);
       rendre();
       return;
     }
@@ -428,7 +493,7 @@ if (racine) {
     const x = cible.closest('[data-choix]');
     if (!x) return;
     if ([etat.emplacement, etat.propriete, etat.effet, etat.monture].includes(x)) retirer(x.dataset.choix);
-    else choisir(x, { defiler: x.dataset.choix === 'propriete' && Boolean(cible.closest('.acc-choisir')) });
+    else choisirUneLigne(x, { defiler: x.dataset.choix === 'propriete' && Boolean(cible.closest('.acc-choisir')) });
     rendre();
   });
 
@@ -442,7 +507,7 @@ if (racine) {
     produit.setAttribute('aria-busy', 'true');
     reglerLAcquis(x, v, champ.matches('[data-acc-acquis-saisie]') ? champ : null);
     effacerLeJetDuTableau(x);
-    if (x !== etat.effet) choisir(x);
+    if (x !== etat.effet) choisirUneLigne(x);
     rendre();
   });
 
@@ -453,7 +518,7 @@ if (racine) {
       const x = ev.target.closest('[data-choix]');
       reglerLAcquis(x, String(ev.target.value).trim() === '' ? x.dataset.acquis : ev.target.value);
       effacerLeJetDuTableau(x);
-      if (x !== etat.effet) choisir(x);
+      if (x !== etat.effet) choisirUneLigne(x);
       rendre();
       return;
     }
@@ -463,7 +528,7 @@ if (racine) {
       const dansLEncart = produit.contains(ev.target);
       const x = dansLEncart ? etat.effet : ev.target.closest('[data-choix]');
       if (!x) return;
-      if (x !== etat.effet) choisir(x);
+      if (x !== etat.effet) choisirUneLigne(x);
       const cochees = ev.target.checked ? [...etat.gemmes, g] : etat.gemmes.filter((y) => y !== g);
       etat.gemmes = gemmesCochees(rangsDe(x), cochees);
       rendre();
@@ -471,7 +536,9 @@ if (racine) {
       return;
     }
     if (!ev.target.matches('[data-acc-maudit]')) return;
+    // cochée à la main : maudit (un jet de malédiction le détruira) ; décochée : ni maudit ni détruit
     etat.maudit = ev.target.checked;
+    if (!etat.maudit) etat.detruit = false;
     rendre();
   });
 

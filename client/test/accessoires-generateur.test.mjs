@@ -1,10 +1,11 @@
 // Générateur d'accessoires (lib/accessoires-generateur.mjs) : couleurs des niveaux (celles de l'onglet), qualité de gemme d'un niveau (règles de la
-// page), dés tirés des tables, plages, état dans l'adresse.
+// page), dés tirés des tables, plages, état dans l'adresse, malédiction (décision R94 : relance depuis l'étape 2, même emplacement ; une seconde
+// malédiction détruit l'accessoire).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  ancreGardee, bonusBorne, bonusDeLAdresse, cleDEffet, effetDuBonus, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
-  QUALITES_DE_GEMME, styleDeNiveau,
+  ancreGardee, apresUneMalediction, apresUnJet, bonusBorne, bonusDeLAdresse, cleDEffet, effetDuBonus, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, etatDeMalediction, facesDuDe, gemmesAuChoix, gemmesCochees, lancer,
+  lireEtat, noteDeMalediction, PARAMETRES, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME, styleDeNiveau, tirerUnAccessoire,
 } from '../src/lib/accessoires-generateur.mjs';
 
 test('une couleur par niveau 1 à 5, celles du tableau « Monture » de l’onglet', () => {
@@ -46,6 +47,14 @@ test('état dans l’adresse : aller-retour, vides retirés, autres paramètres 
   assert.deepEqual(lireEtat(s), { emplacement: 'anneau', propriete: 'competence', effet: 'competence:force:2', acquis: '7', maudit: '1' });
   assert.equal(ecrireEtat(s, {}), '?x=1');
   assert.equal(ecrireEtat('', { maudit: false }), '');
+});
+
+test('état dans l’adresse : « détruit » (R94) après « maudit », aller-retour', () => {
+  assert.deepEqual(PARAMETRES.slice(-2), ['maudit', 'detruit']);
+  const s = ecrireEtat('', { emplacement: 'anneau', propriete: 'malediction', maudit: true, detruit: true });
+  assert.equal(s, '?emplacement=anneau&propriete=malediction&maudit=1&detruit=1');
+  assert.deepEqual(lireEtat(s), { emplacement: 'anneau', propriete: 'malediction', maudit: '1', detruit: '1' });
+  assert.equal(ecrireEtat(s, { emplacement: 'anneau', maudit: true, detruit: false }), '?emplacement=anneau&maudit=1', 'détruit levé : retiré de l’adresse');
 });
 
 test('clé d’un effet : la partie après « #effet: »', () => {
@@ -116,4 +125,125 @@ test('l’ancre d’un onglet d’effets n’est pas gardée dans l’adresse ; 
   // dans la page « Équipement » : l'onglet Accessoires prend sa place (une adresse sans ancre rouvrirait le premier onglet de la page)
   assert.equal(ancreGardee('#effets-attaque', '#accessoires'), '#accessoires');
   assert.equal(ancreGardee('#acc-monture', '#accessoires'), '#acc-monture');
+});
+
+// --- Malédiction (décision R94) : « Si à n'importe quel étape "Malédiction" est choisi, on relance tout l'item à partir de l'étape 2 (on garde le même
+// emplacement) Dans le 2em roll si on retombe à nouveau sur "Malédiction", l'objet est DETRUIT et tombe en poussière. »
+
+/**
+ * Des tables truquées : `proprietes` et `effets` sont les lignes que tirent les étapes 2 et 3, dans l'ordre ; chaque tirage est noté (`tirages`, avec
+ * la propriété reçue par l'étape 3).
+ */
+function tables({ proprietes, effets = [] }) {
+  const tirages = [];
+  const suite = (liste) => () => liste.shift() ?? null;
+  const propriete = suite([...proprietes]);
+  const effet = suite([...effets]);
+  return {
+    tirages,
+    tables: {
+      emplacement: () => (tirages.push('emplacement'), { id: 'anneau', malediction: false }),
+      propriete: () => (tirages.push('propriete'), propriete()),
+      effet: (p) => (tirages.push(`effet:${p.id}`), effet()),
+    },
+  };
+}
+const P = (id) => ({ id, malediction: id === 'malediction' });
+const E = (id) => ({ id, malediction: id.endsWith(':malediction') });
+
+test('R94 : sans malédiction, les étapes 1, 2 et 3 une fois chacune', () => {
+  const t = tables({ proprietes: [P('attaque')], effets: [E('attaque:5')] });
+  const r = tirerUnAccessoire(t.tables);
+  assert.deepEqual(t.tirages, ['emplacement', 'propriete', 'effet:attaque']);
+  assert.deepEqual([r.emplacement.id, r.propriete.id, r.effet.id, r.maudit, r.detruit], ['anneau', 'attaque', 'attaque:5', false, false]);
+});
+
+test('R94 : une malédiction à l’étape 2 rend maudit et fait relancer depuis l’étape 2, même emplacement (l’étape 1 tirée une fois, l’étape 3 sautée)', () => {
+  const t = tables({ proprietes: [P('malediction'), P('defense')], effets: [E('defense:3')] });
+  const r = tirerUnAccessoire(t.tables);
+  assert.deepEqual(t.tirages, ['emplacement', 'propriete', 'propriete', 'effet:defense']);
+  assert.deepEqual([r.emplacement.id, r.propriete.id, r.effet.id, r.maudit, r.detruit], ['anneau', 'defense', 'defense:3', true, false]);
+});
+
+test('R94 : une malédiction à l’étape 3 rend maudit et fait relancer depuis l’étape 2, même emplacement', () => {
+  const t = tables({ proprietes: [P('attaque'), P('competence')], effets: [E('attaque:malediction'), E('competence:force:2')] });
+  const r = tirerUnAccessoire(t.tables);
+  assert.deepEqual(t.tirages, ['emplacement', 'propriete', 'effet:attaque', 'propriete', 'effet:competence']);
+  assert.deepEqual([r.emplacement.id, r.propriete.id, r.effet.id, r.maudit, r.detruit], ['anneau', 'competence', 'competence:force:2', true, false]);
+});
+
+test('R94 : une seconde malédiction (2 → 2, 2 → 3, 3 → 2, 3 → 3) détruit l’accessoire, sans troisième tirage', () => {
+  const cas = [
+    { nom: '2 → 2', proprietes: [P('malediction'), P('malediction')], effets: [],
+      tirages: ['emplacement', 'propriete', 'propriete'], fin: ['malediction', null] },
+    { nom: '2 → 3', proprietes: [P('malediction'), P('jet-de-de')], effets: [E('jet-de-de:malediction')],
+      tirages: ['emplacement', 'propriete', 'propriete', 'effet:jet-de-de'], fin: ['jet-de-de', 'jet-de-de:malediction'] },
+    { nom: '3 → 2', proprietes: [P('autre'), P('malediction')], effets: [E('autre:malediction')],
+      tirages: ['emplacement', 'propriete', 'effet:autre', 'propriete'], fin: ['malediction', null] },
+    { nom: '3 → 3', proprietes: [P('attributs'), P('attaque')], effets: [E('attributs:malediction'), E('attaque:malediction')],
+      tirages: ['emplacement', 'propriete', 'effet:attributs', 'propriete', 'effet:attaque'], fin: ['attaque', 'attaque:malediction'] },
+  ];
+  for (const c of cas) {
+    // de quoi tirer encore : un troisième tour les prendrait
+    const t = tables({ proprietes: [...c.proprietes, P('defense')], effets: [...c.effets, E('defense:1')] });
+    const r = tirerUnAccessoire(t.tables);
+    assert.deepEqual(t.tirages, c.tirages, c.nom);
+    assert.deepEqual([r.emplacement.id, r.propriete.id, r.effet?.id ?? null, r.maudit, r.detruit], ['anneau', ...c.fin, true, true], c.nom);
+  }
+});
+
+test('R94 : une étape qui ne rend aucune ligne arrête le tirage, sans boucler', () => {
+  const t = tables({ proprietes: [P('malediction')] });
+  const r = tirerUnAccessoire(t.tables);
+  assert.deepEqual(t.tirages, ['emplacement', 'propriete', 'propriete']);
+  assert.deepEqual([r.propriete, r.effet, r.maudit, r.detruit], [null, null, true, false]);
+  const u = tables({ proprietes: [P('attaque')] });
+  assert.deepEqual(tirerUnAccessoire(u.tables), { emplacement: { id: 'anneau', malediction: false }, propriete: P('attaque'), effet: null, maudit: false, detruit: false });
+  assert.deepEqual(u.tirages, ['emplacement', 'propriete', 'effet:attaque']);
+  const sansEmplacement = tirerUnAccessoire({ emplacement: () => null, propriete: () => assert.fail('pas d’étape 2'), effet: () => assert.fail('pas d’étape 3') });
+  assert.deepEqual(sansEmplacement, { emplacement: null, propriete: null, effet: null, maudit: false, detruit: false });
+});
+
+test('R94 : la transition d’un jet de malédiction — non maudit → maudit ; maudit → détruit ; détruit reste détruit', () => {
+  assert.deepEqual(apresUneMalediction({ maudit: false, detruit: false }), { maudit: true, detruit: false });
+  assert.deepEqual(apresUneMalediction({}), { maudit: true, detruit: false });
+  assert.deepEqual(apresUneMalediction({ maudit: true, detruit: false }), { maudit: true, detruit: true }, 'maudit par une malédiction ou par la case cochée');
+  assert.deepEqual(apresUneMalediction({ maudit: true, detruit: true }), { maudit: true, detruit: true });
+});
+
+test('R94 : un jet de dé — l’étape 1, ou un accessoire détruit, commence un nouvel accessoire ; sinon les drapeaux restent, puis la transition', () => {
+  const sain = { maudit: false, detruit: false };
+  const maudit = { maudit: true, detruit: false };
+  const detruit = { maudit: true, detruit: true };
+  const M = { maudit: true, detruit: false };
+  // étape 1 : un autre accessoire, quoi qu'il fût
+  for (const avant of [sain, maudit, detruit]) assert.deepEqual(apresUnJet(avant, { etape: 1, malediction: false }), sain);
+  for (const etape of [2, 3]) {
+    assert.deepEqual(apresUnJet(sain, { etape, malediction: false }), sain);
+    assert.deepEqual(apresUnJet(maudit, { etape, malediction: false }), maudit, 'une ligne qui n’est pas une malédiction : reste maudit');
+    assert.deepEqual(apresUnJet(sain, { etape, malediction: true }), M);
+    assert.deepEqual(apresUnJet(maudit, { etape, malediction: true }), detruit, 'la seconde malédiction');
+    // détruit : il ne revient jamais (« sans troisième tirage »)
+    assert.deepEqual(apresUnJet(detruit, { etape, malediction: false }), sain);
+    assert.deepEqual(apresUnJet(detruit, { etape, malediction: true }), M);
+  }
+});
+
+test('R94 : « détruit » ne tient que si une malédiction est choisie, et implique « maudit » (adresse lue telle quelle)', () => {
+  assert.deepEqual(etatDeMalediction({ maudit: false, detruit: true, malediction: true }), { maudit: true, detruit: true });
+  assert.deepEqual(etatDeMalediction({ maudit: true, detruit: true, malediction: false }), { maudit: true, detruit: false }, 'l’accessoire reste maudit');
+  assert.deepEqual(etatDeMalediction({ maudit: false, detruit: false, malediction: true }), { maudit: false, detruit: false }, 'rien n’est déduit');
+  assert.deepEqual(etatDeMalediction({ maudit: true, detruit: false, malediction: true }), { maudit: true, detruit: false });
+  assert.deepEqual(etatDeMalediction(), { maudit: false, detruit: false });
+});
+
+test('R94 : la note de l’encart — détruit, relancer depuis l’étape 2 avec le même emplacement, maudit', () => {
+  assert.match(noteDeMalediction({ maudit: true, detruit: true, malediction: true }), /détruit et tombe en poussière/);
+  const relancer = noteDeMalediction({ maudit: true, malediction: true });
+  assert.match(relancer, /depuis l’étape 2/);
+  assert.match(relancer, /même emplacement/);
+  assert.match(relancer, /seconde malédiction le détruit/);
+  assert.ok(!relancer.includes('étape 1'));
+  assert.match(noteDeMalediction({ maudit: true }), /^Accessoire maudit : l’effet est le contraire/);
+  assert.equal(noteDeMalediction({}), null);
 });

@@ -63,6 +63,8 @@ const DE_SVG =
     <button type="button" class="acc-bouton acc-bouton--fort" data-acc-tout-tirer><Fragment set:html={DE_SVG} /> Tirer un accessoire</button>
     <button type="button" class="acc-bouton" data-acc-effacer>Tout effacer</button>
     <span class="acc-aide">Cliquez sur une ligne pour la choisir, ou sur le dé d’un tableau pour en tirer une au hasard.</span>
+    {/* décision R94 : le texte des règles ci-dessus est celui de la source, cette aide dit ce que font les dés */}
+    <span class="acc-aide acc-aide--malediction">Une malédiction tirée fait relancer depuis l’étape 2, avec le même emplacement : l’accessoire est maudit ; une seconde le détruit.</span>
   </div>
 
   <div class="acc-vue">
