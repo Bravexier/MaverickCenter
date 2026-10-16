@@ -99,7 +99,7 @@ function canonique(fiche) {
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
     maitrises_armes: parCle('arme_famille_id', familles),
     armes: (a, b) => a.rang - b.rang,
-    armures: parCle('emplacement_id', emplacementsArmure),
+    armure_parties: parCle('emplacement_id', emplacementsArmure),
     accessoires: parCle('emplacement', emplacementsAccessoire),
     ceinture: (a, b) => a.rang - b.rang,
   };
@@ -192,13 +192,12 @@ function ficheRiche() {
       { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut, durabilite: 0 },
     ],
     entrainement: `2 Magie | 10 Concentration | 10 Observation | 10 Distinction | 5 Survie | 5 Vigueur | 5 Fermeté\nLivre de magie lu : ${LONG}\nAccordé par le MJ : +5 Survie`,
-    armures: [
-      { emplacement_id: 'torse', armure_id: regles.armures[1].id, amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 2, 'armure 2').id },
-      {
-        emplacement_id: 'casque', armure_id: regles.armures[2].id, armure_elementaire_id: regles.armures_elementaires[1].id,
-        amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
-      },
-    ],
+    // l'armure portée (décision R95) : une armure complète, son amélioration, son élément et l'amélioration de l'élément ; deux parties abîmées
+    armure_id: trouve('armures', (a) => a.solidite >= 3 && Number(a.solidite_uni) !== 1, 'armure de solidité 3').id,
+    armure_amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 2, 'armure 2').id,
+    armure_elementaire_id: regles.armures_elementaires[1].id,
+    armure_amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
+    armure_parties: [{ emplacement_id: 'torse', solidite: 0 }, { emplacement_id: 'jambe-droit', solidite: 2 }],
     bouclier_classe_id: regles.boucliers[0].id,
     bouclier_materiaux: [{ rang: 1, materiau_id: 'ressources/armures#materiau:bois', quantite: 2 }, { rang: 2, materiau_id: 'ressources/armures#materiau:fer', quantite: 1 }],
     accessoires: [

@@ -80,10 +80,26 @@ test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’
   for (const p of db.prepare('SELECT id, titre, titre_cle FROM page').all()) assert.equal(normalize(p.titre), p.titre_cle, `${p.id} : titre et clé désaccordés`);
 });
 
+// Corrections dont le texte a été retiré depuis par une migration de données, sur décision du propriétaire : décision R95 (« Suppression de la création
+// par pièces »), migration 0055, qui retire de la page « Armures » les paragraphes sur la création par pièces. Le texte corrigé est dans ce que la
+// migration retire, et plus dans la base.
+const RETIREES = [
+  { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: 'armure en' },
+  { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: '2 lingots de fer fassent l' },
+];
+const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
+  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
   for (const c of corrections) {
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
+    const r = retiree(c);
+    if (r) {
+      assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
+      assert.ok(!v.includes(c.apres), `${c.apres} : retiré de la base`);
+      continue;
+    }
     assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
   }
 });

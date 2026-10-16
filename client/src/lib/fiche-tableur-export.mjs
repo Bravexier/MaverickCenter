@@ -3,7 +3,9 @@
 // résultat […] Toute info supplémentaire peut être notée dans les « Notes » ») : les cases du modèle « Fiche-de-personnage-Maverick-V15.2.2
 // ordinateur » (lib/fiche-tableur-cases.mjs#ORDINATEUR) remplies des valeurs que la page /fiche/ affiche, calculées par les mêmes appels au moteur
 // (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs) — jamais une règle de plus : une case que la fiche ne calcule pas reste telle que dans le modèle (AP/AM
-// et solidité d'une pièce d'armure ou du bouclier). La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
+// d'une partie de l'armure, AP/AM et solidité du bouclier). L'armure (décision R95) : une ligne en AQ21 (l'armure complète, son amélioration, son
+// élément), son nom en AD22, et la solidité de chacune de ses parties dans la ligne « Sol. » de la grille (AI24:AN24), « N / M » (celle d'une armure à
+// solidité unifiée sur les six), relue. La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
 // (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : le texte libre de la fiche
 // (décision R71, personnage.entrainement : bonus d'entraînement, livres de magie lus, ce que le MJ accorde ; jamais compté), relu. La portée d'une
 // arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
@@ -30,11 +32,12 @@
 // modules que seule la page /fiche/ utilise (CLAUDE.md, « Pièges connus » : la version portable refuse un module partagé entre deux scripts de page) ;
 // pas lib/text.mjs (partagé par la recherche) : cle() de lib/fiche-tableur-cases.mjs.
 import { RAISONS } from './degats-texte.mjs';
-import { PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
+import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, progressionXp, resistancesDe, trouver, valeursDuMoment,
+  emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
+  valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -138,7 +141,10 @@ export const LIGNES_D_ARME = Object.freeze({
 /** Les types de don, comme la page (TYPES_DE_DON de src/scripts/fiche.mjs). */
 export const TYPES_DE_DON = Object.freeze({ passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' });
 
-/** Les mots d'une ligne d'armure (AQ21) : « Torse : Cuir · amél. niv. 1 (+2 AP/AM) · élément Garde coeur · amél. élément niv. 2 (+4 AP/AM) ». */
+/**
+ * Les mots d'une ligne d'armure (AQ21) : « Armure Cuir/Peau · amél. niv. 1 (+2 AP/AM) · élément Garde coeur · amél. élément niv. 2 (+4 AP/AM) » ; un
+ * classeur d'avant la décision R95 écrit une ligne par pièce, précédée de son emplacement (« Torse : … »).
+ */
 export const LIGNES_D_ARMURE = Object.freeze({ amelioration: 'amél.', element: 'élément', ameliorationElement: 'amél. élément' });
 
 /** Ligne d'information de la note : le Mode Hyper 100 % débloqué (ses effets sont un texte de règles : la page les montre, pas la note). */
@@ -598,29 +604,37 @@ const sansStats = (t) => {
 const ameliorationDArmure = (a, effets) => (effets && !vide(a.effet) ? `niv. ${a.niveau} (${uneLigne(a.effet)})` : `niv. ${a.niveau}`);
 
 /**
- * Une ligne par pièce d'armure portée (AQ21), dans l'ordre de regles.emplacements_armure : « Torse : Armure Cuir/Peau (AP 3) · amél. niv. 1 (+2 AP/AM) ·
- * élément Garde coeur (AP 7, AM 3) · amél. élément niv. 1 (+2 AP/AM) » ; l'armure complète sans son emplacement. AP et AM sont ceux de la pièce dans les
- * règles (aucun total : le site ne calcule pas l'armure portée) ; `stats` et `effets` à faux les retirent, ainsi que l'effet des améliorations, pour que
- * la case tienne (ce sont des textes du catalogue : l'import ne relit que les noms et les niveaux).
+ * La ligne de l'armure portée (AQ21 ; décision R95 : une armure complète, son amélioration, son élément et l'amélioration de l'élément) : « Armure
+ * Cuir/Peau (AP 3) · amél. niv. 1 (+2 AP/AM) · élément Garde coeur (AP 7, AM 3) · amél. élément niv. 1 (+2 AP/AM) » ; [] sans armure. AP et AM sont ceux
+ * du catalogue (aucun total : le site ne calcule pas l'armure portée) ; `stats` et `effets` à faux les retirent, ainsi que l'effet des améliorations,
+ * pour que la case tienne (ce sont des textes du catalogue : l'import ne relit que les noms et les niveaux).
  */
 export function lignesDArmure(regles, fiche, { stats = true, effets = true } = {}) {
-  const portees = fiche.armures ?? [];
-  return (regles.emplacements_armure ?? []).flatMap((e) => {
-    const l = portees.find((x) => x.emplacement_id === e.id);
-    if (!l || vide(l.armure_id)) return [];
-    const armure = trouver(regles.armures ?? [], l.armure_id);
-    const emplacement = e.id === ARMURE_COMPLETE ? '' : `${e.nom}${SEPARATEUR_DE_CLE}`;
-    const parts = [`${emplacement}${armure?.nom ?? l.armure_id}${stats ? statsDArmure(armure) : ''}`];
-    const amelioration = trouver(regles.ameliorations ?? [], l.amelioration_id);
-    if (amelioration) parts.push(`${LIGNES_D_ARMURE.amelioration} ${ameliorationDArmure(amelioration, effets)}`);
-    if (!vide(l.armure_elementaire_id)) {
-      const element = trouver(regles.armures_elementaires ?? [], l.armure_elementaire_id);
-      parts.push(`${LIGNES_D_ARMURE.element} ${element?.nom ?? l.armure_elementaire_id}${stats ? statsDArmure(element) : ''}`);
-    }
-    const ameliorationElement = trouver(regles.ameliorations ?? [], l.amelioration_elementaire_id);
-    if (ameliorationElement) parts.push(`${LIGNES_D_ARMURE.ameliorationElement} ${ameliorationDArmure(ameliorationElement, effets)}`);
-    return [parts.join(SEPARATEUR_D_ARMURE)];
-  });
+  if (vide(fiche.armure_id)) return [];
+  const armure = trouver(regles.armures ?? [], fiche.armure_id);
+  const parts = [`${armure?.nom ?? fiche.armure_id}${stats ? statsDArmure(armure) : ''}`];
+  const amelioration = trouver(regles.ameliorations ?? [], fiche.armure_amelioration_id);
+  if (amelioration) parts.push(`${LIGNES_D_ARMURE.amelioration} ${ameliorationDArmure(amelioration, effets)}`);
+  if (!vide(fiche.armure_elementaire_id)) {
+    const element = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+    parts.push(`${LIGNES_D_ARMURE.element} ${element?.nom ?? fiche.armure_elementaire_id}${stats ? statsDArmure(element) : ''}`);
+  }
+  const ameliorationElement = trouver(regles.ameliorations ?? [], fiche.armure_amelioration_elementaire_id);
+  if (ameliorationElement) parts.push(`${LIGNES_D_ARMURE.ameliorationElement} ${ameliorationDArmure(ameliorationElement, effets)}`);
+  return [parts.join(SEPARATEUR_D_ARMURE)];
+}
+
+/**
+ * La solidité du moment de chaque partie de l'armure (décision R95), pour la ligne « Sol. » de la grille du modèle ordinateur : { <emplacement> : « N / M » }
+ * pour les six parties (une armure à solidité unifiée : la sienne sur les six) ; {} sans armure.
+ */
+export function soliditesDesParties(regles, fiche) {
+  const a = partiesDeLArmure(regles, fiche);
+  if (!a) return {};
+  const texte = (p) => `${p.actuelle} / ${a.max}`;
+  const emplacements = (regles.emplacements_armure ?? []).filter((e) => e.id !== ARMURE_COMPLETE).map((e) => e.id);
+  if (a.uni) return Object.fromEntries(emplacements.map((e) => [e, texte(a.parties[0])]));
+  return Object.fromEntries(a.parties.map((p) => [p.emplacement_id, texte(p)]));
 }
 
 /**
@@ -660,8 +674,11 @@ function partiesDArmure(t) {
   return parts;
 }
 
-/** L'emplacement « armure complète » (regles.emplacements_armure) : son nom seul va dans « Nom Armure » (AD22). */
-export const ARMURE_COMPLETE = 'armure-complete';
+/**
+ * L'emplacement « armure complète » (regles.emplacements_armure) : une ligne d'armure sans emplacement écrit (lireLigneDArmure) ; dans la fiche, la
+ * solidité d'une armure à solidité unifiée (décision R95) : ARMURE_ENTIERE de lib/fiche-format.mjs.
+ */
+export const ARMURE_COMPLETE = ARMURE_ENTIERE;
 
 // ------------------------------------------------------------------ métier
 
@@ -844,12 +861,14 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   // armure de base, armure portée, bouclier
   ecrire(O.armure.apBase, a.ap);
   ecrire(O.armure.amBase, a.am);
-  const complete = f.armures.find((x) => x.emplacement_id === ARMURE_COMPLETE && !vide(x.armure_id));
-  const pieces = (regles.emplacements_armure ?? []).map((e) => f.armures.find((x) => x.emplacement_id === e.id && !vide(x.armure_id))).filter(Boolean);
-  // « Nom Armure » : l'armure complète (relue quand AQ21 manque), sinon les pièces pour mémoire (l'import les relit dans AQ21)
-  if (complete) ecrire(O.armure.nom, nomDe(regles.armures, complete.armure_id), RELUE);
-  else ecrire(O.armure.nom, pieces.map((x) => nomDe(regles.armures, x.armure_id)).join(', '));
-  // les pièces : avec les statistiques du catalogue et l'effet des améliorations s'ils tiennent, sinon sans
+  // « Nom Armure » : l'armure (relue quand AQ21 manque ; décision R95 : une seule armure complète)
+  if (!vide(f.armure_id)) ecrire(O.armure.nom, nomDe(regles.armures, f.armure_id), RELUE);
+  // la solidité de chaque partie, dans la ligne « Sol. » de la grille (décision R95), relue
+  for (const [emplacement, texte] of Object.entries(soliditesDesParties(regles, f))) {
+    const colonne = O.armure.colonnes[emplacement];
+    if (colonne) ecrire(`${colonne}${O.armure.lignes.solidite}`, texte, RELUE);
+  }
+  // l'armure : avec les statistiques du catalogue et l'effet des améliorations s'ils tiennent, sinon sans
   let armure = lignesDArmure(regles, f).join('\n');
   for (const options of [{ stats: false }, { stats: false, effets: false }]) {
     if (tiendrait(O.armure.bonus, armure)) break;

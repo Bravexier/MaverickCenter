@@ -66,7 +66,13 @@ classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration 
 **Une table que les règles retirent de la section 13** (`TABLES_RETIREES` de `fiche-format.mjs`) n'est plus recopiée : ses lignes sont **converties**
 après la copie des fiches (`CONVERSIONS` de `serveur/base-vivante.mjs`), jamais perdues sans le dire. `personnage_progression` (une ligne par niveau
 atteint, jusqu'à la migration 0045) devient, pour chaque fiche, la somme de ses lignes dans `personnage.gains_sante` et `gains_chakra` (points du
-niveau, plus le dé sur la santé, le chakra ou les deux ; décision R73). Des règles qui ont encore la table alors que le service la sait retirée
+niveau, plus le dé sur la santé, le chakra ou les deux ; décision R73). `personnage_armure` (une armure par emplacement, jusqu'à la migration
+0055) devient l'armure de la fiche (`personnage.armure_id`, son amélioration, son élément et l'amélioration de l'élément ; décision R95) : la ligne du
+premier emplacement, l'armure complète d'abord (`armureDesArmures` de `fiche-format.mjs`) ; une pièce gardée qui devient l'armure complète, et chaque
+autre pièce qui ne porte pas la même armure (ou pas la même amélioration, le même élément), sont des retraits notés comme ceux de la décision R42 (une
+ligne datée dans la fiche, la fiche listée dans `base.retraits` de `/api/etat`). Si la reconstruction échoue, le service continue avec la base d'avant
+0055 : une fiche s'y lit avec une liste `armure_parties` vide et s'y enregistre sans elle (une liste non vide est refusée, ses lignes seraient perdues).
+Des règles qui ont encore la table alors que le service la sait retirée
 (service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
 d'avant les retraits et les conversions (les gains niveau par niveau compris).
@@ -76,7 +82,11 @@ d'avant les retraits et les conversions (les gains niveau par niveau compris).
 refaite en 0045 (sans `personnage_progression`, toute lecture de fiche échoue) et refuse de la reconstruire (`gains_sante` et `gains_chakra`,
 obligatoires, sont toujours remplis, même à 0). Il faut lui rendre l'archive faite à la reconstruction 0045 : la plus récente de `db/archives/` qui
 a encore la table `personnage_progression`, **copiée à part avant tout** (seules les `ARCHIVES_GARDEES` = 5 dernières sont gardées : au-delà,
-chaque reconstruction efface la plus ancienne ; l'installateur de test remplace le contenu de `db/`). Conteneur « serveur » arrêté, elle remplace
+chaque reconstruction efface la plus ancienne ; l'installateur de test remplace le contenu de `db/`). **De même pour la migration 0055** : le service
+d'avant ne relit pas une base refaite en 0055 (sans `personnage_armure`, toute lecture de fiche échoue) et refuse de la reconstruire (les colonnes
+`personnage.armure_*` remplies n'existent pas dans ses règles) ; l'archive à rendre est la plus récente qui a encore la table `personnage_armure`
+(sous 0045 aussi : celle qui a encore `personnage_progression`), et l'armure et la solidité des parties saisies depuis sont perdues avec le reste.
+Conteneur « serveur » arrêté, elle remplace
 `db/vivante.db` (ses `-wal`, `-shm` et `-journal` supprimés s'il y en a), `db/vivante.json` est supprimé (la base est alors refaite pour les règles
 installées, fiches de l'archive reprises), puis le conteneur est relancé. **Tout ce que la base a reçu depuis la reconstruction 0045 est perdu** :
 fiches créées, modifiées ou supprimées, gains de niveau, entraînement et solidité des armes saisis, et, sur le site de dev, les modifications des

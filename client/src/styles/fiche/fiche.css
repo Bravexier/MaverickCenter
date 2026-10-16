@@ -922,6 +922,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .objet__solidite .curseur { flex: 1; min-width: 0; }
 .objet__solidite .curseur__valeur { min-width: 2.6rem; }
 .objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
+/* l'armure portée (décision R95) : la solidité de chacune de ses parties, sur deux colonnes quand la place le permet ; une partie cassée en rouge */
+.armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
+.armure__partie .objet__solidite-nom { min-width: 6.2rem; }
+.armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
 .objet__details > summary { color: var(--muted); font-size: var(--fs-xs); cursor: pointer; overflow-wrap: anywhere; }
 .objet__details[open] > summary { margin-bottom: 0.35rem; }
 .zp-colonne .maitrises { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: 0.1rem 0.9rem; }

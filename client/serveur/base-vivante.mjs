@@ -9,7 +9,9 @@
 // src/lib/fiche-format.mjs : le statut des fiches, migration 0038, perdu sans bloquer —, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
 // pourquoi. Une table que les règles retirent de la section 13 (TABLES_RETIREES de src/lib/fiche-format.mjs) n'est plus recopiée : ses lignes sont
 // converties (CONVERSIONS : personnage_progression, migration 0045, devient la somme des gains de niveau, personnage.gains_sante et gains_chakra,
-// décision R73), jamais perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
+// décision R73 ; personnage_armure, migration 0055, devient l'armure de la fiche, la pièce devenue l'armure complète et chaque autre pièce notées
+// dans la fiche, décision R95), jamais
+// perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
 // dernières) : l'archive garde donc la base d'avant les retraits et les conversions.
 // Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
 // Node seulement (node:sqlite), sans dépendance.
@@ -17,7 +19,9 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { COLONNES_RETIREES, TABLES_FICHES, TABLES_RETIREES } from '../src/lib/fiche-format.mjs';
+import {
+  armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, retraitsDeLArmure, TABLES_FICHES, TABLES_RETIREES,
+} from '../src/lib/fiche-format.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
@@ -36,7 +40,12 @@ export const TABLES_VIVANTES = Object.freeze([...TABLES_FICHES, ...TABLES_EDITIO
  * Conversion des lignes d'une table que les règles ont retirée (TABLES_RETIREES), de la base `ancienne` (attachée) vers les nouvelles règles (`main`),
  * après la copie des tables encore présentes. personnage_progression (une ligne par niveau atteint) : la somme par fiche, points du niveau plus le dé sur
  * la santé, le chakra ou les deux, un résultat absent comptant 0 (décision R73 ; la même que la migration 0045 et que gainsDeLaProgression de
- * src/lib/fiche-format.mjs). Une table retirée sans conversion bloque la reconstruction (ses lignes seraient perdues).
+ * src/lib/fiche-format.mjs). personnage_armure (une armure par emplacement) : l'armure de la fiche est la ligne de son premier emplacement, l'armure
+ * complète d'abord (décision R95 ; la même que la migration 0055 et que armureDesArmures) ; une pièce gardée qui devient l'armure complète, et chaque
+ * autre pièce qui ne porte pas la même armure (ou pas la même amélioration, le même élément), un retrait rangé dans `retraits` (retraitsDeLArmure,
+ * noms lus dans les nouvelles règles) : noterLesRetraits en écrit la ligne datée dans les notes, marque la fiche modifiée et la liste dans /api/etat,
+ * avec ceux de la décision R42. Une conversion est une instruction SQL, ou une fonction (db, { retraits }) quand elle retire quelque chose. Une table
+ * retirée sans conversion bloque la reconstruction (ses lignes seraient perdues).
  */
 export const CONVERSIONS = Object.freeze({
   personnage_progression: `UPDATE main.personnage SET
@@ -45,13 +54,38 @@ export const CONVERSIONS = Object.freeze({
     gains_chakra = (SELECT COALESCE(SUM(pp.points_chakra + CASE WHEN pp.de_choix IN ('chakra', 'les_deux') THEN COALESCE(pp.de_resultat, 0) ELSE 0 END), 0)
                     FROM ancienne.personnage_progression pp WHERE pp.personnage_id = personnage.id)
     WHERE id IN (SELECT personnage_id FROM ancienne.personnage_progression)`,
+  personnage_armure: (db, { retraits }) => {
+    const nom = (table) => {
+      const lire = db.prepare(`SELECT nom FROM main."${table}" WHERE id = ?`);
+      return (id) => lire.get(id)?.nom ?? null;
+    };
+    const noms = { armure: nom('armure'), emplacement: nom('armure_emplacement') };
+    const parFiche = new Map();
+    for (const l of db.prepare('SELECT * FROM ancienne.personnage_armure').all()) {
+      if (!parFiche.has(l.personnage_id)) parFiche.set(l.personnage_id, []);
+      parFiche.get(l.personnage_id).push({ ...l });
+    }
+    const colonnes = Object.keys(COLONNES_DE_L_ARMURE);
+    const ecrire = db.prepare(`UPDATE main.personnage SET ${colonnes.map((c) => `"${c}" = ?`).join(', ')} WHERE id = ?`);
+    const lire = db.prepare('SELECT nom, nature FROM main.personnage WHERE id = ?');
+    for (const [id, lignes] of parFiche) {
+      const conversion = armureDesArmures(lignes);
+      ecrire.run(...colonnes.map((c) => conversion.colonnes[c]), id);
+      const d = retraitsDeLArmure(conversion, noms);
+      const p = d.length ? lire.get(id) : null;
+      if (!p) continue;
+      if (!retraits.has(id)) retraits.set(id, { personnage: id, nom: p.nom, nature: p.nature, retraits: [] });
+      retraits.get(id).retraits.push(...d);
+    }
+  },
 });
 
 /**
  * Convertit les lignes des tables retirées de la base `ancienne` (attachée) dans `db` : rend les problèmes (une conversion qui échoue, ou une table
- * retirée que les nouvelles règles ont encore, ou qui n'a pas de conversion) ; rien n'est perdu sans être dit.
+ * retirée que les nouvelles règles ont encore, ou qui n'a pas de conversion) ; rien n'est perdu sans être dit. Une conversion range ce qu'elle retire
+ * d'une fiche dans `retraits` (nouveauxRetraitsDeFiches de serveur/fiches-retraits.mjs).
  */
-function convertirLesTablesRetirees(db) {
+function convertirLesTablesRetirees(db, retraits) {
   const problemes = [];
   for (const t of Object.keys(TABLES_RETIREES)) {
     if (!colonnes(db, 'ancienne', t).length || !compter(db, 'ancienne', t)) continue; // rien à convertir
@@ -65,7 +99,8 @@ function convertirLesTablesRetirees(db) {
       continue;
     }
     try {
-      db.exec(CONVERSIONS[t]);
+      if (typeof CONVERSIONS[t] === 'function') CONVERSIONS[t](db, { retraits });
+      else db.exec(CONVERSIONS[t]);
     } catch (e) {
       problemes.push(`${t} : ${e.message}`);
     }
@@ -207,7 +242,9 @@ function transferer(db, ancienne, instant, evenement = null) {
         }
       }
       // les lignes d'une table que les règles ont retirée (TABLES_RETIREES) sont converties, après la copie des fiches qu'elles complètent
-      if (!problemes.length) problemes.push(...convertirLesTablesRetirees(db));
+      // (une conversion qui retire quelque chose d'une fiche le range dans `retraits`, noté avec les retraits de la décision R42, plus bas)
+      const retraits = nouveauxRetraitsDeFiches();
+      if (!problemes.length) problemes.push(...convertirLesTablesRetirees(db, retraits));
       // les modifications déjà livrées (leur lot est dans historique_modification des nouvelles règles : mise à jour ou rapatriement) sont
       // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
@@ -224,7 +261,6 @@ function transferer(db, ancienne, instant, evenement = null) {
       // datée dans chacune ; ce qui reste rompu ensuite (race, classe, magie…) bloque, et l'annulation emporte aussi ces retraits
       if (!problemes.length) {
         const t0 = performance.now();
-        const retraits = nouveauxRetraitsDeFiches();
         retirerLesManquants(db, retraits);
         fiches = noterLesRetraits(db, retraits, instant);
         // un compte, jamais les noms des fiches

@@ -20,7 +20,7 @@ db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
+  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
   'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
@@ -437,6 +437,36 @@ test('équipement : matériaux du bouclier au plus sa classe, améliorations du 
   const effet = db.prepare('SELECT id, bonus_min, bonus_max FROM accessoire_effet WHERE bonus_min IS NOT NULL LIMIT 1').get();
   inserer('personnage_accessoire', { personnage_id: 'equipement', emplacement: 'collier', accessoire_effet_id: effet.id, valeur: effet.bonus_max + 1, maudit: 0 });
   assert.deepEqual(regles('equipement'), ['accessoire_valeur', 'amelioration_cible']);
+});
+
+test('armure (décision R95) : améliorations de l’armure entière du bon genre ; ni amélioration ni élément sans armure ; une partie que l’armure a', () => {
+  const grille = db.prepare('SELECT id FROM armure WHERE solidite_uni IS NULL ORDER BY ordre LIMIT 1').get().id;
+  const uni = db.prepare('SELECT id FROM armure WHERE solidite_uni = 1 ORDER BY ordre LIMIT 1').get().id;
+  const amelioration = (cible) => db.prepare('SELECT id FROM amelioration_equipement WHERE cible = ? ORDER BY niveau LIMIT 1').get(cible).id;
+  const element = db.prepare('SELECT id FROM armure_elementaire ORDER BY id LIMIT 1').get().id;
+  personnageValide('armure', { armure_id: grille, armure_amelioration_id: amelioration('armure'), armure_elementaire_id: element,
+    armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
+  inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'torse', solidite: 0 });
+  assert.deepEqual(controle('armure'), [], 'une armure de la grille, ses améliorations, une partie cassée');
+  // l'amélioration d'une arme sur l'armure, celle de l'armure sur l'élément
+  const majs = (x) => db.prepare(`UPDATE personnage SET ${Object.keys(x).map((c) => `${c} = ?`).join(', ')} WHERE id = 'armure'`).run(...Object.values(x));
+  majs({ armure_amelioration_id: amelioration('arme'), armure_amelioration_elementaire_id: amelioration('armure') });
+  assert.deepEqual(controle('armure'), [
+    { regle: 'amelioration_cible', detail: `armure : ${amelioration('arme')}` }, { regle: 'amelioration_cible', detail: `élément de l’armure : ${amelioration('armure')}` },
+  ]);
+  // sans armure : ni amélioration ni élément, aucune partie
+  majs({ armure_id: null, armure_amelioration_id: null, armure_amelioration_elementaire_id: null });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_manquante', detail: element }, { regle: 'armure_partie_hors_armure', detail: 'torse' }]);
+  // une armure à solidité unifiée n'a que l'armure entière ; une armure de la grille jamais l'armure entière
+  majs({ armure_id: uni, armure_elementaire_id: null });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_partie_hors_armure', detail: 'torse' }]);
+  db.prepare("UPDATE personnage_armure_partie SET emplacement_id = 'armure-complete' WHERE personnage_id = 'armure'").run();
+  assert.deepEqual(controle('armure'), []);
+  majs({ armure_id: grille });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_partie_hors_armure', detail: 'armure-complete' }]);
+  // la base refuse le bouclier (une autre partie de la fiche) et une solidité négative
+  assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'bouclier', solidite: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'casque', solidite: -1 }), /CHECK/);
 });
 
 test('contraintes : magie acquise ≠ magie innée, valeurs bornées, suppression en cascade', () => {

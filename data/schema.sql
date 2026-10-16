@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 54;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 55;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3845,6 +3845,14 @@ CREATE TABLE personnage (
   -- « Entraînement » (L42 du modèle ordinateur), texte libre (décision R71) : bonus d'entraînement (guide), livres de magie lus, ce que le MJ accorde ;
   -- jamais compté (les points restent dans personnage_competence.acquis, les NM de livre dans personnage_sort.nm_livre)
   entrainement          TEXT,
+  -- Armure portée (décision R95, migration 0055 : « L'amélioration est pour l'armure complète », son élément aussi) : UNE armure complète (une armure
+  -- ne se fabrique plus pièce par pièce, décision R93 ; « Nom Armure » AD21 de la fiche auto), son amélioration (AT20, cible 'armure'), son élément
+  -- (l'armure élémentaire, AS21) et l'amélioration de l'élément (AX21, cible 'armure_elementaire') ; la solidité du moment de ses parties :
+  -- personnage_armure_partie. NULL = pas d'armure (ou pas d'amélioration, pas d'élément).
+  armure_id             TEXT    REFERENCES armure(id),
+  armure_amelioration_id TEXT   REFERENCES amelioration_equipement(id),
+  armure_elementaire_id TEXT    REFERENCES armure_elementaire(id),
+  armure_amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -3960,14 +3968,17 @@ CREATE TABLE personnage_arme (
   PRIMARY KEY (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
 
--- « ARMURE / DÉFENSE » (AA19:AX23) : une pièce par emplacement (armure complète, ou casque, torse, bras, jambes).
-CREATE TABLE personnage_armure (
-  personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
-  emplacement_id               TEXT    NOT NULL REFERENCES armure_emplacement(id),
-  armure_id                    TEXT    NOT NULL REFERENCES armure(id),              -- « Nom Armure » (AD21)
-  amelioration_id              TEXT    REFERENCES amelioration_equipement(id),      -- cible 'armure'
-  armure_elementaire_id        TEXT    REFERENCES armure_elementaire(id),           -- « Elément » (AQ21)
-  amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),      -- cible 'armure_elementaire'
+-- « ARMURE / DÉFENSE » (AA19:AX23) : la solidité du moment des parties de l'armure portée (personnage.armure_id ; décision R95, migration 0055 :
+-- « L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque
+-- partie est à réparer individuellement pour remonter (utilisation d'un kit de réparation ou métier adapté + matériau) » ; ligne « Sol. » de la grille
+-- T C BG BD JG JD du modèle ordinateur, AI24:AN24) : une ligne par partie abîmée (casque, torse, bras, jambes), de 0 (cassée) au maximum de l'armure
+-- (sa solidité et les crans de son amélioration, calculé par la page, pas ici) ; une partie sans ligne est à son maximum. Une armure à solidité
+-- unifiée (armure.solidite_uni) n'a qu'une solidité, sous l'emplacement « armure-complete ». Avant 0055, personnage_armure portait une armure par
+-- emplacement : la base vivante la convertit à sa reconstruction (serveur/base-vivante.mjs, CONVERSIONS).
+CREATE TABLE personnage_armure_partie (
+  personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  emplacement_id  TEXT    NOT NULL REFERENCES armure_emplacement(id) CHECK (emplacement_id <> 'bouclier'),
+  solidite        INTEGER NOT NULL CHECK (solidite >= 0),
   PRIMARY KEY (personnage_id, emplacement_id)
 ) STRICT, WITHOUT ROWID;
 
@@ -4096,7 +4107,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4331,13 +4342,23 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_arme pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_elementaire_id
   WHERE ae.cible <> 'arme_elementaire'
   UNION ALL
-  SELECT pa.personnage_id, 'amelioration_cible', pa.emplacement_id || ' : ' || ae.id
-  FROM personnage_armure pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_id
+  SELECT p.id, 'amelioration_cible', 'armure : ' || ae.id
+  FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_id
   WHERE ae.cible <> 'armure'
   UNION ALL
-  SELECT pa.personnage_id, 'amelioration_cible', pa.emplacement_id || ' : ' || ae.id
-  FROM personnage_armure pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_elementaire_id
+  SELECT p.id, 'amelioration_cible', 'élément de l’armure : ' || ae.id
+  FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_elementaire_id
   WHERE ae.cible <> 'armure_elementaire'
+  UNION ALL
+  -- Armure (décision R95) : une amélioration ou un élément d'armure n'existe qu'avec l'armure ; une partie n'a de solidité que si l'armure l'a (la seule
+  -- « armure-complete » d'une armure à solidité unifiée, armure.solidite_uni = 1 ; les six autres sinon)
+  SELECT p.id, 'armure_manquante', COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id)
+  FROM personnage p
+  WHERE p.armure_id IS NULL AND COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id) IS NOT NULL
+  UNION ALL
+  SELECT ap.personnage_id, 'armure_partie_hors_armure', ap.emplacement_id
+  FROM personnage_armure_partie ap JOIN personnage p ON p.id = ap.personnage_id LEFT JOIN armure a ON a.id = p.armure_id
+  WHERE a.id IS NULL OR (COALESCE(a.solidite_uni, 0) = 1) <> (ap.emplacement_id = 'armure-complete')
   UNION ALL
   -- Accessoire : valeur tirée dans la fourchette de l'effet
   SELECT pa.personnage_id, 'accessoire_valeur', pa.emplacement || ' = ' || COALESCE(CAST(pa.valeur AS TEXT), '(absente)')

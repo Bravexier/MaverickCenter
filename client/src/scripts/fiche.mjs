@@ -34,6 +34,7 @@ import {
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
+  armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -1364,26 +1365,64 @@ function construireEquipement() {
       el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet))));
   }));
 
-  reconstruire($('armures'), 'fixe', () => [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Emplacement'), el('th', {}, 'Pièce'), el('th', {}, 'Amélioration'), el('th', {}, 'Élément'), el('th', {}, 'Amélioration de l’élément'))),
-    el('tbody', {}, regles.emplacements_armure.map((e) => {
-      const l = () => ligneDe('armures', (x) => x.emplacement_id === e.id);
-      const poserChamp = (cle) => (v) => {
-        if (cle === 'armure_id' && !v) retirer('armures', (x) => x.emplacement_id === e.id);
-        else if (cle === 'armure_id' || l()) ligne('armures', (x) => x.emplacement_id === e.id, () => ({ emplacement_id: e.id, armure_id: null }))[cle] = v;
-        changer();
-      };
-      const suite = [
-        selecteur(() => l()?.amelioration_id, ameliorations('armure'), poserChamp('amelioration_id'), { etiquette: `${e.nom} : amélioration` }),
-        selecteur(() => l()?.armure_elementaire_id, optionsGroupees(regles.armures_elementaires, (a) => a.categorie, (a) => a.nom + (stats(a) ? ` (${stats(a)})` : '')), poserChamp('armure_elementaire_id'), { etiquette: `${e.nom} : élément` }),
-        selecteur(() => l()?.amelioration_elementaire_id, ameliorations('armure_elementaire'), poserChamp('amelioration_elementaire_id'), { etiquette: `${e.nom} : amélioration de l’élément` }),
-      ];
-      synchro(() => { for (const s of suite) s.disabled = !l(); });
-      return el('tr', {}, el('td', {}, e.nom),
-        el('td', {}, selecteur(() => l()?.armure_id, optionsGroupees(regles.armures, (a) => a.type, (a) => `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`), poserChamp('armure_id'), { vide: 'Aucune', etiquette: `${e.nom} : pièce` })),
-        suite.map((s) => el('td', {}, s)));
-    })),
-  ]);
+  // l'armure portée (décision R95 : « L'amélioration est pour l'armure complète », l'élément aussi) : UNE armure complète, son amélioration, son élément
+  // et l'amélioration de l'élément (armureApresChoix : une autre armure est neuve) ; puis la solidité du moment de chacune de ses six parties
+  // (« L'armure peut casser à certains endroits seulement »), ou de l'armure entière pour une armure à solidité unifiée : un curseur de 0 au maximum
+  // (partiesDeLArmure : la solidité de l'armure et les crans de son amélioration), « N / M » à côté, « Cassée » à 0 ; clic droit ou Entrée : saisir le
+  // nombre. Chaque partie se répare individuellement (« kit de réparation ou métier adapté + matériau ») : rien n'en est calculé, sa solidité remonte au curseur
+  reconstruire($('armures'), 'fixe', () => {
+    const choisir = (champ) => (v) => {
+      Object.assign(fiche, armureApresChoix(regles, fiche, champ, v));
+      changer();
+    };
+    const armure = selecteur(() => fiche.armure_id, optionsGroupees(regles.armures, (a) => a.type, (a) => `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`),
+      choisir('armure_id'), { vide: 'Aucune', etiquette: 'Armure' });
+    const suite = [
+      ['Amélioration', selecteur(() => fiche.armure_amelioration_id, ameliorations('armure'), choisir('armure_amelioration_id'), { etiquette: 'Armure : amélioration' })],
+      ['Élément', selecteur(() => fiche.armure_elementaire_id, optionsGroupees(regles.armures_elementaires, (a) => a.categorie, (a) => a.nom + (stats(a) ? ` (${stats(a)})` : '')),
+        choisir('armure_elementaire_id'), { etiquette: 'Armure : élément' })],
+      ['Amélioration de l’élément', selecteur(() => fiche.armure_amelioration_elementaire_id, ameliorations('armure_elementaire'), choisir('armure_amelioration_elementaire_id'),
+        { etiquette: 'Armure : amélioration de l’élément' })],
+    ];
+    synchro(() => { for (const [, sel] of suite) sel.disabled = !fiche.armure_id; });
+    // un rang par emplacement (les six parties, et l'armure entière pour une armure à solidité unifiée) : ceux que l'armure n'a pas sont cachés
+    const rangs = regles.emplacements_armure.map((e) => {
+      const curseur = el('input', {
+        type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `Solidité : ${e.nom}`,
+        oninput: (ev) => {
+          fiche.armure_parties = partiesApresReglage(regles, fiche, e.id, ev.target.value);
+          changer();
+        },
+      });
+      const nom = el('span', { class: 'objet__solidite-nom' }, e.nom);
+      const valeur = el('output', { class: 'curseur__valeur' });
+      const rang = el('div', { class: 'objet__solidite armure__partie', 'data-emplacement': e.id }, nom, curseur, valeur);
+      synchro(() => {
+        const a = partiesDeLArmure(regles, fiche);
+        const partie = a?.parties.find((x) => x.emplacement_id === e.id);
+        rang.hidden = !partie;
+        if (!partie) return;
+        nom.textContent = partie.nom;
+        curseur.setAttribute('aria-label', `Solidité : ${partie.nom}`);
+        rang.toggleAttribute('data-cassee', partie.cassee);
+        curseur.max = String(a.max);
+        poser(curseur, partie.actuelle);
+        valeur.textContent = partie.cassee ? 'Cassée' : `${partie.actuelle} / ${a.max}`;
+        rang.title = [
+          `${partie.nom} : ${partie.actuelle} / ${a.max} cran${a.max > 1 ? 's' : ''}${partie.cassee ? ' : cassée' : ''}`,
+          ...a.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}${a.uni ? ' (solidité unifiée : toute l’armure)' : ''}`)),
+          'À 0, la partie est cassée ; chaque partie se répare individuellement (kit de réparation ou métier adapté + matériau). Clic droit ou Entrée sur le curseur : saisir le nombre.',
+        ].join('\n');
+      });
+      return rang;
+    });
+    const parties = el('div', { class: 'armure__parties', role: 'group', 'aria-label': 'Solidité des parties de l’armure' }, rangs);
+    synchro(() => { parties.hidden = !fiche.armure_id; });
+    return el('div', { class: 'objet' },
+      el('label', { class: 'fiche-champ' }, el('span', {}, 'Armure'), armure),
+      el('div', { class: 'fiche-champs' }, suite.map(([t, sel]) => el('label', { class: 'fiche-champ' }, el('span', {}, t), sel))),
+      parties);
+  });
 
   reconstruire($('bouclier'), 'fixe', () => {
     const badge = el('span', { class: 'budget' });
@@ -1866,6 +1905,8 @@ function aEnvoyer() {
   f.maitrises_armes = maitrisesValables(regles, f);
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);
+  // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)
+  f.armure_parties = partiesValables(regles, f);
   for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
@@ -2229,7 +2270,10 @@ function cibleDeLImport() {
 
 /** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
 function remplacerLaFiche(nouvelle, cible) {
-  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle) };   // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73)
+  // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées (R95)
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: {
+    armure: (x) => trouver(regles.armures, x)?.nom ?? null, emplacement: (x) => trouver(regles.emplacements_armure, x)?.nom ?? null,
+  } }) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
   controles = null;

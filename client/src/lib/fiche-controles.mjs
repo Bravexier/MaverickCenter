@@ -40,6 +40,8 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   bouclier_quantite: 'Matériaux du bouclier au-delà de sa classe',
   maitrise_arme_exclue: 'Maîtrise sur des armes de monstres (pas de maîtrise)',
   amelioration_cible: 'Amélioration d’un autre genre d’objet',
+  armure_manquante: 'Amélioration ou élément d’armure sans armure',
+  armure_partie_hors_armure: 'Solidité d’une partie que l’armure n’a pas',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });
 

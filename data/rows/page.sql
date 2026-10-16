@@ -25754,13 +25754,6 @@ Les Armes et Armures uniques ont 1 cran de solidité bonus.
 
 Pour améliorer une arme ou armure, il faut faire toutes les étapes une à une, il n''est pas possible de sauter une étape.
 
-Comme vous le savez il est possible de fabriquer des armures dans Maverick mais le système a toujours été un peu flou mais maintenant je vais pouvoir vous en dire plus.  
-Pour fabriquer des morceaux d''armures (qui sont au nombre de 6 = Casque, Torse, Bras Gauche, Bras Droit, Jambe Gauche, Jambe Droite) il faut rassembler 2 matériaux différents et les assembler pour fabriquer le morceau d''armure en question.
-
-Avant je disais qu''il fallait 2 matériaux pour faire l''armure ENTIÈRE mais c''était illogique que 2 lingots de fer fassent l''armure entière, non maintenant il faut 2 matériaux pour chaque morceau. Donc pour faire un casque il faut 2 matériaux et le reste c''est pareil.
-
-Exemple : Je veux un torse de cuir complet, un morceau de cuir me donne 2AP donc 2 morceaux de cuir me donneront 4AP (Oui la défense donnée par le matériau se cumule)
-
 \*Cran de solidité uni = Si un cran de solidité est perdu, c''est TOUTE l''armure qui est abimée.
 
 Pour les Armures spécifiques, leur bonus de compétences repose sur le fait que l''armure a tous les morceaux, perdre un seul morceau de l''armure, le bonus compétence ne marche plus.

@@ -91,6 +91,20 @@ abandonne.
   l'enregistrement). À 0, la pastille des dégâts est **grisée** et dit **« Cassée »**, ses dégâts (réparée) en infobulle ; ils restent comptés ailleurs (tableur,
   attaque à deux armes). Pas de curseur pour une arme de monstre (sans solidité, R45). Le moteur recopie le calcul de `lib/arme-forge.mjs`, que son script ne
   peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base.
+- **Armure** (décision R95 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures
+  spéciales, elle disposent de durabilité unifiée) » ; « L'amélioration est pour l'armure complète ») : **une armure complète** (une armure ne se fabrique
+  plus pièce par pièce, R93), son amélioration, son élément et l'amélioration de l'élément, pour l'armure entière (`personnage.armure_id`,
+  `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id` ; `armureApresChoix` : une autre armure est neuve, sans armure ni
+  amélioration ni élément). Dessous, un **curseur de solidité par partie** — casque, torse, bras gauche, bras droit, jambe gauche, jambe droite — de 0
+  (**« Cassée »**) au maximum de l'armure : sa solidité et les crans de son amélioration (R77 ; `soliditeMaxDeLArmure`, recopie de
+  `lib/armure-forge.mjs#forgerArmure`, que `test/fiche-armure.test.mjs` compare sur toutes les armures et améliorations ; l'élément et l'amélioration de l'élément
+  ne sont pas comptés : question Q12, étendue aux armures) ; une armure à **solidité
+  unifiée** (`armure.solidite_uni`) n'a qu'un curseur, « Armure entière ». Chaque partie se répare individuellement (« utilisation d'un kit de réparation ou métier
+  adapté + matériau ») : la fiche n'en calcule rien. Seules les parties abîmées sont gardées (`personnage_armure_partie`, `partiesValables` ; une autre
+  amélioration borne les parties au nouveau maximum : `armureApresChoix`, par `partiesValables`). Une fiche d'avant (une armure par emplacement) garde la première pièce
+  dans l'ordre des emplacements, l'armure complète d'abord ; une pièce gardée qui devient l'armure complète (ni l'armure complète, ni la même armure sur
+  les six parties) et chaque autre pièce deviennent une ligne datée de ses notes (base vivante, JSON reçu : `armureDesArmures`, `retraitsDeLArmure` ;
+  import du tableur : une remarque et une ligne de `nonRepris`).
 - **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
   infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
@@ -269,8 +283,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = acquis du joueur + bonus du métier (R33, rogné au plafond : R38) +
   accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP, AM et
-  solidité des pièces d'armure et du bouclier. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP et AM de la
+  grille de l'armure, AP, AM et solidité du bouclier. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
+  « N / M », la même sur les six pour une armure à solidité unifiée. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
   l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
   deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte le
   texte libre de la fiche (R71, `personnage.entrainement`), tel quel, blancs de bord retirés ; le nom et le type du modèle restent. Les dés de maîtrise
@@ -285,16 +300,16 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 - **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, son nom en première ligne, puis l'effet sur
   une ligne, « <libellé>[ = valeur][ → compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas :
   vide, comme « Attaque : », ou partagé par plusieurs propriétés, comme « MALÉDICTION »), « Effet : <texte> » pour l'effet hors table, « Maudit »
-  sur sa ligne ; une pièce d'armure par ligne (AQ21), « [<Emplacement> : ]<armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N
-  (effet) » (l'emplacement omis pour l'armure complète), avec les statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis
-  sans l'effet des améliorations ; « Nom Armure » (AD22) : l'armure complète, sinon les noms des pièces. Une case d'une seule rangée (description et
+  sur sa ligne ; l'armure sur une ligne (AQ21, R95), « <armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N (effet) », avec les
+  statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis sans l'effet des améliorations ; « Nom Armure » (AD22) : l'armure. Une case d'une seule rangée (description et
   colonnes d'un sort, dons de base, de race et du métier) écrit ses parties sur une ligne, séparées par « · ». L'import lit aussi l'ancienne
-  écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … · Amélioration : niv. 1 — … » ; parties sur plusieurs lignes).
+  écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … · Amélioration : niv. 1 — … » ; parties sur plusieurs lignes) ; d'un
+  classeur d'avant R95, une ligne par pièce, il garde la première dans l'ordre des emplacements (l'armure complète d'abord), les autres vont dans `nonRepris`.
 - **Textes trop longs** (« toute info supplémentaire peut être notée dans les Notes ») : la page lit la taille des cases du modèle
   (`zonesDuClasseur`) et mesure chaque texte (`lib/tableur-mesure.mjs` : chasses de Calibri et d'Arial). Une case de plusieurs rangées prend le retour
   à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
   toujours pas, la case en garde le début, fini par « … », écrit à 60 % (comme ses voisines réduites de la même colonne). Chaque case est **relue**
-  (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, pièces d'armure,
+  (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, armure et solidité de ses parties,
   composition, améliorations, élément, effet en plus et solidité d'une arme, choix du métier, entraînement…) ou **affichée** (un texte de règles ou un
   calcul que le site
   refait : type, coût, portée, zone et description des sorts, type et effets des dons, textes de la race, don de base, artisanat, Mode Hyper,
@@ -357,14 +372,16 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   Un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » = 20) ; un décimal où la fiche veut un entier est arrondi vers le bas (une
   remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
   de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
-  sans place sur le site (grille AP/AM/Sol des pièces, AP, AM et solidité du bouclier, sac de l'inventaire en AA38), une solidité d'arme illisible,
-  sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui n'est pas une pièce d'armure, une
+  sans place sur le site (grille AP/AM de l'armure, AP, AM et solidité du bouclier, sac de l'inventaire en AA38), une solidité d'arme illisible,
+  sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui ne nomme pas d'armure, une pièce d'armure au-delà de la première (R95), la solidité d'une partie
+  de l'armure illisible ou sans armure reconnue, une
   ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R71), dans les
   deux dispositions, tel quel (recollé à sa suite dans la note quand la page l'a coupé) ; dans le modèle ordinateur, la **solidité** de chaque arme
   (AK17, AX17, R74 : « N / M » lu sur la ligne d'arme finale, composition et amélioration relues ; à son maximum ou au-delà, rien d'enregistré ; le
-  « / » du modèle n'est pas une valeur ; un décimal arrondi vers le bas, dit) ; la « Solidité » de la fiche auto (AK15, AX15) n'est qu'un maximum
+  « / » du modèle n'est pas une valeur ; un décimal arrondi vers le bas, dit) et celle de chaque partie de l'armure (AI24:AN24, R95 : à son maximum,
+  rien ; une armure à solidité unifiée prend la plus basse) ; la « Solidité » de la fiche auto (AK15, AX15) n'est qu'un maximum
   calculé, jamais relu. Remarques encore : un maximum de solidité écrit autre que celui du site (R51) ; « Nom Armure » (AD22, toujours lu) qui ne
-  nomme pas les pièces de AQ21 ; lignes libres sous « Effet en
+  nomme pas l'armure de AQ21 (ou, d'un classeur d'avant R95, ses pièces) ; un maximum de solidité de l'armure écrit autre que celui du site (R77, R95) ; lignes libres sous « Effet en
   plus » (AA13) reprises comme effet en plus de l'arme ; case relue finie par « … » sans sa suite dans la note, quand la page a dû retirer des lignes de données (sinon le « … » est celui du joueur) ; case NOTE pleine ; un `.csv` du
   modèle ordinateur ne porte pas les couleurs des maîtrises (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
   dans son texte, « titre (type) : texte ». Dans la note, c'est le **dernier** marqueur qui compte (des notes collées peuvent en contenir un). Le
@@ -469,7 +486,7 @@ pas, et la note datée est le seul signal.
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |
 | `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) ; jamais sur ARME DE MONSTRES (R45, règle `maitrise_arme_exclue`) |
-| `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) |
+| `personnage_arme`, `personnage_armure_partie`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 

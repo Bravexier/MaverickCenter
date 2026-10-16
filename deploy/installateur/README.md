@@ -85,6 +85,12 @@ l'instance :
    ```
 5. `docker compose start serveur`, puis vérifiez `/api/etat` (base refaite, sans erreur).
 
+**Revenir sous la migration 0055** (une version d'avant l'armure complète de la fiche et la solidité de ses parties, décision R95) : la même
+procédure, pour la même raison (le service d'avant ne relit pas la base refaite en 0055 et refuse de la reconstruire). L'archive à remettre est la
+plus récente de `db/archives/` qui a encore la table `personnage_armure` (à l'étape 2, `".tables personnage_armure"` au lieu de
+`".tables personnage_progression"` ; copiée par exemple en `/root/vivante-avant-0055.db`), et l'armure et la solidité des parties saisies depuis
+sont perdues avec le reste. Revenir sous 0045 depuis une version d'après 0055 : l'archive de 0045 (elle a les deux tables).
+
 ## Mise à jour automatique
 
 `mise-a-jour.sh` (posé dans chaque instance par l'installateur) prend le dernier installateur publié pour le mode de l'instance (lu dans `VERSION`) et
