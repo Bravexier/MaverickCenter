@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  cleDEffet, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
+  bonusBorne, cleDEffet, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
   QUALITES_DE_GEMME, styleDeNiveau,
 } from '../src/lib/accessoires-generateur.mjs';
 
@@ -70,4 +70,17 @@ test('prix d’un accessoire aux gemmes au choix : quarts (en RF) + monture (en 
   assert.equal(prixDeLAccessoire([], 5), null);
   assert.equal(prixDeLAccessoire([1000, Number.NaN], 5), null);
   assert.equal(prixDeLAccessoire([1000], Number.NaN), null);
+});
+
+test('bonus d’acquis : un entier borné aux plages écrites ; une saisie qui n’est pas un nombre donne le plus petit', () => {
+  assert.equal(bonusBorne(7, 1, 20), 7);
+  assert.equal(bonusBorne('12', 1, 20), 12);
+  assert.equal(bonusBorne(0, 1, 20), 1);
+  assert.equal(bonusBorne(25, 1, 20), 20);
+  assert.equal(bonusBorne('7,6', 1, 20), 8);
+  assert.equal(bonusBorne('', 1, 20), 1);
+  assert.equal(bonusBorne('abc', 1, 20), 1);
+  assert.equal(bonusBorne(-Infinity, 1, 20), 1);
+  const niveaux = [{ min: 1, max: 5, niveau: 1 }, { min: 6, max: 10, niveau: 2 }, { min: 11, max: 15, niveau: 3 }, { min: 16, max: 20, niveau: 4 }];
+  assert.deepEqual([1, 5, 6, 10, 11, 16, 20].map((b) => dansLaPlage(niveaux, bonusBorne(b, 1, 20)).niveau), [1, 1, 2, 2, 3, 4, 4]);
 });

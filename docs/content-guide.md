@@ -339,26 +339,37 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
 « Ne peut dépasser 4 »…) s'affichent ; le reste (tableaux) ne sert qu'à la recherche et aux `[[liens]]`. La page n'est pas modifiable sur le site de dev.
 
 - **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
-  repliable par propriété (`accessoire_effet`), la Compétence en une ligne par compétence et par niveau (« plusieurs lignes pour chaque niveau et pas des cases », demande du propriétaire : bonus d'acquis « 1 % à 5 % »…, niveau, gemmes, prix),
-  la Malédiction sans tableau —, puis la Monture (`accessoire_monture`). Le dé de chaque table est son plus grand jet écrit (1d4, 1d100, 1d6, 1d20).
+  par propriété (`accessoire_effet`), chacun dans son **onglet** (« plutôt que des menus déroulants, ces tableaux derrière des onglets », demande du
+  propriétaire du 2026-10-16 ; `components/Onglets.astro`, sans JavaScript les tableaux se suivent ; choisir une propriété ouvre son onglet), la
+  Malédiction sans tableau —, puis la Monture (`accessoire_monture`). Le dé de chaque table est son plus grand jet écrit (1d4, 1d100, 1d6, 1d20).
+- **Compétence** (demande du propriétaire du 2026-10-16 : « lignes trop longues et trop nombreuses », la caractéristique « directement dans le titre »,
+  le bonus d'acquis en curseur « qui peut être varié par un dé, ou saisi manuellement ») : **une ligne par compétence**, titrée « Compétence Force » pour
+  le « Compétence F » de l'onglet (`lib/accessoires-db.mjs#titreDeCompetence`, affichage seulement : `accessoire_effet.libelle` ne change pas, la fiche et
+  le tableur s'en servent) ; le bonus d'acquis se règle au curseur, à son dé (1d20) ou par saisie, borné aux plages écrites (1 % à 20 % :
+  `lib/accessoires-generateur.mjs#bonusBorne`), et donne le niveau dont la plage le contient, donc l'effet de la ligne (son identifiant, sa couleur, son
+  prix écrit : `data-niveaux`, `src/scripts/accessoires.mjs#reglerLAcquis`) ; la ligne est construite au plus petit bonus. Sans JavaScript : la plage
+  du bonus, les niveaux et les prix écrits de la ligne, sans couleur.
 - **Dé** (« dans chaque tableau une case avec un icône de dé ») : l'en-tête de la première colonne des tableaux des étapes, pas la Monture (« Pas de
   random à faire sur la table des Montures ») ; un clic tire une ligne au hasard et affiche le jet ;
-  la Compétence tire 1d6 (la ligne) puis 1d20 (le bonus d'acquis, donc la colonne), le bonus tiré est écrit dans l'encart. « Tirer un accessoire » suit
+  la Compétence tire 1d6 (la ligne) puis 1d20 (son bonus d'acquis, porté par le curseur de la ligne). « Tirer un accessoire » suit
   les étapes 1 à 3 ; une malédiction (propriété 96-100 ou ligne MALÉDICTION d'un tableau d'effets) rend l'accessoire maudit et fait relancer depuis
   l'étape 1 (« on relance les dés au début des étapes et l'effet sera le contraire de ce qui est indiqué »). Rien n'est inversé ni calculé : l'encart le dit.
 - **Encart** (`src/scripts/accessoires.mjs`) : identité, propriété, effet (et sa remarque), niveau, gemmes avec la qualité de leur niveau (phrase des règles :
   classique aux niveaux 1 et 2, raffinée aux 3 et 4, parfaite au 5) et le prix d'un quart de chacune, monture, prix écrit dans le tableau, case « Maudit ».
   Choisir un effet choisit d'office la monture de son niveau tant qu'on n'en a pas choisi une (le prix écrit d'un effet compte les quarts de gemme de la
   qualité de son niveau et la monture de ce niveau : vrai pour 115 des 116 effets à prix ; « Grenat + Onyx » au niveau 4, 179 Ro, fait exception).
-  **Gemmes au choix** (« Dans le cas où les gemmes sont au choix, laisser la possibilité d'en cocher 2 », « Cela mettra alors le prix à jour ») : une
-  case par gemme au choix, deux gemmes en tout — les quatre de l'Intelligence en laissent cocher deux, « Onyx + Grenat/Malachite » une
-  (`gemmesAuChoix`, `gemmesCochees`) ; les gemmes cochées et la monture choisies, le prix se calcule (`prixDeLAccessoire` : les quarts à la qualité du
-  niveau + la monture, la composition des prix écrits, que `test/accessoires-db.test.mjs` vérifie sur chaque effet à gemmes imposées).
+  **Gemmes au choix** (« Dans le cas où les gemmes sont au choix, laisser la possibilité d'en cocher 2 », « Cela mettra alors le prix à jour » ; puis,
+  le 2026-10-16, « pour l'intelligence, il faut aussi pouvoir cocher […] les gemmes pour justement avoir le calcul du prix ») : une case par gemme au
+  choix, deux gemmes en tout — les quatre de l'Intelligence en laissent cocher deux, « Onyx + Grenat/Malachite » une (`gemmesAuChoix`,
+  `gemmesCochees`) —, **dans la ligne de l'effet** (`components/accessoires/GemmesDeLEffet.astro`, cocher choisit la ligne) comme dans l'encart, un seul
+  état ; les gemmes cochées, le prix se calcule (`prixDeLAccessoire` : les quarts à la qualité du niveau + la monture, la composition des prix écrits,
+  que `test/accessoires-db.test.mjs` vérifie sur chaque effet à gemmes imposées) : dans la ligne avec la monture de son niveau (comme les prix écrits
+  du tableau), dans l'encart avec la monture choisie.
   Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1`).
 - **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
   (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
-- Sans JavaScript : tous les tableaux, ouverts, sans encart ni dé. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
+- Sans JavaScript : tous les tableaux, l'un après l'autre, sans encart, dé, curseur ni case à cocher. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
   chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit).
 
 ## Composants (`/ressources/composants/`) : tout ce qui sert à fabriquer sans être consommé

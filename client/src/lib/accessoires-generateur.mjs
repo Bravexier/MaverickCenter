@@ -36,6 +36,17 @@ export const lancer = (faces, alea = Math.random) => 1 + Math.min(faces - 1, Mat
 export const dansLaPlage = (plages, jet) => plages.find((p) => Number(p.min) <= jet && jet <= Number(p.max)) ?? null;
 
 /**
+ * Bonus d'acquis de la propriété Compétence (demande du propriétaire, 2026-10-16 : « La valeur de "Bonus d'acquis" deviendrait un slider (qui peut être
+ * varié par un dé, ou saisi manuellement). En fonction de la valeur, ça changera automatiquement le niveau, donc la couleur et donc le prix ») : un entier
+ * de `min` à `max`, les bornes des plages écrites (1 % à 20 %) ; une saisie qui n'est pas un nombre donne `min`. Le niveau est celui dont la plage écrite
+ * contient le bonus (`dansLaPlage`) : rien n'est calculé au-delà.
+ */
+export function bonusBorne(valeur, min, max) {
+  const n = Math.round(Number(String(valeur ?? '').replace(',', '.')));
+  return Number.isFinite(n) && String(valeur ?? '').trim() !== '' ? Math.min(max, Math.max(min, n)) : min;
+}
+
+/**
  * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&gemmes=<clé>,<clé>&maudit=1.
  * `lireEtat` ne garde que des chaînes non vides ; `ecrireEtat` les remet dans le même ordre (les vides sont retirés).
  */
