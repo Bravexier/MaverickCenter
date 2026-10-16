@@ -163,7 +163,8 @@ test('« Tirer un accessoire » : une seconde malédiction détruit l’accessoi
   assert.match(encart, /<dt>Propriété<\/dt><dd>Malédiction<\/dd>/);
   assert.match(encart, /Seconde malédiction : l’accessoire est détruit et tombe en poussière\./);
   for (const absent of ['<dt>Niveau', '<dt>Gemmes', '<dt>Monture', '<dt>Prix', 'Maudit</strong>']) assert.ok(!encart.includes(absent), absent);
-  assert.match(encart, /data-acc-maudit checked/, 'la case « Maudit » reste, pour tout lever');
+  // l'encart relu (innerHTML, comme un navigateur : test/aide-faux-dom.mjs) écrit un attribut sans valeur `checked=""`
+  assert.match(encart, /data-acc-maudit(?:="")? checked(?:="")?[ >]/, 'la case « Maudit » reste, pour tout lever');
   assert.equal(p.adresse(), '?emplacement=collier&propriete=malediction&maudit=1&detruit=1');
   // « Tirer un accessoire » repart de zéro
   avecLesJets([D4.anneau, D100.attaque, D20.degats], p.tirerTout);
