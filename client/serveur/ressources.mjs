@@ -44,7 +44,6 @@
 // Chaque écriture réussie est notée au journal du service : « api v1 : <MÉTHODE> <adresse> → lot <id> » (catégorie edition), avec le nombre de fiches
 // adaptées, jamais leurs noms.
 // N'importe que node: et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { createHash } from 'node:crypto';
 import { ENTITES, ErreurValeur, TABLES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   actionDe, capacitesDe, champFige, cleDuSegment, colonneFigee, enfantDe, MODULES, operationDe, RESSOURCES, ressourceDe, segmentDeCle, tablesDe,
@@ -52,6 +51,7 @@ import {
 } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurEdition, enregistrer, listes } from './edition.mjs';
+import { ErreurHttp, empreinteCourte, entierDeLAdresse, segmentDecode } from './partage.mjs';
 import { cleDe, lireLigne, structure, TABLES_INTERDITES } from './edition-journal.mjs';
 import { descriptionOpenApi } from './openapi.mjs';
 
@@ -73,14 +73,7 @@ export const RESSOURCES_SERVIES = RESSOURCES.filter((r) => !tablesDe(r).some((t)
 const SERVIE = new Set(RESSOURCES_SERVIES.map((r) => r.cle));
 
 /** Erreur d'une requête de l'API : statut HTTP, message en français, détails ajoutés au corps. */
-export class ErreurApi extends Error {
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.name = 'ErreurApi';
-    this.statut = statut;
-    this.details = details;
-  }
-}
+export class ErreurApi extends ErreurHttp {}
 
 const json = (statut, corps, entetes = {}) => ({ statut, corps, entetes });
 const erreur = (statut, message, details = {}) => json(statut, { erreur: message, ...details });
@@ -375,14 +368,7 @@ const comparateur = (tri) => (a, b) => {
 };
 
 /** Un entier lu dans l'adresse, entre `min` et `max` ; `defaut` s'il manque ; 400 sinon. */
-function entierDe(texte, defaut, min, max, nom) {
-  if (texte === null || texte === undefined || String(texte).trim() === '') return defaut;
-  const n = Number(texte);
-  if (!/^\d+$/.test(String(texte).trim()) || n < min || n > max) {
-    throw new ErreurApi(400, `${nom} : nombre entier attendu, de ${min} à ${max === Infinity ? 'plus' : max} (reçu « ${texte} »).`);
-  }
-  return n;
-}
+const entierDe = (texte, defaut, min, max, nom) => entierDeLAdresse(texte, defaut, min, max, nom, ErreurApi);
 
 /** Les colonnes `cle` et `adresse` d'une table (alias, historique…) cèdent la place aux métadonnées de l'API dans une liste : `colonne_cle`… */
 function avecAdresse(colonnes, cle, adresse) {
@@ -504,7 +490,7 @@ function lignesLiees(db, vue, parentLigne) {
 }
 
 /** La version d'une représentation (ETag) : 16 caractères d'un sha256 du JSON, comme les fiches (serveur/fiches.mjs#versionDe). */
-const versionDe = (objet) => createHash('sha256').update(JSON.stringify(objet)).digest('hex').slice(0, 16);
+const versionDe = (objet) => empreinteCourte(JSON.stringify(objet));
 
 /**
  * Le détail d'un élément : { ressource, cle, adresse, element, extensions, enfants, derivees, version } ; d'une ligne d'enfant : { ressource, enfant,
@@ -1132,10 +1118,4 @@ function router(requete, service, segments, params, refusEcriture, methode) {
 }
 
 /** Un segment d'adresse décodé pour un message (tel quel s'il est mal encodé). */
-function decodeURIComponentSur(segment) {
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-}
+const decodeURIComponentSur = (segment) => segmentDecode(segment, segment);

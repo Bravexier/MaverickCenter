@@ -88,6 +88,7 @@ import { BALISE, ErreurMetriques } from './metriques.mjs';
 import { ErreurTables, lireTable, listerTables, versionDeLaBase, versionDuContenu } from './debug-tables.mjs';
 import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
+import { segmentDecode } from './partage.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -142,12 +143,8 @@ function etiquetteConnue(entetes, etiquette) {
 
 /** L'identifiant d'une fiche dans l'adresse, décodé ; null s'il est illisible, vide ou trop long. */
 function idDeFiche(brut) {
-  try {
-    const id = decodeURIComponent(brut);
-    return id && id.length <= 200 ? id : null;
-  } catch {
-    return null;
-  }
+  const id = segmentDecode(brut);
+  return id && id.length <= 200 ? id : null;
 }
 
 /**
