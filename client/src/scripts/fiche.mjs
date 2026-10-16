@@ -28,7 +28,8 @@ import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  accessoiresDesSorts, actionsDesAccessoires, changerLaQuantiteDeCeinture, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
+  maximumDeLEmplacement, mettreALaCeinture, objetChoisiDansLaListe, objetDeCeinture, quantiteMaxDeLEmplacement, suggestionsDeCeinture, viderLEmplacement, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
@@ -60,7 +61,10 @@ const synchros = new Map();
 let enConstruction = null;
 /** Calculs du moteur, refaits une fois par rafraîchissement et lus par les synchronisations. */
 let calcul = null;
-/** Monte quand l'inventaire est remplacé d'un bloc (objets de départ d'un métier) : son tableau est alors reconstruit, même à nombre de lignes égal. */
+/**
+ * Monte quand l'inventaire est remplacé d'un bloc (objets de départ d'un métier, objet qui passe du sac à la ceinture ou en revient : décision R89) : son
+ * tableau est alors reconstruit, même à nombre de lignes égal.
+ */
 let versionInventaire = 0;
 
 // ------------------------------------------------------------------ outils
@@ -93,6 +97,38 @@ function poser(champ, valeur) {
     const texte = valeur === null || valeur === undefined ? '' : String(valeur);
     if (champ.value !== texte) champ.value = texte;
   }
+}
+
+/**
+ * Pose un attribut (true : sans valeur ; null ou false : retiré) seulement s'il change : la fiche est rafraîchie à chaque frappe, et chaque écriture
+ * réveille les observateurs de la page (components/Infobulles.astro).
+ */
+function attribut(e, nom, valeur) {
+  if (valeur === null || valeur === undefined || valeur === false) {
+    if (e.hasAttribute(nom)) e.removeAttribute(nom);
+    return;
+  }
+  const texte = valeur === true ? '' : String(valeur);
+  if (e.getAttribute(nom) !== texte) e.setAttribute(nom, texte);
+}
+
+/**
+ * Rend le focus après une reconstruction quand `cible`, qui l'avait, ne sert plus (détachée, désactivée ou cachée) : au seul champ de saisie de même
+ * sorte (son aria-label sans les numéros) qui montre le même texte (la ligne du sac sur laquelle on venait de cliquer, qu'un objet sorti du sac a fait
+ * remonter) ; sinon, si `cible` était dans `bloc`, à `repli`. Jamais à un bouton (le refocaliser referait son action à la touche suivante), jamais à
+ * un champ qui montre autre chose (la frappe suivante changerait un autre objet).
+ */
+function rendreLeFocus(cible, bloc, repli) {
+  if (!cible || cible === document.body) return;
+  const sert = (e) => e.isConnected && !e.disabled && !e.closest('[hidden]');
+  if (sert(cible)) return;
+  const sorte = (e) => (e.getAttribute('aria-label') ?? '').replace(/\d+/g, '#');
+  const memes = cible.tagName === 'INPUT' && cible.value && sorte(cible)
+    ? [...racine.querySelectorAll('input')].filter((e) => e !== cible && sert(e) && sorte(e) === sorte(cible) && e.value === cible.value) : [];
+  if (memes.length === 1) {
+    memes[0].focus();
+    memes[0].setSelectionRange?.(memes[0].value.length, memes[0].value.length);
+  } else if (bloc.contains(cible)) repli.focus();
 }
 
 /** Enregistre une synchronisation pour le conteneur en cours de construction. */
@@ -1446,24 +1482,82 @@ function construireEquipement() {
     })),
   ]);
 
-  reconstruire($('inventaire'), `${versionInventaire}:${(fiche.inventaire ?? []).length}`, () => [
+  // le sac (décision R88) : autant d'emplacements que la Force en donne, une ligne par emplacement quelle que soit sa quantité, et le tableau en montre
+  // autant (les objets, l'emplacement libre suivant, puis les emplacements vides) ; chaque ligne propose le catalogue (ressources et bâtons magiques :
+  // liste-ressources) ou une saisie libre. Au-delà de la place (une Force qui baisse, un import), les lignes restent, signalées : rien n'est retiré.
+  const sac = inventaireDe(regles, fiche);
+  const place = $('inventaire-place');
+  // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
+  const textePlace = `${sac.occupes} / ${sac.emplacements} emplacements (Force ${sac.force})`
+    + (sac.auDela ? ` : ${sac.auDela} objet${sac.auDela > 1 ? 's' : ''} au-delà de la place` : '');
+  if (place.textContent !== textePlace) place.textContent = textePlace;
+  attribut(place, 'data-trop', sac.auDela > 0);
+  const lignesDuSac = fiche.inventaire ?? [];
+  const ressourceDe = (nom) => regles.ressources.find((r) => r.nom === nom)?.id ?? null;
+  const occupee = (o) => String(o?.nom ?? '').trim() !== '';
+  const libre = lignesDuSac.length < sac.emplacements;
+  reconstruire($('inventaire'), `${versionInventaire}:${lignesDuSac.length}:${sac.emplacements}`, () => [
     el('thead', {}, el('tr', {}, el('th', {}, 'Objet'), el('th', { class: 'nombre' }, 'Quantité'), el('th', {}, ''))),
-    el('tbody', {}, (fiche.inventaire ?? []).length === 0
-      ? el('tr', {}, el('td', { colspan: '3', class: 'muted' }, 'Sac vide.'))
-      : fiche.inventaire.map((o) => {
+    el('tbody', {}, [
+      ...lignesDuSac.map((o, i) => {
         const nom = el('input', {
-          list: 'liste-ressources', 'aria-label': 'Objet',
+          list: 'liste-ressources', 'aria-label': `Sac, emplacement ${i + 1} : objet`,
           oninput: (ev) => {
             o.nom = ev.target.value;
-            o.ressource_id = regles.ressources.find((r) => r.nom === ev.target.value)?.id ?? null;
+            o.ressource_id = ressourceDe(ev.target.value);
             changer();
           },
         });
-        const quantite = el('input', { type: 'number', min: '1', step: '1', 'aria-label': 'Quantité', oninput: (ev) => { o.quantite = entier(ev.target.value, 1); changer(); } });
-        synchro(() => { poser(nom, o.nom ?? ''); poser(quantite, o.quantite); });
-        return el('tr', {}, el('td', {}, nom), el('td', { class: 'nombre' }, quantite),
+        // au moins 1 (personnage_inventaire : CHECK quantite >= 1) ; un champ vidé attend la saisie suivante, la valeur validée reprend celle de la fiche
+        const quantite = el('input', {
+          type: 'number', min: '1', step: '1', 'aria-label': `Sac, emplacement ${i + 1} : quantité`,
+          oninput: (ev) => {
+            if (ev.target.value === '') return;
+            o.quantite = Math.max(1, entier(ev.target.value, 1));
+            changer();
+          },
+          onchange: () => poser(quantite, o.quantite),
+        });
+        const tr = el('tr', { 'data-ligne': String(i + 1) },
+          el('td', {}, nom), el('td', { class: 'nombre' }, quantite),
           el('td', {}, el('button', { type: 'button', class: 'retirer', 'aria-label': 'Retirer l’objet', onclick: () => { retirer('inventaire', (x) => x === o); changer(); } }, '✕')));
-      })),
+        synchro(() => {
+          poser(nom, o.nom ?? '');
+          poser(quantite, o.quantite);
+          // au-delà de la place : compté parmi les lignes qui portent un objet (une ligne dont le nom a été effacé n'en prend pas)
+          const auDela = occupee(o) && (fiche.inventaire ?? []).slice(0, i + 1).filter(occupee).length > sac.emplacements;
+          attribut(tr, 'data-au-dela', auDela);
+          infobulle(tr, auDela ? `Au-delà de la place (${sac.emplacements} emplacements)` : '');
+        });
+        return tr;
+      }),
+      // l'emplacement libre suivant : y écrire crée la ligne, qui garde le focus (une composition en cours, touche morte ou IME, attend d'être finie) ;
+      // une ligne dont le nom a été effacé sert d'emplacement libre : le champ se cache, l'emplacement reste
+      libre ? (() => {
+        // une seule fois : un navigateur qui envoie compositionend puis un input ordinaire passerait deux fois, et la seconde remplacerait la ligne
+        // créée (celle dont le champ a reçu le focus) par une autre
+        let cree = false;
+        const creer = (valeur) => {
+          if (cree || !valeur.trim()) return;
+          cree = true;
+          fiche.inventaire = [...lignesDuSac, { rang: lignesDuSac.length + 1, nom: valeur, quantite: 1, ressource_id: ressourceDe(valeur) }];
+          changer();
+          const champ = racine.querySelector(`#inventaire tr[data-ligne="${fiche.inventaire.length}"] input`);
+          champ?.focus();
+          champ?.setSelectionRange?.(champ.value.length, champ.value.length);
+        };
+        const champ = el('input', {
+          list: 'liste-ressources', 'aria-label': `Sac, emplacement ${lignesDuSac.length + 1} : nouvel objet`, placeholder: 'Ajouter un objet (proposé ou libre)…',
+          oninput: (ev) => { if (!ev.isComposing) creer(ev.target.value); },
+          oncompositionend: (ev) => creer(ev.target.value),
+        });
+        synchro(() => attribut(champ, 'hidden', !(fiche.inventaire ?? []).every(occupee)));
+        return el('tr', { class: 'inventaire__libre' }, el('td', { colspan: '3' }, champ));
+      })() : null,
+      // les emplacements vides qui restent : la place que la Force donne, visible
+      ...Array.from({ length: Math.max(0, sac.emplacements - lignesDuSac.length - (libre ? 1 : 0)) },
+        () => el('tr', { class: 'inventaire__vide', 'aria-hidden': 'true' }, el('td', { colspan: '3' }))),
+    ]),
   ]);
 }
 
@@ -1508,29 +1602,95 @@ async function recadrerPortrait(source, cadrage) {
   changer();
 }
 
-/** Les 3 emplacements de la ceinture : un objet (au catalogue des ressources ou non) et sa quantité (le nombre de flèches d'un carquois…). */
+/**
+ * Les 3 emplacements de la ceinture (décision R89) : chacun propose les objets du sac qui vont à la ceinture (liste-ceinture : suggestionsDeCeinture) ou
+ * une saisie libre (un objet spécial du MJ) ; un objet du sac le quitte et y retourne quand l'emplacement se vide ou change, une saisie libre ne touche pas
+ * au sac (mettreALaCeinture, viderLEmplacement) ; la quantité, de 1 au maximum de l'emplacement (3 exemplaires, ou ce qu'un don écrit ; 1 pour un bâton
+ * magique ; la contenance d'un carquois ou d'un sac, qui compte ses projectiles) et, pour un objet du sac, pas au-delà de ce que le sac en a encore,
+ * prend au sac ou lui rend la différence (quantiteMaxDeLEmplacement, changerLaQuantiteDeCeinture).
+ */
 function construireCeinture() {
+  // l'aide dit les règles telles que la fiche les applique (les valeurs viennent des règles de la base) ; écrite seulement quand elle change
+  const exemplaires = exemplairesParEmplacement(regles, fiche);
+  const aide = `${PLACES_DE_CEINTURE} emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir. `
+    + `Au plus ${exemplaires} exemplaires du même objet par emplacement ; un bâton magique compte pour un ; un carquois ou un sac compte ses projectiles, jusqu’à sa contenance. `
+    + 'Un objet du sac le quitte pour la ceinture et y revient quand on l’en retire ; une saisie libre (un objet spécial du MJ) ne touche pas au sac.';
+  const blocAide = $('ceinture-aide');
+  if (blocAide.textContent !== aide) blocAide.textContent = aide;
+  // les objets du sac qui vont à la ceinture, proposés dans chaque emplacement (refaits quand le sac change)
+  const suggestions = suggestionsDeCeinture(regles, fiche);
+  const liste = $('liste-ceinture');
+  const cle = JSON.stringify(suggestions);
+  if (liste.dataset.cle !== cle) {
+    liste.dataset.cle = cle;
+    liste.replaceChildren(...suggestions.map((s) => el('option', { value: s.nom, label: `${s.nom} (×${s.quantite} dans le sac)` })));
+  }
   reconstruire($('ceinture'), 'fixe', () => Array.from({ length: PLACES_DE_CEINTURE }, (_, i) => {
     const rang = i + 1;
     const l = () => ligneDe('ceinture', (x) => entier(x.rang) === rang);
-    const ecrire = (cle, valeur) => {
-      const x = ligne('ceinture', (y) => entier(y.rang) === rang, () => ({ rang, nom: '', quantite: 1, ressource_id: null }));
-      x[cle] = valeur;
-      if (cle === 'nom') x.ressource_id = regles.ressources.find((r) => r.nom === valeur)?.id ?? null;
-      if (!String(x.nom ?? '').trim()) retirer('ceinture', (y) => y === x);
+    // ceinture et sac changent ensemble : le tableau du sac est refait (ses lignes ne sont plus les mêmes objets) ; le focus, s'il était sur un champ
+    // que cela détache, cache ou désactive, est rendu (rendreLeFocus : la même ligne du sac, ou le nom de l'emplacement s'il était dans celui-ci)
+    const appliquer = (r) => {
+      const cible = document.activeElement;
+      fiche.ceinture = r.ceinture;
+      fiche.inventaire = r.inventaire;
+      versionInventaire += 1;
       changer();
+      rendreLeFocus(cible, li, nom);
     };
-    const nom = el('input', { list: 'liste-ressources', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Libre', oninput: (ev) => ecrire('nom', ev.target.value) });
-    const quantite = el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Ceinture, emplacement ${rang} : quantité`, title: 'Quantité (flèches d’un carquois…)', oninput: (ev) => ecrire('quantite', entier(ev.target.value, 1)) });
-    const vider = el('button', { type: 'button', class: 'retirer', 'aria-label': `Vider l’emplacement ${rang} de la ceinture`, title: 'Vider', onclick: () => { retirer('ceinture', (y) => entier(y.rang) === rang); changer(); } }, '✕');
+    // un autre objet : la quantité montre la sienne, même si le focus y est déjà arrivé (Tab)
+    const choisir = (valeur) => {
+      if (String(valeur ?? '').trim() === String(l()?.nom ?? '').trim()) return;
+      appliquer(mettreALaCeinture(regles, fiche, rang, valeur));
+      poser(quantite, l()?.quantite ?? '');
+    };
+    // un objet du sac s'applique dès qu'il est choisi dans la liste (objetChoisiDansLaListe) ; ce qui est tapé, quand le champ est validé : un nom en
+    // cours de frappe n'est pas un objet (« Méga fiole verte » avant « … foncée »). Pendant la frappe, la quantité reste accessible (Tab y mène). Un
+    // nom validé en quittant le champ (Tab, clic ailleurs) s'applique avant que le focus n'arrive à sa cible, que cela peut détacher (le sac est
+    // refait), désactiver ou cacher : focusout la connaît (relatedTarget), et le focus perdu lui est rendu (rendreLeFocus).
+    const nom = el('input', {
+      list: 'liste-ceinture', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Du sac, ou libre',
+      oninput: (ev) => {
+        const choisi = objetChoisiDansLaListe(regles, fiche, ev.target.value, ev.inputType);
+        if (choisi !== null) choisir(choisi);
+        else attribut(quantite, 'disabled', !l() && !ev.target.value.trim());
+      },
+      onchange: (ev) => choisir(ev.target.value),
+      onfocusout: (ev) => {
+        const cible = ev.relatedTarget;
+        if (cible) setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) rendreLeFocus(cible, li, nom); });
+      },
+    });
+    // la valeur validée reprend la quantité que la fiche garde (une saisie au-delà du maximum n'y entre pas : elle est bornée)
+    const quantite = el('input', {
+      type: 'number', min: '1', step: '1', 'aria-label': `Ceinture, emplacement ${rang} : quantité`,
+      oninput: (ev) => { if (l() && ev.target.value !== '') appliquer(changerLaQuantiteDeCeinture(regles, fiche, rang, entier(ev.target.value, 1))); },
+      onchange: () => poser(quantite, l()?.quantite ?? ''),
+    });
+    const vider = el('button', { type: 'button', class: 'retirer', 'aria-label': `Vider l’emplacement ${rang} de la ceinture`, onclick: () => appliquer(viderLEmplacement(regles, fiche, rang)) }, '✕');
     const li = el('li', { class: 'ceinture__emplacement' }, el('span', { class: 'ceinture__numero', 'aria-hidden': 'true' }, String(rang)), nom, quantite, vider);
     synchro(() => {
       const x = l();
       if (document.activeElement !== nom) poser(nom, x?.nom ?? '');
       if (document.activeElement !== quantite) poser(quantite, x ? x.quantite : '');
-      quantite.disabled = !x;
-      vider.hidden = !x;
-      li.toggleAttribute('data-plein', Boolean(x));
+      const genre = x ? objetDeCeinture(regles, x.nom)?.genre ?? null : null;
+      const max = x ? maximumDeLEmplacement(regles, fiche, x.nom) : null;
+      const permis = quantiteMaxDeLEmplacement(regles, fiche, rang);
+      const trop = Boolean(x) && entier(x.quantite) > max;
+      attribut(quantite, 'max', permis);
+      // un bâton compte pour un : en lecture seule (pas désactivée : Tab y passe sans perdre le focus), sauf au-delà, pour pouvoir le corriger
+      attribut(quantite, 'disabled', !x && !nom.value.trim());
+      attribut(quantite, 'readonly', genre === 'baton' && !trop);
+      // au-delà du maximum (un import, un don perdu) : signalé comme les autres champs invalides de la fiche, et dit dans l'infobulle
+      attribut(quantite, 'aria-invalid', trop ? 'true' : null);
+      infobulle(quantite, !x ? ''
+        : genre === 'baton' ? 'Un bâton magique compte pour un'
+          : trop ? `Au-delà du maximum de l’emplacement (${max})`
+            : genre === 'contenant' ? `Projectiles (au plus ${max})`
+              : permis < max ? `Exemplaires (au plus ${max} ; ${permis} avec ce que le sac en a)` : `Exemplaires (au plus ${max})`);
+      infobulle(vider, !x ? '' : genre ? 'Vider (l’objet retourne au sac)' : 'Vider (une saisie libre disparaît)');
+      attribut(vider, 'hidden', !x);
+      attribut(li, 'data-plein', Boolean(x));
     });
     return li;
   }));
@@ -2187,7 +2347,10 @@ function remplirListesFixes() {
   $('dieux').append(...regles.dieux.map((d) => option(d.id, d.nom)));
   $('metiers').append(...regles.metiers.map((m) => option(m.id, m.nom)));
   $('carac-magie').replaceChildren(option('', '—'), ...regles.caracteristiques.map((c) => option(c.id, c.nom)));
-  racine.append(el('datalist', { id: 'liste-ressources' }, regles.ressources.map((r) => el('option', { value: r.nom }))));
+  // le catalogue proposé dans le sac : les ressources, puis les bâtons magiques (sous le nom que la fiche leur donne : décision R89) ; la ceinture propose
+  // les objets du sac qui y vont (liste-ceinture, refaite par construireCeinture)
+  racine.append(el('datalist', { id: 'liste-ressources' }, regles.ressources.map((r) => el('option', { value: r.nom })),
+    (regles.ceinture?.batons ?? []).map((b) => el('option', { value: b.nom }))), el('datalist', { id: 'liste-ceinture' }));
 }
 
 async function demarrer() {
@@ -2311,11 +2474,6 @@ async function demarrer() {
   $('choix-reduire').addEventListener('click', () => {
     tiroirReduit = !tiroirReduit;
     construireChoixEnAttente();
-  });
-  $('bouton-ajout-objet').addEventListener('click', () => {
-    fiche.inventaire.push({ rang: fiche.inventaire.length + 1, nom: '', quantite: 1, ressource_id: null });
-    changer();
-    racine.querySelector('#inventaire tbody tr:last-child input')?.focus();
   });
   window.addEventListener('beforeunload', (ev) => {
     if (modifie) ev.preventDefault();

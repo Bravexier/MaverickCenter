@@ -175,12 +175,13 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
             </div>
           </section>
-          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») */}
+          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun propose les objets
+              du sac qui vont à la ceinture ou une saisie libre, un objet du sac le quitte (décision R89) ; l'aide est refaite par le script d'après les règles */}
           <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
               <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
-              <p class="fiche-aide" id="ceinture-aide">3 objets rapides au plus, utilisables en IC. Carquois, sac de bombes ou de pierres : à la ceinture pour servir.</p>
+              <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>
         </div>
@@ -337,8 +338,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <section class="fiche-etape parametres__panneau" id="etape-inventaire">
           <h3 class="parametres__titre">Inventaire</h3>
           <div class="fiche-etape__corps parametres__deux parametres__deux--large">
-            <div><h4 class="fiche-sous-titre">Sac</h4><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
-              <div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div>
+            {/* le sac : autant d'emplacements que la Force en donne (décision R88), une ligne par emplacement, chacune proposée (catalogue) ou saisie librement */}
+            <div><h4 class="fiche-sous-titre">Sac</h4><p class="fiche-aide" id="inventaire-place" aria-live="polite"></p>
+              <div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div></div>
             <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
               <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
               <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
