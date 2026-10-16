@@ -62,13 +62,16 @@ de colonnes fabriquées ou de cellules recopiées ailleurs.
    « Magie Maverick V8 » (que suivaient déjà les pages de magie, le guide, la fiche et les combinaisons). La matrice de la fiche (`Magie!F2:S16`, où
    chacune résistait à elle-même), gardée dans `resistance_magie` comme seconde lecture tant que la question était ouverte, est retirée avec ses deux vues
    et ses 5 écarts (migration `0051-resistance-arcane-corruption`) ; ses 210 cellules sont ignorées par le registre de la fiche.
-6. **Afficher les combinaisons de deux magies** (2026-10-16) : « Pas de suite. Ils seront dans leur onglet statistiques après qu'on ait finalisé toute
-   la fiche de personnage. » : la vue `v_resistance_combinaison` attend l'onglet « Statistiques » de la fiche (`docs/character-generator.md`).
+6. **Afficher les combinaisons de deux magies** (2026-10-16) : « Pas de suite. Il seront dans leur onglet statistiques après qu'on ai finalisé toute
+   la fiche de personnages. » : la vue `v_resistance_combinaison` attend l'onglet « Statistiques » de la fiche (`docs/character-generator.md`).
 
-## Provenance à réparer (d2, sans changer une valeur)
+## Provenance incomplète (d2), non réparée
 
-Une migration par lot, écrite par `ingenieur-donnees` et relue par `expert-sql` ; aucune valeur ne change, seuls les `source_ref` (et l'importeur qui
-les écrit) :
+Le propriétaire (2026-10-16) : « à terme je compte virer la table famille et origine […] plus besoin de garder les liens de l'origine des données et
+encore moins à la cellule prêt. C'est bien de le garde pour la construction mais dès la 1.0, le lien sera nétoyé » (`docs/feuille-de-route.md`). Ces
+références ne sont donc **pas réparées** ; la liste reste pour la mise à jour des classeurs : le mode `--avant` liste **toutes** les cellules changées,
+mais une cellule que ces lignes ne citent pas exactement y paraît sans ligne de la base (« aucune : cellule nouvelle ou ignorée ») et se retrouve alors
+par sa valeur avant d'être proposée au propriétaire.
 
 | Classeur | Tables | Ce qui manque |
 | --- | --- | --- |
@@ -79,7 +82,7 @@ les écrit) :
 | Magie Maverick V8 | `sort` (17 sorts de niveau 5), `mode_hyper_effet` (3) | le bloc du texte de niveau 5 (T79:BR88) ; le titre du panneau « Avantages de base » (AZ2) |
 | Ressources et Craft | `ressource`, `recette`, `baton_magique`, `arme_famille`, `accessoire_effet(_gemme)`, `arme_elementaire`, `armure_elementaire` | l'en-tête de section, de magie, de colonne ou du bloc d'où vient la valeur (406 écarts, 296 valeurs vérifiées égales) |
 
-**Colonnes fabriquées par l'import sans test** (à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
+**Colonnes fabriquées par l'import sans test** (des valeurs, pas de la provenance : à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
 `regle_constante.unite` (« points », « diviseur », « niveaux »…), `constante_equipement.unite`, `caracteristique.lettre`, `resistance_palier` (bornes et
 multiplicateurs tirés de « V>2 », « ÷4 »), `regle_constante.valeur` des croix (−20, −1000), les constantes `inventaire.lignes_par_colonne` et `inventaire.colonnes_max` (migration 0050, R88 : tirées
 de la forme de la grille `Personnage!AA40:AY51`, 12 lignes et 4 colonnes, pas d'une cellule : 7 écarts). **Autres** : une note de « Ressources et Craft » (fil de

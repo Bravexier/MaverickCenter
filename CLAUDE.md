@@ -27,6 +27,8 @@ Qui possède quoi, qui écrit, qui relit et dans quel ordre : `docs/equipe.md` (
 Le NAS est temporaire (migration à prévoir). Le site doit devenir une source rapide et navigable des règles et du lore, puis permettre de modifier sorts, dons,
 classes et races pour remplacer à terme Google Docs/Sheets, et enfin simuler des combats pour juger l'équilibrage. Voir `docs/feuille-de-route.md` : identifiants
 stables, SQL portable, modifications historisées, règles en données, moteur pur partagé, rien de spécifique au NAS hors de `deploy/`.
+La provenance des données (`famille`, colonnes `origine` et `source_ref`) ne sert que jusqu'à la 1.0, puis est retirée (décision du propriétaire du 2026-10-16,
+feuille de route) : n'y rien investir, ne pas réparer les références incomplètes.
 Les prochaines évolutions voulues par le propriétaire (galerie humaine / IA, bestiaire, équipement, générateur d'accessoires, chronologie (premier jet en place : `docs/chronologie.md`), carte, connexion
 Discord, fiches des comptes, groupes et planning, bot Discord, boîte à idées, statistiques) y sont numérotées **E1 à E12**, rangées en jalons proposés, avec les questions qui attendent sa réponse.
 

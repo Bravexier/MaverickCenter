@@ -263,6 +263,16 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 2. **Fiches sur le serveur de dev** : une fiche créée ou supprimée sur le site de dev ne part pas en production (un lot de mise à jour ne porte
    jamais la section 13) ; « on a juste une copie de la prod vers dev après la MEP » — ce que le serveur de test ne fait pas encore (question 7).
 
+### Réponses du propriétaire (2026-10-16)
+
+1. **Provenance des données** : « à terme je compte virer la table famille et origine. Les documents ne seront référencés que pour l'archive mais plus
+   besoin de garder les liens de l'origine des données et encore moins à la cellule prêt. C'est bien de le garde pour la construction mais dès la 1.0,
+   le lien sera nétoyé » La table `famille`, les colonnes `origine` (152 tables) et `source_ref` (151 tables) servent jusqu'à la 1.0 : importeurs, contrôles
+   `--verifier`, rapprochement des classeurs (`docs/sources.md`) et mises à jour depuis les classeurs ; elles sont retirées à la 1.0, les Google Docs et
+   Sheets n'étant plus cités que par les archives (`/archives/`). **D'ici là, rien n'est investi dans la provenance** : les références incomplètes relevées
+   par le rapprochement (`docs/sql/rapprochement-classeurs.md`) ne sont pas réparées. Ce que le retrait emportera (`note_cellule`, `ecart_source`, les liens
+   des pages vers leurs sources, ce que les archives disent des pages qui citent un document) se décidera avec le propriétaire au moment de le faire.
+
 ### Questions encore ouvertes
 
 1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ?
