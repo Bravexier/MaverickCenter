@@ -29,7 +29,7 @@ import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   accessoiresDesSorts, actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  mettreALaCeinture, minimumDeLEmplacement, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
@@ -1610,8 +1610,12 @@ async function recadrerPortrait(source, cadrage) {
  * Les 3 emplacements de la ceinture (décision R89), chacun [objet][quantité] : l'objet, un objet du sac (liste-ceinture : suggestionsDeCeinture ; un nom
  * que le sac n'a pas est refusé, avec la raison : « Sac seulement »), qui en sort (mettreALaCeinture : 3 exemplaires au plus, un bâton magique, un
  * carquois plein) ; la quantité, affichée, que changent seuls les boutons « Utiliser » (utiliserLObjet), « Remplir » (remplirLEmplacement) et « Ranger »
- * (rangerLEmplacement), chacun montré quand il sert (actionsDeLEmplacement).
+ * (rangerLEmplacement), chacun montré quand il sert (actionsDeLEmplacement). Un nom effacé ne vide pas l'emplacement : le champ reprend son objet
+ * (« Ranger » le vide).
  */
+/** Le nom refusé en dernier (absent du sac) : sa raison s'efface quand on tape à nouveau, ou quand le sac reçoit ce nom. */
+let nomRefuse = null;
+
 function construireCeinture() {
   // l'aide dit les règles telles que la fiche les applique (les valeurs viennent des règles de la base) ; écrite seulement quand elle change
   const exemplaires = exemplairesParEmplacement(regles, fiche);
@@ -1628,8 +1632,13 @@ function construireCeinture() {
     liste.dataset.cle = cle;
     liste.replaceChildren(...suggestions.map((s) => el('option', { value: s.nom, label: `${s.nom} (×${s.quantite} dans le sac)` })));
   }
-  // un nom refusé (absent du sac) : la raison, annoncée (role="status"), effacée à l'action suivante
-  const refus = (texte) => { if ($('ceinture-refus').textContent !== texte) $('ceinture-refus').textContent = texte; };
+  // un nom refusé (absent du sac) : la raison, annoncée (role="status"), effacée à l'action suivante, à la frappe suivante, ou quand le sac a ce nom
+  const refus = (n) => {
+    nomRefuse = n;
+    const texte = n === null ? '' : `« ${n} » n’est pas dans le sac : ajoutez-le d’abord à l’inventaire, puis choisissez-le ici.`;
+    if ($('ceinture-refus').textContent !== texte) $('ceinture-refus').textContent = texte;
+  };
+  if (nomRefuse !== null && suggestions.some((x) => x.nom === nomRefuse)) refus(null);
   reconstruire($('ceinture'), 'fixe', () => Array.from({ length: PLACES_DE_CEINTURE }, (_, i) => {
     const rang = i + 1;
     const l = () => ligneDe('ceinture', (x) => entier(x.rang) === rang);
@@ -1638,7 +1647,7 @@ function construireCeinture() {
     // l'emplacement s'il était dans celui-ci)
     const appliquer = (r) => {
       const cible = document.activeElement;
-      refus('');
+      refus(null);
       fiche.ceinture = r.ceinture;
       if (JSON.stringify(r.inventaire) !== JSON.stringify(fiche.inventaire ?? [])) {
         fiche.inventaire = r.inventaire;
@@ -1647,11 +1656,13 @@ function construireCeinture() {
       changer();
       rendreLeFocus(cible, li, nom);
     };
+    // refusé (absent du sac, ou effacé) : le champ reprend l'objet de l'emplacement
     const choisir = (valeur) => {
-      if (String(valeur ?? '').trim() === String(l()?.nom ?? '').trim()) return;
-      const r = mettreALaCeinture(regles, fiche, rang, valeur);
+      const n = String(valeur ?? '').trim();
+      if (n === String(l()?.nom ?? '').trim()) return poser(nom, l()?.nom ?? '');
+      const r = mettreALaCeinture(regles, fiche, rang, n);
       if (r) return appliquer(r);
-      refus(`« ${String(valeur).trim()} » n’est pas dans le sac : ajoute-le d’abord à l’inventaire, puis choisis-le ici.`);
+      if (n) refus(n);
       poser(nom, l()?.nom ?? '');
     };
     // un objet du sac s'applique dès qu'il est choisi dans la liste (objetChoisiDansLaListe) ; ce qui est tapé, quand le champ est validé : un nom en
@@ -1661,6 +1672,7 @@ function construireCeinture() {
     const nom = el('input', {
       list: 'liste-ceinture', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Un objet du sac',
       oninput: (ev) => {
+        if (nomRefuse !== null) refus(null);
         const choisi = objetChoisiDansLaListe(fiche, ev.target.value, ev.inputType);
         if (choisi !== null) choisir(choisi);
       },
@@ -1670,12 +1682,21 @@ function construireCeinture() {
         if (cible) setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) rendreLeFocus(cible, li, nom); });
       },
     });
-    const quantite = el('output', { class: 'ceinture__quantite', 'aria-label': `Ceinture, emplacement ${rang} : quantité` });
-    const bouton = (texte, action) => el('button', { type: 'button', 'aria-label': `${texte} (ceinture, emplacement ${rang})`, onclick: () => appliquer(action(regles, fiche, rang)) }, texte);
-    const utiliser = bouton('Utiliser', utiliserLObjet);
+    // la quantité « N / max » : un simple texte (pas une région annoncée : chaque synchronisation la lirait sans dire de quel emplacement)
+    const quantite = el('span', { class: 'ceinture__quantite' });
+    // un bouton grisé (aria-disabled, pas disabled : il garde le focus, et son infobulle dit pourquoi au clavier aussi) ne fait rien
+    const bouton = (texte, action) => {
+      const b = el('button', {
+        type: 'button', 'aria-label': `${texte} (ceinture, emplacement ${rang})`,
+        onclick: () => { if (b.getAttribute('aria-disabled') !== 'true') appliquer(action(regles, fiche, rang)); },
+      }, texte);
+      return b;
+    };
+    // dans l'ordre où le propriétaire les nomme : « "Remplir" "Utiliser" et "Ranger" »
     const remplir = bouton('Remplir', remplirLEmplacement);
+    const utiliser = bouton('Utiliser', utiliserLObjet);
     const ranger = bouton('Ranger', rangerLEmplacement);
-    const actions = el('span', { class: 'ceinture__actions' }, utiliser, remplir, ranger);
+    const actions = el('span', { class: 'ceinture__actions' }, remplir, utiliser, ranger);
     const li = el('li', { class: 'ceinture__emplacement' }, el('span', { class: 'ceinture__numero', 'aria-hidden': 'true' }, String(rang)), nom, quantite, actions);
     synchro(() => {
       const x = l();
@@ -1686,11 +1707,11 @@ function construireCeinture() {
       attribut(quantite, 'hidden', !a);
       // au-delà du maximum (un import, un don perdu), ou un objet à 0 qui n'est pas (ou plus) un carquois : signalé, et dit dans l'infobulle
       const trop = Boolean(a) && a.quantite > a.max;
-      const sous = Boolean(a) && a.quantite < minimumDeLEmplacement(regles, x.nom);
+      const sous = Boolean(a) && a.quantite < a.min;
       attribut(quantite, 'data-invalide', trop || sous);
       infobulle(quantite, !a ? ''
         : trop ? `Au-delà du maximum de l’emplacement (${a.max})`
-          : sous ? `En dessous du minimum de l’emplacement (${minimumDeLEmplacement(regles, x.nom)})`
+          : sous ? `En dessous du minimum de l’emplacement (${a.min})`
             : a.genre === 'baton' ? 'Un bâton magique compte pour un (utilisations illimitées)'
               : a.genre === 'contenant' ? `Projectiles : ${a.quantite} sur ${a.max}` : `Exemplaires : ${a.quantite} sur ${a.max}`);
       attribut(actions, 'hidden', !a);
@@ -1698,7 +1719,7 @@ function construireCeinture() {
       infobulle(utiliser, !a ? '' : a.genre === 'contenant' ? 'Retire un projectile' : 'Retire un exemplaire (le dernier libère l’emplacement)');
       attribut(remplir, 'hidden', !a?.remplir);
       // le sac n'en a plus : le bouton reste, grisé, avec la raison
-      attribut(remplir, 'disabled', a?.duSac === 0);
+      attribut(remplir, 'aria-disabled', a?.duSac === 0 ? 'true' : null);
       infobulle(remplir, !a ? ''
         : a.genre === 'contenant' ? `Ajoute un projectile (jusqu’à ${a.max})`
           : a.duSac === 0 ? `Plus de « ${x.nom} » dans le sac`

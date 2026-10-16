@@ -55,8 +55,11 @@ abandonne.
   (`utiliserLObjet` ; masqué pour un bâton ; le dernier exemplaire libère l'emplacement, un carquois reste à 0 et le bouton disparaît :
   `minimumDeLEmplacement`, migration `0052-ceinture-carquois-vide`) ; **« Remplir »** remonte au maximum avec ce que le sac a (`remplirLEmplacement` ;
   masqué au maximum, grisé quand le sac n'en a plus ; un carquois gagne 1 projectile sans rien sortir du sac) ; **« Ranger »** remet l'objet au sac
-  (`rangerLEmplacement`, un objet du MJ comme les autres, un carquois sans ses projectiles). Une quantité hors des bornes (un import, un don perdu, un
-  carquois retiré du catalogue) est marquée en rouge, la raison en infobulle. Un bâton se reconnaît à son nom (« Bâton magique Feu, niveau 2 »,
+  (`rangerLEmplacement`, un objet du MJ comme les autres, un carquois sans ses projectiles) ; un nom effacé ne vide pas l'emplacement (le champ reprend
+  son objet). « Remplir » grisé l'est par `aria-disabled` : il garde le focus et son infobulle dit pourquoi. Un carquois renommé sur le site de dev se
+  reconnaît à son identifiant (`objetDeCeinture`, la fiche garde l'ancien nom) ; supprimé du catalogue (R60, plus d'identifiant), il devient un objet
+  ordinaire, que « Ranger » rend au sac en autant d'exemplaires que ses projectiles (limite connue, R89). Une quantité hors des bornes (un import, un don
+  perdu) est marquée en rouge, la raison en infobulle. Un bâton se reconnaît à son nom (« Bâton magique Feu, niveau 2 »,
   `nomDeBaton`) : il n'est pas lié au catalogue dans la fiche (pas de clé vers `baton_magique`) ; une magie renommée sur le site de dev fait de ses
   bâtons des objets ordinaires (maximum 3 au lieu de 1).
 - **Sac** (onglet Inventaire ; décision R88) : **autant d'emplacements que la Force en donne** — une colonne = 12 lignes (la grille de la fiche auto), 24

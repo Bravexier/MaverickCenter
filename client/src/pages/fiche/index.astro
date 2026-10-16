@@ -181,8 +181,10 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
-              <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
-              <p class="fiche-aide ceinture__refus" id="ceinture-refus" role="status" aria-live="polite"></p>
+              <div>
+                <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
+                <p class="fiche-aide ceinture__refus" id="ceinture-refus" role="status" aria-live="polite"></p>
+              </div>
               <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>

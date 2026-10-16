@@ -411,16 +411,17 @@ export function inventaireDe(regles, fiche) {
 export const quantiteDuSac = (regles, quantite) => Math.min(regles.sac?.quantite_max ?? Infinity, Math.max(1, Math.round(entier(quantite))));
 
 /**
- * Ce qu'est un objet pour la ceinture, d'après son nom (décisions R81, R89) : { genre: 'baton', baton_id } pour un bâton magique (« Bâton magique Feu,
+ * Ce qu'est un objet pour la ceinture, d'après son nom, ou sa ressource quand son nom n'est plus celui du catalogue (un carquois renommé sur le site de
+ * dev : la fiche garde l'ancien nom et l'identifiant) (décisions R81, R89) : { genre: 'baton', baton_id } pour un bâton magique (« Bâton magique Feu,
  * niveau 2 »), { genre: 'contenant', ressource_id, contenance } pour un carquois ou un sac, { genre: <famille de la potion>, ressource_id } pour une
- * potion ou une huile ; null pour un autre objet (le matériel que le guide cite aussi, une saisie libre, un objet spécial du MJ).
+ * potion ou une huile ; null pour un autre objet (le matériel que le guide cite aussi, un objet spécial du MJ).
  */
-export function objetDeCeinture(regles, nom) {
+export function objetDeCeinture(regles, nom, ressource_id = null) {
   const n = String(nom ?? '').trim();
   if (!n || !regles.ceinture) return null;
   const baton = regles.ceinture.batons.find((b) => b.nom === n);
   if (baton) return { genre: 'baton', baton_id: baton.id };
-  const objet = objetsDeCeintureParNom(regles).get(n);
+  const objet = objetsDeCeintureParNom(regles).get(n) ?? (ressource_id ? regles.ceinture.objets.find((o) => o.ressource_id === ressource_id) : null);
   if (!objet) return null;
   return { genre: objet.famille, ressource_id: objet.ressource_id, ...(objet.famille === 'contenant' ? { contenance: objet.contenance ?? null } : {}) };
 }
@@ -454,12 +455,13 @@ export function exemplairesParEmplacement(regles, fiche) {
 }
 
 /**
- * La quantité au plus d'un emplacement de ceinture qui porte `nom` (décision R89) : 1 pour un bâton magique (« Le max est 1 ») ; la contenance d'un
- * carquois ou d'un sac de projectiles (« Le max est déterminé par l'objet et ne peux être modifié par Organisé »), ou, quand son texte n'en écrit pas,
- * la constante ceinture.exemplaires_par_emplacement, sans le don ; sinon exemplairesParEmplacement (3, 4 avec le don qui l'écrit).
+ * La quantité au plus d'un emplacement de ceinture qui porte `nom` (et `ressource_id` : objetDeCeinture) (décision R89) : 1 pour un bâton magique (« Le
+ * max est 1 ») ; la contenance d'un carquois ou d'un sac de projectiles (« Le max est déterminé par l'objet et ne peux être modifié par Organisé »), ou,
+ * quand son texte n'en écrit pas, la constante ceinture.exemplaires_par_emplacement, sans le don ; sinon exemplairesParEmplacement (3, 4 avec le don qui
+ * l'écrit).
  */
-export function maximumDeLEmplacement(regles, fiche, nom) {
-  const o = objetDeCeinture(regles, nom);
+export function maximumDeLEmplacement(regles, fiche, nom, ressource_id = null) {
+  const o = objetDeCeinture(regles, nom, ressource_id);
   if (o?.genre === 'baton') return 1;
   if (o?.genre === 'contenant') return o.contenance ?? constante(regles, 'ceinture.exemplaires_par_emplacement');
   return exemplairesParEmplacement(regles, fiche);
@@ -469,13 +471,13 @@ export function maximumDeLEmplacement(regles, fiche, nom) {
  * La quantité au moins d'un emplacement de ceinture qui porte `nom` (décision R89 : « Le carquois reste si 0 ») : 0 pour un carquois ou un sac de
  * projectiles, sinon 1 (un autre objet utilisé jusqu'au dernier quitte la ceinture). L'import d'un tableur s'en sert.
  */
-export const minimumDeLEmplacement = (regles, nom) => (objetDeCeinture(regles, nom)?.genre === 'contenant' ? 0 : 1);
+export const minimumDeLEmplacement = (regles, nom, ressource_id = null) => (objetDeCeinture(regles, nom, ressource_id)?.genre === 'contenant' ? 0 : 1);
 
 /**
  * Unités du sac que tient un emplacement de ceinture (décision R89) : 1 pour un carquois ou un sac de projectiles (sa quantité compte ses projectiles,
  * que le sac ne compte pas), sinon sa quantité (un bâton : 1, ou tous ceux qu'une fiche importée y avait mis). Un objet du MJ compte comme les autres.
  */
-const unitesDuSac = (regles, o) => (objetDeCeinture(regles, o.nom)?.genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite)));
+const unitesDuSac = (regles, o) => (objetDeCeinture(regles, o.nom, o.ressource_id)?.genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite)));
 const nomDe = (o) => String(o?.nom ?? '').trim();
 /** Une ligne du sac compte quand elle a au moins un exemplaire (une quantité 0 d'une saisie en cours ne fait pas un objet). */
 const exemplairesDe = (l) => Math.max(0, entier(l.quantite));
@@ -543,16 +545,18 @@ export function rangerLEmplacement(regles, fiche, rang) {
  * portait est d'abord rangé (rangerLEmplacement) ; puis un bâton magique sort du sac, seul ; un carquois ou un sac de projectiles aussi, et il arrive
  * plein, à sa contenance (réponse du propriétaire : « Plein ») ; un autre objet, autant d'exemplaires que le sac en a, jusqu'au maximum de
  * l'emplacement (3, 4 avec « Organisé »). null quand le sac n'a pas cet objet, même une fois l'emplacement rangé (réponse du propriétaire : « Sac
- * seulement » : un objet du MJ s'ajoute d'abord à l'inventaire) : rien ne change. Un nom vide range l'emplacement.
+ * seulement » : un objet du MJ s'ajoute d'abord à l'inventaire), et pour un nom vide (on vide un emplacement par « Ranger ») : rien ne change.
+ * L'objet est celui de la ligne du sac (son identifiant : un carquois renommé depuis reste un carquois).
  */
 export function mettreALaCeinture(regles, fiche, rang, nom) {
   const n = String(nom ?? '').trim();
-  if (!n) return rangerLEmplacement(regles, fiche, rang);
+  if (!n) return null;
   const apres = { ...fiche, ...rangerLEmplacement(regles, fiche, rang) };
   if (dansLeSac(apres, n) === 0) return null;
-  const o = objetDeCeinture(regles, n);
-  const ressource_id = o?.ressource_id ?? (regles.ressources ?? []).find((r) => r.nom === n)?.id ?? null;
-  const max = maximumDeLEmplacement(regles, fiche, n);
+  const duSac = apres.inventaire.find((l) => nomDe(l) === n && exemplairesDe(l) > 0)?.ressource_id ?? null;
+  const o = objetDeCeinture(regles, n, duSac);
+  const ressource_id = o?.ressource_id ?? duSac ?? (regles.ressources ?? []).find((r) => r.nom === n)?.id ?? null;
+  const max = maximumDeLEmplacement(regles, fiche, n, ressource_id);
   const unite = o?.genre === 'baton' || o?.genre === 'contenant';
   const { inventaire, sorties } = sortirDuSac(apres.inventaire, n, unite ? 1 : max);
   const quantite = o?.genre === 'contenant' ? max : unite ? 1 : sorties;
@@ -560,7 +564,8 @@ export function mettreALaCeinture(regles, fiche, rang, nom) {
 }
 
 /**
- * Ce que l'emplacement `rang` montre et permet (décision R89), null s'il est vide : { quantite, max, genre, utiliser, remplir, duSac } ; utiliser :
+ * Ce que l'emplacement `rang` montre et permet (décision R89), null s'il est vide : { quantite, min, max, genre, utiliser, remplir, duSac } ; min, max :
+ * les bornes de la quantité (minimumDeLEmplacement, maximumDeLEmplacement : une fiche importée peut être au-delà) ; utiliser :
  * « Utiliser » s'affiche (« Masqué si bâton magique » ; « A zéro "Utiliser" disparait » pour un carquois) ; remplir : « Remplir » s'affiche (« Masqué si
  * quantité maximale atteinte ») ; duSac : ce que « Remplir » sortirait du sac (null pour un carquois ou un sac de projectiles, qui n'en sort rien ;
  * 0 quand le sac n'en a plus).
@@ -568,11 +573,12 @@ export function mettreALaCeinture(regles, fiche, rang, nom) {
 export function actionsDeLEmplacement(regles, fiche, rang) {
   const x = ligneDeCeinture(fiche, rang);
   if (!x) return null;
-  const genre = objetDeCeinture(regles, x.nom)?.genre ?? null;
+  const genre = objetDeCeinture(regles, x.nom, x.ressource_id)?.genre ?? null;
   const quantite = entier(x.quantite);
-  const max = maximumDeLEmplacement(regles, fiche, x.nom);
+  const max = maximumDeLEmplacement(regles, fiche, x.nom, x.ressource_id);
   return {
     quantite,
+    min: genre === 'contenant' ? 0 : 1,
     max,
     genre,
     utiliser: genre !== 'baton' && quantite > 0,

@@ -409,7 +409,11 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .ceinture__quantite[data-invalide] { color: var(--danger); }
 .ceinture__actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .fiche .ceinture__actions button { padding: 0.1rem 0.5rem; font-size: var(--fs-xs); }
+/* « Remplir » quand le sac n'en a plus : grisé comme un bouton désactivé (common.css), mais il garde le focus (src/scripts/fiche.mjs) */
+.fiche .ceinture__actions button[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+/* la raison d'un nom refusé, sous les emplacements (vide, elle ne prend pas de place) */
 .ceinture__refus { color: var(--danger); }
+.ceinture__refus:not(:empty) { margin-top: 0.35rem; }
 
 /* ----------------------------------------------------------------- le sac : emplacements selon la Force (décision R88) */
 #inventaire-place { margin: -0.2rem 0 0.4rem; }
