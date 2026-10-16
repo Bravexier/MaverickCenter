@@ -33,6 +33,15 @@ test('pas de tableau Markdown : le gabarit du générateur, avec les règles de 
   assert.match(main, /data-acc-tout-tirer/);
 });
 
+test('malédiction (décision R94) : l’aide du générateur dit la relance depuis l’étape 2, même emplacement, et la destruction à la seconde', options, () => {
+  const aide = main.match(/<span class="acc-aide acc-aide--malediction">([^<]+)<\/span>/)?.[1] ?? '';
+  assert.match(aide, /depuis l’étape 2/);
+  assert.match(aide, /même emplacement/);
+  assert.match(aide, /une seconde le détruit/);
+  // le texte des règles (copie de la source) n'est pas réécrit (le script, lui : test/accessoires-script.test.mjs)
+  assert.ok(main.includes('on relance les dés au début des étapes'), 'les règles de l’onglet, telles qu’écrites');
+});
+
 test('une case au dé par tableau des étapes : identité, propriété, chaque propriété à effets ; pas la monture', options, () => {
   const tables = (main.match(/<table class="acc-table/g) ?? []).length;
   const des = [...main.matchAll(/<button type="button" class="acc-de js-seul" data-de="(\d+)"(?: data-de-bonus="(\d+)")?/g)];

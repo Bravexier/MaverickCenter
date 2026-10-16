@@ -159,6 +159,10 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc-produit[style*="--niv"] { background: var(--niv); color: var(--sur-niveau); border-color: color-mix(in srgb, var(--niv) 60%, #000); }
 .acc-produit[style*="--niv"] :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note) { color: var(--sur-niveau-doux); }
 .acc-produit.est-maudit { border: 2px dashed var(--maudit); }
+/* Accessoire détruit (décision R94 : une seconde malédiction tirée, « il tombe en poussière ») : pas de couleur de niveau, un fond terne, l'effet grisé */
+.acc-produit.est-detruit { background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--text); }
+.acc-produit.est-detruit .acc-produit__titre { color: color-mix(in srgb, var(--maudit) 70%, var(--text)); }
+.acc-produit.est-detruit .acc-produit__liste dd { color: var(--muted); }
 .acc-produit__vide { margin: 0; color: var(--muted); }
 .acc-produit__sur { margin: 0; font-size: var(--fs-xs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
 .acc-produit__sur strong { color: var(--maudit); }

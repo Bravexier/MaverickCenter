@@ -446,7 +446,24 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
   random à faire sur la table des Montures ») ; un clic tire une ligne au hasard et affiche le jet ;
   la Compétence tire 1d6 (la ligne) puis 1d20 (son bonus d'acquis, porté par le curseur de la ligne). « Tirer un accessoire » suit
   les étapes 1 à 3 ; une malédiction (propriété 96-100 ou ligne MALÉDICTION d'un tableau d'effets) rend l'accessoire maudit et fait relancer depuis
-  l'étape 1 (« on relance les dés au début des étapes et l'effet sera le contraire de ce qui est indiqué »). Rien n'est inversé ni calculé : l'encart le dit.
+  l'**étape 2, avec le même emplacement** (l'étape 1 n'est tirée qu'une fois) ; une seconde malédiction dans cette relance le **détruit** : il tombe en
+  poussière, sans troisième tirage (décision R94 : « on relance tout l'item à partir de l'étape 2 (on garde le même emplacement) Dans le 2em roll si
+  on retombe à nouveau sur "Malédiction", l'objet est DETRUIT et tombe en poussière » ; `lib/accessoires-generateur.mjs#tirerUnAccessoire`, testé).
+  Chaque jet, de « Tirer un accessoire » comme du dé d'un tableau, passe par `apresUnJet` : une malédiction tirée rend l'accessoire maudit, ou le
+  détruit s'il l'était déjà (par une malédiction ou par la case « Maudit » cochée) ; **le dé de l'étape 1** commence un nouvel accessoire (R94 garde
+  l'emplacement dans la relance : relancer l'emplacement, c'est un autre accessoire) : ni maudit ni détruit, et rien d'autre ne change (propriété,
+  effet, monture, gemmes) ; **un dé jeté sur un accessoire détruit** (étape 1, 2 ou 3, le dé d'acquis d'une compétence compris) commence aussi un nouvel
+  accessoire avant d'appliquer la transition : un accessoire détruit ne revient jamais (« sans troisième tirage »), l'emplacement reste s'il n'est pas
+  relancé ; **le dé de l'étape 2** retire un effet « MALÉDICTION » choisi (relancer l'étape 2, c'est refaire les étapes 2 et 3 ; un autre effet reste
+  si la propriété est la même). « Tirer un accessoire » repart de zéro, ne tire l'étape 1 qu'une fois et s'arrête à la destruction ; un dé de
+  tableau garde ce qu'il ne relance pas. **Un clic** n'est pas un jet : il ne commence pas d'accessoire, et une ligne de malédiction cliquée rend
+  l'accessoire maudit, jamais détruit. « Détruit » ne tient que tant que la propriété ou l'effet choisi est une malédiction (`etatDeMalediction`) :
+  choisir une propriété ou un effet qui n'en est pas une le lève (l'accessoire reste maudit), décocher « Maudit », « Tout effacer » et « Tirer un
+  accessoire » lèvent tout ; cliquer un emplacement ou une monture n'y change rien. Le texte des règles de la page (la source) n'est pas réécrit :
+  l'aide sous les boutons et l'encart disent la décision.
+  Rien n'est inversé ni calculé : l'encart le dit (`noteDeMalediction`) — détruit : l'emplacement, la propriété et l'effet de la seconde malédiction,
+  la monture si elle a été choisie à la main (pas celle d'office), sans niveau, gemmes ni prix, « Seconde malédiction : l'accessoire est détruit et
+  tombe en poussière. » ; une malédiction choisie : relancer depuis l'étape 2, même emplacement.
 - **Encart** (`src/scripts/accessoires.mjs`) : identité, propriété, effet (et sa remarque), niveau, gemmes avec la qualité de leur niveau (phrase des règles :
   classique aux niveaux 1 et 2, raffinée aux 3 et 4, parfaite au 5) et le prix d'un quart de chacune, monture, prix écrit dans le tableau, case « Maudit ».
   Choisir un effet choisit d'office la monture de son niveau tant qu'on n'en a pas choisi une (le prix écrit d'un effet compte les quarts de gemme de la
@@ -458,12 +475,14 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
   état ; les gemmes cochées, le prix se calcule (`prixDeLAccessoire` : les quarts à la qualité du niveau + la monture, la composition des prix écrits,
   que `test/accessoires-db.test.mjs` vérifie sur chaque effet à gemmes imposées) : dans la ligne avec la monture de son niveau (comme les prix écrits
   du tableau), dans l'encart avec la monture choisie.
-  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1`).
+  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1&detruit=1`),
+  lu tel quel (aucune transition à la lecture ; `detruit=1` n'est retenu qu'avec une malédiction choisie, et il implique `maudit`).
 - **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
   (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
 - Sans JavaScript : tous les tableaux, l'un après l'autre, sans encart, dé, curseur ni case à cocher. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
-  chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit).
+  chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit), `accessoires-script.test.mjs` (le script dans un faux navigateur : malédiction,
+  R94).
 
 ## Composants (`/ressources/composants/`) : tout ce qui sert à fabriquer sans être consommé
 
