@@ -5,7 +5,8 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki]            écrit les pages
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki] --verifier n'écrit rien, contrôle
-    (--historique <fichier> : l'historique des modifications du site, data/rows/historique_modification.sql par défaut)
+    (--historique <fichier> : l'historique des modifications du site, data/rows/historique_modification.sql par défaut ;
+     --vocabulaire <fichier> : les mots-clés, data/rows/mot_cle.sql par défaut)
 
 puis `npm run db:sync-pages` (depuis client/) : les pages sont de la famille `docs` (première source « Google Doc « … » »), elles entrent dans
 `data/rows` par `tools/db/pages_md.py sync`.
@@ -58,8 +59,10 @@ SOURCES = ['Google Doc « CODEX Maverick »', f'https://docs.google.com/document
 TYPE = 'lore'
 SCHEMA = os.path.join(RACINE, 'data', 'schema.sql')
 HISTORIQUE = os.path.join(RACINE, 'data', 'rows', 'historique_modification.sql')
+VOCABULAIRE = os.path.join(RACINE, 'data', 'rows', 'mot_cle.sql')
 
-# Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore).
+# Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore). Une page ne porte que ceux du vocabulaire du site de dev
+# (migration 0056 : un import ne crée jamais de mot-clé, ceux qui manquent ne sont pas écrits : vocabulaire()) ; depuis 0056, « codex » seul.
 PARTIES = {
     'Au début …': 'histoire',
     'Les Divinités': 'divinité',
@@ -250,16 +253,21 @@ def nom_et_reste(titre):
 
 
 class Codex:
-    def __init__(self, lignes):
+    def __init__(self, lignes, vocabulaire=None):
         self.racine = arbre(lignes)
         self.pages = {}       # slug -> page
         self.ordre = []
+        self.vocabulaire = vocabulaire   # écriture -> libellé du mot-clé, ou None (vocabulaire()) ; None : les mots-clés tels que le découpage les donne
 
     def page(self, titre, corps, tags, resume=None, aliases=()):
         slug = T.normalize(titre)
         if slug in self.pages:
             raise ValueError(f'deux pages pour le même titre : {titre!r}')
-        p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=['codex'] + [t for t in tags if t],
+        tags = ['codex'] + [t for t in tags if t]
+        if self.vocabulaire:
+            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun
+            tags = list(dict.fromkeys(libelle for libelle in map(self.vocabulaire, tags) if libelle))
+        p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=tags,
                  resume=resume if resume is not None else premiere_phrase(corps), aliases=list(aliases))
         self.pages[slug] = p
         self.ordre.append(slug)
@@ -477,14 +485,33 @@ def du_codex(chemin):
     return (data.get('sources') or [None])[0] == SOURCES[0]
 
 
+def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
+    """Les mots-clés qu'une page du Codex peut porter : une fonction écriture -> libellé du mot-clé du vocabulaire (data/rows/mot_cle.sql) qu'elle
+    désigne, ou None. Même règle que l'import des pages (tools/db/maverick.py#mot_cle, historique du site de dev compris : une écriture qu'un mot-clé
+    renommé a quittée mène à lui) : un import ne crée jamais de mot-clé (migration 0056), db:sync-pages ne poserait pas une écriture inconnue."""
+    with open(schema, encoding='utf-8') as f:
+        texte = f.read()
+    db = sqlite3.connect(':memory:')
+    for table in ('mot_cle', 'historique_modification'):
+        db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
+    for fichier in (chemin, historique):
+        if os.path.exists(fichier):
+            with open(fichier, encoding='utf-8') as f:
+                db.executescript(f.read())
+
+    def libelle(ecriture):
+        ident = T.mot_cle(db, ecriture)
+        return db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] if ident else None
+    return libelle
+
+
 def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
     """Pages du Codex que le site de dev a modifiées (modifications rapatriées ou livrées : table historique_modification) -> slug -> leur état
     d'import : 'titre' et 'corps' (corps_md) = la valeur « avant » de la première modification de la colonne (absents : jamais modifiés), 'alias'
     = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs.
     Les mots-clés (vocabulaire mot_cle, migration 0043) : une page dont le site a retiré, fusionné (page_tag) ou renommé (mot_cle : son écriture est
     dans `tags:` des pages sur disque, `sur_disque` = slug -> texte) un mot-clé est aussi « modifiée par le site » ('mots_cles' : True) ; ses mots-clés
-    ne sont pas comparés au document, et une nouvelle écriture la garde telle quelle (sinon elle remettrait l'ancienne écriture, et db:sync-pages en
-    ferait un second mot-clé)."""
+    ne sont pas comparés au document, et une nouvelle écriture la garde telle quelle (sinon elle remettrait l'ancienne écriture)."""
     if not os.path.exists(historique):
         return {}
     with open(schema, encoding='utf-8') as f:
@@ -598,9 +625,9 @@ def pages_sur_disque(out):
     return pages
 
 
-def verifier(lignes, out, site):
-    """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import. -> (erreurs, nombre
-    de pages, nombre de pages modifiées par le site)."""
+def verifier(lignes, out, site, vocabulaire=None):
+    """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import, leurs mots-clés ceux du
+    vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site)."""
     pages = pages_sur_disque(out)
     a_l_import = {slug: etat_d_import(t, site.get(slug)) for slug, t in pages.items()}
     erreurs = []
@@ -632,7 +659,7 @@ def verifier(lignes, out, site):
                 erreurs.append(f'(1) ligne absente des pages, ligne {i} : {ligne.strip()[:100]!r}')
     if absentes > 20:
         erreurs.append(f'(1) … {absentes} lignes absentes au total')
-    attendu = Codex(lignes).construire()
+    attendu = Codex(lignes, vocabulaire).construire()
     for slug in sorted(set(attendu.pages) | set(pages)):
         if slug not in pages:
             erreurs.append(f'(3) page manquante sur disque : {TYPE}/{slug}')
@@ -651,9 +678,10 @@ def main(argv):
     source = option('--source', SOURCE)
     out = option('--out', OUT)
     site = pages_du_site(option('--historique', HISTORIQUE), sur_disque=pages_sur_disque(out))
+    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE))
     lignes = lire_lignes(source)
     if '--verifier' in argv:
-        erreurs, n, du_site = verifier(lignes, out, site)
+        erreurs, n, du_site = verifier(lignes, out, site, voc)
         for e in erreurs:
             print(e)
         if erreurs:
@@ -661,7 +689,7 @@ def main(argv):
             return 1
         print(f'{n} pages du Codex conformes au document' + (f' ({du_site} modifiées depuis par le site de dev, contrôlées dans leur état d\'import)' if du_site else ''))
         return 0
-    ecrire(Codex(lignes).construire(), out, site)
+    ecrire(Codex(lignes, voc).construire(), out, site)
     return 0
 
 

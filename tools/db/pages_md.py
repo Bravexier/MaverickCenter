@@ -182,8 +182,9 @@ def pages_differentes(rows, wiki):
     liens = {}
     for pid, v in db.execute('SELECT page_id, texte FROM alias ORDER BY page_id, ordre'):
         liens.setdefault(('alias', pid), []).append(v)
-    # un mot-clé se compare par sa clé : son écriture vit dans le vocabulaire (mot_cle, migration 0043), elle se change sur /recherche/ du site de dev
-    for pid, v in db.execute('SELECT t.page_id, m.libelle_cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre'):
+    # un mot-clé se compare par le mot-clé qu'il désigne : son écriture vit dans le vocabulaire (mot_cle, migration 0043), elle se change sur /recherche/
+    # du site de dev ; une écriture inconnue du vocabulaire ne compte pas (un import n'en crée pas : migration 0056 ; sync la signale)
+    for pid, v in db.execute('SELECT page_id, tag_id FROM page_tag ORDER BY page_id, ordre'):
         liens.setdefault(('page_tag', pid), []).append(v)
     for pid, texte in db.execute('SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre'):
         liens.setdefault(('source', pid), []).append(texte)
@@ -193,7 +194,7 @@ def pages_differentes(rows, wiki):
         p = md[pid]
         donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
         if (p['titre'], p['resume'], p['corps_md'], p['statut'], donnees) != base[pid] \
-           or [p['aliases'], [T.normalize(t) for t in p['tags']], p['sources']] != [liens.get((t, pid), []) for t in ('alias', 'page_tag', 'source')]:
+           or [p['aliases'], [i for _, i in T.mots_cles_poses(db, p['tags'])[0]], p['sources']] != [liens.get((t, pid), []) for t in ('alias', 'page_tag', 'source')]:
             diff.append(pid)
     return diff, sorted(set(md) - set(base)), sorted(set(base) - set(md))
 
@@ -202,14 +203,19 @@ def pages_differentes(rows, wiki):
 FAMILLES_SANS_IMPORTEUR = {'docs', 'exemple'}
 
 
-def rafraichir_pages(rows, wiki=None):
+def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
     """Remet à jour dans `data/rows` le CONTENU des pages (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources) qui ont changé dans les .md,
     pour TOUTES les familles. Les lignes typées qui se rattachent à une page (`page_entite`, capacités, sorts…) ne sont pas touchées : l'identifiant d'une page ne
-    change jamais ici. Une page peut être AJOUTÉE ou RETIRÉE seulement si elle est de la famille `docs` ou `exemple` (pas d'importeur typé : leur texte est la source) ;
+    change jamais ici. Un mot-clé de `tags:` absent du vocabulaire n'est pas posé (un import n'en crée pas : migration 0056) : (page, écriture), pour
+    toutes les pages des .md, va dans la liste `mots_cles_ignores` si elle est donnée (main les signale). Une page peut être AJOUTÉE ou RETIRÉE seulement si elle est de la famille `docs` ou `exemple` (pas d'importeur typé : leur texte est la source) ;
     pour toute autre famille, c'est l'importeur de la famille qui crée ou retire ses pages. Refuse aussi une page dont la provenance (famille) a changé.
     -> ids des pages mises à jour, ajoutées ou retirées (liste vide : rien à faire, aucun fichier réécrit)."""
     db = T.reconstruire(':memory:', rows)
     md = {p['id']: p for p in lire_pages_md(wiki)}
+    if mots_cles_ignores is not None:
+        # toutes les pages, changées ou non : une écriture inconnue ne change rien à data/rows (pages_differentes ne la compte pas), elle se signale
+        for pid in sorted(md):
+            mots_cles_ignores.extend((pid, libelle) for libelle in T.mots_cles_poses(db, md[pid]['tags'])[1])
     base = dict(db.execute('SELECT id, origine FROM page'))
     ajoutees, retirees = sorted(set(md) - set(base)), sorted(set(base) - set(md))
     interdites = [pid for pid in ajoutees if md[pid]['origine'] not in FAMILLES_SANS_IMPORTEUR] + [pid for pid in retirees if base[pid] not in FAMILLES_SANS_IMPORTEUR]
@@ -280,12 +286,15 @@ def main(argv):
             print('   ', pid)
         print('-> npm run db:sync-pages (puis commiter data/rows) ; une page ajoutée ou retirée passe par l\'importeur de sa famille')
         return 1
+    ignores = []
     try:
-        changees = rafraichir_pages(rows, wiki)
+        changees = rafraichir_pages(rows, wiki, ignores)
     except (RuntimeError, ValueError) as e:
         print(f'refusé : {e}')
         return 1
     print(f'{len(changees)} page(s) mise(s) à jour (modifiées, ajoutées ou retirées) dans data/rows' if changees else 'data/rows était déjà à jour')
+    if ignores:
+        print(T.signaler_mots_cles_ignores(ignores))
     return 0
 
 
