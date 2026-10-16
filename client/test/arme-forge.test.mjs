@@ -1,4 +1,4 @@
-// L'arme forgée de la page /ressources/armes/ (lib/arme-forge.mjs) : l'exemple du propriétaire, avec des valeurs écrites ici (pas lues dans la base :
+// L'arme forgée de l'onglet Armes de /ressources/equipement/ (lib/arme-forge.mjs) : l'exemple du propriétaire, avec des valeurs écrites ici (pas lues dans la base :
 // le site de dev peut les modifier) — Espadon (deux mains) en titane, amélioration +5.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

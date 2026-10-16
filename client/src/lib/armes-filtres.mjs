@@ -11,6 +11,13 @@
 export const PARAMETRE_DES_COMPETENCES = 'competence';
 export const PARAMETRE_DU_DEPART = 'depart';
 
+/**
+ * L'ancre que garde l'adresse des armes (`hash`, « #boucliers ») : la page « Équipement » a plusieurs onglets, dont l'ancre dit lequel est ouvert, et
+ * l'état de chacun est dans la même adresse ; l'ancre est donc gardée, sauf, quand une arme est ouverte, celle de la ligne d'une arme (« #arme-… »,
+ * `ancreDUneArme`), que le paramètre ?arme= remplace.
+ */
+export const ancreDesArmes = (hash, { armeOuverte, ancreDUneArme }) => (armeOuverte && ancreDUneArme ? '' : hash);
+
 /** « Arme de départ seulement » d'après le paramètre de l'adresse (« 1 »). */
 export const lireDepart = (valeur) => valeur === '1';
 

@@ -9,12 +9,12 @@
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
 // En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs ferme la fiche et ouvre tous les tableaux).
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
-// l'arme ; aucun paramètre en commun avec ceux des onglets Armures et Boucliers, src/scripts/armures.mjs : la même adresse garde les deux). Échap ne
-// ferme l'arme que si l'onglet est affiché.
+// l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état, et
+// l'ancre de l'onglet ouvert reste : lib/armes-filtres.mjs#ancreDesArmes). Échap ne ferme l'arme que si l'onglet est affiché.
 // En mode modification, pas de filtre : tout s'affiche.
 import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
 import {
-  armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
+  ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
 } from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
@@ -210,7 +210,15 @@ if (racine) {
       if (niveau) p.set('amelioration', String(niveau));
     }
     const q = p.toString().replace(/%2C/gi, ','); // ?competence=arc,arbalete
-    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${arme ? '' : location.hash}`);
+    // l'ancre de l'onglet ouvert reste (une arme rouverte au chargement dans un onglet caché ne l'efface pas), pas celle d'une ligne d'arme
+    let ancreDUneArme = false;
+    try {
+      ancreDUneArme = Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1)))?.classList.contains('arme'));
+    } catch {
+      // ancre mal formée : gardée telle quelle
+    }
+    const ancre = ancreDesArmes(location.hash, { armeOuverte: Boolean(arme), ancreDUneArme });
+    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${ancre}`);
   }
 
   function ouvrir(ligne, { defiler = false } = {}) {

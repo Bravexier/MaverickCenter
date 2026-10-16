@@ -1,13 +1,14 @@
-// Onglet « Bâtons magiques » de la page /ressources/equipement/ (demande du propriétaire, 2026-10-16 : « Il faudrait également un 4ème onglet pour les
+// Onglet « Bâtons magiques » de la page /ressources/equipement/ (demande du propriétaire, 2026-10-16 : « Il faudrait également un 4em onglet pour les
 // bâtons magiques du coup qui auront mieux leur place ici ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique », dont seules
 // les règles s'affichent (son introduction et « Comment fabriquer un bâton magique ? ») ; la page « Bâton magique » n'est plus construite, ses liens
 // mènent à l'onglet (lib/metiers.mjs#adresseDePage). Un bâton va aussi à la ceinture (décision R81 : vue v_objet_ceinture, dont la fiche de personnage
 // se sert) ; la page « Objets à la ceinture » renvoie à l'onglet.
-// Sans dépendance (sauf lib/ceinture-db.mjs, pur) : `chargerBatons` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/ceinture-db.mjs et lib/corps-composants.mjs, purs) : `chargerBatons` reçoit la base ouverte par lib/donnees.mjs.
 import { sectionDuCorps } from './ceinture-db.mjs';
+import { PAGE_DES_BATONS } from './corps-composants.mjs';
 
-/** La page des bâtons magiques : son introduction (avant le premier titre) et « Comment fabriquer un bâton magique ? ». */
-export const PAGE_DES_BATONS = 'ressources/baton-magique';
+/** La page des bâtons magiques (lib/corps-composants.mjs) : son introduction (avant le premier titre) et « Comment fabriquer un bâton magique ? ». */
+export { PAGE_DES_BATONS };
 export const TITRE_DE_LA_FABRICATION = '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?';
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));

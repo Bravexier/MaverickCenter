@@ -1,7 +1,7 @@
-/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les quatre onglets (Armes, Armures,
-   Boucliers, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux se suivent,
-   chacun sous son titre) ; l'onglet Bâtons magiques (components/equipement/BatonsMagiques.astro). Le contenu des autres onglets a son CSS :
-   styles/armes/armes.css, styles/armures/armures.css. */
+/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les cinq onglets (Armes, Armures,
+   Boucliers, Bâtons magiques, Accessoires : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux
+   se suivent, chacun sous son titre) ; l'onglet Bâtons magiques (components/equipement/BatonsMagiques.astro). Le contenu des autres onglets a son
+   CSS : styles/armes/armes.css, styles/armures/armures.css, styles/accessoires/accessoires.css. */
 main:has(.equipement) { max-width: 120rem; }
 .equipement {
   --eq: var(--accent);
