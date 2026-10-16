@@ -131,7 +131,8 @@ abandonne.
   innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une résistance
   au choix ou aléatoire (Drakos Orange, Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Pas encore : les objets.
   Les résistances et faiblesses des combinaisons de deux magies (R85, vue `v_resistance_combinaison`) ne sont pas affichées : « Il seront dans leur onglet
-  statistiques après qu'on ai finalisé toute la fiche de personnages. » (le propriétaire, 2026-10-16 ; l'endroit est à préciser avec lui le moment venu).
+  statistiques après qu'on ai finalisé toute la fiche de personnages. » ; pas dans la fiche : « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16) : la page
+  Statistiques du site (E12, `feuille-de-route.md`).
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'acquis d'une compétence va jusqu'à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes

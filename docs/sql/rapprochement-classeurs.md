@@ -63,7 +63,7 @@ de colonnes fabriquées ou de cellules recopiées ailleurs.
    chacune résistait à elle-même), gardée dans `resistance_magie` comme seconde lecture tant que la question était ouverte, est retirée avec ses deux vues
    et ses 5 écarts (migration `0051-resistance-arcane-corruption`) ; ses 210 cellules sont ignorées par le registre de la fiche.
 6. **Afficher les combinaisons de deux magies** (2026-10-16) : « Pas de suite. Il seront dans leur onglet statistiques après qu'on ai finalisé toute
-   la fiche de personnages. » : rien n'est affiché ; l'endroit sera précisé avec lui le moment venu (`docs/character-generator.md`).
+   la fiche de personnages. » ; l'endroit : « Non c'est pour la page du site plus tard » : la page Statistiques du site (E12, `docs/feuille-de-route.md`) ; rien n'est affiché d'ici là.
 
 ## Provenance incomplète (d2), non réparée
 

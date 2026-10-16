@@ -234,6 +234,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
   dieux ; niveau moyen et répartition des niveaux (`v_personnage_niveau`), en tout et par groupe ; calculées par le service, en agrégats seulement (aucune
   fiche privée n'est montrée), page Outils › Statistiques.
 - **Des règles** (sans comptes, dès le jalon A) : nombre de sorts par magie et par NPM, classes accessibles par race…, tirés de la base au build.
+  Les résistances et faiblesses des combinaisons de deux magies y vont (vue `v_resistance_combinaison`, R85, R86) : « Il seront dans leur onglet
+  statistiques après qu'on ai finalisé toute la fiche de personnages. », puis « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16).
 - **Ensuite** : les statistiques de la simulation de combats (étape 3).
 
 ### Ce qui vaut pour chaque évolution
