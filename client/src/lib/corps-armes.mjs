@@ -104,12 +104,20 @@ const ETIQUETTE_DE_L_IMPORTEUR = /^\*\*(?:Note|Commentaire résolu|Commentaire) 
 /** Début d'un bloc qui n'appartient plus à une entrée de plusieurs lignes : autre libellé, titre, tableau. */
 const AUTRE_BLOC = /^(\*\*|#|\|)/;
 
-/** L'entrée [début, fin[ qui commence à la ligne i (une ligne, ou le libellé et ses paragraphes), avec la ligne vide qui la suit. */
-function etendueDeLEntree(lignes, i, fin, surUneLigne) {
+/**
+ * L'entrée [début, fin[ qui commence à la ligne i (une ligne, ou le libellé et ses paragraphes), avec la ligne vide qui la suit. Une entrée sur
+ * plusieurs lignes (libellé, ligne vide, puis les paragraphes de la remarque) a au plus `blocs` paragraphes, ceux de la remarque d'avant, et
+ * s'arrête plus tôt à la ligne vide que suit un autre bloc (libellé, titre, tableau) : un paragraphe libre qui la suit dans la section reste.
+ */
+function etendueDeLEntree(lignes, i, fin, surUneLigne, blocs) {
   let j = i + 1;
   if (!surUneLigne) {
-    // libellé, ligne vide, puis les paragraphes, jusqu'à la ligne vide que suit un autre bloc (ou la fin de la section)
-    for (j = i + 2; j < fin; j++) if (lignes[j] === '' && (j + 1 >= fin || AUTRE_BLOC.test(lignes[j + 1]))) break;
+    let n = 0;
+    for (j = i + 2; j < fin; j++) {
+      if (lignes[j] !== '') continue;
+      n += 1;
+      if (n >= blocs || j + 1 >= fin || AUTRE_BLOC.test(lignes[j + 1])) break;
+    }
   }
   return [i, j < fin && lignes[j] === '' ? j + 1 : j];
 }
@@ -129,12 +137,14 @@ export function corpsAvecRemarqueDArme(corps, bornes, avant, apres, quoi = '') {
   if (avant) {
     const nom = nomDIntitule(avant);
     const sienne = etiquetteDeRemarque(avant.nom);
+    // les paragraphes de la remarque d'avant : ceux d'une entrée de l'importeur sur plusieurs lignes
+    const blocs = String(avant.remarque ?? '').split(/\n\s*\n/).filter((b) => b.trim()).length || Infinity;
     for (let i = finDeSection - 1; i > debut; i--) {
       const m = ETIQUETTE_DE_L_IMPORTEUR.exec(lignes[i]);
       const importee = m && sansEchappements(m[1]).endsWith(` (${nom})`);
       const ajoutee = lignes[i] === sienne || lignes[i].startsWith(`${sienne} : `);
       if (!importee && !ajoutee) continue;
-      const [a, b] = etendueDeLEntree(lignes, i, finDeSection, importee ? Boolean(m[2]) : lignes[i] !== sienne);
+      const [a, b] = etendueDeLEntree(lignes, i, finDeSection, importee ? Boolean(m[2]) : lignes[i] !== sienne, blocs);
       lignes.splice(a, b - a);
       finDeSection -= b - a;
     }

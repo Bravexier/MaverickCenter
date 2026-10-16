@@ -8,9 +8,8 @@
 //     Maladie H39 et Fiche de tour L12.
 // Les notes sont citées « **Note de la cellule « <intitulé> »** : <texte> », les fils « **Commentaire de la cellule « … »** : … »
 // (« Commentaire résolu » quand le fil est résolu), sous le tableau (ou le titre) qui porte la cellule, dans la même section.
-// Décision R91 (demande du propriétaire, 2026-10-16) : le fil de QA6 (la remarque de la Bombe perçante, qui datait des armes à feu) est supprimé
-// (modification du site de dev rapatriée : historique_modification) ; la page des armes ne cite plus le fil de l'import (la remarque d'une arme y
-// est désormais une entrée « Remarque de l'arme », lib/corps-armes.mjs), sa note de cellule (note_cellule) reste comme trace du classeur.
+// Le site de dev est la source de ce qu'il modifie : les pages se lisent dans leur état d'import (historique_modification, lib/historique-site.mjs).
+// Décision R91 : le site a retiré de la page des armes le fil de QA6 (la remarque de la Bombe perçante, qui datait des armes à feu) ; l'import le garde.
 //
 // Deux familles de tests :
 //   - le contenu RÉEL des 14 pages : textes exacts, page, section, intitulé de la cellule, nombre total ;
@@ -23,6 +22,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/ressources', import.meta.url));
 const equipement = fileURLToPath(new URL('../../tools/sheets/equipement.py', import.meta.url));
@@ -40,6 +41,9 @@ const PAGES_DIVERS = ['familiers', 'maison', 'machine-de-guerresiege', 'fievre-d
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const lire = (slug) => readFileSync(join(dossierPages, `${slug}.md`), 'utf8');
+const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
+/** Le corps d'une page tel que l'import l'a écrit (avant les modifications du site de dev), sous un en-tête vide : la forme que lit `corps`. */
+const lireDImport = (slug) => `---\n---\n${historique.valeurDImport('page', { id: `ressources/${slug}` }, 'corps_md')}`;
 const corps = (texte) => texte.split('\n---\n').slice(1).join('\n---\n');
 const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)])/g, '$1').replace(/<br>/g, ' ').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
 const norme = (s) => s.replace(/\s+/g, ' ').trim();
@@ -97,6 +101,7 @@ const ATTENDUS = [
   ['equipement-inventaire', 'Commentaire résolu', 'MONNAIE', 'MONNAIE', T.A1_1, 'A1'],
   ['equipement-inventaire', 'Commentaire', 'MONNAIE', 'MONNAIE', T.A1_2, 'A1'],
   ['equipement-inventaire', 'Commentaire', 'MONNAIE', 'MONNAIE', T.A1_3, 'A1'],
+  ['armes', 'Commentaire résolu', 'Effet (Bombe perçante)', 'BOMBES - D6 (Disponible en l\'an 150) [Un matériau permet d\'en faire 10]', T.QA6, 'QA6'],
   ['maladie', 'Commentaire', 'Effets', 'Tétanos', T.H39, 'H39'],
   ['fiche-de-tour', 'Commentaire', 'PENDANT LE TOUR (JOUEUR)', null, T.L12, 'L12'],
 ];
@@ -107,7 +112,7 @@ const ATTENDUS = [
 
 for (const [page, genre, intitule, section, texte, cellule] of ATTENDUS) {
   test(`page ${page} : ${genre.toLowerCase()} de la cellule ${cellule}, texte exact, sous « ${intitule} », section ${section ?? '(sans titre)'}`, () => {
-    const trouves = commentaires(lire(page)).filter((e) => e.texte === texte);
+    const trouves = commentaires(lireDImport(page)).filter((e) => e.texte === texte);
     assert.equal(trouves.length, 1, `${page} : « ${texte.slice(0, 50)}… » doit figurer exactement une fois`);
     const [e] = trouves;
     assert.equal(e.genre, genre);
@@ -128,13 +133,13 @@ test('une note sur une seule ligne tient sur la ligne de son libellé', () => {
   assert.ok(lire('maladie').includes(`**Commentaire de la cellule « Effets »** : ${T.H39}`));
 });
 
-test('les 5 fils (6 moins celui de QA6, supprimé : décision R91) sont les seuls commentaires « Commentaire » / « Commentaire résolu » des 14 pages, les 6 notes les seules notes', () => {
+test('les 6 fils sont les seuls commentaires « Commentaire » / « Commentaire résolu » des 14 pages, les 6 notes les seules notes', () => {
   const genres = { Note: 0, Commentaire: 0, 'Commentaire résolu': 0 };
   for (const slug of [...PAGES_EQUIPEMENT, ...PAGES_DIVERS]) {
     assert.ok(existsSync(join(dossierPages, `${slug}.md`)), `${slug} : page absente`);
-    for (const e of commentaires(lire(slug))) genres[e.genre] += 1;
+    for (const e of commentaires(lireDImport(slug))) genres[e.genre] += 1;
   }
-  assert.deepEqual(genres, { Note: 6, Commentaire: 4, 'Commentaire résolu': 1 });
+  assert.deepEqual(genres, { Note: 6, Commentaire: 4, 'Commentaire résolu': 2 });
 });
 
 test('aucun ancien libellé : ni « Note de cellule : », ni « Commentaires de cellule », ni « Commentaire joint », ni section de secours', () => {
@@ -147,12 +152,19 @@ test('aucun ancien libellé : ni « Note de cellule : », ni « Commentaires de 
   }
 });
 
-test('la cellule fusionnée QA5:QL6 : le fil de QA6 (la remarque de la Bombe perçante) n’est plus cité sous le tableau (décision R91)', () => {
-  const armes = lire('armes');
-  assert.ok(armes.includes('| Bombe perçante |'), 'la ligne de la Bombe perçante');
-  assert.doesNotMatch(armes, /Commentaire résolu de la cellule « Effet \(Bombe perçante\) »/);
+test('la cellule fusionnée QA5:QL6 : le fil de QA6 est cité une fois, sous l’effet de la Bombe perçante, pas ailleurs', () => {
+  const armes = lireDImport('armes');
+  assert.equal(armes.split(T.QA6.slice(0, 40)).length - 1, 1);
   const i = armes.indexOf('| Bombe perçante |');
-  assert.doesNotMatch(armes.slice(i, armes.indexOf('\n', i)), /Il faut perdre un bras/, 'ni dans la cellule du tableau');
+  const j = armes.indexOf('**Commentaire résolu de la cellule « Effet (Bombe perçante) »**');
+  assert.ok(i > 0 && j > i, 'le fil doit venir après la ligne de la Bombe perçante');
+  assert.doesNotMatch(armes.slice(i, armes.indexOf('\n', i)), /Il faut perdre un bras/, 'le fil n’est plus dans la cellule du tableau');
+});
+
+test('décision R91 : le fil de QA6 n’est plus dans la page des armes depuis que le site de dev a retiré la remarque de la Bombe perçante', () => {
+  const retiree = historique.modifiee('arme', { id: 'ressources/armes#arme:bombes:bombe-percante' }, 'remarque');
+  assert.ok(retiree, 'la remarque modifiée par le site (historique_modification)');
+  assert.doesNotMatch(lire('armes'), /Commentaire résolu de la cellule « Effet \(Bombe perçante\) »/, 'la page construite ne cite plus le fil de l’import');
 });
 
 test('aucune ligne de tableau ne porte plus de commentaire : ils sont déplacés sous le tableau, les cellules gardent la valeur de la source', () => {
@@ -190,16 +202,6 @@ function appel(script, code, donnees = {}) {
 
 const feuille = (name, cells, merged = []) => ({ name, state: 'visible', max_row: 60, max_col: 500, merged, cells });
 const NOTE_A = "Si le carreau touche à 2 - 4 portée = Surdité 1";
-
-test('equipement.py : le fil de Armes!QA6 (décision R91) n’est plus lu ni attendu dans la page ; un autre texte à la même adresse l’est', { skip: sansPython }, () => {
-  const code = 'sh = ext.Sheet(req["raw"])\nresult = {"lus": {ext.ref_of(*k): [list(x) for x in v] for k, v in sh.comments.items()}, '
-    + '"attendus": [list(x) for x in ext.raw_comments({"sheets": [req["raw"]]}, ["Armes"])]}';
-  // QA = colonne 443 ; la plage fusionnée QA5:QA6 porte l'effet en QA5, le fil sur QA6 (cellule non principale), comme dans le classeur
-  const armes = (fil) => feuille('Armes', [{ r: 5, c: 443, v: "1 - 4 portée, dégâts d'estoc." }, { r: 6, c: 443, v: '', threads: [fil] }], ['QA5:QA6']);
-  assert.deepEqual(appel(equipement, code, { raw: armes({ text: T.QA6, done: true }) }).ok, { lus: {}, attendus: [] });
-  assert.deepEqual(appel(equipement, code, { raw: armes({ text: 'Un autre fil.' }) }).ok,
-    { lus: { QA5: [['thread', 'Un autre fil.']] }, attendus: [['Armes', 'QA6', 'thread', 'Un autre fil.']] });
-});
 
 for (const [nom, script] of [['equipement.py', equipement], ['divers-craft.py', diversCraft]]) {
   const SHEET = 'ext.Sheet(req["raw"])';

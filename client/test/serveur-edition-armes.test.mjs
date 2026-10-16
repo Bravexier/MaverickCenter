@@ -12,7 +12,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { analyserEffetDArme, totalDesAmeliorations } from '../src/lib/arme-champs.mjs';
-import { ligneDAmelioration, ligneDArme, ligneDeMateriau, ligneDuTotal, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
+import { ligneDAmelioration, ligneDArme, ligneDeMateriau, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { attributEd, lireAttributEd, TABLES } from '../src/lib/edition-modele.mjs';
@@ -80,20 +80,21 @@ test('arme : nom, mains, type, catégorie et case de départ ; la cellule Nom et
 test('arme : la remarque (décision R91 : sa présence et son contenu) se saisit, se modifie et se vide ; l’entrée du corps suit', () => {
   const avant = ligne("SELECT a.* FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 AND a.effet IS NOT NULL ORDER BY a.id DESC LIMIT 1");
   assert.equal(lireAttributEd(attributEd('arme', { id: avant.id }, 'remarque'))?.champ.type, 'texte', 'la remarque se saisit');
+  const entree = (remarque) => ligneDeRemarque({ ...avant, remarque });
+  const poser = (remarque, ancienne) => {
+    const r = enregistrer([{ op: 'modifier', table: 'arme', cle: { id: avant.id }, valeurs: { remarque }, avant: { remarque: ancienne } }]);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  };
   const texte = `Remarque d’essai ${process.pid}.`;
-  const poser = (remarque, ancienne) => enregistrer([{ op: 'modifier', table: 'arme', cle: { id: avant.id }, valeurs: { remarque }, avant: { remarque: ancienne } }]);
-  let r = poser(texte, avant.remarque);
-  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  poser(texte, avant.remarque);
   assert.equal(ligne('SELECT remarque FROM arme WHERE id = ?', avant.id).remarque, texte);
-  const entree = `**Remarque de l’arme « ${avant.nom} »** : ${texte}`;
-  assert.equal(corps().split('\n').filter((l) => l === entree).length, 1, 'une entrée dans le corps');
-  r = poser('Remarque\n\nrécrite.', texte);
-  assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.ok(!corps().includes(texte) && corps().includes(`**Remarque de l’arme « ${avant.nom} »** : Remarque récrite.`));
-  r = poser('', 'Remarque\n\nrécrite.');
-  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(corps().split('\n').filter((l) => l === entree(texte)).length, 1, 'une entrée dans le corps');
+  poser('', texte);
   assert.equal(ligne('SELECT remarque FROM arme WHERE id = ?', avant.id).remarque, null, 'vidée : pas de remarque (ni d’étoile)');
-  assert.ok(!corps().includes(`**Remarque de l’arme « ${avant.nom} »**`), 'l’entrée du corps part');
+  assert.ok(!corps().includes(entree(texte)), 'l’entrée du corps part');
+  // une remarque sur deux paragraphes, laissée en place : le rejeu du journal (plus bas) refait la même entrée
+  poser('Remarque\n\nrécrite.', null);
+  assert.ok(corps().split('\n').includes(entree('Remarque\n\nrécrite.')) && entree('Remarque\n\nrécrite.').endsWith(' : Remarque récrite.'));
 });
 
 test('les armes de monstres ne se modifient pas ici (décision R45)', () => {

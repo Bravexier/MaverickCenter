@@ -47,36 +47,54 @@ test('une ligne qui n’est plus dans le corps : ErreurCorpsArmes (le service re
 });
 
 // La remarque d'une arme (demande du propriétaire, décision R91 : « pouvoir modifier la présence ou non de la remarque et en modifier le contenu ») :
-// une entrée sous le tableau de sa famille, qui suit la remarque ; celles de l'importeur (fil de commentaires de la cellule) partent avec elle.
-const bombe = armes.find((a) => a.id === 'ressources/armes#arme:bombes:bombe-percante');
+// une entrée sous le tableau de sa famille, qui suit la remarque ; celles de l'importeur (fil ou note de la cellule) partent avec elle.
+const BOMBE = 'ressources/armes#arme:bombes:bombe-percante';
 const FIL_QA6 = "Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considéré comme un Canon d'artifice.";
+const historique = historiqueSite(db);
+const famillesDeLaPage = new Set(db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 1').all().map((f) => f.id));
+/** Le nom d'une arme dans l'intitulé d'un commentaire de l'importeur : la première ligne de sa cellule Nom. */
+const intitule = (a) => String(a.nom_brut ?? a.nom).split('\n').map((l) => l.trim().replace(/\s+/g, ' ')).find(Boolean);
 const bornesDe = (a) => (lignes) => {
   const nom = familles.find((f) => f.id === a.famille_id).nom;
   const debut = lignes.findIndex((l) => l === `## ${nom}` || l.startsWith(`## ${nom} `));
   const fin = lignes.findIndex((l, i) => i > debut && /^## /.test(l));
   return [debut, fin < 0 ? lignes.length : fin];
 };
+/**
+ * Une arme témoin de la page, sans remarque, et le corps qui va avec : la Bombe perçante, sinon (supprimée sur le site de dev, R52) la première arme
+ * d'une famille de la page qui a une voisine ; le site de dev a pu lui donner une remarque, retirée ici.
+ */
+function temoin() {
+  const a = armes.find((x) => x.id === BOMBE)
+    ?? armes.find((x) => famillesDeLaPage.has(x.famille_id) && armes.some((y) => y.famille_id === x.famille_id && intitule(y) !== intitule(x)));
+  const sans = { ...a, remarque: null };
+  return { a: sans, corpsSans: corpsDesArmesApres(corps, 'arme', a, sans, contexte) };
+}
 
 test('décision R91 : la remarque de la Bombe perçante (fil de sa cellule QA6) retirée par une modification du site de dev ; l’import la garde', () => {
-  assert.ok(bombe, 'la Bombe perçante');
-  const historique = historiqueSite(db);
-  assert.equal(historique.valeurDImport('arme', { id: bombe.id }, 'remarque'), FIL_QA6, 'la remarque de l’import');
-  assert.ok(historique.modifiee('arme', { id: bombe.id }, 'remarque'), 'modifiée par le site (historique_modification)');
+  assert.equal(historique.valeurDImport('arme', { id: BOMBE }, 'remarque'), FIL_QA6, 'la remarque de l’import');
+  assert.ok(historique.modifiee('arme', { id: BOMBE }, 'remarque'), 'modifiée par le site (historique_modification)');
   // l'état courant : le corps ne cite plus le fil de l'import (une remarque remise sur le site y serait une entrée « Remarque de l’arme »)
   assert.ok(!/Commentaire résolu de la cellule « Effet \(Bombe perçante\) »/.test(corps));
-  if (bombe.remarque === null) assert.ok(!corps.includes('Il faut perdre un bras'), 'sans remarque, le corps ne cite pas le fil');
 });
 
-// les essais qui suivent partent de la Bombe perçante sans remarque (le site de dev a pu lui en remettre une) et du corps qui va avec
-const sansRemarque = { ...bombe, remarque: null };
-const corpsSans = corpsDesArmesApres(corps, 'arme', bombe, sansRemarque, contexte);
+test('état courant : chaque remarque d’arme a une entrée dans le corps, et chaque entrée « Remarque de l’arme » est la remarque d’une arme', () => {
+  const entrees = corps.split('\n').filter((l) => l.startsWith('**Remarque de l’arme « '));
+  const parLeSite = armes.filter((a) => a.remarque !== null && historique.modifiee('arme', { id: a.id }, 'remarque'));
+  assert.deepEqual([...entrees].sort(), parLeSite.map(ligneDeRemarque).sort(), 'une entrée par remarque saisie sur le site, aucune de plus');
+  // une remarque de l'import que le site n'a pas touchée : l'entrée de l'importeur, qui nomme la cellule Nom de l'arme
+  for (const a of armes.filter((x) => x.remarque !== null && !historique.modifiee('arme', { id: x.id }, 'remarque'))) {
+    assert.ok(corps.includes(` (${intitule(a)}) »**`), `${a.id} : l’entrée de l’importeur`);
+  }
+});
 
 test('remarque d’une arme : ajoutée (une entrée sous le tableau de sa famille), modifiée, retirée ; inchangée, le corps ne bouge pas', () => {
-  const a = sansRemarque;
+  const { a, corpsSans } = temoin();
   const avec = { ...a, remarque: 'Une remarque *neuve*\nsur deux lignes.' };
   const ajoute = corpsDesArmesApres(corpsSans, 'arme', a, avec, contexte);
   const entree = ligneDeRemarque(avec);
-  assert.equal(entree, '**Remarque de l’arme « Bombe perçante »** : Une remarque \\*neuve\\* sur deux lignes.');
+  assert.ok(entree.endsWith('** : Une remarque \\*neuve\\* sur deux lignes.'), 'sur une ligne, échappée');
+  if (a.id === BOMBE) assert.equal(entree, '**Remarque de l’arme « Bombe perçante »** : Une remarque \\*neuve\\* sur deux lignes.');
   const lignes = ajoute.split('\n');
   const i = lignes.indexOf(entree);
   const [debut, fin] = bornesDe(a)(lignes);
@@ -88,30 +106,34 @@ test('remarque d’une arme : ajoutée (une entrée sous le tableau de sa famill
   assert.ok(!modifie.includes(entree) && modifie.includes(ligneDeRemarque(autre)), 'une seule entrée, la nouvelle');
   assert.equal(corpsDesArmesApres(modifie, 'arme', autre, a, contexte), corpsSans, 'vidée : le corps redevient celui d’avant');
   // renommée avec sa remarque : l'entrée suit le nom ; supprimée : l'entrée part avec sa ligne
-  const renommee = { ...autre, nom: 'Bombe à clous', nom_brut: 'Bombe à clous' };
+  const renommee = { ...autre, nom: `${a.nom} à clous`, nom_brut: `${a.nom} à clous` };
   const apresRenommage = corpsDesArmesApres(modifie, 'arme', autre, renommee, contexte);
   assert.ok(apresRenommage.includes(ligneDeRemarque(renommee)) && !apresRenommage.includes(ligneDeRemarque(autre)));
   const supprimee = corpsDesArmesApres(apresRenommage, 'arme', renommee, null, contexte);
   assert.ok(!supprimee.includes('Autre texte.') && !supprimee.includes(ligneDArme(renommee)));
 });
 
-test('remarque d’une arme : l’entrée de l’importeur (fil ou note de sa cellule, sur une ou plusieurs lignes) part quand la remarque change', () => {
-  const a = sansRemarque;
-  assert.ok(corpsSans.split('\n').includes(ligneDArme(a)), 'la ligne de la Bombe perçante');
-  // le fil de l'import, sur une ligne, sous le tableau des bombes (le corps d'avant la décision R91) : vider la remarque le retire, et lui seul
+test('remarque d’une arme : l’entrée de l’importeur (fil ou note de sa cellule, sur une ou plusieurs lignes) part quand la remarque change, et elle seule', () => {
+  const { a, corpsSans } = temoin();
+  assert.ok(corpsSans.split('\n').includes(ligneDArme(a)), 'la ligne de l’arme témoin');
   const tableau = corpsSans.split('\n');
   const [, fin] = bornesDe(a)(tableau);
   let derniere = fin - 1;
   while (!tableau[derniere].startsWith('|')) derniere -= 1;
-  const avecFil = [...tableau.slice(0, derniere + 1), '', `**Commentaire résolu de la cellule « Effet (Bombe perçante) »** : ${FIL_QA6}`, ...tableau.slice(derniere + 1)].join('\n');
+  const sousLeTableau = (...ajout) => [...tableau.slice(0, derniere + 1), '', ...ajout, ...tableau.slice(derniere + 1)].join('\n');
+  // un fil sur une ligne (comme celui de QA6 sous la Bombe perçante avant la décision R91) : vider la remarque le retire, et lui seul
+  const avecFil = sousLeTableau(`**Commentaire résolu de la cellule « Effet (${intitule(a)}) »** : ${FIL_QA6}`);
   assert.equal(corpsDesArmesApres(avecFil, 'arme', { ...a, remarque: FIL_QA6 }, a, contexte), corpsSans, 'le fil retiré, rien d’autre');
-  // une note sur plusieurs paragraphes (libellé seul, puis le texte) d'une arme de la famille
-  const note = ['**Note de la cellule « Nom (Bombe perçante) »**', '', 'Premier paragraphe.', '', 'Second paragraphe.'];
-  const avecNote = [...tableau.slice(0, derniere + 1), '', ...note, ...tableau.slice(derniere + 1)].join('\n');
-  const remplace = corpsDesArmesApres(avecNote, 'arme', { ...a, remarque: 'Premier paragraphe.\n\nSecond paragraphe.' }, { ...a, remarque: 'Neuve.' }, contexte);
-  assert.ok(!remplace.includes('paragraphe') && remplace.includes(ligneDeRemarque({ ...a, remarque: 'Neuve.' })));
+  // une note sur plusieurs paragraphes (libellé seul, puis le texte) ; un paragraphe libre qui la suit reste
+  const note = [`**Note de la cellule « Nom (${intitule(a)}) »**`, '', 'Premier paragraphe.', '', 'Second paragraphe.'];
+  const neuve = { ...a, remarque: 'Neuve.' };
+  const remplace = corpsDesArmesApres(sousLeTableau(...note), 'arme', { ...a, remarque: 'Premier paragraphe.\n\nSecond paragraphe.' }, neuve, contexte);
+  assert.ok(!remplace.includes('paragraphe') && remplace.includes(ligneDeRemarque(neuve)));
+  const avecTexteLibre = sousLeTableau(...note, '', 'Texte libre de la section.');
+  const garde = corpsDesArmesApres(avecTexteLibre, 'arme', { ...a, remarque: 'Premier paragraphe.\n\nSecond paragraphe.' }, neuve, contexte);
+  assert.ok(garde.includes('Texte libre de la section.') && !garde.includes('Second paragraphe.'), 'la note seule part');
   // celle d'une autre arme reste
-  const voisine = armes.find((x) => x.famille_id === a.famille_id && x.id !== a.id);
-  const avecVoisine = [...tableau.slice(0, derniere + 1), '', `**Note de la cellule « Effet (${voisine.nom}) »** : Note voisine.`, ...tableau.slice(derniere + 1)].join('\n');
-  assert.ok(corpsDesArmesApres(avecVoisine, 'arme', a, { ...a, remarque: 'Neuve.' }, contexte).includes('Note voisine.'));
+  const voisine = armes.find((x) => x.famille_id === a.famille_id && intitule(x) !== intitule(a));
+  const avecVoisine = sousLeTableau(`**Note de la cellule « Effet (${intitule(voisine)}) »** : Note voisine.`);
+  assert.ok(corpsDesArmesApres(avecVoisine, 'arme', a, neuve, contexte).includes('Note voisine.'));
 });
