@@ -427,16 +427,20 @@ export const TABLES = {
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2,5 »)', requis: true },
     },
   },
-  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits
+  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits, et son poids (la couleur de sa
+  // case dans l'onglet : décision R92, migration 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de
+  // la source a une couleur)
   bouclier: {
     libelle: 'Bouclier',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       defense_brut: { type: 'ligne', libelle: 'Défense (« +20AP +25AM »)', requis: true },
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
+      poids_id: { type: 'choix', libelle: 'Poids', requis: true, liste: 'poidsDeBouclier' },
     },
   },
-  // un poids de bouclier (liste de l'onglet « Bouclier », que la source ne relie pas aux formes) : son nom et sa Force minimum
+  // un poids de bouclier (liste de l'onglet « Bouclier », que la source ne relie pas aux formes : chaque bouclier porte le sien, poids_id) : son nom et
+  // sa Force minimum
   bouclier_poids: {
     libelle: 'Poids de bouclier',
     colonnes: {

@@ -14,6 +14,7 @@ import { htmlDeLigneDArme } from '../src/lib/armes-rendu.mjs';
 import { echellesDesCartes as lesEchelles, magiesDesCibles as lesMagiesDesCibles, renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
 import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
+import { poidsDeBouclier as lesPoidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -27,6 +28,8 @@ const objetsDuButin = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet
 const magies = db.prepare('SELECT id, nom FROM magie ORDER BY ordre').all();
 // les listes des rendus de l'onglet Armes de la page « Équipement » (types d'armes, solidité de base : lib/armes-db.mjs#contexteDesArmes)
 const { typesDArmes, soliditeDesArmes } = contexteDesArmes(db);
+// les poids de boucliers (rendu « bouclier-poids » de l'onglet Boucliers : lib/armures-db.mjs#poidsDeBouclier, comme serveur/edition.mjs#listes)
+const poidsDeBouclier = lesPoidsDeBouclier(db);
 const renvoisAuxDegatsMoyens = lesRenvois(db);
 const echellesDesCartes = lesEchelles(db);
 const magiesDesCibles = lesMagiesDesCibles(db);
@@ -165,7 +168,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, pastilles }));
+      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, pastilles }));
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }

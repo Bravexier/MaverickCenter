@@ -66,6 +66,7 @@ import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
+import { poidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
   libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
@@ -1789,6 +1790,8 @@ export function listes(db) {
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,
+    // la page des armures : les poids de boucliers (choix « Poids » d'un bouclier, rendu « bouclier-poids » : décision R92)
+    poidsDeBouclier: poidsDeBouclier(db),
     // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45)
     famillesDArmes: db.prepare('SELECT id AS valeur, nom AS libelle FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre').all(),
     // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)

@@ -183,7 +183,11 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
    le classeur est dans la base, et toute la base dans le classeur. Il ne voit pas une valeur changée en une autre que la ligne écrit déjà ailleurs (la
    barrière d'une classe passée de 1 à 5, quand la même classe écrit « Bouclier classe 1 à 5 »), des nombres permutés, ni un ajout fait de mots que la
    ligne contient déjà. Une formule se lit comme un texte (sans ses blancs), une liste de validation par ses choix écrits (sur une saisie vide), jamais
-   par la plage qu'elle cite. **Pour une mise à jour, c'est le diff des instantanés qui fait foi** (étape 3), case par case.
+   par la plage qu'elle cite. Il ne voit pas non plus une donnée portée par la **mise en forme** d'une cellule, que l'instantané (texte, note, fil)
+   ne garde pas : le poids d'un bouclier est la couleur de fond de sa case dans l'onglet « Bouclier » (décision R92, `bouclier.poids_id`, entrée
+   `derivees` du registre) ; sa référence case par case est `data/migrations/0054-poids-des-boucliers.json`, et une mise à jour du classeur relit les
+   couleurs avec le connecteur Google Sheets de la session (`includeGridData`, `effectiveFormat.backgroundColor`), jamais depuis l'instantané. **Pour
+   une mise à jour, c'est le diff des instantanés qui fait foi** (étape 3), case par case.
 3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané (étape 1), puis
    `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump <nouvel instantané> --avant sources/raw/classeurs/<classeur>.json
    [--sortie <changements.md>]` : chaque cellule changée (valeur, note, fil), avant et après, et les lignes de la base qui la citent, avec ce que le site

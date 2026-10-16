@@ -215,7 +215,10 @@ html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srg
 .arme-fiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--arm); }
 .arme-fiche__tuile:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
 .arme-fiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
-.arme-fiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* la valeur ne déborde pas de sa tuile : un coût en plusieurs monnaies passe à la ligne entre deux monnaies, jamais entre un nombre et sa monnaie
+   (.montant__part), et la tuile grandit (comme la fiche des armures : demande du propriétaire, 2026-10-16) */
+.arme-fiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; max-width: 100%; }
+.arme-fiche__tuile-val .montant { display: inline-flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; row-gap: 0.1em; }
 .arme-fiche__tuile-detail { font-size: var(--fs-xs); color: var(--muted); }
 /* effets (types de dégâts, portée, effets de l'arme et du matériau), description, origine : à la suite, sans titre */
 .arme-fiche__infos { display: grid; gap: 0.35rem; margin: 0.7rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); }

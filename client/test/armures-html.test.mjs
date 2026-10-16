@@ -2,7 +2,8 @@
 // pour la page et ses onglets) : rendus depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
 // dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
 // liste des armures (« Une liste plus classique est disponible également ») et les armures particulières, les pièces (tableau FABRICATION) et les
-// améliorations ; la forme et la matière d'un bouclier (« forme + matière »), la liste des boucliers ; le tableau MATÉRIAUX ; les champs du mode
+// améliorations ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
+// replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; le tableau MATÉRIAUX ; les champs du mode
 // modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
@@ -11,7 +12,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ancreDArmure, ancreDeBouclier, chargerArmures } from '../src/lib/armures-db.mjs';
-import { couleurDuType } from '../src/lib/armures-rendu.mjs';
+import { couleurDuPoids, couleurDuType } from '../src/lib/armures-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
@@ -90,21 +91,54 @@ test('armures : à côté, la fiche (remplie par le script), les pièces (l’ar
   }
 });
 
-test('boucliers : les formes et les matières à choisir, la liste par forme (une ligne par bouclier préfabriqué), les améliorations et les poids', options, () => {
+test('boucliers : la forme et, sous elle, les améliorations, la matière à côté ; la liste en un seul tableau replié, triable, AP et AM séparés ; le poids de chaque bouclier', options, () => {
   const p = panneau('boucliers');
   const formes = [...p.matchAll(/<tr class="forme" data-forme="([^"]+)" data-classe="(\d)">/g)].map((m) => m[1]);
   assert.deepEqual(formes, armures.formes.map((f) => f.id));
+  // « je veux que la table d'amélioration soit directement sous celui de la forme » (demande du propriétaire, 2026-10-16) : dans la même colonne, avant la matière
+  const colonne = p.slice(p.indexOf('<div class="armures-colonne">'), p.indexOf('id="matieres-de-bouclier"'));
+  assert.ok(colonne.indexOf('id="formes-de-bouclier"') > 0 && colonne.indexOf('id="ameliorations-bouclier"') > colonne.indexOf('id="formes-de-bouclier"'));
   const table = p.slice(p.indexOf('data-choix="matiere"'), p.indexOf('</table>', p.indexOf('data-choix="matiere"')));
   assert.deepEqual([...table.matchAll(/<tr class="pmat" data-materiau="([^"]+)"/g)].map((m) => m[1]), armures.matieres.map((m) => m.cle));
-  const boucliers = [...p.matchAll(/<tr class="bouclier" id="([^"]+)" data-bouclier="[^"]+" data-forme="([^"]+)" data-matiere="([^"]+)">/g)];
+  const niveaux = [...p.matchAll(/<tr class="pamelioration" data-cible="bouclier" data-niveau="(\d+)">/g)].map((m) => Number(m[1]));
+  assert.deepEqual(niveaux, armures.ameliorations.bouclier.map((x) => x.niveau));
+
+  // la liste complète : un seul tableau, replié par défaut, un en-tête triable par colonne, AP et AM séparés
+  assert.match(p, /<details class="armures-bloc armures-liste" id="liste-des-boucliers">/, 'replié par défaut (pas d’attribut open)');
+  assert.equal((p.match(/<table class="armures-table armures-table--liste/g) ?? []).length, 1, 'un seul tableau de boucliers');
+  const liste = p.slice(p.indexOf('data-triable'), p.indexOf('</table>', p.indexOf('data-triable')));
+  assert.deepEqual([...liste.matchAll(/<th scope="col" data-tri="([^"]+)"/g)].map((m) => m[1]), ['nom', 'forme', 'matiere', 'ap', 'am', 'solidite', 'poids', 'prix']);
+  const boucliers = [...liste.matchAll(/<tr class="bouclier" id="([^"]+)" data-bouclier="[^"]+" data-forme="([^"]+)" data-matiere="([^"]+)" data-ordre="(\d+)">/g)];
   assert.equal(boucliers.length, armures.boucliers.length);
+  assert.deepEqual(boucliers.map((m) => Number(m[4])), armures.boucliers.map((_, i) => i), 'l’ordre de l’onglet, pour défaire le tri');
   assert.deepEqual(new Set(boucliers.map((m) => m[1])), new Set(armures.boucliers.map((b) => ancreDeBouclier(b.id))));
   // chaque forme × matière donne un seul bouclier : le choix trouve toujours son bouclier
   assert.equal(new Set(boucliers.map((m) => `${m[2]}|${m[3]}`)).size, armures.formes.length * armures.matieres.length);
-  const niveaux = [...p.matchAll(/<tr class="pamelioration" data-cible="bouclier" data-niveau="(\d+)">/g)].map((m) => Number(m[1]));
-  assert.deepEqual(niveaux, armures.ameliorations.bouclier.map((x) => x.niveau));
-  for (const poids of armures.poids) assert.ok(p.includes(`data-ed="${echapper(attributEd('bouclier_poids', { id: poids.id }, 'force_brut'))}"`), poids.id);
+  const b = armures.boucliers[0];
+  const ligne = liste.slice(liste.indexOf(`id="${ancreDeBouclier(b.id)}"`), liste.indexOf('</tr>', liste.indexOf(`id="${ancreDeBouclier(b.id)}"`)));
+  assert.ok(ligne.includes(`<td class="bouclier__ap" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'defense_brut'))}" data-ed-rendu="protection-ap">`), 'la défense se modifie dans la case AP');
+  assert.ok(ligne.includes(`<td class="bouclier__am" data-ed-lecture="${echapper(attributEd('bouclier', { id: b.id }, 'defense_brut'))}" data-ed-rendu="protection-am">`), 'la case AM suit en lecture');
+  assert.ok(ligne.includes(`<td class="bouclier__poids" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'poids_id'))}" data-ed-rendu="bouclier-poids">`), 'le poids se choisit');
+  const forme = armures.formes.find((f) => f.id === b.classe_id);
+  assert.ok(ligne.includes(`<td class="bouclier__forme" data-classe="${forme.classe}">`) && ligne.includes(`>${forme.nom}</span>`), 'la forme et sa classe');
+  // le poids de chaque bouclier (décision R92) : sa pastille dans la couleur de son poids, « Requiert N Force minimum » en infobulle
+  const poidsDe = new Map(armures.poids.map((x) => [x.id, x]));
+  for (const x of armures.boucliers) {
+    const q = poidsDe.get(x.poids_id);
+    assert.ok(q, `${x.id} : poids ${x.poids_id}`);
+    const l = liste.slice(liste.indexOf(`id="${ancreDeBouclier(x.id)}"`), liste.indexOf('</tr>', liste.indexOf(`id="${ancreDeBouclier(x.id)}"`)));
+    assert.ok(l.includes(`<span class="ppoids" style="--t: ${couleurDuPoids(q.id)}" data-poids="${q.id}" data-force="${q.force_min}" title="Requiert ${q.force_min} Force minimum">${q.nom}</span>`), x.id);
+  }
+
+  // à côté : la fiche ; la liste des poids reste (mode modification, sans JavaScript), ses champs modifiables, mais plus en lecture (styles/armures/armures.css)
   assert.match(p, /<section class="pfiche" data-fiche="bouclier" aria-label="Fiche du bouclier" aria-live="polite">/);
+  assert.ok(p.indexOf('id="poids-de-bouclier"') > p.indexOf('data-fiche="bouclier"'));
+  for (const poids of armures.poids) assert.ok(p.includes(`data-ed="${echapper(attributEd('bouclier_poids', { id: poids.id }, 'force_brut'))}"`), poids.id);
+  // (la feuille de style est insérée avant le bloc des armures : lue dans la page entière)
+  assert.ok(html.includes('html.js .armures-poids { display: none; }') && html.includes('html.js body.ed-mode .armures-poids { display: block; }'));
+  // la case Coût d'une fiche ne déborde pas : un montant passe à la ligne entre deux monnaies (demande du propriétaire, 2026-10-16)
+  assert.ok(html.includes('.pfiche__tuile-val .montant { display: inline-flex; flex-wrap: wrap;'));
+  assert.ok(!html.includes('.pfiche__tuile-val { font-size: 1.3rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }'));
 });
 
 test('le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62)', options, () => {
@@ -114,11 +148,12 @@ test('le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la pa
   assert.ok(!/<tr class="pmat-ref"[^]*?data-ed="/.test(t.slice(0, t.indexOf('</table>'))), 'aucun champ modifiable');
 });
 
-test('le script de la page n’importe que lib/armure-forge.mjs, qu’aucun autre script de page n’importe', options, () => {
+test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {
   const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
-  assert.deepEqual(imports(new URL('../src/scripts/armures.mjs', import.meta.url)), ['../lib/armure-forge.mjs']);
+  assert.deepEqual(imports(new URL('../src/scripts/armures.mjs', import.meta.url)), ['../lib/armure-forge.mjs', '../lib/armures-tri.mjs']);
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'armures.mjs')) {
-    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/armure-forge\.mjs$/.test(m)), [], nom);
+    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/(armure-forge|armures-tri)\.mjs$/.test(m)), [], nom);
   }
+  assert.deepEqual(imports(new URL('../src/lib/armures-tri.mjs', import.meta.url)), [], 'le tri est un module pur');
 });

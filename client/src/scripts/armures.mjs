@@ -7,7 +7,10 @@
 //     R75), l'amélioration la défense, la solidité et le coût de l'armure entière (R77 : choisir une pièce retire l'amélioration, choisir une
 //     amélioration repasse à l'armure complète).
 //   - Onglet Boucliers : une forme et une matière donnent le bouclier préfabriqué (décision R78) ; une ligne de la liste choisit les deux ; l'amélioration
-//     en change la défense, la solidité et le coût (R76).
+//     en change la défense, la solidité et le coût (R76) ; la fiche montre son poids (la couleur de sa case dans l'onglet, décision R92 ; « Requiert N
+//     Force minimum » dans l'infobulle de la tuile). La liste est un seul tableau, replié, triable par toutes ses colonnes (demande du propriétaire,
+//     2026-10-16) : un clic sur un en-tête trie croissant, puis décroissant, puis rend l'ordre de l'onglet (`data-ordre`) ; une valeur absente (prix
+//     « ???? », AP ou AM non écrit, bouclier sans poids) va toujours à la fin ; rien dans l'adresse (lib/armures-tri.mjs).
 // Les fiches sont réduites à leur minimum, comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles (AP, AM, solidité, coût) dont le
 // détail du calcul est l'infobulle, puis, pour une armure, sa résistance et sa faiblesse (ou son effet).
 // Recliquer une ligne choisie la retire ; « Fermer » (ou Échap) vide le choix de l'onglet ouvert. Les valeurs viennent des cellules telles qu'affichées
@@ -18,8 +21,9 @@
 // &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> (aucun paramètre en commun avec ceux de l'onglet Armes, src/scripts/armes.mjs : la même
 // adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
 // choisit aussi cette armure ou ce bouclier.
-// Seul import : lib/armure-forge.mjs, qu'aucun autre script de page n'importe.
+// Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
 import { forgerArmure, forgerBouclier, nombre, piecesDuMontant } from '../lib/armure-forge.mjs';
+import { ordonner, triSuivant } from '../lib/armures-tri.mjs';
 
 const racine = document.querySelector('[data-armures]');
 
@@ -83,6 +87,21 @@ if (racine) {
   const defenseDe = (cellule) => ({ ap: entier(cellule?.querySelector('.pdef')?.dataset.ap), am: entier(cellule?.querySelector('.pdef')?.dataset.am) });
   /** Le prix écrit d'une cellule rendue : { ro (null si ce n'est pas un nombre), texte }. */
   const prixDe = (cellule) => ({ ro: nombreOuNul(cellule?.querySelector('.pprix')?.dataset.ro), texte: cellule?.querySelector('.pprix')?.textContent.trim() ?? '' });
+  /**
+   * Le poids d'un bouclier tel qu'affiché dans sa ligne (pastille .ppoids : lib/armures-rendu.mjs#htmlDuPoids) : { id, nom, style, force, infobulle } ;
+   * null sans poids. L'infobulle (« Requiert N Force minimum ») se lit dans `data-infobulle`, où components/Infobulles.astro a déplacé le `title`.
+   */
+  function lirePoids(ligne) {
+    const p = ligne.querySelector('.bouclier__poids .ppoids');
+    if (!p) return null;
+    return {
+      id: p.dataset.poids ?? '',
+      nom: p.textContent.trim(),
+      style: p.getAttribute('style') ?? '',
+      force: nombreOuNul(p.dataset.force),
+      infobulle: p.getAttribute('data-infobulle') ?? p.getAttribute('title') ?? '',
+    };
+  }
 
   // ───────────────────────────────────────────── Armures ─────────────────────────────────────────────
   const A = { vue: racine.querySelector('[data-vue="armure"]'), fiche: racine.querySelector('[data-fiche="armure"]'), m1: null, m2: null, particuliere: null, piece: null, niveau: 0, derniere: null };
@@ -244,8 +263,10 @@ if (racine) {
     }
     B.vue?.classList.add('est-ouverte');
     const nom = ligne.querySelector('.bouclier__choisir')?.textContent.trim() ?? '';
-    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__defense'));
+    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »)
+    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__ap'));
     const prix = prixDe(ligne.querySelector('.bouclier__prix'));
+    const poids = lirePoids(ligne);
     const m = lireMateriau(B.matiere);
     const forme = B.forme.querySelector('.forme__choisir')?.textContent.trim() ?? '';
     const categorie = B.forme.querySelector('.forme__classe')?.textContent.trim() ?? '';
@@ -282,6 +303,9 @@ if (racine) {
         bulle('bouclier-bulle-am', 'Armure magique', amLignes),
         bulle('bouclier-bulle-solidite', 'Solidité', soliditeLignes, ['La solidité est celle de la matière (décision R78) ; les crans des améliorations se cumulent (R76).']),
         bulle('bouclier-bulle-cout', 'Coût', coutLignes),
+        // le poids (décision R92) : « Requiert N Force minimum », les mots du propriétaire, dans l'infobulle de la tuile
+        bulle('bouclier-bulle-poids', 'Poids', poids ? ligneDeFiche(e(poids.nom), e(poids.infobulle || '—')) : ligneDeFiche('Aucun poids', '—'),
+          ['Le poids d’un bouclier est la couleur de sa case dans l’onglet (décision R92).']),
       ].join('');
     }
     // un seul cadre réduit : le bouclier, sa forme et sa matière, quatre tuiles
@@ -296,9 +320,54 @@ if (racine) {
         ${tuile('bouclier-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
         ${tuile('bouclier-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
         ${tuile('bouclier-bulle-solidite', 'Solidité', String(f.solidite.total), 'de la matière')}
+        ${tuile('bouclier-bulle-poids', 'Poids', poids ? `<span class="ppoids" style="${e(poids.style)}" data-poids="${e(poids.id)}">${e(poids.nom)}</span>` : '<span class="vide" aria-label="aucun">—</span>')}
         ${tuile('bouclier-bulle-cout', 'Coût', c.ro_total === null ? (c.ro_materiaux_fournis === null ? e(prix.texte || '—') : ro(c.ro_materiaux_fournis)) : ro(c.ro_total), c.materiaux ? 'matériaux achetés' : '')}
       </div>`;
     B.fiche.setAttribute('aria-labelledby', 'bouclier-fiche-titre');
+  }
+
+  // ───────────────────────────────────────────── Tri de la liste des boucliers ─────────────────────────────────────────────
+  // (demande du propriétaire, 2026-10-16 : « La liste complète des boucliers doit être sur un seul tableau, replié par défaut et triable par toutes
+  // les colonnes ») : les valeurs sont lues dans les cellules telles qu'affichées, à chaque tri (après un enregistrement du mode modification, elles
+  // sont à jour) ; l'ordre lui-même est celui de lib/armures-tri.mjs (nombres, textes, valeurs absentes à la fin, égalités : l'ordre de l'onglet,
+  // `data-ordre`). Un AP ou un AM que la défense n'écrit pas (« — ») est absent, pas 0.
+  const LECTURES_DE_TRI = {
+    nom: (tr) => tr.querySelector('.bouclier__choisir')?.textContent.trim() || null,
+    forme: (tr) => nombreOuNul(tr.querySelector('.bouclier__forme')?.dataset.classe),
+    matiere: (tr) => tr.querySelector('.bouclier__matiere')?.textContent.trim() || null,
+    ap: (tr) => (tr.querySelector('.bouclier__ap .pdef__ap') ? nombreOuNul(tr.querySelector('.bouclier__ap .pdef')?.dataset.ap) : null),
+    am: (tr) => (tr.querySelector('.bouclier__am .pdef__am') ? nombreOuNul(tr.querySelector('.bouclier__am .pdef')?.dataset.am) : null),
+    solidite: (tr) => nombreOuNul(tr.querySelector('.bouclier__solidite .psol')?.dataset.solidite),
+    poids: (tr) => nombreOuNul(tr.querySelector('.bouclier__poids .ppoids')?.dataset.force),
+    prix: (tr) => nombreOuNul(tr.querySelector('.bouclier__prix .pprix')?.dataset.ro),
+  };
+
+  for (const table of racine.querySelectorAll('table[data-triable]')) {
+    const corps = table.tBodies[0];
+    const entetes = [...table.querySelectorAll('thead th[data-tri]')].filter((th) => LECTURES_DE_TRI[th.dataset.tri]);
+    if (!corps || !entetes.length) continue;
+    let tri = { cle: null, sens: 'asc' };
+    const trier = () => {
+      const lignes = ordonner([...corps.querySelectorAll('tr')], tri, { valeur: (tr, cle) => LECTURES_DE_TRI[cle](tr), ordre: (tr) => Number(tr.dataset.ordre ?? 0) });
+      corps.append(...lignes);
+      for (const th of entetes) th.setAttribute('aria-sort', tri.cle === th.dataset.tri ? (tri.sens === 'desc' ? 'descending' : 'ascending') : 'none');
+    };
+    for (const th of entetes) {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'ptri';
+      bouton.textContent = th.textContent.trim();
+      // l'aide de l'en-tête (son title, déplacé dans data-infobulle par components/Infobulles.astro) passe au bouton : une seule bulle par en-tête
+      const aide = th.getAttribute('data-infobulle') ?? th.getAttribute('title');
+      bouton.title = aide ? `Trier — ${aide}` : `Trier par ${th.textContent.trim()}`;
+      th.title = '';
+      th.replaceChildren(bouton);
+      th.setAttribute('aria-sort', 'none');
+      bouton.addEventListener('click', () => {
+        tri = triSuivant(tri, th.dataset.tri);
+        trier();
+      });
+    }
   }
 
   // ───────────────────────────────────────────── Commun ─────────────────────────────────────────────
@@ -379,7 +448,7 @@ if (racine) {
       fermer(fermeture.getAttribute('data-armures-fermer'));
       return;
     }
-    if (enEdition() || cible.closest('a, input, textarea, select, summary')) return;
+    if (enEdition() || cible.closest('a, input, textarea, select, summary, .ptri')) return;
     const mat = cible.closest('tr.pmat');
     const role = mat?.closest('[data-choix]')?.getAttribute('data-choix');
     if (mat && (role === 'm1' || role === 'm2')) {
