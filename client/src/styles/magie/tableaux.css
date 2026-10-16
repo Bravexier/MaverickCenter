@@ -9,7 +9,7 @@
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -71,7 +71,7 @@
 /* téléphone : colonnes resserrées, plus petite police ; filet de sécurité si l'écran est plus étroit encore */
 @media (max-width: 40rem) {
   .tableau-magies { overflow-x: auto; }
-  .tableau-magies__table { font-size: 0.72rem; }
+  .tableau-magies__table { font-size: var(--fs-xxs); }
   .tableau-magies__col-nom { width: 5.4rem; }
   .tableau-magies__col-total { width: 1.7rem; }
   .tableau-magies tbody .tableau-magies__nom,

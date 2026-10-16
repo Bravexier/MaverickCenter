@@ -23,9 +23,9 @@ html.js .bestiaire .js-seul { display: inline; }
 /* Onglets (components/Onglets.astro) */
 .bonglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--bes-line); margin-bottom: 1rem; }
 .bonglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border); border-bottom: 0;
-  border-radius: 12px 12px 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
-.bonglets .onglet__nom { font-weight: 700; font-size: 1.05rem; }
-.bonglets .onglet__detail { font-size: 0.78rem; color: var(--muted); }
+  border-radius: var(--radius-lg) 12px 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+.bonglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
+.bonglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
 html.js .bonglets .onglet.is-active { background: var(--bes); border-color: var(--bes); color: var(--surface); }
 html.js .bonglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
 html.js .bonglets .onglet:not(.is-active):hover { background: var(--bes-soft); }
@@ -40,7 +40,7 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .brepere { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .brepere > summary { cursor: pointer; padding: 0.55rem 0.9rem; font-weight: 600; }
 .brepere[open] > summary { border-bottom: 1px solid var(--border); }
-.brepere__sous { margin-left: 0.4rem; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+.brepere__sous { margin-left: 0.4rem; font-weight: 400; font-size: var(--fs-md); color: var(--muted); }
 .brepere__corps { padding: 0.6rem 0.9rem 0.9rem; }
 /* Règles des échelles de puissance (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : le texte des règles est
    celui du doc, seuls leur disposition et les nombres en gras changent */
@@ -49,12 +49,12 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .bregles__general ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
 .bregles__general li + li { margin-top: 0.2rem; }
 .bregles__intitule { margin: 0; font-weight: 600; }
-.bregles__titre { margin: 0.4rem 0 0; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.bregles__titre { margin: 0.4rem 0 0; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .bregles__defile { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
 .bregles__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
-.bregles__table { border-collapse: collapse; font-size: 0.86rem; width: 100%; }
+.bregles__table { border-collapse: collapse; font-size: var(--fs-md); width: 100%; }
 .bregles__table th, .bregles__table td { padding: 0.3rem 0.55rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-.bregles__table thead th { background: var(--bes-soft); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.bregles__table thead th { background: var(--bes-soft); font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); text-transform: uppercase; color: var(--muted); }
 .bregles__table thead .bcat { text-transform: none; letter-spacing: 0; }
 .bregles__table td.nombre, .bregles__table th.nombre { text-align: right; }
 .bregles__table tbody tr:nth-child(even) > * { background: color-mix(in srgb, var(--bes-soft) 50%, var(--surface)); }
@@ -71,7 +71,7 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bregle__titre { margin: 0 0 0.4rem; font-size: 1rem; }
 .bregle__cases { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0.6rem; }
 .bregle__case { padding: 0.45rem 0.7rem; border-radius: var(--radius-md); background: var(--bg); border: 1px solid var(--border); }
-.bregle__case h5 { margin: 0 0 0.3rem; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.bregle__case h5 { margin: 0 0 0.3rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .bregle__case ul { margin: 0; padding-left: 1.1rem; }
 .bregle__case li + li { margin-top: 0.15rem; }
 .bregle__case b { font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--bes) 70%, var(--text)); }
@@ -89,9 +89,9 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bechelle__reperes { display: grid; gap: 0.2rem; }
 .bechelle__repere p { margin: 0; }
 .bechelle__ligne { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
-.bechelle__info { font-size: 0.86rem; }
-.bechelle__degats { font-size: 0.82rem; }
-.bep { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); border: 1px dashed var(--bes-line); background: var(--bg); font-size: 0.74rem; font-weight: 700;
+.bechelle__info { font-size: var(--fs-md); }
+.bechelle__degats { font-size: var(--fs-sm); }
+.bep { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); border: 1px dashed var(--bes-line); background: var(--bg); font-size: var(--fs-xs); font-weight: 700;
   white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bep-lignes { display: grid; gap: 0.2rem; }
 .bep-ligne--vide { height: 0.15rem; }
@@ -101,7 +101,7 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bep-ligne .bcaracs { margin-top: 0.15rem; }
 .bstats--ep { grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
 .bstats__groupe, .bstats__texte { grid-column: 1 / -1; }
-.bstats__groupe { font-weight: 700; font-size: 0.85rem; margin-top: 0.15rem; }
+.bstats__groupe { font-weight: 700; font-size: var(--fs-md); margin-top: 0.15rem; }
 /* une échelle choisie (data-ep sur la carte, ou sur les règles) : seules ses valeurs restent ; sans JavaScript et à l'impression, toutes */
 @media screen {
   :is(.bcarte, .bregles)[data-ep="1"] [data-eps]:not([data-eps~="1"]),
@@ -135,42 +135,42 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bfiltres[hidden] { display: none !important; }
 .bfiltres { display: grid; gap: 0.6rem; margin: 0 0 0.6rem; padding: 0.7rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .bfiltres__recherche { display: grid; gap: 0.2rem; }
-.bfiltres__recherche label { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.bfiltres__recherche label { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .bfiltres input[type=search] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; min-width: 0; }
 .bfiltres__recherche input { max-width: 36rem; font-size: 1rem; }
-.bfiltres__aide { margin: 0; font-size: 0.78rem; color: var(--muted); }
+.bfiltres__aide { margin: 0; font-size: var(--fs-xs); color: var(--muted); }
 .bfiltres__facettes { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .bfacette { position: relative; }
 .bfacette > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.7rem; border: 1px solid var(--border);
-  border-radius: var(--radius-pill); background: var(--bg); font-size: 0.88rem; user-select: none; }
+  border-radius: var(--radius-pill); background: var(--bg); font-size: var(--fs-md); user-select: none; }
 .bfacette > summary::-webkit-details-marker { display: none; }
 .bfacette > summary::after { content: '▾'; font-size: 0.75em; color: var(--muted); }
 .bfacette[open] > summary, .bfacette.est-active > summary { border-color: var(--bes); background: var(--bes-soft); }
 .bfacette > summary:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
 .bfacette__compte { display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 0.3rem; border-radius: var(--radius-pill); background: var(--bes); color: var(--surface);
-  font-size: 0.72rem; font-weight: 700; }
+  font-size: var(--fs-xxs); font-weight: 700; }
 .bfacette__compte[hidden] { display: none; }
 .bfacette__panneau { position: absolute; z-index: 20; top: calc(100% + 0.3rem); left: 0; width: max-content; min-width: 14rem; max-width: min(24rem, 90vw);
   padding: 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgb(0 0 0 / 0.18); }
-.bfacette__chercher { width: 100%; box-sizing: border-box; margin-bottom: 0.35rem; font-size: 0.85rem !important; }
+.bfacette__chercher { width: 100%; box-sizing: border-box; margin-bottom: 0.35rem; font-size: var(--fs-md) !important; }
 .bfacette__options { list-style: none; margin: 0; padding: 0; max-height: 18rem; overflow-y: auto; }
 .bfacette__options li[hidden] { display: none; }
-.bfacette__options label { display: flex; align-items: center; gap: 0.45rem; padding: 0.2rem 0.35rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.88rem; }
+.bfacette__options label { display: flex; align-items: center; gap: 0.45rem; padding: 0.2rem 0.35rem; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--fs-md); }
 .bfacette__options label:hover { background: var(--bes-soft); }
 .bfacette__libelle { flex: 1; }
-.bfacette__nombre { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bfacette__nombre { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .bfacette__options li.est-vide label { opacity: 0.45; }
 .bfiltres__actifs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
 .bfiltres__compte { margin: 0; font-weight: 600; }
 .bfiltres__puces { display: contents; list-style: none; }
-.bpuce { font: inherit; font-size: 0.82rem; padding: 0.15rem 0.6rem; border-radius: var(--radius-pill); border: 1px solid var(--bes-line); background: var(--bes-soft); color: var(--text); cursor: pointer; }
+.bpuce { font: inherit; font-size: var(--fs-sm); padding: 0.15rem 0.6rem; border-radius: var(--radius-pill); border: 1px solid var(--bes-line); background: var(--bes-soft); color: var(--text); cursor: pointer; }
 .bpuce::after { content: ' ×'; color: var(--muted); }
 .bpuce:hover { border-color: var(--bes); }
-.bfiltres__effacer { font-size: 0.82rem; padding: 0.2rem 0.7rem; }
+.bfiltres__effacer { font-size: var(--fs-sm); padding: 0.2rem 0.7rem; }
 .bfiltres__effacer[hidden] { display: none; }
 
 /* Le tableau : défile dans son cadre, en-tête et première colonne fixes ; le texte des cellules passe à la ligne (le tableau tient dans sa moitié) */
-.btableau__aide { margin: 0 0 0.5rem; font-size: 0.88rem; }
+.btableau__aide { margin: 0 0 0.5rem; font-size: var(--fs-md); }
 .btableau__vide { margin: 0.8rem 0; color: var(--muted); }
 .btableau__vide[hidden] { display: none; }
 .btableau__defile { overflow: auto; max-height: calc(100vh - 7rem); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
@@ -193,8 +193,8 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
   #monstres .bvue > .btableau__defile { max-height: calc(100vh - 1.5rem); max-height: calc(100dvh - 1.5rem); }
 }
 #monstres .bvue { scroll-margin-top: 0.75rem; }
-.btable { border-collapse: separate; border-spacing: 0; font-size: 0.86rem; width: 100%; }
-.btable thead th { position: sticky; top: 0; z-index: 3; text-align: left; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+.btable { border-collapse: separate; border-spacing: 0; font-size: var(--fs-md); width: 100%; }
+.btable thead th { position: sticky; top: 0; z-index: 3; text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600;
   color: var(--muted); padding: 0.5rem 0.55rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-bottom: 1px solid var(--bes-line); white-space: nowrap; }
 .btable thead th:first-child { left: 0; z-index: 4; }
 .btable thead th.carac { background: var(--c); color: var(--c-texte); text-align: center; }
@@ -202,7 +202,7 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .btri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
 th[aria-sort="ascending"] .btri::after { content: '↑'; opacity: 1; }
 th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
-.btri:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 3px; }
+.btri:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: var(--radius-xxs); }
 /* Lignes : six colonnes (monstres : espèce, nom, type, catégorie, EP, lieux) ou trois (créatures invoquées) ; la ligne choisie est marquée, sa carte s'ouvre à côté */
 .btable tr.bligne[hidden] { display: none; }
 .bligne > * { padding: 0.4rem 0.6rem; vertical-align: top; border-top: 1px solid var(--border); background: var(--surface); }
@@ -230,9 +230,9 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .binvocation > summary::before { content: '▸'; color: var(--muted); width: 0.8em; }
 .binvocation[open] > summary::before { content: '▾'; }
 .binvocation > summary:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: var(--radius-lg); }
-.binvocation__nom { font-weight: 700; font-size: 1.05rem; }
-.binvocation__compte { font-size: 0.82rem; }
-.binvocation__sort { margin: 0; padding: 0.15rem 0.9rem 0.55rem; font-size: 0.85rem; }
+.binvocation__nom { font-weight: 700; font-size: var(--fs-xl); }
+.binvocation__compte { font-size: var(--fs-sm); }
+.binvocation__sort { margin: 0; padding: 0.15rem 0.9rem 0.55rem; font-size: var(--fs-md); }
 .binvocation .btableau__defile { max-height: none; border-width: 1px 0 0; border-radius: 0 0 12px 12px; scrollbar-gutter: auto; }
 /* trois tableaux l'un sous l'autre : la page défile, pas chacun dans son cadre ; sur grand écran (le tableau tient dans sa moitié) le cadre ne défile
    pas du tout, pour que l'en-tête reste collé en haut de la fenêtre (un cadre qui défile, même sans hauteur bornée, le retiendrait) */
@@ -303,10 +303,10 @@ html:not(.js) .bcartes { position: static; max-height: none; }
    texte ; le bouton « Supprimer » d'une ligne, petit, à côté du nom */
 .bcarte__espece .ed-saisie, .bcarte__badges .ed-saisie { display: inline-block; width: auto; min-width: 4rem; max-width: 100%; field-sizing: content; vertical-align: middle; }
 .bcarte__badges .bbadge:has(.ed-saisie) { padding: 0.1rem 0.2rem; }
-.bligne__nom .ed-supprimer { margin-left: 0.4rem; font-size: 0.72rem; padding: 0 0.4rem; vertical-align: middle; }
+.bligne__nom .ed-supprimer { margin-left: 0.4rem; font-size: var(--fs-xxs); padding: 0 0.4rem; vertical-align: middle; }
 /* les boutons du portrait de la carte ouverte (choisir, recadrer, retirer), sous le cadre, un peu plus large pour qu'ils tiennent sur une ligne ;
    « Portrait à venir » leur laisse sa place */
 .ed-mode .bcarte__portrait { width: 9.5rem; }
 .bcarte__portrait .ed-portrait { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem; }
-.bcarte__portrait .ed-portrait .ed-outil { font-size: 0.72rem; padding: 0.05rem 0.4rem; white-space: nowrap; }
+.bcarte__portrait .ed-portrait .ed-outil { font-size: var(--fs-xxs); padding: 0.05rem 0.4rem; white-space: nowrap; }
 .bcarte__portrait:has(.ed-portrait) figcaption { display: none; }

@@ -3,7 +3,7 @@
 .recadrage { width: min(26rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); color: var(--text); }
 .recadrage::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
 .recadrage__corps { display: grid; gap: 0.6rem; padding: 0.9rem; }
-.recadrage h2 { margin: 0; font-size: 1.05rem; }
+.recadrage h2 { margin: 0; font-size: var(--fs-xl); }
 .recadrage__vue {
   position: relative;
   width: 100%;
@@ -18,7 +18,7 @@
 .recadrage__vue:active { cursor: grabbing; }
 .recadrage__vue:focus-visible { outline-color: var(--accent); }
 .recadrage__vue img { position: absolute; top: 0; left: 0; max-width: none; transform-origin: 0 0; user-select: none; pointer-events: none; }
-.recadrage__zoom { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.85rem; }
+.recadrage__zoom { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: var(--fs-md); }
 .recadrage__zoom input { flex: 1; }
 .recadrage__boutons { display: flex; justify-content: flex-end; gap: 0.4rem; }
 /* le bouton « Valider » d'un dialogue que le script construit (la fiche a le sien, aux couleurs de sa barre) */

@@ -69,7 +69,7 @@ main { overflow-x: clip; }
 }
 .frise__filtre { display: none; }
 html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.45rem; padding: 0 0.15rem; }
-.frise__filtre-libelle { flex: none; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.frise__filtre-libelle { flex: none; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
 .frise__filtre-choix {
   flex: 1;
   min-width: 0;
@@ -79,7 +79,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
 }
 .frise__filtre-choix:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 1px; }
 .frise[data-filtre]:not([data-filtre='']) .frise__filtre-choix { border-color: var(--chrono); background: var(--chrono-soft); font-weight: 600; }
@@ -90,7 +90,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   gap: 0.2rem 0.9rem;
   margin: 0;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
 }
 .frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; }
 .frise__legende .frise__repere { position: static; display: inline-block; translate: none; }
@@ -122,7 +122,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
 .frise__date {
   padding: 0.55rem 0.1rem 0.5rem 0;
   color: var(--texte);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
@@ -130,7 +130,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
 }
 .frise__titre {
   padding: 0.5rem 0.65rem 0.5rem 0.15rem;
-  font-size: 0.92rem;
+  font-size: var(--fs-lg);
   line-height: 1.3;
 }
 /* La barre : chaque ligne en peint un morceau, du mélange avec la couleur précédente (en haut) au mélange avec la suivante (en bas) en passant par
@@ -212,8 +212,8 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
 .chrono-numero {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
+  font-size: var(--fs-md);
+  letter-spacing: var(--ls-fin);
   text-transform: uppercase;
 }
 .chrono-date {
@@ -236,7 +236,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--chrono-line);
   border-radius: var(--radius-pill);
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 .chrono-portee--majeur { border-color: var(--chrono); background: var(--chrono); color: #fff; }
@@ -256,7 +256,7 @@ a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); 
   border-radius: var(--radius-pill);
   background: var(--chrono-soft);
   color: var(--chrono-texte);
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-decoration: none;
 }
@@ -269,7 +269,7 @@ a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); 
 .chrono-ed { display: none; }
 body.ed-mode .chrono-ed { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0.5rem 0 0.75rem; padding: 0.5rem 0.65rem; border: 1px dashed var(--chrono-line); border-radius: var(--radius); }
 .chrono-ed__champ { display: grid; gap: 0.15rem; min-width: 9rem; }
-.chrono-ed__libelle { color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+.chrono-ed__libelle { color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
 body:has(.chrono) .ed-cote { top: auto; bottom: 1rem; transform: none; }
 /* l'Impact et le lieu se lisent dans leurs pastilles, se modifient dans leurs champs (.chrono-ed--impact) : en mode modification, les pastilles partent */
 body.ed-mode .chrono-etiquettes { display: none; }
@@ -299,14 +299,14 @@ body.ed-mode [data-chrono-categories] { display: none; }
 .chrono-extrait blockquote { margin: 0.5rem 0; padding-left: 0.8rem; border-left: 2px solid var(--chrono-line); }
 mark.chrono-surligne {
   padding: 0 0.15em;
-  border-radius: 3px;
+  border-radius: var(--radius-xxs);
   background: color-mix(in srgb, var(--chrono) 22%, var(--surface));
   color: inherit;
   font-weight: 700;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
-.chrono-legende { margin-top: 0.35rem; color: var(--muted); font-size: 0.85rem; text-align: right; }
+.chrono-legende { margin-top: 0.35rem; color: var(--muted); font-size: var(--fs-md); text-align: right; }
 .chrono-legende::before { content: '— '; }
 .chrono-legende__sections { margin-left: 0.25rem; }
 .chrono-legende a { color: var(--chrono-texte); font-weight: 600; }
@@ -346,9 +346,9 @@ mark.chrono-surligne {
   background: var(--surface);
   color: var(--chrono-texte);
   box-shadow: var(--ombre-flottante);
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color var(--duree), color 0.15s, border-color 0.15s;
 }
-.chrono-chevron svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: translate 0.15s; }
+.chrono-chevron svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: translate var(--duree); }
 /* un chevron grisé (au bord de la frise ou de la catégorie choisie) est aussi un <a>, sans adresse : il ne s'allume pas */
 a.chrono-chevron:not([aria-disabled='true']):hover,
 a.chrono-chevron:not([aria-disabled='true']):focus-visible { border-color: var(--chrono); background: var(--chrono); color: #fff; }
@@ -396,7 +396,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   .chrono--accueil .chrono-page { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   .chrono--accueil .chrono-page h1 { margin: 0 0 0.3rem; padding: 0; border: 0; font-size: 1.6rem; }
   .chrono--accueil .chrono-page > p { display: none; }
-  .chrono--accueil .chrono-page > p.chrono-accueil__court { display: block; max-width: none; margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+  .chrono--accueil .chrono-page > p.chrono-accueil__court { display: block; max-width: none; margin: 0; color: var(--muted); font-size: var(--fs-lg); line-height: 1.4; }
   /* le filtre et la légende restent en haut de l'écran pendant qu'on parcourt la frise (fond plein : aucune ligne à moitié dessous) */
   .chrono--accueil .frise__tete {
     position: sticky;
@@ -467,9 +467,9 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   .chrono-barre__frise:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }
   .chrono-barre__icone { flex: none; width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--chrono-texte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .chrono-barre__texte { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; line-height: 1.2; }
-  .chrono-barre__date { overflow: hidden; color: var(--chrono-texte); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+  .chrono-barre__date { overflow: hidden; color: var(--chrono-texte); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
   .chrono-barre__rang { color: var(--muted); font-weight: 400; }
-  .chrono-barre__titre { overflow: hidden; font-size: 0.92rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .chrono-barre__titre { overflow: hidden; font-size: var(--fs-lg); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ---------- Page d'un événement, avec JavaScript : la mini-frise à gauche, la page à côté ---------- */
   html.js .chrono--evenement {
@@ -611,7 +611,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   @keyframes frise-tiroir { from { clip-path: inset(0 calc(100% - 2.25rem) 0 0); } to { clip-path: inset(0); } }
   html.js .frise.est-ouverte .frise__entete { flex: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.25rem 0.1rem 0.85rem; }
   .frise__entete-titre { flex: 1; margin: 0; font-size: 1.15rem; font-weight: 700; }
-  .frise__entete-titre small { display: block; color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+  .frise__entete-titre small { display: block; color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
   .frise__fermer { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text); cursor: pointer; }
   .frise__fermer:hover, .frise__fermer:focus-visible { background: color-mix(in srgb, var(--chrono) 12%, transparent); }
   .frise__fermer:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 2px; }

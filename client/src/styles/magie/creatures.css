@@ -2,12 +2,12 @@
    styles/bestiaire/carte.css), sur la couleur de leur magie (--creature-1, --creature-2 : SortDetail.astro), en dégradé quand elles en ont deux */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
-.invoque__bloc { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.invoque__bloc { display: block; font-size: var(--fs-xxs); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-caps); }
 .invoque__creatures { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; margin-top: 0.2rem; }
 .creature { display: inline-flex; align-items: baseline; gap: 0.25rem; }
 button.creature__bouton {
   --creature-1: var(--mag); --creature-2: var(--creature-1);
-  cursor: help; font: inherit; font-size: 0.9rem; color: var(--text);
+  cursor: help; font: inherit; font-size: var(--fs-lg); color: var(--text);
   border-color: color-mix(in srgb, var(--creature-1) 55%, var(--border));
   border-right-color: color-mix(in srgb, var(--creature-2) 55%, var(--border));
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 32%, var(--surface)), color-mix(in srgb, var(--creature-2) 32%, var(--surface)));

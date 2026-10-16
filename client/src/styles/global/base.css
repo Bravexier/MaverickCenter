@@ -20,7 +20,20 @@
   --radius-pill: 999px;
   --ombre-douce: 0 2px 10px color-mix(in srgb, var(--text) 10%, transparent);
   --ombre-flottante: 0 3px 12px rgb(0 0 0 / 0.18);
-  --duree: var(--duree);
+  --duree: 0.15s;
+  --duree-lente: 0.2s;
+  --radius-xxs: 3px;
+  /* échelle typographique : un seul jeu de tailles pour tout le site */
+  --fs-xxs: 0.7rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8rem;
+  --fs-md: 0.85rem;
+  --fs-lg: 0.92rem;
+  --fs-xl: 1.05rem;
+  /* petites capitales : crénage des intitulés */
+  --ls-fin: 0.04em;
+  --ls-caps: 0.06em;
+  --ls-large: 0.08em;
   --max: 64rem;
 }
 
