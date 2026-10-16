@@ -10,8 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { htmlDeLigneDArme } from '../src/lib/armes-rendu.mjs';
 import { echellesDesCartes as lesEchelles, magiesDesCibles as lesMagiesDesCibles, renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
-import { lireAttributEd } from '../src/lib/edition-modele.mjs';
+import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -32,6 +33,19 @@ test('texte échappé, rendu inconnu = texte, champ vide', () => {
   assert.equal(rendreChamp(undefined, '<i>x</i>'), '&lt;i&gt;x&lt;/i&gt;');
   assert.equal(rendreChamp('inconnu', 'a & b'), 'a &amp; b');
   assert.equal(rendreChamp('texte', null), '');
+});
+
+test('armes : la remarque (décision R91) en étoile, son texte échappé en infobulle et en aria-label ; rien sans remarque ; la ligne la porte dans sa colonne', () => {
+  const texte = 'Coupe <vraiment> « bien » & "net"';
+  const echappe = 'Coupe &lt;vraiment&gt; « bien » &amp; &quot;net&quot;';
+  assert.equal(RENDUS['arme-remarque'](texte, {}), `<span class="arme__remarque" title="${echappe}" aria-label="Remarque : ${echappe}">★</span>`);
+  for (const vide of [null, undefined, '']) assert.equal(RENDUS['arme-remarque'](vide, {}), '', String(vide));
+  const a = { id: 'ressources/armes#arme:essai:dague', famille_id: 'essai', type_id: 'dague', nom: 'Dague', competence_brut: 'Arme Légère', depart_possible: 0, remarque: texte };
+  const html = htmlDeLigneDArme(a, {});
+  const ed = echapperHtml(attributEd('arme', { id: a.id }, 'remarque'));
+  assert.ok(html.includes(`<span class="arme__note" data-ed-lecture="${ed}" data-ed-rendu="arme-remarque">${RENDUS['arme-remarque'](texte, {})}</span>`), 'l’étoile à côté du nom, en lecture');
+  assert.ok(html.includes(`<td class="arme__remarque-texte ed-seul" data-ed="${ed}">${echappe}</td>`), 'la saisie du mode modification');
+  assert.ok(!htmlDeLigneDArme({ ...a, remarque: null }, {}).includes('class="arme__remarque"'), 'sans remarque, pas d’étoile');
 });
 
 test('blocs d’un texte long : paragraphes, puces, intertitres « ▸ », adresses en liens, pastilles d’état replacées sur leur mot', () => {

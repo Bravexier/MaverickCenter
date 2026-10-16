@@ -103,6 +103,9 @@ export const RENDUS_DES_ARMES = {
     ligne.provenance ? `<span class="arme-origine" title="${e(`${ligne.provenance_mot} ${ligne.provenance}`)}">${e(capitale(ligne.provenance))}</span>` : VIDE,
   'arme-cout': (valeur) => `<span class="arme-cout"${attribut('ro', coutEnRo(valeur))}>${valeur ? htmlAvecMonnaies(valeur) : '—'}</span>`,
   'arme-depart': (valeur) => (Number(valeur) === 1 ? 'Oui' : 'Non'),
+  // la remarque : une étoile à côté du nom, son texte en infobulle (lu par le script de la page pour la fiche de l'arme) ; rien sans remarque
+  'arme-remarque': (valeur) =>
+    (valeur ? `<span class="arme__remarque" title="${e(valeur)}" aria-label="${e(`Remarque : ${valeur}`)}">★</span>` : ''),
   // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
   'materiau-prix': (valeur) => {
     const ro = prixEnRo(valeur);
@@ -138,7 +141,8 @@ export const COLONNES_D_UNE_ARME = 8;
  * construction du site : src/scripts/edition/armes.mjs) : un seul HTML, deux `<tr>`. La première porte les colonnes ; la seconde (`arme-suite`), sous
  * elle, ses effets supplémentaires, comme l'effet d'un sort choisi sous sa ligne dans la fiche de personnage (demande du propriétaire) ; vide, elle se
  * cache (styles/armes/armes.css). Chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`) ; Description,
- * Coût, Effet et Arme de départ ne s'affichent qu'en mode modification (`ed-seul`). `a` : la ligne de la table arme.
+ * Coût, Effet, Arme de départ et Remarque ne s'affichent qu'en mode modification (`ed-seul`) ; l'étoile de la remarque, à côté du nom, est en lecture
+ * (refaite depuis la ligne après un enregistrement : elle part avec une remarque vidée, apparaît avec une remarque saisie). `a` : la ligne de la table arme.
  */
 export function htmlDeLigneDArme(a, ctx = {}) {
   const ed = (colonne) => e(attributEd('arme', { id: a.id }, colonne));
@@ -149,7 +153,7 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + '<th scope="row" class="arme__nom">'
     + `<span class="arme__libelle" data-ed="${ed('nom')}" data-ed-cible=".arme__choisir"><button type="button" class="arme__choisir" aria-pressed="false"${a.description ? ` title="${e(a.description)}"` : ''}>${e(a.nom)}</button></span>`
     + `<span class="arme__mains" data-ed="${ed('mains')}" data-ed-rendu="arme-mains">${rendu('arme-mains', 'mains')}</span>`
-    + (a.remarque ? `<span class="arme__remarque" title="${e(a.remarque)}" aria-label="${e(`Remarque : ${a.remarque}`)}">★</span>` : '')
+    + `<span class="arme__note" data-ed-lecture="${ed('remarque')}" data-ed-rendu="arme-remarque">${rendu('arme-remarque', 'remarque')}</span>`
     + '</th>'
     + `<td class="arme__competence" data-ed="${ed('competence_brut')}" data-ed-rendu="arme-competence">${rendu('arme-competence', 'competence_brut')}</td>`
     + `<td class="arme__type" data-ed="${ed('type_id')}" data-ed-rendu="arme-type">${rendu('arme-type', 'type_id')}</td>`
@@ -162,6 +166,7 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + `<td class="arme__cout ed-seul" data-ed="${ed('cout_brut')}" data-ed-rendu="arme-cout">${rendu('arme-cout', 'cout_brut')}</td>`
     + `<td class="arme__effet ed-seul" data-ed="${ed('effet')}">${e(a.effet ?? '')}</td>`
     + `<td class="arme__depart ed-seul" data-ed="${ed('depart_possible')}" data-ed-rendu="arme-depart">${rendu('arme-depart', 'depart_possible')}</td>`
+    + `<td class="arme__remarque-texte ed-seul" data-ed="${ed('remarque')}">${e(a.remarque ?? '')}</td>`
     + '</tr>'
     + `<tr class="arme-suite" data-arme-suite="${e(a.id)}"><td class="arme-suite__marge"></td>`
     + `<td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${ed('effet')}" data-ed-rendu="arme-effets">${rendu('arme-effets', 'effet')}</td></tr>`;

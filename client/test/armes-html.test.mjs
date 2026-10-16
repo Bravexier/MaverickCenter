@@ -41,12 +41,13 @@ test('un tableau repliable par famille, sans les armes de monstres ; une ligne p
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
 
-test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; Description, Coût, Effet et départ en mode modification', options, () => {
+test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; Description, Coût, Effet, départ et Remarque en mode modification', options, () => {
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
   const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Origine']);
-  assert.equal(colonnes.length - 4, COLONNES_D_UNE_ARME);
-  assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 4);
+  assert.equal(colonnes.length - 5, COLONNES_D_UNE_ARME);
+  assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 5);
+  assert.equal(colonnes.at(-1), 'Remarque');
 });
 
 test('effets supplémentaires sur une seconde ligne, sous l’arme (comme l’effet d’un sort choisi dans la fiche) : une par arme, effet en lecture', options, () => {
@@ -60,13 +61,17 @@ test('effets supplémentaires sur une seconde ligne, sous l’arme (comme l’ef
   }
 });
 
-test('armes de départ en bleu avec l’infobulle « Arme de départ » ; description en infobulle du nom ; compétences en couleur', options, () => {
+test('armes de départ en bleu avec l’infobulle « Arme de départ » ; description en infobulle du nom ; remarque en étoile ; compétences en couleur', options, () => {
   for (const a of armes.familles.flatMap((f) => f.armes)) {
     const debut = main.indexOf(`id="${ancreDArme(a.id)}"`);
     const ligne = main.slice(main.lastIndexOf('<tr', debut), main.indexOf('</tr>', debut));
     assert.equal(ligne.includes('arme--depart') && ligne.includes('title="Arme de départ"'), a.depart_possible === 1, a.id);
     if (a.description) assert.ok(ligne.includes(`title="${echapper(a.description)}"`), `${a.id} : description en infobulle`);
     assert.ok(ligne.includes(`data-ed="${echapper(attributEd('arme', { id: a.id }, 'effet'))}"`), `${a.id} : effet modifiable`);
+    // la remarque (demande du propriétaire, décision R91) : modifiable dans sa colonne, l'étoile à côté du nom refaite depuis la ligne (en lecture)
+    assert.ok(ligne.includes(`<td class="arme__remarque-texte ed-seul" data-ed="${echapper(attributEd('arme', { id: a.id }, 'remarque'))}">`), `${a.id} : remarque modifiable`);
+    assert.ok(ligne.includes(`<span class="arme__note" data-ed-lecture="${echapper(attributEd('arme', { id: a.id }, 'remarque'))}" data-ed-rendu="arme-remarque">`), `${a.id} : étoile en lecture`);
+    assert.equal(ligne.includes('class="arme__remarque"'), Boolean(a.remarque), `${a.id} : une étoile seulement avec une remarque`);
     assert.match(ligne, /<span class="arme-comp[^"]*" data-competences="(arme-lourde|arme-legere|arc|arbalete)( arme-legere)?"/, a.id);
   }
 });

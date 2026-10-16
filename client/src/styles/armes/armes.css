@@ -141,7 +141,7 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme__degats, .arme__durabilite { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .arme-degats { font-weight: 700; }
 .arme__durabilite { text-align: center !important; }
-.arme__description { min-width: 18rem; white-space: pre-line; font-size: var(--fs-md); }
+.arme__description, .arme__remarque-texte { min-width: 18rem; white-space: pre-line; font-size: var(--fs-md); }
 /* la description de l'arme est l'infobulle de son nom */
 .arme__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 3px; }
 .arme__portee { white-space: nowrap; text-align: center !important; font-variant-numeric: tabular-nums; }

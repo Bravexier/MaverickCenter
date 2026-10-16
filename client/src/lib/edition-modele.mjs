@@ -324,6 +324,9 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet (dégâts, portée, solidité, origine… : les colonnes en sont tirées)' },
       description: { type: 'texte', libelle: 'Description' },
       depart_possible: { type: 'choix', libelle: 'Arme de départ', requis: true, choix: OUI_NON },
+      // la remarque (décision R91 : « pouvoir modifier la présence ou non de la remarque et en modifier le contenu ») : l'étoile ★ à côté du nom, son
+      // texte en infobulle ; vide, pas d'étoile
+      remarque: { type: 'texte', libelle: 'Remarque' },
     },
   },
   // Composants (/ressources/composants/, demande du propriétaire, 2026-10-14 : « chaque élément est modifiable en édition, supprimable, ajoutable ») :
@@ -602,7 +605,7 @@ export const ENTITES = {
     suppression: true,
     champs: {
       famille_id: { type: 'choix', libelle: 'Famille (le tableau où l’arme s’ajoute)', requis: true, liste: 'famillesDArmes' },
-      ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible']),
+      ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible', 'remarque']),
     },
   },
   // Composants : un composant dans un tableau de la page (les matériaux, ou un tableau de l'onglet « Équipement inventaire »), une gemme ou un bois liés à
