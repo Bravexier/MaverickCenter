@@ -271,8 +271,8 @@ modification (`lib/corps-armes.mjs`).
   se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
   l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
-- **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et sous la fiche de l'arme) ; aucune arme n'en a depuis la décision R91 (celle de la
-  Bombe perçante, qui datait des armes à feu, est supprimée).
+- **Remarque** : une étoile ★ à côté du nom, son texte en infobulle (et sous la fiche de l'arme) ; à l'import, seule la Bombe perçante en avait une,
+  supprimée par la décision R91 (elle datait des armes à feu).
 - **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme (ou la ligne de ses effets) ouvre à côté, dans un panneau large, sa fiche en **un seul
   cadre** (son bouton Fermer en haut à droite ; type et mains sans rappeler la famille ; tuiles Dégâts, Durabilité « Solidité : X », Coût ; le détail sur
   deux colonnes), puis côte à côte les **matériaux** (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et
