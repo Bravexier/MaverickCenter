@@ -6,7 +6,7 @@
 .archive__titre { font-weight: bold; overflow-wrap: anywhere; }
 .archive__titre a { text-decoration: none; }
 .archive__titre a:hover { text-decoration: underline; }
-.archive__genre { display: inline-block; margin-right: 0.4rem; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: normal; vertical-align: 0.1em;
+.archive__genre { display: inline-block; margin-right: 0.4rem; padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-xxs); font-weight: normal; vertical-align: 0.1em;
   background: var(--accent-soft); color: var(--accent); }
 /* couleurs des icônes Google : bleu des Docs, vert des Sheets */
 .archive__genre--doc { background: #e3ecfb; color: #1a56b8; }
@@ -17,8 +17,8 @@
 }
 :root[data-theme="dark"] .archive__genre--doc { background: #1d2a40; color: #9cbcf2; }
 :root[data-theme="dark"] .archive__genre--sheet { background: #1b3326; color: #8fd3a8; }
-.archive__pages, .archive__original { font-size: 0.9rem; color: var(--muted); }
-.archive__note { font-size: 0.9rem; font-style: italic; }
-.archive__onglets { margin-top: 0.4rem; font-size: 0.9rem; }
+.archive__pages, .archive__original { font-size: var(--fs-lg); color: var(--muted); }
+.archive__note { font-size: var(--fs-lg); font-style: italic; }
+.archive__onglets { margin-top: 0.4rem; font-size: var(--fs-lg); }
 .archive__onglets summary { cursor: pointer; color: var(--accent); }
 .archive__onglets ul { margin: 0.3rem 0 0; padding-left: 1.2rem; columns: 2 10rem; }

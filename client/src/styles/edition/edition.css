@@ -49,7 +49,7 @@
 .ed-confirmer:disabled { opacity: 0.6; cursor: progress; }
 .ed-confirmer svg { width: 1.1rem; height: 1.1rem; }
 .ed-journal {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -60,7 +60,7 @@
 .ed-journal[hidden] { display: none; }
 
 /* Champs : en mode modification, chaque champ modifiable est encadré et remplacé par sa saisie */
-body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: 3px; }
+body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: var(--radius-xxs); }
 .ed-saisie {
   display: block;
   width: 100%;
@@ -81,13 +81,13 @@ textarea.ed-saisie { resize: vertical; min-height: 2.4em; line-height: 1.45; fie
 textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-saisie:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ed-saisie.ed-modifiee { border-color: var(--good); box-shadow: inset 3px 0 0 var(--good); }
-.ed-libelle { display: block; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+.ed-libelle { display: block; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
 
 /* Outils ajoutés par les extensions (ajouter, supprimer, déplacer) */
 .ed-outils { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
 .ed-outil {
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   cursor: pointer;
   color: var(--accent);
   background: var(--surface);
@@ -102,20 +102,20 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-supprime .ed-outil--danger { opacity: 1; text-decoration: none; }
 .ed-nouveau { box-shadow: inset 4px 0 0 var(--good); }
 .ed-cible { display: inline-flex; align-items: center; gap: 0.25rem; }
-.ed-cible .ed-niveau, .regards__matrice .ed-niveau { width: auto; min-width: 0; display: inline-block; padding: 0.05rem 0.2rem; font-size: 0.8rem; }
+.ed-cible .ed-niveau, .regards__matrice .ed-niveau { width: auto; min-width: 0; display: inline-block; padding: 0.05rem 0.2rem; font-size: var(--fs-sm); }
 .ed-ajout-relation { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.5rem 0 0; }
 .ed-ajout-relation .ed-saisie { width: auto; display: inline-block; }
 .ed-magies label { cursor: pointer; }
 .ed-magies input { margin: 0 0.25rem 0 0; }
-.ed-details { margin-top: 0.35rem; font-size: 0.75rem; padding: 0.05rem 0.5rem; }
+.ed-details { margin-top: 0.35rem; font-size: var(--fs-xs); padding: 0.05rem 0.5rem; }
 /* Les catégories d'un événement de la chronologie (formulaire « Nouvel événement », page de l'événement : editeur.mjs#champAPart) : une case chacune */
 .ed-categories { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0; padding: 0; border: 0; min-width: 0; }
-.ed-categorie { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.9rem; }
+.ed-categorie { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: var(--fs-lg); }
 .ed-categorie input { margin: 0; }
 /* La gestion des catégories (bouton « Catégories » de la chronologie : src/scripts/edition/chronologie.mjs) : une ligne par catégorie */
 .ed-gestion-categories { display: grid; gap: 0.35rem; margin: 0.5rem 0; padding: 0; list-style: none; max-height: 55vh; overflow-y: auto; }
 .ed-gestion-categorie { display: grid; grid-template-columns: minmax(10rem, 1fr) auto auto; align-items: center; gap: 0.5rem; }
-.ed-gestion-categorie__compte { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.ed-gestion-categorie__compte { color: var(--muted); font-size: var(--fs-md); white-space: nowrap; }
 .ed-gestion-categorie.ed-supprime .ed-saisie { text-decoration: line-through; opacity: 0.6; }
 
 /* Formulaire de création (dialog) */
@@ -132,7 +132,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-dialogue form { display: grid; gap: 0.75rem; padding: 1.1rem 1.3rem 1.2rem; }
 .ed-dialogue h2 { margin: 0; font-size: 1.2rem; }
 .ed-dialogue label { display: grid; gap: 0.2rem; }
-.ed-dialogue .ed-aide { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ed-dialogue .ed-aide { margin: 0; font-size: var(--fs-md); color: var(--muted); }
 .ed-dialogue .ed-erreur { margin: 0; color: var(--danger); font-weight: 600; }
 .ed-dialogue .ed-boutons { display: flex; justify-content: flex-end; gap: 0.6rem; }
 /* un champ caché selon un autre (« Ajouter une capacité » : nom et description d'une capacité nouvelle seulement) : `display: grid` ne l'emporte pas */
@@ -148,7 +148,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   z-index: 70;
   max-width: min(32rem, calc(100vw - 2rem));
   padding: 0.65rem 2.2rem 0.65rem 0.9rem;
-  font-size: 0.92rem;
+  font-size: var(--fs-lg);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -171,7 +171,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   gap: 0.4rem;
   margin-top: 0.45rem;
   padding: 0.4rem 0.55rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   line-height: 1.4;
   background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
   border: 1px solid var(--border);
@@ -189,10 +189,10 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-curseur { flex: 1 1 8rem; min-width: 6rem; margin: 0; accent-color: var(--accent); }
 .ed-saisie.ed-nombre { display: inline-block; width: 5.2rem; min-width: 0; }
 .ed-saisie.ed-invalide { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger); }
-.ed-emplacement__commune { font-size: 0.8rem; color: var(--muted); }
+.ed-emplacement__commune { font-size: var(--fs-sm); color: var(--muted); }
 .ed-emplacement.ed-propre .ed-emplacement__commune { font-style: italic; }
 .ed-capacite__apercu { margin: 0; padding: 0.3rem 0.45rem; color: var(--text); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-xs); }
-.ed-capacite .ed-outil { font-size: 0.78rem; padding: 0.1rem 0.55rem; }
+.ed-capacite .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
 .ed-capacite .ed-outil:disabled { opacity: 0.45; cursor: default; background: var(--surface); }
 .ed-ajout-capacite { display: block; margin-top: 0.45rem; }
 body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
@@ -273,9 +273,9 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   padding: 0.3rem 0.4rem;
   border-bottom: 1px solid var(--border);
 }
-.ed-mot-cle__compte { font-size: 0.85rem; color: var(--muted); }
+.ed-mot-cle__compte { font-size: var(--fs-md); color: var(--muted); }
 .ed-mot-cle__outils { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
-.ed-mot-cle__protege { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+.ed-mot-cle__protege { font-size: var(--fs-md); color: var(--muted); font-style: italic; }
 .ed-mot-cle--protege .ed-mot-cle__nom { font-weight: 600; }
 .ed-fusionne { opacity: 0.55; }
 .ed-fusionne .ed-mot-cle__fusionner { opacity: 1; }

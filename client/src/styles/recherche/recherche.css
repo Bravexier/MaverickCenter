@@ -3,7 +3,7 @@
 #search-form { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 #search-form input { flex: 1 1 16rem; max-width: 32rem; }
 .recherche-mots-cles h2, .recherche-pages h2, .recherche-mot-cle h2 { font-size: 1.15rem; margin-bottom: 0.5rem; }
-.recherche-mots-cles h2 small { font-size: 0.85rem; font-weight: normal; }
+.recherche-mots-cles h2 small { font-size: var(--fs-md); font-weight: normal; }
 .recherche-mots-cles .tags li[hidden] { display: none; }
 .recherche-mot-cle h2:focus { outline: none; }
-.recherche-voir-aussi { margin-top: 2rem; font-size: 0.9rem; }
+.recherche-voir-aussi { margin-top: 2rem; font-size: var(--fs-lg); }

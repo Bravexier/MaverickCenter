@@ -38,7 +38,7 @@
 .magies-relation__bouclier .magies-relation__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
 
 /* La légende tient sur une ligne (demande du propriétaire). */
-.magies-legende { display: flex; flex-wrap: nowrap; gap: 1.2rem; margin: 1.6rem 0 0; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.magies-legende { display: flex; flex-wrap: nowrap; gap: 1.2rem; margin: 1.6rem 0 0; color: var(--muted); font-size: var(--fs-md); white-space: nowrap; }
 .magies-legende__item { display: inline-flex; align-items: center; gap: 0.35rem; }
 .magies-legende svg { width: 2.6rem; height: 1.3rem; flex: none; }
 .magies-legende line { stroke: var(--muted); stroke-width: 1.6; }
@@ -66,46 +66,9 @@
 .magies-orbite__position:hover,
 .magies-orbite__position:focus-within { z-index: 1000; }
 
-.magies-orbite__noeud {
-  position: relative;
-  display: flex;
-  min-height: 2.9rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--couleur-magie) 68%, var(--border));
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--couleur-magie) 10%, var(--surface));
-  box-shadow: var(--ombre-douce);
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  text-decoration: none;
-  transition: transform var(--duree) ease, box-shadow var(--duree) ease;
-}
-
-.magies-orbite__pastille {
-  flex: 0 0 0.65rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--couleur-magie));
-  border-radius: 50%;
-  background: var(--couleur-magie);
-}
-
-.magies-orbite__nom { overflow-wrap: anywhere; }
-
+.magies-orbite__noeud { min-height: 2.9rem; padding: 0.45rem 0.6rem; }
 .magies-orbite__noeud:hover,
-.magies-orbite__noeud:focus-visible {
-  z-index: 6;
-  outline: 2px solid var(--couleur-magie);
-  outline-offset: 3px;
-  box-shadow: 0 5px 18px color-mix(in srgb, var(--couleur-magie) 25%, transparent);
-  transform: translateY(-2px);
-}
+.magies-orbite__noeud:focus-visible { z-index: 6; }
 
 /* Écran étroit (le menu passe aussi sous le logo à 60rem) : la carte sur deux colonnes, largeurs en cqw (largeur de la carte, sans les marges de la page). */
 @media (max-width: 60rem) {
@@ -118,6 +81,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .magies-orbite__noeud,
   .magies-relation { transition: none; }
 }

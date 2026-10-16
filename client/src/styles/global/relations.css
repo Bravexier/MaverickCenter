@@ -1,11 +1,11 @@
 /* Liens races ↔ magies et relations entre magies */
 .relations { margin: 1.25rem 0; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .relations h2 { margin: 0 0 0.3rem; font-size: 1.15rem; }
-.relations h3 { margin: 0.9rem 0 0.2rem; font-size: 0.95rem; color: var(--muted); font-weight: normal; }
+.relations h3 { margin: 0.9rem 0 0.2rem; font-size: var(--fs-lg); color: var(--muted); font-weight: normal; }
 .relations details { margin-top: 0.7rem; }
 .relations summary { cursor: pointer; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.35rem 0; list-style: none; }
-.chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 0.9rem; }
+.chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: var(--fs-lg); }
 a.chip { color: var(--accent); }
 a.chip:hover { background: var(--accent-soft); }
 .chip--fort { border-color: var(--good); }
@@ -14,4 +14,4 @@ a.chip:hover { background: var(--accent-soft); }
 .chip--soi { font-style: italic; color: var(--muted); }
 .badge--pure { background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
 .badge--hybride { background: var(--accent); color: var(--surface); }
-.legend { color: var(--muted); font-size: 0.9rem; }
+.legend { color: var(--muted); font-size: var(--fs-lg); }
