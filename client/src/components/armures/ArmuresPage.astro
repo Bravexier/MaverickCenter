@@ -74,8 +74,7 @@ const legende = (
     {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
     <details class="armures-regles">
       <summary>Règles des armures : matériaux, solidité, améliorations</summary>
-      {/* les règles sont le texte de l'onglet, tel qu'importé : ce qu'il dit des morceaux ne vaut plus pour la fabrication (décision R93) */}
-      <p class="armures-regles__decision">Une armure ne se fabrique plus pièce par pièce : seulement l’armure complète (décision R93). Ce que le texte ci-dessous dit de la fabrication des morceaux ne s’applique plus.</p>
+      {/* les règles sont le texte de l'onglet, sans les paragraphes sur la création par pièces (décision R95, migration 0055) */}
       <div class="prose armures-regles__texte"><Fragment set:html={regles.armures} /></div>
     </details>
     <p class="armures-aide js-seul">

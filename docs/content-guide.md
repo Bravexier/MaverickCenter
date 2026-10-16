@@ -363,8 +363,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, AP,
   AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16 : la défense se modifie dans la
   case AP, la case AM la suit en lecture, comme dans la liste des boucliers) ; une ligne choisit l'armure (et ses deux matériaux). Une armure **ne se fabrique plus pièce par pièce, seulement
-  complète** (décision R93) : plus de tableau FABRICATION ; les règles de l'onglet (texte tel qu'importé, qui parle encore des morceaux) sont précédées
-  de cette décision. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
+  complète** (décision R93) : plus de tableau FABRICATION ; les paragraphes des règles de l'onglet sur la création par pièces sont
+  retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`). **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
   10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
   page Composants (R62) ; calculé partout (au build : `lib/armures-db.mjs#chargerArmures`, `prix_calcule` ; le script de la page le refait quand un prix
   de matériau ou la fabrication est réécrit), le prix écrit dans la grille n'est plus lu ni modifiable ; une armure particulière garde son prix écrit.

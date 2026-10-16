@@ -114,7 +114,8 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('mouvement'), /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage');
   assert.match(bloc('resistances'), /<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
   assert.match(bloc('resistances'), /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
-  assert.match(bloc('armure'), /<table class="fiche-table fiche-table--fixe" id="armures"><\/table>/);
+  // une armure complète et la solidité de ses parties (décision R95), remplies par le script comme le bouclier
+  assert.match(bloc('armure'), /<div id="armures" class="equipement"><\/div>/);
   assert.match(bloc('bouclier'), /<div id="bouclier" class="equipement"><\/div>/);
   // IV. paramètres et suivi
   const progression = bloc('progression');

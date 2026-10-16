@@ -29,8 +29,6 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-regles { margin: 0 0 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .armures-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
 .armures-regles__texte { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
-/* la décision R93 (fabrication de l'armure complète seulement), avant le texte de l'onglet qui parle encore des morceaux */
-.armures-regles__decision { margin: 0.4rem 1.2rem 0.8rem; padding: 0.45rem 0.8rem; border-left: 4px solid var(--pro); background: var(--pro-soft); border-radius: var(--radius-xs); font-weight: 600; }
 @media (min-width: 64rem) { .armures-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
 .armures-regles__texte > * { break-inside: avoid; }
 .armures-regles__texte > :first-child { margin-top: 0; }

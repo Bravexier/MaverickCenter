@@ -2,7 +2,7 @@
 // pour la page et ses onglets) : rendus depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
 // dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
 // liste des armures (« Une liste plus classique est disponible également »), les armures particulières en premier, et les améliorations ; plus de
-// tableau FABRICATION (une armure ne se fabrique plus pièce par pièce : décision R93) ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
+// tableau FABRICATION (une armure ne se fabrique plus pièce par pièce : décision R93) ni de création par pièces dans les règles (R95) ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
 // replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; plus de tableau MATÉRIAUX (sa fabrication est sur la page
 // « Composants » : test/composants-html.test.mjs) ; les champs du mode modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
@@ -38,8 +38,11 @@ test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, 
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
   assert.equal((main.match(/<details class="armures-regles">/g) ?? []).length, 2);
-  assert.ok(panneau('armures').includes('il faut 2 matériaux pour chaque morceau'), 'les règles des armures (le texte de l’onglet, tel qu’importé)');
-  assert.match(panneau('armures'), /<p class="armures-regles__decision">Une armure ne se fabrique plus pièce par pièce : seulement l’armure complète \(décision R93\)\./, 'la décision R93 avant ce texte');
+  assert.ok(panneau('armures').includes('Une armure a besoin de 2 matériaux pour être fabriquée'), 'les règles des armures (le texte de l’onglet)');
+  // « Suppression de la création par pièces » (décision R95) : les paragraphes retirés par la migration 0055, et la note de la décision R93 qui les précédait
+  for (const retire of ['il faut 2 matériaux pour chaque morceau', 'Comme vous le savez il est possible de fabriquer', 'armures-regles__decision']) {
+    assert.ok(!panneau('armures').includes(retire), retire);
+  }
   assert.ok(panneau('boucliers').includes('autant de matériaux que sa classe indique'), 'les règles des boucliers');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
