@@ -9,8 +9,10 @@
 --     personnage_armure_partie (une armure à solidité unifiée : une seule, sous « armure-complete »). personnage_armure (une armure par emplacement)
 --     disparaît : sa ligne du premier emplacement (l'armure complète, sinon la première pièce, dans l'ordre du tableau FABRICATION) donne l'armure et ce
 --     qui l'améliore ; les tables des fiches sont vides dans data/rows. La base vivante du service fait la même conversion à sa reconstruction et note
---     dans la fiche, datée, chaque autre pièce qu'elle ne garde pas (serveur/base-vivante.mjs, CONVERSIONS ; TABLES_RETIREES de src/lib/fiche-format.mjs) :
---     rien n'est perdu sans le dire. La règle amelioration_cible de v_personnage_controle lit les deux améliorations de l'armure dans personnage.
+--     dans la fiche, datée, la pièce gardée qui devient l'armure complète et chaque autre pièce qu'elle ne garde pas (serveur/base-vivante.mjs,
+--     CONVERSIONS ; TABLES_RETIREES de src/lib/fiche-format.mjs) :
+--     rien n'est perdu sans le dire. La règle amelioration_cible de v_personnage_controle lit les deux améliorations de l'armure dans personnage ;
+--     deux règles nouvelles signalent une amélioration ou un élément sans armure et une partie que l'armure n'a pas.
 --   * Page « Armures » (ressources/armures) : les paragraphes de ses règles sur la création des morceaux d'armure (« Comme vous le savez il est possible
 --     de fabriquer des armures… », « Avant je disais… il faut 2 matériaux pour chaque morceau… », l'exemple du torse) sont retirés du corps (« Suppression
 --     de la création par pièces ») ; le reste des règles (solidité, cran de solidité uni, « perdre un seul morceau de l'armure ») est inchangé, ainsi que
@@ -44,7 +46,8 @@ WHERE id IN (SELECT personnage_id FROM personnage_armure);
 
 DROP TABLE personnage_armure;
 
--- v_personnage_controle : copiée de data/schema.sql (règle amelioration_cible : les améliorations de l'armure, dans personnage)
+-- v_personnage_controle : copiée de data/schema.sql (règle amelioration_cible : les améliorations de l'armure, dans personnage ; règles armure_manquante
+-- et armure_partie_hors_armure : une amélioration ou un élément sans armure, une partie que l'armure n'a pas)
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
   SELECT pc.personnage_id, 'classe_inaccessible' AS regle, pc.classe_id AS detail
@@ -281,9 +284,19 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_id
   WHERE ae.cible <> 'armure'
   UNION ALL
-  SELECT p.id, 'amelioration_cible', 'armure : ' || ae.id
+  SELECT p.id, 'amelioration_cible', 'élément de l’armure : ' || ae.id
   FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_elementaire_id
   WHERE ae.cible <> 'armure_elementaire'
+  UNION ALL
+  -- Armure (décision R95) : une amélioration ou un élément d'armure n'existe qu'avec l'armure ; une partie n'a de solidité que si l'armure l'a (la seule
+  -- « armure-complete » d'une armure à solidité unifiée, armure.solidite_uni = 1 ; les six autres sinon)
+  SELECT p.id, 'armure_manquante', COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id)
+  FROM personnage p
+  WHERE p.armure_id IS NULL AND COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id) IS NOT NULL
+  UNION ALL
+  SELECT ap.personnage_id, 'armure_partie_hors_armure', ap.emplacement_id
+  FROM personnage_armure_partie ap JOIN personnage p ON p.id = ap.personnage_id LEFT JOIN armure a ON a.id = p.armure_id
+  WHERE a.id IS NULL OR (COALESCE(a.solidite_uni, 0) = 1) <> (ap.emplacement_id = 'armure-complete')
   UNION ALL
   -- Accessoire : valeur tirée dans la fourchette de l'effet
   SELECT pa.personnage_id, 'accessoire_valeur', pa.emplacement || ' = ' || COALESCE(CAST(pa.valeur AS TEXT), '(absente)')

@@ -1022,7 +1022,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   } else {
     // « Bonus/ Malus » (AQ21) : la ligne de l'armure (lib/fiche-tableur-export.mjs#lireLigneDArmure) ; un classeur d'avant la décision R95 en écrit une
     // par pièce (« Torse : … ») : la fiche garde la première dans l'ordre des emplacements, l'armure complète d'abord (armureDesArmures, la règle de la
-    // base vivante), les autres pièces vont dans les notes. Une ligne qui ne nomme pas d'armure n'a pas de place sur le site. « Nom Armure » (AD22) :
+    // base vivante), une remarque quand c'est une pièce qui devient l'armure complète, les autres pièces vont dans les notes. Une ligne qui ne nomme pas d'armure n'a pas de place sur le site. « Nom Armure » (AD22) :
     // l'armure quand aucune ligne n'en écrit, sinon comparé aux lignes
     const portees = [];
     for (const l of lignesDe(texte(d.armure.bonus))) {
@@ -1044,9 +1044,15 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       for (const partie of lu.autres) perdu(`${quoi} : « ${partie} » sans place sur la fiche`);
       portees.push({ ligne, quoi });
     }
-    const { colonnes, retirees } = armureDesArmures(portees.map((x) => x.ligne));
+    const { colonnes, retirees, transformee } = armureDesArmures(portees.map((x) => x.ligne));
     Object.assign(f, colonnes);
-    for (const r of retirees) perdu(`${portees.find((x) => x.ligne === r).quoi} : une fiche ne porte plus qu’une armure complète (décision R95)`);
+    if (transformee) remarques.push(`${portees.find((x) => x.ligne === transformee).quoi} : devenue l’armure complète de la fiche (décision R95)`);
+    for (const r of retirees) {
+      const quoi = portees.find((x) => x.ligne === r).quoi;
+      perdu(r.armure_id === colonnes.armure_id
+        ? `${quoi} : son amélioration et son élément ne sont pas repris, une fiche ne porte plus qu’une armure complète (décision R95)`
+        : `${quoi} : une fiche ne porte plus qu’une armure complète (décision R95)`);
+    }
     const nomAD22 = texte(d.armure.nom);
     if (!portees.length && nomAD22) f.armure_id = unSeul(retrouver(regles.armures, nomAD22), 'Armure', nomAD22)?.id ?? null;
     else if (nomAD22 && portees.length && !nommeLesPieces(regles, nomAD22, portees.map((x) => x.ligne))) {

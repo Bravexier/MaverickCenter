@@ -95,6 +95,14 @@ test('armureApresChoix : une autre armure est neuve ; sans armure, ni améliorat
   assert.deepEqual(armureApresChoix(regles, abimee, 'armure_id', grille.id).armure_parties, partiesValables(regles, abimee));
 });
 
+test('R95 (« Suppression de la création par pièces ») : la page « Armures » n’a plus les paragraphes sur la création par pièces, le reste de ses règles reste (lu dans la base, sans build)', () => {
+  const corps = db.prepare("SELECT corps_md FROM page WHERE id = 'ressources/armures'").get().corps_md;
+  for (const retire of ['Comme vous le savez il est possible de fabriquer', 'Pour fabriquer des morceaux', 'il faut 2 matériaux pour chaque morceau', 'un torse de cuir complet']) {
+    assert.ok(!corps.includes(retire), retire);
+  }
+  for (const garde of ['Une armure a besoin de 2 matériaux pour être fabriquée', 'Cran de solidité uni', 'perdre un seul morceau de l\'armure']) assert.ok(corps.includes(garde), garde);
+});
+
 const racine = mkdtempSync(join(tmpdir(), 'maverick-armure-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
 

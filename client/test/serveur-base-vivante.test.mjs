@@ -688,13 +688,14 @@ const AVANT_0055 = `CREATE TABLE personnage_armure (
     PRIMARY KEY (personnage_id, emplacement_id)
   ) STRICT, WITHOUT ROWID;`;
 
-test('migration 0055 : une base vivante d’avant, une armure par emplacement, est reprise ; la fiche garde la première, chaque autre pièce est notée, datée (R95)', () => {
+test('migration 0055 : une base vivante d’avant, une armure par emplacement, est reprise ; la fiche garde la première, une pièce devenue l’armure complète et chaque autre pièce sont notées, datées (R95)', () => {
   assert.equal(TABLES_RETIREES.personnage_armure, 'armures');
   assert.equal(aLaTable(REGLES, 'personnage_armure'), false, 'les règles d’aujourd’hui n’ont plus la table');
   const lire = new DatabaseSync(REGLES, { readOnly: true });
   const [a, b] = lire.prepare("SELECT id, nom FROM armure WHERE sorte = 'combinaison' ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
   const amelioration = lire.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'armure' AND niveau = 2").get().id;
   const casque = lire.prepare("SELECT nom FROM armure_emplacement WHERE id = 'casque'").get().nom;
+  const torse = lire.prepare("SELECT nom FROM armure_emplacement WHERE id = 'torse'").get().nom;
   lire.close();
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0055), dossier });
@@ -724,17 +725,23 @@ test('migration 0055 : une base vivante d’avant, une armure par emplacement, e
     assert.deepEqual(p1.armure_parties, [], 'toutes les parties à leur maximum');
     assert.equal(p1.notes, `[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « ${b.nom} » (${casque}) n’est plus portée : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.`);
     assert.equal(p1.modifie_le, '2026-10-16T18:00:00Z', 'une fiche notée est marquée modifiée');
-    assert.equal(p2.notes ?? null, null, 'une seule pièce : rien à noter');
-    assert.equal(p2.modifie_le, INSTANT);
+    assert.equal(p2.notes, `[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « ${b.nom} » (${torse}) est devenue l’armure complète de la fiche : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.`,
+      'une pièce seule devient l’armure complète : la fiche le dit');
+    assert.equal(p2.modifie_le, '2026-10-16T18:00:00Z');
   } finally {
     db.close();
   }
   assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_armure').n, 4, 'l’archive garde les pièces');
+  // les fiches converties sont listées comme celles de la décision R42 (vivante.json, /api/etat) ; le nom d'une fiche de joueur ne sort pas
+  assert.deepEqual(r.fiches.map((f) => f.retraits), [[`la pièce d’armure « ${b.nom} » (${casque})`], [`la pièce d’armure « ${b.nom} » (${torse})`]]);
+  assert.match(r.fiches[1].fiche, /^fiche de joueur n° \d+$/);
+  assert.deepEqual(lireEtat(dossier).retraits, { le: '2026-10-16T18:00:00Z', fiches: r.fiches });
   // une reconstruction suivante ne convertit plus rien : l'armure et la note restent telles quelles
   const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
   assert.equal(suivante.refaite, true);
   assert.equal(valeur(chemin, "SELECT armure_id FROM personnage WHERE id = 'p1'").armure_id, a.id);
-  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage WHERE notes LIKE '%pièce d’armure%'").n, 1);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage WHERE notes LIKE '%pièce d’armure%'").n, 2, 'p1 et p2, une fois chacune');
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p2'").notes.split('\n').length, 1, 'rien ajouté à la reconstruction suivante');
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {

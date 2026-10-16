@@ -623,9 +623,10 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   });
   const r = ficheDuClasseur(regles, feuille);
   const f = r.fiche;
-  // les pièces d'armure d'un classeur d'avant la décision R95 : la fiche garde la première dans l'ordre des emplacements (le casque), le torse va dans nonRepris
+  // les pièces d'armure d'un classeur d'avant la décision R95 : la fiche garde la première dans l'ordre des emplacements (le casque), devenue l'armure
+  // complète (une remarque), le torse va dans nonRepris
   assert.deepEqual(r.nonRepris, [`Armure (Torse : ${torse.nom}) : une fiche ne porte plus qu’une armure complète (décision R95)`]);
-  assert.deepEqual(r.remarques, []);
+  assert.deepEqual(r.remarques, [`Armure (Casque : ${casque.nom}) : devenue l’armure complète de la fiche (décision R95)`]);
   assert.deepEqual([f.nom, f.surnom, f.lieu_origine, f.race_id, f.magie_innee_id, f.ethnie_id, f.dieu_choisi_id, f.xp, f.mode_classe],
     ['Essai', 'Le Test', 'Champieu', 'races/humain', magie('Feu').id, 'races/humain#ethnie:humain-central', parNom(regles.dieux, 'Mirada').id, xpDuNiveau(5), 'mono']);
   assert.deepEqual([f.alignement_loyal, f.alignement_chaotique, f.alignement_bon, f.alignement_mauvais, f.bourse_pp, f.bourse_ro, f.bourse_rf], [8, 1, 2, 3, 1, 245, 50]);
@@ -970,15 +971,17 @@ test('armure (modèle ordinateur) : AD22 toujours lue ; une ligne de « Bonus/ M
   // une ligne de bonus en plus de celle de l'armure
   r = ficheDuClasseur(regles, deLaPage(portee, { AQ21: `${cellulesDeLaFiche(regles, portee).cellules.AQ21}\n+2 AP (forgeron)` }));
   assert.deepEqual([armure(r.fiche), r.nonRepris], [seule(a1.id), ['Bonus/Malus de l\'armure : « +2 AP (forgeron) » sans place sur le site']]);
-  // un classeur d'avant la décision R95, une ligne par pièce : la fiche garde la première dans l'ordre des emplacements (l'armure complète d'abord), les
-  // autres pièces vont dans nonRepris ; « Nom Armure » (la liste des pièces) n'y était qu'affiché : coupé (« … »), son début s'accorde aux pièces
+  // un classeur d'avant la décision R95, une ligne par pièce : la fiche garde la première dans l'ordre des emplacements (l'armure complète d'abord),
+  // une pièce gardée devient l'armure complète (une remarque), les autres pièces vont dans nonRepris ; « Nom Armure » (la liste des pièces) n'y était
+  // qu'affiché : coupé (« … »), son début s'accorde aux pièces
   const pieces = { AQ21: `Torse : ${a1.nom}\nCasque : ${a2.nom}` };
   const liste = `${a2.nom}, ${a1.nom}`;
   const torseEnTrop = `Armure (Torse : ${a1.nom}) : une fiche ne porte plus qu’une armure complète (décision R95)`;
+  const casqueGarde = `Armure (Casque : ${a2.nom}) : devenue l’armure complète de la fiche (décision R95)`;
   r = ficheDuClasseur(regles, ordinateur({ ...pieces, AD22: liste }));
-  assert.deepEqual([armure(r.fiche), r.nonRepris, r.remarques], [seule(a2.id), [torseEnTrop], []]);
-  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ ...pieces, AD22: `${liste.slice(0, a2.nom.length + 2)}…` })).remarques, []);
-  assert.equal(ficheDuClasseur(regles, ordinateur({ ...pieces, AD22: 'Autre chose …' })).remarques.length, 1);
+  assert.deepEqual([armure(r.fiche), r.nonRepris, r.remarques], [seule(a2.id), [torseEnTrop], [casqueGarde]]);
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({ ...pieces, AD22: `${liste.slice(0, a2.nom.length + 2)}…` })).remarques, [casqueGarde]);
+  assert.equal(ficheDuClasseur(regles, ordinateur({ ...pieces, AD22: 'Autre chose …' })).remarques.length, 2);
   r = ficheDuClasseur(regles, ordinateur({ AQ21: `${a2.nom}\nCasque : ${a1.nom}`, AD22: a2.nom }));
   assert.deepEqual([armure(r.fiche), r.nonRepris, r.remarques], [seule(a2.id), [`Armure (Casque : ${a1.nom}) : une fiche ne porte plus qu’une armure complète (décision R95)`], []]);
   // six pièces de la même armure : une armure, rien de perdu

@@ -1369,7 +1369,7 @@ function construireEquipement() {
   // et l'amélioration de l'élément (armureApresChoix : une autre armure est neuve) ; puis la solidité du moment de chacune de ses six parties
   // (« L'armure peut casser à certains endroits seulement »), ou de l'armure entière pour une armure à solidité unifiée : un curseur de 0 au maximum
   // (partiesDeLArmure : la solidité de l'armure et les crans de son amélioration), « N / M » à côté, « Cassée » à 0 ; clic droit ou Entrée : saisir le
-  // nombre. Une partie se répare seule (« kit de réparation ou métier adapté + matériau ») : rien n'en est calculé, sa solidité remonte au curseur
+  // nombre. Chaque partie se répare individuellement (« kit de réparation ou métier adapté + matériau ») : rien n'en est calculé, sa solidité remonte au curseur
   reconstruire($('armures'), 'fixe', () => {
     const choisir = (champ) => (v) => {
       Object.assign(fiche, armureApresChoix(regles, fiche, champ, v));
@@ -1411,7 +1411,7 @@ function construireEquipement() {
         rang.title = [
           `${partie.nom} : ${partie.actuelle} / ${a.max} cran${a.max > 1 ? 's' : ''}${partie.cassee ? ' : cassée' : ''}`,
           ...a.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}${a.uni ? ' (solidité unifiée : toute l’armure)' : ''}`)),
-          'À 0, la partie est cassée ; elle se répare seule (kit de réparation ou métier adapté + matériau). Clic droit ou Entrée sur le curseur : saisir le nombre.',
+          'À 0, la partie est cassée ; chaque partie se répare individuellement (kit de réparation ou métier adapté + matériau). Clic droit ou Entrée sur le curseur : saisir le nombre.',
         ].join('\n');
       });
       return rang;

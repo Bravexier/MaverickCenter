@@ -71,7 +71,7 @@ test('EMPLACEMENTS_D_ARMURE : les emplacements de la base dans l’ordre du tabl
   }
 });
 
-test('armureDesArmures (R95) : la ligne du premier emplacement, l’armure complète d’abord ; les autres pièces qui ne portent pas la même armure sont rendues', () => {
+test('armureDesArmures (R95) : la ligne du premier emplacement, l’armure complète d’abord ; les autres pièces qui ne portent pas la même armure sont rendues ; une pièce qui devient l’armure complète aussi', () => {
   const lignes = [
     { emplacement_id: 'torse', armure_id: 'B', amelioration_id: null, armure_elementaire_id: null, amelioration_elementaire_id: null },
     { emplacement_id: 'armure-complete', armure_id: 'A', amelioration_id: 'am2', armure_elementaire_id: 'el', amelioration_elementaire_id: null },
@@ -81,10 +81,18 @@ test('armureDesArmures (R95) : la ligne du premier emplacement, l’armure compl
   const r = armureDesArmures(lignes);
   assert.deepEqual(r.colonnes, { armure_id: 'A', armure_amelioration_id: 'am2', armure_elementaire_id: 'el', armure_amelioration_elementaire_id: null });
   assert.deepEqual(r.retirees.map((l) => l.emplacement_id), ['torse', 'jambe-droit'], 'une autre armure, ou la même sans son amélioration');
-  // sans armure complète : la première pièce dans l'ordre du tableau (casque avant torse)
-  assert.equal(armureDesArmures([{ emplacement_id: 'torse', armure_id: 'B' }, { emplacement_id: 'casque', armure_id: 'C' }]).colonnes.armure_id, 'C');
+  assert.equal(r.transformee, null, 'l’armure complète était portée');
+  // sans armure complète : la première pièce dans l'ordre du tableau (casque avant torse), qui devient l'armure complète (une ligne dans les notes)
+  const pieces = armureDesArmures([{ emplacement_id: 'torse', armure_id: 'B' }, { emplacement_id: 'casque', armure_id: 'C' }]);
+  assert.deepEqual([pieces.colonnes.armure_id, pieces.transformee?.emplacement_id, pieces.retirees.map((l) => l.emplacement_id)], ['C', 'casque', ['torse']]);
+  // la même armure sur les six parties : c'était l'armure complète, rien ne change
+  const six = EMPLACEMENTS_D_ARMURE.slice(1).map((e) => ({ emplacement_id: e, armure_id: 'A', amelioration_id: 'am1' }));
+  assert.deepEqual([armureDesArmures(six).transformee, armureDesArmures(six).retirees], [null, []]);
+  assert.equal(armureDesArmures(six.slice(1)).transformee.emplacement_id, 'torse', 'cinq parties seulement : une pièce');
   for (const vide of [[], null, undefined, [{ emplacement_id: 'torse', armure_id: '' }]]) {
-    assert.deepEqual(armureDesArmures(vide), { colonnes: { armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null }, retirees: [] });
+    assert.deepEqual(armureDesArmures(vide), {
+      colonnes: { armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null }, retirees: [], transformee: null,
+    });
   }
 });
 
@@ -98,8 +106,16 @@ test('sansPartiesRetirees (R95) : une liste `armures` donne l’armure de la fic
   assert.deepEqual([r.armure_id, r.armure_amelioration_id, r.armure_elementaire_id], ['A', 'am2', null]);
   assert.equal(r.notes, 'Mes notes\n[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « Armure de Peau complète » (Casque) n’est plus portée : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.');
   assert.equal(fiche.notes, 'Mes notes', 'jamais modifiée en place');
-  assert.deepEqual(lignesDesPiecesRetirees([{ emplacement_id: 'torse', armure_id: 'x' }], '2026-10-16T18:00:00Z'),
+  assert.deepEqual(lignesDesPiecesRetirees({ retirees: [{ emplacement_id: 'torse', armure_id: 'x' }] }, '2026-10-16T18:00:00Z'),
     ['[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « x » (torse) n’est plus portée : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.'], 'sans noms : les identifiants');
+  // une pièce de la même armure, sans l'amélioration de l'armure complète : la fiche garde l'armure, la note dit ce qui se perd
+  const meme = sansPartiesRetirees({ armures: [{ emplacement_id: 'armure-complete', armure_id: 'A', amelioration_id: 'am2' }, { emplacement_id: 'casque', armure_id: 'A' }] },
+    { instant: '2026-10-16T18:00:00Z', noms });
+  assert.equal(meme.notes, '[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « Armure Cuir/Peau » (Casque) reste l’armure de la fiche, sans l’amélioration ni l’élément propres à cette pièce : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.');
+  // une pièce seule (un casque) : elle devient l'armure complète, et la fiche le dit
+  const casque = sansPartiesRetirees({ nom: 'Brune', armures: [{ emplacement_id: 'casque', armure_id: 'B' }] }, { instant: '2026-10-16T18:00:00Z', noms });
+  assert.deepEqual([casque.armure_id, casque.notes], ['B',
+    '[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « Armure de Peau complète » (Casque) est devenue l’armure complète de la fiche : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.']);
   // les nouvelles clés déjà là (page d'avant qui a repris une réponse du service) : elles sont gardées, la liste est jetée
   const reprise = sansPartiesRetirees({ armure_id: 'C', armure_parties: [], armures: [] }, { instant: '2026-10-16T18:00:00Z' });
   assert.deepEqual(reprise, { armure_id: 'C', armure_parties: [] });

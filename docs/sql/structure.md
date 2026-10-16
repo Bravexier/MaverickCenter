@@ -3523,7 +3523,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

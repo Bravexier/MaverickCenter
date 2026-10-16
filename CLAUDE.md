@@ -265,8 +265,10 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Une table **retirée** de la section 13 va dans `TABLES_RETIREES` (`fiche-format.mjs`) avec sa conversion (`CONVERSIONS` de `serveur/base-vivante.mjs`), sinon la
   reconstruction de la base vivante perdrait ses lignes sans erreur (la boucle de copie ne parcourt que `TABLES_VIVANTES`) : `personnage_progression` (migration 0045)
   devient la somme `gains_sante` / `gains_chakra`, et une `progression` reçue par le service ou la page est convertie (`sansPartiesRetirees`) ; `personnage_armure`
-  (migration 0055, R95) devient l'armure de `personnage` (la première pièce dans l'ordre des emplacements, `armureDesArmures`), chaque autre pièce une ligne datée
-  des notes (`lignesDesPiecesRetirees`), de même pour une liste `armures` reçue ; une liste reçue AVEC les nouvelles clés est refusée (`armuresAvecArmure`, 409).
+  (migration 0055, R95) devient l'armure de `personnage` (la première pièce dans l'ordre des emplacements, `armureDesArmures`) ; la pièce gardée qui devient l'armure
+  complète et chaque autre pièce sont des retraits (`retraitsDeLArmure`), notés et listés dans `/api/etat` avec ceux de R42 (`noterLesRetraits`) ; de même pour une
+  liste `armures` reçue (`lignesDesPiecesRetirees`, ajoutées aux notes enregistrées si l'envoi n'a pas les siennes) ; une liste reçue AVEC les nouvelles clés est
+  refusée (`armuresAvecArmure`, 409).
 - **Mode modification** (site de dev, `docs/serveur.md`, « Édition ») : le service n'accepte que les colonnes de `TABLES` (`lib/edition-modele.mjs`) ; un champ affiché
   porte `data-ed='["table",{clé},"colonne"]'` (`attributEd`) et, s'il ne s'affiche pas en texte brut, un rendu de `lib/edition-rendu.mjs` (`data-ed-rendu`) qui redonne le HTML du
   gabarit. Une colonne rendue modifiable : son entrée dans `TABLES`, ce qui en dépend recalculé dans `serveur/edition.mjs` (colonnes `X_cle`, typées, tables de détail, page du
@@ -405,7 +407,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   du .xlsx le vérifie). Une case que le site ne calcule pas reste vide ; un nom du classeur introuvable part dans les notes, jamais rapproché.
   L'endroit où un texte est coupé dépend de la taille des cases du modèle et des chasses de Calibri et d'Arial (`tableur-mesure.mjs`) ; seule la
   part relue d'un texte coupé a une suite dans la note, jamais un texte de règles. Cases relues ajoutées le 2026-10-15 : L42 (entraînement, R71), AK17/AX17
-  (solidité « N / M », R74 ; AK15/AX15 de la fiche auto, un calcul, jamais relues) ; note « Gains de niveau : santé X, chakra Y » (l'ancien format par niveau
+  (solidité « N / M », R74 ; AK15/AX15 de la fiche auto, un calcul, jamais relues) ; le 2026-10-16 (R95) : AQ21 (une ligne d'armure ; d'un classeur d'avant,
+  une ligne par pièce, la première gardée), AD22 toujours relue, AI24:AN24 (solidité « N / M » de chaque partie de l'armure) ; note « Gains de niveau : santé X, chakra Y » (l'ancien format par niveau
   est encore lu, sommé) ; fiche auto : gains = maximums lus − le reste du calcul (`gainsDesMaximums`, R73), et l'ancien bonus du métier écrit en L41 retiré
   de l'acquis écrit (`bonusDuMetierEcrit`, R72 : linéaire, sans `text.mjs` ni `metier-champs.mjs` ; un classeur du site garde le bonus de la base). Seul
   `src/scripts/fiche.mjs` importe aussi `lib/google-sheets.mjs` (sans aucun import, `test/google-sheets.test.mjs`) ; le script de Google

@@ -292,7 +292,10 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
   const problemes = [];
   if (progressionAvecGains(recue) || armuresAvecArmure(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
-  const entree = sansPartiesRetirees(recue, { instant: instant(maintenant), noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement') } });
+  // les notes enregistrées : une ligne de conversion s'y ajoute quand l'envoi (partiel) n'a pas les siennes ; la version, contrôlée plus bas, garantit
+  // qu'elles n'ont pas changé depuis
+  const notes = id === null ? null : db.prepare('SELECT notes FROM personnage WHERE id = ?').get(id)?.notes ?? null;
+  const entree = sansPartiesRetirees(recue, { instant: instant(maintenant), noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement') }, notes });
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 

@@ -1389,8 +1389,8 @@ export const ARMURE_ENTIERE = 'armure-complete';
 /**
  * Solidité maximale de chaque partie de l'armure de la fiche, en crans (décision R95) : la solidité de l'armure (`regles.armures[].solidite`, la même sur
  * chaque partie : la fiche auto la recopie sur les six pièces) et les crans de son amélioration, ceux écrits au niveau choisi (décision R77 : « +1 cran au
- * +4 et au +5 » ; `regles.ameliorations[].bonus_cran`, une amélioration d'armure seulement). L'élément n'est pas compté, comme pour une arme (Q12). null
- * sans armure.
+ * +4 et au +5 » ; `regles.ameliorations[].bonus_cran`, une amélioration d'armure seulement). L'élément et l'amélioration de l'élément ne sont pas comptés, comme
+ * pour une arme (question Q12 de docs/sql/a-valider.md, étendue aux armures : décision R95). null sans armure.
  */
 export function soliditeMaxDeLArmure(regles, fiche) {
   const armure = trouver(regles.armures, fiche?.armure_id);

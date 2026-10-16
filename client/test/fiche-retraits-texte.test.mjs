@@ -110,8 +110,19 @@ test('objet supprimé de la base (décision R60) : la fiche le garde sous son no
     `[14/10/2026] ${PREFIXE_DE_RETRAIT}l’objet « Corde (1m) » (ceinture) a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour.`);
 });
 
+test('pièce d’armure (décision R95) : une pièce que la fiche ne porte plus, ou devenue l’armure complète de la fiche', () => {
+  const d = { nature: 'piece_armure', id: 'ressources/armures#armure:cuir-peau', nom: 'Armure Cuir/Peau', emplacement: 'Torse' };
+  assert.equal(descriptionDuRetrait(d), 'la pièce d’armure « Armure Cuir/Peau » (Torse)');
+  const fin = 'une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.';
+  assert.equal(ligneDeRetrait(d, '2026-10-16T12:00:00Z'), `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) n’est plus portée : ${fin}`);
+  assert.equal(ligneDeRetrait({ ...d, devenue: true }, '2026-10-16T12:00:00Z'),
+    `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) est devenue l’armure complète de la fiche : ${fin}`);
+  assert.equal(ligneDeRetrait({ ...d, armureGardee: true }, '2026-10-16T12:00:00Z'),
+    `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) reste l’armure de la fiche, sans l’amélioration ni l’élément propres à cette pièce : ${fin}`);
+});
+
 test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom', () => {
-  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet']);
+  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure']);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },
     { nature: 'capacite', id: 'k1', nom: 'Don 9' }, { nature: 'specialite', id: 'sp', nom: 'LAME' }, { nature: 'metier', id: 'm', nom: 'Forgeron' },

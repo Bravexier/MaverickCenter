@@ -32,7 +32,7 @@
 // modules que seule la page /fiche/ utilise (CLAUDE.md, « Pièges connus » : la version portable refuse un module partagé entre deux scripts de page) ;
 // pas lib/text.mjs (partagé par la recherche) : cle() de lib/fiche-tableur-cases.mjs.
 import { RAISONS } from './degats-texte.mjs';
-import { PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
+import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
@@ -676,9 +676,9 @@ function partiesDArmure(t) {
 
 /**
  * L'emplacement « armure complète » (regles.emplacements_armure) : une ligne d'armure sans emplacement écrit (lireLigneDArmure) ; dans la fiche, la
- * solidité d'une armure à solidité unifiée (décision R95).
+ * solidité d'une armure à solidité unifiée (décision R95) : ARMURE_ENTIERE de lib/fiche-format.mjs.
  */
-export const ARMURE_COMPLETE = 'armure-complete';
+export const ARMURE_COMPLETE = ARMURE_ENTIERE;
 
 // ------------------------------------------------------------------ métier
 

@@ -545,6 +545,11 @@ test('une page d’avant la migration 0055 envoie une armure par emplacement (`a
   const p = c.corps.personnage;
   assert.deepEqual([p.armure_id, p.armure_amelioration_id, 'armures' in p], [a.id, null, false]);
   assert.match(p.notes, new RegExp(`^\\[\\d{2}/\\d{2}/\\d{4}\\] Retrait \\(règles modifiées\\) : la pièce d’armure « ${b.nom.replace(/[/()]/g, '\\$&')} » \\(${casque}\\) n’est plus portée`));
+  // un envoi partiel (sans `notes`) : la ligne s'ajoute aux notes enregistrées, qui ne sont pas effacées
+  const partiel = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, armures: [{ emplacement_id: 'armure-complete', armure_id: a.id }, { emplacement_id: 'torse', armure_id: b.id }] });
+  assert.equal(partiel.statut, 200, JSON.stringify(partiel.corps));
+  const lignes = partiel.corps.personnage.notes.split('\n');
+  assert.deepEqual([lignes.length, lignes[0], /\(Torse\) n’est plus portée/.test(lignes[1])], [2, p.notes, true]);
   const avant = lire(p.id);
   const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, armures: [{ emplacement_id: 'torse', armure_id: b.id }] });
   assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
@@ -574,7 +579,11 @@ test('repli sur une base vivante d’avant la migration 0055 (sa reconstruction 
   // la base vivante d'aujourd'hui, ramenée à ses tables d'avant 0055 : une armure par emplacement, pas de solidité des parties
   const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0055') });
   const ancienne = new DatabaseSync(avant);
-  ancienne.exec(`DROP TABLE personnage_armure_partie;
+  // la vue des contrôles d'avant ne lisait pas la table de la solidité des parties (règle armure_partie_hors_armure, migration 0055)
+  const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const vueDAvant = vue.replace(/\n  UNION ALL\n  SELECT ap\.personnage_id, 'armure_partie_hors_armure'[\s\S]*?\(ap\.emplacement_id = 'armure-complete'\)/, '');
+  assert.notEqual(vueDAvant, vue);
+  ancienne.exec(`DROP VIEW v_personnage_controle; DROP TABLE personnage_armure_partie; ${vueDAvant};
     CREATE TABLE personnage_armure (
       personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, emplacement_id TEXT NOT NULL REFERENCES armure_emplacement(id),
       armure_id TEXT NOT NULL REFERENCES armure(id), amelioration_id TEXT REFERENCES amelioration_equipement(id),
@@ -588,7 +597,11 @@ test('repli sur une base vivante d’avant la migration 0055 (sa reconstruction 
     assert.deepEqual(cree.personnage.armure_parties, [], 'lue vide');
     const lue = lireFiche(base, cree.personnage.id);
     assert.deepEqual(lue.armure_parties, []);
+    // la pièce d'armure que cette base garde encore (sa table d'avant 0055) survit à un enregistrement : le service n'écrit pas une table qu'il ne connaît plus
+    const armure = base.prepare('SELECT id FROM armure ORDER BY ordre LIMIT 1').get().id;
+    base.prepare("INSERT INTO personnage_armure (personnage_id, emplacement_id, armure_id) VALUES (?, 'torse', ?)").run(lue.id, armure);
     assert.equal(enregistrerFiche(base, { ...lue, surnom: 'de secours' }, { id: lue.id }).personnage.surnom, 'de secours');
+    assert.deepEqual({ ...base.prepare('SELECT emplacement_id, armure_id FROM personnage_armure WHERE personnage_id = ?').get(lue.id) }, { emplacement_id: 'torse', armure_id: armure });
     const avantEnvoi = lireFiche(base, lue.id);
     assert.throws(() => enregistrerFiche(base, { version: avantEnvoi.version, armure_parties: [{ emplacement_id: 'torse', solidite: 1 }] }, { id: lue.id }), (e) => {
       assert.deepEqual([e.statut, e.details.problemes], [400, ['armure_parties : pas encore dans cette base, ses lignes seraient perdues']]);

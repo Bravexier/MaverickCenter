@@ -97,12 +97,14 @@ abandonne.
   `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id` ; `armureApresChoix` : une autre armure est neuve, sans armure ni
   amélioration ni élément). Dessous, un **curseur de solidité par partie** — casque, torse, bras gauche, bras droit, jambe gauche, jambe droite — de 0
   (**« Cassée »**) au maximum de l'armure : sa solidité et les crans de son amélioration (R77 ; `soliditeMaxDeLArmure`, recopie de
-  `lib/armure-forge.mjs#forgerArmure`, que `test/fiche-armure.test.mjs` compare sur toutes les armures et améliorations) ; une armure à **solidité
-  unifiée** (`armure.solidite_uni`) n'a qu'un curseur, « Armure entière ». Une partie se répare seule (« utilisation d'un kit de réparation ou métier
+  `lib/armure-forge.mjs#forgerArmure`, que `test/fiche-armure.test.mjs` compare sur toutes les armures et améliorations ; l'élément et l'amélioration de l'élément
+  ne sont pas comptés : question Q12, étendue aux armures) ; une armure à **solidité
+  unifiée** (`armure.solidite_uni`) n'a qu'un curseur, « Armure entière ». Chaque partie se répare individuellement (« utilisation d'un kit de réparation ou métier
   adapté + matériau ») : la fiche n'en calcule rien. Seules les parties abîmées sont gardées (`personnage_armure_partie`, `partiesValables` ; une autre
-  amélioration borne les parties au nouveau maximum : `partiesApresReglage`). Une fiche d'avant (une armure par emplacement) garde la première pièce
-  dans l'ordre des emplacements, l'armure complète d'abord, et chaque autre pièce devient une ligne datée de ses notes (base vivante, JSON reçu, import du
-  tableur : `armureDesArmures`).
+  amélioration borne les parties au nouveau maximum : `armureApresChoix`, par `partiesValables`). Une fiche d'avant (une armure par emplacement) garde la première pièce
+  dans l'ordre des emplacements, l'armure complète d'abord ; une pièce gardée qui devient l'armure complète (ni l'armure complète, ni la même armure sur
+  les six parties) et chaque autre pièce deviennent une ligne datée de ses notes (base vivante, JSON reçu : `armureDesArmures`, `retraitsDeLArmure` ;
+  import du tableur : une remarque et une ligne de `nonRepris`).
 - **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
   infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».

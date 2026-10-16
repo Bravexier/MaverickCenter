@@ -4107,7 +4107,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4346,9 +4346,19 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_id
   WHERE ae.cible <> 'armure'
   UNION ALL
-  SELECT p.id, 'amelioration_cible', 'armure : ' || ae.id
+  SELECT p.id, 'amelioration_cible', 'élément de l’armure : ' || ae.id
   FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_elementaire_id
   WHERE ae.cible <> 'armure_elementaire'
+  UNION ALL
+  -- Armure (décision R95) : une amélioration ou un élément d'armure n'existe qu'avec l'armure ; une partie n'a de solidité que si l'armure l'a (la seule
+  -- « armure-complete » d'une armure à solidité unifiée, armure.solidite_uni = 1 ; les six autres sinon)
+  SELECT p.id, 'armure_manquante', COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id)
+  FROM personnage p
+  WHERE p.armure_id IS NULL AND COALESCE(p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id) IS NOT NULL
+  UNION ALL
+  SELECT ap.personnage_id, 'armure_partie_hors_armure', ap.emplacement_id
+  FROM personnage_armure_partie ap JOIN personnage p ON p.id = ap.personnage_id LEFT JOIN armure a ON a.id = p.armure_id
+  WHERE a.id IS NULL OR (COALESCE(a.solidite_uni, 0) = 1) <> (ap.emplacement_id = 'armure-complete')
   UNION ALL
   -- Accessoire : valeur tirée dans la fourchette de l'effet
   SELECT pa.personnage_id, 'accessoire_valeur', pa.emplacement || ' = ' || COALESCE(CAST(pa.valeur AS TEXT), '(absente)')
