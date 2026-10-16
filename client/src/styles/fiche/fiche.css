@@ -402,6 +402,17 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 .fiche .ceinture__emplacement input { width: 100%; max-width: none; }
 
+/* ----------------------------------------------------------------- le sac : emplacements selon la Force (décision R88) */
+#inventaire-place { margin: -0.2rem 0 0.4rem; }
+#inventaire-place[data-trop] { color: var(--danger); font-weight: 600; }
+/* une ligne au-delà de la place (une Force qui baisse, un import) : gardée, signalée */
+#inventaire tr[data-au-dela] > td { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+#inventaire tr[data-au-dela] > td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+/* l'emplacement libre suivant : un champ sur toute la ligne ; puis les emplacements vides, la place qui reste */
+#inventaire .inventaire__libre input { width: 100%; max-width: none; border-style: dashed; }
+#inventaire .inventaire__libre > td, #inventaire .inventaire__vide > td { height: 1.6rem; }
+#inventaire .inventaire__vide > td { border-bottom: 1px dashed var(--etape-ligne); }
+
 /* champs */
 .fiche-champs { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }
 .fiche-champ { display: grid; gap: 0.15rem; font-size: 0.85rem; }
@@ -849,7 +860,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 :root[data-theme='dark'] .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
 
 /* listes ajoutables (sac…) */
-.fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
 .fiche .retirer { padding: 0.1rem 0.4rem; background: none; color: var(--danger); border-color: transparent; }
 .retirer:hover { border-color: var(--danger) !important; }
 
@@ -919,7 +929,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   .pastille, .xp__rempli { transition: none; }
 }
 @media print {
-  .site-header, .site-footer, .fiche-barre, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
+  .site-header, .site-footer, .fiche-barre, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
   .portrait__actions, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }

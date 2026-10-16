@@ -9,6 +9,7 @@ import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
+import { contenanceEcrite, exemplairesDeCeintureEcrits, nomDeBaton } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -38,6 +39,9 @@ const CONSTANTES = [
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
   'classe.mono_niveaux_par_niveau_global', 'classe.mode_verrou_xp', 'sort.nm_ecart_niveau_global', 'barriere.diviseur_chakra',
   'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max', 'alignement.ecart_axe', 'metier.artisanat_par_point_caracteristique',
+  // inventaire et ceinture (décisions R88, R89, migration 0048)
+  'inventaire.colonnes_de_depart', 'inventaire.lignes_par_colonne', 'inventaire.colonnes_max', 'inventaire.emplacements_force_2',
+  'inventaire.emplacements_force_3', 'inventaire.emplacements_force_4', 'inventaire.force_tout_l_inventaire', 'ceinture.exemplaires_par_emplacement',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -230,6 +234,8 @@ export function chargerReglesDeFiche(db) {
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
           points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)), ...degatsEcrits(d),
+          // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
+          ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
         })),
       };
     });
@@ -349,6 +355,16 @@ export function chargerReglesDeFiche(db) {
         effets: (ciblesDesAccessoires.get(a.id) ?? []),
       })),
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
+    // la ceinture (décisions R81, R89) : les objets du catalogue qui y vont (v_objet_ceinture), avec la contenance écrite d'un carquois ou d'un sac
+    // (sa quantité à la ceinture = ses projectiles), et les bâtons magiques, sous le nom que la fiche leur donne (lib/ceinture-texte.mjs#nomDeBaton)
+    ceinture: {
+      objets: lignes(db, `SELECT v.famille, v.ressource_id, r.description FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id
+                          ORDER BY v.famille, v.ressource_id`)
+        .map((o) => ({ ressource_id: o.ressource_id, famille: o.famille, ...(o.famille === 'contenant' ? { contenance: contenanceEcrite(o.description) } : {}) })),
+      batons: lignes(db, `SELECT b.id, b.magie_id, b.niveau, m.nom AS magie FROM v_objet_ceinture v JOIN baton_magique b ON b.id = v.baton_id
+                          JOIN magie m ON m.id = b.magie_id ORDER BY m.ordre, b.niveau`)
+        .map((b) => ({ id: b.id, nom: nomDeBaton(b.magie, b.niveau), magie_id: b.magie_id, niveau: b.niveau })),
+    },
   };
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)
