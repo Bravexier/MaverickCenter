@@ -169,10 +169,10 @@ export const RESSOURCES = [
     noms: 'Boucliers',
     description:
       'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière, décision R78) : nom, prix, défense telle qu’écrite (« +20AP ' +
-      '+25AM ») et ses AP et AM ; le nom ne suit pas le renommage d’une matière ; le nom, la défense et le prix se modifient (le service en tire le ' +
-      'prix, l’AP et l’AM), ni création ni suppression.',
+      '+25AM ») et ses AP et AM, poids (la couleur de sa case dans l’onglet : décision R92) ; le nom ne suit pas le renommage d’une matière ; le nom, ' +
+      'la défense, le prix et le poids se modifient (le service en tire le prix, l’AP et l’AM), ni création ni suppression.',
     table: 'bouclier',
-    liste: ['id', 'nom', 'classe_id', 'materiau_id', 'prix_brut', 'ap', 'am'],
+    liste: ['id', 'nom', 'classe_id', 'materiau_id', 'prix_brut', 'ap', 'am', 'poids_id'],
     recherche: ['nom'],
     tri: 'nom',
   },

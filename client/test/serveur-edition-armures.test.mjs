@@ -1,6 +1,6 @@
 // Édition de la page « Armures » et de son onglet Boucliers depuis le site de dev (serveur/edition-armures.mjs ; demande du propriétaire, 2026-10-15 :
 // « Modifiable tout de suite ») : une case modifiée refait ce que la base en tire (prix, AP, AM, résistances et faiblesses d'une armure ; prix, AP, AM
-// d'un bouclier ; prix d'une forme ; Force d'un poids ; coût en RF d'une pièce ; coût et effet d'une amélioration, ligne TOTAL) et la ligne du corps
+// d'un bouclier, son poids (décision R92) ; prix d'une forme ; Force d'un poids ; coût en RF d'une pièce ; coût et effet d'une amélioration, ligne TOTAL) et la ligne du corps
 // Markdown de sa page ; le rejeu du journal (livraison) refait le même corps ; les notes de version les rangent sous « Armures et boucliers ». Les tests
 // lisent l'état avant d'écrire : les essais du site de dev peuvent avoir modifié ces lignes.
 import assert from 'node:assert/strict';
@@ -84,6 +84,15 @@ test('bouclier, forme, poids et pièce : colonnes tirées et lignes du corps ; u
   const bApres = ligne('SELECT * FROM bouclier WHERE id = ?', b.id);
   assert.deepEqual([bApres.ap, bApres.am, bApres.prix], [9, 4, 99.5]);
   assert.ok(contient(PAGE_DES_BOUCLIERS, finDeLigneDeBouclier(bApres)));
+
+  // le poids (décision R92, migration 0054) : un poids de la liste, obligatoire ; un identifiant inconnu est refusé (clé étrangère), un poids vide aussi
+  const autrePoids = ligne('SELECT id FROM bouclier_poids WHERE id <> ? ORDER BY ordre LIMIT 1', b.poids_id ?? '').id;
+  assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier', cle: { id: b.id }, valeurs: { poids_id: autrePoids } }]).statut, 200);
+  assert.equal(ligne('SELECT poids_id FROM bouclier WHERE id = ?', b.id).poids_id, autrePoids);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier', cle: { id: b.id }, valeurs: { poids_id: 'plume' } }]).statut, 422);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier', cle: { id: b.id }, valeurs: { poids_id: '' } }]).statut, 400);
+  assert.equal(ligne('SELECT poids_id FROM bouclier WHERE id = ?', b.id).poids_id, autrePoids);
+  assert.ok(contient(PAGE_DES_BOUCLIERS, finDeLigneDeBouclier(bApres)), 'le corps ne change pas avec le poids');
 
   const f = ligne('SELECT * FROM bouclier_classe WHERE classe = 2');
   assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier_classe', cle: { id: f.id }, valeurs: { nom: `${f.nom} bis`, prix_brut: '6,5' } }]).statut, 200);

@@ -44,8 +44,16 @@ export function contexteDesArmures(db) {
   return {
     materiauxDeProtection: lignes(db, `SELECT r.id, r.nom, coalesce(m.type, 'Autres') AS type FROM ressource r LEFT JOIN materiau m ON m.ressource_id = r.id
       WHERE r.genre = 'materiau' ORDER BY r.ordre, r.nom_cle`),
+    poidsDeBouclier: poidsDeBouclier(db),
   };
 }
+
+/**
+ * Les poids de boucliers (bouclier_poids, dans l'ordre de la liste de l'onglet), avec `valeur` et `libelle` (le choix « Poids » d'un bouclier en mode
+ * modification : lib/edition-modele.mjs) : la liste `poidsDeBouclier` du service (serveur/edition.mjs#listes) et du contexte des rendus (rendu
+ * « bouclier-poids », lib/armures-rendu.mjs#htmlDuPoids).
+ */
+export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids ORDER BY ordre').map((p) => ({ ...p, valeur: p.id, libelle: p.nom }));
 
 /**
  * Les données de la page :
@@ -57,8 +65,8 @@ export function contexteDesArmures(db) {
  *   ameliorations   : { armure: [...], bouclier: [...] } (amelioration_equipement, par niveau) ; totaux : { armure, bouclier } (amelioration_total) ;
  *   formes          : les classes de boucliers (Bocle … Pavois), par classe ;
  *   matieres        : les matières des boucliers (materiau_bouclier), dans l'ordre de l'onglet : [{ ligne, cle, nom, type, prix }] ;
- *   boucliers       : les boucliers préfabriqués, par forme puis dans l'ordre des matières ;
- *   poids           : les poids de boucliers ;
+ *   boucliers       : les boucliers préfabriqués, par forme puis dans l'ordre des matières, chacun avec `poids_id` (la couleur de sa case : R92) ;
+ *   poids           : les poids de boucliers (poidsDeBouclier) ;
  *   ecarts          : les écarts de la source notés dans le corps de la page « Armures » (ecartsDeLaSource) ;
  *   pages           : { armures, boucliers } : { titre, resume, corps_md }.
  */
@@ -102,7 +110,7 @@ export function chargerArmures(db) {
     formes,
     matieres,
     boucliers,
-    poids: lignes(db, 'SELECT * FROM bouclier_poids ORDER BY ordre'),
+    poids: poidsDeBouclier(db),
     ecarts: ecartsDeLaSource(page(PAGE_DES_ARMURES)?.corps_md),
     pages: { armures: page(PAGE_DES_ARMURES), boucliers: page(PAGE_DES_BOUCLIERS) },
   };

@@ -1,0 +1,727 @@
+{
+  "classeur": "Ressources et Craft (original, 12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA), onglet « Bouclier », lu le 2026-10-16",
+  "legende": [
+    {
+      "poids_id": "leger",
+      "cellule": "B35",
+      "couleur": "#93c47d"
+    },
+    {
+      "poids_id": "moyen",
+      "cellule": "B37",
+      "couleur": "#ffd966"
+    },
+    {
+      "poids_id": "lourd",
+      "cellule": "B39",
+      "couleur": "#f6b26b"
+    },
+    {
+      "poids_id": "tres-lourd",
+      "cellule": "B41",
+      "couleur": "#e06666"
+    }
+  ],
+  "boucliers": [
+    {
+      "id": "ressources/bouclier#bouclier:bocle:acier",
+      "nom": "Bocle Acier",
+      "cellule": "BE53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:argent",
+      "nom": "Bocle Argent",
+      "cellule": "CU53",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:bois",
+      "nom": "Bocle Bois",
+      "cellule": "O53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:bronze",
+      "nom": "Bocle Bronze",
+      "cellule": "DI53",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:cellulose",
+      "nom": "Bocle Cellulose",
+      "cellule": "V53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:chitine",
+      "nom": "Bocle Chitine",
+      "cellule": "AJ53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:corail",
+      "nom": "Bocle Corail",
+      "cellule": "AC53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:corne-os",
+      "nom": "Bocle Corne",
+      "cellule": "BS53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:cuir",
+      "nom": "Bocle Cuir",
+      "cellule": "H53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:cuivre",
+      "nom": "Bocle Cuivre",
+      "cellule": "BZ53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:ecailles",
+      "nom": "Bocle Écailles",
+      "cellule": "CG53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:fer",
+      "nom": "Bocle Fer",
+      "cellule": "AX53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:fer-noir",
+      "nom": "Bocle Fer Noir",
+      "cellule": "BL53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:fonte",
+      "nom": "Bocle Fonte",
+      "cellule": "DB53",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:laiton",
+      "nom": "Bocle Laiton",
+      "cellule": "DP53",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:maverium",
+      "nom": "Bocle Maverium",
+      "cellule": "EK53",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:mythril",
+      "nom": "Bocle Mythril",
+      "cellule": "AQ53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:or",
+      "nom": "Bocle Or",
+      "cellule": "DW53",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:titane",
+      "nom": "Bocle Titane",
+      "cellule": "ED53",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bocle:vif-argent",
+      "nom": "Bocle Vif-Argent",
+      "cellule": "CN53",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:acier",
+      "nom": "Bouclier Rond Acier",
+      "cellule": "BE67",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:argent",
+      "nom": "Bouclier Rond Argent",
+      "cellule": "CU67",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:bois",
+      "nom": "Bouclier Rond Bois",
+      "cellule": "O67",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:bronze",
+      "nom": "Bouclier Rond Bronze",
+      "cellule": "DI67",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:cellulose",
+      "nom": "Bouclier Rond Cellulose",
+      "cellule": "V67",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:chitine",
+      "nom": "Bouclier Rond Chitine",
+      "cellule": "AJ67",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:corail",
+      "nom": "Bouclier Rond Corail",
+      "cellule": "AC67",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:corne-os",
+      "nom": "Bouclier Rond Corne",
+      "cellule": "BS67",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:cuir",
+      "nom": "Bouclier Rond Cuir",
+      "cellule": "H67",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:cuivre",
+      "nom": "Bouclier Rond Cuivre",
+      "cellule": "BZ67",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:ecailles",
+      "nom": "Bouclier Rond Écailles",
+      "cellule": "CG67",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:fer",
+      "nom": "Bouclier Rond Fer",
+      "cellule": "AX67",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:fer-noir",
+      "nom": "Bouclier Rond Fer Noir",
+      "cellule": "BL67",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:fonte",
+      "nom": "Bouclier Rond Fonte",
+      "cellule": "DB67",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:laiton",
+      "nom": "Bouclier Rond Laiton",
+      "cellule": "DP67",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:maverium",
+      "nom": "Bouclier Rond Maverium",
+      "cellule": "EK67",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:mythril",
+      "nom": "Bouclier Rond Mythril",
+      "cellule": "AQ67",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:or",
+      "nom": "Bouclier Rond Or",
+      "cellule": "DW67",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:titane",
+      "nom": "Bouclier Rond Titane",
+      "cellule": "ED67",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:bouclier-rond:vif-argent",
+      "nom": "Bouclier Rond Vif-Argent",
+      "cellule": "CN67",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:acier",
+      "nom": "Écu Acier",
+      "cellule": "BE74",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:argent",
+      "nom": "Écu Argent",
+      "cellule": "CU74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:bois",
+      "nom": "Écu Bois",
+      "cellule": "O74",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:bronze",
+      "nom": "Écu Bronze",
+      "cellule": "DI74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:cellulose",
+      "nom": "Écu Cellulose",
+      "cellule": "V74",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:chitine",
+      "nom": "Écu Chitine",
+      "cellule": "AJ74",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:corail",
+      "nom": "Écu Corail",
+      "cellule": "AC74",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:corne-os",
+      "nom": "Écu Corne",
+      "cellule": "BS74",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:cuir",
+      "nom": "Écu Cuir",
+      "cellule": "H74",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:cuivre",
+      "nom": "Écu Cuivre",
+      "cellule": "BZ74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:ecailles",
+      "nom": "Écu Écailles",
+      "cellule": "CG74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:fer",
+      "nom": "Écu Fer",
+      "cellule": "AX74",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:fer-noir",
+      "nom": "Écu Fer Noir",
+      "cellule": "BL74",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:fonte",
+      "nom": "Écu Fonte",
+      "cellule": "DB74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:laiton",
+      "nom": "Écu Laiton",
+      "cellule": "DP74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:maverium",
+      "nom": "Écu Maverium",
+      "cellule": "EK74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:mythril",
+      "nom": "Écu Mythril",
+      "cellule": "AQ74",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:or",
+      "nom": "Écu Or",
+      "cellule": "DW74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:titane",
+      "nom": "Écu Titane",
+      "cellule": "ED74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:ecu:vif-argent",
+      "nom": "Écu Vif-Argent",
+      "cellule": "CN74",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:acier",
+      "nom": "Pavois Acier",
+      "cellule": "BE81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:argent",
+      "nom": "Pavois Argent",
+      "cellule": "CU81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:bois",
+      "nom": "Pavois Bois",
+      "cellule": "O81",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:bronze",
+      "nom": "Pavois Bronze",
+      "cellule": "DI81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:cellulose",
+      "nom": "Pavois Cellulose",
+      "cellule": "V81",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:chitine",
+      "nom": "Pavois Chitine",
+      "cellule": "AJ81",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:corail",
+      "nom": "Pavois Corail",
+      "cellule": "AC81",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:corne-os",
+      "nom": "Pavois Corne",
+      "cellule": "BS81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:cuir",
+      "nom": "Pavois Cuir",
+      "cellule": "H81",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:cuivre",
+      "nom": "Pavois Cuivre",
+      "cellule": "BZ81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:ecailles",
+      "nom": "Pavois Écailles",
+      "cellule": "CG81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:fer",
+      "nom": "Pavois Fer",
+      "cellule": "AX81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:fer-noir",
+      "nom": "Pavois Fer Noir",
+      "cellule": "BL81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:fonte",
+      "nom": "Pavois Fonte",
+      "cellule": "DB81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:laiton",
+      "nom": "Pavois Laiton",
+      "cellule": "DP81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:maverium",
+      "nom": "Pavois Maverium",
+      "cellule": "EK81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:mythril",
+      "nom": "Pavois Mythril",
+      "cellule": "AQ81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:or",
+      "nom": "Pavois Or",
+      "cellule": "DW81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:titane",
+      "nom": "Pavois Titane",
+      "cellule": "ED81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:pavoi:vif-argent",
+      "nom": "Pavois Vif-Argent",
+      "cellule": "CN81",
+      "couleur": "#e06666",
+      "poids_id": "tres-lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:acier",
+      "nom": "Targe Acier",
+      "cellule": "BE60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:argent",
+      "nom": "Targe Argent",
+      "cellule": "CU60",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:bois",
+      "nom": "Targe Bois",
+      "cellule": "O60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:bronze",
+      "nom": "Targe Bronze",
+      "cellule": "DI60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:cellulose",
+      "nom": "Targe Cellulose",
+      "cellule": "V60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:chitine",
+      "nom": "Targe Chitine",
+      "cellule": "AJ60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:corail",
+      "nom": "Targe Corail",
+      "cellule": "AC60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:corne-os",
+      "nom": "Targe Corne",
+      "cellule": "BS60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:cuir",
+      "nom": "Targe Cuir",
+      "cellule": "H60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:cuivre",
+      "nom": "Targe Cuivre",
+      "cellule": "BZ60",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:ecailles",
+      "nom": "Targe Écailles",
+      "cellule": "CG60",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:fer",
+      "nom": "Targe Fer",
+      "cellule": "AX60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:fer-noir",
+      "nom": "Targe Fer Noir",
+      "cellule": "BL60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:fonte",
+      "nom": "Targe Fonte",
+      "cellule": "DB60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:laiton",
+      "nom": "Targe Laiton",
+      "cellule": "DP60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:maverium",
+      "nom": "Targe Maverium",
+      "cellule": "EK60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:mythril",
+      "nom": "Targe Mythril",
+      "cellule": "AQ60",
+      "couleur": "#93c47d",
+      "poids_id": "leger"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:or",
+      "nom": "Targe Or",
+      "cellule": "DW60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:titane",
+      "nom": "Targe Titane",
+      "cellule": "ED60",
+      "couleur": "#f6b26b",
+      "poids_id": "lourd"
+    },
+    {
+      "id": "ressources/bouclier#bouclier:targe:vif-argent",
+      "nom": "Targe Vif-Argent",
+      "cellule": "CN60",
+      "couleur": "#ffd966",
+      "poids_id": "moyen"
+    }
+  ]
+}

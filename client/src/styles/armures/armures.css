@@ -1,9 +1,10 @@
 /* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : les onglets Armures et Boucliers de la page /ressources/equipement/ (les
-   onglets eux-mêmes : styles/equipement/equipement.css). Dans chacun, les tableaux de sélection (deux matériaux ; une forme et une matière) puis la
-   liste classique, et à côté, dans un panneau qui suit le défilement, la fiche de l'armure ou du bouclier choisi avec la pièce et l'amélioration (sur
-   un écran étroit, il passe par-dessus la page). Les cases « Matière » dans
-   la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet). Mode modification du site de dev (body.ed-mode) : pas de
-   fiche, tout le contenu à la suite. */
+   onglets eux-mêmes : styles/equipement/equipement.css). Dans chacun, les tableaux de sélection (deux matériaux ; une forme, ses améliorations sous
+   elle, et une matière) puis la liste classique (les boucliers : un seul tableau replié, triable), et à côté, dans un panneau qui suit le défilement,
+   la fiche de l'armure ou du bouclier choisi (sur un écran étroit, il passe par-dessus la page), avec la pièce et l'amélioration pour une armure. Les
+   cases « Matière » dans la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet), le poids d'un bouclier dans la
+   couleur de sa case (vert, jaune, orange, rouge : classeur original). Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le
+   contenu à la suite, la liste des poids comprise. */
 main:has(.armures) { max-width: 120rem; }
 .armures {
   --pro: var(--accent);
@@ -48,11 +49,15 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 /* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
 @media (min-width: 80rem) { html.js .armures-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; } }
 .armures-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
-/* à côté de la fiche, sur un très grand écran : le tableau des améliorations (trois colonnes) plus large que son voisin (pièces, poids) */
-@media (min-width: 96rem) {
-  .armures-cote__tables { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
-  .armures-cote__tables--bouclier { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
-}
+/* à côté de la fiche, sur un très grand écran : le tableau des améliorations (trois colonnes) plus large que son voisin (pièces) */
+@media (min-width: 96rem) { .armures-cote__tables { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } }
+/* boucliers : la forme et, directement sous elle, les améliorations (demande du propriétaire, 2026-10-16) ; la matière à côté */
+.armures-colonne { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+/* la liste des poids (à côté, sous la fiche) ne s'affiche plus (« Pas besoin de tableau pour l'expliquer ») : le poids est dans la liste et la fiche,
+   sa Force minimum en infobulle ; elle reste sans JavaScript (pas de fiche) et en mode modification (nom et Force se modifient) */
+html.js .armures-poids { display: none; }
+html.js body.ed-mode .armures-poids { display: block; }
+.poids__nom { box-shadow: inset 4px 0 0 var(--t); }
 .armures-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armures-cote__fermer:hover { border-color: var(--pro); }
 
@@ -91,6 +96,16 @@ html.js :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier):hover > 
 :is(.armure, .ppiece, .pamelioration, .forme, .bouclier).est-choisie > * { background: color-mix(in srgb, var(--pro) 16%, var(--surface)); }
 :is(.armure, .ppiece, .pamelioration, .forme, .bouclier).est-choisie > th { box-shadow: inset 4px 0 0 var(--pro); }
 .armure__nom, .bouclier__nom { min-width: 10rem; }
+.bouclier__forme { white-space: nowrap; }
+.bouclier__classe { font-size: var(--fs-xs); color: var(--muted); }
+.bouclier__ap, .bouclier__am { white-space: nowrap; }
+/* en-têtes triables de la liste des boucliers (src/scripts/armures.mjs pose le bouton) : croissant, décroissant, puis l'ordre de l'onglet */
+.ptri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }
+.ptri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
+th[aria-sort="ascending"] .ptri::after { content: '↑'; opacity: 1; }
+th[aria-sort="descending"] .ptri::after { content: '↓'; opacity: 1; }
+th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
+.ptri:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; border-radius: var(--radius-xs); }
 .armure__remarque { color: var(--pro); cursor: help; margin-left: 0.2rem; }
 .armure__solidite, .bouclier__solidite, .pmat__solidite { text-align: center !important; font-variant-numeric: tabular-nums; }
 .armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .ppiece__cout, .pamelioration__cout, .pmat-ref__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -106,9 +121,11 @@ html.js :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier):hover > 
 .pmat.est-choisie > .pmat__nom { box-shadow: inset 0 0 0 3px var(--pro), inset 0 0 0 5px var(--surface); }
 .pmat.est-choisie .pmat__choisir::after { content: ' ✓'; }
 
-/* Pastilles : type, matériau, défense (AP / AM), résistances et faiblesses */
-.ptype, .pmat-pastille { display: inline-block; padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--t); color: #171210; font-size: var(--fs-sm); font-weight: 600;
+/* Pastilles : type, matériau, poids d'un bouclier (couleur de sa case : décision R92, « Requiert N Force minimum » en infobulle), défense (AP / AM),
+   résistances et faiblesses */
+.ptype, .pmat-pastille, .ppoids { display: inline-block; padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--t); color: #171210; font-size: var(--fs-sm); font-weight: 600;
   border: 1px solid color-mix(in srgb, #171210 14%, transparent); white-space: nowrap; }
+.ppoids:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; text-decoration: underline dotted color-mix(in srgb, #171210 45%, transparent); text-underline-offset: 3px; }
 .pmat-plus { margin: 0 0.25rem; color: var(--muted); }
 .armure__materiaux { white-space: nowrap; }
 .pdef { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
@@ -136,11 +153,15 @@ html.js :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier):hover > 
 .pfiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.5rem; margin: 0.7rem 0 0; }
 /* une tuile est un bouton : son infobulle (components/Infobulles.astro) s'ouvre au survol, au clic, au toucher et au clavier */
 .pfiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.1rem; padding: 0.5rem 0.5rem 0.55rem; border-radius: var(--radius-md); border: 1px solid var(--border);
-  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; }
+  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; min-width: 0; }
 .pfiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--pro); }
 .pfiche__tuile:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
 .pfiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
-.pfiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* la valeur ne déborde pas de sa tuile : un coût en plusieurs monnaies (« 4 [PP] 362 [RO] 50 [RF] ») passe à la ligne entre deux monnaies, jamais entre
+   un nombre et sa monnaie (.montant__part), et la tuile grandit (demande du propriétaire, 2026-10-16) */
+.pfiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; max-width: 100%; }
+.pfiche__tuile-val .montant { display: inline-flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; row-gap: 0.1em; }
+.pfiche__tuile-val .ppoids { font-size: 1rem; }
 .pfiche__tuile-detail { font-size: var(--fs-xs); color: var(--muted); }
 /* résistance et faiblesse (ou effet) d'une armure : à la suite, sans titre */
 .pfiche__infos { display: grid; gap: 0.3rem; margin: 0.7rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); }
@@ -160,7 +181,7 @@ body.ed-mode .armures-cote { display: grid !important; position: static !importa
 body.ed-mode .armures :is(.pfiche, .pamelioration--aucune, .armures-aide) { display: none !important; }
 body.ed-mode .armures :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier) { cursor: default; }
 body.ed-mode .armures :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier).est-choisie > :not(.pmat__nom) { background: none; box-shadow: none; }
-body.ed-mode .armures :is(.pmat__choisir, .armure__choisir, .ppiece__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir) { pointer-events: none; }
+body.ed-mode .armures :is(.pmat__choisir, .armure__choisir, .ppiece__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir, .ptri) { pointer-events: none; }
 body.ed-mode .armures .armure__effet .ed-saisie { min-width: 18rem; }
 
 @media print {

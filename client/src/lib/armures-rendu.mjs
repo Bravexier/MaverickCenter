@@ -33,6 +33,22 @@ const COULEUR_NEUTRE = '#eeeeee';
 /** Le fond d'un type (« Léger » → vert) ; neutre pour un type sans couleur dans la source. */
 export const couleurDuType = (type) => COULEURS_DES_TYPES[type] ?? COULEUR_NEUTRE;
 
+/**
+ * Couleur de chaque poids de bouclier : le fond de la case du poids dans la liste de l'onglet « Bouclier » du classeur original (B35 Léger vert, B37
+ * Moyen jaune, B39 Lourd orange, B41 Très lourd rouge), la même que porte la case de chaque bouclier de la grille, d'où son poids est tiré
+ * (bouclier.poids_id : migration 0054, décision R92 ; demande du propriétaire, 2026-10-16 : « base toi sur la couleur du tableau d'orignie et
+ * affiche le dans le résultat final », sic). Sur le site, la couleur n'est qu'un repère : la règle est la Force minimum du poids ; un poids sans
+ * couleur connue aurait le gris neutre.
+ */
+export const COULEURS_DES_POIDS = {
+  'leger': '#93c47d',
+  'moyen': '#ffd966',
+  'lourd': '#f6b26b',
+  'tres-lourd': '#e06666',
+};
+/** Le fond d'un poids de bouclier (« leger » → vert) ; neutre pour un poids sans couleur dans la source. */
+export const couleurDuPoids = (id) => COULEURS_DES_POIDS[id] ?? COULEUR_NEUTRE;
+
 /** Libellés des types de dégâts (comme ceux des armes). */
 const LIBELLES_DES_DEGATS = { taille: 'Taille', estoc: 'Estoc', frappe: 'Frappe' };
 
@@ -55,6 +71,31 @@ export function htmlDeLaDefense(valeur) {
   const texte = String(valeur ?? '').trim();
   const contenu = parts.length ? parts.join(' ') : texte ? `<span class="pdef__aucune">${e(texte)}</span>` : VIDE;
   return `<span class="pdef" data-ap="${ap ?? 0}" data-am="${am ?? 0}">${contenu}</span>`;
+}
+
+/**
+ * L'armure physique (`quoi` = 'ap') ou magique ('am') seule, pour une colonne à part (la liste des boucliers : « Sépare donc les AP des AM », demande
+ * du propriétaire, 2026-10-16) ; la pastille de l'une, mais `data-ap` et `data-am` tous les deux (le script lit la défense entière dans la case AP).
+ */
+function htmlDUneDefense(valeur, quoi) {
+  const { ap, am } = statsDeProtection(valeur);
+  const n = quoi === 'ap' ? ap : am;
+  const pastille = n === null
+    ? VIDE
+    : `<span class="pdef__${quoi}" title="${quoi === 'ap' ? 'Armure physique' : 'Armure magique'}">${n >= 0 ? '+' : '−'}${Math.abs(n)}&#8239;${quoi.toUpperCase()}</span>`;
+  return `<span class="pdef" data-ap="${ap ?? 0}" data-am="${am ?? 0}">${pastille}</span>`;
+}
+
+/**
+ * Le poids d'un bouclier en pastille, dans la couleur de son poids, « Requiert N Force minimum » en infobulle (demande du propriétaire, 2026-10-16 :
+ * « Pas besoin de tableau pour l'expliquer un simple tooltip au dessus du nom du poids pour dire "Requiert X Force minimum" suffit ») ; sa Force
+ * minimum en `data-force` (le tri de la liste, la fiche). `p` : la ligne de bouclier_poids ({ id, nom, force_min }) ; null : « — ».
+ */
+export function htmlDuPoids(p) {
+  if (!p) return VIDE;
+  const force = p.force_min === null || p.force_min === undefined ? null : Number(p.force_min);
+  return `<span class="ppoids" style="--t: ${couleurDuPoids(p.id)}" data-poids="${e(p.id)}"${attribut('force', force)}`
+    + `${force === null ? '' : ` title="${e(`Requiert ${force} Force minimum`)}"`}>${e(p.nom)}</span>`;
 }
 
 /** Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris. */
@@ -87,6 +128,12 @@ function htmlDesMateriauxDeLArmure(a, ctx = {}) {
 /** Rendus nommés (attribut `data-ed-rendu`), fusionnés dans lib/edition-rendu.mjs#RENDUS : (valeur de la colonne, ligne, contexte) → HTML. */
 export const RENDUS_DES_ARMURES = {
   'protection-stats': (valeur) => htmlDeLaDefense(valeur),
+  'protection-ap': (valeur) => htmlDUneDefense(valeur, 'ap'),
+  'protection-am': (valeur) => htmlDUneDefense(valeur, 'am'),
+  // le poids d'un bouclier (bouclier.poids_id) : sa ligne dans ctx.poidsDeBouclier (lib/armures-db.mjs#poidsDeBouclier, liste du service) ; un
+  // identifiant que la liste n'a pas s'affiche tel quel, sans Force
+  'bouclier-poids': (valeur, _ligne, ctx = {}) =>
+    (valeur ? htmlDuPoids((ctx.poidsDeBouclier ?? []).find((p) => p.id === valeur) ?? { id: valeur, nom: valeur, force_min: null }) : VIDE),
   'protection-prix': (valeur) => htmlDuPrix(valeur),
   'armure-type': (valeur) => (valeur ? `<span class="ptype" style="--t: ${couleurDuType(valeur)}">${e(valeur)}</span>` : VIDE),
   // solidité ; « uni » pour une armure particulière (« Solidité uni : N » ; « Cran de solidité uni = Si un cran de solidité est perdu, c'est TOUTE l'armure
@@ -191,21 +238,29 @@ export function htmlDeLigneDeForme(f) {
 }
 
 /**
- * La ligne d'un bouclier préfabriqué de la liste (une forme et une matière) : sa matière, son nom (bouton : choisir ce bouclier), sa défense, sa solidité
- * (celle de la matière : décision R78) et son prix. `b` : la ligne de la table bouclier (avec `matiere`, la clé de sa matière) ; `matiere` : la matière
- * ({ nom, type, ligne }).
+ * La ligne d'un bouclier préfabriqué de la liste (un seul tableau, triable : demande du propriétaire, 2026-10-16) : son nom (bouton : choisir ce
+ * bouclier), sa forme (nom en lecture, suit son renommage ; « Classe N »), sa matière, son AP et son AM (deux colonnes : « Sépare donc les AP des AM » ;
+ * la défense écrite se modifie dans la case AP, la case AM la suit en lecture), sa solidité (celle de la matière : décision R78), son poids (la
+ * couleur de sa case dans l'onglet : décision R92) et son prix. `b` : la ligne de la table bouclier (avec `matiere`, la clé de sa matière) ; `matiere` :
+ * la matière ({ nom, type, ligne }) ; `forme` : la ligne de bouclier_classe ; `ordre` : le rang de la ligne dans l'onglet (`data-ordre`, l'ordre sans
+ * tri) ; `ctx` : le contexte des rendus (ctx.poidsDeBouclier : lib/armures-db.mjs#contexteDesArmures), comme pour une armure.
  */
-export function htmlDeLigneDeBouclier(b, matiere) {
+export function htmlDeLigneDeBouclier(b, matiere, { forme = null, ordre = null } = {}, ctx = {}) {
   const cle = { id: b.id };
   const ancre = ancreDeBouclier(b.id);
   const solidite = Number(matiere?.ligne?.solidite ?? 0);
-  return `<tr class="bouclier" id="${ancre}" data-bouclier="${e(b.id)}" data-forme="${e(b.classe_id)}" data-matiere="${e(b.matiere)}">`
-    + `<td class="bouclier__matiere">${matiere ? htmlDeMateriau(matiere.nom, matiere.type) : VIDE}</td>`
+  return `<tr class="bouclier" id="${ancre}" data-bouclier="${e(b.id)}" data-forme="${e(b.classe_id)}" data-matiere="${e(b.matiere)}"${attribut('ordre', ordre)}>`
     + `<th scope="row" class="bouclier__nom"><span data-ed="${ed('bouclier', cle, 'nom')}" data-ed-cible=".bouclier__choisir"><button type="button" class="bouclier__choisir" aria-pressed="false">${e(b.nom)}</button></span>`
     + (b.remarque ? `<span class="armure__remarque" title="${e(b.remarque)}" aria-label="${e(`Remarque : ${b.remarque}`)}">★</span>` : '')
     + '</th>'
-    + `<td class="bouclier__defense" data-ed="${ed('bouclier', cle, 'defense_brut')}" data-ed-rendu="protection-stats">${rendu('protection-stats', b.defense_brut, b)}</td>`
+    + `<td class="bouclier__forme"${attribut('classe', forme?.classe)}>${forme
+      ? `<span data-ed-lecture="${ed('bouclier_classe', { id: forme.id }, 'nom')}">${e(forme.nom)}</span> <span class="bouclier__classe">${e(forme.categorie_brut)}</span>`
+      : VIDE}</td>`
+    + `<td class="bouclier__matiere">${matiere ? htmlDeMateriau(matiere.nom, matiere.type) : VIDE}</td>`
+    + `<td class="bouclier__ap" data-ed="${ed('bouclier', cle, 'defense_brut')}" data-ed-rendu="protection-ap">${rendu('protection-ap', b.defense_brut, b)}</td>`
+    + `<td class="bouclier__am" data-ed-lecture="${ed('bouclier', cle, 'defense_brut')}" data-ed-rendu="protection-am">${rendu('protection-am', b.defense_brut, b)}</td>`
     + `<td class="bouclier__solidite"><span class="psol" data-solidite="${solidite}" title="Solidité de la matière (décision R78)">${solidite}</span></td>`
+    + `<td class="bouclier__poids" data-ed="${ed('bouclier', cle, 'poids_id')}" data-ed-rendu="bouclier-poids">${rendu('bouclier-poids', b.poids_id, b, ctx)}</td>`
     + `<td class="bouclier__prix" data-ed="${ed('bouclier', cle, 'prix_brut')}" data-ed-rendu="protection-prix">${rendu('protection-prix', b.prix_brut, b)}</td>`
     + '</tr>';
 }

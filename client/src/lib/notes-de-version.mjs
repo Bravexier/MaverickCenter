@@ -262,6 +262,8 @@ const DEFINITIONS = [
     table: 'bouclier', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier'), genre: 'Bouclier',
     groupe: (r, x) => x.nom('bouclier_classe', r.classe_id), entite: (r) => r.nom,
     ordre: (r, x) => [5, x.ligne('bouclier_classe', r.classe_id)?.classe ?? 0, r.nom],
+    // le poids (migration 0054) : son nom, pas son identifiant
+    valeur: (colonne, v, x) => (colonne === 'poids_id' && v ? x.nom('bouclier_poids', v) : v),
   },
   {
     table: 'bouclier_poids', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier_poids'), genre: 'Poids de bouclier',
@@ -341,7 +343,8 @@ function chapitreDe(page) {
 function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe']
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
+      'bouclier_poids']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
     monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),

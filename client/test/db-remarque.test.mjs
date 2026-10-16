@@ -33,7 +33,7 @@ const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_
 // 0030 : la famille d'armes sans maîtrise (R45) ; 0037 : l'usage d'un effet d'accessoire (action, usage compté : R54).
 const APRES_REMARQUE = {
   sort: ['mode_brut', 'bonus_maitrise'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
-  arme_famille: ['maitrisable'], accessoire_effet: ['usage'],
+  arme_famille: ['maitrisable'], accessoire_effet: ['usage'], bouclier: ['poids_id'],
 };
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
 const CREEES_APRES_0002 = ['race_don'];
