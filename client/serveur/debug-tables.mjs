@@ -21,12 +21,11 @@
 // 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. » — cette route ne sert que la base du site de
 // dev. Seul le volume reste borné : le portrait d'une fiche est résumé comme toute image (ci-dessous), jamais rendu entier. /api/v1/ ne change pas
 // (jamais une table des sections 13 et 14 : lib/ressources.mjs).
-// À revoir à la 1.0 (un rappel, le code suit la décision) : la base vivante du serveur de test (dev.maverick-jdr.com) est copiée de celle de
-// production à sa première installation (MAVERICK_BASE_TEST=conservee, deploy/vps/README.md), et ce site est ouvert sans mot de passe avant la
-// connexion Discord (Caddy présente le mot de passe interne) : cette route y sert donc les fiches, les comptes et les groupes copiés de la production,
-// sans les règles de visibilité de /api/personnages/ (v_personnage_visible). Aujourd'hui, des prétirés seulement, déjà publics ; avec les comptes et
-// les fiches de joueur privées, ouverture à reconsidérer avec le propriétaire (docs/api.md, « Contenu des tables » ; docs/feuille-de-route.md,
-// questions encore ouvertes).
+// Le serveur de dev reste ouvert (réponse du propriétaire du 2026-10-15 : « Le serveur dev restera. Il servira toujours pour modifier les règles
+// par ceux qui en auront l'accès. » ; qui y a accès se réglera avec la connexion Discord). Sa base vivante est copiée de celle de production à sa
+// première installation (MAVERICK_BASE_TEST=conservee, deploy/vps/README.md) : cette route y sert donc une copie des fiches, des comptes et des
+// groupes de la production, sans les règles de visibilité de /api/personnages/ (v_personnage_visible) ; une fiche créée ou supprimée sur le dev ne
+// part jamais en production (docs/api.md, « Contenu des tables » ; docs/feuille-de-route.md, réponses du 2026-10-15).
 //
 // Version de la base (versionDeLaBase). Coût fixe, aucune lecture de table : une seule instruction (préparée une fois par connexion) lit
 // PRAGMA schema_version (une table, un index, une vue créés ou retirés), PRAGMA data_version (une écriture validée par une AUTRE connexion sur le même

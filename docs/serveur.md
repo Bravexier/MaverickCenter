@@ -12,7 +12,7 @@ navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/      
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
 le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
 Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
-propriétaire du 2026-10-15 ; point à revoir à la 1.0 : [`api.md`](api.md), « Contenu des tables »).
+propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »).
 
 ## Le code
 

@@ -159,21 +159,24 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   }
   // le journal de l'édition (section 14) et les notes de version (15) se lisent aussi
   for (const nom of [...TABLES_EDITION, 'note_version', 'historique_modification']) assert.equal(appel('GET', `/api/debug/tables/${nom}/`).statut, 200, nom);
-  // à revoir à la 1.0 (relecture du 2026-10-15 ; un rappel, le code suit la décision) : la base vivante du serveur de test est copiée de celle de
-  // production à sa première installation, et dev.maverick-jdr.com est ouvert sans mot de passe avant la connexion Discord — dit dans l'en-tête du
-  // module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md, et posé parmi les questions ouvertes de la feuille de route
+  // le serveur de dev reste ouvert (réponses du propriétaire du 2026-10-15) : sa base vivante est une copie de celle de production, faite à sa
+  // première installation — dit dans l'en-tête du module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md ; les réponses rangées dans la
+  // feuille de route, et l'écart (copie après chaque mise en production, attendue par le propriétaire) posé parmi les questions ouvertes
   const racine = trouverRacine();
   const aplatir = (texte) => texte.replace(/^\s*\/\/ ?/gm, '').replace(/\s+/g, ' ');
   const section = (texte, titre) => texte.slice(texte.indexOf(titre), texte.indexOf('\n### ', texte.indexOf(titre) + titre.length) >>> 0);
   const entete = aplatir(readFileSync(new URL('../serveur/debug-tables.mjs', import.meta.url), 'utf8').split('\nimport ')[0]);
   const doc = aplatir(section(readFileSync(join(racine, 'docs', 'api.md'), 'utf8'), '### Contenu des tables'));
-  const questions = aplatir(section(readFileSync(join(racine, 'docs', 'feuille-de-route.md'), 'utf8'), '### Questions encore ouvertes'));
+  const feuille = readFileSync(join(racine, 'docs', 'feuille-de-route.md'), 'utf8');
+  const reponses = aplatir(section(feuille, '### Réponses du propriétaire (2026-10-15)'));
+  const questions = aplatir(section(feuille, '### Questions encore ouvertes'));
   const serveur = aplatir(readFileSync(join(racine, 'docs', 'serveur.md'), 'utf8'));
   for (const [ou, texte, motifs] of [
-    ['en-tête de debug-tables.mjs', entete, [/À revoir à la 1\.0/, /copiée de celle de production/, /sans mot de passe avant la connexion Discord/]],
-    ['docs/api.md', doc, [/\*\*À revoir à la 1\.0\*\*/, /copie de celle de production\*\*/, /MAVERICK_BASE_TEST=conservee/, /\*\*sans mot de passe\*\* avant la connexion Discord/, /à reconsidérer avec le propriétaire/]],
-    ['docs/feuille-de-route.md', questions, [/\*\*Base du site de dev à la connexion Discord\*\* \(E7, E8/, /copiée de celle de production/]],
-    ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /point à revoir à la 1\.0/]],
+    ['en-tête de debug-tables.mjs', entete, [/Le serveur de dev reste ouvert/, /copiée de celle de production à sa première installation/, /ne part jamais en production/]],
+    ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /copie de celle de production\*\*/, /MAVERICK_BASE_TEST=conservee/, /ne part jamais en production/]],
+    ['docs/feuille-de-route.md, réponses', reponses, [/\*\*Serveur de dev\*\* : il reste/, /« Le serveur dev restera\./, /ne part pas en production/]],
+    ['docs/feuille-de-route.md, questions', questions, [/\*\*Copie de la production vers le dev après la mise en production\*\*/, /MAVERICK_BASE_TEST=conservee/]],
+    ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /le serveur de dev reste ouvert à ceux qui y auront accès/]],
   ]) for (const motif of motifs) assert.match(texte, motif, ou);
 });
 
