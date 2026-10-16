@@ -80,7 +80,9 @@ const description = (r) => `<td class="comp-description" data-ed="${ed('ressourc
 
 /**
  * Un matériau (décision R62 : la page « Composants » en est la seule source) : Nom (dans sa couleur) | Type (d'après l'armure) | Prix | Description |
- * Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour (armes, armures, boucliers, montures).
+ * Fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », en lecture : ce tableau n'est plus sur la page « Équipement »,
+ * demande du propriétaire, 2026-10-16) | Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour
+ * (armes, armures, boucliers, montures).
  */
 export function htmlDeLigneDeMateriau(r) {
   const c = couleurDeMateriau(r.id);
@@ -89,9 +91,10 @@ export function htmlDeLigneDeMateriau(r) {
   const arme = r.arme
     ? `<td class="comp-effet" data-ed="${ed('materiau_arme', { ressource_id: r.id }, 'effet_brut')}" data-ed-rendu="materiau-effet">${RENDUS_DES_ARMES['materiau-effet'](r.arme.effet_brut)}</td>`
     : `<td class="comp-effet">${VIDE}</td>`;
-  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('materiau', { ressource_id: r.id }, r.citations, [r.nom, r.type, r.description])}>`
+  const fabrication = `<td class="comp-fabrication">${r.fabrication ? e(r.fabrication) : VIDE}</td>`;
+  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('materiau', { ressource_id: r.id }, r.citations, [r.nom, r.type, r.description, r.fabrication])}>`
     + `${nom(r, pastille)}<td class="comp-type" data-ed="${ed('materiau', { ressource_id: r.id }, 'type')}">${e(r.type ?? 'Autres')}</td>`
-    + `${prix(r)}${description(r)}${arme}<td class="comp-usages">${usages}</td></tr>`;
+    + `${prix(r)}${description(r)}${fabrication}${arme}<td class="comp-usages">${usages}</td></tr>`;
 }
 
 /** Les prix d'une gemme, par qualité : la gemme entière (bâton magique) puis le quart (accessoires). */

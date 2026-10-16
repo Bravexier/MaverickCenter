@@ -83,3 +83,5 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 /* matériau : ses effets sur une arme, une ligne par effet (lib/armes-rendu.mjs, rendu « materiau-effet ») */
 .comp-effet .materiau-effet > span { display: block; }
 .comp-type { white-space: nowrap; }
+/* matériau : sa fabrication (la recette qui donne la matière, en lecture), à côté de sa description */
+.comp-fabrication { min-width: 14rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }

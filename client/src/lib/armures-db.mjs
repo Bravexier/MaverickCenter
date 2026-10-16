@@ -71,7 +71,7 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
 /**
  * Les données de la page :
  *   materiaux       : les matières de la grille des armures, dans l'ordre de l'onglet : [{ ligne (materiau_armure), cle, nom, type, prix (celui de la
- *                     ressource : R62), description, fabrication (texte de la recette) }] ;
+ *                     ressource : R62), description }] (leur fabrication est sur la page « Composants » : lib/composants-db.mjs) ;
  *   combinaisons    : les armures de deux matières (grille), dans l'ordre de l'onglet, chacune avec `m1`, `m2` (clés de ses matières : ligne, colonne) et
  *                     `prix_calcule` (RO, null si un prix manque) : la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 ;
  *                     le prix écrit dans la grille, `prix_brut`, n'est plus affiché) ;
@@ -86,12 +86,9 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
  *   pages           : { armures, boucliers } : { titre, resume, corps_md }.
  */
 export function chargerArmures(db) {
-  const recette = (id) =>
-    db.prepare(`SELECT r.texte_brut FROM recette r JOIN recette_produit p ON p.recette_id = r.id WHERE r.genre = 'materiau' AND p.ressource_id = ?
-      ORDER BY r.id LIMIT 1`).get(id)?.texte_brut ?? null;
   const materiau = ({ nom, prix_ressource, description, type_materiau, ...ligne }) => ({
     ligne, cle: cleDeMateriau(ligne.ressource_id), nom, type: type_materiau ?? ligne.type ?? 'Autres', prix: prix_ressource ?? ligne.prix_brut ?? null,
-    description: description ?? null, fabrication: recette(ligne.ressource_id),
+    description: description ?? null,
   });
   const materiaux = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_armure m
     JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau);

@@ -41,8 +41,8 @@ const tableaux: Tableau[] = [
   },
   {
     id: 'materiaux', titre: 'Matériaux',
-    note: 'La référence des matériaux : nom, type (d’après l’armure), prix et effets sur une arme se modifient ici, les pages des armes et des armures les reprennent.',
-    entetes: ['Matière', 'Type', 'Prix', 'Description', 'Effets sur une arme', 'Utilisé pour'], lignes: composants.materiaux.map(htmlDeLigneDeMateriau),
+    note: 'La référence des matériaux : nom, type (d’après l’armure), prix et effets sur une arme se modifient ici, les pages des armes et des armures les reprennent. La fabrication est la recette qui donne la matière (tableau MATÉRIAUX des onglets « Armures » et « Bouclier »).',
+    entetes: ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour'], lignes: composants.materiaux.map(htmlDeLigneDeMateriau),
     ajout: { entite: 'materiau', libelle: 'un matériau' },
   },
   {

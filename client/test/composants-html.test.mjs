@@ -66,3 +66,22 @@ test('les monnaies en icônes dans les tables (décision R61) : plus d’abrévi
   assert.equal(c.materiaux.find((m) => m.nom_cle === 'os')?.type, 'Autres');
   assert.match(main, /<td class="comp-type" data-ed="[^"]*materiau[^"]*">Léger<\/td>/);
 });
+
+test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », qui a quitté la page « Équipement »), en lecture', options, () => {
+  // demande du propriétaire, 2026-10-16 : ce tableau des armures et des boucliers « devrait disparaître et être mélangé au tableau des matériaux des Composants »
+  const t = main.slice(main.indexOf('<details class="comp-tableau" id="materiaux"'), main.indexOf('<details class="comp-tableau" id="gemmes"'));
+  const entetes = [...t.slice(t.indexOf('<thead>'), t.indexOf('</thead>')).matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(entetes, ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour']);
+  // chaque matériau d'armure ou de bouclier a sa recette (l'Os, de la page des armes, n'en a pas)
+  assert.ok(c.materiaux.filter((m) => m.usages.includes('Armures') || m.usages.includes('Boucliers')).every((m) => m.fabrication), 'une fabrication par matériau d’armure ou de bouclier');
+  for (const m of c.materiaux) {
+    const debut = t.indexOf(`id="${ancreDeComposant(m.id)}"`);
+    const ligne = t.slice(debut, t.indexOf('</tr>', debut));
+    assert.ok(ligne.includes(m.fabrication ? `<td class="comp-fabrication">${echapper(m.fabrication)}</td>` : '<td class="comp-fabrication"><span class="vide"'), m.nom);
+  }
+  assert.ok(t.includes('10 minerais de Mythril + Fourneau de Séraphin'), 'la fabrication du Mythril');
+  assert.ok(!/<td class="comp-fabrication"[^>]*data-ed/.test(t), 'la fabrication ne se modifie pas');
+  // la description (« les grands textes ») y est déjà : celle de la ressource, la même que l'ancien tableau des armures
+  const mythril = c.materiaux.find((m) => m.nom_cle === 'mythril');
+  assert.ok(mythril?.description && t.includes(echapper(mythril.description).replace(/\n/g, '<br>')), 'la description du Mythril');
+});

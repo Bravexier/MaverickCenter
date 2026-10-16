@@ -3,8 +3,8 @@
 // dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
 // liste des armures (« Une liste plus classique est disponible également »), les armures particulières en premier, et les améliorations ; plus de
 // tableau FABRICATION (une armure ne se fabrique plus pièce par pièce : décision R93) ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
-// replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; le tableau MATÉRIAUX ; les champs du mode
-// modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
+// replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; plus de tableau MATÉRIAUX (sa fabrication est sur la page
+// « Composants » : test/composants-html.test.mjs) ; les champs du mode modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -22,7 +22,7 @@ const fichier = join(dist, 'ressources', 'equipement', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-// le bloc des armures et des boucliers : ses deux panneaux et le tableau MATÉRIAUX, jusqu'au panneau des bâtons magiques
+// le bloc des armures et des boucliers : ses deux panneaux, jusqu'au panneau des bâtons magiques
 const main = html.slice(html.indexOf('<div class="armures" data-armures>'), html.indexOf('<section class="equipement-panneau batons" id="batons-magiques"'));
 const armures = present ? chargerArmures(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
@@ -30,7 +30,7 @@ const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 const panneau = (id) => {
   const debut = main.indexOf(`<section class="armures-panneau equipement-panneau" id="${id}"`);
   const fin = main.indexOf('<section class="armures-panneau', debut + 10);
-  return main.slice(debut, fin < 0 ? main.indexOf('id="materiaux-armures"') : fin);
+  return main.slice(debut, fin < 0 ? undefined : fin);
 };
 
 test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, Boucliers), les règles de chaque onglet repliées', options, () => {
@@ -165,11 +165,14 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
   assert.ok(!html.includes('.pfiche__tuile-val { font-size: 1.3rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }'));
 });
 
-test('le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62)', options, () => {
-  const t = main.slice(main.indexOf('id="materiaux-armures"'));
-  assert.deepEqual([...t.matchAll(/<tr class="pmat-ref" id="matiere-([^"]+)">/g)].map((m) => m[1]), armures.materiaux.map((m) => m.cle));
-  assert.ok(t.includes('Fourneau de Séraphin'), 'la fabrication d’une matière');
-  assert.ok(!/<tr class="pmat-ref"[^]*?data-ed="/.test(t.slice(0, t.indexOf('</table>'))), 'aucun champ modifiable');
+test('plus de tableau MATÉRIAUX sous les deux onglets : chacun renvoie au tableau des matériaux de la page « Composants » (demande du propriétaire, 2026-10-16)', options, () => {
+  assert.ok(!main.includes('id="materiaux-armures"') && !main.includes('pmat-ref') && !main.includes('armures-table--materiaux'), 'le tableau MATÉRIAUX a disparu');
+  assert.ok(!main.includes('Fourneau de Séraphin'), 'la fabrication des matières n’est plus sur la page');
+  for (const id of ['armures', 'boucliers']) {
+    assert.match(panneau(id), /<p class="armures-aide armures-renvoi">La description et la fabrication de chaque (?:matériau|matière) sont sur la page <a href="[^"]*\/ressources\/composants\/#materiaux">Composants<\/a>\.<\/p>/, id);
+  }
+  const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
+  assert.ok(composants.includes('<details class="comp-tableau" id="materiaux"'), 'l’ancre du tableau des matériaux de « Composants »');
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {
