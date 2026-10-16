@@ -377,10 +377,12 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 
 /* ----------------------------------------------------------------- la ceinture : trois emplacements d'objets rapides */
+/* un emplacement : son numéro, l'objet et sa quantité ; plein, ses boutons dessous (« Utiliser », « Remplir », « Ranger » : décision R89) */
 .ceinture { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; counter-reset: ceinture; }
 .ceinture__emplacement {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) 4rem auto;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  grid-template-areas: 'numero nom quantite';
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0.35rem;
@@ -388,8 +390,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border-radius: var(--radius);
   background: var(--surface);
 }
-.ceinture__emplacement[data-plein] { border-style: solid; background: var(--etape-doux); }
+.ceinture__emplacement[data-plein] { grid-template-areas: 'numero nom quantite' '. actions actions'; border-style: solid; background: var(--etape-doux); }
 .ceinture__numero {
+  grid-area: numero;
   display: grid;
   place-items: center;
   width: 1.4rem;
@@ -400,7 +403,13 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font-size: var(--fs-xxs);
   font-weight: 700;
 }
-.fiche .ceinture__emplacement input { width: 100%; max-width: none; }
+.fiche .ceinture__emplacement input { grid-area: nom; width: 100%; max-width: none; }
+.ceinture__quantite { grid-area: quantite; min-width: 3.2rem; font-variant-numeric: tabular-nums; font-weight: 600; text-align: center; white-space: nowrap; }
+/* au-delà du maximum (un import, un don perdu) : signalé comme un champ invalide */
+.ceinture__quantite[data-invalide] { color: var(--danger); }
+.ceinture__actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.fiche .ceinture__actions button { padding: 0.1rem 0.5rem; font-size: var(--fs-xs); }
+.ceinture__refus { color: var(--danger); }
 
 /* ----------------------------------------------------------------- le sac : emplacements selon la Force (décision R88) */
 #inventaire-place { margin: -0.2rem 0 0.4rem; }
@@ -933,7 +942,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 @media print {
   .site-header, .site-footer, .fiche-barre, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
-  .portrait__actions, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
+  .portrait__actions, .ceinture__actions, .ceinture__refus, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
   .fiche-zone { break-inside: auto; background: none; }

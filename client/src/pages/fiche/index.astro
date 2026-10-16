@@ -175,12 +175,14 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
             </div>
           </section>
-          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun propose les objets
-              du sac qui vont à la ceinture ou une saisie libre, un objet du sac le quitte (décision R89) ; l'aide est refaite par le script d'après les règles */}
+          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet
+              du sac, qui le quitte, et se règle par « Utiliser », « Remplir » et « Ranger » (décision R89) ; l'aide est refaite par le script d'après les règles,
+              un nom refusé (absent du sac) dit pourquoi dans #ceinture-refus */}
           <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
               <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
+              <p class="fiche-aide ceinture__refus" id="ceinture-refus" role="status" aria-live="polite"></p>
               <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>

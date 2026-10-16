@@ -411,8 +411,8 @@ Quels objets la page liste : la vue **`v_objet_ceinture`** (migration `0047-obje
 `primitive`, `huile`, `contenant`, `baton`) et sa potion ou son contenant (`ressource_id`) ou son bâton (`baton_id`) : les potions de la table `potion`,
 les ressources du matériel dont la clé du nom écrit « carquois », « sac de bombe » ou « sac de pierre », les bâtons de `baton_magique`. Une vue et non une
 table : elle suit les tables (un carquois créé sur la page « Composants » y entre). La fiche de personnage s'en sert pour ses trois emplacements
-(`personnage_ceinture`, décision R89) : ils proposent les objets du sac que la vue liste, et la saisie libre reste ouverte (la liste du guide n'est pas
-exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
+(`personnage_ceinture`, décision R89) : elle y reconnaît les bâtons magiques (un seul par emplacement) et les carquois ou sacs (leur contenance) ; les
+emplacements, eux, prennent n'importe quel objet du sac (la liste du guide n'est pas exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
 
 La page n'a pas de page du wiki : elle est rendue depuis la base (`src/pages/ressources/objets-a-la-ceinture.astro`, `lib/ceinture-db.mjs`,
 `components/ceinture/`, `styles/ceinture/`, lignes : `lib/ceinture-rendu.mjs`) :
