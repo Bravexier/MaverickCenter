@@ -49,8 +49,9 @@
 // empreinte. Une colonne d'image se trie par sa taille (length) ; avec un tri, la page se choisit d'abord par la clé (rowid ou clé primaire) puis ses
 // lignes se lisent une à une : le tri de SQLite ne porte jamais les images.
 // N'importe que node:… et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { empreinte } from '../src/lib/portrait.mjs';
+import { ErreurHttp, empreinteCourte, entierDeLAdresse, segmentDecode } from './partage.mjs';
 
 export const LIMITE_PAR_DEFAUT = 100;
 export const LIMITE_MAX = 500;
@@ -60,14 +61,7 @@ export const TEXTE_MAX = 2000;
 export const TABLES_DERIVEES = new Set(['lien', 'lien_candidat']);
 
 /** Erreur d'une requête sur les tables : statut HTTP, message en français, détails ajoutés au corps. */
-export class ErreurTables extends Error {
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.name = 'ErreurTables';
-    this.statut = statut;
-    this.details = details;
-  }
-}
+export class ErreurTables extends ErreurHttp {}
 
 /** Un identifiant SQL entre guillemets doubles (ceux qu'il contient, doublés). */
 const nomSql = (nom) => `"${String(nom).replace(/"/g, '""')}"`;
@@ -95,25 +89,7 @@ export function listerTables(db) {
     .map(([nom, { genre }]) => ({ nom, genre, lignes: Number(db.prepare(`SELECT count(*) AS n FROM ${nomSql(nom)}`).get().n) }));
 }
 
-/** Le nom d'une table lu dans l'adresse (segment encodé), décodé ; null s'il est illisible. */
-function nomDecode(segment) {
-  try {
-    return decodeURIComponent(String(segment ?? ''));
-  } catch {
-    return null;
-  }
-}
-
-/** Un entier lu dans l'adresse, de `min` à `max` ; `defaut` s'il est absent ou vide ; 400 sinon. */
-function entierDe(texte, defaut, min, max, nom) {
-  if (texte === null || texte === undefined || String(texte).trim() === '') return defaut;
-  const brut = String(texte).trim();
-  const n = Number(brut);
-  if (!/^\d+$/.test(brut) || n < min || n > max) {
-    throw new ErreurTables(400, `${nom} : nombre entier attendu, de ${min} à ${max === Number.MAX_SAFE_INTEGER ? 'plus' : max} (reçu « ${texte} »).`);
-  }
-  return n;
-}
+const entierDe = (texte, defaut, min, max, nom) => entierDeLAdresse(texte, defaut, min, max, nom, ErreurTables);
 
 const DATA_URL_IMAGE = /^data:(image\/[A-Za-z0-9.+-]+)((?:;[^,;]*)*?)(;base64)?,/;
 /**
@@ -210,7 +186,7 @@ function expressionsDeLecture(noms, images) {
  * @param {URLSearchParams} params limite, decalage, tri, ordre
  */
 export function lireTable(db, segment, params = new URLSearchParams()) {
-  const nom = nomDecode(segment);
+  const nom = segmentDecode(segment);
   const objet = nom === null ? null : objetsLisibles(db).get(nom);
   if (!objet) {
     throw new ErreurTables(404, `Table introuvable${nom ? ` : « ${nom.slice(0, 100)} »` : ''} (les tables et vues de la base : GET /api/debug/tables/).`);
@@ -273,7 +249,7 @@ export function lireTable(db, segment, params = new URLSearchParams()) {
 }
 
 /** La version (l'ETag, sans ses guillemets) d'un contenu servi : 16 caractères hex d'un sha256 de son JSON, comme serveur/ressources.mjs#versionDe. */
-export const versionDuContenu = (json) => createHash('sha256').update(json).digest('hex').slice(0, 16);
+export const versionDuContenu = empreinteCourte;
 
 /** Tiré au chargement du module, donc à chaque démarrage du service : la version d'une base n'est jamais celle d'un autre processus. */
 const JETON_DU_PROCESSUS = randomUUID();

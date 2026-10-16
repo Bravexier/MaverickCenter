@@ -3,13 +3,14 @@
 // (v_personnage_visible) ; une fiche de joueur n'est ni listée ni lisible ici. Ce que la base contrôle (types, bornes, références aux règles) refuse
 // l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
 import { instant } from './instant.mjs';
+import { ErreurHttp, empreinteCourte } from './partage.mjs';
 
 /**
  * Valeur de départ d'une colonne que les règles ont retirée (COLONNES_RETIREES) quand la base vivante l'a encore : le service retombe sur sa base
@@ -42,15 +43,8 @@ export const PAGE_D_AVANT = 'La page vient d’une version précédente du site 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
 
-export class ErreurFiche extends Error {
-  /** @param {number} statut code HTTP @param {string} message @param {object} [details] ajoutés à la réponse */
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.name = 'ErreurFiche';
-    this.statut = statut;
-    this.details = details;
-  }
-}
+/** @param {number} statut code HTTP @param {string} message @param {object} [details] ajoutés à la réponse */
+export class ErreurFiche extends ErreurHttp {}
 
 export { instant };
 
@@ -74,7 +68,7 @@ function ordreDe(db, table) {
 
 function versionDe(fiche) {
   const { [CHAMP_VERSION]: _ignoree, ...contenu } = fiche;
-  return createHash('sha256').update(JSON.stringify(contenu)).digest('hex').slice(0, 16);
+  return empreinteCourte(JSON.stringify(contenu));
 }
 
 /** Le prétiré `id` au format d'échange (colonnes à la racine, listes, `version`), ou null. */
