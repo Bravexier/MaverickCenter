@@ -11,6 +11,7 @@
 import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
+import { avecLeursBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 import {
   attributs,
@@ -331,8 +332,9 @@ export const RENDUS_DU_BESTIAIRE = {
   'monstre-cellule': (valeur) => (String(valeur ?? '').trim() ? e(valeur) : '<span class="vide">—</span>'),
   // l'échelle d'une espèce sans carte, dans la colonne EP (« EP1 - 10 » -> « 1 - 10 »)
   'monstre-ep': (valeur) => e(String(valeur ?? '').replace(/^EP\s*/, '')),
+  // les lieux découpés sans les balises du glossaire, affichés avec (lib/mots-cles-balises.mjs#avecLeursBalises : le middleware les met en gras)
   'monstre-lieux': (valeur) => {
-    const l = lieux(valeur).map((x) => x.lieu);
+    const l = avecLeursBalises(String(valeur ?? ''), lieux(valeur).map((x) => x.lieu));
     return l.length ? e(l.join(', ')) : '<span class="vide">—</span>';
   },
   'monstre-variable': (valeur) => (Number(valeur) === 1 ? e(PHRASE_VARIABLE) : ''),

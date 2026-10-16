@@ -6,10 +6,13 @@
 // Au chargement, la page reçoit les lignes modifiées depuis sa construction (GET /api/edition/en-attente/) et réécrit leurs champs : la page statique
 // montre donc toujours l'état de la base du site de dev. Les extensions (src/scripts/edition/*.mjs) ajoutent ce qui est propre à une famille de pages :
 // lignes ajoutées ou supprimées, création d'une race ou d'une classe, relations entre peuples, règle des niveaux de maîtrise, éditeur du guide.
+// Les mots-clés du glossaire suivent le vocabulaire vivant, et le HTML posé après le chargement (rendus des champs, extensions) a ses balises rendues
+// (mots-cles-vivants.mjs).
 import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
+import { glossaireVivant } from './mots-cles-vivants.mjs';
 import { libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const CRAYON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -61,6 +64,8 @@ export function demarrer(racine, etatService) {
   const annonce = document.createElement('div');
   annonce.className = 'ed-annonce';
   annonce.setAttribute('role', 'status');
+  // un message (refus du service, balise à copier) cite les balises telles qu'écrites, jamais rendues (mots-cles-vivants.mjs)
+  annonce.setAttribute('data-mots-cles-bruts', '');
   annonce.hidden = true;
   document.body.append(annonce);
   let minuterie = null;
@@ -434,6 +439,8 @@ export function demarrer(racine, etatService) {
   function ouvrirFormulaire({ titre, aide, champs, bouton = 'Créer', valider }) {
     const dialogue = document.createElement('dialog');
     dialogue.className = 'ed-dialogue';
+    // l'aide et les erreurs citent la syntaxe des balises du glossaire (« {{id}} ») : telles qu'écrites, jamais rendues (mots-cles-vivants.mjs)
+    dialogue.setAttribute('data-mots-cles-bruts', '');
     const form = document.createElement('form');
     form.method = 'dialog';
     const h = document.createElement('h2');
@@ -508,6 +515,8 @@ export function demarrer(racine, etatService) {
     try {
       const [listes, enAttente] = await Promise.all([appel('GET', 'edition/listes/'), appel('GET', 'edition/en-attente/')]);
       Object.assign(ed.listes, listes);
+      // les mots-clés du glossaire d'après la base vivante (définitions modifiées depuis la construction) : avant la surcouche, qui pose du HTML neuf
+      await glossaireVivant(ed);
       // une extension après l'autre, chacune seulement si elle s'applique à la page telle que les précédentes l'ont laissée
       for (const x of EXTENSIONS) if (x.actif(document)) await x.surcouche?.(ed, enAttente.lignes);
       for (const l of enAttente.lignes) appliquerLigne(l.table, l.cle, l.ligne);

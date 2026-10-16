@@ -6,8 +6,10 @@ import {
   COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme,
   htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
-import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import { url } from '../../lib/wiki';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
 // Onglets « Armures » et « Boucliers » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro, qui pose les onglets ; demande du
 // propriétaire, 2026-10-16 : « A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armures/, dont
@@ -15,7 +17,8 @@ import { url } from '../../lib/wiki';
 // les Armes. […] Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
 // sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
 // aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendus depuis les tables de la base
-// (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles s'affichent, repliées.
+// (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; en tête de chaque onglet, son panneau de règles, replié
+// (components/equipement/PanneauDeRegles.astro, migration 0055 : le texte avant les tableaux de la page).
 // Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
 //   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
 //     fiche s'ouvre à côté, avec l'amélioration à choisir (décision R77) ; une armure ne se fabrique plus pièce par pièce, seulement complète (décision
@@ -42,12 +45,10 @@ type Armures = ReturnType<typeof chargerArmures>;
 interface Props {
   armures: Armures;
   contexte: ReturnType<typeof contexteDesArmures>;
-  /** HTML des règles des deux onglets (le texte avant les tableaux des pages « Armures » et « Bouclier » : lib/armures-db.mjs#reglesDeLaPage) */
-  regles: { armures: string; boucliers: string };
-  /** première phrase des règles des armures, affichée en tête de l'onglet Armures */
-  resume?: string | null;
+  /** les panneaux de règles des deux onglets (`armures`, `boucliers`), le Markdown de leurs blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: { armures: PanneauRendu | null; boucliers: PanneauRendu | null };
 }
-const { armures, contexte, regles, resume } = Astro.props;
+const { armures, contexte, regles } = Astro.props;
 const TYPES_DE_LA_GRILLE = Object.keys(COULEURS_DES_TYPES);
 const parType = TYPES_DE_LA_GRILLE.map((type) => ({ type, armures: armures.combinaisons.filter((a) => a.type === type) }))
   .concat([{ type: 'Autres', armures: armures.combinaisons.filter((a) => !TYPES_DE_LA_GRILLE.includes(a.type)) }])
@@ -71,12 +72,8 @@ const legende = (
   {/* ── Armures ───────────────────────────────────────────────────────────────────────────────────────────────────────── */}
   <section class="armures-panneau equipement-panneau" id="armures" aria-labelledby="titre-armures" data-panneau="armure">
     <h2 class="equipement-panneau__titre" id="titre-armures">{armures.pages.armures?.titre ?? 'Armures'}</h2>
-    {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
-    <details class="armures-regles">
-      <summary>Règles des armures : matériaux, solidité, améliorations</summary>
-      {/* les règles sont le texte de l'onglet, sans les paragraphes sur la création par pièces (décision R95, migration 0055) */}
-      <div class="prose armures-regles__texte"><Fragment set:html={regles.armures} /></div>
-    </details>
+    {/* les règles sont le texte de l'onglet, sans les paragraphes sur la création par pièces (décision R95, migration 0055) */}
+    <PanneauDeRegles panneau={regles.armures} />
     <p class="armures-aide js-seul">
       Choisissez un matériau dans chacun des deux tableaux : l’armure complète ainsi créée s’ouvre à côté, avec son amélioration. Une armure de la
       liste, plus bas, se choisit aussi d’un clic.
@@ -200,10 +197,7 @@ const legende = (
   {/* ── Boucliers ─────────────────────────────────────────────────────────────────────────────────────────────────────── */}
   <section class="armures-panneau equipement-panneau" id="boucliers" aria-labelledby="titre-boucliers" data-panneau="bouclier">
     <h2 class="equipement-panneau__titre" id="titre-boucliers">Boucliers</h2>
-    <details class="armures-regles">
-      <summary>Règles des boucliers : classes, matériaux, poids, améliorations</summary>
-      <div class="prose armures-regles__texte"><Fragment set:html={regles.boucliers} /></div>
-    </details>
+    <PanneauDeRegles panneau={regles.boucliers} />
     <p class="armures-aide js-seul">Choisissez une forme et une matière : le bouclier ainsi créé s’ouvre à côté, avec son amélioration. Un bouclier de la liste, plus bas, se choisit aussi d’un clic.</p>
     <p class="armures-aide">La page compose un bouclier d’une seule matière (« forme + matière », décision R78) ; les règles ci-dessus permettent d’en mêler jusqu’à 3 différentes.</p>
     <p class="armures-renvoi">La description et la fabrication de chaque matière sont sur la page <a href={materiauxDesComposants}>Composants</a>, où les matériaux se modifient (décision R62).</p>

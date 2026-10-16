@@ -51,6 +51,7 @@
 // N'importe que node:… et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
 import { randomUUID } from 'node:crypto';
 import { empreinte } from '../src/lib/portrait.mjs';
+import { TABLES_DERIVEES as DERIVEES } from '../src/lib/tables-de-la-base.mjs';
 import { ErreurHttp, empreinteCourte, entierDeLAdresse, segmentDecode } from './partage.mjs';
 
 export const LIMITE_PAR_DEFAUT = 100;
@@ -58,7 +59,7 @@ export const LIMITE_MAX = 500;
 /** Au-delà, un texte est coupé (le reste est dit en nombre de caractères). */
 export const TEXTE_MAX = 2000;
 /** Tables dérivées (data/schema.sql, section 11 : `-- @derivee`, recalculées par le build), hors tables FTS5 : test/serveur-debug-tables.test.mjs les compare au schéma. */
-export const TABLES_DERIVEES = new Set(['lien', 'lien_candidat']);
+export const TABLES_DERIVEES = new Set(DERIVEES);
 
 /** Erreur d'une requête sur les tables : statut HTTP, message en français, détails ajoutés au corps. */
 export class ErreurTables extends ErreurHttp {}

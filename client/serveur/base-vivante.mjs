@@ -22,6 +22,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, retraitsDeLArmure, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
+import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
@@ -32,7 +33,7 @@ export { TABLES_FICHES };
  * Tables de la section 14 (« ÉDITION ») : le journal des modifications faites depuis le site de dev (serveur/edition-journal.mjs) et le brouillon de
  * la note de version (page /mise-a-jour/, serveur/notes-de-version.mjs).
  */
-export const TABLES_EDITION = Object.freeze(['modification_lot', 'modification', 'note_version_brouillon']);
+export const TABLES_EDITION = TABLES_DU_JOURNAL;
 /** Ce que le service écrit et qui survit à un changement de règles : les fiches, puis le journal des modifications. */
 export const TABLES_VIVANTES = Object.freeze([...TABLES_FICHES, ...TABLES_EDITION]);
 

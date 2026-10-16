@@ -3,12 +3,12 @@
 // En mode modification, chaque morceau de texte [data-ed-morceau] devient modifiable en place (contenteditable) ; les blocs tirés de la base (tableaux
 // de la montée de niveau, personnages fil rouge…) restent tels quels. Une barre d'outils pose la mise en page (paragraphe, titres, citation, listes,
 // gras, italique, barré), les liens (vers une page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien) et les tableaux (insérer, ajouter
-// ou supprimer une ligne ou une colonne, couleur des cases). À l'enregistrement, le HTML de chaque morceau modifié est réécrit en Markdown
-// (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ; son HTML assaini part avec, comme aperçu montré
-// tant que la page construite ne l'a pas (surcouche).
+// ou supprimer une ligne ou une colonne, couleur des cases), les mots-clés du glossaire (texte-en-place.mjs#outilsDesMotsCles). À l'enregistrement,
+// le HTML de chaque morceau modifié est réécrit en Markdown (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ;
+// son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche).
 import { cleDeLigne } from '../../lib/edition-modele.mjs';
 import { arbreDuDom, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
-import { editeurEnPlace } from './texte-en-place.mjs';
+import { editeurEnPlace, outilsDesMotsCles } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
 
@@ -143,6 +143,7 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', retirerLien],
   ]],
+  outilsDesMotsCles(texte),
   ['Tableau', [
     ['Tableau', 'Insérer un tableau', insererTableau],
     ['+ ligne', 'Ajouter une ligne sous la case', ajouterLigne],

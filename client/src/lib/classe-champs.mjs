@@ -1,7 +1,10 @@
 // Champs d'une classe et d'un don et ce que la base en tire (tables classe_maitrise_arme, classe_maitrise_armure, classe_objet_depart, colonnes
 // bouclier_classe_max de classe et type / limite de capacite) : les mêmes découpages que l'importeur du classeur des classes, réécrits pour l'édition
 // depuis le site de dev (client/serveur/edition.mjs). test/classe-champs.test.mjs les rejoue sur les 39 classes et les 660 dons de la base.
-// Fonctions pures, sans dépendance (sauf text.mjs).
+// Une cellule se découpe sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte ») ; lignesDeListe, qui
+// sert aussi à l'affichage, les garde.
+// Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Les lignes d'une cellule de liste, sans leur tiret (« - Légère » → « Légère ») ; les lignes vides sont ignorées. */
@@ -16,7 +19,7 @@ export const lignesDeListe = (texte) =>
  * « (sauf X) ») ; « N maîtrise [de] <arme> » → nommee ; une ligne qui ne commence pas par « N maîtrise(s) » n'est pas typée.
  */
 export function decouperMaitriseArme(texte) {
-  return lignesDeListe(texte).map((brut, i) => {
+  return lignesDeListe(texteSansBalises(texte)).map((brut, i) => {
     const vide = { rang: i + 1, brut, forme: null, nombre: null, arme: null, arme_cle: null, categorie: null, sauf: null, sauf_cle: null };
     const m = /^(\d+) maîtrises? (.*)$/.exec(brut);
     if (!m) return vide;
@@ -37,7 +40,7 @@ const POIDS = ['Légère', 'Intermédiaire', 'Lourde'];
 
 /** « Maîtrise Armures » : armure « Légère » ou « Légère à Lourde » (bornes) ; « Bouclier [de] classe N [à M] » ; toute autre ligne non typée. */
 export function decouperMaitriseArmure(texte) {
-  return lignesDeListe(texte).map((brut, i) => {
+  return lignesDeListe(texteSansBalises(texte)).map((brut, i) => {
     const ligne = { rang: i + 1, brut, objet: null, poids_min: null, poids_max: null, classe_min: null, classe_max: null };
     const armure = /^(Légère|Intermédiaire|Lourde)(?: à (Légère|Intermédiaire|Lourde))?$/.exec(brut);
     if (armure && POIDS.includes(armure[1])) return { ...ligne, objet: 'armure', poids_min: armure[1], poids_max: armure[2] ?? armure[1] };
@@ -58,7 +61,7 @@ export const bouclierMax = (lignes) => lignes.reduce((max, l) => (l.classe_max !
 export function decouperInventaire(texte, objets) {
   const parCle = new Map(objets.map((o) => [o.nom_cle, o.id]));
   const lignes = [];
-  String(texte ?? '')
+  String(texteSansBalises(texte ?? ''))
     .split(', ')
     .map((t) => t.trim())
     .filter(Boolean)
@@ -76,7 +79,7 @@ export const TYPES_DE_DON = ['passif', 'actif', 'action', 'reaction', 'variable'
 
 /** Cellule de type d'un don : son type (premier mot reconnu) et sa limite « (N fois/période) » ou « (N/période) » ; rien d'autre n'est typé. */
 export function analyserTypeDeDon(typeBrut) {
-  const texte = String(typeBrut ?? '').trim();
+  const texte = String(texteSansBalises(typeBrut ?? '')).trim();
   const mot = normalize(texte.split(/[\s(]/)[0] ?? '');
   const limite = /\((\d+)(?: fois)?\s*\/\s*([^)]+?)\s*\)/i.exec(texte);
   return {

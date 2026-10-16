@@ -100,7 +100,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'composants', 'chronologie', 'mots-cles']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'equipement', 'composants', 'chronologie', 'mots-cles']);
 });
 
 test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
@@ -532,4 +532,68 @@ test('chronologie et mots-clés (migration 0043) : en une ligne tant que la prod
   // les catégories d'abord (avant les événements, dans l'ordre de leur écriture)
   assert.deepEqual(lignes.filter(([d]) => d === 'chronologie').slice(0, 2).map(([, e]) => e), ['Guerres', 'Vieille']);
   assert.deepEqual(lignes.filter(([d]) => d === 'mots-cles'), [['mots-cles', 'Démos', 'Mot-clé', 'modifie', 'Démo', 'Démos'], ['mots-cles', 'Vieux', null, 'retire', 'Vieux', null]]);
+});
+
+test('équipement (migration 0055) : les panneaux de règles en une ligne tant que la production ne les a pas ; puis le titre d’un panneau, un bloc par son titre de tuile ou ses premiers mots', () => {
+  const panneau = (id, titre) => ({ id, titre, page_id: `ressources/${id}` });
+  const bloc = (panneau_id, rang, valeurs = {}) => ({ panneau_id, rang, ordre: rang, tuile: 0, titre: null, texte: 'Texte.', ...valeurs });
+  const neuves = comparerBases({ tables: {} }, { tables: { panneau_regles: [panneau('armes', 'Règles des armes'), panneau('accessoires', 'Règles')], panneau_regles_bloc: [bloc('armes', 1), bloc('accessoires', 1)] } });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite]), [['equipement', '2 panneaux de règles']], 'les blocs d’un panneau nouveau sont dits par lui');
+  const ref = { tables: { panneau_regles: [panneau('armes', 'Règles des armes'), panneau('accessoires', 'Règles')], panneau_regles_bloc: [bloc('armes', 1), bloc('armes', 2, { tuile: 1, titre: 'Dague' }), bloc('accessoires', 1)] } };
+  const dev = {
+    tables: {
+      panneau_regles: [panneau('armes', 'Règles des armes et des projectiles'), panneau('accessoires', 'Règles')],
+      panneau_regles_bloc: [bloc('armes', 1, { texte: 'Texte modifié.' }), bloc('armes', 2, { tuile: 1, titre: 'Dague', ordre: 3 }), bloc('armes', 3, { tuile: 1, ordre: 2 }), bloc('accessoires', 1)],
+    },
+  };
+  // la tuile 3 insérée avant la Dague repousse celle-ci (ordre 2 → 3) : son ajout le dit, la place de la Dague n'est pas une ligne
+  assert.deepEqual(comparerBases(ref, dev).map((l) => [l.domaine, l.groupe, l.entite, l.champ, l.nature, l.avant, l.apres]), [
+    ['equipement', 'Armes', 'Panneau de règles', 'Titre', 'modifie', 'Règles des armes', 'Règles des armes et des projectiles'],
+    ['equipement', 'Armes', 'Panneau de règles › « Texte modifié. »', 'Texte', 'modifie', 'Texte.', 'Texte modifié.'],
+    ['equipement', 'Armes', 'Panneau de règles › « Texte. »', null, 'ajoute', null, 'Panneau de règles › « Texte. »'],
+  ]);
+  // le panneau d'un sous-onglet (les bâtons magiques de l'onglet Ceinture) : son groupe le dit, à la place de l'onglet Ceinture (avant les accessoires)
+  const avant = { tables: { panneau_regles: [panneau('accessoires', 'Règles'), panneau('batons-magiques', 'Règles')], panneau_regles_bloc: [bloc('accessoires', 1), bloc('batons-magiques', 1)] } };
+  const apres = { tables: { panneau_regles: [panneau('accessoires', 'Règles des accessoires'), panneau('batons-magiques', 'Règles des bâtons')], panneau_regles_bloc: [bloc('accessoires', 1), bloc('batons-magiques', 1)] } };
+  assert.deepEqual(comparerBases(avant, apres).map((l) => [l.groupe, l.champ, l.apres]), [
+    ['Ceinture › Bâtons magiques', 'Titre', 'Règles des bâtons'],
+    ['Accessoires', 'Titre', 'Règles des accessoires'],
+  ]);
+  assert.equal(TITRES_DOMAINES.equipement, 'Équipement');
+});
+
+test('équipement : l’ordre des blocs d’un panneau en une ligne au plus, seulement s’il change pour les blocs gardés ; un bloc nommé par ses premiers mots ou son mot-clé, jamais par son rang', () => {
+  const panneau = { id: 'armes', titre: 'Règles des armes', page_id: 'ressources/armes' };
+  const mot_cle = [{ id: 'recharge-longue', libelle: 'Recharge longue', libelle_cle: 'recharge longue', description: 'Doit recharger.' }];
+  const bloc = (rang, ordre, valeurs = {}) => ({ panneau_id: 'armes', rang, ordre, tuile: 0, titre: null, texte: `Texte du bloc ${rang}.`, ...valeurs });
+  const blocs = [
+    bloc(1, 1, { texte: 'Toutes les armes ont de base **2 crans** de solidité, les armes de corps à corps' }),
+    bloc(2, 2, { tuile: 1, texte: '{{recharge-longue:}}' }),
+    bloc(3, 3, { texte: '**Les armes en bleu sont les armes possibles.**\n\n***CAS PARTICULIERS :***' }),
+    bloc(4, 4, { tuile: 1, titre: 'Dague', texte: '- Divise par 2' }),
+    bloc(5, 5, { tuile: 1, titre: 'Arme de jet', texte: '- Lancer 2 armes' }),
+  ];
+  const note = (dev) => comparerBases({ tables: { panneau_regles: [panneau], panneau_regles_bloc: blocs, mot_cle } },
+    { tables: { panneau_regles: [panneau], panneau_regles_bloc: dev, mot_cle } }).map((l) => [l.entite, l.champ, l.nature, l.avant, l.apres]);
+  // une tuile insérée en tête : les sept places repoussées ne font aucune ligne, l'ajout seul est dit
+  const enTete = [bloc(6, 1, { tuile: 1, titre: 'Nouvelle tuile', texte: 'x' }), ...blocs.map((b) => ({ ...b, ordre: b.ordre + 1 }))];
+  assert.deepEqual(note(enTete), [['Panneau de règles › Nouvelle tuile', null, 'ajoute', null, 'Panneau de règles › Nouvelle tuile']]);
+  // un bloc retiré : son retrait seul (les autres gardent leur ordre de lecture)
+  assert.deepEqual(note(blocs.filter((b) => b.rang !== 3)), [['Panneau de règles › « Les armes en bleu sont les… »', null, 'retire', 'Panneau de règles › « Les armes en bleu sont les… »', null]]);
+  // deux voisins échangés (« ↑ ») : une ligne pour le panneau, de la première à la dernière place qui change
+  const echange = blocs.map((b) => (b.rang === 4 ? { ...b, ordre: 5 } : b.rang === 5 ? { ...b, ordre: 4 } : b));
+  assert.deepEqual(note(echange), [['Panneau de règles', 'Ordre des blocs', 'modifie', 'Dague · Arme de jet', 'Arme de jet · Dague']]);
+  // le premier bloc passé en dernier : toute la suite ; la tuile qui n'est qu'une balise du glossaire, par le libellé du mot-clé
+  const auBout = blocs.map((b) => (b.rang === 1 ? { ...b, ordre: 9 } : b));
+  assert.deepEqual(note(auBout), [['Panneau de règles', 'Ordre des blocs', 'modifie',
+    '« Toutes les armes ont de base… » · Recharge longue · « Les armes en bleu sont les… » · Dague · Arme de jet',
+    'Recharge longue · « Les armes en bleu sont les… » · Dague · Arme de jet · « Toutes les armes ont de base… »']]);
+  // le même ordre de lecture avec d'autres valeurs d'ordre (trous, égalités départagées par le rang) : rien
+  assert.deepEqual(note(blocs.map((b) => ({ ...b, ordre: b.rang === 1 ? 3 : b.rang * 10 }))), []);
+  // un texte modifié et un déplacement dans le même lot : deux lignes, le texte sous le nom de son bloc tel qu'il est maintenant
+  const lot = echange.map((b) => (b.rang === 2 ? { ...b, texte: '{{recharge-longue|Recharge}} et la suite' } : b));
+  assert.deepEqual(note(lot), [
+    ['Panneau de règles', 'Ordre des blocs', 'modifie', 'Dague · Arme de jet', 'Arme de jet · Dague'],
+    ['Panneau de règles › « Recharge et la suite »', 'Texte', 'modifie', '{{recharge-longue:}}', '{{recharge-longue|Recharge}} et la suite'],
+  ]);
 });

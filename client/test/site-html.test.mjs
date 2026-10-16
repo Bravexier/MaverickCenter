@@ -8,6 +8,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
@@ -100,21 +102,24 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cle=<id>, nombre de pages) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
+test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<id>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
   assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
   assert.match(html, /<noscript><p class="banner">La recherche [^<]*JavaScript[^<]*<a href="\/pages\/">index de toutes les pages<\/a>/, 'sans JavaScript : l’index des pages');
   // plus de « Sans catégorie (à trier) » ni d'événements dans la vue d'un mot-clé : les événements ont des catégories (filtre de la frise), pas de mot-clé
   for (const reste of ['data-sans-categorie', 'data-libelle-sans-categorie', 'data-reserve', 'badge--sans-categorie', 'mot-cle-evenements']) assert.ok(!html.includes(reste), reste);
-  assert.match(html, /<ul id="mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
-  // l'index : chaque page porte les ids de ses mots-clés ; un événement n'en porte aucun, ses `tags` sont les libellés de ses catégories
+  assert.match(html, /<ul id="vue-du-mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
+  // l'index : chaque page porte les ids de ses mots-clés (étiquettes, et ceux que citent ses balises) ; un événement n'a pas d'étiquette, ses `tags`
+  // sont les libellés de ses catégories ; aucun texte de l'index n'a de balise brute
   const index = JSON.parse(lire('search-index.json'));
   assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
   const evenements = index.filter((e) => e.type === 'Événement');
   assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
-  assert.ok(evenements.every((e) => e.motsCles.length === 0), 'aucun mot-clé sur un événement');
   const base = ouvrirBase();
+  const ids = new Set(base.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
+  assert.ok(evenements.every((e) => e.motsCles.every((id) => ids.has(id))), 'un événement : seulement les mots-clés que citent ses descriptions');
+  assert.ok(index.every((e) => ![e.title, e.summary, e.text, ...e.tags, ...e.aliases].some((t) => /\{\{[^{}\n]+\}\}/.test(t ?? ''))), 'aucune balise brute dans l’index');
   const categories = new Map();
   for (const c of base.prepare('SELECT ec.evenement_id AS id, c.libelle FROM evenement_categorie ec JOIN categorie_chronologie c ON c.id = ec.categorie_id').all()) {
     categories.set(c.id, [...(categories.get(c.id) ?? []), c.libelle]);
@@ -125,21 +130,25 @@ test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cl
   }
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
-  // la liste : tout le vocabulaire, un mot-clé qu'aucune page visible ne porte caché
-  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => [m.id, m]));
+  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle
+  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description FROM mot_cle').all().map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( hidden)?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>([^<]+)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
-  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
-  for (const [, id, cle, n, cache, lien, texte] of motsCles) {
+  assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
+  for (const [, id, cle, n, definition, lien, bulle, texte] of motsCles) {
     assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
     assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
-    assert.equal(Boolean(cache), Number(n) === 0, `${id} : caché si aucune page visible ne le porte`);
-    assert.ok(texte.endsWith(` (${n})`), texte);
+    assert.ok(Number(n) > 0 ? texte.endsWith(` (${n})`) : !/\(\d+\)$/.test(texte), texte);
     assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
+    const decrit = Boolean(vocabulaire.get(id)?.description);
+    assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
+    assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
+    if (decrit) assert.equal((html.match(new RegExp(`<span class="bulle" role="tooltip" id="mot-cle-${id}" hidden>`, 'g')) ?? []).length, 1, `${id} : sa bulle, une fois`);
   }
   assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
-  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.filter((m) => !m[4]).length}\\)</small>`), 'le nombre de mots-clés affichés');
+  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.length}\\)</small>`), 'le nombre de mots-clés');
+  assert.match(html, /<p id="vue-du-mot-cle-definition" class="recherche-definition" hidden><\/p>/, 'la vue d’un mot-clé : sa définition');
   // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
   assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
   // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
@@ -149,6 +158,83 @@ test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cl
   for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
   const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
+});
+
+/** Éléments dont le texte n'est pas montré tel quel (code, modèles, scripts…) ou garde ses balises (zones brutes) : comme lib/mots-cles-balises.mjs. */
+const ZONES_BRUTES = new Set(['script', 'style', 'textarea', 'template', 'code', 'pre', 'kbd', 'samp', 'svg', 'math']);
+const ATTRIBUTS_VISIBLES = ['title', 'alt', 'placeholder', 'aria-label', 'aria-description', 'data-infobulle'];
+/**
+ * Le texte visible d'une page (nœuds de texte, <title>, attributs montrés ou lus à l'écran), hors zones brutes (ZONES_BRUTES, [data-mots-cles-bruts]) :
+ * ce qu'une balise du glossaire restée brute montrerait. `data-balise` (la balise d'un mot-clé rendu) n'est pas visible.
+ */
+function texteVisible(html) {
+  const morceaux = [];
+  const pile = [];
+  let bruts = 0;
+  let i = 0;
+  const JETON = /<!--[\s\S]*?-->|<![^>]*>|<\?[^>]*>|<\/?([a-zA-Z][^\s/>]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  for (let m = JETON.exec(html); m; m = JETON.exec(html)) {
+    if (!bruts) morceaux.push(html.slice(i, m.index));
+    i = JETON.lastIndex;
+    const [jeton, nomBrut, attributs] = m;
+    if (!nomBrut) continue;
+    const nom = nomBrut.toLowerCase();
+    if (jeton[1] === '/') {
+      const k = pile.map((e) => e.nom).lastIndexOf(nom);
+      if (k >= 0) for (const e of pile.splice(k)) bruts -= e.brut ? 1 : 0;
+      continue;
+    }
+    const brut = ZONES_BRUTES.has(nom) || /\sdata-mots-cles-bruts(?=[\s=>/]|$)/i.test(attributs);
+    if (!bruts && !brut) {
+      for (const a of ATTRIBUTS_VISIBLES) {
+        const v = new RegExp(`\\s${a}\\s*=\\s*("([^"]*)"|'([^']*)')`, 'i').exec(attributs);
+        if (v) morceaux.push(v[2] ?? v[3]);
+      }
+    }
+    if (['script', 'style', 'textarea', 'title'].includes(nom)) {
+      const fin = html.toLowerCase().indexOf(`</${nom}`, i);
+      if (nom === 'title' && !bruts) morceaux.push(html.slice(i, fin < 0 ? html.length : fin));
+      i = fin < 0 ? html.length : fin;
+      JETON.lastIndex = i;
+      continue;
+    }
+    if (/^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/.test(nom) || /\/\s*$/.test(attributs)) continue;
+    pile.push({ nom, brut });
+    bruts += brut ? 1 : 0;
+  }
+  if (!bruts) morceaux.push(html.slice(i));
+  return morceaux.join('\n');
+}
+
+test('glossaire des mots-clés : aucune balise brute sur le site construit (le middleware est passé sur chaque page, bulles comprises) ; /donnees/ montre les valeurs telles qu’enregistrées', options, () => {
+  const vocabulaire = chargerVocabulaire(ouvrirBase());
+  const pages = walk(dist).filter((f) => f.endsWith('.html'));
+  const restes = pages.filter((f) => {
+    const html = readFileSync(f, 'utf8');
+    return pageAvecMotsCles(html, vocabulaire) !== html;
+  }).map((f) => relative(dist, f));
+  assert.deepEqual(restes, [], 'une seconde passe du middleware ne change aucune page');
+  // le texte VISIBLE de chaque page (hors zones brutes et data-balise) n'a aucune balise : « {{ » ne s'y lit nulle part
+  const visibles = pages.flatMap((f) => {
+    const t = texteVisible(readFileSync(f, 'utf8'));
+    const k = t.indexOf('{{');
+    return k < 0 ? [] : [`${relative(dist, f)} : « ${t.slice(Math.max(0, k - 40), k + 60).replace(/\s+/g, ' ')} »`];
+  });
+  assert.deepEqual(visibles, [], 'aucune balise brute dans le texte visible');
+  assert.equal(texteVisible('<p title="a">b</p><code>{{x}}</code><div data-mots-cles-bruts><p>{{y}}</p></div><strong data-balise="{{z}}">Z</strong><title>T</title>'),
+    '\na\nb\n\n\n\nZ\n\nT\n\n', 'l’aide du test : ni code, ni zone brute, ni data-balise');
+  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé)
+  const autres = pages.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/<([a-z]+)([^>]*) id="mot-cle-[^"]*"/g)]
+    .filter((m) => !(m[1] === 'span' && / class="bulle"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
+  assert.deepEqual(autres, []);
+  // les blocs des panneaux de règles écrivent des balises (migration 0055) : la table brute les garde
+  const brute = 'donnees/panneau_regles_bloc/index.html';
+  if (existsSync(join(dist, brute))) {
+    const html = lire(brute);
+    assert.match(html, /<div class="donnees-wrap" data-mots-cles-bruts>/);
+    assert.match(html, /\{\{recharge-longue:\}\}/, 'la balise telle qu’enregistrée');
+    assert.ok(!html.slice(html.indexOf('data-mots-cles-bruts')).includes('class="mot-cle-definition"'), 'pas rendue dans la table');
+  }
 });
 
 test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {

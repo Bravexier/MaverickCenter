@@ -1,19 +1,18 @@
 // Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire, 2026-10-16 : d'abord un
 // onglet de « Équipement », « qui auront mieux leur place ici », puis, la ceinture devenue l'onglet « Ceinture », « On y remettrait à ce moment le
-// tableau Bâton magique ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique », dont seules les règles s'affichent (son
-// introduction et « Comment fabriquer un bâton magique ? ») ; la page « Bâton magique » n'est plus construite, ses liens mènent au sous-onglet
-// (lib/metiers.mjs#adresseDePage). Un bâton va à la ceinture (décision R81 : vue v_objet_ceinture, dont la fiche de personnage se sert).
+// tableau Bâton magique ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique » ; ses règles (son introduction et « Comment
+// fabriquer un bâton magique ? », copiées par la migration 0055) sont le panneau de règles `batons-magiques` (lib/panneaux-regles-db.mjs) ; la page
+// « Bâton magique » n'est plus construite, ses liens mènent au sous-onglet (lib/metiers.mjs#adresseDePage). Un bâton va à la ceinture (décision R81 :
+// vue v_objet_ceinture, dont la fiche de personnage se sert).
 // Prix d'un bâton (demande du propriétaire du 2026-10-16 : « Rajouter une colonne pour le prix ») : la source n'écrit pas de prix pour un bâton, seulement
 // ceux de ses matériaux (« MATÉRIAUX NÉCESSAIRES PAR MAGIE » : la gemme entière par qualité, le bois) et la recette de chaque niveau (« 1 Gemme Commune
 // + 1 bois [magie] ») ; le prix affiché est donc celui des matériaux de la recette : la gemme de la qualité du niveau + le bois (`prixDuBaton`), rien
 // d'autre (aucun coût de fabrication n'est écrit).
-// Sans dépendance (sauf lib/ceinture-db.mjs et lib/corps-composants.mjs, purs) : `chargerBatons` reçoit la base ouverte par lib/donnees.mjs.
-import { sectionDuCorps } from './ceinture-db.mjs';
+// Sans dépendance (sauf lib/corps-composants.mjs, pur) : `chargerBatons` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_BATONS } from './corps-composants.mjs';
 
-/** La page des bâtons magiques (lib/corps-composants.mjs) : son introduction (avant le premier titre) et « Comment fabriquer un bâton magique ? ». */
+/** La page des bâtons magiques (lib/corps-composants.mjs). */
 export { PAGE_DES_BATONS };
-export const TITRE_DE_LA_FABRICATION = '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?';
 
 /** Les qualités de gemme (`recette_ingredient.qualite`), dans l'ordre des niveaux, et leur libellé tel que la recette l'écrit (« 1 Gemme Raffinée »). */
 export const QUALITES_DE_GEMME = Object.freeze({ commune: 'Gemme commune', raffinee: 'Gemme raffinée', parfaite: 'Gemme parfaite' });
@@ -32,8 +31,8 @@ export function prixDuBaton(m, niveau) {
 
 /**
  * Les données de l'onglet :
- *   page    : { id, titre, resume } de la page « Bâton magique » (son titre se modifie sur le site de dev), ou null (une base sans exemples peut ne plus l'avoir) ;
- *   regles  : { introduction, fabrication } : Markdown de la base (null si la page n'écrit plus la section), rendus par la page ;
+ *   page    : { id, titre } de la page « Bâton magique », ou null (une base sans exemples peut ne plus l'avoir) ; son résumé n'est plus lu (le panneau de
+ *             règles l'a remplacé) ;
  *   niveaux : [{ niveau, entete }] (l'en-tête de la colonne du classeur, la recette du niveau : « Niveau 1 (1 Gemme Commune + 1 bois [magie]) ») ;
  *   magies  : [{ magie: { id, nom }, gemme, bois, qualites: { 1: 'commune', … }, bonus: { 1: '…', 2: '…', 3: '…' } }], une par magie, dans l'ordre des
  *             magies ; gemme : { id, nom, description, prix: { commune, raffinee, parfaite } } (chaque prix { brut, rf }, la gemme entière) ;
@@ -67,13 +66,9 @@ export function chargerBatons(db) {
     m.qualites[b.niveau] = gemme?.qualite ?? null;
     m.bonus[b.niveau] = b.bonus_brut;
   }
-  const page = lignes(db, 'SELECT id, titre, resume, corps_md FROM page WHERE id = ?', PAGE_DES_BATONS)[0] ?? null;
+  const page = lignes(db, 'SELECT id, titre FROM page WHERE id = ?', PAGE_DES_BATONS)[0] ?? null;
   return {
-    page: page ? { id: page.id, titre: page.titre, resume: page.resume } : null,
-    regles: {
-      introduction: page ? sectionDuCorps(page.corps_md, null) : null,
-      fabrication: page ? sectionDuCorps(page.corps_md, TITRE_DE_LA_FABRICATION) : null,
-    },
+    page,
     niveaux,
     magies,
     nombre: tous.length,

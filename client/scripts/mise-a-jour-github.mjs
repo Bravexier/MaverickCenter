@@ -232,21 +232,44 @@ export function verifierSimulation(donnees, essai) {
 /**
  * Les tables que le journal du lot modifie (la liste blanche, avec TABLES_DE_LA_NOTE), et celles que son rejeu écrit au-delà du journal — la même
  * règle que serveur/edition.mjs#rejouerLeJournal, recopiée ici (ce job n'importe rien d'autre) : un mot-clé supprimé ou fusionné retire aussi, par la
- * cascade de son schéma, ses lignes page_tag des pages d'exemple (absentes du site de dev, donc du journal) ; une ligne page_tag notée avant la
- * migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé.
+ * cascade de son schéma, ses lignes page_tag des pages d'exemple (absentes du site de dev, donc du journal), et ses balises du glossaire de tous les
+ * textes de la base (balisesRetireesParLeLot, balisesDesColonnesDerivees : pages d'exemple, pages typées, textes que le site de dev n'avait pas) —
+ * `tablesAvecBalises` : les tables dont le fichier de data/rows contient une balise (une liste, ou une fonction qui la rend, appelée seulement pour un tel
+ * lot : tablesAvecBalises), et `page` (les pages typées refaites depuis les lignes ainsi réécrites : recalculerLesPages) ; une ligne page_tag notée avant
+ * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé.
  */
-export function tablesDuLot(donnees) {
+export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
   const tables = new Set();
   const ancienne = (v) => Boolean(v && typeof v === 'object' && 'libelle' in v);
+  let motCleRetire = false;
   for (const l of donnees?.journal?.lots ?? []) {
     for (const m of l.modifications ?? []) {
       if (typeof m.table !== 'string' || !/^[A-Za-z0-9_]+$/.test(m.table)) throw echec('lot', 'lot illisible (nom de table invalide dans le journal)');
       tables.add(m.table);
-      if (m.table === 'mot_cle' && m.operation === 'supprimer') tables.add('page_tag');
+      if (m.table === 'mot_cle' && m.operation === 'supprimer') {
+        tables.add('page_tag');
+        motCleRetire = true;
+      }
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
     }
   }
+  if (motCleRetire) {
+    tables.add('page');
+    for (const t of typeof balises === 'function' ? balises() : balises) tables.add(t);
+  }
   return [...tables].sort();
+}
+
+/**
+ * Les tables dont le fichier de data/rows contient, à la révision `rev`, une balise du glossaire des mots-clés (« {{ ») : celles que le rejeu d'un lot
+ * qui supprime ou fusionne un mot-clé peut réécrire (tablesDuLot). Par git seul (git grep), rien du dépôt n'est exécuté ; [] sans révision. `rev` n'est
+ * qu'un commit (SHA) ou `origin/dev` : rien d'autre ne va à git (un argument qui commencerait par « - » serait une option de git grep).
+ */
+export function tablesAvecBalises(g, rev) {
+  if (!rev) return [];
+  if (!SHA.test(String(rev)) && rev !== `origin/${DEV}`) throw echec('git', `révision refusée pour la recherche des balises : ${JSON.stringify(rev)} (un SHA ou origin/${DEV})`);
+  const r = g(['grep', '-l', '-F', '{{', rev, '--', 'data/rows/'], { ok: [0, 1] });
+  return r.sortie.split('\n').map((l) => /^[^:]*:data\/rows\/([A-Za-z0-9_]+)\.sql$/.exec(l.trim())?.[1]).filter(Boolean).sort();
 }
 
 /** Date (AAAA-MM-JJ, note de version) et horodatage (AAAAMMJJ-HHMM, nom de branche) dans le fuseau du propriétaire. */
@@ -507,7 +530,7 @@ export function verifierPreparation(p, { lot, empreinte, essai }) {
 }
 
 /** Relit l'artefact « preparation » (job livrer). Le lot est vérifié par l'empreinte de l'entrée du workflow. Rend { donnees, tables, preparation }. */
-function lireArtefact(dossier, { lot, empreinte, essai }) {
+function lireArtefact(dossier, { g, lot, empreinte, essai }) {
   if (!dossier) throw echec('entrees', 'ARTEFACT manquant (dossier de l\'artefact « preparation »)');
   let octets;
   try {
@@ -517,8 +540,9 @@ function lireArtefact(dossier, { lot, empreinte, essai }) {
   }
   const donnees = lireLot(octets, { empreinte, lot }, 'artefact');
   verifierSimulation(donnees, essai);
-  const tables = tablesDuLot(donnees);
   const preparation = verifierPreparation(lireJson(join(dossier, ARTEFACT.preparation)), { lot, empreinte, essai });
+  // les balises du glossaire de la base du commit préparé (le rejeu d'un lot qui retire un mot-clé les réécrit : tablesDuLot)
+  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => (g && preparation.base ? tablesAvecBalises(g, preparation.base) : []) });
   return { donnees, tables, preparation };
 }
 
@@ -780,7 +804,8 @@ export async function preparer(entrees, outils) {
   journal(`lot ${lot} : téléchargement depuis ${ctx.adresse}`);
   const { octets, donnees } = await telechargerLot(ctx, outils);
   verifierSimulation(donnees, essai);
-  const tables = tablesDuLot(donnees);
+  // le rejeu part de dev : les balises du glossaire de ses fichiers (un lot qui retire un mot-clé les réécrit : tablesDuLot)
+  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => tablesAvecBalises(ctx.g, `origin/${DEV}`) });
   const nbModifications = donnees.journal.lots.reduce((n, l) => n + (l.modifications?.length ?? 0), 0);
   journal(`empreinte vérifiée${essai ? ' (lot de simulation)' : ''} ; ${nbModifications} modification(s) en ${donnees.journal.lots.length} lot(s) ; tables du lot : ${tables.join(', ') || 'aucune'}`);
   rmSync(artefact, { recursive: true, force: true });

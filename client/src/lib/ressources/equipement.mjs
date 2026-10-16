@@ -1,10 +1,12 @@
 // Ressources de l'API REST du module « equipement » (format : lib/ressources.mjs) : l'équipement de la section 9 de data/schema.sql — armes (familles,
 // types, pièces élémentaires), armures (emplacements, pièces élémentaires), boucliers (classes, poids, préfabriqués), améliorations, accessoires
-// (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre. Les matériaux d'arme, d'armure et de bouclier sont
+// (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre ; et les panneaux de règles en tête des onglets de
+// /ressources/equipement/ (section 1, migration 0055 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
 // dans le module « artisanat » (décision R62 : la page Composants en est la seule source).
 // Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs,
-// edition-armures.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une amélioration d'arme, d'armure ou de bouclier, une armure, une
-// pièce d'armure, une forme, un poids et un bouclier préfabriqué se modifient ; rien d'autre. Deux tables sont donc partagées par une condition :
+// edition-armures.mjs, edition-panneaux.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une amélioration d'arme, d'armure ou de
+// bouclier, une armure, une pièce d'armure, une forme, un poids et un bouclier préfabriqué se modifient ; le titre d'un panneau de règles se modifie, un
+// bloc de panneau se crée (après un autre), se modifie et se supprime (pas le dernier) ; rien d'autre. Deux tables sont donc partagées par une condition :
 // `arme` (les armes de monstres, que le service refuse : décision R45, en lecture seule à part) et `amelioration_equipement` (une ressource par cible
 // modifiable ; le service refuse celles des pièces élémentaires : en lecture seule à part). Les tables tirées d'un texte de la ligne (types de dégâts et minimums d'une arme, résistances
 // d'une armure, effets d'une armure élémentaire, gemmes et cibles d'un effet d'accessoire, ligne TOTAL des tableaux d'amélioration) sont des
@@ -317,6 +319,39 @@ export const RESSOURCES = [
     liste: ['id', 'magie_id', 'niveau', 'bonus_brut', 'recette_id'],
     recherche: ['bonus_brut'],
     tri: 'magie_id',
+  },
+  // ▸ Panneaux de règles (migration 0055)
+  {
+    cle: 'panneaux-de-regles',
+    nom: 'Panneau de règles',
+    noms: 'Panneaux de règles',
+    description:
+      'Les encarts repliés en tête des onglets de /ressources/equipement/ (un par onglet : son identifiant est l’ancre de l’onglet), remplis par la ' +
+      'migration 0055 des règles que le site tirait du corps des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » (ce ' +
+      'corps n’en est plus que la trace) : le titre du panneau (modifiable) et sa page (contexte des [[liens]], en lecture) ; ses blocs dans l’ordre de ' +
+      'lecture en sous-ressource.',
+    table: 'panneau_regles',
+    libelle: 'titre',
+    liste: ['id', 'titre', 'page_id'],
+    recherche: ['titre'],
+    tri: 'id',
+    enfants: [
+      {
+        cle: 'blocs',
+        nom: 'Bloc de règles',
+        noms: 'Blocs de règles',
+        table: 'panneau_regles_bloc',
+        parent: { panneau_id: 'id' },
+        tri: 'ordre',
+        description:
+          'Les blocs du panneau, dans l’ordre de lecture (`ordre`, à égalité le rang) : du texte (`tuile` = 0, qui suit les colonnes du panneau) ou une ' +
+          'tuile (`tuile` = 1, encadrée, titre facultatif) ; le texte est le Markdown des pages ([[liens]], gras, listes, monnaies), sans HTML brut ni ' +
+          'lien non sûr ; un titre ne se donne qu’à une tuile ; un bloc créé se place après le bloc de rang `apres` (les suivants repoussés d’une ' +
+          'place), sinon à la fin, et prend un rang jamais employé ; le dernier bloc d’un panneau ne se supprime pas.',
+        // la création rend l'id « <panneau_id>#<rang> » (serveur/edition-panneaux.mjs) : le rang est ce qui suit le « # »
+        ecriture: { creer: 'panneau_regles_bloc', supprimer: 'panneau_regles_bloc', parentCreation: { panneau_id: 'id' }, cleCreee: 'rang' },
+      },
+    ],
   },
   {
     cle: 'machines-de-guerre',

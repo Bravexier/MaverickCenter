@@ -3,6 +3,7 @@ import ceintureCss from '../../styles/ceinture/ceinture.css?raw';
 import BatonsMagiques from './BatonsMagiques.astro';
 import type { chargerObjetsDeCeinture } from '../../lib/ceinture-db.mjs';
 import type { chargerBatons } from '../../lib/batons-db.mjs';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 import { ONGLET_DES_BATONS } from '../../lib/ceinture-db.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../../lib/equipement.mjs';
 import { htmlDEnteteDeGroupe, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
@@ -21,16 +22,18 @@ import { url } from '../../lib/wiki';
 // chacun un panneau `section.ceinture-panneau` : Consommables (les tableaux repliables des fioles, remèdes, philtres, huiles et de l'alchimie primitive,
 // dans cet ordre ; un groupe par page de potion, son titre en lien vers elle ; chaque potion sur la couleur de son palier dans le Doc « Alchimie »,
 // lib/ceinture-couleurs.mjs), Carquois (les carquois et sacs, liens vers leur ligne de « Composants », où ils se modifient) et Bâtons magiques
-// (BatonsMagiques.astro). Plus de recherche (demande du propriétaire) : pas de script de l'onglet, sauf le curseur des bâtons (src/scripts/batons.mjs).
-// Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site
-// de dev). CSS : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
+// (BatonsMagiques.astro, en tête son panneau de règles : components/equipement/PanneauDeRegles.astro). Plus de recherche (demande du propriétaire) :
+// pas de script de l'onglet, sauf le curseur des bâtons (src/scripts/batons.mjs). Sans JavaScript, tout est affiché, chaque sous-onglet sous son
+// titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). CSS : styles/ceinture/ceinture.css (?raw, inséré ici
+// seulement).
 type Objets = ReturnType<typeof chargerObjetsDeCeinture>;
 interface Props {
   objets: Objets;
   /** HTML des règles de la ceinture (null si la page n'écrit plus la section) */
   regles: { ceinture: string | null; reference: string | null };
   batons: ReturnType<typeof chargerBatons>;
-  reglesBatons: { introduction: string | null; fabrication: string | null };
+  /** le panneau de règles du sous-onglet Bâtons magiques (`batons-magiques`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  reglesBatons: PanneauRendu | null;
 }
 const { objets, regles, batons, reglesBatons } = Astro.props;
 const { sources } = objets;

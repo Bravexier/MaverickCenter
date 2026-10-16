@@ -23,6 +23,15 @@ const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' 
 /** La première lettre en capitale (« naine » → « Naine ») : la forme, jamais le fond. */
 const capitale = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 
+/**
+ * La phrase « Les armes en bleu sont les armes possibles en arme de départ » du panneau de règles de l'onglet (en gras et en bleu dans la cellule du
+ * classeur ; en gras dans le Markdown du bloc : migration 0055) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML (par remark au
+ * build, par lib/chronologie-rendu.mjs#htmlDuTexte dans le navigateur du site de dev), reçoit la classe `armes__phrase-depart` (styles/armes/armes.css).
+ * Rien d'autre ne change.
+ */
+export const avecPhraseDesArmesDeDepart = (html) =>
+  String(html ?? '').replace(/<p>(<strong>Les armes en bleu [^<]*<\/strong>)<\/p>/, '<p class="armes__phrase-depart">$1</p>');
+
 /** Le type d'arme d'après son id (« Épée »), dans la liste du contexte. */
 const typeDe = (id, ctx) => (ctx.typesDArmes ?? []).find((t) => t.valeur === id) ?? null;
 

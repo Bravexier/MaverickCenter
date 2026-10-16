@@ -39,7 +39,8 @@ export const armures = {
 
   debut() {
     for (const d of document.querySelectorAll('[data-armures] details')) {
-      if (!d.classList.contains('armures-regles')) d.open = true;
+      // le panneau de règles : son extension l'ouvre et le referme (edition/panneaux.mjs)
+      if (!d.classList.contains('preg')) d.open = true;
     }
     rafraichir();
   },

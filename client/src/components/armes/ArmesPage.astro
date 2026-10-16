@@ -5,16 +5,19 @@ import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
 import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
-import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import TableauArmes from './TableauArmes.astro';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
 // Onglet « Armes » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 : « J'aimerai
 // fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" […] les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armes/,
 // dont l'adresse mène à l'onglet ; demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
 // markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : un panneau (`section.equipement-panneau#armes`, ouvert au départ), rendu
-// depuis les tables de la base (lib/armes-db.mjs), jamais depuis le Markdown de la page « Armes ». Les règles de l'onglet (texte du classeur avec sa
-// mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
-// Arbalète, et « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, toujours affiché et de la
+// depuis les tables de la base (lib/armes-db.mjs), jamais depuis le Markdown de la page « Armes ». Le panneau de règles de l'onglet en tête, replié
+// (components/equipement/PanneauDeRegles.astro, migration 0055 ; texte du classeur avec sa mise en forme, et en tuiles Recharge longue, Recharge très
+// longue, Mordhau, Dague, Arme de jet et le prix : demande du propriétaire, 2026-10-16) ; un filtre par compétence (Lourde, Légère, Arc, Arbalète, et
+// « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, toujours affiché et de la
 // largeur de celui des armures (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour
 // l'armure, et avec la même largeur »), le panneau de l'arme : sa fiche (vide tant qu'aucune arme n'est choisie ; un seul cadre, réduit à trois tuiles,
 // le détail de leur calcul dans leur infobulle, puis effets, description et origine) et, dessous, les matériaux (chaque ligne dans la couleur du
@@ -26,12 +29,10 @@ type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
   contexte: ReturnType<typeof contexteDesArmes>;
-  /** HTML des règles de la page : l'introduction et « Comment déterminer le prix de votre arme ? » (Markdown de la page, lib/armes-db.mjs#reglesDeLaPage). */
-  regles: { introduction: string; prix: string };
-  /** première phrase des règles, affichée en tête de l'onglet Armes */
-  resume?: string | null;
+  /** le panneau de règles de l'onglet (`armes`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
 }
-const { armes, contexte, regles, resume } = Astro.props;
+const { armes, contexte, regles } = Astro.props;
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
@@ -49,19 +50,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
 <div class="armes" data-armes>
   {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armes-piece={abr} set:html={htmlDePiece(abr)}></template>)}
-  {resume && <p class="armes__chapo" set:html={htmlAvecMonnaies(resume)} />}
-  <details class="armes-regles">
-    <summary>Règles des armes : fabrication, recharge, mordhau, cas particuliers, prix</summary>
-    <div class="armes-regles__corps">
-      <div class="prose armes-regles__texte"><Fragment set:html={regles.introduction} /></div>
-      {regles.prix && (
-        <section class="armes-regles__prix" aria-labelledby="armes-prix-titre">
-          <h2 id="armes-prix-titre">Comment déterminer le prix de votre arme ?</h2>
-          <Fragment set:html={regles.prix} />
-        </section>
-      )}
-    </div>
-  </details>
+  <PanneauDeRegles panneau={regles} />
 
   <div class="armes-outils">
     <div class="armes-filtre js-seul" role="group" aria-labelledby="armes-filtre-titre" data-armes-filtre>

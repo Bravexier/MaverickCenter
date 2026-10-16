@@ -2,6 +2,10 @@
 // classes, spécialités, dons à choix, sorts, équipement…), ce que chaque choix apporte, et les tables de progression. Rien n'est recalculé ni
 // déduit ici : chaque valeur vient d'une table (ou d'une vue) de la base, et les couleurs sont celles des autres pages du site. Les calculs de la
 // fiche (niveau, budgets, attributs…) sont dans lib/fiche-moteur.mjs, qui ne lit que ce JSON.
+// Les balises du glossaire des mots-clés (« {{recharge-longue|Recharge longue}} », lib/mots-cles-balises.mjs) sont retirées de tout texte lu dans la base,
+// avant les lectures de ce module (lecteurs des dons, du Mode Hyper…) comme dans le JSON, et lues comme les découpages : le texte écrit (une case en a
+// toujours un), le libellé pour une balise d'un texte mis en forme qui n'en a pas, jamais la définition (le mode complet ne donne que le libellé) ; jamais
+// une balise brute.
 // Node seulement (la base est ouverte par lib/donnees.mjs).
 import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
@@ -16,8 +20,22 @@ import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { normalize } from './text.mjs';
+import { chargerVocabulaire } from './mots-cles-db.mjs';
+import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 
-const lignes = (db, sql, ...params) => db.prepare(sql).all(...params).map((r) => ({ ...r }));
+const vocabulaires = new WeakMap(); // base -> vocabulaire des mots-clés
+const vocabulaireDe = (db) => {
+  if (!vocabulaires.has(db)) vocabulaires.set(db, vocabulaireDesMotsCles(chargerVocabulaire(db)));
+  return vocabulaires.get(db);
+};
+/** Une valeur de la base sans balises du glossaire (le texte affiché, sans définition) ; les objets et listes, chacune de leurs chaînes. */
+function sansBalises(db, v) {
+  if (typeof v === 'string') return v.includes('{{') ? texteSansBalises(v, vocabulaireDe(db), { definitions: false }) : v;
+  if (Array.isArray(v)) return v.map((x) => sansBalises(db, x));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sansBalises(db, x)]));
+  return v;
+}
+const lignes = (db, sql, ...params) => db.prepare(sql).all(...params).map((r) => sansBalises(db, { ...r }));
 const parCle = (rows, cle, valeur = (r) => r) => {
   const m = new Map();
   for (const r of rows) {
@@ -45,7 +63,9 @@ const CONSTANTES = [
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
-export function chargerReglesDeFiche(db) {
+export const chargerReglesDeFiche = (db) => sansBalises(db, reglesDeLaBase(db));
+
+function reglesDeLaBase(db) {
   const constantes = Object.fromEntries(CONSTANTES.map((id) => {
     const r = db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id);
     if (!r) throw new Error(`regle_constante « ${id} » absente de la base`);
@@ -279,7 +299,7 @@ export function chargerReglesDeFiche(db) {
   // tels qu'écrits par la page « Liste des effets mode hyper » (« se débloque au niveau 2 », « n'est disponible qu'au niveau 10 ») ; les effets de base de la
   // fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la magie, comme sa page) et de chaque race
   // (onglet de la race, décision R13).
-  const pageHyper = db.prepare("SELECT corps_md FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get()?.corps_md ?? '';
+  const pageHyper = sansBalises(db, db.prepare("SELECT corps_md FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get()?.corps_md ?? '');
   const niveauHyper = /se d[ée]bloque au niveau (\d+)/.exec(pageHyper)?.[1];
   const sectionCent = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(pageHyper)?.[1] ?? '';
   const niveauCent = /disponible qu['’]au niveau (\d+)/.exec(sectionCent)?.[1];

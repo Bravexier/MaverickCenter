@@ -91,15 +91,9 @@ html.js .ceinture-panneau__titre { position: absolute; width: 1px; height: 1px; 
 .ceint-effet { min-width: 14rem; }
 .ceint-description { min-width: 16rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
 
-/* ── Sous-onglet Bâtons magiques (components/ceinture/BatonsMagiques.astro) ── */
+/* ── Sous-onglet Bâtons magiques (components/ceinture/BatonsMagiques.astro ; son panneau de règles : styles/equipement/equipement.css) ── */
 .batons { margin: 0 0 2rem; }
 .batons .vide { color: inherit; opacity: 0.6; }
-.batons__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
-.batons-regles { margin: 0 0 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.batons-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.batons-regles__texte { max-width: 60rem; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
-.batons-regles__texte > :first-child { margin-top: 0; }
-.batons-regles__texte > :last-child { margin-bottom: 0; }
 .batons-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-lg); }
 /* le curseur du niveau n'existe qu'avec JavaScript ; sans lui, chaque case écrit ses trois niveaux, chacun sous son nom */
 .batons .js-seul { display: none; }

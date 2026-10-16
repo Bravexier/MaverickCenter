@@ -16,6 +16,7 @@ import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 import { RENDUS_DES_ARMURES } from './armures-rendu.mjs';
 import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
+import { avecLeursBalises } from './mots-cles-balises.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -115,16 +116,18 @@ function pastilleDeCible(option, ctx) {
 
 /**
  * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décisions R33, R37 : chaque option vise une compétence
- * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
+ * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte, avec
+ * les balises du glossaire que `brut` (le champ « Bonus ») y écrit (lib/mots-cles-balises.mjs#avecLeursBalises : en gras, avec leur bulle, par le middleware).
  */
-function htmlDesBonus(lignes, ctx = {}) {
+function htmlDesBonus(lignes, ctx = {}, brut = '') {
   const rangs = [];
   for (const l of lignes) (rangs[l.rang - 1] ??= []).push(l);
-  return rangs
-    .filter(Boolean)
-    .map((options) => {
+  const presents = rangs.filter(Boolean);
+  const textes = avecLeursBalises(brut, presents.map((options) => options[0].texte));
+  return presents
+    .map((options, i) => {
       const lie = options.every((o) => o.competence_id || o.attribut);
-      if (!lie) return `<div class="metier-bonus metier-bonus--texte" title="Texte libre : sans effet automatique sur la fiche">${echapperHtml(options[0].texte)}</div>`;
+      if (!lie) return `<div class="metier-bonus metier-bonus--texte" title="Texte libre : sans effet automatique sur la fiche">${echapperHtml(textes[i])}</div>`;
       const { valeur, unite } = options[0];
       const cibles = options.map((o) => pastilleDeCible(o, ctx)).join(' <span class="metier-bonus__ou">ou</span> ');
       return `<div class="metier-bonus"><span class="metier-bonus__valeur">${valeur >= 0 ? '+' : '−'}${Math.abs(valeur)}${unite ?? ''}</span> ${cibles}</div>`;
@@ -139,7 +142,10 @@ function htmlDeCaracteristique(id, ctx = {}) {
   return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
 }
 
-/** Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre. */
+/**
+ * Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre.
+ * `objets` : lus par avecSesBalises (chaque texte avec les balises du glossaire de la case).
+ */
 function htmlDesObjets(objets, ctx = {}) {
   if (!objets.length) return VIDE;
   const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
@@ -158,6 +164,15 @@ function htmlDesObjets(objets, ctx = {}) {
 }
 
 /**
+ * Les lignes d'un découpage (objets de départ : { texte, … }, dans l'ordre de la case) dont le texte reprend les balises du glossaire que la case `brut`
+ * écrit (lib/mots-cles-balises.mjs#avecLeursBalises) : le découpage les lit sans balises, l'affichage les garde.
+ */
+const avecSesBalises = (brut, lignes) => {
+  const textes = avecLeursBalises(String(brut ?? ''), lignes.map((l) => l.texte));
+  return lignes.map((l, i) => ({ ...l, texte: textes[i] }));
+};
+
+/**
  * Rendus nommés (attribut `data-ed-rendu` ; sans attribut : `texte`). Chacun reçoit la valeur de la colonne, la ligne entière et le contexte de la page
  * ({ competences } : listes du service ; { pastilles } : celles que le champ montrait, voir htmlDeBlocs) et rend du HTML.
  */
@@ -165,10 +180,10 @@ export const RENDUS = {
   texte: (valeur) => echapperHtml(valeur ?? ''),
   blocs: (valeur, _ligne, ctx = {}) => htmlDeBlocs(valeur, ctx.pastilles),
   // Métiers (components/metier/MetiersTableau.astro, qui affiche ces mêmes rendus) : ctx.competences, ctx.caracteristiques, ctx.objets (listes du service)
-  'metier-bonus': (valeur, _ligne, ctx = {}) => htmlDesBonus(decouperBonus(valeur ?? '', ctx.competences ?? []), ctx),
+  'metier-bonus': (valeur, _ligne, ctx = {}) => htmlDesBonus(decouperBonus(valeur ?? '', ctx.competences ?? []), ctx, valeur ?? ''),
   'metier-artisanat': (valeur) => (valeur ? echapperHtml(valeur) : VIDE),
   'metier-carac': (valeur, _ligne, ctx = {}) => htmlDeCaracteristique(valeur, ctx),
-  'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(decouperEquipement(valeur, ctx.objets ?? []), ctx),
+  'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(avecSesBalises(valeur, decouperEquipement(valeur, ctx.objets ?? [])), ctx),
   'metier-avantage': (valeur) => (valeur && valeur.trim() !== '…' ? echapperHtml(valeur) : ''),
   // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément) ; portée, zone, D/S/B
   'sort-type': (valeur) => {
@@ -191,7 +206,7 @@ export const RENDUS = {
   inventaire: (valeur, _ligne, ctx = {}) => {
     const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
     const emplacements = [];
-    for (const o of decouperInventaire(valeur, ctx.objets ?? [])) (emplacements[o.rang - 1] ??= []).push(o);
+    for (const o of avecSesBalises(valeur, decouperInventaire(valeur, ctx.objets ?? []))) (emplacements[o.rang - 1] ??= []).push(o);
     const objet = (o) => {
       const g = glossaire.get(o.objet_depart_id);
       if (!g?.description) return `<span class="objet objet--seul">${echapperHtml(o.texte)}</span>`;

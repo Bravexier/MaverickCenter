@@ -1,43 +1,24 @@
 // Éditeur visuel du guide (lib/markdown-edition.mjs, couleur des cases : lib/markdown-couleurs.mjs) : le HTML d'une page, réécrit en Markdown, doit
 // redonner le même rendu. Aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide et du Codex, avec les plugins du site ([[liens]], couleurs) ;
-// puis les écritures propres à l'éditeur (liens, couleurs, échappements, listes, tableaux) et le découpage du corps aux blocs tirés de la base.
+// puis les écritures propres à l'éditeur (liens, couleurs, échappements, listes, tableaux) et le découpage du corps aux blocs tirés de la base ; enfin le
+// même aller-retour sur tous les blocs des panneaux de règles (migration 0055), balises du glossaire comprises.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { createMarkdownProcessor } from '@astrojs/markdown-remark';
-// hast-util-from-html : dépendance de @astrojs/markdown-remark (le processeur Markdown du site), pour lire le HTML rendu comme le ferait le navigateur
-import { fromHtml } from 'hast-util-from-html';
-import { buildIndex, remarkWikilinks, scanContent, splitFrontmatter } from '../src/lib/wikilinks.mjs';
-import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
-import { remarkMonnaies } from '../src/lib/markdown-monnaies.mjs';
+import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { avecPhraseDesArmesDeDepart } from '../src/lib/armes-rendu.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
+import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { chargerPanneaux } from '../src/lib/panneaux-regles-db.mjs';
+// le processeur Markdown du site et la lecture du HTML comme le ferait le navigateur (hast-util-from-html, dépendance de @astrojs/markdown-remark)
+import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
 
-const dossier = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
-const index = buildIndex(scanContent(dossier));
-const processeur = await createMarkdownProcessor({ syntaxHighlight: false, remarkPlugins: [[remarkWikilinks, { index, base: '/' }], remarkCouleursDeCase, remarkMonnaies] });
-// status « example » : pas d'avertissement pour un lien cassé (ce test ne contrôle pas les liens)
-const rendre = async (md) => (await processeur.render(md, { frontmatter: { status: 'example' } })).code;
-
-const kebab = (nom) => nom.replace(/[A-Z]/g, (l) => `-${l.toLowerCase()}`);
-/** hast (HTML analysé) → l'arbre simple de lib/markdown-edition.mjs, comme arbreDuDom le tire du DOM. */
-function arbre(n) {
-  if (n.type === 'text') return { type: 'texte', valeur: n.value };
-  if (n.type !== 'element') return null;
-  const attributs = {};
-  for (const [nom, valeur] of Object.entries(n.properties ?? {})) {
-    if (valeur === false || valeur === null || valeur === undefined) continue;
-    attributs[nom === 'className' ? 'class' : /^data[A-Z]/.test(nom) ? kebab(nom) : nom.toLowerCase()] = Array.isArray(valeur) ? valeur.join(' ') : String(valeur);
-  }
-  return { type: 'element', nom: n.tagName, attributs, enfants: (n.children ?? []).map(arbre).filter(Boolean) };
-}
-const enfants = (html) => fromHtml(html, { fragment: true }).children.map(arbre).filter(Boolean);
 const aller = async (md) => versMarkdown(enfants(await rendre(md)));
-// les espaces entre balises ne changent pas le rendu
-const normal = (html) => html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').replace(/\s+</g, '<').replace(/>\s+/g, '>').trim();
 
 // les pages dont le texte se modifie : le guide et le Codex (lib/edition-modele.mjs#texteDePageModifiable)
 const pagesModifiables = ['guide', 'lore'].flatMap((type) =>
@@ -169,4 +150,79 @@ test('une monnaie en icône, un montant décomposé (lib/markdown-monnaies.mjs) 
   assert.match(sur, /<span[^>]* class="piece piece--rf" role="img"[^>]* data-monnaie="RF"><\/span>/);
   assert.ok(!/<span[^>]*(piece|montant)[^>]*(onerror|style)=/.test(sur));
   assert.equal(versMarkdown(enfants(sur)).trim(), md, 'l’aperçu assaini se relit aussi');
+});
+
+// Le glossaire des mots-clés (migration 0055, lib/mots-cles-balises.mjs) : le HTML de la page porte les mots-clés rendus par le middleware ; l'éditeur
+// les relit en balises (ni « **gras** » ni texte simple), le mode complet en « {{id:}} ».
+const GLOSSAIRE = [
+  { id: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' },
+  { id: 'non-mort', libelle: 'Non-mort', description: 'Une créature revenue de la mort.' },
+  { id: 'mordhau', libelle: 'Mordhau', description: '' },
+];
+/** Le HTML de la page : le Markdown rendu (processeur du site), puis les mots-clés (src/middleware.mjs). */
+const rendreLaPage = async (md) => htmlAvecMotsCles(await rendre(md), GLOSSAIRE).html;
+
+test('mots-clés du glossaire : l’aller-retour garde les balises (texte écrit, libellé, mode complet, case de tableau avec « \\| ») et le rendu', async () => {
+  const md = [
+    'Une arme à {{recharge-longue|Recharge longue}} contre les {{non-mort|non-morts}}, et {{mordhau|Mordhau}}.',
+    '{{recharge-longue:}}',
+    '| Arme | Effet |\n| --- | --- |\n| Arbalète | {{recharge-longue\\|Recharge longue}} |',
+  ].join('\n\n');
+  const html = await rendreLaPage(md);
+  assert.match(html, /<strong class="mot-cle" data-mot-cle="non-mort"[^>]*data-balise="\{\{non-mort\|non-morts\}\}">non-morts<\/strong>/);
+  assert.match(html, /<td><strong class="mot-cle" data-mot-cle="recharge-longue"/, 'dans la case : un mot-clé, pas deux cases');
+  const relu = versMarkdown(enfants(html));
+  assert.equal(relu.trim(), md);
+  assert.equal(normal(await rendreLaPage(relu)), normal(html));
+});
+
+test('mots-clés du glossaire : un texte changé dans l’éditeur s’écrit « {{id|texte}} » ; vidé, rien ; une balise sans texte écrit garde le libellé affiché', async () => {
+  const html = await rendreLaPage('Voir {{non-mort}} et {{Recharge longue}}.');
+  assert.equal(versMarkdown(enfants(html)), 'Voir {{non-mort|Non-mort}} et {{recharge-longue|Recharge longue}}.\n', 'la forme canonique, que le service enregistrerait');
+  const change = html.replace('>Non-mort</strong>', '>morts-vivants</strong>').replace('>Recharge longue</strong>', '></strong>');
+  assert.equal(versMarkdown(enfants(change)), 'Voir {{non-mort|morts-vivants}} et .\n');
+  // gras ordinaire et mot-clé côte à côte
+  assert.equal(versMarkdown(enfants('<p><strong>gras</strong> <strong class="mot-cle" data-mot-cle="non-mort" data-balise="{{non-mort|a*b}}">a*b</strong></p>')),
+    '**gras** {{non-mort|a\\*b}}\n', 'le texte d’une balise échappé comme le reste du Markdown');
+});
+
+test('aperçu assaini : un mot-clé et le mode complet gardent leurs classes, leur id, leur balise et leur bulle ; rien d’autre', async () => {
+  const html = await rendreLaPage('{{non-mort|morts}} et {{recharge-longue:}}');
+  const piege = html.replace('<strong class="mot-cle"', '<strong onclick="x()" style="color:red" class="mot-cle"');
+  const sur = htmlSur(enfants(piege));
+  assert.match(sur, /<strong class="mot-cle" data-mot-cle="non-mort" data-bulle="mot-cle-non-mort" aria-describedby="mot-cle-non-mort" tabindex="0" data-balise="\{\{non-mort\|morts\}\}">morts<\/strong>/);
+  assert.match(sur, /<span class="mot-cle-definition" data-mot-cle="recharge-longue" data-balise="\{\{recharge-longue:\}\}"><strong class="mot-cle-definition__nom">Recharge longue<\/strong>/);
+  assert.ok(!/onclick|style=/.test(sur));
+  assert.equal(versMarkdown(enfants(sur)), '{{non-mort|morts}} et {{recharge-longue:}}\n', 'l’aperçu assaini se relit aussi');
+  assert.doesNotMatch(htmlSur(enfants('<strong class="mot-cle" data-mot-cle="X Y" data-balise="{{x}}">t</strong>')), /data-mot-cle/, 'un id qui n’en est pas un');
+});
+
+// Les panneaux de règles (migration 0055) : le texte de chaque bloc se modifie en place (src/scripts/edition/panneaux.mjs, même éditeur que la
+// chronologie) ; le HTML de la page = le Markdown du bloc rendu au build (lib/guide-rendu.ts#rendreMarkdown : mêmes plugins), « Les armes en bleu… »
+// retouché (avecPhraseDesArmesDeDepart), puis les balises du glossaire (le middleware). L'extension compare le Markdown relu à celui relu au départ,
+// jamais au texte de la base (test/edition-panneaux.test.mjs) : ce test épingle qu'ils diffèrent pour certains blocs (espaces doublés, retours forcés).
+test('aller-retour sur tous les blocs des panneaux de règles : le HTML ne change pas, les balises du glossaire reviennent en balises (pas en définition), rien d’ajouté', async () => {
+  const db = ouvrirBase({ sansExemples: false });
+  const vocabulaire = chargerVocabulaire(db);
+  const blocs = chargerPanneaux(db).flatMap((p) => p.blocs.map((b) => ({ ...b, retouche: p.id === 'armes' ? avecPhraseDesArmesDeDepart : (h) => h })));
+  assert.ok(blocs.length >= 13, `${blocs.length} blocs`);
+  const page = async (b, md) => htmlAvecMotsCles(b.retouche(await rendre(md)), vocabulaire).html;
+  let differents = 0;
+  for (const b of blocs) {
+    const quoi = `${b.panneau_id}#${b.rang}`;
+    const html = await page(b, b.texte);
+    const md = versMarkdown(enfants(html));
+    assert.equal(normal(await page(b, md)), normal(html), `${quoi} : le HTML ne change pas\n${md}`);
+    assert.equal(versMarkdown(enfants(await page(b, md))), md, `${quoi} : le Markdown réécrit est stable`);
+    // les balises du glossaire : les mêmes, au même endroit du texte (une tuile qui n'est qu'une balise en mode complet le reste)
+    assert.deepEqual(lireBalises(md).map((x) => x.brut), lireBalises(b.texte).map((x) => x.brut), `${quoi} : balises`);
+    if (/^\{\{[^{}]+:\}\}$/.test(b.texte.trim())) assert.equal(md.trim(), b.texte.trim(), `${quoi} : la balise en mode complet, pas sa définition`);
+    for (const m of vocabulaire.filter((v) => v.description)) {
+      if (!b.texte.includes(m.description)) assert.ok(!md.includes(m.description), `${quoi} : la définition de « ${m.libelle} » n’est pas recopiée`);
+    }
+    assert.deepEqual(fragmentsAjoutes(b.texte, md), [], `${quoi} : rien que le service refuserait`);
+    if (md.trim() !== b.texte.trim()) differents += 1;
+  }
+  assert.ok(blocs.some((b) => /^\{\{[^{}]+:\}\}$/.test(b.texte.trim())), 'au moins une tuile qui n’est qu’une balise en mode complet');
+  assert.ok(differents > 0, 'au moins un bloc dont le Markdown relu n’est pas le texte de la base (comparer au texte de la base ferait un faux changement)');
 });

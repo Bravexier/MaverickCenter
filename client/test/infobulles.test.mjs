@@ -7,6 +7,7 @@ import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { htmlDeLaBalise, htmlDeLaBulle, lireUneBalise } from '../src/lib/mots-cles-balises.mjs';
 
 const SCRIPT = /<script is:inline data-infobulles>([\s\S]*?)<\/script>/;
 const code = readFileSync(fileURLToPath(new URL('../src/components/Infobulles.astro', import.meta.url)), 'utf8').match(SCRIPT)[1];
@@ -195,6 +196,7 @@ test('un `title` : sa bulle habillée après un délai, qui reste quand le point
   assert.equal(n.bulle.textContent, 'Dé de la famille');
   assert.equal(n.bulle.getAttribute('role'), 'tooltip');
   assert.equal(n.bulle.getAttribute('class'), 'bulle bulle--simple');
+  assert.ok(n.bulle.hasAttribute('data-mots-cles-bruts'), 'son texte, déjà simple, n’est pas relu par les mots-clés vivants du site de dev');
   // le pointeur passe sur la bulle : elle reste (WCAG 1.4.13)
   n.emettre('pointerout', { target: cible, relatedTarget: n.bulle });
   n.emettre('pointerover', { target: n.bulle });
@@ -300,6 +302,42 @@ test('une bulle riche (`data-bulle`) : son `title` (repli sans JavaScript) retir
   assert.ok(bulle.hidden);
   assert.equal(echap.arrete, true, 'le panneau du sort reste ouvert');
   assert.equal(pastille.getAttribute('title'), null);
+});
+
+test('un mot-clé du glossaire (lib/mots-cles-balises.mjs, posé par le middleware) : sa bulle au survol, au focus clavier et au toucher ; Échap la ferme', () => {
+  const vocabulaire = [{ id: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' }];
+  // les attributs que le middleware écrit, lus dans son HTML (le faux navigateur n'analyse pas de HTML)
+  const attributs = (html) => Object.fromEntries([...html.matchAll(/ ([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  const motCle = attributs(htmlDeLaBalise(lireUneBalise('{{recharge-longue}}'), vocabulaire).html.split('>')[0]);
+  const bulleHtml = htmlDeLaBulle('recharge-longue', vocabulaire);
+  assert.equal(motCle['data-bulle'], 'mot-cle-recharge-longue');
+  assert.equal(motCle.tabindex, '0', 'atteint au clavier');
+  for (const tactile of [false, true]) {
+    let declencheur, bulle;
+    const n = navigateur((Element, body) => {
+      const p = body.appendChild(new Element('p'));
+      declencheur = p.appendChild(new Element('strong', motCle));
+      // la bulle, posée avant </body> (hors du paragraphe)
+      bulle = body.appendChild(new Element('span', attributs(bulleHtml.split('>')[0])));
+      bulle.hidden = true;
+    }, { tactile });
+    if (!tactile) {
+      n.emettre('pointerover', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au survol, aussitôt');
+      n.emettre('keydown', { key: 'Escape' });
+      assert.ok(bulle.hidden, 'Échap la ferme');
+      declencheur.focusVisible = true;
+      n.emettre('focusin', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au focus clavier');
+      n.emettre('focusout', { target: declencheur });
+      assert.ok(bulle.hidden);
+    } else {
+      n.emettre('click', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au toucher : un appui l’ouvre');
+      n.emettre('click', { target: n.body });
+      assert.ok(bulle.hidden, 'un appui ailleurs la ferme');
+    }
+  }
 });
 
 test('la carte d’une créature (`data-placement="cote"`, `data-fermer-au-toucher`) : à côté de son nom, pointe de côté ; un clic dedans ne la ferme pas ; elle défile au clavier', () => {

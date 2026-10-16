@@ -11,6 +11,7 @@ import type { chargerBatons } from '../../lib/batons-db.mjs';
 import type { chargerObjetsDeCeinture } from '../../lib/ceinture-db.mjs';
 import type { chargerAccessoires } from '../../lib/accessoires-db.mjs';
 import { ONGLETS_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
+import type { PanneauRendu } from './PanneauDeRegles.astro';
 
 // Page /ressources/equipement/ (menu Ressources ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
 // onglet : "Equipement" A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les
@@ -23,23 +24,25 @@ import { ONGLETS_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
 // #batons-magiques…) ouvre son onglet (et son sous-onglet). Les anciennes pages (« Armes », « Armures », « Bouclier », « Bâton magique »,
 // « Accessoires », « Objets à la ceinture ») ne sont plus construites : leurs liens et leurs adresses mènent à leur onglet (lib/metiers.mjs#adresseDePage,
 // lib/nav.mjs#PAGES_RENOMMEES). Chaque onglet garde son script (src/scripts/armes.mjs, armures.mjs, batons.mjs, accessoires.mjs), sans paramètre
-// d'adresse en commun ; le mode modification du site de dev suit les mêmes extensions qu'avant (src/scripts/edition/armes.mjs, armures.mjs). CSS des
-// onglets : styles/equipement/equipement.css (?raw, inséré ici seulement) ; celui de la ceinture : styles/ceinture/ceinture.css.
+// d'adresse en commun ; le mode modification du site de dev suit les mêmes extensions qu'avant (src/scripts/edition/armes.mjs, armures.mjs). En tête
+// de chaque onglet ou sous-onglet qui sert une page du wiki (lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT : Armes, Armures, Boucliers,
+// Accessoires, et le sous-onglet Bâtons magiques), son panneau de règles (`panneaux`, par ancre : components/equipement/PanneauDeRegles.astro, migration
+// 0055 ; demande du propriétaire, 2026-10-16 : plus de phrase au-dessus du panneau), modifiable sur le site de dev (src/scripts/edition/panneaux.mjs) ;
+// l'onglet Ceinture garde ses règles tirées du guide. CSS des onglets et des panneaux de règles : styles/equipement/equipement.css (?raw, inséré ici
+// seulement) ; celui de la ceinture : styles/ceinture/ceinture.css.
 interface Props {
   armes: ReturnType<typeof chargerArmes>;
   contexteArmes: ReturnType<typeof contexteDesArmes>;
-  reglesArmes: { introduction: string; prix: string };
   armures: ReturnType<typeof chargerArmures>;
   contexteArmures: ReturnType<typeof contexteDesArmures>;
-  reglesArmures: { armures: string; boucliers: string };
   ceinture: ReturnType<typeof chargerObjetsDeCeinture>;
   reglesCeinture: { ceinture: string | null; reference: string | null };
   batons: ReturnType<typeof chargerBatons>;
-  reglesBatons: { introduction: string | null; fabrication: string | null };
   accessoires: ReturnType<typeof chargerAccessoires>;
-  reglesAccessoires: string;
+  /** le panneau de règles de chaque page servie (son id : l'ancre de l'onglet ou du sous-onglet), le Markdown de ses blocs rendu ; null s'il manque */
+  panneaux: Record<string, PanneauRendu | null>;
 }
-const { armes, contexteArmes, reglesArmes, armures, contexteArmures, reglesArmures, ceinture, reglesCeinture, batons, reglesBatons, accessoires, reglesAccessoires } = Astro.props;
+const { armes, contexteArmes, armures, contexteArmures, ceinture, reglesCeinture, batons, accessoires, panneaux } = Astro.props;
 const pluriel = (n: number, mot: string, x = 's') => `${n} ${mot}${n > 1 ? x : ''}`;
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
 const nbArmures = armures.combinaisons.length + armures.particulieres.length;
@@ -68,8 +71,8 @@ const details: Record<string, string> = {
       ))
     }
   </nav>
-  <ArmesPage armes={armes} contexte={contexteArmes} regles={reglesArmes} resume={armes.page?.resume} />
-  <ArmuresPage armures={armures} contexte={contexteArmures} regles={reglesArmures} resume={armures.pages.armures?.resume} />
-  <CeinturePanneau objets={ceinture} regles={reglesCeinture} batons={batons} reglesBatons={reglesBatons} />
-  <AccessoiresPage accessoires={accessoires} regles={reglesAccessoires} resume={accessoires.page?.resume} />
+  <ArmesPage armes={armes} contexte={contexteArmes} regles={panneaux.armes} />
+  <ArmuresPage armures={armures} contexte={contexteArmures} regles={{ armures: panneaux.armures, boucliers: panneaux.boucliers }} />
+  <CeinturePanneau objets={ceinture} regles={reglesCeinture} batons={batons} reglesBatons={panneaux['batons-magiques']} />
+  <AccessoiresPage accessoires={accessoires} regles={panneaux.accessoires} />
 </div>

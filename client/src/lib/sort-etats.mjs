@@ -11,7 +11,9 @@
 // le mot rapproché de l'état tel qu'il est écrit : le nom de l'état (sans tenir compte des accents ni des majuscules) ou l'une des écritures que les
 // lignes de l'import rapprochent d'un état (FORMES_D_ETAT). `stade` : le nombre de 1 à 3 qui suit (« gel 2 », « stade 1 », « au stade 1 », « niveau 3 »),
 // sinon NULL. `rang` : l'occurrence de la même altération (même état, même relation) dans le sort, les cases dans l'ordre CHAMPS_DES_ETATS.
-// Fonctions pures, sans dépendance (sauf text.mjs).
+// Une case se lit sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : le texte d'une case porte celui de chaque balise).
+// Fonctions pures, sans dépendance navigateur ni Astro (dépendances : lib/text.mjs, lib/mots-cles-balises.mjs).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Cases d'un sort lues pour les altérations d'état (CHECK de sort_etat.champ, dans l'ordre des rangs) et leur colonne dans la table sort. */
@@ -84,7 +86,8 @@ function etatEnTete(reste, formes) {
  */
 export function etatsDuTexte(texte, formes) {
   const sortie = [];
-  for (const extrait of phrasesDe(texte)) {
+  // lu sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »)
+  for (const extrait of phrasesDe(texteSansBalises(texte))) {
     for (const m of extrait.matchAll(TOURNURE)) {
       const relation = m.groups.soigne ? 'soigne' : m.groups.prend ? 'prend' : 'inflige';
       let reste = extrait.slice(m.index + m[0].length);

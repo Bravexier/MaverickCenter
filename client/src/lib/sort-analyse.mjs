@@ -2,7 +2,9 @@
 // d'une case (colonnes typées, types et modes, bonus de niveau de maîtrise). Les mêmes lectures que l'importeur des magies, réécrites pour l'édition
 // depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur les 322 sorts de la base.
 // Rien n'est inventé : une forme qui n'est pas reconnue laisse la colonne typée vide (NULL) et le brut fait foi.
-// Fonctions pures, sans dépendance (sauf text.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).
+// Une case s'analyse sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
+// Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Types de sort (CHECK de sort_type.type), par leur écriture normalisée. */
@@ -32,7 +34,7 @@ export const sansExpressionsNM = (texte) =>
  *   ic_direct: number, ic_nm_min: number | null, imparable: number, inesquivable: number, inconnus: string[] }}
  */
 export function analyserType(typeBrut) {
-  const texte = String(typeBrut ?? '');
+  const texte = String(texteSansBalises(typeBrut ?? ''));
   const tete = texte.split('(')[0];
   const libelles = tete.split('/').map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const types = [];
@@ -71,7 +73,7 @@ export function analyserType(typeBrut) {
  * citée (« Sang », « âme(s) ») et sa quantité (NULL pour « X »).
  */
 export function analyserCout(coutBrut) {
-  const base = sansExpressionsNM(coutBrut);
+  const base = sansExpressionsNM(texteSansBalises(coutBrut));
   const seul = /^(\d+)$/.exec(base);
   if (seul) return { cout_chakra: Number(seul[1]), cout_ressource: null, cout_ressource_valeur: null };
   const avec = /^(?:(\d+)\s*\+\s*)?(\d+|X)\s+(Sang|âmes?)$/.exec(base);
@@ -87,7 +89,7 @@ export function analyserCout(coutBrut) {
 
 /** Colonne « Portée » : nombre (sa valeur de base), soi, vue, illimitée, variable, ou autre (le brut fait foi). */
 export function analyserPortee(porteeBrut) {
-  const base = sansExpressionsNM(porteeBrut);
+  const base = sansExpressionsNM(texteSansBalises(porteeBrut));
   if (/^\d+$/.test(base)) return { portee_nature: 'nombre', portee_valeur: Number(base) };
   const n = normalize(base);
   const nature = { 'soi-meme': 'soi', vue: 'vue', illimite: 'illimitee', variable: 'variable' }[n] ?? 'autre';
@@ -96,7 +98,7 @@ export function analyserPortee(porteeBrut) {
 
 /** Colonne « Zone » : forme et premier nombre de « Cercle de N », « Ligne de N », « Carré … N », « Croix de N », « N cibles » ; 'autre' sinon. */
 export function analyserZone(zoneBrut) {
-  const base = sansExpressionsNM(zoneBrut);
+  const base = sansExpressionsNM(texteSansBalises(zoneBrut));
   const nombre = (re) => {
     const m = re.exec(base);
     return m ? Number(m[1]) : null;
@@ -163,7 +165,7 @@ function phrases(texte) {
  * l'expression.
  */
 export function bonusDeMaitrise(champ, texteCase) {
-  const texte = String(texteCase ?? '');
+  const texte = String(texteSansBalises(texteCase ?? ''));
   if (!texte.trim()) return [];
   const trouvees = [];
   const lesGroupes = groupes(texte);

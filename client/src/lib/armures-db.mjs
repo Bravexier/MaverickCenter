@@ -3,8 +3,9 @@
 // composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est
 // disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les
 // bouclier c'est forme + matière ») : chargée depuis les tables de la base, jamais depuis les Markdown des pages « Armures » et « Bouclier » (qui ne
-// servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs), dont seules les règles (le texte avant les tableaux) s'affichent. Les
-// pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet (lib/metiers.mjs#adresseDePage).
+// servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs) ; leurs règles (le texte avant les tableaux, copié par la migration 0055)
+// sont les panneaux de règles `armures` et `boucliers` (lib/panneaux-regles-db.mjs). Les pages « Armures » et « Bouclier » ne sont plus construites :
+// leurs liens mènent à leur onglet (lib/metiers.mjs#adresseDePage).
 // Sans dépendance (sauf des modules purs) : `chargerArmures` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
@@ -33,13 +34,6 @@ const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }
 
 // les ancres des lignes : celles du rendu (lib/armures-rendu.mjs), qui les pose
 export { ancreDArmure, ancreDeBouclier } from './armures-rendu.mjs';
-
-/** Le texte des règles d'une page : son corps avant le premier titre « ## » (le texte du classeur, A1 de l'onglet). */
-export function reglesDeLaPage(corps) {
-  const l = String(corps ?? '').split('\n');
-  const fin = l.findIndex((x) => /^## /.test(x));
-  return l.slice(0, fin < 0 ? l.length : fin).join('\n').trim();
-}
 
 /**
  * Les écarts de la source que l'import a notés dans le corps d'une page (« Écart dans la source : la fiche en tête de ligne pour « Écailles » (cellule

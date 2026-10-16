@@ -25,8 +25,9 @@ const a = present ? chargerAccessoires(ouvrirBase({ sansExemples: process.env.HI
 test('pas de tableau Markdown : le gabarit du générateur, avec les règles de l’onglet', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Accessoires');
   assert.match(main, /<div class="acc" data-accessoires>/);
-  assert.match(main, /<details class="acc-regles" open>/);
-  assert.ok(main.includes('Les accessoires maudits'), 'les règles');
+  // le panneau de règles de l'onglet (migration 0055), en tête, déplié au départ comme avant, sans phrase au-dessus
+  assert.match(main, /<div class="acc" data-accessoires><details class="preg" id="regles-accessoires" data-panneau-regles="accessoires" open>/);
+  assert.ok(!main.includes('acc__chapo'), 'plus de chapeau');
   assert.equal((main.match(/<table>/g) ?? []).length, 0, 'aucun tableau rendu depuis le Markdown');
   assert.ok(!main.includes('Gemme précieuse'), 'pas de tableau des gemmes');
   assert.match(main, /data-acc-produit/, 'l’encart de l’accessoire créé');

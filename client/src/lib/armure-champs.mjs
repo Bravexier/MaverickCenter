@@ -3,7 +3,9 @@
 // d'édition du site de dev (serveur/edition-armures.mjs) recalcule ces colonnes à chaque modification ; test/armure-champs.test.mjs rejoue chaque
 // découpage sur toute la base (un changement du découpage doit redonner la base, sinon une migration). Rien n'est réécrit : un texte que le découpage ne
 // lit pas donne NULL (« ???? » pour un prix, « Aucune » pour des stats).
-// Fonctions pures (seul import : lib/text.mjs).
+// Une case se lit sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
+// Fonctions pures (imports : lib/text.mjs, lib/mots-cles-balises.mjs).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Types d'une armure (armure.type) : ceux de la grille (Léger, Intermédiaire, Lourd) et des armures particulières (Vêtement, Familier). */
@@ -16,7 +18,7 @@ const DEGATS = { taille: 'taille', estoc: 'estoc', frappe: 'frappe' };
  * Un nombre écrit dans une case (« 2 050 », « 1,5 », « 1207,5 », « 100.0 ») ; null si la case n'est pas un nombre (« ???? », vide).
  */
 export function nombreEcrit(texte) {
-  const t = String(texte ?? '').replace(/[\s  ]/g, '').replace(',', '.');
+  const t = String(texteSansBalises(texte ?? '')).replace(/[\s  ]/g, '').replace(',', '.');
   return /^\d+(?:\.\d+)?$/.test(t) ? Number(t) : null;
 }
 
@@ -25,7 +27,7 @@ export function nombreEcrit(texte) {
  * quand elle n'est pas écrite (la fiche compte alors 0).
  */
 export function statsDeProtection(texte) {
-  const t = String(texte ?? '');
+  const t = String(texteSansBalises(texte ?? ''));
   const ap = /([+-]?\d+)\s*AP\b/i.exec(t);
   const am = /([+-]?\d+)\s*AM\b/i.exec(t);
   return { ap: ap ? Number(ap[1]) : null, am: am ? Number(am[1]) : null };
@@ -38,7 +40,7 @@ export function statsDeProtection(texte) {
 export function degatsDeLArmure(resistanceBrut, faiblesseBrut) {
   const lignes = [];
   for (const [texte, sens, sensBrut] of [[resistanceBrut, 'resistance', 'Résistance'], [faiblesseBrut, 'vulnerabilite', 'Faiblesse']]) {
-    const t = String(texte ?? '').trim();
+    const t = String(texteSansBalises(texte ?? '')).trim();
     if (!t) continue;
     const x = /^x\s*(\d+)\s*/i.exec(t);
     for (const mot of t.slice(x ? x[0].length : 0).split('/')) {
@@ -68,7 +70,7 @@ export const prixDeLaForme = (prixBrut) => nombreEcrit(prixBrut);
 
 /** La Force minimum d'un poids de bouclier : le premier nombre de « 1 de Force minimum » ; null sans nombre. */
 export function forceDuPoids(forceBrut) {
-  const m = /\d+/.exec(String(forceBrut ?? ''));
+  const m = /\d+/.exec(String(texteSansBalises(forceBrut ?? '')));
   return m ? Number(m[0]) : null;
 }
 
@@ -77,7 +79,7 @@ export function forceDuPoids(forceBrut) {
  * Classe » (le coût dépend de la classe du bouclier) ou sans montant en RF.
  */
 export function coutDeLaPiece(coutBrut) {
-  const t = String(coutBrut ?? '');
+  const t = String(texteSansBalises(coutBrut ?? ''));
   if (/\/\s*classe/i.test(t)) return null;
   const m = /(\d[\d\s  ]*)\s*RF\b/i.exec(t);
   return m ? Number(m[1].replace(/[\s  ]/g, '')) : null;
@@ -94,12 +96,12 @@ export function coutDeLaPiece(coutBrut) {
 export function analyserAmeliorationDeProtection(cible, coutBrut, effetBrut) {
   let ro = null;
   let materiaux = null;
-  for (const terme of String(coutBrut ?? '').split('+')) {
+  for (const terme of String(texteSansBalises(coutBrut ?? '')).split('+')) {
     const nombre = /\d[\d\s  ]*(?:[.,]\d+)?/.exec(terme);
     if (/mat[ée]ri(?:el|au)/i.test(terme)) materiaux = (materiaux ?? 0) + (nombre ? Number(nombre[0].replace(/[\s  ]/g, '')) : 1);
     else if (nombre) ro = (ro ?? 0) + nombreEcrit(nombre[0]);
   }
-  const effet = String(effetBrut ?? '');
+  const effet = String(texteSansBalises(effetBrut ?? ''));
   if (cible === 'bouclier') {
     // « + matériaux » (sans nombre : 1, décision R76), « + 2 matériaux » (2)
     for (const m of effet.matchAll(/\+\s*(\d+)?\s*mat[ée]ri(?:aux?|els?)\b/gi)) materiaux = (materiaux ?? 0) + (m[1] ? Number(m[1]) : 1);

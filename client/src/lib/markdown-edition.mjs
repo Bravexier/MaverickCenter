@@ -1,9 +1,13 @@
 // Éditeur visuel du guide (site de dev, src/scripts/edition/guide.mjs) : le texte d'une page se modifie en place (texte, liens, mise en page, tableaux
 // et couleur de leurs cases : demande du propriétaire), puis cet HTML est réécrit en Markdown, le format des pages (page.corps_md).
-// Ici, sans dépendance : un arbre simple { type: 'texte', valeur } | { type: 'element', nom, attributs, enfants } (le script le tire du DOM, les tests
-// d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut data-cible posé par lib/wikilinks.mjs), tableaux GFM,
-// couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs). test/markdown-edition.test.mjs rejoue l'aller-retour
-// Markdown → HTML → Markdown → HTML sur toutes les pages du guide : le rendu ne change pas.
+// Ici, sans dépendance navigateur ni Astro (dépendance : lib/mots-cles-balises.mjs) : un arbre simple { type: 'texte', valeur } | { type: 'element', nom,
+// attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
+// data-cible posé par lib/wikilinks.mjs), tableaux GFM, couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs), mots-clés du
+// glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
+// « {{id}} » quand ce texte est le libellé du mot-clé, la forme canonique d'un texte mis en forme —, le mode complet `span.mot-cle-definition` « {{id:}} »,
+// « | » échappé dans une case de tableau). test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages
+// du guide : le rendu ne change pas.
+import { lireUneBalise } from './mots-cles-balises.mjs';
 
 /** Couleurs de case permises (une classe CSS par couleur : styles/global/wiki.css). */
 export const COULEURS_DE_CASE = ['rouge', 'orange', 'jaune', 'vert', 'bleu', 'violet', 'gris'];
@@ -16,6 +20,24 @@ const classes = (n) => String(attribut(n, 'class') ?? '').split(/\s+/).filter(Bo
 const estElement = (n) => n?.type === 'element';
 const estBloc = (n) => estElement(n) && BLOCS.has(n.nom);
 const ignore = (n) => estElement(n) && (IGNORES.has(n.nom) || attribut(n, 'data-ed-ignorer') !== null);
+const ID_DE_MOT_CLE = /^[a-z0-9-]+$/;
+const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+const estUneDefinition = (n) => n.nom === 'span' && classes(n).includes('mot-cle-definition') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+
+/**
+ * La balise d'un mot-clé rendu (`strong.mot-cle`, lib/mots-cles-balises.mjs#htmlDeLaBalise) : celle de `data-balise` tant que son texte n'a pas changé,
+ * sinon « {{id|texte}} » ; rien si son texte a été effacé. Le texte est échappé comme le reste du Markdown, son séparateur « \| » dans une case.
+ */
+function baliseDuMotCle(n, o) {
+  const id = attribut(n, 'data-mot-cle');
+  const texte = texteBrut(n).replace(/\s+/g, ' ').trim().replace(/[{}]/g, '');
+  if (!texte) return '';
+  const b = lireUneBalise(attribut(n, 'data-balise') ?? '');
+  const separateur = o.tableau ? '\\|' : '|';
+  const ref = b && b.texte !== null && b.texte === texte && !b.complet ? b.ref : id;
+  // sans texte écrit, la balise montrait le libellé : il est écrit tel qu'affiché, et le service en refait « {{id}} » (le texte est le libellé)
+  return `{{${ref}${separateur}${echapperTexte(texte, o)}}}`;
+}
 
 /**
  * Échappe un texte pour du Markdown en ligne : rien de ce qu'on a écrit ne devient une mise en forme, un lien Markdown ou une balise. Seule exception,
@@ -43,6 +65,15 @@ function enLigne(noeuds, o = {}) {
     }
     if (!estElement(n) || ignore(n)) continue;
     const dedans = () => enLigne(n.enfants ?? [], o);
+    if (estUnMotCle(n)) {
+      sortie += baliseDuMotCle(n, o);
+      continue;
+    }
+    if (estUneDefinition(n)) {
+      // le mode complet : la définition vient du glossaire, rien de son texte n'est écrit dans la page
+      sortie += `{{${attribut(n, 'data-mot-cle')}:}}`;
+      continue;
+    }
     switch (n.nom) {
       case 'strong':
       case 'b': {
@@ -302,6 +333,23 @@ const ADRESSE_SURE = /^(https?:\/\/|\/(?!\/)|#|\.\.?\/)/i;
 function attributsSurs(n, nom) {
   const a = [];
   const garder = (cle, valeur) => a.push(` ${cle}="${echapper(valeur)}"`);
+  // un mot-clé du glossaire (lib/mots-cles-balises.mjs#htmlDeLaBalise) : sa classe, son id, sa balise et sa bulle (celle de la page), rien d'autre
+  if (estUnMotCle(n) || estUneDefinition(n)) {
+    const id = attribut(n, 'data-mot-cle');
+    garder('class', estUnMotCle(n) ? 'mot-cle' : 'mot-cle-definition');
+    garder('data-mot-cle', id);
+    if (estUnMotCle(n) && attribut(n, 'data-bulle') === `mot-cle-${id}`) {
+      garder('data-bulle', `mot-cle-${id}`);
+      garder('aria-describedby', `mot-cle-${id}`);
+      if (attribut(n, 'tabindex') === '0') garder('tabindex', '0');
+    }
+    if (lireUneBalise(attribut(n, 'data-balise') ?? '')) garder('data-balise', attribut(n, 'data-balise'));
+    return a.join('');
+  }
+  if ((nom === 'strong' || nom === 'span') && ['mot-cle-definition__nom', 'mot-cle-definition__texte'].some((c) => classes(n).includes(c))) {
+    garder('class', classes(n).includes('mot-cle-definition__nom') ? 'mot-cle-definition__nom' : 'mot-cle-definition__texte');
+    return a.join('');
+  }
   if (/^h[1-6]$/.test(nom) && /^[a-z0-9-]+$/.test(attribut(n, 'id') ?? '')) garder('id', attribut(n, 'id'));
   if (nom === 'ol' && /^\d+$/.test(attribut(n, 'start') ?? '')) garder('start', attribut(n, 'start'));
   if (nom === 'code') {

@@ -191,7 +191,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   de niveau, constantes, catalogues d'équipement et paliers du dé selon la Force, paliers de résistance, altérations d'état, résistances de chaque magie),
   rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
   le rejoue sur toute la base) et par `lib/resistance-texte.mjs` (crans et immunités d'un don ; `test/resistance-texte.test.mjs` le rejoue sur toute la base et
-  vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`).
+  vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`). Les balises du
+  glossaire des mots-clés (« {{recharge-longue}} », `docs/content-guide.md`, « Mots-clés (glossaire) ») sont retirées de tout texte lu dans la base,
+  avant ces lectures comme dans le JSON, et lues comme les découpages : la fiche n'en montre que le texte affiché (le texte écrit, que la balise d'une
+  case porte toujours, sinon le libellé ; jamais la définition, même pour le mode complet), ni gras ni infobulle.
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
   personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
   magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies et ethnie sans choix posée d'office

@@ -5,6 +5,9 @@
 //   2. le journal y est chargé puis rejoué, lot par lot, exactement comme le service le rejoue sur des règles neuves (serveur/edition.mjs#rejouerLeJournal) :
 //      une modification déjà présente est « intégrée », un lot dont une modification contredit data/rows est en conflit (le lot entier est écarté) ; le
 //      corps des pages typées n'est pas recopié du journal mais refait depuis les tables rejouées (lots notés avant que l'édition ne le suive compris) ;
+//      Après le rejeu, comme pour « Effectuer la mise à jour » : un texte (corps d'une page, bloc de description de la chronologie, bloc d'un panneau
+//      de règles) qui a gagné du HTML brut ou un lien non sûr arrête tout, rien n'est écrit (scripts/mise-a-jour-regles.mjs#texteNonSurApresLeRejeu,
+//      lib/markdown-sur.mjs : le build rend ce Markdown tel quel) ;
 //   3. s'il y a un conflit, rien n'est écrit (sauf --ignorer-conflits : les autres lots le sont) ; sinon les modifications rejouées (réappliquées ou
 //      déjà présentes, « intégrées ») sont versées dans historique_modification, version NULL (rapatriées à la main ; un lot qui y est déjà n'est pas
 //      repris), les tables du journal sont vidées (elles restent vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs
@@ -22,6 +25,8 @@ import { integrerLivrees } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal } from '../serveur/edition-journal.mjs';
 import { journalSansImage } from '../src/lib/edition-modele.mjs';
+import { messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import { textesAvantLeRejeu, texteNonSurApresLeRejeu } from './mise-a-jour-regles.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -49,7 +54,8 @@ export function historiser(db) {
 
 /**
  * Applique un journal (« maverick-edition/1 ») à un dossier de lignes. Rend { bilan, conflits: [{ lot, resume, detail }] (un par lot), ecrit, historisees } ; lève une erreur si la
- * base ne se reconstruit pas ou si l'export échoue.
+ * base ne se reconstruit pas, si le rejeu ajoute du HTML brut ou un lien non sûr à un texte en Markdown (rien n'est écrit, même avec `ignorerConflits`)
+ * ou si l'export échoue.
  */
 export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'), ignorerConflits = false } = {}) {
   const tmp = mkdtempSync(join(tmpdir(), 'maverick-appliquer-'));
@@ -68,8 +74,15 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
       // les lots déjà rapatriés ou livrés (dans historique_modification) ne sont pas rejoués : d'après leurs valeurs, une suite qui revient sur
       // elle-même (A → B, puis B → A avec une autre ligne qui a bougé depuis) remettrait une valeur annulée
       const dejaLivrees = integrerLivrees(db);
+      const textesAvant = textesAvantLeRejeu(db);
       bilan = rejouerLeJournal(db); // corps des pages typées touchées refaits depuis les tables rejouées
       bilan.integrees += dejaLivrees;
+      // ni HTML brut ni lien non sûr ajouté à un texte que le build rend tel quel (le service le refuse déjà ; un journal se modifie à la main)
+      const nonSur = texteNonSurApresLeRejeu(db, textesAvant);
+      if (nonSur) {
+        db.exec('ROLLBACK');
+        throw new Error(`journal refusé : ${nonSur.quoi} ${nonSur.id} après le rejeu : ${messageDeRefus(nonSur.fragments)}`);
+      }
       conflits = db
         .prepare(
           `SELECT l.id AS lot, l.resume, (SELECT detail FROM modification WHERE lot_id = l.id AND etat = 'conflit' ORDER BY rang LIMIT 1) AS detail

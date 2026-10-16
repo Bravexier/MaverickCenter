@@ -2,12 +2,16 @@
 // pages ; les dons à choix sont les groupes de v_capacite_exclusive (comme la page de chaque classe), les classes et spécialités magiques celles des
 // décisions R6 et R7 (corrections de la fiche auto, docs/fiche-auto.md, point 4).
 import assert from 'node:assert/strict';
+import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
@@ -312,4 +316,31 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   assert.ok(dons.some((d) => d.resistances?.effets.length) && dons.some((d) => d.resistances?.choix));
   for (const d of dons.filter((x) => x.resistances)) assert.ok(d.resistances.effets.length || d.resistances.choix);
   assert.ok(regles.races.find((r) => r.id === 'races/drakos').dons_tableau.lignes.every((l) => l.resistances), 'chaque ligne du Drakos : son cran, ou au choix');
+});
+
+test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes comme les découpages — le texte écrit, sinon le libellé, jamais une balise ni une définition', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'maverick-fiche-balises-'));
+  try {
+    const chemin = join(dossier, 'maverick.db');
+    cpSync(cheminBase({ sansExemples: false }), chemin);
+    const copie = new DatabaseSync(chemin);
+    const motCle = copie.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+    const DEFINITION = 'Définition d’essai, que la fiche ne montre jamais.';
+    copie.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(DEFINITION, motCle.id);
+    // un texte de case (l'effet d'un don) : sa forme canonique « {{id|texte}} » ; et, hors forme canonique, une balise sans texte et le mode complet
+    const don = copie.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();
+    copie.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} Essai {{${motCle.id}|texte écrit}}, {{${motCle.id}}} et {{${motCle.id}:}}.`, don.id);
+    const sort = copie.prepare("SELECT id FROM sort WHERE remarque IS NULL ORDER BY id LIMIT 1").get();
+    copie.prepare('UPDATE sort SET remarque = ? WHERE id = ?').run(`Voir {{${motCle.id}|la remarque}}.`, sort.id);
+    const lues = chargerReglesDeFiche(copie);
+    copie.close();
+    const json = JSON.stringify(lues);
+    assert.ok(!json.includes('{{'), 'aucune balise');
+    assert.ok(!json.includes(DEFINITION), 'aucune définition, même en mode complet');
+    const lu = lues.classes.flatMap((c) => c.dons).find((d) => d.id === don.id);
+    assert.equal(lu.effet, `${don.effet} Essai texte écrit, ${motCle.libelle} et ${motCle.libelle}.`);
+    assert.equal(lues.sorts.find((x) => x.id === sort.id).remarque, 'Voir la remarque.');
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
 });

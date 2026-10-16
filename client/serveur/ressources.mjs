@@ -49,6 +49,7 @@ import {
   actionDe, capacitesDe, champFige, cleDuSegment, colonneFigee, enfantDe, MODULES, operationDe, RESSOURCES, ressourceDe, segmentDeCle, tablesDe,
   tablesModifiables,
 } from '../src/lib/ressources.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurEdition, enregistrer, listes } from './edition.mjs';
 import { ErreurHttp, empreinteCourte, entierDeLAdresse, segmentDecode } from './partage.mjs';
@@ -66,7 +67,7 @@ export const FERMEE_EN_PRODUCTION =
   'L’API REST /api/v1/ n’est ouverte que sur le site de dev : en production, la base ne se lit que par les pages du site (décision du propriétaire, 2026-10-15).';
 
 /** Tables des sections 13 et 14 (fiches, comptes, groupes, journal de l'édition) : jamais servies ici. La section 15 se lit (notes de version, historique). */
-export const TABLES_JAMAIS_SERVIES = new Set([...TABLES_INTERDITES].filter((t) => !['note_version', 'note_version_ligne', 'historique_modification'].includes(t)));
+export const TABLES_JAMAIS_SERVIES = new Set([...TABLES_INTERDITES].filter((t) => !TABLES_DES_NOTES.includes(t)));
 
 /** Les ressources servies : celles du registre qui ne touchent aucune table de TABLES_JAMAIS_SERVIES (le test du registre l'assure déjà). */
 export const RESSOURCES_SERVIES = RESSOURCES.filter((r) => !tablesDe(r).some((t) => TABLES_JAMAIS_SERVIES.has(t)));

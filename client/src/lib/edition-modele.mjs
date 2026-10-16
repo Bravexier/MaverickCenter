@@ -3,10 +3,13 @@
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, capacité de monstre (commune, et sa place
 // sur une carte), arme, composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
-// mot-clé ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42,
-// R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme, bois, ingrédient et monnaie
-// (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé (retiré de tout ce qui
-// le porte).
+// mot-clé, bloc d'un panneau de règles ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une
+// note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme,
+// bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements),
+// mot-clé (retiré de tout ce qui le porte ou le cite), bloc d'un panneau de règles (pas le dernier de son panneau).
+// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » :
+// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
+// forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
 // améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
@@ -64,6 +67,12 @@ export const EPOQUES_SAISIE = EPOQUES.map((e) => ({ valeur: e.id, libelle: e.id 
 /** La portée d'un Impact de la chronologie (colonne `evenement.portee` : lib/chronologie.mjs#PORTEES ; vide : ni l'un ni l'autre). */
 export const PORTEES_SAISIE = Object.entries(PORTEES).map(([valeur, libelle]) => ({ valeur, libelle }));
 
+/** Le genre d'un bloc de panneau de règles (colonne `panneau_regles_bloc.tuile`, migration 0055) : du texte qui suit les colonnes, ou une tuile. */
+export const GENRES_DE_BLOC = [
+  { valeur: '0', libelle: 'Texte' },
+  { valeur: '1', libelle: 'Tuile' },
+];
+
 /** Une case Oui / Non (colonne entière 0 ou 1 : arme.depart_possible). */
 export const OUI_NON = [
   { valeur: '0', libelle: 'Non' },
@@ -94,6 +103,21 @@ export const CATEGORIES_D_INGREDIENTS = [
   { valeur: 'catalyseur', libelle: 'Catalyseur' },
   { valeur: 'stabilisateur', libelle: 'Stabilisateur' },
 ];
+
+/**
+ * Types de champ dont la valeur est un texte où une balise du glossaire des mots-clés peut s'écrire (lib/mots-cles-balises.mjs) : le service les met en
+ * forme canonique (serveur/edition.mjs), db:check et le rejeu du journal en lisent les balises. La seule liste : ne pas la recopier.
+ */
+export const CHAMPS_DE_TEXTE = Object.freeze(['ligne', 'texte', 'markdown']);
+
+/**
+ * Le genre d'un texte de la base pour les balises du glossaire : 'markdown' (un texte mis en forme : champ « markdown » de TABLES, et le corps de toute
+ * page, même typée : refait depuis ses tables) ou 'texte' (un texte de case : les autres colonnes, de TABLES ou non). Voir lib/mots-cles-balises.mjs.
+ */
+export function typeDeTexte(table, colonne) {
+  if (table === 'page' && colonne === 'corps_md') return 'markdown';
+  return TABLES[table]?.colonnes[colonne]?.type === 'markdown' ? 'markdown' : 'texte';
+}
 
 export const TABLES = {
   metier: {
@@ -478,12 +502,33 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés (/recherche/ en mode modification) : renommer un mot-clé change son écriture partout (son id reste) ; vers l'écriture d'un
-  // autre mot-clé : refusé, la page propose de les fusionner (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne bougent pas
-  // (lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
+  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0055) : renommer un mot-clé ne réécrit aucun texte (son id
+  // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
+  // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
+  // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
+  // définition se modifie ; une définition vidée : NULL (pas encore décrit)
   mot_cle: {
     libelle: 'Mot-clé',
-    colonnes: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+    colonnes: {
+      libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
+      description: { type: 'texte', libelle: 'Définition' },
+    },
+  },
+  // Panneaux de règles (migration 0055 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
+  // contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) ») : le titre d'un panneau
+  // (son `<summary>`) ; le texte d'un bloc (Markdown sûr, modifié en place comme le guide), le titre d'une tuile (refusé sur un bloc de texte) et sa place
+  // (`ordre` : « ↑ », « ↓ » ; jamais unique, à égalité le rang départage) : serveur/edition-panneaux.mjs
+  panneau_regles: {
+    libelle: 'Panneau de règles',
+    colonnes: { titre: { type: 'ligne', libelle: 'Titre', requis: true } },
+  },
+  panneau_regles_bloc: {
+    libelle: 'Bloc de règles',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Titre de la tuile' },
+      texte: { type: 'markdown', libelle: 'Texte', requis: true },
+      ordre: { type: 'entier', libelle: 'Place (ordre de lecture)', requis: true, min: 1 },
+    },
   },
   // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
   // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)
@@ -732,14 +777,33 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du vocabulaire (/recherche/) ; supprimé, il est retiré de toutes les pages qui le portent (sauf les mots-clés dont le site se sert :
-  // lib/mots-cles.mjs)
+  // un mot-clé du glossaire (/recherche/), son libellé et sa définition ; supprimé, il est retiré de toutes les pages qui le portent et de tous les textes
+  // qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',
     nouveau: 'Nouveau mot-clé',
     suppression: true,
-    champs: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+    champs: {
+      libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
+      description: { type: 'texte', libelle: 'Définition' },
+    },
+  },
+  // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants
+  // décalés d'une place), sinon à la fin ; un titre seulement sur une tuile ; rang tiré une fois (le plus grand + 1, journal et historique compris), jamais
+  // redonné ; le dernier bloc d'un panneau ne se supprime pas
+  panneau_regles_bloc: {
+    table: 'panneau_regles_bloc',
+    libelle: 'bloc de règles',
+    nouveau: 'Nouveau bloc de règles',
+    suppression: true,
+    champs: {
+      panneau_id: { type: 'ligne', libelle: 'Panneau', requis: true },
+      tuile: { type: 'choix', libelle: 'Genre (vide : du texte)', choix: GENRES_DE_BLOC },
+      titre: { type: 'ligne', libelle: 'Titre (une tuile seulement)' },
+      texte: { type: 'markdown', libelle: 'Texte', requis: true },
+      apres: { type: 'entier', libelle: 'Après le bloc de rang (vide : à la fin)', min: 1 },
+    },
   },
   // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même
   // niveau, même spécialité) ; sans `avec`, une nouvelle ligne à la fin de son niveau (lib/dons-edition.mjs#placeNouvelleLigne). `specialite_id` et

@@ -1,37 +1,39 @@
 ---
 import Base from '../../layouts/Base.astro';
 import EquipementPage from '../../components/equipement/EquipementPage.astro';
-import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
-import { chargerArmures, contexteDesArmures, PAGE_DES_ARMURES, reglesDeLaPage as reglesDesArmures } from '../../lib/armures-db.mjs';
-import { chargerBatons, PAGE_DES_BATONS } from '../../lib/batons-db.mjs';
+import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
+import { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
+import { chargerBatons } from '../../lib/batons-db.mjs';
 import { chargerObjetsDeCeinture, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES } from '../../lib/ceinture-db.mjs';
-import { chargerAccessoires, PAGE_DES_ACCESSOIRES, reglesDeLaPage as reglesDesAccessoires } from '../../lib/accessoires-db.mjs';
-import { PAGE_DES_BOUCLIERS } from '../../lib/corps-composants.mjs';
-import { CHEMIN_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
+import { chargerAccessoires } from '../../lib/accessoires-db.mjs';
+import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../../lib/equipement.mjs';
+import { chargerPanneau } from '../../lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { url } from '../../lib/wiki';
 
 // /ressources/equipement/ (menu Ressources ; demandes du propriétaire, 2026-10-16) : une page sans page du wiki, cinq onglets rendus depuis la base
-// (components/equipement/EquipementPage.astro, lib/equipement.mjs). Des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires »,
-// qui ne sont plus construites, seules les règles s'affichent (le texte avant les tableaux), comme celles de la ceinture (sections des pages du guide,
-// décisions R81 et R82) ; elles sont rendues ici avec leur page comme contexte des [[liens]]. Modifiable sur le site de dev : les onglets Armes,
-// Armures et Boucliers (src/scripts/edition/armes.mjs, armures.mjs) ; pas encore la ceinture (potions, bâtons) ni les accessoires.
+// (components/equipement/EquipementPage.astro, lib/equipement.mjs). En tête de chaque onglet ou sous-onglet qui sert une page du wiki (Armes, Armures,
+// Boucliers, Accessoires, et le sous-onglet Bâtons magiques de la ceinture : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT), son panneau de règles
+// (migration 0055 : tables panneau_regles et panneau_regles_bloc, lib/panneaux-regles-db.mjs ; components/equipement/PanneauDeRegles.astro), dont l'id
+// est l'ancre de l'onglet ou du sous-onglet : le Markdown de chaque bloc est rendu ici ([[liens]], couleurs, monnaies en icônes : lib/guide-rendu.ts),
+// avec la page du panneau (« Armes »…, qui n'est plus construite) comme contexte des [[liens]] ; dans celui des armes, « Les armes en bleu… » prend le
+// bleu des armes de départ (avecPhraseDesArmesDeDepart). L'onglet Ceinture garde ses règles tirées des sections des pages du guide (décisions R81 et
+// R82), rendues ici avec leur page comme contexte des [[liens]]. Modifiable sur le site de dev : les onglets Armes, Armures et Boucliers
+// (src/scripts/edition/armes.mjs, armures.mjs) et les panneaux de règles (src/scripts/edition/panneaux.mjs) ; pas encore la ceinture (potions, bâtons)
+// ni les accessoires.
 const db = ouvrirBase();
+/** Un panneau de règles et le HTML de chacun de ses blocs (`retouche` : sur le HTML d'un bloc) ; null si la base ne l'a pas. */
+async function panneauRendu(id: string, retouche = (html: string) => html) {
+  const p = chargerPanneau(db, id);
+  if (!p) return null;
+  return { ...p, blocs: await Promise.all(p.blocs.map(async (b) => ({ ...b, html: retouche(await rendreMarkdown(b.texte, p.page_id)) }))) };
+}
+const panneaux = Object.fromEntries(await Promise.all(PAGES_SERVIES_PAR_L_EQUIPEMENT.map(async ({ ancre }) =>
+  [ancre, await panneauRendu(ancre, ancre === 'armes' ? avecPhraseDesArmesDeDepart : undefined)])));
 const armes = chargerArmes(db);
-const reglesA = armes.page ? reglesDeLaPage(armes.page.corps_md) : { introduction: '', prix: '' };
-const reglesArmes = {
-  introduction: avecPhraseDesArmesDeDepart(await rendreMarkdown(reglesA.introduction ?? '', PAGE_DES_ARMES)),
-  prix: reglesA.prix ? await rendreMarkdown(reglesA.prix, PAGE_DES_ARMES) : '',
-};
 const armures = chargerArmures(db);
-const reglesArmures = {
-  armures: await rendreMarkdown(reglesDesArmures(armures.pages.armures?.corps_md), PAGE_DES_ARMURES),
-  boucliers: await rendreMarkdown(reglesDesArmures(armures.pages.boucliers?.corps_md), PAGE_DES_BOUCLIERS),
-};
 const batons = chargerBatons(db);
-const rendre = async (md: string | null) => (md ? await rendreMarkdown(md, PAGE_DES_BATONS) : null);
-const reglesBatons = { introduction: await rendre(batons.regles.introduction), fabrication: await rendre(batons.regles.fabrication) };
 const ceinture = chargerObjetsDeCeinture(db);
 // une section de règles que sa page n'écrit plus (titre renommé sur le site de dev) : l'onglet reste construit, sans elle, et le build le dit
 for (const [cle, page, titre] of [['ceinture', ceinture.sources.chapitre, TITRE_DES_REGLES], ['reference', ceinture.sources.reference, TITRE_DE_LA_REFERENCE]] as const) {
@@ -43,7 +45,6 @@ const reglesCeinture = {
   reference: await rendreDe(ceinture.regles.reference, ceinture.sources.reference),
 };
 const accessoires = chargerAccessoires(db);
-const reglesAccessoires = accessoires.page ? await rendreMarkdown(reglesDesAccessoires(accessoires.page.corps_md), PAGE_DES_ACCESSOIRES) : '';
 ---
 
 <Base title="Équipement" description="Armes, armures, boucliers, ceinture (potions, huiles, carquois, bâtons magiques) et accessoires : matériaux, fabrication, améliorations et générateur d’accessoire." edition={CHEMIN_DE_L_EQUIPEMENT}>
@@ -51,15 +52,12 @@ const reglesAccessoires = accessoires.page ? await rendreMarkdown(reglesDesAcces
   <EquipementPage
     armes={armes}
     contexteArmes={contexteDesArmes(db)}
-    reglesArmes={reglesArmes}
     armures={armures}
     contexteArmures={contexteDesArmures(db)}
-    reglesArmures={reglesArmures}
     ceinture={ceinture}
     reglesCeinture={reglesCeinture}
     batons={batons}
-    reglesBatons={reglesBatons}
     accessoires={accessoires}
-    reglesAccessoires={reglesAccessoires}
+    panneaux={panneaux}
   />
 </Base>

@@ -2,7 +2,8 @@
 // chronologie, qui n'a pas de mot-clé mais des catégories), l'adresse suit (?mot-cle=<id>, pushState) et le retour arrière ramène la liste ; ?mot-cle= est
 // lu au chargement ; un id inconnu (« sans-categorie » compris) « n'existe plus » ; la liste se filtre par l'écriture des mots-clés ; un événement se
 // trouve par une catégorie ; taper depuis la vue d'un mot-clé ouverte par un clic revient en arrière (pas deux entrées identiques dans l'historique) ;
-// la liste redessinée par l'éditeur (évènement « recherche:mots-cles ») est relue.
+// la liste redessinée par l'éditeur (évènement « recherche:mots-cles ») est relue. Depuis la migration 0055, la liste est le glossaire : tous les
+// mots-clés, même sans page, et la vue d'un mot-clé montre sa définition.
 //   node --test test/recherche-script.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -32,10 +33,11 @@ async function charger(adresse) {
   const liste = el('ul', { id: 'liste-mots-cles' },
     motCle('peuple', 'peuple', 2, 'Peuple'),
     motCle('magie-elementaire', 'magie-elementaire', 1, 'magie élémentaire'),
-    motCle('demo', 'demo', 0, 'démo', { hidden: '' }));
-  const vue = el('section', { id: 'mot-cle-choisi', hidden: '' },
-    el('a', { id: 'tous-les-mots-cles', href: '/recherche/' }), el('h2', { id: 'titre-mot-cle' }), el('p', { id: 'mot-cle-compte' }),
-    el('ul', { id: 'mot-cle-pages', hidden: '' }));
+    motCle('demo', 'demo', 0, 'démo', { 'data-definition': 'Un mot-clé du glossaire qu’aucune page ne porte encore.' }));
+  const vue = el('section', { id: 'vue-du-mot-cle', hidden: '' },
+    el('a', { id: 'tous-les-mots-cles', href: '/recherche/' }), el('h2', { id: 'titre-mot-cle' }), el('p', { id: 'vue-du-mot-cle-definition', hidden: '' }),
+    el('p', { id: 'vue-du-mot-cle-compte' }),
+    el('ul', { id: 'vue-du-mot-cle-pages', hidden: '' }));
   const document = fauxDocument(el('div', { 'data-recherche': '', 'data-lien-mot-cle': '/recherche/?mot-cle=' },
     el('form', { id: 'search-form', 'data-index-url': '/search-index.json', 'data-base': '/', 'data-suffix': '' }, el('input', { id: 'q' })),
     el('p', { id: 'status' }),
@@ -82,12 +84,12 @@ async function charger(adresse) {
 }
 const titres = (ul) => ul.children.map((li) => li.children[0].textContent);
 
-test('sans mot-clé dans l’adresse : la liste, les mots-clés sans page cachés ; filtrer par l’écriture ; un événement trouvé par sa catégorie', async () => {
+test('sans mot-clé dans l’adresse : le glossaire, tous les mots-clés (même sans page) ; filtrer par l’écriture ; un événement trouvé par sa catégorie', async () => {
   const p = await charger('/recherche/');
   assert.equal(p.vue.hidden, true);
   assert.equal(p.$('mots-cles').hidden, false);
-  assert.deepEqual(p.liste.children.filter((li) => !li.hidden).map((li) => li.dataset.id), ['peuple', 'magie-elementaire']);
-  assert.equal(p.$('nombre-mots-cles').textContent, '(2)');
+  assert.deepEqual(p.liste.children.filter((li) => !li.hidden).map((li) => li.dataset.id), ['peuple', 'magie-elementaire', 'demo']);
+  assert.equal(p.$('nombre-mots-cles').textContent, '(3)');
   assert.equal(p.chargements.n, 0, 'l’index n’est chargé qu’à la demande');
   const q = p.$('q');
   q.value = 'élémentaire';
@@ -106,7 +108,11 @@ test('sans mot-clé dans l’adresse : la liste, les mots-clés sans page caché
   q.value = 'demo';
   q.dispatchEvent(new Event('input'));
   await attendre();
-  assert.equal(p.$('aucun-mot-cle').hidden, false, 'un mot-clé sans page visible n’est pas listé');
+  assert.deepEqual(p.liste.children.filter((li) => !li.hidden).map((li) => li.dataset.id), ['demo'], 'un mot-clé sans page est dans le glossaire');
+  q.value = 'aucun mot de ce genre';
+  q.dispatchEvent(new Event('input'));
+  await attendre();
+  assert.equal(p.$('aucun-mot-cle').hidden, false);
 });
 
 test('un clic sur un mot-clé : ses pages (aucun événement), l’adresse suit ; le retour arrière ramène la liste', async () => {
@@ -119,10 +125,11 @@ test('un clic sur un mot-clé : ses pages (aucun événement), l’adresse suit 
   assert.equal(p.vue.hidden, false);
   assert.equal(p.$('mots-cles').hidden, true);
   assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Peuple »');
-  assert.deepEqual(titres(p.$('mot-cle-pages')), ['Elfe'], 'pas « Grande croisade » : sa catégorie « Peuple » n’est pas le mot-clé');
-  assert.equal(p.$('mot-cle-pages').hidden, false);
-  assert.equal(p.$('mot-cle-compte').textContent, '1 page.');
-  assert.equal(p.$('mot-cle-pages').children[0].children[0].href, '/races/elfe/');
+  assert.deepEqual(titres(p.$('vue-du-mot-cle-pages')), ['Elfe'], 'pas « Grande croisade » : sa catégorie « Peuple » n’est pas le mot-clé');
+  assert.equal(p.$('vue-du-mot-cle-pages').hidden, false);
+  assert.equal(p.$('vue-du-mot-cle-compte').textContent, '1 page.');
+  assert.equal(p.$('vue-du-mot-cle-pages').children[0].children[0].href, '/races/elfe/');
+  assert.equal(p.$('vue-du-mot-cle-definition').hidden, true, 'pas encore décrit : pas de définition');
   assert.equal(p.document.title, 'Mot-clé « Peuple » — Recherche — Maverick Center');
   p.retour();
   await attendre();
@@ -143,17 +150,19 @@ test('?mot-cle= lu au chargement ; un id inconnu « n’existe plus », « sans-
   const deux = await charger('/recherche/?mot-cle=magie-elementaire');
   assert.equal(deux.vue.hidden, false);
   assert.equal(deux.$('titre-mot-cle').textContent, 'Mot-clé « magie élémentaire »');
-  assert.deepEqual(titres(deux.$('mot-cle-pages')), ['Feu']);
+  assert.deepEqual(titres(deux.$('vue-du-mot-cle-pages')), ['Feu']);
   const inconnu = await charger('/recherche/?mot-cle=fusionne-depuis');
   assert.equal(inconnu.$('titre-mot-cle').textContent, 'Ce mot-clé n’existe plus');
-  assert.equal(inconnu.$('mot-cle-pages').hidden, true);
+  assert.equal(inconnu.$('vue-du-mot-cle-pages').hidden, true);
   const sans = await charger('/recherche/?mot-cle=sans-categorie');
   assert.equal(sans.$('titre-mot-cle').textContent, 'Ce mot-clé n’existe plus');
-  assert.equal(sans.$('mot-cle-pages').hidden, true);
+  assert.equal(sans.$('vue-du-mot-cle-pages').hidden, true);
   const vide = await charger('/recherche/?mot-cle=demo');
-  assert.equal(vide.$('titre-mot-cle').textContent, 'Mot-clé « démo »', 'caché dans la liste, mais il existe');
-  assert.equal(vide.$('mot-cle-compte').textContent, 'Aucune page ne porte ce mot-clé.');
-  assert.equal(vide.$('mot-cle-pages').hidden, true);
+  assert.equal(vide.$('titre-mot-cle').textContent, 'Mot-clé « démo »', 'sans page, il existe');
+  assert.equal(vide.$('vue-du-mot-cle-definition').hidden, false);
+  assert.equal(vide.$('vue-du-mot-cle-definition').textContent, 'Un mot-clé du glossaire qu’aucune page ne porte encore.', 'sa définition sous son titre');
+  assert.equal(vide.$('vue-du-mot-cle-compte').textContent, 'Aucune page ne porte ni ne cite ce mot-clé.');
+  assert.equal(vide.$('vue-du-mot-cle-pages').hidden, true);
   // taper reprend la recherche : la liste revient, sans nouvelle entrée dans l'historique
   const q = vide.$('q');
   q.value = 'peu';

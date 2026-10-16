@@ -3,7 +3,9 @@
 //   - le prix d'une ressource ou d'une gemme en RF (« 1 000 RF / 10 RO » → 1000 ; « 0,6 Ro » → 60 ; deux écritures qui ne disent pas la même valeur →
 //     null, comme « 800 RF / 80 RO » de l'Os) ;
 //   - la ligne du CONVERTISSEUR d'une monnaie (« 1 PP : 100 000 RF ») d'après sa valeur en RF.
-// Fonctions pures, sans dépendance.
+// Un prix se lit sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
+// Fonctions pures, sans dépendance (sauf lib/mots-cles-balises.mjs).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 
 /** Un nombre écrit à la française : espaces des milliers, virgule décimale (« 1 000 », « 1,5 »). */
 const nombre = (t) => Number(String(t).replace(/\s+/g, '').replace(',', '.'));
@@ -14,7 +16,7 @@ const nombre = (t) => Number(String(t).replace(/\s+/g, '').replace(',', '.'));
  */
 export function prixEnRf(prixBrut) {
   if (prixBrut === null || prixBrut === undefined) return null;
-  const texte = String(prixBrut);
+  const texte = String(texteSansBalises(String(prixBrut)));
   const rf = /(\d[\d\s]*(?:[.,]\d+)?)\s*RF\b/i.exec(texte);
   const ro = /(\d[\d\s]*(?:[.,]\d+)?)\s*RO\b/i.exec(texte);
   const enRf = rf ? nombre(rf[1]) : null;

@@ -1,7 +1,8 @@
 // Les monnaies en icônes dans le Markdown des pages (demande du propriétaire : « partout dans toutes les tables il faudra retirer les abréviations RO.
 // Il faudra remplacer par des icônes », puis, 2026-10-14, partout, texte courant compris, chaque montant décomposé en PP / RO / RF ; lib/monnaies.mjs).
 // Plugin remark déclaré dans astro.config.mjs ET lib/guide-rendu.ts, qui doivent rester d'accord, comme celui de la couleur des cases
-// (lib/markdown-couleurs.mjs). Seul le texte change (pas un lien, pas un code, pas du HTML). Dans un tableau, une colonne dont l'en-tête écrit l'unité
+// (lib/markdown-couleurs.mjs). Seul le texte change (pas un lien, pas un code, pas du HTML, pas une balise du glossaire des mots-clés, « {{id|10 RO}} » :
+// lib/monnaies.mjs#morceauxDeMonnaie la garde entière, le middleware la rend). Dans un tableau, une colonne dont l'en-tête écrit l'unité
 // (« Coût(RO) ») lit un nombre seul de ses cases comme un montant dans cette monnaie (« 100.0 », « 100 + 1 Matériau ») ; ailleurs, un nombre sans
 // monnaie reste un nombre. Sans dépendance (sauf lib/monnaies.mjs, pur).
 import { htmlDuMorceau, morceauxDeMonnaie } from './monnaies.mjs';

@@ -147,7 +147,9 @@ const pourComparer = (texte) => String(texte).replace(/[«»“”]/g, '"').repl
 export function morceauxAvecEtats(texte, restantes) {
   const T = String(texte);
   const N = pourComparer(T);
-  const places = [];
+  // une balise du glossaire des mots-clés (« {{id|texte}} », lib/mots-cles-balises.mjs) reste entière : aucune pastille n'y est placée
+  const places = [...T.matchAll(/\{\{[^{}\n]*\}\}/g)].map((m) => [m.index, m.index + m[0].length, null]);
+  const balises = places.length;
   for (const r of [...restantes]) {
     const debut = N.indexOf(pourComparer(r.extrait));
     if (debut < 0) continue;
@@ -166,6 +168,7 @@ export function morceauxAvecEtats(texte, restantes) {
       break;
     }
   }
+  places.splice(0, balises);
   places.sort((x, y) => x[0] - y[0]);
   const out = [];
   let dernier = 0;

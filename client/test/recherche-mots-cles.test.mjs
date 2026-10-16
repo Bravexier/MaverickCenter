@@ -56,13 +56,17 @@ test('élément ↔ mot-clé : les pages portent leurs mots-clés ; un événeme
 test('vue d’un mot-clé : son libellé et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
   const libelles = new Map([['peuple', 'Peuple'], ['magie', 'magie'], ['vide', 'Vide']]);
   const v = vueDuMotCle(index, 'peuple', libelles);
-  assert.deepEqual(Object.keys(v).sort(), ['existe', 'libelle', 'pages']);
+  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages']);
   assert.equal(v.existe, true);
   assert.equal(v.libelle, 'Peuple');
   assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain']);
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
-  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', pages: [] }, 'un mot-clé sans page visible existe');
+  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', definition: '', pages: [] }, 'un mot-clé sans page visible existe');
+  // le glossaire (migration 0055) : la définition avec le libellé
+  const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
+  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', definition: 'Rien dedans.', pages: [] });
+  assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
 });
 
 test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
@@ -85,11 +89,15 @@ test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux 
 test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son écriture', () => {
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);
-  assert.ok(vocabulaire.length > 100, `${vocabulaire.length} mots-clés`);
+  // depuis la migration 0055, un glossaire : les mots-clés dont le site se sert et ceux du glossaire, chacun avec sa définition (NULL : pas encore
+  // décrit, lue telle quelle, comme dans la base et le service ; jamais '')
+  assert.ok(vocabulaire.length > 0, `${vocabulaire.length} mots-clés`);
+  assert.ok(vocabulaire.every((m) => m.description === null || (typeof m.description === 'string' && m.description !== '')), 'une définition, ou NULL, pour chacun');
+  assert.ok(vocabulaire.some((m) => m.description === null), 'un mot-clé pas encore décrit : NULL');
   assert.deepEqual(vocabulaire.map((m) => m.libelle_cle), vocabulaire.map((m) => normalize(m.libelle)), 'libelle_cle = normalize(libelle)');
   const ids = new Set(vocabulaire.map((m) => m.id));
   const tags = db.prepare('SELECT m.libelle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
-  assert.ok(tags.length > 1000);
+  assert.ok(tags.length > 0, 'des pages portent encore des mots-clés (ceux dont le site se sert)');
   for (const t of tags) assert.equal(idDuMotCle(db, t.libelle), t.id, t.libelle);
   for (const t of tags) assert.equal(idDuMotCle(db, t.libelle.toUpperCase()), t.id, 'même écriture, sans la casse');
   assert.ok(ids.has(idDuMotCle(db, vocabulaire[0].libelle)));
@@ -153,8 +161,8 @@ test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-c
   assert.deepEqual(operationsDuVocabulaire([renommer('peuple', 'Peuples')], {}), [renommer('peuple', 'Peuples')]);
   assert.equal(confirmationDesRetraits(vocabulaire, { suppressions: new Set(), fusions: new Map() }), null);
   const message = confirmationDesRetraits(vocabulaire, { suppressions: new Set(['feu']), fusions: new Map([['aide', 'guide']]) });
-  assert.match(message, /^- « Feu » sera retiré de 2 pages, puis supprimé\.$/m);
-  assert.match(message, /^- « aide » sera fusionné dans « guide » : ses pages \(3 pages\) porteront « guide », puis « aide » disparaîtra\.$/m);
+  assert.match(message, /^- « Feu » sera retiré de 2 pages et des textes qui le citent \(sa balise y devient son texte\), puis supprimé\.$/m);
+  assert.match(message, /^- « aide » sera fusionné dans « guide » : ses pages \(3 pages\) et les textes qui le citent porteront « guide », puis « aide » disparaîtra\.$/m);
   assert.doesNotMatch(message, /événement/, 'plus d’événement : ils ont des catégories');
 });
 

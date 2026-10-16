@@ -17,17 +17,6 @@ html.js .acc .js-seul { display: revert; }
 html.js .acc .sans-js { display: none; }
 .acc [hidden] { display: none !important; }
 .acc .vide { color: var(--muted); font-style: italic; }
-.acc__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
-
-/* Règles de l'onglet (texte de la page avant la création) : sur un grand écran, en deux colonnes */
-.acc-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.acc-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.acc-regles__texte { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
-@media (min-width: 64rem) { .acc-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
-.acc-regles__texte > * { break-inside: avoid; }
-.acc-regles__texte > :first-child { margin-top: 0; }
-.acc-regles__texte p { margin: 0 0 0.75rem; }
-.acc-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 
 /* Outils : tirer tout l'accessoire, tout effacer */
 html.js .acc .acc-outils { display: flex; }
