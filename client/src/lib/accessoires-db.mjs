@@ -18,6 +18,17 @@ export const cleDeRessource = (id) => String(id).slice(String(id).lastIndexOf(':
 /** Identifiant de l'infobulle d'une gemme (écrite une fois dans la page, partagée par toutes ses mentions). */
 export const bulleDeGemme = (id) => `bulle-gemme-${cleDeRessource(id)}`;
 
+/**
+ * Titre d'une ligne du tableau des compétences (demande du propriétaire, 2026-10-16 : « ne pas avoir le nom de la caractéristique en dessous mais
+ * directement dans le titre. Compétence F => Compétence Force ») : l'initiale écrite par l'onglet remplacée par le nom de la caractéristique de l'effet
+ * (`caracteristique_id`) ; tel quel si l'écriture n'est pas « Compétence » suivi de l'initiale de cette caractéristique.
+ */
+export function titreDeCompetence(libelle, caracteristique) {
+  const m = /^(Compétence)\s+(\p{L})$/u.exec(String(libelle ?? '').trim());
+  if (!m || !caracteristique || normalize(caracteristique)[0] !== normalize(m[2])) return libelle;
+  return `${m[1]} ${caracteristique}`;
+}
+
 /** Les règles de la page : son corps Markdown avant « ## CRÉATION D'ACCESSOIRE » (le texte de l'onglet). */
 export function reglesDeLaPage(corps) {
   const l = String(corps ?? '').split('\n');
@@ -53,7 +64,9 @@ export function consignesDesEtapes(corps, proprietes) {
  * Les données de la page :
  *   emplacements : étape 1, [{ id, nom, jet }] ;
  *   proprietes   : étape 2, [{ id, nom, jet_min, jet_max, effets: [effet] }] dans l'ordre de l'onglet ; la Malédiction n'a pas d'effets ;
- *   competences  : la propriété Compétence par compétence (le tableau en fait une ligne par niveau), { colonnes: [{ niveau, min, max }], lignes: [{ jet, libelle, caracteristique, gemmes, effets: [effet par niveau] }] } ;
+ *   competences  : la propriété Compétence par compétence (le tableau en fait une ligne par compétence, le bonus d'acquis au curseur), { colonnes: [{ niveau, min, max }],
+ *                  lignes: [{ jet, libelle, titre, caracteristique, gemmes, effets: [effet par niveau] }] } ; `titre` = « Compétence Force » pour « Compétence F »
+ *                  (demande du propriétaire, 2026-10-16 : la caractéristique dans le titre, pas dessous ; affichage seulement, `libelle` reste celui de la base) ;
  *   gemmes       : les 14 gemmes, [{ id, nom, description, magie, couleur, texte, quarts: { commune, raffinee, parfaite }, quartsRf }] (infobulles) ;
  *   montures     : [{ niveau, matiere, prix_brut, prix_ro, effet_brut }] ;
  *   page         : { titre, resume, corps_md }.
@@ -103,7 +116,8 @@ export function chargerAccessoires(db) {
     colonnes,
     lignes: jets.map((jet) => {
       const ligne = deCompetence.filter((e) => e.jet === jet).sort((a, b) => a.niveau - b.niveau);
-      return { jet, libelle: ligne[0].libelle, caracteristique: caracteristiques.get(ligne[0].caracteristique_id) ?? null, gemmes: ligne[0].gemmes, effets: ligne };
+      const caracteristique = caracteristiques.get(ligne[0].caracteristique_id) ?? null;
+      return { jet, libelle: ligne[0].libelle, titre: titreDeCompetence(ligne[0].libelle, caracteristique), caracteristique, gemmes: ligne[0].gemmes, effets: ligne };
     }),
   };
 

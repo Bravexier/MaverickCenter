@@ -36,6 +36,42 @@ export const lancer = (faces, alea = Math.random) => 1 + Math.min(faces - 1, Mat
 export const dansLaPlage = (plages, jet) => plages.find((p) => Number(p.min) <= jet && jet <= Number(p.max)) ?? null;
 
 /**
+ * Bonus d'acquis de la propriété Compétence (demande du propriétaire, 2026-10-16 : « La valeur de "Bonus d’acquis" deviendrai un slider (qui peut être
+ * varié par un dé, ou saisi manuellement) En fonction de la valeur, ça changer automatiquement le niveau, donc la couleur et donc le prix. ») : un entier
+ * de `min` à `max`, les bornes des plages écrites (1 % à 20 %) ; une saisie qui n'est pas un nombre donne `min`. Le niveau est celui dont la plage écrite
+ * contient le bonus (`dansLaPlage`) : rien n'est calculé au-delà.
+ */
+export function bonusBorne(valeur, min, max) {
+  const n = Math.round(Number(String(valeur ?? '').replace(',', '.')));
+  return Number.isFinite(n) && String(valeur ?? '').trim() !== '' ? Math.min(max, Math.max(min, n)) : min;
+}
+
+/**
+ * Une ligne du tableau des compétences et son bonus d'acquis : `niveaux` = ses effets, un par niveau ({ valeur, niveau, min, max… }, plages écrites
+ * du 1d20). Rend { bonus, effet } : le bonus borné aux plages de la ligne et l'effet dont la plage le contient (le premier si les plages laissaient un
+ * trou) ; null pour une ligne sans effet.
+ */
+export function effetDuBonus(niveaux, valeur) {
+  if (!niveaux?.length) return null;
+  const bonus = bonusBorne(valeur, Math.min(...niveaux.map((n) => Number(n.min))), Math.max(...niveaux.map((n) => Number(n.max))));
+  return { bonus, effet: dansLaPlage(niveaux, bonus) ?? niveaux[0] };
+}
+
+/**
+ * Le bonus d'acquis d'une ligne des compétences d'après l'adresse (?effet=<clé d'un de ses effets>&acquis=<bonus>) : `acquis` s'il est un entier de la
+ * plage de cet effet, sinon le plus petit bonus de cette plage (l'effet de l'adresse fait foi) ; null si la clé n'est pas un effet de la ligne.
+ */
+export function bonusDeLAdresse(niveaux, cle, acquis) {
+  const n = (niveaux ?? []).find((x) => x.valeur === cle);
+  if (!n) return null;
+  const a = acquis === null || acquis === undefined || String(acquis).trim() === '' ? Number.NaN : Number(acquis);
+  return Number.isInteger(a) && a >= Number(n.min) && a <= Number(n.max) ? a : Number(n.min);
+}
+
+/** L'ancre gardée dans l'adresse : celle d'un onglet d'effets (#effets-…) ne l'est pas, la propriété de l'adresse dit l'onglet ouvert. */
+export const ancreGardee = (ancre) => (String(ancre ?? '').startsWith('#effets-') ? '' : String(ancre ?? ''));
+
+/**
  * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&gemmes=<clé>,<clé>&maudit=1.
  * `lireEtat` ne garde que des chaînes non vides ; `ecrireEtat` les remet dans le même ordre (les vides sont retirés).
  */

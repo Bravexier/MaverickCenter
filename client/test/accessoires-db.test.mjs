@@ -3,7 +3,7 @@
 // Markdown de la page sans ses tableaux.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, reglesDeLaPage } from '../src/lib/accessoires-db.mjs';
+import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, reglesDeLaPage, titreDeCompetence } from '../src/lib/accessoires-db.mjs';
 import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { couleurDeMagie } from '../src/lib/sort-format.mjs';
@@ -26,7 +26,7 @@ test('étape 2 : les plages des propriétés couvrent le dé sans trou ni chevau
   assert.equal(attendu - 1, facesDuDe(a.proprietes.map((p) => p.jet_max)));
 });
 
-test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence, une case par caractéristique et par niveau', () => {
+test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence, une ligne par caractéristique et un effet par niveau', () => {
   for (const p of a.proprietes.filter((x) => x.effets.length && x.id !== 'competence')) {
     const jets = p.effets.map((e) => e.jet).sort((x, y) => x - y);
     assert.deepEqual(jets, suite(facesDuDe(jets)), p.id);
@@ -42,6 +42,17 @@ test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence,
   }
   assert.equal(attendu - 1, 20);
   assert.equal(a.proprietes.find((p) => p.id === 'malediction').effets.length, 0);
+});
+
+test('compétence : « Compétence Force » pour « Compétence F » (la caractéristique dans le titre, demande du propriétaire)', () => {
+  for (const l of a.competences.lignes) assert.equal(l.titre, `Compétence ${l.caracteristique}`, l.libelle);
+  assert.equal(titreDeCompetence('Compétence F', 'Force'), 'Compétence Force');
+  assert.equal(titreDeCompetence('Compétence A', 'Agilité'), 'Compétence Agilité');
+  assert.equal(titreDeCompetence('Compétence V', 'Volonté'), 'Compétence Volonté');
+  // une écriture qui n'est pas « Compétence » + l'initiale de la caractéristique reste telle quelle
+  assert.equal(titreDeCompetence('Compétence F', 'Agilité'), 'Compétence F');
+  assert.equal(titreDeCompetence('Compétence Force', 'Force'), 'Compétence Force');
+  assert.equal(titreDeCompetence('Compétence F', null), 'Compétence F');
 });
 
 test('gemmes : une par magie, dans la couleur de sa magie ; les gemmes d’un effet sont celles de la base', () => {

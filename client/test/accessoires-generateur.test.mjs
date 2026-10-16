@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  cleDEffet, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
+  ancreGardee, bonusBorne, bonusDeLAdresse, cleDEffet, effetDuBonus, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
   QUALITES_DE_GEMME, styleDeNiveau,
 } from '../src/lib/accessoires-generateur.mjs';
 
@@ -70,4 +70,47 @@ test('prix d’un accessoire aux gemmes au choix : quarts (en RF) + monture (en 
   assert.equal(prixDeLAccessoire([], 5), null);
   assert.equal(prixDeLAccessoire([1000, Number.NaN], 5), null);
   assert.equal(prixDeLAccessoire([1000], Number.NaN), null);
+});
+
+test('bonus d’acquis : un entier borné aux plages écrites ; une saisie qui n’est pas un nombre donne le plus petit', () => {
+  assert.equal(bonusBorne(7, 1, 20), 7);
+  assert.equal(bonusBorne('12', 1, 20), 12);
+  assert.equal(bonusBorne(0, 1, 20), 1);
+  assert.equal(bonusBorne(25, 1, 20), 20);
+  assert.equal(bonusBorne('7,6', 1, 20), 8);
+  assert.equal(bonusBorne('', 1, 20), 1);
+  assert.equal(bonusBorne('abc', 1, 20), 1);
+  assert.equal(bonusBorne(-Infinity, 1, 20), 1);
+  const niveaux = [{ min: 1, max: 5, niveau: 1 }, { min: 6, max: 10, niveau: 2 }, { min: 11, max: 15, niveau: 3 }, { min: 16, max: 20, niveau: 4 }];
+  assert.deepEqual([1, 5, 6, 10, 11, 16, 20].map((b) => dansLaPlage(niveaux, bonusBorne(b, 1, 20)).niveau), [1, 1, 2, 2, 3, 4, 4]);
+});
+
+const NIVEAUX = [
+  { valeur: 'competence:force:1', niveau: 1, min: 1, max: 5 },
+  { valeur: 'competence:force:2', niveau: 2, min: 6, max: 10 },
+  { valeur: 'competence:force:3', niveau: 3, min: 11, max: 15 },
+  { valeur: 'competence:force:4', niveau: 4, min: 16, max: 20 },
+];
+
+test('une ligne des compétences : le bonus d’acquis (curseur, saisie, dé) donne l’effet du niveau dont la plage le contient', () => {
+  assert.deepEqual(effetDuBonus(NIVEAUX, 12), { bonus: 12, effet: NIVEAUX[2] });
+  assert.deepEqual(effetDuBonus(NIVEAUX, '6'), { bonus: 6, effet: NIVEAUX[1] });
+  assert.deepEqual(effetDuBonus(NIVEAUX, 35), { bonus: 20, effet: NIVEAUX[3] }, 'borné au plus grand bonus écrit');
+  assert.deepEqual(effetDuBonus(NIVEAUX, -Infinity), { bonus: 1, effet: NIVEAUX[0] }, 'la ligne telle que construite');
+  assert.equal(effetDuBonus([], 3), null);
+});
+
+test('une ligne des compétences d’après l’adresse : le bonus s’il est dans la plage de l’effet, sinon le plus petit de cette plage', () => {
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:force:3', '12'), 12);
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:force:3', '18'), 11, 'hors de la plage : l’effet de l’adresse fait foi');
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:force:3', null), 11);
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:force:3', ''), 11);
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:force:3', '12.5'), 11);
+  assert.equal(bonusDeLAdresse(NIVEAUX, 'competence:agilite:3', '12'), null, 'un effet d’une autre ligne');
+});
+
+test('l’ancre d’un onglet d’effets n’est pas gardée dans l’adresse ; les autres le sont', () => {
+  assert.equal(ancreGardee('#effets-attaque'), '');
+  assert.equal(ancreGardee('#acc-monture'), '#acc-monture');
+  assert.equal(ancreGardee(''), '');
 });

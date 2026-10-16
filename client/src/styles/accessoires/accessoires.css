@@ -14,6 +14,7 @@ main:has(.acc) { max-width: 120rem; }
 }
 .acc .js-seul { display: none; }
 html.js .acc .js-seul { display: revert; }
+html.js .acc .sans-js { display: none; }
 .acc [hidden] { display: none !important; }
 .acc .vide { color: var(--muted); font-style: italic; }
 .acc__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
@@ -48,7 +49,7 @@ html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-hei
 
 /* Un bloc (une étape) et une famille d'effets (repliable) */
 .acc-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
-.acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; }
+.acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; min-width: 0; }
 .acc-bloc__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding: 0.55rem 0.9rem; font-size: var(--fs-xl); border-bottom: 1px solid var(--acc-line); }
 .acc-bloc__etape { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
 .acc-bloc__de, .acc-famille__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--acc); color: var(--surface); }
@@ -56,17 +57,28 @@ html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-hei
 .acc-niveau-pastille { font-size: var(--fs-xxs); font-weight: 600; padding: 0.05rem 0.5rem; border-radius: var(--radius-sm); background: var(--niv); color: var(--sur-niveau); }
 .acc-bloc__note { margin: 0.5rem 0.9rem 0; font-size: var(--fs-md); color: var(--muted); }
 .acc-bloc > .acc-table { margin-top: 0.4rem; }
-.acc-bloc--effets > .acc-famille { margin: 0 0.8rem; }
+/* Les tableaux d'effets, un onglet par propriété (components/Onglets.astro : sans JavaScript, les tableaux se suivent ; sous html.js, seul l'onglet
+   ouvert s'affiche, et son titre, que l'onglet répète, se cache) */
+.acc-effets { display: grid; gap: 0.7rem; margin: 0 0.8rem; min-width: 0; }
+/* une seule rangée d'onglets, qui défile sur un écran étroit */
+.acc-onglets { display: flex; gap: 0.35rem; border-bottom: 2px solid var(--acc-line); overflow-x: auto; scrollbar-width: thin; }
+.acc-onglets .onglet { flex: none; display: flex; flex-direction: column; gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem; border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--surface); color: var(--text); text-decoration: none; }
+.acc-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.acc-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .acc-onglets .onglet.is-active { background: var(--acc); border-color: var(--acc); color: var(--surface); }
+html.js .acc-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .acc-onglets .onglet:not(.is-active):hover { background: var(--acc-soft); }
+.acc-onglets .onglet:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+html.js .acc-famille:not(.is-active) { display: none; }
 .acc-famille { border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; background: var(--surface); }
-.acc-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.5rem 0.85rem; cursor: pointer; list-style: none; }
-.acc-famille__titre::-webkit-details-marker { display: none; }
-.acc-famille__titre::before { content: '▸'; color: var(--acc); transition: transform var(--duree); }
-.acc-famille[open] > .acc-famille__titre::before { transform: rotate(90deg); }
-.acc-famille[open] > .acc-famille__titre { border-bottom: 1px solid var(--acc-line); }
+.acc-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.5rem 0.85rem; font-size: var(--fs-lg);
+  border-bottom: 1px solid var(--acc-line); }
+html.js .acc-famille__titre { display: none; }
 .acc-famille__nom { font-weight: 700; }
 .acc-famille__nom::first-letter { text-transform: uppercase; }
-.acc-famille__compte { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
 .acc-famille__note { margin: 0.45rem 0.85rem 0; font-size: var(--fs-md); color: var(--muted); }
+html.js .acc-famille__note:last-of-type { margin-bottom: 0.45rem; }
 
 /* Tableaux */
 .acc-wrap { overflow-x: auto; }
@@ -78,11 +90,28 @@ html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-hei
 .acc-jet { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); width: 1%; }
 .acc-effet__niveau, .acc-effet__prix { white-space: nowrap; }
 .acc-effet__libelle { min-width: 14rem; }
-.acc-effet__sous { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
 .acc-remarque { margin-left: 0.25rem; font-weight: 700; color: var(--acc); cursor: help; }
-/* Compétences : une ligne par compétence et par niveau, un filet plus marqué entre deux compétences */
-.acc-table--competences tbody > tr.acc-ligne--groupe:not(:first-child) > * { border-top: 2px solid var(--acc-line); }
+/* Compétences : une ligne par compétence, le bonus d'acquis au curseur, au dé ou saisi (il en donne le niveau, la couleur et le prix) ; sans
+   JavaScript, les plages, niveaux et prix de la ligne, sans couleur */
+.acc-table--competences tbody > tr > * { vertical-align: middle; }
+.acc-table--competences :is(thead, tbody) > tr > * { padding-inline: 0.5rem; }
+.acc-table--competences .acc-effet__libelle { min-width: 0; white-space: nowrap; }
+/* les quatre gemmes au choix de l'Intelligence, deux par ligne si la place manque */
+.acc-table--competences tr[data-au-choix] .acc-gemmes { white-space: normal; min-width: 12.5rem; }
+.acc-table--competences .acc-gemme-choix { white-space: nowrap; }
 .acc-effet__bonus { white-space: nowrap; font-variant-numeric: tabular-nums; }
+html.js .acc .acc-acquis { display: inline-flex; align-items: center; gap: 0.35rem; }
+.acc-acquis__curseur { width: 6rem; height: 1rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--sur-niveau); cursor: pointer; }
+.acc-acquis__saisie { width: 3.2rem; padding: 0 0.25rem; font: inherit; font-size: var(--fs-md); line-height: 1.5; font-variant-numeric: tabular-nums; text-align: right;
+  border: 1px solid rgb(23 18 16 / 0.35); border-radius: var(--radius-xs); background: rgb(255 255 255 / 0.7); color: var(--sur-niveau); }
+.acc-acquis__unite { margin-left: -0.2rem; }
+.acc-acquis input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+/* le dé d'une ligne (1d20 : son bonus d'acquis), sur la couleur du niveau, thème sombre compris */
+.acc .acc-de--acquis { padding: 0.05rem 0.2rem; background: rgb(255 255 255 / 0.55); color: var(--sur-niveau); border-color: rgb(23 18 16 / 0.35); }
+.acc .acc-de--acquis:hover { background: rgb(255 255 255 / 0.85); }
+.acc-de--acquis svg { width: 1.05rem; height: 1.05rem; }
+html:not(.js) .acc-ligne.acc-competence > * { background: none; color: inherit; }
+.acc-plages { margin: 0; padding: 0; list-style: none; font-size: var(--fs-md); }
 
 /* La case du dé (en-tête de la première colonne) : l'icône et le dernier jet */
 .acc-de-case { width: 1%; }
@@ -99,7 +128,7 @@ html.js .acc-de-case__texte { display: none; }
 html.js .acc [data-choix] { cursor: pointer; }
 html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 0.05); }
 .acc-ligne[data-niveau] > * { background: var(--niv); color: var(--sur-niveau); }
-.acc-ligne[data-niveau] > .acc-jet, .acc-ligne[data-niveau] .acc-effet__sous { color: var(--sur-niveau-doux); }
+.acc-ligne[data-niveau] > .acc-jet { color: var(--sur-niveau-doux); }
 .acc-ligne[data-niveau] .acc-remarque { color: var(--sur-niveau); }
 .acc-ligne--malediction > * { color: var(--maudit); font-weight: 700; letter-spacing: var(--ls-fin); }
 .acc-effet--vide .acc-choisir { font-weight: 400; }
@@ -116,6 +145,12 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; line-height: 1.45;
   background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
 .acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: var(--fs-xs); }
+/* une gemme au choix dans sa ligne : sa case à cocher devant elle, à côté et non autour (un appui sur la gemme ouvre son infobulle) ; deux en tout,
+   les autres cases grisées une fois le compte atteint */
+.acc-gemme-choix { display: inline-flex; align-items: center; gap: 0.2rem; margin-right: 0.4rem; }
+.acc-gemme-choix input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--sur-niveau); cursor: pointer; }
+.acc-gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-gemme-choix input:disabled { cursor: not-allowed; }
 .acc-gemmes__ou { font-style: italic; }
 .acc-bulles { display: contents; }
 
@@ -150,5 +185,7 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 
 /* Gemmes au choix dans l'accessoire créé (demande du propriétaire : « laisser la possibilité d'en cocher 2 ») : une case par gemme au choix */
 .acc-produit__choix { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; }
-.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
-.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; }
+.acc-produit__gemme-choix input { width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
+.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-produit__gemme-choix input:disabled { cursor: not-allowed; }

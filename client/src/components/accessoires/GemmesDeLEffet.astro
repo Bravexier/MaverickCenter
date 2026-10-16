@@ -1,0 +1,39 @@
+---
+import { bulleDeGemme, cleDeRessource } from '../../lib/accessoires-db.mjs';
+import { gemmesAuChoix } from '../../lib/accessoires-generateur.mjs';
+
+// Les gemmes d'un effet dans sa ligne (page /ressources/accessoires/, AccessoiresPage.astro) : ses rangs (« A + B »), chacun ses options (« A ou B »),
+// chaque gemme dans la couleur de sa magie, reliée à son infobulle (écrite une fois en bas de page). Les gemmes au choix (demande du propriétaire,
+// 2026-10-16 : « Pour l'intelligence, il faut aussi pouvoir cocher au moins deux des gemmes pour justement avoir le calcul du prix. ») ont leur case à
+// cocher dans la ligne même (lib/accessoires-generateur.mjs#gemmesAuChoix : deux gemmes en tout, lecture de « au moins deux » à confirmer) ; src/scripts/accessoires.mjs en tient l'état, le même
+// que celui des cases de l'encart, et écrit le prix calculé dans la ligne ; entre deux gemmes à cocher, le « ou » de la source se cache (les cases disent
+// le choix). La case est à côté de la gemme, pas autour (un appui sur la gemme ouvre son infobulle sans la cocher) ; les cases d'un rang au choix forment
+// un groupe. Sans JavaScript, ni case ni calcul : l'écriture « A ou B ».
+interface Gemme {
+  id: string;
+  nom: string;
+  couleur: string;
+  texte: string;
+}
+interface Props {
+  rangs: Gemme[][];
+  /** écriture de la source, montrée quand l'effet n'a pas de gemmes typées */
+  brut?: string | null;
+  /** nom de l'effet, pour le libellé des cases */
+  libelle: string;
+}
+const { rangs, brut, libelle } = Astro.props;
+const { imposees, auChoix, max } = gemmesAuChoix(rangs.map((r) => r.map((g) => cleDeRessource(g.id))));
+const estAuChoix = (g: Gemme) => auChoix.includes(cleDeRessource(g.id)) && !imposees.includes(cleDeRessource(g.id));
+const styleDeGemme = (g: Gemme) => `--g: ${g.couleur}; --g-texte: ${g.texte}`;
+---
+
+{rangs.length ? rangs.map((rang, i) => (
+  <>{i > 0 && <span class="acc-gemmes__plus">+</span>}<span class="acc-gemmes__rang" role={rang.some(estAuChoix) ? 'group' : undefined} aria-label={rang.some(estAuChoix) ? `Gemmes au choix, ${max === 1 ? 'une' : max} en tout` : undefined}>{rang.map((g, j) => (
+    <>{j > 0 && <span class={`acc-gemmes__ou${estAuChoix(g) && estAuChoix(rang[j - 1]) ? ' sans-js' : ''}`}>ou</span>}{estAuChoix(g) ? (
+      <span class="acc-gemme-choix"><input type="checkbox" class="js-seul" data-acc-gemme={cleDeRessource(g.id)} aria-label={`${g.nom} : gemme au choix (${libelle})`} /><span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></span>
+    ) : (
+      <span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span>
+    )}</>
+  ))}</span></>
+)) : (brut ?? '')}
