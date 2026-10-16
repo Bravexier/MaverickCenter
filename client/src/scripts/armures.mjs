@@ -55,20 +55,6 @@ if (racine) {
       };
     });
 
-  /**
-   * La ligne TOTAL des améliorations d'une cible, refaite depuis les niveaux affichés ; en mode modification, les cases du coût sont des saisies : le
-   * total reste tel quel jusqu'à la sortie (l'éditeur remet les cases avant d'appeler src/scripts/edition/armures.mjs#fin).
-   */
-  function totaux() {
-    for (const cible of ['armure', 'bouclier']) {
-      const cellule = racine.querySelector(`[data-armures-total="${cible}"]`);
-      if (!cellule || lignesDAmelioration(cible).some((l) => !l.querySelector('.pamel-cout'))) continue;
-      const a = ameliorations(cible);
-      const mat = a.reduce((s, x) => s + (x.cout_materiaux ?? 0), 0);
-      cellule.innerHTML = `${ro(a.reduce((s, x) => s + (x.cout_ro ?? 0), 0))}${mat ? ` + ${pluriel(mat, 'matériau', 'x')}` : ''}`;
-    }
-  }
-
   /** Un matériau (ou une matière de bouclier) tel qu'affiché dans un tableau de sélection. */
   function lireMateriau(ligne) {
     if (!ligne) return null;
@@ -428,7 +414,6 @@ if (racine) {
 
   // après un enregistrement du mode modification (cellules réécrites) ou à son entrée et à sa sortie (src/scripts/edition/armures.mjs)
   document.addEventListener('armures:rafraichir', () => {
-    totaux();
     rendre();
   });
 
@@ -466,6 +451,5 @@ if (racine) {
     Object.assign(B, { forme: ligneDeForme(ancre.dataset.forme), matiere: ligneDeMateriau('matiere', ancre.dataset.matiere) });
     ancre.scrollIntoView({ block: 'center' });
   }
-  totaux();
   rendre();
 }

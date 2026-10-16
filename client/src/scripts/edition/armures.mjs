@@ -5,11 +5,11 @@
 //     fiches ; le script de la page ignore les clics) ; les cases des armures, des pièces, des formes, des boucliers, des poids et des améliorations se
 //     modifient (éditeur commun : leurs `data-ed`), celles des matériaux restent en lecture (décision R62 : la page « Composants ») ;
 //   - ni création ni suppression (les fiches de personnage citent armures, pièces, formes et améliorations) ;
-//   - à chaque étape, l'évènement « armures:rafraichir » redemande au script de la page les lignes TOTAL et les fiches ouvertes (aucun module partagé
+//   - à chaque étape, l'évènement « armures:rafraichir » redemande au script de la page les fiches ouvertes (aucun module partagé
 //     entre les deux scripts).
 const rafraichir = () => document.dispatchEvent(new CustomEvent('armures:rafraichir'));
 
-/** Les tables dont une ligne réécrite change une fiche ou une ligne TOTAL de la page. */
+/** Les tables dont une ligne réécrite change une fiche de la page. */
 const TABLES = ['armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids', 'amelioration_equipement', 'ressource', 'materiau'];
 
 export const armures = {

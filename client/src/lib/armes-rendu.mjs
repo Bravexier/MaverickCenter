@@ -107,7 +107,9 @@ export const RENDUS_DES_ARMES = {
   // la remarque : une étoile à côté du nom, son texte en infobulle (lu par le script de la page pour la fiche de l'arme) ; rien sans remarque
   'arme-remarque': (valeur) =>
     (valeur ? `<span class="arme__remarque" title="${e(valeur)}" aria-label="${e(`Remarque : ${valeur}`)}">★</span>` : ''),
-  // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
+  // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en morceaux typés (le bonus aux dégâts, les crans,
+  // puis chaque autre effet) : un par ligne sur la page Composants, sur une seule ligne dans l'onglet Armes, le bonus sans le mot « Dégâts » (demande
+  // du propriétaire, 2026-10-16 : « +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière » ; le mot reste pour les lecteurs d'écran)
   'materiau-prix': (valeur) => {
     const ro = prixEnRo(valeur);
     return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? htmlAvecMonnaies(valeur ?? '—') : htmlDeMontant(String(ro), 'RO', valeur ?? '')}</span>`;
@@ -115,7 +117,7 @@ export const RENDUS_DES_ARMES = {
   'materiau-effet': (valeur) => {
     const m = analyserEffetDeMateriau(valeur);
     const lignes = [];
-    if (m.bonus_degats) lignes.push(`<span class="materiau-effet__bonus">Dégâts ${m.bonus_degats > 0 ? '+' : '−'}${Math.abs(m.bonus_degats)}</span>`);
+    if (m.bonus_degats) lignes.push(`<span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts </span>${m.bonus_degats > 0 ? '+' : '−'}${Math.abs(m.bonus_degats)}</span>`);
     if (m.cran_solidite) lignes.push(`<span class="materiau-effet__cran">${m.cran_solidite > 0 ? '+' : '−'}${Math.abs(m.cran_solidite)} cran${Math.abs(m.cran_solidite) > 1 ? 's' : ''} de solidité</span>`);
     for (const l of String(m.effet_secondaire ?? '').split('\n').filter(Boolean)) lignes.push(`<span class="materiau-effet__secondaire">${e(l)}</span>`);
     return `<span class="materiau-effet"${attribut('bonus', m.bonus_degats ?? 0)}${attribut('cran', m.cran_solidite ?? 0)}>${lignes.length ? lignes.join('') : '<span class="materiau-effet__rien">Rien de particulier</span>'}</span>`;

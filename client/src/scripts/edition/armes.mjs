@@ -1,7 +1,7 @@
 // Extension de l'éditeur pour l'onglet Armes de /ressources/equipement/ (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut
 // être éditable à l'instar des autres pages qui peuvent l'être. Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
 // matériau / amélioration, mais tous les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes ».
-//   - en mode modification : tous les tableaux s'ouvrent (familles, matériaux, améliorations) et la fiche de l'arme se ferme (styles/armes/armes.css cache
+//   - en mode modification : tous les tableaux s'ouvrent (familles, matériaux, améliorations) et la fiche de l'arme se vide (styles/armes/armes.css cache
 //     la fiche et montre les colonnes `ed-seul` ; le script de la page ignore les clics) ;
 //   - ajouter : formulaire « Nouvelle arme » (famille, nom, compétence, type, effet…), enregistré tout de suite (POST /api/edition/, opération creer) ; sa
 //     ligne s'ajoute à la fin du tableau de sa famille (lib/armes-rendu.mjs#htmlDeLigneDArme, le HTML de la page construite) ;
@@ -9,7 +9,7 @@
 //     note datée : décision R52, annonce de l'éditeur) ;
 //   - au chargement, une arme créée ou supprimée depuis la construction du site apparaît ou disparaît (lignes en attente) ;
 //   - une arme enregistrée : sa ligne suit la case « Arme de départ » (fond bleu, infobulle) et sa description (infobulle du nom) ;
-//   - à chaque étape, l'évènement « armes:rafraichir » redemande au script de la page le total des améliorations et la fiche ouverte (aucun module partagé
+//   - à chaque étape, l'évènement « armes:rafraichir » redemande au script de la page la fiche ouverte et le filtre (aucun module partagé
 //     entre les deux scripts).
 import { cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';

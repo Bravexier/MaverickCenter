@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { COMPETENCES_D_ARME } from '../src/lib/arme-champs.mjs';
 import { ancreDArme, ancreDeMateriau, chargerArmes } from '../src/lib/armes-db.mjs';
-import { COLONNES_D_UNE_ARME, htmlDesEffets } from '../src/lib/armes-rendu.mjs';
+import { COLONNES_D_UNE_ARME, htmlDesEffets, RENDUS_DES_ARMES } from '../src/lib/armes-rendu.mjs';
 import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -115,23 +115,34 @@ test('règles de l’onglet avec la mise en forme du classeur : définitions en 
   assert.ok(!/[*_]{1,3}(Recharge|Dague|CAS)/.test(regles), 'aucune marque Markdown laissée telle quelle');
 });
 
-test('à côté des tableaux : la fiche (un seul cadre, remplie par le script), puis les matériaux et les améliorations côte à côte', options, () => {
+test('à côté des tableaux, toujours affiché : la fiche (un seul cadre, vide au départ, remplie par le script), puis les matériaux et les améliorations côte à côte', options, () => {
   const cote = main.slice(main.indexOf('<aside class="armes-cote"'), main.indexOf('</aside>'));
-  assert.match(cote, /^<aside class="armes-cote"[^>]*>\s*<section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite" hidden><\/section>\s*<div class="armes-cote__tables">\s*<details class="armes-famille armes-materiaux"/);
+  // « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure » (demande du propriétaire, 2026-10-16) : la fiche n'est plus cachée
+  assert.match(cote, /^<aside class="armes-cote"[^>]*>\s*<section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite">\s*<p class="arme-fiche__vide">Choisissez une arme[^<]+<\/p>\s*<\/section>\s*<div class="armes-cote__tables">\s*<details class="armes-famille armes-materiaux"/);
   assert.match(cote, /<\/details>\s*<details class="armes-famille armes-ameliorations"/);
   assert.ok(!cote.includes('arme-resume') && !cote.includes('armes-cote__haut'), 'plus de second cadre');
+  // les infobulles des tuiles de la fiche : écrites par le script hors du panneau, qui défile
+  assert.match(main, /<\/aside>\s*<\/div>\s*<div class="armes-bulles" data-armes-bulles><\/div>/);
 });
 
-test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec le total ; le fer est le matériau par défaut', options, () => {
+test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morceaux ; améliorations +1 à +10 sans ligne Total ; le fer est le matériau par défaut', options, () => {
   for (const m of armes.materiaux) {
     const c = couleurDeMateriau(m.ligne.ressource_id);
-    assert.ok(main.includes(`id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''}`), m.nom);
-    assert.ok(main.includes(`style="--mat: ${c.fond}; --mat-texte: ${c.texte}"`), `${m.nom} : sa couleur`);
+    // la couleur sur la ligne entière (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau »)
+    assert.ok(main.includes(`id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''} style="--mat: ${c.fond}; --mat-texte: ${c.texte}">`), m.nom);
   }
+  assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
+  // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets, en morceaux frères ; le mot « Dégâts » reste pour
+  // les lecteurs d'écran (les effets se modifient sur la page Composants, R62 : le test lit ceux de la base)
+  for (const m of armes.materiaux) assert.ok(main.includes(RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)), `${m.nom} : ses effets`);
+  const avecBonus = armes.materiaux.map((m) => RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)).filter((h) => h.includes('materiau-effet__bonus'));
+  assert.ok(avecBonus.length > 0);
+  for (const h of avecBonus) assert.match(h, /^<span class="materiau-effet"[^>]*><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>[+−]\d+<\/span>(<span class="materiau-effet__(cran|secondaire)">[^<]+<\/span>)*<\/span>$/);
   assert.deepEqual(armes.materiaux.filter((m) => m.defaut).map((m) => m.nom), ['Fer']);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);
-  // le Ricken d'or en icône (demande du propriétaire : les monnaies en icônes, lib/monnaies.mjs)
-  assert.match(main, /<td colspan="2" data-armes-total>\d+ matériaux? \+ <span class="montant" data-montant="\d+ RO"[^>]*>(<span class="montant__part">\d+&#8239;<span class="piece piece--(pp|ro|rf)"[^>]*><\/span><\/span> ?)+<\/span><\/td>/);
+  // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16)
+  const ameliorations = main.slice(main.indexOf('id="ameliorations-arme"'), main.indexOf('</details>', main.indexOf('id="ameliorations-arme"')));
+  assert.ok(!ameliorations.includes('<tfoot>') && !main.includes('data-armes-total'));
   for (const [abr, id] of [['PP', 'pp'], ['RO', 'ro'], ['RF', 'rf']]) {
     assert.ok(main.includes(`<template data-armes-piece="${abr}"><span class="piece piece--${id}"`), `l’icône ${abr} que reprend le script`);
   }

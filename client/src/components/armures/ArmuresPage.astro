@@ -2,13 +2,12 @@
 import armuresCss from '../../styles/armures/armures.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { ARMURE_COMPLETE, type chargerArmures, type contexteDesArmures } from '../../lib/armures-db.mjs';
-import { analyserAmeliorationDeProtection } from '../../lib/armure-champs.mjs';
 import {
   COULEURS_DES_TYPES, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau,
   htmlDeLigneDePiece, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
 import { RENDUS_DES_ARMES } from '../../lib/armes-rendu.mjs';
-import { htmlAvecMonnaies, htmlDeMontant, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 
 // Onglets « Armures » et « Boucliers » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro, qui pose les onglets ; demande du
 // propriétaire, 2026-10-16 : « A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armures/, dont
@@ -46,13 +45,6 @@ const parType = TYPES_DE_LA_GRILLE.map((type) => ({ type, armures: armures.combi
 const matiereDe = new Map(armures.matieres.map((m) => [m.cle, m]));
 const boucliersParForme = armures.formes.map((f) => ({ forme: f, boucliers: armures.boucliers.filter((b) => b.classe_id === f.id) }));
 const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-/** La ligne TOTAL d'un tableau d'améliorations, refaite depuis ses niveaux (comme le script de la page) : « 1 300 [RO] + 2 matériaux ». */
-function totalHtml(cible: 'armure' | 'bouclier') {
-  const niveaux = armures.ameliorations[cible].map((a) => analyserAmeliorationDeProtection(cible, a.cout_brut, a.effet_brut));
-  const ro = niveaux.reduce((s, n) => s + (n.cout_ro ?? 0), 0);
-  const mat = niveaux.reduce((s, n) => s + (n.cout_materiaux ?? 0), 0);
-  return `${htmlDeMontant(String(ro), 'RO')}${mat ? ` + ${mat} matériau${mat > 1 ? 'x' : ''}` : ''}`;
-}
 const edP = (id: string, colonne: string) => attributEd('bouclier_poids', { id }, colonne);
 const legende = (
   TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype" style="--t: ${couleurDuType(t)}">${t}</span>`).join(' ')
@@ -173,7 +165,6 @@ const legende = (
                   </tr>
                   {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
                 </tbody>
-                <tfoot><tr><th scope="row">Total</th><td colspan="2" data-armures-total="armure" set:html={totalHtml('armure')} /></tr></tfoot>
               </table>
             </div>
           </details>
@@ -270,7 +261,6 @@ const legende = (
                   </tr>
                   {armures.ameliorations.bouclier.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
                 </tbody>
-                <tfoot><tr><th scope="row">Total</th><td colspan="2" data-armures-total="bouclier" set:html={totalHtml('bouclier')} /></tr></tfoot>
               </table>
             </div>
           </details>

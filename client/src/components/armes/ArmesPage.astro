@@ -3,7 +3,7 @@ import armesCss from '../../styles/armes/armes.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
-import { COMPETENCES_D_ARME, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
+import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import TableauArmes from './TableauArmes.astro';
@@ -14,10 +14,12 @@ import TableauArmes from './TableauArmes.astro';
 // markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : un panneau (`section.equipement-panneau#armes`, ouvert au départ), rendu
 // depuis les tables de la base (lib/armes-db.mjs), jamais depuis le Markdown de la page « Armes ». Les règles de l'onglet (texte du classeur avec sa
 // mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
-// Arbalète, et « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, dans un panneau large, quand
-// une arme est sélectionnée, sa fiche (un seul cadre, avec son bouton Fermer) et, dessous, les matériaux et les améliorations côte à côte : choisir un
-// matériau et une amélioration ajuste les dégâts, la durabilité, les effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs).
-// Sans JavaScript, tout est affiché (ni fiche ni filtre).
+// Arbalète, et « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, toujours affiché et de la
+// largeur de celui des armures (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour
+// l'armure, et avec la même largeur »), le panneau de l'arme : sa fiche (vide tant qu'aucune arme n'est choisie ; un seul cadre, réduit à trois tuiles,
+// le détail de leur calcul dans leur infobulle, puis effets, description et origine) et, dessous, les matériaux (chaque ligne dans la couleur du
+// matériau, ses effets sur une ligne) et les améliorations côte à côte : choisir un matériau et une amélioration ajuste les dégâts, la durabilité, les
+// effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (ni fiche ni filtre).
 // Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles et leurs champs modifiables
 // (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici qu'en lecture. CSS : styles/armes/armes.css (?raw, inséré ici seulement).
 type Armes = ReturnType<typeof chargerArmes>;
@@ -30,7 +32,6 @@ interface Props {
   resume?: string | null;
 }
 const { armes, contexte, regles, resume } = Astro.props;
-const total = totalDesAmeliorations(armes.ameliorations);
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
@@ -84,7 +85,9 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
     </div>
 
     <aside class="armes-cote" aria-label="Arme choisie, matériaux et améliorations">
-      <section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite" hidden></section>
+      <section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite">
+        <p class="arme-fiche__vide">Choisissez une arme dans un tableau : sa fiche s’affiche ici, forgée dans le matériau et avec l’amélioration choisis dessous.</p>
+      </section>
 
       <div class="armes-cote__tables">
         <details class="armes-famille armes-materiaux" id="materiaux-armes" open>
@@ -92,12 +95,12 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
           <p class="armes-famille__note js-seul">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
           <div class="armes-wrap">
             <table class="armes-table armes-table--materiaux">
-              <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col">Effets</th></tr></thead>
+              <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col" title="Le bonus aux dégâts, puis les autres effets">Effets</th></tr></thead>
               <tbody>
                 {
                   armes.materiaux.map((m) => (
-                    <tr class="materiau" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
-                      <th scope="row" class="materiau__nom" style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
+                    <tr class="materiau" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined} style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
+                      <th scope="row" class="materiau__nom">
                         <span data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
                           <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
                         </span>
@@ -133,15 +136,14 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
                   ))
                 }
               </tbody>
-              <tfoot>
-                <tr><th scope="row">Total</th><td colspan="2" data-armes-total set:html={htmlAvecMonnaies(total)} /></tr>
-              </tfoot>
             </table>
           </div>
         </details>
       </div>
     </aside>
   </div>
+  {/* les infobulles des tuiles de la fiche (le détail des dégâts, de la durabilité et du coût), écrites par le script hors du panneau de côté, qui défile */}
+  <div class="armes-bulles" data-armes-bulles></div>
 </div>
 </section>
 
