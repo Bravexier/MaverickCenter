@@ -1,23 +1,26 @@
 ---
 import type { chargerBatons } from '../../lib/batons-db.mjs';
 import { htmlDeLigneDeBatons } from '../../lib/batons-rendu.mjs';
-import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { url } from '../../lib/wiki';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
 // Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; demandes du
 // propriétaire, 2026-10-16 : d'abord un onglet de « Équipement », puis « On y remettrait à ce moment le tableau Bâton magique », dans la ceinture) :
 // un panneau (`section.ceinture-panneau#batons-magiques`, l'ancre de l'ancien onglet) rendu depuis la base (lib/batons-db.mjs), jamais depuis le
-// Markdown de la page « Bâton magique », dont seules les règles s'affichent, repliées comme celles des autres onglets : l'introduction et « Comment
-// fabriquer un bâton magique ? ». Puis le tableau (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur
-// de sa magie dans l'onglet « Bâton magique » du classeur (lib/ceinture-couleurs.mjs), sans colonne Magie : sa gemme et son bois (en lien vers
-// « Composants », où leurs prix se modifient, chacun avec son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le
-// prix (les matériaux de la recette : lib/batons-db.mjs#prixDuBaton) du niveau choisi. Pas encore modifiable sur le site de dev. CSS :
-// styles/ceinture/ceinture.css (la pastille de la gemme : styles/equipement/equipement.css).
+// Markdown de la page « Bâton magique » ; en tête, son panneau de règles, replié comme ceux des autres onglets
+// (components/equipement/PanneauDeRegles.astro, migration 0056, id `batons-magiques` : l'introduction de la page, et « Comment fabriquer un bâton
+// magique ? » en tuile). Puis le tableau
+// (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie dans l'onglet « Bâton magique » du
+// classeur (lib/ceinture-couleurs.mjs), sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec
+// son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le prix (les matériaux de la recette :
+// lib/batons-db.mjs#prixDuBaton) du niveau choisi. Le tableau n'est pas encore modifiable sur le site de dev (le panneau de règles l'est). CSS :
+// styles/ceinture/ceinture.css (la pastille de la gemme et le panneau de règles : styles/equipement/equipement.css).
 type Batons = ReturnType<typeof chargerBatons>;
 interface Props {
   batons: Batons;
-  /** HTML des règles : l'introduction et la fabrication de la page « Bâton magique » (null si la page ne les écrit plus) */
-  regles: { introduction: string | null; fabrication: string | null };
+  /** le panneau de règles du sous-onglet (`batons-magiques`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
   /** l'id du panneau (lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE), son nom, et s'il est le sous-onglet ouvert au départ */
   id: string;
   nom: string;
@@ -25,32 +28,11 @@ interface Props {
 }
 const { batons, regles, id, nom, actif = false } = Astro.props;
 const composants = url('ressources/composants/');
-// la fabrication d'un seul paragraphe suit « Fabrication : » sur sa ligne ; plus longue, elle vient dessous
-const fabricationEnLigne = regles.fabrication && /^<p>(?:(?!<p[\s>])[\s\S])*<\/p>\s*$/.test(regles.fabrication)
-  ? regles.fabrication.trim().replace(/^<p>/, '').replace(/<\/p>$/, '') : null;
 ---
 
 <section class={`ceinture-panneau batons${actif ? ' is-active' : ''}`} id={id} aria-labelledby={`titre-${id}`} data-batons>
   <h3 class="ceinture-panneau__titre" id={`titre-${id}`}>{nom}</h3>
-  {batons.page?.resume && <p class="batons__chapo" set:html={htmlAvecMonnaies(batons.page.resume)} />}
-  {
-    (regles.introduction || regles.fabrication) && (
-      <details class="batons-regles">
-        <summary>Règles des bâtons magiques : port, cumul, fabrication</summary>
-        <div class="prose batons-regles__texte">
-          {regles.introduction && <Fragment set:html={regles.introduction} />}
-          {fabricationEnLigne ? (
-            <p class="batons-regles__fabrication"><strong>Fabrication</strong> : <Fragment set:html={fabricationEnLigne} /></p>
-          ) : regles.fabrication && (
-            <>
-              <p class="batons-regles__fabrication"><strong>Fabrication</strong></p>
-              <Fragment set:html={regles.fabrication} />
-            </>
-          )}
-        </div>
-      </details>
-    )
-  }
+  <PanneauDeRegles panneau={regles} />
   <p class="batons-aide">
     Un bâton par magie, dans la couleur de sa magie : sa gemme et son bois (leur description et leurs prix en infobulle, et dans{' '}
     <a href={`${composants}#gemmes`}>Composants</a>), le bonus passif qu’il donne aux sorts au niveau choisi, et le prix de ses matériaux.

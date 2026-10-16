@@ -1,6 +1,7 @@
 // Le vocabulaire des mots-clés (table `mot_cle`, migration 0043 ; demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter /
 // modifier des mots clés », une suppression le retirant « de tous les endroits qui le référencent » ; les événements de la chronologie, eux, ont leurs
-// catégories : lib/chronologie.mjs). Fonctions et constantes pures, sans dépendance navigateur ni Astro : partagées par le service
+// catégories : lib/chronologie.mjs ; depuis la migration 0056, un glossaire que les textes citent par des balises : lib/mots-cles-balises.mjs).
+// Fonctions et constantes pures, sans dépendance navigateur ni Astro : partagées par le service
 // (serveur/edition-chronologie.mjs), les gabarits et l'éditeur (src/scripts/edition/mots-cles.mjs).
 import { CLASS_GROUPS } from './class-groups.mjs';
 import { MOT_CLE_DE_CATEGORIE } from './classe-champs.mjs';

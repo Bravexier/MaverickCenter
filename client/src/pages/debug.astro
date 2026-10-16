@@ -247,7 +247,8 @@ const actif = !site.prod && !portable;
           <summary>
             <h2 class="debug-bloc__titre" id="debug-journaux-titre">Journaux du serveur</h2>
           </summary>
-          <div class="debug-bloc__contenu">
+          {/* data-mots-cles-bruts : le journal du service tel qu'écrit (une balise du glossaire citée par une requête n'y est jamais rendue) */}
+          <div class="debug-bloc__contenu" data-mots-cles-bruts>
             <form class="debug-journaux__filtres" data-journaux-filtres>
               <fieldset class="debug-journaux__niveaux">
                 <legend>Niveaux</legend>

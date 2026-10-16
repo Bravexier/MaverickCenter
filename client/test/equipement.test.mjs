@@ -4,8 +4,8 @@
 // objets à la ceinture devenue l'onglet « Ceinture », où les bâtons magiques reviennent, en sous-onglet) : ses onglets et les sous-onglets de la
 // ceinture (lib/equipement.mjs), les adresses des pages qu'ils servent (lib/metiers.mjs#adresseDePage, et lib/nav.mjs#PAGES_RENOMMEES pour la page
 // 404 : les deux doivent s'accorder), le menu, et le sous-onglet des bâtons magiques chargé depuis la base (lib/batons-db.mjs, lib/batons-rendu.mjs). Le site de dev
-// peut réécrire la page « Bâton magique » : ce qui vient de l'import est lu tel que l'import l'a laissé (lib/historique-site.mjs), la page suit le
-// texte actuel.
+// peut réécrire la page « Bâton magique » et le panneau de règles du sous-onglet : ce qui vient de l'import est lu tel que l'import l'a laissé
+// (lib/historique-site.mjs). Les panneaux de règles eux-mêmes : test/panneaux-regles.test.mjs.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -13,11 +13,12 @@ import {
 } from '../src/lib/equipement.mjs';
 import { adresseDePage, cheminDePage, pageSansAdresse } from '../src/lib/metiers.mjs';
 import { NAV, PAGES_RENOMMEES, adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
-import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME, TITRE_DE_LA_FABRICATION } from '../src/lib/batons-db.mjs';
+import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME } from '../src/lib/batons-db.mjs';
 import { ancreDeBatons, bulleDeBatons, couleursDesBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
 import { htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { couleurDeMagie } from '../src/lib/sort-format.mjs';
 import { FAMILLE_DES_BATONS, sectionDuCorps } from '../src/lib/ceinture-db.mjs';
+import { ordonnerBlocs } from '../src/lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 
@@ -112,14 +113,13 @@ test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de l
   assert.deepEqual(vue, db.prepare('SELECT id FROM baton_magique').all().map((b) => b.id).sort());
 });
 
-test('bâtons : les règles sont l’introduction et la fabrication de la page « Bâton magique » ; l’import les écrivait, l’onglet suit leur texte actuel', () => {
-  for (const [regle, titre, attendu] of [['introduction', null, /ceinture/], ['fabrication', TITRE_DE_LA_FABRICATION, /Volonté \+ Intelligence/]]) {
-    const importe = historique.valeurDImport('page', { id: PAGE_DES_BATONS }, 'corps_md');
-    assert.match(sectionDuCorps(importe, titre) ?? '', attendu, `l’import écrit la section « ${titre ?? 'introduction'} »`);
-    const actuel = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.corps_md;
-    assert.equal(batons.regles[regle], actuel === undefined ? null : sectionDuCorps(actuel, titre), `${regle} : le texte actuel`);
-    if (batons.regles[regle]) assert.ok(!batons.regles[regle].split('\n').some((l) => /^#{1,2} /.test(l)), `${regle} : la section seule`);
-  }
+test('bâtons : leurs règles (migration 0056) sont le panneau du sous-onglet — l’introduction de la page « Bâton magique », puis « Comment fabriquer un bâton magique ? » en tuile, copiées de l’import', () => {
+  const importe = historique.valeurDImport('page', { id: PAGE_DES_BATONS }, 'corps_md');
+  const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'batons-magiques'));
+  assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [[0, null], [1, 'Comment fabriquer un bâton magique ?']]);
+  assert.equal(blocs[0].texte, sectionDuCorps(importe, null), 'l’introduction de la page');
+  assert.equal(blocs[1].texte, sectionDuCorps(importe, '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?'), 'la fabrication');
+  assert.match(blocs[1].texte, /Volonté \+ Intelligence/);
   assert.equal(batons.page?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.titre);
 });
 

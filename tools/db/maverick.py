@@ -9,6 +9,7 @@ Bibliothèque standard uniquement. Contrat :
     with session('magies', 'bestiaire', rows='data/rows') as f:   # PLUSIEURS familles dans UNE transaction (contrat central : une famille qui en cite une autre
                                                         # se réimporte avec elle ; foreign_key_check à la fin) ; chaque ligne écrite précise alors son origine=
         f.page({'id': ..., 'type': ..., 'slug': ..., 'titre': ..., 'corps_md': ..., 'statut': ..., 'aliases': [...], 'tags': [...], 'sources': [...]})
+                                                        # tags : seuls ceux du vocabulaire (mot_cle) sont posés, un import n'en crée pas (migration 0056)
         f.inserer('magie', id=..., nom=..., source_ref=...)      # origine = 'magies' posée par la famille ; origine différente : refusée
         f.entite('magie', 'magies/magie-du-sang', 'magies/magie-du-sang', principale=True)
         f.note('sort', id, rang, texte, source_ref, champ=..., cellule=..., nature='commentaire' | 'reponse', repond_a=rang_du_fil)
@@ -56,14 +57,14 @@ def normalize(value):
 
 
 def _vocabulaire_du_site(db):
-    """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes, employes).
-    ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé) -> son id ; supprimes : id d'un mot-clé supprimé -> l'id du
-    mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None ; employes : tous les ids qu'il a créés ou supprimés.
+    """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes).
+    ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé ou supprimé) -> son id ; supprimes : id d'un mot-clé supprimé ->
+    l'id du mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None.
     Le journal ne note d'une fusion que ce qu'elle change : quand aucune page n'est passée de l'un à l'autre (toutes portaient déjà le second, ou le
     premier n'en avait aucune sur le site de dev), elle ne se distingue pas d'une suppression (None)."""
-    ecritures, supprimes, employes = {}, {}, set()
+    ecritures, supprimes = {}, {}
     if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").fetchone():
-        return ecritures, supprimes, employes
+        return ecritures, supprimes
     lignes = db.execute("SELECT lot_id, table_nom, cle, operation, avant, apres FROM historique_modification "
                         "WHERE table_nom IN ('mot_cle', 'page_tag') ORDER BY fait_le, lot_id, rang").fetchall()
     for lot, table, cle, operation, avant, apres in lignes:
@@ -71,7 +72,6 @@ def _vocabulaire_du_site(db):
             continue
         ident = json.loads(cle).get('id')
         avant, apres = json.loads(avant or 'null'), json.loads(apres or 'null')
-        employes.add(ident)
         if operation == 'modifier' and avant and 'libelle' in avant:
             ecritures[normalize(avant['libelle'])] = ident
         elif operation == 'supprimer':
@@ -84,46 +84,54 @@ def _vocabulaire_du_site(db):
                     if a.get('tag_id') == ident and b.get('tag_id'):
                         cible = b['tag_id']
             supprimes[ident] = cible
-    return ecritures, supprimes, employes
+    return ecritures, supprimes
 
 
 def mot_cle(db, libelle):
-    """L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), créé s'il manque (migration 0043 : vocabulaire
-    `mot_cle`) ; un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi (historique du site : un id ne resert jamais).
+    """L'id du mot-clé du vocabulaire qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), ou None : un import ne CRÉE
+    jamais de mot-clé (migration 0056 : le vocabulaire, devenu un glossaire, est celui du site de dev ; avant, un mot-clé qui manquait était créé).
     Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
-    mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé ne
-    revient pas : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ; l'écriture d'un mot-clé existant ne change pas
-    (elle se change sur /recherche/ du site de dev)."""
+    mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé, et
+    toute écriture inconnue du vocabulaire, ne mènent à rien : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ;
+    l'écriture d'un mot-clé existant ne change pas (elle se change sur /recherche/ du site de dev)."""
     cle = normalize(libelle)
     if not cle:
         raise ValueError(f'mot-clé sans lettre ni chiffre : {libelle!r}')
     trouve = db.execute('SELECT id FROM mot_cle WHERE libelle_cle = ?', (cle,)).fetchone()
     if trouve:
         return trouve[0]
-    ecritures, supprimes, employes = _vocabulaire_du_site(db)
-    if cle in ecritures:
-        ident, vus = ecritures[cle], set()
-        while ident is not None and ident not in vus and not db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
+    ecritures, supprimes = _vocabulaire_du_site(db)
+    ident, vus = ecritures.get(cle), set()
+    while ident is not None and ident not in vus:
+        if db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
+            return ident
+        vus.add(ident)
+        ident = supprimes.get(ident)
+    return None
+
+
+def mots_cles_poses(db, libelles):
+    """Les mots-clés que poserait une liste `tags:` : [(ordre, id)] dans l'ordre de `libelles` (mot_cle : une écriture inconnue ou d'un mot-clé que le
+    site a supprimé n'est pas posée, une écriture qui mène à un mot-clé déjà posé non plus ; l'ordre garde sa place), et les écritures inconnues
+    (non posées faute de mot-clé)."""
+    poses, vus, inconnues = [], set(), []
+    for i, libelle in enumerate(libelles):
+        ident = mot_cle(db, libelle)
+        if ident is None:
+            inconnues.append(libelle)
+        elif ident not in vus:
             vus.add(ident)
-            ident = supprimes.get(ident)
-        return ident
-    ident, n = cle, 2
-    while ident in employes or db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
-        ident, n = f'{cle}-{n}', n + 1
-    db.execute('INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES (?,?,?)', (ident, libelle, cle))
-    return ident
+            poses.append((i, ident))
+    return poses, inconnues
 
 
 def poser_les_mots_cles(db, page_id, libelles):
-    """Les lignes page_tag d'une page, dans l'ordre de `libelles` (mot_cle : un mot-clé que le site a supprimé n'est pas posé, une écriture qui mène
-    à un mot-clé déjà posé non plus ; l'ordre garde sa place)."""
-    poses = set()
-    for i, libelle in enumerate(libelles):
-        ident = mot_cle(db, libelle)
-        if ident is None or ident in poses:
-            continue
-        poses.add(ident)
+    """Les lignes page_tag d'une page, dans l'ordre de `libelles` (mots_cles_poses) -> les écritures non posées faute de mot-clé du vocabulaire
+    (inconnues ou supprimées par le site de dev), pour que l'appelant les signale."""
+    poses, inconnues = mots_cles_poses(db, libelles)
+    for i, ident in poses:
         db.execute('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?,?,?)', (page_id, i, ident))
+    return inconnues
 
 
 def lire_schema(chemin=SCHEMA):
@@ -304,6 +312,7 @@ class Famille:
                 raise ValueError(f'famille inconnue : {fam!r} (la déclarer dans data/rows/famille.sql)')
         self.supprimees = {}
         self.tolerees = []
+        self.mots_cles_ignores = []   # (page_id, écriture) : mots-clés de `tags:` absents du vocabulaire, non posés (Famille.page)
 
     def __enter__(self):
         self.db.execute('BEGIN')
@@ -351,7 +360,8 @@ class Famille:
         self.db.execute(f'INSERT INTO "{table}" ({", ".join(noms)}) VALUES ({", ".join("?" for _ in noms)})', [ligne[n] for n in noms])
 
     def page(self, p):
-        """Une page et ses lignes liées (alias, mots-clés, sources). Les clés (titre_cle, alias.cle) sont calculées ici, le mot-clé d'un libellé est trouvé (ou créé) par mot_cle()."""
+        """Une page et ses lignes liées (alias, mots-clés, sources). Les clés (titre_cle, alias.cle) sont calculées ici ; le mot-clé d'un libellé est trouvé
+        par mot_cle(), jamais créé (migration 0056) : une écriture inconnue du vocabulaire n'est pas posée (Famille.mots_cles_ignores les garde)."""
         if not p['corps_md'].endswith('\n'):
             raise ValueError(f"{p['id']} : le corps doit finir par un retour à la ligne")
         donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
@@ -360,7 +370,8 @@ class Famille:
                      source_ref=p.get('source_ref'), origine=p.get('origine'))
         for i, texte in enumerate(p.get('aliases', [])):
             self.db.execute('INSERT INTO alias (page_id, ordre, texte, cle) VALUES (?,?,?,?)', (p['id'], i, texte, normalize(texte)))
-        poser_les_mots_cles(self.db, p['id'], p.get('tags', []))
+        for libelle in poser_les_mots_cles(self.db, p['id'], p.get('tags', [])):
+            self.mots_cles_ignores.append((p['id'], libelle))
         for i, texte in enumerate(p.get('sources', [])):
             s = decouper_source(texte)
             self.db.execute('INSERT OR IGNORE INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) '
@@ -408,6 +419,19 @@ def session(*familles, rows, schema=SCHEMA, heritees=None):
     with Famille(db, familles, schema, heritees=heritees) as f:
         yield f
     exporter(db, rows, schema)
+    if f.mots_cles_ignores:
+        print(signaler_mots_cles_ignores(f.mots_cles_ignores))
+
+
+def signaler_mots_cles_ignores(ignores, exemples=10):
+    """Le message d'un import qui n'a pas posé des mots-clés absents du vocabulaire : [(page_id, écriture)] -> une ligne de résumé et des exemples."""
+    ecritures = sorted({e for _, e in ignores}, key=normalize)
+    lignes = [f'{len(ignores)} mot(s)-clé(s) non posé(s) sur les pages ({len(ecritures)} écriture(s)) : absents du vocabulaire du site de dev, '
+              "un import n'en crée pas (migration 0056) ; à créer sur /recherche/ du site de dev s'ils doivent l'être"]
+    lignes += [f'    {e!r}' for e in ecritures[:exemples]]
+    if len(ecritures) > exemples:
+        lignes.append(f'    … {len(ecritures) - exemples} autre(s)')
+    return '\n'.join(lignes)
 
 
 def decouper_source(texte):
@@ -547,8 +571,13 @@ def reconstruire(chemin_db, dossier_rows, schema=SCHEMA, heritees=None):
 # --------------------------------------------------------------------------------------------------------------------
 # Migration de schéma (prototype de `npm run db:migrate`, design.md §10.1)
 # --------------------------------------------------------------------------------------------------------------------
+_LITTERAL_OU_COMMENTAIRE = re.compile(r"('(?:[^']|'')*')|--[^\n]*")
+
+
 def _normaliser_sql(sql):
-    sql = re.sub(r'--[^\n]*', '', sql or '')
+    # un commentaire « -- » hors d'une chaîne seulement : le « '*--*' » des CHECK de clés n'en est pas un (sinon la fin de sa ligne disparaissait,
+    # virgule comprise, et une colonne ajoutée par ALTER TABLE, dont SQLite écrit la virgule sur la ligne suivante, ne se comparait plus : 0056)
+    sql = _LITTERAL_OU_COMMENTAIRE.sub(lambda m: m.group(1) or '', sql or '')
     sql = re.sub(r'"([A-Za-z_][A-Za-z_0-9]*)"', r'\1', sql)
     sql = re.sub(r'\s+', ' ', sql).strip().lower()
     return re.sub(r' ?([,()]) ?', r'\1', sql).rstrip(';')

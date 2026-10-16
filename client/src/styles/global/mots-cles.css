@@ -1,0 +1,16 @@
+/* Les mots-clés du glossaire dans les textes (lib/mots-cles-balises.mjs, posés par src/middleware.mjs ; demande du propriétaire : « Partout où un mot-clé est
+   utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible ») :
+   - `strong.mot-cle` : le mot-clé en gras ; quand il est décrit (`[data-bulle]`), un soulignement pointillé discret dit qu'il a une définition, dans la
+     bulle commune du site (components/Infobulles.astro : survol, focus clavier, toucher) ;
+   - `span.mot-cle-definition` : le mode complet, « **Libellé** : définition », dans le fil du texte. */
+.mot-cle { font-weight: 700; }
+.mot-cle[data-bulle] {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+.mot-cle[data-bulle]:focus-visible { outline: 2px solid var(--mag, var(--accent)); outline-offset: 2px; border-radius: var(--radius-xxs); }
+a .mot-cle[data-bulle] { cursor: inherit; }
+.mot-cle-definition__nom { font-weight: 700; }

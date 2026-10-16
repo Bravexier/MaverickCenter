@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 55;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 56;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -108,24 +108,40 @@ CREATE INDEX alias_cle   ON alias (cle);
 
 CREATE INDEX alias_texte ON alias (texte);
 
--- Vocabulaire des mots-clés (migration 0043, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots
--- clés » ; une suppression le retire de tous les endroits qui le citent). Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé
--- sur les pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis FIGÉ : un
--- renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site). libelle_cle = normalize(libelle) :
--- les écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
--- Les importeurs (tools/db/maverick.py, pages_md.py) et le service (serveur/edition.mjs#motCleDe) cherchent un libellé par libelle_cle et ne créent un
--- mot-clé que s'il manque (jamais sur un id déjà employé) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
+-- Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). Demandes du
+-- propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les
+-- endroits qui le citent (0043 : les pages qui le portent, page_tag, par ON DELETE CASCADE) ; le 2026-10-16, la refonte en glossaire (0056) :
+-- `description` est la définition, texte simple, balises du glossaire comprises (forme canonique) ; NULL : pas encore décrit. Dans un texte
+-- (corps d'une page, bloc d'un panneau de règles, définition…), le mot-clé n'est jamais repéré tout seul : une balise explicite le cite, « {{<ref>}} » (le mot-clé en gras, sa définition en infobulle),
+-- « {{<ref>|<texte>}} » (un autre texte affiché) ou « {{<ref>:}} » (« mode complet » : le libellé, « : », la définition) ; <ref> est l'id ou
+-- l'écriture du mot-clé, le service enregistre la forme canonique par l'id (« {{<id>|<texte>}} », « {{<id>:}} ») ; le rendu est celui du site.
+-- Ces balises ne sont PAS des clés étrangères : à la suppression d'un mot-clé, le service les retire des textes (à la fusion, il les recible vers
+-- le mot-clé qui reçoit) par le chemin normal d'une modification, et db:check contrôle qu'aucune ne vise un mot-clé absent (règle du site).
+-- Depuis 0056, le vocabulaire ne garde que les mots-clés dont le site se sert pour ranger ses pages (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
+-- et ceux du glossaire ; les autres ont été retirés des pages. Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé sur les
+-- pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis
+-- FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
+-- des 400 mots-clés que la migration 0056 a retirés, qui peuvent resservir (une nouvelle entrée du glossaire « Feu » reprend `feu`, et l'ancienne
+-- adresse /recherche/?mot-cle=feu mène à elle : voulu). libelle_cle = normalize(libelle) : les écritures « espace/temps », « espace temps » et
+-- « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
+-- Le vocabulaire est celui du site de dev (le service le crée et le modifie : serveur/edition.mjs) : un import ne CRÉE jamais de mot-clé (0056). Les
+-- importeurs (tools/db/maverick.py#mot_cle, pages_md.py) cherchent un libellé par libelle_cle et ne posent qu'un mot-clé qui existe (une écriture
+-- inconnue n'est pas posée : db:sync-pages la signale) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
 -- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
 CREATE TABLE mot_cle (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
-  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/)
-  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire)
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
                                                                  -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+  description TEXT    CHECK (description IS NULL OR length(description) > 0)   -- la définition du glossaire : texte simple, balises du glossaire
+                                                                 -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
+                                                                 -- migration 0056, ajoutée en dernier
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
 -- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
--- cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev).
+-- cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev). La migration 0056 a retiré des pages les mots-clés qu'elle a
+-- retirés du vocabulaire (les ordres des autres ne changent pas : un trou reste).
 CREATE TABLE page_tag (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
   ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas)
@@ -180,6 +196,38 @@ CREATE TABLE page_entite (
 CREATE INDEX page_entite_page ON page_entite (page_id);
 CREATE INDEX page_entite_id   ON page_entite (entite_id);
 CREATE UNIQUE INDEX page_entite_principale ON page_entite (page_id) WHERE principale = 1;   -- au plus une entité principale par page
+
+-- Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). Demandes du propriétaire du 2026-10-16,
+-- pour les onglets Armes, Armures, Boucliers, Bâtons magiques et Accessoires : sans chapeau (la première phrase n'est plus répétée au-dessus du
+-- panneau), un titre et un contenu qui se modifient sur le site de dev, un contenu qui peut comprendre des tuiles (insérées et modifiées en mode
+-- modification). À la création, le texte des blocs est COPIÉ, jamais réécrit, des règles que le site tirait du corps de la page (page.corps_md, qui
+-- reste tel quel : la trace de l'import, pour la recherche) ; depuis, le site de dev en est la source. Pas de provenance (origine, source_ref :
+-- feuille de route, retirées à la 1.0).
+CREATE TABLE panneau_regles (
+  id      TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'ancre de son onglet
+                                                     -- ('armes', 'armures', 'boucliers', 'batons-magiques', 'accessoires')
+  titre   TEXT NOT NULL CHECK (length(titre) > 0),   -- le titre du panneau replié
+  page_id TEXT NOT NULL REFERENCES page(id)          -- la page dont le texte se lit (contexte des [[liens]], recherche) : 'ressources/armes'…
+) STRICT;
+
+CREATE INDEX panneau_regles_page_fk ON panneau_regles (page_id);
+
+-- Un bloc d'un panneau, dans l'ordre de lecture : du texte (tuile = 0), qui suit les colonnes du panneau, ou une tuile (tuile = 1 : encadrée, titre
+-- facultatif). `texte` : le Markdown des pages ([[liens]], gras, listes, monnaies…), balises du glossaire comprises (« {{<id>}} »,
+-- « {{<id>|<texte>}} », « {{<id>:}} » : mot_cle) ; une tuile qui n'écrit que « {{recharge-longue:}} » montre la définition du mot-clé en mode complet.
+CREATE TABLE panneau_regles_bloc (
+  panneau_id TEXT    NOT NULL REFERENCES panneau_regles(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),     -- identifiant du bloc dans son panneau, jamais redonné (un bloc créé prend le plus grand + 1, journal
+                                                     -- et historique compris)
+  ordre      INTEGER NOT NULL CHECK (ordre >= 1),    -- place de lecture ; pas UNIQUE : déplacer un bloc échange deux ordres dans un même lot (à égalité, le rang)
+  tuile      INTEGER NOT NULL CHECK (tuile IN (0, 1)),   -- 1 : une tuile (encadrée, titre facultatif) ; 0 : du texte qui suit les colonnes
+  titre      TEXT    CHECK (titre IS NULL OR length(titre) > 0),   -- le titre d'une tuile ; NULL : sans titre (toujours NULL pour du texte)
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),   -- Markdown des pages, balises du glossaire comprises
+  PRIMARY KEY (panneau_id, rang),
+  CHECK (tuile = 1 OR titre IS NULL)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX panneau_regles_bloc_ordre ON panneau_regles_bloc (panneau_id, ordre);   -- les blocs d'un panneau dans l'ordre de lecture (puis le rang, clé de la table)
 
 -- ====================================================================================================================
 -- 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
@@ -3376,10 +3424,12 @@ CREATE VIEW lien_page AS
 CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
--- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages).
+-- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages),
+-- avec sa définition (glossaire, migration 0056).
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,
-    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
+    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
+    m.description                                                          -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
   FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
@@ -4441,14 +4491,15 @@ CREATE TABLE note_version (
 ) STRICT;
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
--- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043 ;
+-- armures et boucliers : 0046 ; équipement, les panneaux de règles des onglets de /ressources/equipement/ : 0056), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
 CREATE TABLE note_version_ligne (
   version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
   rang        INTEGER NOT NULL CHECK (rang >= 1),                    -- ordre d'affichage
-  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles', 'armures')),
+  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles', 'armures', 'equipement')),
   groupe      TEXT    CHECK (groupe IS NULL OR length(groupe) > 0),
   entite      TEXT    NOT NULL CHECK (length(entite) > 0),
   champ       TEXT    CHECK (champ IS NULL OR length(champ) > 0),    -- libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée)

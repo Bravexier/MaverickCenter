@@ -17,7 +17,8 @@
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
-import { bornes, CATEGORIES, echelleDuPrefixe, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { bornes, CATEGORIES, echelleDuPrefixe, EMPLACEMENT, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, dimensionsDuPortrait, empreinte, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -34,10 +35,18 @@ const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) =>
 
 /**
  * Ce qu'une description de capacité commune peut écrire (décision R69) : des accolades seulement autour d'un entier, « {10} » (un emplacement de valeur
- * commune 10) ; renvoie le message du refus, ou null.
+ * commune 10), ou d'une balise du glossaire des mots-clés (« {{id|texte}} », lib/mots-cles-balises.mjs, que le service a déjà contrôlée) ; renvoie le
+ * message du refus, ou null.
  */
 function refusDeDescription(description) {
-  const reste = String(description ?? '').replace(/\{\d+\}/g, '');
+  const texte = String(description ?? '');
+  let reste = '';
+  let fin = 0;
+  for (const b of lireBalises(texte)) {
+    reste += texte.slice(fin, b.debut);
+    fin = b.fin;
+  }
+  reste = (reste + texte.slice(fin)).replace(EMPLACEMENT, '');
   if (/[{}]/.test(reste)) return 'une accolade ne s’écrit qu’autour d’un nombre entier : « {10} » est une valeur que chaque carte peut changer (curseur).';
   if (emplacements(description).length > 20) return 'au plus 20 valeurs « {N} » par description.';
   // au-delà de 2^53, un nombre ne s'écrit plus tel quel (« 1e+21 ») : comme une valeur propre (valeurs_de_capacite)

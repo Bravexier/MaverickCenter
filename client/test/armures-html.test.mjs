@@ -33,11 +33,16 @@ const panneau = (id) => {
   return main.slice(debut, fin < 0 ? undefined : fin);
 };
 
-test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, Boucliers), les règles de chaque onglet repliées', options, () => {
+test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, Boucliers), le panneau de règles de chaque onglet replié', options, () => {
   assert.match(main, /^<div class="armures" data-armures>/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
-  assert.equal((main.match(/<details class="armures-regles">/g) ?? []).length, 2);
+  // le panneau de règles de chaque onglet (migration 0056), en tête, replié, sans phrase au-dessus
+  for (const id of ['armures', 'boucliers']) {
+    assert.match(panneau(id), new RegExp(`^<section class="armures-panneau equipement-panneau" id="${id}"[^>]*><h2 class="equipement-panneau__titre" id="titre-${id}">[^<]*</h2><details class="preg" id="regles-${id}" data-panneau-regles="${id}">`), id);
+  }
+  assert.ok(!main.includes('armures__chapo'), 'plus de chapeau');
+  assert.equal((main.match(/<details class="preg" /g) ?? []).length, 2);
   assert.ok(panneau('armures').includes('Une armure a besoin de 2 matériaux pour être fabriquée'), 'les règles des armures (le texte de l’onglet)');
   // « Suppression de la création par pièces » (décision R95) : les paragraphes retirés par la migration 0055, et la note de la décision R93 qui les précédait
   for (const retire of ['il faut 2 matériaux pour chaque morceau', 'Comme vous le savez il est possible de fabriquer', 'armures-regles__decision']) {

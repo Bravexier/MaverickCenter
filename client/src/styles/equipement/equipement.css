@@ -1,8 +1,8 @@
 /* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les cinq onglets (Armes, Armures,
    Boucliers, Ceinture, Accessoires : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux
-   se suivent, chacun sous son titre) ; l'infobulle des tuiles des fiches (arme, armure, bouclier) ; la pastille d'une gemme (accessoires, bâtons
-   magiques). Le contenu des onglets a son CSS : styles/armes/armes.css, styles/armures/armures.css, styles/ceinture/ceinture.css,
-   styles/accessoires/accessoires.css. */
+   se suivent, chacun sous son titre) ; les panneaux de règles en tête des onglets (components/equipement/PanneauDeRegles.astro) ; l'infobulle des tuiles
+   des fiches (arme, armure, bouclier) ; la pastille d'une gemme (accessoires, bâtons magiques). Le contenu des onglets a son CSS : styles/armes/armes.css,
+   styles/armures/armures.css, styles/ceinture/ceinture.css, styles/accessoires/accessoires.css. */
 main:has(.equipement) { max-width: 120rem; }
 .equipement {
   --eq: var(--accent);
@@ -31,6 +31,30 @@ html.js .equipement-panneau:not(.is-active) { display: none; }
 /* le titre d'un panneau : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
 html.js .equipement-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipement-panneau + .armures { margin-top: 2rem; }
+
+/* ── Panneaux de règles (components/equipement/PanneauDeRegles.astro, lib/panneaux-regles-rendu.mjs ; demande du propriétaire, 2026-10-16 : « Si
+   l'écran est assez large, la zone de texte prendra deux colonnes. Sinon une seule ») : repliés, le titre dans le summary ; à partir de 64rem, le contenu
+   en deux colonnes séparées d'un filet. Un bloc de texte suit les colonnes (ses paragraphes et ses listes ne se coupent pas) ; une tuile, encadrée comme
+   un don de classe ou une capacité du bestiaire (filet de couleur à gauche), ne se coupe jamais entre deux colonnes. La fin d'un bloc de texte suivi
+   d'une tuile reste avec elle (« CAS PARTICULIERS : », dernière ligne d'un bloc des armes, n'est jamais seule en bas d'une colonne, loin des tuiles
+   qu'elle annonce) : `break-after: avoid` sur le bloc et sur son dernier enfant (Chrome, Safari ; Firefox ne l'applique pas aux colonnes). ── */
+.preg { --preg: var(--eq, var(--accent)); margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.preg > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.preg > summary:focus-visible { outline: 2px solid var(--preg); outline-offset: 2px; border-radius: var(--radius-lg); }
+.preg__corps { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
+@media (min-width: 64rem) { .preg__corps { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
+.preg-bloc__texte > *, .preg-bloc--tuile { break-inside: avoid; }
+.preg-bloc--texte:has(+ .preg-bloc--tuile), .preg-bloc--texte:has(+ .preg-bloc--tuile) > .preg-bloc__texte > :last-child { break-after: avoid; }
+.preg__corps > .preg-bloc:first-child, .preg-bloc__texte > :first-child { margin-top: 0; }
+.preg-bloc__texte p { margin: 0 0 0.75rem; }
+.preg-bloc__texte em { color: color-mix(in srgb, var(--text) 82%, var(--preg)); }
+.preg-bloc__texte :is(ul, ol) { margin: 0 0 0.9rem; padding-left: 1.2rem; }
+.preg-bloc__texte li > p { margin: 0 0 0.35rem; }
+.preg-bloc__texte p:has(+ :is(ul, ol)) { margin-bottom: 0.3rem; }
+.preg-bloc--tuile { display: flow-root; margin: 0 0 0.9rem; padding: 0.5rem 0.85rem 0.6rem; background: var(--bg); border: 1px solid var(--border);
+  border-left: 4px solid var(--preg); border-radius: var(--radius-md); }
+.preg-bloc__titre { margin: 0 0 0.3rem; font-weight: 700; color: color-mix(in srgb, var(--preg) 75%, var(--text)); }
+.preg-bloc--tuile .preg-bloc__texte > :last-child, .preg-bloc--tuile .preg-bloc__texte > :last-child > li:last-child > p:last-child { margin-bottom: 0; }
 
 /* ── L'infobulle d'une tuile des fiches (arme, armure, bouclier : src/scripts/armes.mjs, armures.mjs) : le détail de son calcul, une ligne par
    élément, le total en gras sous un filet, puis les notes (styles/global/infobulles.css pour la bulle elle-même) ── */

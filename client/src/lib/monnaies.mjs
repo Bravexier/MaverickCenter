@@ -9,6 +9,8 @@
 // s'accordent pas restent deux. L'écriture d'origine reste dans `data-montant`, que le mode modification relit.
 // Utilisé par les rendus des pages (lib/armes-rendu.mjs, lib/composants-rendu.mjs, components/accessoires/), par le plugin remark des cases de tableau
 // (lib/markdown-monnaies.mjs) et par le mode modification (lib/markdown-edition.mjs relit une icône en son abréviation). Dessins : styles/global/monnaies.css.
+// Une balise du glossaire des mots-clés (« {{id|10 RO}} », lib/mots-cles-balises.mjs) reste entière, telle qu'écrite : aucun montant n'y est lu (le
+// middleware la rend ensuite ; comme une pastille d'état, lib/sort-format.mjs#morceauxAvecEtats).
 // Fonctions pures, sans dépendance.
 
 /** Les trois monnaies, par abréviation : identifiant (table monnaie), nom, valeur en RF, classe de l'icône. */
@@ -98,12 +100,29 @@ export function htmlDeMontant(nombre, abr, ecrit = `${nombre} ${abr}`, { convers
     .join(' ')}</span>`;
 }
 
+/** Une balise du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{ref}} », « {{ref|texte}} », « {{ref:}} »), repérée sans la lire. */
+const BALISE_DU_GLOSSAIRE = /\{\{[^{}\n]*\}\}/g;
+
 /**
  * Les morceaux d'un texte, dans l'ordre : { texte } | { montant: { nombre, abr, ecrit } } | { monnaie: abréviation seule, telle qu'écrite }.
- * `unite` : l'abréviation de l'en-tête de la colonne (« Coût(RO) ») ; un nombre seul y est un montant dans cette monnaie.
+ * `unite` : l'abréviation de l'en-tête de la colonne (« Coût(RO) ») ; un nombre seul y est un montant dans cette monnaie. Une balise du glossaire est un
+ * morceau { texte } entier, où rien n'est lu.
  */
-export function morceauxDeMonnaie(texte, { unite = null } = {}) {
+export function morceauxDeMonnaie(texte, options = {}) {
   const s = String(texte ?? '');
+  if (!s.includes('{{')) return morceauxHorsBalises(s, options);
+  const sortie = [];
+  let dernier = 0;
+  for (const m of s.matchAll(BALISE_DU_GLOSSAIRE)) {
+    sortie.push(...morceauxHorsBalises(s.slice(dernier, m.index), options), { texte: m[0] });
+    dernier = m.index + m[0].length;
+  }
+  sortie.push(...morceauxHorsBalises(s.slice(dernier), options));
+  return sortie;
+}
+
+/** Les morceaux d'un texte sans balise du glossaire (morceauxDeMonnaie). */
+function morceauxHorsBalises(s, { unite = null } = {}) {
   const sortie = [];
   const ajouterTexte = (t) => {
     if (!t) return;

@@ -79,7 +79,7 @@ JSON seulement pour une structure irrégulière : `page.donnees`, `source.onglet
 | `ecart_source.nature` | 12 valeurs (`valeur_differente`, `texte_different`, `nom_different`, `valeur_absente`, `calcul_different`, `coquille_rapprochee`, `prix_incoherent`, `doublon_de_nom`, `ecart_entre_onglets`, `ecart_avec_fiche`, `forme_non_reconnue`, `conflit_entre_sources`) |
 
 **Provenance.** Toute table importée (125 tables) a `origine` (FK vers `famille`) et `source_ref` : « classeur › onglet › plage » (ex. `Classe Maverick V7 › Mercenaire › AA22:AG27`).
-Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`mot_cle`, migration 0043 : il vit sur le site de dev), les enfants d'une page (`alias`, `page_tag`, `page_source`), les catégories de la chronologie et celles d'un événement (`categorie_chronologie`, `evenement_categorie`) et les tables dérivées.
+Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`mot_cle`, migration 0043 : il vit sur le site de dev ; glossaire et jamais créé par un import depuis 0056), les panneaux de règles de la page Équipement (`panneau_regles`, `panneau_regles_bloc`, migration 0056 : modifiés sur le site de dev), les enfants d'une page (`alias`, `page_tag`, `page_source`), les catégories de la chronologie et celles d'un événement (`categorie_chronologie`, `evenement_categorie`) et les tables dérivées.
 
 **Absent = NULL.** Une valeur typée n'est écrite que si la forme est sans ambiguïté ; sinon `NULL` et la colonne `*_brut` fait foi. Les faits « constatés mais non tranchés »
 (deux sources qui se contredisent, une coquille, un prix incohérent) vont dans `ecart_source`, **sans rien corriger**. Les corrections voulues par le propriétaire passent par le registre (§4.4).
@@ -381,11 +381,12 @@ publication), l'auteur (connexion Discord) et le moment où la base devient cano
 | `STRICT`, `WITHOUT ROWID` | 133 / 49 | retirer les mots-clés (PostgreSQL type déjà strictement) |
 | `GLOB` dans des `CHECK` | 20 | `~` (expression rationnelle) |
 | `json_valid(...)`, `json_type(...)` | 3 / 2 | colonne `jsonb`, `jsonb_typeof` |
+| `json_extract(col, '$.cle')` | hors schéma : requêtes du service et du site (`json_extract(cle, '$.rang')`, `'$.id'` sur `modification` et `historique_modification` ; `json_extract(donnees, '$.chapitre')` sur `page`) | `(cle::jsonb->>'rang')::int` (`->>` rend du texte : convertir quand la valeur est un nombre) |
 | `instr(...)` | 3 | `position(... in ...)` |
 | FTS5 (`page_fts`, `entite_fts`) | 2 tables **dérivées** | `tsvector` + index GIN, requêtes `@@` / `ts_rank` ; seule la route `/recherche` change |
 | `group_concat(...)` | 1 vue (+ `data/derive.sql`, dérivé) | `string_agg(...)` |
 | `PRAGMA user_version`, `PRAGMA foreign_keys` | 2 | table `schema_version` ; clés étrangères toujours actives |
-| `char(n)` dans l'export (caractères de contrôle) | à l'export | `chr(n)` |
+| `char(n)` dans l'export (caractères de contrôle) et les migrations de données (retours à la ligne : 0056) | à l'export, migrations | `chr(n)` |
 | Ordre binaire de `ORDER BY` (clé de l'export, curseurs) | partout | `COLLATE "C"` pour garder le même ordre |
 
 Le reste (index partiels, index d'expression `COALESCE`, comparaisons de tuples, `ON DELETE CASCADE`, `CHECK ... IN`, clés composites) est portable tel quel. Les booléens `INTEGER 0/1` se convertissent ou restent des entiers.

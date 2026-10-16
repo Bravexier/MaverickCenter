@@ -1,6 +1,7 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, armures et boucliers, composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, armures et boucliers, équipement (les panneaux de règles des onglets),
+// composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
@@ -8,6 +9,10 @@
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
 import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
+import { ONGLETS_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
+import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { ordonnerBlocs } from './panneaux-regles-db.mjs';
+import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
@@ -24,6 +29,7 @@ export const DOMAINES = [
   { id: 'bestiaire', titre: 'Bestiaire' },
   { id: 'armes', titre: 'Armes' },
   { id: 'armures', titre: 'Armures et boucliers' },
+  { id: 'equipement', titre: 'Équipement' },
   { id: 'composants', titre: 'Composants' },
   { id: 'chronologie', titre: 'Chronologie' },
   { id: 'mots-cles', titre: 'Mots-clés' },
@@ -37,7 +43,7 @@ export const DOMAINES = [
  * dev) : les contrôles qui balaient tout le texte de la base pour vérifier qu'une ancienne forme n'est pas revenue les sautent — le texte des
  * règles qu'elles citent est contrôlé dans sa propre table.
  */
-export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_ligne', 'historique_modification']);
+export { TABLES_DES_NOTES };
 
 /** Tables que les appelants doivent lire dans chaque base (celles qui manquent dans une base sont simplement absentes). */
 export const TABLES_LUES = [
@@ -47,7 +53,7 @@ export const TABLES_LUES = [
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
-  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -273,6 +279,20 @@ const DEFINITIONS = [
     table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
   },
+  // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0056) : un panneau sous le nom de son onglet (son titre ; l'ordre
+  // de ses blocs : comparerOrdreDesBlocs), puis ses blocs dans l'ordre de lecture, nommés par leur titre de tuile, sinon par leurs premiers mots
+  // (nomDuBloc) ; leur place (`ordre`) n'est pas listée bloc par bloc ; un bloc d'un panneau ajouté ou retiré est dit par le panneau (`suit`)
+  {
+    table: 'panneau_regles', domaine: 'equipement', cle: ['id'], colonnes: colonnesDe('panneau_regles'), genre: 'Panneau de règles',
+    groupe: (r) => ongletDuPanneau(r.id), entite: () => 'Panneau de règles', ordre: (r) => [rangDuPanneau(r.id), 0],
+    resume: (n) => `${n} panneaux de règles`,
+  },
+  {
+    table: 'panneau_regles_bloc', domaine: 'equipement', cle: ['panneau_id', 'rang'], colonnes: colonnesDe('panneau_regles_bloc').filter((c) => c.colonne !== 'ordre'),
+    genre: 'Bloc', suit: (r, x) => !x.dans('ref', 'panneau_regles', r.panneau_id) || !x.dans('dev', 'panneau_regles', r.panneau_id),
+    groupe: (r) => ongletDuPanneau(r.panneau_id), entite: (r, x) => `Panneau de règles › ${x.nomDuBloc(r)}`,
+    ordre: (r) => [rangDuPanneau(r.panneau_id), 1, r.ordre ?? 0, r.rang],
+  },
   // la page des composants (migration 0040) : monnaies, puis les ressources par tableau (matériaux, gemmes et leurs prix, bois, ingrédients d'alchimie,
   // objets de l'onglet « Équipement inventaire ») ; les potions, livres et parchemins (consommables) n'en sont pas
   {
@@ -328,6 +348,48 @@ const DEFINITIONS = [
   },
 ];
 
+/**
+ * Le nom de l'onglet d'un panneau de règles (son id est l'ancre de l'onglet ou du sous-onglet : lib/equipement.mjs ; un sous-onglet de la ceinture :
+ * « Ceinture › Bâtons magiques »), sinon son id ; et sa place parmi les onglets (un sous-onglet : celle de l'onglet Ceinture).
+ */
+const ONGLET_DE_LA_CEINTURE = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === 'ceinture');
+const ongletDuPanneau = (id) => {
+  const onglet = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === id);
+  if (onglet) return onglet.nom;
+  const sous = SOUS_ONGLETS_DE_LA_CEINTURE.find((o) => o.id === id);
+  return sous ? `${ONGLET_DE_LA_CEINTURE?.nom ?? 'Ceinture'} › ${sous.nom}` : String(id);
+};
+const rangDuPanneau = (id) => {
+  const i = ONGLETS_DE_L_EQUIPEMENT.findIndex((o) => o.id === (SOUS_ONGLETS_DE_LA_CEINTURE.some((s) => s.id === id) ? ONGLET_DE_LA_CEINTURE?.id : id));
+  return i < 0 ? ONGLETS_DE_L_EQUIPEMENT.length : i;
+};
+
+/** Mots au plus dans le nom d'un bloc sans titre (nomDuBloc). */
+const MOTS_DU_NOM = 6;
+
+/**
+ * Le texte d'un bloc de Markdown réduit à ses premiers mots (MOTS_DU_NOM, « … » s'il y en a d'autres) : sans balises du glossaire (le texte affiché, le
+ * libellé du mot-clé pour une balise sans texte ou en mode complet : `vocabulaire` sans définitions), sans liens ni mise en forme ni marques de début de ligne.
+ */
+export function premiersMots(markdown, vocabulaire = null, n = MOTS_DU_NOM) {
+  const t = String(texteSansBalises(String(markdown ?? ''), vocabulaire) ?? '')
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
+    .replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<(https?:[^>\s]+)>/g, '$1')
+    .replace(/\{couleur:[a-z]+\}/g, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/^[ \t]*(?:#{1,6}[ \t]+|>[ \t]?|[-+*][ \t]+|\d+[.)][ \t]+)/gm, '')
+    .replace(/(?<!\\)(?:\*+|~~|`+)/g, '')
+    .replace(/(?<![\\\p{L}\p{N}])_+|(?<!\\)_+(?![\p{L}\p{N}])/gu, '')
+    .replace(/\\(.)/g, '$1')
+    .replace(/(^|\s)(?:\||:?-{3,}:?)(?=\s|$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const mots = t ? t.split(' ') : [];
+  return mots.length > n ? `${mots.slice(0, n).join(' ')}…` : mots.join(' ');
+}
+
 /** L'ordre de lecture d'un événement dans une note : époque, année, rang (lib/chronologie.mjs#ordonner). */
 const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.epoque), e.annee ?? 0, e.rang ?? 0];
 
@@ -344,7 +406,7 @@ function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
       'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
-      'bouclier_poids']
+      'bouclier_poids', 'panneau_regles']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
     monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),
@@ -358,6 +420,9 @@ function contexte(ref, dev) {
     if (!capacitesParNom.has(c.nom_cle)) capacitesParNom.set(c.nom_cle, new Set());
     capacitesParNom.get(c.nom_cle).add(c.id);
   }
+  // les mots-clés des deux bases (dev d'abord), sans leurs définitions : une balise du glossaire se lit par son texte ou son libellé (nomDuBloc)
+  const vocabulaire = vocabulaireDesMotsCles([...d.mot_cle.values(), ...[...r.mot_cle.values()].filter((m) => !d.mot_cle.has(m.id))]
+    .map((m) => ({ id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: '' })));
   const entetes = (base) => indexer(lignesDe(base, 'race_don_tableau_colonne'), ['race_id', 'rang']);
   const cellules = (base) => indexer(lignesDe(base, 'race_don_tableau_cellule'), ['race_id', 'ligne', 'colonne']);
   const tetes = [entetes(dev), entetes(ref)];
@@ -384,6 +449,17 @@ function contexte(ref, dev) {
     ordreRace: (id) => {
       const i = ORDRE_DES_RACES.indexOf(id);
       return i < 0 ? ORDRE_DES_RACES.length + (ligne('race', id)?.ordre ?? 0) : i;
+    },
+    /**
+     * Le nom d'un bloc de panneau de règles : le titre d'une tuile, sinon ses premiers mots entre guillemets (« Toutes les armes ont de base… ») ; une
+     * tuile qui n'est qu'une balise du glossaire (« {{recharge-longue:}} ») : le libellé du mot-clé. Jamais son rang (une clé interne).
+     */
+    nomDuBloc: (b) => {
+      if (b.titre) return b.titre;
+      const seule = /^\{\{[^{}\n]+\}\}$/.test(String(b.texte ?? '').trim());
+      const mots = premiersMots(b.texte, vocabulaire);
+      if (!mots) return Number(b.tuile) === 1 ? 'tuile sans texte' : 'bloc sans texte';
+      return seule ? mots : `« ${mots} »`;
     },
     // une case du tableau en panneaux : « Feu × Compétence » (première case de sa ligne × en-tête de sa colonne)
     caseDuTableau: (c) => {
@@ -518,6 +594,46 @@ function comparerCategoriesDesEvenements(ref, dev, x) {
   return sortie;
 }
 
+/**
+ * L'ordre des blocs d'un panneau de règles (migration 0056), dit en une ligne par panneau quand les blocs présents des deux côtés ne se lisent plus dans
+ * le même ordre : « Ordre des blocs : Dague · Arme de jet → Arme de jet · Dague », de la première à la dernière place qui diffère. La colonne `ordre`
+ * n'est pas listée bloc par bloc : une tuile insérée en tête repousse les suivantes sans changer leur ordre de lecture (son ajout le dit, rien d'autre),
+ * un bloc retiré non plus. Un panneau ajouté ou retiré est dit par la table panneau_regles.
+ */
+function comparerOrdreDesBlocs(ref, dev, x) {
+  const a = lignesDe(ref, 'panneau_regles_bloc');
+  const b = lignesDe(dev, 'panneau_regles_bloc');
+  if (!a || !b) return [];
+  const parPanneau = (rows) => {
+    const m = new Map();
+    for (const l of ordonnerBlocs(rows)) (m.get(l.panneau_id) ?? m.set(l.panneau_id, []).get(l.panneau_id)).push(l);
+    return m;
+  };
+  const avant = parPanneau(a);
+  const apres = parPanneau(b);
+  const sortie = [];
+  for (const [id, blocsDev] of apres) {
+    const blocsRef = avant.get(id);
+    if (!blocsRef) continue;
+    const rangsRef = new Set(blocsRef.map((l) => l.rang));
+    const rangsDev = new Set(blocsDev.map((l) => l.rang));
+    const lus = blocsRef.filter((l) => rangsDev.has(l.rang));
+    const nouveaux = blocsDev.filter((l) => rangsRef.has(l.rang));
+    let debut = 0;
+    while (debut < lus.length && lus[debut].rang === nouveaux[debut].rang) debut += 1;
+    if (debut === lus.length) continue;
+    let fin = lus.length - 1;
+    while (fin > debut && lus[fin].rang === nouveaux[fin].rang) fin -= 1;
+    // chaque bloc nommé d'après la base où il se lit (son titre a pu changer aussi : dit à part)
+    const dire = (blocs) => blocs.slice(debut, fin + 1).map((l) => x.nomDuBloc(l)).join(' · ');
+    sortie.push(ligneDeNote({
+      def: { table: 'panneau_regles_bloc' }, domaine: 'equipement', groupe: ongletDuPanneau(id), entite: 'Panneau de règles', ordre: [rangDuPanneau(id), 0, 1],
+      champ: 'Ordre des blocs', colonne: null, nature: 'modifie', avant: dire(lus), apres: dire(nouveaux), cle: { panneau_id: id },
+    }));
+  }
+  return sortie;
+}
+
 /** Relations entre peuples : « <peuple> voit <peuple> : Neutre → Haine » (sens R12 : la ligne voit la colonne). */
 function comparerRelations(ref, dev, x) {
   const devRows = lignesDe(dev, 'relation_peuple');
@@ -573,6 +689,7 @@ export function comparerBases(ref, dev) {
     ...comparerMagiesInnees(ref, dev, x),
     ...comparerRelations(ref, dev, x),
     ...comparerCategoriesDesEvenements(ref, dev, x),
+    ...comparerOrdreDesBlocs(ref, dev, x),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

@@ -47,7 +47,9 @@ const communes = structure ? tablesCommunes(structure) : [];
           <h2 class="debug-bloc__titre" id="debug-schema-titre">DB</h2>
           <span class="debug-bloc__resume">Schéma de la base : {resumeDuSchema(structure)}</span>
         </summary>
-        <div class="debug-bloc__contenu">
+        {/* data-mots-cles-bruts : les commentaires du schéma tels qu'écrits (une balise du glossaire n'y est jamais rendue : lib/mots-cles-balises.mjs,
+            src/scripts/edition/mots-cles-vivants.mjs), comme /donnees/ et la fenêtre du contenu ci-dessous */}
+        <div class="debug-bloc__contenu" data-mots-cles-bruts>
           <p class="debug-petit">
             Toutes les tables de la base, rangées par section de <code>data/schema.sql</code>, avec leurs colonnes, leurs types et un lien par clé
             étrangère (structure du build ; nombre de lignes <span data-schema-comptes>du build</span>). Double-cliquez sur une table (Entrée au clavier,
@@ -112,7 +114,7 @@ const communes = structure ? tablesCommunes(structure) : [];
         </div>
       </details>
       <dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">
-        <div class="schema-contenu__cadre">
+        <div class="schema-contenu__cadre" data-mots-cles-bruts>
           <header class="schema-contenu__entete">
             <h3 class="schema-contenu__titre" id="schema-contenu-titre">Contenu de <code data-schema-contenu-nom></code></h3>
             <p class="schema-contenu__resume" data-schema-contenu-resume></p>

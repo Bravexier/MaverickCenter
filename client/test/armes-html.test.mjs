@@ -1,8 +1,8 @@
 // Onglet Armes de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armes/ : test/equipement-html.test.mjs pour la page et
 // ses onglets) : rendu depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
 // monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
-// en couleur (décision R48) et leur filtre, les règles avec la mise en forme du classeur, les matériaux dans leur couleur, les améliorations, les champs
-// du mode modification. Se saute sans dist/ (npm run build) ;
+// en couleur (décision R48) et leur filtre, le panneau de règles (migration 0056 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
+// en forme du classeur), les matériaux dans leur couleur, les améliorations, les champs du mode modification. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -15,6 +15,7 @@ import { COLONNES_D_UNE_ARME, htmlDesEffets, RENDUS_DES_ARMES } from '../src/lib
 import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'equipement', 'index.html');
@@ -23,15 +24,15 @@ const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 // le panneau de l'onglet Armes : de sa <section> au bloc des armures, qui le suit (components/equipement/EquipementPage.astro)
 const main = html.slice(html.indexOf('<section class="equipement-panneau is-active" id="armes"'), html.indexOf('<div class="armures" data-armures>'));
-const armes = present ? chargerArmes(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
+const base = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
+const armes = present ? chargerArmes(base) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
-test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec les règles de l’onglet repliées', options, () => {
+test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son panneau de règles replié et sans phrase au-dessus', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Armes');
-  assert.match(main, /<div class="armes" data-armes>/);
-  assert.match(main, /<details class="armes-regles">/);
+  assert.match(main, /<div class="armes" data-armes>(?:<template data-armes-piece="[A-Z]+">[\s\S]*?<\/template>)*<details class="preg" id="regles-armes" data-panneau-regles="armes">/, 'le panneau en tête');
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
-  assert.ok(main.includes('Mordhau'), 'les règles de l’onglet');
+  assert.ok(!main.includes('armes__chapo'), 'plus de chapeau (demande du propriétaire, 2026-10-16)');
 });
 
 test('un tableau repliable par famille, sans les armes de monstres ; une ligne par arme, dans l’ordre de l’onglet', options, () => {
@@ -101,18 +102,24 @@ test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans
   assert.match(main, /<p class="armes-legende sans-js"><span class="armes-legende__depart" title="Arme de départ">Arme de départ<\/span><\/p>/);
 });
 
-test('règles de l’onglet avec la mise en forme du classeur : définitions en italique, phrase des armes de départ en bleu, cas particuliers en gras ; le prix à part', options, () => {
-  const debut = main.indexOf('<div class="prose armes-regles__texte">');
-  assert.ok(debut > 0);
+test('panneau de règles (migration 0056) : son titre, ses blocs dans l’ordre de la base (texte ou tuile, titres des tuiles), la mise en forme du classeur, la phrase des armes de départ en bleu', options, () => {
+  const panneau = chargerPanneau(base, 'armes');
+  const debut = main.indexOf('<details class="preg" id="regles-armes" data-panneau-regles="armes">');
+  assert.ok(debut > 0 && panneau);
   const regles = main.slice(debut, main.indexOf('</details>', debut));
-  for (const terme of ['Recharge longue', 'Recharge très longue', 'Mordhau ou Demi-épée']) assert.ok(regles.includes(`<p><em>${terme}</em> = `), terme);
-  assert.match(regles, /<em>Exemple : Si vous faites plus de 70/);
-  assert.match(regles, /<p class="armes-regles__depart"><strong>Les armes en bleu sont les armes possibles en arme de départ\.<\/strong><\/p>/);
-  assert.match(regles, /<p><em><strong>CAS PARTICULIERS :<\/strong><\/em><\/p>|<p><strong><em>CAS PARTICULIERS :<\/em><\/strong><\/p>/);
-  assert.match(regles, /<p><strong>Dague<\/strong><\/p>\s*<ul>/);
-  assert.match(regles, /<p><strong>Arme de jet<\/strong><\/p>\s*<ul>/);
-  assert.match(regles, /<section class="armes-regles__prix" aria-labelledby="armes-prix-titre"><h2 id="armes-prix-titre">Comment déterminer le prix de votre arme \?<\/h2><p>1 Matériau \+ /);
-  assert.ok(!/[*_]{1,3}(Recharge|Dague|CAS)/.test(regles), 'aucune marque Markdown laissée telle quelle');
+  assert.ok(regles.includes(`<summary class="preg__titre"><span data-ed="${attributEd('panneau_regles', { id: 'armes' }, 'titre').replace(/"/g, '&quot;')}">${echapper(panneau.titre)}</span></summary>`), 'le titre, un champ du mode modification');
+  const blocs = [...regles.matchAll(/<div class="preg-bloc preg-bloc--(texte|tuile)" data-preg-bloc="(\d+)" data-preg-ordre="(\d+)"/g)].map((m) => [m[1], Number(m[2]), Number(m[3])]);
+  assert.deepEqual(blocs, panneau.blocs.map((b) => [b.tuile ? 'tuile' : 'texte', b.rang, b.ordre]));
+  const titres = [...regles.matchAll(/<p class="preg-bloc__titre" data-ed-cadre( hidden)?><span data-ed="[^"]+">([^<]*)<\/span><\/p>/g)].map((m) => [m[2], Boolean(m[1])]);
+  assert.deepEqual(titres, panneau.blocs.filter((b) => b.tuile).map((b) => [echapper(b.titre ?? ''), !b.titre]), 'le titre de chaque tuile, caché s’il est vide');
+  // la mise en forme du classeur, tant que le bloc l'écrit
+  if (panneau.blocs.some((b) => b.texte.includes('**Les armes en bleu sont'))) {
+    assert.match(regles, /<p class="armes__phrase-depart"><strong>Les armes en bleu sont les armes possibles en arme de départ\.<\/strong><\/p>/);
+  }
+  if (panneau.blocs.some((b) => b.texte.includes('***CAS PARTICULIERS :***'))) {
+    assert.match(regles, /<p><em><strong>CAS PARTICULIERS :<\/strong><\/em><\/p>|<p><strong><em>CAS PARTICULIERS :<\/em><\/strong><\/p>/);
+  }
+  assert.ok(!/\*{2,3}(Les armes|CAS)/.test(regles), 'aucune marque Markdown laissée telle quelle');
 });
 
 test('à côté des tableaux, toujours affiché : la fiche (un seul cadre, vide au départ, remplie par le script), puis les matériaux et les améliorations côte à côte', options, () => {

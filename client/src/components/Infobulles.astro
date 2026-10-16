@@ -167,7 +167,12 @@
       if (estSimple) {
         titre = cible.getAttribute(TEXTE);
         if (!titre || !titre.trim()) return;
-        simple = simple || creer('bulle bulle--simple', 'bulle-du-titre');
+        if (!simple) {
+          simple = creer('bulle bulle--simple', 'bulle-du-titre');
+          // son texte est celui d'un attribut, déjà en texte simple (sauf dans une zone brute, où il reste tel qu'écrit) : les mots-clés vivants du site de
+          // dev (src/scripts/edition/mots-cles-vivants.mjs) n'y rendent rien
+          simple.setAttribute('data-mots-cles-bruts', '');
+        }
         bulle = simple;
       } else {
         bulle = document.getElementById(cible.getAttribute('data-bulle') || '');

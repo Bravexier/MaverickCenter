@@ -19,7 +19,7 @@ import {
   changementsNonIndexes, chercherLotDejaFusionne, corpsDePR, creerBundle, enteteAuthentification, enveloppeGit, environnementGit, etatDesChecks,
   fichiersModifies, fusionDansDev, gitLocal, horodatage, horsListe, importerCommit, lireDiffTree, lirePhase, lireStatut, livraisonVersMaster,
   lotsEnAttente, messageAttendu, messageDeFin, neutraliserMarqueur, neutraliserReferences, noteDuCorps, nomDeBranche, pourCommandeDeWorkflow,
-  preparer, sousCommandeGit, tablesDuLot, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
+  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
 } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
 
@@ -976,10 +976,38 @@ describe('fonctions pures', () => {
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
     // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page', 'page_tag'],
+      'la cascade de page_tag, et les pages typées refaites depuis les lignes dont les balises sont retirées');
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
+    // D3 : un mot-clé supprimé (ou fusionné) quitte aussi les balises des textes que le journal n'a pas (balisesRetireesParLeLot,
+    // balisesDesColonnesDerivees) : les tables dont data/rows a une balise, lues seulement pour un tel lot
+    let lues = 0;
+    const balises = () => {
+      lues += 1;
+      return ['arme', 'page'];
+    };
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null }), { tablesAvecBalises: balises }),
+      ['arme', 'mot_cle', 'page', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } }), { tablesAvecBalises: balises }), ['mot_cle']);
+    assert.equal(lues, 1, 'git grep seulement pour un lot qui retire un mot-clé');
+    const appels = [];
+    const g = (args, o) => {
+      appels.push([args, o]);
+      return { code: 0, sortie: `${sha}:data/rows/panneau_regles_bloc.sql\n${sha}:data/rows/arme.sql\n${sha}:data/rows/sous/x.sql\n`, erreur: '' };
+    };
+    const sha = 'abc1230000000000000000000000000000000000';
+    assert.deepEqual(tablesAvecBalises(g, sha), ['arme', 'panneau_regles_bloc']);
+    assert.deepEqual(appels, [[['grep', '-l', '-F', '{{', sha, '--', 'data/rows/'], { ok: [0, 1] }]], 'git grep, rien d’autre (code 1 : aucune balise)');
+    assert.deepEqual(tablesAvecBalises(g, null), []);
+    tablesAvecBalises(g, 'origin/dev');
+    assert.deepEqual(appels.at(-1)[0], ['grep', '-l', '-F', '{{', 'origin/dev', '--', 'data/rows/'], 'origin/dev, la base du rejeu de « preparer »');
+    const nombre = appels.length;
+    for (const rev of ['--open-files-in-pager=sh', '-O', 'abc123', 'origin/master', 'HEAD', 'origin/dev --no-index']) {
+      assert.throws(() => tablesAvecBalises(g, rev), /révision refusée/, rev);
+    }
+    assert.equal(appels.length, nombre, 'rien n’est passé à git pour une révision refusée');
   });
 
   test('git diff-tree -z : modes et chemins ; préparation : forme contrôlée', () => {

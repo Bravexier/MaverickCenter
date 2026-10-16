@@ -6,4 +6,6 @@
 .recherche-mots-cles h2 small { font-size: var(--fs-md); font-weight: normal; }
 .recherche-mots-cles .tags li[hidden] { display: none; }
 .recherche-mot-cle h2:focus { outline: none; }
+/* la définition d'un mot-clé du glossaire, sous son titre (?mot-cle=<id>) */
+.recherche-definition { max-width: 46rem; margin: 0 0 0.6rem; white-space: pre-line; }
 .recherche-voir-aussi { margin-top: 2rem; font-size: var(--fs-lg); }

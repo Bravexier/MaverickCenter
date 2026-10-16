@@ -89,13 +89,18 @@ export const RESSOURCES = [
     nom: 'Mot-clé',
     noms: 'Mots-clés',
     description:
-      'Le vocabulaire des mots-clés (migration 0043, demande du propriétaire), posés sur les pages et listés sur /recherche/ (?mot-cle=<id>) : ' +
+      'Le glossaire des mots-clés (migrations 0043 et 0056, demandes du propriétaire) : un libellé et une définition (`description`, NULL tant qu’il ' +
+      'n’est pas décrit), cités dans les textes par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » : enregistrée sous sa forme canonique, l’id ' +
+      'seul dans un texte mis en forme, « {{id|texte}} » toujours dans un texte de case, où le mode complet est refusé ; une balise qui ne cite aucun ' +
+      'mot-clé, ou dont la ref est à la fois l’id d’un mot-clé et l’écriture d’un autre, refusée en 400), posés sur quelques pages et listés sur ' +
+      '/recherche/ (?mot-cle=<id>) : ' +
       'identifiant tiré une fois du libellé (normalize, suffixé -2… s’il est pris ou a déjà servi), figé et jamais réutilisé ; deux mots-clés ne ' +
-      's’écrivent jamais de la même façon (`libelle_cle`) ; renommer change l’écriture partout, vers l’écriture d’un autre mot-clé : refusé (409, avec ' +
+      's’écrivent jamais de la même façon (`libelle_cle`) ; renommer ne réécrit aucun texte (une case garde le texte écrit de ses balises, un texte mis ' +
+      'en forme montre le nouveau libellé), vers l’écriture d’un autre mot-clé : refusé (409, avec ' +
       'l’action qui fusionne les deux) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
-      'qui avait les deux perd seulement l’ancien) puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; supprimé, il est retiré de toutes les ' +
-      'pages qui le portent ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
-      'de classe », « métier », « codex ») ne se renomment, ne se suppriment ni ne se créent seuls (409).',
+      'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; supprimé, ' +
+      'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
+      'de classe », « métier », « codex ») ne se renomment, ne se suppriment ni ne se créent seuls (409), leur définition se modifie.',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -111,8 +116,8 @@ export const RESSOURCES = [
           'pas) ; aucune opération du site ne pose ni ne retire un mot-clé sur une page : en lecture seule.',
       },
     ],
-    liste: ['id', 'libelle', 'libelle_cle'],
-    recherche: ['libelle'],
+    liste: ['id', 'libelle', 'libelle_cle', 'description'],
+    recherche: ['libelle', 'description'],
     tri: 'libelle_cle',
     ecriture: { creer: 'mot_cle', supprimer: 'mot_cle' },
     actions: [

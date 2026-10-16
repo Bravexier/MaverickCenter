@@ -134,7 +134,7 @@ pour recommencer.
 | `races/<race>/acces-aux-magies/<magie>/` | `PATCH` | `magies_innees` | Rend une magie accessible ou non en magie innée (`accessible` : 1 ou 0) dans la matrice de la fiche (R8), pour une race dont l'onglet ne limite pas ses magies (sinon `409`) : c'est ainsi qu'une race créée reçoit ses magies |
 | `evenements/<événement>/categories/` | `POST`, `DELETE` | `categories` | Pose une catégorie sur l'événement (`categorie_id`), l'en retire |
 | `monstres/<carte>/valeurs-de-capacites/` | `POST`, `PATCH`, `DELETE` | `valeurs_de_capacite` | Pose une valeur propre (`rang`, `numero`, `valeur`), la change, l'efface (R69) ; la valeur commune (ou `null`) n'est jamais écrite : elle efface la valeur propre (`element: null` dans la réponse) |
-| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans` puis le retire du vocabulaire ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
+| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
 
 Les références « @i » d'un lot à plusieurs opérations (créer une spécialité puis son don dans la même requête) restent sur `POST /api/edition/`.
 
@@ -148,7 +148,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | --- | --- |
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
-| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire), `limite` hors bornes |
+| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`), `limite` hors bornes |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
@@ -263,6 +263,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `effets-d-accessoire/` | Effets d’accessoire | `accessoire_effet` | lecture seule | — |
 | `montures-d-accessoire/` | Montures d’accessoire | `accessoire_monture` | lecture seule | — |
 | `batons-magiques/` | Bâtons magiques | `baton_magique` | lecture seule | — |
+| `panneaux-de-regles/` | Panneaux de règles | `panneau_regles` | modifier | `blocs` (créer, modifier, supprimer) |
 | `machines-de-guerre/` | Machines de guerre | `machine_guerre` | lecture seule | — |
 
 ### Artisanat et ressources (`artisanat`)
@@ -429,9 +430,9 @@ l'onglet se voit), relève la version de la base toutes les 2 s et ne relit nomb
 4. **DB**, le schéma de la base (dessiné à la première ouverture du menu ; demande du propriétaire du 2026-10-15 : « En plus d'un openapi, je veux un
    mappage vectoriel des tables […] D'un double clic sur une de ces tables, ça ouvrirait une popup avec le contenu dans un tableau (scrollable) »,
    puis « 4) DB (ton futur schéma) » : titre « DB », la sous-ligne dit « Schéma de la base » et ses nombres) : une carte de **toutes les tables**
-   (188, dont les 2 dérivées `lien` et `lien_candidat`) et des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace
+   (190, dont les 2 dérivées `lien` et `lien_candidat`) et des **35 vues** (masquées par défaut, case « Montrer les vues » ; les montrer ne déplace
    aucune table), une boîte par table avec chaque colonne, son type déclaré, `PK`, `NN` et une pastille par clé étrangère, et **un lien par clé
-   étrangère** (400 ; une clé à plusieurs colonnes reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à
+   étrangère** (402 ; une clé à plusieurs colonnes reste un lien), de la ligne de la colonne à la colonne visée, flèche à l'arrivée ; une clé à
    plusieurs colonnes part de la colonne qui la distingue et arrive à la colonne visée au même rang (`indiceDuLien` :
    `race_don_tableau_cellule(race_id, ligne)` part de `ligne`, l'auto-référence de `note_cellule` de `repond_a` vers `rang`), et l'infobulle d'une
    colonne dit **chaque** clé qui la contient, en entier (« (race_id, colonne) → race_don_tableau_colonne(race_id, rang) »). Les tables sont rangées

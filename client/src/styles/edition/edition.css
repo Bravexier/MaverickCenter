@@ -221,6 +221,8 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
 .ed-texte-guide { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 6px; border-radius: var(--radius-xs); min-height: 2.5em; cursor: text; }
 .ed-texte-guide:focus { outline-style: solid; }
 .ed-texte-guide a { cursor: text; }
+/* le mode complet d'un mot-clé du glossaire (« Libellé : définition ») : un bloc insécable, qui vient du glossaire (texte-en-place.mjs) */
+[contenteditable='true'] .mot-cle-definition { outline: 1px dotted color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 1px; cursor: default; }
 .ed-texte-guide :is(td, th):empty::after, .ed-texte-guide :is(td, th):has(> br:only-child)::after { content: ' '; }
 .ed-barre-guide {
   position: fixed;
@@ -261,17 +263,34 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
 .ed-barre-guide .ed-couleur { min-width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; }
 .ed-barre-guide .ed-couleur[data-couleur] { background: color-mix(in srgb, var(--case) 60%, var(--surface)); }
 
-/* Mots-clés (/recherche/, src/scripts/edition/mots-cles.mjs) : la liste de gestion — le libellé, ce qui le porte, puis les boutons ou la raison de la
-   protection d'un mot-clé dont le site se sert */
+/* Panneaux de règles (src/scripts/edition/panneaux.mjs) : le panneau reste ouvert, son titre est une saisie dans le summary ; sous chaque bloc, ses outils
+   (↑ ↓, Supprimer, + Texte, + Tuile), jamais coupés et jamais séparés de la fin du bloc (break-before: avoid) : un bloc de texte se coupe entre deux
+   colonnes comme hors mode modification (insécable, il mettait un panneau d'un seul bloc dans une seule colonne) */
+.ed-mode .preg > summary { cursor: default; }
+.ed-mode .preg > summary .ed-saisie { width: min(100%, 48rem); }
+.ed-preg-outils { margin: 0.3rem 0 0.7rem; gap: 0.3rem; break-inside: avoid; break-before: avoid; }
+.ed-preg-outils .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
+
+/* Mots-clés (/recherche/, src/scripts/edition/mots-cles.mjs) : la liste de gestion du glossaire — la balise à copier, le libellé, ce qui le porte, puis
+   les boutons ou la raison de la protection d'un mot-clé dont le site se sert ; dessous, sur toute la largeur, sa définition */
 .ed-mots-cles { list-style: none; padding: 0; margin: 0.4rem 0; }
 .ed-mots-cles li[hidden] { display: none; }
 .ed-mot-cle {
   display: grid;
-  grid-template-columns: minmax(10rem, 18rem) 11rem 1fr;
+  grid-template-columns: minmax(7rem, 14rem) minmax(10rem, 18rem) 11rem 1fr;
+  grid-template-areas: 'balise nom compte outils' 'definition definition definition definition';
   align-items: center;
   gap: 0.3rem 0.8rem;
   padding: 0.3rem 0.4rem;
   border-bottom: 1px solid var(--border);
+}
+.ed-mot-cle__balise { grid-area: balise; overflow-wrap: anywhere; font-size: var(--fs-sm); user-select: all; }
+.ed-mot-cle__nom { grid-area: nom; }
+.ed-mot-cle__compte { grid-area: compte; }
+.ed-mot-cle__outils, .ed-mot-cle__protege { grid-area: outils; }
+.ed-mot-cle__definition { grid-area: definition; }
+@media (max-width: 40rem) {
+  .ed-mot-cle { grid-template-columns: 1fr auto; grid-template-areas: 'nom compte' 'balise balise' 'definition definition' 'outils outils'; }
 }
 .ed-mot-cle__compte { font-size: var(--fs-md); color: var(--muted); }
 .ed-mot-cle__outils { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }

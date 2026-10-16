@@ -2,7 +2,8 @@
 // Modifier des mots clés », une suppression le retirant de tout ce qui le porte), exécutée dans un faux navigateur avec un faux éditeur : la liste relue
 // dans la base vivante (des pages seulement : les événements de la chronologie ont des catégories, pas de mot-clé), la liste de gestion (libellé
 // modifiable, protégés sans saisie ni bouton, suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot,
-// le retour à la liste de lecture. Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en
+// le retour à la liste de lecture ; depuis la migration 0056 (glossaire), la définition de chaque mot-clé (saisie commune, protégés compris), sa balise à
+// copier et l'infobulle de sa définition dans la liste de lecture. Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en
 // chaîne, noms échangés, fusions en chaîne — le lot que la page envoie est accepté, ou refusé avant toute question.
 //   node --test test/edition-mots-cles.test.mjs
 import assert from 'node:assert/strict';
@@ -17,11 +18,11 @@ import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
-// GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, pages, protege }]
-const v = (id, libelle, pages = 0, protege = null) => ({ id, libelle, libelle_cle: normalize(libelle), pages, protege });
+// GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, pages, protege }] (description : NULL tant qu'il n'est pas décrit)
+const v = (id, libelle, pages = 0, protege = null, description = null) => ({ id, libelle, libelle_cle: normalize(libelle), description, pages, protege });
 const VIVANT = [
   v('aide', 'aide', 3),
-  v('feu', 'Feu', 2),
+  v('feu', 'Feu', 2, null, 'Ce qui brûle.'),
   v('guide', 'guide', 5),
   v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'),
   v('peuple', 'peuple', 1),
@@ -85,15 +86,16 @@ async function monter({ confirmations = [], service = null } = {}) {
         const ligne = ed.lignes.get(cleDeLigne(info.table, info.cle));
         if (!ligne) continue;
         const controle = el('textarea', { class: 'ed-saisie' });
-        controle.value = ligne[info.colonne];
-        editeurs.set(champ, { info, original: String(ligne[info.colonne]), controle, ligne });
+        controle.value = ligne[info.colonne] ?? '';
+        editeurs.set(champ, { info, original: String(ligne[info.colonne] ?? ''), controle, ligne });
         champ.replaceChildren(controle);
       }
     },
     formulaire(f) { formulaires.push(f); },
   };
   const { motsCles } = await import(`../src/scripts/edition/mots-cles.mjs?page=${(numero += 1)}`);
-  return { motsCles, ed, document, liste, evenements, questions, appels, formulaires, editeurs, saisie: (id) => [...editeurs].find(([c]) => c.closest('li').dataset.id === id)?.[1] };
+  const saisieDe = (id, colonne) => [...editeurs].find(([c, e]) => c.closest('li').dataset.id === id && e.info.colonne === colonne)?.[1];
+  return { motsCles, ed, document, liste, evenements, questions, appels, formulaires, editeurs, saisie: (id) => saisieDe(id, 'libelle'), definition: (id) => saisieDe(id, 'description') };
 }
 
 const ligne = (liste, id) => liste.querySelector(`li[data-id="${id}"]`);
@@ -108,6 +110,11 @@ test('au chargement : la liste relue dans la base vivante (nombre de pages, ordr
   assert.deepEqual([feu.dataset.cle, feu.dataset.n, feu.dataset.libelle], ['feu', '2', 'Feu']);
   assert.equal(feu.children[0].href, '/recherche/?mot-cle=feu');
   assert.equal(feu.children[0].textContent, 'Feu (2)');
+  // le glossaire : la définition dans la ligne, et l'infobulle de la pastille (sa bulle : mots-cles-vivants.mjs) ; un mot-clé sans définition n'en a pas
+  assert.equal(feu.dataset.definition, 'Ce qui brûle.');
+  assert.equal(feu.children[0].dataset.bulle, 'mot-cle-feu');
+  assert.equal(ligne(p.liste, 'aide').dataset.definition, undefined);
+  assert.equal(ligne(p.liste, 'aide').children[0].dataset.bulle, undefined);
   assert.equal(p.liste.querySelector('li[data-reserve]'), null);
   assert.deepEqual(p.evenements, [{ gestion: false }], 'la page relit la liste');
 });
@@ -126,17 +133,22 @@ test('au crayon : la liste de gestion ; un mot-clé protégé n’a ni saisie ni
   assert.equal(bouton(feu, 'ed-mot-cle__supprimer').title, 'Le retirer de toutes les pages qui le portent, puis du vocabulaire (à l’enregistrement)');
   assert.deepEqual(lireAttributEd(feu.querySelector('[data-ed]').dataset.ed), lireAttributEd(JSON.stringify(['mot_cle', { id: 'feu' }, 'libelle'])));
   assert.equal(p.saisie('feu').controle.value, 'Feu', 'la saisie part de la base vivante');
+  assert.equal(feu.querySelector('.ed-mot-cle__balise').textContent, '{{feu}}', 'la balise à copier');
+  assert.equal(p.definition('feu').controle.value, 'Ce qui brûle.', 'la définition, saisie commune');
+  assert.equal(p.definition('aide').controle.value, '', 'pas encore décrit');
   const magique = ligne(p.liste, 'magique');
-  assert.equal(magique.querySelector('[data-ed]'), null, 'protégé : pas de saisie');
+  assert.equal(magique.querySelector('.ed-mot-cle__nom').hasAttribute('data-ed'), false, 'protégé : pas de saisie du libellé');
+  assert.ok(p.definition('magique'), 'protégé : sa définition se modifie');
   assert.equal(magique.querySelector('button'), null, 'protégé : pas de bouton');
-  assert.equal(magique.querySelector('.ed-mot-cle__protege').textContent, 'Protégé : il range les classes dans la colonne « Magiques » de /classes/.');
+  assert.equal(magique.querySelector('.ed-mot-cle__protege').textContent, 'Protégé : il range les classes dans la colonne « Magiques » de /classes/ (sa définition se modifie).');
   // création immédiate, à sa place dans la liste
   const ajouter = p.document.querySelector('.ed-outils-mots-cles').querySelector('button');
   assert.equal(ajouter.textContent, '+ Ajouter un mot-clé');
   cliquer(ajouter);
   assert.doesNotMatch(p.formulaires[0].aide, /événement/, 'un mot-clé ne se pose plus sur un événement');
-  await p.formulaires[0].valider({ libelle: 'Bestiaire' });
-  assert.deepEqual(p.appels.at(-1), ['POST', 'edition/', { page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire' } }] }]);
+  assert.deepEqual(p.formulaires[0].champs.map((c) => c.nom), ['libelle', 'description'], 'créé avec sa définition');
+  await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '' });
+  assert.deepEqual(p.appels.at(-1), ['POST', 'edition/', { page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire', description: '' } }] }]);
   assert.deepEqual(p.liste.children.map((li) => li.dataset.id), ['aide', 'bestiaire', 'feu', 'guide', 'magique', 'peuple']);
   assert.ok(ligne(p.liste, 'bestiaire').classList.contains('ed-nouveau'));
   assert.equal(p.saisie('bestiaire').controle.value, 'Bestiaire');
@@ -173,8 +185,8 @@ test('suppression et fusion en file, confirmées une fois avec ce qu’elles ret
   assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null);
   assert.equal(p.questions.length, 2);
   assert.match(p.questions[0], /^« Guide » s’écrit comme « guide » : fusionner « Feu » dans « guide » \?\nSes pages \(2 pages\) porteront « guide »/);
-  assert.match(p.questions[1], /« aide » sera retiré de 3 pages, puis supprimé\./);
-  assert.match(p.questions[1], /« peuple » sera fusionné dans « guide » : ses pages \(1 page\)/);
+  assert.match(p.questions[1], /« aide » sera retiré de 3 pages et des textes qui le citent \(sa balise y devient son texte\), puis supprimé\./);
+  assert.match(p.questions[1], /« peuple » sera fusionné dans « guide » : ses pages \(1 page\) et les textes qui le citent/);
   assert.ok(p.questions.every((q) => !/événement/.test(q)), 'plus d’événement dans les confirmations');
   const renommages = [{ op: 'modifier', table: 'mot_cle', cle: { id: 'feu' }, valeurs: { libelle: 'Guide' }, avant: { libelle: 'Feu' } }];
   assert.deepEqual(p.motsCles.operations(p.ed, renommages, p.editeurs), [

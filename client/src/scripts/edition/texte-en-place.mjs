@@ -1,9 +1,13 @@
 // L'éditeur de texte en place du mode modification (contenteditable + barre d'outils), partagé par le texte du guide et du Codex (edition/guide.mjs) et les
 // descriptions de la chronologie (edition/chronologie.mjs) : la sélection dans les zones modifiables, les commandes de mise en forme, les liens (vers une
-// page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien), une petite boîte de saisie, et la barre d'outils. Le HTML d'une zone est réécrit
-// en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
+// page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien), les mots-clés du glossaire (outilsDesMotsCles : le texte choisi devient un mot-clé,
+// « {{id}} » s'il est son libellé, « {{id|texte}} » sinon, ou la définition d'un mot-clé s'insère en mode complet, « {{id:}} » ; demande du propriétaire du
+// 2026-10-16 ; ces zones sont des textes mis en forme : lib/mots-cles-balises.mjs), une petite boîte de saisie,
+// et la barre d'outils. Le HTML d'une zone est réécrit en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
 import { cheminDePage } from '../../lib/metiers.mjs';
+import { htmlDeLaBalise, lireUneBalise, motCleDeLaRef } from '../../lib/mots-cles-balises.mjs';
 import { normalize } from '../../lib/text.mjs';
+import { assurerLaBulle, contexteDe, vocabulaireVivant } from './mots-cles-vivants.mjs';
 
 const echapper = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const libelleDePage = (p) => `${p.titre} — ${p.id}`;
@@ -15,6 +19,7 @@ const libelleDePage = (p) => `${p.titre} — ${p.id}`;
 export function demander(ed, { titre, aide, libelle, valeur = '', suggestions = null, bouton = 'Valider', valider }) {
   const dialogue = document.createElement('dialog');
   dialogue.className = 'ed-dialogue';
+  dialogue.setAttribute('data-mots-cles-bruts', ''); // ses textes d'aide citent la syntaxe des balises : tels qu'écrits (mots-cles-vivants.mjs)
   const id = `ed-suggestions-${Math.random().toString(36).slice(2)}`;
   dialogue.innerHTML = `<form method="dialog"><h2></h2><p class="ed-aide"></p><label><span class="ed-libelle"></span><input class="ed-saisie" required autocomplete="off"></label>
     <p class="ed-erreur" role="alert" hidden></p><div class="ed-boutons"><button type="button" value="annuler">Annuler</button><button type="submit"></button></div></form>`;
@@ -63,6 +68,11 @@ export async function pagesDuWiki(ed) {
 export const pageChoisie = (pages, saisie) =>
   pages.find((p) => libelleDePage(p) === saisie || p.id === saisie) ?? pages.filter((p) => normalize(p.titre) === normalize(saisie)).at(0) ?? null;
 export { libelleDePage };
+
+const libelleDeMotCle = (m) => `${m.libelle} — ${m.id}`;
+/** Le mot-clé choisi dans les suggestions (« Libellé — id »), par son id ou par son écriture ; null sinon. */
+const motCleChoisi = (vocabulaire, saisie) =>
+  vocabulaire.liste.find((m) => libelleDeMotCle(m) === saisie) ?? motCleDeLaRef(vocabulaire, saisie.replace(/\s+—\s+[a-z0-9-]+$/, '')) ?? null;
 
 /**
  * Un éditeur en place sur les zones que rend `zones()` (éléments contenteditable) : la sélection n'est prise en compte que dans une zone. Rend les outils
@@ -201,6 +211,82 @@ export function editeurEnPlace(zones) {
     ed.marquerModifie();
   }
 
+  /**
+   * Le HTML d'un mot-clé rendu à insérer (le même que le middleware : lib/mots-cles-balises.mjs#htmlDeLaBalise ; `contexte` : contexteDe, l'endroit où il
+   * va), le mode complet en un bloc insécable.
+   */
+  function htmlDuMotCle(brut, vocabulaire, contexte = {}) {
+    const html = htmlDeLaBalise(lireUneBalise(brut), vocabulaire, contexte).html;
+    return html.replace('<span class="mot-cle-definition"', '<span class="mot-cle-definition" contenteditable="false"');
+  }
+
+  /** Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant), puis `poser(mot-clé, vocabulaire)`. */
+  async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser }) {
+    let vocabulaire;
+    try {
+      vocabulaire = await vocabulaireVivant(ed);
+    } catch (e) {
+      return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
+    }
+    demander(ed, {
+      titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.map(libelleDeMotCle),
+      valider(saisie) {
+        const m = motCleChoisi(vocabulaire, saisie);
+        if (!m) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Recherche, en mode modification).');
+        return () => poser(m, vocabulaire);
+      },
+    });
+  }
+
+  /**
+   * Le texte choisi devient un mot-clé du glossaire (en gras, sa définition en infobulle) : il s'écrira « {{id}} » (son libellé : il le suivra) ou
+   * « {{id|texte}} » (un autre texte) ; sur un mot-clé, le change.
+   */
+  async function motCle(ed) {
+    const r = plage();
+    if (!r) return ed.annoncer('Choisissez d’abord le texte à mettre en mot-clé (ou placez le curseur là où le mot-clé doit aller).');
+    const existant = proche(r, 'strong.mot-cle');
+    await choisirUnMotCle(ed, {
+      titre: existant ? 'Changer le mot-clé' : 'Mot-clé du glossaire',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le. Le texte choisi reste le texte affiché, en gras, avec la définition du mot-clé en infobulle.',
+      valeur: existant?.dataset.motCle ?? '',
+      bouton: 'Poser',
+      poser(m, vocabulaire) {
+        const texte = (existant ? existant.textContent : r.toString()).replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || m.libelle;
+        const html = htmlDuMotCle(texte === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${texte}}}`, vocabulaire, contexteDe(elementDe(r.startContainer)));
+        if (existant) existant.replaceWith(...fragment(html).childNodes);
+        else {
+          restaurer(r);
+          document.execCommand('insertHTML', false, html);
+        }
+        assurerLaBulle(m.id);
+        ed.marquerModifie();
+      },
+    });
+  }
+
+  /** Insère la définition d'un mot-clé en mode complet (« Libellé : définition », venue du glossaire) : elle s'écrira « {{id:}} ». */
+  async function definition(ed) {
+    const r = plage();
+    if (!r) return ed.annoncer('Placez d’abord le curseur là où la définition doit aller.');
+    await choisirUnMotCle(ed, {
+      titre: 'Définition d’un mot-clé',
+      aide: 'Le libellé du mot-clé et sa définition s’insèrent tels que le glossaire les écrit (« Libellé : définition ») et le suivront quand elle changera.',
+      bouton: 'Insérer',
+      poser(m, vocabulaire) {
+        restaurer(r);
+        document.execCommand('insertHTML', false, htmlDuMotCle(`{{${m.id}:}}`, vocabulaire));
+        ed.marquerModifie();
+      },
+    });
+  }
+
+  const fragment = (html) => {
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    return t.content;
+  };
+
   /** La barre d'outils : un groupe de boutons par entrée de `groupes` ; un clic garde le curseur dans le texte. */
   function barre(ed, groupes, etiquette) {
     const el = document.createElement('div');
@@ -239,6 +325,8 @@ export function editeurEnPlace(zones) {
     zone.contentEditable = 'true';
     zone.spellcheck = true;
     zone.classList.add(classe);
+    // le mode complet d'un mot-clé vient du glossaire : un bloc qu'on déplace ou supprime, jamais modifié de l'intérieur
+    for (const d of zone.querySelectorAll('.mot-cle-definition')) d.contentEditable = 'false';
     zone.addEventListener('input', () => ed.marquerModifie(), { signal });
     zone.addEventListener('paste', (e) => {
       e.preventDefault();
@@ -249,5 +337,11 @@ export function editeurEnPlace(zones) {
     }, { signal });
   }
 
-  return { plage, restaurer, proche, commande, bloc, lienWiki, lienWeb, retirerLien, barre, rendreModifiable };
+  return { plage, restaurer, proche, commande, bloc, lienWiki, lienWeb, retirerLien, motCle, definition, barre, rendreModifiable };
 }
+
+/** Le groupe « Mots-clés » d'une barre d'outils (barre(ed, groupes, …)) pour l'éditeur en place `texte` (editeurEnPlace) : mot-clé, définition. */
+export const outilsDesMotsCles = (texte) => ['Mots-clés', [
+  ['Mot-clé', 'Mettre le texte choisi en mot-clé du glossaire (gras, définition en infobulle)', texte.motCle],
+  ['Définition', 'Insérer la définition d’un mot-clé du glossaire (« Libellé : définition »)', texte.definition],
+]];

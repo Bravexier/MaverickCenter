@@ -99,18 +99,10 @@ export function donneesDeDon(don, { specialites, donsDeLaClasse, alternatives = 
 }
 
 /**
- * Mots-clés de la fiche d'un nouveau don (render_capacity) : « capacité de classe », la classe (le libellé d'un don frère, qui garde l'écriture de
- * l'onglet comme « arbalètrier », sinon le nom de la classe en minuscules : le service le choisit), puis la spécialité en minuscules. Un mot-clé qui
- * redirait la même clé est omis (UNIQUE (page_id, tag_id)).
+ * Mots-clés de la fiche d'un nouveau don : « capacité de classe » seul, le mot-clé dont le site se sert pour ranger les fiches de dons (lib/mots-cles.mjs).
+ * Depuis la migration 0056 (les mots-clés deviennent un glossaire, ceux des pages retirés), ni la classe ni la spécialité.
  */
-export function motsClesDeDon({ libelleClasse, specialiteNom = null }) {
-  const vus = new Set();
-  return [MOT_CLE_DES_DONS, libelleClasse, specialiteNom ? specialiteNom.toLowerCase() : null].filter((m) => {
-    if (!m || !normalize(m) || vus.has(normalize(m))) return false;
-    vus.add(normalize(m));
-    return true;
-  });
-}
+export const motsClesDeDon = () => [MOT_CLE_DES_DONS];
 
 /**
  * Ligne d'un nouveau don sans option (« à la fin de son niveau ») : parmi les dons de sa portée — ceux de sa spécialité (don de spécialité compris), sinon

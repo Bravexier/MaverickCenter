@@ -21,28 +21,11 @@ html:not(.js) .armes :is(.js-seul-ligne, .arme-fiche) { display: none; }
 .armes .muted { color: var(--muted); }
 .armes .vide { color: var(--muted); opacity: 0.6; }
 .armes [hidden] { display: none !important; }
-.armes__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 
-/* Règles de l'onglet (texte de la cellule du classeur, avec sa mise en forme : définitions en italique, sous-titres en gras), repliées ; sur un grand
-   écran, le texte en deux colonnes ; le prix d'une arme à part, sa formule encadrée */
-.armes-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.armes-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.armes-regles__corps { display: grid; gap: 0.9rem; padding: 0.2rem 1.2rem 1rem; }
-.armes-regles__texte { max-width: none; line-height: 1.55; }
-@media (min-width: 64rem) { .armes-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
-.armes-regles__texte > * { break-inside: avoid; }
-.armes-regles__texte > :first-child { margin-top: 0; }
-.armes-regles__texte p { margin: 0 0 0.75rem; }
-.armes-regles__texte em { color: color-mix(in srgb, var(--text) 82%, var(--arm)); }
-.armes-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
-.armes-regles__texte li > p { margin: 0 0 0.35rem; }
-.armes-regles__texte p:has(+ ul) { margin-bottom: 0.3rem; }
-/* « Les armes en bleu sont les armes possibles en arme de départ » : en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
-.armes-regles__depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
+/* « Les armes en bleu sont les armes possibles en arme de départ » (panneau de règles de l'onglet : lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart) :
+   en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
+.armes__phrase-depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
   color: color-mix(in srgb, var(--depart) 70%, var(--text)); }
-.armes-regles__prix { border-top: 1px solid var(--border); padding-top: 0.7rem; }
-.armes-regles__prix h2 { margin: 0 0 0.45rem; font-size: 1rem; }
-.armes-regles__prix p { display: inline-block; margin: 0; padding: 0.4rem 0.85rem; border: 1px solid var(--arm-line); border-radius: var(--radius); background: var(--arm-soft); font-weight: 600; }
 
 /* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ », boutons Tout déplier /
    Tout replier. Choisir une compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */

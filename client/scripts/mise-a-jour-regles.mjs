@@ -3,7 +3,8 @@
 // Lancé par le workflow .github/workflows/mise-a-jour.yml (scripts/mise-a-jour-github.mjs), sur une branche feature/… partie de dev :
 //   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition.mjs#rejouerLeJournal : le corps des pages
 //      typées est refait depuis les tables rejouées) : un conflit arrête tout, comme du HTML brut ou un lien non sûr ajouté au Markdown d'une
-//      page, dans le lot ou après le rejeu (lib/markdown-sur.mjs) ;
+//      page, d'un bloc de description de la chronologie ou d'un bloc d'un panneau de règles, dans le lot ou après le rejeu (lib/markdown-sur.mjs ;
+//      ici TEXTES_EN_MARKDOWN, texteNonSurApresLeRejeu, que db:appliquer-edition emploie aussi après son rejeu) ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
 //   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
 //      ipsum) sont retirées, le journal du lot passe dans historique_modification, les tables du journal sont vidées ;
@@ -50,24 +51,45 @@ export function verifierLot(lot) {
   const touchees = [...new Set(lot.journal.lots.flatMap((l) => (l.modifications ?? []).map((m) => m.table)))];
   const horsRegles = touchees.filter((t) => typeof t !== 'string' || interdites.has(t));
   if (horsRegles.length) throw new ErreurMiseAJour(2, `lot : tables hors des règles (${horsRegles.join(', ')}) : refusé`);
-  // ni HTML brut ni lien non sûr ajouté au Markdown d'une page (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
+  // ni HTML brut ni lien non sûr ajouté au Markdown que le build rend tel quel (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
   for (const l of lot.journal.lots) {
     for (const m of l.modifications ?? []) {
-      // le texte d'une page (guide, Codex) ou d'un bloc de description de la chronologie (migration 0043) : du Markdown que le build rend tel quel
-      const colonne = { page: 'corps_md', evenement_extrait: 'texte' }[m.table];
-      if (!colonne || typeof m.apres?.[colonne] !== 'string') continue;
-      const ajoutes = fragmentsAjoutes(typeof m.avant?.[colonne] === 'string' ? m.avant[colonne] : '', m.apres[colonne]);
-      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : ${m.table === 'page' ? 'page' : 'description'} ${m.cle?.id ?? JSON.stringify(m.cle)} : ${messageDeRefus(ajoutes)}`);
+      const t = TEXTES_EN_MARKDOWN[m.table];
+      if (!t || typeof m.apres?.[t.colonne] !== 'string') continue;
+      const ajoutes = fragmentsAjoutes(typeof m.avant?.[t.colonne] === 'string' ? m.avant[t.colonne] : '', m.apres[t.colonne]);
+      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : ${t.nom} ${t.cle(m.cle ?? m.apres)} : ${messageDeRefus(ajoutes)}`);
     }
   }
 }
 
-/** Les textes des blocs de description de la chronologie (Map « evenement_id#rang » → texte), pour blocNonSur. */
-export const textesDesBlocs = (db) => new Map(db.prepare('SELECT evenement_id, rang, texte FROM evenement_extrait').all().map((b) => [`${b.evenement_id}#${b.rang}`, b.texte]));
+/**
+ * Les blocs dont le texte est du Markdown que le build rend tel quel, par table : la colonne de leur parent (leur clé est parent + rang) et leur nom dans
+ * un message. Les blocs de description de la chronologie (migration 0043) et ceux des panneaux de règles (migration 0056 ; le titre d'une tuile est du
+ * texte simple, échappé au rendu : lib/panneaux-regles-rendu.mjs).
+ */
+export const BLOCS_EN_MARKDOWN = Object.freeze({
+  evenement_extrait: Object.freeze({ parent: 'evenement_id', nom: 'description' }),
+  panneau_regles_bloc: Object.freeze({ parent: 'panneau_id', nom: 'bloc de règles' }),
+});
 
-/** Le premier bloc de description dont le texte a gagné du HTML brut ou un lien non sûr depuis `avant` (textesDesBlocs) : { id, fragments } ; sinon null. */
-export function blocNonSur(db, avant) {
-  for (const [id, texte] of textesDesBlocs(db)) {
+/**
+ * Les colonnes de Markdown d'un lot, par table : le texte d'une page (guide, Codex) et celui d'un bloc (BLOCS_EN_MARKDOWN) ; `cle(cle)` : la ligne
+ * nommée dans un message (« guide/bienvenue », « armes#3 »).
+ */
+export const TEXTES_EN_MARKDOWN = Object.freeze({
+  page: { colonne: 'corps_md', nom: 'page', cle: (c) => c?.id ?? JSON.stringify(c) },
+  ...Object.fromEntries(Object.entries(BLOCS_EN_MARKDOWN).map(([table, b]) => [table, { colonne: 'texte', nom: b.nom, cle: (c) => `${c?.[b.parent]}#${c?.rang}` }])),
+});
+
+/** Les textes des blocs d'une table de BLOCS_EN_MARKDOWN (Map « parent#rang » → texte ; les descriptions de la chronologie par défaut), pour blocNonSur. */
+export function textesDesBlocs(db, table = 'evenement_extrait') {
+  const { parent } = BLOCS_EN_MARKDOWN[table];
+  return new Map(db.prepare(`SELECT "${parent}" AS parent, rang, texte FROM "${table}"`).all().map((b) => [`${b.parent}#${b.rang}`, b.texte]));
+}
+
+/** Le premier bloc de `table` dont le texte a gagné du HTML brut ou un lien non sûr depuis `avant` (textesDesBlocs) : { id, fragments } ; sinon null. */
+export function blocNonSur(db, avant, table = 'evenement_extrait') {
+  for (const [id, texte] of textesDesBlocs(db, table)) {
     if (avant.get(id) === texte) continue;
     const fragments = fragmentsAjoutes(avant.get(id) ?? '', texte);
     if (fragments.length) return { id, fragments };
@@ -81,6 +103,27 @@ export function pageNonSure(db, corpsAvant) {
     if (corpsAvant.get(p.id) === p.corps_md) continue;
     const fragments = fragmentsAjoutes(corpsAvant.get(p.id) ?? '', p.corps_md);
     if (fragments.length) return { id: p.id, fragments };
+  }
+  return null;
+}
+
+/** Le Markdown de la base avant un rejeu, pour texteNonSurApresLeRejeu : le corps des pages, le texte des blocs (BLOCS_EN_MARKDOWN). */
+export const textesAvantLeRejeu = (db) => ({
+  pages: new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md])),
+  blocs: Object.fromEntries(Object.keys(BLOCS_EN_MARKDOWN).map((table) => [table, textesDesBlocs(db, table)])),
+});
+
+/**
+ * Le premier texte (corps d'une page, puis bloc de chaque table de BLOCS_EN_MARKDOWN) qui a gagné du HTML brut ou un lien non sûr depuis `avant`
+ * (textesAvantLeRejeu) : { quoi (« page », « description », « bloc de règles »), id, fragments } ; sinon null. Lu après le rejeu d'un journal : par la mise
+ * à jour (appliquerMiseAJour) et par le rapatriement (scripts/db-appliquer-edition.mjs).
+ */
+export function texteNonSurApresLeRejeu(db, avant) {
+  const page = pageNonSure(db, avant.pages);
+  if (page) return { quoi: 'page', ...page };
+  for (const [table, textes] of Object.entries(avant.blocs)) {
+    const bloc = blocNonSur(db, textes, table);
+    if (bloc) return { quoi: BLOCS_EN_MARKDOWN[table].nom, ...bloc };
   }
   return null;
 }
@@ -144,8 +187,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       const livres = new Set(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id));
       dejaLivres = lot.journal.lots.filter((l) => livres.has(l.id)).map((l) => l.id);
       const journal = { ...lot.journal, lots: lot.journal.lots.filter((l) => !livres.has(l.id)) };
-      const corpsAvant = new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md]));
-      const blocsAvant = textesDesBlocs(db);
+      const textesAvant = textesAvantLeRejeu(db);
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
       chargerJournal(db, journal);
@@ -157,16 +199,12 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
         db.exec('ROLLBACK');
         throw new ErreurMiseAJour(3, `${conflits.length} lot(s) en conflit avec dev : ${conflits.map((c) => `« ${c.resume} » (${c.detail})`).join(' ; ')}`, { conflits, rejeu });
       }
-      // le corps de chaque page changée par le rejeu (texte du guide, ou refait depuis les tables) : ni HTML brut ni lien non sûr ajouté
-      const nonSure = pageNonSure(db, corpsAvant);
-      if (nonSure) {
+      // le corps de chaque page changée par le rejeu (texte du guide, ou refait depuis les tables) et le texte de chaque bloc (chronologie, panneaux de
+      // règles) : ni HTML brut ni lien non sûr ajouté
+      const nonSur = texteNonSurApresLeRejeu(db, textesAvant);
+      if (nonSur) {
         db.exec('ROLLBACK');
-        throw new ErreurMiseAJour(2, `lot : page ${nonSure.id} après le rejeu : ${messageDeRefus(nonSure.fragments)}`);
-      }
-      const blocNonSurApres = blocNonSur(db, blocsAvant);
-      if (blocNonSurApres) {
-        db.exec('ROLLBACK');
-        throw new ErreurMiseAJour(2, `lot : description ${blocNonSurApres.id} après le rejeu : ${messageDeRefus(blocNonSurApres.fragments)}`);
+        throw new ErreurMiseAJour(2, `lot : ${nonSur.quoi} ${nonSur.id} après le rejeu : ${messageDeRefus(nonSur.fragments)}`);
       }
       const production = new DatabaseSync(ref.chemin, { readOnly: true });
       try {

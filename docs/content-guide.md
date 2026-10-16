@@ -259,12 +259,12 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
 | Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
 | Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
 | Boucliers | `#boucliers` | `ressources/bouclier` | idem |
-| Ceinture | `#ceinture` | aucune (l'ancienne page `/ressources/objets-a-la-ceinture/`, sans page du wiki) ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques |
+| Ceinture | `#ceinture` | aucune (l'ancienne page `/ressources/objets-a-la-ceinture/`, sans page du wiki) ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques (celui-ci avec son panneau de règles) |
 | Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
 
 - Les cinq pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` : quatre onglets et le sous-onglet des bâtons) **ne sont plus
-  construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, règles affichées par leur onglet) ; leurs liens
-  mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
+  construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, contexte des liens de leur panneau de règles) ;
+  leurs liens mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
   `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`), comme celle de l'ancienne page « Objets à la ceinture » (→ `#ceinture`). Les liens écrits à la main
   dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
 - Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre son onglet (et son
@@ -276,23 +276,67 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
   lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
 - Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
-  active dès que son bloc est dans la page) ; ni la ceinture ni les accessoires.
+  active dès que son bloc est dans la page) ; les cinq panneaux de règles (`src/scripts/edition/panneaux.mjs`, ci-dessous) ; ni les tableaux de la
+  ceinture (potions, carquois, bâtons) ni ceux des accessoires.
 - Tests : `test/equipement.test.mjs` (onglets et sous-onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site
-  construit : onglets et panneaux dans l'ordre, identifiants uniques, bâtons, anciennes pages absentes et plus aucun lien vers elles, scripts),
-  `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
-  `ceinture-html`, `accessoires-html.test.mjs`.
+  construit : onglets et panneaux dans l'ordre, identifiants uniques, panneaux de règles, bâtons, anciennes pages absentes et plus aucun lien vers elles,
+  scripts), `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
+  `ceinture-html`, `accessoires-html.test.mjs` ; les panneaux de règles : `panneaux-regles.test.mjs` (lecture, ordre, rendu, copie de l'import),
+  `serveur-edition-panneaux.test.mjs` (le service).
+
+### Panneaux de règles (en tête des onglets et du sous-onglet Bâtons magiques)
+
+Demande du propriétaire (2026-10-16) : « Il faudrait refaçonner tous les encarts de début des onglets des équipements. La première ligne serait à
+supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs
+inclure des tuiles génériques (toujours insérables / modifiables en mode édition). Si l'écran est assez large, la zone de texte prendra deux colonnes.
+Sinon une seule. Dans le cas présent pour les armes les blocs modulaires à séparer (et garder à part) seraient les définitions sur Recharge longue,
+Recharge très longue, Mordhau, Dague et Arme de jet. »
+
+- **Données** (migration `0056-glossaire-et-panneaux-de-regles`) : `panneau_regles` (un par page du wiki que la page sert,
+  `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'ancre de l'onglet ou du sous-onglet de cette page : `armes`, `armures`,
+  `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de l'onglet Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
+  `panneau_regles_bloc` (ses blocs : `rang`, la clé, jamais redonné ; `ordre`, la place de lecture, non unique, à égalité le rang ; `tuile` 0 ou 1 ; le titre facultatif d'une tuile,
+  jamais d'un bloc de texte ; le texte, du Markdown des pages). La migration a **copié** le texte que l'onglet affichait (tiré du corps de la page) ;
+  depuis, le site de dev en est la source, et le corps de la page (`page.corps_md`) **n'est plus que la trace de l'import** de ces règles : il n'est plus
+  affiché ni modifié (la recherche le lit encore, après le texte des panneaux, voir plus bas). Lecture : `lib/panneaux-regles-db.mjs` (`chargerPanneau`,
+  `ordonnerBlocs`) ; `test/panneaux-regles.test.mjs` compare les panneaux aux pages servies (un panneau par page, son id = l'ancre :
+  `PAGES_SERVIES_PAR_L_EQUIPEMENT`) et vérifie que chaque bloc de l'import se lit mot pour mot dans le corps de sa page.
+- **L'onglet Ceinture n'a pas de panneau de règles** (il ne sert pas de page du wiki) : il garde son encart, le chapeau et les règles de la ceinture
+  repliées (« Ceinture » plus bas), dont le texte est celui du guide, modifiable sur la page du guide.
+- **Affichage** (`components/equipement/PanneauDeRegles.astro`, générique ; HTML des blocs : `lib/panneaux-regles-rendu.mjs`, le même au build et sur le
+  site de dev ; CSS `.preg` dans `styles/equipement/equipement.css`) : plus de phrase au-dessus du panneau (le résumé de la page, qui répétait la
+  première ligne) ; un `<details>` replié (celui des Accessoires déplié au départ, comme avant), le titre dans son `<summary>`, puis les blocs dans l'ordre
+  de lecture : un **bloc de texte** est de la prose qui suit les colonnes, une **tuile** un cadre (filet de couleur à gauche, comme un don de classe ou
+  une capacité du bestiaire) avec son titre s'il en a un. **Deux colonnes** séparées d'un filet à partir de 64rem, une seule en dessous ; une tuile, un
+  paragraphe ou une liste ne se coupe jamais entre deux colonnes, et la fin d'un bloc de texte suivi d'une tuile reste avec elle (« CAS PARTICULIERS : »
+  n'est jamais seul en bas d'une colonne ; `break-after: avoid`, que Firefox n'applique pas aux colonnes). Le Markdown de chaque bloc est rendu au build par `lib/guide-rendu.ts` (`[[liens]]`,
+  couleurs, monnaies en icônes) avec la page du panneau comme contexte (`src/pages/ressources/equipement.astro`). Dans celui des armes, « Les armes en
+  bleu… » prend le bleu des armes de départ (`lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`, sur le HTML du bloc qui la contient).
+- **Panneaux à l'import** : Armes — l'introduction (fabrication, recyclage, bonus du matériau), trois tuiles **Recharge longue**, **Recharge très
+  longue** et **Mordhau** (sans titre : chacune n'est que la balise du mot-clé en mode complet, « `{{recharge-longue:}}` », la définition vivant dans le
+  glossaire), « Les armes en bleu… » et « CAS PARTICULIERS : », puis les tuiles **Dague**, **Arme de jet** et **Comment déterminer le prix de votre
+  arme ?** ; Armures, Boucliers et Accessoires — leur texte en un bloc ; Bâtons magiques — l'introduction, puis la tuile **Comment fabriquer un bâton
+  magique ?**. Les titres des panneaux et des tuiles sont ceux de la migration (les intitulés de la page, en minuscules).
+- **Mode modification** (site de dev, `src/scripts/edition/panneaux.mjs`, service `serveur/edition-panneaux.mjs`) : chaque panneau s'ouvre et reste
+  ouvert ; son titre est un champ (un clic, une espace ou Entrée dans le `<summary>` ne le replient pas) ; le texte de chaque bloc et le contenu de chaque
+  tuile se modifient en place (l'éditeur de la chronologie : Texte, Mise en page, Liens), le titre d'une tuile est un champ ; sous chaque bloc, « ↑ » et
+  « ↓ » (il change de place avec son voisin, enregistré avec le reste), « Supprimer » (à l'enregistrement, après confirmation ; le dernier bloc d'un
+  panneau reste), « + Texte » et « + Tuile » (insérés après ce bloc, créés tout de suite, puis modifiables). Un bloc de texte se coupe entre les deux colonnes comme
+  en lecture, ses outils restent sous sa fin. Voir [`serveur.md`](serveur.md), « Édition ».
+- **Recherche** : le titre et les blocs des panneaux d'une page sont en tête du texte de son entrée (`lib/recherche-index.ts`) ; le corps de la page
+  (la trace de l'import) suit.
 
 ## Armes (onglet Armes de `/ressources/equipement/`) : un tableau par famille, la fiche de l'arme forgée
 
 Demande du propriétaire (2026-10-13) : « Pas de tableau markdown, inspire-toi des sorts et fais un tableau par type d'arme. » La page est rendue depuis
-les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown, dont seules les règles de l'onglet (introduction, « Comment déterminer le
-prix de votre arme ? ») s'affichent, repliées ; le reste du Markdown (tableaux) ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque
-modification (`lib/corps-armes.mjs`).
+les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown ; ses règles sont le panneau de règles de l'onglet (« Panneaux de
+règles » plus haut : leur texte a été copié de l'introduction et de « Comment déterminer le prix de votre arme ? ») ; le Markdown de la page (tableaux)
+ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armes.mjs`).
 
-- **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction porte la mise en forme de la cellule A1 de l'onglet (lue dans le
-  classeur, perdue à l'import) — définitions en italique (*Recharge longue*, *Recharge très longue*, *Mordhau ou Demi-épée*, l'*Exemple*), « Les armes en
-  bleu… » en gras (et en bleu sur la page, le bleu des armes de départ : `lib/armes-db.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras
-  italique, **Dague** et **Arme de jet** en gras ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes ; le prix à part, sa formule encadrée.
+- **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction portait la mise en forme de la cellule A1 de l'onglet (lue dans le
+  classeur, perdue à l'import), que les blocs du panneau gardent — « Les armes en bleu… » en gras (et en bleu sur la page, le bleu des armes de départ :
+  `lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras italique ; Recharge longue, Recharge très longue et Mordhau, Dague,
+  Arme de jet et le prix sont des tuiles (migration 0056) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
 
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45), aéré (« l'affichage est trop
   serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; les **effets
@@ -344,13 +388,14 @@ Demandes du propriétaire (2026-10-15) : « Je souhaite faire la refonte de l'on
 page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une
 liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les
 boucliers » ; « Pour les bouclier c'est forme + matière ». La page est rendue depuis les tables (`lib/armures-db.mjs`, `components/armures/ArmuresPage.astro`,
-`styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles (le texte avant les tableaux)
-s'affichent, repliées ; le reste ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
+`styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; leurs règles sont le panneau de règles de chaque
+onglet (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
+`[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
 **Les pages « Armures » et « Bouclier » ne sont plus construites** : leurs liens mènent à leur onglet de la page « Équipement » (voir plus haut) ; le
 lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration
 `0046-armures-boucliers`, il mène à celui de la page « Équipement » depuis la migration `0053-liens-page-equipement` (seule l'adresse a changé).
 
-- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec ses règles repliées. **Plus de tableau
+- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec son panneau de règles replié. **Plus de tableau
   MATÉRIAUX** sous les deux (prix, description, fabrication) : demande du propriétaire, 2026-10-16 (« Les onglets Matériaux présent en bas de page de
   l'Armure et du bouclier (avec les grand textes) devraient disparaitre et être mélangés au tableau des matériaux des Composants ») ; sa description et
   son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque onglet y renvoie
@@ -364,7 +409,7 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16 : la défense se modifie dans la
   case AP, la case AM la suit en lecture, comme dans la liste des boucliers) ; une ligne choisit l'armure (et ses deux matériaux). Une armure **ne se fabrique plus pièce par pièce, seulement
   complète** (décision R93) : plus de tableau FABRICATION ; les paragraphes des règles de l'onglet sur la création par pièces sont
-  retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`). **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
+  retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`), et donc du panneau de règles de l'onglet. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
   10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
   page Composants (R62) ; calculé partout (au build : `lib/armures-db.mjs#chargerArmures`, `prix_calcule` ; le script de la page le refait quand un prix
   de matériau ou la fabrication est réécrit), le prix écrit dans la grille n'est plus lu ni modifiable ; une armure particulière garde son prix écrit.
@@ -444,7 +489,7 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
     description) ;
   - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
-    et ce sous-onglet) : « Bâtons magiques » ci-dessous.
+    et ce sous-onglet) : son panneau de règles en tête, puis le tableau (« Bâtons magiques » ci-dessous).
 - **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : l'onglet n'a pas de script, sauf le curseur des
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
 - **Couleurs des lignes** (`lib/ceinture-couleurs.mjs`, lues dans les sources originales le 2026-10-16 par les connecteurs Google de la session ; les
@@ -469,6 +514,8 @@ Demande du propriétaire (2026-10-16) : « Il faudrait colorer toute la ligne de
 utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3
 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
 
+- En tête, son **panneau de règles** (« Panneaux de règles » plus haut ; id `batons-magiques`, l'ancre du sous-onglet) : l'introduction de la page
+  « Bâton magique », puis la fabrication en tuile, replié comme ceux des autres onglets.
 - Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** : depuis la demande du propriétaire du 2026-10-16 (« récupérer les
   couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes »), celle de la case du nom de la magie dans l'onglet « Bâton magique »
   du classeur (`lib/ceinture-couleurs.mjs#COULEURS_DES_BATONS`, texte posé par le classeur ou, sinon, le plus lisible : `texteSurCouleur` ; une magie
@@ -494,8 +541,9 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
 un bloc d'explication, plusieurs tableaux et, sur le côté, un encart qui décrit l'accessoire créé d'après ce qui a été sélectionné. La page est rendue
 depuis les tables (`lib/accessoires-db.mjs`, `components/accessoires/AccessoiresPage.astro`, `styles/accessoires/`), jamais depuis son Markdown, dont
-seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge »,
-« Ne peut dépasser 4 »…) s'affichent ; le reste (tableaux) ne sert qu'à la recherche et aux `[[liens]]`. La page n'est pas modifiable sur le site de dev.
+seules les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge », « Ne peut dépasser 4 »…) s'affichent ; ses règles (avant
+« ## CRÉATION D'ACCESSOIRE ») sont le panneau de règles de l'onglet, déplié au départ (« Panneaux de règles » plus haut) ; le reste (tableaux) ne sert
+qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur le site de dev.
 
 - **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
   par propriété (`accessoire_effet`), chacun dans son **onglet** (« Et plutôt que des menus déroulants : ces tableau soient derrière des onglets », demande du
@@ -709,7 +757,7 @@ niveau (Élémentaliste / Occultiste ; Création vivante / Tempus Figus / Obédi
 `test/capacites-content.test.mjs` rejoue ces exemples sur les pages de l'import (le site de dev peut ajouter ou retirer des dons).
 
 **Dons et spécialités créés sur le site de dev** (D11, `docs/serveur.md`, « Édition ») : la fiche d'un don créé a pour seule source sa provenance
-« Site de dev › édition du AAAA-MM-JJ », ses mots-clés (« capacité de classe », la classe telle que l'écrivent ses frères, la spécialité), son corps et
+« Site de dev › édition du AAAA-MM-JJ », son seul mot-clé « capacité de classe » (depuis la migration 0056 : ni la classe ni la spécialité), son corps et
 son résumé tirés de sa ligne ; ses champs structurés (`classe`, `specialite`, `niveau`, `nature`, `rang`, `ligne`, `type_capacite`,
 `choix_exclusif_avec`) sont **tirés des tables** (`lib/dons-edition.mjs#donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près) et refaits
 quand un voisin change : le `rang` d'un don reçu sans choix est sa place de haut en bas parmi ceux de sa classe, celui d'un cartouche le rang de sa
@@ -744,14 +792,69 @@ refaire la correction par une migration. Les citations « telles quelles » de l
 (mot manquant, accord douteux) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
 
-## Mots-clés
+## Mots-clés (glossaire)
 
-Les mots-clés forment un **vocabulaire** (table `mot_cle`, migration `0043`) que portent les pages (`tags:` du frontmatter, écrits par leur libellé).
-Chacun a un identifiant figé, tiré de son premier libellé : son adresse est `/recherche/?mot-cle=<id>`, qui liste les pages qui le portent ; renommé, il
-garde son adresse. Sur le site de dev, la page Recherche en mode modification crée, renomme, fusionne et supprime un mot-clé (supprimé, il est retiré de
-toutes les pages) ; les mots-clés dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité
-de classe », « métier », « codex ») ne bougent pas. Les événements de la chronologie n'ont pas de mots-clés (« trop nombreux et trop libres », demande du
-propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie »).
+Demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un glossaire. Le mot-clé aura son ID, son texte et une
+description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible. » La table `mot_cle`
+(migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
+une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
+site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue…).
+
+**Citer un mot-clé : une balise, toujours écrite** (marquage explicite, jamais de repérage automatique du texte) :
+
+| Écriture | Rendu |
+| --- | --- |
+| `{{recharge-longue}}` | **Recharge longue** (le libellé), en gras, la définition en infobulle |
+| `{{non-mort\|non-morts}}` | **non-morts** (le texte écrit), en gras, la définition du mot-clé en infobulle |
+| `{{mordhau:}}` | le **mode complet** : « **Mordhau** : définition », dans le fil du texte (la définition vient du glossaire et la suit) ; `{{mordhau :}}` (une espace avant les deux-points) est la même balise |
+
+- Dans une saisie, la ref est l'**id** du mot-clé ou son **écriture** : `{{Recharge longue}}` = `{{recharge-longue}}`. La balise à copier est écrite à côté
+  de chaque mot-clé sur `/recherche/` en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
+  `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
+  ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).
+- **Dans une case de tableau Markdown**, le séparateur s'écrit `\|` : `| Arbalète | {{recharge-longue\|à recharger}} |` (sinon la case s'arrête au
+  `|` ; le service réécrit un `|` en `\|` sur une ligne de tableau). Le texte d'une balise est du **texte simple** : ni gras, ni lien, ni accolade, ni
+  retour à la ligne dedans.
+- **Partout** : corps des pages du guide et du Codex, descriptions de la chronologie, textes des tables (effet d'une arme, rubrique d'une carte de
+  monstre, effet d'un don, description d'une capacité de monstre…), blocs des panneaux de règles, définition d'un autre mot-clé (citée en texte simple).
+  Le site les rend à la construction (`src/middleware.mjs`, `lib/mots-cles-balises.mjs`) : une bulle par mot-clé et par page, posée en fin de page ;
+  dans une bulle, un mot-clé est en gras sans bulle ; dans un bouton ou un résumé de `details`, en gras sans bulle (le toucher ferait l'action) ; dans un
+  `title`, un `alt`, une description de page ou un attribut lu par un script, le texte simple. Rien n'est rendu dans le code (`code`, `pre`, ni dans
+  leurs attributs), ni sur `/donnees/`, ni dans les textes d'aide du mode modification et la page Debug (les valeurs telles qu'écrites,
+  `data-mots-cles-bruts`). Les monnaies ne lisent aucun montant dans une balise (`{{x|10 RO}}` reste écrit). La fiche de personnage n'en garde que le
+  texte affiché (le texte écrit, ou le libellé ; jamais la définition), l'index de la recherche le texte simple (« Libellé : définition » pour le mode
+  complet) ; `/recherche/?mot-cle=<id>` liste aussi les pages qui **citent** un mot-clé.
+- **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours l'id, et selon la colonne :
+  - un **texte mis en forme** (Markdown : corps des pages du guide et du Codex, descriptions de la chronologie, blocs des panneaux de règles) garde
+    `{{id}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{id|texte}}` si un autre texte que le libellé est écrit (le
+    libellé écrit en texte redevient `{{id}}`), et permet le mode complet `{{id:}}`. Une balise dans un **code** (`` `{{id}}` ``, bloc ` ``` ` ou `~~~`) est
+    une écriture littérale : ni mise en forme, ni refusée, ni rendue ;
+  - un **texte de case** (cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de sa balise, `{{id|texte}}` (le
+    libellé du moment si rien n'est écrit) : un découpage le lit **sans le vocabulaire** (« Recharge longue » d'un effet d'arme donne toujours la
+    recharge longue, quel que soit le libellé du mot-clé). Le mode complet y est **refusé** (« le mode complet ne s'écrit que dans un texte mis en
+    forme »). Une case découpée et affichée morceau par morceau (bonus et objets d'un métier, inventaire d'une classe, lieux d'une espèce) garde la
+    balise de chaque morceau, que le site met en gras.
+- **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (l'id d'un mot-clé et l'écriture d'un autre : un
+  mot-clé renommé dont l'id est devenu l'écriture d'un nouveau ; préciser l'id voulu) — sauf si le texte l'avait déjà ; au rendu, une ref inconnue (texte
+  d'avant la suppression de son mot-clé) s'affiche en texte simple.
+- **Renommer** un mot-clé ne réécrit aucun texte : un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau libellé.
+  Le **supprimer** remplace chacune de ses balises par son texte simple (« Libellé : définition » pour le mode complet), partout ; le **fusionner** dans
+  un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal), cela vaut aussi pour les textes
+  que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux étiquettes ou aux balises que le lot a
+  reportées (sinon les balises sont retirées). Les outils « Mot-clé » et « Définition » de l'éditeur en place (guide, Codex, chronologie, panneaux de
+  règles) posent les balises sans les taper.
+- **Ce qui n'est pas un mot-clé** : une capacité (de monstre, de classe) ou une altération d'état qui porte le nom d'un mot-clé reste la capacité ou
+  l'état (le Non-mort, type de monstre ET capacité de monstre : la tuile de capacité n'est jamais un mot-clé) ; seule une balise fait un mot-clé. Les
+  valeurs « {N} » des capacités communes (une accolade : `{{12}}` est une balise, jamais un emplacement) et la couleur de case « {couleur:x} » ne sont
+  pas des balises.
+
+Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
+adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. Sur le site de dev, en mode
+modification, elle crée (avec sa définition), renomme, fusionne et supprime un mot-clé ; les mots-clés dont le site se sert ne se renomment ni ne se
+suppriment, leur définition se modifie. Une page créée depuis le site ne porte que ces mots-clés-là. Les événements de la chronologie n'ont pas
+d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs
+descriptions peuvent citer des mots-clés.
 
 ## Liens entre pages
 

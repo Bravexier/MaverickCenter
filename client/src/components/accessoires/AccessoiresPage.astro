@@ -5,27 +5,27 @@ import GemmesDeLEffet from './GemmesDeLEffet.astro';
 import { bulleDeGemme, cleDeRessource, consignesDesEtapes, type chargerAccessoires } from '../../lib/accessoires-db.mjs';
 import { cleDEffet, facesDuDe, gemmesAuChoix, QUALITES_DE_GEMME, styleDeNiveau } from '../../lib/accessoires-generateur.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
 // Onglet « Accessoires » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
 // « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; avant, la page /ressources/accessoires/, dont l'adresse mène à l'onglet) : un
 // panneau (`section.equipement-panneau#accessoires`). Demande du propriétaire, 2026-10-14 : « Pas de tableau Markdown. Au lieu de ça, un générateur
 // d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
-// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : les règles de l'onglet en tête ; les
-// tableaux des étapes (Identité 1d4, Propriété 1d100, un tableau d'effets par propriété, chacun dans son onglet), puis la monture ; à côté, l'accessoire créé
-// (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
+// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : le panneau de règles de l'onglet en
+// tête, déplié au départ (components/equipement/PanneauDeRegles.astro, migration 0056) ; les tableaux des étapes (Identité 1d4, Propriété 1d100, un
+// tableau d'effets par propriété, chacun dans son onglet), puis la monture ; à côté, l'accessoire créé (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
 // icône de dé ») ; pas la Monture (« Pas de random à faire sur la table des Montures ») ; pas de tableau des gemmes, une infobulle sur chaque gemme (écrite une fois par gemme en bas de page), la gemme dans la couleur de sa magie ;
 // les lignes des effets, la monture et l'accessoire créé dans la couleur de leur niveau (lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX).
 // Sans JavaScript : tous les tableaux, ni sélection ni encart. CSS : styles/accessoires/accessoires.css (?raw, inséré ici seulement).
 type Accessoires = ReturnType<typeof chargerAccessoires>;
 interface Props {
   accessoires: Accessoires;
-  /** HTML des règles de la page (Markdown avant « ## CRÉATION D'ACCESSOIRE » : lib/accessoires-db.mjs#reglesDeLaPage) */
-  regles: string;
-  /** première phrase des règles, affichée en tête de l'onglet Accessoires */
-  resume?: string | null;
+  /** le panneau de règles de l'onglet (`accessoires`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
 }
-const { accessoires, regles, resume } = Astro.props;
+const { accessoires, regles } = Astro.props;
 const consignes = consignesDesEtapes(accessoires.page?.corps_md, accessoires.proprietes);
 const proprietesAvecEffets = accessoires.proprietes.filter((p) => p.effets.length);
 const faces = {
@@ -53,11 +53,7 @@ const DE_SVG =
 <section class="equipement-panneau" id="accessoires" aria-labelledby="titre-accessoires">
 <h2 class="equipement-panneau__titre" id="titre-accessoires">{accessoires.page?.titre ?? 'Accessoires'}</h2>
 <div class="acc" data-accessoires>
-  {resume && <p class="acc__chapo" set:html={htmlAvecMonnaies(resume)} />}
-  <details class="acc-regles" open>
-    <summary>Règles des accessoires : prix, malédiction, montures, qualité des gemmes</summary>
-    <div class="prose acc-regles__texte"><Fragment set:html={regles} /></div>
-  </details>
+  <PanneauDeRegles panneau={regles} ouvert />
 
   <div class="acc-outils js-seul">
     <button type="button" class="acc-bouton acc-bouton--fort" data-acc-tout-tirer><Fragment set:html={DE_SVG} /> Tirer un accessoire</button>

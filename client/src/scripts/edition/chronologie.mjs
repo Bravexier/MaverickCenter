@@ -19,7 +19,7 @@ import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
-import { editeurEnPlace, libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
+import { editeurEnPlace, libelleDePage, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const etat = {
   id: null, // l'événement affiché
@@ -222,6 +222,7 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  outilsDesMotsCles(texte),
 ];
 
 function bouton(libelle, { classe = 'ed-outil', titre = null, action }) {

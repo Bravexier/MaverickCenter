@@ -67,6 +67,18 @@ test('le plugin remark : texte courant et cases, nombres seuls d’une colonne �
   assert.ok(html.includes('"value":"3"'), 'la colonne « Prix » n’écrit pas d’unité : le nombre reste un nombre');
 });
 
+test('le plugin remark : une balise du glossaire des mots-clés reste entière, aucun montant n’y est lu (texte courant comme colonne « (RO) », « \\| » d’une case compris)', () => {
+  const md = 'Le {{prix-fixe|10 RO}} coûte 5 RO.\n\n| Objet | Coût(RO) |\n| --- | --- |\n| Arc | {{prix-fixe\\|12}} |\n| Épée | 12 |\n';
+  const arbre = unified().use(remarkParse).use(remarkGfm).parse(md);
+  remarkMonnaies()(arbre);
+  const json = JSON.stringify(arbre);
+  assert.ok(json.includes('"value":"{{prix-fixe|10 RO}}"'), 'la balise du texte courant : un morceau de texte entier, tel qu’écrit');
+  assert.ok(json.includes('data-montant=\\"5 RO\\"'), 'le montant hors de la balise');
+  assert.ok(json.includes('"value":"{{prix-fixe|12}}"'), 'la balise d’une case de la colonne « Coût(RO) » : pas un montant');
+  assert.ok(json.includes('data-montant=\\"12\\"'), 'le nombre seul de l’autre ligne en est un');
+  assert.ok(!/data-montant=\\"10 RO\\"/.test(json));
+});
+
 test('la page des armes décompose ses montants comme lib/monnaies.mjs (lib/arme-forge.mjs#piecesDuMontant)', () => {
   for (const ro of [0, 0.5, 1, 7, 99.99, 100, 999, 1000, 1245.5, 1220, 123456.78]) {
     const attendu = Math.round(ro * 100) ? montantDecompose(Math.round(ro * 100)) : [{ nombre: 0, abr: 'RO' }];

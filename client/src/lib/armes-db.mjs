@@ -10,7 +10,8 @@ export { PAGE_DES_ARMES };
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 
-export { ancreDArme } from './armes-rendu.mjs';
+// le rendu de l'onglet (lib/armes-rendu.mjs) : l'ancre d'une arme, la phrase des armes de départ dans le panneau de règles
+export { ancreDArme, avecPhraseDesArmesDeDepart } from './armes-rendu.mjs';
 /** Ancre HTML d'un matériau : « materiau-titane ». */
 export const ancreDeMateriau = (id) => `materiau-${String(id).slice(String(id).lastIndexOf(':') + 1)}`;
 
@@ -27,34 +28,6 @@ export function contexteDesArmes(db) {
     soliditeDesArmes: db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get()?.valeur ?? null,
   };
 }
-
-/** Une partie du corps Markdown de la page : de la ligne `debut` (exclue si `sansTitre`) jusqu'au titre « ## » suivant. */
-function partieDuCorps(corps, debut, { sansTitre = false } = {}) {
-  const l = String(corps ?? '').split('\n');
-  const i = debut === null ? -1 : l.findIndex((x) => x === debut);
-  if (debut !== null && i < 0) return '';
-  const depart = debut === null ? 0 : i + (sansTitre ? 1 : 0);
-  let fin = l.findIndex((x, k) => k > (debut === null ? -1 : i) && /^## /.test(x));
-  if (fin < 0) fin = l.length;
-  return l.slice(depart, fin).join('\n').trim();
-}
-
-/**
- * Les règles de la page tirées de son corps (texte du classeur, A1 de l'onglet) : l'introduction (avant les tableaux) et « Comment déterminer le prix de
- * votre arme ? ». Rien d'autre du corps ne s'affiche : les tableaux viennent des tables.
- */
-export const reglesDeLaPage = (corps) => ({
-  introduction: partieDuCorps(corps, null),
-  prix: partieDuCorps(corps, '## COMMENT DÉTERMINER LE PRIX DE VOTRE ARME ?', { sansTitre: true }),
-});
-
-/**
- * La phrase « Les armes en bleu sont les armes possibles en arme de départ » des règles (en gras et en bleu dans la cellule du classeur ; en gras dans le
- * Markdown de la page) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML, reçoit la classe `armes-regles__depart`. Rien
- * d'autre ne change.
- */
-export const avecPhraseDesArmesDeDepart = (html) =>
-  String(html ?? '').replace(/<p>(<strong>Les armes en bleu [^<]*<\/strong>)<\/p>/, '<p class="armes-regles__depart">$1</p>');
 
 /**
  * Les données de la page :

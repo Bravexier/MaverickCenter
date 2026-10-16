@@ -10,15 +10,14 @@
 // Node seulement (node:sqlite), sans dépendance (le format des fiches, src/lib/fiche-format.mjs, est un module pur) ; partagé par le service et par
 // client/scripts/db-appliquer-edition.mjs.
 import { randomUUID } from 'node:crypto';
-import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 
 /**
- * Tables du journal lui-même, des notes de version et des fiches (section 13) : jamais modifiées par l'édition. Les fiches ont leur API ; quand une
+ * Tables du journal lui-même (section 14), des notes de version (section 15) et des fiches (section 13) : lib/tables-de-la-base.mjs#TABLES_HORS_REGLES,
+ * comparées au schéma par test/tables-de-la-base.test.mjs ; jamais modifiées par l'édition. Les fiches ont leur API ; quand une
  * suppression de règle les touche (décision R42), serveur/fiches-retraits.mjs les écrit en SQL direct : rien d'elles ne va au journal ni dans data/rows.
  */
-export const TABLES_INTERDITES = new Set([
-  'modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification', ...TABLES_FICHES,
-]);
+export const TABLES_INTERDITES = new Set(TABLES_HORS_REGLES);
 
 export class ErreurJournal extends Error {
   constructor(message) {
@@ -427,10 +426,15 @@ const decodee = (m) => ({
  * `adapter()` : fabrique, appelée au début de chaque passe (base dans l'état des règles), d'une fonction qui lit une modification notée sous une forme
  * ancienne dans la forme des règles : elle rend la modification à rejouer à sa place, modifiée ou non, avec au besoin `aCreer` : des lignes
  * ([{ table, valeurs }]) créées juste avant elle si elles manquent — dans son lot, annulées avec lui, jamais notées ni comptées
- * (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043 et son mot-clé) — ou avec `conflit` : le message d'une forme
- * ancienne qui n'a pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant
- * la migration 0044).
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object }} [options]
+ * (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0043 et son mot-clé), avec `sansEffet` : une écriture que les
+ * règles n'ont plus de raison de faire, « intégrée » sans rien écrire ni rompre son lot (serveur/edition.mjs#ancienneEcritureDuGlossaire : avant la
+ * migration 0056, l'étiquette d'une page qui cite un mot-clé que le glossaire n'a plus) — ou avec `conflit` : le message d'une forme ancienne qui n'a
+ * pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant la migration 0044).
+ * `apresLeLot(modifications)` : appelée après les modifications de chaque lot qui passe, dans son lot (avant le contrôle de ses clés étrangères, annulée
+ * avec lui), avec ses modifications (telles qu'adaptées) ; elle écrit ce que le lot entraîne au-delà de ce qu'il note et rend ces écritures, décodées
+ * ({ lot, rang, table, cle, operation, avant, apres, … }), passées à `applique` après celles du lot (serveur/edition.mjs#balisesRetireesParLeLot : les
+ * balises d'un mot-clé supprimé ou fusionné, au moment où sa suppression est rejouée) ; une erreur met le lot en conflit.
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object, apresLeLot?: (modifications: object[]) => object[] }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
 export function rejouer(db, options = {}) {
@@ -477,7 +481,7 @@ function fantomesDe(modifications, exclus) {
  * Une passe du rejeu (voir rejouer), sans les lots `ecartes` (marqués « conflit », avec leur conflit) : { bilan, appliquees (décodées, pour
  * `applique`), conflits (Map lot → conflit, ceux d'avant compris), aExclure (fantômes encore cités en fin de passe) }.
  */
-function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], siOrphelines = [], adapter = null } = {}, ecartes = new Map(), exclus = new Set()) {
+function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], siOrphelines = [], adapter = null, apresLeLot = null } = {}, ecartes = new Map(), exclus = new Set()) {
   const horsControle = new Set(horsControleParLot);
   const orphelines = new Set(siOrphelines);
   const appliquees = [];
@@ -526,6 +530,7 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
     db.exec('SAVEPOINT rejeu_lot');
     const resultats = [];
     const creees = []; // lignes créées à la demande de l'adaptateur (`aCreer`)
+    let entrainees = []; // écritures que le lot entraîne au-delà de ce qu'il note (`apresLeLot`)
     // une forme ancienne sans équivalent (l'adaptateur dit pourquoi) : le lot en conflit avec son explication, avant qu'une autre de ses modifications
     // n'échoue sans rien expliquer
     const signalee = modifications.find((m) => m.conflit);
@@ -533,13 +538,16 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
     for (const m of signalee ? [] : modifications) {
       let r;
       try {
-        for (const { table, valeurs } of m.aCreer ?? []) {
-          const cle = cleDe(db, table, valeurs);
-          if (lireLigne(db, table, cle)) continue;
-          insererBrut(db, table, valeurs);
-          creees.push({ lot: m.lot_id, rang: m.rang, table, cle, operation: 'inserer', avant: null, apres: valeurs, synthetique: true });
+        if (m.sansEffet) r = 'integree'; // une écriture que les règles n'ont plus de raison de faire (adaptateur) : rien d'écrit
+        else {
+          for (const { table, valeurs } of m.aCreer ?? []) {
+            const cle = cleDe(db, table, valeurs);
+            if (lireLigne(db, table, cle)) continue;
+            insererBrut(db, table, valeurs);
+            creees.push({ lot: m.lot_id, rang: m.rang, table, cle, operation: 'inserer', avant: null, apres: valeurs, synthetique: true });
+          }
+          r = rejouerUne(db, m, derivee, suivantesDe(m), fantomes.has(cleDeFantome(m)), orphelines);
         }
-        r = rejouerUne(db, m, derivee, suivantesDe(m), fantomes.has(cleDeFantome(m)), orphelines);
       } catch (e) {
         r = `écriture refusée : ${e.message}`;
       }
@@ -547,6 +555,13 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
       if (r !== 'applique' && r !== 'integree' && r !== 'derivee' && r !== 'fantome') {
         conflit = `${m.table_nom} ${m.cle} : ${r}`;
         break;
+      }
+    }
+    if (!conflit && apresLeLot) {
+      try {
+        entrainees = apresLeLot(modifications) ?? [];
+      } catch (e) {
+        conflit = `après le lot : ${e.message}`;
       }
     }
     if (!conflit) {
@@ -588,6 +603,7 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
         appliquees.push(decodee(m));
       }
     });
+    appliquees.push(...entrainees);
   }
   // fin de passe : un fantôme qu'une référence cite encore est écarté (rejoué comme une ligne ordinaire à la passe suivante)
   const aExclure = new Set();

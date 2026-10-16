@@ -13,7 +13,9 @@ import { magies } from './magies.mjs';
 import { metiers } from './metiers.mjs';
 import { motsCles } from './mots-cles.mjs';
 import { nouvelles } from './nouvelles.mjs';
+import { panneaux } from './panneaux.mjs';
 import { races } from './races.mjs';
 
 // `nouvelles` d'abord : sur la page d'une entité créée, elle dessine la page que les autres extensions complètent (`classes` : ses spécialités et ses dons).
-export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, bestiaire, armes, armures, composants, chronologie, motsCles];
+// `panneaux` (les panneaux de règles) après `armes` et `armures`, qui ouvrent les tableaux de leurs onglets et laissent les panneaux à `panneaux`.
+export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles];

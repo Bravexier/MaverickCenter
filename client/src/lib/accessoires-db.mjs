@@ -1,8 +1,9 @@
 // Onglet Accessoires de la page /ressources/equipement/ (avant, la page /ressources/accessoires/ ; demande du propriétaire, 2026-10-14 : « refaire la
 // page des accessoires. Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire », présenté comme la page des armes) : chargée depuis les
 // tables de la base (accessoire_emplacement, accessoire_propriete, accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais
-// depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche et aux [[liens]] ; de ce Markdown, seules les règles (avant « ## CRÉATION
-// D'ACCESSOIRE ») et les consignes écrites sous chaque étape s'affichent.
+// depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche et aux [[liens]] ; de ce Markdown, seules les consignes écrites sous chaque
+// étape s'affichent (les règles, avant « ## CRÉATION D'ACCESSOIRE », copiées par la migration 0056, sont le panneau de règles `accessoires` :
+// lib/panneaux-regles-db.mjs).
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerAccessoires` reçoit la base ouverte par lib/donnees.mjs.
 import { normalize } from './text.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
@@ -28,13 +29,6 @@ export function titreDeCompetence(libelle, caracteristique) {
   const m = /^(Compétence)\s+(\p{L})$/u.exec(String(libelle ?? '').trim());
   if (!m || !caracteristique || normalize(caracteristique)[0] !== normalize(m[2])) return libelle;
   return `${m[1]} ${caracteristique}`;
-}
-
-/** Les règles de la page : son corps Markdown avant « ## CRÉATION D'ACCESSOIRE » (le texte de l'onglet). */
-export function reglesDeLaPage(corps) {
-  const l = String(corps ?? '').split('\n');
-  const i = l.findIndex((x) => x.trim() === TITRE_DE_LA_CREATION);
-  return (i < 0 ? l : l.slice(0, i)).join('\n').trim();
 }
 
 /**

@@ -190,6 +190,34 @@ const iTypes = process.argv.indexOf('--types');
   bilan.types_page = reels.length;
 }
 
+// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : la base ne garde que des ids. Toute balise « {{…}} » d'un texte de la base vise
+// un mot-clé du vocabulaire PAR SON ID (aucune orpheline : un mot-clé supprimé quitte les textes qui le citent, serveur/edition.mjs ; aucune écriture : le
+// service met chaque texte en forme canonique) et est écrite comme formeCanonique l'écrirait pour sa colonne (formesNonCanoniques, la même règle :
+// dans un texte de case, son texte écrit, « | », jamais le mode complet ; dans un texte mis en forme, « \| » sur une ligne de tableau et « | »
+// ailleurs, ni espace autour de la ref ou du texte ; une seule tolérance, le libellé écrit en texte dans un texte mis en forme, « {{id|Libellé}} »,
+// que formeCanonique ramène à « {{id}} » : le corps d'une page typée l'écrit, un renommage peut en faire un) — toutes les colonnes de texte des règles et des pages
+// (lib/mots-cles-db.mjs#textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein
+// texte ; lib/tables-de-la-base.mjs). Une balise dans un code d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
+if (noms.has('mot_cle')) {
+  const { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+  const vocabulaire = vocabulaireDesMotsCles(db.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all());
+  const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
+  let balises = 0;
+  let colonnesLues = 0;
+  for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
+    colonnesLues += 1;
+    for (const r of db.prepare(`SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
+      balises += lireBalises(r.texte__, { markdown }).length;
+      for (const f of formesNonCanoniques(r.texte__, vocabulaire, { markdown })) {
+        problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : la balise « ${f.balise} » n'est pas sous sa forme canonique (${f.raison})`);
+      }
+    }
+  }
+  bilan.balises_mots_cles = balises;
+  bilan.colonnes_de_texte = colonnesLues;
+}
+
 // Tables dérivées cohérentes avec leurs sources.
 const n = (sql) => db.prepare(sql).get().n;
 if (n('SELECT count(*) AS n FROM page_fts') !== n('SELECT count(*) AS n FROM page')) problemes.push('page_fts : une ligne par page attendue');

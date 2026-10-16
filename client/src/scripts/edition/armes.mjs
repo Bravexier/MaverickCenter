@@ -111,7 +111,8 @@ export const armes = {
 
   debut(ed) {
     for (const d of document.querySelectorAll('[data-armes] details')) {
-      if (!d.classList.contains('armes-regles')) d.open = true;
+      // le panneau de règles : son extension l'ouvre et le referme (edition/panneaux.mjs)
+      if (!d.classList.contains('preg')) d.open = true;
     }
     const outils = document.createElement('div');
     outils.className = 'ed-outils ed-outils-armes';

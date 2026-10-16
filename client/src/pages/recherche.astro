@@ -10,20 +10,23 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 // Recherche (menu Outils) : plus de barre de recherche dans l'en-tête, la recherche est cette page, mêlée aux mots-clés (demande du propriétaire).
 // Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture correspond puis les pages et les événements trouvés (lib/search.mjs ; un
 // événement de la chronologie se trouve par son texte et par les libellés de ses catégories : lib/recherche-index.ts).
-// Les mots-clés sont le vocabulaire de la base (table mot_cle, migration 0043), avec le nombre de pages visibles de chacun (pages du wiki de l'index) ; un
-// mot-clé qu'aucune page visible ne porte n'est pas listé. Les événements de la chronologie n'ont pas de mot-clé : ils ont des catégories, filtre de la
-// frise (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<id> (son id, figé) : le script de la page (src/scripts/recherche.mjs) y affiche les
-// pages qui le portent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et liste les éléments qui ont ce mot clé ») ;
-// les pastilles des pages du wiki y mènent, et les anciennes adresses /tags/<clé>/ aussi (page 404, lib/nav.mjs#nouvelleAdresse).
-// Sur le site de dev, le vocabulaire se modifie ici (src/scripts/edition/mots-cles.mjs). CSS : styles/recherche/, inséré ici (?raw).
+// Les mots-clés sont le glossaire de la base (table mot_cle, migrations 0043 et 0056 ; demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais
+// servir un peu comme un glossaire ») : TOUS, même ceux qu'aucune page ne porte, chacun avec le nombre de pages visibles qui le portent ou le citent (pages
+// du wiki et événements de l'index : étiquettes et balises, lib/recherche-index.ts), et l'infobulle de sa définition quand il en a une (data-bulle
+// « mot-cle-<id> » : le middleware pose la bulle, src/middleware.mjs). Les événements de la chronologie ont aussi des catégories, filtre de la frise
+// (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<id> (son id, figé) : le script de la page (src/scripts/recherche.mjs) y affiche son libellé,
+// sa définition, puis les pages qui le portent ou le citent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et
+// liste les éléments qui ont ce mot clé ») ; les pastilles des pages du wiki y mènent, et les anciennes adresses /tags/<clé>/ aussi (page 404,
+// lib/nav.mjs#nouvelleAdresse).
+// Sur le site de dev, le vocabulaire se modifie ici (src/scripts/edition/mots-cles.mjs). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne
+// commence par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<id> », lib/mots-cles-balises.mjs#idDeBulle).
 const index = await indexDeRecherche();
 const comptes = comptesDesMotsCles(index);
-const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({ id: m.id, libelle: m.libelle, cle: m.libelle_cle, n: comptes.get(m.id) ?? 0 }));
-const affiches = motsCles.filter((m) => m.n > 0).length;
+const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({ id: m.id, libelle: m.libelle, cle: m.libelle_cle, definition: m.description, n: comptes.get(m.id) ?? 0 }));
 const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
 
-<Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et les mots-clés" edition="recherche/">
+<Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et le glossaire des mots-clés" edition="recherche/">
   <style is:inline set:html={rechercheCss}></style>
   <div class="recherche" data-recherche data-lien-mot-cle={lienDuMotCle}>
     <h1>Recherche</h1>
@@ -35,12 +38,13 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
     <p id="status" class="muted" aria-live="polite"></p>
 
     <section class="recherche-mots-cles" id="mots-cles" aria-labelledby="titre-mots-cles">
-      <h2 id="titre-mots-cles">Mots-clés <small id="nombre-mots-cles" class="muted">({affiches})</small></h2>
+      <h2 id="titre-mots-cles">Mots-clés <small id="nombre-mots-cles" class="muted">({motsCles.length})</small></h2>
       <ul class="tags" id="liste-mots-cles">
         {
           motsCles.map((m) => (
-            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} hidden={m.n === 0}>
-              <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.id)}`}>{m.libelle} ({m.n})</a>
+            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-definition={m.definition || undefined}>
+              <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.id)}`} data-bulle={m.definition ? `mot-cle-${m.id}` : undefined}
+                aria-describedby={m.definition ? `mot-cle-${m.id}` : undefined}>{m.libelle}{m.n > 0 && ` (${m.n})`}</a>
             </li>
           ))
         }
@@ -48,11 +52,12 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <p id="aucun-mot-cle" class="muted" hidden>Aucun mot-clé ne correspond.</p>
     </section>
 
-    <section class="recherche-mot-cle" id="mot-cle-choisi" aria-labelledby="titre-mot-cle" hidden>
+    <section class="recherche-mot-cle" id="vue-du-mot-cle" aria-labelledby="titre-mot-cle" hidden>
       <p class="muted"><a id="tous-les-mots-cles" href={url('recherche/')}>Tous les mots-clés</a></p>
       <h2 id="titre-mot-cle"></h2>
-      <p id="mot-cle-compte" class="muted"></p>
-      <ul id="mot-cle-pages" class="entry-list" hidden></ul>
+      <p id="vue-du-mot-cle-definition" class="recherche-definition" hidden></p>
+      <p id="vue-du-mot-cle-compte" class="muted"></p>
+      <ul id="vue-du-mot-cle-pages" class="entry-list" hidden></ul>
     </section>
 
     <section class="recherche-pages" id="pages-trouvees" aria-labelledby="titre-pages" hidden>

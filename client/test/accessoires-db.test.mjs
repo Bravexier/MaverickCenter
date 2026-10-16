@@ -3,7 +3,8 @@
 // Markdown de la page sans ses tableaux.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, reglesDeLaPage, titreDeCompetence } from '../src/lib/accessoires-db.mjs';
+import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, titreDeCompetence } from '../src/lib/accessoires-db.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { couleurDeMagie } from '../src/lib/sort-format.mjs';
@@ -72,8 +73,8 @@ test('montures : une par niveau, du niveau 1 au niveau 5', () => {
   assert.ok(a.montures.every((m) => m.matiere && m.prix_brut && m.effet_brut));
 });
 
-test('règles : le texte avant la création, sans tableau ; la qualité de gemme de chaque niveau y est écrite', () => {
-  const regles = reglesDeLaPage(a.page.corps_md);
+test('règles (le panneau de l’onglet tel que la migration 0056 l’a copié du texte avant la création) : sans tableau ; la qualité de gemme de chaque niveau y est écrite', () => {
+  const regles = historiqueSite(db).lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'accessoires').map((b) => b.texte).join('\n\n');
   assert.ok(regles.includes('Les accessoires maudits'));
   assert.ok(!regles.includes('|'), 'aucun tableau');
   assert.ok(!regles.includes('CRÉATION'));
