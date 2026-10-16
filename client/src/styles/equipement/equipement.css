@@ -46,7 +46,7 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
 
 /* ── Bâtons magiques ── */
 .batons { margin: 0 0 2rem; }
-.batons .vide { color: var(--muted); opacity: 0.6; }
+.batons .vide { color: inherit; opacity: 0.6; }
 .batons__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 .batons-regles { margin: 0 0 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .batons-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
@@ -54,19 +54,48 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
 .batons-regles__texte > :first-child { margin-top: 0; }
 .batons-regles__texte > :last-child { margin-bottom: 0; }
 .batons-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le curseur du niveau n'existe qu'avec JavaScript ; sans lui, chaque case écrit ses trois niveaux, chacun sous son nom */
+.batons .js-seul { display: none; }
+html.js .batons .sans-js { display: none; }
 
 .batons-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; overflow: hidden; }
 .batons-wrap { overflow-x: auto; }
 .batons-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); line-height: 1.5; }
 .batons-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted);
   padding: 0.55rem 0.8rem; background: var(--eq-soft); border-bottom: 1px solid var(--eq-line); white-space: nowrap; vertical-align: bottom; }
-.batons-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.batons-table tbody > tr > * { padding: 0.5rem 0.8rem; vertical-align: top; text-align: left; }
-.batons-table tbody > tr.baton:hover > * { background: var(--eq-soft); }
-/* l'en-tête d'un niveau : sa recette dessous, en petit et sans majuscules */
-.baton-recette { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; white-space: normal; min-width: 10rem; }
-/* la magie dans sa couleur, et un filet de cette couleur à gauche de la ligne */
-.baton-magie { display: inline-block; font-size: var(--fs-sm); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--c);
-  color: var(--c-texte); white-space: nowrap; border: 1px solid color-mix(in srgb, var(--text) 22%, transparent); }
-.batons-table tr.baton > :first-child { box-shadow: inset 4px 0 0 var(--mag); }
-.baton__bonus { min-width: 14rem; }
+.batons-table tbody > tr > * { padding: 0.5rem 0.8rem; vertical-align: middle; text-align: left; }
+/* toute la ligne sur la couleur de sa magie (demande du propriétaire), comme les matériaux de l'onglet Armes ; un filet de la même teinte entre deux lignes */
+.batons-table tr.baton > * { background: var(--mag); color: var(--mag-texte); }
+.batons-table tbody > tr.baton + tr.baton > * { border-top: 1px solid color-mix(in srgb, var(--mag-texte) 22%, var(--mag)); }
+.batons-table tr.baton:hover > * { background-image: linear-gradient(color-mix(in srgb, var(--mag-texte) 10%, transparent), color-mix(in srgb, var(--mag-texte) 10%, transparent)); }
+/* la magie n'a plus de colonne (demande du propriétaire) : son nom reste dans l'en-tête de la ligne pour les lecteurs d'écran */
+.baton__magie { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.baton__gemme { min-width: 9rem; font-weight: 400; }
+.baton__bois { min-width: 7rem; }
+/* un nom de gemme ou de bois ne se coupe qu'entre deux mots (main a, styles/global/wiki.css, coupe partout) : le tableau défile en largeur */
+.baton__nom { color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--mag-texte) 45%, transparent);
+  text-underline-offset: 0.18em; overflow-wrap: normal; }
+.baton__nom:hover, .baton__nom[data-ouverte] { text-decoration-color: currentColor; }
+.baton__nom:focus-visible { outline: 2px solid var(--mag-texte); outline-offset: 2px; border-radius: var(--radius-xs); }
+.baton__qualite { display: block; font-size: var(--fs-sm); opacity: 0.85; }
+.baton__niveau { white-space: nowrap; }
+html.js .batons .baton-curseur { display: inline-flex; align-items: center; gap: 0.5rem; }
+.baton-curseur__champ { width: 5.5rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--mag-texte); cursor: pointer; }
+.baton-curseur__champ:focus-visible { outline: 2px solid var(--mag-texte); outline-offset: 3px; border-radius: var(--radius-xs); }
+.baton-curseur__valeur { min-width: 1ch; font-weight: 700; font-variant-numeric: tabular-nums; }
+.baton__effet { min-width: 14rem; }
+.baton__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* une case par niveau : la qualité de la gemme, l'effet, le prix ; seul le niveau de la ligne s'affiche (son curseur, src/scripts/batons.mjs) */
+.baton-niv { display: block; }
+.baton-niv__nom { font-weight: 600; }
+html.js .baton-niv__nom { display: none; }
+html.js .batons-table tr.baton:not([data-niveau='1']) .baton-niv[data-niv='1'],
+html.js .batons-table tr.baton:not([data-niveau='2']) .baton-niv[data-niv='2'],
+html.js .batons-table tr.baton:not([data-niveau='3']) .baton-niv[data-niv='3'] { display: none; }
+/* l'infobulle de la gemme : ses trois qualités, celle du niveau de la ligne en avant ; puis le lien vers « Composants » */
+.bulle--baton .bulle__stade { grid-template-columns: 5.4rem 1fr; }
+.batons-table tr.baton[data-niveau='1'] .bulle__stade[data-niv='1'],
+.batons-table tr.baton[data-niveau='2'] .bulle__stade[data-niv='2'],
+.batons-table tr.baton[data-niveau='3'] .bulle__stade[data-niv='3'] { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
+.bulle--baton .bulle__lien { display: block; margin-top: 0.4rem; color: var(--bulle-lisible); font-weight: 700; }
+.bulle--baton .bulle__lien::after { content: ' ›'; content: ' ›' / ''; }
