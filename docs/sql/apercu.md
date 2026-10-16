@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 189 tables, 2 tables de recherche, 37 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 188 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -74,12 +74,11 @@
 
 **Relations dans cette section** : `etat_magie→etat`, `etat_palier→etat`, `etat_palier→resistance_palier`, `etat_stade→etat`, `meteo_effet→meteo`
 
-**Vers d'autres sections** : `etat_magie→magie (§3)`, `meteo_effet→magie (§3)`, `mode_hyper_effet→magie (§3)`, `mode_hyper_effet→race (§7)`, `mode_texte→page (§1)`, `resistance_magie→magie (§3)`
+**Vers d'autres sections** : `etat_magie→magie (§3)`, `meteo_effet→magie (§3)`, `mode_hyper_effet→magie (§3)`, `mode_hyper_effet→race (§7)`, `mode_texte→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `resistance_palier` | Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. | **id**, libelle, valeur_min?, valeur_max?, multiplicateur, effet_brut, ordre, +provenance |
-| `resistance_magie` | Matrice de résistance de la FICHE (Magie!F2:S16) : 15 magies du personnage (lignes) x 14 magies qui attaquent (colonnes). | **magie_id**→magie, **attaque_magie_id**→magie, valeur, remarque?, +provenance |
 | `etat` | ▸ ALTÉRATIONS D'ÉTAT (classeur V8, onglet « Altération détats » : 20 blocs de 5 lignes) | **id**, nom, ordre, type, type_brut, magie_liee_brut?, remarque?, +provenance |
 | `etat_magie` | Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption). | **etat_id**→etat, **magie_id**→magie, rang, +provenance |
 | `etat_stade` | Effet d'une altération par stade (colonnes « Stade 1 », « Stade 2 », « Stade 3 »). | **etat_id**→etat, **rang**, stade?, effet, +provenance |
@@ -314,8 +313,6 @@
 | `v_armure_piece` *(vue)* | Une armure sur chacune de ses six pièces (Casque, Torse, Bras Gauche, Bras Droit, Jambe Gauche, Jambe Droit) : lecture de la fiche, qui recopie l'AP, l'AM et la solidité de l'armure choisie sur les six pièces. |  |
 | `v_niveau` *(vue)* | Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs par palier de la fiche. |  |
 | `v_competence` *(vue)* | Compétences avec leur caractéristique : le moteur n'a pas à joindre. |  |
-| `v_resistance_magie_lectures` *(vue)* | Les deux LECTURES de la matrice « magie A résiste à magie B » côte à côte (le propriétaire n'a pas tranché laquelle fait foi, design.md §12.2) : valeur_fiche = resistance_magie (matrice de la fiche, 1 |  |
-| `v_resistance_ecart` *(vue)* | Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la même chose. |  |
 | `v_resistance_combinaison` *(vue)* | Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou s'annulent si opposées) », « Il en faut une liste ») |  |
 | `v_mode_hyper_lectures` *(vue)* | Les cinq LECTURES du mode hyper (mode_hyper_effet.version) sur une même ligne : une ligne par cible (magie, couple de magies ou race) et variante. |  |
 | `v_classe_capacite` *(vue)* | Une capacité par ligne avec sa classe et sa spécialité à plat : la vue à interroger pour « toutes les capacités d'une classe au niveau N ». |  |

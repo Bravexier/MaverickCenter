@@ -166,20 +166,6 @@ export const RESSOURCES = [
     tri: 'ordre',
   },
   {
-    cle: 'resistances-entre-magies',
-    nom: 'Résistance entre deux magies',
-    noms: 'Résistances entre magies',
-    description:
-      'La matrice de résistance de la fiche auto (onglet Magie) : pour la magie du personnage et la magie de l’attaque, +1 (résistance d’un cran), −1 ' +
-      '(vulnérabilité d’un cran) ou 0 ; une lecture distincte des listes du classeur V8 que lisent les pages de magie et la fiche (elles diffèrent pour ' +
-      'Arcane et Corruption) ; en lecture seule.',
-    table: 'resistance_magie',
-    libelle: 'magie_id',
-    liste: ['magie_id', 'attaque_magie_id', 'valeur'],
-    recherche: ['magie_id', 'attaque_magie_id'],
-    tri: 'magie_id',
-  },
-  {
     cle: 'alterations-d-etat',
     nom: 'Altération d’état',
     noms: 'Altérations d’état',

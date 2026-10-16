@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 50;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 51;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -748,22 +748,8 @@ CREATE TABLE resistance_palier (
   CHECK (valeur_min IS NULL OR valeur_max IS NULL OR valeur_min <= valeur_max)
 ) STRICT;
 
--- Matrice de résistance de la FICHE (Magie!F2:S16) : 15 magies du personnage (lignes) x 14 magies qui attaquent (colonnes).
--- valeur = +1 résistance d'un cran, -1 vulnérabilité d'un cran, 0 neutre (la source écrit 0 : conservé). Ces valeurs alimentent
--- BDD!S (magie innée) et BDD!T (magie acquise), qui s'additionnent (règle déduite par la spécification : l'export du classeur ne
--- contient pas la formule). Le domaine magies porte les listes du classeur V8 (magie_resistance) : elles diffèrent pour Arcane et
--- Corruption (voir v_resistance_ecart et ecart_source).
-CREATE TABLE resistance_magie (
-  magie_id         TEXT    NOT NULL REFERENCES magie(id),    -- magie du personnage : celle qui résiste ou est vulnérable
-  attaque_magie_id TEXT    NOT NULL REFERENCES magie(id),    -- magie de l'attaque subie (en-tête de colonne F1:S1)
-  valeur           INTEGER NOT NULL CHECK (valeur IN (-1, 0, 1)),
-  origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  PRIMARY KEY (magie_id, attaque_magie_id)
-) STRICT, WITHOUT ROWID;
-
-CREATE INDEX resistance_magie_attaque ON resistance_magie (attaque_magie_id, valeur);
+-- La matrice de résistance de la fiche auto (Magie!F2:S16, table resistance_magie) est retirée (migration 0051) : décision R90, l'Arcane et la
+-- Corruption se résistent l'une à l'autre, comme le disent leurs listes dans le classeur V8 (magie_resistance), seule lecture des résistances.
 
 -- Résistances et faiblesses d'une combinaison de deux magies (bi-magie) : calculées depuis magie_resistance par la vue v_resistance_combinaison
 -- (section 12 ; décisions R85, R86 : le tableau « Résistance Faiblesse » de l'onglet Statistiques, qui les recopiait, est ignoré).
@@ -3641,32 +3627,6 @@ CREATE VIEW v_competence AS
 SELECT c.id, c.nom, c.ordre, c.libelle_fiche, c.description,
        k.id AS caracteristique_id, k.nom AS caracteristique, k.lettre
 FROM competence c JOIN caracteristique k ON k.id = c.caracteristique_id;
-
--- Les deux LECTURES de la matrice « magie A résiste à magie B » côte à côte (le propriétaire n'a pas tranché laquelle fait foi, design.md §12.2) :
---   valeur_fiche = resistance_magie (matrice de la fiche, 14 x 14, utilisée par rules.json) ;
---   valeur_v8    = magie_resistance (listes « résiste à / vulnérable à » du classeur V8, affichées par les pages des magies).
--- Une paire absente d'une lecture vaut 0 (neutre) : les listes V8 ne citent que les magies qui résistent ou qui sont vulnérables. Une seule
--- requête répond à « que disent les deux lectures ? » ; `concordant = 0` donne les écarts (v_resistance_ecart).
-CREATE VIEW v_resistance_magie_lectures AS
-WITH v8 AS (
-  SELECT magie_id, cible_magie_id AS attaque_magie_id, CASE sens WHEN 'resistance' THEN 1 ELSE -1 END AS valeur
-  FROM magie_resistance WHERE cible_type = 'magie'
-),
-paires AS (
-  SELECT magie_id, attaque_magie_id FROM resistance_magie
-  UNION SELECT magie_id, attaque_magie_id FROM v8
-)
-SELECT p.magie_id, p.attaque_magie_id,
-       COALESCE(f.valeur, 0) AS valeur_fiche,
-       COALESCE(v.valeur, 0) AS valeur_v8,
-       (COALESCE(f.valeur, 0) = COALESCE(v.valeur, 0)) AS concordant
-FROM paires p
-LEFT JOIN resistance_magie f ON f.magie_id = p.magie_id AND f.attaque_magie_id = p.attaque_magie_id
-LEFT JOIN v8 v ON v.magie_id = p.magie_id AND v.attaque_magie_id = p.attaque_magie_id;
-
--- Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la même chose. Vide quand les deux lectures concordent.
-CREATE VIEW v_resistance_ecart AS
-  SELECT magie_id, attaque_magie_id, valeur_fiche, valeur_v8 FROM v_resistance_magie_lectures WHERE concordant = 0;
 
 -- Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou
 -- s'annulent si opposées) », « Il en faut une liste ») : les listes des deux magies (magie_resistance, cibles de type magie : celles de leurs onglets de
