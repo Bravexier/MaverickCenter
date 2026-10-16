@@ -135,7 +135,6 @@ function htmlDesMateriauxDeLArmure(a, ctx = {}) {
 
 /** Rendus nommés (attribut `data-ed-rendu`), fusionnés dans lib/edition-rendu.mjs#RENDUS : (valeur de la colonne, ligne, contexte) → HTML. */
 export const RENDUS_DES_ARMURES = {
-  'protection-stats': (valeur) => htmlDeLaDefense(valeur),
   'protection-ap': (valeur) => htmlDUneDefense(valeur, 'ap'),
   'protection-am': (valeur) => htmlDUneDefense(valeur, 'am'),
   // le poids d'un bouclier (bouclier.poids_id) : sa ligne dans ctx.poidsDeBouclier (lib/armures-db.mjs#poidsDeBouclier, liste du service) ; un
@@ -175,12 +174,21 @@ export const RENDUS_DES_ARMURES = {
 const ed = (table, cle, colonne) => e(attributEd(table, cle, colonne));
 const rendu = (nom, valeur, ligne, ctx) => RENDUS_DES_ARMURES[nom](valeur, ligne, ctx);
 
+/** Le prix de 6 unités d'un matériau (pour une armure, décision R93), en RO décomposés (R63), sa valeur en `data-ro` ; « — » sans prix. */
+export function htmlDuPrixPourUneArmure(ro) {
+  if (ro === null || ro === undefined) return `<span class="pprix">${VIDE}</span>`;
+  return `<span class="pprix" data-ro="${ro}">${htmlDeMontant(String(ro).replace('.', ','), 'RO', `${String(ro).replace('.', ',')} RO`)}</span>`;
+}
+
 /**
  * La ligne d'un matériau dans un tableau de sélection (`role` : 'm1' ou 'm2' pour les deux matières d'une armure, 'matiere' pour un bouclier) : la
  * matière (bouton, dans la couleur de son type, description en infobulle), sa défense, sa solidité et son prix (celui de la ressource : décision R62).
  * Les champs du matériau sont en lecture (la page « Composants » en est la seule source : R62) ; ses stats d'armure ou de bouclier ne se modifient pas.
- * Le prix est le rendu « materiau-prix » de la page des armes (lib/armes-rendu.mjs : le prix en RO seulement, sa valeur en `data-ro`).
- * `m` : { ligne (materiau_armure ou materiau_bouclier), cle, nom, type, prix, description }.
+ * Le prix est le rendu « materiau-prix » de la page des armes (lib/armes-rendu.mjs : le prix en RO seulement, sa valeur en `data-ro`). Pour une matière
+ * d'armure (`role` 'm1' ou 'm2'), une case de plus : le prix pour une armure, les 6 unités du matériau qu'elle demande (décision R93 ; demande du
+ * propriétaire, 2026-10-16 : « pour les tableaux des matériaux il faudra rajouter le total pour une armure (le X6) ») : `m.prix_armure`
+ * (lib/armures-db.mjs), sa valeur en `data-ro`, refaite par le script de la page quand le prix du matériau change (src/scripts/armures.mjs).
+ * `m` : { ligne (materiau_armure ou materiau_bouclier), cle, nom, type, prix, prix_armure, description }.
  */
 export function htmlDeLigneDeMateriau(m, role) {
   const id = m.ligne.ressource_id;
@@ -190,6 +198,7 @@ export function htmlDeLigneDeMateriau(m, role) {
     + `<td class="pmat__defense">${htmlDeLaDefense(m.ligne.stats_brut)}</td>`
     + `<td class="pmat__solidite"><span class="psol" data-solidite="${Number(m.ligne.solidite ?? 0)}">${Number(m.ligne.solidite ?? 0)}</span></td>`
     + `<td class="pmat__prix" data-ed-lecture="${ed('ressource', { id }, 'prix_brut')}" data-ed-rendu="materiau-prix">${RENDUS_DES_ARMES['materiau-prix'](m.prix)}</td>`
+    + (role === 'm1' || role === 'm2' ? `<td class="pmat__prix-armure" data-prix-armure>${htmlDuPrixPourUneArmure(m.prix_armure)}</td>` : '')
     + '</tr>';
 }
 
@@ -210,7 +219,10 @@ export function htmlDeLigneDArmure(a, ctx = {}) {
     + '</th>'
     + (particuliere ? '' : `<td class="armure__materiaux">${htmlDesMateriauxDeLArmure(a, ctx)}</td>`)
     + champ('armure__type', 'type', 'armure-type')
-    + champ('armure__defense', 'stats_brut', 'protection-stats')
+    // AP et AM en deux colonnes (demande du propriétaire, 2026-10-16 : « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM »),
+    // comme la liste des boucliers : la défense écrite se modifie dans la case AP, la case AM la suit en lecture ; les deux portent data-ap et data-am
+    + `<td class="armure__ap" data-ed="${ed('armure', cle, 'stats_brut')}" data-ed-rendu="protection-ap">${rendu('protection-ap', a.stats_brut, a, ctx)}</td>`
+    + `<td class="armure__am" data-ed-lecture="${ed('armure', cle, 'stats_brut')}" data-ed-rendu="protection-am">${rendu('protection-am', a.stats_brut, a, ctx)}</td>`
     + champ('armure__solidite', 'solidite', 'armure-solidite')
     + (particuliere
       ? champ('armure__effet', 'effet', 'armure-effet')

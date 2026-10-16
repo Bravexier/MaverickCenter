@@ -53,7 +53,16 @@ test('armures : deux tableaux des matières de la grille (premier et second mat�
     assert.deepEqual(cles, armures.materiaux.map((m) => m.cle), role);
     for (const m of armures.materiaux) assert.ok(table.includes(`<th scope="row" class="pmat__nom" style="--t: ${couleurDuType(m.type)}">`), `${role} ${m.cle}`);
     assert.equal((table.match(/data-ed-lecture=/g) ?? []).length, armures.materiaux.length * 2, 'nom et prix en lecture (décision R62)');
+    // « pour les tableaux des matériaux il faudra rajouter le total pour une armure (le X6) » (demande du propriétaire, 2026-10-16 ; décision R93)
+    assert.match(table, /<th scope="col" title="Pour une armure : les 6 unités de ce matériau qu’elle demande \(décision R93\)">Prix ×6<\/th>/, `${role} : l’en-tête`);
+    for (const m of armures.materiaux) {
+      const ligne = table.slice(table.indexOf(`data-materiau="${m.cle}"`), table.indexOf('</tr>', table.indexOf(`data-materiau="${m.cle}"`)));
+      const attendu = Math.round(6 * prixEnRo(m.prix) * 100) / 100;
+      assert.ok(ligne.includes(`<td class="pmat__prix-armure" data-prix-armure><span class="pprix" data-ro="${attendu}">`), `${role} ${m.cle} : 6 × ${prixEnRo(m.prix)}`);
+    }
   }
+  // pas de « Prix ×6 » pour une matière de bouclier (une forme demande autant de matériaux que sa classe)
+  assert.ok(!panneau('boucliers').includes('data-prix-armure'));
   // chaque paire de matières (dans un ordre ou dans l'autre) donne une seule armure de la grille : le choix trouve toujours son armure
   const paires = new Set(armures.combinaisons.map((a) => [a.m1, a.m2].sort().join('|')));
   assert.equal(paires.size, armures.combinaisons.length);
@@ -75,6 +84,17 @@ test('armures : les armures particulières en premier puis la liste par type, un
   for (const colonne of ['nom', 'type', 'stats_brut', 'solidite', 'resistance_brut', 'faiblesse_brut']) {
     assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: a.id }, colonne))}"`), colonne);
   }
+  // « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM » (demande du propriétaire, 2026-10-16) : la défense se modifie dans la
+  // case AP, la case AM la suit en lecture, comme dans la liste des boucliers ; plus de colonne « Défense » dans les listes d'armures
+  const listes = p.slice(p.indexOf('<div class="armures-listes">'), p.indexOf('<aside class="armures-cote"'));
+  for (const x of [...armures.particulieres, ...armures.combinaisons]) {
+    const ligne = listes.slice(listes.indexOf(`id="${ancreDArmure(x.id)}"`), listes.indexOf('</tr>', listes.indexOf(`id="${ancreDArmure(x.id)}"`)));
+    assert.ok(ligne.includes(`<td class="armure__ap" data-ed="${echapper(attributEd('armure', { id: x.id }, 'stats_brut'))}" data-ed-rendu="protection-ap"><span class="pdef" data-ap=`), `${x.nom} : AP`);
+    assert.ok(ligne.includes(`<td class="armure__am" data-ed-lecture="${echapper(attributEd('armure', { id: x.id }, 'stats_brut'))}" data-ed-rendu="protection-am"><span class="pdef" data-ap=`), `${x.nom} : AM`);
+  }
+  const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((t) => t[1]));
+  assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', 'Solidité', 'Effet', 'Prix'], 'armures particulières');
+  for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', 'Solidité', 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));
   const particuliere = armures.particulieres[0];
   for (const colonne of ['effet', 'prix_brut']) assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: particuliere.id }, colonne))}"`), `particulière : ${colonne}`);
