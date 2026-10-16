@@ -205,7 +205,9 @@ test('deux instances, un dossier des métriques partagé : chaque instance n’�
       assert.ok(routes.some((l) => l.route === '/api/debug/{refusee}/' && l.e === 4), `les refus (403) comptés : ${JSON.stringify(routes)}`);
       assert.ok(!routes.some((l) => l.route === '/api/debug/metriques/'), 'jamais une ligne par route refusée');
       assert.ok(!routes.some((l) => l.route.startsWith('/api/v1/metiers/{cle}')), 'jamais les requêtes du site de dev');
-      assert.deepEqual(p.prepare('SELECT page, n FROM page_heure').all().map((l) => [l.page, l.n]), [['/races/elfe/', 2]], 'la balise reçue par la production, dans prod.db');
+      // deux balises, peut-être de part et d'autre d'une heure (une ligne par tranche) : sommées par page
+      assert.deepEqual(p.prepare('SELECT page, sum(n) AS n FROM page_heure GROUP BY page').all().map((l) => [l.page, l.n]), [['/races/elfe/', 2]],
+        'la balise reçue par la production, dans prod.db');
       assert.ok(p.prepare("SELECT 1 FROM navigateur_heure WHERE famille = 'Safari' AND appareil = 'telephone' AND pages = 1").get());
       assert.deepEqual(p.prepare("SELECT type FROM evenement WHERE type IN ('demarrage', 'arret') ORDER BY id").all().map((e) => e.type), ['demarrage', 'arret']);
       assert.ok(p.prepare('SELECT count(*) AS n FROM systeme_minute').get().n >= 1, 'un dernier échantillon à l’arrêt');
@@ -353,13 +355,16 @@ test('production : chaque gabarit du service × chaque méthode, une requête an
   }
   const db = lecture(join(partage, 'prod.db'));
   try {
-    const lignes = db.prepare('SELECT route, methode, n FROM agregat_heure').all();
+    // une ligne par tranche × route × méthode : les requêtes du test peuvent chevaucher la fin d'une tranche de 5 minutes (ou d'une heure), qui
+    // donne alors deux lignes au même couple (run 38881504111, lancé à 09:40:00 : « 78 !== 70 ») ; on compte donc les couples (route, méthode)
+    const parCouple = (table) => db.prepare(`SELECT route, methode, sum(n) AS n FROM ${table} GROUP BY route, methode ORDER BY route, methode`).all().map((l) => ({ ...l }));
+    const lignes = parCouple('agregat_heure');
     const total = lignes.reduce((n, l) => n + l.n, 0);
     assert.equal(total, adresses.length * methodes.length, `toutes comptées (${JSON.stringify([...statuts])})`);
     // avant : une ligne par gabarit × méthode (plus de 2 600) ; refus regroupés par premier segment, les routes servies seules gardent leur gabarit
-    assert.ok(lignes.length <= 150, `${lignes.length} lignes pour ${total} requêtes : ${lignes.map((l) => `${l.methode} ${l.route}`).join(', ')}`);
+    assert.ok(lignes.length <= 150, `${lignes.length} couples pour ${total} requêtes : ${lignes.map((l) => `${l.methode} ${l.route}`).join(', ')}`);
     assert.ok(!lignes.some((l) => /^\/api\/v1\/[a-z]/.test(l.route)), 'aucun gabarit de /api/v1/ (fermé en production)');
-    assert.equal(db.prepare('SELECT count(*) AS n FROM agregat_5min').get().n, lignes.length, 'de même par tranche de 5 minutes');
+    assert.deepEqual(parCouple('agregat_5min'), lignes, 'de même par tranche de 5 minutes : les mêmes couples, autant de requêtes chacun');
   } finally {
     db.close();
   }
