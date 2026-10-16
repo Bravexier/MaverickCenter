@@ -153,9 +153,9 @@ html:not(.js) .bcarte__fermer { display: none; }
   .bcarte__portrait { width: 6rem; }
 }
 
-/* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche) : la bulle prend la
-   largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
-.bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; overscroll-behavior: contain; }
+/* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche ; l'élément porte aussi
+   `.bulle`, dont il garde `overscroll-behavior: contain`) : la bulle prend la largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
+.bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; }
 .bulle--carte .bcarte { display: block; font-size: var(--fs-md); }
 .bulle--carte .bcarte__titre { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
 .bulle--carte .bcarte__tete { grid-template-areas: "titres portrait"; }

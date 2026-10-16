@@ -44,7 +44,7 @@ html.js .acc .acc-outils { display: flex; }
 .acc-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
 html.js .acc-vue { grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); }
 .acc-tableaux { display: grid; gap: 0.9rem; min-width: 0; }
-/* au bout du défilement de l'encart, la molette fait défiler la page (pas d'`overscroll-behavior: contain`, comme les armes et les armures) */
+/* au bout du défilement de l'encart, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
 html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; min-width: 0; }
 .acc-etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.9rem; align-items: start; }
 

@@ -45,7 +45,7 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
 .armures-listes { display: grid; gap: 1rem; min-width: 0; }
 .armures-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
-/* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, pour les armes) */
+/* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
 @media (min-width: 80rem) { html.js .armures-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; } }
 .armures-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
 /* à côté de la fiche, sur un très grand écran : le tableau des améliorations (trois colonnes) plus large que son voisin (pièces, poids) */

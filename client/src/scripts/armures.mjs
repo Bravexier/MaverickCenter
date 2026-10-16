@@ -42,7 +42,7 @@ if (racine) {
   // La fiche est réduite à son minimum, comme celle des armes (demande du propriétaire, 2026-10-16 : « Pas besoin de détailler les calculs en dessous,
   // une tuile en tooltip de la case […] suffit » ; puis « Oui » pour l'armure et le bouclier) : chaque tuile est un bouton dont l'infobulle (bulle riche
   // de components/Infobulles.astro, au survol, au clic, au toucher et au clavier) donne le détail du calcul, une ligne par élément puis le total ; les
-  // bulles sont écrites hors du panneau qui défile (`[data-armures-bulles]`). Pas de retour à la ligne dans leur HTML (elles gardent ceux du texte).
+  // bulles sont écrites hors du panneau qui défile (`[data-armures-bulles]`) ; styles communs `.eq-bulle` : styles/equipement/equipement.css.
   const ligneDeFiche = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
   const bulle = (id, titre, lignes, notes = []) =>
     `<span class="bulle bulle--large eq-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="eq-bulle__lignes">${lignes}</span>${notes.filter(Boolean).map((n) => `<span class="eq-bulle__note">${n}</span>`).join('')}</span>`;
