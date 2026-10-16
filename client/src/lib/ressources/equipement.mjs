@@ -99,8 +99,9 @@ export const RESSOURCES = [
     description:
       'Les emplacements du tableau FABRICATION de l’onglet « Armures », noms tels qu’écrits (« Armure Complète », « Casque », « Torse », « Bras ' +
       'Gauche », « Bras Droit », « Jambe Gauche », « Jambe Droit », « Bouclier »), et leur coût de fabrication (« 150 RF / 1,5 RO », « 250 RF / ' +
-      'Classe ») ; la source ne donne pas d’AP ni d’AM par emplacement ; une pièce coûte sa fabrication et 1 unité de chaque matériau de l’armure ' +
-      '(décision R75) ; le nom et le coût se modifient (le service en tire le coût en RF), ni création ni suppression.',
+      'Classe ») ; la source ne donne pas d’AP ni d’AM par emplacement ; une armure ne se fabrique plus pièce par pièce, seulement complète ' +
+      '(décision R93) : seul le coût du bouclier est affiché par la page ; le nom et le coût se modifient (le service en tire le coût en RF), ni ' +
+      'création ni suppression.',
     table: 'armure_emplacement',
     liste: ['id', 'nom', 'cout_brut', 'cout_rf', 'ordre'],
     recherche: ['nom'],

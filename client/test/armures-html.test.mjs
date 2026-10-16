@@ -1,8 +1,8 @@
 // Onglets Armures et Boucliers de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armures/ : test/equipement-html.test.mjs
 // pour la page et ses onglets) : rendus depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
 // dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
-// liste des armures (« Une liste plus classique est disponible également ») et les armures particulières, les pièces (tableau FABRICATION) et les
-// améliorations ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
+// liste des armures (« Une liste plus classique est disponible également »), les armures particulières en premier, et les améliorations ; plus de
+// tableau FABRICATION (une armure ne se fabrique plus pièce par pièce : décision R93) ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
 // replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; le tableau MATÉRIAUX ; les champs du mode
 // modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
@@ -37,7 +37,8 @@ test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, 
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
   assert.equal((main.match(/<details class="armures-regles">/g) ?? []).length, 2);
-  assert.ok(panneau('armures').includes('il faut 2 matériaux pour chaque morceau'), 'les règles des armures');
+  assert.ok(panneau('armures').includes('il faut 2 matériaux pour chaque morceau'), 'les règles des armures (le texte de l’onglet, tel qu’importé)');
+  assert.match(panneau('armures'), /<p class="armures-regles__decision">Une armure ne se fabrique plus pièce par pièce : seulement l’armure complète \(décision R93\)\./, 'la décision R93 avant ce texte');
   assert.ok(panneau('boucliers').includes('autant de matériaux que sa classe indique'), 'les règles des boucliers');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
@@ -59,8 +60,13 @@ test('armures : deux tableaux des matières de la grille (premier et second mat�
   assert.equal(armures.combinaisons.length, (n * (n + 1)) / 2);
 });
 
-test('armures : la liste par type puis les armures particulières, une ligne par armure, ses champs modifiables', options, () => {
+test('armures : les armures particulières en premier puis la liste par type, une ligne par armure, ses champs modifiables', options, () => {
   const p = panneau('armures');
+  // « tu met le tableau "Armure particulières" en tout premier de la liste des armures » (demande du propriétaire, 2026-10-16)
+  const liste = p.slice(p.indexOf('<div class="armures-listes">'));
+  const blocs = [...liste.matchAll(/<details class="armures-bloc armures-liste" id="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(blocs[0], 'armures-particulieres');
+  assert.ok(blocs.length > 1 && blocs.slice(1).every((id) => id.startsWith('armures-') && id !== 'armures-particulieres'), blocs.join(', '));
   const lignes = [...p.matchAll(/<tr class="armure(?: armure--particuliere)?" id="([^"]+)" data-armure=/g)].map((m) => m[1]);
   assert.equal(lignes.length, armures.combinaisons.length + armures.particulieres.length);
   assert.deepEqual(new Set(lignes), new Set([...armures.combinaisons, ...armures.particulieres].map((a) => ancreDArmure(a.id))));
@@ -74,12 +80,13 @@ test('armures : la liste par type puis les armures particulières, une ligne par
   assert.ok(p.includes('id="armures-particulieres"'));
 });
 
-test('armures : à côté, la fiche (remplie par le script), les pièces (l’armure complète d’abord) et les améliorations +1 à +5, sans ligne Total', options, () => {
+test('armures : à côté, la fiche (remplie par le script) et les améliorations +1 à +5, sans ligne Total ; plus de tableau FABRICATION (décision R93)', options, () => {
   const p = panneau('armures');
   assert.match(p, /<section class="pfiche" data-fiche="armure" aria-label="Fiche de l’armure" aria-live="polite">/);
-  const pieces = [...p.matchAll(/<tr class="ppiece" data-piece="([^"]+)"( data-complete="1")?>/g)].map((m) => [m[1], Boolean(m[2])]);
-  assert.deepEqual(pieces, armures.pieces.map((x) => [x.id, x.id === 'armure-complete']));
-  assert.ok(!pieces.some(([id]) => id === 'bouclier'), 'la ligne du bouclier n’est pas une pièce d’armure');
+  // « On ne peux plus concevoir d'armure pièce par pièce. Ce n'est que armure complète. Tu peux donc retirer le tableau actuel de "fabrication" »
+  // (demande du propriétaire, 2026-10-16)
+  assert.ok(!main.includes('class="ppiece"') && !main.includes('id="pieces"'), 'ni pièce ni tableau FABRICATION');
+  assert.ok(!p.includes('>Fabrication<'), 'aucun bloc « Fabrication » dans l’onglet Armures');
   const niveaux = [...p.matchAll(/<tr class="pamelioration" data-cible="armure" data-niveau="(\d+)">/g)].map((m) => Number(m[1]));
   assert.deepEqual(niveaux, armures.ameliorations.armure.map((x) => x.niveau));
   // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16) : ni pour les armures, ni pour les boucliers
@@ -95,6 +102,8 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
   const p = panneau('boucliers');
   const formes = [...p.matchAll(/<tr class="forme" data-forme="([^"]+)" data-classe="(\d)">/g)].map((m) => m[1]);
   assert.deepEqual(formes, armures.formes.map((f) => f.id));
+  // le coût de fabrication du bouclier (tableau FABRICATION de l'onglet du classeur), seule ligne de ce tableau que la page garde (décision R93)
+  assert.ok(p.includes(`data-ed="${echapper(attributEd('armure_emplacement', { id: 'bouclier' }, 'cout_brut'))}" data-ed-rendu="piece-cout"`), 'fabrication du bouclier');
   // « je veux que la table d'amélioration soit directement sous celui de la forme » (demande du propriétaire, 2026-10-16) : dans la même colonne, avant la matière
   const colonne = p.slice(p.indexOf('<div class="armures-colonne">'), p.indexOf('id="matieres-de-bouclier"'));
   assert.ok(colonne.indexOf('id="formes-de-bouclier"') > 0 && colonne.indexOf('id="ameliorations-bouclier"') > colonne.indexOf('id="formes-de-bouclier"'));

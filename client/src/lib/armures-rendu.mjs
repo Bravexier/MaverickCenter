@@ -147,7 +147,8 @@ export const RENDUS_DES_ARMURES = {
   'armure-resistance': (valeur) => htmlDesDegats(valeur, 'resistance'),
   'armure-faiblesse': (valeur) => htmlDesDegats(valeur, 'faiblesse'),
   'armure-effet': (valeur) => (String(valeur ?? '').trim() ? `<span class="armure-effet">${e(valeur)}</span>` : VIDE),
-  // une pièce (tableau FABRICATION) : son coût tel qu'écrit, en RO dans `data-ro` (null pour « 250 RF / Classe »)
+  // un coût du tableau FABRICATION de l'onglet (celui du bouclier, « 250 RF / Classe », sous les formes de l'onglet Boucliers) : tel qu'écrit, en RO dans
+  // `data-ro` (null pour « 250 RF / Classe »)
   'piece-cout': (valeur) => {
     const rf = coutDeLaPiece(valeur);
     return `<span class="pcout"${attribut('ro', rf === null ? null : rf / 100)}>${htmlAvecMonnaies(valeur ?? '')}</span>`;
@@ -205,15 +206,6 @@ export function htmlDeLigneDArmure(a, ctx = {}) {
       ? champ('armure__effet', 'effet', 'armure-effet')
       : champ('armure__resistance', 'resistance_brut', 'armure-resistance') + champ('armure__faiblesse', 'faiblesse_brut', 'armure-faiblesse'))
     + champ('armure__prix', 'prix_brut', 'protection-prix')
-    + '</tr>';
-}
-
-/** La ligne d'une pièce du tableau FABRICATION (Armure complète, Casque…) : son nom (bouton : choisir la pièce) et son coût. `p` : armure_emplacement. */
-export function htmlDeLigneDePiece(p, { complete = false } = {}) {
-  const cle = { id: p.id };
-  return `<tr class="ppiece" data-piece="${e(p.id)}"${complete ? ' data-complete="1"' : ''}>`
-    + `<th scope="row" class="ppiece__nom"><span data-ed="${ed('armure_emplacement', cle, 'nom')}" data-ed-cible=".ppiece__choisir"><button type="button" class="ppiece__choisir" aria-pressed="false">${e(p.nom)}</button></span></th>`
-    + `<td class="ppiece__cout" data-ed="${ed('armure_emplacement', cle, 'cout_brut')}" data-ed-rendu="piece-cout">${rendu('piece-cout', p.cout_brut, p)}</td>`
     + '</tr>';
 }
 

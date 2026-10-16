@@ -1,12 +1,11 @@
 // Une armure ou un bouclier forgé (onglets Armures et Boucliers de /ressources/equipement/, demandes du propriétaire, 2026-10-15) : ce que la page
-// affiche une fois choisis les deux matériaux d'une armure (ou une armure particulière), sa pièce et son amélioration, ou la forme et la matière d'un
-// bouclier et son amélioration.
-//   - Armure : AP, AM, solidité, résistances et faiblesses sont ceux de l'armure de la grille, quelle que soit la pièce (la source n'en donne pas par
-//     pièce) ; l'armure complète coûte le prix écrit dans la grille, une pièce son coût de fabrication + 1 unité de chaque matériau, achetés ou fournis
-//     (décision R75) ; une amélioration +N coûte les niveaux +1 à +N (« il faut faire toutes les étapes une à une ») et donne l'AP, l'AM et les crans
-//     écrits au niveau N ; elle vaut pour l'armure entière seulement, pas pour une pièce (décision R77) ; une armure particulière n'a que le prix de
-//     l'armure entière et s'améliore aussi (décision R80) ; un « Matériau » d'une amélioration d'armure est compté sans prix (la source ne dit pas lequel
-//     des deux matériaux de l'armure : rien n'en est déduit).
+// affiche une fois choisis les deux matériaux d'une armure (ou une armure particulière) et son amélioration, ou la forme et la matière d'un bouclier et
+// son amélioration.
+//   - Armure : elle ne se fabrique plus pièce par pièce, seulement complète (décision R93, demande du propriétaire du 2026-10-16, qui remplace le prix
+//     d'une pièce de R75) ; AP, AM, solidité, résistances et faiblesses sont ceux de l'armure de la grille, son coût le prix écrit dans la grille (R75) ;
+//     une amélioration +N coûte les niveaux +1 à +N (« il faut faire toutes les étapes une à une ») et donne l'AP, l'AM et les crans écrits au niveau N,
+//     pour l'armure entière (décision R77) ; une armure particulière n'a que le prix de l'armure entière et s'améliore aussi (décision R80) ; un
+//     « Matériau » d'une amélioration d'armure est compté sans prix (la source ne dit pas lequel des deux matériaux de l'armure : rien n'en est déduit).
 //   - Bouclier : une forme + une matière (décision R78) ; prix et défense ceux du bouclier préfabriqué, solidité celle de la matière ; une amélioration +N
 //     coûte les niveaux +1 à +N, donne l'AP écrit au niveau N et les crans de tous les niveaux +1 à +N (« cumulés », décision R76) ; ses matériaux (1 aux
 //     +2 et +4, R76) sont la matière du bouclier, achetée ou fournie.
@@ -74,54 +73,31 @@ export function ameliorationDeBouclier(ameliorations, niveau) {
 }
 
 /**
- * L'armure forgée.
+ * L'armure forgée : toujours l'armure complète (décision R93), au prix écrit (grille ou armure particulière : R75, R80).
  * @param {{ ap: number | null, am: number | null, solidite: number, prix: number | null }} armure  la ligne de la grille (ou une armure particulière)
- * @param {{ complete: boolean, cout_ro: number | null } | null} piece  la pièce (tableau FABRICATION) ; null ou `complete` : l'armure complète (une
- *   pièce ne prend pas d'amélioration : décision R77 ; une armure particulière n'a pas de pièce : R80)
- * @param {{ nom: string, prix_ro: number | null }[]} materiaux  les deux matériaux d'une combinaison ; [] pour une armure particulière
  * @param {{ niveau: number, cout_ro: number | null, cout_materiaux: number | null, bonus_ap: number | null, bonus_am: number | null, bonus_cran: number | null }[]} ameliorations
- * @param {number} niveau amélioration choisie (0 : aucune ; sans effet sur une pièce)
+ * @param {number} niveau amélioration choisie (0 : aucune)
  */
-export function forgerArmure(armure, piece, materiaux, ameliorations, niveau = 0) {
-  // une pièce (décision R75) : son coût de fabrication + 1 unité de chaque matériau ; l'armure complète (ou une armure particulière, R80) : son prix écrit
-  const enPieces = Boolean(piece && !piece.complete && materiaux.length);
-  // le tableau d'amélioration vaut pour l'armure entière seulement (décision R77)
-  const amelioration = ameliorationDArmure(ameliorations, enPieces ? 0 : niveau);
+export function forgerArmure(armure, ameliorations, niveau = 0) {
+  const amelioration = ameliorationDArmure(ameliorations, niveau);
   const ap = { armure: armure.ap ?? 0, amelioration: amelioration.bonus_ap };
   ap.total = ap.armure + ap.amelioration;
   const am = { armure: armure.am ?? 0, amelioration: amelioration.bonus_am };
   am.total = am.armure + am.amelioration;
   const solidite = { armure: armure.solidite ?? 0, amelioration: amelioration.bonus_cran };
   solidite.total = solidite.armure + solidite.amelioration;
-  const prixDesMateriaux = materiaux.map((m) => m.prix_ro ?? null);
-  const materiauxConnus = prixDesMateriaux.every((p) => p !== null);
-  let base;
-  if (enPieces) {
-    const fabrication = piece.cout_ro ?? null;
-    base = {
-      piece: true,
-      fabrication,
-      materiaux: materiaux.length,
-      ro_materiaux_fournis: fabrication,
-      ro_materiaux_achetes: fabrication === null || !materiauxConnus ? null : fabrication + prixDesMateriaux.reduce((s, p) => s + p, 0),
-    };
-  } else {
-    base = { piece: false, prix: armure.prix ?? null };
-  }
-  const prixDeBase = enPieces ? base.ro_materiaux_achetes : base.prix;
+  const prix = armure.prix ?? null;
   return {
     ap,
     am,
     solidite,
     amelioration,
-    amelioration_possible: !enPieces,
     cout: {
-      ...base,
+      prix,
       amelioration: amelioration.ro,
       materiaux_amelioration: amelioration.materiaux,
       // sans les matériaux de l'amélioration (comptés à part, sans prix : la source ne dit pas lequel des deux matériaux)
-      total: prixDeBase === null ? null : prixDeBase + amelioration.ro,
-      total_fournis: enPieces && base.fabrication !== null ? base.fabrication + amelioration.ro : null,
+      total: prix === null ? null : prix + amelioration.ro,
     },
   };
 }

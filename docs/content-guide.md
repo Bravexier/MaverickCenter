@@ -375,17 +375,18 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
 - **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
   jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `COULEURS_DES_TYPES` ; description en infobulle ; défense, solidité, prix). Un
   matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
-  des armures de la grille par type (Nom, Matériaux, Type, Défense, Solidité, Résistance, Faiblesse, Prix) puis les **armures particulières** (Nom, Type,
-  Défense, Solidité « uni », Effet, Prix) ; une ligne choisit l'armure (et ses deux matériaux).
+  des armures : **les armures particulières en premier** (Nom, Type, Défense, Solidité « uni », Effet, Prix ; demande du propriétaire, 2026-10-16 : « tu
+  met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, Défense,
+  Solidité, Résistance, Faiblesse, Prix) ; une ligne choisit l'armure (et ses deux matériaux). Une armure **ne se fabrique plus pièce par pièce, seulement
+  complète** (décision R93) : plus de tableau FABRICATION ; les règles de l'onglet (texte tel qu'importé, qui parle encore des morceaux) sont précédées
+  de cette décision.
 - **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement et remonte à la fiche quand on choisit une autre armure ; sur un écran étroit,
   par-dessus la page ; `src/scripts/armures.mjs`, calcul `lib/armure-forge.mjs`) : **réduite à son minimum comme celle des armes** (demande du
-  propriétaire, 2026-10-16) — le nom, le type, les matériaux, la pièce et l'amélioration, quatre tuiles (AP, AM, solidité, coût) qui sont des boutons dont
-  l'**infobulle donne le détail du calcul** (bulle riche écrite dans `[data-armures-bulles]`, hors du panneau ; les notes R75 et R77 y vont aussi), puis
-  la résistance et la faiblesse (ou l'effet) — ; la fiche suit la **pièce** (tableau FABRICATION : l'armure complète coûte le
-  prix de la grille, une pièce sa fabrication + 1 unité de chaque matériau, achetés ou fournis : décision R75 ; défense et solidité ne dépendent pas de la
-  pièce) et l'**amélioration** (+1 à +5 : coût des niveaux +1 à +N, AP, AM et crans écrits au niveau N ; pour l'armure entière seulement, pas pour une
-  pièce : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel des deux). Une armure particulière n'a que le prix de l'armure entière,
-  et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
+  propriétaire, 2026-10-16) — le nom, le type, les matériaux et l'amélioration, quatre tuiles (AP, AM, solidité, coût) qui sont des boutons dont
+  l'**infobulle donne le détail du calcul** (bulle riche écrite dans `[data-armures-bulles]`, hors du panneau), puis la résistance et la faiblesse (ou
+  l'effet) — ; c'est toujours l'armure complète, au prix de la grille (décisions R75, R93), et la fiche suit l'**amélioration** (+1 à +5 : coût des
+  niveaux +1 à +N, AP, AM et crans écrits au niveau N, pour l'armure entière : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel
+  des deux). Une armure particulière n'a que le prix de l'armure entière, et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
   armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
 - **Boucliers** (demandes du propriétaire, 2026-10-16) : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et,
   **directement sous lui**, les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la matière : R76, matériaux
@@ -406,12 +407,13 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
 - Les prix de la grille, des boucliers et des formes sont des RO (décision R79, exception à R63) : décomposés en monnaies ; « ???? » et un prix vide
   restent tels qu'écrits, sans calcul. Un écart de la source noté à l'import (la fiche des Écailles en tête de ligne écrit Solidité 4, celle en tête de
   colonne 3) s'affiche sous les tableaux des matériaux, tel qu'écrit (`ecartsDeLaSource`).
-- État dans l'adresse : `?materiau1=…&materiau2=…&piece=…&amelioration-armure=N` (ou `?armure=<ancre>` pour une armure particulière),
-  `&forme=…&matiere=…&amelioration-bouclier=N` ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
+- État dans l'adresse : `?materiau1=…&materiau2=…&amelioration-armure=N` (ou `?armure=<ancre>` pour une armure particulière),
+  `&forme=…&matiere=…&amelioration-bouclier=N` (un ancien `piece=…` est ignoré : R93) ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent (la liste des boucliers et celle des poids comprises) ; les
-  cases des armures, pièces, formes, boucliers (nom, défense dans la case AP, prix, poids au choix), poids et améliorations se modifient, les matériaux
+  cases des armures, formes, boucliers (nom, défense dans la case AP, prix, poids au choix), poids, améliorations et le coût de fabrication du bouclier
+  (sous les formes) se modifient, les matériaux
   restent en lecture (R62) ; ni création ni suppression. Voir `docs/serveur.md`, « Édition ».
-- `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80), `corps-armures.test.mjs`,
+- `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80, R93), `corps-armures.test.mjs`,
   `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (décision R92 : le registre de la
   migration 0054 = la base dans son état d'import, couleurs, pastille), `armures-tri.test.mjs` (tri de la liste), `armures-html.test.mjs` (site construit).
 

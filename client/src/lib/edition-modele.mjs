@@ -411,7 +411,8 @@ export const TABLES = {
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2 050 », « ???? »)' },
     },
   },
-  // une pièce du tableau FABRICATION (Armure Complète, Casque…, Bouclier) : son coût de fabrication (décision R75)
+  // une pièce du tableau FABRICATION (Armure Complète, Casque…, Bouclier) : son coût de fabrication ; la page n'affiche plus que celui du bouclier (une
+  // armure ne se fabrique plus pièce par pièce : décision R93), les emplacements restent ceux de la fiche de personnage
   armure_emplacement: {
     libelle: 'Pièce d’armure',
     colonnes: {
