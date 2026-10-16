@@ -37,6 +37,8 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-regles__texte p { margin: 0 0 0.75rem; }
 .armures-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 .armures-aide { margin: 0 0 0.5rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le prix d'une armure (décision R93) : une règle, affichée aussi en mode modification (son coût de fabrication s'y modifie) et à l'impression */
+.armures-prix { margin: 0 0 0.6rem; font-size: var(--fs-lg); }
 .armures-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0 0 0.8rem; }
 .armures-legende__titre { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
 .armures-sous-titre { margin: 1.6rem 0 0.6rem; font-size: 1.2rem; }

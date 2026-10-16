@@ -19,7 +19,9 @@ import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnai
 // Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
 //   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
 //     fiche s'ouvre à côté, avec l'amélioration à choisir (décision R77) ; une armure ne se fabrique plus pièce par pièce, seulement complète (décision
-//     R93, demande du propriétaire, 2026-10-16 : « Tu peux donc retirer le tableau actuel de "fabrication" ») ; dessous, la liste des armures : les
+//     R93, demande du propriétaire, 2026-10-16 : « Tu peux donc retirer le tableau actuel de "fabrication" »), et son prix est calculé : la fabrication
+//     de l'armure complète (la ligne « Armure Complète » du tableau FABRICATION, modifiable sur le site de dev) + 6 unités de chacun de ses deux
+//     matériaux (« le prix est toujours de 6 unités d'un matériau 1, et 6 d'un matériau 2 », « ça ne remplace pas le prix en Ricken d'or ») ; dessous, la liste des armures : les
 //     armures particulières en premier (« tu met le tableau "Armure particulières" en tout premier de la liste des armures »), puis par type ; une ligne
 //     choisit l'armure ;
 //   - Boucliers (demandes du propriétaire, 2026-10-16) : la forme, et sous elle le tableau des améliorations (« je veux que la table d'amélioration
@@ -78,6 +80,19 @@ const legende = (
       Choisissez un matériau dans chacun des deux tableaux : l’armure complète ainsi créée s’ouvre à côté, avec son amélioration. Une armure de la
       liste, plus bas, se choisit aussi d’un clic.
     </p>
+    {
+      armures.fabricationDeLArmure && (
+        <p class="armures-prix">
+          Prix d’une armure (décision R93) : sa fabrication,{' '}
+          <span
+            data-armures-fabrication
+            data-ed={attributEd('armure_emplacement', { id: armures.fabricationDeLArmure.id }, 'cout_brut')}
+            data-ed-rendu="piece-cout"
+            set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDeLArmure.cout_brut, armures.fabricationDeLArmure)}
+          />, et 6 unités de chacun de ses deux matériaux, achetées ou fournies.
+        </p>
+      )
+    }
     <p class="armures-legende"><span class="armures-legende__titre">Types</span> <Fragment set:html={legende} /></p>
 
     <div class="armures-vue" data-vue="armure">
@@ -135,7 +150,8 @@ const legende = (
                     <thead>
                       <tr>
                         <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th><th scope="col">Défense</th>
-                        <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th><th scope="col">Prix</th>
+                        <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
+                        <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
                       </tr>
                     </thead>
                     <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>

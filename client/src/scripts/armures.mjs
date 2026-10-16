@@ -3,8 +3,11 @@
 // « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ».
 //   - Onglet Armures : choisir un matériau dans chacun des deux tableaux donne l'armure de la grille (dans un ordre comme dans l'autre) ; une ligne de la
 //     liste choisit l'armure et ses deux matériaux, une armure particulière se choisit seule (sans matériau : la source ne lui donne que le prix de
-//     l'armure entière, décision R80). La fiche s'ouvre à côté : toujours l'armure complète, au prix écrit (une armure ne se fabrique plus pièce par
-//     pièce, décision R93) ; l'amélioration en change la défense, la solidité et le coût (lib/armure-forge.mjs, décision R77).
+//     l'armure entière, décision R80). La fiche s'ouvre à côté : toujours l'armure complète (une armure ne se fabrique plus pièce par pièce, décision
+//     R93), dont le prix est la fabrication de l'armure complète (`[data-armures-fabrication]`) + 6 unités de chacun des deux matériaux, achetées ou
+//     fournies (R93 ; une armure particulière : son prix écrit, R80) ; l'amélioration en change la défense, la solidité et le coût (lib/armure-forge.mjs,
+//     décision R77). Le prix de chaque armure de la liste est calculé de même au build (lib/armures-db.mjs) ; le script le refait quand un prix de
+//     matériau ou la fabrication est réécrit (mode modification : évènement « armures:rafraichir »).
 //   - Onglet Boucliers : une forme et une matière donnent le bouclier préfabriqué (décision R78) ; une ligne de la liste choisit les deux ; l'amélioration
 //     en change la défense, la solidité et le coût (R76) ; la fiche montre son poids (la couleur de sa case dans l'onglet, décision R92 ; « Requiert N
 //     Force minimum » dans l'infobulle de la tuile). La liste est un seul tableau, replié, triable par toutes ses colonnes (demande du propriétaire,
@@ -21,7 +24,7 @@
 // adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
 // choisit aussi cette armure ou ce bouclier. Un ancien `piece=<id>` (le tableau FABRICATION, retiré : décision R93) est ignoré, et quitte l'adresse au choix suivant.
 // Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
-import { forgerArmure, forgerBouclier, nombre, piecesDuMontant } from '../lib/armure-forge.mjs';
+import { forgerArmure, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure } from '../lib/armure-forge.mjs';
 import { ordonner, triSuivant } from '../lib/armures-tri.mjs';
 
 const racine = document.querySelector('[data-armures]');
@@ -107,6 +110,25 @@ if (racine) {
   const ligneDeMateriau = (role, cle) => (cle ? racine.querySelector(`[data-choix="${role}"] tr.pmat[data-materiau="${CSS.escape(cle)}"]`) : null);
   const videDeLArmure = A.fiche?.innerHTML ?? '';
 
+  /** La fabrication de l'armure complète (RO), telle qu'affichée (rendu « piece-cout ») : comptée dans le prix de chaque armure de la grille (R93). */
+  const fabricationDeLArmure = () => nombreOuNul(racine.querySelector('[data-armures-fabrication] .pcout')?.dataset.ro);
+
+  /**
+   * Le prix de chaque armure de la grille dans la liste (décision R93) : refait d'après les prix des matériaux et la fabrication tels qu'affichés ; une
+   * case n'est réécrite que si son prix change (au chargement, celui du build est le même).
+   */
+  function prixDeLaListe() {
+    const fabrication = fabricationDeLArmure();
+    for (const tr of racine.querySelectorAll('tr.armure[data-m1]')) {
+      const cellule = tr.querySelector('.armure__prix[data-prix-calcule]');
+      if (!cellule) continue;
+      const prix = [tr.dataset.m1, tr.dataset.m2].map((cle) => lireMateriau(ligneDeMateriau('m1', cle))?.prix_ro ?? null);
+      const n = prixDeLArmure(fabrication, prix).achetes;
+      if (nombreOuNul(cellule.querySelector('.pprix')?.dataset.ro) === n) continue;
+      cellule.innerHTML = n === null ? '<span class="pprix"><span class="vide" aria-label="aucun">—</span></span>' : `<span class="pprix" data-ro="${n}">${ro(n)}</span>`;
+    }
+  }
+
   /** L'armure choisie : l'armure particulière, ou la combinaison des deux matériaux (dans un ordre ou dans l'autre) ; null sinon. */
   function armureChoisie() {
     if (A.particuliere) return A.particuliere;
@@ -152,7 +174,8 @@ if (racine) {
     A.vue?.classList.add('est-ouverte');
     const a = lireArmure(ligne);
     const mats = a.particuliere ? [] : [lireMateriau(A.m1), lireMateriau(A.m2)].filter(Boolean);
-    const f = forgerArmure({ ap: a.ap, am: a.am, solidite: a.solidite, prix: a.prix }, ameliorations('armure'), A.niveau);
+    const composition = a.particuliere ? null : { fabrication: fabricationDeLArmure(), materiaux: mats };
+    const f = forgerArmure({ ap: a.ap, am: a.am, solidite: a.solidite, prix: a.prix }, ameliorations('armure'), A.niveau, composition);
     const niveau = A.niveau ? `Amélioration +${A.niveau}` : 'Sans amélioration';
     const c = f.cout;
     const matAmel = c.materiaux_amelioration ? ` + ${pluriel(c.materiaux_amelioration, 'matériau', 'x')}` : '';
@@ -171,13 +194,26 @@ if (racine) {
       ...(A.niveau && f.solidite.amelioration ? [ligneDeFiche(niveau, signe(f.solidite.amelioration))] : []),
       ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'eq-bulle__total'),
     ].join('');
-    // l'armure complète seulement (décision R93) : le prix écrit (grille ou armure particulière) et l'amélioration
-    const coutLignes = [
-      ligneDeFiche(a.particuliere ? e(a.nom) : 'Armure complète (prix de la grille)', c.prix === null ? e(a.prixTexte || '—') : ro(c.prix)),
-      ...(A.niveau ? [ligneDeFiche(`${niveau} (niveaux +1 à +${A.niveau})`, `${ro(c.amelioration)}${matAmel}`)] : []),
-      ligneDeFiche('Total', c.total === null ? e(a.prixTexte || '—') : `${ro(c.total)}${matAmel}`, 'eq-bulle__total'),
-    ].join('');
-    const coutTuile = c.total === null ? e(a.prixTexte || '—') : ro(c.total);
+    // l'armure complète seulement (décision R93) : une armure de la grille coûte sa fabrication + 6 unités de chaque matériau, achetées ou fournies ;
+    // une armure particulière, son prix écrit (R80) ; puis l'amélioration
+    const amel = A.niveau ? [ligneDeFiche(`${niveau} (niveaux +1 à +${A.niveau})`, `${ro(c.amelioration)}${matAmel}`)] : [];
+    let coutLignes;
+    if (composition) {
+      const fournis = `${ro(c.total_fournis)} + ${c.materiaux.map((m) => `${m.unites}&#8239;${e(m.nom)}`).join(' + ')}${matAmel}`;
+      coutLignes = [
+        ligneDeFiche('Fabrication (armure complète)', ro(c.fabrication)),
+        ...c.materiaux.map((m) => ligneDeFiche(`${m.unites} × ${e(m.nom)}`, m.total === null ? '—' : `${m.unites} × ${ro(m.prix_ro)} = ${ro(m.total)}`)),
+        ...amel,
+        ligneDeFiche('Total', `${c.total === null ? '—' : `${ro(c.total)}${matAmel}`} <span class="pfiche__ou">ou, matériaux fournis :</span> ${fournis}`, 'eq-bulle__total'),
+      ].join('');
+    } else {
+      coutLignes = [
+        ligneDeFiche(e(a.nom), c.prix === null ? e(a.prixTexte || '—') : ro(c.prix)),
+        ...amel,
+        ligneDeFiche('Total', c.total === null ? e(a.prixTexte || '—') : `${ro(c.total)}${matAmel}`, 'eq-bulle__total'),
+      ].join('');
+    }
+    const coutTuile = c.total === null ? (composition ? '—' : e(a.prixTexte || '—')) : ro(c.total);
     const bulles = bullesDe('armure');
     if (bulles) {
       bulles.innerHTML = [
@@ -185,6 +221,7 @@ if (racine) {
         bulle('armure-bulle-am', 'Armure magique', amLignes),
         bulle('armure-bulle-solidite', 'Solidité', soliditeLignes),
         bulle('armure-bulle-cout', 'Coût', coutLignes, [
+          composition ? 'Une armure se fabrique complète : sa fabrication et 6 unités de chacun de ses deux matériaux (décision R93).' : '',
           c.materiaux_amelioration ? 'Les matériaux d’une amélioration sont comptés sans prix : la source ne dit pas lequel des deux matériaux de l’armure.' : '',
         ]),
       ].join('');
@@ -204,7 +241,7 @@ if (racine) {
         ${tuile('armure-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
         ${tuile('armure-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
         ${tuile('armure-bulle-solidite', 'Solidité', String(f.solidite.total), a.uni ? 'uni' : '')}
-        ${tuile('armure-bulle-cout', 'Coût', coutTuile)}
+        ${tuile('armure-bulle-cout', 'Coût', coutTuile, composition ? 'matériaux achetés' : '')}
       </div>
       <div class="pfiche__infos">${a.particuliere
         ? `<p><span class="pfiche__etiquette">Effet :</span> ${a.effet}</p>`
@@ -472,6 +509,7 @@ if (racine) {
 
   // après un enregistrement du mode modification (cellules réécrites) ou à son entrée et à sa sortie (src/scripts/edition/armures.mjs)
   document.addEventListener('armures:rafraichir', () => {
+    prixDeLaListe();
     rendre();
   });
 

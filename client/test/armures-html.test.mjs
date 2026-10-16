@@ -11,7 +11,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { ancreDArmure, ancreDeBouclier, chargerArmures } from '../src/lib/armures-db.mjs';
+import { ancreDArmure, ancreDeBouclier, chargerArmures, coutDeFabrication } from '../src/lib/armures-db.mjs';
+import { prixEnRo } from '../src/lib/arme-champs.mjs';
 import { couleurDuPoids, couleurDuType } from '../src/lib/armures-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -71,13 +72,27 @@ test('armures : les armures particulières en premier puis la liste par type, un
   assert.equal(lignes.length, armures.combinaisons.length + armures.particulieres.length);
   assert.deepEqual(new Set(lignes), new Set([...armures.combinaisons, ...armures.particulieres].map((a) => ancreDArmure(a.id))));
   const a = armures.combinaisons[0];
-  for (const colonne of ['nom', 'type', 'stats_brut', 'solidite', 'resistance_brut', 'faiblesse_brut', 'prix_brut']) {
+  for (const colonne of ['nom', 'type', 'stats_brut', 'solidite', 'resistance_brut', 'faiblesse_brut']) {
     assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: a.id }, colonne))}"`), colonne);
   }
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));
   const particuliere = armures.particulieres[0];
-  assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: particuliere.id }, 'effet'))}"`));
-  assert.ok(p.includes('id="armures-particulieres"'));
+  for (const colonne of ['effet', 'prix_brut']) assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: particuliere.id }, colonne))}"`), `particulière : ${colonne}`);
+});
+
+test('décision R93 : le prix de chaque armure de la grille = la fabrication de l’armure complète + 6 unités de chaque matériau, calculé, non modifiable', options, () => {
+  const p = panneau('armures');
+  // la fabrication (« Armure Complète » du tableau FABRICATION, 10 RO), écrite et modifiable dans la phrase du prix, au-dessus des matériaux
+  const fabrication = coutDeFabrication(armures.fabricationDeLArmure);
+  assert.ok(fabrication > 0);
+  assert.ok(p.includes(`<span data-armures-fabrication data-ed="${echapper(attributEd('armure_emplacement', { id: 'armure-complete' }, 'cout_brut'))}" data-ed-rendu="piece-cout"><span class="pcout" data-ro="${fabrication}">`), 'la fabrication');
+  assert.ok(!p.includes(`data-ed="${echapper(attributEd('armure', { id: armures.combinaisons[0].id }, 'prix_brut'))}"`), 'le prix écrit dans la grille n’est plus modifiable');
+  const prixDe = new Map(armures.materiaux.map((m) => [m.ligne.ressource_id, prixEnRo(m.prix)]));
+  for (const a of armures.combinaisons) {
+    const ligne = p.slice(p.indexOf(`id="${ancreDArmure(a.id)}"`), p.indexOf('</tr>', p.indexOf(`id="${ancreDArmure(a.id)}"`)));
+    const attendu = Math.round((fabrication + 6 * prixDe.get(a.materiau_ligne_id) + 6 * prixDe.get(a.materiau_colonne_id)) * 100) / 100;
+    assert.match(ligne, new RegExp(`<td class="armure__prix" data-prix-calcule title="Fabrication de l’armure complète \\+ [^"]+"><span class="pprix" data-ro="${attendu}">`), a.nom);
+  }
 });
 
 test('armures : à côté, la fiche (remplie par le script) et les améliorations +1 à +5, sans ligne Total ; plus de tableau FABRICATION (décision R93)', options, () => {

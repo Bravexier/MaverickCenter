@@ -379,12 +379,16 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, Défense,
   Solidité, Résistance, Faiblesse, Prix) ; une ligne choisit l'armure (et ses deux matériaux). Une armure **ne se fabrique plus pièce par pièce, seulement
   complète** (décision R93) : plus de tableau FABRICATION ; les règles de l'onglet (texte tel qu'importé, qui parle encore des morceaux) sont précédées
-  de cette décision.
+  de cette décision. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
+  10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
+  page Composants (R62) ; calculé partout (au build : `lib/armures-db.mjs#chargerArmures`, `prix_calcule` ; le script de la page le refait quand un prix
+  de matériau ou la fabrication est réécrit), le prix écrit dans la grille n'est plus lu ni modifiable ; une armure particulière garde son prix écrit.
 - **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement et remonte à la fiche quand on choisit une autre armure ; sur un écran étroit,
   par-dessus la page ; `src/scripts/armures.mjs`, calcul `lib/armure-forge.mjs`) : **réduite à son minimum comme celle des armes** (demande du
   propriétaire, 2026-10-16) — le nom, le type, les matériaux et l'amélioration, quatre tuiles (AP, AM, solidité, coût) qui sont des boutons dont
   l'**infobulle donne le détail du calcul** (bulle riche écrite dans `[data-armures-bulles]`, hors du panneau), puis la résistance et la faiblesse (ou
-  l'effet) — ; c'est toujours l'armure complète, au prix de la grille (décisions R75, R93), et la fiche suit l'**amélioration** (+1 à +5 : coût des
+  l'effet) — ; c'est toujours l'armure complète (R93), dont le coût détaille la fabrication et les 6 unités de chaque matériau, achetées ou fournies
+  (« 28 RO, ou, matériaux fournis : 10 RO + 6 Cuir + 6 Peau »), et la fiche suit l'**amélioration** (+1 à +5 : coût des
   niveaux +1 à +N, AP, AM et crans écrits au niveau N, pour l'armure entière : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel
   des deux). Une armure particulière n'a que le prix de l'armure entière, et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
   armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
