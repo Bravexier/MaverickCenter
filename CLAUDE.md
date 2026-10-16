@@ -19,16 +19,8 @@ Les suivre ; ne jamais en déduire d'autres.
 
 ## Équipe d'agents (`.claude/agents/`)
 
-Chaque agent a un rôle distinct ; ne pas cumuler. Présentation et circuit : `docs/equipe.md` ; consignes dans leur fichier.
-
-| Agent | Rôle (présentation de l'équipe : `docs/equipe.md`) |
-| --- | --- |
-| `ingenieur-site` | Code du site (`client/`) : pages, composants, scripts, fiche, service `/api/` |
-| `ingenieur-donnees` | Base SQLite, migrations, `data/rows`, importeurs, orthographe |
-| `expert-sql` | Lecture seule : conception de la base, contraintes, intégrité, vues, index, SQL ; relecture de toute la base (compétence `relecture-db`) |
-| `gardien-des-regles` | Lecture seule : contenu sourcé, conforme à `docs/decisions-regles.md` |
-| `relecteur-critique` | Lecture seule : revue indépendante du diff avant PR |
-| `chef-de-flux-git` | Branches, rebase, PR, CI, fusion (`docs/flux-git.md`) |
+Six agents, un rôle chacun, sans chevauchement : `ingenieur-site`, `ingenieur-donnees`, `expert-sql`, `gardien-des-regles`, `relecteur-critique`, `chef-de-flux-git`.
+Qui possède quoi, qui écrit, qui relit et dans quel ordre : `docs/equipe.md` (seule description de l'équipe) ; consignes détaillées dans leur fichier.
 
 ## Vision à long terme
 
