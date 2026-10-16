@@ -6,7 +6,10 @@ import { bulleDeGemme, cleDeRessource, consignesDesEtapes, type chargerAccessoir
 import { cleDEffet, facesDuDe, gemmesAuChoix, QUALITES_DE_GEMME, styleDeNiveau } from '../../lib/accessoires-generateur.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 
-// Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14) : « Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire. La page se
+// Onglet « Accessoires » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
+// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; avant, la page /ressources/accessoires/, dont l'adresse mène à l'onglet) : un
+// panneau (`section.equipement-panneau#accessoires`). Demande du propriétaire, 2026-10-14 : « Pas de tableau Markdown. Au lieu de ça, un générateur
+// d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
 // ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : les règles de l'onglet en tête ; les
 // tableaux des étapes (Identité 1d4, Propriété 1d100, un tableau d'effets par propriété, chacun dans son onglet), puis la monture ; à côté, l'accessoire créé
@@ -19,7 +22,7 @@ interface Props {
   accessoires: Accessoires;
   /** HTML des règles de la page (Markdown avant « ## CRÉATION D'ACCESSOIRE » : lib/accessoires-db.mjs#reglesDeLaPage) */
   regles: string;
-  /** première phrase des règles, affichée sous le titre */
+  /** première phrase des règles, affichée en tête de l'onglet Accessoires */
   resume?: string | null;
 }
 const { accessoires, regles, resume } = Astro.props;
@@ -44,10 +47,12 @@ const DE_SVG =
 ---
 
 <style is:inline set:html={accessoiresCss}></style>
-{/* Onglets pose aussi `html.js` (sans JavaScript, ni dé, ni encart, ni curseur) */}
+{/* Onglets pose aussi `html.js` (sans JavaScript, ni dé, ni encart, ni curseur) ; il ne sert qu'une fois par page, même posé aussi par
+   components/equipement/EquipementPage.astro (le groupe des onglets d'effets est le sien, `.acc-effets`) */}
 <Onglets />
+<section class="equipement-panneau" id="accessoires" aria-labelledby="titre-accessoires">
+<h2 class="equipement-panneau__titre" id="titre-accessoires">{accessoires.page?.titre ?? 'Accessoires'}</h2>
 <div class="acc" data-accessoires>
-  <h1>{accessoires.page?.titre ?? 'Accessoires'} <span class="badge">Ressource</span></h1>
   {resume && <p class="acc__chapo" set:html={htmlAvecMonnaies(resume)} />}
   <details class="acc-regles" open>
     <summary>Règles des accessoires : prix, malédiction, montures, qualité des gemmes</summary>
@@ -253,6 +258,7 @@ const DE_SVG =
     ))}
   </div>
 </div>
+</section>
 
 <script>
   import '../../scripts/accessoires.mjs';

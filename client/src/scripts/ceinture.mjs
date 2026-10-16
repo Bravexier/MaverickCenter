@@ -1,8 +1,8 @@
 // Script de la page /ressources/objets-a-la-ceinture/ (components/ceinture/CeinturePage.astro) : la recherche filtre les lignes (`tr.ceint-ligne`) des
 // tableaux (`[data-ceinture-tableau]`) d'après leur `data-recherche` (mots en minuscules, sans accents) ; une potion se trouve aussi par le titre et le
 // résumé de sa page, le `data-recherche` de son <tbody>. Seuls les <tbody data-ceinture-corps> sont filtrés (pas ceux d'un tableau des règles) ; un
-// <tbody> sans ligne trouvée se cache avec son titre de groupe ; le nombre d'objets de chaque tableau suit (une ligne de bâtons compte pour ses
-// `data-nombre` bâtons) ; un tableau sans ligne trouvée se cache, et un groupe (`[data-ceinture-groupe]` : « Potions ») dont tous les tableaux le sont.
+// <tbody> sans ligne trouvée se cache avec son titre de groupe ; le nombre d'objets de chaque tableau suit ; un tableau sans ligne trouvée se cache,
+// et un groupe (`[data-ceinture-groupe]` : « Potions ») dont tous les tableaux le sont.
 // « Tout déplier » / « Tout replier ». Une recherche que le navigateur remet (retour arrière) est appliquée au chargement. Sans import (aucun module
 // partagé avec un autre script de page) ; testé dans un faux navigateur (test/ceinture-script.test.mjs).
 const racine = document.querySelector('[data-ceinture]');
@@ -25,8 +25,7 @@ if (racine) {
           const texte = `${duGroupe} ${tr.dataset.recherche ?? ''}`;
           const garde = mots.every((m) => texte.includes(m));
           tr.classList.toggle('est-filtree', !garde);
-          // une ligne de bâtons compte pour les bâtons de sa magie (data-nombre) ; les autres, pour un objet
-          if (garde) visibles += Number(tr.dataset.nombre ?? 1);
+          if (garde) visibles += 1;
         }
         corps.hidden = visibles === 0;
         n += visibles;

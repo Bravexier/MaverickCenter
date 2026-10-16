@@ -1,10 +1,10 @@
-// Page /ressources/armures/ (demandes du propriétaire, 2026-10-15 : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les
-// Armes » ; « Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
-// sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
-// aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : chargée depuis les tables de la base, jamais
-// depuis les Markdown des pages « Armures » et « Bouclier » (qui ne servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs), dont seules
-// les règles (le texte avant les tableaux) s'affichent. La page « Bouclier » n'est plus construite : ses liens mènent à l'onglet Boucliers de la page
-// des armures (lib/metiers.mjs#adresseDePage).
+// Onglets Armures et Boucliers de la page /ressources/equipement/ (avant, la page /ressources/armures/ ; demandes du propriétaire, 2026-10-15 : « Je
+// souhaite faire la refonte de l'onglet armure, de la même manière que les Armes » ; « Les deux seront dans la page » ; « les autres armures étant
+// composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est
+// disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les
+// bouclier c'est forme + matière ») : chargée depuis les tables de la base, jamais depuis les Markdown des pages « Armures » et « Bouclier » (qui ne
+// servent plus qu'à la recherche et aux [[liens]] : lib/corps-armures.mjs), dont seules les règles (le texte avant les tableaux) s'affichent. Les
+// pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet (lib/metiers.mjs#adresseDePage).
 // Sans dépendance (sauf des modules purs) : `chargerArmures` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';

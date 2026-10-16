@@ -22,7 +22,7 @@ export const RESSOURCES = [
     noms: 'Armes',
     description:
       'Les armes de l’onglet « Armes » du classeur « Ressources et Craft » (une ligne par arme et par bandeau, hors armes de monstres), rendues sur ' +
-      '/ressources/armes/ : nom, mains, compétence (décision R48), type, coût, effet, description, arme de départ (fond bleu de la source), remarque ' +
+      'l’onglet Armes de /ressources/equipement/ : nom, mains, compétence (décision R48), type, coût, effet, description, arme de départ (fond bleu de la source), remarque ' +
       '(l’étoile à côté du nom, R91) ; le service ' +
       'tire de l’effet le dé, le bonus de dégâts, la portée (R50), la solidité et la provenance, ainsi que les types de dégâts et les minimums de ' +
       'caractéristique (dans le détail) ; une arme se crée dans une famille (identifiant tiré du nom puis figé) et se supprime : elle est alors retirée ' +
@@ -245,7 +245,7 @@ export const RESSOURCES = [
     tri: 'cible',
   },
 
-  // ▸ Accessoires (générateur de l'onglet « Accessoires » : /ressources/accessoires/, non modifiable sur le site de dev)
+  // ▸ Accessoires (générateur de l'onglet « Accessoires » de /ressources/equipement/, non modifiable sur le site de dev)
   {
     cle: 'emplacements-d-accessoire',
     nom: 'Emplacement d’accessoire',

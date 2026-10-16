@@ -1,5 +1,6 @@
 // Objets à la ceinture (décisions R81 et R82) : la vue v_objet_ceinture (migration 0047) et le chargement de la page /ressources/objets-a-la-ceinture/
-// (lib/ceinture-db.mjs), lus dans la base construite. Le site de dev peut créer, renommer et supprimer des contenants (page « Composants ») et réécrire
+// (lib/ceinture-db.mjs ; les bâtons magiques, qui sont dans la vue, ont leur tableau dans l'onglet de la page « Équipement » : test/equipement.test.mjs),
+// lus dans la base construite. Le site de dev peut créer, renommer et supprimer des contenants (page « Composants ») et réécrire
 // les pages du guide : les tests contrôlent des invariants (la vue suit les tables, la page suit les sections), et ce qui vient de l'import (les
 // contenants que le guide nomme, les sections des pages) est lu tel que l'import l'a laissé (lib/historique-site.mjs).
 import assert from 'node:assert/strict';
@@ -8,12 +9,10 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
-  CHAPITRE_DE_LA_CEINTURE, FAMILLES_DE_LA_CEINTURE, PAGE_DE_REFERENCE, PAGE_DES_BATONS, TITRE_DE_LA_FABRICATION, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
+  CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
   chargerObjetsDeCeinture, sectionDuCorps,
 } from '../src/lib/ceinture-db.mjs';
-import {
-  ancreDObjet, htmlDEnteteDeNiveau, htmlDeLigneDeBatons, htmlDeLigneDePotion, htmlDeLignes, texteDeRecherche,
-} from '../src/lib/ceinture-rendu.mjs';
+import { ancreDObjet, htmlDeLigneDePotion, htmlDeLignes, texteDeRecherche } from '../src/lib/ceinture-rendu.mjs';
 
 const db = ouvrirBase();
 const vue = db.prepare('SELECT famille, ressource_id, baton_id FROM v_objet_ceinture').all().map((l) => ({ ...l }));
@@ -59,12 +58,14 @@ test('v_objet_ceinture : tous les bâtons magiques ; une ligne = une potion, un 
   assert.deepEqual(genres, ['materiel', 'potion']);
   const noms = db.prepare('SELECT r.nom FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id').all().map((r) => cle(r.nom));
   assert.ok(!noms.some((n) => n.includes('bouclier')), 'le bouclier a son emplacement dans l’armure');
-  assert.deepEqual(new Set(vue.map((v) => v.famille)), new Set(FAMILLES_DE_LA_CEINTURE.map((f) => f.famille)), 'une famille de la vue = un tableau de la page');
+  assert.deepEqual(new Set(vue.map((v) => v.famille)), new Set([...FAMILLES_DE_LA_CEINTURE.map((f) => f.famille), FAMILLE_DES_BATONS]),
+    'une famille de la vue = un tableau de la page, sauf les bâtons (l’onglet « Bâtons magiques » de la page « Équipement »)');
 });
 
-test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la vue une fois', () => {
+test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la vue une fois, sauf les bâtons', () => {
   assert.deepEqual(objets.tableaux.map((t) => t.famille), FAMILLES_DE_LA_CEINTURE.map((f) => f.famille));
-  assert.equal(objets.tableaux.reduce((n, t) => n + t.nombre, 0), vue.length);
+  assert.ok(!objets.tableaux.some((t) => t.famille === FAMILLE_DES_BATONS), 'pas de tableau des bâtons');
+  assert.equal(objets.tableaux.reduce((n, t) => n + t.nombre, 0), vue.filter((v) => v.famille !== FAMILLE_DES_BATONS).length);
   for (const t of objets.tableaux.filter((x) => x.pages)) {
     const ids = t.pages.flatMap((p) => p.potions.map((x) => x.id));
     assert.equal(ids.length, t.nombre, t.famille);
@@ -87,27 +88,10 @@ test('chargement : dans une page, les potions dans l’ordre où la page les éc
   }
 });
 
-test('chargement : les bâtons, une ligne par magie (ordre des magies), la gemme et le bois de la magie, un bonus par niveau', () => {
-  const b = tableau('baton');
-  assert.ok(b.magies.length > 0);
-  assert.equal(b.magies.length * b.niveaux.length, b.nombre, 'chaque magie a ses trois niveaux');
-  const ordres = b.magies.map((m) => db.prepare('SELECT ordre FROM magie WHERE id = ?').get(m.magie.id).ordre);
-  assert.deepEqual(ordres, [...ordres].sort((x, y) => x - y));
-  for (const m of b.magies) {
-    assert.equal(db.prepare('SELECT magie_id FROM gemme WHERE ressource_id = ?').get(m.gemme.id)?.magie_id, m.magie.id, `${m.magie.nom} : sa gemme`);
-    assert.equal(db.prepare('SELECT magie_id FROM bois WHERE ressource_id = ?').get(m.bois.id)?.magie_id, m.magie.id, `${m.magie.nom} : son bois`);
-    for (const n of b.niveaux) assert.ok(m.bonus[n.niveau], `${m.magie.nom} niveau ${n.niveau}`);
-  }
-  assert.deepEqual(b.niveaux.map((n) => n.niveau), [1, 2, 3]);
-  for (const n of b.niveaux) assert.match(n.entete, new RegExp(`^Niveau ${n.niveau} \\(`), 'l’en-tête est la recette du niveau');
-});
-
-test('règles : les sections des pages du guide et de « Bâton magique » ; l’import les écrivait, la page suit leur texte actuel', () => {
+test('règles : les sections des pages du guide ; l’import les écrivait, la page suit leur texte actuel', () => {
   const sections = [
     ['ceinture', CHAPITRE_DE_LA_CEINTURE, TITRE_DES_REGLES, /emplacements/],
     ['reference', PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, /non exhaustive/], // la liste du guide n'est pas exhaustive : la page le montre
-    ['batons', PAGE_DES_BATONS, null, /ceinture/],
-    ['fabrication', PAGE_DES_BATONS, TITRE_DE_LA_FABRICATION, /Volonté \+ Intelligence/],
   ];
   for (const [regle, id, titre, attendu] of sections) {
     const importe = historique.valeurDImport('page', { id }, 'corps_md');
@@ -116,7 +100,7 @@ test('règles : les sections des pages du guide et de « Bâton magique » ; l�
     assert.equal(objets.regles[regle], actuel === undefined ? null : sectionDuCorps(actuel, titre), `${regle} : la page suit le texte actuel`);
     if (objets.regles[regle]) assert.ok(!objets.regles[regle].split('\n').some((l) => /^#{1,2} /.test(l)), `${regle} : la section seule, sans le titre suivant`);
   }
-  for (const [source, id] of [['chapitre', CHAPITRE_DE_LA_CEINTURE], ['reference', PAGE_DE_REFERENCE], ['batons', PAGE_DES_BATONS]]) {
+  for (const [source, id] of [['chapitre', CHAPITRE_DE_LA_CEINTURE], ['reference', PAGE_DE_REFERENCE]]) {
     assert.equal(objets.sources[source]?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(id)?.titre, `${source} : le titre actuel de la page`);
   }
 });
@@ -132,18 +116,14 @@ test('sectionDuCorps : une section jusqu’au titre suivant de même niveau ou p
   assert.equal(sectionDuCorps('## A\n\nTexte.', null), null, 'pas d’introduction');
 });
 
-test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icônes ; en-tête d’un niveau de bâton', () => {
+test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icônes', () => {
   assert.equal(htmlDeLignes('- Redonne 15 santé\n- 1 croix à la perception pendant 2 tours'), 'Redonne 15 santé<br>1 croix à la perception pendant 2 tours');
   assert.equal(htmlDeLignes('ampli am = +1 am <donné>'), 'ampli am = +1 am &lt;donné&gt;');
   assert.match(htmlDeLignes(''), /class="vide"/);
-  assert.equal(htmlDEnteteDeNiveau('Niveau 2 (1 Gemme Raffinée + 1 bois [magie])'), 'Niveau 2<span class="ceint-recette">1 Gemme Raffinée + 1 bois [magie]</span>');
-  assert.equal(htmlDEnteteDeNiveau('Autre'), 'Autre');
   const p = tableau('fiole').pages[0].potions[0];
   const html = htmlDeLigneDePotion(p);
   assert.ok(html.includes(`id="${ancreDObjet(p.id)}"`));
   assert.match(html, /class="piece piece--/, 'le prix en icônes (R63)');
   assert.ok(html.includes(`data-recherche="${echapper(texteDeRecherche(p.nom, p.niveau, p.effet))}"`));
-  const m = tableau('baton').magies[0];
-  assert.match(htmlDeLigneDeBatons(m, tableau('baton').niveaux, '/ressources/composants/'), /href="\/ressources\/composants\/#composant-gemme-/);
   assert.equal(texteDeRecherche('Fiole  Rouge', null, 'Récupère'), 'fiole rouge recupere');
 });

@@ -1,9 +1,10 @@
 // Page /ressources/objets-a-la-ceinture/ (menu Ressources ; demande du propriétaire, 2026-10-15 : « l'ensemble de tous les objets que les joueurs peuvent
 // placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques ») : chargée depuis la base,
 // jamais depuis un Markdown. Quels objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs
-// de pierres, les bâtons magiques ; pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les règles affichées sont des textes de
-// la base, rendus par la page : le paragraphe « La ceinture » du chapitre « L'équipement » du guide, la section « Ceinture » de la page de référence
-// (le texte du Google Doc, en dépliable) et l'introduction de la page « Bâton magique ».
+// de pierres, les bâtons magiques ; pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur tableau
+// dans l'onglet « Bâtons magiques » de la page « Équipement » (demande du propriétaire, 2026-10-16 : « qui auront mieux leur place ici » ;
+// lib/batons-db.mjs), où la page renvoie : elle n'a pas de tableau pour eux. Les règles affichées sont des textes de la base, rendus par la page : le
+// paragraphe « La ceinture » du chapitre « L'équipement » du guide et la section « Ceinture » de la page de référence (le texte du Google Doc, en dépliable).
 // Sans dépendance : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
 
 /** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
@@ -11,13 +12,11 @@ export const CHAPITRE_DE_LA_CEINTURE = 'guide/l-equipement';
 export const TITRE_DES_REGLES = '## La ceinture';
 export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
-/** La page des bâtons magiques : son introduction (avant le premier titre) et « Comment fabriquer un bâton magique ? ». */
-export const PAGE_DES_BATONS = 'ressources/baton-magique';
-export const TITRE_DE_LA_FABRICATION = '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?';
 
 /**
  * Les tableaux de la page, dans l'ordre : `famille` de v_objet_ceinture, titre du tableau (les familles de recette du doc « Alchimie » : solvant
- * Fiole, Philtre, Remède, Huile, et l'alchimie primitive) et le titre du groupe sous lequel il se range (null : un tableau seul).
+ * Fiole, Philtre, Remède, Huile, et l'alchimie primitive) et le titre du groupe sous lequel il se range (null : un tableau seul). Toutes les familles
+ * de la vue, sauf `FAMILLE_DES_BATONS` (l'onglet « Bâtons magiques » de la page « Équipement »).
  */
 export const FAMILLES_DE_LA_CEINTURE = Object.freeze([
   { famille: 'fiole', titre: 'Fioles', groupe: 'Potions' },
@@ -26,8 +25,9 @@ export const FAMILLES_DE_LA_CEINTURE = Object.freeze([
   { famille: 'primitive', titre: 'Alchimie primitive', groupe: 'Potions' },
   { famille: 'huile', titre: 'Huiles', groupe: null },
   { famille: 'contenant', titre: 'Carquois et sacs', groupe: null },
-  { famille: 'baton', titre: 'Bâtons magiques', groupe: null },
 ]);
+/** La famille de v_objet_ceinture des bâtons magiques : pas de tableau sur la page, elle renvoie à l'onglet « Bâtons magiques » de la page « Équipement ». */
+export const FAMILLE_DES_BATONS = 'baton';
 const POTIONS = ['fiole', 'philtre', 'remede', 'primitive', 'huile'];
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -53,15 +53,13 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
 
 /**
  * Les données de la page :
- *   regles   : { ceinture, reference, batons, fabrication } : Markdown de la base (null si la page n'écrit plus la section), rendus par la page ;
- *   sources  : { chapitre, reference, batons } : les pages d'où viennent ces règles, { id, titre } (leur titre se modifie sur le site de dev), ou null ;
+ *   regles   : { ceinture, reference } : Markdown de la base (null si la page n'écrit plus la section), rendus par la page ;
+ *   sources  : { chapitre, reference } : les pages d'où viennent ces règles, { id, titre } (leur titre se modifie sur le site de dev), ou null ;
  *   tableaux : un par famille de FAMILLES_DE_LA_CEINTURE, { famille, titre, groupe, nombre, ... } avec
  *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau, niveau_rang, prix_brut, effet }] }], une par page
  *                de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut être un lien), ses paliers dans l'ordre où la
  *                page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ;
- *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire » ;
- *              - bâtons magiques : `niveaux` : [{ niveau, entete }] (l'en-tête de la colonne, la recette du niveau : « Niveau 1 (1 Gemme Commune + 1 bois
- *                [magie]) ») et `magies` : [{ magie: { id, nom }, gemme, bois ({ id, nom } ou null), bonus: { 1: '…', 2: '…', 3: '…' } }] dans l'ordre des magies.
+ *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).
  */
 export function chargerObjetsDeCeinture(db) {
@@ -70,27 +68,20 @@ export function chargerObjetsDeCeinture(db) {
   const tableaux = FAMILLES_DE_LA_CEINTURE.map((f) => {
     const membres = de(f.famille);
     if (POTIONS.includes(f.famille)) return { ...f, nombre: membres.length, pages: pagesDePotions(db, membres.map((m) => m.ressource_id)) };
-    if (f.famille === 'contenant') {
-      const ids = new Set(membres.map((m) => m.ressource_id));
-      const objets = lignes(db, "SELECT id, nom, prix_brut, description, ordre FROM ressource WHERE genre = 'materiel' ORDER BY section, ordre, nom_cle").filter((r) => ids.has(r.id));
-      return { ...f, nombre: objets.length, objets };
-    }
-    return { ...f, nombre: membres.length, ...batons(db, new Set(membres.map((m) => m.baton_id))) };
+    const ids = new Set(membres.map((m) => m.ressource_id));
+    const objets = lignes(db, "SELECT id, nom, prix_brut, description, ordre FROM ressource WHERE genre = 'materiel' ORDER BY section, ordre, nom_cle").filter((r) => ids.has(r.id));
+    return { ...f, nombre: objets.length, objets };
   });
   const chapitre = pageDe(db, CHAPITRE_DE_LA_CEINTURE);
   const reference = pageDe(db, PAGE_DE_REFERENCE);
-  const baton = pageDe(db, PAGE_DES_BATONS);
   return {
     regles: {
       ceinture: chapitre ? sectionDuCorps(chapitre.corps_md, TITRE_DES_REGLES) : null,
       reference: reference ? sectionDuCorps(reference.corps_md, TITRE_DE_LA_REFERENCE) : null,
-      batons: baton ? sectionDuCorps(baton.corps_md, null) : null,
-      fabrication: baton ? sectionDuCorps(baton.corps_md, TITRE_DE_LA_FABRICATION) : null,
     },
     sources: {
       chapitre: chapitre ? { id: chapitre.id, titre: chapitre.titre } : null,
       reference: reference ? { id: reference.id, titre: reference.titre } : null,
-      batons: baton ? { id: baton.id, titre: baton.titre } : null,
     },
     tableaux,
   };
@@ -126,26 +117,4 @@ function pagesDePotions(db, ids) {
       .map(({ p: { page_id, ordre, nom_cle, ...p } }) => p);
     return { id, titre: page?.titre ?? id, resume: page?.resume ?? null, existe: Boolean(page), potions: rangees };
   }).sort((a, b) => comparer(a.titre, b.titre));
-}
-
-/** Les bâtons `ids` : une ligne par magie (dans l'ordre des magies), ses trois niveaux en colonnes, la gemme et le bois de sa recette. */
-function batons(db, ids) {
-  const tous = lignes(db, `SELECT b.id, b.magie_id, b.niveau, b.bonus_brut, b.recette_id, r.texte_brut, m.nom AS magie_nom, m.ordre AS magie_ordre
-    FROM baton_magique b JOIN magie m ON m.id = b.magie_id JOIN recette r ON r.id = b.recette_id ORDER BY m.ordre, b.niveau`).filter((b) => ids.has(b.id));
-  const ingredient = (recette, rang) =>
-    lignes(db, `SELECT r.id, r.nom FROM recette_ingredient ri JOIN ressource r ON r.id = ri.ressource_id
-      WHERE ri.recette_id = ? AND ri.rang = ? ORDER BY ri.option`, recette, rang)[0] ?? null;
-  const niveaux = [...new Set(tous.map((b) => b.niveau))].sort((a, b) => a - b)
-    .map((niveau) => ({ niveau, entete: tous.find((b) => b.niveau === niveau)?.texte_brut ?? `Niveau ${niveau}` }));
-  const magies = [];
-  for (const b of tous) {
-    let m = magies.find((x) => x.magie.id === b.magie_id);
-    if (!m) {
-      // la gemme (premier élément de la recette) et le bois (second), les mêmes aux trois niveaux d'une magie
-      m = { magie: { id: b.magie_id, nom: b.magie_nom }, gemme: ingredient(b.recette_id, 1), bois: ingredient(b.recette_id, 2), bonus: {} };
-      magies.push(m);
-    }
-    m.bonus[b.niveau] = b.bonus_brut;
-  }
-  return { niveaux, magies };
 }

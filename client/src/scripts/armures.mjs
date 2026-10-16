@@ -1,6 +1,6 @@
-// Page /ressources/armures/ (components/armures/ArmuresPage.astro) — demandes du propriétaire (2026-10-15) : « les autres armures étant composées de deux
-// matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée » ; « Il faut aussi inclure ce fonctionnement pour les
-// boucliers » ; « Pour les bouclier c'est forme + matière ».
+// Onglets Armures et Boucliers de la page /ressources/equipement/ (components/armures/ArmuresPage.astro) — demandes du propriétaire (2026-10-15) :
+// « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée » ;
+// « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ».
 //   - Onglet Armures : choisir un matériau dans chacun des deux tableaux donne l'armure de la grille (dans un ordre comme dans l'autre) ; une ligne de la
 //     liste choisit l'armure et ses deux matériaux, une armure particulière se choisit seule (sans matériau ni pièce : la source ne lui donne que le prix
 //     de l'armure entière, décision R80). La fiche s'ouvre à côté ; la pièce (tableau FABRICATION) en change le coût (lib/armure-forge.mjs, décision
@@ -12,9 +12,10 @@
 // (attributs `data-…` des rendus de lib/armures-rendu.mjs), lues à chaque choix : après un enregistrement du mode modification, qui réécrit ces cellules,
 // la fiche suit sans recharger la page (évènement « armures:rafraichir »). En mode modification (body.ed-mode) : rien ne se choisit
 // (src/scripts/edition/armures.mjs ferme les fiches et ouvre tous les tableaux).
-// État dans l'adresse : ?materiau1=<clé>&materiau2=<clé>&piece=<id>&amelioration=<niveau> (ou ?armure=<ancre d'une armure particulière>),
-// &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre
-// `#armure-…` ou `#bouclier-…` choisit aussi cette armure ou ce bouclier.
+// État dans l'adresse : ?materiau1=<clé>&materiau2=<clé>&piece=<id>&amelioration-armure=<niveau> (ou ?armure=<ancre d'une armure particulière>),
+// &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> (aucun paramètre en commun avec ceux de l'onglet Armes, src/scripts/armes.mjs : la même
+// adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
+// choisit aussi cette armure ou ce bouclier.
 // Seul import : lib/armure-forge.mjs, qu'aucun autre script de page n'importe.
 import { forgerArmure, forgerBouclier, nombre, piecesDuMontant } from '../lib/armure-forge.mjs';
 
@@ -309,7 +310,7 @@ if (racine) {
 
   function adresse() {
     const p = new URLSearchParams(location.search);
-    for (const k of ['materiau1', 'materiau2', 'armure', 'piece', 'amelioration', 'forme', 'matiere', 'amelioration-bouclier']) p.delete(k);
+    for (const k of ['materiau1', 'materiau2', 'armure', 'piece', 'amelioration-armure', 'forme', 'matiere', 'amelioration-bouclier']) p.delete(k);
     if (A.particuliere) p.set('armure', A.particuliere.id);
     else {
       if (A.m1) p.set('materiau1', A.m1.dataset.materiau);
@@ -317,7 +318,7 @@ if (racine) {
     }
     if (armureChoisie()) {
       if (A.piece && !A.piece.hasAttribute('data-complete') && !A.particuliere) p.set('piece', A.piece.dataset.piece);
-      if (A.niveau) p.set('amelioration', String(A.niveau));
+      if (A.niveau) p.set('amelioration-armure', String(A.niveau));
     }
     if (B.forme) p.set('forme', B.forme.dataset.forme);
     if (B.matiere) p.set('matiere', B.matiere.dataset.materiau);
@@ -446,7 +447,7 @@ if (racine) {
   }
   const piece = params.get('piece') ? racine.querySelector(`tr.ppiece[data-piece="${CSS.escape(params.get('piece'))}"]`) : null;
   if (piece) A.piece = piece;
-  A.niveau = A.piece && !A.piece.hasAttribute('data-complete') ? 0 : n(params.get('amelioration'), 'armure');
+  A.niveau = A.piece && !A.piece.hasAttribute('data-complete') ? 0 : n(params.get('amelioration-armure'), 'armure');
   B.forme = ligneDeForme(params.get('forme'));
   B.matiere = ligneDeMateriau('matiere', params.get('matiere'));
   B.niveau = n(params.get('amelioration-bouclier'), 'bouclier');

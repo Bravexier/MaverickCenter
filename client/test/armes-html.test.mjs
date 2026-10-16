@@ -1,4 +1,5 @@
-// Page /ressources/armes/ construite (dist/) : rendue depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
+// Onglet Armes de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armes/ : test/equipement-html.test.mjs pour la page et
+// ses onglets) : rendu depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
 // monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
 // en couleur (décision R48) et leur filtre, les règles avec la mise en forme du classeur, les matériaux dans leur couleur, les améliorations, les champs
 // du mode modification. Se saute sans dist/ (npm run build) ;
@@ -16,15 +17,17 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'armes', 'index.html');
+const fichier = join(dist, 'ressources', 'equipement', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// le panneau de l'onglet Armes : de sa <section> au bloc des armures, qui le suit (components/equipement/EquipementPage.astro)
+const main = html.slice(html.indexOf('<section class="equipement-panneau is-active" id="armes"'), html.indexOf('<div class="armures" data-armures>'));
 const armes = present ? chargerArmes(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
-test('pas de tableau Markdown : la page est le gabarit des armes, avec les règles de l’onglet repliées', options, () => {
+test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec les règles de l’onglet repliées', options, () => {
+  assert.ok(main.length > 1000, 'le panneau de l’onglet Armes');
   assert.match(main, /<div class="armes" data-armes>/);
   assert.match(main, /<details class="armes-regles">/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');

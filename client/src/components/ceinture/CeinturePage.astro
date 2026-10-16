@@ -1,10 +1,8 @@
 ---
 import ceintureCss from '../../styles/ceinture/ceinture.css?raw';
 import type { chargerObjetsDeCeinture } from '../../lib/ceinture-db.mjs';
-import { TITRE_DE_LA_FABRICATION, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES } from '../../lib/ceinture-db.mjs';
-import {
-  htmlDEnteteDeGroupe, htmlDEnteteDeNiveau, htmlDeLigneDeBatons, htmlDeLigneDeContenant, htmlDeLigneDePotion,
-} from '../../lib/ceinture-rendu.mjs';
+import { TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES } from '../../lib/ceinture-db.mjs';
+import { htmlDEnteteDeGroupe, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { url } from '../../lib/wiki';
@@ -15,8 +13,9 @@ import { url } from '../../lib/wiki';
 // ceinture (section « La ceinture » du chapitre « L'équipement » du guide, et en dépliable le texte de la source : section « Ceinture » de la page de
 // référence, dont la liste est « non exhaustive ») ; puis un tableau repliable par famille : les potions (fioles, philtres, remèdes, alchimie primitive,
 // sous le titre « Potions » : un groupe par page de potion, son titre en lien vers elle), les huiles, les carquois et sacs (liens vers leur ligne de
-// « Composants », où ils se modifient), les bâtons magiques (leurs règles : l'introduction de la page « Bâton magique » ; une ligne par magie, ses trois
-// niveaux en colonnes). Les tableaux d'un groupe sont dans une <section> avec son titre (le script la cache quand tous ses tableaux le sont). Une
+// « Composants », où ils se modifient). Les bâtons magiques, qui vont aussi à la ceinture, sont dans l'onglet « Bâtons magiques » de la page
+// « Équipement » (demande du propriétaire, 2026-10-16 : « qui auront mieux leur place ici ») : le chapeau y renvoie. Les tableaux d'un groupe sont
+// dans une <section> avec son titre (le script la cache quand tous ses tableaux le sont). Une
 // recherche filtre les lignes de tous les tableaux (src/scripts/ceinture.mjs). Sans JavaScript, tout est affiché. Les titres des pages citées sont lus
 // dans la base (ils se modifient sur le site de dev). CSS : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
 type Objets = ReturnType<typeof chargerObjetsDeCeinture>;
@@ -27,21 +26,16 @@ const { objets } = Astro.props;
 const { sources } = objets;
 const lien = (id: string) => url(cheminDePage(id));
 const composants = url('ressources/composants/');
+const equipement = url('ressources/equipement/');
 // une section de règles que sa page n'écrit plus (titre renommé sur le site de dev) : la page reste construite, sans elle, et le build le dit
-for (const [cle, page, titre] of [['ceinture', sources.chapitre, TITRE_DES_REGLES], ['reference', sources.reference, TITRE_DE_LA_REFERENCE],
-  ['fabrication', sources.batons, TITRE_DE_LA_FABRICATION]] as const) {
+for (const [cle, page, titre] of [['ceinture', sources.chapitre, TITRE_DES_REGLES], ['reference', sources.reference, TITRE_DE_LA_REFERENCE]] as const) {
   if (!objets.regles[cle]) console.warn(`[ceinture] la page ${page?.id ?? '(absente)'} n'écrit plus la section « ${titre} » : la page « Objets à la ceinture » s'en passe`);
 }
 const rendre = async (md: string | null, page: { id: string } | null) => (md && page ? await rendreMarkdown(md, page.id) : null);
 const regles = {
   ceinture: await rendre(objets.regles.ceinture, sources.chapitre),
   reference: await rendre(objets.regles.reference, sources.reference),
-  batons: await rendre(objets.regles.batons, sources.batons),
-  fabrication: await rendre(objets.regles.fabrication, sources.batons),
 };
-// la fabrication d'un seul paragraphe suit « Fabrication : » sur sa ligne ; plus longue, elle vient dessous
-const fabricationEnLigne = regles.fabrication && /^<p>(?:(?!<p[\s>])[\s\S])*<\/p>\s*$/.test(regles.fabrication)
-  ? regles.fabrication.trim().replace(/^<p>/, '').replace(/<\/p>$/, '') : null;
 const pluriel = (n: number) => `${n} objet${n > 1 ? 's' : ''}`;
 
 /**
@@ -69,24 +63,13 @@ const tableaux: Tableau[] = objets.tableaux.map((t) => {
       groupes: true,
     };
   }
-  if ('objets' in t && t.objets) {
-    return {
-      ...base,
-      note: `Les flèches et les carreaux sont dans <a href="${composants}#objets-matos-projectile">Composants</a>, les bombes dans `
-        + `<a href="${url('ressources/armes/')}#famille-bombes">Armes</a> ; ces objets se modifient dans « Composants ».`,
-      entetes: ['Nom', 'Prix', 'Description'],
-      corps: `<tbody data-ceinture-corps>${t.objets.map((r) => htmlDeLigneDeContenant(r, composants)).join('')}</tbody>`,
-      groupes: false,
-    };
-  }
-  const niveaux = 'niveaux' in t && t.niveaux ? t.niveaux : [];
-  const magies = 'magies' in t && t.magies ? t.magies : [];
+  // carquois et sacs
   return {
     ...base,
-    note: `Un bâton par magie et par niveau : sa gemme et son bois (leurs prix sont dans <a href="${composants}#gemmes">Composants</a>), et le bonus `
-      + 'passif qu’il donne aux sorts.',
-    entetes: ['Magie', 'Gemme', 'Bois', ...niveaux.map((n) => htmlDEnteteDeNiveau(n.entete))],
-    corps: `<tbody data-ceinture-corps>${magies.map((m) => htmlDeLigneDeBatons(m, niveaux, composants)).join('')}</tbody>`,
+    note: `Les flèches et les carreaux sont dans <a href="${composants}#objets-matos-projectile">Composants</a>, les bombes dans `
+      + `<a href="${equipement}#famille-bombes">Équipement › Armes</a> ; ces objets se modifient dans « Composants ».`,
+    entetes: ['Nom', 'Prix', 'Description'],
+    corps: `<tbody data-ceinture-corps>${(t.objets ?? []).map((r) => htmlDeLigneDeContenant(r, composants)).join('')}</tbody>`,
     groupes: false,
   };
 });
@@ -109,7 +92,8 @@ const nombre = tableaux.reduce((n, t) => n + t.nombre, 0);
   <h1>Objets à la ceinture <span class="badge">Ressource</span></h1>
   <p class="ceinture-page__chapo">
     Les objets de la ceinture que cette page rassemble : les potions et les huiles, les carquois, sacs de bombes et sacs de pierres (qui doivent être
-    à la ceinture pour servir) et les bâtons magiques (leur effet est actif à la ceinture ou dans un emplacement d’arme). La liste du guide n’est pas
+    à la ceinture pour servir). Les bâtons magiques, qui vont aussi à la ceinture (leur effet est actif à la ceinture ou dans un emplacement d’arme),
+    sont dans l’onglet <a href={`${equipement}#batons-magiques`}>Bâtons magiques</a> de la page Équipement. La liste du guide n’est pas
     exhaustive : il cite aussi un briquet, une torche, une corde, des kits… ; le matériel de l’onglet « Équipement inventaire » est dans{' '}
     <a href={composants}>Composants</a>. Les règles de l’alchimie (fioles, ingrédients, kits) sont dans <a href={lien('ressources/alchimie')}>Alchimie</a> ;
     la recette de chaque potion est sur sa page.
@@ -139,12 +123,13 @@ const nombre = tableaux.reduce((n, t) => n + t.nombre, 0);
 
   <nav class="ceinture-sommaire" aria-label="Tableaux de la page">
     {tableaux.map((t) => <a href={`#${t.id}`}>{t.titre}</a>)}
+    <a class="ceinture-sommaire__ailleurs" href={`${equipement}#batons-magiques`}>Bâtons magiques (Équipement)</a>
   </nav>
 
   <div class="ceinture-outils js-seul">
     <label class="ceinture-recherche">
       <span>Rechercher</span>
-      <input type="search" data-ceinture-recherche placeholder="Nom, effet, magie…" autocomplete="off" />
+      <input type="search" data-ceinture-recherche placeholder="Nom, effet, description…" autocomplete="off" />
     </label>
     <span class="ceinture-aide" data-ceinture-compte aria-live="polite">{pluriel(nombre)}</span>
     <button type="button" class="ceinture-bouton" data-ceinture-tout="ouvrir">Tout déplier</button>
@@ -160,22 +145,6 @@ const nombre = tableaux.reduce((n, t) => n + t.nombre, 0);
               <span class="ceint-tableau__nom" id={`${t.id}-titre`}>{t.titre}</span>
               <span class="ceint-tableau__compte" data-compte>{t.nombre}</span>
             </summary>
-            {t.id === 'objets-baton' && (regles.batons || regles.fabrication) && (
-              <div class="prose ceint-tableau__regles">
-                {regles.batons && <Fragment set:html={regles.batons} />}
-                {fabricationEnLigne ? (
-                  <p class="ceint-tableau__fabrication">
-                    <strong>Fabrication</strong> : <Fragment set:html={fabricationEnLigne} />
-                  </p>
-                ) : regles.fabrication && (
-                  <>
-                    <p class="ceint-tableau__fabrication"><strong>Fabrication</strong></p>
-                    <Fragment set:html={regles.fabrication} />
-                  </>
-                )}
-                {sources.batons && <p class="ceinture-regles__source">Source : <a href={lien(sources.batons.id)}>{sources.batons.titre}</a>.</p>}
-              </div>
-            )}
             {t.note && <p class="ceint-tableau__note" set:html={t.note} />}
             <div class="ceint-wrap">
               <table class={`ceint-table${t.groupes ? ' ceint-table--groupes' : ''}`} aria-labelledby={`${t.id}-titre`}>

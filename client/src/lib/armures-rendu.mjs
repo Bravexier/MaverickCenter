@@ -1,7 +1,8 @@
-// Rendu HTML des cellules de la page /ressources/armures/ (components/armures/) : le même HTML sert à la page construite et au mode modification du site
-// de dev (lib/edition-rendu.mjs : une cellule modifiée se réaffiche depuis sa ligne de la base). Les valeurs dont la fiche de l'armure ou du bouclier
-// forgé a besoin (AP, AM, solidité, prix, coût et effet d'une amélioration) sont posées en attributs `data-…` sur l'élément rendu : le script de la page
-// les lit au moment de la sélection (src/scripts/armures.mjs), si bien qu'une cellule réécrite après un enregistrement donne aussitôt les bonnes valeurs.
+// Rendu HTML des cellules des onglets Armures et Boucliers de /ressources/equipement/ (components/armures/) : le même HTML sert à la page construite
+// et au mode modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée se réaffiche depuis sa ligne de la base). Les valeurs dont la
+// fiche de l'armure ou du bouclier forgé a besoin (AP, AM, solidité, prix, coût et effet d'une amélioration) sont posées en attributs `data-…` sur
+// l'élément rendu : le script de la page les lit au moment de la sélection (src/scripts/armures.mjs), si bien qu'une cellule réécrite après un
+// enregistrement donne aussitôt les bonnes valeurs.
 // Contexte de la page construite (`ctx`, lib/armures-db.mjs#contexteDesArmures) : materiauxDeProtection ([{ id, nom, type }] : la case « Matériaux »
 // d'une armure, sans `data-ed` : l'éditeur ne la réécrit pas, le service n'a donc pas cette liste).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.

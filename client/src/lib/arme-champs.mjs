@@ -1,8 +1,9 @@
-// Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis, materiau_arme,
-// amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev (client/serveur/edition.mjs)
-// et pour la page /ressources/armes/ (demande du propriétaire : un tableau par famille, les colonnes Dégâts, Type de dégâts, Durabilité, Effets
-// supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les matériaux et toutes les améliorations d'arme de la base :
-// ils doivent redonner exactement les colonnes typées et les tables de détail en place (test/arme-champs.test.mjs).
+// Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis,
+// materiau_arme, amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev
+// (client/serveur/edition.mjs) et pour l'onglet Armes de /ressources/equipement/ (demande du propriétaire : un tableau par famille, les colonnes
+// Dégâts, Type de dégâts, Durabilité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
+// matériaux et toutes les améliorations d'arme de la base : ils doivent redonner exactement les colonnes typées et les tables de détail en place
+// (test/arme-champs.test.mjs).
 //
 // L'effet d'une arme est une suite de clauses séparées par des virgules ou des retours à la ligne. Une clause qui n'a pas exactement la forme attendue
 // n'est pas interprétée (« +4 dégâts estoc » n'est PAS un bonus de dégâts : il ne vaut que pour l'estoc). Effet à plusieurs modes (« Ouvert = … » /

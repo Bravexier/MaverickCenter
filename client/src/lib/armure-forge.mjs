@@ -1,5 +1,6 @@
-// Une armure ou un bouclier forgé (page /ressources/armures/, demandes du propriétaire, 2026-10-15) : ce que la page affiche une fois choisis les deux
-// matériaux d'une armure (ou une armure particulière), sa pièce et son amélioration, ou la forme et la matière d'un bouclier et son amélioration.
+// Une armure ou un bouclier forgé (onglets Armures et Boucliers de /ressources/equipement/, demandes du propriétaire, 2026-10-15) : ce que la page
+// affiche une fois choisis les deux matériaux d'une armure (ou une armure particulière), sa pièce et son amélioration, ou la forme et la matière d'un
+// bouclier et son amélioration.
 //   - Armure : AP, AM, solidité, résistances et faiblesses sont ceux de l'armure de la grille, quelle que soit la pièce (la source n'en donne pas par
 //     pièce) ; l'armure complète coûte le prix écrit dans la grille, une pièce son coût de fabrication + 1 unité de chaque matériau, achetés ou fournis
 //     (décision R75) ; une amélioration +N coûte les niveaux +1 à +N (« il faut faire toutes les étapes une à une ») et donne l'AP, l'AM et les crans

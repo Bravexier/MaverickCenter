@@ -1,6 +1,7 @@
-// Page /ressources/armes/ (demande du propriétaire, 2026-10-13) : chargée depuis les tables de la base, jamais depuis son Markdown (qui ne sert plus qu'à la
-// recherche et aux [[liens]] : lib/corps-armes.mjs). Un tableau par famille d'armes (bandeau de l'onglet), sans les armes de monstres (« Ne pas tenir
-// compte des armes de monstres » : la famille sans maîtrise, décision R45) ; à côté, la fiche de l'arme choisie, les matériaux et les améliorations.
+// Onglet Armes de la page /ressources/equipement/ (avant, la page /ressources/armes/ ; demande du propriétaire, 2026-10-13) : chargée depuis les
+// tables de la base, jamais depuis son Markdown (qui ne sert plus qu'à la recherche et aux [[liens]] : lib/corps-armes.mjs). Un tableau par famille
+// d'armes (bandeau de l'onglet), sans les armes de monstres (« Ne pas tenir compte des armes de monstres » : la famille sans maîtrise, décision
+// R45) ; à côté, la fiche de l'arme choisie, les matériaux et les améliorations.
 // Sans dépendance (sauf lib/corps-armes.mjs et lib/materiaux-couleurs.mjs, purs) : `chargerArmes` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMES } from './corps-armes.mjs';
 import { couleurDeMateriau } from './materiaux-couleurs.mjs';

@@ -8,9 +8,12 @@ import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import TableauArmes from './TableauArmes.astro';
 
-// Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
-// markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : rendue depuis les tables de la base (lib/armes-db.mjs), jamais depuis son
-// Markdown. Les règles de l'onglet (texte du classeur avec sa mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
+// Onglet « Armes » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 : « J'aimerai
+// fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" […] les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armes/,
+// dont l'adresse mène à l'onglet ; demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
+// markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : un panneau (`section.equipement-panneau#armes`, ouvert au départ), rendu
+// depuis les tables de la base (lib/armes-db.mjs), jamais depuis le Markdown de la page « Armes ». Les règles de l'onglet (texte du classeur avec sa
+// mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
 // Arbalète, et « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, dans un panneau large, quand
 // une arme est sélectionnée, sa fiche (un seul cadre, avec son bouton Fermer) et, dessous, les matériaux et les améliorations côte à côte : choisir un
 // matériau et une amélioration ajuste les dégâts, la durabilité, les effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs).
@@ -23,7 +26,7 @@ interface Props {
   contexte: ReturnType<typeof contexteDesArmes>;
   /** HTML des règles de la page : l'introduction et « Comment déterminer le prix de votre arme ? » (Markdown de la page, lib/armes-db.mjs#reglesDeLaPage). */
   regles: { introduction: string; prix: string };
-  /** première phrase des règles, affichée sous le titre */
+  /** première phrase des règles, affichée en tête de l'onglet Armes */
   resume?: string | null;
 }
 const { armes, contexte, regles, resume } = Astro.props;
@@ -40,10 +43,11 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
 <script is:inline>
   document.documentElement.classList.add('js');
 </script>
+<section class="equipement-panneau is-active" id="armes" aria-labelledby="titre-armes">
+<h2 class="equipement-panneau__titre" id="titre-armes">{armes.page?.titre ?? 'Armes'}</h2>
 <div class="armes" data-armes>
   {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armes-piece={abr} set:html={htmlDePiece(abr)}></template>)}
-  <h1>{armes.page?.titre ?? 'Armes'} <span class="badge">Ressource</span></h1>
   {resume && <p class="armes__chapo" set:html={htmlAvecMonnaies(resume)} />}
   <details class="armes-regles">
     <summary>Règles des armes : fabrication, recharge, mordhau, cas particuliers, prix</summary>
@@ -83,7 +87,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
       <section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite" hidden></section>
 
       <div class="armes-cote__tables">
-        <details class="armes-famille armes-materiaux" id="materiaux" open>
+        <details class="armes-famille armes-materiaux" id="materiaux-armes" open>
           <summary class="armes-famille__titre"><span class="armes-famille__nom">Matériaux</span><span class="armes-famille__compte">{armes.materiaux.length}</span></summary>
           <p class="armes-famille__note js-seul">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
           <div class="armes-wrap">
@@ -108,7 +112,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
           </div>
         </details>
 
-        <details class="armes-famille armes-ameliorations" id="ameliorations" open>
+        <details class="armes-famille armes-ameliorations" id="ameliorations-arme" open>
           <summary class="armes-famille__titre"><span class="armes-famille__nom">Améliorations</span><span class="armes-famille__compte">+1 à +{armes.ameliorations.length}</span></summary>
           <p class="armes-famille__note">Une amélioration +N demande les coûts des niveaux +1 à +N ; un « Matériel » est une unité du matériau de l’arme.</p>
           <div class="armes-wrap">
@@ -139,6 +143,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
     </aside>
   </div>
 </div>
+</section>
 
 <script>
   import '../../scripts/armes.mjs';

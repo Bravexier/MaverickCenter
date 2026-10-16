@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : la page /ressources/accessoires/, générateur d'accessoire. Les tableaux
+/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : l'onglet Accessoires de la page /ressources/equipement/, générateur d'accessoire. Les tableaux
    des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
    sous les tableaux). Les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau (--niv, posé par le gabarit ou le script),
    texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). */

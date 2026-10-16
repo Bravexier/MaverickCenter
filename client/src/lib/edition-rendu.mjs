@@ -225,10 +225,10 @@ export const RENDUS = {
   'evenement-date': (_valeur, ligne) => echapperHtml(libelleDeDate(ligne)),
   'evenement-date-courte': (_valeur, ligne) => echapperHtml(dateCourte(ligne)),
   'evenement-portee': (valeur) => htmlDeLaPortee(valeur),
-  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
+  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de l'onglet Armes de /ressources/equipement/, des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,
-  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux de /ressources/armures/) : défense, prix, type, solidité, résistances,
+  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux des onglets Armures et Boucliers de /ressources/equipement/) : défense, prix, type, solidité, résistances,
   // coût d'une pièce, coût et effet d'une amélioration
   ...RENDUS_DES_ARMURES,
   // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit

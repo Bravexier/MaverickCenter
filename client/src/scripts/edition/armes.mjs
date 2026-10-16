@@ -1,6 +1,6 @@
-// Extension de l'éditeur pour /ressources/armes/ (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut être éditable à l'instar des
-// autres pages qui peuvent l'être. Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme / matériau / amélioration, mais tous
-// les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes ».
+// Extension de l'éditeur pour l'onglet Armes de /ressources/equipement/ (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut
+// être éditable à l'instar des autres pages qui peuvent l'être. Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
+// matériau / amélioration, mais tous les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes ».
 //   - en mode modification : tous les tableaux s'ouvrent (familles, matériaux, améliorations) et la fiche de l'arme se ferme (styles/armes/armes.css cache
 //     la fiche et montre les colonnes `ed-seul` ; le script de la page ignore les clics) ;
 //   - ajouter : formulaire « Nouvelle arme » (famille, nom, compétence, type, effet…), enregistré tout de suite (POST /api/edition/, opération creer) ; sa

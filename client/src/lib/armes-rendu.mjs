@@ -1,8 +1,9 @@
-// Rendu HTML des cellules de la page /ressources/armes/ (components/armes/) : le même HTML sert à la page construite et au mode modification du site de
-// dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la base). Les colonnes Dégâts,
-// Type de dégâts, Portée, Durabilité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les valeurs dont la fiche de l'arme
-// forgée a besoin (dé, bonus, portée, durabilité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu : le script de la page les lit au moment de la
-// sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne aussitôt les bonnes valeurs.
+// Rendu HTML des cellules de l'onglet Armes de /ressources/equipement/ (components/armes/) : le même HTML sert à la page construite et au mode
+// modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la
+// base). Les colonnes Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les
+// valeurs dont la fiche de l'arme forgée a besoin (dé, bonus, portée, durabilité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu :
+// le script de la page les lit au moment de la sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne
+// aussitôt les bonnes valeurs.
 // Contexte (`ctx`, les mêmes listes que celles du service : serveur/edition.mjs#listes, lib/armes-db.mjs#contexteDesArmes) : competences (id,
 // caracteristique_id), caracteristiques (id, nom), typesDArmes ({ valeur, libelle, de, de_regle, portee_min, portee_max }), soliditeDesArmes (2).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.

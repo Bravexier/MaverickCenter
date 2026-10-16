@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page /ressources/armes/. Un tableau repliable par famille, à la manière des
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : l'onglet Armes de la page /ressources/equipement/. Un tableau repliable par famille, à la manière des
    tableaux de sorts, aéré (« l'affichage est trop serré »), les effets supplémentaires d'une arme sur une seconde ligne ; à côté, la fiche de l'arme
    choisie dans un seul cadre large, puis les matériaux et les améliorations côte à côte (panneau qui suit le défilement ; sur un écran étroit, il
    passe par-dessus la page). Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le contenu à la suite, colonnes `ed-seul` visibles. */

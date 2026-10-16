@@ -1,0 +1,59 @@
+/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les quatre onglets (Armes, Armures,
+   Boucliers, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux se suivent,
+   chacun sous son titre) ; l'onglet Bâtons magiques (components/equipement/BatonsMagiques.astro). Le contenu des autres onglets a son CSS :
+   styles/armes/armes.css, styles/armures/armures.css. */
+main:has(.equipement) { max-width: 120rem; }
+.equipement {
+  --eq: var(--accent);
+  --eq-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --eq-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* Onglets */
+.equipement-onglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--eq-line); margin: 0 0 1rem; }
+.equipement-onglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border);
+  border-bottom: 0; border-radius: var(--radius-lg) 12px 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+.equipement-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
+.equipement-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .equipement-onglets .onglet.is-active { background: var(--eq); border-color: var(--eq); color: var(--surface); }
+html.js .equipement-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .equipement-onglets .onglet:not(.is-active):hover { background: var(--eq-soft); }
+.equipement-onglets .onglet:focus-visible { outline: 2px solid var(--eq); outline-offset: 2px; }
+/* sur un écran étroit, les cinq onglets sans leur détail (nombres) : deux rangées au plus */
+@media (max-width: 40rem) {
+  .equipement-onglets { gap: 0.3rem; }
+  .equipement-onglets .onglet { padding: 0.35rem 0.75rem; }
+  .equipement-onglets .onglet__nom { font-size: var(--fs-lg); }
+  .equipement-onglets .onglet__detail { display: none; }
+}
+html.js .equipement-panneau:not(.is-active) { display: none; }
+/* le titre d'un panneau : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
+html.js .equipement-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipement-panneau + .armures { margin-top: 2rem; }
+
+/* ── Bâtons magiques ── */
+.batons { margin: 0 0 2rem; }
+.batons .vide { color: var(--muted); opacity: 0.6; }
+.batons__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
+.batons-regles { margin: 0 0 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.batons-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.batons-regles__texte { max-width: 60rem; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
+.batons-regles__texte > :first-child { margin-top: 0; }
+.batons-regles__texte > :last-child { margin-bottom: 0; }
+.batons-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-lg); }
+
+.batons-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; overflow: hidden; }
+.batons-wrap { overflow-x: auto; }
+.batons-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); line-height: 1.5; }
+.batons-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted);
+  padding: 0.55rem 0.8rem; background: var(--eq-soft); border-bottom: 1px solid var(--eq-line); white-space: nowrap; vertical-align: bottom; }
+.batons-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
+.batons-table tbody > tr > * { padding: 0.5rem 0.8rem; vertical-align: top; text-align: left; }
+.batons-table tbody > tr.baton:hover > * { background: var(--eq-soft); }
+/* l'en-tête d'un niveau : sa recette dessous, en petit et sans majuscules */
+.baton-recette { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; white-space: normal; min-width: 10rem; }
+/* la magie dans sa couleur, et un filet de cette couleur à gauche de la ligne */
+.baton-magie { display: inline-block; font-size: var(--fs-sm); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--c);
+  color: var(--c-texte); white-space: nowrap; border: 1px solid color-mix(in srgb, var(--text) 22%, transparent); }
+.batons-table tr.baton > :first-child { box-shadow: inset 4px 0 0 var(--mag); }
+.baton__bonus { min-width: 14rem; }

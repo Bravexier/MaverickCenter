@@ -1,9 +1,10 @@
-// Page /ressources/armures/ construite (dist/) : rendue depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
+// Onglets Armures et Boucliers de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armures/ : test/equipement-html.test.mjs
+// pour la page et ses onglets) : rendus depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
 // dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
 // liste des armures (« Une liste plus classique est disponible également ») et les armures particulières, les pièces (tableau FABRICATION) et les
 // améliorations ; la forme et la matière d'un bouclier (« forme + matière »), la liste des boucliers ; le tableau MATÉRIAUX ; les champs du mode
-// modification. La page « Bouclier » n'est plus construite : ses liens mènent à l'onglet Boucliers. Se saute sans dist/ (npm run build) ; la CI le lance
-// après le build.
+// modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
+// la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,28 +14,27 @@ import { ancreDArmure, ancreDeBouclier, chargerArmures } from '../src/lib/armure
 import { couleurDuType } from '../src/lib/armures-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
-import { adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'armures', 'index.html');
+const fichier = join(dist, 'ressources', 'equipement', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// le bloc des armures et des boucliers : ses deux panneaux et le tableau MATÉRIAUX, jusqu'au panneau des bâtons magiques
+const main = html.slice(html.indexOf('<div class="armures" data-armures>'), html.indexOf('<section class="equipement-panneau batons" id="batons-magiques"'));
 const armures = present ? chargerArmures(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 /** Le HTML d'un panneau (onglet) : de son <section> au suivant. */
 const panneau = (id) => {
-  const debut = main.indexOf(`<section class="armures-panneau${id === 'armures' ? ' is-active' : ''}" id="${id}"`);
+  const debut = main.indexOf(`<section class="armures-panneau equipement-panneau" id="${id}"`);
   const fin = main.indexOf('<section class="armures-panneau', debut + 10);
-  return main.slice(debut, fin < 0 ? main.indexOf('id="materiaux"') : fin);
+  return main.slice(debut, fin < 0 ? main.indexOf('id="materiaux-armures"') : fin);
 };
 
-test('pas de tableau Markdown : le gabarit des armures, deux onglets (Armures, Boucliers), les règles de chaque onglet repliées', options, () => {
-  assert.match(main, /<div class="armures" data-armures data-onglets="Armures et boucliers">/);
+test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, Boucliers), les règles de chaque onglet repliées', options, () => {
+  assert.match(main, /^<div class="armures" data-armures>/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
-  const onglets = [...main.matchAll(/<a class="onglet(?: is-active)?" id="onglet-([a-z]+)" href="#([a-z]+)">/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(onglets, [['armures', 'armures'], ['boucliers', 'boucliers']]);
+  for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
   assert.equal((main.match(/<details class="armures-regles">/g) ?? []).length, 2);
   assert.ok(panneau('armures').includes('il faut 2 matériaux pour chaque morceau'), 'les règles des armures');
   assert.ok(panneau('boucliers').includes('autant de matériaux que sa classe indique'), 'les règles des boucliers');
@@ -102,18 +102,10 @@ test('boucliers : les formes et les matières à choisir, la liste par forme (un
 });
 
 test('le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62)', options, () => {
-  const t = main.slice(main.indexOf('id="materiaux"'));
-  assert.deepEqual([...t.matchAll(/<tr class="pmat-ref" id="materiau-([^"]+)">/g)].map((m) => m[1]), armures.materiaux.map((m) => m.cle));
+  const t = main.slice(main.indexOf('id="materiaux-armures"'));
+  assert.deepEqual([...t.matchAll(/<tr class="pmat-ref" id="matiere-([^"]+)">/g)].map((m) => m[1]), armures.materiaux.map((m) => m.cle));
   assert.ok(t.includes('Fourneau de Séraphin'), 'la fabrication d’une matière');
   assert.ok(!/<tr class="pmat-ref"[^]*?data-ed="/.test(t.slice(0, t.indexOf('</table>'))), 'aucun champ modifiable');
-});
-
-test('la page « Bouclier » n’est plus construite et aucun lien du site n’y mène (celui du chapitre « L’équipement » : migration 0046) ; la page 404 renvoie son adresse vers l’onglet Boucliers', options, () => {
-  assert.ok(!existsSync(join(dist, 'ressources', 'bouclier')), 'pas de page /ressources/bouclier/');
-  assert.equal(adresseComplete(nouvelleAdresse('/ressources/bouclier/'), '', ''), '/ressources/armures/#boucliers');
-  const pages = readdirSync(dist, { recursive: true }).filter((n) => n.endsWith('.html') && n !== '404.html');
-  for (const nom of pages) assert.ok(!/href="[^"]*\/ressources\/bouclier\//.test(readFileSync(join(dist, nom), 'utf8')), nom);
-  assert.ok(readFileSync(join(dist, 'guide', 'l-equipement', 'index.html'), 'utf8').includes('href="/ressources/armures/#boucliers"'));
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs, qu’aucun autre script de page n’importe', options, () => {

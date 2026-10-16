@@ -1,4 +1,5 @@
-// Page /ressources/accessoires/ construite (dist/) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
+// Onglet Accessoires de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/accessoires/ : test/equipement-html.test.mjs pour
+// la page et ses onglets) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
 // un tableau par étape avec une case au dé, un tableau d'effets par propriété dans son onglet, la compétence en une ligne par compétence (bonus d'acquis
 // au curseur), la monture, l'encart de l'accessoire créé ; les lignes d'effet et de monture dans la couleur de leur niveau ; pas de tableau des gemmes,
 // une infobulle par gemme, la gemme dans la couleur de sa magie, une case à cocher par gemme au choix. Se saute sans dist/ (npm run build) ; la CI le
@@ -13,14 +14,16 @@ import { cleDEffet, COULEURS_DES_NIVEAUX, gemmesAuChoix } from '../src/lib/acces
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'accessoires', 'index.html');
+const fichier = join(dist, 'ressources', 'equipement', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// le panneau de l'onglet Accessoires, le dernier de la page (components/equipement/EquipementPage.astro)
+const main = html.slice(html.indexOf('<section class="equipement-panneau" id="accessoires"'), html.indexOf('</main>'));
 const a = present ? chargerAccessoires(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 
 test('pas de tableau Markdown : le gabarit du générateur, avec les règles de l’onglet', options, () => {
+  assert.ok(main.length > 1000, 'le panneau de l’onglet Accessoires');
   assert.match(main, /<div class="acc" data-accessoires>/);
   assert.match(main, /<details class="acc-regles" open>/);
   assert.ok(main.includes('Les accessoires maudits'), 'les règles');

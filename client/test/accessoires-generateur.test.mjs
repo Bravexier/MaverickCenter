@@ -113,4 +113,7 @@ test('l’ancre d’un onglet d’effets n’est pas gardée dans l’adresse ; 
   assert.equal(ancreGardee('#effets-attaque'), '');
   assert.equal(ancreGardee('#acc-monture'), '#acc-monture');
   assert.equal(ancreGardee(''), '');
+  // dans la page « Équipement » : l'onglet Accessoires prend sa place (une adresse sans ancre rouvrirait le premier onglet de la page)
+  assert.equal(ancreGardee('#effets-attaque', '#accessoires'), '#accessoires');
+  assert.equal(ancreGardee('#acc-monture', '#accessoires'), '#acc-monture');
 });
