@@ -258,7 +258,7 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
 | Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
 | Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
 | Boucliers | `#boucliers` | `ressources/bouclier` | idem ; le tableau MATÉRIAUX des deux onglets ne s'affiche qu'avec l'un d'eux |
-| Bâtons magiques | `#batons-magiques` | `ressources/baton-magique` | les règles de la page « Bâton magique » (introduction, fabrication), repliées comme celles des autres onglets, puis une ligne par magie : sa gemme et son bois (liens vers « Composants », où sont leurs prix), le bonus passif des trois niveaux, la recette du niveau en en-tête (`lib/batons-db.mjs`, `lib/batons-rendu.mjs`, `components/equipement/BatonsMagiques.astro`) ; avant, un tableau de la page « Objets à la ceinture », qui y renvoie |
+| Bâtons magiques | `#batons-magiques` | `ressources/baton-magique` | les règles de la page « Bâton magique » (introduction, fabrication), repliées comme celles des autres onglets, puis le tableau des bâtons (« Bâtons magiques » ci-dessous ; `lib/batons-db.mjs`, `lib/batons-rendu.mjs`, `components/equipement/BatonsMagiques.astro`, `src/scripts/batons.mjs`) ; avant, un tableau de la page « Objets à la ceinture », qui y renvoie |
 | Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
 
 - Les cinq pages du wiki **ne sont plus construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, règles
@@ -266,16 +266,37 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée : `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`). Les liens écrits à la main
   dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
 - Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`) ouvre son onglet. Chaque onglet garde son script
-  (`src/scripts/armes.mjs`, `armures.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (l'amélioration d'une armure est
+  (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
   `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
   l'onglet Armes est affiché.
 - Identifiants uniques sur toute la page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, le tableau
   MATÉRIAUX des armures `#materiaux-armures` (ses lignes `#matiere-<clé>`).
 - Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
   active dès que son bloc est dans la page) ; ni les bâtons ni les accessoires.
-- Tests : `test/equipement.test.mjs` (onglets, adresses, menu, chargement des bâtons), `equipement-html.test.mjs` (site construit : onglets et panneaux
-  dans l'ordre, identifiants uniques, bâtons, anciennes pages absentes et plus aucun lien vers elles, scripts) ; le contenu de chaque onglet :
-  `armes-html`, `armures-html`, `accessoires-html.test.mjs`.
+- Tests : `test/equipement.test.mjs` (onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site construit : onglets et panneaux
+  dans l'ordre, identifiants uniques, bâtons, anciennes pages absentes et plus aucun lien vers elles, scripts), `batons-script.test.mjs` (le curseur des
+  bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`, `accessoires-html.test.mjs`.
+
+### Bâtons magiques (onglet Bâtons magiques)
+
+Demande du propriétaire (2026-10-16) : « Il faudrait colorer toute la ligne de la couleur de la magie concernée. La colonne magie elle même n'est pas
+utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3
+à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
+
+- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** (`couleurDeMagie`, texte lisible `texteSurCouleur`, comme les matériaux de
+  l'onglet Armes), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
+  **Gemme | Bois | Niveau | Effet | Prix**.
+- **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
+  magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
+  tabulation : le nom l'est déjà). Sous la gemme, sa qualité au niveau choisi, telle que la recette l'écrit (« Gemme raffinée »).
+- **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que la
+  qualité, l'effet et le prix de ce niveau (chaque case les écrit tous, `data-niv`). Sans JavaScript : pas de curseur, chaque case écrit ses trois niveaux,
+  chacun sous son nom.
+- **Effet** : le bonus passif du niveau, tel qu'écrit (`baton_magique.bonus_brut`).
+- **Prix** : la source n'écrit pas de prix pour un bâton, seulement ceux de ses matériaux et la recette de chaque niveau (« 1 Gemme Commune + 1 bois
+  [magie] ») ; le prix affiché est celui des **matériaux de la recette** : la gemme entière de la qualité du niveau + le bois (`lib/batons-db.mjs#prixDuBaton`,
+  null si l'un des deux manque), en icônes de monnaie ; l'en-tête le dit en infobulle. Aucun coût de fabrication n'est ajouté.
+- Pas encore modifiable sur le site de dev : les prix de la gemme et du bois se modifient dans « Composants » et suivent au build suivant.
 
 ## Armes (onglet Armes de `/ressources/equipement/`) : un tableau par famille, la fiche de l'arme forgée
 

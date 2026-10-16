@@ -10,8 +10,10 @@ import { test } from 'node:test';
 import { CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { adresseDePage, cheminDePage, pageSansAdresse } from '../src/lib/metiers.mjs';
 import { NAV, PAGES_RENOMMEES, adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
-import { chargerBatons, PAGE_DES_BATONS, TITRE_DE_LA_FABRICATION } from '../src/lib/batons-db.mjs';
-import { ancreDeBatons, htmlDEnteteDeNiveau, htmlDeLigneDeBatons } from '../src/lib/batons-rendu.mjs';
+import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME, TITRE_DE_LA_FABRICATION } from '../src/lib/batons-db.mjs';
+import { ancreDeBatons, bulleDeBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
+import { htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
+import { couleurDeMagie } from '../src/lib/sort-format.mjs';
 import { FAMILLE_DES_BATONS, sectionDuCorps } from '../src/lib/ceinture-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -61,13 +63,27 @@ test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de l
   for (const m of batons.magies) {
     assert.equal(db.prepare('SELECT magie_id FROM gemme WHERE ressource_id = ?').get(m.gemme.id)?.magie_id, m.magie.id, `${m.magie.nom} : sa gemme`);
     assert.equal(db.prepare('SELECT magie_id FROM bois WHERE ressource_id = ?').get(m.bois.id)?.magie_id, m.magie.id, `${m.magie.nom} : son bois`);
+    // la gemme et le bois : leur description et leurs prix, ceux de la page « Composants » (la gemme entière, par qualité)
+    const g = db.prepare('SELECT * FROM gemme WHERE ressource_id = ?').get(m.gemme.id);
+    for (const q of Object.keys(QUALITES_DE_GEMME)) assert.deepEqual(m.gemme.prix[q], { brut: g[`prix_${q}_brut`], rf: g[`prix_${q}_rf`] }, `${m.magie.nom} : gemme ${q}`);
+    for (const c of [m.gemme, m.bois]) assert.equal(c.description, db.prepare('SELECT description FROM ressource WHERE id = ?').get(c.id).description);
+    const bois = db.prepare('SELECT prix_brut, prix_rf FROM ressource WHERE id = ?').get(m.bois.id);
+    assert.deepEqual(m.bois.prix, { brut: bois.prix_brut, rf: bois.prix_rf }, `${m.magie.nom} : prix du bois`);
     for (const n of batons.niveaux) {
-      const b = db.prepare('SELECT bonus_brut FROM baton_magique WHERE magie_id = ? AND niveau = ?').get(m.magie.id, n.niveau);
+      const b = db.prepare('SELECT bonus_brut, recette_id FROM baton_magique WHERE magie_id = ? AND niveau = ?').get(m.magie.id, n.niveau);
       assert.equal(m.bonus[n.niveau], b.bonus_brut, `${m.magie.nom} niveau ${n.niveau}`);
+      const qualite = db.prepare('SELECT qualite FROM recette_ingredient WHERE recette_id = ? AND rang = 1').get(b.recette_id).qualite;
+      assert.equal(m.qualites[n.niveau], qualite, `${m.magie.nom} niveau ${n.niveau} : la qualité de la gemme de sa recette`);
     }
   }
   assert.deepEqual(batons.niveaux.map((n) => n.niveau), [1, 2, 3]);
   for (const n of batons.niveaux) assert.match(n.entete, new RegExp(`^Niveau ${n.niveau} \\(`), 'l’en-tête est la recette du niveau');
+  // le libellé d'une qualité affiché sous la gemme est celui que la recette du niveau écrit (« 1 Gemme Raffinée + 1 bois [magie] »)
+  for (const n of batons.niveaux) {
+    const qualites = new Set(batons.magies.map((m) => m.qualites[n.niveau]));
+    assert.equal(qualites.size, 1, `niveau ${n.niveau} : une qualité pour toutes les magies`);
+    assert.ok(n.entete.toLowerCase().includes(QUALITES_DE_GEMME[[...qualites][0]].toLowerCase()), `niveau ${n.niveau} : ${n.entete}`);
+  }
   // les bâtons vont aussi à la ceinture (décision R81) : la vue les garde, la fiche s'en sert
   const vue = db.prepare('SELECT baton_id FROM v_objet_ceinture WHERE famille = ?').all(FAMILLE_DES_BATONS).map((v) => v.baton_id).sort();
   assert.deepEqual(vue, db.prepare('SELECT id FROM baton_magique').all().map((b) => b.id).sort());
@@ -84,17 +100,55 @@ test('bâtons : les règles sont l’introduction et la fabrication de la page �
   assert.equal(batons.page?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.titre);
 });
 
-test('bâtons : rendu d’une ligne (pastille de la magie, liens vers « Composants », bonus échappés) et d’un en-tête de niveau', () => {
+test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la gemme de la qualité du niveau + le bois), jamais un prix partiel', () => {
+  for (const m of batons.magies) {
+    for (const n of batons.niveaux) {
+      const q = m.qualites[n.niveau];
+      const attendu = db.prepare(`SELECT g.prix_${q}_rf + r.prix_rf AS rf FROM gemme g, ressource r WHERE g.ressource_id = ? AND r.id = ?`).get(m.gemme.id, m.bois.id).rf;
+      assert.equal(prixDuBaton(m, n.niveau), attendu, `${m.magie.nom} niveau ${n.niveau}`);
+    }
+  }
+  const m = { gemme: { prix: { commune: { rf: 4000 }, raffinee: { rf: 9000 }, parfaite: { brut: null, rf: null } } }, bois: { prix: { rf: 2400 } }, qualites: { 1: 'commune', 2: 'raffinee', 3: 'parfaite' } };
+  assert.equal(prixDuBaton(m, 1), 6400);
+  assert.equal(prixDuBaton(m, 2), 11400);
+  assert.equal(prixDuBaton(m, 3), null, 'le prix de la gemme parfaite manque');
+  assert.equal(prixDuBaton({ ...m, bois: null }, 1), null, 'pas de bois');
+  assert.equal(prixDuBaton({ ...m, qualites: {} }, 1), null, 'pas de qualité de gemme');
+  assert.match(htmlDuPrixDuBaton(11400), /^<span class="montant" data-montant="114 RO"/, 'en Ricken d’or quand il en tombe un nombre entier');
+  assert.match(htmlDuPrixDuBaton(150), /^<span class="montant" data-montant="150 RF"/);
+  assert.match(htmlDuPrixDuBaton(null), /class="vide"/);
+});
+
+test('bâtons : rendu d’une ligne (couleur de la magie, sans colonne Magie ; gemme et bois en lien vers « Composants » avec leur infobulle ; curseur ; qualité, effet et prix de chaque niveau)', () => {
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
-  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" style="--mag: `));
-  assert.match(html, /href="\/ressources\/composants\/#composant-gemme-/);
-  assert.match(html, /href="\/ressources\/composants\/#composant-bois-/);
-  assert.equal((html.match(/<td class="baton__bonus">/g) ?? []).length, batons.niveaux.length);
+  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--mag: ${couleurDeMagie(m.magie.nom)}; --mag-texte: `), 'la ligne sur la couleur de sa magie, au niveau 1');
+  assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
+  assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
+  for (const [quoi, c] of [['gemme', m.gemme], ['bois', m.bois]]) {
+    const bulle = bulleDeBatons(m.magie.id, quoi);
+    const lien = new RegExp(`<a class="baton__nom" href="(/ressources/composants/#composant-${quoi}-[^"]+)" data-bulle="${bulle}" aria-describedby="${bulle}">${c.nom}</a>`);
+    assert.match(html, lien, `${quoi} : son nom en lien, qui ouvre son infobulle`);
+    const href = lien.exec(html)[1];
+    const debut = html.indexOf(`<span class="bulle bulle--baton" role="tooltip" id="${bulle}" hidden>`);
+    assert.ok(debut > 0, `${quoi} : son infobulle`);
+    const contenu = html.slice(debut, html.indexOf('</a></span>', debut));
+    assert.ok(contenu.includes(`<strong class="bulle__titre">${c.nom}</strong>`));
+    assert.ok(contenu.includes(`<a class="bulle__lien" href="${href}" tabindex="-1">Voir dans Composants`), `${quoi} : le lien vers « Composants » dans l’infobulle`);
+  }
+  assert.equal((html.match(/class="bulle__stade" data-niv="/g) ?? []).length, batons.niveaux.length, 'l’infobulle de la gemme : un prix par qualité');
+  assert.ok(html.includes('<input type="range" class="baton-curseur__champ" min="1" max="3" step="1" value="1" data-baton-curseur'), 'le curseur du niveau');
+  assert.equal((html.match(/<span class="baton-niv" data-niv="/g) ?? []).length, 3 * batons.niveaux.length, 'qualité, effet et prix pour chaque niveau');
+  for (const n of batons.niveaux) {
+    assert.ok(html.includes(`<span class="baton-niv" data-niv="${n.niveau}"><span class="baton-niv__nom">Niveau ${n.niveau} : </span>${QUALITES_DE_GEMME[m.qualites[n.niveau]]}</span>`));
+    assert.ok(html.includes(`<span class="baton-niv__nom">Niveau ${n.niveau} : </span>${htmlDeLignes(m.bonus[n.niveau])}</span>`), `effet du niveau ${n.niveau}`);
+    assert.ok(html.includes(`<span class="baton-niv__nom">Niveau ${n.niveau} : </span>${htmlDuPrixDuBaton(prixDuBaton(m, n.niveau))}</span>`), `prix du niveau ${n.niveau}`);
+  }
   assert.equal(ancreDeBatons('magies/magie-du-feu'), 'baton-magie-du-feu');
-  const glace = htmlDeLigneDeBatons({ magie: { id: 'magies/x', nom: 'X' }, gemme: null, bois: null, bonus: { 1: 'ampli am = +1 am <donné>' } }, [{ niveau: 1 }], '/c/');
-  assert.ok(glace.includes('ampli am = +1 am &lt;donné&gt;'));
-  assert.equal((glace.match(/class="vide"/g) ?? []).length, 2, 'ni gemme ni bois : un tiret');
-  assert.equal(htmlDEnteteDeNiveau('Niveau 2 (1 Gemme Raffinée + 1 bois [magie])'), 'Niveau 2<span class="baton-recette">1 Gemme Raffinée + 1 bois [magie]</span>');
-  assert.equal(htmlDEnteteDeNiveau('Autre'), 'Autre');
+  assert.equal(bulleDeBatons('magies/magie-du-feu', 'bois'), 'bulle-baton-magie-du-feu-bois');
+  const x = htmlDeLigneDeBatons({ magie: { id: 'magies/x', nom: 'X <y>' }, gemme: null, bois: null, qualites: {}, bonus: { 1: 'ampli am = +1 am <donné>' } }, [{ niveau: 1 }], '/c/');
+  assert.ok(x.includes('ampli am = +1 am &lt;donné&gt;'));
+  assert.ok(x.includes('X &lt;y&gt; : ') && x.includes('aria-label="Niveau du bâton : X &lt;y&gt;"'), 'le nom de la magie échappé');
+  assert.equal((x.match(/class="vide"/g) ?? []).length, 3, 'ni gemme, ni bois, ni prix : un tiret');
+  assert.ok(x.includes('min="1" max="1"') && x.includes('<span class="sans-js">1</span>'), 'un seul niveau');
 });

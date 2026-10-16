@@ -20,7 +20,7 @@ import { ONGLETS_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
 // `section.equipement-panneau` dont l'id est l'ancre de son onglet ; un lien vers un élément d'un panneau (#famille-bombes, #bouclier-ecu-fer…) ouvre
 // son onglet. Les anciennes pages (« Armes », « Armures », « Bouclier », « Bâton magique », « Accessoires ») ne sont plus construites : leurs liens et
 // leurs adresses mènent à leur onglet (lib/metiers.mjs#adresseDePage, lib/nav.mjs#PAGES_RENOMMEES). Chaque onglet garde son script
-// (src/scripts/armes.mjs, armures.mjs, accessoires.mjs), sans paramètre d'adresse en commun ; le mode modification du site de dev suit les mêmes extensions qu'avant
+// (src/scripts/armes.mjs, armures.mjs, batons.mjs, accessoires.mjs), sans paramètre d'adresse en commun ; le mode modification du site de dev suit les mêmes extensions qu'avant
 // (src/scripts/edition/armes.mjs, armures.mjs). CSS des onglets et des bâtons : styles/equipement/equipement.css (?raw, inséré ici seulement).
 interface Props {
   armes: ReturnType<typeof chargerArmes>;

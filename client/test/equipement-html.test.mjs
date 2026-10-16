@@ -49,14 +49,20 @@ test('identifiants uniques sur toute la page (les onglets réunis : matériaux, 
   for (const id of ['materiaux-armes', 'ameliorations-arme', 'materiaux-armures']) assert.ok(ids.includes(id), id);
 });
 
-test('bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie, ses trois niveaux et ses liens vers « Composants »', options, () => {
+test('bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie (Gemme, Bois, Niveau au curseur, Effet, Prix) et ses liens vers « Composants »', options, () => {
   assert.ok(panneauDesBatons.length > 1000, 'le panneau des bâtons');
   assert.equal(panneauDesBatons.includes('<details class="batons-regles">'), Boolean(batons.regles.introduction || batons.regles.fabrication));
   assert.equal(panneauDesBatons.includes('<strong>Fabrication</strong>'), Boolean(batons.regles.fabrication));
   assert.ok(!panneauDesBatons.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   const lignes = [...panneauDesBatons.matchAll(/<tr class="baton" id="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(lignes, batons.magies.map((m) => ancreDeBatons(m.magie.id)));
-  for (const n of batons.niveaux) assert.ok(panneauDesBatons.includes(`>Niveau ${n.niveau}<span class="baton-recette">`), `niveau ${n.niveau}`);
+  // demande du propriétaire du 2026-10-16 : plus de colonne Magie ni de colonne par niveau ; le niveau au curseur, l'effet et le prix du niveau choisi
+  const entetes = [...panneauDesBatons.slice(panneauDesBatons.indexOf('<thead>'), panneauDesBatons.indexOf('</thead>')).matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(entetes, ['Gemme', 'Bois', 'Niveau', 'Effet', 'Prix']);
+  assert.equal((panneauDesBatons.match(/<tr class="baton" id="[^"]+" data-niveau="1" style="--mag: #[0-9a-f]{6}; --mag-texte: #[0-9a-f]{6}">/g) ?? []).length, batons.magies.length, 'chaque ligne sur la couleur de sa magie, au niveau 1');
+  assert.equal((panneauDesBatons.match(/<input type="range" class="baton-curseur__champ" min="1" max="3"/g) ?? []).length, batons.magies.length, 'un curseur par ligne');
+  assert.equal((panneauDesBatons.match(/<span class="bulle bulle--baton" role="tooltip" id="bulle-baton-[a-z-]+-(?:gemme|bois)" hidden>/g) ?? []).length, batons.magies.length * 2, 'une infobulle par gemme et par bois');
+  assert.ok(panneauDesBatons.includes('<section class="equipement-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>'), 'la racine du script');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
   const ancres = [...new Set([...panneauDesBatons.matchAll(/href="\/ressources\/composants\/#([^"]+)"/g)].map((m) => m[1]))];
   assert.ok(ancres.length >= batons.magies.length * 2, 'une gemme et un bois par magie');
@@ -75,6 +81,8 @@ test('les anciennes pages ne sont plus construites et aucun lien du site n’y m
 
 test('chaque onglet garde son script ; un seul script d’onglets sur la page', options, () => {
   for (const s of ['ArmesPage', 'ArmuresPage', 'AccessoiresPage']) assert.match(html, new RegExp(`<script type="module" src="[^"]*${s}\\.astro_astro_type_script`), s);
+  // celui des bâtons magiques (src/scripts/batons.mjs), assez court pour qu'Astro l'écrive en ligne, une fois
+  assert.equal((html.match(/<script type="module">[^<]*\[data-baton-curseur\]/g) ?? []).length, 1, 'BatonsMagiques');
   assert.equal((html.match(/onglets:brancher/g) ?? []).length, 1, 'components/Onglets.astro, posé une fois');
   // deux groupes : la barre de la page et, dans l'onglet Accessoires, les tableaux d'effets ; aucun ne contient l'autre
   assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Effets par propriété']);
