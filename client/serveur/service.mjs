@@ -495,6 +495,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     });
   });
 
+  // un client qui ouvre une connexion et envoie ses en-têtes ou son corps au goutte-à-goutte (slowloris) ne garde pas un socket 5 minutes
+  // (défaut de Node) : les corps du service (1 Mio au plus) arrivent en quelques secondes
+  serveur.headersTimeout = 15_000;
+  serveur.requestTimeout = 30_000;
   await new Promise((ok, ko) => {
     serveur.once('error', ko);
     serveur.listen(port, hote, ok);
