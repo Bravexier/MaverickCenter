@@ -257,7 +257,7 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
 | --- | --- | --- | --- |
 | Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
 | Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
-| Boucliers | `#boucliers` | `ressources/bouclier` | idem ; le tableau MATÉRIAUX des deux onglets ne s'affiche qu'avec l'un d'eux |
+| Boucliers | `#boucliers` | `ressources/bouclier` | idem |
 | Bâtons magiques | `#batons-magiques` | `ressources/baton-magique` | les règles de la page « Bâton magique » (introduction, fabrication), repliées comme celles des autres onglets, puis le tableau des bâtons (« Bâtons magiques » ci-dessous ; `lib/batons-db.mjs`, `lib/batons-rendu.mjs`, `components/equipement/BatonsMagiques.astro`, `src/scripts/batons.mjs`) ; avant, un tableau de la page « Objets à la ceinture », qui y renvoie |
 | Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
 
@@ -269,8 +269,9 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
   `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
   l'onglet Armes est affiché.
-- Identifiants uniques sur toute la page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, le tableau
-  MATÉRIAUX des armures `#materiaux-armures` (ses lignes `#matiere-<clé>`).
+- Identifiants uniques sur toute la page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, celles des
+  armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
+  lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
 - Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
   active dès que son bloc est dans la page) ; ni les bâtons ni les accessoires.
 - Tests : `test/equipement.test.mjs` (onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site construit : onglets et panneaux
@@ -369,9 +370,11 @@ s'affichent, repliées ; le reste ne sert qu'à la recherche et aux `[[liens]]`,
 lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration
 `0046-armures-boucliers`, il mène à celui de la page « Équipement » depuis la migration `0053-liens-page-equipement` (seule l'adresse a changé).
 
-- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec ses règles repliées ; dessous, pour
-  les deux, le tableau **MATÉRIAUX** de l'onglet (prix, description, fabrication), en lecture (la page « Composants » en est la seule source : R62), qui ne
-  s'affiche qu'avec l'un des deux onglets.
+- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec ses règles repliées. **Plus de tableau
+  MATÉRIAUX** sous les deux (prix, description, fabrication) : demande du propriétaire, 2026-10-16 (« Les onglets Matériaux présent en bas de page de
+  l'Armure et du bouclier (avec les grand textes) devraient disparaitre et être mélangés au tableau des matériaux des Composants ») ; sa description et
+  son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque onglet y renvoie
+  (`/ressources/composants/#materiaux`), et la description d'une matière reste l'infobulle de son nom dans les tableaux à choisir.
 - **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
   jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `COULEURS_DES_TYPES` ; description en infobulle ; défense, solidité, prix). Un
   matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
@@ -497,8 +500,12 @@ de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/compo
   supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
 - **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
   l'onglet « Armes »), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
-  arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). Les pages des armes et des armures les reprennent en
-  lecture : le nom suit partout, le type la fiche d'armure (`materiau_armure.type`, « Autres » refusé pour un matériau d'armure), le prix `materiau_arme`.
+  arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). La **fabrication** d'une matière (sa recette,
+  « 10 minerais de fer + 1 charbon + Bas Fourneau » : table `recette` de genre `materiau`, en lecture) est la colonne du tableau MATÉRIAUX des onglets
+  « Armures » et « Bouclier », qui a quitté la page « Équipement » (demande du propriétaire, 2026-10-16) ; l'Os, de la page des armes, n'en a pas ; la
+  recherche de la page la lit aussi (« fer » trouve l'Acier, dont la recette en demande). Les
+  pages des armes et des armures les reprennent en lecture : le nom suit partout, le type la fiche d'armure (`materiau_armure.type`, « Autres » refusé
+  pour un matériau d'armure), le prix `materiau_arme`.
 - **Gemmes** (`gemme`) : magie, gemme, description, prix de la gemme entière (bâton magique) et d'un quart (accessoires), par qualité.
 - **Bois** (`bois`) des bâtons magiques : magie, bois, description, prix.
 - **Ingrédients d'alchimie** (`ingredient_alchimie`, doc « Alchimie » › Liste d'ingrédients) : la **table des fruits** (les ingrédients de type

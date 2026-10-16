@@ -46,7 +46,7 @@ test('identifiants uniques sur toute la page (les onglets réunis : matériaux, 
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   const doublons = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepEqual([...new Set(doublons)], []);
-  for (const id of ['materiaux-armes', 'ameliorations-arme', 'materiaux-armures']) assert.ok(ids.includes(id), id);
+  for (const id of ['materiaux-armes', 'ameliorations-arme', 'ameliorations-armure', 'ameliorations-bouclier']) assert.ok(ids.includes(id), id);
 });
 
 test('bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie (Gemme, Bois, Niveau au curseur, Effet, Prix) et ses liens vers « Composants »', options, () => {

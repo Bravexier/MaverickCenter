@@ -6,8 +6,8 @@ import {
   COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme,
   htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
-import { RENDUS_DES_ARMES } from '../../lib/armes-rendu.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { url } from '../../lib/wiki';
 
 // Onglets « Armures » et « Boucliers » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro, qui pose les onglets ; demande du
 // propriétaire, 2026-10-16 : « A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armures/, dont
@@ -29,8 +29,9 @@ import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnai
 //     à côté, avec son poids (la couleur de sa case dans l'onglet : décision R92, « Requiert N Force minimum » en infobulle) ; dessous, la liste
 //     complète des boucliers en UN tableau, replié par défaut, triable par toutes ses colonnes (AP et AM séparés) ; la liste des poids n'est plus
 //     affichée (« Pas besoin de tableau pour l'expliquer ») : elle reste dans la page pour le mode modification et sans JavaScript.
-// Puis, pour les deux, le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62) ;
-// hors des panneaux, il ne s'affiche qu'avec l'un des deux (styles/armures/armures.css).
+// Plus de tableau MATÉRIAUX (prix, description, fabrication) sous les deux panneaux : il est mêlé au tableau des matériaux de la page « Composants », sa
+// seule source (décision R62), où chaque panneau renvoie (demande du propriétaire, 2026-10-16 : « Les onglets Matériaux présent en bas de page de
+// l'Armure et du bouclier […] devraient disparaitre et être mélangés au tableau des matériaux des Composants »).
 // Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs) ; les
 // fiches sont réduites à quatre tuiles dont le détail du calcul est l'infobulle (demande du propriétaire, 2026-10-16, comme celle des armes), écrite
 // dans `[data-armures-bulles]`, hors du panneau de côté qui défile.
@@ -55,6 +56,7 @@ const matiereDe = new Map(armures.matieres.map((m) => [m.cle, m]));
 const formeDe = new Map(armures.formes.map((f) => [f.id, f]));
 const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 const edP = (id: string, colonne: string) => attributEd('bouclier_poids', { id }, colonne);
+const materiauxDesComposants = `${url('ressources/composants/')}#materiaux`;
 const legende = (
   TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype" style="--t: ${couleurDuType(t)}">${t}</span>`).join(' ')
 );
@@ -94,6 +96,7 @@ const legende = (
       )
     }
     <p class="armures-legende"><span class="armures-legende__titre">Types</span> <Fragment set:html={legende} /></p>
+    <p class="armures-renvoi">La description et la fabrication de chaque matériau sont sur la page <a href={materiauxDesComposants}>Composants</a>, où les matériaux se modifient (décision R62).</p>
 
     <div class="armures-vue" data-vue="armure">
       <div class="armures-principal">
@@ -198,6 +201,7 @@ const legende = (
     </details>
     <p class="armures-aide js-seul">Choisissez une forme et une matière : le bouclier ainsi créé s’ouvre à côté, avec son amélioration. Un bouclier de la liste, plus bas, se choisit aussi d’un clic.</p>
     <p class="armures-aide">La page compose un bouclier d’une seule matière (« forme + matière », décision R78) ; les règles ci-dessus permettent d’en mêler jusqu’à 3 différentes.</p>
+    <p class="armures-renvoi">La description et la fabrication de chaque matière sont sur la page <a href={materiauxDesComposants}>Composants</a>, où les matériaux se modifient (décision R62).</p>
 
     <div class="armures-vue" data-vue="bouclier">
       <div class="armures-principal">
@@ -315,29 +319,6 @@ const legende = (
     </div>
     <div class="armures-bulles" data-armures-bulles="bouclier"></div>
   </section>
-
-  {/* ── Matériaux (pour les deux onglets : « la table de l'onglet Bouclier est identique mot pour mot ») ────────────────── */}
-  <details class="armures-bloc armures-materiaux" id="materiaux-armures">
-    <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Matériaux : prix, description et fabrication</span><span class="armures-bloc__compte">{armures.materiaux.length}</span></summary>
-    <p class="armures-bloc__note">Le tableau MATÉRIAUX des onglets « Armures » et « Bouclier » ; ces matériaux se modifient sur la page Composants (décision R62).</p>
-    <div class="armures-wrap">
-      <table class="armures-table armures-table--materiaux">
-        <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col">Description</th><th scope="col">Fabrication (pour obtenir une matière)</th></tr></thead>
-        <tbody>
-          {
-            armures.materiaux.map((m) => (
-              <tr class="pmat-ref" id={`matiere-${m.cle}`}>
-                <th scope="row" class="pmat-ref__nom" style={`--t: ${couleurDuType(m.type)}`} data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')}>{m.nom}</th>
-                <td class="pmat-ref__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS_DES_ARMES['materiau-prix'](m.prix)} />
-                <td class="pmat-ref__description" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'description')}>{m.description ?? ''}</td>
-                <td class="pmat-ref__fabrication">{m.fabrication ?? '—'}</td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
-    </div>
-  </details>
 </div>
 
 <script>

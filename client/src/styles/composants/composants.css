@@ -62,7 +62,8 @@ body.ed-mode .composants-outils { display: none !important; }
 body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 
 .comp-nom { font-weight: 700; min-width: 9rem; }
-.comp-description { min-width: 16rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
+.comp-description { min-width: 16rem; }
+.comp-description, .comp-fabrication { color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
 .comp-prix-case, .comp-abr { white-space: nowrap; }
 .comp-quart { border-left: 1px solid var(--cmp-line); }
 /* matériau : sa couleur (celle de l'onglet « Armes », lib/materiaux-couleurs.mjs) en pastille devant son nom ; ses usages */
@@ -83,3 +84,5 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 /* matériau : ses effets sur une arme, une ligne par effet (lib/armes-rendu.mjs, rendu « materiau-effet ») */
 .comp-effet .materiau-effet > span { display: block; }
 .comp-type { white-space: nowrap; }
+/* matériau : sa fabrication (la recette qui donne la matière, en lecture), à côté de sa description */
+.comp-fabrication { min-width: 14rem; }

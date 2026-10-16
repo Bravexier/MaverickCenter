@@ -20,8 +20,8 @@ html:not(.js) .armures :is(.js-seul-ligne, .pfiche) { display: none; }
 .armures [hidden] { display: none !important; }
 .armures__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 
-/* Les panneaux Armures et Boucliers (onglets : components/equipement/EquipementPage.astro) ; le tableau MATÉRIAUX, hors des panneaux, ne s'affiche
-   qu'avec l'un des deux : un autre onglet ouvert, tout le bloc se cache (sa marge ne s'ajoute pas à celle des onglets) */
+/* Les panneaux Armures et Boucliers (onglets : components/equipement/EquipementPage.astro) : un autre onglet ouvert, tout le bloc se cache (sa marge
+   ne s'ajoute pas à celle des onglets) */
 html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-panneau + .armures-panneau { margin-top: 2rem; }
 
@@ -37,6 +37,9 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-regles__texte p { margin: 0 0 0.75rem; }
 .armures-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 .armures-aide { margin: 0 0 0.5rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le renvoi vers le tableau des matériaux de la page Composants (description, fabrication), qui a remplacé le tableau MATÉRIAUX des deux onglets :
+   comme une aide, mais affiché aussi en mode modification (les matériaux se modifient là-bas : R62) */
+.armures-renvoi { margin: 0 0 0.6rem; color: var(--muted); font-size: var(--fs-lg); }
 /* le prix d'une armure (décision R93) : une règle, affichée aussi en mode modification (son coût de fabrication s'y modifie) et à l'impression */
 .armures-prix { margin: 0 0 0.6rem; font-size: var(--fs-lg); }
 .armures-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0 0 0.8rem; }
@@ -73,7 +76,6 @@ html.js body.ed-mode .armures-poids { display: block; }
 .armures-bloc__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--pro); color: var(--surface); }
 .armures-bloc__compte { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
 .armures-bloc__note { margin: 0.45rem 0.9rem 0.5rem; font-size: var(--fs-md); color: var(--muted); }
-.armures-materiaux { margin-top: 1.6rem; }
 
 /* Tableaux (comme ceux des armes : styles/armes/armes.css) */
 .armures-wrap { overflow-x: auto; }
@@ -83,7 +85,6 @@ html.js body.ed-mode .armures-poids { display: block; }
 .armures-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
 .armures-table tbody > tr > * { padding: 0.5rem 0.75rem; vertical-align: top; text-align: left; }
 .armures-table--choix tbody > tr > * { padding-top: 0.35rem; padding-bottom: 0.35rem; vertical-align: middle; }
-.armures-table--materiaux td { font-size: var(--fs-md); }
 
 /* Lignes sélectionnables */
 html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier) { cursor: pointer; }
@@ -106,13 +107,12 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 .ptri:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; border-radius: var(--radius-xs); }
 .armure__remarque { color: var(--pro); cursor: help; margin-left: 0.2rem; }
 .armure__solidite, .bouclier__solidite, .pmat__solidite { text-align: center !important; font-variant-numeric: tabular-nums; }
-.armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .pamelioration__cout, .pmat-ref__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .pamelioration__cout { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .armure__effet { min-width: 14rem; white-space: pre-line; font-size: var(--fs-md); }
 .pamelioration__niveau { white-space: nowrap; }
-.pmat-ref__description, .pmat-ref__fabrication { min-width: 14rem; }
 
 /* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet) */
-.pmat__nom, .pmat-ref__nom { background: var(--t, var(--surface)) !important; color: #171210; min-width: 6.5rem; }
+.pmat__nom { background: var(--t, var(--surface)) !important; color: #171210; min-width: 6.5rem; }
 .pmat__choisir { display: block; color: #171210; }
 .pmat__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, #171210 45%, transparent); text-underline-offset: 3px; }
 .pmat.est-choisie > :not(.pmat__nom) { background: color-mix(in srgb, var(--pro) 16%, var(--surface)); }
