@@ -449,9 +449,11 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
 - **Couleurs des lignes** (`lib/ceinture-couleurs.mjs`, lues dans les sources originales le 2026-10-16 par les connecteurs Google de la session ; les
   instantanés de `sources/raw/` ne gardent pas la mise en forme) : chaque potion sur la couleur de son palier dans le Google Doc « Alchimie » (le fond de
-  la case du nom, en tête du tableau du palier ; le texte que le Doc pose, sinon le plus lisible sur le fond), sauf le Remède enragé et l'Huile rage, que
-  le Doc ne colore pas ; les carquois et sacs n'ont pas de couleur dans l'onglet « Équipement inventaire » du classeur ; les bâtons, la case de leur
-  magie dans l'onglet « Bâton magique ». Une potion créée plus tard, absente du module, resterait neutre. Repère visuel sans valeur de règle.
+  la case du nom, en tête du tableau du palier), sauf le Remède enragé et l'Huile rage, que le Doc ne colore pas ; les carquois et sacs n'ont pas de
+  couleur dans l'onglet « Équipement inventaire » du classeur ; les bâtons, la case de leur magie dans l'onglet « Bâton magique ». Choix du site, pas de
+  la source : la couleur de la case s'étend à toute la ligne, et le texte est celui que la source pose (blanc) ou, sinon, le plus lisible sur le fond
+  (`texteSurCouleur`) — blanc sur les fonds sombres où la source écrit en noir par défaut (Méga et Ultime fiole rouge, les lignes de bâtons du Sang, du
+  Feu, de la Terre, de l'Ombre…). Une potion créée plus tard, absente du module, resterait neutre. Repère visuel sans valeur de règle.
 
 Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
 « Composants » ; le prix d'un bâton, celui des matériaux de sa recette) ; les prix et les textes montrent leurs monnaies en icônes (R63). Les titres des
@@ -468,7 +470,7 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
 
 - Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** : depuis la demande du propriétaire du 2026-10-16 (« récupérer les
-  couleurs utilisées dans les tableaux du GoogleSheet pour les lignes présentes »), celle de la case du nom de la magie dans l'onglet « Bâton magique »
+  couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes »), celle de la case du nom de la magie dans l'onglet « Bâton magique »
   du classeur (`lib/ceinture-couleurs.mjs#COULEURS_DES_BATONS`, texte posé par le classeur ou, sinon, le plus lisible : `texteSurCouleur` ; une magie
   absente de l'onglet garderait `couleurDeMagie`), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
   **Gemme | Bois | Niveau | Effet | Prix**.

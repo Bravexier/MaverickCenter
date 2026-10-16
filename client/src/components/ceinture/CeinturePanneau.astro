@@ -87,9 +87,9 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
 <section class="equipement-panneau ceinture" id="ceinture" aria-labelledby="titre-ceinture">
   <h2 class="equipement-panneau__titre" id="titre-ceinture">Ceinture</h2>
   <p class="ceinture__chapo">
-    Trois emplacements d’objets rapides : les consommables (potions et huiles), les carquois et sacs, qui doivent être à la ceinture pour servir, et
-    les bâtons magiques (actifs à la ceinture ou dans un emplacement d’arme). La liste du guide n’est pas exhaustive : il cite aussi un briquet, une
-    torche, une corde, des kits…, dans <a href={composants}>Composants</a>. Les règles de l’alchimie (fioles, ingrédients, kits) sont dans{' '}
+    La ceinture a trois emplacements d’objets rapides. Cet onglet rassemble des objets qui y vont : les consommables (potions et huiles), les carquois
+    et sacs, qui doivent être à la ceinture pour servir, et les bâtons magiques (actifs à la ceinture ou dans un emplacement d’arme). La liste du guide
+    n’est pas exhaustive : il cite aussi un briquet, une torche, une corde, des kits…, dans <a href={composants}>Composants</a>. Les règles de l’alchimie (fioles, ingrédients, kits) sont dans{' '}
     <a href={lien('ressources/alchimie')}>Alchimie</a> ; la recette de chaque potion est sur sa page.
   </p>
   {
@@ -145,8 +145,8 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
           )}
           {siens.some((t) => t.groupes) && (
             <p class="ceinture-aide">
-              Chaque potion est dans la couleur de son palier dans le Google Doc « Alchimie » ; le titre d’un groupe mène à la page de la potion
-              (description, recette).
+              Les potions ont la couleur de leur palier dans le Google Doc « Alchimie » (celles que le Doc ne colore pas restent neutres) ; le titre
+              d’un groupe mène à la page de la potion (description, recette).
             </p>
           )}
           <div class="ceinture-tableaux">

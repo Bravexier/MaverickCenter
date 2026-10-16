@@ -2,7 +2,7 @@
 // peuvent placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques » ; le 2026-10-16,
 // « revoir intégralement la page des objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », chaque
 // tableau dans ses sous-onglets « plutôt que la recherche actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables
-// regroupant « les fioles remèdes philtres huiles et alchimie primitives dans cet ordre ») : chargé depuis la base, jamais depuis un Markdown. Quels
+// regroupant « les fioles remêdes philtres huiles et alchimie privatives dans cet ordre ») : chargé depuis la base, jamais depuis un Markdown. Quels
 // objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques ;
 // pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
 // Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la

@@ -4,7 +4,7 @@
 // bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du
 // niveau. Rajouter une colonne pour le prix. »
 // Une ligne par magie, sur la couleur de sa magie dans l'onglet « Bâton magique » du classeur (la case du nom de la magie : lib/ceinture-couleurs.mjs ;
-// demande du propriétaire du 2026-10-16 : « récupérer les couleurs utilisées dans les tableaux du GoogleSheet pour les lignes présentes » ; une magie
+// demande du propriétaire du 2026-10-16 : « récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes » ; une magie
 // absente de l'onglet garde la couleur du site, sort-format.mjs#couleurDeMagie) : Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à
 // leur ligne de la page « Composants » et ont chacun leur infobulle (description, prix, le même lien) ; la gemme est la pastille des accessoires
 // (`.acc-gemme`, dans la couleur de sa magie sur le site, styles/equipement/equipement.css), sans ligne pour sa qualité (demande du propriétaire du

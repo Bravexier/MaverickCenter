@@ -2,7 +2,7 @@
 // lib/ceinture-db.mjs) : les potions du sous-onglet Consommables, groupées par page (un <tbody> par page : « Fiole rouge » et ses paliers), et les
 // carquois et sacs du sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche
 // actuel ») : aucune ligne ne porte de texte de recherche.
-// Chaque potion est sur la couleur de son palier dans le Doc « Alchimie » (demande du propriétaire, 2026-10-16 : « récupérer les couleurs utilisées
+// Chaque potion est sur la couleur de son palier dans le Doc « Alchimie » (demande du propriétaire, 2026-10-16 : « récupérer les couleurs utilisé
 // dans les tableaux du GoogleSheet pour les lignes présentes » ; lib/ceinture-couleurs.mjs) : `--ceint-fond` et `--ceint-texte` sur la ligne, le
 // texte que le Doc pose ou, sinon, le plus lisible sur le fond ; une potion que le Doc ne colore pas reste neutre. Les carquois et sacs n'ont pas de
 // couleur dans le classeur.

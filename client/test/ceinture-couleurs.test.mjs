@@ -1,4 +1,4 @@
-// Couleurs des lignes de l'onglet « Ceinture » (lib/ceinture-couleurs.mjs ; demande du propriétaire du 2026-10-16 : « récupérer les couleurs utilisées
+// Couleurs des lignes de l'onglet « Ceinture » (lib/ceinture-couleurs.mjs ; demande du propriétaire du 2026-10-16 : « récupérer les couleurs utilisé
 // dans les tableaux du GoogleSheet pour les lignes présentes ») : une entrée par potion de la base (la couleur de son palier dans le Doc « Alchimie »,
 // ou null quand le Doc ne la colore pas), une par magie des bâtons (la case de la magie dans l'onglet « Bâton magique ») ; le rendu d'une ligne
 // colorée (le texte que la source pose, sinon le plus lisible), et d'une ligne sans couleur. Les potions ne se modifient pas encore sur le site de dev :

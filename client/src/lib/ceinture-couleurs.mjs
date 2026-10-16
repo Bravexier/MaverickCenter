@@ -1,5 +1,5 @@
 // Couleurs des lignes de l'onglet « Ceinture » de la page /ressources/equipement/ (demande du propriétaire du 2026-10-16 : « il faudra aussi
-// récupérer les couleurs utilisées dans les tableaux du GoogleSheet pour les lignes présentes ») : le fond (et la couleur du texte quand la source en
+// récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes ») : le fond (et la couleur du texte quand la source en
 // pose une) de chaque ligne, lus dans les sources originales (décision R83 : les originaux font foi) le 2026-10-16, par les connecteurs Google de la
 // session ; les instantanés (sources/raw/, texte seul) ne gardent pas la mise en forme. Repère visuel sans valeur de règle, comme la couleur d'un
 // matériau (materiaux-couleurs.mjs). Rien n'est déduit : une ligne dont la source n'a pas de couleur reste neutre (null).
@@ -11,8 +11,10 @@
 //   - Bâtons magiques : dans l'onglet « Bâton magique » du classeur « Ressources et Craft » (original 12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA),
 //     seule la case du nom de chaque magie, en tête de sa colonne (D15:V15, D29:V29), a une couleur (effectiveFormat.backgroundColor ; les cases des
 //     effets sont blanches) : la couleur de la ligne de sa magie. Clé : l'identifiant de la magie.
-//   - Carquois et sacs : l'onglet « Équipement inventaire » (MATOS PROJECTILE, BN3:BT23) ne les colore pas (fond blanc) : pas de couleur.
-// Le texte d'une ligne est celui que la source pose, sinon le plus lisible sur le fond (sort-format.mjs#texteSurCouleur, comme les lignes de magie).
+//   - Carquois et sacs : l'onglet « Équipement inventaire » (MATOS PROJECTILE, BN3:CE23) ne les colore pas (fond blanc) : pas de couleur.
+// Choix de présentation du site, pas de la source : la couleur de la case s'étend à toute la ligne (comme les lignes des bâtons, demande du propriétaire
+// du 2026-10-16 : « colorer toute la ligne ») ; le texte est celui que la source pose (blanc), sinon le plus lisible sur le fond
+// (sort-format.mjs#texteSurCouleur, comme les lignes de magie), blanc sur un fond sombre où la source écrit en noir par défaut.
 // Sans dépendance : importé par lib/ceinture-db.mjs, lib/batons-rendu.mjs et les tests (test/ceinture-couleurs.test.mjs : une entrée par potion de
 // la base, une par magie des bâtons).
 
