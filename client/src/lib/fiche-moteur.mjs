@@ -411,16 +411,17 @@ export function inventaireDe(regles, fiche) {
 export const quantiteDuSac = (regles, quantite) => Math.min(regles.sac?.quantite_max ?? Infinity, Math.max(1, Math.round(entier(quantite))));
 
 /**
- * Ce qu'est un objet pour la ceinture, d'après son nom (décisions R81, R89) : { genre: 'baton', baton_id } pour un bâton magique (« Bâton magique Feu,
+ * Ce qu'est un objet pour la ceinture, d'après son nom, ou sa ressource quand son nom n'est plus celui du catalogue (un carquois renommé sur le site de
+ * dev : la fiche garde l'ancien nom et l'identifiant) (décisions R81, R89) : { genre: 'baton', baton_id } pour un bâton magique (« Bâton magique Feu,
  * niveau 2 »), { genre: 'contenant', ressource_id, contenance } pour un carquois ou un sac, { genre: <famille de la potion>, ressource_id } pour une
- * potion ou une huile ; null pour un autre objet (le matériel que le guide cite aussi, une saisie libre, un objet spécial du MJ).
+ * potion ou une huile ; null pour un autre objet (le matériel que le guide cite aussi, un objet spécial du MJ).
  */
-export function objetDeCeinture(regles, nom) {
+export function objetDeCeinture(regles, nom, ressource_id = null) {
   const n = String(nom ?? '').trim();
   if (!n || !regles.ceinture) return null;
   const baton = regles.ceinture.batons.find((b) => b.nom === n);
   if (baton) return { genre: 'baton', baton_id: baton.id };
-  const objet = objetsDeCeintureParNom(regles).get(n);
+  const objet = objetsDeCeintureParNom(regles).get(n) ?? (ressource_id ? regles.ceinture.objets.find((o) => o.ressource_id === ressource_id) : null);
   if (!objet) return null;
   return { genre: objet.famille, ressource_id: objet.ressource_id, ...(objet.famille === 'contenant' ? { contenance: objet.contenance ?? null } : {}) };
 }
@@ -454,34 +455,29 @@ export function exemplairesParEmplacement(regles, fiche) {
 }
 
 /**
- * La quantité au plus d'un emplacement de ceinture qui porte `nom` (décision R89 : « un nombre à saisir, maxé à 3 pour la ceinture, sauf pour un
- * conteneur de munitions ») : 1 pour un bâton magique (« A part pour le bâton d'utilisations illimités ») ; la contenance d'un carquois ou d'un sac
- * (« ils augmentent le maximum possible de la case quantité associée dans la ceinture pour représenter les flèches […] ») ; sinon
- * exemplairesParEmplacement (3, 4 avec le don qui l'écrit).
+ * La quantité au plus d'un emplacement de ceinture qui porte `nom` (et `ressource_id` : objetDeCeinture) (décision R89) : 1 pour un bâton magique (« Le
+ * max est 1 ») ; la contenance d'un carquois ou d'un sac de projectiles (« Le max est déterminé par l'objet et ne peux être modifié par Organisé »), ou,
+ * quand son texte n'en écrit pas, la constante ceinture.exemplaires_par_emplacement, sans le don ; sinon exemplairesParEmplacement (3, 4 avec le don qui
+ * l'écrit).
  */
-export function maximumDeLEmplacement(regles, fiche, nom) {
-  const o = objetDeCeinture(regles, nom);
+export function maximumDeLEmplacement(regles, fiche, nom, ressource_id = null) {
+  const o = objetDeCeinture(regles, nom, ressource_id);
   if (o?.genre === 'baton') return 1;
-  if (o?.genre === 'contenant' && o.contenance) return o.contenance;
+  if (o?.genre === 'contenant') return o.contenance ?? constante(regles, 'ceinture.exemplaires_par_emplacement');
   return exemplairesParEmplacement(regles, fiche);
 }
 
 /**
- * La quantité au moins d'un emplacement de ceinture qui porte `nom` (décision R89 : « Un Carquois à 0 est juste un carquois vide ») : 0 pour un carquois
- * ou un sac de projectiles, sinon 1.
+ * La quantité au moins d'un emplacement de ceinture qui porte `nom` (décision R89 : « Le carquois reste si 0 ») : 0 pour un carquois ou un sac de
+ * projectiles, sinon 1 (un autre objet utilisé jusqu'au dernier quitte la ceinture). L'import d'un tableur s'en sert.
  */
-export const minimumDeLEmplacement = (regles, nom) => (objetDeCeinture(regles, nom)?.genre === 'contenant' ? 0 : 1);
-
-/** La quantité d'un emplacement de ceinture qui porte `nom` : le nombre saisi, borné de minimumDeLEmplacement à maximumDeLEmplacement (décision R89). */
-export const quantiteDeCeinture = (regles, fiche, nom, quantite) =>
-  Math.min(maximumDeLEmplacement(regles, fiche, nom), Math.max(minimumDeLEmplacement(regles, nom), Math.round(entier(quantite))));
+export const minimumDeLEmplacement = (regles, nom, ressource_id = null) => (objetDeCeinture(regles, nom, ressource_id)?.genre === 'contenant' ? 0 : 1);
 
 /**
  * Unités du sac que tient un emplacement de ceinture (décision R89) : 1 pour un carquois ou un sac de projectiles (sa quantité compte ses projectiles,
- * que le sac ne compte pas), sinon sa quantité (un bâton : 1, ou tous ceux qu'une fiche importée y avait mis). Un objet saisi librement (un objet spécial
- * du MJ) compte comme les autres : « Pas de règle spéciale ».
+ * que le sac ne compte pas), sinon sa quantité (un bâton : 1, ou tous ceux qu'une fiche importée y avait mis). Un objet du MJ compte comme les autres.
  */
-const unitesDuSac = (regles, o) => (objetDeCeinture(regles, o.nom)?.genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite)));
+const unitesDuSac = (regles, o) => (objetDeCeinture(regles, o.nom, o.ressource_id)?.genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite)));
 const nomDe = (o) => String(o?.nom ?? '').trim();
 /** Une ligne du sac compte quand elle a au moins un exemplaire (une quantité 0 d'une saisie en cours ne fait pas un objet). */
 const exemplairesDe = (l) => Math.max(0, entier(l.quantite));
@@ -525,17 +521,17 @@ function remettreAuSac(regles, inventaire, o, n) {
   return renumeroter(sac);
 }
 
-/** Une saisie libre de la ceinture : un nom que ni la liste de la ceinture ni le catalogue ne connaissent (un objet spécial du MJ, un nom en cours de correction). */
-const saisieLibre = (regles, o) => !objetDeCeinture(regles, o.nom) && !o.ressource_id && !(regles.ressources ?? []).some((r) => r.nom === nomDe(o));
 const ligneDeCeinture = (fiche, rang) => (fiche.ceinture ?? []).find((x) => entier(x.rang) === rang) ?? null;
 const avecLEmplacement = (fiche, rang, ligne) =>
   [...(fiche.ceinture ?? []).filter((x) => entier(x.rang) !== rang), ...(ligne ? [{ ...ligne, rang }] : [])].sort((a, b) => entier(a.rang) - entier(b.rang));
+const inchangees = (fiche) => ({ ceinture: [...(fiche.ceinture ?? [])], inventaire: [...(fiche.inventaire ?? [])] });
 
 /**
- * La ceinture et l'inventaire quand l'emplacement `rang` est vidé (décision R89) : ce qu'il portait retourne au sac (unitesDuSac : un carquois ou un sac
- * de projectiles, sans ses projectiles ; un objet saisi librement comme les autres). Rend { ceinture, inventaire } ; la fiche n'est pas modifiée.
+ * « Ranger » l'emplacement `rang` (décision R89 : « Ranger le replace dans l'inventaire ») : ce qu'il portait retourne au sac (unitesDuSac : un carquois
+ * ou un sac de projectiles, sans ses projectiles ; un objet du MJ comme les autres) et l'emplacement est vide. Rend { ceinture, inventaire } ; la fiche
+ * n'est pas modifiée.
  */
-export function viderLEmplacement(regles, fiche, rang) {
+export function rangerLEmplacement(regles, fiche, rang) {
   const ancien = ligneDeCeinture(fiche, rang);
   return {
     ceinture: avecLEmplacement(fiche, rang, null),
@@ -544,54 +540,89 @@ export function viderLEmplacement(regles, fiche, rang) {
 }
 
 /**
- * La ceinture et l'inventaire quand l'emplacement `rang` reçoit `nom` (décision R89 : « Il quitte le sac ») :
- * - un objet que le sac contient (son nom exact) en sort, et ce que l'emplacement portait y retourne (viderLEmplacement) : un bâton ou un carquois, une
- *   unité (un carquois arrive vide, à 0 : « Un Carquois à 0 est juste un carquois vide ») ; un autre objet, autant d'exemplaires que le sac en a,
- *   jusqu'au maximum de l'emplacement ;
- * - un autre nom (un objet spécial du MJ, un nom corrigé) ne sort rien du sac : il corrige une saisie libre de l'emplacement (un nom que ni la liste ni le
- *   catalogue ne connaissent : « Corde » corrigé en « Corde de 10 m »), qui garde sa quantité (bornée : quantiteDeCeinture) ; sinon ce que
- *   l'emplacement portait retourne au sac (un objet du catalogue n'est jamais perdu) et le nom y est posé (un carquois à 0, un autre objet à 1).
- * Un nom vide vide l'emplacement.
+ * La ceinture et l'inventaire quand l'emplacement `rang` reçoit l'objet `nom` du sac (décision R89 : « On peut assigner n'importe quel objet de
+ * l'inventaire à un des emplacements à la ceinture », « L'assignation retire 3 éléments de l'inventaire (ou tous si <= 3) ») : ce que l'emplacement
+ * portait est d'abord rangé (rangerLEmplacement) ; puis un bâton magique sort du sac, seul ; un carquois ou un sac de projectiles aussi, et il arrive
+ * plein, à sa contenance (réponse du propriétaire : « Plein ») ; un autre objet, autant d'exemplaires que le sac en a, jusqu'au maximum de
+ * l'emplacement (3, 4 avec « Organisé »). null quand le sac n'a pas cet objet, même une fois l'emplacement rangé (réponse du propriétaire : « Sac
+ * seulement » : un objet du MJ s'ajoute d'abord à l'inventaire), et pour un nom vide (on vide un emplacement par « Ranger ») : rien ne change.
+ * L'objet est celui de la ligne du sac (son identifiant : un carquois renommé depuis reste un carquois).
  */
 export function mettreALaCeinture(regles, fiche, rang, nom) {
   const n = String(nom ?? '').trim();
-  if (!n) return viderLEmplacement(regles, fiche, rang);
-  const ancien = ligneDeCeinture(fiche, rang);
-  const o = objetDeCeinture(regles, n);
-  const ressource_id = o?.ressource_id ?? (regles.ressources ?? []).find((r) => r.nom === n)?.id ?? null;
-  if (dansLeSac(fiche, n) === 0) {
-    if (ancien && saisieLibre(regles, ancien)) {
-      const quantite = quantiteDeCeinture(regles, fiche, n, ancien.quantite);
-      return { ceinture: avecLEmplacement(fiche, rang, { nom: n, quantite, ressource_id }), inventaire: renumeroter([...(fiche.inventaire ?? [])]) };
-    }
-    const vide = viderLEmplacement(regles, fiche, rang);
-    return { ceinture: avecLEmplacement({ ...fiche, ...vide }, rang, { nom: n, quantite: minimumDeLEmplacement(regles, n), ressource_id }), inventaire: vide.inventaire };
-  }
-  const vide = viderLEmplacement(regles, fiche, rang);
-  const apres = { ...fiche, ...vide };
+  if (!n) return null;
+  const apres = { ...fiche, ...rangerLEmplacement(regles, fiche, rang) };
+  if (dansLeSac(apres, n) === 0) return null;
+  const duSac = apres.inventaire.find((l) => nomDe(l) === n && exemplairesDe(l) > 0)?.ressource_id ?? null;
+  const o = objetDeCeinture(regles, n, duSac);
+  const ressource_id = o?.ressource_id ?? duSac ?? (regles.ressources ?? []).find((r) => r.nom === n)?.id ?? null;
+  const max = maximumDeLEmplacement(regles, fiche, n, ressource_id);
   const unite = o?.genre === 'baton' || o?.genre === 'contenant';
-  const voulues = unite ? 1 : maximumDeLEmplacement(regles, fiche, n);
-  const { inventaire, sorties } = sortirDuSac(apres.inventaire, n, Math.min(voulues, dansLeSac(apres, n)));
-  const quantite = o?.genre === 'contenant' ? 0 : unite ? 1 : Math.max(1, sorties);
+  const { inventaire, sorties } = sortirDuSac(apres.inventaire, n, unite ? 1 : max);
+  const quantite = o?.genre === 'contenant' ? max : unite ? 1 : sorties;
   return { ceinture: avecLEmplacement(apres, rang, { nom: n, quantite, ressource_id }), inventaire };
 }
 
 /**
- * La ceinture quand l'emplacement `rang` passe à `quantite` (décision R89 : « On va juste mettre un nombre à saisir ») : le nombre saisi, borné
- * (quantiteDeCeinture) ; le sac ne change pas (un objet bu ou lancé se retire en baissant la quantité). Rend { ceinture, inventaire }.
+ * Ce que l'emplacement `rang` montre et permet (décision R89), null s'il est vide : { quantite, min, max, genre, utiliser, remplir, duSac } ; min, max :
+ * les bornes de la quantité (minimumDeLEmplacement, maximumDeLEmplacement : une fiche importée peut être au-delà) ; utiliser :
+ * « Utiliser » s'affiche (« Masqué si bâton magique » ; « A zéro "Utiliser" disparait » pour un carquois) ; remplir : « Remplir » s'affiche (« Masqué si
+ * quantité maximale atteinte ») ; duSac : ce que « Remplir » sortirait du sac (null pour un carquois ou un sac de projectiles, qui n'en sort rien ;
+ * 0 quand le sac n'en a plus).
  */
-export function changerLaQuantiteDeCeinture(regles, fiche, rang, quantite) {
-  const ancien = ligneDeCeinture(fiche, rang);
-  const ceinture = ancien ? avecLEmplacement(fiche, rang, { ...ancien, quantite: quantiteDeCeinture(regles, fiche, ancien.nom, quantite) }) : [...(fiche.ceinture ?? [])];
-  return { ceinture, inventaire: [...(fiche.inventaire ?? [])] };
+export function actionsDeLEmplacement(regles, fiche, rang) {
+  const x = ligneDeCeinture(fiche, rang);
+  if (!x) return null;
+  const genre = objetDeCeinture(regles, x.nom, x.ressource_id)?.genre ?? null;
+  const quantite = entier(x.quantite);
+  const max = maximumDeLEmplacement(regles, fiche, x.nom, x.ressource_id);
+  return {
+    quantite,
+    min: genre === 'contenant' ? 0 : 1,
+    max,
+    genre,
+    utiliser: genre !== 'baton' && quantite > 0,
+    remplir: quantite < max,
+    duSac: genre === 'contenant' ? null : Math.max(0, Math.min(max - quantite, dansLeSac(fiche, x.nom))),
+  };
 }
 
-/** Les objets du sac qui vont à la ceinture (décision R89 : « un autocomplete à partir des objets de son inventaire et qui peuvent être dans la ceinture ») : [{ nom, quantite }], une fois chacun. */
-export function suggestionsDeCeinture(regles, fiche) {
+/**
+ * « Utiliser » (décision R89 : « Utiliser, retire de 1 l'objet ») : la quantité de l'emplacement baisse de 1 et le sac ne change pas ; un objet utilisé
+ * jusqu'au dernier quitte la ceinture (« saisie fioles bleue retirée de la ceinture »), un carquois ou un sac de projectiles y reste, vide (« Le carquois
+ * reste si 0 »). Rien quand le bouton est masqué (actionsDeLEmplacement : un bâton magique, un carquois vide).
+ */
+export function utiliserLObjet(regles, fiche, rang) {
+  const a = actionsDeLEmplacement(regles, fiche, rang);
+  if (!a?.utiliser) return inchangees(fiche);
+  const quantite = a.quantite - 1;
+  const ligne = quantite > 0 || a.genre === 'contenant' ? { ...ligneDeCeinture(fiche, rang), quantite } : null;
+  return { ceinture: avecLEmplacement(fiche, rang, ligne), inventaire: [...(fiche.inventaire ?? [])] };
+}
+
+/**
+ * « Remplir » (décision R89 : « remet les charges au maximum en en retirant autant de l'inventaire ») : l'emplacement remonte vers son maximum avec ce
+ * que le sac a de cet objet (tout ce qu'il a, s'il en a moins) ; un carquois ou un sac de projectiles gagne 1 projectile, sans rien sortir du sac
+ * (« Le bouton "remplir" ne fait qu'incrémenter de 1 »). Rien quand le bouton est masqué (au maximum).
+ */
+export function remplirLEmplacement(regles, fiche, rang) {
+  const a = actionsDeLEmplacement(regles, fiche, rang);
+  if (!a?.remplir) return inchangees(fiche);
+  const x = ligneDeCeinture(fiche, rang);
+  if (a.genre === 'contenant') return { ceinture: avecLEmplacement(fiche, rang, { ...x, quantite: a.quantite + 1 }), inventaire: [...(fiche.inventaire ?? [])] };
+  const { inventaire, sorties } = sortirDuSac(fiche.inventaire ?? [], nomDe(x), a.max - a.quantite);
+  return { ceinture: avecLEmplacement(fiche, rang, { ...x, quantite: a.quantite + sorties }), inventaire };
+}
+
+/**
+ * Les objets du sac, proposés dans chaque emplacement de ceinture (décision R89 : « On peut assigner n'importe quel objet de l'inventaire ») :
+ * [{ nom, quantite }], une fois chacun, dans l'ordre du sac.
+ */
+export function suggestionsDeCeinture(fiche) {
   const vus = new Map();
   for (const l of fiche.inventaire ?? []) {
     const n = nomDe(l);
-    if (!n || exemplairesDe(l) < 1 || !objetDeCeinture(regles, n)) continue;
+    if (!n || exemplairesDe(l) < 1) continue;
     vus.set(n, (vus.get(n) ?? 0) + exemplairesDe(l));
   }
   return [...vus].map(([nom, quantite]) => ({ nom, quantite }));
@@ -602,10 +633,10 @@ export function suggestionsDeCeinture(regles, fiche) {
  * sélection : « insertReplacementText », ou aucun sur un navigateur qui n'en donne pas) ; null sinon : une saisie en cours (« Méga fiole verte » avant
  * « … foncée ») attend que le champ soit validé, pour ne pas sortir du sac un objet qu'on ne voulait pas.
  */
-export function objetChoisiDansLaListe(regles, fiche, valeur, inputType) {
+export function objetChoisiDansLaListe(fiche, valeur, inputType) {
   if (inputType && inputType !== 'insertReplacementText') return null;
   const n = String(valeur ?? '');
-  return suggestionsDeCeinture(regles, fiche).some((s) => s.nom === n) ? n : null;
+  return suggestionsDeCeinture(fiche).some((s) => s.nom === n) ? n : null;
 }
 
 /** Total des points naturels et budget cumulé exact du niveau (v_niveau.points_competences_cumul, décision R3). */
