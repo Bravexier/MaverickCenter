@@ -36,8 +36,8 @@ test('une couleur par magie des bâtons ; la ligne d’une magie absente de l’
   assert.deepEqual(couleursDesBatons({ id: 'magies/inconnue', nom: 'Feu' }), { fond: couleurDeMagie('Feu'), texte: texteSurCouleur(couleurDeMagie('Feu')) });
   const batons = chargerBatons(db);
   const m = batons.magies.find((x) => x.magie.id === 'magies/magie-du-sang');
-  assert.ok(htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/').startsWith('<tr class="baton" id="baton-magie-du-sang" data-niveau="1" style="--mag: #980000; --mag-texte: #ffffff">'),
-    'Sang : la case de la magie (#980000), le texte le plus lisible (le classeur n’en pose pas)');
+  assert.ok(htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/').startsWith(`<tr class="baton" id="baton-magie-du-sang" data-niveau="1" style="--baton-fond: #980000; --baton-texte: #ffffff; --mag: ${couleurDeMagie('Sang')}">`),
+    'Sang : la case de la magie (#980000), le texte le plus lisible (le classeur n’en pose pas) ; la teinte des infobulles reste la couleur de la magie sur le site');
 });
 
 test('rendu : le texte que la source pose, sinon le plus lisible sur le fond ; une ligne sans couleur reste neutre', () => {

@@ -55,6 +55,11 @@ test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs l
   // la requête d'origine est gardée (l'état des onglets : ?arme=, ?materiau1=…), l'ancre d'origine l'emporte sur celle de l'onglet
   assert.equal(adresseComplete(nouvelleAdresse('/ressources/armes/'), '?arme=arme-epees-espadon', ''), '/ressources/equipement/?arme=arme-epees-espadon#armes');
   assert.equal(adresseComplete(nouvelleAdresse('/ressources/bouclier/'), '', '#bouclier-ecu-fer'), '/ressources/equipement/#bouclier-ecu-fer');
+  // dans l'autre sens : chaque renvoi de nav.mjs vers la page « Équipement » vise l'ancre d'un onglet ou d'un sous-onglet qui existe
+  const ancres = new Set([...ONGLETS_DE_L_EQUIPEMENT, ...SOUS_ONGLETS_DE_LA_CEINTURE].map((o) => o.id));
+  for (const [ancienne, nouvelle] of Object.entries(PAGES_RENOMMEES).filter(([, n]) => n.startsWith(CHEMIN_DE_L_EQUIPEMENT))) {
+    assert.ok(ancres.has(nouvelle.slice(nouvelle.indexOf('#') + 1)), `${ancienne} → ${nouvelle}`);
+  }
   // l'ancienne page « Objets à la ceinture » (sans page du wiki) : l'onglet Ceinture, la requête et l'ancre d'origine gardées
   assert.equal(ANCIENNE_PAGE_DE_LA_CEINTURE, 'ressources/objets-a-la-ceinture/');
   assert.equal(PAGES_RENOMMEES[ANCIENNE_PAGE_DE_LA_CEINTURE], `${CHEMIN_DE_L_EQUIPEMENT}#ceinture`);
@@ -141,7 +146,8 @@ test('bâtons : rendu d’une ligne (couleur de la magie dans le classeur, sans 
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
   const { fond, texte } = couleursDesBatons(m.magie);
-  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--mag: ${fond}; --mag-texte: ${texte}">`), 'la ligne sur la couleur de sa magie (lib/ceinture-couleurs.mjs), au niveau 1');
+  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`),
+    'la ligne sur la couleur de sa magie (lib/ceinture-couleurs.mjs), au niveau 1 ; ses infobulles dans la couleur de la magie sur le site');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
   // demande du propriétaire du 2026-10-16 : la gemme est la pastille des accessoires (`.acc-gemme`, dans la couleur de la magie), sans ligne pour sa qualité

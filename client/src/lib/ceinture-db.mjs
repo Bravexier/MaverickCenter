@@ -18,7 +18,14 @@ export const TITRE_DES_REGLES = '## La ceinture';
 export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
 
-const [CONSOMMABLES, CARQUOIS, BATONS] = SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => o.id);
+/** L'id d'un sous-onglet de lib/equipement.mjs, cherché par son id (un sous-onglet renommé ou retiré arrête le chargement, il ne change pas d'ordre en silence). */
+const sousOnglet = (id) => {
+  if (!SOUS_ONGLETS_DE_LA_CEINTURE.some((o) => o.id === id)) throw new Error(`[ceinture] sous-onglet inconnu : ${id}`);
+  return id;
+};
+const CONSOMMABLES = sousOnglet('ceinture-consommables');
+const CARQUOIS = sousOnglet('ceinture-carquois');
+const BATONS = sousOnglet('batons-magiques');
 
 /**
  * Les tableaux de l'onglet, dans l'ordre : `famille` de v_objet_ceinture, titre du tableau (les familles de recette du doc « Alchimie » : solvant

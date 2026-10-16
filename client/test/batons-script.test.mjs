@@ -1,5 +1,5 @@
-// Le script de l'onglet « Bâtons magiques » de /ressources/equipement/ (src/scripts/batons.mjs), exécuté dans un faux navigateur : le curseur d'une
-// ligne pose son niveau sur la ligne (`data-niveau`, que le CSS lit pour n'afficher que la qualité, l'effet et le prix de ce niveau), le chiffre à côté
+// Le script du sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de /ressources/equipement/ (src/scripts/batons.mjs), exécuté dans un faux
+// navigateur : le curseur d'une ligne pose son niveau sur la ligne (`data-niveau`, que le CSS lit pour n'afficher que la qualité, l'effet et le prix de ce niveau), le chiffre à côté
 // et le texte lu par un lecteur d'écran suivent ; les autres lignes ne bougent pas ; un niveau remis par le navigateur (retour arrière) est appliqué au
 // chargement.
 //   node --test test/batons-script.test.mjs

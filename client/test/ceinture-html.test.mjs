@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
 import { ancreDObjet, couleursDeLaLigne } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
+import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -74,11 +75,21 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
   assert.deepEqual(lignes, attendues);
   assert.equal(new Set(lignes).size, lignes.length, 'ancres uniques');
   for (const t of objets.tableaux) {
-    const bloc = onglet.slice(onglet.indexOf(`id="objets-${t.famille}"`));
-    assert.match(bloc, new RegExp(`<span class="ceint-tableau__compte">${t.nombre} objets?</span>`), `${t.famille} : ${t.nombre} objets`);
+    // le compte du tableau, dans son <summary> (pas celui d'un tableau suivant)
+    const debut = onglet.indexOf(`id="objets-${t.famille}"`);
+    const resume = onglet.slice(debut, onglet.indexOf('</summary>', debut));
+    assert.match(resume, new RegExp(`<span class="ceint-tableau__compte">${t.nombre} objets?</span>$`), `${t.famille} : ${t.nombre} objets`);
   }
-  const consommables = objets.tableaux.filter((t) => t.onglet === 'ceinture-consommables').reduce((n, t) => n + t.nombre, 0);
-  assert.match(onglet, new RegExp(`id="onglet-ceinture-consommables"[^>]*>\\s*<span class="onglet__nom">Consommables</span>\\s*<span class="onglet__detail">5 tableaux · ${consommables} objets</span>`));
+  // le détail de chaque sous-onglet : le nombre de tableaux (s'il y en a plusieurs) et d'objets ; celui des bâtons, les magies et les bâtons
+  const batons = chargerBatons(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+  for (const o of SOUS_ONGLETS_DE_LA_CEINTURE) {
+    const siens = objets.tableaux.filter((t) => t.onglet === o.id);
+    const detail = o.id === ONGLET_DES_BATONS
+      ? `${pluriel(batons.magies.length, 'magie')} · ${pluriel(batons.nombre, 'bâton')}`
+      : `${siens.length > 1 ? `${siens.length} tableaux · ` : ''}${pluriel(siens.reduce((n, t) => n + t.nombre, 0), 'objet')}`;
+    assert.match(onglet, new RegExp(`id="onglet-${o.id}" href="#${o.id}">\\s*<span class="onglet__nom">${o.nom}</span>\\s*<span class="onglet__detail">${detail}</span>`), `${o.id} : ${detail}`);
+  }
 });
 
 test('chaque potion sur la couleur de son palier dans le Doc « Alchimie » ; les carquois et sacs sans couleur', options, () => {

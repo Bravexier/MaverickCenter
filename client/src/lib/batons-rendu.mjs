@@ -98,13 +98,15 @@ export function couleursDesBatons(magie) {
 }
 
 /**
- * Les bâtons d'une magie (`m` : une entrée de `chargerBatons(db).magies`), sur la couleur de la magie (couleursDesBatons) : Gemme (en-tête de la ligne,
- * le nom de la magie pour les lecteurs d'écran) | Bois | Niveau (le curseur) | Effet | Prix, l'effet et le prix de chaque niveau (`niveaux` :
- * [{ niveau }]) ; la ligne s'ouvre au premier niveau (`data-niveau`).
+ * Les bâtons d'une magie (`m` : une entrée de `chargerBatons(db).magies`), sur la couleur de la magie (couleursDesBatons : `--baton-fond`,
+ * `--baton-texte`) : Gemme (en-tête de la ligne, le nom de la magie pour les lecteurs d'écran) | Bois | Niveau (le curseur) | Effet | Prix, l'effet et
+ * le prix de chaque niveau (`niveaux` : [{ niveau }]) ; la ligne s'ouvre au premier niveau (`data-niveau`). `--mag`, la couleur de la magie sur le site,
+ * reste la teinte des infobulles de la ligne (styles/global/infobulles.css), comme la pastille de la gemme : un fond du classeur presque blanc
+ * (Arcane, Vide, Lumière) n'efface pas leur filet.
  */
 export function htmlDeLigneDeBatons(m, niveaux, adresseDesComposants) {
   const { fond, texte } = couleursDesBatons(m.magie);
-  return `<tr class="baton" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}" style="--mag: ${e(fond)}; --mag-texte: ${e(texte)}">`
+  return `<tr class="baton" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}" style="--baton-fond: ${e(fond)}; --baton-texte: ${e(texte)}; --mag: ${e(couleurDeMagie(m.magie.nom))}">`
     + `<th scope="row" class="baton__gemme"><span class="baton__magie">${e(m.magie.nom)} : </span>${htmlDeGemme(m, niveaux, adresseDesComposants)}</th>`
     + `<td class="baton__bois">${htmlDeBois(m, adresseDesComposants)}</td>`
     + `<td class="baton__niveau">${htmlDuNiveau(m, niveaux)}</td>`
