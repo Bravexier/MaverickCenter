@@ -1,7 +1,8 @@
-// Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14 : « refaire la page des accessoires. Pas de tableau Markdown. Au lieu de ça, un
-// générateur d'accessoire », présenté comme la page des armes) : chargée depuis les tables de la base (accessoire_emplacement, accessoire_propriete,
-// accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche
-// et aux [[liens]] ; de ce Markdown, seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écrites sous chaque étape s'affichent.
+// Onglet Accessoires de la page /ressources/equipement/ (avant, la page /ressources/accessoires/ ; demande du propriétaire, 2026-10-14 : « refaire la
+// page des accessoires. Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire », présenté comme la page des armes) : chargée depuis les
+// tables de la base (accessoire_emplacement, accessoire_propriete, accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais
+// depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche et aux [[liens]] ; de ce Markdown, seules les règles (avant « ## CRÉATION
+// D'ACCESSOIRE ») et les consignes écrites sous chaque étape s'affichent.
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerAccessoires` reçoit la base ouverte par lib/donnees.mjs.
 import { normalize } from './text.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';

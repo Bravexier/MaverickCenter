@@ -29,10 +29,13 @@ test('un lien vers un métier mène à sa ligne du tableau ; les autres pages ga
   assert.equal(cheminDePage('metiers/forgeron'), 'metiers/#metier-forgeron');
   assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `${PAGE_DES_REGLES}/`, ancre: '' });
   assert.equal(cheminDePage('races/elfe'), 'races/elfe/');
-  // la page « Bouclier » est l'onglet Boucliers de la page des armures (demande du propriétaire, 2026-10-15) : elle n'est pas construite
-  assert.equal(cheminDePage('ressources/bouclier'), 'ressources/armures/#boucliers');
+  // les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page « Équipement » (2026-10-16) :
+  // elles ne sont pas construites (test/equipement.test.mjs)
+  assert.equal(cheminDePage('ressources/bouclier'), 'ressources/equipement/#boucliers');
   assert.equal(pageSansAdresse('ressources/bouclier'), true);
-  assert.equal(pageSansAdresse('ressources/armures'), false);
+  assert.equal(pageSansAdresse('ressources/armures'), true);
+  assert.equal(pageSansAdresse('ressources/accessoires'), true);
+  assert.equal(pageSansAdresse('ressources/composants'), false);
 });
 
 test('les [[liens]] vers un métier mènent à sa ligne, préfixe de déploiement compris', () => {

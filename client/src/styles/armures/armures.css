@@ -1,6 +1,7 @@
-/* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : la page /ressources/armures/. Deux onglets (Armures, Boucliers) ; dans chacun,
-   les tableaux de sélection (deux matériaux ; une forme et une matière) puis la liste classique, et à côté, dans un panneau qui suit le défilement, la
-   fiche de l'armure ou du bouclier choisi avec la pièce et l'amélioration (sur un écran étroit, il passe par-dessus la page). Les cases « Matière » dans
+/* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : les onglets Armures et Boucliers de la page /ressources/equipement/ (les
+   onglets eux-mêmes : styles/equipement/equipement.css). Dans chacun, les tableaux de sélection (deux matériaux ; une forme et une matière) puis la
+   liste classique, et à côté, dans un panneau qui suit le défilement, la fiche de l'armure ou du bouclier choisi avec la pièce et l'amélioration (sur
+   un écran étroit, il passe par-dessus la page). Les cases « Matière » dans
    la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet). Mode modification du site de dev (body.ed-mode) : pas de
    fiche, tout le contenu à la suite. */
 main:has(.armures) { max-width: 120rem; }
@@ -18,18 +19,9 @@ html:not(.js) .armures :is(.js-seul-ligne, .pfiche) { display: none; }
 .armures [hidden] { display: none !important; }
 .armures__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 
-/* Onglets (components/Onglets.astro) : Armures, Boucliers */
-.armures-onglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--pro-line); margin: 0 0 1rem; }
-.armures-onglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border); border-bottom: 0;
-  border-radius: var(--radius-lg) 12px 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
-.armures-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
-.armures-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
-html.js .armures-onglets .onglet.is-active { background: var(--pro); border-color: var(--pro); color: var(--surface); }
-html.js .armures-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
-html.js .armures-onglets .onglet:not(.is-active):hover { background: var(--pro-soft); }
-.armures-onglets .onglet:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
-html.js .armures-panneau:not(.is-active) { display: none; }
-html.js .armures-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* Les panneaux Armures et Boucliers (onglets : components/equipement/EquipementPage.astro) ; le tableau MATÉRIAUX, hors des panneaux, ne s'affiche
+   qu'avec l'un des deux : un autre onglet ouvert, tout le bloc se cache (sa marge ne s'ajoute pas à celle des onglets) */
+html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-panneau + .armures-panneau { margin-top: 2rem; }
 
 /* Règles de l'onglet (texte de la cellule du classeur), repliées ; sur un grand écran, en deux colonnes */

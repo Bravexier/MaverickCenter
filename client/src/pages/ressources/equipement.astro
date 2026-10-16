@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
+import { chargerArmures, contexteDesArmures, PAGE_DES_ARMURES, reglesDeLaPage as reglesDesArmures } from '../../lib/armures-db.mjs';
+import { chargerBatons, PAGE_DES_BATONS } from '../../lib/batons-db.mjs';
+import { chargerAccessoires, PAGE_DES_ACCESSOIRES, reglesDeLaPage as reglesDesAccessoires } from '../../lib/accessoires-db.mjs';
+import { PAGE_DES_BOUCLIERS } from '../../lib/corps-composants.mjs';
+import { CHEMIN_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { url } from '../../lib/wiki';
+
+// /ressources/equipement/ (menu Ressources ; demandes du propriétaire, 2026-10-16) : une page sans page du wiki, cinq onglets rendus depuis la base
+// (components/equipement/EquipementPage.astro, lib/equipement.mjs). Des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires »,
+// qui ne sont plus construites, seules les règles s'affichent (le texte avant les tableaux) ; elles sont rendues ici avec leur page comme contexte des
+// [[liens]]. Modifiable sur le site de dev : les onglets Armes, Armures et Boucliers (src/scripts/edition/armes.mjs, armures.mjs) ; pas encore les
+// bâtons ni les accessoires.
+const db = ouvrirBase();
+const armes = chargerArmes(db);
+const reglesA = armes.page ? reglesDeLaPage(armes.page.corps_md) : { introduction: '', prix: '' };
+const reglesArmes = {
+  introduction: avecPhraseDesArmesDeDepart(await rendreMarkdown(reglesA.introduction ?? '', PAGE_DES_ARMES)),
+  prix: reglesA.prix ? await rendreMarkdown(reglesA.prix, PAGE_DES_ARMES) : '',
+};
+const armures = chargerArmures(db);
+const reglesArmures = {
+  armures: await rendreMarkdown(reglesDesArmures(armures.pages.armures?.corps_md), PAGE_DES_ARMURES),
+  boucliers: await rendreMarkdown(reglesDesArmures(armures.pages.boucliers?.corps_md), PAGE_DES_BOUCLIERS),
+};
+const batons = chargerBatons(db);
+const rendre = async (md: string | null) => (md ? await rendreMarkdown(md, PAGE_DES_BATONS) : null);
+const reglesBatons = { introduction: await rendre(batons.regles.introduction), fabrication: await rendre(batons.regles.fabrication) };
+const accessoires = chargerAccessoires(db);
+const reglesAccessoires = accessoires.page ? await rendreMarkdown(reglesDesAccessoires(accessoires.page.corps_md), PAGE_DES_ACCESSOIRES) : '';
+---
+
+<Base title="Équipement" description="Armes, armures, boucliers, bâtons magiques et accessoires : matériaux, fabrication, améliorations et générateur d’accessoire." edition={CHEMIN_DE_L_EQUIPEMENT}>
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url('ressources/')}>Ressources</a></p>
+  <EquipementPage
+    armes={armes}
+    contexteArmes={contexteDesArmes(db)}
+    reglesArmes={reglesArmes}
+    armures={armures}
+    contexteArmures={contexteDesArmures(db)}
+    reglesArmures={reglesArmures}
+    batons={batons}
+    reglesBatons={reglesBatons}
+    accessoires={accessoires}
+    reglesAccessoires={reglesAccessoires}
+  />
+</Base>

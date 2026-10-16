@@ -1,6 +1,6 @@
-// Extension de l'éditeur pour /ressources/armures/ (components/armures/ArmuresPage.astro) — demande du propriétaire (2026-10-15) : la page des armures et
-// des boucliers « Modifiable tout de suite », comme celle des armes (« Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" […] mais
-// tous les tableaux sont visibles »).
+// Extension de l'éditeur pour les onglets Armures et Boucliers de /ressources/equipement/ (components/armures/ArmuresPage.astro) — demande du
+// propriétaire (2026-10-15) : la page des armures et des boucliers « Modifiable tout de suite », comme celle des armes (« Quand le mode Edition est
+// lancé, il n'est pas possible de "sélectionner" […] mais tous les tableaux sont visibles »).
 //   - en mode modification : tous les tableaux des deux onglets s'ouvrent (sauf les règles) et les fiches se ferment (styles/armures/armures.css cache les
 //     fiches ; le script de la page ignore les clics) ; les cases des armures, des pièces, des formes, des boucliers, des poids et des améliorations se
 //     modifient (éditeur commun : leurs `data-ed`), celles des matériaux restent en lecture (décision R62 : la page « Composants ») ;

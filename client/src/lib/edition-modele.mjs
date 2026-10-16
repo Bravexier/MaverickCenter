@@ -310,7 +310,7 @@ export const TABLES = {
       texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
     },
   },
-  // Armes (/ressources/armes/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
+  // Armes (onglet de /ressources/equipement/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
   // le service en tire les colonnes typées (dé, bonus, portée, solidité, provenance…), les types de dégâts et les minimums de caractéristique
   // (lib/arme-champs.mjs), et suit le corps de la page (lib/corps-armes.mjs). Pas les armes de monstres (absentes de la page).
   arme: {
@@ -393,7 +393,7 @@ export const TABLES = {
       effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
     },
   },
-  // Armures et boucliers (/ressources/armures/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
+  // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
   // « Bouclier » ; le service en tire les colonnes typées (prix, AP, AM, coût en RF, Force minimum) et les résistances et faiblesses d'une armure
   // (lib/armure-champs.mjs), et suit le corps des pages (lib/corps-armures.mjs). Ni création ni suppression (les fiches de personnage citent armures,
   // pièces, formes et améliorations) ; les matériaux se modifient sur la page « Composants » (décision R62).

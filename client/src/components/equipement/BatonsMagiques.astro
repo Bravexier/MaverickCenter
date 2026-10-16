@@ -1,0 +1,64 @@
+---
+import type { chargerBatons } from '../../lib/batons-db.mjs';
+import { htmlDEnteteDeNiveau, htmlDeLigneDeBatons } from '../../lib/batons-rendu.mjs';
+import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
+import { url } from '../../lib/wiki';
+
+// Onglet « Bâtons magiques » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
+// « Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ; avant, le tableau des bâtons de la page
+// « Objets à la ceinture », qui renvoie ici) : un panneau (`section.equipement-panneau#batons-magiques`) rendu depuis la base (lib/batons-db.mjs), jamais
+// depuis le Markdown de la page « Bâton magique », dont seules les règles s'affichent, repliées comme celles des autres onglets : l'introduction et
+// « Comment fabriquer un bâton magique ? ». Puis le tableau : une ligne par magie, sa gemme et son bois (leurs prix sont dans « Composants », où ils se
+// modifient), le bonus des trois niveaux (lib/batons-rendu.mjs). Pas encore modifiable sur le site de dev. CSS : styles/equipement/equipement.css.
+type Batons = ReturnType<typeof chargerBatons>;
+interface Props {
+  batons: Batons;
+  /** HTML des règles : l'introduction et la fabrication de la page « Bâton magique » (null si la page ne les écrit plus) */
+  regles: { introduction: string | null; fabrication: string | null };
+}
+const { batons, regles } = Astro.props;
+const composants = url('ressources/composants/');
+// la fabrication d'un seul paragraphe suit « Fabrication : » sur sa ligne ; plus longue, elle vient dessous
+const fabricationEnLigne = regles.fabrication && /^<p>(?:(?!<p[\s>])[\s\S])*<\/p>\s*$/.test(regles.fabrication)
+  ? regles.fabrication.trim().replace(/^<p>/, '').replace(/<\/p>$/, '') : null;
+---
+
+<section class="equipement-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques">
+  <h2 class="equipement-panneau__titre" id="titre-batons-magiques">Bâtons magiques</h2>
+  {batons.page?.resume && <p class="batons__chapo" set:html={htmlAvecMonnaies(batons.page.resume)} />}
+  {
+    (regles.introduction || regles.fabrication) && (
+      <details class="batons-regles">
+        <summary>Règles des bâtons magiques : port, cumul, fabrication</summary>
+        <div class="prose batons-regles__texte">
+          {regles.introduction && <Fragment set:html={regles.introduction} />}
+          {fabricationEnLigne ? (
+            <p class="batons-regles__fabrication"><strong>Fabrication</strong> : <Fragment set:html={fabricationEnLigne} /></p>
+          ) : regles.fabrication && (
+            <>
+              <p class="batons-regles__fabrication"><strong>Fabrication</strong></p>
+              <Fragment set:html={regles.fabrication} />
+            </>
+          )}
+        </div>
+      </details>
+    )
+  }
+  <p class="batons-aide">
+    Un bâton par magie et par niveau : sa gemme et son bois (leurs prix sont dans <a href={`${composants}#gemmes`}>Composants</a>), et le bonus passif
+    qu’il donne aux sorts. Les autres objets de la ceinture sont dans <a href={url('ressources/objets-a-la-ceinture/')}>Objets à la ceinture</a>.
+  </p>
+  <div class="batons-bloc">
+    <div class="batons-wrap">
+      <table class="batons-table" aria-labelledby="titre-batons-magiques">
+        <thead>
+          <tr>
+            <th scope="col">Magie</th><th scope="col">Gemme</th><th scope="col">Bois</th>
+            {batons.niveaux.map((n) => <th scope="col" set:html={htmlDEnteteDeNiveau(n.entete)} />)}
+          </tr>
+        </thead>
+        <tbody set:html={batons.magies.map((m) => htmlDeLigneDeBatons(m, batons.niveaux, composants)).join('')} />
+      </table>
+    </div>
+  </div>
+</section>

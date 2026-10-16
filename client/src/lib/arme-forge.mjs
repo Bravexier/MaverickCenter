@@ -1,4 +1,4 @@
-// Une arme forgée (page /ressources/armes/, demande du propriétaire) : l'arme, son matériau et son amélioration ajustent ses dégâts, sa durabilité et
+// Une arme forgée (onglet Armes de /ressources/equipement/, demande du propriétaire) : l'arme, son matériau et son amélioration ajustent ses dégâts, sa durabilité et
 // son coût. Règles de la page « Armes » : « tous les bonus se cumulent une fois l'arme forgée (exemple : une claymore en cuivre donne un bonus aux dégâts
 // de +10 car le cuivre donne +5 aux dégâts et la claymore donne aussi +5) » ; « 1 Matériau + Le coût de l'arme + Particularité de l'arme = PRIX FINAL » ;
 // le prix d'un matériau est celui en RO (« Ignore le prix en RF, il n'est plus d'actualité »). Une amélioration +N demande les coûts des niveaux 1 à N

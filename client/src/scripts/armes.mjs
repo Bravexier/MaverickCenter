@@ -1,19 +1,20 @@
-// Page /ressources/armes/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et ouvre à côté sa fiche
-// (un seul cadre, large, avec son bouton Fermer), avec dessous les matériaux et les améliorations côte à côte ; choisir un matériau (le fer par défaut)
-// et une amélioration ajuste dans la fiche les dégâts, la
-// durabilité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). Les boutons « Compétence » filtrent les tableaux
-// (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs), le bouton « Arme de départ » n'en garde que les
-// armes de départ ; une famille sans arme affichée se cache. Ces deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
+// Onglet Armes de la page /ressources/equipement/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et
+// ouvre à côté sa fiche (un seul cadre, large, avec son bouton Fermer), avec dessous les matériaux et les améliorations côte à côte ; choisir un
+// matériau (le fer par défaut) et une amélioration ajuste dans la fiche les dégâts, la durabilité, les effets (celui du matériau en vert) et le coût
+// total (calcul : lib/arme-forge.mjs). Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et
+// lourde » : lib/armes-filtres.mjs), le bouton « Arme de départ » n'en garde que les armes de départ ; une famille sans arme affichée se cache. Ces
+// deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
 // Une arme tient sur deux lignes du tableau (lib/armes-rendu.mjs#htmlDeLigneDArme) : la sienne (`tr.arme`) et celle de ses effets (`tr.arme-suite`).
 // Les valeurs viennent des cellules telles qu'affichées (attributs `data-…` des rendus de lib/armes-rendu.mjs), lues à chaque sélection : après un
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
 // En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs ferme la fiche et ouvre tous les tableaux).
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
-// l'arme).
+// l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état, et
+// l'ancre de l'onglet ouvert reste : lib/armes-filtres.mjs#ancreDesArmes). Échap ne ferme l'arme que si l'onglet est affiché.
 // En mode modification, pas de filtre : tout s'affiche.
 import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
 import {
-  armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
+  ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
 } from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
@@ -209,7 +210,15 @@ if (racine) {
       if (niveau) p.set('amelioration', String(niveau));
     }
     const q = p.toString().replace(/%2C/gi, ','); // ?competence=arc,arbalete
-    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${arme ? '' : location.hash}`);
+    // l'ancre de l'onglet ouvert reste (une arme rouverte au chargement dans un onglet caché ne l'efface pas), pas celle d'une ligne d'arme
+    let ancreDUneArme = false;
+    try {
+      ancreDUneArme = Boolean(document.getElementById(decodeURIComponent(location.hash.slice(1)))?.classList.contains('arme'));
+    } catch {
+      // ancre mal formée : gardée telle quelle
+    }
+    const ancre = ancreDesArmes(location.hash, { armeOuverte: Boolean(arme), ancreDUneArme });
+    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${ancre}`);
   }
 
   function ouvrir(ligne, { defiler = false } = {}) {
@@ -317,8 +326,9 @@ if (racine) {
     }
   });
 
+  // l'onglet Armes caché (un autre onglet de la page est ouvert) : Échap ne ferme pas l'arme qu'on ne voit pas
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && arme && !enEdition() && !ev.defaultPrevented) fermer();
+    if (ev.key === 'Escape' && arme && !enEdition() && !ev.defaultPrevented && racine.getClientRects().length > 0) fermer();
   });
 
   // après un enregistrement du mode modification (cellules réécrites) ou à son entrée (src/scripts/edition/armes.mjs)

@@ -150,7 +150,7 @@ flowchart LR
   propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
   `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
 - **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
-  simulation) et montre chaque jet ; une page (Ressources › Accessoires ou Outils) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  simulation) et montre chaque jet ; une page (aujourd'hui l'onglet Accessoires de Ressources › Équipement) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
   de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
 
 ### E5 — Chronologie (jalon B)

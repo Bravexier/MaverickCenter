@@ -6222,7 +6222,7 @@ Certaines classes changent la compétence qui sert à lancer les sorts : le mage
 
 ## Les maîtrises d’armes
 
-La maîtrise d’une catégorie d’arme fait ses dégâts : sans maîtrise, l’arme lance 1 dé ; avec 1 point de maîtrise, 2 dés, et ainsi de suite. Chaque catégorie a son dé : les dagues lancent des d6, les épées des d10, les arcs des d8 (voir les [armes](/ressources/armes/)). Les maîtrises de départ sont celles de la classe (étape 3) : notez celles qui sont nommées, choisissez celles qui sont « au choix ».
+La maîtrise d’une catégorie d’arme fait ses dégâts : sans maîtrise, l’arme lance 1 dé ; avec 1 point de maîtrise, 2 dés, et ainsi de suite. Chaque catégorie a son dé : les dagues lancent des d6, les épées des d10, les arcs des d8 (voir les [armes](/ressources/equipement/#armes)). Les maîtrises de départ sont celles de la classe (étape 3) : notez celles qui sont nommées, choisissez celles qui sont « au choix ».
 
 > **Sur votre fiche** : la valeur de chaque caractéristique ; les points naturels de vos compétences ; les acquis de race et de classe ; vos maîtrises d’armes.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -7032,7 +7032,7 @@ Un personnage a au plus **deux armes** en main ; les autres vont dans l’invent
 - ses **effets en plus**, comme des dégâts supplémentaires contre certaines créatures ;
 - sa **solidité** : le nombre de mauvais coups qu’elle encaisse avant de se briser.
 
-Chaque catégorie d’arme a son dé de dégâts : dagues d6, épées d10, masses d10, haches d10, armes d’hast d10, pugilat d6 à d10, bâton de combat d8, armes de jet d6, bombes d6, arcs d8, arbalètes d12. Le détail est dans les [armes](/ressources/armes/).
+Chaque catégorie d’arme a son dé de dégâts : dagues d6, épées d10, masses d10, haches d10, armes d’hast d10, pugilat d6 à d10, bâton de combat d8, armes de jet d6, bombes d6, arcs d8, arbalètes d12. Le détail est dans les [armes](/ressources/equipement/#armes).
 
 ## L’armure
 
@@ -7043,15 +7043,15 @@ L’armure retire des points aux dégâts reçus (voir [les dégâts](/guide/les
 
 Le personnage a une **AP et une AM de base** (de sa race, de ses classes magiques ou d’un objet), auxquelles s’ajoute l’armure portée, pièce par pièce, sur **six parties du corps** : la tête (T), le corps (C), le bras gauche (BG), le bras droit (BD), la jambe gauche (JG) et la jambe droite (JD). L’armure a aussi une **durabilité**.
 
-Ses **bonus et malus** disent comment elle encaisse les trois types de dégâts physiques : l’estoc, la taille et la frappe. Une armure qui résiste aux dégâts de frappe, par exemple, compte deux fois ses AP contre un coup de masse. Une armure de catégorie **lourde** retire 1 point de vitesse et empêche de nager ; chaque classe dit quelles armures elle sait porter. Le détail est dans les [armures](/ressources/armures/).
+Ses **bonus et malus** disent comment elle encaisse les trois types de dégâts physiques : l’estoc, la taille et la frappe. Une armure qui résiste aux dégâts de frappe, par exemple, compte deux fois ses AP contre un coup de masse. Une armure de catégorie **lourde** retire 1 point de vitesse et empêche de nager ; chaque classe dit quelles armures elle sait porter. Le détail est dans les [armures](/ressources/equipement/#armures).
 
 ## Le bouclier
 
-Le bouclier ajoute ses AP et son AM à celles de l’armure, mais seulement lors d’une **défense partielle** (voir [Attaquer et se défendre](/guide/attaquer-et-se-defendre/)). Les boucliers sont rangés par classe, de 1 à 5 : chaque classe de personnage dit jusqu’où elle sait les porter. Voir les [boucliers](/ressources/armures/#boucliers).
+Le bouclier ajoute ses AP et son AM à celles de l’armure, mais seulement lors d’une **défense partielle** (voir [Attaquer et se défendre](/guide/attaquer-et-se-defendre/)). Les boucliers sont rangés par classe, de 1 à 5 : chaque classe de personnage dit jusqu’où elle sait les porter. Voir les [boucliers](/ressources/equipement/#boucliers).
 
 ## Les accessoires
 
-Six emplacements pour des accessoires aux effets variés (voir les [accessoires](/ressources/accessoires/)).
+Six emplacements pour des accessoires aux effets variés (voir les [accessoires](/ressources/equipement/#accessoires)).
 
 ## La ceinture
 

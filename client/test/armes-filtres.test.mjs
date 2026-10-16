@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { COMPETENCES_D_ARME, competencesDArme, ECRITURES_DE_COMPETENCE } from '../src/lib/arme-champs.mjs';
-import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart } from '../src/lib/armes-filtres.mjs';
+import { ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart } from '../src/lib/armes-filtres.mjs';
 
 const connues = Object.keys(COMPETENCES_D_ARME);
 
@@ -55,4 +55,12 @@ test('« Arme de départ » : seules les armes de départ, en même temps que le
   assert.equal(lireDepart('1'), true);
   assert.equal(lireDepart(null), false);
   assert.equal(lireDepart('oui'), false);
+});
+
+test('l’ancre de l’adresse : celle de l’onglet ouvert reste, même une arme ouverte (page « Équipement ») ; celle d’une ligne d’arme part quand ?arme= la remplace', () => {
+  assert.equal(ancreDesArmes('#boucliers', { armeOuverte: true, ancreDUneArme: false }), '#boucliers', 'une arme rouverte dans l’onglet caché garde l’onglet');
+  assert.equal(ancreDesArmes('#armes', { armeOuverte: true, ancreDUneArme: false }), '#armes');
+  assert.equal(ancreDesArmes('#arme-epees-espadon', { armeOuverte: true, ancreDUneArme: true }), '', '?arme= la remplace');
+  assert.equal(ancreDesArmes('#arme-epees-espadon', { armeOuverte: false, ancreDUneArme: true }), '#arme-epees-espadon', 'aucune arme ouverte : rien ne change');
+  assert.equal(ancreDesArmes('', { armeOuverte: true, ancreDUneArme: false }), '');
 });

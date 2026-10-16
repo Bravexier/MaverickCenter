@@ -1,4 +1,4 @@
-// L'armure et le bouclier forgés de la page /ressources/armures/ (lib/armure-forge.mjs), décisions R75 à R80, avec des valeurs écrites ici (pas lues dans
+// L'armure et le bouclier forgés de la page /ressources/equipement/ (lib/armure-forge.mjs), décisions R75 à R80, avec des valeurs écrites ici (pas lues dans
 // la base : le site de dev peut les modifier) — les tableaux d'amélioration des onglets « Armures » et « Bouclier », des armures et des matières de la grille.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

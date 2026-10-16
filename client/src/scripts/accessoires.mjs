@@ -1,7 +1,7 @@
-// Page /ressources/accessoires/ (components/accessoires/AccessoiresPage.astro) — demande du propriétaire : un générateur d'accessoire. Cliquer sur une
-// ligne la choisit ; le dé d'un tableau en tire une au hasard (le tableau des compétences : 1d6 pour la ligne, puis 1d20 pour son bonus d'acquis) ;
-// « Tirer un accessoire » suit les étapes de l'onglet. Les tableaux d'effets sont dans des onglets (components/Onglets.astro) : choisir une propriété
-// ouvre le sien. Une ligne du tableau des compétences a son bonus d'acquis au curseur, au dé ou saisi (demande du propriétaire, 2026-10-16), qui en
+// Onglet Accessoires de la page /ressources/equipement/ (components/accessoires/AccessoiresPage.astro) — demande du propriétaire : un générateur
+// d'accessoire. Cliquer sur une ligne la choisit ; le dé d'un tableau en tire une au hasard (le tableau des compétences : 1d6 pour la ligne, puis
+// 1d20 pour son bonus d'acquis) ; « Tirer un accessoire » suit les étapes de l'onglet. Les tableaux d'effets sont dans des onglets
+// (components/Onglets.astro) : choisir une propriété ouvre le sien. Une ligne du tableau des compétences a son bonus d'acquis au curseur, au dé ou saisi (demande du propriétaire, 2026-10-16), qui en
 // donne le niveau, donc l'effet, la couleur et le prix (`reglerLAcquis`, lib/accessoires-generateur.mjs#effetDuBonus) ; les gemmes au choix se cochent
 // dans la ligne comme dans l'encart, et le prix calculé s'écrit dans la ligne (avec la monture de son niveau, comme les prix écrits) et dans l'encart
 // (avec la monture choisie). L'encart à côté décrit l'accessoire ainsi créé, dans la couleur du niveau de son effet. Modules importés :
@@ -360,8 +360,10 @@ if (racine) {
       gemmes: etat.gemmes.join(',') || null,
       maudit: etat.maudit,
     });
-    // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée
-    const ancre = ancreGardee(location.hash);
+    // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée, celle de
+    // l'onglet Accessoires de la page « Équipement » la remplace (sans elle, la page rouvrirait son premier onglet)
+    const panneau = racine.closest('.equipement-panneau[id]');
+    const ancre = ancreGardee(location.hash, panneau ? `#${panneau.id}` : '');
     if (s !== location.search || ancre !== location.hash) history.replaceState(history.state, '', `${location.pathname}${s}${ancre}`);
   }
 

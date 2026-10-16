@@ -11,7 +11,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
     'Règles : Guide, Races, Magies, Classes, Métiers',
-    'Ressources : Armes, Armures, Accessoires, Composants, Objets à la ceinture, Livres & Parchemins, Pièces élémentaires',
+    'Ressources : Équipement, Composants, Objets à la ceinture, Livres & Parchemins, Pièces élémentaires',
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
@@ -25,7 +25,7 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (m && TYPE_KEYS.includes(m[1])) {
       // une page du wiki, ou une page du site sous la rubrique (/ressources/composants/ : src/pages/ressources/composants.astro ;
-      // /ressources/objets-a-la-ceinture/ : src/pages/ressources/objets-a-la-ceinture.astro)
+      // /ressources/objets-a-la-ceinture/, /ressources/equipement/ : src/pages/ressources/objets-a-la-ceinture.astro, equipement.astro)
       if (m[2]) assert.ok(existsSync(new URL(`${m[1]}/${m[2]}.md`, content)) || existsSync(new URL(`${m[1]}/${m[2]}.astro`, pages)), `page absente : ${path}`);
     } else {
       const nom = path.replace(/\/$/, '');
@@ -40,7 +40,7 @@ test('la rubrique courante est repérée, avec ou sans préfixe de déploiement'
   assert.equal(groupIsCurrent(rubrique('personnages'), '/MaverickCenter/fiche/', '/MaverickCenter/'), true);
   assert.equal(groupIsCurrent(rubrique('personnages'), '/personnages/'), true);
   assert.equal(groupIsCurrent(rubrique('regles'), '/fiche/'), false, 'la fiche a quitté les Règles');
-  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/armures/'), true);
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/equipement/'), true);
   assert.equal(groupIsCurrent(rubrique('ressources'), '/races/'), false);
   assert.equal(groupIsCurrent(rubrique('outils'), '/archives/'), true);
   assert.equal(groupIsCurrent(rubrique('outils'), '/pages/'), true, 'index du wiki, hors menu');
@@ -90,14 +90,18 @@ test('/generateur/ est devenu /fiche/ : l’ancienne adresse mène à la nouvell
   assert.equal(nouvelleAdresse('/autre/generateur/', '/MaverickCenter/'), null);
 });
 
-test('la page « Bouclier » est l’onglet Boucliers de la page des armures : l’ancienne adresse y mène, la requête avant l’ancre, jamais deux « # »', () => {
-  assert.equal(nouvelleAdresse('/ressources/bouclier/'), '/ressources/armures/#boucliers');
+test('les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page « Équipement » : l’ancienne adresse y mène, la requête avant l’ancre, jamais deux « # »', () => {
+  assert.equal(nouvelleAdresse('/ressources/bouclier/'), '/ressources/equipement/#boucliers');
+  assert.equal(nouvelleAdresse('/ressources/armes/'), '/ressources/equipement/#armes');
+  assert.equal(nouvelleAdresse('/ressources/armures/'), '/ressources/equipement/#armures');
+  assert.equal(nouvelleAdresse('/ressources/baton-magique/'), '/ressources/equipement/#batons-magiques');
+  assert.equal(nouvelleAdresse('/ressources/accessoires/'), '/ressources/equipement/#accessoires');
   assert.equal(nouvelleAdresse('/guide/statistiques-resistance-faiblesse/'), '/magies/', 'page retirée par la migration 0049 (R86)');
-  assert.equal(nouvelleAdresse('/wiki/ressources/bouclier/'), '/ressources/armures/#boucliers', 'une ancienne adresse du wiki : un seul saut');
+  assert.equal(nouvelleAdresse('/wiki/ressources/bouclier/'), '/ressources/equipement/#boucliers', 'une ancienne adresse du wiki : un seul saut');
   assert.equal(nouvelleAdresse('/wiki/generateur/'), '/fiche/');
-  assert.equal(nouvelleAdresse('/MaverickCenter/ressources/bouclier', '/MaverickCenter/'), '/MaverickCenter/ressources/armures/#boucliers');
-  assert.equal(adresseComplete('/ressources/armures/#boucliers', '?forme=ecu', ''), '/ressources/armures/?forme=ecu#boucliers');
-  assert.equal(adresseComplete('/ressources/armures/#boucliers', '', '#bouclier-ecu-fer'), '/ressources/armures/#bouclier-ecu-fer', 'l’ancre d’origine l’emporte');
+  assert.equal(nouvelleAdresse('/MaverickCenter/ressources/bouclier', '/MaverickCenter/'), '/MaverickCenter/ressources/equipement/#boucliers');
+  assert.equal(adresseComplete('/ressources/equipement/#boucliers', '?forme=ecu', ''), '/ressources/equipement/?forme=ecu#boucliers');
+  assert.equal(adresseComplete('/ressources/equipement/#boucliers', '', '#bouclier-ecu-fer'), '/ressources/equipement/#bouclier-ecu-fer', 'l’ancre d’origine l’emporte');
   assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?q=1', '#h'), '/recherche/?mot-cle=feu&q=1#h');
 });
 

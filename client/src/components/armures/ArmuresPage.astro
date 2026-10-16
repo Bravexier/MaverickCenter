@@ -1,6 +1,5 @@
 ---
 import armuresCss from '../../styles/armures/armures.css?raw';
-import Onglets from '../Onglets.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { ARMURE_COMPLETE, type chargerArmures, type contexteDesArmures } from '../../lib/armures-db.mjs';
 import { analyserAmeliorationDeProtection } from '../../lib/armure-champs.mjs';
@@ -11,18 +10,21 @@ import {
 import { RENDUS_DES_ARMES } from '../../lib/armes-rendu.mjs';
 import { htmlAvecMonnaies, htmlDeMontant, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 
-// Page /ressources/armures/ (demandes du propriétaire, 2026-10-15 : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les
-// Armes. […] Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
+// Onglets « Armures » et « Boucliers » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro, qui pose les onglets ; demande du
+// propriétaire, 2026-10-16 : « A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armures/, dont
+// l'adresse mène à l'onglet Armures ; demandes du propriétaire, 2026-10-15 : « Je souhaite faire la refonte de l'onglet armure, de la même manière que
+// les Armes. […] Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
 // sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
-// aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendue depuis les tables de la base
+// aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendus depuis les tables de la base
 // (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles s'affichent, repliées.
-// Deux onglets (components/Onglets.astro ; sans JavaScript, ils se suivent) :
+// Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
 //   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
 //     fiche s'ouvre à côté, avec la pièce (tableau FABRICATION) et l'amélioration à choisir (décisions R75, R77) ; dessous, la liste des armures par type
 //     et les armures particulières, dont une ligne choisit l'armure ;
 //   - Boucliers : les formes et les matières ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche à côté, avec son
 //     amélioration (R76) ; dessous, la liste des boucliers par forme, et les poids de bouclier.
-// Puis, pour les deux, le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62).
+// Puis, pour les deux, le tableau MATÉRIAUX (prix, description, fabrication), en lecture : la page « Composants » en est la seule source (décision R62) ;
+// hors des panneaux, il ne s'affiche qu'avec l'un des deux (styles/armures/armures.css).
 // Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs).
 // Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
 // pièces, des formes, des boucliers, des poids et des améliorations modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
@@ -33,7 +35,7 @@ interface Props {
   contexte: ReturnType<typeof contexteDesArmures>;
   /** HTML des règles des deux onglets (le texte avant les tableaux des pages « Armures » et « Bouclier » : lib/armures-db.mjs#reglesDeLaPage) */
   regles: { armures: string; boucliers: string };
-  /** première phrase des règles des armures, affichée sous le titre */
+  /** première phrase des règles des armures, affichée en tête de l'onglet Armures */
   resume?: string | null;
 }
 const { armures, contexte, regles, resume } = Astro.props;
@@ -41,7 +43,6 @@ const TYPES_DE_LA_GRILLE = Object.keys(COULEURS_DES_TYPES);
 const parType = TYPES_DE_LA_GRILLE.map((type) => ({ type, armures: armures.combinaisons.filter((a) => a.type === type) }))
   .concat([{ type: 'Autres', armures: armures.combinaisons.filter((a) => !TYPES_DE_LA_GRILLE.includes(a.type)) }])
   .filter((g) => g.armures.length);
-const nbArmures = armures.combinaisons.length + armures.particulieres.length;
 const matiereDe = new Map(armures.matieres.map((m) => [m.cle, m]));
 const boucliersParForme = armures.formes.map((f) => ({ forme: f, boucliers: armures.boucliers.filter((b) => b.classe_id === f.id) }));
 const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -59,28 +60,15 @@ const legende = (
 ---
 
 <style is:inline set:html={armuresCss}></style>
-{/* Onglets pose aussi `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) */}
-<Onglets />
-<div class="armures" data-armures data-onglets="Armures et boucliers">
+{/* components/equipement/EquipementPage.astro pose `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) */}
+<div class="armures" data-armures>
   {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armures-piece={abr} set:html={htmlDePiece(abr)}></template>)}
-  <h1>{armures.pages.armures?.titre ?? 'Armures'} <span class="badge">Ressource</span></h1>
-  {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
-
-  <nav class="armures-onglets" aria-label="Armures et boucliers">
-    <a class="onglet is-active" id="onglet-armures" href="#armures">
-      <span class="onglet__nom">Armures</span>
-      <span class="onglet__detail">{armures.materiaux.length} matériaux · {nbArmures} armures</span>
-    </a>
-    <a class="onglet" id="onglet-boucliers" href="#boucliers">
-      <span class="onglet__nom">Boucliers</span>
-      <span class="onglet__detail">{armures.formes.length} formes · {armures.boucliers.length} boucliers</span>
-    </a>
-  </nav>
 
   {/* ── Armures ───────────────────────────────────────────────────────────────────────────────────────────────────────── */}
-  <section class="armures-panneau is-active" id="armures" aria-labelledby="titre-armures" data-panneau="armure">
-    <h2 class="armures-panneau__titre" id="titre-armures">Armures</h2>
+  <section class="armures-panneau equipement-panneau" id="armures" aria-labelledby="titre-armures" data-panneau="armure">
+    <h2 class="equipement-panneau__titre" id="titre-armures">{armures.pages.armures?.titre ?? 'Armures'}</h2>
+    {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
     <details class="armures-regles">
       <summary>Règles des armures : matériaux, pièces, solidité, améliorations</summary>
       <div class="prose armures-regles__texte"><Fragment set:html={regles.armures} /></div>
@@ -195,8 +183,8 @@ const legende = (
   </section>
 
   {/* ── Boucliers ─────────────────────────────────────────────────────────────────────────────────────────────────────── */}
-  <section class="armures-panneau" id="boucliers" aria-labelledby="titre-boucliers" data-panneau="bouclier">
-    <h2 class="armures-panneau__titre" id="titre-boucliers">Boucliers</h2>
+  <section class="armures-panneau equipement-panneau" id="boucliers" aria-labelledby="titre-boucliers" data-panneau="bouclier">
+    <h2 class="equipement-panneau__titre" id="titre-boucliers">Boucliers</h2>
     <details class="armures-regles">
       <summary>Règles des boucliers : classes, matériaux, poids, améliorations</summary>
       <div class="prose armures-regles__texte"><Fragment set:html={regles.boucliers} /></div>
@@ -311,7 +299,7 @@ const legende = (
   </section>
 
   {/* ── Matériaux (pour les deux onglets : « la table de l'onglet Bouclier est identique mot pour mot ») ────────────────── */}
-  <details class="armures-bloc armures-materiaux" id="materiaux">
+  <details class="armures-bloc armures-materiaux" id="materiaux-armures">
     <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Matériaux : prix, description et fabrication</span><span class="armures-bloc__compte">{armures.materiaux.length}</span></summary>
     <p class="armures-bloc__note">Le tableau MATÉRIAUX des onglets « Armures » et « Bouclier » ; ces matériaux se modifient sur la page Composants (décision R62).</p>
     <div class="armures-wrap">
@@ -320,7 +308,7 @@ const legende = (
         <tbody>
           {
             armures.materiaux.map((m) => (
-              <tr class="pmat-ref" id={`materiau-${m.cle}`}>
+              <tr class="pmat-ref" id={`matiere-${m.cle}`}>
                 <th scope="row" class="pmat-ref__nom" style={`--t: ${couleurDuType(m.type)}`} data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')}>{m.nom}</th>
                 <td class="pmat-ref__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS_DES_ARMES['materiau-prix'](m.prix)} />
                 <td class="pmat-ref__description" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'description')}>{m.description ?? ''}</td>

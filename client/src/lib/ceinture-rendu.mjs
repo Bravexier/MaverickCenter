@@ -6,7 +6,6 @@
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé. `lien(id)` donne l'adresse d'une page (url(cheminDePage(id)) dans la page).
 import { htmlAvecMonnaies } from './monnaies.mjs';
 import { RENDUS_DES_COMPOSANTS, ancreDeComposant } from './composants-rendu.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -20,8 +19,8 @@ export const texteDeRecherche = (...textes) =>
 export const ancreDObjet = (id) => `objet-${String(id).slice(String(id).indexOf('#') + 1).replace(/[^a-z0-9-]+/gi, '-')}`;
 
 /**
- * Un texte de plusieurs lignes (effet d'une potion, bonus d'un bâton) : une ligne par ligne écrite, la puce « - » d'une ligne retirée (l'alchimie
- * primitive écrit ses effets en liste), les monnaies en icônes.
+ * Un texte de plusieurs lignes (effet d'une potion ; bonus d'un bâton, onglet « Bâtons magiques » de la page « Équipement » : lib/batons-rendu.mjs) :
+ * une ligne par ligne écrite, la puce « - » d'une ligne retirée (l'alchimie primitive écrit ses effets en liste), les monnaies en icônes.
  */
 export function htmlDeLignes(texte) {
   const l = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map((x) => x.trim().replace(/^-\s+/, '')).filter(Boolean);
@@ -53,34 +52,3 @@ export const htmlDeLigneDeContenant = (r, adresseDesComposants) =>
   `<tr class="ceint-ligne" id="${e(ancreDObjet(r.id))}" data-recherche="${e(texteDeRecherche(r.nom, r.description))}">`
   + `<th scope="row" class="ceint-nom"><a href="${e(`${adresseDesComposants}#${ancreDeComposant(r.id)}`)}">${e(r.nom)}</a></th>`
   + `<td class="ceint-prix">${htmlDePrix(r.prix_brut)}</td><td class="ceint-description">${r.description ? htmlAvecMonnaies(r.description) : VIDE}</td></tr>`;
-
-/** Pastille d'une magie dans sa couleur. */
-const htmlDeMagie = (magie) => {
-  const fond = couleurDeMagie(magie?.nom);
-  return `<span class="ceint-magie" style="--c: ${fond}; --c-texte: ${texteSurCouleur(fond)}">${e(magie?.nom ?? '')}</span>`;
-};
-
-/** Une gemme ou un bois de la recette, en lien vers sa ligne de la page « Composants ». */
-const htmlDeComposant = (c, adresseDesComposants) => (c ? `<a href="${e(`${adresseDesComposants}#${ancreDeComposant(c.id)}`)}">${e(c.nom)}</a>` : VIDE);
-
-/** Ancre de la ligne des bâtons d'une magie : « objet-baton-magie-du-feu » pour « magies/magie-du-feu ». */
-export const ancreDeBatons = (magieId) => `objet-baton-${String(magieId).replace(/^.*\//, '')}`;
-
-/**
- * Les bâtons d'une magie : Magie | Gemme | Bois | le bonus de chaque niveau (`niveaux` : [{ niveau }]). La ligne compte pour autant d'objets que la
- * magie a de bâtons (`data-nombre`, que le script de la page additionne).
- */
-export const htmlDeLigneDeBatons = (m, niveaux, adresseDesComposants) =>
-  `<tr class="ceint-ligne" id="${e(ancreDeBatons(m.magie.id))}" style="--mag: ${couleurDeMagie(m.magie.nom)}"`
-  + ` data-nombre="${Object.keys(m.bonus).length}"`
-  + ` data-recherche="${e(texteDeRecherche(m.magie.nom, m.gemme?.nom, m.bois?.nom, ...niveaux.map((n) => m.bonus[n.niveau])))}">`
-  + `<th scope="row" class="ceint-nom">${htmlDeMagie(m.magie)}</th>`
-  + `<td>${htmlDeComposant(m.gemme, adresseDesComposants)}</td><td>${htmlDeComposant(m.bois, adresseDesComposants)}</td>`
-  + niveaux.map((n) => `<td class="ceint-effet">${htmlDeLignes(m.bonus[n.niveau])}</td>`).join('')
-  + '</tr>';
-
-/** L'en-tête d'une colonne de niveau de bâton : « Niveau 1 » et, dessous, sa recette (« 1 Gemme Commune + 1 bois [magie] »), telle qu'écrite. */
-export function htmlDEnteteDeNiveau(entete) {
-  const m = /^(Niveau\s+\d+)\s*\((.*)\)\s*$/.exec(String(entete ?? '').trim());
-  return m ? `${e(m[1])}<span class="ceint-recette">${e(m[2])}</span>` : e(entete);
-}

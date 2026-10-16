@@ -1,6 +1,6 @@
 // Page /ressources/objets-a-la-ceinture/ construite (dist/) : rendue depuis la base (lib/ceinture-db.mjs, vue v_objet_ceinture : décisions R81 et R82),
-// un tableau repliable par famille dans l'ordre, une ligne par objet (une par magie pour les bâtons), des liens qui mènent à des pages et des ancres
-// qui existent, les monnaies en icônes (R63), les règles de la ceinture et des bâtons, l'entrée du menu Ressources. Se saute sans dist/ (npm run build) ;
+// un tableau repliable par famille dans l'ordre, une ligne par objet, des liens qui mènent à des pages et des ancres qui existent (dont l'onglet
+// « Bâtons magiques » de la page « Équipement », où sont les bâtons), les monnaies en icônes (R63), les règles de la ceinture, l'entrée du menu Ressources. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { FAMILLES_DE_LA_CEINTURE, chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
-import { ancreDObjet, ancreDeBatons } from '../src/lib/ceinture-rendu.mjs';
+import { ancreDObjet } from '../src/lib/ceinture-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -20,19 +20,19 @@ const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const objets = present ? chargerObjetsDeCeinture(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const tableau = (famille) => objets.tableaux.find((t) => t.famille === famille);
 
-test('les tableaux, dans l’ordre : fioles, philtres, remèdes, alchimie primitive, huiles, carquois et sacs, bâtons magiques', options, () => {
+test('les tableaux, dans l’ordre : fioles, philtres, remèdes, alchimie primitive, huiles, carquois et sacs ; pas de bâtons magiques (« Équipement »)', options, () => {
   const ids = [...main.matchAll(/<details class="ceint-tableau" id="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, FAMILLES_DE_LA_CEINTURE.map((f) => `objets-${f.famille}`));
   assert.match(html, /href="[^"]*ressources\/objets-a-la-ceinture\/"[^>]*>Objets à la ceinture</, 'l’entrée du menu Ressources');
   assert.ok(!html.includes('data-edition'), 'pas encore modifiable sur le site de dev');
+  assert.ok(!main.includes('id="objets-baton"') && !main.includes('class="ceint-magie"'), 'le tableau des bâtons est dans l’onglet de la page « Équipement »');
 });
 
-test('une ligne par objet de la vue (une par magie pour les bâtons), aux ancres uniques ; le compte de chaque tableau', options, () => {
+test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le compte de chaque tableau', options, () => {
   const lignes = [...main.matchAll(/<tr class="ceint-ligne" id="([^"]+)"/g)].map((m) => m[1]);
   const attendues = [
     ...objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages.flatMap((p) => p.potions.map((x) => ancreDObjet(x.id)))),
     ...tableau('contenant').objets.map((r) => ancreDObjet(r.id)),
-    ...tableau('baton').magies.map((m) => ancreDeBatons(m.magie.id)),
   ];
   assert.deepEqual(lignes, attendues);
   assert.equal(new Set(lignes).size, lignes.length, 'ancres uniques');
@@ -40,14 +40,12 @@ test('une ligne par objet de la vue (une par magie pour les bâtons), aux ancres
     const bloc = main.slice(main.indexOf(`id="objets-${t.famille}"`));
     assert.match(bloc, new RegExp(`data-compte>${t.nombre}<`), `${t.famille} : ${t.nombre} objets`);
   }
-  const nombres = [...main.matchAll(/<tr class="ceint-ligne" id="objet-baton-[^"]+"[^>]*data-nombre="(\d+)"/g)].reduce((n, m) => n + Number(m[1]), 0);
-  assert.equal(nombres, tableau('baton').nombre, 'les lignes de bâtons comptent pour leurs bâtons');
   assert.match(main, new RegExp(`data-ceinture-compte aria-live="polite">${objets.tableaux.reduce((n, t) => n + t.nombre, 0)} objets<`));
 });
 
-test('les liens mènent à des pages construites et à des ancres qui existent (potions, Composants, Armes, guide)', options, () => {
+test('les liens mènent à des pages construites et à des ancres qui existent (potions, Composants, Équipement, guide)', options, () => {
   const liens = [...new Set([...main.matchAll(/href="(\/[^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, '&')))];
-  assert.ok(liens.length > 80);
+  assert.ok(liens.length > 50);
   const pages = new Map();
   for (const lien of liens) {
     const [chemin, ancre] = lien.split('#');
@@ -60,7 +58,8 @@ test('les liens mènent à des pages construites et à des ancres qui existent (
   }
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) assert.ok(liens.includes(`/${p.id}/`), `la page ${p.id}`);
   assert.ok(liens.includes('/guide/l-equipement/') && liens.includes('/guide/fiche-accessoires-et-ceinture/'), 'les pages du guide');
-  assert.ok(liens.includes('/ressources/baton-magique/'), 'la page des bâtons');
+  assert.ok(liens.includes('/ressources/equipement/#batons-magiques'), 'l’onglet des bâtons magiques');
+  assert.ok(liens.includes('/ressources/equipement/#famille-bombes'), 'les bombes, dans l’onglet Armes');
 });
 
 test('les prix et les textes écrivent les monnaies en icônes, jamais en abréviations (R63)', options, () => {
@@ -70,16 +69,12 @@ test('les prix et les textes écrivent les monnaies en icônes, jamais en abrév
   assert.ok((tableaux.match(/class="piece piece--/g) ?? []).length >= objets.tableaux.filter((t) => t.pages).reduce((n, t) => n + t.nombre, 0), 'un prix par potion');
 });
 
-test('les règles : la ceinture (guide, et le texte de la source en dépliable), les bâtons magiques (introduction et fabrication) ; les titres des pages', options, () => {
+test('les règles : la ceinture (guide, et le texte de la source en dépliable) ; les titres des pages', options, () => {
   // les textes se modifient sur le site de dev (lib/ceinture-db.mjs les lit dans la base, ceinture-db.test.mjs les compare) : ici, leur place
   const regles = main.slice(main.indexOf('class="ceinture-regles"'), main.indexOf('class="ceinture-sommaire"'));
   assert.equal(regles.includes('class="prose ceinture-regles__texte"'), Boolean(objets.regles.ceinture));
   assert.equal(/<details class="ceinture-regles__detail">[\s\S]*<\/details>/.test(regles), Boolean(objets.regles.reference), 'le texte de la source, en dépliable');
   for (const s of [objets.sources.chapitre, objets.sources.reference]) if (s) assert.ok(regles.includes(`>${s.titre.replace(/'/g, '&#39;')}</a>`) || regles.includes(`>${s.titre}</a>`), s.id);
-  const batons = main.slice(main.indexOf('id="objets-baton"'));
-  assert.equal(batons.includes('class="prose ceint-tableau__regles"'), Boolean(objets.regles.batons || objets.regles.fabrication));
-  assert.equal(batons.includes('<strong>Fabrication</strong>'), Boolean(objets.regles.fabrication));
-  for (const n of tableau('baton').niveaux) assert.ok(batons.includes(`>Niveau ${n.niveau}<span class="ceint-recette">`), `niveau ${n.niveau}`);
 });
 
 test('les tableaux d’un groupe sont dans sa <section> (« Potions »), les autres hors de toute section', options, () => {
