@@ -50,7 +50,7 @@ import { ajouterAuxNotes, ficheVide } from './fiche-format.mjs';
 import {
   armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
-  famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, refusMagieAcquise, trouver,
+  famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, refusMagieAcquise, trouver,
 } from './fiche-moteur.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
@@ -1085,9 +1085,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const nom = texte(aNom);
     return nom ? { nom, quantite: entierLu(aQuantite, `Quantité de « ${nom} »`) ?? 1 } : null;
   };
+  // une quantité 0 n'a de sens qu'à la ceinture, pour un carquois ou un sac de projectiles vide (décision R89 : minimumDeLEmplacement)
   const ranger = (liste, objet, quoi, rang) => {
     if (!objet) return;
-    if (objet.quantite < 1) perdu(`${quoi} : « ${objet.nom} » en quantité ${objet.quantite}`);
+    if (objet.quantite < (liste === f.ceinture ? minimumDeLEmplacement(regles, objet.nom) : 1)) perdu(`${quoi} : « ${objet.nom} » en quantité ${objet.quantite}`);
     else liste.push({ rang, nom: objet.nom, quantite: objet.quantite, ressource_id: ressource(objet.nom) });
   };
   d.ceinture.forEach((c, i) => ranger(f.ceinture, auto ? objetAuto(c.nom, c.quantite) : lireObjet(texte(c)), `Ceinture ${i + 1}`, i + 1));

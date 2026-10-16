@@ -384,16 +384,31 @@ export function emplacementsSelonLaForce(regles, force) {
 }
 
 /**
+ * Le don débloqué qui donne n'importe quel sac quelle que soit la Force (« Permet d'utiliser n'importe quel sac quels que soient la Force ou les
+ * malus », Mercenaire « Organisé » : dons[].sac_sans_force, lib/ceinture-texte.mjs) : { nom, force }, où force est la Force dont le sac compte alors
+ * (décision R88 : « un inventaire équivalent à 5 de Force, quelque soit la force du personnage » : regles.sac.force_avec_le_don) ; null sans lui.
+ */
+export function donDuSacSansForce(regles, fiche) {
+  const don = donsAcquis(regles, fiche).flatMap((c) => c.dons).find((d) => d.sac_sans_force);
+  return don ? { nom: don.nom, force: regles.sac?.force_avec_le_don ?? 0 } : null;
+}
+
+/**
  * L'inventaire de la fiche (décision R88) : la Force (la valeur affichée : base, magie innée et accessoire, caracteristiquesDe ; les croix n'y sont
- * pas), ses emplacements, les lignes occupées (une ligne = un emplacement, quelle que soit sa quantité) et celles au-delà de la place (une Force qui
- * baisse, un import : rien n'est retiré, la fiche le signale).
+ * pas), ses emplacements (ceux de la Force, ou de la Force que le don « Organisé » donne quand elle est plus haute : donDuSacSansForce), les lignes
+ * occupées (une ligne = un emplacement, quelle que soit sa quantité) et celles au-delà de la place (une Force qui baisse, un import : rien n'est retiré,
+ * la fiche le signale).
  */
 export function inventaireDe(regles, fiche) {
   const force = caracteristiquesDe(regles, fiche).find((c) => c.id === 'force')?.valeur ?? 0;
-  const emplacements = emplacementsSelonLaForce(regles, force);
+  const don = donDuSacSansForce(regles, fiche);
+  const emplacements = emplacementsSelonLaForce(regles, Math.max(force, don?.force ?? 0));
   const occupes = (fiche.inventaire ?? []).filter((o) => String(o.nom ?? '').trim()).length;
-  return { force, emplacements, occupes, auDela: Math.max(0, occupes - emplacements) };
+  return { force, don, emplacements, occupes, auDela: Math.max(0, occupes - emplacements) };
 }
+
+/** La quantité d'une ligne du sac : un nombre saisi, de 1 à regles.sac.quantite_max (décision R88 : « Maxé à 99 pour l'inventaire »). */
+export const quantiteDuSac = (regles, quantite) => Math.min(regles.sac?.quantite_max ?? Infinity, Math.max(1, Math.round(entier(quantite))));
 
 /**
  * Ce qu'est un objet pour la ceinture, d'après son nom (décisions R81, R89) : { genre: 'baton', baton_id } pour un bâton magique (« Bâton magique Feu,
@@ -439,8 +454,10 @@ export function exemplairesParEmplacement(regles, fiche) {
 }
 
 /**
- * La quantité au plus d'un emplacement de ceinture qui porte `nom` (décision R89) : 1 pour un bâton magique (« A part pour le bâton d'utilisations
- * illimités ») ; la contenance d'un carquois ou d'un sac (sa quantité compte ses projectiles) ; sinon exemplairesParEmplacement.
+ * La quantité au plus d'un emplacement de ceinture qui porte `nom` (décision R89 : « un nombre à saisir, maxé à 3 pour la ceinture, sauf pour un
+ * conteneur de munitions ») : 1 pour un bâton magique (« A part pour le bâton d'utilisations illimités ») ; la contenance d'un carquois ou d'un sac
+ * (« ils augmentent le maximum possible de la case quantité associée dans la ceinture pour représenter les flèches […] ») ; sinon
+ * exemplairesParEmplacement (3, 4 avec le don qui l'écrit).
  */
 export function maximumDeLEmplacement(regles, fiche, nom) {
   const o = objetDeCeinture(regles, nom);
@@ -450,20 +467,21 @@ export function maximumDeLEmplacement(regles, fiche, nom) {
 }
 
 /**
- * Un objet de la ceinture qui vient du sac et y retourne (décision R89 : « Il quitte le sac ») : un objet que objetDeCeinture reconnaît (potion, huile,
- * carquois ou sac, bâton magique). Tout autre nom est une saisie libre (un objet spécial du MJ, un objet hors de la liste, un nom en cours de frappe) qui
- * ne touche pas au sac : retirée de la ceinture, elle disparaît ; remplacée par une autre saisie libre, elle est renommée sur place.
+ * La quantité au moins d'un emplacement de ceinture qui porte `nom` (décision R89 : « Un Carquois à 0 est juste un carquois vide ») : 0 pour un carquois
+ * ou un sac de projectiles, sinon 1.
  */
-const duSac = (regles, nom) => objetDeCeinture(regles, nom) !== null;
+export const minimumDeLEmplacement = (regles, nom) => (objetDeCeinture(regles, nom)?.genre === 'contenant' ? 0 : 1);
+
+/** La quantité d'un emplacement de ceinture qui porte `nom` : le nombre saisi, borné de minimumDeLEmplacement à maximumDeLEmplacement (décision R89). */
+export const quantiteDeCeinture = (regles, fiche, nom, quantite) =>
+  Math.min(maximumDeLEmplacement(regles, fiche, nom), Math.max(minimumDeLEmplacement(regles, nom), Math.round(entier(quantite))));
+
 /**
- * Unités du sac que tient un emplacement de ceinture : 1 pour un contenant (sa quantité compte ses projectiles), sinon sa quantité (un bâton : 1, ou
- * tous ceux qu'une fiche importée y avait mis) ; 0 pour une saisie libre.
+ * Unités du sac que tient un emplacement de ceinture (décision R89) : 1 pour un carquois ou un sac de projectiles (sa quantité compte ses projectiles,
+ * que le sac ne compte pas), sinon sa quantité (un bâton : 1, ou tous ceux qu'une fiche importée y avait mis). Un objet saisi librement (un objet spécial
+ * du MJ) compte comme les autres : « Pas de règle spéciale ».
  */
-const unitesDuSac = (regles, o) => {
-  const genre = objetDeCeinture(regles, o.nom)?.genre;
-  if (!genre) return 0;
-  return genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite));
-};
+const unitesDuSac = (regles, o) => (objetDeCeinture(regles, o.nom)?.genre === 'contenant' ? 1 : Math.max(1, entier(o.quantite)));
 const nomDe = (o) => String(o?.nom ?? '').trim();
 /** Une ligne du sac compte quand elle a au moins un exemplaire (une quantité 0 d'une saisie en cours ne fait pas un objet). */
 const exemplairesDe = (l) => Math.max(0, entier(l.quantite));
@@ -484,87 +502,88 @@ function sortirDuSac(inventaire, nom, n) {
   return { inventaire: renumeroter(sac.filter((l) => !(nomDe(l) === nom && entier(l.quantite) <= 0))), sorties: n - reste };
 }
 
-/** Remet `n` unités de l'objet `o` au sac : sur sa première ligne s'il en a une, sinon sur une nouvelle ligne à la fin (au-delà de la place s'il le faut). */
-function remettreAuSac(inventaire, o, n) {
-  if (n <= 0 || !nomDe(o)) return renumeroter(inventaire.map((l) => ({ ...l })));
+/**
+ * Remet `n` unités de l'objet `o` au sac : sur ses lignes de ce nom tant qu'elles ont de la place (au plus regles.sac.quantite_max chacune : 99,
+ * décision R88), le reste sur de nouvelles lignes à la fin (au-delà de la place s'il le faut).
+ */
+function remettreAuSac(regles, inventaire, o, n) {
   const sac = inventaire.map((l) => ({ ...l }));
-  const ligne = sac.find((l) => nomDe(l) === nomDe(o) && exemplairesDe(l) > 0);
-  if (ligne) ligne.quantite = exemplairesDe(ligne) + n;
-  else sac.push({ nom: nomDe(o), quantite: n, ressource_id: o.ressource_id ?? null });
+  const max = Math.max(1, regles.sac?.quantite_max ?? Infinity);
+  let reste = nomDe(o) ? n : 0;
+  for (const l of sac) {
+    if (reste <= 0) break;
+    if (nomDe(l) !== nomDe(o) || exemplairesDe(l) < 1) continue;
+    const ajout = Math.min(reste, Math.max(0, max - exemplairesDe(l)));
+    l.quantite = exemplairesDe(l) + ajout;
+    reste -= ajout;
+  }
+  while (reste > 0) {
+    const q = Math.min(reste, max);
+    sac.push({ nom: nomDe(o), quantite: q, ressource_id: o.ressource_id ?? null });
+    reste -= q;
+  }
   return renumeroter(sac);
 }
 
+/** Une saisie libre de la ceinture : un nom que ni la liste de la ceinture ni le catalogue ne connaissent (un objet spécial du MJ, un nom en cours de correction). */
+const saisieLibre = (regles, o) => !objetDeCeinture(regles, o.nom) && !o.ressource_id && !(regles.ressources ?? []).some((r) => r.nom === nomDe(o));
 const ligneDeCeinture = (fiche, rang) => (fiche.ceinture ?? []).find((x) => entier(x.rang) === rang) ?? null;
 const avecLEmplacement = (fiche, rang, ligne) =>
   [...(fiche.ceinture ?? []).filter((x) => entier(x.rang) !== rang), ...(ligne ? [{ ...ligne, rang }] : [])].sort((a, b) => entier(a.rang) - entier(b.rang));
 
 /**
- * La ceinture et l'inventaire quand l'emplacement `rang` est vidé (décision R89) : un objet du sac y retourne (un contenant : une unité ;
- * sinon ses exemplaires) ; une saisie libre disparaît. Rend { ceinture, inventaire } ; la fiche n'est pas modifiée.
+ * La ceinture et l'inventaire quand l'emplacement `rang` est vidé (décision R89) : ce qu'il portait retourne au sac (unitesDuSac : un carquois ou un sac
+ * de projectiles, sans ses projectiles ; un objet saisi librement comme les autres). Rend { ceinture, inventaire } ; la fiche n'est pas modifiée.
  */
 export function viderLEmplacement(regles, fiche, rang) {
   const ancien = ligneDeCeinture(fiche, rang);
   return {
     ceinture: avecLEmplacement(fiche, rang, null),
-    inventaire: ancien ? remettreAuSac(fiche.inventaire ?? [], ancien, unitesDuSac(regles, ancien)) : renumeroter([...(fiche.inventaire ?? [])]),
+    inventaire: ancien ? remettreAuSac(regles, fiche.inventaire ?? [], ancien, unitesDuSac(regles, ancien)) : renumeroter([...(fiche.inventaire ?? [])]),
   };
 }
 
 /**
- * La ceinture et l'inventaire quand l'emplacement `rang` reçoit `nom` (décision R89 : « Il quitte le sac ») : ce qu'il portait est retiré
- * (viderLEmplacement) ; un objet du sac en sort (un bâton ou un contenant : une unité, la quantité 1 ; sinon autant d'exemplaires que le sac en a, jusqu'au
- * maximum de l'emplacement ; absent du sac, il est posé à 1 et y ira quand on le retirera) ; une saisie libre ne touche pas au sac, quantité 1, et une
- * saisie libre qui en remplace une autre est un renommage : elle garde sa quantité (bornée au maximum). Un nom vide vide l'emplacement.
+ * La ceinture et l'inventaire quand l'emplacement `rang` reçoit `nom` (décision R89 : « Il quitte le sac ») :
+ * - un objet que le sac contient (son nom exact) en sort, et ce que l'emplacement portait y retourne (viderLEmplacement) : un bâton ou un carquois, une
+ *   unité (un carquois arrive vide, à 0 : « Un Carquois à 0 est juste un carquois vide ») ; un autre objet, autant d'exemplaires que le sac en a,
+ *   jusqu'au maximum de l'emplacement ;
+ * - un autre nom (un objet spécial du MJ, un nom corrigé) ne sort rien du sac : il corrige une saisie libre de l'emplacement (un nom que ni la liste ni le
+ *   catalogue ne connaissent : « Corde » corrigé en « Corde de 10 m »), qui garde sa quantité (bornée : quantiteDeCeinture) ; sinon ce que
+ *   l'emplacement portait retourne au sac (un objet du catalogue n'est jamais perdu) et le nom y est posé (un carquois à 0, un autre objet à 1).
+ * Un nom vide vide l'emplacement.
  */
 export function mettreALaCeinture(regles, fiche, rang, nom) {
-  const vide = viderLEmplacement(regles, fiche, rang);
   const n = String(nom ?? '').trim();
-  if (!n) return vide;
+  if (!n) return viderLEmplacement(regles, fiche, rang);
   const ancien = ligneDeCeinture(fiche, rang);
-  const apres = { ...fiche, ceinture: vide.ceinture, inventaire: vide.inventaire };
   const o = objetDeCeinture(regles, n);
   const ressource_id = o?.ressource_id ?? (regles.ressources ?? []).find((r) => r.nom === n)?.id ?? null;
-  if (!o) {
-    const renomme = ancien && !duSac(regles, ancien.nom) ? Math.min(maximumDeLEmplacement(regles, fiche, n), Math.max(1, entier(ancien.quantite))) : 1;
-    return { ceinture: avecLEmplacement(apres, rang, { nom: n, quantite: renomme, ressource_id }), inventaire: vide.inventaire };
+  if (dansLeSac(fiche, n) === 0) {
+    if (ancien && saisieLibre(regles, ancien)) {
+      const quantite = quantiteDeCeinture(regles, fiche, n, ancien.quantite);
+      return { ceinture: avecLEmplacement(fiche, rang, { nom: n, quantite, ressource_id }), inventaire: renumeroter([...(fiche.inventaire ?? [])]) };
+    }
+    const vide = viderLEmplacement(regles, fiche, rang);
+    return { ceinture: avecLEmplacement({ ...fiche, ...vide }, rang, { nom: n, quantite: minimumDeLEmplacement(regles, n), ressource_id }), inventaire: vide.inventaire };
   }
-  const unite = o.genre === 'baton' || o.genre === 'contenant';
+  const vide = viderLEmplacement(regles, fiche, rang);
+  const apres = { ...fiche, ...vide };
+  const unite = o?.genre === 'baton' || o?.genre === 'contenant';
   const voulues = unite ? 1 : maximumDeLEmplacement(regles, fiche, n);
   const { inventaire, sorties } = sortirDuSac(apres.inventaire, n, Math.min(voulues, dansLeSac(apres, n)));
-  return { ceinture: avecLEmplacement(apres, rang, { nom: n, quantite: unite ? 1 : Math.max(1, sorties), ressource_id }), inventaire };
+  const quantite = o?.genre === 'contenant' ? 0 : unite ? 1 : Math.max(1, sorties);
+  return { ceinture: avecLEmplacement(apres, rang, { nom: n, quantite, ressource_id }), inventaire };
 }
 
 /**
- * La quantité au plus que l'emplacement `rang` peut prendre (décision R89) : le maximum de l'emplacement (maximumDeLEmplacement) ; pour un objet du sac
- * qui n'est ni un bâton ni un contenant, pas plus que ce qu'il porte et ce que le sac en a encore (les exemplaires en plus sortent du sac : la fiche
- * n'en crée pas). null pour un emplacement vide.
- */
-export function quantiteMaxDeLEmplacement(regles, fiche, rang) {
-  const ligne = ligneDeCeinture(fiche, rang);
-  if (!ligne) return null;
-  const max = maximumDeLEmplacement(regles, fiche, ligne.nom);
-  const genre = objetDeCeinture(regles, ligne.nom)?.genre;
-  if (!genre || genre === 'baton' || genre === 'contenant') return max;
-  return Math.max(1, Math.min(max, Math.max(1, entier(ligne.quantite)) + dansLeSac(fiche, ligne.nom)));
-}
-
-/**
- * La ceinture et l'inventaire quand l'emplacement `rang` passe à `quantite`, bornée de 1 à quantiteMaxDeLEmplacement (décision R89) : un objet du sac
- * en prend les exemplaires en plus et lui rend ceux en moins ; un contenant compte ses projectiles, une saisie libre ses exemplaires, sans toucher au
- * sac ; un bâton reste à 1 (ceux qu'une fiche importée y avait mis en plus retournent au sac).
+ * La ceinture quand l'emplacement `rang` passe à `quantite` (décision R89 : « On va juste mettre un nombre à saisir ») : le nombre saisi, borné
+ * (quantiteDeCeinture) ; le sac ne change pas (un objet bu ou lancé se retire en baissant la quantité). Rend { ceinture, inventaire }.
  */
 export function changerLaQuantiteDeCeinture(regles, fiche, rang, quantite) {
   const ancien = ligneDeCeinture(fiche, rang);
-  if (!ancien) return { ceinture: [...(fiche.ceinture ?? [])], inventaire: [...(fiche.inventaire ?? [])] };
-  const q = Math.min(quantiteMaxDeLEmplacement(regles, fiche, rang), Math.max(1, Math.round(entier(quantite))));
-  const genre = objetDeCeinture(regles, ancien.nom)?.genre;
-  let inventaire = renumeroter([...(fiche.inventaire ?? [])]);
-  if (genre && genre !== 'contenant') {
-    const ecart = q - Math.max(1, entier(ancien.quantite));
-    if (ecart > 0) inventaire = sortirDuSac(inventaire, nomDe(ancien), ecart).inventaire;
-    if (ecart < 0) inventaire = remettreAuSac(inventaire, ancien, -ecart);
-  }
-  return { ceinture: avecLEmplacement(fiche, rang, { ...ancien, quantite: q }), inventaire };
+  const ceinture = ancien ? avecLEmplacement(fiche, rang, { ...ancien, quantite: quantiteDeCeinture(regles, fiche, ancien.nom, quantite) }) : [...(fiche.ceinture ?? [])];
+  return { ceinture, inventaire: [...(fiche.inventaire ?? [])] };
 }
 
 /** Les objets du sac qui vont à la ceinture (décision R89 : « un autocomplete à partir des objets de son inventaire et qui peuvent être dans la ceinture ») : [{ nom, quantite }], une fois chacun. */

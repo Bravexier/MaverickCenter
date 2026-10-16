@@ -362,6 +362,16 @@ test('migration 0045 : plus de table personnage_progression ; entraînement en t
   assert.deepEqual(controle('m45'), [], 'une arme cassée n’est pas une règle enfreinte');
 });
 
+test('migration 0052 : un emplacement de ceinture admet 0 (un carquois vide, décision R89), jamais moins ; le sac, au moins 1', () => {
+  personnageValide('m51');
+  const carquois = db.prepare("SELECT r.id, r.nom FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id WHERE v.famille = 'contenant' ORDER BY r.id LIMIT 1").get();
+  inserer('personnage_ceinture', { personnage_id: 'm51', rang: 1, nom: carquois.nom, quantite: 0, ressource_id: carquois.id });
+  assert.equal(db.prepare("SELECT quantite FROM personnage_ceinture WHERE personnage_id = 'm51' AND rang = 1").get().quantite, 0);
+  assert.throws(() => db.prepare("UPDATE personnage_ceinture SET quantite = -1 WHERE personnage_id = 'm51' AND rang = 1").run(), /CHECK/);
+  assert.throws(() => inserer('personnage_inventaire', { personnage_id: 'm51', rang: 1, nom: carquois.nom, quantite: 0, ressource_id: carquois.id }), /CHECK/);
+  assert.deepEqual(controle('m51'), [], 'un carquois vide n’est pas une règle enfreinte');
+});
+
 test('classes, spécialités et dons : 2e classe selon R2, spécialité au niveau de classe 10, dons de la classe et jamais deux options exclusives', (t) => {
   personnageValide('classe-1', { xp: 17050 });   // niveau 11 en mono-classe : classe 2 au niveau 2
   assert.ok(regles('classe-1').includes('classe_2_manquante'));

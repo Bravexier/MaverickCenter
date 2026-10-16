@@ -42,33 +42,35 @@ abandonne.
   Réduction et dialogue : `src/scripts/portrait.mjs` (CSS `styles/portrait/recadrage.css`, inséré à la première ouverture), partagé avec le portrait des
   monstres du bestiaire (mode modification, `docs/bestiaire.md`) ; bornes, formats et empreinte : `lib/portrait.mjs` (`test/portrait.test.mjs`).
 - **Ceinture** (guide « Fiche de personnage : Accessoires et Ceinture », migration `0031-fiche-zones`, décision R89) : ses **3 emplacements** d'objets
-  rapides, chacun un objet et sa quantité (`personnage_ceinture`, rang 1 à 3). Un emplacement **propose les objets du sac qui vont à la ceinture**
+  rapides, chacun **[objet][quantité]** (`personnage_ceinture`, rang 1 à 3). Un emplacement **propose les objets du sac qui vont à la ceinture**
   (`suggestionsDeCeinture` : ceux que liste la page « Objets à la ceinture », vue `v_objet_ceinture`, décision R81 : potions, huiles, carquois et sacs,
   bâtons magiques) **ou une saisie libre** (un objet spécial du MJ, le matériel que le guide cite aussi : sa liste est « non exhaustive »). **Un objet
-  du sac le quitte** pour la ceinture et y revient quand l'emplacement se vide ou change (`mettreALaCeinture`, `viderLEmplacement`) ; **une saisie
-  libre ne touche pas au sac** (un objet que la vue ne liste pas, même présent dans le sac) : retirée, elle disparaît, et corrigée (« Corde » puis
-  « Corde de 10 m »), elle est renommée sur place avec sa quantité. Choisi dans la liste, un objet du sac se pose aussitôt ; tapé, il attend que le
-  champ soit validé (`objetChoisiDansLaListe` : « Méga fiole verte » ne sort pas du sac avant « … foncée »). Quantité de 1 au maximum de
-  l'emplacement (`maximumDeLEmplacement`) : **3 exemplaires du même objet** (`ceinture.exemplaires_par_emplacement`, migration
-  `0050-inventaire-ceinture`), plus quand un don débloqué l'écrit (« Permet d'avoir 4 fois le même objet sur un emplacement de ceinture »,
-  Mercenaire « Organisé » : `exemplairesParEmplacement`, texte lu par `lib/ceinture-texte.mjs`) ; **1 pour un bâton magique** (utilisations
-  illimitées) ; pour un carquois ou un sac, **ses projectiles**, jusqu'à la contenance que sa description écrit (« jusqu'à N »). Plus ou moins
-  d'exemplaires d'un objet du sac en prennent au sac ou lui rendent la différence (`changerLaQuantiteDeCeinture`), **sans dépasser ce que le sac en
-  a** (`quantiteMaxDeLEmplacement` ; seule exception, un objet posé sans être dans le sac compte 1 et y va quand on le retire) ;
-  un contenant ou un bâton ne sort du sac qu'une unité. Choix de la fiche, non tranchés (R89) : baisser la quantité rend les exemplaires au sac (un objet consommé en jeu se retire donc aussi du sac) ; les projectiles d'un carquois ne sont pas pris aux
-  flèches du sac et partent avec lui, la Parasole et la Perche (« compte pour 3 flèches dans un carquois ») ne sont pas comptées, un objet du MJ
-  retiré ne va pas au sac. Une quantité au-delà du maximum (un import, un don perdu) est marquée invalide (`aria-invalid`). Un bâton se reconnaît à
+  choisi dans le sac le quitte** (son nom exact : autant d'exemplaires que le sac en a, jusqu'au maximum ; un bâton ou un carquois, une unité, le
+  carquois vide) et ce que l'emplacement portait y retourne (`mettreALaCeinture`) ; vidé, l'emplacement rend son objet au sac (`viderLEmplacement`),
+  **un objet du MJ comme les autres** (« Pas de règle spéciale »), un carquois sans ses projectiles. Un nom absent du sac corrige une saisie libre de
+  l'emplacement (« Corde » corrigé en « Corde de 10 m » ne laisse rien au sac) ; sinon l'objet de l'emplacement retourne au sac (un objet du
+  catalogue n'est jamais perdu) et le nom y est posé. Choisi dans la liste, un objet du
+  sac se pose aussitôt ; tapé, il attend que le champ soit validé (`objetChoisiDansLaListe` : « Méga fiole verte » ne sort pas du sac avant « …
+  foncée »). **La quantité est un nombre saisi**, sans effet sur le sac (« On va juste mettre un nombre à saisir » : un objet bu ou lancé se retire en
+  la baissant ; `changerLaQuantiteDeCeinture`, `quantiteDeCeinture`) : **1 à 3 exemplaires du même objet** (`ceinture.exemplaires_par_emplacement`,
+  migration `0050-inventaire-ceinture`), **4 avec le don « Organisé »** qui l'écrit (« Permet d'avoir 4 fois le même objet sur un emplacement de
+  ceinture » : `exemplairesParEmplacement`, texte lu par `lib/ceinture-texte.mjs`) ; **1 pour un bâton magique** (utilisations illimitées ; en lecture
+  seule) ; pour un carquois ou un sac de projectiles, **ses projectiles, de 0 (vide) à sa contenance** (« jusqu'à N » de sa description ; « Un Carquois
+  à 0 est juste un carquois vide » : `minimumDeLEmplacement`, migration `0052-ceinture-carquois-vide`). Une quantité hors des bornes (un import, un don
+  perdu, un carquois retiré du catalogue) est marquée invalide (`aria-invalid`). Un bâton se reconnaît à
   son nom (« Bâton magique Feu, niveau 2 », `nomDeBaton`) : il n'est pas lié au catalogue dans la fiche (pas de clé vers `baton_magique`) ; une
   magie renommée sur le site de dev fait de ses bâtons des saisies libres (maximum 3 au lieu de 1).
 - **Sac** (onglet Inventaire ; décision R88) : **autant d'emplacements que la Force en donne** — une colonne = 12 lignes (la grille de la fiche auto), 24
   à Force 1, 28, 32, 36, puis 48 (« tout l'inventaire ») à partir de Force 5 (`emplacementsSelonLaForce`, constantes `inventaire.*` de `regle_constante`,
-  migration `0050-inventaire-ceinture`) ; la Force est la valeur affichée (base, magie innée, accessoire ; les croix n'y sont pas). **Une ligne = un
-  emplacement**, quelle que soit sa quantité (au moins 1), et le tableau montre autant de lignes que d'emplacements : les objets, l'emplacement libre
-  suivant (y écrire crée la ligne ; une ligne dont le nom a été effacé en tient lieu), puis les emplacements vides. Chaque ligne propose le catalogue
-  (ressources et bâtons magiques) ou une saisie libre. Au-delà de la place (une Force qui baisse, un import), les lignes restent, signalées en rouge
-  (`inventaireDe`) : rien n'est retiré. Le don « Organisé » (« Permet d'utiliser n'importe quel sac quels que soient la Force ou les malus ») n'est pas
-  compté (question ouverte de R88). Ni le sac trop plein ni une ceinture au-delà du maximum ne sont des règles de `v_personnage_controle` : la page
-  les signale seule.
+  migration `0050-inventaire-ceinture`) ; la Force est la valeur affichée (base, magie innée, accessoire ; les croix n'y sont pas) ; **avec le don
+  « Organisé »**, le sac de Force 5 quelle que soit la Force (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » :
+  `donDuSacSansForce`, `regles.sac.force_avec_le_don`), dit à côté du compte. **Une ligne = un emplacement**, chacune [objet][quantité], la quantité un
+  nombre saisi **de 1 à 99** (`quantiteDuSac`, `regles.sac.quantite_max`), qui ne se voit qu'au survol de la ligne ou au focus quand elle vaut 1 ; le
+  tableau montre autant de lignes que d'emplacements : les objets, l'emplacement libre suivant (y écrire crée la ligne ; une ligne dont le nom a été
+  effacé en tient lieu), puis les emplacements vides. Chaque ligne propose le catalogue (ressources et bâtons magiques) ou une saisie libre. Un objet
+  rendu par la ceinture remplit sa ligne jusqu'à 99, le reste sur une ligne nouvelle. Au-delà de la place (une Force qui baisse, un import), les lignes
+  restent, signalées en rouge (`inventaireDe`) : rien n'est retiré. Ni le sac trop plein ni une ceinture au-delà du maximum ne sont des règles de
+  `v_personnage_controle` : la page les signale seule.
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
