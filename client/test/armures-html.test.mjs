@@ -22,8 +22,8 @@ const fichier = join(dist, 'ressources', 'equipement', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-// le bloc des armures et des boucliers : ses deux panneaux, jusqu'au panneau des bâtons magiques
-const main = html.slice(html.indexOf('<div class="armures" data-armures>'), html.indexOf('<section class="equipement-panneau batons" id="batons-magiques"'));
+// le bloc des armures et des boucliers : ses deux panneaux, jusqu'au panneau de la ceinture
+const main = html.slice(html.indexOf('<div class="armures" data-armures>'), html.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'));
 const armures = present ? chargerArmures(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 /** Le HTML d'un panneau (onglet) : de son <section> au suivant. */

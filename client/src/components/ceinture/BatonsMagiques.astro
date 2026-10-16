@@ -4,29 +4,34 @@ import { htmlDeLigneDeBatons } from '../../lib/batons-rendu.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { url } from '../../lib/wiki';
 
-// Onglet « Bâtons magiques » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
-// « Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ; avant, le tableau des bâtons de la page
-// « Objets à la ceinture », qui renvoie ici) : un panneau (`section.equipement-panneau#batons-magiques`) rendu depuis la base (lib/batons-db.mjs), jamais
-// depuis le Markdown de la page « Bâton magique », dont seules les règles s'affichent, repliées comme celles des autres onglets : l'introduction et
-// « Comment fabriquer un bâton magique ? ». Puis le tableau (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur
-// la couleur de la magie, sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec son
-// infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le prix (les matériaux de la recette : lib/batons-db.mjs#prixDuBaton)
-// du niveau choisi. Pas encore modifiable sur le site de dev. CSS : styles/equipement/equipement.css.
+// Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; demandes du
+// propriétaire, 2026-10-16 : d'abord un onglet de « Équipement », puis « On y remettrait à ce moment le tableau Bâton magique », dans la ceinture) :
+// un panneau (`section.ceinture-panneau#batons-magiques`, l'ancre de l'ancien onglet) rendu depuis la base (lib/batons-db.mjs), jamais depuis le
+// Markdown de la page « Bâton magique », dont seules les règles s'affichent, repliées comme celles des autres onglets : l'introduction et « Comment
+// fabriquer un bâton magique ? ». Puis le tableau (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur
+// de sa magie dans l'onglet « Bâton magique » du classeur (lib/ceinture-couleurs.mjs), sans colonne Magie : sa gemme et son bois (en lien vers
+// « Composants », où leurs prix se modifient, chacun avec son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le
+// prix (les matériaux de la recette : lib/batons-db.mjs#prixDuBaton) du niveau choisi. Pas encore modifiable sur le site de dev. CSS :
+// styles/ceinture/ceinture.css (la pastille de la gemme : styles/equipement/equipement.css).
 type Batons = ReturnType<typeof chargerBatons>;
 interface Props {
   batons: Batons;
   /** HTML des règles : l'introduction et la fabrication de la page « Bâton magique » (null si la page ne les écrit plus) */
   regles: { introduction: string | null; fabrication: string | null };
+  /** l'id du panneau (lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE), son nom, et s'il est le sous-onglet ouvert au départ */
+  id: string;
+  nom: string;
+  actif?: boolean;
 }
-const { batons, regles } = Astro.props;
+const { batons, regles, id, nom, actif = false } = Astro.props;
 const composants = url('ressources/composants/');
 // la fabrication d'un seul paragraphe suit « Fabrication : » sur sa ligne ; plus longue, elle vient dessous
 const fabricationEnLigne = regles.fabrication && /^<p>(?:(?!<p[\s>])[\s\S])*<\/p>\s*$/.test(regles.fabrication)
   ? regles.fabrication.trim().replace(/^<p>/, '').replace(/<\/p>$/, '') : null;
 ---
 
-<section class="equipement-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>
-  <h2 class="equipement-panneau__titre" id="titre-batons-magiques">Bâtons magiques</h2>
+<section class={`ceinture-panneau batons${actif ? ' is-active' : ''}`} id={id} aria-labelledby={`titre-${id}`} data-batons>
+  <h3 class="ceinture-panneau__titre" id={`titre-${id}`}>{nom}</h3>
   {batons.page?.resume && <p class="batons__chapo" set:html={htmlAvecMonnaies(batons.page.resume)} />}
   {
     (regles.introduction || regles.fabrication) && (
@@ -47,13 +52,12 @@ const fabricationEnLigne = regles.fabrication && /^<p>(?:(?!<p[\s>])[\s\S])*<\/p
     )
   }
   <p class="batons-aide">
-    Un bâton par magie, dans la couleur de sa magie : sa gemme et son bois (leur description et leurs prix en infobulle, et dans
-    <a href={`${composants}#gemmes`}>Composants</a>), le bonus passif qu’il donne aux sorts au niveau choisi, et le prix de ses matériaux. Les autres
-    objets de la ceinture sont dans <a href={url('ressources/objets-a-la-ceinture/')}>Objets à la ceinture</a>.
+    Un bâton par magie, dans la couleur de sa magie : sa gemme et son bois (leur description et leurs prix en infobulle, et dans{' '}
+    <a href={`${composants}#gemmes`}>Composants</a>), le bonus passif qu’il donne aux sorts au niveau choisi, et le prix de ses matériaux.
   </p>
   <div class="batons-bloc">
     <div class="batons-wrap">
-      <table class="batons-table" aria-labelledby="titre-batons-magiques">
+      <table class="batons-table" aria-labelledby={`titre-${id}`}>
         <thead>
           <tr>
             <th scope="col">Gemme</th><th scope="col">Bois</th><th scope="col">Niveau</th><th scope="col">Effet</th>

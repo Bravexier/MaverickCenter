@@ -141,7 +141,7 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc tr[data-choix]:not([data-niveau]).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
 .acc [data-choix].est-choisi .acc-choisir::before { content: '✓ '; }
 
-/* Gemmes : la pastille dans la couleur de leur magie (`.acc-gemme`, commune avec l'onglet Bâtons magiques : styles/equipement/equipement.css),
+/* Gemmes : la pastille dans la couleur de leur magie (`.acc-gemme`, commune avec le sous-onglet Bâtons magiques de la ceinture : styles/equipement/equipement.css),
    l'infobulle (magie, description, prix d'un quart) au survol */
 .acc-gemmes { white-space: nowrap; }
 .acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: var(--fs-xs); }

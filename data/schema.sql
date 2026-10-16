@@ -3553,9 +3553,9 @@ CREATE VIEW v_potion AS
   JOIN ressource r ON r.id = p.ressource_id
   JOIN niveau_alchimie n ON n.id = p.niveau_id;
 
--- Objets à la ceinture (décision R81 ; page /ressources/objets-a-la-ceinture/) : les objets du catalogue que la page liste parmi ceux qu'un personnage
--- met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage : Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez
--- avec votre mj »). Une ligne par objet, `famille` :
+-- Objets à la ceinture (décision R81 ; onglet « Ceinture » de la page /ressources/equipement/, d'abord la page /ressources/objets-a-la-ceinture/) :
+-- les objets du catalogue que l'onglet liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
+-- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj »). Une ligne par objet, `famille` :
 --   'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ;
 --   'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la
 --                 ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ;

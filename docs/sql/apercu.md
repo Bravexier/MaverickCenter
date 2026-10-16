@@ -308,7 +308,7 @@
 | `v_ressource_recette` *(vue)* | « Recettes qui utilisent la ressource X » : ressource citée par son nom dans la recette (via = 'nommee') ou ingrédient d'alchimie qui répond à l'exigence d'un emplacement (via = 'affinite'). |  |
 | `v_metier_recette` *(vue)* | Recettes d'un métier : par famille citée dans « Artisanat possible » (alchimie seulement, voir metier_recette_famille). |  |
 | `v_potion` *(vue)* | Potions avec leur niveau, leur prix et leurs recettes (une ligne par potion et variante de recette de sa page). |  |
-| `v_objet_ceinture` *(vue)* | Objets à la ceinture (décision R81 ; page /ressources/objets-a-la-ceinture/) : les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « |  |
+| `v_objet_ceinture` *(vue)* | Objets à la ceinture (décision R81 ; onglet « Ceinture » de la page /ressources/equipement/, d'abord la page /ressources/objets-a-la-ceinture/) : les objets du catalogue que l'onglet liste parmi ceux |  |
 | `v_arme_composee` *(vue)* | Arme forgée dans un matériau : « tous les bonus se cumulent une fois l'arme forgée (exemple : une claymore en cuivre donne un bonus aux dégâts de +10 car le cuivre donne +5 aux dégâts et la claymore d |  |
 | `v_armure_piece` *(vue)* | Une armure sur chacune de ses six pièces (Casque, Torse, Bras Gauche, Bras Droit, Jambe Gauche, Jambe Droit) : lecture de la fiche, qui recopie l'AP, l'AM et la solidité de l'armure choisie sur les six pièces. |  |
 | `v_niveau` *(vue)* | Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs par palier de la fiche. |  |

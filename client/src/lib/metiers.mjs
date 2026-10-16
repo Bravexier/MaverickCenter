@@ -4,7 +4,7 @@
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance (sauf lib/guide.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
-import { CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT } from './equipement.mjs';
+import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from './equipement.mjs';
 import { PREMIER_CHAPITRE } from './guide.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
@@ -17,19 +17,20 @@ export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
 /**
- * Pages servies par une autre, qui n'ont pas d'adresse à elles : les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires »
- * sont les onglets de la page « Équipement » (demande du propriétaire, 2026-10-16 ; lib/equipement.mjs, components/equipement/EquipementPage.astro).
- * Elles restent dans la base (recherche, [[liens]]).
+ * Pages servies par une autre, qui n'ont pas d'adresse à elles : les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont les onglets
+ * de la page « Équipement », « Bâton magique » le sous-onglet Bâtons magiques de son onglet Ceinture (demandes du propriétaire, 2026-10-16 ;
+ * lib/equipement.mjs, components/equipement/EquipementPage.astro). Elles restent dans la base (recherche, [[liens]]).
  */
-const PAGES_DANS_UNE_AUTRE = Object.freeze(Object.fromEntries(ONGLETS_DE_L_EQUIPEMENT
-  .map((o) => [o.page, Object.freeze({ chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.id })])));
+const PAGES_DANS_UNE_AUTRE = Object.freeze(Object.fromEntries(PAGES_SERVIES_PAR_L_EQUIPEMENT
+  .map((o) => [o.page, Object.freeze({ chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.ancre })])));
 
 /** Vrai si la page d'id donné n'est pas construite : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
 export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
 
 /**
  * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour le premier
- * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs) ; pour une page servie par un onglet de la page « Équipement », cet onglet.
+ * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs) ; pour une page servie par un onglet (ou un sous-onglet) de la page « Équipement »,
+ * cet onglet.
  */
 export function adresseDePage(id) {
   if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };

@@ -1,11 +1,16 @@
-// Page /ressources/objets-a-la-ceinture/ (menu Ressources ; demande du propriétaire, 2026-10-15 : « l'ensemble de tous les objets que les joueurs peuvent
-// placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques ») : chargée depuis la base,
-// jamais depuis un Markdown. Quels objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs
-// de pierres, les bâtons magiques ; pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur tableau
-// dans l'onglet « Bâtons magiques » de la page « Équipement » (demande du propriétaire, 2026-10-16 : « qui auront mieux leur place ici » ;
-// lib/batons-db.mjs), où la page renvoie : elle n'a pas de tableau pour eux. Les règles affichées sont des textes de la base, rendus par la page : le
-// paragraphe « La ceinture » du chapitre « L'équipement » du guide et la section « Ceinture » de la page de référence (le texte du Google Doc, en dépliable).
-// Sans dépendance : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+// Onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs
+// peuvent placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques » ; le 2026-10-16,
+// « revoir intégralement la page des objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », chaque
+// tableau dans ses sous-onglets « plutôt que la recherche actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables
+// regroupant « les fioles remêdes philtres huiles et alchimie privatives dans cet ordre ») : chargé depuis la base, jamais depuis un Markdown. Quels
+// objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques ;
+// pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
+// Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la
+// section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur de son palier dans le Doc « Alchimie »
+// (lib/ceinture-couleurs.mjs).
+// Sans dépendance (sauf lib/equipement.mjs et lib/ceinture-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+import { couleurDePotion } from './ceinture-couleurs.mjs';
+import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 
 /** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
 export const CHAPITRE_DE_LA_CEINTURE = 'guide/l-equipement';
@@ -13,21 +18,32 @@ export const TITRE_DES_REGLES = '## La ceinture';
 export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
 
+/** L'id d'un sous-onglet de lib/equipement.mjs, cherché par son id (un sous-onglet renommé ou retiré arrête le chargement, il ne change pas d'ordre en silence). */
+const sousOnglet = (id) => {
+  if (!SOUS_ONGLETS_DE_LA_CEINTURE.some((o) => o.id === id)) throw new Error(`[ceinture] sous-onglet inconnu : ${id}`);
+  return id;
+};
+const CONSOMMABLES = sousOnglet('ceinture-consommables');
+const CARQUOIS = sousOnglet('ceinture-carquois');
+const BATONS = sousOnglet('batons-magiques');
+
 /**
- * Les tableaux de la page, dans l'ordre : `famille` de v_objet_ceinture, titre du tableau (les familles de recette du doc « Alchimie » : solvant
- * Fiole, Philtre, Remède, Huile, et l'alchimie primitive) et le titre du groupe sous lequel il se range (null : un tableau seul). Toutes les familles
- * de la vue, sauf `FAMILLE_DES_BATONS` (l'onglet « Bâtons magiques » de la page « Équipement »).
+ * Les tableaux de l'onglet, dans l'ordre : `famille` de v_objet_ceinture, titre du tableau (les familles de recette du doc « Alchimie » : solvant
+ * Fiole, Remède, Philtre, Huile, et l'alchimie primitive) et `onglet`, l'id du sous-onglet qui le montre (lib/equipement.mjs) : les consommables,
+ * dans l'ordre voulu par le propriétaire (fioles, remèdes, philtres, huiles, alchimie primitive), puis les carquois et sacs. Toutes les familles de la
+ * vue, sauf `FAMILLE_DES_BATONS` (leur sous-onglet a son tableau : lib/batons-db.mjs).
  */
 export const FAMILLES_DE_LA_CEINTURE = Object.freeze([
-  { famille: 'fiole', titre: 'Fioles', groupe: 'Potions' },
-  { famille: 'philtre', titre: 'Philtres', groupe: 'Potions' },
-  { famille: 'remede', titre: 'Remèdes', groupe: 'Potions' },
-  { famille: 'primitive', titre: 'Alchimie primitive', groupe: 'Potions' },
-  { famille: 'huile', titre: 'Huiles', groupe: null },
-  { famille: 'contenant', titre: 'Carquois et sacs', groupe: null },
+  Object.freeze({ famille: 'fiole', titre: 'Fioles', onglet: CONSOMMABLES }),
+  Object.freeze({ famille: 'remede', titre: 'Remèdes', onglet: CONSOMMABLES }),
+  Object.freeze({ famille: 'philtre', titre: 'Philtres', onglet: CONSOMMABLES }),
+  Object.freeze({ famille: 'huile', titre: 'Huiles', onglet: CONSOMMABLES }),
+  Object.freeze({ famille: 'primitive', titre: 'Alchimie primitive', onglet: CONSOMMABLES }),
+  Object.freeze({ famille: 'contenant', titre: 'Carquois et sacs', onglet: CARQUOIS }),
 ]);
-/** La famille de v_objet_ceinture des bâtons magiques : pas de tableau sur la page, elle renvoie à l'onglet « Bâtons magiques » de la page « Équipement ». */
+/** La famille de v_objet_ceinture des bâtons magiques : le tableau de leur sous-onglet (`ONGLET_DES_BATONS`) est celui de lib/batons-db.mjs. */
 export const FAMILLE_DES_BATONS = 'baton';
+export const ONGLET_DES_BATONS = BATONS;
 const POTIONS = ['fiole', 'philtre', 'remede', 'primitive', 'huile'];
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -52,13 +68,14 @@ export function sectionDuCorps(corps, titre, { avecTitre = false } = {}) {
 const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM page WHERE id = ?', id)[0] ?? null;
 
 /**
- * Les données de la page :
- *   regles   : { ceinture, reference } : Markdown de la base (null si la page n'écrit plus la section), rendus par la page ;
+ * Les données de l'onglet :
+ *   regles   : { ceinture, reference } : Markdown de la base (null si la page n'écrit plus la section), rendus par l'onglet ;
  *   sources  : { chapitre, reference } : les pages d'où viennent ces règles, { id, titre } (leur titre se modifie sur le site de dev), ou null ;
- *   tableaux : un par famille de FAMILLES_DE_LA_CEINTURE, { famille, titre, groupe, nombre, ... } avec
- *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau, niveau_rang, prix_brut, effet }] }], une par page
- *                de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut être un lien), ses paliers dans l'ordre où la
- *                page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ;
+ *   tableaux : un par famille de FAMILLES_DE_LA_CEINTURE, { famille, titre, onglet, nombre, ... } avec
+ *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau, niveau_rang, prix_brut, effet, couleur }] }], une
+ *                par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut être un lien), ses paliers dans
+ *                l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `couleur` : celle du palier dans le Doc
+ *                « Alchimie », { fond, texte? } ou null (lib/ceinture-couleurs.mjs) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).
  */
@@ -114,7 +131,7 @@ function pagesDePotions(db, ids) {
     };
     const rangees = liste.map((p) => ({ p, place: place(p) }))
       .sort((a, b) => a.place - b.place || a.p.ordre - b.p.ordre || a.p.niveau_rang - b.p.niveau_rang || comparer(a.p.nom_cle, b.p.nom_cle))
-      .map(({ p: { page_id, ordre, nom_cle, ...p } }) => p);
+      .map(({ p: { page_id, ordre, nom_cle, ...p } }) => ({ ...p, couleur: couleurDePotion(p.id) }));
     return { id, titre: page?.titre ?? id, resume: page?.resume ?? null, existe: Boolean(page), potions: rangees };
   }).sort((a, b) => comparer(a.titre, b.titre));
 }

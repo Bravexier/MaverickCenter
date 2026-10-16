@@ -1,8 +1,8 @@
-// Onglet « Bâtons magiques » de la page /ressources/equipement/ (demande du propriétaire, 2026-10-16 : « Il faudrait également un 4em onglet pour les
-// bâtons magiques du coup qui auront mieux leur place ici ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique », dont seules
-// les règles s'affichent (son introduction et « Comment fabriquer un bâton magique ? ») ; la page « Bâton magique » n'est plus construite, ses liens
-// mènent à l'onglet (lib/metiers.mjs#adresseDePage). Un bâton va aussi à la ceinture (décision R81 : vue v_objet_ceinture, dont la fiche de personnage
-// se sert) ; la page « Objets à la ceinture » renvoie à l'onglet.
+// Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire, 2026-10-16 : d'abord un
+// onglet de « Équipement », « qui auront mieux leur place ici », puis, la ceinture devenue l'onglet « Ceinture », « On y remettrait à ce moment le
+// tableau Bâton magique ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique », dont seules les règles s'affichent (son
+// introduction et « Comment fabriquer un bâton magique ? ») ; la page « Bâton magique » n'est plus construite, ses liens mènent au sous-onglet
+// (lib/metiers.mjs#adresseDePage). Un bâton va à la ceinture (décision R81 : vue v_objet_ceinture, dont la fiche de personnage se sert).
 // Prix d'un bâton (demande du propriétaire du 2026-10-16 : « Rajouter une colonne pour le prix ») : la source n'écrit pas de prix pour un bâton, seulement
 // ceux de ses matériaux (« MATÉRIAUX NÉCESSAIRES PAR MAGIE » : la gemme entière par qualité, le bois) et la recette de chaque niveau (« 1 Gemme Commune
 // + 1 bois [magie] ») ; le prix affiché est donc celui des matériaux de la recette : la gemme de la qualité du niveau + le bois (`prixDuBaton`), rien
