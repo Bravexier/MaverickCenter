@@ -153,6 +153,9 @@ async function verifier(fiche, quoi) {
 const LONG = 'Banni du Temple de Morfot pour avoir ouvert le Livre des Cendres : il doit se présenter chaque nouvelle lune devant le Haut Conseil, '
   + 'sans arme ni armure, et répondre de ses actes ; tant qu’il n’a pas retrouvé les trois pages arrachées, aucun prêtre ne le soignera.';
 
+/** Un carquois de la ceinture (v_objet_ceinture, famille « contenant »). */
+const carquoisVide = regles.ressources.find((r) => regles.ceinture.objets.some((o) => o.famille === 'contenant' && o.ressource_id === r.id)).nom;
+
 /** Un objet de l'inventaire ou de la ceinture, comme la page l'écrit : la ressource est la première de ce nom (src/scripts/fiche.mjs). */
 const objet = (nom, quantite = 1) => ({ nom, quantite, ressource_id: regles.ressources.find((r) => r.nom === nom)?.id ?? null });
 
@@ -211,7 +214,9 @@ function ficheRiche() {
     // la 12e place (AA51) : un nom trop long pour sa case
     inventaire: [...regles.ressources.slice(0, 11).map((r, i) => objet(r.nom, (i % 3) + 1)), objet('Lettre de la mère, scellée à la cire rouge, jamais ouverte depuis la nuit de l’incendie'),
       ...regles.ressources.slice(11, 52).map((r, i) => objet(r.nom, (i % 3) + 1)), objet('Clé rouillée', 2), objet('Carte (déchirée)')].map((o, i) => ({ rang: i + 1, ...o })),
-    ceinture: [{ rang: 1, ...objet(regles.ressources[90].nom, 12) }, { rang: 3, ...objet('Corde tressée de crins de licorne, longue de vingt pas, nouée tous les trois pieds pour grimper') }],
+    // un carquois vide à la ceinture (décision R89 : « Un Carquois à 0 est juste un carquois vide »)
+    ceinture: [{ rang: 1, ...objet(regles.ressources[90].nom, 12) }, { rang: 2, ...objet(carquoisVide, 0) },
+      { rang: 3, ...objet('Corde tressée de crins de licorne, longue de vingt pas, nouée tous les trois pieds pour grimper') }],
   };
   f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options.at(-1).id })));
   // les gains de niveau, deux totaux (décision R73)

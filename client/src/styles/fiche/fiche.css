@@ -412,6 +412,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 #inventaire .inventaire__libre input { width: 100%; max-width: none; border-style: dashed; }
 #inventaire .inventaire__libre > td, #inventaire .inventaire__vide > td { height: 1.6rem; }
 #inventaire .inventaire__vide > td { border-bottom: 1px dashed var(--etape-ligne); }
+/* une quantité de 1 dans le sac ne se voit qu'au survol de sa ligne ou au focus (décision R88 : « Maxé à 99 pour l'inventaire (si ce nombre = 1, ne le
+   voir que au survol) ») : le nombre reste dans le champ (lecteurs d'écran, clavier) */
+#inventaire tr:not(:hover) input[data-un]:not(:focus) { color: transparent; }
 
 /* champs */
 .fiche-champs { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }

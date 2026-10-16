@@ -1351,3 +1351,13 @@ test('entraînement (décision R71) : la case L42 relue dans les deux dispositio
   assert.equal(importer(avec(LUCIEN, { L42: '' })).fiche.entrainement, null);
 });
 
+
+test('modèle ordinateur : la ceinture admet un carquois vide, pas un autre objet à 0 (décision R89 : « Un Carquois à 0 est juste un carquois vide »)', () => {
+  const nomDe = (id) => regles.ressources.find((r) => r.id === id).nom;
+  const carquois = nomDe(regles.ceinture.objets.find((o) => o.famille === 'contenant').ressource_id);
+  const fiole = nomDe(regles.ceinture.objets.find((o) => o.famille === 'fiole').ressource_id);
+  const [a, b] = ORDINATEUR.ceinture;
+  const r = ficheDuClasseur(regles, ordinateur({ [a]: `${carquois} ×0`, [b]: `${fiole} ×0` }));
+  assert.deepEqual(r.fiche.ceinture.map((o) => [o.rang, o.nom, o.quantite]), [[1, carquois, 0]]);
+  assert.deepEqual(r.nonRepris.filter((x) => /Ceinture/.test(x)), [`Ceinture 2 : « ${fiole} » en quantité 0`]);
+});

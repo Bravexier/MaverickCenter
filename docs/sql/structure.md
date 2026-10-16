@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 51 : 188 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 52 : 188 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3438,7 +3438,7 @@ La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'ob
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `rang` | INTEGER | oui | PK 2 | l'emplacement |
 | `nom` | TEXT | oui |  |  |
-| `quantite` | INTEGER | oui |  |  |
+| `quantite` | INTEGER | oui |  | 0 : un carquois ou un sac de projectiles vide (décision R89, migration 0052) |
 | `ressource_id` | TEXT | non | → ressource.id |  |
 
 ### `groupe`

@@ -9,7 +9,7 @@ import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
-import { contenanceEcrite, exemplairesDeCeintureEcrits, nomDeBaton } from './ceinture-texte.mjs';
+import { contenanceEcrite, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -236,6 +236,7 @@ export function chargerReglesDeFiche(db) {
           points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)), ...degatsEcrits(d),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
+          ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
         })),
       };
     });
@@ -365,6 +366,10 @@ export function chargerReglesDeFiche(db) {
                           JOIN magie m ON m.id = b.magie_id ORDER BY m.ordre, b.niveau`)
         .map((b) => ({ id: b.id, nom: nomDeBaton(b.magie, b.niveau), magie_id: b.magie_id, niveau: b.niveau })),
     },
+    // le sac (décision R88, réponses du propriétaire du 2026-10-16 ; des valeurs de la décision, pas d'une table, comme regles.ambidextrie) : la
+    // quantité d'une ligne, un nombre saisi de 1 à 99 (« Maxé à 99 pour l'inventaire »), et la Force dont compte le sac d'un personnage qui a le don
+    // « Organisé » (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » : lib/fiche-moteur.mjs#donDuSacSansForce)
+    sac: { quantite_max: 99, force_avec_le_don: 5 },
   };
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)

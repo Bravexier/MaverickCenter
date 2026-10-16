@@ -29,7 +29,7 @@ import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   accessoiresDesSorts, actionsDesAccessoires, changerLaQuantiteDeCeinture, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  maximumDeLEmplacement, mettreALaCeinture, objetChoisiDansLaListe, objetDeCeinture, quantiteMaxDeLEmplacement, suggestionsDeCeinture, viderLEmplacement, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  maximumDeLEmplacement, mettreALaCeinture, minimumDeLEmplacement, objetChoisiDansLaListe, objetDeCeinture, quantiteDuSac, suggestionsDeCeinture, viderLEmplacement, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
@@ -1488,7 +1488,8 @@ function construireEquipement() {
   const sac = inventaireDe(regles, fiche);
   const place = $('inventaire-place');
   // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
-  const textePlace = `${sac.occupes} / ${sac.emplacements} emplacements (Force ${sac.force})`
+  // le don « Organisé » : le sac d'une Force plus haute, dit à côté (décision R88)
+  const textePlace = `${sac.occupes} / ${sac.emplacements} emplacements (Force ${sac.force}${sac.don && sac.don.force > sac.force ? ` ; ${sac.don.nom} : comme Force ${sac.don.force}` : ''})`
     + (sac.auDela ? ` : ${sac.auDela} objet${sac.auDela > 1 ? 's' : ''} au-delà de la place` : '');
   if (place.textContent !== textePlace) place.textContent = textePlace;
   attribut(place, 'data-trop', sac.auDela > 0);
@@ -1508,12 +1509,13 @@ function construireEquipement() {
             changer();
           },
         });
-        // au moins 1 (personnage_inventaire : CHECK quantite >= 1) ; un champ vidé attend la saisie suivante, la valeur validée reprend celle de la fiche
+        // un nombre saisi, de 1 (personnage_inventaire : CHECK quantite >= 1) à 99 (décision R88 : quantiteDuSac) ; un champ vidé attend la saisie
+        // suivante, la valeur validée reprend celle de la fiche ; 1 ne se voit qu'au survol de la ligne ou au focus (data-un, fiche.css)
         const quantite = el('input', {
-          type: 'number', min: '1', step: '1', 'aria-label': `Sac, emplacement ${i + 1} : quantité`,
+          type: 'number', min: '1', max: String(regles.sac.quantite_max), step: '1', 'aria-label': `Sac, emplacement ${i + 1} : quantité`,
           oninput: (ev) => {
             if (ev.target.value === '') return;
-            o.quantite = Math.max(1, entier(ev.target.value, 1));
+            o.quantite = quantiteDuSac(regles, entier(ev.target.value, 1));
             changer();
           },
           onchange: () => poser(quantite, o.quantite),
@@ -1524,6 +1526,8 @@ function construireEquipement() {
         synchro(() => {
           poser(nom, o.nom ?? '');
           poser(quantite, o.quantite);
+          attribut(quantite, 'data-un', entier(o.quantite) === 1);
+          attribut(quantite, 'aria-invalid', entier(o.quantite) > regles.sac.quantite_max ? 'true' : null);
           // au-delà de la place : compté parmi les lignes qui portent un objet (une ligne dont le nom a été effacé n'en prend pas)
           const auDela = occupee(o) && (fiche.inventaire ?? []).slice(0, i + 1).filter(occupee).length > sac.emplacements;
           attribut(tr, 'data-au-dela', auDela);
@@ -1603,18 +1607,18 @@ async function recadrerPortrait(source, cadrage) {
 }
 
 /**
- * Les 3 emplacements de la ceinture (décision R89) : chacun propose les objets du sac qui vont à la ceinture (liste-ceinture : suggestionsDeCeinture) ou
- * une saisie libre (un objet spécial du MJ) ; un objet du sac le quitte et y retourne quand l'emplacement se vide ou change, une saisie libre ne touche pas
- * au sac (mettreALaCeinture, viderLEmplacement) ; la quantité, de 1 au maximum de l'emplacement (3 exemplaires, ou ce qu'un don écrit ; 1 pour un bâton
- * magique ; la contenance d'un carquois ou d'un sac, qui compte ses projectiles) et, pour un objet du sac, pas au-delà de ce que le sac en a encore,
- * prend au sac ou lui rend la différence (quantiteMaxDeLEmplacement, changerLaQuantiteDeCeinture).
+ * Les 3 emplacements de la ceinture (décision R89), chacun [objet][quantité] : l'objet, un objet du sac qui va à la ceinture (liste-ceinture :
+ * suggestionsDeCeinture), qui quitte le sac, ou un autre nom (un objet spécial du MJ, un nom corrigé), qui renomme l'objet de l'emplacement ; vidé ou
+ * remplacé par un objet du sac, ce qu'il portait retourne au sac (mettreALaCeinture, viderLEmplacement) ; la quantité, un nombre saisi qui ne touche pas
+ * au sac, de 1 à 3 exemplaires (ou ce qu'un don écrit), 1 pour un bâton magique, de 0 (vide) à sa contenance pour un carquois ou un sac de projectiles
+ * (changerLaQuantiteDeCeinture).
  */
 function construireCeinture() {
   // l'aide dit les règles telles que la fiche les applique (les valeurs viennent des règles de la base) ; écrite seulement quand elle change
   const exemplaires = exemplairesParEmplacement(regles, fiche);
   const aide = `${PLACES_DE_CEINTURE} emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir. `
-    + `Au plus ${exemplaires} exemplaires du même objet par emplacement ; un bâton magique compte pour un ; un carquois ou un sac compte ses projectiles, jusqu’à sa contenance. `
-    + 'Un objet du sac le quitte pour la ceinture et y revient quand on l’en retire ; une saisie libre (un objet spécial du MJ) ne touche pas au sac.';
+    + `Au plus ${exemplaires} exemplaires du même objet par emplacement ; un bâton magique compte pour un ; un carquois ou un sac compte ses projectiles, de 0 (vide) à sa contenance. `
+    + 'Un objet choisi dans le sac le quitte pour la ceinture et y revient quand on l’en retire ; la quantité se saisit (un objet bu ou lancé se retire en la baissant).';
   const blocAide = $('ceinture-aide');
   if (blocAide.textContent !== aide) blocAide.textContent = aide;
   // les objets du sac qui vont à la ceinture, proposés dans chaque emplacement (refaits quand le sac change)
@@ -1637,6 +1641,11 @@ function construireCeinture() {
       versionInventaire += 1;
       changer();
       rendreLeFocus(cible, li, nom);
+    };
+    // la quantité seule : le sac ne change pas, son tableau reste
+    const fixer = (r) => {
+      fiche.ceinture = r.ceinture;
+      changer();
     };
     // un autre objet : la quantité montre la sienne, même si le focus y est déjà arrivé (Tab)
     const choisir = (valeur) => {
@@ -1661,10 +1670,10 @@ function construireCeinture() {
         if (cible) setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) rendreLeFocus(cible, li, nom); });
       },
     });
-    // la valeur validée reprend la quantité que la fiche garde (une saisie au-delà du maximum n'y entre pas : elle est bornée)
+    // la valeur validée reprend la quantité que la fiche garde (une saisie hors des bornes n'y entre pas : elle est bornée)
     const quantite = el('input', {
       type: 'number', min: '1', step: '1', 'aria-label': `Ceinture, emplacement ${rang} : quantité`,
-      oninput: (ev) => { if (l() && ev.target.value !== '') appliquer(changerLaQuantiteDeCeinture(regles, fiche, rang, entier(ev.target.value, 1))); },
+      oninput: (ev) => { if (l() && ev.target.value !== '') fixer(changerLaQuantiteDeCeinture(regles, fiche, rang, entier(ev.target.value, 1))); },
       onchange: () => poser(quantite, l()?.quantite ?? ''),
     });
     const vider = el('button', { type: 'button', class: 'retirer', 'aria-label': `Vider l’emplacement ${rang} de la ceinture`, onclick: () => appliquer(viderLEmplacement(regles, fiche, rang)) }, '✕');
@@ -1675,20 +1684,23 @@ function construireCeinture() {
       if (document.activeElement !== quantite) poser(quantite, x ? x.quantite : '');
       const genre = x ? objetDeCeinture(regles, x.nom)?.genre ?? null : null;
       const max = x ? maximumDeLEmplacement(regles, fiche, x.nom) : null;
-      const permis = quantiteMaxDeLEmplacement(regles, fiche, rang);
+      const min = x ? minimumDeLEmplacement(regles, x.nom) : 1;
       const trop = Boolean(x) && entier(x.quantite) > max;
-      attribut(quantite, 'max', permis);
+      // sous le minimum : 0 pour un objet qui n'est pas (ou plus : retiré du catalogue, renommé) un carquois ou un sac de projectiles
+      const sous = Boolean(x) && entier(x.quantite) < min;
+      attribut(quantite, 'min', min);
+      attribut(quantite, 'max', max);
       // un bâton compte pour un : en lecture seule (pas désactivée : Tab y passe sans perdre le focus), sauf au-delà, pour pouvoir le corriger
       attribut(quantite, 'disabled', !x && !nom.value.trim());
       attribut(quantite, 'readonly', genre === 'baton' && !trop);
       // au-delà du maximum (un import, un don perdu) : signalé comme les autres champs invalides de la fiche, et dit dans l'infobulle
-      attribut(quantite, 'aria-invalid', trop ? 'true' : null);
+      attribut(quantite, 'aria-invalid', trop || sous ? 'true' : null);
       infobulle(quantite, !x ? ''
         : genre === 'baton' ? 'Un bâton magique compte pour un'
           : trop ? `Au-delà du maximum de l’emplacement (${max})`
-            : genre === 'contenant' ? `Projectiles (au plus ${max})`
-              : permis < max ? `Exemplaires (au plus ${max} ; ${permis} avec ce que le sac en a)` : `Exemplaires (au plus ${max})`);
-      infobulle(vider, !x ? '' : genre ? 'Vider (l’objet retourne au sac)' : 'Vider (une saisie libre disparaît)');
+            : sous ? `En dessous du minimum de l’emplacement (${min})`
+            : genre === 'contenant' ? `Projectiles (0 à ${max})` : `Exemplaires (1 à ${max})`);
+      infobulle(vider, !x ? '' : 'Vider (l’objet retourne au sac)');
       attribut(vider, 'hidden', !x);
       attribut(li, 'data-plein', Boolean(x));
     });
