@@ -30,7 +30,7 @@ Les faux écarts de l'outil sont corrigés dans l'outil, pas listés ici.
 vérifiées, consignes). **Aucune valeur de règle de la base n'est fausse au regard du classeur lu à l'import** : hors (d1), les écarts sont de provenance,
 de colonnes fabriquées ou de cellules recopiées ailleurs.
 
-## Réponses du propriétaire (2026-10-15) et ce qui en est fait
+## Réponses du propriétaire (2026-10-15 et 2026-10-16) et ce qui en est fait
 
 1. **« Ressources et Craft » a changé depuis l'import (2026-10-11)** : « Oui met à jour les objets tel que la dernière version des ressources les fait. »
    Appliqué par la migration `0048-ressources-et-craft-mise-a-jour` :
@@ -59,11 +59,11 @@ de colonnes fabriquées ou de cellules recopiées ailleurs.
    Corruption ; Potentiel Illimité dans les incompatibilités, que R15 retire déjà ; six effets d'accessoire) ne sont pas reprises. Les décisions plus
    anciennes qui retiennent explicitement la fiche (R8 : matrice des magies innées…) ne changent pas sans le propriétaire.
 5. **Arcane et Corruption** (2026-10-16) : « Arcane résiste de base à la corruption et corruption résite à l'arcane. » : décision **R90**, les listes de
-   « Magie Maverick V8 » (que suivaient déjà les pages de magie, le guide, la fiche et les combinaisons). La matrice de la fiche (`Magie!F2:S16`, où
+   « Magie Maverick V8 » (que suivaient déjà les pages de magie, la fiche et les combinaisons). La matrice de la fiche (`Magie!F2:S16`, où
    chacune résistait à elle-même), gardée dans `resistance_magie` comme seconde lecture tant que la question était ouverte, est retirée avec ses deux vues
    et ses 5 écarts (migration `0051-resistance-arcane-corruption`) ; ses 210 cellules sont ignorées par le registre de la fiche.
 6. **Afficher les combinaisons de deux magies** (2026-10-16) : « Pas de suite. Il seront dans leur onglet statistiques après qu'on ai finalisé toute
-   la fiche de personnages. » : la vue `v_resistance_combinaison` attend l'onglet « Statistiques » de la fiche (`docs/character-generator.md`).
+   la fiche de personnages. » : rien n'est affiché ; l'endroit sera précisé avec lui le moment venu (`docs/character-generator.md`).
 
 ## Provenance incomplète (d2), non réparée
 
@@ -84,8 +84,8 @@ par sa valeur avant d'être proposée au propriétaire.
 
 **Colonnes fabriquées par l'import sans test** (des valeurs, pas de la provenance : à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
 `regle_constante.unite` (« points », « diviseur », « niveaux »…), `constante_equipement.unite`, `caracteristique.lettre`, `resistance_palier` (bornes et
-multiplicateurs tirés de « V>2 », « ÷4 »), `regle_constante.valeur` des croix (−20, −1000), les constantes `inventaire.lignes_par_colonne` et `inventaire.colonnes_max` (migration 0050, R88 : tirées
-de la forme de la grille `Personnage!AA40:AY51`, 12 lignes et 4 colonnes, pas d'une cellule : 7 écarts). **Autres** : une note de « Ressources et Craft » (fil de
+multiplicateurs tirés de « V>2 », « ÷4 »), `regle_constante.valeur` des croix (−20, −1000). **Autres** : les constantes `inventaire.lignes_par_colonne` et `inventaire.colonnes_max`, ajoutées
+par la migration 0050 (R88), comptent la grille `Personnage!AA40:AY51` (12 lignes, 4 colonnes) et ne se lisent dans aucune cellule (7 écarts) ; une note de « Ressources et Craft » (fil de
 Fiche de tour!L12) n'a pas de ligne dans `note_cellule` ; 58 cellules de règles de « Ressources et Craft » ne sont que dans le corps d'une page
 (`page.corps_md`), sans ligne typée ; la graphie de l'onyx diffère dans la base (« Onyx » / « Onix »).
 

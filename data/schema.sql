@@ -749,7 +749,7 @@ CREATE TABLE resistance_palier (
 ) STRICT;
 
 -- La matrice de résistance de la fiche auto (Magie!F2:S16, table resistance_magie) est retirée (migration 0051) : décision R90, l'Arcane et la
--- Corruption se résistent l'une à l'autre, comme le disent leurs listes dans le classeur V8 (magie_resistance), seule lecture des résistances.
+-- Corruption se résistent l'une à l'autre, comme le disent leurs listes dans le classeur V8 (magie_resistance), seule lecture des résistances entre magies.
 
 -- Résistances et faiblesses d'une combinaison de deux magies (bi-magie) : calculées depuis magie_resistance par la vue v_resistance_combinaison
 -- (section 12 ; décisions R85, R86 : le tableau « Résistance Faiblesse » de l'onglet Statistiques, qui les recopiait, est ignoré).

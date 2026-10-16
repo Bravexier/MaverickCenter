@@ -128,8 +128,8 @@ abandonne.
   « Résistance à la magie du Sang », colonne « +1 cran de résistance » du Drakos —, dons de classe débloqués — « Augmente d'un cran la résistance à la magie
   innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une résistance
   au choix ou aléatoire (Drakos Orange, Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Pas encore : les objets.
-  Les résistances et faiblesses des combinaisons de deux magies (R85, vue `v_resistance_combinaison`) iront dans un onglet « Statistiques » de la fiche,
-  une fois la fiche finalisée (demande du propriétaire, 2026-10-16) : rien n'est affiché d'ici là.
+  Les résistances et faiblesses des combinaisons de deux magies (R85, vue `v_resistance_combinaison`) ne sont pas affichées : « Il seront dans leur onglet
+  statistiques après qu'on ai finalisé toute la fiche de personnages. » (le propriétaire, 2026-10-16 ; l'endroit est à préciser avec lui le moment venu).
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'acquis d'une compétence va jusqu'à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
