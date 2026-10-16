@@ -2,8 +2,9 @@
 // propriétaire (2026-10-15) : la page des armures et des boucliers « Modifiable tout de suite », comme celle des armes (« Quand le mode Edition est
 // lancé, il n'est pas possible de "sélectionner" […] mais tous les tableaux sont visibles »).
 //   - en mode modification : tous les tableaux des deux onglets s'ouvrent (sauf les règles) et les fiches se ferment (styles/armures/armures.css cache les
-//     fiches ; le script de la page ignore les clics) ; les cases des armures, des pièces, des formes, des boucliers, des poids et des améliorations se
-//     modifient (éditeur commun : leurs `data-ed`), celles des matériaux restent en lecture (décision R62 : la page « Composants ») ;
+//     fiches ; le script de la page ignore les clics) ; les cases des armures, des formes, des boucliers, des poids, des améliorations et le coût de
+//     fabrication du bouclier se modifient (éditeur commun : leurs `data-ed` ; le tableau FABRICATION des pièces n'est plus affiché : décision R93),
+//     celles des matériaux restent en lecture (décision R62 : la page « Composants ») ;
 //   - ni création ni suppression (les fiches de personnage citent armures, pièces, formes et améliorations) ;
 //   - un poids de bouclier réécrit (nom, Force) : la liste des poids du service est relue et les pastilles des boucliers (rendu « bouclier-poids »,
 //     « Requiert N Force minimum ») refaites, hors des cases en cours de saisie ;

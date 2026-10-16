@@ -8,13 +8,26 @@
 // Sans dépendance (sauf des modules purs) : `chargerArmures` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
+import { prixEnRo } from './arme-champs.mjs';
+import { coutDeLaPiece } from './armure-champs.mjs';
+import { prixDeLArmure } from './armure-forge.mjs';
 
 export { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS };
 
-/** La pièce « Bouclier » du tableau FABRICATION (« 250 RF / Classe ») : elle n'est pas une pièce d'armure. */
+/**
+ * Les deux lignes du tableau FABRICATION que la page affiche : une armure ne se fabrique plus pièce par pièce, le tableau des pièces n'est plus
+ * affiché (décision R93 ; ses lignes restent les emplacements d'armure de la fiche de personnage). « Armure Complète » (« 1 000 RF / 10 RO ») : la
+ * fabrication comptée dans le prix de chaque armure de la grille (R93 : « ça ne remplace pas le prix en Ricken d'or ») ; « Bouclier »
+ * (« 250 RF / Classe ») : sous les formes de l'onglet Boucliers.
+ */
+export const FABRICATION_DE_L_ARMURE = 'armure-complete';
 export const PIECE_DU_BOUCLIER = 'bouclier';
-/** L'armure complète (tableau FABRICATION) : la pièce choisie au départ, celle qui coûte le prix écrit dans la grille (décision R75). */
-export const ARMURE_COMPLETE = 'armure-complete';
+
+/** Le coût en RO d'une ligne du tableau FABRICATION (« 1 000 RF / 10 RO » → 10), comme le rendu « piece-cout » (lib/armures-rendu.mjs) ; null sinon. */
+export const coutDeFabrication = (ligne) => {
+  const rf = coutDeLaPiece(ligne?.cout_brut);
+  return rf === null ? null : rf / 100;
+};
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 
@@ -59,9 +72,11 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
  * Les données de la page :
  *   materiaux       : les matières de la grille des armures, dans l'ordre de l'onglet : [{ ligne (materiau_armure), cle, nom, type, prix (celui de la
  *                     ressource : R62), description, fabrication (texte de la recette) }] ;
- *   combinaisons    : les armures de deux matières (grille), dans l'ordre de l'onglet, chacune avec `m1`, `m2` (clés de ses matières : ligne, colonne) ;
+ *   combinaisons    : les armures de deux matières (grille), dans l'ordre de l'onglet, chacune avec `m1`, `m2` (clés de ses matières : ligne, colonne) et
+ *                     `prix_calcule` (RO, null si un prix manque) : la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 ;
+ *                     le prix écrit dans la grille, `prix_brut`, n'est plus affiché) ;
  *   particulieres   : les armures particulières (vêtements, cottes de mailles, armure montagne, armures de familiers) ;
- *   pieces          : le tableau FABRICATION sans la ligne du bouclier (lignes armure_emplacement) ; fabricationDuBouclier : celle-ci ;
+ *   fabricationDeLArmure, fabricationDuBouclier : les lignes « Armure Complète » et « Bouclier » du tableau FABRICATION (armure_emplacement) ;
  *   ameliorations   : { armure: [...], bouclier: [...] } (amelioration_equipement, par niveau) ; totaux : { armure, bouclier } (amelioration_total) ;
  *   formes          : les classes de boucliers (Bocle … Pavois), par classe ;
  *   matieres        : les matières des boucliers (materiau_bouclier), dans l'ordre de l'onglet : [{ ligne, cle, nom, type, prix }] ;
@@ -81,10 +96,17 @@ export function chargerArmures(db) {
   const materiaux = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_armure m
     JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau);
   const armures = lignes(db, 'SELECT * FROM armure ORDER BY ordre');
+  const emplacement = (id) => lignes(db, 'SELECT * FROM armure_emplacement WHERE id = ?', id)[0] ?? null;
+  const fabricationDeLArmure = emplacement(FABRICATION_DE_L_ARMURE);
+  // le prix d'une armure de la grille (décision R93) : celui des matériaux tels que la page les affiche (prix de la ressource, R62)
+  const prixDesMateriaux = new Map(materiaux.map((m) => [m.ligne.ressource_id, prixEnRo(m.prix)]));
   const combinaisons = armures.filter((a) => a.sorte === 'combinaison')
-    .map((a) => ({ ...a, m1: cleDeMateriau(a.materiau_ligne_id), m2: cleDeMateriau(a.materiau_colonne_id) }));
+    .map((a) => ({
+      ...a, m1: cleDeMateriau(a.materiau_ligne_id), m2: cleDeMateriau(a.materiau_colonne_id),
+      prix_calcule: prixDeLArmure(coutDeFabrication(fabricationDeLArmure),
+        [a.materiau_ligne_id, a.materiau_colonne_id].map((id) => prixDesMateriaux.get(id) ?? null)).achetes,
+    }));
   const particulieres = armures.filter((a) => a.sorte === 'particuliere');
-  const emplacements = lignes(db, 'SELECT * FROM armure_emplacement ORDER BY ordre');
   const ameliorations = (cible) => lignes(db, 'SELECT * FROM amelioration_equipement WHERE cible = ? ORDER BY niveau', cible);
   const total = (cible) => db.prepare('SELECT total_brut FROM amelioration_total WHERE cible = ?').get(cible)?.total_brut ?? null;
   const matieres = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_bouclier m
@@ -103,8 +125,8 @@ export function chargerArmures(db) {
     materiaux,
     combinaisons,
     particulieres,
-    pieces: emplacements.filter((e) => e.id !== PIECE_DU_BOUCLIER),
-    fabricationDuBouclier: emplacements.find((e) => e.id === PIECE_DU_BOUCLIER) ?? null,
+    fabricationDeLArmure,
+    fabricationDuBouclier: emplacement(PIECE_DU_BOUCLIER),
     ameliorations: { armure: ameliorations('armure'), bouclier: ameliorations('bouclier') },
     totaux: { armure: total('armure'), bouclier: total('bouclier') },
     formes,

@@ -117,6 +117,14 @@ export const ancreDArmure = (id) => `armure-${String(id).slice(String(id).lastIn
 /** Ancre HTML d'un bouclier : « bouclier-targe-fer » pour « ressources/bouclier#bouclier:targe:fer ». */
 export const ancreDeBouclier = (id) => `bouclier-${String(id).slice(String(id).indexOf('#bouclier:') + 10).replace(/:/g, '-')}`;
 
+/** L'infobulle du prix calculé d'une combinaison (décision R93) : « Fabrication de l'armure complète + 6 Cuir + 6 Peau » (12 pour un seul matériau). */
+function titreDuPrix(a, ctx = {}) {
+  const connus = new Map((ctx.materiauxDeProtection ?? []).map((m) => [m.id, m.nom]));
+  const noms = [a.materiau_ligne_id, a.materiau_colonne_id].map((id) => connus.get(id) ?? id);
+  const unites = noms[0] === noms[1] ? `12 ${noms[0]}` : `6 ${noms[0]} + 6 ${noms[1]}`;
+  return `Fabrication de l’armure complète + ${unites}, matériaux achetés (décision R93)`;
+}
+
 /** Les deux matières d'une combinaison (ligne de la grille, puis colonne), dans la couleur de leur type (ctx.materiauxDeProtection). */
 function htmlDesMateriauxDeLArmure(a, ctx = {}) {
   const ids = [a.materiau_ligne_id, a.materiau_colonne_id].filter(Boolean);
@@ -147,7 +155,8 @@ export const RENDUS_DES_ARMURES = {
   'armure-resistance': (valeur) => htmlDesDegats(valeur, 'resistance'),
   'armure-faiblesse': (valeur) => htmlDesDegats(valeur, 'faiblesse'),
   'armure-effet': (valeur) => (String(valeur ?? '').trim() ? `<span class="armure-effet">${e(valeur)}</span>` : VIDE),
-  // une pièce (tableau FABRICATION) : son coût tel qu'écrit, en RO dans `data-ro` (null pour « 250 RF / Classe »)
+  // un coût du tableau FABRICATION de l'onglet (« Armure Complète », compté dans le prix des armures de la grille : décision R93 ; « Bouclier »,
+  // « 250 RF / Classe », sous les formes de l'onglet Boucliers) : tel qu'écrit, en RO dans `data-ro` (null pour « 250 RF / Classe »)
   'piece-cout': (valeur) => {
     const rf = coutDeLaPiece(valeur);
     return `<span class="pcout"${attribut('ro', rf === null ? null : rf / 100)}>${htmlAvecMonnaies(valeur ?? '')}</span>`;
@@ -186,8 +195,10 @@ export function htmlDeLigneDeMateriau(m, role) {
 
 /**
  * La ligne d'une armure de la liste (une combinaison de deux matières, ou une armure particulière) : son nom (bouton : sélectionner l'armure), ses
- * matières, son type, sa défense, sa solidité, ses résistances et faiblesses (ou son effet) et son prix ; chaque champ porte son `data-ed`.
- * `a` : la ligne de la table armure (avec `m1`, `m2` pour une combinaison : lib/armures-db.mjs).
+ * matières, son type, sa défense, sa solidité, ses résistances et faiblesses (ou son effet) et son prix ; chaque champ porte son `data-ed`, sauf le
+ * prix d'une combinaison : il est calculé, la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 : `a.prix_calcule`, le prix
+ * écrit dans la grille n'est plus lu), et le script de la page le refait quand un prix de matériau ou la fabrication change (src/scripts/armures.mjs).
+ * `a` : la ligne de la table armure (avec `m1`, `m2`, `prix_calcule` pour une combinaison : lib/armures-db.mjs).
  */
 export function htmlDeLigneDArmure(a, ctx = {}) {
   const cle = { id: a.id };
@@ -204,16 +215,9 @@ export function htmlDeLigneDArmure(a, ctx = {}) {
     + (particuliere
       ? champ('armure__effet', 'effet', 'armure-effet')
       : champ('armure__resistance', 'resistance_brut', 'armure-resistance') + champ('armure__faiblesse', 'faiblesse_brut', 'armure-faiblesse'))
-    + champ('armure__prix', 'prix_brut', 'protection-prix')
-    + '</tr>';
-}
-
-/** La ligne d'une pièce du tableau FABRICATION (Armure complète, Casque…) : son nom (bouton : choisir la pièce) et son coût. `p` : armure_emplacement. */
-export function htmlDeLigneDePiece(p, { complete = false } = {}) {
-  const cle = { id: p.id };
-  return `<tr class="ppiece" data-piece="${e(p.id)}"${complete ? ' data-complete="1"' : ''}>`
-    + `<th scope="row" class="ppiece__nom"><span data-ed="${ed('armure_emplacement', cle, 'nom')}" data-ed-cible=".ppiece__choisir"><button type="button" class="ppiece__choisir" aria-pressed="false">${e(p.nom)}</button></span></th>`
-    + `<td class="ppiece__cout" data-ed="${ed('armure_emplacement', cle, 'cout_brut')}" data-ed-rendu="piece-cout">${rendu('piece-cout', p.cout_brut, p)}</td>`
+    + (particuliere
+      ? champ('armure__prix', 'prix_brut', 'protection-prix')
+      : `<td class="armure__prix" data-prix-calcule title="${e(titreDuPrix(a, ctx))}">${htmlDuPrix(a.prix_calcule === null || a.prix_calcule === undefined ? '' : String(a.prix_calcule).replace('.', ','))}</td>`)
     + '</tr>';
 }
 

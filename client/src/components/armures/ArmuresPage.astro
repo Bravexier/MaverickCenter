@@ -1,10 +1,10 @@
 ---
 import armuresCss from '../../styles/armures/armures.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
-import { ARMURE_COMPLETE, type chargerArmures, type contexteDesArmures } from '../../lib/armures-db.mjs';
+import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
 import {
   COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme,
-  htmlDeLigneDeMateriau, htmlDeLigneDePiece, RENDUS_DES_ARMURES,
+  htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
 import { RENDUS_DES_ARMES } from '../../lib/armes-rendu.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
@@ -18,8 +18,12 @@ import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnai
 // (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier », dont seules les règles s'affichent, repliées.
 // Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
 //   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
-//     fiche s'ouvre à côté, avec la pièce (tableau FABRICATION) et l'amélioration à choisir (décisions R75, R77) ; dessous, la liste des armures par type
-//     et les armures particulières, dont une ligne choisit l'armure ;
+//     fiche s'ouvre à côté, avec l'amélioration à choisir (décision R77) ; une armure ne se fabrique plus pièce par pièce, seulement complète (décision
+//     R93, demande du propriétaire, 2026-10-16 : « Tu peux donc retirer le tableau actuel de "fabrication" »), et son prix est calculé : la fabrication
+//     de l'armure complète (la ligne « Armure Complète » du tableau FABRICATION, modifiable sur le site de dev) + 6 unités de chacun de ses deux
+//     matériaux (« le prix est toujours de 6 unités d'un matériau 1, et 6 d'un matériau 2 », « ça ne remplace pas le prix en Ricken d'or ») ; dessous, la liste des armures : les
+//     armures particulières en premier (« tu met le tableau "Armure particulières" en tout premier de la liste des armures »), puis par type ; une ligne
+//     choisit l'armure ;
 //   - Boucliers (demandes du propriétaire, 2026-10-16) : la forme, et sous elle le tableau des améliorations (« je veux que la table d'amélioration
 //     soit directement sous celui de la forme »), la matière à côté ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche
 //     à côté, avec son poids (la couleur de sa case dans l'onglet : décision R92, « Requiert N Force minimum » en infobulle) ; dessous, la liste
@@ -31,7 +35,7 @@ import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnai
 // fiches sont réduites à quatre tuiles dont le détail du calcul est l'infobulle (demande du propriétaire, 2026-10-16, comme celle des armes), écrite
 // dans `[data-armures-bulles]`, hors du panneau de côté qui défile.
 // Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
-// pièces, des formes, des boucliers, des poids et des améliorations modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
+// formes, des boucliers, des poids, des améliorations et le coût de fabrication du bouclier modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
 // (?raw, inséré ici seulement).
 type Armures = ReturnType<typeof chargerArmures>;
 interface Props {
@@ -67,13 +71,28 @@ const legende = (
     <h2 class="equipement-panneau__titre" id="titre-armures">{armures.pages.armures?.titre ?? 'Armures'}</h2>
     {resume && <p class="armures__chapo" set:html={htmlAvecMonnaies(resume)} />}
     <details class="armures-regles">
-      <summary>Règles des armures : matériaux, pièces, solidité, améliorations</summary>
+      <summary>Règles des armures : matériaux, solidité, améliorations</summary>
+      {/* les règles sont le texte de l'onglet, tel qu'importé : ce qu'il dit des morceaux ne vaut plus pour la fabrication (décision R93) */}
+      <p class="armures-regles__decision">Une armure ne se fabrique plus pièce par pièce : seulement l’armure complète (décision R93). Ce que le texte ci-dessous dit de la fabrication des morceaux ne s’applique plus.</p>
       <div class="prose armures-regles__texte"><Fragment set:html={regles.armures} /></div>
     </details>
     <p class="armures-aide js-seul">
-      Choisissez un matériau dans chacun des deux tableaux : l’armure ainsi créée s’ouvre à côté, avec sa pièce et son amélioration. Une armure de la
+      Choisissez un matériau dans chacun des deux tableaux : l’armure complète ainsi créée s’ouvre à côté, avec son amélioration. Une armure de la
       liste, plus bas, se choisit aussi d’un clic.
     </p>
+    {
+      armures.fabricationDeLArmure && (
+        <p class="armures-prix">
+          Prix d’une armure (décision R93) : sa fabrication,{' '}
+          <span
+            data-armures-fabrication
+            data-ed={attributEd('armure_emplacement', { id: armures.fabricationDeLArmure.id }, 'cout_brut')}
+            data-ed-rendu="piece-cout"
+            set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDeLArmure.cout_brut, armures.fabricationDeLArmure)}
+          />, et 6 unités de chacun de ses deux matériaux, achetées ou fournies.
+        </p>
+      )
+    }
     <p class="armures-legende"><span class="armures-legende__titre">Types</span> <Fragment set:html={legende} /></p>
 
     <div class="armures-vue" data-vue="armure">
@@ -100,27 +119,7 @@ const legende = (
 
         <h2 class="armures-sous-titre" id="liste-des-armures">Liste des armures</h2>
         <div class="armures-listes">
-          {
-            parType.map((g) => (
-              <details class="armures-bloc armures-liste" id={`armures-${slug(g.type)}`} open>
-                <summary class="armures-bloc__titre">
-                  <span class="ptype" style={`--t: ${couleurDuType(g.type)}`}>{g.type}</span>
-                  <span class="armures-bloc__compte">{g.armures.length} armures</span>
-                </summary>
-                <div class="armures-wrap">
-                  <table class="armures-table armures-table--liste">
-                    <thead>
-                      <tr>
-                        <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th><th scope="col">Défense</th>
-                        <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th><th scope="col">Prix</th>
-                      </tr>
-                    </thead>
-                    <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
-                  </table>
-                </div>
-              </details>
-            ))
-          }
+          {/* les armures particulières en premier (demande du propriétaire, 2026-10-16) */}
           <details class="armures-bloc armures-liste" id="armures-particulieres" open>
             <summary class="armures-bloc__titre">
               <span class="armures-bloc__nom">Armures particulières</span>
@@ -139,41 +138,51 @@ const legende = (
               </table>
             </div>
           </details>
+          {
+            parType.map((g) => (
+              <details class="armures-bloc armures-liste" id={`armures-${slug(g.type)}`} open>
+                <summary class="armures-bloc__titre">
+                  <span class="ptype" style={`--t: ${couleurDuType(g.type)}`}>{g.type}</span>
+                  <span class="armures-bloc__compte">{g.armures.length} armures</span>
+                </summary>
+                <div class="armures-wrap">
+                  <table class="armures-table armures-table--liste">
+                    <thead>
+                      <tr>
+                        <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th><th scope="col">Défense</th>
+                        <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
+                        <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
+                      </tr>
+                    </thead>
+                    <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
+                  </table>
+                </div>
+              </details>
+            ))
+          }
         </div>
       </div>
 
-      <aside class="armures-cote" aria-label="Armure choisie, pièce et amélioration">
+      <aside class="armures-cote" aria-label="Armure choisie et amélioration">
         <section class="pfiche" data-fiche="armure" aria-label="Fiche de l’armure" aria-live="polite">
           <p class="pfiche__vide js-seul">Choisissez deux matériaux, ou une armure de la liste.</p>
         </section>
-        <div class="armures-cote__tables">
-          <details class="armures-bloc" id="pieces" open>
-            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Fabrication</span><span class="armures-bloc__compte">pièce</span></summary>
-            <p class="armures-bloc__note">« Il faut 2 matériaux pour chaque morceau » : une pièce coûte sa fabrication et 1 unité de chaque matériau (décision R75) ; une armure particulière n’a que le prix de l’armure entière (R80).</p>
-            <div class="armures-wrap">
-              <table class="armures-table armures-table--pieces">
-                <thead><tr><th scope="col">Armure</th><th scope="col">Coût</th></tr></thead>
-                <tbody>{armures.pieces.map((p) => <Fragment set:html={htmlDeLigneDePiece(p, { complete: p.id === ARMURE_COMPLETE })} />)}</tbody>
-              </table>
-            </div>
-          </details>
-          <details class="armures-bloc" id="ameliorations-armure" open>
-            <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Améliorations</span><span class="armures-bloc__compte">+1 à +{armures.ameliorations.armure.length}</span></summary>
-            <p class="armures-bloc__note">« Armures (L'entièreté) » : une amélioration +N demande les coûts des niveaux +1 à +N et donne l’effet écrit au niveau N ; elle vaut pour l’armure entière, pas pour une pièce (décision R77).</p>
-            <div class="armures-wrap">
-              <table class="armures-table armures-table--ameliorations">
-                <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
-                <tbody>
-                  <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure" data-niveau="0">
-                    <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
-                    <td colspan="2" class="muted">Armure non améliorée</td>
-                  </tr>
-                  {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </div>
+        <details class="armures-bloc" id="ameliorations-armure" open>
+          <summary class="armures-bloc__titre"><span class="armures-bloc__nom">Améliorations</span><span class="armures-bloc__compte">+1 à +{armures.ameliorations.armure.length}</span></summary>
+          <p class="armures-bloc__note">« Armures (L'entièreté) » : une amélioration +N demande les coûts des niveaux +1 à +N et donne l’effet écrit au niveau N, pour l’armure entière (décision R77).</p>
+          <div class="armures-wrap">
+            <table class="armures-table armures-table--ameliorations">
+              <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+              <tbody>
+                <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure" data-niveau="0">
+                  <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+                  <td colspan="2" class="muted">Armure non améliorée</td>
+                </tr>
+                {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </aside>
     </div>
     {/* les infobulles des tuiles de la fiche (le détail du calcul), écrites par le script hors du panneau de côté, qui défile */}
@@ -212,7 +221,7 @@ const legende = (
                       data-ed-rendu="piece-cout"
                       set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDuBouclier.cout_brut, armures.fabricationDuBouclier)}
                     />{' '}
-                    (tableau FABRICATION des armures).
+                    (tableau FABRICATION de l’onglet « Armures » du classeur).
                   </p>
                 )
               }
