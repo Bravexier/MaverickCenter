@@ -502,7 +502,8 @@ de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/compo
   l'onglet « Armes »), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
   arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). La **fabrication** d'une matière (sa recette,
   « 10 minerais de fer + 1 charbon + Bas Fourneau » : table `recette` de genre `materiau`, en lecture) est la colonne du tableau MATÉRIAUX des onglets
-  « Armures » et « Bouclier », qui a quitté la page « Équipement » (demande du propriétaire, 2026-10-16) ; l'Os, de la page des armes, n'en a pas. Les
+  « Armures » et « Bouclier », qui a quitté la page « Équipement » (demande du propriétaire, 2026-10-16) ; l'Os, de la page des armes, n'en a pas ; la
+  recherche de la page la lit aussi (« fer » trouve l'Acier, dont la recette en demande). Les
   pages des armes et des armures les reprennent en lecture : le nom suit partout, le type la fiche d'armure (`materiau_armure.type`, « Autres » refusé
   pour un matériau d'armure), le prix `materiau_arme`.
 - **Gemmes** (`gemme`) : magie, gemme, description, prix de la gemme entière (bâton magique) et d'un quart (accessoires), par qualité.

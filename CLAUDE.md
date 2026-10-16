@@ -217,7 +217,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `edition-absente.mjs`) : seule la fiche l'y emporte. Le portrait s'enregistre seul dans son lot (une requête au plus 1 Mio).
 - **Page « Équipement »** (`/ressources/equipement/`, `docs/content-guide.md`, « Équipement ») : un onglet = une `section.equipement-panneau` dont l'id est
   l'ancre de l'onglet (`lib/equipement.mjs`) ; les identifiants sont uniques sur **toute la page** (`#materiaux-armes`, `#ameliorations-arme`,
-  `#ameliorations-armure`, `#ameliorations-bouclier` : `test/equipement-html.test.mjs` ; plus de `#materiaux-armures` : la fabrication des matières est sur Composants) ; les scripts des onglets (`armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`)
+  `#ameliorations-armure`, `#ameliorations-bouclier` : `test/equipement-html.test.mjs`) ; les scripts des onglets (`armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`)
   n'ont **aucun paramètre d'adresse en commun** (`amelioration-armure` pour une armure) et un script n'agit pas sur un onglet caché (Échap). Une page servie
   par un onglet : son entrée dans `ONGLETS_DE_L_EQUIPEMENT` ET dans `lib/nav.mjs#PAGES_RENOMMEES` (nav.mjs n'importe rien : le script de la page 404
   l'importe ; `test/equipement.test.mjs` compare les deux). Le bloc des armures (`.armures`) se cache entier quand ni Armures ni Boucliers n'est ouvert.

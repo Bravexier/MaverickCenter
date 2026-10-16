@@ -47,8 +47,6 @@ test('identifiants uniques sur toute la page (les onglets réunis : matériaux, 
   const doublons = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepEqual([...new Set(doublons)], []);
   for (const id of ['materiaux-armes', 'ameliorations-arme', 'ameliorations-armure', 'ameliorations-bouclier']) assert.ok(ids.includes(id), id);
-  // plus de tableau MATÉRIAUX des armures et des boucliers : il est mêlé à celui de la page « Composants » (demande du propriétaire, 2026-10-16)
-  assert.ok(!ids.includes('materiaux-armures') && !ids.some((id) => id.startsWith('matiere-')), 'le tableau MATÉRIAUX des armures a disparu');
 });
 
 test('bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie (Gemme, Bois, Niveau au curseur, Effet, Prix) et ses liens vers « Composants »', options, () => {

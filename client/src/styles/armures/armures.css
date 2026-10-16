@@ -37,6 +37,9 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-regles__texte p { margin: 0 0 0.75rem; }
 .armures-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 .armures-aide { margin: 0 0 0.5rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le renvoi vers le tableau des matériaux de la page Composants (description, fabrication), qui a remplacé le tableau MATÉRIAUX des deux onglets :
+   comme une aide, mais affiché aussi en mode modification (les matériaux se modifient là-bas : R62) */
+.armures-renvoi { margin: 0 0 0.6rem; color: var(--muted); font-size: var(--fs-lg); }
 /* le prix d'une armure (décision R93) : une règle, affichée aussi en mode modification (son coût de fabrication s'y modifie) et à l'impression */
 .armures-prix { margin: 0 0 0.6rem; font-size: var(--fs-lg); }
 .armures-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0 0 0.8rem; }

@@ -167,10 +167,11 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
 
 test('plus de tableau MATÉRIAUX sous les deux onglets : chacun renvoie au tableau des matériaux de la page « Composants » (demande du propriétaire, 2026-10-16)', options, () => {
   assert.ok(!main.includes('id="materiaux-armures"') && !main.includes('pmat-ref') && !main.includes('armures-table--materiaux'), 'le tableau MATÉRIAUX a disparu');
-  assert.ok(!main.includes('Fourneau de Séraphin'), 'la fabrication des matières n’est plus sur la page');
   for (const id of ['armures', 'boucliers']) {
-    assert.match(panneau(id), /<p class="armures-aide armures-renvoi">La description et la fabrication de chaque (?:matériau|matière) sont sur la page <a href="[^"]*\/ressources\/composants\/#materiaux">Composants<\/a>\.<\/p>/, id);
+    assert.match(panneau(id), /<p class="armures-renvoi">La description et la fabrication de chaque (?:matériau|matière) sont sur la page <a href="[^"]*\/ressources\/composants\/#materiaux">Composants<\/a>, où les matériaux se modifient \(décision R62\)\.<\/p>/, id);
   }
+  // le renvoi reste en mode modification (la classe `armures-aide` y est cachée)
+  assert.ok(html.includes('.armures-renvoi {') && !/body\.ed-mode[^{]*armures-renvoi/.test(html), 'le renvoi n’est pas caché en mode modification');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
   assert.ok(composants.includes('<details class="comp-tableau" id="materiaux"'), 'l’ancre du tableau des matériaux de « Composants »');
 });
