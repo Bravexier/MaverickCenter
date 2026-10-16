@@ -1,17 +1,20 @@
 // Page « Équipement » (/ressources/equipement/ ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
 // onglet : "Equipement" A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les
-// bâtons magiques du coup qui auront mieux leur place ici » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires ») : ses onglets
-// (lib/equipement.mjs), les adresses des pages qu'ils servent (lib/metiers.mjs#adresseDePage, et lib/nav.mjs#PAGES_RENOMMEES pour la page 404 : les
-// deux doivent s'accorder), le menu, et l'onglet des bâtons magiques chargé depuis la base (lib/batons-db.mjs, lib/batons-rendu.mjs). Le site de dev
+// bâtons magiques du coup qui auront mieux leur place ici » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis la page des
+// objets à la ceinture devenue l'onglet « Ceinture », où les bâtons magiques reviennent, en sous-onglet) : ses onglets et les sous-onglets de la
+// ceinture (lib/equipement.mjs), les adresses des pages qu'ils servent (lib/metiers.mjs#adresseDePage, et lib/nav.mjs#PAGES_RENOMMEES pour la page
+// 404 : les deux doivent s'accorder), le menu, et le sous-onglet des bâtons magiques chargé depuis la base (lib/batons-db.mjs, lib/batons-rendu.mjs). Le site de dev
 // peut réécrire la page « Bâton magique » : ce qui vient de l'import est lu tel que l'import l'a laissé (lib/historique-site.mjs), la page suit le
 // texte actuel.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
+import {
+  ANCIENNE_PAGE_DE_LA_CEINTURE, CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE,
+} from '../src/lib/equipement.mjs';
 import { adresseDePage, cheminDePage, pageSansAdresse } from '../src/lib/metiers.mjs';
 import { NAV, PAGES_RENOMMEES, adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME, TITRE_DE_LA_FABRICATION } from '../src/lib/batons-db.mjs';
-import { ancreDeBatons, bulleDeBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
+import { ancreDeBatons, bulleDeBatons, couleursDesBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
 import { htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { couleurDeMagie } from '../src/lib/sort-format.mjs';
 import { FAMILLE_DES_BATONS, sectionDuCorps } from '../src/lib/ceinture-db.mjs';
@@ -22,15 +25,24 @@ const db = ouvrirBase();
 const batons = chargerBatons(db);
 const historique = historiqueSite(db);
 
-test('cinq onglets, dans l’ordre voulu : Armes, Armures, Boucliers, Bâtons magiques, Accessoires ; chacun sert une page du wiki qui existe', () => {
-  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.nom), ['Armes', 'Armures', 'Boucliers', 'Bâtons magiques', 'Accessoires']);
-  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.id), ['armes', 'armures', 'boucliers', 'batons-magiques', 'accessoires']);
-  for (const o of ONGLETS_DE_L_EQUIPEMENT) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(o.page), o.page);
+test('cinq onglets, dans l’ordre voulu : Armes, Armures, Boucliers, Ceinture, Accessoires ; la ceinture a trois sous-onglets ; chaque page servie existe', () => {
+  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.nom), ['Armes', 'Armures', 'Boucliers', 'Ceinture', 'Accessoires']);
+  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.id), ['armes', 'armures', 'boucliers', 'ceinture', 'accessoires']);
+  // demande du propriétaire du 2026-10-16 : « dans l'ordre Consommable / Carquois / Bâton magiques » ; le sous-onglet des bâtons garde l'ancre de
+  // l'ancien onglet « Bâtons magiques »
+  assert.deepEqual(SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => [o.id, o.nom]), [['ceinture-consommables', 'Consommables'], ['ceinture-carquois', 'Carquois'], ['batons-magiques', 'Bâtons magiques']]);
+  assert.deepEqual(PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => [o.page, o.ancre]), [
+    ['ressources/armes', 'armes'], ['ressources/armures', 'armures'], ['ressources/bouclier', 'boucliers'], ['ressources/accessoires', 'accessoires'],
+    ['ressources/baton-magique', 'batons-magiques'],
+  ], 'l’onglet Ceinture et ses deux premiers sous-onglets ne servent pas de page du wiki');
+  for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(o.page), o.page);
+  const ids = [...ONGLETS_DE_L_EQUIPEMENT, ...SOUS_ONGLETS_DE_LA_CEINTURE].map((o) => o.id);
+  assert.equal(new Set(ids).size, ids.length, 'des ancres uniques sur la page');
   assert.equal(CHEMIN_DE_L_EQUIPEMENT, 'ressources/equipement/');
 });
 
 test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs liens et leurs anciennes adresses (page 404) mènent à l’onglet', () => {
-  for (const o of ONGLETS_DE_L_EQUIPEMENT) {
+  for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT.map(({ page, ancre }) => ({ page, id: ancre }))) {
     assert.ok(pageSansAdresse(o.page), o.page);
     assert.deepEqual(adresseDePage(o.page), { chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.id });
     assert.equal(cheminDePage(o.page), `ressources/equipement/#${o.id}`);
@@ -43,14 +55,20 @@ test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs l
   // la requête d'origine est gardée (l'état des onglets : ?arme=, ?materiau1=…), l'ancre d'origine l'emporte sur celle de l'onglet
   assert.equal(adresseComplete(nouvelleAdresse('/ressources/armes/'), '?arme=arme-epees-espadon', ''), '/ressources/equipement/?arme=arme-epees-espadon#armes');
   assert.equal(adresseComplete(nouvelleAdresse('/ressources/bouclier/'), '', '#bouclier-ecu-fer'), '/ressources/equipement/#bouclier-ecu-fer');
+  // l'ancienne page « Objets à la ceinture » (sans page du wiki) : l'onglet Ceinture, la requête et l'ancre d'origine gardées
+  assert.equal(ANCIENNE_PAGE_DE_LA_CEINTURE, 'ressources/objets-a-la-ceinture/');
+  assert.equal(PAGES_RENOMMEES[ANCIENNE_PAGE_DE_LA_CEINTURE], `${CHEMIN_DE_L_EQUIPEMENT}#ceinture`);
+  assert.equal(nouvelleAdresse('/ressources/objets-a-la-ceinture/'), '/ressources/equipement/#ceinture');
+  assert.equal(adresseComplete(nouvelleAdresse('/ressources/objets-a-la-ceinture/'), '', '#objets-huile'), '/ressources/equipement/#objets-huile');
   // les autres pages de Ressources gardent leur adresse
   for (const id of ['ressources/livre-parchemin', 'ressources/alchimie', 'ressources/equipement-inventaire']) assert.equal(cheminDePage(id), `${id}/`, id);
 });
 
-test('menu Ressources : « Équipement » remplace « Armes », « Armures » et « Accessoires »', () => {
+test('menu Ressources : « Équipement » remplace « Armes », « Armures », « Accessoires » et « Objets à la ceinture »', () => {
   const items = NAV.find((g) => g.key === 'ressources').items;
   assert.deepEqual(items.find((i) => i.label === 'Équipement'), { label: 'Équipement', path: CHEMIN_DE_L_EQUIPEMENT });
-  assert.ok(!items.some((i) => ['Armes', 'Armures', 'Accessoires'].includes(i.label) || /ressources\/(armes|armures|accessoires)\//.test(i.path ?? '')));
+  assert.ok(!items.some((i) => ['Armes', 'Armures', 'Accessoires', 'Objets à la ceinture'].includes(i.label)
+    || /ressources\/(armes|armures|accessoires|objets-a-la-ceinture)\//.test(i.path ?? '')));
   assert.equal(items[0].label, 'Équipement', 'à la place des armes, en tête de la rubrique');
 });
 
@@ -119,10 +137,11 @@ test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la
   assert.match(htmlDuPrixDuBaton(null), /class="vide"/);
 });
 
-test('bâtons : rendu d’une ligne (couleur de la magie, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
+test('bâtons : rendu d’une ligne (couleur de la magie dans le classeur, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
-  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--mag: ${couleurDeMagie(m.magie.nom)}; --mag-texte: `), 'la ligne sur la couleur de sa magie, au niveau 1');
+  const { fond, texte } = couleursDesBatons(m.magie);
+  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--mag: ${fond}; --mag-texte: ${texte}">`), 'la ligne sur la couleur de sa magie (lib/ceinture-couleurs.mjs), au niveau 1');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
   // demande du propriétaire du 2026-10-16 : la gemme est la pastille des accessoires (`.acc-gemme`, dans la couleur de la magie), sans ligne pour sa qualité

@@ -11,7 +11,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
     'Règles : Guide, Races, Magies, Classes, Métiers',
-    'Ressources : Équipement, Composants, Objets à la ceinture, Livres & Parchemins, Pièces élémentaires',
+    'Ressources : Équipement, Composants, Livres & Parchemins, Pièces élémentaires',
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
@@ -25,7 +25,7 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (m && TYPE_KEYS.includes(m[1])) {
       // une page du wiki, ou une page du site sous la rubrique (/ressources/composants/ : src/pages/ressources/composants.astro ;
-      // /ressources/objets-a-la-ceinture/, /ressources/equipement/ : src/pages/ressources/objets-a-la-ceinture.astro, equipement.astro)
+      // /ressources/equipement/ : src/pages/ressources/equipement.astro)
       if (m[2]) assert.ok(existsSync(new URL(`${m[1]}/${m[2]}.md`, content)) || existsSync(new URL(`${m[1]}/${m[2]}.astro`, pages)), `page absente : ${path}`);
     } else {
       const nom = path.replace(/\/$/, '');

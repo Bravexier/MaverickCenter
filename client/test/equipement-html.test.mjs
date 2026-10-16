@@ -1,14 +1,15 @@
 // Page /ressources/equipement/ construite (dist/ ; demandes du propriétaire, 2026-10-16) : cinq onglets dans l'ordre (Armes, Armures, Boucliers,
-// Bâtons magiques, Accessoires), un panneau par onglet, le premier ouvert ; des identifiants uniques sur toute la page ; l'onglet des bâtons magiques
-// (règles, une ligne par magie, liens vers « Composants ») ; les anciennes pages ne sont plus construites et aucun lien du site n'y mène ; chaque
-// onglet garde son script, et la page n'a qu'un script d'onglets. Le contenu des onglets Armes, Armures et Boucliers, Accessoires :
-// test/armes-html.test.mjs, armures-html.test.mjs, accessoires-html.test.mjs. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
+// Ceinture, Accessoires), un panneau par onglet, le premier ouvert ; des identifiants uniques sur toute la page ; le sous-onglet des bâtons magiques
+// de la ceinture (règles, une ligne par magie, liens vers « Composants ») ; les anciennes pages ne sont plus construites et aucun lien du site n'y
+// mène ; chaque onglet garde son script, et la page n'a qu'un script d'onglets. Le contenu des onglets Armes, Armures et Boucliers, Ceinture,
+// Accessoires : test/armes-html.test.mjs, armures-html.test.mjs, ceinture-html.test.mjs, accessoires-html.test.mjs. Se saute sans dist/ (npm run
+// build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
+import { ANCIENNE_PAGE_DE_LA_CEINTURE, CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ancreDeBatons } from '../src/lib/batons-rendu.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
@@ -21,14 +22,14 @@ const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const batons = present ? chargerBatons(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
-const panneauDesBatons = main.slice(main.indexOf('<section class="equipement-panneau batons" id="batons-magiques"'), main.indexOf('<section class="equipement-panneau" id="accessoires"'));
+const panneauDesBatons = main.slice(main.indexOf('<section class="ceinture-panneau batons" id="batons-magiques"'), main.indexOf('<section class="equipement-panneau" id="accessoires"'));
 
 test('le titre, puis les cinq onglets dans l’ordre, chacun un lien vers son panneau ; le premier ouvert au départ', options, () => {
   assert.match(main, /<div class="equipement">\s*<h1>Équipement <span class="badge">Ressource<\/span><\/h1>/);
-  // le groupe des onglets de la page est sa barre seule (components/Onglets.astro prend tous les `.onglet` d'un groupe ; l'onglet Accessoires a les siens)
+  // le groupe des onglets de la page est sa barre seule (components/Onglets.astro prend tous les `.onglet` d'un groupe ; les onglets Ceinture et Accessoires ont les leurs)
   const barre = main.slice(main.indexOf('<nav class="equipement-onglets" aria-label="Équipement" data-onglets="Équipement">'), main.indexOf('</nav>', main.indexOf('class="equipement-onglets"')));
   assert.equal((barre.match(/class="onglet[ "]/g) ?? []).length, ONGLETS_DE_L_EQUIPEMENT.length, 'la barre n’a que les onglets de la page');
-  const onglets = [...main.matchAll(/<a class="onglet( is-active)?" id="onglet-([a-z-]+)" href="#([a-z-]+)">\s*<span class="onglet__nom">([^<]+)<\/span>/g)];
+  const onglets = [...barre.matchAll(/<a class="onglet( is-active)?" id="onglet-([a-z-]+)" href="#([a-z-]+)">\s*<span class="onglet__nom">([^<]+)<\/span>/g)];
   assert.deepEqual(onglets.map((m) => [m[2], m[3], m[4]]), ONGLETS_DE_L_EQUIPEMENT.map((o) => [o.id, o.id, o.nom]));
   assert.deepEqual(onglets.map((m) => Boolean(m[1])), ONGLETS_DE_L_EQUIPEMENT.map((o, i) => i === 0), 'seul le premier onglet est ouvert');
   const panneaux = [...main.matchAll(/<section class="([^"]*\bequipement-panneau\b[^"]*)" id="([a-z-]+)" aria-labelledby="titre-([a-z-]+)"/g)];
@@ -49,7 +50,7 @@ test('identifiants uniques sur toute la page (les onglets réunis : matériaux, 
   for (const id of ['materiaux-armes', 'ameliorations-arme', 'ameliorations-armure', 'ameliorations-bouclier']) assert.ok(ids.includes(id), id);
 });
 
-test('bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie (Gemme, Bois, Niveau au curseur, Effet, Prix) et ses liens vers « Composants »', options, () => {
+test('ceinture, bâtons magiques : les règles repliées (introduction, fabrication), une ligne par magie (Gemme, Bois, Niveau au curseur, Effet, Prix) et ses liens vers « Composants »', options, () => {
   assert.ok(panneauDesBatons.length > 1000, 'le panneau des bâtons');
   assert.equal(panneauDesBatons.includes('<details class="batons-regles">'), Boolean(batons.regles.introduction || batons.regles.fabrication));
   assert.equal(panneauDesBatons.includes('<strong>Fabrication</strong>'), Boolean(batons.regles.fabrication));
@@ -64,17 +65,17 @@ test('bâtons magiques : les règles repliées (introduction, fabrication), une 
   assert.equal((panneauDesBatons.match(/<span class="bulle bulle--baton" role="tooltip" id="bulle-baton-[a-z-]+-(?:gemme|bois)" hidden>/g) ?? []).length, batons.magies.length * 2, 'une infobulle par gemme et par bois');
   assert.equal((panneauDesBatons.match(/<a class="acc-gemme" href="\/ressources\/composants\/#composant-gemme-[^"]+" style="--g: #[0-9a-f]{6}; --g-texte: #[0-9a-f]{6}"/g) ?? []).length, batons.magies.length, 'la gemme : la pastille des accessoires');
   assert.ok(!panneauDesBatons.includes('baton__qualite'), 'pas de ligne pour la qualité de la gemme');
-  assert.ok(panneauDesBatons.includes('<section class="equipement-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>'), 'la racine du script');
+  assert.ok(panneauDesBatons.includes('<section class="ceinture-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>'), 'la racine du script, le dernier sous-onglet de la ceinture');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
   const ancres = [...new Set([...panneauDesBatons.matchAll(/href="\/ressources\/composants\/#([^"]+)"/g)].map((m) => m[1]))];
   assert.ok(ancres.length >= batons.magies.length * 2, 'une gemme et un bois par magie');
   for (const a of ancres) assert.ok(composants.includes(`id="${a}"`), `ancre absente de « Composants » : ${a}`);
-  assert.match(panneauDesBatons, /href="\/ressources\/objets-a-la-ceinture\/"/, 'les autres objets de la ceinture');
 });
 
 test('les anciennes pages ne sont plus construites et aucun lien du site n’y mène ; ceux du wiki mènent à l’onglet', options, () => {
-  for (const o of ONGLETS_DE_L_EQUIPEMENT) assert.ok(!existsSync(join(dist, ...o.page.split('/'))), `pas de page /${o.page}/`);
-  const anciennes = new RegExp(`href="[^"]*/(${ONGLETS_DE_L_EQUIPEMENT.map((o) => o.page).join('|')})/`);
+  const chemins = [...PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => o.page), ANCIENNE_PAGE_DE_LA_CEINTURE.replace(/\/$/, '')];
+  for (const c of chemins) assert.ok(!existsSync(join(dist, ...c.split('/'))), `pas de page /${c}/`);
+  const anciennes = new RegExp(`href="[^"]*/(${chemins.join('|')})/`);
   const pages = readdirSync(dist, { recursive: true }).filter((n) => n.endsWith('.html') && n !== '404.html');
   for (const nom of pages) assert.ok(!anciennes.test(readFileSync(join(dist, nom), 'utf8')), nom);
   // le chapitre « L'équipement » du guide cite la page « Bouclier » (migration 0046) : son lien mène à l'onglet
@@ -86,6 +87,6 @@ test('chaque onglet garde son script ; un seul script d’onglets sur la page', 
   // celui des bâtons magiques (src/scripts/batons.mjs), assez court pour qu'Astro l'écrive en ligne, une fois
   assert.equal((html.match(/<script type="module">[^<]*\[data-baton-curseur\]/g) ?? []).length, 1, 'BatonsMagiques');
   assert.equal((html.match(/onglets:brancher/g) ?? []).length, 1, 'components/Onglets.astro, posé une fois');
-  // deux groupes : la barre de la page et, dans l'onglet Accessoires, les tableaux d'effets ; aucun ne contient l'autre
-  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Effets par propriété']);
+  // trois groupes : la barre de la page, les sous-onglets de la ceinture et, dans l'onglet Accessoires, les tableaux d'effets ; chacun est sa barre seule
+  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Ceinture', 'Effets par propriété']);
 });

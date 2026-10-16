@@ -6,10 +6,10 @@
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
-// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires ») : cinq onglets, Armes, Armures, Boucliers, Bâtons magiques, Accessoires
-// (lib/equipement.mjs). « Objets à la ceinture » : potions, huiles, carquois et sacs (décision R81) ; les bâtons magiques, qui vont aussi à la
-// ceinture, sont l'onglet Bâtons magiques de « Équipement », où la page renvoie. Le bouclier ne va pas à la ceinture, son emplacement est dans
-// l'armure (décision R82) : c'est l'onglet Boucliers de « Équipement ».
+// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires », puis « renommer l'onglet en "Ceinture" et le mettre dans les onglets de
+// équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs). La ceinture (potions et huiles, carquois et
+// sacs, bâtons magiques : décision R81) n'a plus d'entrée à elle : c'est l'onglet Ceinture de « Équipement ». Le bouclier ne va pas à la ceinture,
+// son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers de « Équipement ».
 export const NAV = [
   {
     key: 'regles',
@@ -30,7 +30,6 @@ export const NAV = [
     items: [
       { label: 'Équipement', path: 'ressources/equipement/' },
       { label: 'Composants', path: 'ressources/composants/' },
-      { label: 'Objets à la ceinture', path: 'ressources/objets-a-la-ceinture/' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
       { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
     ],
@@ -117,9 +116,10 @@ export function legacyWikiRedirect(pathname, base = '/') {
 
 /**
  * Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la
- * recherche ; les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page « Équipement »
- * (lib/equipement.mjs, lib/metiers.mjs#adresseDePage : test/equipement.test.mjs vérifie que les deux listes s'accordent ; nav.mjs n'importe rien, le
- * script de la page 404 l'importe).
+ * recherche ; les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont les onglets de la page « Équipement », « Bâton magique » le
+ * sous-onglet Bâtons magiques de son onglet Ceinture, et l'ancienne page « Objets à la ceinture », l'onglet Ceinture (lib/equipement.mjs,
+ * lib/metiers.mjs#adresseDePage : test/equipement.test.mjs vérifie que les deux listes s'accordent ; nav.mjs n'importe rien, le script de la page
+ * 404 l'importe).
  */
 // « guide/statistiques-resistance-faiblesse/ » recopiait le tableau des combinaisons de deux magies de l'onglet « Statistiques », ignoré (décisions R85,
 // R86, migration 0049) : les relations des magies sont sous la carte de /magies/.
@@ -127,7 +127,7 @@ export const PAGES_RENOMMEES = {
   'generateur/': 'fiche/', 'tags/': 'recherche/', 'guide/statistiques-resistance-faiblesse/': 'magies/',
   'ressources/armes/': 'ressources/equipement/#armes', 'ressources/armures/': 'ressources/equipement/#armures',
   'ressources/bouclier/': 'ressources/equipement/#boucliers', 'ressources/baton-magique/': 'ressources/equipement/#batons-magiques',
-  'ressources/accessoires/': 'ressources/equipement/#accessoires',
+  'ressources/accessoires/': 'ressources/equipement/#accessoires', 'ressources/objets-a-la-ceinture/': 'ressources/equipement/#ceinture',
 };
 
 /**

@@ -1,6 +1,7 @@
-// Objets à la ceinture (décisions R81 et R82) : la vue v_objet_ceinture (migration 0047) et le chargement de la page /ressources/objets-a-la-ceinture/
-// (lib/ceinture-db.mjs ; les bâtons magiques, qui sont dans la vue, ont leur tableau dans l'onglet de la page « Équipement » : test/equipement.test.mjs),
-// lus dans la base construite. Le site de dev peut créer, renommer et supprimer des contenants (page « Composants ») et réécrire
+// Objets à la ceinture (décisions R81 et R82) : la vue v_objet_ceinture (migration 0047) et le chargement de l'onglet « Ceinture » de la page
+// /ressources/equipement/ (lib/ceinture-db.mjs ; demande du propriétaire du 2026-10-16 : les sous-onglets Consommables, Carquois et Bâtons magiques,
+// les consommables dans l'ordre fioles, remèdes, philtres, huiles, alchimie primitive ; les bâtons, qui sont dans la vue, ont leur chargement à part :
+// test/equipement.test.mjs), lus dans la base construite. Le site de dev peut créer, renommer et supprimer des contenants (page « Composants ») et réécrire
 // les pages du guide : les tests contrôlent des invariants (la vue suit les tables, la page suit les sections), et ce qui vient de l'import (les
 // contenants que le guide nomme, les sections des pages) est lu tel que l'import l'a laissé (lib/historique-site.mjs).
 import assert from 'node:assert/strict';
@@ -9,10 +10,12 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
-  CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
+  CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
   chargerObjetsDeCeinture, sectionDuCorps,
 } from '../src/lib/ceinture-db.mjs';
-import { ancreDObjet, htmlDeLigneDePotion, htmlDeLignes, texteDeRecherche } from '../src/lib/ceinture-rendu.mjs';
+import { ancreDObjet, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
+import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
+import { COULEURS_DES_POTIONS } from '../src/lib/ceinture-couleurs.mjs';
 
 const db = ouvrirBase();
 const vue = db.prepare('SELECT famille, ressource_id, baton_id FROM v_objet_ceinture').all().map((l) => ({ ...l }));
@@ -59,11 +62,24 @@ test('v_objet_ceinture : tous les bâtons magiques ; une ligne = une potion, un 
   const noms = db.prepare('SELECT r.nom FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id').all().map((r) => cle(r.nom));
   assert.ok(!noms.some((n) => n.includes('bouclier')), 'le bouclier a son emplacement dans l’armure');
   assert.deepEqual(new Set(vue.map((v) => v.famille)), new Set([...FAMILLES_DE_LA_CEINTURE.map((f) => f.famille), FAMILLE_DES_BATONS]),
-    'une famille de la vue = un tableau de la page, sauf les bâtons (l’onglet « Bâtons magiques » de la page « Équipement »)');
+    'une famille de la vue = un tableau de l’onglet, sauf les bâtons (leur sous-onglet, lib/batons-db.mjs)');
+});
+
+test('les sous-onglets : Consommables (fioles, remèdes, philtres, huiles, alchimie primitive, dans cet ordre), Carquois, puis Bâtons magiques', () => {
+  // demande du propriétaire du 2026-10-16 : « dans l'ordre Consommable / Carquois / Bâton magiques. Les consommables regrouperai les fioles remêdes
+  // philtres huiles et alchimie privatives dans cet ordre »
+  const [consommables, carquois, batons] = SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => o.id);
+  assert.deepEqual(SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => o.nom), ['Consommables', 'Carquois', 'Bâtons magiques']);
+  assert.deepEqual(FAMILLES_DE_LA_CEINTURE.filter((f) => f.onglet === consommables).map((f) => f.famille), ['fiole', 'remede', 'philtre', 'huile', 'primitive']);
+  assert.deepEqual(FAMILLES_DE_LA_CEINTURE.filter((f) => f.onglet === carquois).map((f) => f.famille), ['contenant']);
+  assert.equal(ONGLET_DES_BATONS, batons);
+  assert.ok(FAMILLES_DE_LA_CEINTURE.every((f) => f.onglet !== batons), 'le sous-onglet des bâtons a son tableau à part');
+  assert.deepEqual(FAMILLES_DE_LA_CEINTURE.map((f) => f.titre), ['Fioles', 'Remèdes', 'Philtres', 'Huiles', 'Alchimie primitive', 'Carquois et sacs']);
 });
 
 test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la vue une fois, sauf les bâtons', () => {
   assert.deepEqual(objets.tableaux.map((t) => t.famille), FAMILLES_DE_LA_CEINTURE.map((f) => f.famille));
+  assert.deepEqual(objets.tableaux.map((t) => t.onglet), FAMILLES_DE_LA_CEINTURE.map((f) => f.onglet));
   assert.ok(!objets.tableaux.some((t) => t.famille === FAMILLE_DES_BATONS), 'pas de tableau des bâtons');
   assert.equal(objets.tableaux.reduce((n, t) => n + t.nombre, 0), vue.filter((v) => v.famille !== FAMILLE_DES_BATONS).length);
   for (const t of objets.tableaux.filter((x) => x.pages)) {
@@ -73,6 +89,8 @@ test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la v
     const titres = t.pages.map((p) => p.titre);
     assert.deepEqual(titres, [...titres].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })), `${t.famille} : pages par ordre alphabétique`);
     for (const p of t.pages) assert.ok(p.existe, `${p.id} : la page de la potion existe`);
+    // chaque potion porte la couleur de son palier dans le Doc « Alchimie » (lib/ceinture-couleurs.mjs : test/ceinture-couleurs.test.mjs)
+    for (const x of t.pages.flatMap((p) => p.potions)) assert.equal(x.couleur, COULEURS_DES_POTIONS[x.id] ?? null, x.id);
   }
   assert.equal(tableau('contenant').objets.length, tableau('contenant').nombre);
 });
@@ -116,7 +134,7 @@ test('sectionDuCorps : une section jusqu’au titre suivant de même niveau ou p
   assert.equal(sectionDuCorps('## A\n\nTexte.', null), null, 'pas d’introduction');
 });
 
-test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icônes', () => {
+test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icônes ; plus de texte de recherche', () => {
   assert.equal(htmlDeLignes('- Redonne 15 santé\n- 1 croix à la perception pendant 2 tours'), 'Redonne 15 santé<br>1 croix à la perception pendant 2 tours');
   assert.equal(htmlDeLignes('ampli am = +1 am <donné>'), 'ampli am = +1 am &lt;donné&gt;');
   assert.match(htmlDeLignes(''), /class="vide"/);
@@ -124,6 +142,6 @@ test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icô
   const html = htmlDeLigneDePotion(p);
   assert.ok(html.includes(`id="${ancreDObjet(p.id)}"`));
   assert.match(html, /class="piece piece--/, 'le prix en icônes (R63)');
-  assert.ok(html.includes(`data-recherche="${echapper(texteDeRecherche(p.nom, p.niveau, p.effet))}"`));
-  assert.equal(texteDeRecherche('Fiole  Rouge', null, 'Récupère'), 'fiole rouge recupere');
+  assert.ok(!html.includes('data-recherche'), 'plus de recherche (demande du propriétaire : des sous-onglets à la place)');
+  assert.ok(html.includes(`<th scope="row" class="ceint-nom">${echapper(p.nom)}</th>`));
 });

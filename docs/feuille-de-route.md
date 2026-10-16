@@ -134,12 +134,12 @@ flowchart LR
 - **Déjà là** : les catalogues typés (section 9 : armes, armures, boucliers, matériaux, améliorations, pièces élémentaires, accessoires, gemmes, bâtons
   magiques…) ; les pages des Ressources, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
   inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
-  des pièces, bonus des améliorations, résistances des objets). « Objets à la ceinture » a sa page (2026-10-15, décisions R81 et R82 : potions, huiles,
-  carquois et sacs, bâtons magiques ; le bouclier n'y va pas, son emplacement est dans l'armure).
+  des pièces, bonus des améliorations, résistances des objets). La ceinture a son onglet dans « Équipement » (d'abord une page, 2026-10-15 ; l'onglet « Ceinture »
+  depuis le 2026-10-16, décisions R81 et R82 : potions, huiles, carquois et sacs, bâtons magiques ; le bouclier n'y va pas, son emplacement est dans l'armure).
 - **Portée** (réponse du propriétaire, 2026-10-11) : une refonte **visuelle** et de l'**intégration à la fiche**, où il y a aujourd'hui des ratés ; les
   règles de l'équipement ne changent pas.
 - **Étapes proposées** : (1) les pages des Ressources refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
-  le site de dev ; (2) « Objets à la ceinture » (premier jet en place : `/ressources/objets-a-la-ceinture/`, vue `v_objet_ceinture` ; restent la modification sur le site
+  le site de dev ; (2) la ceinture (en place : l'onglet « Ceinture » de `/ressources/equipement/`, vue `v_objet_ceinture` ; restent la modification sur le site
   de dev, qui doit faire suivre les pages des potions et du bâton ; dans la fiche, le sac selon la Force et la ceinture tirée du sac : décisions R88, R89) ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
   choix dans le catalogue et les effets codés en données, un effet à la fois, cité et testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en
   texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.

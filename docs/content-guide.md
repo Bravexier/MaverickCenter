@@ -244,12 +244,13 @@ ses descriptions ont été **copiées** des pages (registre `tools/chronologie/e
 sur le site de dev, avec la date, le titre, le lien de chaque description et les catégories (plusieurs par événement ; sans catégorie, « Sans catégorie
 (à trier) », sur le site de dev seulement) ; la frise se filtre par catégorie (une à la fois).
 Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
-## Équipement (`/ressources/equipement/`) : armes, armures, boucliers, bâtons magiques et accessoires
+## Équipement (`/ressources/equipement/`) : armes, armures, boucliers, ceinture et accessoires
 
 Demandes du propriétaire (2026-10-16) : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" A l'instar de "Armure et bouclier"
 les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ;
-« J'aimerai rajouter un 5 onglet pour y déplacer les accessoires ». Une seule entrée du menu Ressources, **Équipement**, à la place d'« Armes »,
-d'« Armures » et d'« Accessoires » ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
+« J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir intégralement la page des objets à la ceinture, renommer l'onglet
+en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Une seule entrée du menu Ressources, **Équipement**, à la place
+d'« Armes », d'« Armures », d'« Accessoires » et d'« Objets à la ceinture » ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
 `styles/equipement/equipement.css`), rendue depuis la base, en **cinq onglets** (`components/Onglets.astro`, posé une fois ; sans JavaScript, les panneaux
 se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT` :
 
@@ -258,14 +259,16 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
 | Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
 | Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
 | Boucliers | `#boucliers` | `ressources/bouclier` | idem |
-| Bâtons magiques | `#batons-magiques` | `ressources/baton-magique` | les règles de la page « Bâton magique » (introduction, fabrication), repliées comme celles des autres onglets, puis le tableau des bâtons (« Bâtons magiques » ci-dessous ; `lib/batons-db.mjs`, `lib/batons-rendu.mjs`, `components/equipement/BatonsMagiques.astro`, `src/scripts/batons.mjs`) ; avant, un tableau de la page « Objets à la ceinture », qui y renvoie |
+| Ceinture | `#ceinture` | aucune (l'ancienne page `/ressources/objets-a-la-ceinture/`, sans page du wiki) ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques |
 | Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
 
-- Les cinq pages du wiki **ne sont plus construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, règles
-  affichées par leur onglet) ; leurs liens mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404
-  (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée : `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`). Les liens écrits à la main
+- Les cinq pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` : quatre onglets et le sous-onglet des bâtons) **ne sont plus
+  construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, règles affichées par leur onglet) ; leurs liens
+  mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
+  `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`), comme celle de l'ancienne page « Objets à la ceinture » (→ `#ceinture`). Les liens écrits à la main
   dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
-- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`) ouvre son onglet. Chaque onglet garde son script
+- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre son onglet (et son
+  sous-onglet). Chaque onglet garde son script
   (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
   `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
   l'onglet Armes est affiché.
@@ -273,34 +276,11 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
   lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
 - Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
-  active dès que son bloc est dans la page) ; ni les bâtons ni les accessoires.
-- Tests : `test/equipement.test.mjs` (onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site construit : onglets et panneaux
-  dans l'ordre, identifiants uniques, bâtons, anciennes pages absentes et plus aucun lien vers elles, scripts), `batons-script.test.mjs` (le curseur des
-  bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`, `accessoires-html.test.mjs`.
-
-### Bâtons magiques (onglet Bâtons magiques)
-
-Demande du propriétaire (2026-10-16) : « Il faudrait colorer toute la ligne de la couleur de la magie concernée. La colonne magie elle même n'est pas
-utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3
-à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
-
-- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** (`couleurDeMagie`, texte lisible `texteSurCouleur`, comme les matériaux de
-  l'onglet Armes), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
-  **Gemme | Bois | Niveau | Effet | Prix**.
-- **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
-  magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
-  tabulation : le nom l'est déjà). La gemme est **la pastille des accessoires** (`.acc-gemme`, dans la couleur de sa magie, commune aux deux onglets :
-  `styles/equipement/equipement.css` ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
-  propriétaire, 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité
-  de la gemme ») : la qualité du niveau se lit dans l'infobulle.
-- **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que
-  l'effet et le prix de ce niveau (chaque case les écrit tous, `data-niv`) et met sa qualité en avant dans l'infobulle de la gemme. Sans JavaScript : pas de curseur, chaque case écrit ses trois niveaux,
-  chacun sous son nom.
-- **Effet** : le bonus passif du niveau, tel qu'écrit (`baton_magique.bonus_brut`).
-- **Prix** : la source n'écrit pas de prix pour un bâton, seulement ceux de ses matériaux et la recette de chaque niveau (« 1 Gemme Commune + 1 bois
-  [magie] ») ; le prix affiché est celui des **matériaux de la recette** : la gemme entière de la qualité du niveau + le bois (`lib/batons-db.mjs#prixDuBaton`,
-  null si l'un des deux manque), en icônes de monnaie ; l'en-tête le dit en infobulle. Aucun coût de fabrication n'est ajouté.
-- Pas encore modifiable sur le site de dev : les prix de la gemme et du bois se modifient dans « Composants » et suivent au build suivant.
+  active dès que son bloc est dans la page) ; ni la ceinture ni les accessoires.
+- Tests : `test/equipement.test.mjs` (onglets et sous-onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site
+  construit : onglets et panneaux dans l'ordre, identifiants uniques, bâtons, anciennes pages absentes et plus aucun lien vers elles, scripts),
+  `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
+  `ceinture-html`, `accessoires-html.test.mjs`.
 
 ## Armes (onglet Armes de `/ressources/equipement/`) : un tableau par famille, la fiche de l'arme forgée
 
@@ -426,6 +406,87 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (décision R92 : le registre de la
   migration 0054 = la base dans son état d'import, couleurs, pastille), `armures-tri.test.mjs` (tri de la liste), `armures-html.test.mjs` (site construit).
 
+## Ceinture (onglet Ceinture de `/ressources/equipement/`) : consommables, carquois et sacs, bâtons magiques
+
+Demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs peuvent placer à la ceinture dans le but de pouvoir les
+utiliser comme un IC. De plus il faut parler aussi des bâtons magiques. Ils ne sont pas consommables mais ils tiennent tout de même un emplacement à la
+ceinture » (d'abord une page, `/ressources/objets-a-la-ceinture/`, aux tableaux repliables) ; le 2026-10-16 : « revoir intégralement la page des objets
+à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement. Dans cet onglet chaque tableau aurai aussi ses sous onglets
+plutôt que la recherche actuel. On y remettrait à ce moment le tableau Bâton magique (actuellement migré dans équipement). Les onglets seront
+organisées dans l'ordre Consommable / Carquois / Bâton magiques. Les consommables regrouperai les fioles remêdes philtres huiles et alchimie
+privatives dans cet ordre. il faudra aussi récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes. »
+
+Le guide ne donne qu'une liste « non exhaustive » (« Voyez avec votre mj ») ; l'onglet liste ce que le propriétaire a retenu (décision R81) : **toutes
+les potions** (fioles, remèdes et panacée, philtres, alchimie primitive), **toutes les huiles**, les **carquois, sacs de bombes et sacs de pierres**
+(que le guide oblige à mettre à la ceinture pour être utilisés) et les **bâtons magiques**. Le bouclier n'en est pas : son emplacement est dans
+l'armure (décision R82). Le matériel que le guide cite aussi (briquet, torche, lanterne, corde, kits) va à la ceinture mais n'est pas listé : il reste
+dans « Composants ». L'onglet ne dit donc pas que rien d'autre ne va à la ceinture.
+
+Quels objets : la vue **`v_objet_ceinture`** (migration `0047-objets-a-la-ceinture`), une ligne par objet avec sa famille (`fiole`, `philtre`, `remede`,
+`primitive`, `huile`, `contenant`, `baton`) et sa potion ou son contenant (`ressource_id`) ou son bâton (`baton_id`) : les potions de la table `potion`,
+les ressources du matériel dont la clé du nom écrit « carquois », « sac de bombe » ou « sac de pierre », les bâtons de `baton_magique`. Une vue et non une
+table : elle suit les tables (un carquois créé sur la page « Composants » y entre). La fiche de personnage s'en sert pour ses trois emplacements
+(`personnage_ceinture`, décision R89) : elle y reconnaît les bâtons magiques (un seul par emplacement) et les carquois ou sacs (leur contenance) ; les
+emplacements, eux, prennent n'importe quel objet du sac (la liste du guide n'est pas exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
+
+L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/CeinturePanneau.astro`, `styles/ceinture/ceinture.css`, lignes :
+`lib/ceinture-rendu.mjs`), dans le panneau `section.equipement-panneau#ceinture` de la page « Équipement » :
+
+- en tête, **les règles de la ceinture**, repliées comme celles des autres onglets : la section « La ceinture » du chapitre « L'équipement » du guide
+  (`guide/l-equipement`), rendue depuis la base, et, en dépliable, le texte de la source : la section « Ceinture » de la page de référence « Fiche de
+  personnage : Accessoires et Ceinture » (la liste « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
+- puis **trois sous-onglets** (`lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE`, `components/Onglets.astro` ; leur barre est un groupe à elle,
+  `data-onglets="Ceinture"`), chacun un panneau `section.ceinture-panneau` dont l'id est l'ancre du sous-onglet :
+  - **Consommables** (`#ceinture-consommables`, ouvert au départ) : les tableaux repliables **Fioles**, **Remèdes**, **Philtres**, **Huiles**,
+    **Alchimie primitive**, dans cet ordre (`lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE`), un lien par tableau en tête — une potion par ligne (nom, niveau,
+    prix, effet tel qu'écrit), groupées par page de potion (« Fiole rouge » et ses paliers, dans l'ordre où la page les écrit ; le titre de la page en
+    lien, son résumé dessous) ;
+  - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
+    description) ;
+  - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
+    et ce sous-onglet) : « Bâtons magiques » ci-dessous.
+- **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : l'onglet n'a pas de script, sauf le curseur des
+  bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
+- **Couleurs des lignes** (`lib/ceinture-couleurs.mjs`, lues dans les sources originales le 2026-10-16 par les connecteurs Google de la session ; les
+  instantanés de `sources/raw/` ne gardent pas la mise en forme) : chaque potion sur la couleur de son palier dans le Google Doc « Alchimie » (le fond de
+  la case du nom, en tête du tableau du palier ; le texte que le Doc pose, sinon le plus lisible sur le fond), sauf le Remède enragé et l'Huile rage, que
+  le Doc ne colore pas ; les carquois et sacs n'ont pas de couleur dans l'onglet « Équipement inventaire » du classeur ; les bâtons, la case de leur
+  magie dans l'onglet « Bâton magique ». Une potion créée plus tard, absente du module, resterait neutre. Repère visuel sans valeur de règle.
+
+Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
+« Composants » ; le prix d'un bâton, celui des matériaux de sa recette) ; les prix et les textes montrent leurs monnaies en icônes (R63). Les titres des
+pages citées sont lus dans la base ; une section de règles qu'une page n'écrit plus (titre renommé sur le site de dev) manque à l'onglet, et le build le
+dit (avertissement `[ceinture]`). Pas encore modifiable sur le site de dev : les potions ont leurs pages (« Fiole rouge »…), qu'une modification devra
+suivre, comme le fait `lib/corps-composants.mjs` pour les composants. Tests : `ceinture-db.test.mjs` (la vue, le chargement, l'ordre des tableaux et des
+sous-onglets, les sections telles que l'import les écrivait), `ceinture-couleurs.test.mjs` (une couleur par potion et par magie des bâtons, le rendu),
+`ceinture-html.test.mjs` (site construit : sous-onglets, tableaux, couleurs, liens, plus de recherche ni de page à part).
+
+### Bâtons magiques (sous-onglet Bâtons magiques de la ceinture)
+
+Demande du propriétaire (2026-10-16) : « Il faudrait colorer toute la ligne de la couleur de la magie concernée. La colonne magie elle même n'est pas
+utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3
+à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
+
+- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** : depuis la demande du propriétaire du 2026-10-16 (« récupérer les
+  couleurs utilisées dans les tableaux du GoogleSheet pour les lignes présentes »), celle de la case du nom de la magie dans l'onglet « Bâton magique »
+  du classeur (`lib/ceinture-couleurs.mjs#COULEURS_DES_BATONS`, texte posé par le classeur ou, sinon, le plus lisible : `texteSurCouleur` ; une magie
+  absente de l'onglet garderait `couleurDeMagie`), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
+  **Gemme | Bois | Niveau | Effet | Prix**.
+- **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
+  magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
+  tabulation : le nom l'est déjà). La gemme est **la pastille des accessoires** (`.acc-gemme`, dans la couleur de sa magie, commune aux deux onglets :
+  `styles/equipement/equipement.css` ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
+  propriétaire, 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité
+  de la gemme ») : la qualité du niveau se lit dans l'infobulle.
+- **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que
+  l'effet et le prix de ce niveau (chaque case les écrit tous, `data-niv`) et met sa qualité en avant dans l'infobulle de la gemme. Sans JavaScript : pas de curseur, chaque case écrit ses trois niveaux,
+  chacun sous son nom.
+- **Effet** : le bonus passif du niveau, tel qu'écrit (`baton_magique.bonus_brut`).
+- **Prix** : la source n'écrit pas de prix pour un bâton, seulement ceux de ses matériaux et la recette de chaque niveau (« 1 Gemme Commune + 1 bois
+  [magie] ») ; le prix affiché est celui des **matériaux de la recette** : la gemme entière de la qualité du niveau + le bois (`lib/batons-db.mjs#prixDuBaton`,
+  null si l'un des deux manque), en icônes de monnaie ; l'en-tête le dit en infobulle. Aucun coût de fabrication n'est ajouté.
+- Pas encore modifiable sur le site de dev : les prix de la gemme et du bois se modifient dans « Composants » et suivent au build suivant.
+
 ## Accessoires (onglet Accessoires de `/ressources/equipement/`) : le générateur d'accessoire
 
 Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
@@ -529,47 +590,6 @@ Le corps Markdown des pages qui écrivent ces composants suit, case par case (`l
 MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
 avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».
 Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-html.test.mjs` (site construit).
-
-## Objets à la ceinture (`/ressources/objets-a-la-ceinture/`) : potions, huiles, carquois et sacs
-
-Demande du propriétaire (2026-10-15) : « l'ensemble de tous les objets que les joueurs peuvent placer à la ceinture dans le but de pouvoir les utiliser
-comme un IC. De plus il faut parler aussi des bâtons magiques. Ils ne sont pas consommables mais ils tiennent tout de même un emplacement à la
-ceinture. » ; présentation choisie : des tableaux repliables, comme les armes. Le guide ne donne qu'une liste « non exhaustive » (« Voyez avec votre
-mj ») ; la page liste ce que le propriétaire a retenu (décision R81) : **toutes les potions** (fioles, philtres, remèdes et panacée, alchimie
-primitive), **toutes les huiles**, les **carquois, sacs de bombes et sacs de pierres** (que le guide oblige à mettre à la ceinture pour être utilisés) et
-les **bâtons magiques**. Le bouclier n'en est pas : son emplacement est dans l'armure (décision R82). Le matériel que le guide cite aussi (briquet,
-torche, lanterne, corde, kits) va à la ceinture mais n'est pas listé : il reste dans « Composants ». La page ne dit donc pas que rien d'autre ne va à la
-ceinture.
-
-Quels objets la page liste : la vue **`v_objet_ceinture`** (migration `0047-objets-a-la-ceinture`), une ligne par objet avec sa famille (`fiole`, `philtre`, `remede`,
-`primitive`, `huile`, `contenant`, `baton`) et sa potion ou son contenant (`ressource_id`) ou son bâton (`baton_id`) : les potions de la table `potion`,
-les ressources du matériel dont la clé du nom écrit « carquois », « sac de bombe » ou « sac de pierre », les bâtons de `baton_magique`. Une vue et non une
-table : elle suit les tables (un carquois créé sur la page « Composants » y entre). La fiche de personnage s'en sert pour ses trois emplacements
-(`personnage_ceinture`, décision R89) : elle y reconnaît les bâtons magiques (un seul par emplacement) et les carquois ou sacs (leur contenance) ; les
-emplacements, eux, prennent n'importe quel objet du sac (la liste du guide n'est pas exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
-
-La page n'a pas de page du wiki : elle est rendue depuis la base (`src/pages/ressources/objets-a-la-ceinture.astro`, `lib/ceinture-db.mjs`,
-`components/ceinture/`, `styles/ceinture/`, lignes : `lib/ceinture-rendu.mjs`) :
-
-- en tête, **les règles de la ceinture** : la section « La ceinture » du chapitre « L'équipement » du guide (`guide/l-equipement`), rendue depuis la base,
-  et, en dépliable, le texte de la source : la section « Ceinture » de la page de référence « Fiche de personnage : Accessoires et Ceinture » (la liste
-  « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
-- un tableau repliable par famille : **Fioles**, **Philtres**, **Remèdes**, **Alchimie primitive** (sous « Potions »), **Huiles** — une potion par ligne
-  (nom, niveau, prix, effet tel qu'écrit), groupées par page de potion (« Fiole rouge » et ses paliers, dans l'ordre où la page les écrit ; le titre de la
-  page en lien, son résumé dessous) — ; **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix, description).
-- **Les bâtons magiques**, qui vont aussi à la ceinture (la vue les garde, la fiche s'en sert), ont leur tableau dans l'onglet « Bâtons magiques » de la
-  page « Équipement » (demande du propriétaire, 2026-10-16 : « qui auront mieux leur place ici ») : le chapeau et le sommaire de la page y renvoient
-  (`lib/ceinture-db.mjs#FAMILLE_DES_BATONS`, la famille de la vue sans tableau ici).
-
-Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
-« Composants ») ; les prix et les textes montrent leurs monnaies en icônes (R63). Une recherche filtre les
-lignes de tous les tableaux (`src/scripts/ceinture.mjs` : une potion se trouve aussi par le titre et le résumé de sa page) ; sans JavaScript, tout est
-affiché. Les tableaux d'un groupe (« Potions ») sont dans une `<section>` avec leur titre, que la recherche cache avec eux. Les titres des pages citées
-sont lus dans la base ; une section de règles qu'une page n'écrit plus (titre renommé sur le site de dev) manque à la page, et le build le dit
-(avertissement `[ceinture]`). Pas encore modifiable sur le site de dev : les potions ont leurs pages (« Fiole rouge »…),
-qu'une modification devra suivre, comme le fait `lib/corps-composants.mjs` pour les composants. Tests : `ceinture-db.test.mjs` (la vue, le chargement,
-les sections telles que l'import les écrivait), `ceinture-script.test.mjs` (la recherche, dans un faux navigateur), `ceinture-html.test.mjs` (site
-construit).
 
 ## Pages de classe : un gabarit commun, alimenté par la base
 
