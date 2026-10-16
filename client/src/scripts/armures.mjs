@@ -8,6 +8,8 @@
 //     amélioration repasse à l'armure complète).
 //   - Onglet Boucliers : une forme et une matière donnent le bouclier préfabriqué (décision R78) ; une ligne de la liste choisit les deux ; l'amélioration
 //     en change la défense, la solidité et le coût (R76).
+// Les fiches sont réduites à leur minimum, comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles (AP, AM, solidité, coût) dont le
+// détail du calcul est l'infobulle, puis, pour une armure, sa résistance et sa faiblesse (ou son effet).
 // Recliquer une ligne choisie la retire ; « Fermer » (ou Échap) vide le choix de l'onglet ouvert. Les valeurs viennent des cellules telles qu'affichées
 // (attributs `data-…` des rendus de lib/armures-rendu.mjs), lues à chaque choix : après un enregistrement du mode modification, qui réécrit ces cellules,
 // la fiche suit sans recharger la page (évènement « armures:rafraichir »). En mode modification (body.ed-mode) : rien ne se choisit
@@ -37,10 +39,19 @@ if (racine) {
       ? '—'
       : `<span class="montant">${piecesDuMontant(n).map((p) => `<span class="montant__part">${nombre(p.nombre)}&#8239;${PIECES[p.abr] ?? p.abr}</span>`).join(' ')}</span>`;
   const signe = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
-  const defense = (ap, am) => `${signe(ap)}&#8239;AP · ${signe(am)}&#8239;AM`;
-  const ligneDeFiche = (nom, valeur, classe = '') => `<li${classe ? ` class="${classe}"` : ''}><span>${nom}</span><span>${valeur}</span></li>`;
-  const tuile = (nom, valeur, detail = '') =>
-    `<div class="pfiche__tuile"><span class="pfiche__tuile-nom">${nom}</span><span class="pfiche__tuile-val">${valeur}</span>${detail ? `<span class="pfiche__tuile-detail">${detail}</span>` : ''}</div>`;
+  // La fiche est réduite à son minimum, comme celle des armes (demande du propriétaire, 2026-10-16 : « Pas besoin de détailler les calculs en dessous,
+  // une tuile en tooltip de la case […] suffit » ; puis « Oui » pour l'armure et le bouclier) : chaque tuile est un bouton dont l'infobulle (bulle riche
+  // de components/Infobulles.astro, au survol, au clic, au toucher et au clavier) donne le détail du calcul, une ligne par élément puis le total ; les
+  // bulles sont écrites hors du panneau qui défile (`[data-armures-bulles]`) ; styles communs `.eq-bulle` : styles/equipement/equipement.css.
+  const ligneDeFiche = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
+  const bulle = (id, titre, lignes, notes = []) =>
+    `<span class="bulle bulle--large eq-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="eq-bulle__lignes">${lignes}</span>${notes.filter(Boolean).map((n) => `<span class="eq-bulle__note">${n}</span>`).join('')}</span>`;
+  const tuile = (id, nom, valeur, detail = '') =>
+    `<button type="button" class="pfiche__tuile" data-bulle="${id}" aria-describedby="${id}"><span class="pfiche__tuile-nom">${nom}</span><span class="pfiche__tuile-val">${valeur}</span>${detail ? `<span class="pfiche__tuile-detail">${detail}</span>` : ''}</button>`;
+  /** Les bulles d'un panneau (« armure », « bouclier »), écrites hors du panneau qui défile ; vidées quand la fiche l'est. */
+  const bullesDe = (quoi) => racine.querySelector(`[data-armures-bulles="${quoi}"]`);
+  /** Le panneau de côté remonte à la fiche quand on choisit une autre armure (ou un autre bouclier) : il garde sinon son défilement. */
+  const remonter = (vue) => vue?.querySelector('.armures-cote')?.scrollTo({ top: 0 });
   const pastille = (m) => (m ? `<span class="pmat-pastille" style="${e(m.style)}">${e(m.nom)}</span>` : '');
 
   /** Les améliorations d'une cible telles qu'affichées : [{ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }]. */
@@ -74,7 +85,7 @@ if (racine) {
   const prixDe = (cellule) => ({ ro: nombreOuNul(cellule?.querySelector('.pprix')?.dataset.ro), texte: cellule?.querySelector('.pprix')?.textContent.trim() ?? '' });
 
   // ───────────────────────────────────────────── Armures ─────────────────────────────────────────────
-  const A = { vue: racine.querySelector('[data-vue="armure"]'), fiche: racine.querySelector('[data-fiche="armure"]'), m1: null, m2: null, particuliere: null, piece: null, niveau: 0 };
+  const A = { vue: racine.querySelector('[data-vue="armure"]'), fiche: racine.querySelector('[data-fiche="armure"]'), m1: null, m2: null, particuliere: null, piece: null, niveau: 0, derniere: null };
   const ligneDeMateriau = (role, cle) => (cle ? racine.querySelector(`[data-choix="${role}"] tr.pmat[data-materiau="${CSS.escape(cle)}"]`) : null);
   const pieceComplete = () => racine.querySelector('tr.ppiece[data-complete]');
   const videDeLArmure = A.fiche?.innerHTML ?? '';
@@ -116,9 +127,12 @@ if (racine) {
   function rendreArmure() {
     if (!A.fiche) return;
     const ligne = armureChoisie();
+    if (ligne !== A.derniere) remonter(A.vue);
+    A.derniere = ligne;
     if (!ligne) {
       A.vue?.classList.remove('est-ouverte');
       A.fiche.removeAttribute('aria-labelledby');
+      if (bullesDe('armure')) bullesDe('armure').innerHTML = '';
       const seul = A.m1 ?? A.m2;
       A.fiche.innerHTML = seul
         ? `<p class="pfiche__vide">${pastille(lireMateriau(seul))} choisi : choisissez le second matériau dans l’autre tableau.</p>`
@@ -133,15 +147,20 @@ if (racine) {
     const niveau = A.niveau ? `Amélioration +${A.niveau}` : 'Sans amélioration';
     const c = f.cout;
     const matAmel = c.materiaux_amelioration ? ` + ${pluriel(c.materiaux_amelioration, 'matériau', 'x')}` : '';
-    const defenseLignes = [
-      ligneDeFiche(e(a.nom), defense(f.ap.armure, f.am.armure)),
-      ...(A.niveau ? [ligneDeFiche(niveau, defense(f.ap.amelioration, f.am.amelioration))] : []),
-      ligneDeFiche('Total', defense(f.ap.total, f.am.total), 'pfiche__total'),
+    const apLignes = [
+      ligneDeFiche(e(a.nom), `${signe(f.ap.armure)}&#8239;AP`),
+      ...(A.niveau ? [ligneDeFiche(niveau, `${signe(f.ap.amelioration)}&#8239;AP`)] : []),
+      ligneDeFiche('Total', `${f.ap.total}&#8239;AP`, 'eq-bulle__total'),
+    ].join('');
+    const amLignes = [
+      ligneDeFiche(e(a.nom), `${signe(f.am.armure)}&#8239;AM`),
+      ...(A.niveau ? [ligneDeFiche(niveau, `${signe(f.am.amelioration)}&#8239;AM`)] : []),
+      ligneDeFiche('Total', `${f.am.total}&#8239;AM`, 'eq-bulle__total'),
     ].join('');
     const soliditeLignes = [
       ligneDeFiche(e(a.nom), `${f.solidite.armure}${a.uni ? ' (uni)' : ''}`),
       ...(A.niveau && f.solidite.amelioration ? [ligneDeFiche(niveau, signe(f.solidite.amelioration))] : []),
-      ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'pfiche__total'),
+      ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'eq-bulle__total'),
     ].join('');
     let coutLignes;
     let coutTuile;
@@ -152,51 +171,56 @@ if (racine) {
         ligneDeFiche(`Fabrication (${e(piece.nom)})`, ro(c.fabrication)),
         ...mats.map((m) => ligneDeFiche(`1 × ${e(m.nom)}`, ro(m.prix_ro))),
         ...(A.niveau ? [ligneDeFiche(`${niveau} (niveaux +1 à +${A.niveau})`, `${ro(c.amelioration)}${matAmel}`)] : []),
-        ligneDeFiche('Total', `${fournis}${c.total === null ? '' : ` <span class="pfiche__ou">ou</span> ${ro(c.total)}${matAmel}`}`, 'pfiche__total'),
+        ligneDeFiche('Total', `${fournis}${c.total === null ? '' : ` <span class="pfiche__ou">ou</span> ${ro(c.total)}${matAmel}`}`, 'eq-bulle__total'),
       ].join('');
       coutTuile = `${ro(c.total)}`;
     } else {
       coutLignes = [
         ligneDeFiche(a.particuliere ? e(a.nom) : 'Armure complète (prix de la grille)', c.prix === null ? e(a.prixTexte || '—') : ro(c.prix)),
         ...(A.niveau ? [ligneDeFiche(`${niveau} (niveaux +1 à +${A.niveau})`, `${ro(c.amelioration)}${matAmel}`)] : []),
-        ligneDeFiche('Total', c.total === null ? e(a.prixTexte || '—') : `${ro(c.total)}${matAmel}`, 'pfiche__total'),
+        ligneDeFiche('Total', c.total === null ? e(a.prixTexte || '—') : `${ro(c.total)}${matAmel}`, 'eq-bulle__total'),
       ].join('');
       coutTuile = c.total === null ? e(a.prixTexte || '—') : ro(c.total);
+    }
+    // une pièce choisie : défense et solidité restent celles de l'armure (décision R75), ce que disent les bulles
+    const parPiece = c.piece ? 'La source ne donne ni défense, ni solidité, ni résistance par pièce : la fiche montre celles de l’armure (décision R75).' : '';
+    const bulles = bullesDe('armure');
+    if (bulles) {
+      bulles.innerHTML = [
+        bulle('armure-bulle-ap', 'Armure physique', apLignes, [parPiece]),
+        bulle('armure-bulle-am', 'Armure magique', amLignes, [parPiece]),
+        bulle('armure-bulle-solidite', 'Solidité', soliditeLignes, [parPiece]),
+        bulle('armure-bulle-cout', 'Coût', coutLignes, [
+          c.materiaux_amelioration ? 'Les matériaux d’une amélioration sont comptés sans prix : la source ne dit pas lequel des deux matériaux de l’armure.' : '',
+          f.amelioration_possible ? '' : 'Le tableau d’amélioration vaut pour l’armure entière (décision R77).',
+        ]),
+      ].join('');
     }
     const forge = a.particuliere
       ? '<span>Armure particulière : un prix pour l’armure entière (décision R80)</span>'
       : `<span>${mats.map(pastille).join(' + ')}</span><span>·</span><span>${e(piece.complete ? 'Armure complète' : piece.nom)}</span>`;
+    // un seul cadre réduit : l'armure, ce dont elle est faite, quatre tuiles, puis sa résistance et sa faiblesse (ou son effet)
     A.fiche.innerHTML = `
       <header class="pfiche__tete">
-        <div>
-          <h2 id="armure-fiche-titre">${e(a.nom)}</h2>
-          <p class="pfiche__sous-titre">${a.type}</p>
-        </div>
+        <h2 id="armure-fiche-titre">${e(a.nom)}</h2>
         <button type="button" class="armures-cote__fermer" data-armures-fermer="armure">Fermer</button>
       </header>
+      <p class="pfiche__sous-titre">${a.type}</p>
       <p class="pfiche__forge">${forge}<span>·</span><span class="pfiche__niveau">${niveau}</span></p>
       <div class="pfiche__tuiles">
-        ${tuile('Armure physique', `${f.ap.total}&#8239;AP`)}
-        ${tuile('Armure magique', `${f.am.total}&#8239;AM`)}
-        ${tuile('Solidité', String(f.solidite.total), a.uni ? 'uni' : '')}
-        ${tuile('Coût', coutTuile, c.piece ? 'matériaux achetés' : '')}
+        ${tuile('armure-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
+        ${tuile('armure-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
+        ${tuile('armure-bulle-solidite', 'Solidité', String(f.solidite.total), a.uni ? 'uni' : '')}
+        ${tuile('armure-bulle-cout', 'Coût', coutTuile, c.piece ? 'matériaux achetés' : '')}
       </div>
-      <div class="pfiche__sections">
-        <section class="pfiche__section"><h3>Défense</h3><ul class="pfiche__lignes">${defenseLignes}</ul></section>
-        <section class="pfiche__section"><h3>Solidité</h3><ul class="pfiche__lignes">${soliditeLignes}</ul></section>
-        <section class="pfiche__section"><h3>Coût</h3><ul class="pfiche__lignes">${coutLignes}</ul>
-          ${c.materiaux_amelioration ? '<p class="pfiche__note">Les matériaux d’une amélioration sont comptés sans prix : la source ne dit pas lequel des deux matériaux de l’armure.</p>' : ''}
-          ${f.amelioration_possible ? '' : '<p class="pfiche__note">Le tableau d’amélioration vaut pour l’armure entière (décision R77).</p>'}</section>
-        <section class="pfiche__section">${a.particuliere
-          ? `<h3>Effet</h3><p>${a.effet}</p>`
-          : `<h3>Résistance et faiblesse</h3><p><strong>Résistance :</strong> ${a.resistance}</p><p><strong>Faiblesse :</strong> ${a.faiblesse}</p>`}</section>
-      </div>
-      ${a.particuliere ? '' : '<p class="pfiche__note">La source ne donne ni défense, ni solidité, ni résistance par pièce : la fiche montre celles de l’armure (décision R75).</p>'}`;
+      <div class="pfiche__infos">${a.particuliere
+        ? `<p><span class="pfiche__etiquette">Effet :</span> ${a.effet}</p>`
+        : `<p><span class="pfiche__etiquette">Résistance :</span> ${a.resistance}</p><p><span class="pfiche__etiquette">Faiblesse :</span> ${a.faiblesse}</p>`}</div>`;
     A.fiche.setAttribute('aria-labelledby', 'armure-fiche-titre');
   }
 
   // ───────────────────────────────────────────── Boucliers ─────────────────────────────────────────────
-  const B = { vue: racine.querySelector('[data-vue="bouclier"]'), fiche: racine.querySelector('[data-fiche="bouclier"]'), forme: null, matiere: null, niveau: 0 };
+  const B = { vue: racine.querySelector('[data-vue="bouclier"]'), fiche: racine.querySelector('[data-fiche="bouclier"]'), forme: null, matiere: null, niveau: 0, derniere: null };
   const videDuBouclier = B.fiche?.innerHTML ?? '';
   const ligneDeForme = (id) => (id ? racine.querySelector(`tr.forme[data-forme="${CSS.escape(id)}"]`) : null);
   const bouclierChoisi = () =>
@@ -207,9 +231,12 @@ if (racine) {
   function rendreBouclier() {
     if (!B.fiche) return;
     const ligne = bouclierChoisi();
+    if (ligne !== B.derniere) remonter(B.vue);
+    B.derniere = ligne;
     if (!ligne) {
       B.vue?.classList.remove('est-ouverte');
       B.fiche.removeAttribute('aria-labelledby');
+      if (bullesDe('bouclier')) bullesDe('bouclier').innerHTML = '';
       B.fiche.innerHTML = B.forme || B.matiere
         ? `<p class="pfiche__vide">${B.forme ? `Forme : <strong>${e(B.forme.querySelector('.forme__choisir')?.textContent.trim())}</strong>. Choisissez la matière.` : `${pastille(lireMateriau(B.matiere))} choisie : choisissez la forme.`}</p>`
         : videDuBouclier;
@@ -225,15 +252,20 @@ if (racine) {
     const f = forgerBouclier({ ap, am, prix: prix.ro }, m, ameliorations('bouclier'), B.niveau);
     const niveau = B.niveau ? `Amélioration +${B.niveau}` : 'Sans amélioration';
     const c = f.cout;
-    const defenseLignes = [
-      ligneDeFiche(e(nom), defense(f.ap.bouclier, f.am.bouclier)),
-      ...(B.niveau ? [ligneDeFiche(niveau, defense(f.ap.amelioration, f.am.amelioration))] : []),
-      ligneDeFiche('Total', defense(f.ap.total, f.am.total), 'pfiche__total'),
+    const apLignes = [
+      ligneDeFiche(e(nom), `${signe(f.ap.bouclier)}&#8239;AP`),
+      ...(B.niveau ? [ligneDeFiche(niveau, `${signe(f.ap.amelioration)}&#8239;AP`)] : []),
+      ligneDeFiche('Total', `${f.ap.total}&#8239;AP`, 'eq-bulle__total'),
+    ].join('');
+    const amLignes = [
+      ligneDeFiche(e(nom), `${signe(f.am.bouclier)}&#8239;AM`),
+      ...(B.niveau ? [ligneDeFiche(niveau, `${signe(f.am.amelioration)}&#8239;AM`)] : []),
+      ligneDeFiche('Total', `${f.am.total}&#8239;AM`, 'eq-bulle__total'),
     ].join('');
     const soliditeLignes = [
       ligneDeFiche(`${e(m.nom)} (matière)`, String(f.solidite.matiere)),
       ...(B.niveau && f.solidite.amelioration ? [ligneDeFiche(`${niveau} (crans des niveaux +1 à +${B.niveau})`, signe(f.solidite.amelioration))] : []),
-      ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'pfiche__total'),
+      ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'eq-bulle__total'),
     ].join('');
     const matieres = c.materiaux ? ` + ${c.materiaux}&#8239;${e(m.nom)}` : '';
     const coutLignes = [
@@ -241,28 +273,30 @@ if (racine) {
       ...(B.niveau ? [ligneDeFiche(`${niveau} (niveaux +1 à +${B.niveau})`, ro(c.amelioration))] : []),
       ...(c.materiaux ? [ligneDeFiche(`Matériaux : ${c.materiaux} × ${e(m.nom)}`, `${c.materiaux} × ${ro(c.prix_matiere)}`)] : []),
       ligneDeFiche('Total', c.ro_materiaux_fournis === null ? '—'
-        : `${ro(c.ro_materiaux_fournis)}${matieres}${c.materiaux && c.ro_total !== null ? ` <span class="pfiche__ou">ou</span> ${ro(c.ro_total)}` : ''}`, 'pfiche__total'),
+        : `${ro(c.ro_materiaux_fournis)}${matieres}${c.materiaux && c.ro_total !== null ? ` <span class="pfiche__ou">ou</span> ${ro(c.ro_total)}` : ''}`, 'eq-bulle__total'),
     ].join('');
+    const bulles = bullesDe('bouclier');
+    if (bulles) {
+      bulles.innerHTML = [
+        bulle('bouclier-bulle-ap', 'Armure physique', apLignes),
+        bulle('bouclier-bulle-am', 'Armure magique', amLignes),
+        bulle('bouclier-bulle-solidite', 'Solidité', soliditeLignes, ['La solidité est celle de la matière (décision R78) ; les crans des améliorations se cumulent (R76).']),
+        bulle('bouclier-bulle-cout', 'Coût', coutLignes),
+      ].join('');
+    }
+    // un seul cadre réduit : le bouclier, sa forme et sa matière, quatre tuiles
     B.fiche.innerHTML = `
       <header class="pfiche__tete">
-        <div>
-          <h2 id="bouclier-fiche-titre">${e(nom)}</h2>
-          <p class="pfiche__sous-titre">${e(forme)} · ${e(categorie)}</p>
-        </div>
+        <h2 id="bouclier-fiche-titre">${e(nom)}</h2>
         <button type="button" class="armures-cote__fermer" data-armures-fermer="bouclier">Fermer</button>
       </header>
+      <p class="pfiche__sous-titre">${e(forme)} · ${e(categorie)}</p>
       <p class="pfiche__forge"><span>${e(forme)}</span><span>+</span>${pastille(m)}<span>·</span><span class="pfiche__niveau">${niveau}</span></p>
       <div class="pfiche__tuiles">
-        ${tuile('Armure physique', `${f.ap.total}&#8239;AP`)}
-        ${tuile('Armure magique', `${f.am.total}&#8239;AM`)}
-        ${tuile('Solidité', String(f.solidite.total), 'de la matière')}
-        ${tuile('Coût', c.ro_total === null ? (c.ro_materiaux_fournis === null ? e(prix.texte || '—') : ro(c.ro_materiaux_fournis)) : ro(c.ro_total), c.materiaux ? 'matériaux achetés' : '')}
-      </div>
-      <div class="pfiche__sections">
-        <section class="pfiche__section"><h3>Défense</h3><ul class="pfiche__lignes">${defenseLignes}</ul></section>
-        <section class="pfiche__section"><h3>Solidité</h3><ul class="pfiche__lignes">${soliditeLignes}</ul>
-          <p class="pfiche__note">La solidité est celle de la matière (décision R78) ; les crans des améliorations se cumulent (R76).</p></section>
-        <section class="pfiche__section"><h3>Coût</h3><ul class="pfiche__lignes">${coutLignes}</ul></section>
+        ${tuile('bouclier-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
+        ${tuile('bouclier-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
+        ${tuile('bouclier-bulle-solidite', 'Solidité', String(f.solidite.total), 'de la matière')}
+        ${tuile('bouclier-bulle-cout', 'Coût', c.ro_total === null ? (c.ro_materiaux_fournis === null ? e(prix.texte || '—') : ro(c.ro_materiaux_fournis)) : ro(c.ro_total), c.materiaux ? 'matériaux achetés' : '')}
       </div>`;
     B.fiche.setAttribute('aria-labelledby', 'bouclier-fiche-titre');
   }

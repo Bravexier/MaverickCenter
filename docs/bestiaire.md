@@ -97,7 +97,8 @@ hauteur de l'écran (en-tête collé en haut), la carte dans le sien ; chacun a 
 d'un écran tactile, n'apparaît qu'au défilement). La carte a la hauteur de la partie visible de sa vue (`--bcartes-max`, recalculée au défilement et
 au redimensionnement : `lib/bestiaire-filtres.mjs#hauteurVisible`) : ni son haut ni son bas ne sortent de l'écran, quelle que soit la position de la
 page. Ouvrir une carte cale la vue en haut de l'écran, et la ligne choisie défile dans son cadre ; la molette sur une vue décalée fait d'abord défiler
-la page jusqu'à l'y caler (`defilementDAbord`), puis le tableau ou la carte. Les créatures invoquées (trois tableaux dépliables) défilent avec la page,
+la page jusqu'à l'y caler (`defilementDAbord`), puis le tableau ou la carte ; au bout du défilement de la carte, la page reprend (pas
+d'`overscroll-behavior: contain` hors du plein écran d'un écran étroit : demande du propriétaire, 2026-10-16, `test/defilement.test.mjs`). Les créatures invoquées (trois tableaux dépliables) défilent avec la page,
 comme avant ; leur carte a la même barre et la même hauteur.
 
 ### Échelles de puissance d'une carte

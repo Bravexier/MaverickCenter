@@ -45,7 +45,7 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
 .armures-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
 .armures-listes { display: grid; gap: 1rem; min-width: 0; }
 .armures-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
-/* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, pour les armes) */
+/* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
 @media (min-width: 80rem) { html.js .armures-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; } }
 .armures-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
 /* à côté de la fiche, sur un très grand écran : le tableau des améliorations (trois colonnes) plus large que son voisin (pièces, poids) */
@@ -122,30 +122,31 @@ html.js :is(.pmat, .armure, .ppiece, .pamelioration, .forme, .bouclier):hover > 
 .pdgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
 .psol__uni { font-size: var(--fs-xs); color: var(--muted); cursor: help; }
 
-/* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite */
-.pfiche { padding: 1.1rem 1.3rem 1.2rem; background: var(--surface); border: 1px solid var(--pro-line); border-radius: var(--radius-lg); font-size: 0.94rem;
+/* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son
+   minimum comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles dont le détail du calcul est l'infobulle (styles/equipement/
+   equipement.css, `.eq-bulle`), puis la résistance et la faiblesse (ou l'effet) d'une armure */
+.pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--pro-line); border-radius: var(--radius-lg); font-size: 0.94rem;
   box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
 .pfiche__vide { margin: 0; color: var(--muted); }
-.pfiche__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.pfiche__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .pfiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
-.pfiche__sous-titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.3rem 0 0.6rem; color: var(--muted); }
-.pfiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.7rem; font-size: var(--fs-md); }
+.pfiche__sous-titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }
+.pfiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0.35rem 0 0; font-size: var(--fs-md); }
 .pfiche__niveau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--pro-line); font-weight: 600; }
-.pfiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.6rem; margin: 0 0 0.2rem; }
-.pfiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.15rem; padding: 0.6rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); text-align: center; }
+.pfiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.5rem; margin: 0.7rem 0 0; }
+/* une tuile est un bouton : son infobulle (components/Infobulles.astro) s'ouvre au survol, au clic, au toucher et au clavier */
+.pfiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.1rem; padding: 0.5rem 0.5rem 0.55rem; border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; }
+.pfiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--pro); }
+.pfiche__tuile:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
 .pfiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
-.pfiche__tuile-val { font-size: 1.3rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pfiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pfiche__tuile-detail { font-size: var(--fs-xs); color: var(--muted); }
-.pfiche__sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 1.6rem; }
-.pfiche__section { padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); min-width: 0; }
-.pfiche__section h3 { margin: 0 0 0.3rem; font-size: var(--fs-lg); }
-.pfiche__section p { margin: 0 0 0.35rem; }
-.pfiche__lignes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
-.pfiche__lignes li { display: flex; justify-content: space-between; gap: 0.8rem; }
-.pfiche__lignes li > :last-child { font-variant-numeric: tabular-nums; text-align: right; }
-.pfiche__lignes .pfiche__total { font-weight: 700; border-top: 1px solid var(--border); padding-top: 0.15rem; }
+/* résistance et faiblesse (ou effet) d'une armure : à la suite, sans titre */
+.pfiche__infos { display: grid; gap: 0.3rem; margin: 0.7rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.pfiche__infos > p { margin: 0; }
+.pfiche__etiquette { font-weight: 700; margin-right: 0.25rem; }
 .pfiche__ou { color: var(--muted); }
-.pfiche__note { font-size: var(--fs-sm); color: var(--muted); }
 
 /* Écran étroit : une fois une armure ou un bouclier choisi, la fiche et ses tableaux passent par-dessus la page */
 @media (max-width: 79.99rem) {

@@ -230,13 +230,7 @@ html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srg
 .arme-fiche__remarque { font-size: var(--fs-sm); color: var(--muted); }
 .arme-fiche__description { color: var(--muted); white-space: pre-line; font-size: var(--fs-md); line-height: 1.5; }
 .arme-fiche__etiquette { font-weight: 700; margin-right: 0.25rem; }
-/* l'infobulle d'une tuile : son calcul, une ligne par bonus, le total en gras sous un filet (styles/global/infobulles.css pour la bulle elle-même) */
-.arme-bulle { white-space: normal; }
-.arme-bulle__lignes { display: grid; gap: 0.1rem; margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--bulle-ligne); }
-.arme-bulle__ligne { display: flex; justify-content: space-between; gap: 1.2rem; }
-.arme-bulle__ligne > :last-child { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.arme-bulle__total { font-weight: 700; border-top: 1px solid var(--bulle-ligne); padding-top: 0.15rem; margin-top: 0.1rem; }
-.arme-bulle__note { display: block; margin-top: 0.35rem; color: var(--muted); font-size: var(--fs-sm); }
+/* l'infobulle d'une tuile (son calcul) : styles/equipement/equipement.css (`.eq-bulle`, commune aux fiches de la page) */
 
 /* Écran étroit (comme les armures) : une fois une arme choisie, la fiche et ses tableaux passent par-dessus la page */
 @media (max-width: 79.99rem) {

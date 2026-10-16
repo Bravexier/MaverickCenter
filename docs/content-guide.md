@@ -353,8 +353,11 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
   des armures de la grille par type (Nom, Matériaux, Type, Défense, Solidité, Résistance, Faiblesse, Prix) puis les **armures particulières** (Nom, Type,
   Défense, Solidité « uni », Effet, Prix) ; une ligne choisit l'armure (et ses deux matériaux).
-- **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement ; sur un écran étroit, par-dessus la page ; `src/scripts/armures.mjs`, calcul
-  `lib/armure-forge.mjs`) : AP, AM, solidité, coût, résistance et faiblesse (ou effet), puis la **pièce** (tableau FABRICATION : l'armure complète coûte le
+- **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement et remonte à la fiche quand on choisit une autre armure ; sur un écran étroit,
+  par-dessus la page ; `src/scripts/armures.mjs`, calcul `lib/armure-forge.mjs`) : **réduite à son minimum comme celle des armes** (demande du
+  propriétaire, 2026-10-16) — le nom, le type, les matériaux, la pièce et l'amélioration, quatre tuiles (AP, AM, solidité, coût) qui sont des boutons dont
+  l'**infobulle donne le détail du calcul** (bulle riche écrite dans `[data-armures-bulles]`, hors du panneau ; les notes R75 et R77 y vont aussi), puis
+  la résistance et la faiblesse (ou l'effet) — ; la fiche suit la **pièce** (tableau FABRICATION : l'armure complète coûte le
   prix de la grille, une pièce sa fabrication + 1 unité de chaque matériau, achetés ou fournis : décision R75 ; défense et solidité ne dépendent pas de la
   pièce) et l'**amélioration** (+1 à +5 : coût des niveaux +1 à +N, AP, AM et crans écrits au niveau N ; pour l'armure entière seulement, pas pour une
   pièce : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel des deux). Une armure particulière n'a que le prix de l'armure entière,
@@ -362,7 +365,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
 - **Boucliers** : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et un des **matières** (fiche des matières pour
   boucliers) ; une forme et une matière donnent le bouclier préfabriqué (décision R78 : prix et défense tels qu'écrits, **solidité de la matière**). Dessous,
-  la liste des boucliers par forme. À côté, la fiche, les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la
+  la liste des boucliers par forme. À côté, la fiche (réduite comme celle de l'armure : quatre tuiles, AP, AM, solidité, coût, dont l'infobulle donne le
+  détail du calcul, la note R78 / R76 dans celle de la solidité), les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la
   matière : R76, matériaux achetés ou fournis) et les **poids** (la source ne les relie pas aux formes). La page compose un bouclier d'une seule matière ;
   les règles de l'onglet permettent d'en mêler jusqu'à 3 (non composé ici).
 - Les prix de la grille, des boucliers et des formes sont des RO (décision R79, exception à R63) : décomposés en monnaies ; « ???? » et un prix vide

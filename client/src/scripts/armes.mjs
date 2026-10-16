@@ -131,10 +131,10 @@ if (racine) {
     const f = forgerArme({ de: a.de, bonus_degats: a.bonus, durabilite: a.durabilite, cout_ro: a.cout }, m, ameliorations(), niveau);
     const titreNiveau = niveau ? `Amélioration +${niveau}` : 'Sans amélioration';
     const mat = m ? `<span class="arme-fiche__materiau" style="${e(m.style)}">${e(m.nom)}</span>` : '';
-    // le détail de chaque tuile, dans son infobulle (une bulle riche : pas de retour à la ligne dans son HTML, elle garde ceux du texte)
-    const ligne = (nom, valeur, classe = '') => `<span class="arme-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
+    // le détail de chaque tuile, dans son infobulle (une bulle riche ; styles communs `.eq-bulle` : styles/equipement/equipement.css)
+    const ligne = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
     const bulle = (id, titre, lignes, note = '') =>
-      `<span class="bulle bulle--large arme-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="arme-bulle__lignes">${lignes}</span>${note ? `<span class="arme-bulle__note">${note}</span>` : ''}</span>`;
+      `<span class="bulle bulle--large eq-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="eq-bulle__lignes">${lignes}</span>${note ? `<span class="eq-bulle__note">${note}</span>` : ''}</span>`;
     // une tuile est un bouton (au clic, au toucher et au clavier, components/Infobulles.astro ouvre sa bulle ; la description est lue avec lui)
     const tuile = (id, nom, valeur, detail = '') =>
       `<button type="button" class="arme-fiche__tuile" data-bulle="${id}" aria-describedby="${id}"><span class="arme-fiche__tuile-nom">${nom}</span><span class="arme-fiche__tuile-val">${valeur}</span>${detail ? `<span class="arme-fiche__tuile-detail">${detail}</span>` : ''}</button>`;
@@ -143,14 +143,14 @@ if (racine) {
       ligne(e(a.nom), e(a.bonus ? `${a.de}${a.bonus > 0 ? '+' : '−'}${Math.abs(a.bonus)}` : a.de)),
       ...(m && f.bonus.materiau ? [ligne(e(m.nom), signe(f.bonus.materiau))] : []),
       ...(niveau && f.bonus.amelioration ? [ligne(titreNiveau, signe(f.bonus.amelioration))] : []),
-      ligne('Total', e(f.degats), 'arme-bulle__total'),
+      ligne('Total', e(f.degats), 'eq-bulle__total'),
     ].join('');
     // durabilité : les crans de l'arme, du matériau et de l'amélioration, cumulés (décision R51) ; « Solidité : X » (demande du propriétaire)
     const durabilite = [
       ligne(e(a.nom), String(f.durabilite.arme)),
       ...(m && f.durabilite.materiau ? [ligne(e(m.nom), signe(f.durabilite.materiau))] : []),
       ...(niveau && f.durabilite.amelioration ? [ligne(titreNiveau, signe(f.durabilite.amelioration))] : []),
-      ligne('Total', `Solidité : ${f.durabilite.total}`, 'arme-bulle__total'),
+      ligne('Total', `Solidité : ${f.durabilite.total}`, 'eq-bulle__total'),
     ].join('');
     // coût : l'arme, l'amélioration (niveaux 1 à N), et les matériaux (un pour forger l'arme, ceux des niveaux), achetés ou fournis
     const c = f.cout;
@@ -162,7 +162,7 @@ if (racine) {
       ligne(`${e(a.nom)}${a.unite ? ' (à l’unité)' : ''}`, c.arme === null ? '—' : ro(c.arme)),
       ...(niveau ? [ligne(`${titreNiveau} (niveaux +1 à +${niveau})`, ro(c.amelioration))] : []),
       ...(m ? [ligne(`Matériaux : ${detailMat}`, c.prix_materiau === null ? '—' : `${c.materiaux} × ${ro(c.prix_materiau)}`)] : []),
-      ligne('Total', totalCout, 'arme-bulle__total'),
+      ligne('Total', totalCout, 'eq-bulle__total'),
     ].join('');
     const detailCout = m ? `+ ${c.materiaux} × ${e(m.nom)}${c.ro_total === null ? '' : ` <span class="arme-fiche__ou">ou</span> ${ro(c.ro_total)}`}` : '';
     if (bulles) {
