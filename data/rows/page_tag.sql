@@ -2544,8 +2544,6 @@ INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees', 6, 'mordhau');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees', 7, 'demi-epee');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees', 8, 'chakra');
-INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/statistiques-resistance-faiblesse', 0, 'resistance');
-INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/statistiques-resistance-faiblesse', 1, 'faiblesse');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/un-maitre-du-jeu', 0, 'maitre-du-jeu');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/un-maitre-du-jeu', 1, 'conteur');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/un-maitre-du-jeu', 2, 'amuseur');

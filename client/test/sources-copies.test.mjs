@@ -29,7 +29,15 @@ test('registre : chaque copie a son identifiant d’origine et le nouveau, tous 
   assert.equal(registre.non_copies.length, 2);
 });
 
-test('base : aucune colonne de texte ne cite plus un identifiant d’origine', () => {
+// Décision R84 (migration 0048) : à une mise à jour depuis un classeur, un lien vers un document Google suit ce qu'écrit le classeur original. Les
+// descriptions des fioles en verre et des kits d'alchimiste (« Ressources et Craft », Équipement inventaire!BA4:BA22) et le tableau de la page qui
+// les recopie renvoient donc au Google Doc « Alchimie » original ; ses sources (page_source, source) restent la copie.
+const ORIGINAUX_PERMIS = [
+  { titre: 'Alchimie', table: 'ressource', colonne: 'description', n: 9 },
+  { titre: 'Alchimie', table: 'page', colonne: 'corps_md', n: 1 },
+];
+
+test('base : aucune colonne de texte ne cite plus un identifiant d’origine (sauf les liens de la décision R84)', () => {
   // section 15 (notes de version, historique des modifications du site) sautée : des traces, qui citent la production d'avant la livraison (master
   // peut précéder la migration 0014) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES) ; les sources
   // qu'elles citent sont contrôlées ici dans leurs propres tables
@@ -41,14 +49,15 @@ test('base : aucune colonne de texte ne cite plus un identifiant d’origine', (
       colonnes += 1;
       for (const c of registre.copies) {
         const n = db.prepare(`SELECT count(*) AS n FROM "${name}" WHERE instr("${col}", ?) > 0`).get(c.avant).n;
-        assert.equal(n, 0, `${name}.${col} cite encore ${c.titre} (${c.avant})`);
+        const permis = ORIGINAUX_PERMIS.find((o) => o.titre === c.titre && o.table === name && o.colonne === col)?.n ?? 0;
+        assert.equal(n, permis, `${name}.${col} cite ${c.titre} (${c.avant}) ${n} fois`);
       }
     }
   }
   assert.ok(colonnes > 500, `${colonnes} colonnes lues`);
 });
 
-test('sources : une ligne par document cité, id dérivé du nouvel identifiant, 1 069 renvois des pages comme avant la migration', () => {
+test('sources : une ligne par document cité, id dérivé du nouvel identifiant, les renvois des pages comme avant la migration', () => {
   const lignes = db.prepare("SELECT id, texte, url, genre, google_id FROM source WHERE google_id IS NOT NULL ORDER BY id").all();
   const cites = new Map(lignes.map((l) => [l.google_id, l]));
   const attendus = ['Classe Maverick V7', 'Les races', 'Magie Maverick V8', 'Invocation', 'Ressources et Craft', 'Mode hyper et co',
@@ -64,7 +73,8 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   }
   // les renvois des pages tels que la migration les a laissés (le site de dev, source des données qu'il modifie, peut créer ou supprimer une page)
   const ids = new Set(attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`));
-  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1069);
+  // 1 069 après la migration 0014 ; 1 068 depuis la migration 0049, qui retire la page de l'onglet « Statistiques » de « Magie Maverick V8 » (décision R86)
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1068);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);
@@ -75,8 +85,17 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   }
 });
 
-test('liens : les 9 ressources vers la copie du Doc « Alchimie » (le lien du Mage Bleu vers « Familiers » est retiré : migration 0019)', () => {
-  assert.equal(db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(parTitre.get('Alchimie').apres).n, 9);
+test('liens : les 9 ressources vers le Doc « Alchimie » original, comme le classeur (décision R84, migration 0048) ; le lien du Mage Bleu vers « Familiers » est retiré (migration 0019)', () => {
+  const { avant, apres } = parTitre.get('Alchimie');
+  const ressources = (id) => db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(id).n;
+  assert.equal(ressources(avant), 9);
+  assert.equal(ressources(apres), 0);
+  // le tableau de la page « Équipement inventaire » les recopie ; les sources des pages d'alchimie restent la copie
+  const corps = db.prepare("SELECT corps_md FROM page WHERE id = 'ressources/equipement-inventaire'").get().corps_md;
+  assert.equal(corps.split(`/d/${avant}/`).length - 1, 9);
+  assert.ok(!corps.includes(apres));
+  assert.ok(db.prepare('SELECT count(*) AS n FROM page_source WHERE source_id = ?').get(`google-doc:${apres}`).n > 50);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE google_id = ?').get(avant).n, 0);
 });
 
 test('manifeste : chaque document copié pointe sur sa copie et garde l’URL d’origine ; les non copiés restent sur l’original, avec leur titre', () => {

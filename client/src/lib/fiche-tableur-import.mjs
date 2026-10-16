@@ -580,7 +580,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const candidats = regles.accessoires.filter((a) => (propriete === null || a.propriete === propriete) && cle(a.libelle) === cle(libelle));
     const dansLaFourchette = candidats.filter((a) => a.min === null || (valeur !== null && valeur >= a.min && valeur <= a.max));
     const reste = dansLaFourchette.length ? dansLaFourchette : candidats;
-    // deux effets identiques comptent pour un (« Résistance Surcharge Magique ») ; d'une propriété à l'autre (« MALÉDICTION »), seulement si elle est écrite
+    // deux effets identiques (même libellé, même niveau, mêmes valeurs) comptent pour un ; d'une propriété à l'autre (« MALÉDICTION »), seulement si elle est écrite
     const contenu = (a) => JSON.stringify([propriete === null ? a.propriete : null, a.libelle, a.niveau, a.min, a.max, a.valeur, a.malediction, a.usage, a.effets]);
     return reste.length && new Set(reste.map(contenu)).size === 1 ? reste[0] : null;
   };

@@ -8,8 +8,9 @@ import { montantDecompose, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 // [niveau, coût RO, matériaux, AP, AM, crans] : « Armures (L'entièreté) » de l'onglet
 const AMELIORATIONS_D_ARMURE = [[1, 100, null, 2, 2, null], [2, 100, 1, 4, 4, null], [3, 300, null, 6, 6, null], [4, 300, 1, 8, 8, 1], [5, 500, null, 10, 10, 1]]
   .map(([niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran]) => ({ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }));
-// « Bouclier » : « +4 AP + matériaux » compte 1 matériau (décision R76, migration 0046)
-const AMELIORATIONS_DE_BOUCLIER = [[1, 500, null, 2, null, 1], [2, 1000, 1, 4, null, null], [3, 2000, null, 6, null, null], [4, 4000, 1, 8, null, null], [5, 8000, null, 10, null, 1]]
+// « Bouclier » : « +4 AP + matériaux » compte 1 matériau (décision R76, migration 0046) ; coûts de 50 à 800 RO, total 1 550, depuis la mise à jour du
+// classeur (Bouclier!BJ4:BJ12, migration 0048 ; 500 à 8 000 avant)
+const AMELIORATIONS_DE_BOUCLIER = [[1, 50, null, 2, null, 1], [2, 100, 1, 4, null, null], [3, 200, null, 6, null, null], [4, 400, 1, 8, null, null], [5, 800, null, 10, null, 1]]
   .map(([niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran]) => ({ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }));
 // « Armure Cuir/Peau » de la grille : Prix 28, Léger, +3AP, Solidité 1 ; Peau 1 RO, Cuir 2 RO
 const CUIR_PEAU = { ap: 3, am: null, solidite: 1, prix: 28 };
@@ -76,12 +77,12 @@ test('décision R78 : un bouclier = une forme + une matière ; sa solidité est 
 
 test('décision R76 : amélioration de bouclier, crans cumulés (+1 du +1 au +4, +2 au +5), « + matériaux » = 1 matériau de la matière aux +2 et +4, AP du niveau N', () => {
   for (const [n, crans] of [[1, 1], [2, 1], [3, 1], [4, 1], [5, 2]]) assert.equal(ameliorationDeBouclier(AMELIORATIONS_DE_BOUCLIER, n).bonus_cran, crans, `+${n}`);
-  assert.deepEqual(ameliorationDeBouclier(AMELIORATIONS_DE_BOUCLIER, 5), { niveau: 5, ro: 15500, materiaux: 2, bonus_ap: 10, bonus_am: 0, bonus_cran: 2 });
+  assert.deepEqual(ameliorationDeBouclier(AMELIORATIONS_DE_BOUCLIER, 5), { niveau: 5, ro: 1550, materiaux: 2, bonus_ap: 10, bonus_am: 0, bonus_cran: 2 }, 'la ligne TOTAL : 1550');
   const titane = { nom: 'Titane', solidite: 4, prix_ro: 200 };
   const f = forgerBouclier({ ap: 28, am: 16, prix: 810 }, titane, AMELIORATIONS_DE_BOUCLIER, 5);
   assert.deepEqual([f.ap.total, f.am.total, f.solidite.total], [38, 16, 6]);
-  // 810 + 15 500 RO et 2 titanes fournis, ou 16 710 RO en les achetant
-  assert.deepEqual([f.cout.ro_materiaux_fournis, f.cout.materiaux, f.cout.ro_total], [16310, 2, 16710]);
+  // 810 + 1 550 RO et 2 titanes fournis, ou 2 760 RO en les achetant
+  assert.deepEqual([f.cout.ro_materiaux_fournis, f.cout.materiaux, f.cout.ro_total], [2360, 2, 2760]);
 });
 
 test('montants (décision R79 : les prix de la grille sont des RO) : la même décomposition en PP / RO / RF que lib/monnaies.mjs (décision R63), nombres à la française', () => {

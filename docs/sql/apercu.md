@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 191 tables, 2 tables de recherche, 36 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 189 tables, 2 tables de recherche, 37 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -72,16 +72,14 @@
 
 ## 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
 
-**Relations dans cette section** : `etat_magie→etat`, `etat_palier→etat`, `etat_palier→resistance_palier`, `etat_stade→etat`, `meteo_effet→meteo`, `resistance_combinaison→resistance_duo`, `resistance_combinaison→resistance_palier`
+**Relations dans cette section** : `etat_magie→etat`, `etat_palier→etat`, `etat_palier→resistance_palier`, `etat_stade→etat`, `meteo_effet→meteo`
 
-**Vers d'autres sections** : `etat_magie→magie (§3)`, `meteo_effet→magie (§3)`, `mode_hyper_effet→magie (§3)`, `mode_hyper_effet→race (§7)`, `mode_texte→page (§1)`, `resistance_combinaison→magie (§3)`, `resistance_duo→magie (§3)`, `resistance_magie→magie (§3)`
+**Vers d'autres sections** : `etat_magie→magie (§3)`, `meteo_effet→magie (§3)`, `mode_hyper_effet→magie (§3)`, `mode_hyper_effet→race (§7)`, `mode_texte→page (§1)`, `resistance_magie→magie (§3)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `resistance_palier` | Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. | **id**, libelle, valeur_min?, valeur_max?, multiplicateur, effet_brut, ordre, +provenance |
 | `resistance_magie` | Matrice de résistance de la FICHE (Magie!F2:S16) : 15 magies du personnage (lignes) x 14 magies qui attaquent (colonnes). | **magie_id**→magie, **attaque_magie_id**→magie, valeur, remarque?, +provenance |
-| `resistance_duo` | Tableau « Résistance Faiblesse » de l'onglet Statistiques du classeur V8 : les 73 couples de magies qu'il traite (ordre de l'onglet, magie A puis magie B telles que la source les écrit : « Sang + Vide | **magie_a_id**→magie, **magie_b_id**→magie, ordre, remarque?, +provenance |
-| `resistance_combinaison` | Les magies de chaque palier pour un couple. | **magie_a_id**→resistance_duo, **magie_b_id**→resistance_duo, **palier_id**→resistance_palier, **rang**, cible_magie_id→magie, palier_brut, cible_brut, +provenance |
 | `etat` | ▸ ALTÉRATIONS D'ÉTAT (classeur V8, onglet « Altération détats » : 20 blocs de 5 lignes) | **id**, nom, ordre, type, type_brut, magie_liee_brut?, remarque?, +provenance |
 | `etat_magie` | Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption). | **etat_id**→etat, **magie_id**→magie, rang, +provenance |
 | `etat_stade` | Effet d'une altération par stade (colonnes « Stade 1 », « Stade 2 », « Stade 3 »). | **etat_id**→etat, **rang**, stade?, effet, +provenance |
@@ -318,6 +316,7 @@
 | `v_competence` *(vue)* | Compétences avec leur caractéristique : le moteur n'a pas à joindre. |  |
 | `v_resistance_magie_lectures` *(vue)* | Les deux LECTURES de la matrice « magie A résiste à magie B » côte à côte (le propriétaire n'a pas tranché laquelle fait foi, design.md §12.2) : valeur_fiche = resistance_magie (matrice de la fiche, 1 |  |
 | `v_resistance_ecart` *(vue)* | Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la même chose. |  |
+| `v_resistance_combinaison` *(vue)* | Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou s'annulent si opposées) », « Il en faut une liste ») |  |
 | `v_mode_hyper_lectures` *(vue)* | Les cinq LECTURES du mode hyper (mode_hyper_effet.version) sur une même ligne : une ligne par cible (magie, couple de magies ou race) et variante. |  |
 | `v_classe_capacite` *(vue)* | Une capacité par ligne avec sa classe et sa spécialité à plat : la vue à interroger pour « toutes les capacités d'une classe au niveau N ». |  |
 | `v_capacite_exclusive` *(vue)* | Choix exclusifs, lus dans la mise en page (règle du propriétaire, client/src/lib/capacites.mjs) : deux capacités sont des alternatives quand elles sont côte à côte sur la même ligne de l'onglet : deux |  |

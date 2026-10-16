@@ -119,7 +119,11 @@ export function legacyWikiRedirect(pathname, base = '/') {
  * Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la recherche ; la
  * page « Bouclier » est l'onglet Boucliers de la page des armures (lib/metiers.mjs#adresseDePage).
  */
-export const PAGES_RENOMMEES = { 'generateur/': 'fiche/', 'tags/': 'recherche/', 'ressources/bouclier/': 'ressources/armures/#boucliers' };
+// « guide/statistiques-resistance-faiblesse/ » recopiait le tableau des combinaisons de deux magies de l'onglet « Statistiques », ignoré (décisions R85,
+// R86, migration 0049) : les relations des magies sont sous la carte de /magies/.
+export const PAGES_RENOMMEES = {
+  'generateur/': 'fiche/', 'tags/': 'recherche/', 'ressources/bouclier/': 'ressources/armures/#boucliers', 'guide/statistiques-resistance-faiblesse/': 'magies/',
+};
 
 /**
  * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect), les pages renommées (le générateur

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 47;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 49;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -765,46 +765,8 @@ CREATE TABLE resistance_magie (
 
 CREATE INDEX resistance_magie_attaque ON resistance_magie (attaque_magie_id, valeur);
 
--- Tableau « Résistance Faiblesse » de l'onglet Statistiques du classeur V8 : les 73 couples de magies qu'il traite (ordre de l'onglet,
--- magie A puis magie B telles que la source les écrit : « Sang + Vide » et non « Vide + Sang »). Un couple peut n'avoir aucune ligne dans
--- resistance_combinaison (Lumière + Ombre : « AUCUNE » aux quatre paliers) : d'où cette table.
-CREATE TABLE resistance_duo (
-  magie_a_id TEXT    NOT NULL REFERENCES magie(id),
-  magie_b_id TEXT    NOT NULL REFERENCES magie(id),
-  ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),     -- rang du couple dans le tableau (1 = Sang + Vide)
-  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  PRIMARY KEY (magie_a_id, magie_b_id),
-  CHECK (magie_a_id <> magie_b_id)
-) STRICT, WITHOUT ROWID;
-
-CREATE INDEX resistance_duo_b ON resistance_duo (magie_b_id, magie_a_id);   -- « tous les couples qui contiennent la magie X » (X en seconde position)
-
--- Les magies de chaque palier pour un couple. « AUCUNE » n'a pas de ligne. « D.Résistance » / « D.Faiblesse » (« D. » n'est pas
--- développé par la source) sont rattachés aux paliers « grande résistance » / « grande vulnérabilité » : le chargeur vérifie cette
--- lecture en recalculant les 73 couples depuis resistance_magie (V = somme des deux lignes) ; les écarts sont dans ecart_source.
-CREATE TABLE resistance_combinaison (
-  magie_a_id     TEXT    NOT NULL,
-  magie_b_id     TEXT    NOT NULL,
-  palier_id      TEXT    NOT NULL REFERENCES resistance_palier(id),
-  rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 4),    -- position dans la ligne du palier (colonnes T, Y, AD, AI)
-  cible_magie_id TEXT    NOT NULL REFERENCES magie(id),
-  palier_brut    TEXT    NOT NULL CHECK (palier_brut IN ('D.Résistance', 'Résistance', 'Faiblesse', 'D.Faiblesse')),
-  cible_brut     TEXT    NOT NULL,                                 -- « Temps/Espace » : écriture de la source
-  origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
-  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  PRIMARY KEY (magie_a_id, magie_b_id, palier_id, rang),
-  UNIQUE (magie_a_id, magie_b_id, cible_magie_id),
-  FOREIGN KEY (magie_a_id, magie_b_id) REFERENCES resistance_duo (magie_a_id, magie_b_id),
-  CHECK (palier_id IN ('grande_resistance', 'resistance', 'vulnerabilite', 'grande_vulnerabilite'))
-) STRICT, WITHOUT ROWID;
-
-CREATE INDEX resistance_combinaison_cible ON resistance_combinaison (cible_magie_id, palier_id);
-
-CREATE INDEX resistance_combinaison_b     ON resistance_combinaison (magie_b_id, magie_a_id);
-
-CREATE INDEX resistance_combinaison_palier ON resistance_combinaison (palier_id);
+-- Résistances et faiblesses d'une combinaison de deux magies (bi-magie) : calculées depuis magie_resistance par la vue v_resistance_combinaison
+-- (section 12 ; décisions R85, R86 : le tableau « Résistance Faiblesse » de l'onglet Statistiques, qui les recopiait, est ignoré).
 
 -- ▸ ALTÉRATIONS D'ÉTAT (classeur V8, onglet « Altération détats » : 20 blocs de 5 lignes)
 CREATE TABLE etat (
@@ -3308,7 +3270,7 @@ CREATE TABLE ecart_source (
   nature       TEXT    NOT NULL CHECK (nature IN ('valeur_differente', 'texte_different', 'nom_different', 'valeur_absente', 'calcul_different',
                                                   'coquille_rapprochee', 'prix_incoherent', 'doublon_de_nom', 'ecart_entre_onglets',
                                                   'ecart_avec_fiche', 'forme_non_reconnue', 'conflit_entre_sources')),
-  source_a     TEXT    NOT NULL,                             -- 'fiche', 'guide', 'v8', 'modes', 'statistiques', 'ressources_craft'…
+  source_a     TEXT    NOT NULL,                             -- 'fiche', 'guide', 'v8', 'modes', 'ressources_craft'…
   valeur_a     TEXT,
   source_b     TEXT,
   valeur_b     TEXT,
@@ -3705,6 +3667,35 @@ LEFT JOIN v8 v ON v.magie_id = p.magie_id AND v.attaque_magie_id = p.attaque_mag
 -- Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la même chose. Vide quand les deux lectures concordent.
 CREATE VIEW v_resistance_ecart AS
   SELECT magie_id, attaque_magie_id, valeur_fiche, valeur_v8 FROM v_resistance_magie_lectures WHERE concordant = 0;
+
+-- Résistances et faiblesses d'une combinaison de deux magies (bi-magie ; décision R85 : « Les résistance/ faiblesses des deux magies se cumulent (ou
+-- s'annulent si opposées) », « Il en faut une liste ») : les listes des deux magies (magie_resistance, cibles de type magie : celles de leurs onglets de
+-- « Magie Maverick V8 ») s'additionnent cran par cran, résistance +1, faiblesse -1. Une ligne par couple et par magie cible dont la somme `valeur` n'est
+-- pas nulle, rangée dans le palier de resistance_palier dont les bornes la contiennent (+2 grande_resistance, +1 resistance, -1 vulnerabilite,
+-- -2 grande_vulnerabilite : la même table que la fiche de personnage) ; une résistance et une faiblesse à la même magie s'annulent (somme nulle : aucun
+-- palier, pas de ligne) ; aucune limite du nombre de magies par palier. Rien n'est stocké : l'onglet
+-- « Statistiques », qui les écrivait à la main (au plus 4 magies par palier), est ignoré (R86).
+-- Couple NON ORDONNÉ, une seule ligne : magie_a_id est celle des deux magies qui vient la première dans l'ordre des onglets du classeur (magie.ordre,
+-- 1 = Potentiel Illimité, puis Sang, Arcane…), magie_b_id l'autre (« Nécromancie + Feu », jamais « Feu + Nécromancie » ; l'ordre du tableau de
+-- l'onglet Statistiques). Un couple donné dans un ordre quelconque : WHERE magie_a_id IN (:x, :y) AND magie_b_id IN (:x, :y) (aucune ligne si x = y).
+-- Tous les couples de deux magies distinctes sont calculés, y compris ceux que les règles interdisent (magie.mono_magie, v_magie_incompatible : à
+-- joindre au besoin) ; un couple dont tous les crans s'annulent n'a aucune ligne (Lumière + Ombre, Espace/Temps + Vide).
+CREATE VIEW v_resistance_combinaison AS
+WITH cran AS (
+  SELECT magie_id, cible_magie_id, CASE sens WHEN 'resistance' THEN 1 ELSE -1 END AS valeur
+  FROM magie_resistance
+  WHERE cible_type = 'magie'
+),
+somme AS (
+  SELECT a.id AS magie_a_id, b.id AS magie_b_id, c.cible_magie_id, SUM(c.valeur) AS valeur
+  FROM magie a
+  JOIN magie b ON b.ordre > a.ordre
+  JOIN cran c ON c.magie_id = a.id OR c.magie_id = b.id
+  GROUP BY a.id, b.id, c.cible_magie_id
+)
+SELECT s.magie_a_id, s.magie_b_id, s.cible_magie_id, s.valeur, p.id AS palier_id
+FROM somme s
+JOIN resistance_palier p ON (p.valeur_min IS NULL OR s.valeur >= p.valeur_min) AND (p.valeur_max IS NULL OR s.valeur <= p.valeur_max);
 
 -- Les cinq LECTURES du mode hyper (mode_hyper_effet.version) sur une même ligne : une ligne par cible (magie, couple de magies ou race) et variante.
 -- Chaque colonne est le texte de la source, NULL quand cette source ne dit rien de cette cible ; `nb_textes` = nombre de textes distincts (1 = les

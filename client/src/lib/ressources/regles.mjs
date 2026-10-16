@@ -180,32 +180,6 @@ export const RESSOURCES = [
     tri: 'magie_id',
   },
   {
-    cle: 'resistances-des-couples-de-magies',
-    nom: 'Couple de magies',
-    noms: 'Couples de magies',
-    description:
-      'Les 73 couples de magies du tableau « Résistance Faiblesse » de l’onglet Statistiques du classeur V8, dans l’ordre et l’écriture de la source ' +
-      '(« Sang + Vide ») ; les magies de chaque palier en sous-ressource (un couple peut n’en avoir aucune : « AUCUNE ») ; en lecture seule.',
-    table: 'resistance_duo',
-    libelle: 'magie_a_id',
-    enfants: [
-      {
-        cle: 'combinaisons',
-        nom: 'Magie d’un palier',
-        noms: 'Magies des paliers',
-        table: 'resistance_combinaison',
-        parent: { magie_a_id: 'magie_a_id', magie_b_id: 'magie_b_id' },
-        tri: 'palier_id',
-        description:
-          'Les magies que le couple résiste ou subit, par palier (« D.Résistance », « Résistance », « Faiblesse », « D.Faiblesse » tels qu’écrits, ' +
-          'rattachés aux paliers de résistance), à leur rang dans la ligne du palier.',
-      },
-    ],
-    liste: ['magie_a_id', 'magie_b_id', 'ordre'],
-    recherche: ['magie_a_id', 'magie_b_id'],
-    tri: 'ordre',
-  },
-  {
     cle: 'alterations-d-etat',
     nom: 'Altération d’état',
     noms: 'Altérations d’état',
