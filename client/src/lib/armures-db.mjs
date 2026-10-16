@@ -10,7 +10,7 @@ import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { prixEnRo } from './arme-champs.mjs';
 import { coutDeLaPiece } from './armure-champs.mjs';
-import { prixDeLArmure } from './armure-forge.mjs';
+import { prixDeLArmure, UNITES_PAR_MATERIAU } from './armure-forge.mjs';
 
 export { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS };
 
@@ -71,7 +71,8 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
 /**
  * Les données de la page :
  *   materiaux       : les matières de la grille des armures, dans l'ordre de l'onglet : [{ ligne (materiau_armure), cle, nom, type, prix (celui de la
- *                     ressource : R62), description }] (leur fabrication est sur la page « Composants » : lib/composants-db.mjs) ;
+ *                     ressource : R62), prix_armure (RO de 6 unités, pour une armure : décision R93 ; null sans prix), description }] (leur
+ *                     fabrication est sur la page « Composants » : lib/composants-db.mjs) ;
  *   combinaisons    : les armures de deux matières (grille), dans l'ordre de l'onglet, chacune avec `m1`, `m2` (clés de ses matières : ligne, colonne) et
  *                     `prix_calcule` (RO, null si un prix manque) : la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 ;
  *                     le prix écrit dans la grille, `prix_brut`, n'est plus affiché) ;
@@ -91,7 +92,11 @@ export function chargerArmures(db) {
     description: description ?? null,
   });
   const materiaux = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_armure m
-    JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau);
+    JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau)
+    .map((m) => {
+      const ro = prixEnRo(m.prix);
+      return { ...m, prix_armure: ro === null ? null : Math.round(UNITES_PAR_MATERIAU * ro * 100) / 100 };
+    });
   const armures = lignes(db, 'SELECT * FROM armure ORDER BY ordre');
   const emplacement = (id) => lignes(db, 'SELECT * FROM armure_emplacement WHERE id = ?', id)[0] ?? null;
   const fabricationDeLArmure = emplacement(FABRICATION_DE_L_ARMURE);

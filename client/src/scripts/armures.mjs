@@ -24,7 +24,7 @@
 // adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
 // choisit aussi cette armure ou ce bouclier. Un ancien `piece=<id>` (le tableau FABRICATION, retiré : décision R93) est ignoré, et quitte l'adresse au choix suivant.
 // Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
-import { forgerArmure, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure } from '../lib/armure-forge.mjs';
+import { forgerArmure, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, UNITES_PAR_MATERIAU } from '../lib/armure-forge.mjs';
 import { ordonner, triSuivant } from '../lib/armures-tri.mjs';
 
 const racine = document.querySelector('[data-armures]');
@@ -113,19 +113,28 @@ if (racine) {
   /** La fabrication de l'armure complète (RO), telle qu'affichée (rendu « piece-cout ») : comptée dans le prix de chaque armure de la grille (R93). */
   const fabricationDeLArmure = () => nombreOuNul(racine.querySelector('[data-armures-fabrication] .pcout')?.dataset.ro);
 
+  /** Une case de prix calculé (rendu de lib/armures-rendu.mjs : `.pprix` et sa valeur en `data-ro`), réécrite seulement si sa valeur change. */
+  function ecrirePrix(cellule, n) {
+    if (!cellule || nombreOuNul(cellule.querySelector('.pprix')?.dataset.ro) === n) return;
+    cellule.innerHTML = n === null ? '<span class="pprix"><span class="vide" aria-label="aucun">—</span></span>' : `<span class="pprix" data-ro="${n}">${ro(n)}</span>`;
+  }
+
   /**
-   * Le prix de chaque armure de la grille dans la liste (décision R93) : refait d'après les prix des matériaux et la fabrication tels qu'affichés ; une
-   * case n'est réécrite que si son prix change (au chargement, celui du build est le même).
+   * Les prix calculés de la page, refaits d'après les prix des matériaux et la fabrication tels qu'affichés (au chargement, ceux du build sont les
+   * mêmes) : le prix de 6 unités de chaque matériau des deux tableaux de choix (« Prix ×6 », pour une armure) et celui de chaque armure de la grille dans
+   * la liste (décision R93).
    */
   function prixDeLaListe() {
+    for (const tr of racine.querySelectorAll('[data-choix="m1"] tr.pmat, [data-choix="m2"] tr.pmat')) {
+      const p = lireMateriau(tr)?.prix_ro ?? null;
+      ecrirePrix(tr.querySelector('[data-prix-armure]'), p === null ? null : Math.round(UNITES_PAR_MATERIAU * p * 100) / 100);
+    }
     const fabrication = fabricationDeLArmure();
     for (const tr of racine.querySelectorAll('tr.armure[data-m1]')) {
       const cellule = tr.querySelector('.armure__prix[data-prix-calcule]');
       if (!cellule) continue;
       const prix = [tr.dataset.m1, tr.dataset.m2].map((cle) => lireMateriau(ligneDeMateriau('m1', cle))?.prix_ro ?? null);
-      const n = prixDeLArmure(fabrication, prix).achetes;
-      if (nombreOuNul(cellule.querySelector('.pprix')?.dataset.ro) === n) continue;
-      cellule.innerHTML = n === null ? '<span class="pprix"><span class="vide" aria-label="aucun">—</span></span>' : `<span class="pprix" data-ro="${n}">${ro(n)}</span>`;
+      ecrirePrix(cellule, prixDeLArmure(fabrication, prix).achetes);
     }
   }
 
@@ -139,7 +148,8 @@ if (racine) {
 
   /** L'armure telle qu'affichée dans sa ligne de la liste. */
   function lireArmure(ligne) {
-    const { ap, am } = defenseDe(ligne.querySelector('.armure__defense'));
+    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »), comme celle d'un bouclier
+    const { ap, am } = defenseDe(ligne.querySelector('.armure__ap'));
     const prix = prixDe(ligne.querySelector('.armure__prix'));
     return {
       nom: ligne.querySelector('.armure__choisir')?.textContent.trim() ?? '',

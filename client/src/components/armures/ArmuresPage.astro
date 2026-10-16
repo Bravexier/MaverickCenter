@@ -110,7 +110,12 @@ const legende = (
                 <summary class="armures-bloc__titre"><span class="armures-bloc__nom">{t.titre}</span><span class="armures-bloc__compte">{armures.materiaux.length}</span></summary>
                 <div class="armures-wrap">
                   <table class="armures-table armures-table--choix" data-choix={t.role}>
-                    <thead><tr><th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th>
+                        <th scope="col" title="Pour une armure : les 6 unités de ce matériau qu’elle demande (décision R93)">Prix ×6</th>
+                      </tr>
+                    </thead>
                     <tbody>{armures.materiaux.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, t.role)} />)}</tbody>
                   </table>
                 </div>
@@ -133,8 +138,8 @@ const legende = (
               <table class="armures-table armures-table--liste">
                 <thead>
                   <tr>
-                    <th scope="col">Nom</th><th scope="col">Type</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Solidité</th>
-                    <th scope="col">Effet</th><th scope="col">Prix</th>
+                    <th scope="col">Nom</th><th scope="col">Type</th><th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
+                    <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Effet</th><th scope="col">Prix</th>
                   </tr>
                 </thead>
                 <tbody>{armures.particulieres.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
@@ -152,7 +157,8 @@ const legende = (
                   <table class="armures-table armures-table--liste">
                     <thead>
                       <tr>
-                        <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th><th scope="col">Défense</th>
+                        <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
+                        <th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
                         <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
                         <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
                       </tr>
