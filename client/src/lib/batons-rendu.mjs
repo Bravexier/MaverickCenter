@@ -3,10 +3,12 @@
 // elle même n'est pas utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du bois utilisé. Il faudrait une colonne "niveau"
 // avec un slider de 1 à 3 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du niveau. Rajouter une colonne pour le prix. »
 // Une ligne par magie, sur la couleur de sa magie : Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à leur ligne de la page
-// « Composants » et ont chacun leur infobulle (description, prix, le même lien) ; la qualité de la gemme, l'effet (le bonus tel qu'écrit) et le prix
-// (lib/batons-db.mjs#prixDuBaton) sont écrits pour chaque niveau (`data-niv`), le CSS n'affiche que ceux du niveau de la ligne (`data-niveau`, que le
-// curseur change : src/scripts/batons.mjs) ; sans JavaScript, tout est affiché, chaque niveau sous son nom. Rien d'autre n'est calculé. Fonctions pures,
-// chaîne HTML en sortie, tout texte échappé.
+// « Composants » et ont chacun leur infobulle (description, prix, le même lien) ; la gemme est la pastille des accessoires (`.acc-gemme`,
+// styles/equipement/equipement.css), sans ligne pour sa qualité (demande du propriétaire du 2026-10-16 : « La case des gemmes doit utiliser le même
+// item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité de la gemme » ; la qualité du niveau reste en avant dans
+// l'infobulle). L'effet (le bonus tel qu'écrit) et le prix (lib/batons-db.mjs#prixDuBaton) sont écrits pour chaque niveau (`data-niv`), le CSS
+// n'affiche que ceux du niveau de la ligne (`data-niveau`, que le curseur change : src/scripts/batons.mjs) ; sans JavaScript, tout est affiché, chaque
+// niveau sous son nom. Rien d'autre n'est calculé. Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { ancreDeComposant } from './composants-rendu.mjs';
 import { htmlDeLignes, htmlDePrix } from './ceinture-rendu.mjs';
 import { htmlDeMontant, MONNAIES_DU_JEU } from './monnaies.mjs';
@@ -41,22 +43,26 @@ const htmlDeBulle = (id, c, sous, prix, lien) =>
   + prix
   + `<a class="bulle__lien" href="${e(lien)}" tabindex="-1">Voir dans Composants</a></span>`;
 
-/** Le nom d'une gemme ou d'un bois, en lien vers sa ligne de « Composants », qui ouvre son infobulle. */
+/** Le nom du bois, en lien vers sa ligne de « Composants », qui ouvre son infobulle. */
 const htmlDuNom = (c, lien, bulle) => `<a class="baton__nom" href="${e(lien)}" data-bulle="${e(bulle)}" aria-describedby="${e(bulle)}">${e(c.nom)}</a>`;
 
-/** La gemme d'une ligne : son nom, la qualité de chaque niveau (« Gemme raffinée »), son infobulle (le prix de la gemme entière de chaque qualité, celle du niveau en avant). */
+/**
+ * La gemme d'une ligne : la pastille des accessoires (`.acc-gemme` dans la couleur de la magie, ici un lien vers « Composants ») et son infobulle
+ * (le prix de la gemme entière de chaque qualité, celle du niveau de la ligne en avant).
+ */
 function htmlDeGemme(m, niveaux, adresseDesComposants) {
   const g = m.gemme;
   if (!g) return VIDE;
   const lien = `${adresseDesComposants}#${ancreDeComposant(g.id)}`;
   const bulle = bulleDeBatons(m.magie.id, 'gemme');
-  const qualites = parNiveau(niveaux, (n) => e(QUALITES_DE_GEMME[m.qualites?.[n]] ?? ''));
+  const fond = couleurDeMagie(m.magie.nom);
+  const pastille = `<a class="acc-gemme" href="${e(lien)}" style="--g: ${fond}; --g-texte: ${texteSurCouleur(fond)}" data-bulle="${e(bulle)}" aria-describedby="${e(bulle)}">${e(g.nom)}</a>`;
   const stades = niveaux
     .filter((n) => m.qualites?.[n.niveau])
     .map((n) => `<span class="bulle__stade" data-niv="${n.niveau}"><span class="bulle__stade-nom">${e(QUALITES_DE_GEMME[m.qualites[n.niveau]].replace(/^Gemme /, ''))}</span><span>${htmlDePrix(g.prix?.[m.qualites[n.niveau]]?.brut)}</span></span>`)
     .join('');
   const prix = stades ? `<span class="bulle__stades">${stades}</span>` : '';
-  return `${htmlDuNom(g, lien, bulle)}<span class="baton__qualite">${qualites}</span>${htmlDeBulle(bulle, g, `Gemme précieuse · ${m.magie.nom}`, prix, lien)}`;
+  return `${pastille}${htmlDeBulle(bulle, g, `Gemme précieuse · ${m.magie.nom}`, prix, lien)}`;
 }
 
 /** Le bois d'une ligne : son nom et son infobulle (son prix). */

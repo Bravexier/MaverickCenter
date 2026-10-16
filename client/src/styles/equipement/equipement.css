@@ -44,6 +44,16 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
    toucher (components/Infobulles.astro retient le déclencheur le plus proche du pointeur) */
 :is(.arme-fiche__tuile, .pfiche__tuile) .piece { pointer-events: none; }
 
+/* ── La pastille d'une gemme, dans la couleur de sa magie (`--g`, `--g-texte`) : la même dans les onglets Accessoires (components/accessoires/
+   GemmesDeLEffet.astro, l'encart de src/scripts/accessoires.mjs) et Bâtons magiques (lib/batons-rendu.mjs, demande du propriétaire du 2026-10-16 :
+   « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille »), où elle est un lien vers « Composants » ── */
+.acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; line-height: 1.45;
+  background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
+a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
+a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--g)); outline-offset: 2px; }
+/* sur une ligne des bâtons, la pastille a la couleur du fond : un liseré dans la couleur du texte de la ligne la détache (Onyx sur le noir) */
+.batons-table .acc-gemme { box-shadow: 0 0 0 1px color-mix(in srgb, var(--mag-texte) 45%, transparent); }
+
 /* ── Bâtons magiques ── */
 .batons { margin: 0 0 2rem; }
 .batons .vide { color: inherit; opacity: 0.6; }
@@ -77,7 +87,6 @@ html.js .batons .sans-js { display: none; }
   text-underline-offset: 0.18em; overflow-wrap: normal; }
 .baton__nom:hover, .baton__nom[data-ouverte] { text-decoration-color: currentColor; }
 .baton__nom:focus-visible { outline: 2px solid var(--mag-texte); outline-offset: 2px; border-radius: var(--radius-xs); }
-.baton__qualite { display: block; font-size: var(--fs-sm); opacity: 0.85; }
 .baton__niveau { white-space: nowrap; }
 html.js .batons .baton-curseur { display: inline-flex; align-items: center; gap: 0.5rem; }
 .baton-curseur__champ { width: 5.5rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--mag-texte); cursor: pointer; }
@@ -85,7 +94,7 @@ html.js .batons .baton-curseur { display: inline-flex; align-items: center; gap:
 .baton-curseur__valeur { min-width: 1ch; font-weight: 700; font-variant-numeric: tabular-nums; }
 .baton__effet { min-width: 14rem; }
 .baton__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* une case par niveau : la qualité de la gemme, l'effet, le prix ; seul le niveau de la ligne s'affiche (son curseur, src/scripts/batons.mjs) */
+/* une case par niveau : l'effet, le prix ; seul le niveau de la ligne s'affiche (son curseur, src/scripts/batons.mjs) */
 .baton-niv { display: block; }
 .baton-niv__nom { font-weight: 600; }
 html.js .baton-niv__nom { display: none; }

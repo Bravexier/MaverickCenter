@@ -119,15 +119,17 @@ test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la
   assert.match(htmlDuPrixDuBaton(null), /class="vide"/);
 });
 
-test('bâtons : rendu d’une ligne (couleur de la magie, sans colonne Magie ; gemme et bois en lien vers « Composants » avec leur infobulle ; curseur ; qualité, effet et prix de chaque niveau)', () => {
+test('bâtons : rendu d’une ligne (couleur de la magie, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
   assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--mag: ${couleurDeMagie(m.magie.nom)}; --mag-texte: `), 'la ligne sur la couleur de sa magie, au niveau 1');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
-  for (const [quoi, c] of [['gemme', m.gemme], ['bois', m.bois]]) {
+  // demande du propriétaire du 2026-10-16 : la gemme est la pastille des accessoires (`.acc-gemme`, dans la couleur de la magie), sans ligne pour sa qualité
+  const pastille = `class="acc-gemme" href="(/ressources/composants/#composant-gemme-[^"]+)" style="--g: ${couleurDeMagie(m.magie.nom)}; --g-texte: #[0-9a-f]{6}"`;
+  for (const [quoi, c, debutDuLien] of [['gemme', m.gemme, pastille], ['bois', m.bois, 'class="baton__nom" href="(/ressources/composants/#composant-bois-[^"]+)"']]) {
     const bulle = bulleDeBatons(m.magie.id, quoi);
-    const lien = new RegExp(`<a class="baton__nom" href="(/ressources/composants/#composant-${quoi}-[^"]+)" data-bulle="${bulle}" aria-describedby="${bulle}">${c.nom}</a>`);
+    const lien = new RegExp(`<a ${debutDuLien} data-bulle="${bulle}" aria-describedby="${bulle}">${c.nom}</a>`);
     assert.match(html, lien, `${quoi} : son nom en lien, qui ouvre son infobulle`);
     const href = lien.exec(html)[1];
     const debut = html.indexOf(`<span class="bulle bulle--baton" role="tooltip" id="${bulle}" hidden>`);
@@ -138,9 +140,10 @@ test('bâtons : rendu d’une ligne (couleur de la magie, sans colonne Magie ; g
   }
   assert.equal((html.match(/class="bulle__stade" data-niv="/g) ?? []).length, batons.niveaux.length, 'l’infobulle de la gemme : un prix par qualité');
   assert.ok(html.includes('<input type="range" class="baton-curseur__champ" min="1" max="3" step="1" value="1" data-baton-curseur'), 'le curseur du niveau');
-  assert.equal((html.match(/<span class="baton-niv" data-niv="/g) ?? []).length, 3 * batons.niveaux.length, 'qualité, effet et prix pour chaque niveau');
+  assert.equal((html.match(/<span class="baton-niv" data-niv="/g) ?? []).length, 2 * batons.niveaux.length, 'effet et prix pour chaque niveau');
+  assert.ok(!html.includes('baton__qualite') && !html.includes('>Gemme commune<'), 'pas de ligne pour la qualité de la gemme');
   for (const n of batons.niveaux) {
-    assert.ok(html.includes(`<span class="baton-niv" data-niv="${n.niveau}"><span class="baton-niv__nom">Niveau ${n.niveau} : </span>${QUALITES_DE_GEMME[m.qualites[n.niveau]]}</span>`));
+    assert.ok(html.includes(`<span class="bulle__stade-nom">${QUALITES_DE_GEMME[m.qualites[n.niveau]].replace(/^Gemme /, '')}</span>`), `la qualité du niveau ${n.niveau} dans l’infobulle`);
     assert.ok(html.includes(`<span class="baton-niv__nom">Niveau ${n.niveau} : </span>${htmlDeLignes(m.bonus[n.niveau])}</span>`), `effet du niveau ${n.niveau}`);
     assert.ok(html.includes(`<span class="baton-niv__nom">Niveau ${n.niveau} : </span>${htmlDuPrixDuBaton(prixDuBaton(m, n.niveau))}</span>`), `prix du niveau ${n.niveau}`);
   }

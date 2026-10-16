@@ -62,6 +62,8 @@ test('bâtons magiques : les règles repliées (introduction, fabrication), une 
   assert.equal((panneauDesBatons.match(/<tr class="baton" id="[^"]+" data-niveau="1" style="--mag: #[0-9a-f]{6}; --mag-texte: #[0-9a-f]{6}">/g) ?? []).length, batons.magies.length, 'chaque ligne sur la couleur de sa magie, au niveau 1');
   assert.equal((panneauDesBatons.match(/<input type="range" class="baton-curseur__champ" min="1" max="3"/g) ?? []).length, batons.magies.length, 'un curseur par ligne');
   assert.equal((panneauDesBatons.match(/<span class="bulle bulle--baton" role="tooltip" id="bulle-baton-[a-z-]+-(?:gemme|bois)" hidden>/g) ?? []).length, batons.magies.length * 2, 'une infobulle par gemme et par bois');
+  assert.equal((panneauDesBatons.match(/<a class="acc-gemme" href="\/ressources\/composants\/#composant-gemme-[^"]+" style="--g: #[0-9a-f]{6}; --g-texte: #[0-9a-f]{6}"/g) ?? []).length, batons.magies.length, 'la gemme : la pastille des accessoires');
+  assert.ok(!panneauDesBatons.includes('baton__qualite'), 'pas de ligne pour la qualité de la gemme');
   assert.ok(panneauDesBatons.includes('<section class="equipement-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>'), 'la racine du script');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
   const ancres = [...new Set([...panneauDesBatons.matchAll(/href="\/ressources\/composants\/#([^"]+)"/g)].map((m) => m[1]))];

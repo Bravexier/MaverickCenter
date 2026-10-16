@@ -288,9 +288,12 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
   **Gemme | Bois | Niveau | Effet | Prix**.
 - **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
   magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
-  tabulation : le nom l'est déjà). Sous la gemme, sa qualité au niveau choisi, telle que la recette l'écrit (« Gemme raffinée »).
-- **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que la
-  qualité, l'effet et le prix de ce niveau (chaque case les écrit tous, `data-niv`). Sans JavaScript : pas de curseur, chaque case écrit ses trois niveaux,
+  tabulation : le nom l'est déjà). La gemme est **la pastille des accessoires** (`.acc-gemme`, dans la couleur de sa magie, commune aux deux onglets :
+  `styles/equipement/equipement.css` ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
+  propriétaire, 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité
+  de la gemme ») : la qualité du niveau se lit dans l'infobulle.
+- **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que
+  l'effet et le prix de ce niveau (chaque case les écrit tous, `data-niv`) et met sa qualité en avant dans l'infobulle de la gemme. Sans JavaScript : pas de curseur, chaque case écrit ses trois niveaux,
   chacun sous son nom.
 - **Effet** : le bonus passif du niveau, tel qu'écrit (`baton_magique.bonus_brut`).
 - **Prix** : la source n'écrit pas de prix pour un bâton, seulement ceux de ses matériaux et la recette de chaque niveau (« 1 Gemme Commune + 1 bois

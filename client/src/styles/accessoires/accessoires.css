@@ -141,10 +141,9 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc tr[data-choix]:not([data-niveau]).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
 .acc [data-choix].est-choisi .acc-choisir::before { content: '✓ '; }
 
-/* Gemmes : la couleur de leur magie, l'infobulle (magie, description, prix d'un quart) au survol */
+/* Gemmes : la pastille dans la couleur de leur magie (`.acc-gemme`, commune avec l'onglet Bâtons magiques : styles/equipement/equipement.css),
+   l'infobulle (magie, description, prix d'un quart) au survol */
 .acc-gemmes { white-space: nowrap; }
-.acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; line-height: 1.45;
-  background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
 .acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: var(--fs-xs); }
 /* une gemme au choix dans sa ligne : sa case à cocher devant elle, à côté et non autour (un appui sur la gemme ouvre son infobulle) ; deux en tout,
    les autres cases grisées une fois le compte atteint */
