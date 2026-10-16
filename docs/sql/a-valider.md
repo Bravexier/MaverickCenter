@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R69, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R90, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -16,7 +16,7 @@ Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-r
 | F7 | **Champs structurés encore dans `page.donnees` (JSON)** pour les pages non portées (`magies_innees`, `nom_court`…) | Rien perdu en attendant les importeurs de famille | Quand ils sont portés, ces valeurs quittent le JSON pour les tables |
 | F8 | **Noms ambigus conservés** : 13 noms sont à la fois une classe et une race (Anansi, Fenrir, Kitsune, Minotaure, Orios…) | Aucun `[[lien]]` actuel n'est concerné ; un futur `[[Anansi]]` sera signalé « ambigu » | **Décidé** : pas de suffixe « (classe) », supprimé de partout (demande du propriétaire, migration 0009) ; un lien se désambiguïse par le chemin (`[[classes/anansi]]`, `[[races/anansi]]`) |
 | F9 | **Recherche plein texte par mots** (FTS5) : `ortée` ne trouve plus `portée` ; l'apostrophe sépare les mots ; `œ` n'est pas replié (`coeur` : 2 pages, `cœur` : 13) | Meilleur classement des réponses ; comportement actuel du site conservé pour `œ` | Replier `œ → oe` ? Garder la recherche par sous-chaîne (`LIKE`) en plus ? |
-| F11 | **Colonne `remarque`** (texte libre, vide par défaut) dans chaque table d'entités (60 tables) : les notes de cellule des classeurs y sont recopiées, dans la ligne qu'elles commentent (la note de « Laser noir » est dans la ligne du sort). Plusieurs notes sur une ligne sont réunies, séparées par une ligne vide. La table `note_cellule` est **conservée comme trace** (cellule d'origine, nature : note ou commentaire résolu) | La remarque est ce qu'on lit et ce qu'on pourra éditer ; la trace permet de remonter à la cellule | Supprimer `note_cellule` ? Elle fait doublon tant que les classeurs sont la source ; un contrôle (`db:check`) garantit qu'aucune note n'est absente de sa remarque. À la bascule vers l'édition, la trace n'a plus d'utilité |
+| F11 | **Colonne `remarque`** (texte libre, vide par défaut) dans chaque table d'entités (59 tables) : les notes de cellule des classeurs y sont recopiées, dans la ligne qu'elles commentent (la note de « Laser noir » est dans la ligne du sort). Plusieurs notes sur une ligne sont réunies, séparées par une ligne vide. La table `note_cellule` est **conservée comme trace** (cellule d'origine, nature : note ou commentaire résolu) | La remarque est ce qu'on lit et ce qu'on pourra éditer ; la trace permet de remonter à la cellule | Supprimer `note_cellule` ? Elle fait doublon tant que les classeurs sont la source ; un contrôle (`db:check`) garantit qu'aucune note n'est absente de sa remarque. À la bascule vers l'édition, la trace n'a plus d'utilité |
 | F10 | **SQL portable** : seuls `STRICT`, `GLOB` dans quelques `CHECK`, `json_valid`, `instr`, FTS5 et les `PRAGMA` sont propres à SQLite | Une bascule vers PostgreSQL doit rester possible pour l'édition à plusieurs | Rien à faire maintenant ; équivalents listés dans `conception.md` §10.4 |
 
 ## 2. Questions de contenu
@@ -31,7 +31,7 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Règles | Puissance magique 5 au niveau 16 ou 17 ; sens des deux « croix » | **décidé : niveau 16** (R16) ; **les croix** (R19, voir Q1 du §3) |
 | Règles | Plafond de caractéristique aux niveaux 5, 10, 15 ; entraînement 10 % par compétence ou au total (voir Q7 du §3) | ouvert |
 | Magies | Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps seulement) ? | **décidé : mono-magie uniquement**, sauf Elfe Noir Charbon et Felfe Noir (R15) |
-| Magies | Arcane et Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) ? (les pages de magie, le guide et le tableau des résistances de `/fiche/` suivent V8) | ouvert |
+| Magies | Arcane et Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) ? (les pages de magie, le guide et le tableau des résistances de `/fiche/` suivent V8) | **décidé et appliqué : chacune résiste à l'autre** (R90, V8) ; la matrice de la fiche (`resistance_magie`) est retirée (migration 0051) |
 | Magies | Niveaux de maîtrise (migration 0004) : la lecture typée de quelques expressions ambiguës de `sort_bonus_maitrise` ; « /3NM » collé à une proposition en toutes lettres typé **palier à 3 NM** (Grenade cryogénique « gel 1/3NM », Échange « 3CK = 2BA/3NM », Planète chakratique « 1CK/3NM », Lame sous pression « ou verticales/3NM », comme les grenades voisines « 3NM = … »), « (x4/3NM) » typé par NM de pas 3, « (+1/NM) » sans unité écrite (Image diffuse, Aspect vide, Pichenette, Lame d'ombre) typé sans unité. Le texte de la cellule est conservé tel quel dans chaque ligne | ouvert |
 | Magies | « D/S/B » non développé dans les sources ; 32 sorts sans chakra écrit ; noms d'états (« Gelé » / « Gel ») | ouvert |
 | Magies | 26 fils de commentaires orphelins (cellules supprimées, certains textes sont des règles) ; 28 dieux dont 16 reliés à une magie | ouvert |
@@ -66,7 +66,7 @@ La base des fiches (section 13, `docs/character-generator.md`, « Fiches dans la
 
 La « Fiche personnage Auto Maverick V1.1 » du Drive (créée le 3 avril 2026, après la V15.2.2) a la même disposition (les cellules citées par la base y sont les mêmes). Elle corrige **B2** et **B3** (dons de la classe 2 au niveau de la classe 2), **en partie B4** (+4 AM de la 2ᵉ spécialité « Masochiste » du Flagelleur, mais pas des 2ᵉ spécialités des classes raciales, R7), et **ni B1 ni B5**. Elle ajoute des calculs absents de la V15.2.2 (+3 Atk du Guerrier, +10 avec « Hyper contact » ; portée +1 des armes de mêlée du Hujin ; XP du palier suivant), que le moteur reprendra de leurs dons.
 
-La **V1.2** (2026-10-10, Drive du propriétaire : copie de la V1.1 qui lit les copies des classeurs) corrige B1 à B5 et les autres erreurs relevées depuis ; la liste, les cellules et ce qui reste à trancher (armure élémentaire, Mode Hyper des magies, matrice Arcane/Corruption) sont dans `docs/fiche-auto.md`.
+La **V1.2** (2026-10-10, Drive du propriétaire : copie de la V1.1 qui lit les copies des classeurs) corrige B1 à B5 et les autres erreurs relevées depuis ; la liste, les cellules et ce qui reste à trancher (armure élémentaire, Mode Hyper des magies ; la matrice Arcane/Corruption est tranchée par R90) sont dans `docs/fiche-auto.md`.
 
 Questions :
 

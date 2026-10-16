@@ -121,3 +121,25 @@ test('décision R86 : les tables recopiées de l’onglet Statistiques et ce qui
   assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/statistiques-resistance-faiblesse'").get().n, 0);
   assert.equal(db.prepare("SELECT count(*) AS n FROM source WHERE onglets LIKE '%Statistiques%'").get().n, 0);
 });
+
+// Décision R90 (« Arcane résiste de base à la corruption et corruption résite à l'arcane. », 2026-10-16) : les listes de « Magie Maverick V8 »
+// font foi, pas la matrice de la fiche auto (Magie!F2:S16), qui faisait résister chacune à elle-même ; la matrice et ses deux vues sont retirées (0051).
+// magie_resistance ne se modifie pas sur le site de dev : l'état courant est celui de l'import.
+const ARCANE = 'magies/magie-de-larcane';
+const CORRUPTION = 'magies/magie-de-la-corruption';
+
+test('décision R90 : l’Arcane et la Corruption résistent chacune à l’autre, et ni l’une ni l’autre à elle-même ; la matrice de la fiche est retirée', () => {
+  const liste = (magie) => db.prepare("SELECT sens, cible_magie_id FROM magie_resistance WHERE magie_id = ? AND cible_type = 'magie' ORDER BY rang").all(magie)
+    .map((r) => ({ ...r }));
+  assert.deepEqual(liste(ARCANE), [{ sens: 'resistance', cible_magie_id: CORRUPTION }]);
+  assert.deepEqual(liste(CORRUPTION), [{ sens: 'resistance', cible_magie_id: ARCANE }]);
+  // La combinaison des deux (R85) : une résistance à chacune.
+  assert.deepEqual(paliersDu([ARCANE, CORRUPTION].sort((a, b) => ordreDe(a) - ordreDe(b))), { resistance: ['Arcane', 'Corruption'] });
+  const objets = db.prepare("SELECT name FROM sqlite_master WHERE name IN ('resistance_magie', 'v_resistance_magie_lectures', 'v_resistance_ecart')").all();
+  assert.deepEqual(objets, []);
+  assert.equal(db.prepare("SELECT count(*) AS n FROM ecart_source WHERE entite_table = 'resistance_magie'").get().n, 0);
+});
+
+function ordreDe(magie) {
+  return db.prepare('SELECT ordre FROM magie WHERE id = ?').get(magie).ordre;
+}

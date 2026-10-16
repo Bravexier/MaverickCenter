@@ -93,7 +93,7 @@ texte dit « Import initial depuis les sources historiques » au lieu de « Pour
 
 ## La colonne `remarque`
 
-Chaque table d'entités (les 60 tables que visent `page_entite`, `note_cellule` et `ecart_source`, hors `page`) a une colonne `remarque` : texte libre, **vide par défaut**. Les notes de cellule des classeurs y sont
+Chaque table d'entités (les 59 tables que visent `page_entite`, `note_cellule` et `ecart_source`, hors `page`) a une colonne `remarque` : texte libre, **vide par défaut**. Les notes de cellule des classeurs y sont
 recopiées dans la ligne qu'elles commentent (sorts, capacités, armes, armes élémentaires, effets d'accessoire, créatures, maladies) ; plusieurs notes sur une ligne sont réunies, séparées par une ligne vide. La table
 `note_cellule` garde chaque note avec sa cellule d'origine et sa nature (note ou commentaire résolu). `npm run db:check` vérifie qu'aucune note n'est absente de la remarque de sa ligne. La remarque est dans le plein
 texte des entités et dans l'explorateur de l'onglet DB.

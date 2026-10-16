@@ -72,7 +72,7 @@ Restent à tester avec l'accès autorisé (ils lisent les classeurs) : 6, 15, 16
 | 13 | Armure élémentaire : `Armures!Q2:T5` (AP, AM, effet par type) n'a que ses intitulés | Les valeurs ne sont écrites nulle part : à fournir par le propriétaire |
 | 18 | Les 3 armures de familier du classeur (colonne HC) ne sont pas dans la liste | La fiche n'a pas de section familier : les ajouter à la liste du personnage les rendrait portables par lui |
 | 25 (magies) | Capacités Mode Hyper de 8 magies différentes du classeur « Mode hyper et co » | Choix de la source à faire (fiche, « Mode hyper et co » ou onglet « Mode Hyper (Magie) » du classeur de magie) |
-| 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | Question ouverte, `docs/sql/a-valider.md` §2 |
+| 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | **Tranché** (R90) : chacune résiste à l'autre, comme les listes de « Magie Maverick V8 » (aucune ne s'y cite elle-même) ; la base ne garde plus la matrice (migration 0051). La V1.2 n'est pas corrigée : les règles de la fiche auto sont ignorées (R87) |
 | — | Ambidextrie : « Fausse Patte » et « Ravageur » (−5 % avec les armes légères ou lourdes), « Directrice » (main directrice) | La fiche ne distingue ni la catégorie d'arme ni la main directrice |
 | R23 | `BDD!B27` propose l'Archimage d'après la race (les 10 races qui ont le Potentiel Illimité en magie innée), sans regarder la magie innée choisie | Le propriétaire se concentre désormais sur la fiche du site (`/fiche/`), qui suit R23 |
 

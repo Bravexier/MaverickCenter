@@ -38,11 +38,12 @@ const APRES_REMARQUE = {
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
 const CREEES_APRES_0002 = ['race_don'];
 // Tables d'entités que 0002 a dotées d'une `remarque` puis qu'une migration ultérieure a retirées (0049 : les couples de magies de l'onglet
-// « Statistiques », décisions R85 et R86 : la vue v_resistance_combinaison les remplace).
-const RETIREES_APRES_0002 = ['resistance_duo'];
+// « Statistiques », décisions R85 et R86 : la vue v_resistance_combinaison les remplace ; 0051 : la matrice des résistances de la fiche auto,
+// décision R90 : l'Arcane et la Corruption se résistent l'une à l'autre, comme le disent les listes de magie_resistance).
+const RETIREES_APRES_0002 = ['resistance_duo', 'resistance_magie'];
 
 test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier (sauf colonnes ajoutées ensuite par migration) ; aucune autre table n’en a (la table page non plus)', () => {
-  assert.ok(entites.length >= 60, `tables d'entités : ${entites.length}`);
+  assert.ok(entites.length >= 59, `tables d'entités : ${entites.length}`);
   for (const t of entites) {
     const cols = colonnes(t);
     const apres = APRES_REMARQUE[t] ?? [];

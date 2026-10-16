@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 50 : 189 tables, 2 tables de recherche plein texte (FTS5) et 37 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 51 : 188 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -11,7 +11,7 @@
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
-- [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `resistance_magie`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
+- [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
@@ -21,7 +21,7 @@
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
-- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
+- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 - [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
@@ -574,19 +574,6 @@ Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (s
 | `ordre` | INTEGER | oui | unique | ordre d'affichage de la fiche (immunité en premier) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
-
-### `resistance_magie`
-
-Matrice de résistance de la FICHE (Magie!F2:S16) : 15 magies du personnage (lignes) x 14 magies qui attaquent (colonnes). valeur = +1 résistance d'un cran, -1 vulnérabilité d'un cran, 0 neutre (la source écrit 0 : conservé). Ces valeurs alimentent BDD!S (magie innée) et BDD!T (magie acquise), qui s'additionnent (règle déduite par la spécification : l'export du classeur ne contient pas la formule). Le domaine magies porte les listes du classeur V8 (magie_resistance) : elles diffèrent pour Arcane et Corruption (voir v_resistance_ecart et ecart_source).
-
-| Colonne | Type | Obligatoire | Clé | Description |
-| --- | --- | --- | --- | --- |
-| `magie_id` | TEXT | oui | PK 1, → magie.id | magie du personnage : celle qui résiste ou est vulnérable |
-| `attaque_magie_id` | TEXT | oui | PK 2, → magie.id | magie de l'attaque subie (en-tête de colonne F1:S1) |
-| `valeur` | INTEGER | oui |  |  |
-| `origine` | TEXT | oui | → famille.id |  |
-| `source_ref` | TEXT | oui |  |  |
-| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `etat`
 
@@ -3134,33 +3121,6 @@ Compétences avec leur caractéristique : le moteur n'a pas à joindre.
 | `caracteristique_id` | TEXT | non |  |  |
 | `caracteristique` | TEXT | non |  |  |
 | `lettre` | TEXT | non |  |  |
-
-### `v_resistance_magie_lectures`
-
-*vue*
-
-Les deux LECTURES de la matrice « magie A résiste à magie B » côte à côte (le propriétaire n'a pas tranché laquelle fait foi, design.md §12.2) : valeur_fiche = resistance_magie (matrice de la fiche, 14 x 14, utilisée par rules.json) ; valeur_v8 = magie_resistance (listes « résiste à / vulnérable à » du classeur V8, affichées par les pages des magies). Une paire absente d'une lecture vaut 0 (neutre) : les listes V8 ne citent que les magies qui résistent ou qui sont vulnérables. Une seule requête répond à « que disent les deux lectures ? » ; `concordant = 0` donne les écarts (v_resistance_ecart).
-
-| Colonne | Type | Obligatoire | Clé | Description |
-| --- | --- | --- | --- | --- |
-| `magie_id` | TEXT | non |  |  |
-| `attaque_magie_id` | TEXT | non |  |  |
-| `valeur_fiche` | — | non |  |  |
-| `valeur_v8` | — | non |  |  |
-| `concordant` | — | non |  |  |
-
-### `v_resistance_ecart`
-
-*vue*
-
-Lignes où la matrice de la fiche et les listes du classeur V8 ne disent pas la même chose. Vide quand les deux lectures concordent.
-
-| Colonne | Type | Obligatoire | Clé | Description |
-| --- | --- | --- | --- | --- |
-| `magie_id` | TEXT | non |  |  |
-| `attaque_magie_id` | TEXT | non |  |  |
-| `valeur_fiche` | — | non |  |  |
-| `valeur_v8` | — | non |  |  |
 
 ### `v_resistance_combinaison`
 

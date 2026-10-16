@@ -21,16 +21,16 @@ Les faux écarts de l'outil sont corrigés dans l'outil, pas listés ici.
 | Classe Maverick V7 | 2026-09-30 | 1 228 | 3 964 (270) | **0 : rapproché** | 0 | — |
 | Invocation | 2026-09-03 | 1 128 | 1 207 (26) | **0 : rapproché** | 0 | le tableau des améliorations cadavériques, copie déclarée de celui de Magie V8 |
 | Mode hyper et co | 2026-09-30 | 133 | 159 (10) | 56 | 0 | (d2) provenance |
-| Magie Maverick V8 | 2026-10-12 | 1 898 | 6 129 (2 302) | 55 | 0 (deux commentaires, ignorés) | (d2) provenance ; onglet « Statistiques » ignoré (R86) |
+| Magie Maverick V8 | 2026-10-12 | 1 894 | 6 129 (2 302) | 55 | 0 (deux commentaires, ignorés) | (d2) provenance ; onglet « Statistiques » ignoré (R86) |
 | Ressources et Craft | 2026-10-11 | 2 983 | 4 005 (284) | 464 | 9 cellules, **appliquées** (migration 0048) | (d2) provenance |
-| Fiche auto V15.2.2 | 2026-03-31 | 2 188 | 17 181 (14 397) | 145 | 0 | (d2) provenance ; ses règles ignorées (R87) |
+| Fiche auto V15.2.2 | 2026-03-31 | 1 975 | 17 181 (14 607) | 152 | 0 | (d2) provenance ; ses règles ignorées (R87, R90) ; 7 écarts des constantes de l'inventaire (0050) |
 | Les races | 2026-10-12 | 5 226 | 6 203 (593) | 1 267 | 0 | (d2) provenance en libellés de zone |
 
 « Cellules ignorées » : cellules qu'aucune ligne ne cite pour une raison écrite dans le registre du classeur (statistiques d'usage, titres, copies
 vérifiées, consignes). **Aucune valeur de règle de la base n'est fausse au regard du classeur lu à l'import** : hors (d1), les écarts sont de provenance,
 de colonnes fabriquées ou de cellules recopiées ailleurs.
 
-## Réponses du propriétaire (2026-10-15) et ce qui en est fait
+## Réponses du propriétaire (2026-10-15 et 2026-10-16) et ce qui en est fait
 
 1. **« Ressources et Craft » a changé depuis l'import (2026-10-11)** : « Oui met à jour les objets tel que la dernière version des ressources les fait. »
    Appliqué par la migration `0048-ressources-et-craft-mise-a-jour` :
@@ -58,11 +58,20 @@ de colonnes fabriquées ou de cellules recopiées ailleurs.
    des classeurs ou différentes (maîtrise « Hast/Bâton », « Masse/Hache » ; solidité d'un bouclier ; crans des armures élémentaires d'Arcane et de
    Corruption ; Potentiel Illimité dans les incompatibilités, que R15 retire déjà ; six effets d'accessoire) ne sont pas reprises. Les décisions plus
    anciennes qui retiennent explicitement la fiche (R8 : matrice des magies innées…) ne changent pas sans le propriétaire.
+5. **Arcane et Corruption** (2026-10-16) : « Arcane résiste de base à la corruption et corruption résite à l'arcane. » : décision **R90**, les listes de
+   « Magie Maverick V8 » (que suivaient déjà les pages de magie, la fiche et les combinaisons). La matrice de la fiche (`Magie!F2:S16`, où
+   chacune résistait à elle-même), gardée dans `resistance_magie` comme seconde lecture tant que la question était ouverte, est retirée avec ses deux vues
+   et ses 5 écarts (migration `0051-resistance-arcane-corruption`) ; ses 210 cellules sont ignorées par le registre de la fiche.
+6. **Afficher les combinaisons de deux magies** (2026-10-16) : « Pas de suite. Il seront dans leur onglet statistiques après qu'on ai finalisé toute
+   la fiche de personnages. » : rien n'est affiché ; l'endroit sera précisé avec lui le moment venu (`docs/character-generator.md`).
 
-## Provenance à réparer (d2, sans changer une valeur)
+## Provenance incomplète (d2), non réparée
 
-Une migration par lot, écrite par `ingenieur-donnees` et relue par `expert-sql` ; aucune valeur ne change, seuls les `source_ref` (et l'importeur qui
-les écrit) :
+Le propriétaire (2026-10-16) : « à terme je compte virer la table famille et origine […] plus besoin de garder les liens de l'origine des données et
+encore moins à la cellule prêt. C'est bien de le garde pour la construction mais dès la 1.0, le lien sera nétoyé » (`docs/feuille-de-route.md`). Ces
+références ne sont donc **pas réparées** ; la liste reste pour la mise à jour des classeurs : le mode `--avant` liste **toutes** les cellules changées,
+mais une cellule que ces lignes ne citent pas exactement y paraît sans ligne de la base (« aucune : cellule nouvelle ou ignorée ») et se retrouve alors
+par sa valeur avant d'être proposée au propriétaire.
 
 | Classeur | Tables | Ce qui manque |
 | --- | --- | --- |
@@ -73,9 +82,10 @@ les écrit) :
 | Magie Maverick V8 | `sort` (17 sorts de niveau 5), `mode_hyper_effet` (3) | le bloc du texte de niveau 5 (T79:BR88) ; le titre du panneau « Avantages de base » (AZ2) |
 | Ressources et Craft | `ressource`, `recette`, `baton_magique`, `arme_famille`, `accessoire_effet(_gemme)`, `arme_elementaire`, `armure_elementaire` | l'en-tête de section, de magie, de colonne ou du bloc d'où vient la valeur (406 écarts, 296 valeurs vérifiées égales) |
 
-**Colonnes fabriquées par l'import sans test** (à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
+**Colonnes fabriquées par l'import sans test** (des valeurs, pas de la provenance : à décider avec `expert-sql` : vocabulaire fermé par un `CHECK`, ou test qui les rejoue) :
 `regle_constante.unite` (« points », « diviseur », « niveaux »…), `constante_equipement.unite`, `caracteristique.lettre`, `resistance_palier` (bornes et
-multiplicateurs tirés de « V>2 », « ÷4 »), `regle_constante.valeur` des croix (−20, −1000). **Autres** : une note de « Ressources et Craft » (fil de
+multiplicateurs tirés de « V>2 », « ÷4 »), `regle_constante.valeur` des croix (−20, −1000). **Autres** : les constantes `inventaire.lignes_par_colonne` et `inventaire.colonnes_max`, ajoutées
+par la migration 0050 (R88), comptent la grille `Personnage!AA40:AY51` (12 lignes, 4 colonnes) et ne se lisent dans aucune cellule (7 écarts) ; une note de « Ressources et Craft » (fil de
 Fiche de tour!L12) n'a pas de ligne dans `note_cellule` ; 58 cellules de règles de « Ressources et Craft » ne sont que dans le corps d'une page
 (`page.corps_md`), sans ligne typée ; la graphie de l'onyx diffère dans la base (« Onyx » / « Onix »).
 
@@ -84,7 +94,7 @@ Fiche de tour!L12) n'a pas de ligne dans `note_cellule` ; 58 cellules de règles
 Inscrits dans le registre du classeur avec leur raison : « Eaunoire » (R21, migration 0012 : Les races, Fiche auto), Lamia et Corruption (R22, migration
 0013), six notes corrigées par `0003-orthographe-magies.sql` hors de son registre (`voulus`) ; cinq commentaires écartés (`commentaires`) ; le tableau des
 améliorations cadavériques d'« Invocation », copie de celui de Magie V8 (`copies`) ; « Elfe Noir Salé » retiré de la liste des ethnies de la Corruption
-(R15, Fiche auto!U5) ; les règles de la fiche auto (R87) et l'onglet « Statistiques » (R86).
+(R15, Fiche auto!U5) ; les règles de la fiche auto (R87), dont sa matrice des résistances entre magies (R90), et l'onglet « Statistiques » (R86).
 
 ## L'outil, après relecture
 

@@ -143,7 +143,8 @@ relancer l'extracteur sur ces pages.
 
 Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
 mises à jour du classeur ; ses réponses sont la décision **R83** (`docs/decisions-regles.md`). Outils : `tools/sources/` ; test :
-`client/test/sources-rapprochement.test.mjs`.
+`client/test/sources-rapprochement.test.mjs`. L'outil vit jusqu'à la 1.0 : il lit la provenance des lignes (`source_ref`), que le propriétaire
+retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là, une référence incomplète n'est pas réparée.
 
 1. **Instantané** du classeur original : `download_file_content` du connecteur Google Drive avec l'export
    `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (la réponse, trop grande pour la conversation, est enregistrée dans un fichier : son
