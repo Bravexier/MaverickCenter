@@ -93,11 +93,9 @@ html.js .armes-outils__boutons { display: flex; }
 
 /* Tableaux (inspirés des tableaux de sorts : styles/magie/sorts.css) */
 .armes-wrap { overflow-x: auto; }
-.armes-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; line-height: 1.5; }
-.armes-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted);
-  padding: 0.6rem 0.85rem; background: var(--arm-soft); border-bottom: 1px solid var(--arm-line); white-space: nowrap; }
-.armes-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.armes-table tbody > tr > * { padding: 0.7rem 0.85rem; vertical-align: top; text-align: left; }
+.armes-table { line-height: 1.5; }
+.armes-table thead th { padding: 0.6rem 0.85rem; }
+.armes-table tbody > tr > * { padding: 0.7rem 0.85rem; }
 /* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
 .armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
 .armes-table tbody > tr.arme-suite:has(> .arme__effets > .vide:only-child) { display: none; }
@@ -143,9 +141,6 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme-comp--texte { background: none; color: inherit; font-weight: 400; }
 
 /* Types de dégâts */
-.arme-dgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: var(--fs-xs); border-radius: var(--radius-pill); border: 1px solid var(--arm-line); background: var(--surface); }
-.arme-dgt--taille { border-color: color-mix(in srgb, #c0392b 45%, var(--border)); }
-.arme-dgt--estoc { border-color: color-mix(in srgb, #2471a3 45%, var(--border)); }
 .arme-dgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
 
 /* Les tableaux du panneau (matériaux, améliorations) : des lignes basses (« réduire la hauteur des lignes des matériaux ») */
@@ -179,9 +174,6 @@ html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srg
 /* Fiche de l'arme choisie (remplie par src/scripts/armes.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son minimum (demande du
    propriétaire, 2026-10-16) : l'arme, ce dont elle est forgée, trois tuiles dont le détail du calcul est l'infobulle, puis effets, description, origine.
    Sans arme choisie : une phrase. */
-.arme-fiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--arm-line); border-radius: var(--radius-lg); font-size: 0.94rem;
-  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
-.arme-fiche__vide { margin: 0; color: var(--muted); }
 .arme-fiche__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .arme-fiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 .arme-fiche__identite, .arme-fiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0.35rem 0 0; font-size: var(--fs-md); }

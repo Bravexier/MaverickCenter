@@ -67,11 +67,9 @@ html.js body.ed-mode .armures-poids { display: block; }
 
 /* Tableaux (comme ceux des armes : styles/armes/armes.css) */
 .armures-wrap { overflow-x: auto; }
-.armures-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; line-height: 1.45; }
-.armures-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted);
-  padding: 0.55rem 0.75rem; background: var(--pro-soft); border-bottom: 1px solid var(--pro-line); white-space: nowrap; }
-.armures-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.armures-table tbody > tr > * { padding: 0.5rem 0.75rem; vertical-align: top; text-align: left; }
+.armures-table { line-height: 1.45; }
+.armures-table thead th { padding: 0.55rem 0.75rem; }
+.armures-table tbody > tr > * { padding: 0.5rem 0.75rem; }
 .armures-table--choix tbody > tr > * { padding-top: 0.35rem; padding-bottom: 0.35rem; vertical-align: middle; }
 
 /* Lignes sélectionnables */
@@ -119,18 +117,12 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 .pdef__ap { background: color-mix(in srgb, #7d6608 16%, var(--surface)); border: 1px solid color-mix(in srgb, #7d6608 40%, var(--border)); }
 .pdef__am { background: color-mix(in srgb, #2471a3 14%, var(--surface)); border: 1px solid color-mix(in srgb, #2471a3 40%, var(--border)); }
 .pdef__aucune { color: var(--muted); }
-.pdgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: var(--fs-xs); border-radius: var(--radius-pill); border: 1px solid var(--pro-line); background: var(--surface); white-space: nowrap; }
-.pdgt--taille { border-color: color-mix(in srgb, #c0392b 45%, var(--border)); }
-.pdgt--estoc { border-color: color-mix(in srgb, #2471a3 45%, var(--border)); }
 .pdgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
 .psol__uni { font-size: var(--fs-xs); color: var(--muted); cursor: help; }
 
 /* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son
    minimum comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles dont le détail du calcul est l'infobulle (styles/equipement/
    equipement.css, `.eq-bulle`), puis la résistance et la faiblesse (ou l'effet) d'une armure */
-.pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--pro-line); border-radius: var(--radius-lg); font-size: 0.94rem;
-  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
-.pfiche__vide { margin: 0; color: var(--muted); }
 .pfiche__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .pfiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 .pfiche__sous-titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }

@@ -71,7 +71,7 @@ body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60
   color: var(--text);
   background: color-mix(in srgb, var(--warn-bg) 55%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   padding: 0.25rem 0.4rem;
   text-transform: none;
   letter-spacing: normal;
