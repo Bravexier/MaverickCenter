@@ -4,8 +4,9 @@
 // découpage sur toute la base (un changement du découpage doit redonner la base, sinon une migration). Rien n'est réécrit : un texte que le découpage ne
 // lit pas donne NULL (« ???? » pour un prix, « Aucune » pour des stats).
 // Sens inverse depuis la demande du propriétaire du 2026-10-17 (« C'est en base que les deux devraient être séparées et donc éditable aussi ») : l'AP et
-// l'AM d'une armure et d'un bouclier sont les valeurs saisies ; la défense écrite en est refaite (defenseEcrite), gardée telle qu'écrite tant qu'elle se
-// lit exactement en ces valeurs (defenseExacte).
+// l'AM d'une armure et d'un bouclier, et les quatre cases d'une amélioration de bouclier (coût en RO, coût en matériaux, AP, cran), sont les valeurs
+// saisies ; la défense écrite et le coût et l'effet écrits d'une amélioration de bouclier en sont refaits (defenseEcrite, textesDeBouclierEcrits),
+// gardés tels qu'écrits tant qu'ils se lisent exactement en ces valeurs (defenseExacte, ameliorationDeBouclierExacte).
 // Une case se lit sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
 // Fonctions pures (imports : lib/text.mjs, lib/mots-cles-balises.mjs).
 import { texteSansBalises } from './mots-cles-balises.mjs';
@@ -159,6 +160,77 @@ export function analyserAmeliorationDeProtection(cible, coutBrut, effetBrut) {
     bonus_am: am ? Number(am[1]) : null,
     bonus_cran: cran ? Number(cran[1]) : null,
   };
+}
+
+/**
+ * Les cases d'une amélioration de bouclier, chacune modifiable sur le site de dev (demande du propriétaire, 2026-10-17 : « Le +1matériaux devrai être
+ * dans le cout (une 2e collonne cout matériaux boolean) Les effet séparés en deux autres colones aussi, Valeur d'AP supplémentaire, et Solidité + 1 ou
+ * non ») : le coût en RO, le coût en matériaux (oui : 1 matériau de la matière du bouclier, décision R76 ; non : NULL), l'AP supplémentaire, le cran de
+ * solidité (oui : 1 ; non : NULL). Le coût et l'effet écrits (`cout_brut`, `effet_brut`) en sont refaits (textesDeLAmeliorationDeBouclier), jamais
+ * saisis. Les améliorations d'arme et d'armure gardent leur coût et leur effet écrits comme cases.
+ */
+export const CASES_D_AMELIORATION_DE_BOUCLIER = ['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran'];
+
+/** Un montant de RO écrit entier (« 1000 », « 1 000 », « 100.0 ») : le nombre ; null sinon (« 100,5 » ne se réduit pas à des RO entiers). */
+const roEntier = (texte) => {
+  const m = /^(\d[\d\s  ]*)(?:[.,]0+)?(?:\s*R[Oo])?$/.exec(texte);
+  return m ? Number(m[1].replace(/[\s  ]/g, '')) : null;
+};
+
+/**
+ * Le coût et l'effet écrits d'une amélioration de bouclier qui se lisent EXACTEMENT dans ses cases (CASES_D_AMELIORATION_DE_BOUCLIER) : { cout_ro,
+ * cout_materiaux, bonus_ap, bonus_am (toujours null : la case n'existe pas pour un bouclier), bonus_cran } ; null sinon. Le coût : un montant de RO
+ * entier, et au plus « + 1 Matériau » (« Matériau » sans nombre aussi) ; l'effet : « ±N AP », « +1 cran de solidité », « + matériaux » (sans nombre, ou
+ * 1 : décision R76), chacun au plus une fois, séparés par des virgules ou des espaces, ou « Aucun ». Ne se réduisent pas : un mot de plus, une AM ou
+ * « AP/AM », plus d'un cran, plus d'un matériau en tout (coût et effet), un RO absent ou décimal.
+ */
+export function ameliorationDeBouclierExacte(coutBrut, effetBrut) {
+  let ro = null;
+  let materiaux = 0;
+  for (const terme of String(texteSansBalises(coutBrut ?? '')).split('+').map((t) => t.trim())) {
+    const mat = /^(?:(\d+)\s*)?mat[ée]ri(?:els?|aux?)$/i.exec(terme);
+    if (mat) materiaux += mat[1] ? Number(mat[1]) : 1;
+    else if (ro === null && roEntier(terme) !== null) ro = roEntier(terme);
+    else return null;
+  }
+  if (ro === null) return null;
+  const lue = { ap: null, cran: null };
+  let reste = String(texteSansBalises(effetBrut ?? '')).trim();
+  if (/^(?:aucun|aucune|rien)$/i.test(reste)) reste = '';
+  while (reste) {
+    let m = /^([+-])\s*(\d+)\s*AP(?![\p{L}\d/]|\s*\/)/iu.exec(reste);
+    if (m && lue.ap === null) lue.ap = Number(`${m[1]}${m[2]}`);
+    else if ((m = /^\+\s*(\d+)\s*crans?\s+de\s+solidit[ée](?![\p{L}\d])/iu.exec(reste)) && lue.cran === null) lue.cran = Number(m[1]);
+    else if ((m = /^\+\s*(?:(\d+)\s*)?mat[ée]ri(?:aux?|els?)(?![\p{L}\d])/iu.exec(reste))) materiaux += m[1] ? Number(m[1]) : 1;
+    else return null;
+    reste = reste.slice(m[0].length).replace(/^[\s,;]+/, '');
+  }
+  if (materiaux > 1 || (lue.cran !== null && lue.cran !== 1)) return null;
+  return { cout_ro: ro, cout_materiaux: materiaux ? 1 : null, bonus_ap: lue.ap, bonus_am: null, bonus_cran: lue.cran };
+}
+
+/**
+ * Le coût et l'effet écrits d'une amélioration de bouclier, refaits depuis ses cases : « 100 + 1 Matériau » (le coût en matériaux passe du côté du coût,
+ * comme pour une armure : demande du propriétaire, 2026-10-17) et « +2 AP, +1 cran de solidité » (« Aucun » sans AP ni cran).
+ */
+export function textesDeLAmeliorationDeBouclier({ cout_ro: ro, cout_materiaux: mat, bonus_ap: ap, bonus_cran: cran }) {
+  const cout = [ro === null || ro === undefined ? null : String(ro), mat ? `${mat} Matériau${mat > 1 ? 'x' : ''}` : null].filter(Boolean).join(' + ');
+  const effet = [
+    ap === null || ap === undefined ? null : `${ap < 0 ? '-' : '+'}${Math.abs(ap)} AP`,
+    cran ? `+${cran} cran${cran > 1 ? 's' : ''} de solidité` : null,
+  ].filter(Boolean).join(', ');
+  return { cout_brut: cout || 'Aucun', effet_brut: effet || 'Aucun' };
+}
+
+/**
+ * Le coût et l'effet écrits d'une amélioration de bouclier après une modification de ses cases (`cases` : { cout_ro, cout_materiaux, bonus_ap,
+ * bonus_cran }) : ceux d'avant (`avant` : { cout_brut, effet_brut }) tels qu'écrits s'ils se lisent exactement en ces cases (l'écriture de la source,
+ * « +4 AP + matériaux », reste), sinon refaits (textesDeLAmeliorationDeBouclier).
+ */
+export function textesDeBouclierEcrits(cases, avant) {
+  const lue = ameliorationDeBouclierExacte(avant?.cout_brut, avant?.effet_brut);
+  const memes = lue && CASES_D_AMELIORATION_DE_BOUCLIER.every((c) => lue[c] === (cases[c] ?? null));
+  return memes ? { cout_brut: avant.cout_brut, effet_brut: avant.effet_brut } : textesDeLAmeliorationDeBouclier(cases);
 }
 
 /** Un nombre écrit à la française, par milliers (« 1 300 »). */

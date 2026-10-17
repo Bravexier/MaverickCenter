@@ -174,6 +174,24 @@ export const RENDUS_DES_ARMURES = {
     const a = analyserAmeliorationDeProtection(ligne.cible, ligne.cout_brut, valeur);
     return `<span class="pamel-effet"${attribut('ap', a.bonus_ap ?? 0)}${attribut('am', a.bonus_am ?? 0)}${attribut('cran', a.bonus_cran ?? 0)}${attribut('materiaux', a.cout_materiaux ?? 0)}>${e(valeur ?? '')}</span>`;
   },
+  // améliorations de bouclier : quatre cases (demande du propriétaire, 2026-10-17), chacune sa valeur en attribut (lib/armure-forge.mjs, R76) ; le coût
+  // et l'effet écrits en sont refaits par le service, la page ne les montre plus
+  'bouclier-amelioration-ro': (valeur) => {
+    const n = entierOuNul(valeur);
+    return `<span class="pamel-cout" data-ro="${n ?? 0}">${n === null ? VIDE : htmlDeMontant(String(n), 'RO', `${n} RO`)}</span>`;
+  },
+  'bouclier-amelioration-materiaux': (valeur) => {
+    const n = entierOuNul(valeur);
+    return `<span class="pamel-materiaux" data-materiaux="${n ?? 0}"${n ? ' title="Une unité de la matière du bouclier (décision R76)"' : ''}>${n ? `+${n}&#8239;matériau${n > 1 ? 'x' : ''}` : VIDE}</span>`;
+  },
+  'bouclier-amelioration-ap': (valeur) => {
+    const n = entierOuNul(valeur);
+    return `<span class="pamel-ap" data-ap="${n ?? 0}">${pastilleDeDefense(n, 'ap') || VIDE}</span>`;
+  },
+  'bouclier-amelioration-cran': (valeur) => {
+    const n = entierOuNul(valeur);
+    return `<span class="pamel-cran" data-cran="${n ?? 0}"${n ? ' title="Les crans de solidité se cumulent (décision R76)"' : ''}>${n ? `+${n}&#8239;cran${n > 1 ? 's' : ''}` : VIDE}</span>`;
+  },
 };
 
 const ed = (table, cle, colonne) => e(attributEd(table, cle, colonne));
@@ -239,13 +257,31 @@ export function htmlDeLigneDArmure(a, ctx = {}) {
     + '</tr>';
 }
 
-/** La ligne d'une amélioration d'armure ou de bouclier (+1 à +5) : le niveau (bouton : choisir l'amélioration), le coût et l'effet. */
+/** La ligne d'une amélioration d'armure (+1 à +5) : le niveau (bouton : choisir l'amélioration), le coût et l'effet écrits. */
 export function htmlDeLigneDAmelioration(a) {
   const cle = { id: a.id };
   return `<tr class="pamelioration" data-cible="${e(a.cible)}" data-niveau="${a.niveau}">`
     + `<th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">+${a.niveau}</button></th>`
     + `<td class="pamelioration__cout" data-ed="${ed('amelioration_equipement', cle, 'cout_brut')}" data-ed-rendu="protection-amelioration-cout">${rendu('protection-amelioration-cout', a.cout_brut, a)}</td>`
     + `<td class="pamelioration__effet" data-ed="${ed('amelioration_equipement', cle, 'effet_brut')}" data-ed-rendu="protection-amelioration-effet">${rendu('protection-amelioration-effet', a.effet_brut, a)}</td>`
+    + '</tr>';
+}
+
+/**
+ * La ligne d'une amélioration de bouclier (+1 à +5) : le niveau (bouton : choisir l'amélioration), puis ses quatre cases, chacune modifiable (demande du
+ * propriétaire, 2026-10-17 : « Le +1matériaux devrai être dans le cout (une 2e collonne cout matériaux boolean) Les effet séparés en deux autres colones
+ * aussi, Valeur d'AP supplémentaire, et Solidité + 1 ou non ») : le coût en RO, le coût en matériaux (1 matériau de la matière du bouclier : R76), l'AP
+ * supplémentaire, le cran de solidité.
+ */
+export function htmlDeLigneDAmeliorationDeBouclier(a) {
+  const cle = { id: a.id };
+  const champ = (classe, colonne, nom) => `<td class="${classe}" data-ed="${ed('amelioration_equipement', cle, colonne)}" data-ed-rendu="${nom}">${rendu(nom, a[colonne], a)}</td>`;
+  return `<tr class="pamelioration" data-cible="${e(a.cible)}" data-niveau="${a.niveau}">`
+    + `<th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">+${a.niveau}</button></th>`
+    + champ('pamelioration__cout', 'cout_ro', 'bouclier-amelioration-ro')
+    + champ('pamelioration__materiaux', 'cout_materiaux', 'bouclier-amelioration-materiaux')
+    + champ('pamelioration__ap', 'bonus_ap', 'bouclier-amelioration-ap')
+    + champ('pamelioration__cran', 'bonus_cran', 'bouclier-amelioration-cran')
     + '</tr>';
 }
 

@@ -180,6 +180,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
     'evenement-date', 'evenement-date-courte', 'evenement-portee',
     'protection-prix', 'armure-type', 'armure-solidite', 'armure-resistance', 'armure-faiblesse', 'armure-effet', 'piece-cout',
     'protection-amelioration-cout', 'protection-amelioration-effet', 'protection-ap', 'protection-am',
+    'bouclier-amelioration-ro', 'bouclier-amelioration-materiaux', 'bouclier-amelioration-ap', 'bouclier-amelioration-cran',
     'arme-competence', 'arme-cout', 'arme-degats', 'arme-depart', 'arme-durabilite', 'arme-effets', 'arme-mains', 'arme-origine', 'arme-portee',
     'arme-type', 'arme-types-degats', 'amelioration-cout', 'amelioration-effet', 'materiau-effet', 'materiau-prix',
     'composant-prix', 'potion-niveau', 'potion-effet']) {

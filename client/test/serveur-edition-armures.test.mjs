@@ -3,9 +3,10 @@
 // d'un bouclier, son poids (décision R92) ; prix d'une forme ; Force d'un poids ; coût en RF d'une pièce ; coût et effet d'une amélioration, ligne TOTAL) et la ligne du corps
 // Markdown de sa page ; le rejeu du journal (livraison) refait le même corps ; les notes de version les rangent sous « Armures et boucliers ». Les tests
 // lisent l'état avant d'écrire : les essais du site de dev peuvent avoir modifié ces lignes.
-// Depuis la demande du propriétaire du 2026-10-17 (« C'est en base que les deux devraient être séparées et donc éditable aussi ») : l'AP et l'AM d'une
-// armure et d'un bouclier se saisissent ; la défense écrite en est refaite ; un lot noté avant se rejoue si sa défense se lit exactement en AP et en AM,
-// sinon il passe en conflit avec son explication (serveur/edition-armures.mjs#ancienneEcritureDesArmures).
+// Depuis la demande du propriétaire du 2026-10-17 (« C'est en base que les deux devraient être séparées et donc éditable aussi » ; « Le +1matériaux
+// devrai être dans le cout […] Valeur d'AP supplémentaire, et Solidité + 1 ou non ») : l'AP et l'AM d'une armure et d'un bouclier, et les quatre cases
+// d'une amélioration de bouclier, se saisissent ; la défense écrite et le coût et l'effet écrits en sont refaits ; un lot noté avant se rejoue s'il se
+// lit exactement dans ces cases, sinon il passe en conflit avec son explication (serveur/edition-armures.mjs#ancienneEcritureDesArmures).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -43,6 +44,8 @@ test('le modèle : armure, pièce, forme, bouclier, poids et amélioration se mo
   for (const c of ['stats_brut', 'prix', 'nom_cle']) assert.ok(!(c in TABLES.armure.colonnes), `${c} : tirée, jamais saisie`);
   assert.ok(!('defense_brut' in TABLES.bouclier.colonnes), 'bouclier : la défense écrite est tirée de l’AP et de l’AM');
   for (const t of ['armure', 'bouclier']) for (const c of ['ap', 'am']) assert.equal(TABLES[t].colonnes[c]?.type, 'entier', `${t}.${c} : une case entière`);
+  assert.equal(TABLES.amelioration_equipement.colonnes.cout_ro.type, 'entier');
+  for (const c of ['cout_materiaux', 'bonus_cran']) assert.deepEqual(TABLES.amelioration_equipement.colonnes[c].choix, [{ valeur: '1', libelle: 'Oui' }], `${c} : oui / non`);
 });
 
 test('armure de la grille : AP, AM, résistance, faiblesse et prix refont la défense écrite, le prix et les résistances, et sa ligne du corps', () => {
@@ -164,11 +167,34 @@ test('améliorations d’armure et de bouclier : coût et effet refont RO, maté
   assert.ok(corps(PAGE_DES_ARMURES).split('\n').includes(ligneDAmelioration(aApres)));
   assert.ok(corps(PAGE_DES_ARMURES).split('\n').includes(ligneDuTotal(totalA)));
 
+  // une amélioration d'armure garde son coût et son effet écrits : les cases d'un bouclier y sont refusées
+  for (const valeurs of [{ cout_ro: '400' }, { bonus_cran: '1' }]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: armure.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
+  }
+
+  // une amélioration de bouclier : quatre cases (demande du propriétaire, 2026-10-17) ; le coût et l'effet écrits en sont refaits, le matériau du côté du coût
   const bouclier = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND niveau = 3");
-  r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { effet_brut: '+6 AP + matériaux' } }]);
+  for (const valeurs of [{ effet_brut: '+6 AP + matériaux' }, { cout_brut: '200' }]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs }]).statut, 400, `${JSON.stringify(valeurs)} : ne se saisit plus`);
+  }
+  for (const valeurs of [{ cout_materiaux: '2' }, { bonus_cran: 'oui' }, { cout_ro: '' }, { cout_ro: '-5' }]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
+  }
+  r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { cout_ro: '250', cout_materiaux: '1', bonus_ap: '7', bonus_cran: '1' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  const bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
-  assert.deepEqual([bApres.cout_materiaux, bApres.bonus_ap, bApres.bonus_am], [1, 6, null], '« + matériaux » : 1 matériau (R76)');
+  let bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
+  assert.deepEqual([bApres.cout_ro, bApres.cout_materiaux, bApres.bonus_ap, bApres.bonus_am, bApres.bonus_cran], [250, 1, 7, null, 1]);
+  assert.deepEqual([bApres.cout_brut, bApres.effet_brut], ['250 + 1 Matériau', '+7 AP, +1 cran de solidité']);
+  assert.ok(corps(PAGE_DES_BOUCLIERS).split('\n').includes(ligneDAmelioration(bApres)), 'la ligne du corps suit');
+  // « Non » : la case vidée (NULL)
+  r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { cout_materiaux: '', bonus_cran: '' } }]);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
+  assert.deepEqual([bApres.cout_materiaux, bApres.bonus_cran, bApres.cout_brut, bApres.effet_brut], [null, null, '250', '+7 AP']);
+  // une case enregistrée à la même valeur ne réécrit pas l'écriture de la source (« +4 AP + matériaux » au +2)
+  const deux = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND niveau = 2");
+  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: deux.id }, valeurs: { bonus_ap: String(deux.bonus_ap), cout_materiaux: deux.cout_materiaux ? '1' : '' } }]).statut, 200);
+  assert.deepEqual({ ...ligne('SELECT cout_brut, effet_brut FROM amelioration_equipement WHERE id = ?', deux.id) }, { cout_brut: deux.cout_brut, effet_brut: deux.effet_brut });
   const totalB = totalDesAmeliorationsDeProtection('bouclier', lignes("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier'"));
   assert.match(totalB, /^\d+$/, 'les RO seuls, comme l’onglet (« 1550 ») : les matériaux sont comptés par la page');
   assert.equal(ligne("SELECT total_brut FROM amelioration_total WHERE cible = 'bouclier'").total_brut, totalB);
@@ -176,17 +202,28 @@ test('améliorations d’armure et de bouclier : coût et effet refont RO, maté
 });
 
 test('notes de version : les modifications des armures et des boucliers sont rangées sous « Armures et boucliers »', () => {
+  // un cran de solidité donné à une amélioration de bouclier qui n'en a pas (lu avant d'écrire) : une ligne « Non » → « Oui »
+  const sansCran = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND bonus_cran IS NULL AND niveau <> 3 ORDER BY niveau LIMIT 1");
+  assert.ok(sansCran, 'une amélioration de bouclier sans cran');
+  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: sansCran.id }, valeurs: { bonus_cran: '1' } }]).statut, 200);
   const lignesDeNote = comparerBases(reference, lireTables(db)).filter((l) => l.domaine === 'armures');
   const tables = new Set(lignesDeNote.map((l) => l.table_nom));
   for (const t of ['armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids', 'amelioration_equipement']) assert.ok(tables.has(t), t);
   assert.ok(lignesDeNote.some((l) => l.groupe === 'Améliorations de bouclier'));
   assert.ok(!comparerBases(reference, lireTables(db)).some((l) => l.domaine === 'armes' && l.table_nom === 'amelioration_equipement'), 'pas sous les armes');
-  // les cases saisies, pas les textes refaits : l'AP et l'AM d'une armure ou d'un bouclier
+  // les cases saisies, pas les textes refaits : l'AP et l'AM d'une armure ou d'un bouclier ; les quatre cases d'une amélioration de bouclier, le coût en
+  // matériaux et le cran en « Oui » / « Non »
   const colonnes = (table, groupe) => new Set(lignesDeNote.filter((l) => l.table_nom === table && (!groupe || l.groupe === groupe)).map((l) => l.colonne));
   for (const [table, saisies, refaites] of [['armure', ['ap', 'am'], ['stats_brut']], ['bouclier', ['ap'], ['defense_brut']]]) {
     for (const c of saisies) assert.ok(colonnes(table).has(c), `${table} : ${c}`);
     for (const c of refaites) assert.ok(!colonnes(table).has(c), `${table} : ${c} n’est pas listée`);
   }
+  const deBouclier = colonnes('amelioration_equipement', 'Améliorations de bouclier');
+  for (const c of ['cout_ro', 'bonus_ap', 'bonus_cran']) assert.ok(deBouclier.has(c), c);
+  for (const c of ['cout_brut', 'effet_brut']) assert.ok(!deBouclier.has(c), `${c} : refaite, pas listée`);
+  const cran = lignesDeNote.find((l) => l.groupe === 'Améliorations de bouclier' && l.colonne === 'bonus_cran' && l.entite === `Amélioration +${sansCran.niveau}`);
+  assert.deepEqual([cran.avant, cran.apres], ['Non', 'Oui'], JSON.stringify(cran));
+  assert.deepEqual([...colonnes('amelioration_equipement', 'Améliorations d’armure')].sort(), ['cout_brut', 'effet_brut'], 'une amélioration d’armure : son coût et son effet écrits');
 });
 
 test('rejeu du journal (livraison) : les mêmes lignes et les mêmes corps de pages sur des règles neuves', () => {
@@ -209,11 +246,13 @@ test('rejeu du journal (livraison) : les mêmes lignes et les mêmes corps de pa
   neuve.close();
 });
 
-test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM : rejoué si sa défense s’y lit exactement, sinon en conflit expliqué', () => {
+test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM et des cases d’une amélioration de bouclier : rejoué s’il s’y lit exactement, sinon en conflit expliqué', () => {
   const neuve = vivante();
   const armure = neuve.prepare("SELECT * FROM armure WHERE sorte = 'combinaison' ORDER BY ordre DESC LIMIT 1").get();
   const autre = neuve.prepare("SELECT * FROM armure WHERE sorte = 'combinaison' AND id <> ? ORDER BY ordre DESC LIMIT 1").get(armure.id);
   const bouclier = neuve.prepare('SELECT * FROM bouclier ORDER BY id DESC LIMIT 1').get();
+  const amelioration = neuve.prepare("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND niveau = 1").get();
+  const amelioration5 = neuve.prepare("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND niveau = 5").get();
   // l'ancienne forme : le texte saisi, et ce que le service en tirait, notés ensemble
   const lot = (table, cle, avant, apres) => {
     const { id, instant } = nouveauLot();
@@ -223,6 +262,10 @@ test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM : rejoué si
     lot('armure', { id: armure.id }, { stats_brut: armure.stats_brut, ap: armure.ap, am: armure.am }, { stats_brut: '+21AP+4AM', ap: 21, am: 4 }),
     lot('armure', { id: autre.id }, { stats_brut: autre.stats_brut, ap: autre.ap }, { stats_brut: '+21AP (la nuit)', ap: 21 }),
     lot('bouclier', { id: bouclier.id }, { defense_brut: bouclier.defense_brut }, { defense_brut: 'Voir l’effet' }),
+    lot('amelioration_equipement', { id: amelioration.id }, { effet_brut: amelioration.effet_brut, cout_materiaux: amelioration.cout_materiaux },
+      { effet_brut: '+2 AP, +1 cran de solidité + matériaux', cout_materiaux: 1 }),
+    lot('amelioration_equipement', { id: amelioration5.id }, { effet_brut: amelioration5.effet_brut, bonus_am: amelioration5.bonus_am },
+      { effet_brut: '+10 AP/AM, +1 cran de solidité', bonus_am: 10 }),
   ];
   neuve.exec('PRAGMA foreign_keys = OFF');
   neuve.exec('BEGIN');
@@ -233,13 +276,16 @@ test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM : rejoué si
   // exact : rejoué tel quel, en attente de livraison (l'écriture notée reste, elle se lit exactement en l'AP et l'AM notés)
   assert.equal(etat(lots[0]).etat, 'en_attente', JSON.stringify(etat(lots[0])));
   assert.deepEqual({ ...neuve.prepare('SELECT stats_brut, ap, am FROM armure WHERE id = ?').get(armure.id) }, { stats_brut: '+21AP+4AM', ap: 21, am: 4 });
+  assert.equal(etat(lots[3]).etat, 'en_attente', JSON.stringify(etat(lots[3])));
+  assert.equal(neuve.prepare('SELECT cout_materiaux FROM amelioration_equipement WHERE id = ?').get(amelioration.id).cout_materiaux, 1);
   // pas exact : en conflit, avec ce qu'il faut refaire ; rien n'est écrit
-  for (const [l, mot] of [[lots[1], 'cases AP et AM'], [lots[2], 'cases AP et AM']]) {
+  for (const [l, mot] of [[lots[1], 'cases AP et AM'], [lots[2], 'cases AP et AM'], [lots[4], 'au plus un cran de solidité']]) {
     const e = etat(l);
     assert.equal(e.etat, 'conflit', JSON.stringify(e));
     assert.ok(e.detail.includes('demande du propriétaire du 2026-10-17') && e.detail.includes(mot), e.detail);
   }
   assert.equal(neuve.prepare('SELECT stats_brut FROM armure WHERE id = ?').get(autre.id).stats_brut, autre.stats_brut);
   assert.equal(neuve.prepare('SELECT defense_brut FROM bouclier WHERE id = ?').get(bouclier.id).defense_brut, bouclier.defense_brut);
+  assert.equal(neuve.prepare('SELECT bonus_am FROM amelioration_equipement WHERE id = ?').get(amelioration5.id).bonus_am, null);
   neuve.close();
 });

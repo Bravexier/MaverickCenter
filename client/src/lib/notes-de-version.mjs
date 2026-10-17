@@ -64,6 +64,14 @@ const GROUPES_DE_COMPOSANT = {
   materiau: 'Matériaux', gemme: 'Gemmes', bois: 'Bois', ingredient_alchimie: 'Ingrédients d’alchimie', produit: 'Produits non monétaires', materiel: 'Matos',
 };
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
+/**
+ * Les colonnes d'une amélioration que le site de dev modifie, selon sa cible : le coût et l'effet écrits d'une amélioration d'arme ou d'armure, les quatre
+ * cases d'une amélioration de bouclier (demande du propriétaire, 2026-10-17 : son coût et son effet écrits en sont refaits, ils ne sont pas listés).
+ */
+const CASES_D_AMELIORATION = { bouclier: ['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran'], autre: ['cout_brut', 'effet_brut'] };
+const colonnesDAmelioration = (cible) => colonnesDe('amelioration_equipement').filter((c) => CASES_D_AMELIORATION[cible === 'bouclier' ? 'bouclier' : 'autre'].includes(c.colonne));
+/** Une case Oui / Non dont « Non » est NULL (lib/edition-modele.mjs#OUI_SEUL : coût en matériaux, cran d'une amélioration de bouclier). */
+const ouiNon = (v) => (v === null || v === undefined || v === '' ? 'Non' : Number(v) === 1 ? 'Oui' : v);
 /** Le cadrage d'un portrait n'est pas une ligne à lui : il est dit avec l'image (portraitDit). */
 const CADRAGE = ['portrait_x', 'portrait_y', 'portrait_zoom'];
 const sansCadrage = (table) => colonnesDe(table).filter((c) => !CADRAGE.includes(c.colonne));
@@ -246,7 +254,7 @@ const DEFINITIONS = [
           : colonne === 'type_id' ? x.nom('arme_type', v) : v,
   },
   {
-    table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDAmelioration('arme'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'arme', groupe: () => 'Améliorations', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
   },
   // la page des armures et des boucliers (migration 0046) : les armures (de la grille, puis particulières), les pièces du tableau FABRICATION, les
@@ -260,7 +268,7 @@ const DEFINITIONS = [
     groupe: () => 'Fabrication', entite: (r) => r.nom, ordre: (r) => [2, r.ordre ?? 0],
   },
   {
-    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDAmelioration('armure'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'armure', groupe: () => 'Améliorations d’armure', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
   },
   {
@@ -279,8 +287,9 @@ const DEFINITIONS = [
     groupe: () => 'Poids de bouclier', entite: (r) => r.nom, ordre: (r) => [6, r.ordre ?? 0],
   },
   {
-    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    table: 'amelioration_equipement', domaine: 'armures', cle: ['id'], colonnes: colonnesDAmelioration('bouclier'), genre: 'Amélioration',
     filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
+    valeur: (colonne, v) => (colonne === 'cout_materiaux' || colonne === 'bonus_cran' ? ouiNon(v) : v),
   },
   // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0056) : un panneau sous le nom de son onglet (son titre ; l'ordre
   // de ses blocs : comparerOrdreDesBlocs), puis ses blocs dans l'ordre de lecture, nommés par leur titre de tuile, sinon par leurs premiers mots

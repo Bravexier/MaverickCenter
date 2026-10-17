@@ -1,21 +1,26 @@
 // Édition de la page « Armures » (et de son onglet Boucliers) depuis le site de dev (demande du propriétaire, 2026-10-15 : la refonte « de la même manière
 // que les Armes », « Modifiable tout de suite ») : les domaines des tables armure, armure_emplacement, bouclier_classe, bouclier, bouclier_poids et des
 // améliorations d'armure et de bouclier pour serveur/edition.mjs (DOMAINES). Ce que la base tire des cases (prix, résistances et faiblesses d'une armure,
-// coût en RF d'une pièce, prix d'une forme, Force minimum d'un poids, coût et effet d'une amélioration, ligne TOTAL) est recalculé par les découpages de
-// lib/armure-champs.mjs (rejoués sur toute la base par test/armure-champs.test.mjs), jamais saisi ; le corps des pages « Armures » et « Bouclier » suit
-// (lib/corps-armures.mjs). Sens inverse depuis la demande du propriétaire du 2026-10-17 : l'AP et l'AM d'une armure et d'un bouclier sont saisis ; la
-// défense écrite en est refaite (gardée telle qu'écrite tant qu'elle se lit exactement en eux). Un lot du journal noté avant (défense saisie en texte) :
-// ancienneEcritureDesArmures.
+// coût en RF d'une pièce, prix d'une forme, Force minimum d'un poids, coût et effet d'une amélioration d'armure, ligne TOTAL) est recalculé par les
+// découpages de lib/armure-champs.mjs (rejoués sur toute la base par test/armure-champs.test.mjs), jamais saisi ; le corps des pages « Armures » et
+// « Bouclier » suit (lib/corps-armures.mjs). Sens inverse depuis la demande du propriétaire du 2026-10-17 : l'AP et l'AM d'une armure et d'un bouclier,
+// et les quatre cases d'une amélioration de bouclier (coût en RO, coût en matériaux, AP, cran ; lib/armure-champs.mjs#CASES_D_AMELIORATION_DE_BOUCLIER),
+// sont saisis ; la défense écrite et le coût et l'effet écrits d'une amélioration de bouclier en sont refaits (gardés tels qu'écrits tant qu'ils se
+// lisent exactement en ces valeurs). Un lot du journal noté avant (défense ou coût et effet saisis en texte) : ancienneEcritureDesArmures.
 // Ni création ni suppression : la fiche de personnage cite les armures, les pièces, les formes et les améliorations. Les matériaux se modifient sur la
 // page « Composants » (décision R62 : serveur/edition-composants.mjs).
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmures), sans import en retour.
 import {
-  analyserAmeliorationDeProtection, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece, defenseExacte, degatsDeLArmure, forceDuPoids, prixDeLaForme,
-  totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
+  ameliorationDeBouclierExacte, analyserAmeliorationDeProtection, CASES_D_AMELIORATION_DE_BOUCLIER, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece,
+  defenseExacte, degatsDeLArmure, forceDuPoids, prixDeLaForme, textesDeBouclierEcrits, totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
 } from '../src/lib/armure-champs.mjs';
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne } from '../src/lib/corps-armures.mjs';
+import { TABLES } from '../src/lib/edition-modele.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { jsonOuNull } from './partage.mjs';
+
+/** Le coût et l'effet écrits d'une amélioration : les cases d'une amélioration d'arme ou d'armure, refaits pour une amélioration de bouclier. */
+export const TEXTES_D_AMELIORATION = ['cout_brut', 'effet_brut'];
 
 /** Les cibles d'amélioration de la page des armures. */
 export const CIBLES_DES_ARMURES = ['armure', 'bouclier'];
@@ -111,9 +116,30 @@ export function domainesDesArmures({ refus, ErreurEdition, synchroniser }) {
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'bouclier_poids', avant, apres),
   };
 
+  // une case Oui / Non dont « Non » est NULL (lib/edition-modele.mjs#OUI_SEUL : « Oui » arrive en '1') : 1 ou null, en nombre (le journal note la
+  // valeur telle que la base la garde)
+  const ouiOuNull = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
   const AMELIORATION = {
-    colonnes(_ctx, ligne) {
+    colonnes(_ctx, ligne, valeurs = {}, avant = ligne) {
       if (!CIBLES_DES_ARMURES.includes(ligne.cible)) throw refus('Seules les améliorations d’armure et de bouclier se modifient ici.');
+      if (ligne.cible === 'bouclier') {
+        // les quatre cases (demande du propriétaire, 2026-10-17) ; le coût et l'effet écrits en sont refaits, jamais saisis
+        const texte = TEXTES_D_AMELIORATION.find((c) => c in valeurs);
+        if (texte) {
+          throw refus(`Amélioration de bouclier +${avant.niveau} : « ${TABLES.amelioration_equipement.colonnes[texte].libelle} » est refait depuis ses cases (coût en RO, `
+            + 'coût en matériaux, AP supplémentaire, +1 cran de solidité) ; modifiez ces cases.');
+        }
+        const cases = {
+          cout_ro: ligne.cout_ro, cout_materiaux: ouiOuNull(ligne.cout_materiaux), bonus_ap: ligne.bonus_ap ?? null, bonus_cran: ouiOuNull(ligne.bonus_cran),
+        };
+        // l'AM d'une amélioration de bouclier n'est pas une case (la source n'en écrit aucune) : NULL, comme dans toute la base
+        return { ...cases, bonus_am: null, ...textesDeBouclierEcrits(cases, avant) };
+      }
+      const saisie = CASES_D_AMELIORATION_DE_BOUCLIER.find((c) => c in valeurs);
+      if (saisie) {
+        throw refus(`Amélioration d’armure +${avant.niveau} : « ${TABLES.amelioration_equipement.colonnes[saisie].libelle} » ne se modifie que pour un bouclier ; `
+          + 'ici, le coût et l’effet écrits.');
+      }
       return analyserAmeliorationDeProtection(ligne.cible, ligne.cout_brut, ligne.effet_brut);
     },
     deriver(ctx, avant, apres) {
@@ -150,21 +176,37 @@ export const ameliorationsParCible = (desArmes, desArmures) => {
 };
 
 /**
- * Les écritures des armures et des boucliers notées avant la demande du propriétaire du 2026-10-17 (journal du site de dev encore en attente quand la
- * livraison arrive, lot figé, journal exporté) : la défense d'une armure ou d'un bouclier se saisissait en un texte (`stats_brut`, `defense_brut`), et le
- * service en tirait l'AP et l'AM, notés avec le texte. Une telle modification se rejoue telle quelle quand son texte se lit EXACTEMENT en AP et en AM
- * (lib/armure-champs.mjs#defenseExacte : les valeurs notées avec lui sont celles-là) ; sinon (un mot de plus…), rien n'est rapproché : son lot passe en
- * conflit avec un message qui dit quoi refaire. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal).
+ * Les écritures des armures, des boucliers et des améliorations de bouclier notées avant la demande du propriétaire du 2026-10-17 (journal du site de
+ * dev encore en attente quand la livraison arrive, lot figé, journal exporté) : la défense d'une armure ou d'un bouclier se saisissait en un texte
+ * (`stats_brut`, `defense_brut`), le coût et l'effet d'une amélioration de bouclier aussi (`cout_brut`, `effet_brut`), et le service en tirait l'AP,
+ * l'AM, le coût en RO, les matériaux et les crans, notés avec le texte. Une telle modification se rejoue telle quelle quand son texte se lit EXACTEMENT
+ * dans les cases d'aujourd'hui (lib/armure-champs.mjs#defenseExacte, #ameliorationDeBouclierExacte : les valeurs notées avec lui sont celles-là) ; sinon
+ * (un mot de plus, une AM ou plus d'un cran pour une amélioration de bouclier…), rien n'est rapproché : son lot passe en conflit avec un message qui dit
+ * quoi refaire. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), fabriqué au début de chaque passe (base dans
+ * l'état des règles) : le texte de l'autre case d'une amélioration (le coût quand seul l'effet est noté) est le dernier que le journal y a noté, sinon
+ * celui des règles.
  */
-export function ancienneEcritureDesArmures() {
+export function ancienneEcritureDesArmures(db) {
   const DEFENSES = { armure: 'stats_brut', bouclier: 'defense_brut' };
   const conflitDeDefense = (texte) => 'noté avant que l’AP et l’AM ne se saisissent chacun dans sa case (demande du propriétaire du 2026-10-17) : la défense '
     + `« ${texte} » ne se lit pas seulement en AP et en AM ; à refaire sur le site de dev, dans les cases AP et AM`;
+  const conflitDAmelioration = (cout, effet) => 'noté avant que l’amélioration d’un bouclier ne se saisisse en quatre cases (demande du propriétaire du '
+    + `2026-10-17) : le coût « ${cout} » et l’effet « ${effet} » ne se lisent pas exactement en un coût en RO, au plus un matériau, un AP et au plus un `
+    + 'cran de solidité ; à refaire sur le site de dev, dans ces cases';
+  const textes = new Map(); // amélioration de bouclier (clé JSON) → { cout_brut, effet_brut } derniers notés
   return (m) => {
     if (m.operation === 'supprimer') return m;
     const apres = jsonOuNull(m.apres);
+    if (!apres) return m;
     const colonne = DEFENSES[m.table_nom];
-    if (!apres || !colonne) return m;
-    return colonne in apres && !defenseExacte(apres[colonne]) ? { ...m, conflit: conflitDeDefense(apres[colonne]) } : m;
+    if (colonne) return colonne in apres && !defenseExacte(apres[colonne]) ? { ...m, conflit: conflitDeDefense(apres[colonne]) } : m;
+    if (m.table_nom !== 'amelioration_equipement' || !TEXTES_D_AMELIORATION.some((c) => c in apres)) return m;
+    const cle = jsonOuNull(m.cle);
+    const regle = cle ? lireLigne(db, 'amelioration_equipement', cle) : null;
+    if ((apres.cible ?? regle?.cible) !== 'bouclier') return m;
+    const notes = Object.fromEntries(TEXTES_D_AMELIORATION.filter((c) => c in apres).map((c) => [c, apres[c]]));
+    const vus = { cout_brut: regle?.cout_brut, effet_brut: regle?.effet_brut, ...textes.get(m.cle), ...notes };
+    textes.set(m.cle, vus);
+    return ameliorationDeBouclierExacte(vus.cout_brut, vus.effet_brut) ? m : { ...m, conflit: conflitDAmelioration(vus.cout_brut, vus.effet_brut) };
   };
 }

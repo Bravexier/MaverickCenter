@@ -16,6 +16,13 @@
 /** La famille des armes de monstres (arme_famille.maitrisable = 0, décision R45) : ses armes ne se créent, ne se modifient ni ne se suppriment. */
 const ARMES_DE_MONSTRES = ['arme-de-monstres'];
 
+/**
+ * Les quatre cases d'une amélioration de bouclier (coût en RO, coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17), figées pour une
+ * amélioration d'une autre cible : le service les tire de son coût et de son effet écrits, seuls saisis (serveur/edition-armes.mjs, edition-armures.mjs).
+ */
+const casesDuBouclierFigees = (de) => Object.fromEntries(['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran']
+  .map((c) => [c, `tirée du coût et de l’effet écrits d’une amélioration ${de} ; ne se saisit que pour un bouclier`]));
+
 export const RESSOURCES = [
   // ▸ Armes
   {
@@ -194,6 +201,7 @@ export const RESSOURCES = [
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
     condition: { cible: ['arme'] },
+    colonnesFigees: casesDuBouclierFigees('d’arme'),
     derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
     liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'bonus_degats', 'bonus_cran'],
     recherche: ['effet_brut', 'cout_brut'],
@@ -210,6 +218,7 @@ export const RESSOURCES = [
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
     condition: { cible: ['armure'] },
+    colonnesFigees: casesDuBouclierFigees('d’armure'),
     derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
     liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_am', 'bonus_cran'],
     recherche: ['effet_brut', 'cout_brut'],
@@ -220,14 +229,19 @@ export const RESSOURCES = [
     nom: 'Amélioration de bouclier',
     noms: 'Améliorations de bouclier',
     description:
-      'Les améliorations de bouclier (+1 à +5) du tableau AMÉLIORATION de l’onglet « Bouclier » : le coût (« 1000 », en RO) et l’effet (« +4 AP + ' +
-      'matériaux » : 1 matériau de la matière du bouclier, crans cumulés, décision R76) se modifient ; le service en tire le coût en RO, le nombre de ' +
-      'matériaux, l’AP et les crans, et refait la ligne TOTAL du tableau (dans le détail) ; ni création ni suppression.',
+      'Les améliorations de bouclier (+1 à +5) du tableau AMÉLIORATION de l’onglet « Bouclier » : quatre cases se modifient (demande du ' +
+      'propriétaire, 2026-10-17) — le coût en RO, le coût en matériaux (oui : 1 matériau de la matière du bouclier, décision R76 ; non : vide), l’AP ' +
+      'supplémentaire et le cran de solidité (oui : +1 ; les crans se cumulent, R76) ; le service en refait le coût et l’effet écrits (« 100 + 1 ' +
+      'Matériau », « +2 AP, +1 cran de solidité ») et la ligne TOTAL du tableau (dans le détail) ; ni création ni suppression.',
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
     condition: { cible: ['bouclier'] },
+    colonnesFigees: {
+      cout_brut: 'refait depuis le coût en RO et le coût en matériaux (demande du propriétaire, 2026-10-17)',
+      effet_brut: 'refait depuis l’AP supplémentaire et le cran de solidité (demande du propriétaire, 2026-10-17)',
+    },
     derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
-    liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran'],
+    liste: ['id', 'niveau', 'cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran', 'cout_brut', 'effet_brut'],
     recherche: ['effet_brut', 'cout_brut'],
     tri: 'niveau',
   },

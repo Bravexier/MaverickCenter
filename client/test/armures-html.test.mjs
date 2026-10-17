@@ -156,6 +156,20 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
   assert.deepEqual([...table.matchAll(/<tr class="pmat" data-materiau="([^"]+)"/g)].map((m) => m[1]), armures.matieres.map((m) => m.cle));
   const niveaux = [...p.matchAll(/<tr class="pamelioration" data-cible="bouclier" data-niveau="(\d+)">/g)].map((m) => Number(m[1]));
   assert.deepEqual(niveaux, armures.ameliorations.bouclier.map((x) => x.niveau));
+  // les améliorations : quatre cases chacune modifiable, coût en RO, coût en matériaux, AP supplémentaire, +1 cran de solidité (demande du propriétaire,
+  // 2026-10-17) ; ni coût ni effet écrits
+  const ameliorations = p.slice(p.indexOf('id="ameliorations-bouclier"'), p.indexOf('</table>', p.indexOf('id="ameliorations-bouclier"')));
+  assert.deepEqual([...ameliorations.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]), ['Niveau', 'Coût', 'Matériaux', 'AP', 'Solidité']);
+  for (const x of armures.ameliorations.bouclier) {
+    const l = ameliorations.slice(ameliorations.indexOf(`data-cible="bouclier" data-niveau="${x.niveau}"`), ameliorations.indexOf('</tr>', ameliorations.indexOf(`data-cible="bouclier" data-niveau="${x.niveau}"`)));
+    for (const [colonne, rendu, attribut, valeur] of [
+      ['cout_ro', 'bouclier-amelioration-ro', 'ro', x.cout_ro], ['cout_materiaux', 'bouclier-amelioration-materiaux', 'materiaux', x.cout_materiaux],
+      ['bonus_ap', 'bouclier-amelioration-ap', 'ap', x.bonus_ap], ['bonus_cran', 'bouclier-amelioration-cran', 'cran', x.bonus_cran],
+    ]) {
+      assert.match(l, new RegExp(`data-ed="${echapper(attributEd('amelioration_equipement', { id: x.id }, colonne)).replace(/[[\]{}]/g, '\\$&')}" data-ed-rendu="${rendu}"><span class="pamel-[a-z]+" data-${attribut}="${valeur ?? 0}"`), `+${x.niveau} : ${colonne}`);
+    }
+    for (const colonne of ['cout_brut', 'effet_brut']) assert.ok(!l.includes(echapper(attributEd('amelioration_equipement', { id: x.id }, colonne))), `+${x.niveau} : ${colonne} ne se saisit plus`);
+  }
 
   // la liste complète : un seul tableau, replié par défaut, un en-tête triable par colonne, AP et AM séparés
   assert.match(p, /<details class="tableau armures-bloc armures-liste" id="liste-des-boucliers">/, 'replié par défaut (pas d’attribut open)');

@@ -40,7 +40,7 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
  *            POST /api/edition/portrait/ — le journal exporté et le lot figé de la mise à jour la portent en entier (rejouée sur data/rows).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
- * `min` / `max` (entier, réel).
+ * `min` / `max` (entier, réel), `libelleVide` (choix non requis : le libellé de l'option vide, « — » par défaut ; « Non » pour OUI_SEUL).
  */
 /** Catégories d'un monstre (colonne `monstre.categorie`) : les libellés de lib/monstre-champs.mjs#CATEGORIES (test/serveur-edition-bestiaire.test.mjs). */
 export const CATEGORIES_DE_MONSTRE = [
@@ -80,6 +80,12 @@ export const OUI_NON = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui' },
 ];
+
+/**
+ * Une case Oui / Non dont « Non » est NULL (colonne entière 1 ou NULL : `amelioration_equipement.cout_materiaux` et `bonus_cran` d'une amélioration de
+ * bouclier) : « Oui » vaut '1', l'option vide de la liste (`libelleVide` : « Non ») vaut NULL.
+ */
+export const OUI_SEUL = [{ valeur: '1', libelle: 'Oui' }];
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
 const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
@@ -434,12 +440,19 @@ export const TABLES = {
       effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
     },
   },
-  // améliorations d'arme (+1 à +10), d'armure et de bouclier (+1 à +5) : coût et effet ; celles des pièces élémentaires ne se modifient pas ici
+  // améliorations d'arme (+1 à +10) et d'armure (+1 à +5) : coût et effet écrits ; celles de bouclier (+1 à +5) : quatre cases (demande du propriétaire,
+  // 2026-10-17 : « Le +1matériaux devrai être dans le cout (une 2e collonne cout matériaux boolean) Les effet séparés en deux autres colones aussi, Valeur
+  // d'AP supplémentaire, et Solidité + 1 ou non »), dont le service refait le coût et l'effet écrits (lib/armure-champs.mjs#textesDeBouclierEcrits) ;
+  // chaque cible n'accepte que les siennes (serveur/edition-armes.mjs, serveur/edition-armures.mjs). Celles des pièces élémentaires ne se modifient pas ici
   amelioration_equipement: {
     libelle: 'Amélioration',
     colonnes: {
-      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
-      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût (arme, armure : « 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
+      effet_brut: { type: 'ligne', libelle: 'Effet (arme, armure : « +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+      cout_ro: { type: 'entier', libelle: 'Coût en RO (bouclier)', requis: true, min: 0 },
+      cout_materiaux: { type: 'choix', libelle: 'Coût en matériaux (bouclier : 1 matériau de sa matière, décision R76)', choix: OUI_SEUL, libelleVide: 'Non' },
+      bonus_ap: { type: 'entier', libelle: 'AP supplémentaire (bouclier ; vide : aucun)' },
+      bonus_cran: { type: 'choix', libelle: '+1 cran de solidité (bouclier)', choix: OUI_SEUL, libelleVide: 'Non' },
     },
   },
   // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et

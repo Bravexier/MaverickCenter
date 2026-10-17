@@ -178,7 +178,8 @@ export function demarrer(racine, etatService) {
     } else if (champ.type === 'choix') {
       controle = document.createElement('select');
       const choix = champ.choix ?? ed.listes[champ.liste] ?? [];
-      if (!champ.requis) controle.append(new Option('—', ''));
+      // l'option vide : « — », ou le libellé du champ (`libelleVide` : « Non » d'une case Oui / Non dont « Non » est NULL, lib/edition-modele.mjs#OUI_SEUL)
+      if (!champ.requis) controle.append(new Option(champ.libelleVide ?? '—', ''));
       for (const c of choix) controle.append(new Option(c.libelle, c.valeur));
     } else if (champ.type === 'entier') {
       controle = document.createElement('input');

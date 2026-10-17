@@ -9,6 +9,7 @@
 import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
+import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../src/lib/armure-champs.mjs';
 import { corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -157,10 +158,15 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
   };
 
   const AMELIORATION_EQUIPEMENT = {
-    colonnes(_ctx, ligne) {
+    colonnes(_ctx, ligne, valeurs = {}) {
       // celles d'armure et de bouclier vont au domaine de la page des armures (serveur/edition-armures.mjs#ameliorationsParCible) ; celles des pièces
       // élémentaires sont sur une page qui ne se modifie pas (Markdown)
       if (ligne.cible !== 'arme') throw refus('Seules les améliorations d’arme, d’armure et de bouclier se modifient ici.');
+      // les cases d'une amélioration de bouclier (coût en RO, matériaux, AP, cran : demande du propriétaire, 2026-10-17) : ici, elles sont tirées du coût
+      // et de l'effet écrits, seuls saisis
+      if (CASES_D_AMELIORATION_DE_BOUCLIER.some((c) => c in valeurs)) {
+        throw refus(`Amélioration d’arme +${ligne.niveau} : seuls le coût et l’effet écrits se modifient (le coût en RO, les matériaux et les crans en sont tirés).`);
+      }
       const cout = analyserCoutDAmelioration(ligne.cout_brut);
       const effet = analyserEffetDAmelioration(ligne.effet_brut);
       return { cout_ro: cout.cout_ro, cout_materiaux: cout.cout_materiaux, bonus_degats: effet.bonus_degats, bonus_cran: effet.bonus_cran };

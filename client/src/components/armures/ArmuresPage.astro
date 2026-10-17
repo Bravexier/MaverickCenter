@@ -3,8 +3,8 @@ import armuresCss from '../../styles/armures/armures.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
 import {
-  COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDArmure, htmlDeLigneDeBouclier, htmlDeLigneDeForme,
-  htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
+  COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
+  htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import { url } from '../../lib/wiki';
@@ -30,7 +30,8 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 //     armures particulières en premier (« tu met le tableau "Armure particulières" en tout premier de la liste des armures »), puis par type ; une ligne
 //     choisit l'armure ;
 //   - Boucliers (demandes du propriétaire, 2026-10-16) : la forme, et sous elle le tableau des améliorations (« je veux que la table d'amélioration
-//     soit directement sous celui de la forme »), la matière à côté ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche
+//     soit directement sous celui de la forme » ; quatre colonnes depuis le 2026-10-17 : coût en RO, coût en matériaux, AP supplémentaire, +1 cran de
+//     solidité, chacune modifiable), la matière à côté ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche
 //     à côté, avec son poids (la couleur de sa case dans l'onglet : décision R92, « Requiert N Force minimum » en infobulle) ; dessous, la liste
 //     complète des boucliers en UN tableau, replié par défaut, triable par toutes ses colonnes (AP et AM séparés) ; la liste des poids n'est plus
 //     affichée (« Pas besoin de tableau pour l'expliquer ») : elle reste dans la page pour le mode modification et sans JavaScript.
@@ -229,21 +230,29 @@ const legende = (
               }
             </Tableau>
             {/* directement sous la forme (demande du propriétaire, 2026-10-16) */}
+            {/* quatre cases par niveau, chacune modifiable (demande du propriétaire, 2026-10-17) */}
             <Tableau
               id="ameliorations-bouclier"
               titre="Améliorations"
               compte={`+1 à +${armures.ameliorations.bouclier.length}`}
               bloc="armures-bloc"
-              classeTable="armures-table armures-table--ameliorations table-donnees--serree"
-              note="Une amélioration +N demande les coûts des niveaux +1 à +N ; l’AP est celui écrit au niveau N, les crans de solidité se cumulent, « + matériaux » compte 1 matériau de la matière du bouclier (décision R76)."
+              classeTable="armures-table armures-table--ameliorations armures-table--ameliorations-bouclier table-donnees--serree"
+              note="Une amélioration +N demande les coûts des niveaux +1 à +N, matériaux compris (1 matériau de la matière du bouclier) ; l’AP est celui écrit au niveau N, les crans de solidité se cumulent (décision R76)."
             >
-              <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+              <thead>
+                <tr>
+                  <th scope="col">Niveau</th><th scope="col" title="Coût en Ricken d’or">Coût</th>
+                  <th scope="col" title="Coût en matériaux : 1 matériau de la matière du bouclier (décision R76)">Matériaux</th>
+                  <th scope="col" title="AP supplémentaire : celui du niveau choisi (décision R76)">AP</th>
+                  <th scope="col" title="+1 cran de solidité : les crans se cumulent (décision R76)">Solidité</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="bouclier" data-niveau="0">
                   <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
-                  <td colspan="2" class="muted">Bouclier non amélioré</td>
+                  <td colspan="4" class="muted">Bouclier non amélioré</td>
                 </tr>
-                {armures.ameliorations.bouclier.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+                {armures.ameliorations.bouclier.map((a) => <Fragment set:html={htmlDeLigneDAmeliorationDeBouclier(a)} />)}
               </tbody>
             </Tableau>
           </div>

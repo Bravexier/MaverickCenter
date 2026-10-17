@@ -87,6 +87,8 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 .armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .pmat__prix-armure, .pamelioration__cout { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .armure__effet { min-width: 14rem; white-space: pre-line; font-size: var(--fs-md); }
 .pamelioration__niveau { white-space: nowrap; }
+/* les cases d'une amélioration de bouclier (coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17) */
+.pamelioration__materiaux, .pamelioration__ap, .pamelioration__cran { white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet) */
 .pmat__nom { background: var(--t, var(--surface)) !important; color: #171210; min-width: 6.5rem; }
