@@ -902,7 +902,7 @@ description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une
 (migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
 une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
 « met donc "solidité" partout à la place de durabilité. Et profite en pour en faire un mot clé ») : l'état de l'équipement, sa définition celle du
 propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf l'en-tête « Dur. » de la fiche auto, cité par le guide).
 
@@ -959,6 +959,26 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   l'état (le Non-mort, type de monstre ET capacité de monstre : la tuile de capacité n'est jamais un mot-clé) ; seule une balise fait un mot-clé. Les
   valeurs « {N} » des capacités communes (une accolade : `{{12}}` est une balise, jamais un emplacement) et la couleur de case « {couleur:x} » ne sont
   pas des balises.
+
+**Baliser un mot dans tous les textes** (demande du propriétaire du 2026-10-17 : « Transforme dans tous les textes le mot "Chakra" (ou chakra) en mot
+clé », puis « Barrière ») : l'outil hors ligne `client/scripts/baliser-mot-cle.mjs --mots <mots.json> --journal <journal.json> --appliquer` pose une fois
+les balises, que les textes gardent ensuite (le site, lui, ne repère jamais un mot tout seul). Il passe par le service du site de dev, comme le mode
+modification : chaque mot-clé est créé avec sa définition (`mots.json` : `[{ libelle, motif, description, exclus }]`, `motif` = les écritures du mot,
+« chakras? » ; celui de la demande : `tools/glossaire/chakra-barriere.json`),
+puis chaque texte que le site de dev modifie (champs « texte » et « markdown » de `lib/edition-modele.mjs#TABLES` : le guide et le Codex, les sorts, les
+dons, les races, les cartes de monstre, les potions…, plus quatre phrases d'une ligne : type d'un don, D/S/B d'un sort, artisanat d'un métier, case de
+butin) est réécrit dans sa forme canonique (« {{chakra}} » pour le libellé dans un texte mis en forme, « {{chakra|chakra}} » sinon) ; tout ce qui en
+dépend est refait par le service (un lot par colonne) ; une modification qui ne pose que des balises est neutre pour la note de version (R29 : les cases
+se lisent sans elles), mais elle y est listée ; le journal est rapatrié dans `data/rows` (`scripts/db-appliquer-edition.mjs`), donc versé dans
+`historique_modification` : l'état d'import des textes ne change pas. Ne sont jamais balisés (`lib/glossaire-balisage.mjs`) : un mot collé (« Nanochakra »,
+« chakratique », « Anti-barrière »), le nom d'une chose (« Boule de Chakra », « Barrière rocheuse » : les noms de la base qui contiennent le mot), une
+écriture exclue de `mots.json` (`exclus` : un nom propre que la base ne range pas, « Académie de Chakra », « Forteresse de Chakra », « Barrières Crocs » ;
+un autre sens du mot, « barrière naturelle », « barrière de glace », les herses du guide), une balise, un code, un lien, une adresse, un titre de section (son ancre)
+ou un intitulé en gras seul sur sa ligne (« **Barrière** », le nom d'une ville du Codex), une rubrique de carte de monstre que la carte découpe en tuiles
+ou en pastilles (attributs, santé, chakra et barrière par échelle, défense, vitesse, caractéristiques, compétences, vulnérabilités, résistances,
+immunités, réflexion), ni les noms, titres et libellés. Les textes que le site de dev ne modifie pas (créatures invoquées, altérations d'état, règles des
+niveaux, ethnies, météo, maladies, armes et armures élémentaires, objets de départ, glossaire du butin, introductions des pages de fioles, résumés des
+chapitres du guide…) et les libellés écrits par le code (« Chakra de départ », tuiles d'une carte de monstre) ne sont pas touchés.
 
 Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
 adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. Sur le site de dev, en mode

@@ -10,6 +10,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { extractLinks } from '../src/lib/wikilinks.mjs';
 import * as corpsMetiers from '../src/lib/corps-metiers.mjs';
 import * as metierChamps from '../src/lib/metier-champs.mjs';
+import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
 
 const {
   CHAMPS_DU_CORPS, SOURCE_DES_LIENS, champAJour, champDuCorps, champsDuCorps, corpsApres, corpsDeMetier, markdownDeValeur, pageDuMetier,
@@ -336,4 +337,12 @@ test('métier créé depuis le site : corpsDeMetier écrit les cinq champs dans 
   for (const c of CHAMPS_DU_CORPS) reecrit = remplacerChampDuCorps(reecrit, c.libelle, l1[c.colonne]);
   assert.equal(reecrit, cree);
   assert.deepEqual(CHAMPS_DU_CORPS.map((c) => c.colonne), ['description', 'bonus_brut', 'artisanat_brut', 'equipement_brut', 'avantage_brut']);
+});
+
+test('balise du glossaire dans un champ : son séparateur reste « | » (la ligne n’est pas une ligne de tableau), le reste est échappé', () => {
+  const ligne = { nom: 'Essai', description: '', bonus_brut: '', artisanat_brut: 'Redonne 5 {{chakra|chakra}} si [bu] | *vite*', equipement_brut: 'Rien', avantage_brut: null };
+  const corps = corpsDeMetier(ligne);
+  assert.match(corps, /\*\*Artisanat possible :\*\* Redonne 5 \{\{chakra\|chakra\}\} si \\\[bu\\\] \\\| \\\*vite\\\*\n/);
+  assert.deepEqual(formesNonCanoniques(corps, [{ id: 'chakra', libelle: 'Chakra' }], { markdown: true }), []);
+  assert.equal(remplacerChampDuCorps(corps, 'Artisanat possible', ligne.artisanat_brut), corps);
 });

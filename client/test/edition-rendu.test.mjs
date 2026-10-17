@@ -16,8 +16,11 @@ import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { poidsDeBouclier as lesPoidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
+import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
+const vocabulaire = chargerVocabulaire(db);
 const competences = db.prepare('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').all().map((c) => ({ ...c }));
 const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
 const objets = db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart').all();
@@ -170,7 +173,8 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles }));
+      // les balises du glossaire, que la page construite montre rendues (le middleware ; dans l'éditeur, src/scripts/edition/mots-cles-vivants.mjs)
+      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles }), vocabulaire).html);
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }

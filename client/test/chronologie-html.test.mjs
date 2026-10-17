@@ -119,7 +119,8 @@ test('les chevrons, tout à droite : Haut = précédent, Bas = suivant, grisés 
 
 test('les extraits : un bloc par passage, la date surlignée, un lien vers la page source ; identifiants uniques, chaque bulle existe', options, () => {
   for (const e of evenements) {
-    const main = principal(lire(e));
+    const page = lire(e);
+    const main = principal(page);
     // un morceau par extrait : de son début à celui du suivant (un extrait peut contenir une citation, donc un <blockquote> imbriqué)
     const blocs = main.split(/<blockquote class="chrono-extrait" data-chrono-bloc="\d+" data-chrono-page(?:="[^"]*")?>/).slice(1);
     assert.equal(blocs.length, e.extraits.length, `${e.id} : un bloc par extrait`);
@@ -135,7 +136,8 @@ test('les extraits : un bloc par passage, la date surlignée, un lien vers la pa
     assert.match(main, /<div class="frise-voile" data-frise-voile hidden><\/div>/, `${e.id} : le voile du tiroir`);
     const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(new Set(ids).size, ids.length, `${e.id} : identifiants uniques`);
-    const connus = new Set(ids);
+    // (les bulles des mots-clés du glossaire : posées par le middleware en fin de page, src/middleware.mjs)
+    const connus = new Set([...ids, ...[...page.matchAll(/ id="(mot-cle-[a-z0-9-]+)"/g)].map((m) => m[1])]);
     for (const [, cible] of main.matchAll(/data-bulle="([^"]+)"/g)) assert.ok(connus.has(cible), `${e.id} : bulle ${cible}`);
     assert.ok(!main.includes('') && !main.includes(''), `${e.id} : aucun marqueur de date oublié`);
   }

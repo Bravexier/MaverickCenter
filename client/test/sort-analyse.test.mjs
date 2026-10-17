@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
@@ -59,7 +60,8 @@ test('bonus de NM des effets et de la remarque : mêmes expressions (nature, tex
       assert.deepEqual(trouves.map(sans), attendus.map(sans), `${s.id} : ${champ}`);
       for (const b of trouves) {
         assert.ok(b.contexte.includes(b.texte_brut), `${s.id} : le contexte contient l’expression (CHECK de la table)`);
-        assert.ok(s[COLONNES_NM[champ]].includes(b.contexte), `${s.id} : le contexte est un passage de la case`);
+        // la case telle qu'elle se lit, sans les balises du glossaire (bonusDeMaitrise la lit ainsi)
+        assert.ok(texteSansBalises(s[COLONNES_NM[champ]]).includes(b.contexte), `${s.id} : le contexte est un passage de la case`);
       }
     }
   }

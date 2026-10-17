@@ -1,6 +1,8 @@
 -- data/rows/mot_cle.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('barriere', 'Barrière', 'barriere', 'Manifestation physique dérivée du {{chakra|Chakra}} d''un individu. Elle agit comme une seconde peau invisible protégeant le corps de blessures.');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('cac', 'càc', 'cac', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('capacite-de-classe', 'capacité de classe', 'capacite-de-classe', NULL);
+INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('chakra', 'Chakra', 'chakra', 'Énergie consommée lors de l''utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 2 points pour un de Chakra.');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('classe', 'classe', 'classe', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('distance', 'distance', 'distance', NULL);

@@ -5,9 +5,13 @@
 // Tout le reste est neutre : barrière, vitesses, type, mode (IC, imparable…), forme de zone ou nature de portée changée (et les expressions de NM
 // de cette valeur), textes libres, renommages, entités ajoutées ou retirées, et toute case qui n'est pas lue sans doute possible (lectures de
 // lib/sort-analyse.mjs et lib/classe-champs.mjs).
-// Fonctions pures, sans dépendance hors sort-analyse.mjs et classe-champs.mjs : importables dans le navigateur (test/notes-de-version-sens.test.mjs).
+// Une case se lit sans les balises du glossaire (le texte affiché : lib/mots-cles-balises.mjs#texteSansBalises) : une balise posée ou retirée ne change
+// pas le sens.
+// Fonctions pures, sans dépendance hors sort-analyse.mjs, classe-champs.mjs et mots-cles-balises.mjs : importables dans le navigateur
+// (test/notes-de-version-sens.test.mjs).
 import { analyserCout, analyserDegats, analyserDuree, analyserPortee, analyserZone, bonusDeMaitrise, sansExpressionsNM } from './sort-analyse.mjs';
 import { analyserTypeDeDon } from './classe-champs.mjs';
+import { texteSansBalises } from './mots-cles-balises.mjs';
 
 /** Les trois sens d'une modification (CHECK de note_version_ligne.sens). */
 export const SENS = ['amelioration', 'affaiblissement', 'neutre'];
@@ -22,7 +26,7 @@ const ENTIERS_PLUS_EST_MIEUX = new Set([
   'magie.sante_offerte', 'magie.chakra_offert',
 ]);
 
-const texte = (v) => (v === null || v === undefined ? '' : String(v));
+const texte = (v) => (v === null || v === undefined ? '' : String(texteSansBalises(String(v))));
 const espaces = (t) => t.replace(/\s+/g, ' ').trim();
 const ouNull = (t) => (t === '' ? null : t);
 

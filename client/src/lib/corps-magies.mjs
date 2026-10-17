@@ -54,9 +54,15 @@ const fmt = (valeur) => strip(String(valeur ?? '').replace(/\r\n/g, '\n').replac
 
 const URL = new RegExp(`https?://[^<>${BLANCS}]+`, 'gu');
 
+/**
+ * Une balise du glossaire dont le séparateur vient d'être échappé (« {{id\|texte}} ») : `barres` échappe les « | » d'une ligne qui n'est pas une ligne de
+ * tableau (les commentaires), où le séparateur d'une balise s'écrit « | » (forme canonique, lib/mots-cles-balises.mjs#formeCanonique ; la ref est un id).
+ */
+const BALISE_AU_SEPARATEUR_ECHAPPE = /\{\{([^{}|\\\n]+?)\\\|([^{}\n]*?)\}\}/g;
+
 function echapperTexte(s, barres) {
   let t = s.replace(/\\/g, '\\\\').replace(/([`*_[\]<~])/g, '\\$1').replace(/&(?=#?[\p{L}\p{N}_]+;)/gu, '\\&');
-  if (barres) t = t.replace(/\|/g, '\\|');
+  if (barres) t = t.replace(/\|/g, '\\|').replace(BALISE_AU_SEPARATEUR_ECHAPPE, '{{$1|$2}}');
   return t;
 }
 

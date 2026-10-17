@@ -14,6 +14,7 @@ import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
@@ -192,7 +193,8 @@ test('dons de classe : la précision de la cellule de type (limite d’usage « 
   assert.ok(lignes.some((k) => k.limite_nombre !== null), 'des dons ont un nombre d’usages limité');
   for (const k of lignes) {
     const d = dons.get(k.id);
-    assert.equal(d.precision, typeDeDon(k.type_brut).precision, k.id);
+    // regles.json ne porte pas les balises du glossaire (le texte affiché : lib/fiche-regles.mjs)
+    assert.equal(d.precision, texteSansBalises(typeDeDon(k.type_brut).precision), k.id);
     if (k.limite_nombre !== null) {
       assert.ok(d.precision?.includes(String(k.limite_nombre)), `${k.id} : ${d.precision}`);
       assert.ok(d.precision.toLowerCase().includes(k.limite_periode), `${k.id} : ${d.precision}`);
@@ -237,7 +239,7 @@ test('sorts : type, coût, portée, zone, D/S/B, effets et remarque tels qu’é
   const ligne = (id) => db.prepare('SELECT type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
   for (const s of regles.sorts) {
     const l = ligne(s.id);
-    assert.deepEqual([s.type, s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.type_brut, l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque], s.id);
+    assert.deepEqual([s.type, s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.type_brut, l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque].map((t) => texteSansBalises(t)), s.id);
     const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('type', 'cout', 'portee', 'zone', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
     assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
     assert.deepEqual(s.modes.map((m) => m.libelle), db.prepare('SELECT libelle FROM sort_mode WHERE sort_id = ? ORDER BY rang').all(s.id).map((m) => m.libelle), s.id);
@@ -252,7 +254,7 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
   // sorts : sort.type_brut tel quel (saut de ligne compris), qui porte les expressions de NM du type (valeurAuNm(type, bonus, 'type', nm) les y trouve)
   const types = new Map(db.prepare('SELECT id, type_brut FROM sort').all().map((r) => [r.id, r.type_brut]));
   for (const s of regles.sorts) {
-    assert.equal(s.type, types.get(s.id), s.id);
+    assert.equal(s.type, texteSansBalises(types.get(s.id)), s.id);
     for (const b of s.bonus.filter((x) => x.champ === 'type')) assert.ok(s.type.includes(b.texteBrut), `${s.id} : « ${b.texteBrut} » dans « ${s.type} »`);
   }
   const typeDImport = (id) => historique.valeurDImport('sort', { id }, 'type_brut');
@@ -264,7 +266,7 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
   const armes = new Map(db.prepare('SELECT id, effet, portee_min, portee_max FROM arme').all().map((r) => [r.id, r]));
   for (const a of regles.armes) {
     const l = armes.get(a.id);
-    assert.equal(a.effet, l.effet, a.id);
+    assert.equal(a.effet, texteSansBalises(l.effet), a.id);
     assert.ok(!('portee_min' in a) && !('portee_max' in a), `${a.id} : la portée seulement`);
     assert.equal(a.portee, porteeDeLArme(l).replace('-', ' - '), a.id);
     if (l.portee_min === null) {

@@ -24,6 +24,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -240,6 +242,9 @@ test('pages réelles : chaque note est sur la fiche de la capacité dont elle co
   }
 });
 
+// une balise du glossaire posée depuis par le site de dev (« {{chakra|chakra}} ») ne change pas le texte de la note : la page se lit sans elles
+const vocabulaire = chargerVocabulaire(ouvrirBase({ sansExemples: false }));
+const corpsAffiche = (p) => texteSansBalises(corps(p), vocabulaire, { markdown: true });
 for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
   test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, { skip: supprimee(slug) && 'fiche supprimée par le site de dev' }, () => {
     const p = page(slug);
@@ -248,8 +253,8 @@ for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
     assert.equal(d.rang, rang);
     assert.equal(d.specialite === undefined ? undefined : JSON.stringify(d.specialite), specialite);
     // la note termine la page, juste après l'effet, une seule fois, telle que rendue
-    assert.ok(corps(p).endsWith(`\n\n${rendu}\n`), `${slug} : la page ne se termine pas par :\n${rendu}\n---\n${corps(p)}`);
-    assert.equal(corps(p).split(rendu).length - 1, 1);
+    assert.ok(corpsAffiche(p).endsWith(`\n\n${rendu}\n`), `${slug} : la page ne se termine pas par :\n${rendu}\n---\n${corps(p)}`);
+    assert.equal(corpsAffiche(p).split(rendu).length - 1, 1);
     // texte du classeur = texte de la page, aux échappements Markdown, puces et espaces près
     assert.equal(aplatir(rendu), aplatir(MARQUEUR + source));
   });

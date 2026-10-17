@@ -161,8 +161,10 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
 
 // Niveaux de maîtrise (NM) : chaque bonus de sort_bonus_maitrise recopie une expression EXACTE de la cellule de son sort (texte_brut, puis le passage qui la contient), et la colonne
 // `sort.bonus_maitrise` (« Bonus Maîtrise ») est la recopie lisible de ces lignes. Rien n'est calculé : un bonus qui ne figure pas dans sa cellule est une invention.
+// La cellule se lit sans les balises du glossaire, comme son découpage (lib/sort-analyse.mjs#bonusDeMaitrise : texteSansBalises, un texte de case).
 {
   const { texteDeBonus, ORDRE_CHAMPS_NM } = await import(pathToFileURL(`${LIB}/sort-maitrise.mjs`).href);
+  const { texteSansBalises } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
   const COLONNE = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
   const bonus = new Map();
   for (const l of db.prepare('SELECT sort_id, champ, rang, texte_brut, contexte FROM sort_bonus_maitrise').all()) {
@@ -172,7 +174,7 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
   for (const s of db.prepare('SELECT * FROM sort').all()) {
     const lignes = (bonus.get(s.id) ?? []).sort((a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang);
     for (const l of lignes) {
-      const cellule = s[COLONNE[l.champ]];
+      const cellule = texteSansBalises(s[COLONNE[l.champ]]);
       if (typeof cellule !== 'string' || !cellule.includes(l.contexte) || !l.contexte.includes(l.texte_brut)) problemes.push(`bonus de maîtrise ${s.id} (${l.champ} #${l.rang}) : « ${l.texte_brut} » ne figure pas dans la cellule`);
     }
     if ((s.bonus_maitrise ?? null) !== texteDeBonus(lignes)) problemes.push(`bonus de maîtrise ${s.id} : la colonne bonus_maitrise ne suit pas les lignes de sort_bonus_maitrise`);

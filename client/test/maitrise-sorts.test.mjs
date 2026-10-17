@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { coutDeSort, valeurDeSort } from '../src/lib/sort-format.mjs';
@@ -19,7 +20,8 @@ import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, v
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db);
 const COLONNE = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
-const sorts = new Map(db.prepare('SELECT * FROM sort').all().map((s) => [s.id, s]));
+// les cases telles qu'elles se lisent : sans les balises du glossaire (le découpage les lit ainsi, lib/sort-analyse.mjs#bonusDeMaitrise)
+const sorts = new Map(db.prepare('SELECT * FROM sort').all().map((s) => [s.id, Object.fromEntries(Object.entries(s).map(([c, v]) => [c, texteSansBalises(v)]))]));
 const lignes = db.prepare('SELECT * FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang').all();
 const slug = (id) => id.split('#sort:')[1];
 const bonusDe = (id) => magies.sorts.get(`magies/${id}`)?.bonus ?? magies.sorts.get(id).bonus;

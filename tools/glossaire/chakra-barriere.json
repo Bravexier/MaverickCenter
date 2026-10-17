@@ -1,0 +1,28 @@
+[
+  {
+    "libelle": "Chakra",
+    "motif": "chakras?",
+    "description": "Énergie consommée lors de l'utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 2 points pour un de Chakra.",
+    "exclus": [
+      "Académie de Chakra",
+      "Académie du Chakra",
+      "Forteresse de Chakra"
+    ]
+  },
+  {
+    "libelle": "Barrière",
+    "motif": "barrières?",
+    "description": "Manifestation physique dérivée du {{chakra|Chakra}} d'un individu. Elle agit comme une seconde peau invisible protégeant le corps de blessures.",
+    "exclus": [
+      "Barrières Crocs",
+      "barrière naturelle",
+      "barrières naturelles",
+      "barrières sous la forme de barreaux",
+      "barrières ou des portes fragiles",
+      "barrières de la compréhension",
+      "barrière de glace",
+      "Franchir les barrières",
+      "barrières qu’elle génère"
+    ]
+  }
+]

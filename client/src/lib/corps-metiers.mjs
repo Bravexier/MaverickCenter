@@ -30,13 +30,20 @@ export const CHAMPS_DU_CORPS = [
 export const SOURCE_DES_LIENS = String.raw`\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]`;
 
 /**
+ * Une balise du glossaire dont le séparateur vient d'être échappé (« {{id\|texte}} ») : hors d'une ligne de tableau, il s'écrit « | » (forme canonique
+ * d'un texte mis en forme, lib/mots-cles-balises.mjs#formeCanonique ; la ref est un id, sans rien à échapper).
+ */
+const BALISE_AU_SEPARATEUR_ECHAPPE = /\{\{([^{}|\\\n]+?)\\\|([^{}\n]*?)\}\}/g;
+
+/**
  * Échappe un texte pour une ligne de Markdown : rien de ce qui est écrit ne devient un lien, une mise en forme, une balise, un tableau ou une entité
- * (« &amp; » reste écrit tel quel).
+ * (« &amp; » reste écrit tel quel). Une balise du glossaire garde son séparateur « | » (la ligne n'est pas une ligne de tableau).
  */
 export const echapperMarkdown = (texte) =>
   String(texte ?? '')
     .replace(/([\\[\]*_`<>~|])/g, '\\$1')
-    .replace(/&(?=#?[A-Za-z0-9]+;)/g, '\\&');
+    .replace(/&(?=#?[A-Za-z0-9]+;)/g, '\\&')
+    .replace(BALISE_AU_SEPARATEUR_ECHAPPE, '{{$1|$2}}');
 
 /**
  * Échappe le début d'une ligne de valeur (après la première, qui suit le libellé) qui en ferait un bloc Markdown : intertitre « # », soulignement

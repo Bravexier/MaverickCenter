@@ -292,7 +292,7 @@ export function avecLeursBalises(brut, morceaux) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** La balise se trouve-t-elle sur une ligne de tableau Markdown (« | … | ») : son séparateur s'y écrit « \| ». */
-const dansUneLigneDeTableau = (texte, position) => /^\s*\|/.test(texte.slice(texte.lastIndexOf('\n', position - 1) + 1, position + 1));
+export const dansUneLigneDeTableau = (texte, position) => /^\s*\|/.test(texte.slice(texte.lastIndexOf('\n', position - 1) + 1, position + 1));
 /** Un texte inséré dans du Markdown : rien n'y devient une mise en forme (comme lib/markdown-edition.mjs#echapperTexte), « | » échappé dans un tableau. */
 const pourLeMarkdown = (t, tableau) => {
   const e = String(t).replace(/([\\`*_[\]])/g, '\\$1').replace(/<(?=[a-zA-Z/!?])/g, '\\<');

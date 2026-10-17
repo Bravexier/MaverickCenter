@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import {
   ATTRIBUT_DE_CIBLE, CHAMPS_DU_CORPS, artisanatBrut, caracteristiquesDuTest, corpsDeMetier, decouperArtisanat, decouperBonus, decouperEquipement, echapperMarkdown, famillesDeRecette,
   remplacerChampDuCorps, resumeDeDescription, testDArtisanat,
@@ -55,7 +56,8 @@ test('bonus : liens de règle (décisions R33, R37) — la compétence par son n
 
 test('artisanat : « Rien », texte et test entre crochets ; deux caractéristiques pour « A + B », « Artisanat A + B », « A x2 » (décision R34)', () => {
   for (const m of metiers) {
-    const attendu = { peut_fabriquer: m.peut_fabriquer, artisanat_texte: m.artisanat_texte, test_brut: m.test_brut, test_carac_1_id: m.test_carac_1_id, test_carac_2_id: m.test_carac_2_id };
+    // le découpage lit le texte sans les balises du glossaire (artisanat_texte, saisi sur le site de dev, les garde : artisanat_brut en est refait)
+    const attendu = { peut_fabriquer: m.peut_fabriquer, artisanat_texte: texteSansBalises(m.artisanat_texte), test_brut: m.test_brut, test_carac_1_id: m.test_carac_1_id, test_carac_2_id: m.test_carac_2_id };
     assert.deepEqual(decouperArtisanat(m.artisanat_brut, caracteristiques), attendu, m.id);
   }
   assert.deepEqual(caracteristiquesDuTest('PERCEPTION x2', caracteristiques), ['perception', 'perception']);

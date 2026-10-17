@@ -11,6 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -19,6 +20,9 @@ const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// les bulles des mots-clés du glossaire : posées par le middleware en fin de page, hors de <main> (src/middleware.mjs)
+const bullesDuGlossaire = [...html.matchAll(/ id="(mot-cle-[a-z0-9-]+)"/g)].map((m) => m[1]);
+const vocabulaire = present ? chargerVocabulaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : [];
 const panneau = (id) => {
   const debut = main.indexOf(`<section class="bpanneau${id === 'monstres' ? ' is-active' : ''}" id="${id}"`);
   const fin = id === 'monstres' ? main.indexOf('<section class="bpanneau" id="invoquees"') : main.length;
@@ -43,7 +47,7 @@ test('une case par monstre ou créature, chacune avec sa carte ; les identifiant
   assert.deepEqual([...cases(panneau('invoquees'))].sort(), invocations.lignes.map((l) => l.ancre).sort(), 'chaque créature une fois');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
-  const connus = new Set(ids);
+  const connus = new Set([...ids, ...bullesDuGlossaire]);
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
   for (const ancre of [...lignes(main), ...cases(main)]) assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
   // le nom d'un monstre mène à sa page (le script ouvre la carte à côté sur un grand écran) ; celui d'une créature invoquée, à sa carte dans la page
@@ -63,7 +67,7 @@ test('la description : dans l’en-tête de sa carte, sous ses tags, repliée ; 
   for (const l of monstres.lignes) {
     const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
     assert.ok(debut >= 0, l.id);
-    assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd), [], l.id);
+    assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd, vocabulaire), [], l.id);
   }
   assert.doesNotMatch(panneau('invoquees'), /bcarte__description/);
 });
@@ -90,7 +94,7 @@ test('groupe d’espèces (décision R64, « Ottar ») : son nom dans la colonne
       if (!homonyme && normalize(l.espece.nom) !== normalize(g.nom)) assert.ok(!options.includes(normalize(l.espece.nom)), `${l.id} : pas d’option à son nom`);
     } else assert.ok(ligne.includes(`<td class="bligne__espece" ${champ('monstre_espece', l.espece.id, 'nom')}>`), `${l.id} : colonne Espèce`);
     // l'en-tête : la description de l'espèce (son groupe s'il en a un), puis celle de la créature (décision R65)
-    assert.deepEqual(ecartsDeLaDescription(carte, l, attributEd), [], l.id);
+    assert.deepEqual(ecartsDeLaDescription(carte, l, attributEd, vocabulaire), [], l.id);
     // la section de l'espèce (lieu, complément, blocs) : cachée quand elle n'en a pas, comme la recalcule le mode modification (cadres() de
     // src/scripts/edition/editeur.mjs, sur les seuls champs de ses paragraphes et de ses blocs)
     const section = carte.match(/<section class="bcarte__section" aria-label="[^"]*" data-ed-cadre="p \[data-ed-sur-demande\], details \[data-ed-sur-demande\]"( hidden)?>/);

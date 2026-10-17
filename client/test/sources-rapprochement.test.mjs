@@ -162,7 +162,9 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   });
   const R = relever(base, v7);
   assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
-  assert.deepEqual(R.site.modifiees.map((x) => [x.colonne, x.import, x.actuelle]), [['nom', 'Piège-toile', 'Toile piégée']]);
+  // (les autres modifications du site de dev, de vraies modifications rapatriées dans data/rows, ne sont pas celles du test)
+  const duTest = (x) => x.ligne === 'capacite {"id":"capacites/anansi-piege-toile"}';
+  assert.deepEqual(R.site.modifiees.filter(duTest).map((x) => [x.colonne, x.import, x.actuelle]), [['nom', 'Piège-toile', 'Toile piégée']]);
   const C = relever(base, v7, avecCellule('Anansi', 11, 18, () => 'Piège-soie'));
   assert.deepEqual(C.conflits.map((x) => [x.colonne, x.import, x.site]), [['nom', 'Piège-toile', 'Toile piégée']]);
   // La décision du propriétaire, inscrite au registre, résout le conflit tant que la cellule dit ce qu'il a vu.
