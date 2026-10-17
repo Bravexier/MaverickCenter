@@ -180,12 +180,15 @@ export const RESSOURCES = [
     description:
       'Les potions du Google Doc « Alchimie », une ligne par palier (« Petite fiole rouge », « Grande huile givrante »…) : fioles, huiles, philtres, ' +
       'remèdes et alchimie primitive, avec leur prix, leur rang dans la page, leur niveau d’alchimie et leur effet ; dans le détail, les états ' +
-      'd’altération que l’effet inflige, réduit ou soigne, tirés de son texte ; rendues par le Markdown de leur page ; en lecture seule.',
+      'd’altération que l’effet inflige, réduit ou soigne, tirés de son texte ; le nom, le prix, le niveau et l’effet se modifient comme dans les ' +
+      'tableaux des consommables de l’onglet Ceinture (le service en refait le prix en RF, les états et le tableau de la page de la potion) ; ni ' +
+      'création ni suppression.',
     table: 'ressource',
     condition: { genre: ['potion'] },
-    lectureSeule: true,
     extensions: [{ table: 'potion', parent: { ressource_id: 'id' } }],
     derivees: [{ table: 'potion_etat', parent: { ressource_id: 'id' } }],
+    // l'onglet Ceinture ne montre pas la description d'une potion (lib/ceinture-rendu.mjs#htmlDeLigneDePotion) : le service la refuse
+    colonnesFigees: { description: 'l’onglet Ceinture ne montre pas de description de potion' },
     liste: ['id', 'nom', 'prix_brut', 'prix_rf', 'page_id'],
     recherche: ['nom'],
     tri: 'nom',

@@ -609,3 +609,29 @@ test('équipement : l’ordre des blocs d’un panneau en une ligne au plus, seu
     ['Panneau de règles › « Recharge et la suite »', 'Texte', 'modifie', '{{recharge-longue:}}', '{{recharge-longue|Recharge}} et la suite'],
   ]);
 });
+
+test('équipement : les consommables de l’onglet Ceinture (2026-10-17) — nom et prix d’une potion, son niveau (par son nom) et son effet, sous le tableau de sa famille', () => {
+  const niveaux = [{ id: 'novice', nom: 'Novice', rang: 1 }, { id: 'apprenti', nom: 'Apprenti', rang: 2 }];
+  const ressource = (id, nom, prix_brut) => ({ id, genre: 'potion', section: null, nom, nom_cle: id, description: null, prix_brut, page_id: 'ressources/fiole-rouge', ordre: 1 });
+  const potion = (ressource_id, famille, rang, niveau_id, effet) => ({ ressource_id, famille, rang, niveau_id, effet });
+  const ref = {
+    tables: {
+      niveau_alchimie: niveaux,
+      ressource: [ressource('fr1', 'Petite fiole rouge', '2 Ro'), ressource('fr2', 'Grande fiole rouge', '5 Ro'), { ...ressource('m', 'Corde', '1 RO'), genre: 'materiel', section: 'MATOS AVENTURES' }],
+      potion: [potion('fr1', 'fiole', 1, 'novice', 'Redonne 5 santé'), potion('fr2', 'fiole', 2, 'novice', 'Redonne 9 santé')],
+    },
+  };
+  const dev = structuredClone(ref);
+  Object.assign(dev.tables.ressource[1], { nom: 'Grande fiole rouge vive', prix_brut: '6 Ro' });
+  Object.assign(dev.tables.potion[0], { niveau_id: 'apprenti', effet: 'Redonne 6 santé' });
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  // dans l'ordre de l'onglet (le palier dans la page) ; la description, que l'onglet ne montre pas, n'est pas listée
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'equipement | Ceinture › Fioles | Petite fiole rouge | Niveau | modifie | Novice → Apprenti',
+    'equipement | Ceinture › Fioles | Petite fiole rouge | Effet | modifie | Redonne 5 santé → Redonne 6 santé',
+    'equipement | Ceinture › Fioles | Grande fiole rouge vive | Nom | modifie | Grande fiole rouge → Grande fiole rouge vive',
+    'equipement | Ceinture › Fioles | Grande fiole rouge vive | Prix | modifie | 5 Ro → 6 Ro',
+  ]);
+  dev.tables.ressource[0].description = 'Jamais montrée.';
+  assert.equal(comparerBases(ref, dev).length, 4);
+});

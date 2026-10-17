@@ -1,6 +1,7 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, armures et boucliers, équipement (les panneaux de règles des onglets),
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, armures et boucliers, équipement (les panneaux de règles des onglets,
+// les consommables de l'onglet Ceinture),
 // composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
@@ -10,6 +11,7 @@
 import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
 import { ONGLETS_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
+import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
 import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
@@ -54,6 +56,7 @@ export const TABLES_LUES = [
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
+  'potion', 'niveau_alchimie',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -293,6 +296,20 @@ const DEFINITIONS = [
     groupe: (r) => ongletDuPanneau(r.panneau_id), entite: (r, x) => `Panneau de règles › ${x.nomDuBloc(r)}`,
     ordre: (r) => [rangDuPanneau(r.panneau_id), 1, r.ordre ?? 0, r.rang],
   },
+  // les consommables de l'onglet Ceinture (demande du propriétaire, 2026-10-17) : une potion sous le tableau de sa famille (« Ceinture › Fioles »), dans
+  // l'ordre de l'onglet (famille, page, palier) ; son nom et son prix (sa ressource), son niveau et son effet (sa ligne de potion) ; ni création ni
+  // suppression depuis le site
+  {
+    table: 'ressource', domaine: 'equipement', cle: ['id'], genre: 'Potion', filtre: (r) => r.genre === 'potion',
+    // les colonnes que l'onglet montre et modifie (ni la description ni le reste de la ressource)
+    colonnes: [{ colonne: 'nom', libelle: 'Nom' }, { colonne: 'prix_brut', libelle: 'Prix' }],
+    groupe: (r, x) => tableauDeLaPotion(x.ligne('potion', r.id)), entite: (r) => r.nom, ordre: (r, x) => ordreDeLaPotion(r.id, x),
+  },
+  {
+    table: 'potion', domaine: 'equipement', cle: ['ressource_id'], colonnes: colonnesDe('potion'), genre: 'Potion', detail: true,
+    groupe: (r) => tableauDeLaPotion(r), entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => ordreDeLaPotion(r.ressource_id, x),
+    valeur: (colonne, v, x) => (colonne === 'niveau_id' && v ? x.nom('niveau_alchimie', v) : v),
+  },
   // la page des composants (migration 0040) : monnaies, puis les ressources par tableau (matériaux, gemmes et leurs prix, bois, ingrédients d'alchimie,
   // objets de l'onglet « Équipement inventaire ») ; les potions, livres et parchemins (consommables) n'en sont pas
   {
@@ -369,6 +386,18 @@ const rangDuPanneau = (id) => {
   return i < 0 ? ONGLETS_DE_L_EQUIPEMENT.length : i;
 };
 
+/** Le tableau de l'onglet Ceinture d'une potion (sa ligne de la table potion) : « Ceinture › Fioles » (lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE). */
+const tableauDeLaPotion = (potion) => {
+  const f = FAMILLES_DE_LA_CEINTURE.find((x) => x.famille === potion?.famille);
+  return `${ONGLET_DE_LA_CEINTURE?.nom ?? 'Ceinture'} › ${f?.titre ?? potion?.famille ?? 'Consommables'}`;
+};
+/** La place d'une potion dans la note : l'onglet Ceinture, après ses panneaux de règles, puis le tableau de sa famille, sa page, son palier. */
+const ordreDeLaPotion = (id, x) => {
+  const p = x.ligne('potion', id);
+  const f = FAMILLES_DE_LA_CEINTURE.findIndex((y) => y.famille === p?.famille);
+  return [rangDuPanneau(ONGLET_DE_LA_CEINTURE?.id), 2, f < 0 ? FAMILLES_DE_LA_CEINTURE.length : f, x.ligne('ressource', id)?.page_id ?? '', p?.rang ?? 0, String(id)];
+};
+
 /** Mots au plus dans le nom d'un bloc sans titre (nomDuBloc). */
 const MOTS_DU_NOM = 6;
 
@@ -411,8 +440,10 @@ function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
       'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
-      'bouclier_poids', 'panneau_regles']
+      'bouclier_poids', 'panneau_regles', 'niveau_alchimie']
       .map((t) => [t, parId(lignesDe(base, t))])),
+    // la ligne de potion d'une ressource (consommables de l'onglet Ceinture) : clé ressource_id
+    potion: new Map((lignesDe(base, 'potion') ?? []).map((p) => [p.ressource_id, p])),
     // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
     monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),
   });

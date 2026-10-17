@@ -72,7 +72,7 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *   regles   : { ceinture, reference } : Markdown de la base (null si la page n'écrit plus la section), rendus par l'onglet ;
  *   sources  : { chapitre, reference } : les pages d'où viennent ces règles, { id, titre } (leur titre se modifie sur le site de dev), ou null ;
  *   tableaux : un par famille de FAMILLES_DE_LA_CEINTURE, { famille, titre, onglet, nombre, ... } avec
- *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau, niveau_rang, prix_brut, effet, couleur }] }], une
+ *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau_id, niveau, niveau_rang, prix_brut, effet, couleur }] }], une
  *                par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut être un lien), ses paliers dans
  *                l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `couleur` : celle du palier dans le Doc
  *                « Alchimie », { fond, texte? } ou null (lib/ceinture-couleurs.mjs) ;
@@ -114,7 +114,7 @@ const cleDeTexte = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic
 function pagesDePotions(db, ids) {
   if (!ids.length) return [];
   const voulues = new Set(ids);
-  const potions = lignes(db, `SELECT r.id, r.nom, r.nom_cle, r.prix_brut, r.page_id, r.ordre, p.effet, n.nom AS niveau, n.rang AS niveau_rang
+  const potions = lignes(db, `SELECT r.id, r.nom, r.nom_cle, r.prix_brut, r.page_id, r.ordre, p.effet, p.niveau_id, n.nom AS niveau, n.rang AS niveau_rang
     FROM potion p JOIN ressource r ON r.id = p.ressource_id JOIN niveau_alchimie n ON n.id = p.niveau_id`)
     .filter((p) => voulues.has(p.id));
   const parPage = new Map();

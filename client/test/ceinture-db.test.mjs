@@ -16,6 +16,7 @@ import {
 import { ancreDObjet, ancreDePotions, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { COULEURS_DES_POTIONS } from '../src/lib/ceinture-couleurs.mjs';
+import { attributEd } from '../src/lib/edition-modele.mjs';
 
 const db = ouvrirBase();
 const vue = db.prepare('SELECT famille, ressource_id, baton_id FROM v_objet_ceinture').all().map((l) => ({ ...l }));
@@ -152,5 +153,11 @@ test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icô
   assert.ok(html.includes(`id="${ancreDObjet(p.id)}"`));
   assert.match(html, /class="piece piece--/, 'le prix en icônes (R63)');
   assert.ok(!html.includes('data-recherche'), 'plus de recherche (demande du propriétaire : des sous-onglets à la place)');
-  assert.ok(html.includes(`<th scope="row" class="ceint-nom">${echapper(p.nom)}</th>`));
+  // les cases saisies portent leur champ du mode modification (site de dev ; demande du propriétaire, 2026-10-17) : nom et prix (la ressource), niveau
+  // et effet (la ligne de potion) ; le niveau s'écrit par son nom
+  const ed = (table, cle, colonne) => echapper(attributEd(table, cle, colonne));
+  assert.ok(html.includes(`<th scope="row" class="ceint-nom" data-ed="${ed('ressource', { id: p.id }, 'nom')}">${echapper(p.nom)}</th>`));
+  assert.ok(html.includes(`<td class="ceint-niveau" data-ed="${ed('potion', { ressource_id: p.id }, 'niveau_id')}" data-ed-rendu="potion-niveau">${echapper(p.niveau)}</td>`));
+  assert.ok(html.includes(`<td class="ceint-prix" data-ed="${ed('ressource', { id: p.id }, 'prix_brut')}" data-ed-rendu="composant-prix">`));
+  assert.ok(html.includes(`<td class="ceint-effet" data-ed="${ed('potion', { ressource_id: p.id }, 'effet')}" data-ed-rendu="potion-effet">${htmlDeLignes(p.effet)}</td>`));
 });

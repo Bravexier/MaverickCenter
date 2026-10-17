@@ -48,9 +48,27 @@ test('l’onglet Ceinture : ses trois sous-onglets dans l’ordre, chacun un lie
   // l'ancienne page n'est plus construite, ni dans le menu ; son adresse mène à l'onglet par la page 404 (test/equipement.test.mjs)
   assert.ok(!existsSync(join(dist, 'ressources', 'objets-a-la-ceinture')), 'pas de page /ressources/objets-a-la-ceinture/');
   assert.ok(!html.includes('ressources/objets-a-la-ceinture/'), 'aucun lien vers l’ancienne page');
-  // seul le panneau de règles du sous-onglet Bâtons magiques (migration 0056) se modifie sur le site de dev (src/scripts/edition/panneaux.mjs)
+});
+
+test('mode modification (site de dev) : les quatre cases saisies de chaque potion, et rien d’autre de l’onglet hors du panneau de règles des bâtons', options, () => {
+  // demande du propriétaire (2026-10-17) : « Les tableaux des consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) » : nom
+  // et prix (la ressource), niveau et effet (la ligne de potion) ; en lecture, la couleur de la ligne, la valeur en RF, le titre et le résumé d'un groupe
+  // (la page de la potion), les carquois et sacs (page « Composants ») et les bâtons ; le panneau de règles des bâtons : src/scripts/edition/panneaux.mjs
   const horsDuPanneauDeRegles = onglet.replace(/<details class="preg" [\s\S]*?<\/details>/g, '');
-  assert.ok(!horsDuPanneauDeRegles.includes('data-edition') && !horsDuPanneauDeRegles.includes('data-ed='), 'pas encore modifiable sur le site de dev');
+  assert.ok(!horsDuPanneauDeRegles.includes('data-edition'));
+  const champs = [...horsDuPanneauDeRegles.matchAll(/<(t[hd]) [^>]*?class="(ceint-[a-z]+)" data-ed="([^"]+)"(?: data-ed-rendu="([^"]+)")?>/g)]
+    .map((m) => [m[2], JSON.parse(m[3].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'")), m[4] ?? 'texte']);
+  assert.equal((horsDuPanneauDeRegles.match(/ data-ed=/g) ?? []).length, champs.length, 'chaque champ est une case d’une ligne de potion');
+  const attendus = objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages.flatMap((x) => x.potions)).flatMap((p) => [
+    ['ceint-nom', ['ressource', { id: p.id }, 'nom'], 'texte'],
+    ['ceint-niveau', ['potion', { ressource_id: p.id }, 'niveau_id'], 'potion-niveau'],
+    ['ceint-prix', ['ressource', { id: p.id }, 'prix_brut'], 'composant-prix'],
+    ['ceint-effet', ['potion', { ressource_id: p.id }, 'effet'], 'potion-effet'],
+  ]);
+  assert.deepEqual(champs, attendus);
+  assert.ok(!panneau('ceinture-carquois').includes(' data-ed='), 'les carquois et sacs se modifient dans « Composants »');
+  assert.ok(!panneau(ONGLET_DES_BATONS).replace(/<details class="preg" [\s\S]*?<\/details>/g, '').includes(' data-ed='), 'le tableau des bâtons : en lecture');
+  assert.ok(![...onglet.matchAll(/<tr class="ceint-groupe__titre">[\s\S]*?<\/tr>/g)].some((m) => m[0].includes('data-ed')), 'le titre et le résumé d’un groupe : en lecture');
 });
 
 test('plus de recherche : ni champ, ni « Tout déplier », ni script de la ceinture (demande du propriétaire)', options, () => {

@@ -54,9 +54,10 @@ test('objet de l’onglet : prix et description modifiés, prix en RF recalculé
   assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`| ${apres.nom} | 1 200 RF / 12 RO | Essai. |`));
 });
 
-test('une ressource qui n’est pas un composant (une potion) ne se modifie pas ici ; le prix d’une gemme est dans la table gemme', () => {
-  const potion = ligne("SELECT id FROM ressource WHERE genre = 'potion' LIMIT 1");
-  assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: potion.id }, valeurs: { nom: 'X' } }]).statut, 400);
+test('une ressource qui n’est pas un composant (un livre) ne se modifie pas ici ; le prix d’une gemme est dans la table gemme', () => {
+  // (une potion se modifie dans l'onglet Ceinture : test/serveur-edition-consommables.test.mjs)
+  const livre = ligne("SELECT id FROM ressource WHERE genre = 'livre' LIMIT 1");
+  assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: livre.id }, valeurs: { nom: 'X' } }]).statut, 400);
   const gemme = ligne("SELECT id FROM ressource WHERE genre = 'gemme' LIMIT 1");
   assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: gemme.id }, valeurs: { prix_brut: '1 RO' } }]).statut, 400);
 });

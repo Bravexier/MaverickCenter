@@ -308,8 +308,9 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
   lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
 - Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
-  active dès que son bloc est dans la page) ; les cinq panneaux de règles (`src/scripts/edition/panneaux.mjs`, ci-dessous) ; ni les tableaux de la
-  ceinture (potions, carquois, bâtons) ni ceux des accessoires.
+  active dès que son bloc est dans la page) ; les cinq panneaux de règles (`src/scripts/edition/panneaux.mjs`, ci-dessous) ; les tableaux des
+  consommables de la ceinture (« Ceinture » plus bas : les cases saisies des potions, par l'éditeur commun) ; ni les carquois ni les bâtons de la
+  ceinture, ni les tableaux des accessoires.
 - Tests : `test/equipement.test.mjs` (onglets et sous-onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site
   construit : onglets et panneaux dans l'ordre, identifiants uniques, panneaux de règles, bâtons, anciennes pages absentes et plus aucun lien vers elles,
   scripts), `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
@@ -539,11 +540,33 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
 Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
 « Composants » ; le prix d'un bâton, celui des matériaux de sa recette) ; les prix et les textes montrent leurs monnaies en icônes (R63). Les titres des
 pages citées sont lus dans la base ; une section de règles qu'une page n'écrit plus (titre renommé sur le site de dev) manque à l'onglet, et le build le
-dit (avertissement `[ceinture]`). Pas encore modifiable sur le site de dev : les potions ont leurs pages (« Fiole rouge »…), qu'une modification devra
-suivre, comme le fait `lib/corps-composants.mjs` pour les composants. Tests : `ceinture-db.test.mjs` (la vue, le chargement, l'ordre des tableaux et des
-sous-onglets, les sections telles que l'import les écrivait), `ceinture-couleurs.test.mjs` (une couleur par potion et par magie des bâtons, le rendu),
-`ceinture-html.test.mjs` (site construit : sous-onglets, tableaux, un tableau par page de potion côte à côte, couleurs, liens, plus de recherche ni
-de page à part).
+dit (avertissement `[ceinture]`).
+
+**Mode modification** (site de dev ; demande du propriétaire, 2026-10-17 : « Les tableaux des consommables devrai pouvoir aussi être modifiées .
+(sauf pour les champ calculés) ») : dans les tableaux du sous-onglet Consommables, chaque case **saisie** d'une potion devient une saisie de l'éditeur
+commun (`src/scripts/edition/editeur.mjs` : ses `data-ed`, posés par `lib/ceinture-rendu.mjs#htmlDeLigneDePotion` ; rendus `potion-niveau`,
+`potion-effet` de `RENDUS_DE_LA_CEINTURE` et `composant-prix`, le même HTML qu'au build), enregistrée par le service (`serveur/edition-consommables.mjs`) :
+
+| Case | Source (saisie) | Ce que le service en refait |
+| --- | --- | --- |
+| Nom | `ressource.nom` (genre `potion`) | `nom_cle` ; le nom dans l'en-tête du tableau du palier de la page de la potion ; refusé s'il ne diffère d'un autre palier de la même page que par la casse, les accents ou les signes (le tableau se retrouve par son nom) |
+| Niveau | `potion.niveau_id` (choix parmi `niveau_alchimie`, liste `niveauxDAlchimie`) | le nom du niveau dans le tableau du palier |
+| Prix | `ressource.prix_brut` | `prix_rf` (`lib/composants-champs.mjs#prixEnRf`, la valeur en RF de l'infobulle) ; le prix du tableau du palier |
+| Effet | `potion.effet` (texte, ses lignes) | les altérations d'état de `potion_etat` (`lib/potion-etats.mjs` : la règle de l'import, « Inflige gel 1 », « Réduit d'un cran la brûlure », « Soigne totalement la peur », rejouée sur toutes les potions par `test/potion-etats.test.mjs`) ; l'effet du tableau du palier (lignes jointes par `<br>`) |
+
+En lecture, parce qu'ils sont calculés ou tirés d'ailleurs : la **couleur** de la ligne (la source, `lib/ceinture-couleurs.mjs`), la **valeur en RF**
+d'un prix (infobulle), le **titre et le résumé d'un groupe** (le titre et la première phrase de la page de la potion), l'ordre des lignes (celui où la
+page les écrit), les **carquois et sacs** (ils se modifient sur la page « Composants ») et les **bâtons** (gemme, bois : « Composants » ; effet : non
+demandé). Ni création ni suppression de potion. Le corps de la page de la potion (« Fiole rouge »…, rendue depuis son Markdown) suit, case par case
+(`lib/corps-potions.mjs`, aussi au rejeu du journal : `serveur/edition.mjs#recalculerLesPages`) ; ni HTML brut ni lien non sûr n'y est ajouté. Une
+ressource qui n'est pas une potion reste au domaine des composants (`ressourcesParGenre`). Notes de version : domaine « Équipement », groupe
+« Ceinture › Fioles »… ; API REST : `PATCH /api/v1/potions/<id>/` (description figée). Tests : `serveur-edition-consommables.test.mjs` (service,
+rejeu, API), `corps-potions.test.mjs`, `potion-etats.test.mjs`.
+
+Tests : `ceinture-db.test.mjs` (la vue, le chargement, l'ordre des tableaux et des sous-onglets, les sections telles que l'import les écrivait, les cases
+d'une potion et leurs champs), `ceinture-couleurs.test.mjs` (une couleur par potion et par magie des bâtons, le rendu), `ceinture-html.test.mjs` (site
+construit : sous-onglets, tableaux, un tableau par page de potion côte à côte, couleurs, liens, plus de recherche ni de page à part, les champs du mode modification sur les seules cases saisies) ;
+`edition-rendu.test.mjs` réécrit chaque case modifiable depuis sa ligne de la base et la compare au site construit.
 
 ### Bâtons magiques (sous-onglet Bâtons magiques de la ceinture)
 
