@@ -6,9 +6,7 @@
 // Contexte de la page construite (`ctx`, lib/armures-db.mjs#contexteDesArmures) : materiauxDeProtection ([{ id, nom, type }] : la case « Matériaux »
 // d'une armure, sans `data-ed` : l'éditeur ne la réécrit pas, le service n'a donc pas cette liste).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
-import {
-  analyserAmeliorationDeProtection, coutDeLaPiece, degatsDeLArmure, nombreEcrit, statsDeProtection,
-} from './armure-champs.mjs';
+import { analyserAmeliorationDeProtection, coutDeLaPiece, degatsDeLArmure, nombreEcrit } from './armure-champs.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
@@ -62,28 +60,34 @@ function htmlDuPrix(valeur) {
   return `<span class="pprix" data-ro="${n}">${htmlDeMontant(String(valeur).trim(), 'RO', String(valeur).trim())}</span>`;
 }
 
-/** L'armure physique et magique écrites (« +10AP +14AM ») en pastilles, leurs valeurs en `data-ap` et `data-am` (0 quand elles ne sont pas écrites). */
-export function htmlDeLaDefense(valeur) {
-  const { ap, am } = statsDeProtection(valeur);
-  const parts = [];
-  if (ap !== null) parts.push(`<span class="pdef__ap" title="Armure physique">${ap >= 0 ? '+' : '−'}${Math.abs(ap)}&#8239;AP</span>`);
-  if (am !== null) parts.push(`<span class="pdef__am" title="Armure magique">${am >= 0 ? '+' : '−'}${Math.abs(am)}&#8239;AM</span>`);
-  const texte = String(valeur ?? '').trim();
-  const contenu = parts.length ? parts.join(' ') : texte ? `<span class="pdef__aucune">${e(texte)}</span>` : VIDE;
+/** Un nombre lu dans une colonne entière (AP, AM, coût…) : le nombre, ou null pour une case vide. */
+const entierOuNul = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+/** La pastille de l'armure physique (`quoi` = 'ap') ou magique ('am') : « +10 AP » ; '' sans valeur. */
+function pastilleDeDefense(n, quoi) {
+  if (n === null) return '';
+  return `<span class="pdef__${quoi}" title="${quoi === 'ap' ? 'Armure physique' : 'Armure magique'}">${n >= 0 ? '+' : '−'}${Math.abs(n)}&#8239;${quoi.toUpperCase()}</span>`;
+}
+
+/**
+ * L'AP et l'AM d'une matière (`materiau_armure`, `materiau_bouclier` : leurs colonnes `ap` et `am`) en pastilles dans une seule case « Défense », leurs
+ * valeurs en `data-ap` et `data-am` (0 quand elles sont vides) ; « Aucune » quand les deux le sont.
+ */
+export function htmlDeLaDefense(apBrut, amBrut) {
+  const [ap, am] = [entierOuNul(apBrut), entierOuNul(amBrut)];
+  const parts = [pastilleDeDefense(ap, 'ap'), pastilleDeDefense(am, 'am')].filter(Boolean);
+  const contenu = parts.length ? parts.join(' ') : '<span class="pdef__aucune">Aucune</span>';
   return `<span class="pdef" data-ap="${ap ?? 0}" data-am="${am ?? 0}">${contenu}</span>`;
 }
 
 /**
- * L'armure physique (`quoi` = 'ap') ou magique ('am') seule, pour une colonne à part (la liste des boucliers : « Sépare donc les AP des AM », demande
- * du propriétaire, 2026-10-16) ; la pastille de l'une, mais `data-ap` et `data-am` tous les deux (le script lit la défense entière dans la case AP).
+ * L'armure physique (`quoi` = 'ap') ou magique ('am') d'une armure ou d'un bouclier, chacune dans sa colonne et sa case modifiable (« Sépare donc les AP
+ * des AM », demande du propriétaire, 2026-10-16 ; « C'est en base que les deux devraient être séparées et donc éditable aussi », 2026-10-17) : la
+ * pastille, ou « — » pour une case vide ; sa valeur en `data-ap` ou `data-am` (0 quand elle est vide), que le script de la page lit dans chaque case.
  */
 function htmlDUneDefense(valeur, quoi) {
-  const { ap, am } = statsDeProtection(valeur);
-  const n = quoi === 'ap' ? ap : am;
-  const pastille = n === null
-    ? VIDE
-    : `<span class="pdef__${quoi}" title="${quoi === 'ap' ? 'Armure physique' : 'Armure magique'}">${n >= 0 ? '+' : '−'}${Math.abs(n)}&#8239;${quoi.toUpperCase()}</span>`;
-  return `<span class="pdef" data-ap="${ap ?? 0}" data-am="${am ?? 0}">${pastille}</span>`;
+  const n = entierOuNul(valeur);
+  return `<span class="pdef" data-${quoi}="${n ?? 0}">${pastilleDeDefense(n, quoi) || VIDE}</span>`;
 }
 
 /**
@@ -135,6 +139,7 @@ function htmlDesMateriauxDeLArmure(a, ctx = {}) {
 
 /** Rendus nommés (attribut `data-ed-rendu`), fusionnés dans lib/edition-rendu.mjs#RENDUS : (valeur de la colonne, ligne, contexte) → HTML. */
 export const RENDUS_DES_ARMURES = {
+  // l'AP et l'AM d'une armure ou d'un bouclier (colonnes `ap`, `am`, chacune modifiable dans sa case)
   'protection-ap': (valeur) => htmlDUneDefense(valeur, 'ap'),
   'protection-am': (valeur) => htmlDUneDefense(valeur, 'am'),
   // le poids d'un bouclier (bouclier.poids_id) : sa ligne dans ctx.poidsDeBouclier (lib/armures-db.mjs#poidsDeBouclier, liste du service) ; un
@@ -195,7 +200,7 @@ export function htmlDeLigneDeMateriau(m, role) {
   return `<tr class="pmat" data-materiau="${e(m.cle)}" data-type="${e(m.type)}">`
     + `<th scope="row" class="pmat__nom" style="--t: ${couleurDuType(m.type)}"><span data-ed-lecture="${ed('ressource', { id }, 'nom')}" data-ed-cible=".pmat__choisir">`
     + `<button type="button" class="pmat__choisir" data-role="${e(role)}" aria-pressed="false"${m.description ? ` title="${e(m.description)}"` : ''}>${e(m.nom)}</button></span></th>`
-    + `<td class="pmat__defense">${htmlDeLaDefense(m.ligne.stats_brut)}</td>`
+    + `<td class="pmat__defense">${htmlDeLaDefense(m.ligne.ap, m.ligne.am)}</td>`
     + `<td class="pmat__solidite"><span class="psol" data-solidite="${Number(m.ligne.solidite ?? 0)}">${Number(m.ligne.solidite ?? 0)}</span></td>`
     + `<td class="pmat__prix" data-ed-lecture="${ed('ressource', { id }, 'prix_brut')}" data-ed-rendu="materiau-prix">${RENDUS_DES_ARMES['materiau-prix'](m.prix)}</td>`
     + (role === 'm1' || role === 'm2' ? `<td class="pmat__prix-armure" data-prix-armure>${htmlDuPrixPourUneArmure(m.prix_armure)}</td>` : '')
@@ -220,9 +225,10 @@ export function htmlDeLigneDArmure(a, ctx = {}) {
     + (particuliere ? '' : `<td class="armure__materiaux">${htmlDesMateriauxDeLArmure(a, ctx)}</td>`)
     + champ('armure__type', 'type', 'armure-type')
     // AP et AM en deux colonnes (demande du propriétaire, 2026-10-16 : « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM »),
-    // comme la liste des boucliers : la défense écrite se modifie dans la case AP, la case AM la suit en lecture ; les deux portent data-ap et data-am
-    + `<td class="armure__ap" data-ed="${ed('armure', cle, 'stats_brut')}" data-ed-rendu="protection-ap">${rendu('protection-ap', a.stats_brut, a, ctx)}</td>`
-    + `<td class="armure__am" data-ed-lecture="${ed('armure', cle, 'stats_brut')}" data-ed-rendu="protection-am">${rendu('protection-am', a.stats_brut, a, ctx)}</td>`
+    // comme la liste des boucliers, chacune modifiable dans sa case (2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable
+    // aussi ») ; la défense écrite (stats_brut) en est refaite par le service
+    + champ('armure__ap', 'ap', 'protection-ap')
+    + champ('armure__am', 'am', 'protection-am')
     + champ('armure__solidite', 'solidite', 'armure-solidite')
     + (particuliere
       ? champ('armure__effet', 'effet', 'armure-effet')
@@ -256,7 +262,7 @@ export function htmlDeLigneDeForme(f) {
 /**
  * La ligne d'un bouclier préfabriqué de la liste (un seul tableau, triable : demande du propriétaire, 2026-10-16) : son nom (bouton : choisir ce
  * bouclier), sa forme (nom en lecture, suit son renommage ; « Classe N »), sa matière, son AP et son AM (deux colonnes : « Sépare donc les AP des AM » ;
- * la défense écrite se modifie dans la case AP, la case AM la suit en lecture), sa solidité (celle de la matière : décision R78), son poids (la
+ * chacune modifiable dans sa case, 2026-10-17 ; la défense écrite en est refaite), sa solidité (celle de la matière : décision R78), son poids (la
  * couleur de sa case dans l'onglet : décision R92) et son prix. `b` : la ligne de la table bouclier (avec `matiere`, la clé de sa matière) ; `matiere` :
  * la matière ({ nom, type, ligne }) ; `forme` : la ligne de bouclier_classe ; `ordre` : le rang de la ligne dans l'onglet (`data-ordre`, l'ordre sans
  * tri) ; `ctx` : le contexte des rendus (ctx.poidsDeBouclier : lib/armures-db.mjs#contexteDesArmures), comme pour une armure.
@@ -273,8 +279,8 @@ export function htmlDeLigneDeBouclier(b, matiere, { forme = null, ordre = null }
       ? `<span data-ed-lecture="${ed('bouclier_classe', { id: forme.id }, 'nom')}">${e(forme.nom)}</span> <span class="bouclier__classe">${e(forme.categorie_brut)}</span>`
       : VIDE}</td>`
     + `<td class="bouclier__matiere">${matiere ? htmlDeMateriau(matiere.nom, matiere.type) : VIDE}</td>`
-    + `<td class="bouclier__ap" data-ed="${ed('bouclier', cle, 'defense_brut')}" data-ed-rendu="protection-ap">${rendu('protection-ap', b.defense_brut, b)}</td>`
-    + `<td class="bouclier__am" data-ed-lecture="${ed('bouclier', cle, 'defense_brut')}" data-ed-rendu="protection-am">${rendu('protection-am', b.defense_brut, b)}</td>`
+    + `<td class="bouclier__ap" data-ed="${ed('bouclier', cle, 'ap')}" data-ed-rendu="protection-ap">${rendu('protection-ap', b.ap, b)}</td>`
+    + `<td class="bouclier__am" data-ed="${ed('bouclier', cle, 'am')}" data-ed-rendu="protection-am">${rendu('protection-am', b.am, b)}</td>`
     + `<td class="bouclier__solidite"><span class="psol" data-solidite="${solidite}" title="Solidité de la matière (décision R78)">${solidite}</span></td>`
     + `<td class="bouclier__poids" data-ed="${ed('bouclier', cle, 'poids_id')}" data-ed-rendu="bouclier-poids">${rendu('bouclier-poids', b.poids_id, b, ctx)}</td>`
     + `<td class="bouclier__prix" data-ed="${ed('bouclier', cle, 'prix_brut')}" data-ed-rendu="protection-prix">${rendu('protection-prix', b.prix_brut, b)}</td>`

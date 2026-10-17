@@ -74,7 +74,7 @@ html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier):hover > :not(.pma
 .armure__nom, .bouclier__nom { min-width: 10rem; }
 .bouclier__forme { white-space: nowrap; }
 .bouclier__classe { font-size: var(--fs-xs); color: var(--muted); }
-.bouclier__ap, .bouclier__am { white-space: nowrap; }
+.bouclier__ap, .bouclier__am, .armure__ap, .armure__am { white-space: nowrap; }
 /* en-têtes triables de la liste des boucliers (src/scripts/armures.mjs pose le bouton) : croissant, décroissant, puis l'ordre de l'onglet */
 .ptri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }
 .ptri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }

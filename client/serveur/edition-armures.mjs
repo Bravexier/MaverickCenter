@@ -1,17 +1,21 @@
 // Édition de la page « Armures » (et de son onglet Boucliers) depuis le site de dev (demande du propriétaire, 2026-10-15 : la refonte « de la même manière
 // que les Armes », « Modifiable tout de suite ») : les domaines des tables armure, armure_emplacement, bouclier_classe, bouclier, bouclier_poids et des
-// améliorations d'armure et de bouclier pour serveur/edition.mjs (DOMAINES). Ce que la base tire des cases (prix, AP et AM d'une armure ou d'un bouclier,
-// résistances et faiblesses d'une armure, coût en RF d'une pièce, prix d'une forme, Force minimum d'un poids, coût et effet d'une amélioration, ligne
-// TOTAL) est recalculé par les découpages de lib/armure-champs.mjs (rejoués sur toute la base par test/armure-champs.test.mjs), jamais saisi ; le corps
-// des pages « Armures » et « Bouclier » suit (lib/corps-armures.mjs). Ni création ni suppression : la fiche de personnage cite les armures, les pièces, les
-// formes et les améliorations. Les matériaux se modifient sur la page « Composants » (décision R62 : serveur/edition-composants.mjs).
+// améliorations d'armure et de bouclier pour serveur/edition.mjs (DOMAINES). Ce que la base tire des cases (prix, résistances et faiblesses d'une armure,
+// coût en RF d'une pièce, prix d'une forme, Force minimum d'un poids, coût et effet d'une amélioration, ligne TOTAL) est recalculé par les découpages de
+// lib/armure-champs.mjs (rejoués sur toute la base par test/armure-champs.test.mjs), jamais saisi ; le corps des pages « Armures » et « Bouclier » suit
+// (lib/corps-armures.mjs). Sens inverse depuis la demande du propriétaire du 2026-10-17 : l'AP et l'AM d'une armure et d'un bouclier sont saisis ; la
+// défense écrite en est refaite (gardée telle qu'écrite tant qu'elle se lit exactement en eux). Un lot du journal noté avant (défense saisie en texte) :
+// ancienneEcritureDesArmures.
+// Ni création ni suppression : la fiche de personnage cite les armures, les pièces, les formes et les améliorations. Les matériaux se modifient sur la
+// page « Composants » (décision R62 : serveur/edition-composants.mjs).
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmures), sans import en retour.
 import {
-  analyserAmeliorationDeProtection, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece, degatsDeLArmure, forceDuPoids, prixDeLaForme,
+  analyserAmeliorationDeProtection, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece, defenseExacte, degatsDeLArmure, forceDuPoids, prixDeLaForme,
   totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
 } from '../src/lib/armure-champs.mjs';
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne } from '../src/lib/corps-armures.mjs';
 import { lireLigne } from './edition-journal.mjs';
+import { jsonOuNull } from './partage.mjs';
 
 /** Les cibles d'amélioration de la page des armures. */
 export const CIBLES_DES_ARMURES = ['armure', 'bouclier'];
@@ -144,3 +148,23 @@ export const ameliorationsParCible = (desArmes, desArmures) => {
     deriver: (ctx, avant, apres) => domaine(avant).deriver(ctx, avant, apres),
   };
 };
+
+/**
+ * Les écritures des armures et des boucliers notées avant la demande du propriétaire du 2026-10-17 (journal du site de dev encore en attente quand la
+ * livraison arrive, lot figé, journal exporté) : la défense d'une armure ou d'un bouclier se saisissait en un texte (`stats_brut`, `defense_brut`), et le
+ * service en tirait l'AP et l'AM, notés avec le texte. Une telle modification se rejoue telle quelle quand son texte se lit EXACTEMENT en AP et en AM
+ * (lib/armure-champs.mjs#defenseExacte : les valeurs notées avec lui sont celles-là) ; sinon (un mot de plus…), rien n'est rapproché : son lot passe en
+ * conflit avec un message qui dit quoi refaire. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal).
+ */
+export function ancienneEcritureDesArmures() {
+  const DEFENSES = { armure: 'stats_brut', bouclier: 'defense_brut' };
+  const conflitDeDefense = (texte) => 'noté avant que l’AP et l’AM ne se saisissent chacun dans sa case (demande du propriétaire du 2026-10-17) : la défense '
+    + `« ${texte} » ne se lit pas seulement en AP et en AM ; à refaire sur le site de dev, dans les cases AP et AM`;
+  return (m) => {
+    if (m.operation === 'supprimer') return m;
+    const apres = jsonOuNull(m.apres);
+    const colonne = DEFENSES[m.table_nom];
+    if (!apres || !colonne) return m;
+    return colonne in apres && !defenseExacte(apres[colonne]) ? { ...m, conflit: conflitDeDefense(apres[colonne]) } : m;
+  };
+}

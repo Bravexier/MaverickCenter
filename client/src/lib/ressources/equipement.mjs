@@ -117,8 +117,9 @@ export const RESSOURCES = [
       'Les armures de l’onglet « Armures » : les combinaisons de deux matières (grille matière × matière) et les armures particulières (vêtements, ' +
       'cottes de mailles, armure montagne, armures de familiers) : type, prix (en RO : décision R79), AP et AM, solidité, résistances et faiblesses (une ' +
       'ligne par type de dégâts dans le détail, le multiplicateur « x2 » tel qu’écrit), effet ; le nom d’une combinaison ne suit pas le renommage ' +
-      'd’une matière ; les cases se modifient (nom, type, défense, solidité, résistance et faiblesse d’une combinaison, effet d’une armure ' +
-      'particulière, prix) et le service en tire le prix, l’AP, l’AM et les résistances ; ni création ni suppression (les fiches les citent).',
+      'd’une matière ; les cases se modifient (nom, type, AP et AM, chacun dans sa case, solidité, résistance et faiblesse d’une combinaison, effet ' +
+      'd’une armure particulière, prix) et le service en tire le prix, la défense écrite (« +10AP +14AM », refaite depuis l’AP et l’AM) et les ' +
+      'résistances ; ni création ni suppression (les fiches les citent).',
     table: 'armure',
     derivees: [{ table: 'armure_degats', parent: { armure_id: 'id' } }],
     liste: ['id', 'nom', 'sorte', 'type', 'ap', 'am', 'solidite', 'prix_brut'],
@@ -171,9 +172,9 @@ export const RESSOURCES = [
     nom: 'Bouclier',
     noms: 'Boucliers',
     description:
-      'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière, décision R78) : nom, prix, défense telle qu’écrite (« +20AP ' +
-      '+25AM ») et ses AP et AM, poids (la couleur de sa case dans l’onglet : décision R92) ; le nom ne suit pas le renommage d’une matière ; le nom, ' +
-      'la défense, le prix et le poids se modifient (le service en tire le prix, l’AP et l’AM), ni création ni suppression.',
+      'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière, décision R78) : nom, prix, AP et AM, la défense écrite (« +20AP ' +
+      '+25AM », refaite depuis l’AP et l’AM), poids (la couleur de sa case dans l’onglet : décision R92) ; le nom ne suit pas le renommage d’une ' +
+      'matière ; le nom, l’AP, l’AM, le prix et le poids se modifient (le service en tire le prix et la défense écrite), ni création ni suppression.',
     table: 'bouclier',
     liste: ['id', 'nom', 'classe_id', 'materiau_id', 'prix_brut', 'ap', 'am', 'poids_id'],
     recherche: ['nom'],

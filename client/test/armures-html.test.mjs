@@ -89,16 +89,18 @@ test('armures : les armures particulières en premier puis la liste par type, un
   assert.equal(lignes.length, armures.combinaisons.length + armures.particulieres.length);
   assert.deepEqual(new Set(lignes), new Set([...armures.combinaisons, ...armures.particulieres].map((a) => ancreDArmure(a.id))));
   const a = armures.combinaisons[0];
-  for (const colonne of ['nom', 'type', 'stats_brut', 'solidite', 'resistance_brut', 'faiblesse_brut']) {
+  for (const colonne of ['nom', 'type', 'ap', 'am', 'solidite', 'resistance_brut', 'faiblesse_brut']) {
     assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: a.id }, colonne))}"`), colonne);
   }
-  // « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM » (demande du propriétaire, 2026-10-16) : la défense se modifie dans la
-  // case AP, la case AM la suit en lecture, comme dans la liste des boucliers ; plus de colonne « Défense » dans les listes d'armures
+  // « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM » (demande du propriétaire, 2026-10-16), chacune modifiable dans sa case
+  // (« C'est en base que les deux devraient être séparées et donc éditable aussi », 2026-10-17) : la case AP porte la colonne `ap` et sa valeur, la case
+  // AM la colonne `am` ; la défense écrite (stats_brut) n'est plus un champ de la page ; plus de colonne « Défense » dans les listes d'armures
+  assert.ok(!p.includes(echapper(attributEd('armure', { id: a.id }, 'stats_brut'))), 'la défense écrite ne se saisit plus');
   const listes = p.slice(p.indexOf('<div class="armures-listes">'), p.indexOf('<aside class="armures-cote"'));
   for (const x of [...armures.particulieres, ...armures.combinaisons]) {
     const ligne = listes.slice(listes.indexOf(`id="${ancreDArmure(x.id)}"`), listes.indexOf('</tr>', listes.indexOf(`id="${ancreDArmure(x.id)}"`)));
-    assert.ok(ligne.includes(`<td class="armure__ap" data-ed="${echapper(attributEd('armure', { id: x.id }, 'stats_brut'))}" data-ed-rendu="protection-ap"><span class="pdef" data-ap=`), `${x.nom} : AP`);
-    assert.ok(ligne.includes(`<td class="armure__am" data-ed-lecture="${echapper(attributEd('armure', { id: x.id }, 'stats_brut'))}" data-ed-rendu="protection-am"><span class="pdef" data-ap=`), `${x.nom} : AM`);
+    assert.ok(ligne.includes(`<td class="armure__ap" data-ed="${echapper(attributEd('armure', { id: x.id }, 'ap'))}" data-ed-rendu="protection-ap"><span class="pdef" data-ap="${x.ap ?? 0}">`), `${x.nom} : AP`);
+    assert.ok(ligne.includes(`<td class="armure__am" data-ed="${echapper(attributEd('armure', { id: x.id }, 'am'))}" data-ed-rendu="protection-am"><span class="pdef" data-am="${x.am ?? 0}">`), `${x.nom} : AM`);
   }
   const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((t) => t[1]));
   assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', 'Solidité', 'Effet', 'Prix'], 'armures particulières');
@@ -168,8 +170,10 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
   assert.equal(new Set(boucliers.map((m) => `${m[2]}|${m[3]}`)).size, armures.formes.length * armures.matieres.length);
   const b = armures.boucliers[0];
   const ligne = liste.slice(liste.indexOf(`id="${ancreDeBouclier(b.id)}"`), liste.indexOf('</tr>', liste.indexOf(`id="${ancreDeBouclier(b.id)}"`)));
-  assert.ok(ligne.includes(`<td class="bouclier__ap" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'defense_brut'))}" data-ed-rendu="protection-ap">`), 'la défense se modifie dans la case AP');
-  assert.ok(ligne.includes(`<td class="bouclier__am" data-ed-lecture="${echapper(attributEd('bouclier', { id: b.id }, 'defense_brut'))}" data-ed-rendu="protection-am">`), 'la case AM suit en lecture');
+  // l'AP et l'AM, chacun modifiable dans sa case (demande du propriétaire, 2026-10-17)
+  assert.ok(ligne.includes(`<td class="bouclier__ap" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'ap'))}" data-ed-rendu="protection-ap"><span class="pdef" data-ap="${b.ap ?? 0}">`), 'l’AP se modifie dans sa case');
+  assert.ok(ligne.includes(`<td class="bouclier__am" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'am'))}" data-ed-rendu="protection-am"><span class="pdef" data-am="${b.am ?? 0}">`), 'l’AM se modifie dans sa case');
+  assert.ok(!liste.includes('defense_brut'), 'la défense écrite ne se saisit plus');
   assert.ok(ligne.includes(`<td class="bouclier__poids" data-ed="${echapper(attributEd('bouclier', { id: b.id }, 'poids_id'))}" data-ed-rendu="bouclier-poids">`), 'le poids se choisit');
   const forme = armures.formes.find((f) => f.id === b.classe_id);
   assert.ok(ligne.includes(`<td class="bouclier__forme" data-classe="${forme.classe}">`) && ligne.includes(`>${forme.nom}</span>`), 'la forme et sa classe');

@@ -64,8 +64,10 @@ test('la pastille d’un poids : sa couleur, sa Force minimum en data-force et �
   assert.equal(RENDUS_DES_ARMURES['bouclier-poids']('moyen', {}, {}), '<span class="ppoids" style="--t: #ffd966" data-poids="moyen">moyen</span>');
 });
 
-test('AP et AM séparés (« Sépare donc les AP des AM ») : chaque rendu montre sa pastille et porte la défense entière', () => {
-  assert.equal(RENDUS_DES_ARMURES['protection-ap']('+20AP +25AM'), '<span class="pdef" data-ap="20" data-am="25"><span class="pdef__ap" title="Armure physique">+20&#8239;AP</span></span>');
-  assert.equal(RENDUS_DES_ARMURES['protection-am']('+20AP +25AM'), '<span class="pdef" data-ap="20" data-am="25"><span class="pdef__am" title="Armure magique">+25&#8239;AM</span></span>');
-  assert.match(RENDUS_DES_ARMURES['protection-am']('+3AP'), /^<span class="pdef" data-ap="3" data-am="0"><span class="vide"/);
+test('AP et AM séparés (« Sépare donc les AP des AM ») : chaque rendu lit sa colonne (ap, am : deux valeurs de la base, 2026-10-17) et porte sa valeur', () => {
+  assert.equal(RENDUS_DES_ARMURES['protection-ap'](20, { ap: 20, am: 25 }), '<span class="pdef" data-ap="20"><span class="pdef__ap" title="Armure physique">+20&#8239;AP</span></span>');
+  assert.equal(RENDUS_DES_ARMURES['protection-am'](25, { ap: 20, am: 25 }), '<span class="pdef" data-am="25"><span class="pdef__am" title="Armure magique">+25&#8239;AM</span></span>');
+  // une case vide : « — », valeur 0 (la fiche compte 0) ; un malus s'écrit avec le signe moins typographique
+  assert.match(RENDUS_DES_ARMURES['protection-am'](null, { ap: 3, am: null }), /^<span class="pdef" data-am="0"><span class="vide"/);
+  assert.equal(RENDUS_DES_ARMURES['protection-ap'](-2), '<span class="pdef" data-ap="-2"><span class="pdef__ap" title="Armure physique">−2&#8239;AP</span></span>');
 });

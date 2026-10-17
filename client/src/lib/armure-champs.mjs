@@ -3,6 +3,9 @@
 // d'édition du site de dev (serveur/edition-armures.mjs) recalcule ces colonnes à chaque modification ; test/armure-champs.test.mjs rejoue chaque
 // découpage sur toute la base (un changement du découpage doit redonner la base, sinon une migration). Rien n'est réécrit : un texte que le découpage ne
 // lit pas donne NULL (« ???? » pour un prix, « Aucune » pour des stats).
+// Sens inverse depuis la demande du propriétaire du 2026-10-17 (« C'est en base que les deux devraient être séparées et donc éditable aussi ») : l'AP et
+// l'AM d'une armure et d'un bouclier sont les valeurs saisies ; la défense écrite en est refaite (defenseEcrite), gardée telle qu'écrite tant qu'elle se
+// lit exactement en ces valeurs (defenseExacte).
 // Une case se lit sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
 // Fonctions pures (imports : lib/text.mjs, lib/mots-cles-balises.mjs).
 import { texteSansBalises } from './mots-cles-balises.mjs';
@@ -24,13 +27,51 @@ export function nombreEcrit(texte) {
 
 /**
  * L'armure physique et magique d'une case « Stats » ou « Défense » (« +10AP +14AM », « +13AP+12AM », « +2AM », « Aucune ») : { ap, am }, chacune null
- * quand elle n'est pas écrite (la fiche compte alors 0).
+ * quand elle n'est pas écrite (la fiche compte alors 0). Lecture large (le reste de la case est ignoré) ; defenseExacte dit si la case ne dit rien d'autre.
  */
 export function statsDeProtection(texte) {
   const t = String(texteSansBalises(texte ?? ''));
   const ap = /([+-]?\d+)\s*AP\b/i.exec(t);
   const am = /([+-]?\d+)\s*AM\b/i.exec(t);
   return { ap: ap ? Number(ap[1]) : null, am: am ? Number(am[1]) : null };
+}
+
+/**
+ * La défense écrite (`armure.stats_brut`, `bouclier.defense_brut`, `materiau_armure.stats_brut`, `materiau_bouclier.stats_brut`) qui se lit EXACTEMENT
+ * en AP et en AM : « Aucune » ({ ap: null, am: null }), ou un « ±N AP » et / ou un « ±N AM », chacun une fois, dans un ordre ou dans l'autre, espaces
+ * libres (« +13AP+12AM ») ; null pour toute autre écriture (un mot de plus, un terme répété, une case vide) : elle ne se réduit pas à deux nombres.
+ */
+export function defenseExacte(texte) {
+  let reste = String(texteSansBalises(texte ?? '')).trim();
+  if (/^aucune$/i.test(reste)) return { ap: null, am: null };
+  const lue = { ap: null, am: null };
+  let termes = 0;
+  while (reste) {
+    const m = /^([+-]?\d+)\s*(AP|AM)(?![\p{L}\d])\s*/iu.exec(reste);
+    if (!m) return null;
+    const cle = m[2].toLowerCase();
+    if (lue[cle] !== null) return null;
+    lue[cle] = Number(m[1]);
+    reste = reste.slice(m[0].length);
+    termes += 1;
+  }
+  return termes ? lue : null;
+}
+
+/** La défense écrite depuis l'AP et l'AM (demande du propriétaire, 2026-10-17 : deux valeurs séparées) : « +10AP +14AM », « +2AM », « Aucune ». */
+export function texteDeLaDefense(ap, am) {
+  const terme = (n, unite) => (n === null || n === undefined ? null : `${n < 0 ? '-' : '+'}${Math.abs(n)}${unite}`);
+  return [terme(ap, 'AP'), terme(am, 'AM')].filter(Boolean).join(' ') || 'Aucune';
+}
+
+/**
+ * La défense écrite d'une armure ou d'un bouclier après une modification de son AP ou de son AM (les deux colonnes saisies : demande du propriétaire,
+ * 2026-10-17 ; le texte en est refait, jamais saisi) : `ancienne` telle qu'écrite si elle se lit exactement en ces AP et AM (l'écriture de la source,
+ * « +13AP+12AM », reste), sinon refaite (texteDeLaDefense).
+ */
+export function defenseEcrite(ap, am, ancienne) {
+  const lue = defenseExacte(ancienne);
+  return lue && lue.ap === (ap ?? null) && lue.am === (am ?? null) ? ancienne : texteDeLaDefense(ap, am);
 }
 
 /**
@@ -53,16 +94,17 @@ export function degatsDeLArmure(resistanceBrut, faiblesseBrut) {
   return lignes;
 }
 
-/** Les colonnes d'une armure tirées de ses cases : clé du nom, prix (« ???? » : null), AP et AM. */
+/**
+ * Les colonnes d'une armure tirées de ses cases : clé du nom, prix (« ???? » : null) et la défense écrite, refaite depuis l'AP et l'AM (defenseEcrite :
+ * `ligne.stats_brut` est la défense écrite d'avant la modification).
+ */
 export function colonnesDeLArmure(ligne) {
-  const { ap, am } = statsDeProtection(ligne.stats_brut);
-  return { nom_cle: normalize(ligne.nom), prix: nombreEcrit(ligne.prix_brut), ap, am };
+  return { nom_cle: normalize(ligne.nom), prix: nombreEcrit(ligne.prix_brut), stats_brut: defenseEcrite(ligne.ap, ligne.am, ligne.stats_brut) };
 }
 
-/** Les colonnes d'un bouclier préfabriqué tirées de ses cases : prix (vide : null), AP et AM de sa défense. */
+/** Les colonnes d'un bouclier préfabriqué tirées de ses cases : prix (vide : null) et la défense écrite, refaite depuis l'AP et l'AM (defenseEcrite). */
 export function colonnesDuBouclier(ligne) {
-  const { ap, am } = statsDeProtection(ligne.defense_brut);
-  return { prix: nombreEcrit(ligne.prix_brut), ap, am };
+  return { prix: nombreEcrit(ligne.prix_brut), defense_brut: defenseEcrite(ligne.ap, ligne.am, ligne.defense_brut) };
 }
 
 /** Le prix d'une forme (classe) de bouclier : « 2,5 » → 2.5 ; null si ce n'est pas un nombre. */

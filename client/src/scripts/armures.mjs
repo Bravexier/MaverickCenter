@@ -85,8 +85,8 @@ if (racine) {
     };
   }
 
-  /** La défense écrite d'une cellule rendue : { ap, am }. */
-  const defenseDe = (cellule) => ({ ap: entier(cellule?.querySelector('.pdef')?.dataset.ap), am: entier(cellule?.querySelector('.pdef')?.dataset.am) });
+  /** L'AP et l'AM d'une ligne d'armure ou de bouclier, chacun dans sa case (rendus « protection-ap », « protection-am ») : { ap, am }. */
+  const defenseDe = (ap, am) => ({ ap: entier(ap?.querySelector('.pdef')?.dataset.ap), am: entier(am?.querySelector('.pdef')?.dataset.am) });
   /** Le prix écrit d'une cellule rendue : { ro (null si ce n'est pas un nombre), texte }. */
   const prixDe = (cellule) => ({ ro: nombreOuNul(cellule?.querySelector('.pprix')?.dataset.ro), texte: cellule?.querySelector('.pprix')?.textContent.trim() ?? '' });
   /**
@@ -148,8 +148,8 @@ if (racine) {
 
   /** L'armure telle qu'affichée dans sa ligne de la liste. */
   function lireArmure(ligne) {
-    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »), comme celle d'un bouclier
-    const { ap, am } = defenseDe(ligne.querySelector('.armure__ap'));
+    // l'AP et l'AM, chacun dans sa case (demande du propriétaire, 2026-10-17 : deux valeurs séparées), comme pour un bouclier
+    const { ap, am } = defenseDe(ligne.querySelector('.armure__ap'), ligne.querySelector('.armure__am'));
     const prix = prixDe(ligne.querySelector('.armure__prix'));
     return {
       nom: ligne.querySelector('.armure__choisir')?.textContent.trim() ?? '',
@@ -284,8 +284,8 @@ if (racine) {
     }
     B.vue?.classList.add('est-ouverte');
     const nom = ligne.querySelector('.bouclier__choisir')?.textContent.trim() ?? '';
-    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »)
-    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__ap'));
+    // l'AP et l'AM, chacun dans sa case (rendus « protection-ap », « protection-am »)
+    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__ap'), ligne.querySelector('.bouclier__am'));
     const prix = prixDe(ligne.querySelector('.bouclier__prix'));
     const poids = lirePoids(ligne);
     const m = lireMateriau(B.matiere);

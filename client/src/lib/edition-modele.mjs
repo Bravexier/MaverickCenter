@@ -11,7 +11,8 @@
 // lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
 // forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
-// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs) ; celles des potions (consommables de l'onglet Ceinture,
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
+// défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
 // serveur/edition-consommables.mjs).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
@@ -450,7 +451,10 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
-      stats_brut: { type: 'ligne', libelle: 'Défense (« +10AP +14AM », « Aucune »)', requis: true },
+      // l'armure physique et l'armure magique, deux cases (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et
+      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite)
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
       // une combinaison de deux matières seulement (la case de la grille) ; une armure particulière écrit son effet
       resistance_brut: { type: 'ligne', libelle: 'Résistance (« x2 Frappe », « Estoc/Taille »)' },
@@ -483,7 +487,9 @@ export const TABLES = {
     libelle: 'Bouclier',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
-      defense_brut: { type: 'ligne', libelle: 'Défense (« +20AP +25AM »)', requis: true },
+      // l'AP et l'AM, deux cases comme pour une armure (demande du propriétaire, 2026-10-17) ; la défense écrite (`defense_brut`) en est refaite
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
       poids_id: { type: 'choix', libelle: 'Poids', requis: true, liste: 'poidsDeBouclier' },
     },

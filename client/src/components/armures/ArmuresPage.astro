@@ -41,7 +41,8 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // fiches sont réduites à quatre tuiles dont le détail du calcul est l'infobulle (demande du propriétaire, 2026-10-16, comme celle des armes), écrite
 // dans `[data-armures-bulles]`, hors du panneau de côté qui défile.
 // Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
-// formes, des boucliers, des poids, des améliorations et le coût de fabrication du bouclier modifiables ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
+// formes, des boucliers, des poids, des améliorations et le coût de fabrication du bouclier modifiables (l'AP et l'AM d'une armure ou d'un bouclier
+// chacun dans sa case : demande du propriétaire, 2026-10-17) ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
 // (?raw, inséré ici seulement).
 type Armures = ReturnType<typeof chargerArmures>;
 interface Props {
