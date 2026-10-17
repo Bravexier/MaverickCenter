@@ -15,6 +15,7 @@
 //     quoi l'image resterait dans la base sans tuile pour la montrer, la recadrer ou la retirer).
 // Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
+import { jsonOuNull } from './partage.mjs';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
 import { bornes, CATEGORIES, echelleDuPrefixe, EMPLACEMENT, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
@@ -417,12 +418,11 @@ export function ancienneEcritureDesCapacites(db) {
   const SANS_EQUIVALENT = 'noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des '
     + 'capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)';
   const capacitesDuJournal = new Set(); // rubriques « Capacité(s) » créées par le journal : « monstre_id\u0000rang »
-  const lire = (v) => (v === null || v === undefined ? null : JSON.parse(v));
   const ancienne = (v) => Boolean(v && ('nom' in v || 'texte' in v));
   return (m) => {
     if (m.table_nom !== 'monstre_rubrique' && m.table_nom !== 'monstre_capacite') return m;
-    const avant = lire(m.avant);
-    const apres = lire(m.apres);
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
     if (m.table_nom === 'monstre_capacite') return ancienne(avant) || ancienne(apres) ? { ...m, conflit: SANS_EQUIVALENT } : m;
     const cle = JSON.parse(m.cle);
     const k = `${cle.monstre_id}\u0000${cle.rang}`;

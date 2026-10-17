@@ -18,6 +18,7 @@
 //   - rien de l'adresse ni de l'identifiant de la feuille, ni de son contenu, au journal ou aux métriques (évènement « classeur » : statut, durée,
 //     octets, redirections).
 // `fetch` est injectable : les tests ne joignent pas Google (le réseau de la session le bloque). Node seulement, sans paquet npm.
+import { ErreurHttp } from './partage.mjs';
 import { adresseDExport, estUnZip, idDeFeuille, nomDuClasseur, pageDeConnexion, redirectionPermise } from '../src/lib/google-sheets.mjs';
 
 /** Taille maximale d'un classeur (l'ordre de la borne d'une partie d'archive que lit la page : lib/zip.mjs). */
@@ -45,13 +46,7 @@ export const GOOGLE_INJOIGNABLE = 'Google n’a pas pu être joint : réessayez 
 export const ANNULE = 'Import annulé : la page a été quittée.';
 
 /** Une réponse de la route : `statut` (4xx, 502, 504 ; 499 si le visiteur est parti) et un message pour la page. */
-export class ErreurClasseur extends Error {
-  constructor(statut, message) {
-    super(message);
-    this.name = 'ErreurClasseur';
-    this.statut = statut;
-  }
-}
+export class ErreurClasseur extends ErreurHttp {}
 
 /** La promesse, ou un rejet dès que `signal` s'arrête (un fetch ou un flux qui ignorerait le signal ne bloque pas la route). */
 function avant(promesse, signal) {

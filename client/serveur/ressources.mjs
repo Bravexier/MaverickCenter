@@ -52,7 +52,7 @@ import {
 import { TABLES_DES_NOTES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurEdition, enregistrer, listes } from './edition.mjs';
-import { ErreurHttp, empreinteCourte, entierDeLAdresse, segmentDecode } from './partage.mjs';
+import { ErreurHttp, empreinteCourte, entierDeLAdresse, etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { cleDe, lireLigne, structure, TABLES_INTERDITES } from './edition-journal.mjs';
 import { descriptionOpenApi } from './openapi.mjs';
 
@@ -522,12 +522,6 @@ export function detail(db, vue, ligne, parentSegment = null) {
   return { ressource: vue.ressource.cle, cle, adresse, element, extensions, enfants, derivees, version: versionDe({ element, extensions, enfants, derivees }) };
 }
 
-/** Les étiquettes d'un en-tête If-Match / If-None-Match (« "a", W/"b" », ou « * ») : ['a', 'b'] ou ['*']. */
-export function etiquettesDe(entete) {
-  if (entete === undefined || entete === null) return null;
-  return String(entete).split(',').map((t) => t.trim().replace(/^W\//, '').replace(/^"(.*)"$/, '$1')).filter(Boolean);
-}
-const correspond = (etiquettes, version) => etiquettes.includes('*') || etiquettes.includes(version);
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Catalogue
@@ -839,7 +833,7 @@ function ecrireParOperation(db, service, vue, methode, { t, corps, ligne = null,
   }
   if (ligne && etiquettes) {
     const avant = detail(db, vue, ligne, parent?.segment ?? null);
-    if (!correspond(etiquettes, avant.version)) throw perimee(avant);
+    if (!etiquetteCorrespond(etiquettes, avant.version)) throw perimee(avant);
   }
   const { operations, cle } = t.traduire({ db, ligne, parent, valeurs });
   const resultat = ecrire(db, service, { methode, adresse, page: pageDuLot(vue), operations });
@@ -927,7 +921,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
     }
   }
   const avant = detail(db, vue, ligne, parent?.segment ?? null);
-  if (etiquettes && !correspond(etiquettes, avant.version)) throw perimee(avant);
+  if (etiquettes && !etiquetteCorrespond(etiquettes, avant.version)) throw perimee(avant);
   const operations = [];
   for (const [table, v] of parTable) {
     const extension = extensions.find((e) => e.table === table);
@@ -962,7 +956,7 @@ function supprimer(db, service, vue, ligne, etiquettes, parent, adresse) {
   if (t) return ecrireParOperation(db, service, vue, 'DELETE', { t, ligne, parent, adresse, etiquettes });
   if (etiquettes) {
     const avant = detail(db, vue, ligne, parent?.segment ?? null);
-    if (!correspond(etiquettes, avant.version)) throw perimee(avant);
+    if (!etiquetteCorrespond(etiquettes, avant.version)) throw perimee(avant);
   }
   const ecriture = vue.objet.ecriture;
   const cle = ecriture.cleSuppression ? Object.fromEntries(Object.entries(ecriture.cleSuppression).map(([ce, cl]) => [ce, ligne[cl]])) : cleDe(db, vue.table, ligne);
@@ -1108,11 +1102,7 @@ function router(requete, service, segments, params, refusEcriture, methode) {
   const adresse = adresseDe(vue, ligne, parentDeLaVue?.segment ?? null);
   if (methode === 'GET') {
     const d = detail(db, vue, ligne, parentDeLaVue?.segment ?? null);
-    const etiquette = `"${d.version}"`;
-    const cache = { ETag: etiquette, 'Cache-Control': 'private, no-cache' };
-    const connues = etiquettesDe(entetes['if-none-match']);
-    if (connues && correspond(connues, d.version)) return { statut: 304, corps: null, brut: '', entetes: cache };
-    return json(200, d, cache);
+    return reponseVersionnee(entetes, d.version, (cache) => json(200, d, cache));
   }
   if (methode === 'PATCH') return modifier(db, service, vue, ligne, corps, etiquettes, parentDeLaVue, adresse);
   return supprimer(db, service, vue, ligne, etiquettes, parentDeLaVue, adresse);

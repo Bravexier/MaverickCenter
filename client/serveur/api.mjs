@@ -88,7 +88,7 @@ import { BALISE, ErreurMetriques } from './metriques.mjs';
 import { ErreurTables, lireTable, listerTables, versionDeLaBase, versionDuContenu } from './debug-tables.mjs';
 import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
-import { segmentDecode } from './partage.mjs';
+import { reponseVersionnee, segmentDecode } from './partage.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -134,11 +134,6 @@ function repondre(Erreur, agir) {
     if (e instanceof Erreur) return erreur(e.statut, e.message, e.details);
     throw e;
   }
-}
-
-/** Vrai si l'en-tête If-None-Match (« "a", W/"b" ») contient cette étiquette (guillemets compris), la version faible comptant pour la forte. */
-function etiquetteConnue(entetes, etiquette) {
-  return String(entetes?.['if-none-match'] ?? '').split(',').map((v) => v.trim().replace(/^W\//, '')).includes(etiquette);
 }
 
 /** L'identifiant d'une fiche dans l'adresse, décodé ; null s'il est illisible, vide ou trop long. */
@@ -227,12 +222,11 @@ function traiterPortrait(requete, service, brut, permis) {
   if (indisponible) return indisponible;
   const portrait = portraitDeFiche(db, id);
   if (!portrait) return erreur(404, 'Pas de portrait pour cette fiche.');
-  const etiquette = `"${portrait.empreinte}"`;
-  const cache = { ETag: etiquette, 'Cache-Control': 'private, no-cache' };
-  if (etiquetteConnue(requete.entetes, etiquette)) return { statut: 304, corps: null, brut: '', entetes: cache };
-  const octets = portrait.octets();
-  if (!octets) return erreur(404, 'Pas de portrait pour cette fiche.');
-  return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
+  return reponseVersionnee(requete.entetes, portrait.empreinte, (cache) => {
+    const octets = portrait.octets();
+    if (!octets) return erreur(404, 'Pas de portrait pour cette fiche.');
+    return { statut: 200, corps: null, brut: octets, entetes: { ...cache, 'Content-Type': portrait.type } };
+  });
 }
 
 /**
@@ -355,9 +349,7 @@ function traiterDebug(requete, service, action, reste, permis, params) {
       const page = lireTable(db, reste[0], params);
       // le texte servi tel quel (`brut`) : son empreinte est l'ETag, le service ne le refait pas ; `corps` reste pour qui appelle `traiter` (tests)
       const texte = JSON.stringify(page);
-      const cache = { ETag: `"${versionDuContenu(texte)}"`, 'Cache-Control': 'no-cache' };
-      if (etiquetteConnue(requete.entetes, cache.ETag)) return { statut: 304, corps: null, brut: '', entetes: cache };
-      return { statut: 200, corps: page, brut: texte, entetes: cache };
+      return reponseVersionnee(requete.entetes, versionDuContenu(texte), (cache) => ({ statut: 200, corps: page, brut: texte, entetes: cache }), 'no-cache');
     });
   }
   if (action === 'journal') {

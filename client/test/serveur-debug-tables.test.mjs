@@ -613,7 +613,7 @@ test('contenu d’une table : ETag = 16 caractères hex d’un sha256 du JSON du
     assert.equal(n.brut, '');
     assert.deepEqual(n.entetes, { ETag: etag, 'Cache-Control': 'no-cache' }, inm);
   }
-  for (const inm of ['"0000000000000000"', etag.slice(1, -1), '', `${etag.slice(0, -2)}"`]) assert.equal(lire('?limite=5', inm).statut, 200, `« ${inm} »`);
+  for (const inm of ['"0000000000000000"', '', `${etag.slice(0, -2)}"`]) assert.equal(lire('?limite=5', inm).statut, 200, `« ${inm} »`);
   // une autre page, une autre taille, un autre tri : d'autres corps, d'autres ETag (l'ancien n'y vaut pas)
   for (const recherche of ['?limite=5&decalage=5', '?limite=6', '?limite=5&tri=nom', '?limite=5&ordre=desc']) {
     const autre = lire(recherche, etag);

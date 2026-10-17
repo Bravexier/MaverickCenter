@@ -67,6 +67,7 @@ import {
   ambiguiteDe, formeCanonique, lireBalises, motsClesCites, reciblerLeMotCle, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
   ancienneEcritureDesCapacites, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
@@ -92,15 +93,7 @@ import {
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
 const OPERATIONS_MAX = 2000;
 
-export class ErreurEdition extends Error {
-  /** @param {number} statut @param {string} message @param {object} [details] */
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.name = 'ErreurEdition';
-    this.statut = statut;
-    this.details = details;
-  }
-}
+export class ErreurEdition extends ErreurHttp {}
 
 const refus = (message, details) => new ErreurEdition(400, message, details);
 
@@ -1648,11 +1641,10 @@ const reecrireLeTexte = (db, table, colonne, cle, ligne, texte) => db.prepare(`U
  * tables vont dans `tablesCompletees`.
  */
 function balisesRetireesParLeLot(db, lot) {
-  const lu = (x) => (x === null || x === undefined ? null : JSON.parse(x));
   const retires = [];
   for (const m of lot) {
     if (m.table_nom !== 'mot_cle' || m.operation !== 'supprimer' || m.sansEffet) continue;
-    const ligne = lu(m.avant);
+    const ligne = jsonOuNull(m.avant);
     if (typeof ligne?.id !== 'string' || lireLigne(db, 'mot_cle', { id: ligne.id })) continue;
     retires.push({ m, ligne, cible: cibleReportee(lot, ligne.id) });
   }
@@ -1691,11 +1683,10 @@ function balisesRetireesParLeLot(db, lot) {
 function balisesDesColonnesDerivees(db) {
   if (!tableExiste(db, 'mot_cle')) return [];
   const journal = db.prepare(`SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
-  const lu = (x) => (x === null || x === undefined ? null : JSON.parse(x));
   const retires = [];
   for (const m of journal) {
     if (m.table_nom !== 'mot_cle' || m.operation !== 'supprimer' || m.avant === null) continue;
-    const ligne = lu(m.avant);
+    const ligne = jsonOuNull(m.avant);
     if (typeof ligne?.id !== 'string' || lireLigne(db, 'mot_cle', { id: ligne.id })) continue;
     retires.push({ ligne, cible: cibleReportee(journal.filter((x) => x.lot_id === m.lot_id), ligne.id) });
   }
@@ -1727,14 +1718,13 @@ function balisesDesColonnesDerivees(db) {
  * sinon un texte dont les balises de `id` sont devenues celles d'un seul autre mot-clé ; null sinon (une suppression, ou rien à reconnaître).
  */
 function cibleReportee(lot, id) {
-  const lu = (x) => (x === null || x === undefined ? null : JSON.parse(x));
   for (const m of lot) {
-    if (m.table_nom === 'page_tag' && m.operation === 'modifier' && lu(m.avant)?.tag_id === id && typeof lu(m.apres)?.tag_id === 'string') return lu(m.apres).tag_id;
+    if (m.table_nom === 'page_tag' && m.operation === 'modifier' && jsonOuNull(m.avant)?.tag_id === id && typeof jsonOuNull(m.apres)?.tag_id === 'string') return jsonOuNull(m.apres).tag_id;
   }
   for (const m of lot) {
     if (m.operation !== 'modifier') continue;
-    const avant = lu(m.avant) ?? {};
-    const apres = lu(m.apres) ?? {};
+    const avant = jsonOuNull(m.avant) ?? {};
+    const apres = jsonOuNull(m.apres) ?? {};
     for (const c of Object.keys(apres)) {
       const refs = (t) => (typeof t === 'string' ? lireBalises(t).map((x) => x.ref) : []);
       const ancien = refs(avant[c]);
@@ -1775,7 +1765,6 @@ function ancienneEcritureDuGlossaire(db) {
   const lignesCreees = new Set(); // lignes de page_tag insérées par une écriture gardée
   const existe = (id) => typeof id === 'string' && (Boolean(lireLigne(db, 'mot_cle', { id })) || creesParLeJournal.has(id));
   const libre = (cle) => !raisonDeProtection(cle);
-  const lu = (x) => (x === null || x === undefined ? null : JSON.parse(x));
   const sansEffet = (m, k) => {
     sautees.add(k);
     const { aCreer: _, ...reste } = m;
@@ -1787,9 +1776,9 @@ function ancienneEcritureDuGlossaire(db) {
     // une insertion commence une nouvelle vie de sa ligne (la ligne sautée n'a jamais existé) : jugée pour elle-même
     if (m.operation === 'inserer') sautees.delete(k);
     if (sautees.has(k)) return sansEffet(m, k);
-    const apres = lu(m.apres);
+    const apres = jsonOuNull(m.apres);
     if (m.table_nom === 'mot_cle') {
-      const id = lu(m.cle)?.id;
+      const id = jsonOuNull(m.cle)?.id;
       if (m.operation === 'inserer' && apres) {
         if (!('description' in apres) && libre(apres.libelle_cle ?? normalize(apres.libelle ?? ''))) {
           motsClesSautes.add(id);
@@ -1814,8 +1803,8 @@ function ancienneEcritureDuGlossaire(db) {
       return sansEffet(m, k);
     }
     if (m.operation === 'modifier') {
-      const avant = lu(m.avant);
-      const ligneRetiree = !lignesCreees.has(k) && !lireLigne(db, 'page_tag', lu(m.cle)) && typeof avant?.tag_id === 'string' && !existe(avant.tag_id)
+      const avant = jsonOuNull(m.avant);
+      const ligneRetiree = !lignesCreees.has(k) && !lireLigne(db, 'page_tag', jsonOuNull(m.cle)) && typeof avant?.tag_id === 'string' && !existe(avant.tag_id)
         && libre(avant.tag_id);
       if (ligneRetiree) return sansEffet(m, k);
     } else lignesCreees.add(k);
@@ -1843,8 +1832,8 @@ function ancienneEcritureDesMotsCles(db) {
     && Boolean(db.prepare("SELECT 1 FROM historique_modification WHERE table_nom = 'mot_cle' AND json_extract(cle, '$.id') = ?").get(x));
   return (m) => {
     if (m.table_nom !== 'page_tag') return m;
-    const avant = m.avant === null ? null : JSON.parse(m.avant);
-    const apres = m.apres === null ? null : JSON.parse(m.apres);
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
     if (!(avant && 'libelle' in avant) && !(apres && 'libelle' in apres)) return m;
     const libelle = typeof apres?.libelle === 'string' ? apres.libelle : null;
     if (avant) delete avant.libelle;

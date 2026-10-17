@@ -15,7 +15,6 @@
 // dernières) : l'archive garde donc la base d'avant les retraits et les conversions.
 // Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
 // Node seulement (node:sqlite), sans dépendance.
-import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -25,6 +24,7 @@ import {
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
+import { sha256 } from './partage.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
 
 /** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql : définies dans src/lib/fiche-format.mjs (le journal en tire ses tables interdites). */
@@ -126,7 +126,7 @@ export class ErreurBaseVivante extends Error {
 
 /** Empreinte SHA-256 d'un fichier. */
 export function empreinteFichier(chemin) {
-  return createHash('sha256').update(readFileSync(chemin)).digest('hex');
+  return sha256(readFileSync(chemin));
 }
 
 /** Signature d'un fichier sans le lire (change quand il est remplacé ou réécrit) ; null s'il n'existe pas. */
