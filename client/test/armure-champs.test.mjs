@@ -2,11 +2,15 @@
 // (prix, AP, AM d'une armure, d'un bouclier, d'une matière ; résistances et faiblesses ; coût en RF d'une pièce ; prix d'une forme ; Force d'un poids ;
 // coût et effet d'une amélioration ; ligne TOTAL). Un changement du découpage qui ne redonne plus la base demande une migration. Le site de dev, qui
 // modifie ces cases, refait ces colonnes par les mêmes découpages (serveur/edition-armures.mjs) : l'égalité vaut aussi après ses modifications.
+// Depuis la demande du propriétaire du 2026-10-17, l'AP et l'AM d'une armure et d'un bouclier, et les quatre cases d'une amélioration de bouclier, sont
+// saisis, et leurs textes en sont refaits : chaque texte de la base se lit EXACTEMENT en ces valeurs (defenseExacte, ameliorationDeBouclierExacte), si
+// bien qu'aucune valeur n'a eu à être réécrite.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  analyserAmeliorationDeProtection, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece, degatsDeLArmure, forceDuPoids, nombreEcrit, prixDeLaForme,
-  statsDeProtection, totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
+  ameliorationDeBouclierExacte, analyserAmeliorationDeProtection, CASES_D_AMELIORATION_DE_BOUCLIER, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece,
+  defenseEcrite, defenseExacte, degatsDeLArmure, forceDuPoids, nombreEcrit, prixDeLaForme, statsDeProtection, textesDeBouclierEcrits,
+  textesDeLAmeliorationDeBouclier, texteDeLaDefense, totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
 } from '../src/lib/armure-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
@@ -38,11 +42,70 @@ test('écritures : nombres, stats, résistances et faiblesses, coût d’une pi�
   assert.equal(prixDeLaForme('12,5'), 12.5);
 });
 
+test('défense : lue exactement en AP et AM, écrite depuis eux, gardée telle qu’écrite tant qu’elle dit la même chose (demande du propriétaire, 2026-10-17)', () => {
+  assert.deepEqual(defenseExacte('+10AP +14AM'), { ap: 10, am: 14 });
+  assert.deepEqual(defenseExacte('+13AP+12AM'), { ap: 13, am: 12 }, 'sans espace');
+  assert.deepEqual(defenseExacte('+2AM'), { ap: null, am: 2 });
+  assert.deepEqual(defenseExacte('+3AM +2AP'), { ap: 2, am: 3 }, 'dans un ordre ou dans l’autre');
+  assert.deepEqual(defenseExacte('Aucune'), { ap: null, am: null });
+  assert.deepEqual(defenseExacte('-2 ap'), { ap: -2, am: null });
+  assert.deepEqual(defenseExacte('+5AP, +6AM'), { ap: 5, am: 6 }, 'une virgule ne cache rien');
+  for (const x of ['', '+5AP environ', '+5AP +6AP', '+2AP/+2AM', 'Voir effet', '+5APM', '+5', '- 5AP', '+5AP.', '{{armure|+5AP}}', '+5AP {{x}}']) {
+    assert.equal(defenseExacte(x), null, JSON.stringify(x));
+  }
+  // une défense exacte se lit comme l'ancien service la lisait (statsDeProtection) : les deux lectures ne divergent jamais
+  for (const x of ['+10AP +14AM', '+13AP+12AM', '+3AM +2AP', '-2 ap', '+5AP; +6AM', 'Aucune']) assert.deepEqual(defenseExacte(x), statsDeProtection(x), x);
+  assert.deepEqual([texteDeLaDefense(10, 14), texteDeLaDefense(null, 2), texteDeLaDefense(3, null), texteDeLaDefense(null, null), texteDeLaDefense(-1, 0)],
+    ['+10AP +14AM', '+2AM', '+3AP', 'Aucune', '-1AP +0AM']);
+  assert.equal(defenseEcrite(13, 12, '+13AP+12AM'), '+13AP+12AM', 'l’écriture de la source reste');
+  assert.equal(defenseEcrite(13, 11, '+13AP+12AM'), '+13AP +11AM', 'une autre défense : refaite');
+  assert.equal(defenseEcrite(null, null, '+1AP'), 'Aucune');
+  assert.equal(defenseEcrite(4, null, '+4AP (lourd)'), '+4AP', 'un texte qui dit autre chose que l’AP et l’AM : refait');
+});
+
+test('amélioration de bouclier : coût et effet lus exactement en quatre cases, écrits depuis elles, gardés tant qu’ils disent la même chose', () => {
+  assert.deepEqual(CASES_D_AMELIORATION_DE_BOUCLIER, ['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran']);
+  assert.deepEqual(ameliorationDeBouclierExacte('50', '+2 AP, +1 cran de solidité'), { cout_ro: 50, cout_materiaux: null, bonus_ap: 2, bonus_am: null, bonus_cran: 1 });
+  assert.deepEqual(ameliorationDeBouclierExacte('100', '+4 AP + matériaux'), { cout_ro: 100, cout_materiaux: 1, bonus_ap: 4, bonus_am: null, bonus_cran: null }, '« + matériaux » : 1 (R76)');
+  assert.deepEqual(ameliorationDeBouclierExacte('100 + 1 Matériau', '+4 AP'), { cout_ro: 100, cout_materiaux: 1, bonus_ap: 4, bonus_am: null, bonus_cran: null }, 'le matériau du côté du coût');
+  assert.deepEqual(ameliorationDeBouclierExacte('1 000', 'Aucun'), { cout_ro: 1000, cout_materiaux: null, bonus_ap: null, bonus_am: null, bonus_cran: null });
+  for (const [cout, effet] of [
+    ['100 + 1 Matériau', '+4 AP + matériaux'], // deux matériaux en tout : une case oui / non ne les dit pas
+    ['100', '+4 AP + 2 matériaux'], ['100', '+4 AP/AM'], ['100', '+4 AP, +2 AM'], ['100', '+4 AP, +2 crans de solidité'], ['100', '+4 AP, brille'],
+    ['100,5', '+4 AP'], ['1 Matériau', '+4 AP'], ['20 RO + 1 gemme', '+2 AP'], ['100', '+10 dégâts'],
+    // l'ancien service les lisait autrement (signe détaché, « solidite » sans accent, espaces doublés : rien lu), ou une balise du glossaire
+    ['50', '+ 2 AP, + 1 cran de solidité'], ['50', '+2 AP, +1 cran de solidite'], ['50', '+2 AP, +1 cran  de solidité'], ['50 + 50', '+2 AP'],
+    ['{{x|50}}', '+2 AP'], ['50', '{{x|+2 AP}}'],
+  ]) assert.equal(ameliorationDeBouclierExacte(cout, effet), null, `${cout} | ${effet}`);
+  // un texte exact se lit comme l'ancien service le lisait (analyserAmeliorationDeProtection) : les deux lectures ne divergent jamais
+  for (const [cout, effet] of [['50', '+2 AP, +1 cran de solidité'], ['100', '+4 AP + matériaux'], ['100 + 1 Matériau', '+4 AP'], ['1 000', 'Aucun'], ['800', '+10 AP ; +1 cran de solidité']]) {
+    const { bonus_am: _, ...lue } = ameliorationDeBouclierExacte(cout, effet);
+    const ancienne = analyserAmeliorationDeProtection('bouclier', cout, effet);
+    assert.deepEqual(lue, { cout_ro: ancienne.cout_ro, cout_materiaux: ancienne.cout_materiaux, bonus_ap: ancienne.bonus_ap, bonus_cran: ancienne.bonus_cran }, `${cout} | ${effet}`);
+  }
+  assert.deepEqual(textesDeLAmeliorationDeBouclier({ cout_ro: 100, cout_materiaux: 1, bonus_ap: 4, bonus_cran: null }), { cout_brut: '100 + 1 Matériau', effet_brut: '+4 AP' });
+  assert.deepEqual(textesDeLAmeliorationDeBouclier({ cout_ro: 50, cout_materiaux: null, bonus_ap: 2, bonus_cran: 1 }), { cout_brut: '50', effet_brut: '+2 AP, +1 cran de solidité' });
+  assert.deepEqual(textesDeLAmeliorationDeBouclier({ cout_ro: 0, cout_materiaux: null, bonus_ap: null, bonus_cran: null }), { cout_brut: '0', effet_brut: 'Aucun' });
+  const source = { cout_brut: '100', effet_brut: '+4 AP + matériaux' };
+  assert.deepEqual(textesDeBouclierEcrits({ cout_ro: 100, cout_materiaux: 1, bonus_ap: 4, bonus_cran: null }, source), source, 'l’écriture de la source reste');
+  assert.deepEqual(textesDeBouclierEcrits({ cout_ro: 100, cout_materiaux: 1, bonus_ap: 5, bonus_cran: null }, source), { cout_brut: '100 + 1 Matériau', effet_brut: '+5 AP' });
+  // chaque écriture refaite se relit en ses cases
+  for (const cases of [{ cout_ro: 800, cout_materiaux: 1, bonus_ap: 10, bonus_cran: 1 }, { cout_ro: 0, cout_materiaux: null, bonus_ap: -1, bonus_cran: null }]) {
+    const t = textesDeLAmeliorationDeBouclier(cases);
+    assert.deepEqual(ameliorationDeBouclierExacte(t.cout_brut, t.effet_brut), { ...cases, bonus_am: null }, JSON.stringify(t));
+  }
+});
+
 test('armures : prix, AP, AM, clé du nom et résistances refaits depuis leurs cases, sur toute la base ; un type de la liste', () => {
   const armures = lignes('SELECT * FROM armure');
   assert.ok(armures.length > 200, 'les armures de la grille et les particulières');
   for (const a of armures) {
+    // la défense écrite se lit exactement en l'AP et l'AM de la ligne : rien n'est perdu à les saisir à part (demande du propriétaire, 2026-10-17) ;
+    // « exactement » exclut une balise du glossaire : ces textes n'en portent aucune (stats_brut et defense_brut ne sont plus dans TABLES, que
+    // serveur/edition.mjs#reecrireLesBalises parcourt ; le coût et l'effet d'une amélioration de bouclier y sont, mais le domaine les refuse)
+    assert.deepEqual(defenseExacte(a.stats_brut), { ap: a.ap, am: a.am }, `${a.id} : « ${a.stats_brut} »`);
     const c = colonnesDeLArmure(a);
+    assert.deepEqual(Object.keys(c), ['nom_cle', 'prix', 'stats_brut']);
     for (const k of Object.keys(c)) assert.ok(egal(c[k], a[k]), `${a.id} : ${k} ${c[k]} ≠ ${a[k]}`);
     assert.ok(TYPES_D_ARMURE.includes(a.type), `${a.id} : type ${a.type}`);
     const attendu = degatsDeLArmure(a.resistance_brut, a.faiblesse_brut).map((d) => `${d.sens}|${d.sens_brut}|${d.type_degats}|${d.multiplicateur}`).sort();
@@ -53,13 +116,17 @@ test('armures : prix, AP, AM, clé du nom et résistances refaits depuis leurs c
 
 test('boucliers, matières, formes, poids, pièces : colonnes tirées refaites sur toute la base', () => {
   for (const b of lignes('SELECT * FROM bouclier')) {
+    assert.deepEqual(defenseExacte(b.defense_brut), { ap: b.ap, am: b.am }, `${b.id} : « ${b.defense_brut} »`);
     const c = colonnesDuBouclier(b);
+    assert.deepEqual(Object.keys(c), ['prix', 'defense_brut']);
     for (const k of Object.keys(c)) assert.ok(egal(c[k], b[k]), `${b.id} : ${k}`);
   }
+  // les matières : en lecture sur la page (décision R62), leur AP et leur AM aussi lus exactement dans leur défense écrite
   for (const t of ['materiau_armure', 'materiau_bouclier']) {
     for (const m of lignes(`SELECT * FROM ${t}`)) {
       const s = statsDeProtection(m.stats_brut);
       assert.ok(egal(s.ap, m.ap) && egal(s.am, m.am), `${t} ${m.ressource_id}`);
+      assert.deepEqual(defenseExacte(m.stats_brut), { ap: m.ap, am: m.am }, `${t} ${m.ressource_id} : « ${m.stats_brut} »`);
     }
   }
   for (const f of lignes('SELECT * FROM bouclier_classe')) assert.equal(prixDeLaForme(f.prix_brut), f.prix, f.id);
@@ -74,6 +141,11 @@ test('améliorations d’armure et de bouclier : coût et effet refaits sur tout
     for (const a of niveaux) {
       const c = analyserAmeliorationDeProtection(cible, a.cout_brut, a.effet_brut);
       for (const k of Object.keys(c)) assert.ok(egal(c[k], a[k]), `${a.id} : ${k} ${c[k]} ≠ ${a[k]}`);
+      // une amélioration de bouclier : son coût et son effet écrits se lisent exactement en ses quatre cases, sans AM (demande du propriétaire, 2026-10-17)
+      if (cible === 'bouclier') {
+        assert.deepEqual(ameliorationDeBouclierExacte(a.cout_brut, a.effet_brut), { cout_ro: a.cout_ro, cout_materiaux: a.cout_materiaux, bonus_ap: a.bonus_ap, bonus_am: a.bonus_am, bonus_cran: a.bonus_cran }, a.id);
+        assert.deepEqual(textesDeBouclierEcrits(a, a), { cout_brut: a.cout_brut, effet_brut: a.effet_brut }, `${a.id} : gardés tels qu’écrits`);
+      }
     }
     assert.equal(totalDesAmeliorationsDeProtection(cible, niveaux), db.prepare('SELECT total_brut FROM amelioration_total WHERE cible = ?').get(cible).total_brut, cible);
   }

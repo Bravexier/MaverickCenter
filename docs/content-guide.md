@@ -440,8 +440,9 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
   des armures : **les armures particulières en premier** (Nom, Type, AP, AM, Solidité « uni », Effet, Prix ; demande du propriétaire, 2026-10-16 : « tu
   met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, AP,
-  AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16 : la défense se modifie dans la
-  case AP, la case AM la suit en lecture, comme dans la liste des boucliers) ; une ligne choisit l'armure (et ses deux matériaux). Une armure **ne se fabrique plus pièce par pièce, seulement
+  AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16, comme dans la liste des
+  boucliers) ; une ligne choisit l'armure (et ses deux matériaux). **L'AP et l'AM sont deux valeurs de la base, chacune modifiable dans sa case**
+  (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi »), voir « AP et AM » plus bas. Une armure **ne se fabrique plus pièce par pièce, seulement
   complète** (décision R93) : plus de tableau FABRICATION ; les paragraphes des règles de l'onglet sur la création par pièces sont
   retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`), et donc du panneau de règles de l'onglet. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
   10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
@@ -457,8 +458,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   des deux). Une armure particulière n'a que le prix de l'armure entière, et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
   armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
 - **Boucliers** (demandes du propriétaire, 2026-10-16) : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et,
-  **directement sous lui**, les **améliorations** (+1 à +5 : AP du niveau N, **crans cumulés**, « + matériaux » = 1 matériau de la matière : R76, matériaux
-  achetés ou fournis) ; à côté, le tableau des **matières** (fiche des matières pour boucliers). Une forme et une matière donnent le bouclier préfabriqué
+  **directement sous lui**, les **améliorations** (+1 à +5, **quatre colonnes** : Coût en RO, Matériaux — oui : 1 matériau de la matière, R76, acheté ou
+  fourni —, AP supplémentaire — celui du niveau N —, Solidité — +1 cran ou non, **crans cumulés** — ; voir « Améliorations de bouclier » plus bas) ; à côté, le tableau des **matières** (fiche des matières pour boucliers). Une forme et une matière donnent le bouclier préfabriqué
   (décision R78 : prix et défense tels qu'écrits, **solidité de la matière**). Dessous, **la liste des boucliers en un seul tableau, replié par défaut,
   triable par toutes ses colonnes** (Nom, Forme, Matière, **AP et AM séparés**, Solidité, Poids, Prix : un clic sur l'en-tête trie croissant, puis
   décroissant, puis rend l'ordre de l'onglet ; une valeur absente — prix « ???? », AP ou AM non écrit, bouclier sans poids — va à la fin ; rien dans
@@ -477,9 +478,37 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   colonne 3) s'affiche sous les tableaux des matériaux, tel qu'écrit (`ecartsDeLaSource`).
 - État dans l'adresse : `?materiau1=…&materiau2=…&amelioration-armure=N` (ou `?armure=<ancre>` pour une armure particulière),
   `&forme=…&matiere=…&amelioration-bouclier=N` (un ancien `piece=…` est ignoré : R93) ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
+- **AP et AM** (demande du propriétaire, 2026-10-17 : « L'édition des colonne AP et AM est mal pris en compte. C'est en base que les deux devraient être
+  séparées et donc éditable aussi » ; « Même remarque sur les AP / AM mais pour les armures ») : pour une armure (de la grille ou particulière) et un
+  bouclier, les colonnes `ap` et `am` sont les valeurs saisies, chacune dans sa case (un entier, signe permis ; vide = pas de bonus, « — » dans la liste,
+  0 dans la fiche) ; la défense écrite (`armure.stats_brut`, `bouclier.defense_brut`) n'est plus une case : le service la refait depuis l'AP et l'AM
+  (`lib/armure-champs.mjs#defenseEcrite` : « +10AP +14AM », « +2AM », « Aucune » quand les deux sont vides), et la garde telle qu'écrite tant qu'elle se lit
+  exactement en ces valeurs (`defenseExacte` : l'écriture de la source, « +13AP+12AM » sans espace, reste) ; elle ne sert plus qu'au corps Markdown (recherche) et
+  à la trace de l'import (rapprochement des classeurs). Toutes les défenses écrites de la base se lisent exactement en leur AP et AM (testé) : aucune
+  valeur n'a été réécrite. Les matières (`materiau_armure`, `materiau_bouclier`) ne se modifient pas (R62) : leur case « Défense » montre leurs colonnes
+  `ap` et `am`. Le script de la page lit l'AP dans la case AP et l'AM dans la case AM.
+- **Améliorations de bouclier** (demande du propriétaire, 2026-10-17 : « Le +1matériaux devrai être dans le cout (une 2e collonne cout matériaux boolean)
+  Les effet séparés en deux autres colones aussi, Valeur d'AP supplémentaire, et Solidité + 1 ou non ») : quatre cases, chacune une colonne de
+  `amelioration_equipement` — `cout_ro` (entier, obligatoire), `cout_materiaux` (Oui = 1, Non = NULL : 1 matériau de la matière du bouclier, R76),
+  `bonus_ap` (entier ; vide = aucun), `bonus_cran` (Oui = 1, Non = NULL ; les crans se cumulent, R76) ; le coût et l'effet écrits (`cout_brut`,
+  `effet_brut`) en sont refaits (`textesDeBouclierEcrits` : « 100 + 1 Matériau », « +2 AP, +1 cran de solidité »), gardés tels qu'écrits tant qu'ils se
+  lisent exactement en ces cases (`ameliorationDeBouclierExacte` : « 100 » / « +4 AP + matériaux » de la source reste) ; la ligne TOTAL reste les RO seuls.
+  Les améliorations d'arme et d'armure gardent leur coût et leur effet écrits comme cases : leur écriture n'est pas celle du bouclier (« +N dégâts »,
+  « +2 crans de solidité » au +10 d'une arme ; « +N AP/AM » d'une armure, une valeur pour l'AP et l'AM) ; chaque cible refuse les cases de l'autre.
+- **Lots notés avant** (journal du site de dev, lot figé, journal exporté) : un lot qui saisissait la défense ou le coût et l'effet d'une amélioration de
+  bouclier en texte (le service en tirait les cases, notées avec lui) n'est jamais rejoué vers une ligne dont le texte et les cases divergent : la ligne
+  telle qu'elle sera après la modification (celle des règles, les valeurs déjà notées par les lots du journal qui passent, puis les siennes) doit avoir un
+  texte qui se lit exactement en ses cases ; sinon (un mot de plus, un signe détaché que l'ancien service ne lisait pas, des cases notées qui ne sont pas
+  la lecture du texte…) son lot passe en conflit avec un message qui dit quoi refaire, et ne compte pas pour les lots suivants de la même ligne
+  (`serveur/edition-armures.mjs#ancienneEcritureDesArmures`, branché dans `serveur/edition.mjs#rejouerLeJournal`, donc aussi dans la livraison,
+  `db:appliquer-edition` et la mise à jour). « Exactement » : `defenseExacte`, `ameliorationDeBouclierExacte`, qui acceptent espaces, virgules et
+  points-virgules entre les termes (« +5AP, +6AM » se rejoue : rien n'y est perdu), refusent toute balise du glossaire, et tirent leurs valeurs des
+  lectures de l'ancien service (`statsDeProtection`, `analyserAmeliorationDeProtection`) : les deux lectures ne divergent jamais (testé).
+- **Choix Oui / Non** (coût en matériaux, cran) : une valeur de la base que la liste n'a pas (un « 2 ») garde son option dans la saisie
+  (`lib/edition-modele.mjs#optionsDuChoix`) : rien n'est envoyé tant qu'on n'y touche pas.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent (la liste des boucliers et celle des poids comprises) ; les
-  cases des armures, formes, boucliers (nom, défense dans la case AP, prix, poids au choix), poids, améliorations et le coût de fabrication du bouclier
-  (sous les formes) se modifient, les matériaux
+  cases des armures et des boucliers (nom, AP, AM, prix, poids au choix pour un bouclier), des formes, des poids, des améliorations (coût et effet écrits
+  pour une armure, quatre cases pour un bouclier) et le coût de fabrication du bouclier (sous les formes) se modifient, les matériaux
   restent en lecture (R62) ; ni création ni suppression. Voir `docs/serveur.md`, « Édition ».
 - `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80, R93), `corps-armures.test.mjs`,
   `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (décision R92 : le registre de la

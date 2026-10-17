@@ -127,6 +127,11 @@ test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et cr
   assert.equal(ligne("SELECT total_brut FROM amelioration_total WHERE cible = 'arme'").total_brut, total);
   assert.ok(corps().split('\n').includes(ligneDAmelioration(apres)));
   assert.ok(corps().split('\n').includes(ligneDuTotal(total)));
+  // les cases d'une amélioration de bouclier (coût en RO, matériaux, AP, cran : demande du propriétaire, 2026-10-17) ne se saisissent pas pour une arme
+  for (const valeurs of [{ cout_ro: '99' }, { bonus_cran: '1' }, { cout_materiaux: '1' }, { bonus_ap: '3' }]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
+  }
+  assert.equal(ligne('SELECT cout_ro FROM amelioration_equipement WHERE id = ?', avant.id).cout_ro, 120);
   // celles d'armure et de bouclier se modifient sur la page des armures (test/serveur-edition-armures.test.mjs) ; celles des pièces élémentaires, nulle part
   const elementaire = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme_elementaire' LIMIT 1");
   assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: elementaire.id }, valeurs: { cout_brut: '1 RO' } }]).statut, 400);

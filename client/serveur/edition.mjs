@@ -74,7 +74,7 @@ import {
   operationsDuBestiaire,
 } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
-import { ameliorationsParCible, domainesDesArmures } from './edition-armures.mjs';
+import { ameliorationsParCible, ancienneEcritureDesArmures, domainesDesArmures } from './edition-armures.mjs';
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne as pageDesArmuresDeLaLigne, TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
@@ -1631,12 +1631,14 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes) et 0056 (glossaire)
+    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes) et 0056 (glossaire), et d'avant la saisie de l'AP et de
+    // l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 : serveur/edition-armures.mjs#ancienneEcritureDesArmures)
     adapter: () => {
       const motsCles = ancienneEcritureDesMotsCles(db);
       const glossaire = ancienneEcritureDuGlossaire(db);
       const capacites = ancienneEcritureDesCapacites(db);
-      return (m) => capacites(glossaire(motsCles(m)));
+      const armures = ancienneEcritureDesArmures(db);
+      return (m) => armures(capacites(glossaire(motsCles(m))));
     },
     // les balises d'un mot-clé supprimé ou fusionné, dans les textes que le lot n'a pas réécrits : au moment où il est rejoué, dans son lot
     apresLeLot: (lot) => balisesRetireesParLeLot(db, lot),

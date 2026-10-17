@@ -9,7 +9,7 @@
 // Les mots-clés du glossaire suivent le vocabulaire vivant, et le HTML posé après le chargement (rendus des champs, extensions) a ses balises rendues
 // (mots-cles-vivants.mjs).
 import css from '../../styles/edition/edition.css?raw';
-import { annonceDesFiches, cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
+import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
@@ -177,9 +177,9 @@ export function demarrer(racine, etatService) {
       controle.rows = Math.min(14, Math.max(2, String(valeur ?? '').split('\n').length + 1));
     } else if (champ.type === 'choix') {
       controle = document.createElement('select');
-      const choix = champ.choix ?? ed.listes[champ.liste] ?? [];
-      if (!champ.requis) controle.append(new Option('—', ''));
-      for (const c of choix) controle.append(new Option(c.libelle, c.valeur));
+      // l'option vide, les choix, et la valeur de la base que la liste n'aurait pas (lib/edition-modele.mjs#optionsDuChoix : jamais remise à vide sans
+      // que personne n'y touche)
+      for (const o of optionsDuChoix(champ, champ.choix ?? ed.listes[champ.liste] ?? [], valeur)) controle.append(new Option(o.libelle, o.valeur));
     } else if (champ.type === 'entier') {
       controle = document.createElement('input');
       controle.type = 'text';

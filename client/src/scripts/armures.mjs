@@ -60,17 +60,18 @@ if (racine) {
   const remonter = (vue) => vue?.querySelector('.armures-cote')?.scrollTo({ top: 0 });
   const pastille = (m) => (m ? `<span class="pmat-pastille" style="${e(m.style)}">${e(m.nom)}</span>` : '');
 
-  /** Les améliorations d'une cible telles qu'affichées : [{ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }]. */
+  /**
+   * Les améliorations d'une cible telles qu'affichées : [{ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }]. Chaque valeur est l'attribut
+   * `data-…` d'une case de la ligne (lib/armures-rendu.mjs) : le coût et l'effet écrits d'une amélioration d'armure (`data-ro`, `data-materiaux` ;
+   * `data-ap`, `data-am`, `data-cran`), ou les quatre cases d'une amélioration de bouclier (une valeur chacune ; pas d'AM).
+   */
   const lignesDAmelioration = (cible) => [...racine.querySelectorAll(`tr.pamelioration[data-cible="${cible}"]`)].filter((l) => Number(l.dataset.niveau) > 0);
+  const valeurDeLaLigne = (l, nom) => nombreOuNul(l.querySelector(`[data-${nom}]`)?.getAttribute(`data-${nom}`));
   const ameliorations = (cible) =>
-    lignesDAmelioration(cible).map((l) => {
-      const cout = l.querySelector('.pamel-cout')?.dataset ?? {};
-      const effet = l.querySelector('.pamel-effet')?.dataset ?? {};
-      return {
-        niveau: Number(l.dataset.niveau), cout_ro: nombreOuNul(cout.ro), cout_materiaux: nombreOuNul(cout.materiaux),
-        bonus_ap: nombreOuNul(effet.ap), bonus_am: nombreOuNul(effet.am), bonus_cran: nombreOuNul(effet.cran),
-      };
-    });
+    lignesDAmelioration(cible).map((l) => ({
+      niveau: Number(l.dataset.niveau), cout_ro: valeurDeLaLigne(l, 'ro'), cout_materiaux: valeurDeLaLigne(l, 'materiaux'),
+      bonus_ap: valeurDeLaLigne(l, 'ap'), bonus_am: valeurDeLaLigne(l, 'am'), bonus_cran: valeurDeLaLigne(l, 'cran'),
+    }));
 
   /** Un matériau (ou une matière de bouclier) tel qu'affiché dans un tableau de sélection. */
   function lireMateriau(ligne) {
@@ -85,8 +86,8 @@ if (racine) {
     };
   }
 
-  /** La défense écrite d'une cellule rendue : { ap, am }. */
-  const defenseDe = (cellule) => ({ ap: entier(cellule?.querySelector('.pdef')?.dataset.ap), am: entier(cellule?.querySelector('.pdef')?.dataset.am) });
+  /** L'AP et l'AM d'une ligne d'armure ou de bouclier, chacun dans sa case (rendus « protection-ap », « protection-am ») : { ap, am }. */
+  const defenseDe = (ap, am) => ({ ap: entier(ap?.querySelector('.pdef')?.dataset.ap), am: entier(am?.querySelector('.pdef')?.dataset.am) });
   /** Le prix écrit d'une cellule rendue : { ro (null si ce n'est pas un nombre), texte }. */
   const prixDe = (cellule) => ({ ro: nombreOuNul(cellule?.querySelector('.pprix')?.dataset.ro), texte: cellule?.querySelector('.pprix')?.textContent.trim() ?? '' });
   /**
@@ -148,8 +149,8 @@ if (racine) {
 
   /** L'armure telle qu'affichée dans sa ligne de la liste. */
   function lireArmure(ligne) {
-    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »), comme celle d'un bouclier
-    const { ap, am } = defenseDe(ligne.querySelector('.armure__ap'));
+    // l'AP et l'AM, chacun dans sa case (demande du propriétaire, 2026-10-17 : deux valeurs séparées), comme pour un bouclier
+    const { ap, am } = defenseDe(ligne.querySelector('.armure__ap'), ligne.querySelector('.armure__am'));
     const prix = prixDe(ligne.querySelector('.armure__prix'));
     return {
       nom: ligne.querySelector('.armure__choisir')?.textContent.trim() ?? '',
@@ -284,8 +285,8 @@ if (racine) {
     }
     B.vue?.classList.add('est-ouverte');
     const nom = ligne.querySelector('.bouclier__choisir')?.textContent.trim() ?? '';
-    // la case AP porte la défense entière (data-ap et data-am : lib/armures-rendu.mjs, rendu « protection-ap »)
-    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__ap'));
+    // l'AP et l'AM, chacun dans sa case (rendus « protection-ap », « protection-am »)
+    const { ap, am } = defenseDe(ligne.querySelector('.bouclier__ap'), ligne.querySelector('.bouclier__am'));
     const prix = prixDe(ligne.querySelector('.bouclier__prix'));
     const poids = lirePoids(ligne);
     const m = lireMateriau(B.matiere);

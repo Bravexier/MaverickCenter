@@ -11,7 +11,8 @@
 // lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
 // forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
-// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs) ; celles des potions (consommables de l'onglet Ceinture,
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
+// défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
 // serveur/edition-consommables.mjs).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
@@ -39,7 +40,7 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
  *            POST /api/edition/portrait/ — le journal exporté et le lot figé de la mise à jour la portent en entier (rejouée sur data/rows).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
- * `min` / `max` (entier, réel).
+ * `min` / `max` (entier, réel), `libelleVide` (choix non requis : le libellé de l'option vide, « — » par défaut ; « Non » pour OUI_SEUL).
  */
 /** Catégories d'un monstre (colonne `monstre.categorie`) : les libellés de lib/monstre-champs.mjs#CATEGORIES (test/serveur-edition-bestiaire.test.mjs). */
 export const CATEGORIES_DE_MONSTRE = [
@@ -79,6 +80,12 @@ export const OUI_NON = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui' },
 ];
+
+/**
+ * Une case Oui / Non dont « Non » est NULL (colonne entière 1 ou NULL : `amelioration_equipement.cout_materiaux` et `bonus_cran` d'une amélioration de
+ * bouclier) : « Oui » vaut '1', l'option vide de la liste (`libelleVide` : « Non ») vaut NULL.
+ */
+export const OUI_SEUL = [{ valeur: '1', libelle: 'Oui' }];
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
 const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
@@ -433,12 +440,19 @@ export const TABLES = {
       effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
     },
   },
-  // améliorations d'arme (+1 à +10), d'armure et de bouclier (+1 à +5) : coût et effet ; celles des pièces élémentaires ne se modifient pas ici
+  // améliorations d'arme (+1 à +10) et d'armure (+1 à +5) : coût et effet écrits ; celles de bouclier (+1 à +5) : quatre cases (demande du propriétaire,
+  // 2026-10-17 : « Le +1matériaux devrai être dans le cout (une 2e collonne cout matériaux boolean) Les effet séparés en deux autres colones aussi, Valeur
+  // d'AP supplémentaire, et Solidité + 1 ou non »), dont le service refait le coût et l'effet écrits (lib/armure-champs.mjs#textesDeBouclierEcrits) ;
+  // chaque cible n'accepte que les siennes (serveur/edition-armes.mjs, serveur/edition-armures.mjs). Celles des pièces élémentaires ne se modifient pas ici
   amelioration_equipement: {
     libelle: 'Amélioration',
     colonnes: {
-      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
-      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût (arme, armure : « 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
+      effet_brut: { type: 'ligne', libelle: 'Effet (arme, armure : « +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+      cout_ro: { type: 'entier', libelle: 'Coût en RO (bouclier)', requis: true, min: 0 },
+      cout_materiaux: { type: 'choix', libelle: 'Coût en matériaux (bouclier : 1 matériau de sa matière, décision R76)', choix: OUI_SEUL, libelleVide: 'Non' },
+      bonus_ap: { type: 'entier', libelle: 'AP supplémentaire (bouclier ; vide : aucun)' },
+      bonus_cran: { type: 'choix', libelle: '+1 cran de solidité (bouclier)', choix: OUI_SEUL, libelleVide: 'Non' },
     },
   },
   // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
@@ -450,7 +464,10 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
-      stats_brut: { type: 'ligne', libelle: 'Défense (« +10AP +14AM », « Aucune »)', requis: true },
+      // l'armure physique et l'armure magique, deux cases (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et
+      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite)
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
       // une combinaison de deux matières seulement (la case de la grille) ; une armure particulière écrit son effet
       resistance_brut: { type: 'ligne', libelle: 'Résistance (« x2 Frappe », « Estoc/Taille »)' },
@@ -483,7 +500,9 @@ export const TABLES = {
     libelle: 'Bouclier',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
-      defense_brut: { type: 'ligne', libelle: 'Défense (« +20AP +25AM »)', requis: true },
+      // l'AP et l'AM, deux cases comme pour une armure (demande du propriétaire, 2026-10-17) ; la défense écrite (`defense_brut`) en est refaite
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
       poids_id: { type: 'choix', libelle: 'Poids', requis: true, liste: 'poidsDeBouclier' },
     },
@@ -912,6 +931,20 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
     return champ.vide ?? null;
   }
   return texte;
+}
+
+/**
+ * Les options de la liste d'un champ « choix » dans le mode modification (src/scripts/edition/editeur.mjs) : l'option vide d'un champ non requis (« — »,
+ * ou son `libelleVide` : « Non » d'une case Oui / Non dont « Non » est NULL, OUI_SEUL), les `choix`, puis la valeur de la base (`valeur`) si la liste ne
+ * l'a pas — le « 2 » d'un coût en matériaux qu'un ancien lot aurait écrit, une liste du service pas encore à jour —, telle quelle : la saisie la montre,
+ * et tant que personne n'y touche elle garde sa valeur et rien n'est envoyé (une liste sans elle la remettrait à vide au premier « Enregistrer »).
+ * @returns {{ valeur: string, libelle: string }[]}
+ */
+export function optionsDuChoix(champ, choix, valeur) {
+  const options = [...(champ.requis ? [] : [{ valeur: '', libelle: champ.libelleVide ?? '—' }]), ...choix.map((c) => ({ valeur: String(c.valeur), libelle: c.libelle }))];
+  const actuelle = valeur === null || valeur === undefined ? '' : String(valeur);
+  if (actuelle !== '' && !options.some((o) => o.valeur === actuelle)) options.push({ valeur: actuelle, libelle: actuelle });
+  return options;
 }
 
 /** Les colonnes d'image d'une table du modèle (portrait). */

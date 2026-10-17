@@ -74,7 +74,7 @@ html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier):hover > :not(.pma
 .armure__nom, .bouclier__nom { min-width: 10rem; }
 .bouclier__forme { white-space: nowrap; }
 .bouclier__classe { font-size: var(--fs-xs); color: var(--muted); }
-.bouclier__ap, .bouclier__am { white-space: nowrap; }
+.bouclier__ap, .bouclier__am, .armure__ap, .armure__am { white-space: nowrap; }
 /* en-têtes triables de la liste des boucliers (src/scripts/armures.mjs pose le bouton) : croissant, décroissant, puis l'ordre de l'onglet */
 .ptri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }
 .ptri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
@@ -87,6 +87,8 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 .armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .pmat__prix-armure, .pamelioration__cout { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .armure__effet { min-width: 14rem; white-space: pre-line; font-size: var(--fs-md); }
 .pamelioration__niveau { white-space: nowrap; }
+/* les cases d'une amélioration de bouclier (coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17) */
+.pamelioration__materiaux, .pamelioration__ap, .pamelioration__cran { white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet) */
 .pmat__nom { background: var(--t, var(--surface)) !important; color: #171210; min-width: 6.5rem; }
