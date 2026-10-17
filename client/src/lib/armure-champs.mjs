@@ -28,7 +28,8 @@ export function nombreEcrit(texte) {
 
 /**
  * L'armure physique et magique d'une case « Stats » ou « Défense » (« +10AP +14AM », « +13AP+12AM », « +2AM », « Aucune ») : { ap, am }, chacune null
- * quand elle n'est pas écrite (la fiche compte alors 0). Lecture large (le reste de la case est ignoré) ; defenseExacte dit si la case ne dit rien d'autre.
+ * quand elle n'est pas écrite (la fiche compte alors 0). C'est la lecture de l'import et de l'ancien service d'édition, large (le reste de la case est
+ * ignoré) : defenseExacte en tire ses valeurs, après avoir vérifié que la case ne dit rien d'autre, si bien que les deux lectures ne divergent jamais.
  */
 export function statsDeProtection(texte) {
   const t = String(texteSansBalises(texte ?? ''));
@@ -37,26 +38,24 @@ export function statsDeProtection(texte) {
   return { ap: ap ? Number(ap[1]) : null, am: am ? Number(am[1]) : null };
 }
 
+/** Un terme de défense, tel que statsDeProtection le lit : « +10AP », « -2 am ». */
+const TERME_DE_DEFENSE = /([+-]?\d+)\s*(AP|AM)\b/gi;
+
 /**
  * La défense écrite (`armure.stats_brut`, `bouclier.defense_brut`, `materiau_armure.stats_brut`, `materiau_bouclier.stats_brut`) qui se lit EXACTEMENT
- * en AP et en AM : « Aucune » ({ ap: null, am: null }), ou un « ±N AP » et / ou un « ±N AM », chacun une fois, dans un ordre ou dans l'autre, espaces
- * libres (« +13AP+12AM ») ; null pour toute autre écriture (un mot de plus, un terme répété, une case vide) : elle ne se réduit pas à deux nombres.
+ * en AP et en AM : « Aucune » ({ ap: null, am: null }), ou un « ±N AP » et / ou un « ±N AM », chacun une fois, dans un ordre ou dans l'autre, séparés
+ * par des espaces, des virgules ou des points-virgules (« +13AP+12AM », « +5AP, +6AM ») ; null pour toute autre écriture (un mot de plus, un signe
+ * détaché, un terme répété, « +2AP/+2AM », une case vide, une balise du glossaire) : elle ne se réduit pas à deux nombres. Les valeurs sont celles de
+ * statsDeProtection (la lecture de l'import et de l'ancien service) : une défense exacte se lit de la même façon par les deux.
  */
 export function defenseExacte(texte) {
-  let reste = String(texteSansBalises(texte ?? '')).trim();
-  if (/^aucune$/i.test(reste)) return { ap: null, am: null };
-  const lue = { ap: null, am: null };
-  let termes = 0;
-  while (reste) {
-    const m = /^([+-]?\d+)\s*(AP|AM)(?![\p{L}\d])\s*/iu.exec(reste);
-    if (!m) return null;
-    const cle = m[2].toLowerCase();
-    if (lue[cle] !== null) return null;
-    lue[cle] = Number(m[1]);
-    reste = reste.slice(m[0].length);
-    termes += 1;
-  }
-  return termes ? lue : null;
+  const t = String(texte ?? '').trim();
+  if (t.includes('{{')) return null;
+  if (/^aucune$/i.test(t)) return { ap: null, am: null };
+  const unites = [...t.matchAll(TERME_DE_DEFENSE)].map((m) => m[2].toUpperCase());
+  if (!unites.length || new Set(unites).size !== unites.length) return null;
+  if (!/^[\s,;]*$/.test(t.replace(TERME_DE_DEFENSE, ' '))) return null;
+  return statsDeProtection(t);
 }
 
 /** La défense écrite depuis l'AP et l'AM (demande du propriétaire, 2026-10-17 : deux valeurs séparées) : « +10AP +14AM », « +2AM », « Aucune ». */
@@ -177,36 +176,37 @@ const roEntier = (texte) => {
   return m ? Number(m[1].replace(/[\s  ]/g, '')) : null;
 };
 
+/** Les termes d'un effet d'amélioration de bouclier, tels que analyserAmeliorationDeProtection les lit (l'AP, le cran, « + matériaux » : R76). */
+const TERMES_D_EFFET = { ap: /([+-]\d+)\s*AP\b/gi, cran: /([+-]\d+)\s*crans? de solidité/gi, materiaux: /\+\s*(\d+)?\s*mat[ée]ri(?:aux?|els?)\b/gi };
+
 /**
  * Le coût et l'effet écrits d'une amélioration de bouclier qui se lisent EXACTEMENT dans ses cases (CASES_D_AMELIORATION_DE_BOUCLIER) : { cout_ro,
- * cout_materiaux, bonus_ap, bonus_am (toujours null : la case n'existe pas pour un bouclier), bonus_cran } ; null sinon. Le coût : un montant de RO
- * entier, et au plus « + 1 Matériau » (« Matériau » sans nombre aussi) ; l'effet : « ±N AP », « +1 cran de solidité », « + matériaux » (sans nombre, ou
- * 1 : décision R76), chacun au plus une fois, séparés par des virgules ou des espaces, ou « Aucun ». Ne se réduisent pas : un mot de plus, une AM ou
- * « AP/AM », plus d'un cran, plus d'un matériau en tout (coût et effet), un RO absent ou décimal.
+ * cout_materiaux, bonus_ap, bonus_am (toujours null : la case n'existe pas pour un bouclier), bonus_cran } ; null sinon. Le coût : un seul montant de
+ * RO entier, et au plus « + 1 Matériau » (« Matériau » sans nombre aussi) ; l'effet : « ±N AP », « +1 cran de solidité », « + matériaux » (sans nombre,
+ * ou 1 : décision R76), chacun au plus une fois, séparés par des espaces, des virgules ou des points-virgules, ou « Aucun ». Ne se réduisent pas : un
+ * mot de plus, un signe détaché (« + 2 AP »), « solidite » sans accent, des espaces doublés, une AM ou « AP/AM », plus d'un cran, plus d'un matériau en
+ * tout (coût et effet), un RO absent, répété ou décimal, une balise du glossaire. Les valeurs sont celles d'analyserAmeliorationDeProtection (la lecture
+ * de l'import et de l'ancien service, que test/armure-champs.test.mjs rejoue sur la base) : un texte exact se lit de la même façon par les deux.
  */
 export function ameliorationDeBouclierExacte(coutBrut, effetBrut) {
-  let ro = null;
-  let materiaux = 0;
-  for (const terme of String(texteSansBalises(coutBrut ?? '')).split('+').map((t) => t.trim())) {
-    const mat = /^(?:(\d+)\s*)?mat[ée]ri(?:els?|aux?)$/i.exec(terme);
-    if (mat) materiaux += mat[1] ? Number(mat[1]) : 1;
-    else if (ro === null && roEntier(terme) !== null) ro = roEntier(terme);
-    else return null;
+  const cout = String(coutBrut ?? '').trim();
+  const effet = String(effetBrut ?? '').trim();
+  if (cout.includes('{{') || effet.includes('{{')) return null;
+  let montants = 0;
+  for (const terme of cout.split('+').map((t) => t.trim())) {
+    if (/^(?:\d+\s*)?mat[ée]ri(?:els?|aux?)$/i.test(terme)) continue;
+    if (roEntier(terme) === null) return null;
+    montants += 1;
   }
-  if (ro === null) return null;
-  const lue = { ap: null, cran: null };
-  let reste = String(texteSansBalises(effetBrut ?? '')).trim();
-  if (/^(?:aucun|aucune|rien)$/i.test(reste)) reste = '';
-  while (reste) {
-    let m = /^([+-])\s*(\d+)\s*AP(?![\p{L}\d/]|\s*\/)/iu.exec(reste);
-    if (m && lue.ap === null) lue.ap = Number(`${m[1]}${m[2]}`);
-    else if ((m = /^\+\s*(\d+)\s*crans?\s+de\s+solidit[ée](?![\p{L}\d])/iu.exec(reste)) && lue.cran === null) lue.cran = Number(m[1]);
-    else if ((m = /^\+\s*(?:(\d+)\s*)?mat[ée]ri(?:aux?|els?)(?![\p{L}\d])/iu.exec(reste))) materiaux += m[1] ? Number(m[1]) : 1;
-    else return null;
-    reste = reste.slice(m[0].length).replace(/^[\s,;]+/, '');
+  if (montants !== 1) return null;
+  if (!/^(?:aucun|aucune|rien)$/i.test(effet)) {
+    if ([TERMES_D_EFFET.ap, TERMES_D_EFFET.cran].some((r) => [...effet.matchAll(r)].length > 1)) return null;
+    const reste = Object.values(TERMES_D_EFFET).reduce((t, r) => t.replace(r, ' '), effet);
+    if (!/^[\s,;]*$/.test(reste)) return null;
   }
-  if (materiaux > 1 || (lue.cran !== null && lue.cran !== 1)) return null;
-  return { cout_ro: ro, cout_materiaux: materiaux ? 1 : null, bonus_ap: lue.ap, bonus_am: null, bonus_cran: lue.cran };
+  const a = analyserAmeliorationDeProtection('bouclier', cout, effet);
+  if (a.cout_ro === null || a.bonus_am !== null || (a.cout_materiaux ?? 0) > 1 || (a.bonus_cran !== null && a.bonus_cran !== 1)) return null;
+  return { cout_ro: a.cout_ro, cout_materiaux: a.cout_materiaux, bonus_ap: a.bonus_ap, bonus_am: null, bonus_cran: a.bonus_cran };
 }
 
 /**

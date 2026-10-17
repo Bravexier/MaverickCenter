@@ -496,9 +496,16 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   Les améliorations d'arme et d'armure gardent leur coût et leur effet écrits comme cases : leur écriture n'est pas celle du bouclier (« +N dégâts »,
   « +2 crans de solidité » au +10 d'une arme ; « +N AP/AM » d'une armure, une valeur pour l'AP et l'AM) ; chaque cible refuse les cases de l'autre.
 - **Lots notés avant** (journal du site de dev, lot figé, journal exporté) : un lot qui saisissait la défense ou le coût et l'effet d'une amélioration de
-  bouclier en texte se rejoue tel quel si ce texte se lit exactement dans les cases d'aujourd'hui (les valeurs notées avec lui sont celles-là) ; sinon son
-  lot passe en conflit avec un message qui dit quoi refaire (`serveur/edition-armures.mjs#ancienneEcritureDesArmures`, branché dans
-  `serveur/edition.mjs#rejouerLeJournal`, donc aussi dans la livraison, `db:appliquer-edition` et la mise à jour).
+  bouclier en texte (le service en tirait les cases, notées avec lui) n'est jamais rejoué vers une ligne dont le texte et les cases divergent : la ligne
+  telle qu'elle sera après la modification (celle des règles, les valeurs déjà notées par les lots du journal qui passent, puis les siennes) doit avoir un
+  texte qui se lit exactement en ses cases ; sinon (un mot de plus, un signe détaché que l'ancien service ne lisait pas, des cases notées qui ne sont pas
+  la lecture du texte…) son lot passe en conflit avec un message qui dit quoi refaire, et ne compte pas pour les lots suivants de la même ligne
+  (`serveur/edition-armures.mjs#ancienneEcritureDesArmures`, branché dans `serveur/edition.mjs#rejouerLeJournal`, donc aussi dans la livraison,
+  `db:appliquer-edition` et la mise à jour). « Exactement » : `defenseExacte`, `ameliorationDeBouclierExacte`, qui acceptent espaces, virgules et
+  points-virgules entre les termes (« +5AP, +6AM » se rejoue : rien n'y est perdu), refusent toute balise du glossaire, et tirent leurs valeurs des
+  lectures de l'ancien service (`statsDeProtection`, `analyserAmeliorationDeProtection`) : les deux lectures ne divergent jamais (testé).
+- **Choix Oui / Non** (coût en matériaux, cran) : une valeur de la base que la liste n'a pas (un « 2 ») garde son option dans la saisie
+  (`lib/edition-modele.mjs#optionsDuChoix`) : rien n'est envoyé tant qu'on n'y touche pas.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent (la liste des boucliers et celle des poids comprises) ; les
   cases des armures et des boucliers (nom, AP, AM, prix, poids au choix pour un bouclier), des formes, des poids, des améliorations (coût et effet écrits
   pour une armure, quatre cases pour un bouclier) et le coût de fabrication du bouclier (sous les formes) se modifient, les matériaux

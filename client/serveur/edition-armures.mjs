@@ -179,34 +179,54 @@ export const ameliorationsParCible = (desArmes, desArmures) => {
  * Les écritures des armures, des boucliers et des améliorations de bouclier notées avant la demande du propriétaire du 2026-10-17 (journal du site de
  * dev encore en attente quand la livraison arrive, lot figé, journal exporté) : la défense d'une armure ou d'un bouclier se saisissait en un texte
  * (`stats_brut`, `defense_brut`), le coût et l'effet d'une amélioration de bouclier aussi (`cout_brut`, `effet_brut`), et le service en tirait l'AP,
- * l'AM, le coût en RO, les matériaux et les crans, notés avec le texte. Une telle modification se rejoue telle quelle quand son texte se lit EXACTEMENT
- * dans les cases d'aujourd'hui (lib/armure-champs.mjs#defenseExacte, #ameliorationDeBouclierExacte : les valeurs notées avec lui sont celles-là) ; sinon
- * (un mot de plus, une AM ou plus d'un cran pour une amélioration de bouclier…), rien n'est rapproché : son lot passe en conflit avec un message qui dit
- * quoi refaire. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), fabriqué au début de chaque passe (base dans
- * l'état des règles) : le texte de l'autre case d'une amélioration (le coût quand seul l'effet est noté) est le dernier que le journal y a noté, sinon
- * celui des règles.
+ * l'AM, le coût en RO, les matériaux et les crans (lib/armure-champs.mjs#statsDeProtection, #analyserAmeliorationDeProtection), notés avec le texte.
+ * Règle : jamais un rejeu vers une ligne dont le texte et les cases divergent. Pour chaque modification qui touche le texte ou les cases d'une armure,
+ * d'un bouclier ou d'une amélioration de bouclier, la ligne telle qu'elle sera APRÈS elle (la ligne des règles, les valeurs que les modifications
+ * gardées du journal y ont déjà notées, puis les siennes) doit avoir un texte qui se lit EXACTEMENT en ses cases (lib/armure-champs.mjs#defenseExacte,
+ * #ameliorationDeBouclierExacte, qui tirent leurs valeurs des lectures de l'ancien service : « +5AP, +6AM » se rejoue, rien n'y est perdu) ; sinon
+ * (un mot de plus, un signe détaché que l'ancien service ne lisait pas, une AM ou plus d'un cran pour une amélioration de bouclier, des cases notées
+ * qui ne sont pas celles du texte…), rien n'est rapproché : son lot passe en conflit avec un message qui dit quoi refaire. Une modification d'un lot mis
+ * en conflit ici ne compte pas pour les suivantes (un lot indépendant sur la même ligne n'est pas emporté avec lui). Les lots notés depuis passent :
+ * le service écrit le texte et les cases ensemble. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), fabriqué
+ * au début de chaque passe (base dans l'état des règles, sans les lots que les passes précédentes ont mis en conflit).
  */
 export function ancienneEcritureDesArmures(db) {
   const DEFENSES = { armure: 'stats_brut', bouclier: 'defense_brut' };
-  const conflitDeDefense = (texte) => 'noté avant que l’AP et l’AM ne se saisissent chacun dans sa case (demande du propriétaire du 2026-10-17) : la défense '
-    + `« ${texte} » ne se lit pas seulement en AP et en AM ; à refaire sur le site de dev, dans les cases AP et AM`;
-  const conflitDAmelioration = (cout, effet) => 'noté avant que l’amélioration d’un bouclier ne se saisisse en quatre cases (demande du propriétaire du '
-    + `2026-10-17) : le coût « ${cout} » et l’effet « ${effet} » ne se lisent pas exactement en un coût en RO, au plus un matériau, un AP et au plus un `
-    + 'cran de solidité ; à refaire sur le site de dev, dans ces cases';
-  const textes = new Map(); // amélioration de bouclier (clé JSON) → { cout_brut, effet_brut } derniers notés
+  const CASES = ['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_am', 'bonus_cran'];
+  const dit = (v) => (v === null || v === undefined ? '—' : String(v));
+  const conflitDeDefense = (texte, lue, ligne) => 'noté avant que l’AP et l’AM ne se saisissent chacun dans sa case (demande du propriétaire du '
+    + `2026-10-17) : la défense « ${texte} » ${lue
+      ? `se lit AP ${dit(lue.ap)}, AM ${dit(lue.am)}, mais la ligne aurait AP ${dit(ligne.ap)}, AM ${dit(ligne.am)}`
+      : 'ne se lit pas seulement en AP et en AM'} ; à refaire sur le site de dev, dans les cases AP et AM`;
+  const conflitDAmelioration = (ligne, lue) => 'noté avant que l’amélioration d’un bouclier ne se saisisse en quatre cases (demande du propriétaire du '
+    + `2026-10-17) : le coût « ${ligne.cout_brut} » et l’effet « ${ligne.effet_brut} » ${lue
+      ? `se lisent ${CASES.map((c) => `${c} ${dit(lue[c])}`).join(', ')}, mais la ligne aurait ${CASES.map((c) => `${c} ${dit(ligne[c])}`).join(', ')}`
+      : 'ne se lisent pas exactement en un coût en RO, au plus un matériau, un AP et au plus un cran de solidité'} ; à refaire sur le site de dev, dans ces cases`;
+  const notees = new Map(); // ligne (« table\u0000clé ») → [{ lot, valeurs }] : les valeurs notées par les modifications déjà lues
+  const rejetes = new Set(); // lots mis en conflit par cet adaptateur : leurs valeurs ne comptent plus
+  const dejaNotees = (k) => Object.assign({}, ...(notees.get(k) ?? []).filter((n) => !rejetes.has(n.lot)).map((n) => n.valeurs));
   return (m) => {
-    if (m.operation === 'supprimer') return m;
+    const surveillees = DEFENSES[m.table_nom] ? [DEFENSES[m.table_nom], 'ap', 'am'] : m.table_nom === 'amelioration_equipement' ? [...TEXTES_D_AMELIORATION, ...CASES] : null;
+    if (!surveillees || m.operation === 'supprimer' || rejetes.has(m.lot_id)) return m;
     const apres = jsonOuNull(m.apres);
     if (!apres) return m;
-    const colonne = DEFENSES[m.table_nom];
-    if (colonne) return colonne in apres && !defenseExacte(apres[colonne]) ? { ...m, conflit: conflitDeDefense(apres[colonne]) } : m;
-    if (m.table_nom !== 'amelioration_equipement' || !TEXTES_D_AMELIORATION.some((c) => c in apres)) return m;
+    const k = `${m.table_nom}\u0000${m.cle}`;
     const cle = jsonOuNull(m.cle);
-    const regle = cle ? lireLigne(db, 'amelioration_equipement', cle) : null;
-    if ((apres.cible ?? regle?.cible) !== 'bouclier') return m;
-    const notes = Object.fromEntries(TEXTES_D_AMELIORATION.filter((c) => c in apres).map((c) => [c, apres[c]]));
-    const vus = { cout_brut: regle?.cout_brut, effet_brut: regle?.effet_brut, ...textes.get(m.cle), ...notes };
-    textes.set(m.cle, vus);
-    return ameliorationDeBouclierExacte(vus.cout_brut, vus.effet_brut) ? m : { ...m, conflit: conflitDAmelioration(vus.cout_brut, vus.effet_brut) };
+    const ligne = { ...(m.operation === 'modifier' && cle ? lireLigne(db, m.table_nom, cle) : null), ...dejaNotees(k), ...apres };
+    if (!notees.has(k)) notees.set(k, []);
+    notees.get(k).push({ lot: m.lot_id, valeurs: apres });
+    if (!surveillees.some((c) => c in apres) || (m.table_nom === 'amelioration_equipement' && ligne.cible !== 'bouclier')) return m;
+    let conflit = null;
+    if (DEFENSES[m.table_nom]) {
+      const texte = ligne[DEFENSES[m.table_nom]];
+      const lue = defenseExacte(texte);
+      if (!lue || lue.ap !== (ligne.ap ?? null) || lue.am !== (ligne.am ?? null)) conflit = conflitDeDefense(texte, lue, ligne);
+    } else {
+      const lue = ameliorationDeBouclierExacte(ligne.cout_brut, ligne.effet_brut);
+      if (!lue || CASES.some((c) => lue[c] !== (ligne[c] ?? null))) conflit = conflitDAmelioration(ligne, lue);
+    }
+    if (!conflit) return m;
+    rejetes.add(m.lot_id);
+    return { ...m, conflit };
   };
 }

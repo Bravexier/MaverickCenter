@@ -12,6 +12,7 @@
 // d'une armure, effets d'une armure élémentaire, gemmes et cibles d'un effet d'accessoire, ligne TOTAL des tableaux d'amélioration) sont des
 // `derivees`, jamais écrites par l'API ; la ligne TOTAL (`amelioration_total`, une par cible) est la dérivée des deux ressources d'amélioration, chacune
 // pour ses cibles.
+import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../armure-champs.mjs';
 
 /** La famille des armes de monstres (arme_famille.maitrisable = 0, décision R45) : ses armes ne se créent, ne se modifient ni ne se suppriment. */
 const ARMES_DE_MONSTRES = ['arme-de-monstres'];
@@ -20,7 +21,7 @@ const ARMES_DE_MONSTRES = ['arme-de-monstres'];
  * Les quatre cases d'une amélioration de bouclier (coût en RO, coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17), figées pour une
  * amélioration d'une autre cible : le service les tire de son coût et de son effet écrits, seuls saisis (serveur/edition-armes.mjs, edition-armures.mjs).
  */
-const casesDuBouclierFigees = (de) => Object.fromEntries(['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran']
+const casesDuBouclierFigees = (de) => Object.fromEntries(CASES_D_AMELIORATION_DE_BOUCLIER
   .map((c) => [c, `tirée du coût et de l’effet écrits d’une amélioration ${de} ; ne se saisit que pour un bouclier`]));
 
 export const RESSOURCES = [

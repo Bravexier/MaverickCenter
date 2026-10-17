@@ -10,6 +10,7 @@
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
 import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
+import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
 import { ONGLETS_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -68,7 +69,7 @@ const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colon
  * Les colonnes d'une amélioration que le site de dev modifie, selon sa cible : le coût et l'effet écrits d'une amélioration d'arme ou d'armure, les quatre
  * cases d'une amélioration de bouclier (demande du propriétaire, 2026-10-17 : son coût et son effet écrits en sont refaits, ils ne sont pas listés).
  */
-const CASES_D_AMELIORATION = { bouclier: ['cout_ro', 'cout_materiaux', 'bonus_ap', 'bonus_cran'], autre: ['cout_brut', 'effet_brut'] };
+const CASES_D_AMELIORATION = { bouclier: CASES_D_AMELIORATION_DE_BOUCLIER, autre: ['cout_brut', 'effet_brut'] };
 const colonnesDAmelioration = (cible) => colonnesDe('amelioration_equipement').filter((c) => CASES_D_AMELIORATION[cible === 'bouclier' ? 'bouclier' : 'autre'].includes(c.colonne));
 /** Une case Oui / Non dont « Non » est NULL (lib/edition-modele.mjs#OUI_SEUL : coût en matériaux, cran d'une amélioration de bouclier). */
 const ouiNon = (v) => (v === null || v === undefined || v === '' ? 'Non' : Number(v) === 1 ? 'Oui' : v);

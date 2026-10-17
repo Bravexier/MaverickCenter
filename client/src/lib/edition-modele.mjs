@@ -933,6 +933,20 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
   return texte;
 }
 
+/**
+ * Les options de la liste d'un champ « choix » dans le mode modification (src/scripts/edition/editeur.mjs) : l'option vide d'un champ non requis (« — »,
+ * ou son `libelleVide` : « Non » d'une case Oui / Non dont « Non » est NULL, OUI_SEUL), les `choix`, puis la valeur de la base (`valeur`) si la liste ne
+ * l'a pas — le « 2 » d'un coût en matériaux qu'un ancien lot aurait écrit, une liste du service pas encore à jour —, telle quelle : la saisie la montre,
+ * et tant que personne n'y touche elle garde sa valeur et rien n'est envoyé (une liste sans elle la remettrait à vide au premier « Enregistrer »).
+ * @returns {{ valeur: string, libelle: string }[]}
+ */
+export function optionsDuChoix(champ, choix, valeur) {
+  const options = [...(champ.requis ? [] : [{ valeur: '', libelle: champ.libelleVide ?? '—' }]), ...choix.map((c) => ({ valeur: String(c.valeur), libelle: c.libelle }))];
+  const actuelle = valeur === null || valeur === undefined ? '' : String(valeur);
+  if (actuelle !== '' && !options.some((o) => o.valeur === actuelle)) options.push({ valeur: actuelle, libelle: actuelle });
+  return options;
+}
+
 /** Les colonnes d'image d'une table du modèle (portrait). */
 export const colonnesImage = (table) => Object.entries(TABLES[table]?.colonnes ?? {}).filter(([, c]) => c.type === 'image').map(([nom]) => nom);
 
