@@ -51,8 +51,8 @@ const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => REN
     </label>
     <button type="reset">Tout afficher</button>
   </form>
-  <div class="metiers-wrap">
-    <table class="metiers-table">
+  <div class="metiers-wrap tableau tableau--defile">
+    <table class="metiers-table table-donnees">
       <thead>
         <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
       </thead>

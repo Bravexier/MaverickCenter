@@ -22,7 +22,7 @@ const c = present ? chargerComposants(ouvrirBase({ sansExemples: process.env.HID
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
 test('les tableaux, dans l’ordre : monnaie, matériaux, gemmes, bois, fruits, ingrédients, équipement', options, () => {
-  const ids = [...main.matchAll(/<details class="comp-tableau" id="([^"]+)"/g)].map((m) => m[1]);
+  const ids = [...main.matchAll(/<details class="tableau comp-tableau" id="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, ['monnaie', 'materiaux', 'gemmes', 'bois', 'fruits', 'ingredients-solvant', 'ingredients-essence', 'ingredients-amplificateur',
     'ingredients-catalyseur', 'ingredients-stabilisateur', 'objets-vegetaux', 'objets-animaux', 'objets-autres', 'objets-matos-aventures',
     'objets-matos-fabrication', 'objets-matos-projectile']);
@@ -69,7 +69,7 @@ test('les monnaies en icônes dans les tables (décision R61) : plus d’abrévi
 
 test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », qui a quitté la page « Équipement »), en lecture', options, () => {
   // demande du propriétaire, 2026-10-16 : ce tableau des armures et des boucliers « devrait disparaître et être mélangé au tableau des matériaux des Composants »
-  const t = main.slice(main.indexOf('<details class="comp-tableau" id="materiaux"'), main.indexOf('<details class="comp-tableau" id="gemmes"'));
+  const t = main.slice(main.indexOf('<details class="tableau comp-tableau" id="materiaux"'), main.indexOf('<details class="tableau comp-tableau" id="gemmes"'));
   const entetes = [...t.slice(t.indexOf('<thead>'), t.indexOf('</thead>')).matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes, ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour']);
   // chaque matériau d'armure ou de bouclier a sa recette (l'Os, de la page des armes, n'en a pas)

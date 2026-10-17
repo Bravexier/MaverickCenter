@@ -2,13 +2,17 @@
    tableaux de sorts, aéré (« l'affichage est trop serré »), les effets supplémentaires d'une arme sur une seconde ligne ; à côté, toujours affiché et
    de la largeur de celui des armures (styles/armures/armures.css), le panneau de l'arme : sa fiche dans un seul cadre réduit, le détail des tuiles en
    infobulle, puis les matériaux (lignes dans la couleur du matériau) et les améliorations côte à côte (panneau qui suit le défilement ; arrivée au bout
-   de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Mode modification
+   de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Les tableaux suivent
+   le gabarit commun (styles/global/tableaux.css : cadre, titre repliable, en-têtes ; les familles aérées, ceux du panneau serrés). Mode modification
    du site de dev (body.ed-mode) : pas de fiche, tout le contenu à la suite, colonnes `ed-seul` visibles. */
 main:has(.armes) { max-width: 120rem; }
 .armes {
   --arm: var(--accent);
   --arm-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --arm-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--arm);
+  --tab-soft: var(--arm-soft);
+  --tab-line: var(--arm-line);
   /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » */
   --depart: #3c78d8;
   --depart-fond: color-mix(in srgb, var(--depart) 16%, var(--surface));
@@ -78,24 +82,9 @@ html.js .armes-outils__boutons { display: flex; }
 .armes-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armes-cote__fermer:hover { border-color: var(--arm); }
 
-/* Une famille (repliable) */
-.armes-famille { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
-.armes-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.55rem 0.9rem; cursor: pointer; list-style: none; }
-.armes-famille__titre::-webkit-details-marker { display: none; }
-.armes-famille__titre::before { content: '▸'; color: var(--arm); transition: transform var(--duree); }
-.armes-famille[open] > .armes-famille__titre::before { transform: rotate(90deg); }
-.armes-famille__nom { font-weight: 700; font-size: var(--fs-xl); letter-spacing: 0.02em; }
+/* Une famille (repliable : le gabarit commun) : le dé de la famille à côté de son nom */
 .armes-famille__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
-.armes-famille__compte { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
-.armes-famille__note { margin: -0.2rem 0.9rem 0.5rem; font-size: var(--fs-md); color: var(--muted); }
-.armes-famille[open] > .armes-famille__titre { border-bottom: 1px solid var(--arm-line); }
-.armes-famille[open] > .armes-famille__note { margin-top: 0.45rem; }
 
-/* Tableaux (inspirés des tableaux de sorts : styles/magie/sorts.css) */
-.armes-wrap { overflow-x: auto; }
-.armes-table { line-height: 1.5; }
-.armes-table thead th { padding: 0.6rem 0.85rem; }
-.armes-table tbody > tr > * { padding: 0.7rem 0.85rem; }
 /* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
 .armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
 .armes-table tbody > tr.arme-suite:has(> .arme__effets > .vide:only-child) { display: none; }
@@ -143,15 +132,13 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 /* Types de dégâts */
 .arme-dgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
 
-/* Les tableaux du panneau (matériaux, améliorations) : des lignes basses (« réduire la hauteur des lignes des matériaux ») */
-.armes-cote .armes-table tbody > tr > * { padding: 0.3rem 0.6rem; vertical-align: middle; }
-.armes-cote .armes-table thead th { padding: 0.45rem 0.6rem; }
+/* Les tableaux du panneau (matériaux, améliorations) : des lignes basses, serrées (« réduire la hauteur des lignes des matériaux ») */
+.armes-cote .armes-table tbody > tr > * { vertical-align: middle; }
 /* Matériaux : toute la ligne dans la couleur du matériau (comme l'onglet du classeur), ses effets sur une seule ligne, séparés par « | », le bonus aux
    dégâts sans le mot « Dégâts » (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau et les effets
    devraient être sur la même ligne. (exemple : +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière.) ») ; la ligne choisie : un double
    filet (accent puis fond) tout autour, et une coche après son nom */
-.materiau > * { background: var(--mat); color: var(--mat-texte); }
-.armes-table tbody > tr.materiau + tr.materiau > * { border-top-color: color-mix(in srgb, var(--mat-texte) 22%, var(--mat)); }
+.materiau { --ligne-fond: var(--mat); --ligne-texte: var(--mat-texte); }
 .materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .materiau-effet { display: inline; }
@@ -159,7 +146,6 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .materiau-effet__bonus { font-weight: 700; }
 .materiau-effet__mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .materiau-effet__rien { opacity: 0.7; }
-html.js .materiau:hover > * { background-image: linear-gradient(color-mix(in srgb, var(--mat-texte) 12%, transparent), color-mix(in srgb, var(--mat-texte) 12%, transparent)); }
 .materiau.est-choisie > * { box-shadow: inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface), inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
@@ -235,5 +221,4 @@ body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-sa
   .armes-outils__boutons, .armes-filtre, .arme-fiche { display: none !important; }
   .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
   .armes-cote { display: grid !important; position: static !important; max-height: none !important; }
-  .armes-wrap { overflow: visible; }
 }

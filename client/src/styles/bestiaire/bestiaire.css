@@ -9,6 +9,9 @@ main:has(> .bestiaire) { max-width: 120rem; }
   --bes: var(--accent);
   --bes-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --bes-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--bes);
+  --tab-soft: var(--bes-soft);
+  --tab-line: var(--bes-line);
   margin: 1rem 0 2rem;
 }
 .bestiaire .js-seul { display: none; }
@@ -50,11 +53,11 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .bregles__general li + li { margin-top: 0.2rem; }
 .bregles__intitule { margin: 0; font-weight: 600; }
 .bregles__titre { margin: 0.4rem 0 0; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
-.bregles__defile { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.bregles__defile { max-width: 100%; }
 .bregles__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
-.bregles__table { border-collapse: collapse; font-size: var(--fs-md); width: 100%; }
-.bregles__table th, .bregles__table td { padding: 0.3rem 0.55rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-.bregles__table thead th { background: var(--bes-soft); font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); text-transform: uppercase; color: var(--muted); }
+/* le tableau des échelles : le gabarit commun, serré ; une ligne sur deux teintée, les nombres à droite */
+.bregles__table { font-size: var(--fs-md); }
+.bregles__table th, .bregles__table td { white-space: nowrap; }
 .bregles__table thead .bcat { text-transform: none; letter-spacing: 0; }
 .bregles__table td.nombre, .bregles__table th.nombre { text-align: right; }
 .bregles__table tbody tr:nth-child(even) > * { background: color-mix(in srgb, var(--bes-soft) 50%, var(--surface)); }
@@ -173,7 +176,7 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .btableau__aide { margin: 0 0 0.5rem; font-size: var(--fs-md); }
 .btableau__vide { margin: 0.8rem 0; color: var(--muted); }
 .btableau__vide[hidden] { display: none; }
-.btableau__defile { overflow: auto; max-height: calc(100vh - 7rem); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.btableau__defile { overflow: auto; max-height: calc(100vh - 7rem); }
 .btableau__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
 /* Barres de défilement toujours visibles, dans les couleurs du bestiaire (le cadre d'un tableau, la carte) : une barre stylée en ::-webkit-scrollbar
    n'est jamais en surimpression (Chromium, Edge, Safari) ; Firefox prend les propriétés standard. Chromium (121 et plus) ignore les pseudo-éléments dès
@@ -193,9 +196,9 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
   #monstres .bvue > .btableau__defile { max-height: calc(100vh - 1.5rem); max-height: calc(100dvh - 1.5rem); }
 }
 #monstres .bvue { scroll-margin-top: 0.75rem; }
-.btable { border-collapse: separate; border-spacing: 0; font-size: var(--fs-md); width: 100%; }
-.btable thead th { position: sticky; top: 0; z-index: 3; text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600;
-  color: var(--muted); padding: 0.5rem 0.55rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-bottom: 1px solid var(--bes-line); white-space: nowrap; }
+/* le gabarit commun des tableaux (styles/global/tableaux.css), serré ; ici, l'en-tête et la première colonne fixes (bordures séparées) */
+.btable { border-collapse: separate; border-spacing: 0; font-size: var(--fs-md); }
+.btable thead th { position: sticky; top: 0; z-index: 3; }
 .btable thead th:first-child { left: 0; z-index: 4; }
 .btable thead th.carac { background: var(--c); color: var(--c-texte); text-align: center; }
 .btri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }

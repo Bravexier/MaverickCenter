@@ -36,7 +36,7 @@ test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son pa
 });
 
 test('un tableau repliable par famille, sans les armes de monstres ; une ligne par arme, dans l’ordre de l’onglet', options, () => {
-  const familles = [...main.matchAll(/<details class="armes-famille" id="famille-([^"]+)" open/g)].map((m) => m[1]);
+  const familles = [...main.matchAll(/<details class="tableau armes-famille" id="famille-([^"]+)" open/g)].map((m) => m[1]);
   assert.deepEqual(familles, armes.familles.map((f) => f.id));
   assert.ok(!familles.includes('arme-de-monstres'));
   const lignes = [...main.matchAll(/<tr class="arme(?: arme--depart)?" id="([^"]+)" data-arme=/g)].map((m) => m[1]);
@@ -125,8 +125,8 @@ test('panneau de règles (migration 0056) : son titre, ses blocs dans l’ordre 
 test('à côté des tableaux, toujours affiché : la fiche (un seul cadre, vide au départ, remplie par le script), puis les matériaux et les améliorations côte à côte', options, () => {
   const cote = main.slice(main.indexOf('<aside class="armes-cote"'), main.indexOf('</aside>'));
   // « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure » (demande du propriétaire, 2026-10-16) : la fiche n'est plus cachée
-  assert.match(cote, /^<aside class="armes-cote"[^>]*>\s*<section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite">\s*<p class="arme-fiche__vide">Choisissez une arme[^<]+<\/p>\s*<\/section>\s*<div class="armes-cote__tables">\s*<details class="armes-famille armes-materiaux"/);
-  assert.match(cote, /<\/details>\s*<details class="armes-famille armes-ameliorations"/);
+  assert.match(cote, /^<aside class="armes-cote"[^>]*>\s*<section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite">\s*<p class="arme-fiche__vide">Choisissez une arme[^<]+<\/p>\s*<\/section>\s*<div class="armes-cote__tables">\s*<details class="tableau armes-famille armes-materiaux"/);
+  assert.match(cote, /<\/details>\s*<details class="tableau armes-famille armes-ameliorations"/);
   assert.ok(!cote.includes('arme-resume') && !cote.includes('armes-cote__haut'), 'plus de second cadre');
   // les infobulles des tuiles de la fiche : écrites par le script hors du panneau, qui défile
   assert.match(main, /<\/aside>\s*<\/div>\s*<div class="armes-bulles" data-armes-bulles><\/div>/);

@@ -12,7 +12,7 @@
   font-size: var(--fs-md);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .tableau-magies__col-nom { width: 9.5rem; }

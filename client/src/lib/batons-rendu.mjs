@@ -106,7 +106,7 @@ export function couleursDesBatons(magie) {
  */
 export function htmlDeLigneDeBatons(m, niveaux, adresseDesComposants) {
   const { fond, texte } = couleursDesBatons(m.magie);
-  return `<tr class="baton" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}" style="--baton-fond: ${e(fond)}; --baton-texte: ${e(texte)}; --mag: ${e(couleurDeMagie(m.magie.nom))}">`
+  return `<tr class="baton ligne-couleur" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}" style="--baton-fond: ${e(fond)}; --baton-texte: ${e(texte)}; --mag: ${e(couleurDeMagie(m.magie.nom))}">`
     + `<th scope="row" class="baton__gemme"><span class="baton__magie">${e(m.magie.nom)} : </span>${htmlDeGemme(m, niveaux, adresseDesComposants)}</th>`
     + `<td class="baton__bois">${htmlDeBois(m, adresseDesComposants)}</td>`
     + `<td class="baton__niveau">${htmlDuNiveau(m, niveaux)}</td>`

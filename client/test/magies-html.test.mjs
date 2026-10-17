@@ -196,7 +196,7 @@ test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du t
     const infos = [...html.matchAll(/class="info"/g)].length;
     assert.equal(infos, 1, `${slug} : une pastille « i »`);
     const npm5 = html.slice(html.indexOf('id="npm-5"'));
-    assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap"'), `${slug} : la pastille est dans le titre du tableau 5`);
+    assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap'), `${slug} : la pastille est dans le titre du tableau 5`);
     // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
     assert.ok(npm5.indexOf('class="npm__nom"') < npm5.indexOf('class="info"') && npm5.indexOf('class="info"') < npm5.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
     // dans le même bloc que le texte : sur un téléphone étroit, le « i » passe à la ligne avec lui, jamais seul sous le badge

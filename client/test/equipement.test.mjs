@@ -146,7 +146,7 @@ test('bâtons : rendu d’une ligne (couleur de la magie dans le classeur, sans 
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
   const { fond, texte } = couleursDesBatons(m.magie);
-  assert.ok(html.startsWith(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`),
+  assert.ok(html.startsWith(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`),
     'la ligne sur la couleur de sa magie (lib/ceinture-couleurs.mjs), au niveau 1 ; ses infobulles dans la couleur de la magie sur le site');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');

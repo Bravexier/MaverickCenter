@@ -1,12 +1,16 @@
 /* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : l'onglet Accessoires de la page /ressources/equipement/, générateur d'accessoire. Les tableaux
    des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
    sous les tableaux). Les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau (--niv, posé par le gabarit ou le script),
-   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). */
+   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). Blocs et tableaux : le gabarit commun
+   (styles/global/tableaux.css : cadre, titre, en-têtes) ; ici, ce qui leur est propre. */
 main:has(.acc) { max-width: 120rem; }
 .acc {
   --acc: var(--accent);
   --acc-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --acc-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--acc);
+  --tab-soft: var(--acc-soft);
+  --tab-line: var(--acc-line);
   --sur-niveau: #171210;
   --sur-niveau-doux: rgb(23 18 16 / 0.68);
   --maudit: #8e44ad;
@@ -38,15 +42,12 @@ html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-hei
 .acc-etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.9rem; align-items: start; }
 
 /* Un bloc (une étape) et une famille d'effets (repliable) */
-.acc-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
-.acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; min-width: 0; }
-.acc-bloc__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding: 0.55rem 0.9rem; font-size: var(--fs-xl); border-bottom: 1px solid var(--acc-line); }
+.acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; }
 .acc-bloc__etape { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
 .acc-bloc__de, .acc-famille__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--acc); color: var(--surface); }
 .acc-bloc__niveaux { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-left: auto; }
 .acc-niveau-pastille { font-size: var(--fs-xxs); font-weight: 600; padding: 0.05rem 0.5rem; border-radius: var(--radius-sm); background: var(--niv); color: var(--sur-niveau); }
-.acc-bloc__note { margin: 0.5rem 0.9rem 0; font-size: var(--fs-md); color: var(--muted); }
-.acc-bloc > .acc-table { margin-top: 0.4rem; }
+.acc-bloc__note { margin-bottom: 0.4rem; }
 /* Les tableaux d'effets, un onglet par propriété (components/Onglets.astro : sans JavaScript, les tableaux se suivent ; sous html.js, seul l'onglet
    ouvert s'affiche, et son titre, que l'onglet répète, se cache) */
 .acc-effets { display: grid; gap: 0.7rem; margin: 0 0.8rem; min-width: 0; }
@@ -61,22 +62,11 @@ html.js .acc-onglets .onglet.is-active .onglet__detail { color: inherit; opacity
 html.js .acc-onglets .onglet:not(.is-active):hover { background: var(--acc-soft); }
 .acc-onglets .onglet:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 html.js .acc-famille:not(.is-active) { display: none; }
-.acc-famille { border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; background: var(--surface); }
-.acc-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.5rem 0.85rem; font-size: var(--fs-lg);
-  border-bottom: 1px solid var(--acc-line); }
 html.js .acc-famille__titre { display: none; }
-.acc-famille__nom { font-weight: 700; }
 .acc-famille__nom::first-letter { text-transform: uppercase; }
-.acc-famille__note { margin: 0.45rem 0.85rem 0; font-size: var(--fs-md); color: var(--muted); }
-html.js .acc-famille__note:last-of-type { margin-bottom: 0.45rem; }
 
-/* Tableaux */
-.acc-wrap { overflow-x: auto; }
-.acc-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
-.acc-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted);
-  padding: 0.4rem 0.65rem; background: var(--acc-soft); border-bottom: 1px solid var(--acc-line); white-space: nowrap; vertical-align: middle; }
-.acc-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.acc-table tbody > tr > * { padding: 0.45rem 0.65rem; vertical-align: top; text-align: left; }
+/* Tableaux (gabarit commun) : l'en-tête centré sur la hauteur du dé */
+.acc-table thead th { vertical-align: middle; }
 .acc-jet { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); width: 1%; }
 .acc-effet__niveau, .acc-effet__prix { white-space: nowrap; }
 .acc-effet__libelle { min-width: 14rem; }

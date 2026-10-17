@@ -176,8 +176,8 @@ const nav = [
             {race.tableau.titre || !race.dons.some((d) => d.forme === 'unique') ? (
               <h3 data-ed={edOnglet('dons_tableau_titre')} data-ed-cadre hidden={!race.tableau.titre}>{race.tableau.titre}</h3>
             ) : null}
-            <div class="race-tableau__defile">
-              <table class="race-table">
+            <div class="race-tableau__defile tableau tableau--defile">
+              <table class="race-table table-donnees">
                 <thead>
                   <tr>{race.tableau.colonnes.map((c, i) => <th scope="col" data-ed={attributEd('race_don_tableau_colonne', { race_id: race.id, rang: race.tableau!.rangsColonnes[i] }, 'libelle')}>{c}</th>)}</tr>
                 </thead>

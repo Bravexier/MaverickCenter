@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
-import { ancreDObjet, couleursDeLaLigne } from '../src/lib/ceinture-rendu.mjs';
+import { ancreDObjet, ancreDePotions, couleursDeLaLigne } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -60,12 +60,37 @@ test('plus de recherche : ni champ, ni « Tout déplier », ni script de la cein
 
 test('les tableaux, dans leur sous-onglet et dans l’ordre : fioles, remèdes, philtres, huiles, alchimie primitive ; carquois et sacs', options, () => {
   for (const o of SOUS_ONGLETS_DE_LA_CEINTURE.filter((x) => x.id !== ONGLET_DES_BATONS)) {
-    const ids = [...panneau(o.id).matchAll(/<details class="ceint-tableau" id="([^"]+)" open>/g)].map((m) => m[1]);
+    const ids = [...panneau(o.id).matchAll(/<details class="tableau ceint-tableau" id="([^"]+)" open>/g)].map((m) => m[1]);
     assert.deepEqual(ids, FAMILLES_DE_LA_CEINTURE.filter((f) => f.onglet === o.id).map((f) => `objets-${f.famille}`), o.id);
   }
   assert.deepEqual([...panneau('ceinture-consommables').matchAll(/<nav class="ceinture-sommaire"[^>]*>([\s\S]*?)<\/nav>/g)].flatMap((m) => [...m[1].matchAll(/href="#([^"]+)"/g)].map((x) => x[1])),
     FAMILLES_DE_LA_CEINTURE.filter((f) => f.onglet === 'ceinture-consommables').map((f) => `objets-${f.famille}`), 'le sommaire des consommables');
-  assert.ok(!panneau(ONGLET_DES_BATONS).includes('class="ceint-tableau"'), 'les bâtons ont leur tableau (lib/batons-rendu.mjs)');
+  assert.ok(!panneau(ONGLET_DES_BATONS).includes('ceint-tableau'), 'les bâtons ont leur tableau (lib/batons-rendu.mjs)');
+});
+
+test('consommables : un tableau par page de potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17), sur le gabarit commun', options, () => {
+  // « Les tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »
+  for (const t of objets.tableaux.filter((x) => x.pages)) {
+    const debut = onglet.indexOf(`<details class="tableau ceint-tableau" id="objets-${t.famille}" open>`);
+    const groupe = onglet.slice(debut, onglet.indexOf('</details>', debut));
+    assert.ok(debut > 0, `${t.famille} : son groupe repliable`);
+    assert.ok(groupe.includes(`<div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby="objets-${t.famille}-titre">`), `${t.famille} : côte à côte`);
+    const cadres = [...groupe.matchAll(/<section class="tableau ceint-groupe" id="([^"]+)" aria-labelledby="([^"]+)">/g)];
+    assert.deepEqual(cadres.map((m) => m[1]), t.pages.map((x) => ancreDePotions(x.id)), `${t.famille} : un tableau par page, dans l’ordre`);
+    for (const [, id, titre] of cadres) assert.equal(titre, `${id}-titre`);
+    for (const x of t.pages) {
+      const id = ancreDePotions(x.id);
+      const cadre = groupe.slice(groupe.indexOf(`id="${id}"`), groupe.indexOf('</section>', groupe.indexOf(`id="${id}"`)));
+      // son titre (un lien vers la page de la potion), le nombre de ses paliers, puis la table du gabarit, ses quatre colonnes, ses lignes
+      assert.match(cadre, new RegExp(`<h4 class="tableau__titre ceint-groupe__titre"><a class="tableau__nom ceint-groupe__nom" id="${id}-titre" href="/${x.id}/">`), id);
+      assert.ok(cadre.includes(`<span class="tableau__compte ceint-groupe__compte">${x.potions.length} palier${x.potions.length > 1 ? 's' : ''}</span>`), id);
+      assert.ok(cadre.includes(`<table class="table-donnees ceint-table ceint-table--potions" aria-labelledby="${id}-titre"><thead><tr><th scope="col">Nom</th><th scope="col">Niveau</th><th scope="col">Prix</th><th scope="col">Effet</th></tr></thead>`), id);
+      assert.deepEqual([...cadre.matchAll(/<tr class="ceint-ligne[^"]*" id="([^"]+)"/g)].map((m) => m[1]), x.potions.map((q) => ancreDObjet(q.id)), id);
+    }
+  }
+  // deux ou trois par rangée : la largeur minimale d'un tableau, dans la feuille de l'onglet (une grille « auto-fit » du gabarit)
+  assert.match(html, /\.ceint-potions \{ --tableau-largeur: 30rem;/);
+  assert.ok(!onglet.includes('ceint-groupe__resume') && !onglet.includes('scope="rowgroup"'), 'plus de groupes dans un seul tableau');
 });
 
 test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le compte de chaque tableau et de chaque sous-onglet', options, () => {
@@ -80,7 +105,7 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
     // le compte du tableau, dans son <summary> (pas celui d'un tableau suivant)
     const debut = onglet.indexOf(`id="objets-${t.famille}"`);
     const resume = onglet.slice(debut, onglet.indexOf('</summary>', debut));
-    assert.match(resume, new RegExp(`<span class="ceint-tableau__compte">${t.nombre} objets?</span>$`), `${t.famille} : ${t.nombre} objets`);
+    assert.match(resume, new RegExp(`<span class="tableau__compte ceint-tableau__compte">${t.nombre} objets?</span>$`), `${t.famille} : ${t.nombre} objets`);
   }
   // le détail de chaque sous-onglet : le nombre de tableaux (s'il y en a plusieurs) et d'objets ; celui des bâtons, les magies et les bâtons
   const batons = chargerBatons(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
@@ -98,12 +123,12 @@ test('chaque potion sur la couleur de son palier dans le Doc « Alchimie » ; le
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages.flatMap((x) => x.potions))) {
     const c = couleursDeLaLigne(p.couleur);
     const debut = c
-      ? `<tr class="ceint-ligne ceint-ligne--couleur" id="${ancreDObjet(p.id)}" style="--ceint-fond: ${c.fond}; --ceint-texte: ${c.texte}">`
+      ? `<tr class="ceint-ligne ligne-couleur" id="${ancreDObjet(p.id)}" style="--ligne-fond: ${c.fond}; --ligne-texte: ${c.texte}">`
       : `<tr class="ceint-ligne" id="${ancreDObjet(p.id)}">`;
     assert.ok(onglet.includes(debut), p.id);
   }
   assert.ok(objets.tableaux.flatMap((t) => t.pages ?? []).flatMap((x) => x.potions).filter((p) => p.couleur).length > 150, 'presque toutes colorées');
-  assert.ok(!panneau('ceinture-carquois').includes('ceint-ligne--couleur'), 'le classeur ne colore pas les carquois');
+  assert.ok(!panneau('ceinture-carquois').includes('ligne-couleur'), 'le classeur ne colore pas les carquois');
 });
 
 test('les liens mènent à des pages construites et à des ancres qui existent (potions, Composants, Équipement, guide)', options, () => {

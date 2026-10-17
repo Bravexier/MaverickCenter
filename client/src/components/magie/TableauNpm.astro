@@ -36,8 +36,8 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
       {[1, 2, 3, 4, 5].map((n) => <i class={n <= niveau ? 'on' : ''} />)}
     </span>
   </Titre>
-  <div class="sorts-wrap">
-    <table class="sorts">
+  <div class="sorts-wrap tableau tableau--defile">
+    <table class="sorts table-donnees">
       <thead>
         <tr>{COLONNES.map((c) => <th scope="col">{c}</th>)}</tr>
       </thead>

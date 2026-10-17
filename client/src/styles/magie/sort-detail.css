@@ -14,8 +14,4 @@ html.js .sort-detail__fermer { display: inline-block; }
 .sort-detail__bloc > .texte, .sort-detail__bloc > .incantation { margin-top: 0.35rem; margin-bottom: 0; }
 .incantation { margin: 0.2rem 0 0; padding: 0.3rem 1rem; border-left: 3px solid var(--mag-line); font-style: italic; }
 .incantation .texte { margin: 0; }
-.annexe { border-collapse: collapse; width: 100%; font-size: var(--fs-lg); }
-.annexe caption { text-align: left; padding: 0.4rem 0.6rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-large); color: var(--muted); }
-.annexe th, .annexe td { text-align: left; vertical-align: top; padding: 0.35rem 0.7rem; border-top: 1px solid var(--border); }
-.annexe thead th { background: var(--mag-soft); font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .annexe ul { margin: 0; padding-left: 1.1rem; }

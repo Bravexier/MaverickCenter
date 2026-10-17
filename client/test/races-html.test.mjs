@@ -68,7 +68,7 @@ test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses
   assert.equal((voit.match(/class="regards__bloc"/g) ?? []).length, 2);
   assert.match(voit, /<h4>Elfe Noir Charbon<\/h4>/);
   assert.match(voit, /<h4>Elfe Noir Salé<\/h4>/);
-  assert.match(html, /class="race-table regards__matrice"/);
+  assert.match(html, /class="race-table regards__matrice table-donnees"/);
   assert.match(page('farfadet'), /n’a pas de peuple dans l’onglet « Relation entre les races »/);
   for (const { slug, html: h } of pages) {
     const niveaux = [...h.matchAll(/class="regard__niveau">([^<]+)</g)].map((m) => m[1]);

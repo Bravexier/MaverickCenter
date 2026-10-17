@@ -1,4 +1,4 @@
-/* Tableaux de sorts et marqueurs de maîtrise */
+/* Tableaux de sorts (le gabarit commun : styles/global/tableaux.css, dans la couleur de la magie) et marqueurs de maîtrise */
 .npm { margin: 1.4rem 0 2rem; scroll-margin-top: 1rem; }
 .sort { scroll-margin-top: 1rem; }
 .npm__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.6rem; font-size: 1.1rem; }
@@ -8,11 +8,6 @@
 .npm__pips { display: inline-flex; gap: 0.2rem; margin-left: auto; }
 .npm__pips i { width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1px solid var(--mag-line); background: transparent; }
 .npm__pips i.on { background: var(--mag); border-color: var(--mag); }
-.sorts-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.sorts { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
-.sorts thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--mag-soft); border-bottom: 1px solid var(--mag-line); white-space: nowrap; }
-.sorts tbody.sort + tbody.sort > tr:first-child > * { border-top: 1px solid var(--border); }
-.sort__main > * { padding: 0.55rem 0.75rem; vertical-align: top; }
 .sort__main { cursor: pointer; }
 .sort__main:hover { background: var(--mag-soft); }
 .sort.is-selected > .sort__main { background: var(--mag-soft); box-shadow: inset 4px 0 0 var(--mag); }

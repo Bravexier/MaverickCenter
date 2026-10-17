@@ -6,7 +6,9 @@ import type { chargerBatons } from '../../lib/batons-db.mjs';
 import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 import { ONGLET_DES_BATONS } from '../../lib/ceinture-db.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../../lib/equipement.mjs';
-import { htmlDEnteteDeGroupe, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
+import Tableau from '../Tableau.astro';
+import { ancreDePotions, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
+import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { url } from '../../lib/wiki';
 
@@ -19,13 +21,15 @@ import { url } from '../../lib/wiki';
 // v_objet_ceinture, décisions R81 et R82). En tête, les règles de la ceinture, repliées comme celles des autres onglets (section « La ceinture » du
 // chapitre « L'équipement » du guide, et en dépliable le texte de la source : section « Ceinture » de la page de référence, dont la liste est « non
 // exhaustive ») ; puis trois sous-onglets (components/Onglets.astro, posé une fois par la page ; lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE),
-// chacun un panneau `section.ceinture-panneau` : Consommables (les tableaux repliables des fioles, remèdes, philtres, huiles et de l'alchimie primitive,
-// dans cet ordre ; un groupe par page de potion, son titre en lien vers elle ; chaque potion sur la couleur de son palier dans le Doc « Alchimie »,
-// lib/ceinture-couleurs.mjs), Carquois (les carquois et sacs, liens vers leur ligne de « Composants », où ils se modifient) et Bâtons magiques
+// chacun un panneau `section.ceinture-panneau` : Consommables (les groupes repliables des fioles, remèdes, philtres, huiles et de l'alchimie primitive,
+// dans cet ordre ; dans chacun, un tableau par page de potion, deux ou trois côte à côte selon la largeur (demande du propriétaire, 2026-10-17 : « Les
+// tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), son titre en lien vers la page ; chaque potion sur la
+// couleur de son palier dans le Doc « Alchimie », lib/ceinture-couleurs.mjs), Carquois (les carquois et sacs, liens vers leur ligne de « Composants »,
+// où ils se modifient) et Bâtons magiques
 // (BatonsMagiques.astro, en tête son panneau de règles : components/equipement/PanneauDeRegles.astro). Plus de recherche (demande du propriétaire) :
 // pas de script de l'onglet, sauf le curseur des bâtons (src/scripts/batons.mjs). Sans JavaScript, tout est affiché, chaque sous-onglet sous son
-// titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). CSS : styles/ceinture/ceinture.css (?raw, inséré ici
-// seulement).
+// titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). Les tableaux suivent le gabarit commun du site
+// (components/Tableau.astro, styles/global/tableaux.css) ; CSS de l'onglet : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
 type Objets = ReturnType<typeof chargerObjetsDeCeinture>;
 interface Props {
   objets: Objets;
@@ -42,27 +46,28 @@ const composants = url('ressources/composants/');
 const pluriel = (n: number, mot: string, x = 's') => `${n} ${mot}${n > 1 ? x : ''}`;
 
 /**
- * Un tableau de l'onglet : son ancre, son titre, le sous-onglet qui le montre, une note, ses en-têtes et son corps (des <tbody>), son nombre d'objets.
- * Note, en-têtes et corps sont du HTML (textes de la base échappés par lib/ceinture-rendu.mjs, liens écrits ici).
+ * Un tableau de l'onglet : son ancre, son titre, le sous-onglet qui le montre, son nombre d'objets et
+ *   - potions et huiles : `pages`, un tableau par page de potion (ses paliers), côte à côte ;
+ *   - carquois et sacs : une note (HTML, liens écrits ici) et le corps de son tableau (lib/ceinture-rendu.mjs).
  */
-interface Tableau {
+interface TableauDeLOnglet {
   id: string;
   titre: string;
   onglet: string;
-  note?: string;
-  entetes: string[];
-  corps: string;
-  groupes: boolean;
   nombre: number;
+  pages?: { id: string; titre: string; lien?: string; resume: string | null; corps: string; nombre: number }[];
+  note?: string;
+  corps?: string;
 }
-const tableaux: Tableau[] = objets.tableaux.map((t) => {
+const tableaux: TableauDeLOnglet[] = objets.tableaux.map((t) => {
   const base = { id: `objets-${t.famille}`, titre: t.titre, onglet: t.onglet, nombre: t.nombre };
   if ('pages' in t && t.pages) {
     return {
       ...base,
-      entetes: ['Nom', 'Niveau', 'Prix', 'Effet'],
-      corps: t.pages.map((p) => htmlDEnteteDeGroupe(p, lien, 4) + p.potions.map(htmlDeLigneDePotion).join('') + '</tbody>').join(''),
-      groupes: true,
+      pages: t.pages.map((p) => ({
+        id: ancreDePotions(p.id), titre: p.titre, lien: p.existe ? lien(p.id) : undefined, resume: p.resume ? htmlAvecMonnaies(p.resume) : null,
+        corps: p.potions.map(htmlDeLigneDePotion).join(''), nombre: p.potions.length,
+      })),
     };
   }
   // carquois et sacs
@@ -70,9 +75,7 @@ const tableaux: Tableau[] = objets.tableaux.map((t) => {
     ...base,
     note: `Les flèches et les carreaux sont dans <a href="${composants}#objets-matos-projectile">Composants</a>, les bombes dans l’onglet `
       + '<a href="#famille-bombes">Armes</a> ; ces objets se modifient dans « Composants ».',
-    entetes: ['Nom', 'Prix', 'Description'],
-    corps: `<tbody>${(t.objets ?? []).map((r) => htmlDeLigneDeContenant(r, composants)).join('')}</tbody>`,
-    groupes: false,
+    corps: (t.objets ?? []).map((r) => htmlDeLigneDeContenant(r, composants)).join(''),
   };
 });
 const dans = (onglet: string) => tableaux.filter((t) => t.onglet === onglet);
@@ -146,30 +149,40 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
               {siens.map((t) => <a href={`#${t.id}`}>{t.titre} <span class="ceinture-sommaire__compte">{t.nombre}</span></a>)}
             </nav>
           )}
-          {siens.some((t) => t.groupes) && (
+          {siens.some((t) => t.pages) && (
             <p class="ceinture-aide">
-              Les potions ont la couleur de leur palier dans le Google Doc « Alchimie » (celles que le Doc ne colore pas restent neutres) ; le titre
-              d’un groupe mène à la page de la potion (description, recette).
+              Un tableau par potion, ses paliers sur la couleur de leur palier dans le Google Doc « Alchimie » (celles que le Doc ne colore pas restent
+              neutres) ; le titre d’un tableau mène à la page de la potion (description, recette).
             </p>
           )}
-          <div class="ceinture-tableaux">
-            {siens.map((t) => (
-              <details class="ceint-tableau" id={t.id} open>
-                <summary class="ceint-tableau__titre">
-                  <span class="ceint-tableau__nom" id={`${t.id}-titre`}>{t.titre}</span>
-                  <span class="ceint-tableau__compte">{pluriel(t.nombre, 'objet')}</span>
-                </summary>
-                {t.note && <p class="ceint-tableau__note" set:html={t.note} />}
-                <div class="ceint-wrap">
-                  <table class={`ceint-table${t.groupes ? ' ceint-table--groupes' : ''}`} aria-labelledby={`${t.id}-titre`}>
-                    <thead>
-                      <tr>{t.entetes.map((h) => <th scope="col" set:html={h} />)}</tr>
-                    </thead>
-                    <Fragment set:html={t.corps} />
-                  </table>
-                </div>
-              </details>
-            ))}
+          <div class="tableaux">
+            {siens.map((t) =>
+              t.pages ? (
+                <details class="tableau ceint-tableau" id={t.id} open>
+                  <summary class="tableau__titre ceint-tableau__titre">
+                    <span class="tableau__nom ceint-tableau__nom" id={`${t.id}-titre`}>{t.titre}</span>
+                    <span class="tableau__compte ceint-tableau__compte">{pluriel(t.nombre, 'objet')}</span>
+                  </summary>
+                  <div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby={`${t.id}-titre`}>
+                    {t.pages.map((p) => (
+                      <Tableau id={p.id} titre={p.titre} lien={p.lien} compte={pluriel(p.nombre, 'palier')} noteHtml={p.resume} repliable={false} niveau={4} bloc="ceint-groupe" classeTable="ceint-table ceint-table--potions">
+                        <thead>
+                          <tr><th scope="col">Nom</th><th scope="col">Niveau</th><th scope="col">Prix</th><th scope="col">Effet</th></tr>
+                        </thead>
+                        <tbody set:html={p.corps} />
+                      </Tableau>
+                    ))}
+                  </div>
+                </details>
+              ) : (
+                <Tableau id={t.id} titre={t.titre} compte={pluriel(t.nombre, 'objet')} noteHtml={t.note} bloc="ceint-tableau" classeTable="ceint-table">
+                  <thead>
+                    <tr><th scope="col">Nom</th><th scope="col">Prix</th><th scope="col">Description</th></tr>
+                  </thead>
+                  <tbody set:html={t.corps} />
+                </Tableau>
+              ),
+            )}
           </div>
         </section>
       );
