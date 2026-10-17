@@ -7,7 +7,7 @@ import Tableau from '../Tableau.astro';
 // sur le gabarit commun des tableaux (components/Tableau.astro), aéré (« l'affichage est trop serré ») :
 // Nom (la description en infobulle : « La description prend trop de place dans le tableau. Mets-la en tooltip »), Compétence (pastille dans la couleur
 // de sa caractéristique : Force pour l'Arme Lourde et l'Arc, Agilité pour l'Arme Légère, Perception pour l'Arbalète, dégradé pour deux ; décision R48),
-// Type, Dégâts, Type de dégâts, Portée (1 par défaut, décision R50), Durabilité, Origine ; les effets supplémentaires sur une seconde ligne, sous l'arme
+// Type, Dégâts, Type de dégâts, Portée (1 par défaut, décision R50), Solidité (le mot-clé du glossaire, migration 0058), Origine ; les effets supplémentaires sur une seconde ligne, sous l'arme
 // (« à l'instar des sorts choisis de la fiche de personnage »). Une arme de départ (nom sur fond bleu dans la source) a ses lignes en bleu, avec
 // l'infobulle « Arme de départ ». Cliquer une arme la sélectionne : sa fiche s'ouvre à côté (src/scripts/armes.mjs).
 // La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
@@ -43,7 +43,7 @@ const unite = famille.cout_libelle.includes('(unité)');
       <th scope="col">Dégâts</th>
       <th scope="col">Type de dégâts</th>
       <th scope="col">Portée</th>
-      <th scope="col">Durabilité</th>
+      <th scope="col">{'{{solidite}}'}</th>
       <th scope="col">Origine</th>
       <th scope="col" class="ed-seul">Description</th>
       <th scope="col" class="ed-seul">{famille.cout_libelle}</th>

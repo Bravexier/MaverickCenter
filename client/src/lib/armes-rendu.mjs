@@ -1,7 +1,7 @@
 // Rendu HTML des cellules de l'onglet Armes de /ressources/equipement/ (components/armes/) : le même HTML sert à la page construite et au mode
 // modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la
-// base). Les colonnes Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les
-// valeurs dont la fiche de l'arme forgée a besoin (dé, bonus, portée, durabilité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu :
+// base). Les colonnes Dégâts, Type de dégâts, Portée, Solidité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les
+// valeurs dont la fiche de l'arme forgée a besoin (dé, bonus, portée, solidité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu :
 // le script de la page les lit au moment de la sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne
 // aussitôt les bonnes valeurs.
 // Contexte (`ctx`, les mêmes listes que celles du service : serveur/edition.mjs#listes, lib/armes-db.mjs#contexteDesArmes) : competences (id,
@@ -145,7 +145,7 @@ export const RENDUS_DES_ARMES = {
 /** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
 export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
 
-/** Colonnes de la ligne d'une arme hors mode modification (Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine). */
+/** Colonnes de la ligne d'une arme hors mode modification (Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Solidité, Origine). */
 export const COLONNES_D_UNE_ARME = 8;
 
 /**

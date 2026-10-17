@@ -52,7 +52,7 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - (Choix possible) (actif) Invoque la météo "Pluie" ou "Pluie diluvienne" dès le début du combat. Dure 3 tours.', 8, 'equipement', 'Ressources et Craft › Pièces élémentaires › CC110:CI116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:espace-temps', 'Léger', 'magies/magie-de-lespace-temps', 'ESPACE/TEMPS', 'Garde horloge', 3, 7, '- +1 cran de résistance à l''Espace/Temps
 - +6 dégâts avec les sorts de l''Espace/Temps
-- (Réaction) Permet de faire revenir l''armure entière dans un état antérieur (récupération d''un cran de durabilité) 1 fois par semaine', 4, 'equipement', 'Ressources et Craft › Pièces élémentaires › AW110:BC116', NULL);
+- (Réaction) Permet de faire revenir l''armure entière dans un état antérieur (récupération d''un cran de solidité) 1 fois par semaine', 4, 'equipement', 'Ressources et Craft › Pièces élémentaires › AW110:BC116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:feu', 'Léger', 'magies/magie-du-feu', 'FEU', 'Garde braise', 5, 5, '- +1 cran de résistance au Feu
 - +6 dégâts avec les sorts de Feu
 - Réduit de 1 la résistance au feu des ennemis dans un rayon de 3 cases (casse l''immunité)', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU110:CA116', NULL);

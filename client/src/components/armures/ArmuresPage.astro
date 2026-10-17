@@ -142,7 +142,7 @@ const legende = (
             <thead>
               <tr>
                 <th scope="col">Nom</th><th scope="col">Type</th><th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
-                <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Effet</th><th scope="col">Prix</th>
+                <th scope="col">{'{{solidite}}'}</th><th scope="col">Effet</th><th scope="col">Prix</th>
               </tr>
             </thead>
             <tbody>{armures.particulieres.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
@@ -155,7 +155,7 @@ const legende = (
                   <tr>
                     <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
                     <th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
-                    <th scope="col" title="Crans de solidité">Solidité</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
+                    <th scope="col">{'{{solidite}}'}</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
                     <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
                   </tr>
                 </thead>

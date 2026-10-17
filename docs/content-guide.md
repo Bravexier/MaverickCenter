@@ -373,10 +373,10 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   Arme de jet et le prix sont des tuiles (migration 0056) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
 
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45), aéré (« l'affichage est trop
-  serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; les **effets
+  serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Solidité, Origine ; les **effets
   supplémentaires** sur une seconde ligne, sous l'arme (« à l'instar des sorts choisis de la fiche de personnage » : `tr.arme-suite`, cachée quand l'arme
   n'en a pas ; survol, sélection et couleur avec l'arme). Les colonnes Dégâts (dé de l'arme, « D8 au lieu du D10 » de son effet, sinon celui de son type ;
-  plus son bonus), Type de dégâts, Portée (1 par défaut, décision R50), Durabilité (2 crans de base, corrigés par « 1 seul cran » ou « ±1 cran »), Origine
+  plus son bonus), Type de dégâts, Portée (1 par défaut, décision R50), Solidité (le mot-clé du glossaire, sa définition en infobulle ; 2 crans de base, corrigés par « 1 seul cran » ou « ±1 cran »), Origine
   (« Origine X » ou « Facture X ») sont tirées de l'effet (`lib/arme-champs.mjs`) ; les effets supplémentaires = l'effet sans les clauses montrées ailleurs
   (une clause qui en contredit une autre reste écrite).
 - **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
@@ -395,7 +395,7 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   quand on choisit une arme ; au bout de son défilement, la molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
   accessoires). Cliquer une arme (ou la ligne de ses effets) remplit sa fiche, **un seul cadre réduit à son minimum** (« Pas besoin de détailler les calculs
   en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») : son bouton Fermer (qui la vide) en haut à droite ; type et mains,
-  compétence, arme de départ ; ce dont elle est forgée ; trois tuiles, Dégâts, Durabilité « Solidité : X », Coût, dont le **détail du calcul est
+  compétence, arme de départ ; ce dont elle est forgée ; trois tuiles, Dégâts, Solidité, Coût, dont le **détail du calcul est
   l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
   supplémentaires, celui du matériau en vert), la description et l'origine (« Origine X » ou « Facture X », le mot de la source) (« On en garderai que l'effet la description et l'origine »). Plus de
   « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
@@ -902,7 +902,9 @@ description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une
 (migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
 une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue…).
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
+« met donc "solidité" partout à la place de durabilité. Et profite en pour en faire un mot clé ») : l'état de l'équipement, sa définition celle du
+propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf l'en-tête « Dur. » de la fiche auto, cité par le guide).
 
 **Citer un mot-clé : une balise, toujours écrite** (marquage explicite, jamais de repérage automatique du texte) :
 
@@ -912,7 +914,10 @@ ceux du glossaire (Mordhau, Recharge longue, Recharge très longue…).
 | `{{non-mort\|non-morts}}` | **non-morts** (le texte écrit), en gras, la définition du mot-clé en infobulle |
 | `{{mordhau:}}` | le **mode complet** : « **Mordhau** : définition », dans le fil du texte (la définition vient du glossaire et la suit) ; `{{mordhau :}}` (une espace avant les deux-points) est la même balise |
 
-- Dans une saisie, la ref est l'**id** du mot-clé ou son **écriture** : `{{Recharge longue}}` = `{{recharge-longue}}`. La balise à copier est écrite à côté
+- Dans une saisie, la ref est l'**id** du mot-clé ou son **écriture**, **quelle que soit la casse** : `{{Recharge longue}}`, `{{recharge longue}}` et
+  `{{recharge-longue}}` citent le même mot-clé. **La casse écrite est gardée** (demande du propriétaire du 2026-10-17 : « que ça soit insensible à la
+  casse ») : `{{solidité}}` s'affiche « solidité », `{{Solidité}}` « Solidité » ; l'id, ou le libellé écrit tel quel, affiche le libellé (et suit ses
+  renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}`. La balise à copier est écrite à côté
   de chaque mot-clé sur `/recherche/` en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
   `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
   ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).

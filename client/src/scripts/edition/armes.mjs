@@ -123,7 +123,7 @@ export const armes = {
     ajouterBouton.addEventListener('click', () =>
       ed.formulaire({
         titre: 'Nouvelle arme',
-        aide: 'L’arme est créée tout de suite dans la base du site de dev, à la fin du tableau de sa famille ; ses colonnes (dégâts, portée, durabilité, origine…) sont tirées de son effet, comme celles des autres armes.',
+        aide: 'L’arme est créée tout de suite dans la base du site de dev, à la fin du tableau de sa famille ; ses colonnes (dégâts, portée, solidité, origine…) sont tirées de son effet, comme celles des autres armes.',
         champs: champsDeCreation(ed),
         valider: async (valeurs) => {
           const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'creer', entite: 'arme', valeurs }] });

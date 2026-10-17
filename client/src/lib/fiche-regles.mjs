@@ -334,7 +334,7 @@ function reglesDeLaBase(db) {
     // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes. Pour la fiche en tableur : son
     // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et sa portée, celle de la colonne de la page « Armes » (décision R50 :
     // « la portée écrite, 1 par défaut », lib/arme-champs.mjs#porteeDeLArme, d'après arme.portee_min / portee_max), écrite « N » ou « N - M ».
-    // `solidite` : les crans de l'arme nue, ceux de la colonne « Durabilité » de la page Armes (lib/arme-champs.mjs#durabiliteDeLArme : « 1 seul cran » de
+    // `solidite` : les crans de l'arme nue, ceux de la colonne « Solidité » de la page Armes (lib/arme-champs.mjs#durabiliteDeLArme : « 1 seul cran » de
     // son effet, sinon la base de l'onglet, 2, corrigée de « ±N cran », au moins 1) ; null pour une arme de monstre (famille sans maîtrise, décision R45 :
     // la page Armes ne l'affiche pas et ne lui écrit aucune durabilité). Pas `durabilite` : c'est la solidité du moment d'une arme de la fiche (R74)
     armes: (() => {

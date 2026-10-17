@@ -1,7 +1,7 @@
 // Onglet Armes de la page /ressources/equipement/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et
 // remplit à côté sa fiche (un seul cadre, avec son bouton Fermer, dans le panneau toujours affiché comme celui des armures), avec dessous les
 // matériaux et les améliorations côte à côte ; choisir un matériau (le fer par défaut) et une amélioration ajuste dans la fiche les dégâts, la
-// durabilité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). La fiche est réduite à son minimum (demande du
+// solidité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). La fiche est réduite à son minimum (demande du
 // propriétaire, 2026-10-16 : « Pas besoin de détailler les calculs en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») :
 // trois tuiles, le détail de chaque calcul dans l'infobulle de sa tuile (bulles riches de components/Infobulles.astro, écrites dans
 // `[data-armes-bulles]`, hors du panneau qui défile), puis les effets, la description et l'origine. Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et
@@ -145,7 +145,7 @@ if (racine) {
       ...(niveau && f.bonus.amelioration ? [ligne(titreNiveau, signe(f.bonus.amelioration))] : []),
       ligne('Total', e(f.degats), 'eq-bulle__total'),
     ].join('');
-    // durabilité : les crans de l'arme, du matériau et de l'amélioration, cumulés (décision R51) ; « Solidité : X » (demande du propriétaire)
+    // solidité : les crans de l'arme, du matériau et de l'amélioration, cumulés (décision R51) ; « Solidité : X » (demande du propriétaire)
     const durabilite = [
       ligne(e(a.nom), String(f.durabilite.arme)),
       ...(m && f.durabilite.materiau ? [ligne(e(m.nom), signe(f.durabilite.materiau))] : []),
@@ -168,7 +168,7 @@ if (racine) {
     if (bulles) {
       bulles.innerHTML = [
         bulle('arme-bulle-degats', 'Dégâts', degats, a.regle ? `${e(a.regle)}.` : ''),
-        bulle('arme-bulle-durabilite', 'Durabilité', durabilite),
+        bulle('arme-bulle-durabilite', 'Solidité', durabilite),
         bulle('arme-bulle-cout', 'Coût', cout, a.note ? e(a.note.split('\n').join(' · ')) : ''),
       ].join('');
     }
@@ -186,7 +186,7 @@ if (racine) {
       <p class="arme-fiche__forge">Forgée en ${mat || '—'} <span aria-hidden="true">·</span> <span class="arme-fiche__niveau">${titreNiveau}</span></p>
       <div class="arme-fiche__tuiles">
         ${tuile('arme-bulle-degats', 'Dégâts', e(f.degats))}
-        ${tuile('arme-bulle-durabilite', 'Durabilité', `Solidité : ${f.durabilite.total}`)}
+        ${tuile('arme-bulle-durabilite', 'Solidité', String(f.durabilite.total))}
         ${tuile('arme-bulle-cout', 'Coût', ro(c.ro_materiaux_fournis), detailCout)}
       </div>
       <div class="arme-fiche__infos">

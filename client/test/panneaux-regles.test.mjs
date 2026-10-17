@@ -11,6 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerPanneau, chargerPanneaux, ordonnerBlocs, ordresApresDeplacement, ordresApresInsertion } from '../src/lib/panneaux-regles-db.mjs';
 import { ancreDuPanneau, empreinteDuTexte, htmlDesBlocs, htmlDuBloc } from '../src/lib/panneaux-regles-rendu.mjs';
 
@@ -57,14 +58,15 @@ test('l’import (migration 0056) : les huit blocs des armes dans l’ordre, en 
   assert.match(blocs[4].texte, /^\*\*Les armes en bleu sont les armes possibles en arme de départ\.\*\*/);
 });
 
-test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel que l’import l’a laissé (sauf une tuile qui n’est qu’une balise du glossaire)', () => {
+test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel que l’import l’a laissé (sauf une tuile qui n’est qu’une balise du glossaire ; une balise posée depuis se lit par son texte écrit)', () => {
   const panneaux = historique.lignesDImport('panneau_regles');
   const blocs = historique.lignesDImport('panneau_regles_bloc');
   assert.ok(blocs.length >= panneaux.length);
   for (const b of blocs) {
     if (/^\{\{[a-z0-9-]+:\}\}$/.test(b.texte)) continue;
     const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
-    assert.ok(historique.valeurDImport('page', { id: page }, 'corps_md').includes(b.texte), `${b.panneau_id} ${b.rang} : copié de ${page}`);
+    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit
+    assert.ok(historique.valeurDImport('page', { id: page }, 'corps_md').includes(texteSansBalises(b.texte)), `${b.panneau_id} ${b.rang} : copié de ${page}`);
   }
 });
 
