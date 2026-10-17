@@ -1,24 +1,24 @@
 # L'équipe d'agents
 
-Six agents (`.claude/agents/`), un rôle chacun, sans chevauchement, et des compétences (`.claude/skills/`) pour les travaux qui suivent une procédure. `CLAUDE.md` garde le contexte du projet ; ce document est la seule présentation de l'équipe (les consignes détaillées sont dans le fichier de chaque agent).
+Six agents (`.claude/agents/`), un rôle chacun, sans chevauchement, et des compétences (`.claude/skills/`) pour les travaux qui suivent une procédure. `CLAUDE.md` garde le contexte du projet ; ce document est la seule présentation de l'équipe, les consignes détaillées sont dans le fichier de chaque agent (qui ne redit ni le contexte, ni le rôle des autres : il renvoie à eux).
 
-## Les membres
+## Présentation
 
 | Agent | Poste | Possède | Écrit ? | Ne fait pas |
 | --- | --- | --- | --- | --- |
-| `ingenieur-site` | Développeur du site | `client/`, `deploy/`, `.github/`, `tools/flux-git/`, `tools/build-artifact.mjs`, leurs docs | oui | données, migrations, publication |
-| `ingenieur-donnees` | Responsable de la base et des importeurs | `data/`, `sources/`, le reste de `tools/` | oui | code du site, publication |
-| `expert-sql` | Expert base de données : schéma, contraintes, intégrité, vues, index, migrations, portabilité, sûreté du SQL ; relit la base par lots | rien (rapport) | non | écrire la correction, juger le fond d'une valeur |
-| `gardien-des-regles` | Garant de la règle d'or : contenu sourcé et conforme à `docs/decisions-regles.md` | rien (verdict) | non | juger le code, trancher une règle |
-| `relecteur-critique` | Revue technique indépendante du diff, des tests et des instructions | rien (rapport) | non | juger le fond des règles |
-| `chef-de-flux-git` | Publication : branche, rebase, PR, CI, fusion (`docs/flux-git.md`) | le flux git | git seulement | écrire du code ou des données |
+| `ingenieur-site` | Développeur du site | `client/`, `deploy/`, `.github/`, `tools/flux-git/`, `tools/build-artifact.mjs`, et les docs de ce code (`content-guide`, `serveur`, `character-generator`, `bestiaire`, `flux-git`, `api`…) | oui | données, migrations, publication |
+| `ingenieur-donnees` | Responsable de la base et des importeurs | `data/`, `sources/`, le reste de `tools/`, `docs/sql/`, `docs/sources.md` | oui | code du site, publication |
+| `expert-sql` | Expert base de données : schéma, contraintes, intégrité, vues, index, migrations, portabilité, sûreté du SQL ; relit la base par lots | rien (rapport) | non | corriger, juger le fond d'une valeur |
+| `gardien-des-regles` | Garant de la règle d'or : contenu sourcé et conforme à `docs/decisions-regles.md` | rien (verdict) | non | juger le code ou la base, trancher une règle |
+| `relecteur-critique` | Revue technique indépendante du diff, des tests et des instructions | rien (rapport) | non | juger le fond des règles ou la conception de la base |
+| `chef-de-flux-git` | Publication : branche, rebase, PR, CI, fusion (`docs/flux-git.md`) | le flux git | git seulement | écrire du code, des données ou de la documentation |
 
-Hors équipe : `api/` (existant d'avant le site, sans demande on n'y touche pas) ; `docs/decisions-regles.md`, où une nouvelle décision du propriétaire s'ajoute (session principale).
+Hors équipe, c'est la session principale qui s'en charge : répartir le travail, écrire une nouvelle décision dans `docs/decisions-regles.md`, rédiger la synthèse d'un audit. `api/` (existant d'avant le site) n'est touché que sur demande.
 
 ## Circuit d'un travail
 
 1. Le code du site va à `ingenieur-site`, les données et le schéma à `ingenieur-donnees` ; un travail qui touche les deux est découpé, chacun reste dans son périmètre et signale à l'autre ce qu'il doit adapter.
-2. Schéma, migration ou SQL nouveau : `expert-sql`. Contenu (règle, sort, race, don, monstre, texte) : `gardien-des-regles`.
+2. Schéma, migration ou SQL nouveau : `expert-sql`. Contenu (règle, sort, race, don, monstre, texte) : `gardien-des-regles`. Un constat revient à l'ingénieur du périmètre concerné.
 3. `relecteur-critique` relit le diff en dernier, sans qu'on lui donne la conclusion attendue.
 4. `chef-de-flux-git` publie et fusionne ; une CI rouge revient à l'ingénieur concerné, puis il repousse.
 
