@@ -5,7 +5,7 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -286,16 +286,21 @@ function verifierForme(db, entree, problemes) {
  * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
  * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire. De même une liste `armures` (une armure par emplacement, avant la
  * migration 0055) donne l'armure de la fiche, chaque autre pièce une ligne datée dans les notes (décision R95) ; envoyée avec les nouvelles clés de
- * l'armure (armuresAvecArmure) : refus 409.
+ * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
+ * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  */
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
-  if (progressionAvecGains(recue) || armuresAvecArmure(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
   // les notes enregistrées : une ligne de conversion s'y ajoute quand l'envoi (partiel) n'a pas les siennes ; la version, contrôlée plus bas, garantit
   // qu'elles n'ont pas changé depuis
   const notes = id === null ? null : db.prepare('SELECT notes FROM personnage WHERE id = ?').get(id)?.notes ?? null;
-  const entree = sansPartiesRetirees(recue, { instant: instant(maintenant), noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement') }, notes });
+  const libelle = db.prepare('SELECT libelle FROM accessoire_effet WHERE id = ?');
+  const entree = sansPartiesRetirees(recue, {
+    instant: instant(maintenant), notes,
+    noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null },
+  });
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 

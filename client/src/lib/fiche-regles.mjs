@@ -13,6 +13,7 @@ import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
+import { couleurDuPoids } from './armures-rendu.mjs';
 import { contenanceEcrite, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
@@ -98,8 +99,9 @@ function reglesDeLaBase(db) {
   // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
   // altérations d'état, et ce que les dons écrivent en toutes lettres (lib/resistance-texte.mjs) : les cibles sont les magies et les altérations, sous
   // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Gelé », « Pétrification »).
-  const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, effet_brut FROM resistance_palier ORDER BY ordre')
-    .map((p) => ({ id: p.id, libelle: p.libelle, min: p.valeur_min, max: p.valeur_max, effet: p.effet_brut }));
+  // `multiplicateur` : celui des dégâts subis (« dégâts subis ÷2 » : 0,5), que le calcul des dégâts reçus applique (décision R98)
+  const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, multiplicateur, effet_brut FROM resistance_palier ORDER BY ordre')
+    .map((p) => ({ id: p.id, libelle: p.libelle, min: p.valeur_min, max: p.valeur_max, multiplicateur: p.multiplicateur, effet: p.effet_brut }));
   const etats = lignes(db, 'SELECT id, nom FROM etat ORDER BY ordre');
   const lireResistances = lecteurDeResistances([
     ...lignes(db, 'SELECT id, nom FROM magie').map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
@@ -354,26 +356,40 @@ function reglesDeLaBase(db) {
       .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite })),
     // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
     materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
-    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau')
-      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_cran: a.bonus_cran })),
+    // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
+    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats, bonus_ap, bonus_am, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau')
+      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_ap: a.bonus_ap, bonus_am: a.bonus_am, bonus_cran: a.bonus_cran })),
     armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
     // les parties de l'armure portée (décision R95) : chacune a sa solidité du moment ; « armure-complete », celle d'une armure à solidité unifiée
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
     // `solidite` et `solidite_uni` : le maximum de chaque partie et l'armure à solidité unifiée (« Solidité uni ») (décision R95 : lib/fiche-moteur.mjs#partiesDeLArmure)
-    armures: lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni FROM armure ORDER BY ordre'),
+    // `degats` : sa résistance ou sa faiblesse aux dégâts d'estoc, de taille ou de frappe (armure_degats, « x2 » : multiplicateur 2), que le calcul des
+    // dégâts reçus applique aux AP (décision R98 : lib/fiche-moteur.mjs#degatsRecus)
+    armures: (() => {
+      const degats = parCle(lignes(db, 'SELECT armure_id, sens, type_degats, multiplicateur FROM armure_degats ORDER BY armure_id, sens, type_degats'), 'armure_id',
+        (r) => ({ sens: r.sens, type: r.type_degats, multiplicateur: r.multiplicateur ?? 1 }));
+      return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni FROM armure ORDER BY ordre').map((a) => ({ ...a, degats: degats.get(a.id) ?? [] }));
+    })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
     armures_elementaires: lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre'),
+    // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers et R78) : les formes (`boucliers`, bouclier_classe), les matières (leur
+    // solidité, celle du bouclier : R78), les boucliers de la liste (une forme et une matière : AP, AM, poids R92) et les poids (Force minimum, couleur)
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
-    materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am FROM materiau_bouclier ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am })),
+    materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am, solidite FROM materiau_bouclier ORDER BY ordre')
+      .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am, solidite: m.solidite })),
+    boucliers_formes_matieres: lignes(db, 'SELECT id, classe_id, materiau_id, nom, ap, am, poids_id FROM bouclier ORDER BY classe_id, materiau_id'),
+    poids_bouclier: lignes(db, 'SELECT id, nom, force_min FROM bouclier_poids ORDER BY ordre')
+      .map((p) => ({ ...p, couleur: couleurDuPoids(p.id), texte: texteSurCouleur(couleurDuPoids(p.id)) })),
     // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
     // sous les dons de race (« (Action) » ou usage compté) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
     // fiche en tableur
-    accessoires: lignes(db, `SELECT e.id, e.propriete_id, p.nom AS propriete_nom, e.libelle, e.caracteristique_id, e.niveau, e.bonus_min, e.bonus_max, e.bonus_valeur,
-                                    e.bonus_cible, e.malediction, e.usage
+    // `propriete_ordre` : l'ordre des propriétés (accessoire_propriete.ordre), celui des groupes de la liste des effets (décision R97)
+    accessoires: lignes(db, `SELECT e.id, e.propriete_id, p.nom AS propriete_nom, p.ordre AS propriete_ordre, e.libelle, e.caracteristique_id, e.niveau, e.bonus_min,
+                                    e.bonus_max, e.bonus_valeur, e.bonus_cible, e.malediction, e.usage
                              FROM accessoire_effet e JOIN accessoire_propriete p ON p.id = e.propriete_id ORDER BY e.propriete_id, e.ordre`)
       .map((a) => ({
-        id: a.id, propriete: a.propriete_id, propriete_nom: a.propriete_nom, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
+        id: a.id, propriete: a.propriete_id, propriete_nom: a.propriete_nom, propriete_ordre: a.propriete_ordre, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
         valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1, usage: a.usage,
         effets: (ciblesDesAccessoires.get(a.id) ?? []),
       })),

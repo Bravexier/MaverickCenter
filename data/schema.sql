@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 59;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 60;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3882,7 +3882,8 @@ CREATE TABLE personnage (
   bourse_ro             INTEGER NOT NULL CHECK (bourse_ro >= 0),
   bourse_rf             INTEGER NOT NULL CHECK (bourse_rf >= 0),
   ambidextrie           INTEGER NOT NULL CHECK (ambidextrie IN (0, 1)),   -- case « Ambidextrie » (AU8)
-  bouclier_classe_id    TEXT    REFERENCES bouclier_classe(id),   -- « Nom Bouclier » (AA26) ; ses matériaux : personnage_bouclier_materiau
+  bouclier_classe_id    TEXT    REFERENCES bouclier_classe(id),   -- « Nom Bouclier » (AA26) : la forme du bouclier (Bocle, Targe…) ; sa matière, son
+                                                    -- amélioration et sa solidité du moment : bouclier_materiau_id, bouclier_amelioration_id, bouclier_solidite
   -- État en jeu (valeurs courantes ; les maximums se calculent). NULL = non suivi (au maximum).
   sante_actuelle        INTEGER,
   chakra_actuel         INTEGER CHECK (chakra_actuel IS NULL OR chakra_actuel >= 0),
@@ -3918,6 +3919,15 @@ CREATE TABLE personnage (
   armure_amelioration_id TEXT   REFERENCES amelioration_equipement(id),
   armure_elementaire_id TEXT    REFERENCES armure_elementaire(id),
   armure_amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
+  -- Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/ et la décision R78) : la
+  -- forme (bouclier_classe_id, plus haut) et la matière donnent le bouclier de la liste (table bouclier, UNIQUE (classe_id, materiau_id)) : son AP,
+  -- son AM, son poids (R92) ; sa solidité est celle de la matière ; son amélioration +1 à +5 (cible 'bouclier', R76 : AP et crans de solidité) ;
+  -- `bouclier_solidite` : sa solidité du moment, de 0 (cassé) au maximum (la matière et les crans de l'amélioration, calculé par la page, pas ici),
+  -- NULL = à son maximum. Plus de mélange de matériaux (personnage_bouclier_materiau, retirée par 0060 : la base vivante garde le premier matériau
+  -- et note les autres, serveur/base-vivante.mjs, CONVERSIONS).
+  bouclier_materiau_id  TEXT    REFERENCES materiau_bouclier(ressource_id),
+  bouclier_amelioration_id TEXT REFERENCES amelioration_equipement(id),
+  bouclier_solidite     INTEGER CHECK (bouclier_solidite IS NULL OR bouclier_solidite >= 0),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -4047,31 +4057,18 @@ CREATE TABLE personnage_armure_partie (
   PRIMARY KEY (personnage_id, emplacement_id)
 ) STRICT, WITHOUT ROWID;
 
--- Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) : au plus trois, la somme des quantités ne dépasse pas la classe
--- du bouclier (validation de AL27 : « La somme des quantités de matériaux ne doit pas dépasser la… »).
-CREATE TABLE personnage_bouclier_materiau (
-  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
-  rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
-  materiau_id    TEXT    NOT NULL REFERENCES materiau_bouclier(ressource_id),
-  quantite       INTEGER NOT NULL CHECK (quantite >= 1),
-  PRIMARY KEY (personnage_id, rang),
-  UNIQUE (personnage_id, materiau_id)
-) STRICT, WITHOUT ROWID;
-
--- « ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, Ceinture, Autre. Chacun porte un effet de la table des accessoires
--- (propriété en AD29…, effet en AA30…), sa valeur tirée quand l'effet est une fourchette, et la case « Malédiction » (AD31…).
+-- « ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2 (décision R97, migration 0060 : plus de Ceinture ni d'Autre, ni de nom
+-- donné à l'objet, ni d'effet hors table). Chacun porte un effet de la table des accessoires (propriété en AD29…, effet en AA30…), sa valeur tirée
+-- quand l'effet est une fourchette (une « Compétence X »), et la case « Malédiction » (AD31…).
 CREATE TABLE personnage_accessoire (
   personnage_id       TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
-  emplacement         TEXT    NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
-  nom                 TEXT,                           -- nom donné à l'objet
-  accessoire_effet_id TEXT    REFERENCES accessoire_effet(id),   -- NULL = effet hors table (texte libre ci-dessous)
+  emplacement         TEXT    NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2')),
+  accessoire_effet_id TEXT    NOT NULL REFERENCES accessoire_effet(id),
   valeur              INTEGER,                        -- valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette
-  texte               TEXT,                           -- effet tel qu'écrit sur la fiche quand il n'est pas dans la table
   maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
   competence_id       TEXT    REFERENCES competence(id),     -- effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037)
   arme_famille_id     TEXT    REFERENCES arme_famille(id),   -- effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037)
-  PRIMARY KEY (personnage_id, emplacement),
-  CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
+  PRIMARY KEY (personnage_id, emplacement)
 ) STRICT, WITHOUT ROWID;
 
 -- « INVENTAIRE | SAC » (AA39:AY…) : une ligne par objet ; `ressource_id` quand l'objet est au catalogue, sinon le nom seul.
@@ -4172,7 +4169,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4385,13 +4382,14 @@ CREATE VIEW v_personnage_controle AS
   FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global
   WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul
   UNION ALL
-  -- Bouclier : des matériaux seulement avec un bouclier, quantités au plus la classe du bouclier (validation de Personnage!AL27)
-  SELECT p.id, 'bouclier_quantite', SUM(m.quantite) || ' / ' || COALESCE(MAX(bc.classe), 0)
+  -- Bouclier (décision R96) : une forme et une matière ; la matière, l'amélioration ou la solidité n'existent qu'avec la forme, et la forme attend sa matière
+  SELECT p.id, 'bouclier_manquant', COALESCE(p.bouclier_materiau_id, p.bouclier_amelioration_id, CAST(p.bouclier_solidite AS TEXT))
   FROM personnage p
-  JOIN personnage_bouclier_materiau m ON m.personnage_id = p.id
-  LEFT JOIN bouclier_classe bc ON bc.id = p.bouclier_classe_id
-  GROUP BY p.id
-  HAVING SUM(m.quantite) > COALESCE(MAX(bc.classe), 0)
+  WHERE p.bouclier_classe_id IS NULL AND COALESCE(p.bouclier_materiau_id, p.bouclier_amelioration_id, CAST(p.bouclier_solidite AS TEXT)) IS NOT NULL
+  UNION ALL
+  SELECT p.id, 'bouclier_matiere_manquante', p.bouclier_classe_id
+  FROM personnage p
+  WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NULL
   UNION ALL
   -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
   SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id
@@ -4414,6 +4412,10 @@ CREATE VIEW v_personnage_controle AS
   SELECT p.id, 'amelioration_cible', 'élément de l’armure : ' || ae.id
   FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.armure_amelioration_elementaire_id
   WHERE ae.cible <> 'armure_elementaire'
+  UNION ALL
+  SELECT p.id, 'amelioration_cible', 'bouclier : ' || ae.id
+  FROM personnage p JOIN amelioration_equipement ae ON ae.id = p.bouclier_amelioration_id
+  WHERE ae.cible <> 'bouclier'
   UNION ALL
   -- Armure (décision R95) : une amélioration ou un élément d'armure n'existe qu'avec l'armure ; une partie n'a de solidité que si l'armure l'a (la seule
   -- « armure-complete » d'une armure à solidité unifiée, armure.solidite_uni = 1 ; les six autres sinon)

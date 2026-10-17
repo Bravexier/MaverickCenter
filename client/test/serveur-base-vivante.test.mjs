@@ -509,7 +509,7 @@ test('schéma changé : une colonne remplie qui disparaît (hors COLONNES_RETIRE
 });
 
 test('migration 0038 : une base vivante d’avant, dont les fiches ont encore leur statut rempli, est reprise sans blocage, la colonne perdue ; une autre colonne remplie disparue bloque toujours', () => {
-  assert.deepEqual(COLONNES_RETIREES, { personnage: ['statut'] });
+  assert.deepEqual(COLONNES_RETIREES.personnage, ['statut']);
   const aStatut = (f, t) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = 'statut'`).n === 1;
   assert.equal(aStatut(REGLES, 'personnage'), false, 'les règles d’aujourd’hui n’ont plus de statut');
   // les règles d'avant 0038 : la colonne et ses contraintes (data/schema.sql d'alors ; une valeur par défaut, qu'ALTER TABLE exige pour NOT NULL) ;
@@ -742,6 +742,86 @@ test('migration 0055 : une base vivante d’avant, une armure par emplacement, e
   assert.equal(valeur(chemin, "SELECT armure_id FROM personnage WHERE id = 'p1'").armure_id, a.id);
   assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage WHERE notes LIKE '%pièce d’armure%'").n, 2, 'p1 et p2, une fois chacune');
   assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p2'").notes.split('\n').length, 1, 'rien ajouté à la reconstruction suivante');
+});
+
+// Les règles d'avant la migration 0060 (data/schema.sql d'alors) : les matériaux du bouclier (personnage_bouclier_materiau) et les accessoires à huit
+// emplacements, avec un nom et un effet hors table. Les colonnes du bouclier de personnage restent (vides : le service d'aujourd'hui les exige).
+const AVANT_0060 = `CREATE TABLE personnage_bouclier_materiau (
+    personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
+    materiau_id    TEXT    NOT NULL REFERENCES materiau_bouclier(ressource_id),
+    quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+    PRIMARY KEY (personnage_id, rang),
+    UNIQUE (personnage_id, materiau_id)
+  ) STRICT, WITHOUT ROWID;
+  DROP TABLE personnage_accessoire;
+  CREATE TABLE personnage_accessoire (
+    personnage_id       TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    emplacement         TEXT    NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
+    nom                 TEXT,
+    accessoire_effet_id TEXT    REFERENCES accessoire_effet(id),
+    valeur              INTEGER,
+    texte               TEXT,
+    maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
+    competence_id       TEXT    REFERENCES competence(id),
+    arme_famille_id     TEXT    REFERENCES arme_famille(id),
+    PRIMARY KEY (personnage_id, emplacement),
+    CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
+  ) STRICT, WITHOUT ROWID;`;
+
+test('migration 0060 : une base vivante d’avant est reprise ; le bouclier garde son premier matériau (R96), les accessoires de la Ceinture, d’« Autre » ou hors table sont écartés, un nom perdu ; chaque perte notée, datée (R97)', () => {
+  assert.equal(TABLES_RETIREES.personnage_bouclier_materiau, 'bouclier_materiaux');
+  assert.deepEqual(COLONNES_RETIREES.personnage_accessoire, ['nom', 'texte']);
+  assert.equal(aLaTable(REGLES, 'personnage_bouclier_materiau'), false, 'les règles d’aujourd’hui n’ont plus la table');
+  const lire = new DatabaseSync(REGLES, { readOnly: true });
+  const nomDe = (id) => lire.prepare('SELECT nom FROM ressource WHERE id = ?').get(id).nom;
+  const [m1, m2] = lire.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 2').all().map((x) => x.ressource_id);
+  const [e1, e2] = lire.prepare("SELECT id, libelle FROM accessoire_effet WHERE propriete_id = 'attributs' AND libelle IS NOT NULL ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
+  const [n1, n2] = [nomDe(m1), nomDe(m2)];
+  lire.close();
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0060), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.exec("UPDATE personnage SET bouclier_classe_id = 'targe' WHERE id = 'p1'");
+  const materiau = ecrire.prepare('INSERT INTO personnage_bouclier_materiau (personnage_id, rang, materiau_id, quantite) VALUES (?, ?, ?, ?)');
+  materiau.run('p1', 2, m2, 1);
+  materiau.run('p1', 1, m1, 1);
+  const accessoire = ecrire.prepare('INSERT INTO personnage_accessoire (personnage_id, emplacement, nom, accessoire_effet_id, texte, maudit) VALUES (?, ?, ?, ?, ?, 0)');
+  accessoire.run('p1', 'chef', null, e1.id, null);
+  accessoire.run('p1', 'collier', 'Collier du vent', e2.id, null);
+  accessoire.run('p1', 'ceinture', null, e1.id, null);
+  accessoire.run('p1', 'bague-1', null, null, 'Brille la nuit');
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-17T18:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(aLaTable(chemin, 'personnage_bouclier_materiau'), false, 'la table n’est plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.deepEqual([p1.bouclier_classe_id, p1.bouclier_materiau_id, p1.bouclier_amelioration_id, p1.bouclier_solidite], ['targe', m1, null, null]);
+    assert.equal('bouclier_materiaux' in p1, false);
+    assert.deepEqual(p1.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, 'nom' in a, 'texte' in a]), [['chef', e1.id, false, false], ['collier', e2.id, false, false]]);
+    assert.deepEqual(p1.notes.split('\n'), [
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire « Collier du vent » (Collier, effet « ${e2.libelle} ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`,
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Bague 1 (effet hors table « Brille la nuit ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Ceinture (effet « ${e1.libelle} ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
+      `[17/10/2026] Retrait (règles modifiées) : le matériau de bouclier « ${n2} » (×1) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« ${n1} », son premier matériau). Adaptez la fiche.`,
+    ].sort((a, b) => p1.notes.indexOf(a) - p1.notes.indexOf(b)));
+    assert.equal(p1.notes.split('\n').length, 4);
+    assert.equal(p1.modifie_le, '2026-10-17T18:00:00Z', 'une fiche notée est marquée modifiée');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_bouclier_materiau').n, 2, 'l’archive garde les matériaux');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_accessoire').n, 4, 'et les accessoires d’avant');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes.split('\n').length, 4, 'rien ajouté à la reconstruction suivante');
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {

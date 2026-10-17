@@ -103,7 +103,7 @@ test('liste : chaque table (sections 0 à 15, dérivées comprises) et chaque vu
   // les mêmes objets que data/schema.sql : toutes les tables et vues, sans les tables de recherche plein texte
   const attendus = OBJETS.filter((o) => o.genre === 'table' || o.genre === 'vue').map((o) => o.nom).sort();
   assert.deepEqual(noms, attendus);
-  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 191, '191 tables STRICT');
+  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 190, '190 tables STRICT');
   assert.equal(tables.filter((t) => t.genre === 'vue').length, 35, '35 vues');
   for (const nom of ['sqlite_schema', 'sqlite_master', 'page_fts', 'entite_fts', 'page_fts_data', 'page_fts_idx', 'entite_fts_content']) assert.ok(!noms.includes(nom), nom);
   // genre : vue, table dérivée (`-- @derivee`, hors FTS5), sinon table

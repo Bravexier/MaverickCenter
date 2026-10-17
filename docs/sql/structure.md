@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 59 : 191 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 60 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure_partie`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -3295,7 +3295,7 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `bourse_ro` | INTEGER | oui |  |  |
 | `bourse_rf` | INTEGER | oui |  |  |
 | `ambidextrie` | INTEGER | oui |  | case « Ambidextrie » (AU8) |
-| `bouclier_classe_id` | TEXT | non | → bouclier_classe.id | « Nom Bouclier » (AA26) ; ses matériaux : personnage_bouclier_materiau |
+| `bouclier_classe_id` | TEXT | non | → bouclier_classe.id | « Nom Bouclier » (AA26) : la forme du bouclier (Bocle, Targe…) ; sa matière, son amélioration et sa solidité du moment : bouclier_materiau_id, bouclier_amelioration_id, bouclier_solidite |
 | `sante_actuelle` | INTEGER | non |  |  |
 | `chakra_actuel` | INTEGER | non |  |  |
 | `barriere_actuelle` | INTEGER | non |  |  |
@@ -3317,6 +3317,9 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `armure_amelioration_id` | TEXT | non | → amelioration_equipement.id |  |
 | `armure_elementaire_id` | TEXT | non | → armure_elementaire.id |  |
 | `armure_amelioration_elementaire_id` | TEXT | non | → amelioration_equipement.id |  |
+| `bouclier_materiau_id` | TEXT | non | → materiau_bouclier.ressource_id |  |
+| `bouclier_amelioration_id` | TEXT | non | → amelioration_equipement.id |  |
+| `bouclier_solidite` | INTEGER | non |  |  |
 
 ### `personnage_partage`
 
@@ -3428,29 +3431,16 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `emplacement_id` | TEXT | oui | PK 2, → armure_emplacement.id |  |
 | `solidite` | INTEGER | oui |  |  |
 
-### `personnage_bouclier_materiau`
-
-Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) : au plus trois, la somme des quantités ne dépasse pas la classe du bouclier (validation de AL27 : « La somme des quantités de matériaux ne doit pas dépasser la… »).
-
-| Colonne | Type | Obligatoire | Clé | Description |
-| --- | --- | --- | --- | --- |
-| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
-| `rang` | INTEGER | oui | PK 2 |  |
-| `materiau_id` | TEXT | oui | → materiau_bouclier.ressource_id |  |
-| `quantite` | INTEGER | oui |  |  |
-
 ### `personnage_accessoire`
 
-« ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, Ceinture, Autre. Chacun porte un effet de la table des accessoires (propriété en AD29…, effet en AA30…), sa valeur tirée quand l'effet est une fourchette, et la case « Malédiction » (AD31…).
+« ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2 (décision R97, migration 0060 : plus de Ceinture ni d'Autre, ni de nom donné à l'objet, ni d'effet hors table). Chacun porte un effet de la table des accessoires (propriété en AD29…, effet en AA30…), sa valeur tirée quand l'effet est une fourchette (une « Compétence X »), et la case « Malédiction » (AD31…).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `emplacement` | TEXT | oui | PK 2 |  |
-| `nom` | TEXT | non |  | nom donné à l'objet |
-| `accessoire_effet_id` | TEXT | non | → accessoire_effet.id | NULL = effet hors table (texte libre ci-dessous) |
+| `accessoire_effet_id` | TEXT | oui | → accessoire_effet.id |  |
 | `valeur` | INTEGER | non |  | valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette |
-| `texte` | TEXT | non |  | effet tel qu'écrit sur la fiche quand il n'est pas dans la table |
 | `maudit` | INTEGER | oui |  |  |
 | `competence_id` | TEXT | non | → competence.id | effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037) |
 | `arme_famille_id` | TEXT | non | → arme_famille.id | effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037) |
@@ -3559,7 +3549,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

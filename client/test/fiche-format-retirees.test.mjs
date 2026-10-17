@@ -4,19 +4,23 @@
 // somme en SQL (serveur/base-vivante.mjs, test/serveur-base-vivante.test.mjs). Une progression non vide envoyée avec les deux totaux ne se concilie pas
 // avec eux (progressionAvecGains) : le service la refuse (test/serveur-api.test.mjs). De même l'armure par emplacement (personnage_armure, migration
 // 0055) devient une seule armure complète (décision R95 : armureDesArmures), chaque autre pièce notée, datée, dans la fiche (lignesDesPiecesRetirees) ;
-// envoyée avec les nouvelles clés de l'armure, elle est refusée par le service (armuresAvecArmure).
+// envoyée avec les nouvelles clés de l'armure, elle est refusée par le service (armuresAvecArmure). Enfin les matériaux du bouclier
+// (personnage_bouclier_materiau, migration 0060) deviennent sa matière (décision R96 : matiereDuBouclier), et les accessoires perdent Ceinture, Autre, nom
+// et effet hors table (décision R97 : accessoiresGardes), chaque perte notée, datée.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import {
-  ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, COLONNES_DE_L_ARMURE, EMPLACEMENTS_D_ARMURE, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES,
-  TABLES_RETIREES, ficheVide, gainsDeLaProgression, lignesDesPiecesRetirees, progressionAvecGains, sansPartiesRetirees,
+  accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
+  matiereDuBouclier, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression, lignesDesPiecesRetirees,
+  progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 
-test('tables retirées : progression (migration 0045), armures (0055), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
-  assert.deepEqual(TABLES_RETIREES, { personnage_progression: 'progression', personnage_armure: 'armures' });
-  assert.deepEqual(PARTIES_RETIREES, { progression: 'personnage_progression', armures: 'personnage_armure' });
+test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
+  assert.deepEqual(TABLES_RETIREES, { personnage_progression: 'progression', personnage_armure: 'armures', personnage_bouclier_materiau: 'bouclier_materiaux' });
+  assert.deepEqual(PARTIES_RETIREES, { progression: 'personnage_progression', armures: 'personnage_armure', bouclier_materiaux: 'personnage_bouclier_materiau' });
+  assert.deepEqual(COLONNES_RETIREES.personnage_accessoire, ['nom', 'texte'], 'décision R97');
   for (const [table, cle] of Object.entries(TABLES_RETIREES)) {
     assert.ok(!TABLES_FICHES.includes(table), table);
     assert.ok(!(cle in PARTIES_DE_FICHE), cle);
@@ -129,4 +133,69 @@ test('armuresAvecArmure : une liste `armures` non vide ET une des nouvelles clé
   for (const x of [null, undefined, [], 'fiche']) assert.equal(armuresAvecArmure(x), false);
   assert.equal('armure_parties' in ficheVide(), true);
   assert.equal('armures' in ficheVide(), false);
+});
+
+const INSTANT = '2026-10-17T10:00:00Z';
+const nomsDEssai = { ressource: (id) => ({ fer: 'Fer', bois: 'Bois', cuir: 'Cuir' })[id] ?? null, accessoire: (id) => `Effet ${id}` };
+
+test('matiereDuBouclier (R96) : le matériau du premier rang ; les autres rendus dans l’ordre des rangs, une ligne de retrait chacun', () => {
+  const conversion = matiereDuBouclier([{ rang: 3, materiau_id: 'cuir', quantite: 1 }, { rang: 1, materiau_id: 'fer', quantite: 2 }, { rang: 2, materiau_id: 'bois', quantite: 1 }]);
+  assert.equal(conversion.materiau_id, 'fer');
+  assert.deepEqual(conversion.retires.map((l) => l.materiau_id), ['bois', 'cuir']);
+  assert.deepEqual(retraitsDuBouclier(conversion, nomsDEssai).map((d) => [d.nature, d.nom, d.quantite, d.matiere]), [
+    ['materiau_bouclier', 'Bois', 1, 'Fer'], ['materiau_bouclier', 'Cuir', 1, 'Fer'],
+  ]);
+  for (const vide of [[], null, undefined, [{ rang: 1, materiau_id: '' }]]) assert.deepEqual(matiereDuBouclier(vide), { materiau_id: null, retires: [] });
+});
+
+test('accessoiresGardes (R97) : Ceinture, Autre et effet hors table seul écartés ; nom et effet hors table d’un accessoire gardé retirés ; chaque perte décrite', () => {
+  const { lignes, retraits } = accessoiresGardes([
+    { emplacement: 'chef', nom: null, accessoire_effet_id: 'e1', valeur: null, texte: null, maudit: 0 },
+    { emplacement: 'collier', nom: 'Collier du vent', accessoire_effet_id: 'e2', valeur: null, texte: null, maudit: 1 },
+    { emplacement: 'bague-1', nom: null, accessoire_effet_id: null, valeur: null, texte: 'Brille la nuit', maudit: 0 },
+    { emplacement: 'ceinture', nom: null, accessoire_effet_id: 'e3', valeur: null, texte: null, maudit: 0 },
+    { emplacement: 'autre', nom: 'Gant', accessoire_effet_id: 'e4', valeur: null, texte: 'Chaud', maudit: 0 },
+  ], nomsDEssai);
+  assert.deepEqual(lignes, [
+    { emplacement: 'chef', accessoire_effet_id: 'e1', valeur: null, maudit: 0 },
+    { emplacement: 'collier', accessoire_effet_id: 'e2', valeur: null, maudit: 1 },
+  ]);
+  assert.deepEqual(retraits.map((d) => [d.emplacement, d.nom, d.effet, d.texte, d.ecarte]), [
+    ['Collier', 'Collier du vent', 'Effet e2', null, false],
+    ['Bague 1', null, null, 'Brille la nuit', true],
+    ['Ceinture', null, 'Effet e3', null, true],
+    ['Autre', 'Gant', 'Effet e4', 'Chaud', true],
+  ]);
+});
+
+test('sansPartiesRetirees (R96, R97) : `bouclier_materiaux` donne la matière, les accessoires d’avant sont convertis ; une ligne datée par perte ; avec les nouvelles clés du bouclier, la liste est jetée', () => {
+  const recue = {
+    nom: 'Erwan', notes: 'Mes notes',
+    bouclier_materiaux: [{ rang: 1, materiau_id: 'fer', quantite: 2 }, { rang: 2, materiau_id: 'bois', quantite: 1 }],
+    accessoires: [{ emplacement: 'ceinture', nom: null, accessoire_effet_id: 'e3', valeur: null, texte: null, maudit: 0 }, { emplacement: 'chef', accessoire_effet_id: 'e1', valeur: null, maudit: 0 }],
+  };
+  const f = sansPartiesRetirees(recue, { instant: INSTANT, noms: nomsDEssai });
+  assert.equal(f.bouclier_materiau_id, 'fer');
+  assert.ok(!('bouclier_materiaux' in f));
+  assert.deepEqual(f.accessoires, [{ emplacement: 'chef', accessoire_effet_id: 'e1', valeur: null, maudit: 0 }]);
+  assert.deepEqual(f.notes.split('\n'), [
+    'Mes notes',
+    '[17/10/2026] Retrait (règles modifiées) : le matériau de bouclier « Bois » (×1) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« Fer », son premier matériau). Adaptez la fiche.',
+    '[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Ceinture (effet « Effet e3 ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.',
+  ]);
+  assert.equal(recue.bouclier_materiaux.length, 2, 'l’objet reçu n’est pas touché');
+  // déjà au nouveau format : le même objet
+  const nouvelle = { nom: 'Fanny', bouclier_materiau_id: 'fer', accessoires: [{ emplacement: 'chef', accessoire_effet_id: 'e1', valeur: null, maudit: 0 }] };
+  assert.equal(sansPartiesRetirees(nouvelle), nouvelle);
+  // avec les nouvelles clés du bouclier, l'ancienne liste est jetée (le service la refuse avant : bouclierAvecMatiere)
+  assert.deepEqual(sansPartiesRetirees({ nom: 'Gaël', bouclier_materiau_id: 'bois', bouclier_materiaux: [{ rang: 1, materiau_id: 'fer', quantite: 1 }] }), { nom: 'Gaël', bouclier_materiau_id: 'bois' });
+});
+
+test('bouclierAvecMatiere : une liste `bouclier_materiaux` non vide ET une des nouvelles clés du bouclier', () => {
+  const materiaux = [{ rang: 1, materiau_id: 'fer', quantite: 1 }];
+  assert.equal(bouclierAvecMatiere({ bouclier_materiaux: materiaux, bouclier_materiau_id: null }), true);
+  assert.equal(bouclierAvecMatiere({ bouclier_materiaux: materiaux, bouclier_solidite: 2 }), true);
+  assert.equal(bouclierAvecMatiere({ bouclier_materiaux: materiaux }), false, 'sans nouvelle clé : la conversion');
+  assert.equal(bouclierAvecMatiere({ bouclier_materiaux: [], bouclier_materiau_id: 'fer' }), false, 'une liste vide : un reste');
+  for (const autre of [null, undefined, 'texte', [1]]) assert.equal(bouclierAvecMatiere(autre), false);
 });

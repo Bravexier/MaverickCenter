@@ -13,8 +13,9 @@ import { INFOBULLES_DES_EXPORTS } from '../../lib/fiche-tableur-export.mjs';
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
 // à portée (attributs, caractéristiques et compétences, sorts, dons débloqués et entraînement (R71), armes avec leur solidité (R74) et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
-// dépend de la situation (posture, initiative et vitesses, armure, bouclier, résistances et faiblesses, accessoires) ; IV. ce qui se règle et se suit, en
-// onglets (progression et XP, choix, inventaire, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
+// dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
+// dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
+// XP, choix, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
 // magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
 // docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw) ; onglets de la zone IV :
@@ -233,14 +234,31 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
             <h3 id="titre-armure">Armure</h3>
             <div class="fiche-etape__corps">
+              {/* la défense totale (AP, AM ; le bouclier à part : compté en parade partielle) et les dégâts reçus (décision R98 : src/scripts/fiche.mjs#construireDefense) */}
+              <div id="defense" class="defense"></div>
               {/* une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
               <div id="armures" class="equipement"></div>
             </div>
           </section>
+          {/* six emplacements, un effet de la table chacun (décision R97 : ni Ceinture ni Autre, ni nom, ni effet hors table) */}
           <section class="fiche-etape" id="etape-accessoires" aria-labelledby="titre-accessoires">
             <h3 id="titre-accessoires">Accessoires</h3>
             <div class="fiche-etape__corps">
               <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div>
+            </div>
+          </section>
+          {/* l'inventaire, juste sous les accessoires (demande du propriétaire du 2026-10-17) : le sac, autant d'emplacements que la Force en donne (décision
+              R88), une ligne par emplacement, proposée par la liste qui se filtre à la frappe (deux caractères au moins) ou saisie librement ; la bourse */}
+          <section class="fiche-etape" id="etape-inventaire" aria-labelledby="titre-inventaire">
+            <h3 id="titre-inventaire">Inventaire</h3>
+            <div class="fiche-etape__corps inventaire">
+              <div><div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Sac</h4><p class="fiche-aide" id="inventaire-place" aria-live="polite"></p></div>
+                <div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div></div>
+              <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RF')} /> Ricken de fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
+              </div></div>
             </div>
           </section>
         </div>
@@ -275,7 +293,6 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <div class="parametres__onglets">
           <a class="onglet is-active" id="onglet-progression" href="#etape-progression">Progression</a>
           <a class="onglet" id="onglet-choix" href="#etape-choix">Choix <span class="onglet__compte onglet__compte--attente" id="choix-compte" hidden></span></a>
-          <a class="onglet" id="onglet-inventaire" href="#etape-inventaire">Inventaire</a>
           <a class="onglet" id="onglet-jeu" href="#etape-jeu">Notes et événements</a>
           <a class="onglet" id="onglet-controles" href="#etape-controles">Contrôle <span class="onglet__compte" id="controles-compte" hidden></span></a>
         </div>
@@ -337,20 +354,6 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <div id="choix-specialites" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
             </div>
-          </div>
-        </section>
-
-        <section class="fiche-etape parametres__panneau" id="etape-inventaire">
-          <h3 class="parametres__titre">Inventaire</h3>
-          <div class="fiche-etape__corps parametres__deux parametres__deux--large">
-            {/* le sac : autant d'emplacements que la Force en donne (décision R88), une ligne par emplacement, chacune proposée (catalogue) ou saisie librement */}
-            <div><h4 class="fiche-sous-titre">Sac</h4><p class="fiche-aide" id="inventaire-place" aria-live="polite"></p>
-              <div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div></div>
-            <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RF')} /> Ricken de fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
-            </div></div>
           </div>
         </section>
 

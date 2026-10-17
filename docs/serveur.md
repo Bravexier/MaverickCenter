@@ -72,6 +72,11 @@ premier emplacement, l'armure complète d'abord (`armureDesArmures` de `fiche-fo
 autre pièce qui ne porte pas la même armure (ou pas la même amélioration, le même élément), sont des retraits notés comme ceux de la décision R42 (une
 ligne datée dans la fiche, la fiche listée dans `base.retraits` de `/api/etat`). Si la reconstruction échoue, le service continue avec la base d'avant
 0055 : une fiche s'y lit avec une liste `armure_parties` vide et s'y enregistre sans elle (une liste non vide est refusée, ses lignes seraient perdues).
+`personnage_bouclier_materiau` (jusqu'à trois matériaux, jusqu'à la migration 0060) devient la matière du bouclier (`personnage.bouclier_materiau_id`, le
+matériau du premier rang ; décision R96), chaque autre matériau un retrait noté de même. **Des lignes qu'une table garde mais que ses nouvelles règles
+refusent** ne sont pas recopiées (`LIGNES_ECARTEES` de `serveur/base-vivante.mjs` : un prédicat SQL, valable sur l'ancienne et la nouvelle forme de la
+table, et ce qu'on en note) : depuis 0060, un accessoire de la Ceinture ou d'« Autre », ou sans effet de la table (décision R97), noté comme le nom ou
+l'effet hors table qu'un accessoire gardé perd (`COLONNES_RETIREES` : `nom`, `texte`).
 Des règles qui ont encore la table alors que le service la sait retirée
 (service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
@@ -114,8 +119,10 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`, `armures`, `bouclier_materiaux`,
-`accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Rien de calculé n'y est
+(`classes`, `caracteristiques`, `competences`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`, `armure_parties`, `accessoires`,
+`inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
+`bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
+bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`). Rien de calculé n'y est
 stocké. Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045), comme l'entraînement (`entrainement`,
 R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilite`, R74).
 

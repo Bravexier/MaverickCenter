@@ -13,7 +13,7 @@
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
@@ -27,7 +27,6 @@ export const PARTIES_DE_FICHE = Object.freeze({
   maitrises_armes: 'personnage_maitrise_arme',
   armes: 'personnage_arme',
   armure_parties: 'personnage_armure_partie',
-  bouclier_materiaux: 'personnage_bouclier_materiau',
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
   ceinture: 'personnage_ceinture',
@@ -45,9 +44,10 @@ export const CHAMP_VERSION = 'version';
 /**
  * Colonnes que les règles ont retirées d'une table de la section 13, par table : la base vivante les perd à sa reconstruction sans bloquer
  * (serveur/base-vivante.mjs), et une fiche qui en porte encore une (fichier exporté avant, page restée ouverte) se lit sans elle (page /fiche/, service).
- * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038).
+ * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038). `nom` et `texte` d'un accessoire (le nom
+ * donné à l'objet, l'effet hors table) : décision R97, migration 0060 ; ce qu'ils portaient est noté, daté, dans la fiche (accessoiresGardes).
  */
-export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']) });
+export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']), personnage_accessoire: Object.freeze(['nom', 'texte']) });
 
 /**
  * Tables que les règles ont retirées de la section 13, avec leur ancienne clé dans le JSON d'une fiche (PARTIES_RETIREES : l'inverse). Leurs lignes ne
@@ -59,8 +59,10 @@ export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['sta
  * élément et l'amélioration de l'élément (décision R95, migration 0055 : COLONNES_DE_L_ARMURE de personnage), la ligne du premier emplacement
  * (armureDesArmures) ; la pièce gardée qui devient l'armure complète et chaque autre pièce différente sont notées, datées, dans la fiche
  * (lignesDesPiecesRetirees).
+ * `personnage_bouclier_materiau` (jusqu'à trois matériaux et leurs quantités) : le bouclier est une forme et une matière (décision R96, migration 0060 :
+ * personnage.bouclier_materiau_id), le matériau du premier rang (matiereDuBouclier) ; chaque autre matériau est noté, daté, dans la fiche.
  */
-export const TABLES_RETIREES = Object.freeze({ personnage_progression: 'progression', personnage_armure: 'armures' });
+export const TABLES_RETIREES = Object.freeze({ personnage_progression: 'progression', personnage_armure: 'armures', personnage_bouclier_materiau: 'bouclier_materiaux' });
 export const PARTIES_RETIREES = Object.freeze(Object.fromEntries(Object.entries(TABLES_RETIREES).map(([table, cle]) => [cle, table])));
 
 const entierPositif = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.max(0, Math.trunc(Number(v))) : 0);
@@ -170,6 +172,76 @@ export function armuresAvecArmure(fiche) {
   return Array.isArray(fiche.armures) && fiche.armures.length > 0 && [...Object.keys(COLONNES_DE_L_ARMURE), 'armure_parties'].some((c) => c in fiche);
 }
 
+/** Colonnes de `personnage` qui portent le bouclier en plus de sa forme (décision R96, migration 0060). */
+export const COLONNES_DU_BOUCLIER = Object.freeze(['bouclier_materiau_id', 'bouclier_amelioration_id', 'bouclier_solidite']);
+
+/**
+ * La matière du bouclier d'une ancienne liste `bouclier_materiaux` (lignes de personnage_bouclier_materiau : rang, materiau_id, quantite) dans le format
+ * de la migration 0060 (décision R96 : une forme et une matière) : { materiau_id (celui du premier rang ; null sans ligne), retires (les lignes des
+ * autres rangs, dans l'ordre) }. La même règle que la reconstruction de la base vivante et que la migration 0060.
+ */
+export function matiereDuBouclier(lignes) {
+  const tries = (Array.isArray(lignes) ? lignes : []).filter((l) => l && typeof l === 'object' && !vide(l.materiau_id))
+    .sort((a, b) => entierPositif(a.rang) - entierPositif(b.rang));
+  return { materiau_id: tries[0]?.materiau_id ?? null, retires: tries.slice(1) };
+}
+
+/**
+ * Les descripteurs de retrait (nature « materiau_bouclier ») des matériaux qu'un bouclier converti ne garde pas (`conversion` : le résultat de
+ * matiereDuBouclier) ; `noms.ressource(id)` rend le nom d'un matériau (l'id sinon).
+ */
+export function retraitsDuBouclier({ materiau_id = null, retires = [] } = {}, noms = {}) {
+  const matiere = materiau_id ? noms.ressource?.(materiau_id) ?? materiau_id : null;
+  return retires.map((l) => ({ nature: 'materiau_bouclier', id: l.materiau_id, nom: noms.ressource?.(l.materiau_id) ?? null, quantite: entierPositif(l.quantite) || null, matiere }));
+}
+
+/**
+ * Vrai si la fiche porte à la fois une liste `bouclier_materiaux` non vide (avant la migration 0060) et l'une des nouvelles clés du bouclier
+ * (COLONNES_DU_BOUCLIER) : comme armuresAvecArmure, l'envoi d'une page d'avant restée ouverte ; le service refuse (409).
+ */
+export function bouclierAvecMatiere(fiche) {
+  if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return false;
+  return Array.isArray(fiche.bouclier_materiaux) && fiche.bouclier_materiaux.length > 0 && COLONNES_DU_BOUCLIER.some((c) => c in fiche);
+}
+
+/** Les emplacements d'accessoire et leur nom ; Ceinture et Autre n'existent plus sur la fiche (décision R97, migration 0060). */
+export const NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE = Object.freeze({
+  chef: 'Chef', collier: 'Collier', 'bracelet-1': 'Bracelet 1', 'bracelet-2': 'Bracelet 2', 'bague-1': 'Bague 1', 'bague-2': 'Bague 2', ceinture: 'Ceinture', autre: 'Autre',
+});
+export const EMPLACEMENTS_D_ACCESSOIRE_RETIRES = Object.freeze(['ceinture', 'autre']);
+
+const ecarte = (a) => EMPLACEMENTS_D_ACCESSOIRE_RETIRES.includes(a.emplacement) || vide(a.accessoire_effet_id);
+const accessoireAConvertir = (a) => Boolean(a) && typeof a === 'object' && ('nom' in a || 'texte' in a || ecarte(a));
+
+/**
+ * Les accessoires d'une fiche dans le format de la migration 0060 (décision R97 : six emplacements, ni nom, ni effet hors table) : { lignes (les
+ * accessoires gardés, sans `nom` ni `texte`), retraits (un descripteur « accessoire » par accessoire écarté — emplacement Ceinture ou Autre, effet hors
+ * table seul — ou qui perd son nom ou son effet hors table, dans l'ordre de la liste) }. `noms.accessoire(id)` rend le libellé d'un effet. La même règle
+ * que la reconstruction de la base vivante (serveur/base-vivante.mjs, LIGNES_ECARTEES) et que la migration 0060.
+ */
+export function accessoiresGardes(lignes, noms = {}) {
+  const gardes = [];
+  const retraits = [];
+  for (const a of Array.isArray(lignes) ? lignes : []) {
+    if (!a || typeof a !== 'object' || Array.isArray(a)) {
+      gardes.push(a);
+      continue;
+    }
+    const { nom = null, texte = null, ...reste } = a;
+    const nomEcrit = vide(nom) ? null : String(nom);
+    const texteEcrit = vide(texte) ? null : String(texte);
+    const sorti = ecarte(a);
+    if (!sorti) gardes.push(reste);
+    if (sorti || nomEcrit || texteEcrit) {
+      retraits.push({
+        nature: 'accessoire', id: a.emplacement, nom: nomEcrit, emplacement: NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE[a.emplacement] ?? a.emplacement,
+        effet: vide(a.accessoire_effet_id) ? null : noms.accessoire?.(a.accessoire_effet_id) ?? a.accessoire_effet_id, texte: texteEcrit, ecarte: sorti,
+      });
+    }
+  }
+  return { lignes: gardes, retraits };
+}
+
 /**
  * La fiche sans les clés des tables retirées (PARTIES_RETIREES), converties sans rien perdre : une `progression` reçue (page restée ouverte, fichier
  * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas. Si elle les a, ils sont
@@ -178,24 +250,39 @@ export function armuresAvecArmure(fiche) {
  * seule la page /fiche/, pour un fichier importé, la jette. De même une liste `armures` (avant la migration 0055) donne l'armure de la fiche
  * (armureDesArmures) quand la fiche n'a aucune des nouvelles clés, et la pièce devenue l'armure complète et chaque pièce qu'elle ne garde pas, une ligne datée de `instant` dans les notes
  * (lignesDesPiecesRetirees, `noms` pour les nommer) ; une liste vide est jetée, une liste non vide avec les nouvelles clés est refusée par le service
- * (armuresAvecArmure) et jetée par la page. Une fiche sans clé retirée est rendue telle quelle (le même objet) ; jamais modifiée en place.
+ * (armuresAvecArmure) et jetée par la page. De même une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier
+ * (matiereDuBouclier) quand la fiche n'a aucune des nouvelles clés du bouclier (COLONNES_DU_BOUCLIER), chaque autre matériau une ligne datée
+ * (retraitsDuBouclier) ; et des accessoires qui portent encore un nom, un effet hors table, ou un emplacement retiré (Ceinture, Autre) sont convertis
+ * (accessoiresGardes), ce qu'ils perdent noté. Une fiche sans rien à convertir est rendue telle quelle (le même objet) ; jamais modifiée en place.
  * @param {object} fiche
- * @param {{ instant?: string, noms?: { armure?: (id: string) => string | null, emplacement?: (id: string) => string | null }, notes?: string | null }} [options]
+ * @param {{ instant?: string, noms?: { armure?: (id: string) => string | null, emplacement?: (id: string) => string | null,
+ *   ressource?: (id: string) => string | null, accessoire?: (id: string) => string | null }, notes?: string | null }} [options]
  *   `instant` : ISO 8601 UTC à la seconde (la date des lignes ajoutées aux notes) ; sans lui, une pièce retirée n'est pas notée ; `notes` : celles de
  *   la fiche enregistrée, auxquelles les lignes s'ajoutent quand la fiche reçue n'a pas de `notes` (un envoi partiel ne les efface pas)
  */
 export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = null } = {}) {
   if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return fiche;
-  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche)) return fiche;
-  const { progression, armures, ...reste } = fiche;
+  const accessoires = Array.isArray(fiche.accessoires) && fiche.accessoires.some(accessoireAConvertir);
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires) return fiche;
+  const { progression, armures, bouclier_materiaux, ...reste } = fiche;
+  const retraits = [];
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
   if (armures !== undefined && ![...Object.keys(COLONNES_DE_L_ARMURE), 'armure_parties'].some((c) => c in reste)) {
     const conversion = armureDesArmures(armures);
-    const { colonnes } = conversion;
-    Object.assign(reste, colonnes);
-    const lignes = lignesDesPiecesRetirees(conversion, instant, noms);
-    if (lignes.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, lignes);
+    Object.assign(reste, conversion.colonnes);
+    retraits.push(...retraitsDeLArmure(conversion, noms));
   }
+  if (bouclier_materiaux !== undefined && !COLONNES_DU_BOUCLIER.some((c) => c in reste)) {
+    const conversion = matiereDuBouclier(bouclier_materiaux);
+    reste.bouclier_materiau_id = conversion.materiau_id;
+    retraits.push(...retraitsDuBouclier(conversion, noms));
+  }
+  if (accessoires) {
+    const conversion = accessoiresGardes(reste.accessoires, noms);
+    reste.accessoires = conversion.lignes;
+    retraits.push(...conversion.retraits);
+  }
+  if (retraits.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, retraits.map((d) => ligneDeRetrait(d, instant)));
   return reste;
 }
 
@@ -233,9 +320,10 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
 /**
  * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42),
- * objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète).
+ * objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
+ * matière), accessoire (R97 : plus d'emplacement Ceinture ni Autre, ni de nom, ni d'effet hors table).
  */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure']);
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -261,10 +349,14 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60) ;
  *   pièce      : « la pièce d'armure « Armure Cuir/Peau » (Torse) » : une pièce que la fiche ne porte plus, elle n'a plus qu'une armure (décision R95) ;
  *                avec `devenue`, la pièce gardée, devenue l'armure complète de la fiche (armureDesArmures : « transformee ») ; avec `armureGardee`, une
- *                pièce de l'armure gardée, dont l'amélioration ou l'élément propres se perdent.
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *                pièce de l'armure gardée, dont l'amélioration ou l'élément propres se perdent ;
+ *   matériau   : « le matériau de bouclier « Fer » (×2) » : un matériau que le bouclier ne garde pas, il n'a plus qu'une matière (décision R96) ;
+ *   accessoire : « l'accessoire « Bague » (Ceinture, effet « Dégâts magie +2 », effet hors table « Brille la nuit ») » ou, sans nom, « l'accessoire de
+ *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table.
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
- *   dons?: string[], devenue?: boolean, armureGardee?: boolean }} d
+ *   dons?: string[], devenue?: boolean, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
+ *   ecarte?: boolean }} d
  */
 export function descriptionDuRetrait(d) {
   const nom = d.nom ?? d.id;
@@ -300,6 +392,14 @@ export function descriptionDuRetrait(d) {
   } else if (d.nature === 'piece_armure') {
     tete = `la pièce d’armure « ${nom} »`;
     if (d.emplacement) parties.push(d.emplacement);
+  } else if (d.nature === 'materiau_bouclier') {
+    tete = `le matériau de bouclier « ${nom} »`;
+    if (positif(d.quantite)) parties.push(`×${d.quantite}`);
+  } else if (d.nature === 'accessoire') {
+    tete = d.nom ? `l’accessoire « ${d.nom} »` : `l’accessoire de l’emplacement ${d.emplacement ?? d.id}`;
+    if (d.nom && d.emplacement) parties.push(d.emplacement);
+    if (d.effet) parties.push(`effet « ${d.effet} »`);
+    if (d.texte) parties.push(`effet hors table « ${d.texte} »`);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }
@@ -318,7 +418,15 @@ export const ligneDeRetrait = (d, instant) =>
       // décision R95 : une seule armure complète par fiche, avec son amélioration et son élément ; ses parties n'ont plus que leur solidité
       ? `${d.devenue ? 'est devenue l’armure complète de la fiche'
         : d.armureGardee ? 'reste l’armure de la fiche, sans l’amélioration ni l’élément propres à cette pièce' : 'n’est plus portée'} : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.`
-      : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
+      : d.nature === 'materiau_bouclier'
+        // décision R96 : le bouclier de la liste, une forme et une matière (le matériau du premier rang)
+        ? `n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière${d.matiere ? ` (« ${d.matiere} », son premier matériau)` : ''}. Adaptez la fiche.`
+        : d.nature === 'accessoire'
+          // décision R97 : six emplacements, un effet de la table des accessoires, ni nom ni effet hors table
+          ? (d.ecarte
+            ? 'n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.'
+            : 'reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.')
+          : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

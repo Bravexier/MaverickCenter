@@ -46,12 +46,12 @@
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
 // CLAUDE.md « Pièges connus » ; jamais lib/text.mjs, partagé par la recherche).
 
-import { ajouterAuxNotes, armureDesArmures, ficheVide } from './fiche-format.mjs';
+import { ajouterAuxNotes, armureDesArmures, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
 import {
   armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
-  partiesDeLArmure, refusMagieAcquise, trouver,
+  partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
 } from './fiche-moteur.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
@@ -61,7 +61,7 @@ import {
   TITRE_DE_L_INVENTAIRE,
 } from './fiche-tableur-cases.mjs';
 import {
-  ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
+  ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
@@ -400,7 +400,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const remarques = [];
   const perdu = (ligne) => nonRepris.push(ligne);
   const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
-  const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? e;
+  const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE[e] ?? e;
 
   /** Un nombre lu là où la fiche veut un entier : décimal, arrondi vers le bas, et une remarque (« Bourse (or) : « 12,5 » lu 12 »). */
   const entierDe = (n, ecrit, quoi) => {
@@ -480,7 +480,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     surnom: texte(d.surnom) || null,
     lieu_origine: texte(d.lieuOrigine) || null,
     race_id: null, ethnie_id: null, magie_innee_id: null, magie_acquise_id: null, caracteristique_magie_id: null, dieu_choisi_id: null, metier_id: null,
-    bouclier_classe_id: null, sante_actuelle: null, chakra_actuel: null, barriere_actuelle: null, corruption: null, barre4_actuelle: null,
+    bouclier_classe_id: null, bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null, sante_actuelle: null, chakra_actuel: null, barriere_actuelle: null, corruption: null, barre4_actuelle: null,
     notes: null, evenements: null, posture_id: null, entrainement: null,
   });
 
@@ -596,22 +596,27 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       if (fam) ligne.arme_famille_id = fam.id;
     } else perdu(`${quoi} : « ${choix} » sans choix à faire pour cet effet`);
   };
-  const nouvelAccessoire = (emplacement) => ({ emplacement, nom: null, accessoire_effet_id: null, valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: null });
+  // un accessoire : six emplacements, un effet de la table, ni nom ni effet hors table (décision R97) ; ce qu'un classeur écrit d'autre est dit perdu
+  const nouvelAccessoire = (emplacement) => ({ emplacement, accessoire_effet_id: null, valeur: null, maudit: 0, competence_id: null, arme_famille_id: null });
   const garderAccessoire = (a) => {
-    if (a.accessoire_effet_id || a.texte) f.accessoires.push(a);
-    else if (a.nom) perdu(`Accessoire ${libelleDEmplacement(a.emplacement)} : « ${a.nom} » sans effet`);
+    if (a.accessoire_effet_id) f.accessoires.push(a);
   };
 
   /**
-   * Modèle ordinateur : les lignes d'une case d'accessoire ou d'une ligne « Accessoire Ceinture : … » de la note, lues par lireAccessoire
-   * (lib/fiche-tableur-export.mjs, l'écriture courte et l'ancienne).
+   * Modèle ordinateur : les lignes d'une case d'accessoire, lues par lireAccessoire (lib/fiche-tableur-export.mjs, l'écriture courte et l'ancienne) ;
+   * une ligne « Accessoire Ceinture : … » ou « Accessoire Autre : … » de la note d'un classeur d'avant : perdue (plus d'emplacement).
    */
   const accessoireDesLignes = (emplacement, lignes) => {
-    const a = nouvelAccessoire(emplacement);
     const quoi = `Accessoire ${libelleDEmplacement(emplacement)}`;
+    if (!EMPLACEMENTS_ACCESSOIRES.some(([e]) => e === emplacement)) {
+      perdu(`${quoi} : « ${lignes.join(' / ')} » (la fiche n’a plus d’emplacement Ceinture ni Autre : décision R97)`);
+      return;
+    }
+    const a = nouvelAccessoire(emplacement);
     const lu = lireAccessoire(regles, lignes);
-    a.nom = lu.nom;
-    a.texte = lu.texte || null;
+    if (lu.nom && lu.ligne === null) perdu(`${quoi} : « ${lu.nom} » sans effet`);
+    else if (lu.nom) perdu(`${quoi}, nom : « ${lu.nom} » (un accessoire n’a plus de nom : décision R97)`);
+    if (lu.texte) perdu(`${quoi}, effet hors table : « ${lu.texte} » (décision R97)`);
     a.maudit = lu.maudit ? 1 : 0;
     const choix = lu.choix;
     if (lu.ligne !== null) {
@@ -619,9 +624,6 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       if (effet) {
         a.accessoire_effet_id = effet.id;
         a.valeur = effet.min !== null ? lu.valeur : null;
-      } else if (a.texte === null) {
-        a.texte = lu.ligne;
-        remarques.push(`${quoi} : « ${lu.ligne} » ne correspond à aucun effet de la table des accessoires : gardé en texte libre (non compté)`);
       } else perdu(`${quoi} : « ${lu.ligne} » ne correspond à aucun effet de la table des accessoires`);
     }
     for (const ligne of lu.autres) perdu(`${quoi} : ligne « ${ligne} » sans place sur la fiche`);
@@ -662,8 +664,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
         a.accessoire_effet_id = effet.id;
         a.valeur = effet.min !== null ? valeur : null;
       } else {
-        a.texte = `${propriete?.[1] ?? tp}${propriete || tp ? ' : ' : ''}${te}${valeur !== null ? ` ${texte(cases.valeur)}` : ''}`;
-        remarques.push(`Accessoire ${libelleDEmplacement(emplacement)} : « ${te} »${tp ? ` (${tp})` : ''} ne correspond à aucun effet de la table des accessoires : gardé en texte libre (non compté)`);
+        perdu(`Accessoire ${libelleDEmplacement(emplacement)} : « ${te} »${tp ? ` (${tp})` : ''}${valeur !== null ? ` ${texte(cases.valeur)}` : ''} ne correspond à aucun effet de la table des accessoires`);
       }
       garderAccessoire(a);
     }
@@ -1083,16 +1084,30 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     }
   }
 
-  // ---- bouclier
+  // ---- bouclier (décision R96 : une forme et une matière) : la forme en AA26 ; la matière en AF26, suivie de l'amélioration (« Fer · niv. 2 — … ») ;
+  // un classeur d'avant (plusieurs matériaux : « Fer ×2, Bois ×1 », ou les trois cases de la fiche auto) donne sa première matière, les autres sont
+  // dites perdues ; la solidité du moment « N / M » en AX26 (modèle ordinateur)
   if (texte(d.bouclier.nom)) f.bouclier_classe_id = unSeul(retrouver(regles.boucliers, texte(d.bouclier.nom)), 'Bouclier', texte(d.bouclier.nom))?.id ?? null;
-  const materiaux = auto
-    ? d.bouclier.materiaux.map((m) => (texte(m.materiau) ? { nom: texte(m.materiau), quantite: entierLu(m.quantite, `Bouclier, quantité de « ${texte(m.materiau)} »`) ?? 1 } : null)).filter(Boolean)
-    : texte(d.bouclier.composition).split(',').map(lireObjet).filter(Boolean);
-  for (const m of materiaux) {
-    const materiau = unSeul(retrouver(regles.materiaux_bouclier, m.nom), 'Bouclier, matériau', m.nom);
+  const [matieres, ameliorationDuBouclier] = auto
+    ? [d.bouclier.materiaux.map((m) => texte(m.materiau)).filter(Boolean), null]
+    : (() => {
+      const [composition, ...suite] = texte(d.bouclier.composition).split(SEPARATEUR_D_ARMURE.trim()).map((x) => x.trim());
+      return [String(composition ?? '').split(',').map((x) => lireObjet(x)?.nom).filter(Boolean), suite.join(` ${SEPARATEUR_D_ARMURE.trim()} `) || null];
+    })();
+  for (const nom of matieres) {
+    const materiau = unSeul(retrouver(regles.materiaux_bouclier, nom), 'Bouclier, matériau', nom);
     if (!materiau) continue;
-    if (m.quantite < 1) perdu(`Bouclier, matériau : « ${m.nom} » en quantité ${m.quantite}`);
-    else f.bouclier_materiaux.push({ rang: f.bouclier_materiaux.length + 1, materiau_id: materiau.id, quantite: m.quantite });
+    if (!f.bouclier_classe_id) perdu(`Bouclier, matière « ${nom} » sans forme`);
+    else if (f.bouclier_materiau_id) perdu(`Bouclier, matériau : « ${nom} » (un bouclier n’a plus qu’une forme et une matière : décision R96)`);
+    else f.bouclier_materiau_id = materiau.id;
+  }
+  if (ameliorationDuBouclier && f.bouclier_materiau_id) f.bouclier_amelioration_id = amelioration(ameliorationDuBouclier, 'bouclier', 'Bouclier, amélioration');
+  const soliditeDuBouclier = auto || texte(d.bouclier.solidite) === MODELE_DE_LA_SOLIDITE ? '' : texte(d.bouclier.solidite);
+  if (soliditeDuBouclier) {
+    const [actuelle] = paireDe(cellule(d.bouclier.solidite));
+    if (!f.bouclier_materiau_id) perdu(`Bouclier, solidité : « ${soliditeDuBouclier} » sans bouclier`);
+    else if (actuelle === null) perdu(`Bouclier, solidité : « ${soliditeDuBouclier} » illisible`);
+    else f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, entierDe(actuelle, soliditeDuBouclier, 'Bouclier, solidité'));
   }
 
   // ---- zones de saisie que le site ne garde pas (modèle ordinateur) : leur valeur dans les notes

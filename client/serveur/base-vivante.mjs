@@ -10,7 +10,9 @@
 // pourquoi. Une table que les règles retirent de la section 13 (TABLES_RETIREES de src/lib/fiche-format.mjs) n'est plus recopiée : ses lignes sont
 // converties (CONVERSIONS : personnage_progression, migration 0045, devient la somme des gains de niveau, personnage.gains_sante et gains_chakra,
 // décision R73 ; personnage_armure, migration 0055, devient l'armure de la fiche, la pièce devenue l'armure complète et chaque autre pièce notées
-// dans la fiche, décision R95), jamais
+// dans la fiche, décision R95 ; personnage_bouclier_materiau, migration 0060, devient la matière du bouclier, chaque autre matériau noté, décision R96),
+// et les lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées (LIGNES_ECARTEES : un accessoire de la Ceinture ou
+// d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; jamais
 // perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
 // dernières) : l'archive garde donc la base d'avant les retraits et les conversions.
 // Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
@@ -19,7 +21,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, retraitsDeLArmure, TABLES_FICHES, TABLES_RETIREES,
+  accessoiresGardes, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, matiereDuBouclier, retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES,
+  TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
@@ -68,18 +71,71 @@ export const CONVERSIONS = Object.freeze({
     }
     const colonnes = Object.keys(COLONNES_DE_L_ARMURE);
     const ecrire = db.prepare(`UPDATE main.personnage SET ${colonnes.map((c) => `"${c}" = ?`).join(', ')} WHERE id = ?`);
-    const lire = db.prepare('SELECT nom, nature FROM main.personnage WHERE id = ?');
+    const notes = [];
     for (const [id, lignes] of parFiche) {
       const conversion = armureDesArmures(lignes);
       ecrire.run(...colonnes.map((c) => conversion.colonnes[c]), id);
-      const d = retraitsDeLArmure(conversion, noms);
-      const p = d.length ? lire.get(id) : null;
-      if (!p) continue;
-      if (!retraits.has(id)) retraits.set(id, { personnage: id, nom: p.nom, nature: p.nature, retraits: [] });
-      retraits.get(id).retraits.push(...d);
+      notes.push([id, retraitsDeLArmure(conversion, noms)]);
     }
+    ajouterLesRetraits(db, retraits, notes);
+  },
+  // le bouclier (décision R96) : la matière est le matériau du premier rang (matiereDuBouclier, comme la migration 0060), chaque autre matériau noté
+  personnage_bouclier_materiau: (db, { retraits }) => {
+    const nom = db.prepare('SELECT nom FROM main.ressource WHERE id = ?');
+    const noms = { ressource: (id) => nom.get(id)?.nom ?? null };
+    const parFiche = new Map();
+    for (const l of db.prepare('SELECT * FROM ancienne.personnage_bouclier_materiau').all()) {
+      if (!parFiche.has(l.personnage_id)) parFiche.set(l.personnage_id, []);
+      parFiche.get(l.personnage_id).push({ ...l });
+    }
+    const ecrire = db.prepare('UPDATE main.personnage SET bouclier_materiau_id = ? WHERE id = ?');
+    const notes = [];
+    for (const [id, lignes] of parFiche) {
+      const conversion = matiereDuBouclier(lignes);
+      ecrire.run(conversion.materiau_id, id);
+      notes.push([id, retraitsDuBouclier(conversion, noms)]);
+    }
+    ajouterLesRetraits(db, retraits, notes);
   },
 });
+
+/**
+ * Lignes qu'une table de la section 13 garde mais que ses nouvelles règles refusent, par table : { ou (prédicat SQL des lignes à NE PAS recopier, valable
+ * sur l'ancienne et la nouvelle forme de la table), noter (db, retraits) : range dans `retraits` ce que la copie perd, lu dans `ancienne` avant elle }.
+ * personnage_accessoire (décision R97, migration 0060) : un accessoire de la Ceinture ou d'« Autre », ou sans effet de la table (effet hors table seul),
+ * n'est pas recopié ; il est noté, comme le nom ou l'effet hors table qu'un accessoire gardé perd (COLONNES_RETIREES), par accessoiresGardes.
+ */
+export const LIGNES_ECARTEES = Object.freeze({
+  personnage_accessoire: Object.freeze({
+    ou: "emplacement IN ('ceinture', 'autre') OR accessoire_effet_id IS NULL",
+    noter: (db, retraits) => {
+      const cols = colonnes(db, 'ancienne', 'personnage_accessoire');
+      if (!cols.includes('nom') && !cols.includes('texte')) {
+        // l'ancienne base est déjà au format de 0060 : aucune ligne n'y est refusée
+        if (!db.prepare(`SELECT 1 FROM ancienne.personnage_accessoire WHERE ${LIGNES_ECARTEES.personnage_accessoire.ou} LIMIT 1`).get()) return;
+      }
+      const libelle = db.prepare('SELECT libelle FROM main.accessoire_effet WHERE id = ?');
+      const noms = { accessoire: (id) => libelle.get(id)?.libelle ?? null };
+      const parFiche = new Map();
+      for (const l of db.prepare('SELECT * FROM ancienne.personnage_accessoire ORDER BY personnage_id, emplacement').all()) {
+        if (!parFiche.has(l.personnage_id)) parFiche.set(l.personnage_id, []);
+        parFiche.get(l.personnage_id).push({ ...l });
+      }
+      ajouterLesRetraits(db, retraits, [...parFiche].map(([id, lignes]) => [id, accessoiresGardes(lignes, noms).retraits]));
+    },
+  }),
+});
+
+/** Range des descripteurs de retrait par fiche (`parFiche` : [[id, descripteurs]]) dans `retraits` (nouveauxRetraitsDeFiches), nom et nature lus dans `main`. */
+function ajouterLesRetraits(db, retraits, parFiche) {
+  const lire = db.prepare('SELECT nom, nature FROM main.personnage WHERE id = ?');
+  for (const [id, d] of parFiche) {
+    const p = d.length ? lire.get(id) : null;
+    if (!p) continue;
+    if (!retraits.has(id)) retraits.set(id, { personnage: id, nom: p.nom, nature: p.nature, retraits: [] });
+    retraits.get(id).retraits.push(...d);
+  }
+}
 
 /**
  * Convertit les lignes des tables retirées de la base `ancienne` (attachée) dans `db` : rend les problèmes (une conversion qui échoue, ou une table
@@ -222,6 +278,7 @@ function transferer(db, ancienne, instant, evenement = null) {
     db.exec('BEGIN');
     let ouverte = true;
     try {
+      const retraits = nouveauxRetraitsDeFiches();
       for (const t of TABLES_VIVANTES) {
         const avant = colonnes(db, 'ancienne', t);
         if (!avant.length) continue; // table que l'ancienne base n'avait pas encore
@@ -236,15 +293,17 @@ function transferer(db, ancienne, instant, evenement = null) {
           continue;
         }
         const communes = avant.filter((c) => apres.includes(c)).map((c) => `"${c}"`).join(', ');
+        // des lignes que les nouvelles règles refusent (LIGNES_ECARTEES) : notées, puis laissées de côté par la copie
+        const ecartees = LIGNES_ECARTEES[t];
         try {
-          db.exec(`INSERT INTO main."${t}" (${communes}) SELECT ${communes} FROM ancienne."${t}"`);
+          ecartees?.noter(db, retraits);
+          db.exec(`INSERT INTO main."${t}" (${communes}) SELECT ${communes} FROM ancienne."${t}"${ecartees ? ` WHERE NOT (${ecartees.ou})` : ''}`);
         } catch (e) {
           problemes.push(`${t} : ${e.message}`);
         }
       }
       // les lignes d'une table que les règles ont retirée (TABLES_RETIREES) sont converties, après la copie des fiches qu'elles complètent
       // (une conversion qui retire quelque chose d'une fiche le range dans `retraits`, noté avec les retraits de la décision R42, plus bas)
-      const retraits = nouveauxRetraitsDeFiches();
       if (!problemes.length) problemes.push(...convertirLesTablesRetirees(db, retraits));
       // les modifications déjà livrées (leur lot est dans historique_modification des nouvelles règles : mise à jour ou rapatriement) sont
       // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
