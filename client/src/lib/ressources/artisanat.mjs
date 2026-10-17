@@ -7,7 +7,8 @@
 // materiau_armure, materiau_bouclier, gemme, bois, ingredient_alchimie, potion, kit_alchimie) en sont les extensions.
 // Les écritures sont celles que le site de dev sait déjà faire sur la page Composants (TABLES, ENTITES de lib/edition-modele.mjs ;
 // serveur/edition-composants.mjs, et serveur/edition-armes.mjs pour les effets d'un matériau sur une arme) : monnaies, objets de l'inventaire,
-// matériaux (décision R62), gemmes, bois et ingrédients d'alchimie se créent, se modifient et se suppriment. Le service refuse les autres genres de
+// matériaux (décision R62), gemmes, bois et ingrédients d'alchimie se créent, se modifient et se suppriment ; le titre et la note des onglets de la page
+// se modifient (migration 0057). Le service refuse les autres genres de
 // ressource (estUnComposant : potions, kits, livres, parchemins, matériaux de construction, noms cités) : ces ressources sont en lecture seule, comme
 // tout ce qui n'est pas dans TABLES (recettes, fioles, familiers, bâtiments, vocabulaires, constantes). Les tables tirées d'un texte de la ligne (états
 // cités par l'effet d'une potion, effets d'un petit familier) sont des `derivees`, jamais écrites par l'API.
@@ -28,6 +29,22 @@ export const RESSOURCES = [
     recherche: ['nom', 'abreviation'],
     tri: 'valeur_rf',
     ecriture: { creer: 'monnaie', supprimer: 'monnaie' },
+  },
+  // ▸ Onglets de la page Composants (migration 0057)
+  {
+    cle: 'onglets-des-composants',
+    nom: 'Onglet des composants',
+    noms: 'Onglets des composants',
+    description:
+      'Les onglets de /ressources/composants/, un par tableau (monnaie, matériaux, gemmes, bois, fruits, une catégorie d’ingrédients d’alchimie ou une ' +
+      'section de l’onglet « Équipement inventaire » chacun) : son identifiant est l’ancre de l’onglet et désigne son tableau ; le titre (le nom de ' +
+      'l’onglet) et la note au-dessus du tableau se modifient (une note vide : sans note) ; la place dans la barre (`ordre`) en lecture ; ni création ' +
+      'ni suppression (un onglet par tableau de la page).',
+    table: 'composant_onglet',
+    libelle: 'titre',
+    liste: ['id', 'titre', 'ordre'],
+    recherche: ['titre', 'note'],
+    tri: 'ordre',
   },
   {
     cle: 'constantes-d-equipement',

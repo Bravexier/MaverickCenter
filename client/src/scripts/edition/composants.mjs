@@ -1,6 +1,8 @@
 // Extension de l'éditeur pour /ressources/composants/ (components/composants/ComposantsPage.astro) — demande du propriétaire : « chaque élément est
 // modifiable en édition, supprimable, ajoutable » :
-//   - en mode modification : tous les tableaux s'ouvrent, la recherche s'efface (styles/composants/composants.css la cache) ;
+//   - en mode modification : la recherche s'efface (styles/composants/composants.css la cache) ; le titre et la note de chaque onglet (table
+//     composant_onglet, migration 0057) sont des champs communs (`data-ed` du titre du panneau et de sa note ; le nom de l'onglet, `data-ed-lecture`,
+//     suit à l'enregistrement) ;
 //   - ajouter : un bouton « + Ajouter … » sous chaque tableau (`data-ajout` du tableau : l'entité et les valeurs données d'office, le tableau d'un objet,
 //     la catégorie d'un ingrédient), formulaire, création tout de suite (POST /api/edition/, opération creer) ; sa ligne s'ajoute à la fin du tableau
 //     (lib/composants-rendu.mjs, le HTML de la page construite) ;
@@ -174,7 +176,6 @@ export const composants = {
     const r = racine();
     const recherche = r?.querySelector('[data-composants-recherche]');
     if (recherche) recherche.value = '';
-    for (const d of r?.querySelectorAll('.comp-tableau') ?? []) d.open = true;
     for (const table of r?.querySelectorAll('table[data-ajout]') ?? []) {
       const ajout = JSON.parse(table.dataset.ajout);
       const bouton = document.createElement('button');
@@ -207,7 +208,7 @@ export const composants = {
           },
         });
       });
-      table.closest('.comp-tableau')?.append(bouton);
+      table.closest('.composants-panneau')?.append(bouton);
     }
     for (const tr of r?.querySelectorAll('tr[data-entite]') ?? []) boutonSupprimer(tr);
     rafraichir();

@@ -9,7 +9,8 @@
 //     « avant » (entre la note et la table) et « apres » (sous la table).
 //   - `bloc` : le nom de bloc de la page, posé à côté des classes du gabarit (`armes-famille`, `armes-famille__titre`, `__nom`, `__compte`, `__note`) :
 //     les scripts, les tests et la feuille de la page s'y accrochent ; `class` s'ajoute au cadre, `classeTable` à la table ; `attributs` et
-//     `attributsTable` : les autres attributs (data-…).
+//     `attributsTable` : les autres attributs (data-…) ; `attributsNom` et `attributsNote` : ceux du nom et de la note (le champ du mode modification
+//     qui les écrit : les onglets de la page Composants) — avec `attributsNote`, la note est toujours écrite, cachée tant qu'elle est vide.
 interface Props {
   id?: string;
   titre?: string;
@@ -26,9 +27,12 @@ interface Props {
   classeTable?: string;
   attributs?: Record<string, string | undefined>;
   attributsTable?: Record<string, string | undefined>;
+  attributsNom?: Record<string, string | boolean | undefined>;
+  attributsNote?: Record<string, string | boolean | undefined>;
 }
 const {
   id, titre, lien, compte, note, noteHtml, repliable = true, ouvert = true, niveau = 3, bloc, class: classe, classeTable, attributs = {}, attributsTable = {},
+  attributsNom = {}, attributsNote,
 } = Astro.props;
 const aTitre = Boolean(titre || lien || Astro.slots.has('titre'));
 const Cadre = !aTitre ? 'div' : repliable ? 'details' : 'section';
@@ -55,14 +59,22 @@ const { 'aria-labelledby': _nom, ...sansNom } = attributsTable;
         {lien ? (
           <a class={classes('tableau__nom', '__nom')} id={idTitre} href={lien}>{titre}</a>
         ) : (
-          <span class={classes('tableau__nom', '__nom')} id={idTitre}>{nom ? <Fragment set:html={nom} /> : titre}</span>
+          <span class={classes('tableau__nom', '__nom')} id={idTitre} {...attributsNom}>{nom ? <Fragment set:html={nom} /> : titre}</span>
         )}
         <slot name="outils" />
         {compte !== undefined && compte !== null && <span class={classes('tableau__compte', '__compte')}>{compte}</span>}
       </Titre>
     )
   }
-  {noteHtml ? <p class={classes('tableau__note', '__note')} set:html={noteHtml} /> : note && <p class={classes('tableau__note', '__note')}>{note}</p>}
+  {
+    attributsNote ? (
+      <p class={classes('tableau__note', '__note')} hidden={!note} {...attributsNote}>{note ?? ''}</p>
+    ) : noteHtml ? (
+      <p class={classes('tableau__note', '__note')} set:html={noteHtml} />
+    ) : (
+      note && <p class={classes('tableau__note', '__note')}>{note}</p>
+    )
+  }
   <slot name="avant" />
   <div class="tableau__defile">
     <table class={['table-donnees', classeTable].filter(Boolean).join(' ')} aria-labelledby={attributsTable['aria-labelledby'] ?? idTitre} {...sansNom} set:html={contenu} />

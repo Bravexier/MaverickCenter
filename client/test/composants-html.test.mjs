@@ -1,7 +1,7 @@
-// Page /ressources/composants/ construite (dist/) : rendue depuis les tables (lib/composants-db.mjs), un tableau repliable par liste dans l'ordre voulu
-// (monnaie, matériaux, gemmes, bois, fruits, ingrédients par catégorie, tableaux de l'onglet « Équipement inventaire »), une ligne par composant, les champs
-// du mode modification (data-ed), l'entité de chaque ligne (création, suppression) et l'entrée du menu Ressources. Se saute sans dist/ (npm run build) ;
-// la CI le lance après le build.
+// Page /ressources/composants/ construite (dist/) : rendue depuis les tables (lib/composants-db.mjs), un onglet par tableau dans l'ordre de la table
+// composant_onglet (migration 0057 : monnaie, matériaux, gemmes, bois, fruits, ingrédients par catégorie, tableaux de l'onglet « Équipement inventaire »),
+// leur titre et leur note modifiables, une ligne par composant, les champs du mode modification (data-ed), l'entité de chaque ligne (création,
+// suppression) et l'entrée du menu Ressources. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,13 +21,43 @@ const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const c = present ? chargerComposants(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
-test('les tableaux, dans l’ordre : monnaie, matériaux, gemmes, bois, fruits, ingrédients, équipement', options, () => {
-  const ids = [...main.matchAll(/<details class="tableau comp-tableau" id="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(ids, ['monnaie', 'materiaux', 'gemmes', 'bois', 'fruits', 'ingredients-solvant', 'ingredients-essence', 'ingredients-amplificateur',
+/** Le panneau d'un tableau (son onglet ouvert ou non). */
+const panneau = (id) => {
+  const debut = main.search(new RegExp(`<section class="tableau comp-tableau composants-panneau(?: is-active)?" id="${id}"`));
+  return debut < 0 ? '' : main.slice(debut, main.indexOf('</section>', debut));
+};
+
+test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, gemmes, bois, fruits, ingrédients, équipement', options, () => {
+  // demande du propriétaire, 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table »
+  const panneaux = [...main.matchAll(/<section class="tableau comp-tableau composants-panneau(?: is-active)?" id="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(panneaux, ['monnaie', 'materiaux', 'gemmes', 'bois', 'fruits', 'ingredients-solvant', 'ingredients-essence', 'ingredients-amplificateur',
     'ingredients-catalyseur', 'ingredients-stabilisateur', 'objets-vegetaux', 'objets-animaux', 'objets-autres', 'objets-matos-aventures',
     'objets-matos-fabrication', 'objets-matos-projectile']);
+  assert.deepEqual(panneaux, c.onglets.map((o) => o.id), 'l’ordre de la table composant_onglet');
+  const barre = main.slice(main.indexOf('<nav class="composants-onglets"'), main.indexOf('</nav>', main.indexOf('<nav class="composants-onglets"')));
+  assert.match(barre, /data-onglets="Composants"/);
+  const onglets = [...barre.matchAll(/<a class="onglet(?: is-active)?" id="onglet-([^"]+)" href="#([^"]+)">/g)];
+  assert.deepEqual(onglets.map((m) => m[1]), panneaux);
+  assert.deepEqual(onglets.map((m) => m[2]), panneaux, 'chaque onglet mène à son panneau');
+  assert.equal([...barre.matchAll(/class="onglet is-active"/g)].length, 1, 'le premier onglet ouvert');
+  assert.ok(main.includes('<section class="tableau comp-tableau composants-panneau is-active" id="monnaie"'), 'son panneau aussi');
+  assert.ok(!/<details class="[^"]*comp-tableau/.test(main), 'plus de tableaux repliables');
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
   assert.match(html, /href="[^"]*ressources\/composants\/"[^>]*>Composants</, 'l’entrée du menu Ressources');
+});
+
+test('le titre et la note d’un onglet viennent de la base et se modifient (composant_onglet)', options, () => {
+  // « Il faudrait aussi qu'elles soient modifiables et directement liées en base »
+  for (const o of c.onglets) {
+    const p = panneau(o.id);
+    const titre = echapper(attributEd('composant_onglet', { id: o.id }, 'titre'));
+    assert.ok(p.includes(`<h2 class="tableau__titre comp-tableau__titre"><span class="tableau__nom comp-tableau__nom" id="${o.id}-titre" data-ed="${titre}">${echapper(o.titre)}</span></h2>`), o.id);
+    assert.ok(main.includes(`<span class="onglet__nom" data-ed-lecture="${titre}">${echapper(o.titre)}</span>`), `${o.id} : le nom de l’onglet suit le titre`);
+    const note = echapper(attributEd('composant_onglet', { id: o.id }, 'note'));
+    assert.ok(p.includes(o.note ? `data-ed="${note}" data-ed-cadre>${echapper(o.note)}</p>` : `hidden data-ed="${note}" data-ed-cadre></p>`), `${o.id} : sa note`);
+    // le gabarit commun des tableaux (components/Tableau.astro)
+    assert.match(p, new RegExp(`<div class="tableau__defile"><table class="table-donnees comp-table" aria-labelledby="${o.id}-titre"`));
+  }
 });
 
 test('une ligne par composant, avec son entité ; aucun consommable (potion, livre)', options, () => {
@@ -69,7 +99,7 @@ test('les monnaies en icônes dans les tables (décision R61) : plus d’abrévi
 
 test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », qui a quitté la page « Équipement »), en lecture', options, () => {
   // demande du propriétaire, 2026-10-16 : ce tableau des armures et des boucliers « devrait disparaître et être mélangé au tableau des matériaux des Composants »
-  const t = main.slice(main.indexOf('<details class="tableau comp-tableau" id="materiaux"'), main.indexOf('<details class="tableau comp-tableau" id="gemmes"'));
+  const t = panneau('materiaux');
   const entetes = [...t.slice(t.indexOf('<thead>'), t.indexOf('</thead>')).matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes, ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour']);
   // chaque matériau d'armure ou de bouclier a sa recette (l'Os, de la page des armes, n'en a pas)

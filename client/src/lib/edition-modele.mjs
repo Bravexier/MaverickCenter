@@ -401,6 +401,17 @@ export const TABLES = {
       abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
     },
   },
+  // les onglets de la page « Composants » (migration 0057 ; demande du propriétaire, 2026-10-17 : « avoir des onglets pour chaque table. Il faudrait aussi
+  // qu'elles soient modifiables et directement liées en base ») : le titre (le nom de l'onglet) et la note au-dessus du tableau ; une note vidée : NULL
+  // (sans note). Rien n'en dépend (pas de domaine dans serveur/edition.mjs) ; ni création ni suppression : un onglet par tableau de la page
+  // (lib/composants-db.mjs#TABLEAUX_DES_COMPOSANTS)
+  composant_onglet: {
+    libelle: 'Onglet des composants',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Nom de l’onglet', requis: true },
+      note: { type: 'texte', libelle: 'Note (au-dessus du tableau)' },
+    },
+  },
   // matériaux d'arme (tableau MATERIAUX de l'onglet) : les effets sur une arme, modifiés depuis la page « Composants » (décision R62 : « la seule source de
   // vérité » ; le prix est celui de la ressource, que le service recopie ici)
   materiau_arme: {

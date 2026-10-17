@@ -100,7 +100,9 @@ tableaux de règles suivent le même gabarit, écrit à un seul endroit (`styles
 
 Le composant `components/Tableau.astro` écrit ce HTML (cadre, titre, compte, note, zone qui défile, `<table>` ; slots `titre`, `outils`, `avant`,
 `apres`) ; son `bloc` pose aussi les classes de la page (`armes-famille`, `armes-famille__compte`…), auxquelles s'accrochent les scripts, les tests et
-la feuille de la page, qui ne garde que ce qui lui est propre (largeurs de colonnes, couleurs, lignes sélectionnables). Ceinture, Composants, Armes,
+la feuille de la page, qui ne garde que ce qui lui est propre (largeurs de colonnes, couleurs, lignes sélectionnables) ; `attributsNom` et
+`attributsNote` posent les champs du mode modification sur le nom et la note (avec `attributsNote`, la note est toujours écrite, cachée tant qu'elle est
+vide : les onglets de « Composants », dont chaque panneau est un tableau du gabarit). Ceinture, Composants, Armes,
 Armures et boucliers l'emploient ; les accessoires, les sorts, les races, les métiers, le bestiaire et les blocs du guide posent les classes
 eux-mêmes. Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) prennent le même gabarit par leur conteneur (`.prose`, `.guide-texte`),
 leur cadre à la largeur du tableau, l'alignement que le Markdown écrit gardé (en mode modification, leurs cases sont marquées d'un pointillé, pour
@@ -641,7 +643,9 @@ Demandes du propriétaire (2026-10-14) : « un onglet "Composants". Il comprendr
 tables de l'onglet "équipement inventaire". […] chaque élément est modifiable en édition, supprimable, ajoutable » ; « Il faut aussi y mettre la table des
 fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui peut servir pour fabriquer les potions / fioles et autres ». La page n'a pas
 de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
-`styles/composants/`, lignes : `lib/composants-rendu.mjs`), un tableau repliable par liste :
+`styles/composants/`, lignes : `lib/composants-rendu.mjs`), **un onglet par tableau**, comme la page « Équipement » (demande du propriétaire du
+2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement liées
+en base ») :
 
 - **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
   sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
@@ -662,9 +666,19 @@ de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/compo
 - **Équipement** : les six tableaux de l'onglet « Équipement inventaire » (Végétaux, Animaux, Autres, Matos aventures, Matos fabrication — fioles de
   verre et kits d'alchimie compris —, Matos projectile).
 
-Les potions, livres et parchemins (des consommables) n'y sont pas. Une recherche filtre les lignes de tous les tableaux (`src/scripts/composants.mjs`).
+Les potions, livres et parchemins (des consommables) n'y sont pas. Une recherche filtre les lignes de tous les tableaux (`src/scripts/composants.mjs`) :
+chaque onglet dit combien de lignes il garde, un onglet sans ligne trouvée s'estompe, et si l'onglet ouvert n'en a plus, le premier qui en a s'ouvre.
 
-**Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : chaque case se modifie (nom, prix,
+**Onglets** (`components/Onglets.astro`, posé une fois par `ComposantsPage.astro`) : chacun est une ligne de la table `composant_onglet` (migration
+`0057-onglets-des-composants`) — son id est l'ancre de l'onglet et l'id du panneau (`section.composants-panneau`) de son tableau (`monnaie`, `materiaux`,
+`gemmes`, `bois`, `fruits`, `ingredients-<catégorie>`, `objets-<section>` : `lib/composants-db.mjs#TABLEAUX_DES_COMPOSANTS`), son **titre** est le nom de
+l'onglet, sa **note** le texte au-dessus du tableau (facultative), son `ordre` sa place dans la barre. Un tableau sans onglet ou un onglet sans tableau
+arrête le build (`ongletsDeLaPage`). Les anciennes ancres (`#materiaux`, `#objets-matos-projectile`, `#composant-…` d'une ligne) ouvrent leur onglet.
+Sans JavaScript, les panneaux se suivent, chacun sous son titre.
+
+**Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : le titre de chaque onglet (le titre de son
+panneau, affiché en mode modification ; l'onglet le reprend à l'enregistrement) et sa note (vidée : sans note) — ni création ni suppression d'onglet ;
+chaque case se modifie (nom, prix,
 description, prix d'une gemme, type et affinité d'un ingrédient, nom, abréviation et valeur d'une monnaie) ; ce qui en est tiré est recalculé (prix en RF,
 ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
@@ -674,7 +688,7 @@ la fiche à jour (décision R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGU
 Le corps Markdown des pages qui écrivent ces composants suit, case par case (`lib/corps-composants.mjs`) : « Équipement inventaire » (lignes des objets,
 MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
 avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».
-Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-html.test.mjs` (site construit).
+Tests : `serveur-edition-composants.test.mjs`, `corps-composants.test.mjs`, `composants-onglets.test.mjs` (les onglets de la base), `composants-html.test.mjs` (site construit).
 
 ## Pages de classe : un gabarit commun, alimenté par la base
 

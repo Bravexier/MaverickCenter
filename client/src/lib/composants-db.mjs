@@ -3,6 +3,9 @@
 // que tout ce qui n'est pas directement des consommables mais qui peut servir pour fabriquer les potions / fioles et autres ») : chargée depuis les
 // tables de la base (monnaie, ressource, gemme, bois, ingredient_alchimie), jamais depuis un Markdown. Les potions, livres et parchemins (des
 // consommables) n'y sont pas ; les fioles et kits d'alchimie sont dans « Matos fabrication » (onglet « Équipement inventaire »).
+// Un onglet par tableau (demande du propriétaire du 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait
+// aussi qu'elles soient modifiables et directement liées en base ») : la table composant_onglet (migration 0057) donne le titre, la note et la place de
+// chacun ; son id est celui du tableau (TABLEAUX_DES_COMPOSANTS), et un tableau sans onglet ou un onglet sans tableau arrête le build (ongletsDeLaPage).
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerComposants` reçoit la base ouverte par lib/donnees.mjs.
 import { CATEGORIES_D_INGREDIENTS, SECTIONS_DE_L_INVENTAIRE } from './corps-composants.mjs';
 import { TABLES_FICHES } from './fiche-format.mjs';
@@ -12,6 +15,36 @@ export { pourquoiPasSupprimable } from './composants-champs.mjs';
 export const PAGE_DES_COMPOSANTS = 'ressources/composants';
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
+
+const slug = (t) => String(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/** L'id du tableau (et de son onglet) d'une catégorie d'ingrédients d'alchimie : « ingredients-solvant ». */
+export const idDuTableauDIngredients = (categorie) => `ingredients-${categorie}`;
+/** L'id du tableau (et de son onglet) d'une section de l'onglet « Équipement inventaire » : « objets-matos-aventures » pour « MATOS AVENTURES ». */
+export const idDuTableauDObjets = (section) => `objets-${slug(section)}`;
+
+/**
+ * Les tableaux de la page, chacun l'id de son onglet (composant_onglet.id) et de son panneau : monnaie, matériaux, gemmes, bois, fruits, une catégorie
+ * d'ingrédients d'alchimie chacun, une section de l'onglet « Équipement inventaire » chacun. Leur ordre à l'écran est celui de la table.
+ */
+export const TABLEAUX_DES_COMPOSANTS = Object.freeze([
+  'monnaie', 'materiaux', 'gemmes', 'bois', 'fruits',
+  ...CATEGORIES_D_INGREDIENTS.map((c) => idDuTableauDIngredients(c.categorie)),
+  ...SECTIONS_DE_L_INVENTAIRE.map((s) => idDuTableauDObjets(s.section)),
+]);
+
+/**
+ * Les onglets de la page (lignes composant_onglet), dans l'ordre de la barre (ordre, puis id) ; une erreur si un tableau n'a pas son onglet ou si un
+ * onglet ne désigne aucun tableau (la page perdrait un tableau, ou montrerait un onglet vide).
+ */
+export function ongletsDeLaPage(onglets) {
+  const ids = new Set(onglets.map((o) => o.id));
+  const manquants = TABLEAUX_DES_COMPOSANTS.filter((id) => !ids.has(id));
+  const enTrop = [...ids].filter((id) => !TABLEAUX_DES_COMPOSANTS.includes(id));
+  if (manquants.length || enTrop.length) {
+    throw new Error(`Composants : ${[manquants.length ? `tableaux sans onglet (${manquants.join(', ')})` : '', enTrop.length ? `onglets sans tableau (${enTrop.join(', ')})` : ''].filter(Boolean).join(' ; ')} : voir la table composant_onglet.`);
+  }
+  return [...onglets].sort((a, b) => a.ordre - b.ordre || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
 
 /** Les clés étrangères vers `ressource` des règles (hors fiches de personnage, section 13) : [{ table, colonnes }], lues dans le schéma. */
 function referencesAuxRessources(db) {
@@ -48,7 +81,8 @@ const estUnFruit = (i) => /^fruit$/i.test(String(i?.type ?? '').trim());
  *   bois        : [{ ...ressource, magie, citations }] dans l'ordre des magies ;
  *   fruits      : les ingrédients de type Fruit, [{ ...ressource, ...ingredient, citations }], amplificateurs majeurs d'abord ;
  *   ingredients : [{ categorie, section, ingredients: [...] }] par catégorie, sans les fruits ;
- *   objets      : [{ ...section de l'onglet (lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE), objets: [{ ...ressource, citations }] }].
+ *   objets      : [{ ...section de l'onglet (lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE), objets: [{ ...ressource, citations }] }] ;
+ *   onglets     : les lignes composant_onglet ({ id, titre, note, ordre }), dans l'ordre de la barre (ongletsDeLaPage).
  * `citations` : les règles qui citent le composant (vide : il peut se supprimer sur le site de dev).
  */
 export function chargerComposants(db) {
@@ -90,5 +124,6 @@ export function chargerComposants(db) {
       ...s,
       objets: lignes(db, 'SELECT * FROM ressource WHERE genre = ? AND section = ? ORDER BY ordre', s.genre, s.section).map((r) => avec(r)),
     })),
+    onglets: ongletsDeLaPage(lignes(db, 'SELECT * FROM composant_onglet')),
   };
 }

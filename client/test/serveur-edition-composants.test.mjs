@@ -225,6 +225,22 @@ test('matériau (décision R62) : type d’après l’armure (sa fiche d’armur
   assert.equal(ligne('SELECT 1 FROM materiau WHERE ressource_id = ?', id), undefined);
 });
 
+test('onglet (migration 0057) : son titre et sa note se modifient ; une note vidée devient NULL ; le titre est obligatoire ; ni création ni suppression', () => {
+  // demande du propriétaire, 2026-10-17 : des onglets « modifiables et directement liés en base »
+  const avant = ligne("SELECT * FROM composant_onglet WHERE id = 'bois'");
+  const titre = `Bois ${process.pid}`;
+  ok(enregistrer([{ op: 'modifier', table: 'composant_onglet', cle: { id: 'bois' }, valeurs: { titre, note: 'Une note\nsur deux lignes.' }, avant: { titre: avant.titre, note: avant.note } }]));
+  assert.deepEqual({ ...ligne("SELECT titre, note, ordre FROM composant_onglet WHERE id = 'bois'") }, { titre, note: 'Une note\nsur deux lignes.', ordre: avant.ordre });
+  ok(enregistrer([{ op: 'modifier', table: 'composant_onglet', cle: { id: 'bois' }, valeurs: { note: '' } }]));
+  assert.equal(ligne("SELECT note FROM composant_onglet WHERE id = 'bois'").note, null);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'composant_onglet', cle: { id: 'bois' }, valeurs: { titre: '  ' } }]).statut, 400);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'composant_onglet', cle: { id: 'bois' }, valeurs: { ordre: 1 } }]).statut, 400, 'la place ne se modifie pas');
+  assert.equal(enregistrer([{ op: 'creer', entite: 'composant_onglet', valeurs: { titre: 'X' } }]).statut, 400);
+  // le titre d'avant revient (le rejeu ci-dessous compare aussi la table)
+  ok(enregistrer([{ op: 'modifier', table: 'composant_onglet', cle: { id: 'bois' }, valeurs: { titre: avant.titre, note: avant.note } }]));
+  assert.deepEqual({ ...ligne("SELECT * FROM composant_onglet WHERE id = 'bois'") }, { ...avant });
+});
+
 test('prixEnRf : l’écriture des prix des composants', () => {
   assert.equal(prixEnRf('1 000 RF / 10 RO'), 1000);
   assert.equal(prixEnRf('0,6 Ro'), 60);
@@ -245,7 +261,7 @@ test('rejeu du journal (livraison) : les mêmes lignes et les mêmes corps de pa
   for (const id of [PAGE_DE_L_INVENTAIRE, PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS, PAGE_DES_BATONS, PAGE_DES_ACCESSOIRES, PAGE_DES_INGREDIENTS, 'ressources/armes']) {
     assert.equal(corps(id, neuve), corps(id), id);
   }
-  for (const t of ['ressource', 'materiau', 'materiau_arme', 'materiau_armure', 'gemme', 'bois', 'ingredient_alchimie', 'affinite', 'monnaie', 'page_entite']) {
+  for (const t of ['ressource', 'materiau', 'materiau_arme', 'materiau_armure', 'gemme', 'bois', 'ingredient_alchimie', 'affinite', 'monnaie', 'page_entite', 'composant_onglet']) {
     assert.deepEqual(neuve.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), t);
   }
   neuve.close();
