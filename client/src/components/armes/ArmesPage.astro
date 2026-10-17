@@ -22,7 +22,7 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // largeur de celui des armures (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour
 // l'armure, et avec la même largeur »), le panneau de l'arme : sa fiche (vide tant qu'aucune arme n'est choisie ; un seul cadre, réduit à trois tuiles,
 // le détail de leur calcul dans leur infobulle, puis effets, description et origine) et, dessous, les matériaux (chaque ligne dans la couleur du
-// matériau, ses effets sur une ligne) et les améliorations côte à côte : choisir un matériau et une amélioration ajuste les dégâts, la durabilité, les
+// matériau, ses effets sur une ligne) et les améliorations côte à côte : choisir un matériau et une amélioration ajuste les dégâts, la solidité, les
 // effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (ni fiche ni filtre).
 // Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles et leurs champs modifiables
 // (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici qu'en lecture. CSS : styles/armes/armes.css (?raw, inséré ici seulement).
@@ -122,7 +122,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
       </div>
     </aside>
   </div>
-  {/* les infobulles des tuiles de la fiche (le détail des dégâts, de la durabilité et du coût), écrites par le script hors du panneau de côté, qui défile */}
+  {/* les infobulles des tuiles de la fiche (le détail des dégâts, de la solidité et du coût), écrites par le script hors du panneau de côté, qui défile */}
   <div class="armes-bulles" data-armes-bulles></div>
 </div>
 </section>

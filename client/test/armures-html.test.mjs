@@ -102,7 +102,9 @@ test('armures : les armures particulières en premier puis la liste par type, un
     assert.ok(ligne.includes(`<td class="armure__ap" data-ed="${echapper(attributEd('armure', { id: x.id }, 'ap'))}" data-ed-rendu="protection-ap"><span class="pdef" data-ap="${x.ap ?? 0}">`), `${x.nom} : AP`);
     assert.ok(ligne.includes(`<td class="armure__am" data-ed="${echapper(attributEd('armure', { id: x.id }, 'am'))}" data-ed-rendu="protection-am"><span class="pdef" data-am="${x.am ?? 0}">`), `${x.nom} : AM`);
   }
-  const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((t) => t[1]));
+  // l'en-tête « Solidité » est le mot-clé du glossaire (migration 0058) : le texte des cases, sans leurs balises HTML
+  const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>(.*?)<\/th>/g)].map((t) => t[1].replace(/<[^>]+>/g, '')));
+  assert.match(listes, /<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"[^>]*>Solidité<\/strong><\/th>/, 'la définition de la solidité en infobulle');
   assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', 'Solidité', 'Effet', 'Prix'], 'armures particulières');
   for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', 'Solidité', 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));

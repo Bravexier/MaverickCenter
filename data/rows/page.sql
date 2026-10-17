@@ -6500,7 +6500,7 @@ L''armure est divisée en 6 morceaux :
 - JG = Jambe Gauche
 - JD = Jambe Droite
 
-Elle possède également une Dur. (durabilité comme pour les armes)
+Elle possède également une Dur. ({{solidite|solidité}} comme pour les armes)
 
 **Bonus/Malus** : Cela correspond à des particularités, effets secondaires de l’armure mais aussi de son comportement contre les dégâts physiques (Estoc, Taille, Frappe), allez dans le document [Ressources et Craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit), et dans Armures pour plus d''informations.
 
@@ -7041,7 +7041,7 @@ L’armure retire des points aux dégâts reçus (voir [les dégâts](/guide/les
 - l’**armure physique (AP)** protège des armes ;
 - l’**armure magique (AM)** protège des sorts.
 
-Le personnage a une **AP et une AM de base** (de sa race, de ses classes magiques ou d’un objet), auxquelles s’ajoute l’armure portée, pièce par pièce, sur **six parties du corps** : la tête (T), le corps (C), le bras gauche (BG), le bras droit (BD), la jambe gauche (JG) et la jambe droite (JD). L’armure a aussi une **durabilité**.
+Le personnage a une **AP et une AM de base** (de sa race, de ses classes magiques ou d’un objet), auxquelles s’ajoute l’armure portée, pièce par pièce, sur **six parties du corps** : la tête (T), le corps (C), le bras gauche (BG), le bras droit (BD), la jambe gauche (JG) et la jambe droite (JD). L’armure a aussi une {{solidite|solidité}}.
 
 Ses **bonus et malus** disent comment elle encaisse les trois types de dégâts physiques : l’estoc, la taille et la frappe. Une armure qui résiste aux dégâts de frappe, par exemple, compte deux fois ses AP contre un coup de masse. Une armure de catégorie **lourde** retire 1 point de vitesse et empêche de nager ; chaque classe dit quelles armures elle sait porter. Le détail est dans les [armures](/ressources/equipement/#armures).
 
@@ -28232,9 +28232,9 @@ Détails selon le type d’équipement
 - N’importe quel ensemble vestimentaire peut être modifié via une pièce élémentaire.
 - Comme pour les armures, l’ensemble doit être complet pour activer l’effet magique secondaire.
 
-Durabilité et amélioration
+{{solidite}} et amélioration
 
-- Chaque pièce élémentaire possède 4 crans de solidité/durabilité.
+- Chaque pièce élémentaire possède 4 crans de {{solidite|solidité}}.
 - Les armes et armures obtenues par transformation peuvent être améliorées, mais cela nécessite : l’intervention d’un artisan spécialisé : \[Métier à définir\] et des bonnes gemmes.
 
 Voir le tableau des améliorations plus bas pour plus de détails.
@@ -28559,7 +28559,7 @@ Libellé répété à droite du tableau : BOMBES
 | SANG | Garde coeur | 7.0 | 3.0 | - +1 cran de résistance au Sang<br>- +6 dégâts avec les sorts de Sang<br>- Si un coup encaissé inflige 25% ou plus de la santé max = Double AP et AM (armure+base) pour le prochain tour. (non cumulable) |
 | ARCANE | Garde chakratique | 3.0 | 7.0 | - +1 cran de résistance à la Corruption<br>- +6 dégâts avec les sorts d''Arcane<br>- Donne +25 Chakra max au porteur. |
 | CORRUPTION | Garde corrompue | 4.0 | 6.0 | - +1 cran de résistance à l''Arcane<br>- +6 dégâts avec les sorts de Corruption<br>- L''armure donne 2 corruption à celui qui porte un coup au porteur (au cac uniquement) |
-| ESPACE/TEMPS | Garde horloge | 3.0 | 7.0 | - +1 cran de résistance à l''Espace/Temps<br>- +6 dégâts avec les sorts de l''Espace/Temps<br>- (Réaction) Permet de faire revenir l''armure entière dans un état antérieur (récupération d''un cran de durabilité) 1 fois par semaine |
+| ESPACE/TEMPS | Garde horloge | 3.0 | 7.0 | - +1 cran de résistance à l''Espace/Temps<br>- +6 dégâts avec les sorts de l''Espace/Temps<br>- (Réaction) Permet de faire revenir l''armure entière dans un état antérieur (récupération d''un cran de solidité) 1 fois par semaine |
 | VIDE | Garde privative | 7.0 | 3.0 | - +1 cran de résistance au Vide<br>- +6 dégâts avec les sorts de Vide<br>- Si un sort est encaissé, bloque l''utilisation de ce sort pendant 1 tour. |
 | NÉCROMANCIE | Garde Carcasse | 3.0 | 7.0 | - +1 cran de résistance à la Nécromancie<br>- +6 dégâts avec les sorts de Nécromancie<br>- Permet avec le sort "animation de mort" d''invoquer directement le Squelette venin au lieu du Zombi. |
 | FEU | Garde braise | 5.0 | 5.0 | - +1 cran de résistance au Feu<br>- +6 dégâts avec les sorts de Feu<br>- Réduit de 1 la résistance au feu des ennemis dans un rayon de 3 cases (casse l''immunité) |

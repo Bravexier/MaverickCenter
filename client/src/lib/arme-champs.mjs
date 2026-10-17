@@ -1,7 +1,7 @@
 // Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis,
 // materiau_arme, amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev
 // (client/serveur/edition.mjs) et pour l'onglet Armes de /ressources/equipement/ (demande du propriétaire : un tableau par famille, les colonnes
-// Dégâts, Type de dégâts, Durabilité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
+// Dégâts, Type de dégâts, Solidité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
 // matériaux et toutes les améliorations d'arme de la base : ils doivent redonner exactement les colonnes typées et les tables de détail en place
 // (test/arme-champs.test.mjs).
 //
@@ -283,7 +283,7 @@ export const porteeDeLArme = (arme) =>
   arme.portee_min === null || arme.portee_min === undefined ? '1' : arme.portee_min === arme.portee_max ? String(arme.portee_min) : `${arme.portee_min}-${arme.portee_max}`;
 
 /**
- * Durabilité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
+ * Solidité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
  * 1 (décision R51).
  */
 export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0));

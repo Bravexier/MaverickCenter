@@ -99,6 +99,20 @@ test('forme canonique d’un texte mis en forme (D2) : « {{id}} » (sans texte,
   assert.equal(md(stable).texte, stable, 'stable');
 });
 
+test('insensible à la casse : la balise reconnaît le mot-clé quelle que soit la casse et garde la casse écrite (demande du propriétaire, 2026-10-17)', () => {
+  // « {{solidité}} » montre « solidité », « {{Solidité}} » « Solidité » ; l'id ou le libellé lui-même : le libellé (il suit les renommages)
+  const md = (t) => formeCanonique(t, V, { markdown: true }).texte;
+  assert.equal(md('{{recharge longue}}, {{RECHARGE LONGUE}}, {{Recharge longue}}, {{recharge-longue}}'),
+    '{{recharge-longue|recharge longue}}, {{recharge-longue|RECHARGE LONGUE}}, {{recharge-longue}}, {{recharge-longue}}');
+  assert.equal(md('| a | {{non mort}} |'), '| a | {{non-mort\\|non mort}} |', 'sur une ligne de tableau, « \\| »');
+  assert.equal(formeCanonique('{{recharge longue}} et {{Recharge longue}}', V).texte, '{{recharge-longue|recharge longue}} et {{recharge-longue|Recharge longue}}', 'un texte de case');
+  assert.equal(texteSansBalises('Un cran de {{non-mort}}, de {{non mort}}, de {{NON-MORT}}.', V), 'Un cran de Non-mort, de non mort, de NON-MORT.');
+  const { html } = htmlAvecMotsCles('<p>{{recharge longue}}</p>', V);
+  assert.match(html, /<strong class="mot-cle" data-mot-cle="recharge-longue"[^>]*>recharge longue<\/strong>/);
+  for (const t of ['{{recharge longue}}', '{{RECHARGE LONGUE}}']) assert.equal(md(md(t)), md(t), `${t} : stable`);
+  assert.deepEqual(formesNonCanoniques(md('{{recharge longue}}'), V, { markdown: true }), [], 'ce qu’elle écrit passe db:check');
+});
+
 test('forme canonique (relecture SQL) : formesNonCanoniques suit la règle de formeCanonique — ce qu’elle écrit passe, une balise écrite autrement est relevée, sauf le libellé écrit dans un texte mis en forme', () => {
   const textes = [
     'A {{Recharge longue}} B {{non-mort|non-morts}} C {{mordhau :}} D {{ non-mort }} E {{non-mort| les morts }} F {{non-mort|Non-mort}}',

@@ -45,10 +45,13 @@ test('un tableau repliable par famille, sans les armes de monstres ; une ligne p
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
 
-test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; Description, Coût, Effet, départ et Remarque en mode modification', options, () => {
+test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Solidité, Origine ; Description, Coût, Effet, départ et Remarque en mode modification', options, () => {
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
-  const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>([^<]+)<\/th>/g)].map((m) => m[1]);
-  assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Origine']);
+  const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>(.*?)<\/th>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
+  // « Solidité » partout à la place de « Durabilité » : l'en-tête est le mot-clé du glossaire, sa définition en infobulle (migration 0058)
+  assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Solidité', 'Origine']);
+  assert.match(tete, /<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"[^>]*>Solidité<\/strong><\/th>/);
+  assert.ok(!/durabilit/i.test(main.replace(/data-[\w-]*durabilite[\w-]*(="[^"]*")?|arme-bulle-durabilite|arme__durabilite|arme-durabilite/g, '')), 'plus de « durabilité » affichée');
   assert.equal(colonnes.length - 5, COLONNES_D_UNE_ARME);
   assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 5);
   assert.equal(colonnes.at(-1), 'Remarque');

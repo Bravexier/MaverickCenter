@@ -1350,7 +1350,7 @@ export function durabiliteAEcrire(regles, ligne, valeur) {
 /**
  * La solidité de l'arme `rang` (1 ou 2), pour son curseur (décision R74) : { max, actuelle, cassee, detail: [{ nom, valeur }], plancher } — `actuelle`
  * de 0 au maximum (sans valeur enregistrée : le maximum), `cassee` à 0 (« A zéro, l'arme est cassée »), `detail` les crans de l'arme, de sa composition et
- * de son amélioration (comme la section « Durabilité » de la fiche d'une arme, page « Armes »), `plancher` vrai quand leur somme est ramenée au minimum
+ * de son amélioration (comme la tuile « Solidité » de la fiche d'une arme, page « Armes »), `plancher` vrai quand leur somme est ramenée au minimum
  * (R51). null sans arme ou pour une arme sans solidité (arme de monstre).
  */
 export function durabiliteDArme(regles, fiche, rang) {

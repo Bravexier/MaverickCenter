@@ -18,7 +18,7 @@ Chaque accessoire possède des morceaux de gemmes, ce sont des quarts de gemmes 
 On ne peut pas avoir deux accessoires qui ont le même effet.
 
 Dans le cas d''une malédiction, on relance les dés au début des étapes et l''effet sera le contraire de ce qui est indiqué à la base (exemple : +1 force devient -1 force)');
-INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('armes', 1, 1, 0, NULL, 'Toutes les armes ont de base 2 crans de solidité,  les armes de corps à corps non spécifiées n''ont que 1 de portée
+INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('armes', 1, 1, 0, NULL, 'Toutes les armes ont de base 2 crans de {{solidite|solidité}},  les armes de corps à corps non spécifiées n''ont que 1 de portée
 
 Pour fabriquer une arme, il faut avoir un lingot , un peu de bois, un fourneau, une enclume et être le métier forgeron (le métier n''est pas obligatoire mais il est recommandé car il permet d''esquiver un énorme malus de 40% à la fabrication). Les caractéristiques Force et Intelligence seront utilisées lors du test d''artisanat.
 

@@ -10,7 +10,8 @@
 // La base ne garde que des ids : le service enregistre la FORME CANONIQUE (formeCanonique ; db:check refuse toute autre), qui dépend de la colonne
 // (lib/edition-modele.mjs#typeDeTexte) :
 //   - un texte mis en forme (champ « markdown » : corps des pages, descriptions de la chronologie, blocs des panneaux de règles) cite « {{id}} » (le texte
-//     affiché suit le libellé : un renommage se voit partout), « {{id|texte}} » si un autre texte que le libellé est écrit, « {{id:}} » ; une balise dans
+//     affiché suit le libellé : un renommage se voit partout), « {{id|texte}} » si un autre texte que le libellé est écrit — une ref écrite dans une autre
+//     casse que le libellé en est un : « {{solidité}} » devient « {{solidite|solidité}} » (texteEcrit) —, « {{id:}} » ; une balise dans
 //     un code (« `…` », bloc ``` ou ~~~ : zonesDeCode) est une écriture littérale, ni mise en forme, ni refusée, ni rendue ;
 //   - un texte de case (champs « ligne », « texte » : cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de chaque
 //     balise, « {{id|texte}} » (le libellé du moment si rien n'est écrit), et jamais le mode complet : il se lit sans le vocabulaire (texteSansBalises
@@ -187,6 +188,13 @@ export function ambiguiteDe(vocabulaire, ref) {
 const espaces = (t) => String(t).replace(/\s+/g, ' ').trim();
 
 /**
+ * Le texte que l'auteur d'une balise a écrit : celui qui suit le séparateur, sinon sa ref quand c'est une écriture du mot-clé autre que son libellé (une
+ * autre casse : « {{solidité}} » montre « solidité », « {{Solidité}} » « Solidité ») ; null : le libellé (sans texte, la ref est l'id ou le libellé
+ * lui-même). Demande du propriétaire du 2026-10-17 : la balise reconnaît le mot-clé quelle que soit la casse et garde la casse écrite.
+ */
+const texteEcrit = (b, m) => b.texte ?? (b.ref !== m.id && b.ref !== m.libelle ? b.ref : null);
+
+/**
  * Le texte simple d'une balise : sans vocabulaire, le texte écrit, sinon la ref ; avec, le texte écrit, sinon le libellé, et pour le mode complet
  * « Libellé : définition » (« Libellé » seul tant qu'il n'est pas décrit, ou avec `definitions: false` : la fiche de personnage). Une balise inconnue :
  * le texte écrit, sinon la ref. `profondeur` : une définition qui cite un mot-clé en mode complet n'en donne que le libellé (pas de boucle).
@@ -194,7 +202,7 @@ const espaces = (t) => String(t).replace(/\s+/g, ' ').trim();
 export function texteDeLaBalise(b, vocabulaire = null, { profondeur = 0, definitions = true } = {}) {
   const m = vocabulaire ? motCleDeLaRef(vocabulaire, b.ref) : null;
   if (!m) return b.texte ?? b.ref;
-  if (!b.complet) return b.texte ?? m.libelle;
+  if (!b.complet) return texteEcrit(b, m) ?? m.libelle;
   const definition = definitions && profondeur === 0 && m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1 })) : '';
   return definition ? `${m.libelle} : ${definition}` : m.libelle;
 }
@@ -302,11 +310,12 @@ const libelleIllisible = (libelle) => /[{}\n]/.test(libelle);
  */
 function baliseCanonique(b, m, { markdown = false, tableau = false } = {}) {
   if (b.complet) return `{{${m.id}:}}`;
+  const texte = texteEcrit(b, m);
   if (markdown) {
-    if (b.texte === null || texteAffiche(b.texte) === m.libelle) return `{{${m.id}}}`;
-    return `{{${m.id}${tableau ? '\\|' : '|'}${b.texte}}}`;
+    if (texte === null || texteAffiche(texte) === m.libelle) return `{{${m.id}}}`;
+    return `{{${m.id}${tableau ? '\\|' : '|'}${texte}}}`;
   }
-  const ecrit = b.texte ?? (libelleIllisible(m.libelle) ? null : m.libelle);
+  const ecrit = texte ?? (libelleIllisible(m.libelle) ? null : m.libelle);
   return ecrit === null ? `{{${m.id}}}` : `{{${m.id}|${ecrit}}}`;
 }
 
@@ -450,7 +459,7 @@ export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = 
       id: null,
     };
   }
-  const texte = echapper(b.texte ?? m.libelle);
+  const texte = echapper(texteEcrit(b, m) ?? m.libelle);
   if (!m.description || sansBulle) return { html: `<strong class="mot-cle" data-mot-cle="${m.id}" data-balise="${balise}">${texte}</strong>`, id: null };
   const bulle = idDeBulle(m.id);
   return {
