@@ -163,7 +163,7 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc-produit__remarque { display: block; margin-top: 0.25rem; font-size: var(--fs-sm); font-style: italic; }
 .acc-produit__manque { color: var(--muted); font-style: italic; }
 .acc-produit__gemmes .acc-gemme { cursor: help; }
-.acc-produit__note { margin: 0.7rem 0 0; font-size: 0.84rem; color: var(--muted); }
+.acc-produit__note { margin: 0.7rem 0 0; font-size: var(--fs-md); color: var(--muted); }
 .acc-produit__maudit { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: var(--fs-md); cursor: pointer; }
 
 /* Écran étroit : l'accessoire créé passe sous les tableaux, collé au bas de l'écran */

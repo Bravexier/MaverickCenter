@@ -92,7 +92,7 @@
 }
 .schema-cles[hidden] { display: none; }
 .schema-cles__cle {
-  display: block; width: 100%; padding: 0.3rem 0.5rem; border: 0; border-radius: 4px; background: transparent; color: inherit;
+  display: block; width: 100%; padding: 0.3rem 0.5rem; border: 0; border-radius: var(--radius-xs); background: transparent; color: inherit;
   font: 0.85rem/1.3 var(--sch-mono); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .schema-cles__cle:hover, .schema-cles__cle:focus-visible { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; }

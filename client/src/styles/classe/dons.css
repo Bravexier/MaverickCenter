@@ -28,7 +28,7 @@
 .don-type[data-type="reaction"] { --gh: 275; }
 .don-type[data-type="variable"] { --gs: 0%; }
 .don__precision { font-size: var(--fs-xs); color: var(--muted); }
-.don__effet { font-size: 0.93rem; }
+.don__effet { font-size: var(--fs-lg); }
 .don__effet > .texte:first-child, .don__effet > ul:first-child { margin-top: 0.35rem; }
 .don__effet > :last-child { margin-bottom: 0; }
 .don__effet ul { margin: 0.3rem 0; padding-left: 1.1rem; }

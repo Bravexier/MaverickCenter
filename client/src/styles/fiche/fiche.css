@@ -482,7 +482,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border-radius: var(--radius-pill);
   background: var(--c);
   color: var(--texte-sur-c, #fff);
-  font-size: 0.84rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 .choix__pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 1px; }
@@ -622,7 +622,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 
 /* maîtrises d'armes, dans leur bloc (demande du propriétaire) : une ligne par famille, curseur étroit, les dés à côté ; plusieurs colonnes */
 .maitrises { display: grid; gap: 0.1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
-.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: var(--fs-md); }
 .maitrise__nom { overflow-wrap: break-word; }
 .maitrise .curseur { width: 6.5rem; min-width: 0; }
 .maitrise .des { text-align: right; }
@@ -645,7 +645,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 
 /* ----------------------------------------------------------------- tableaux de saisie */
-.fiche-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.fiche-table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
 .fiche-table th, .fiche-table td { padding: 0.18rem 0.35rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
 .fiche-table th { color: var(--muted); font-weight: normal; font-size: var(--fs-xs); }
 .fiche-table td.nombre, .fiche-table th.nombre { text-align: right; font-variant-numeric: tabular-nums; }

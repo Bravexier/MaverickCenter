@@ -8,12 +8,14 @@ main:has(.equipement) { max-width: 120rem; }
   --eq: var(--accent);
   --eq-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --eq-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --degats-taille: #c0392b;
+  --degats-estoc: #2471a3;
 }
 
 /* Onglets */
 .equipement-onglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--eq-line); margin: 0 0 1rem; }
 .equipement-onglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border);
-  border-bottom: 0; border-radius: var(--radius-lg) 12px 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+  border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
 .equipement-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
 .equipement-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
 html.js .equipement-onglets .onglet.is-active { background: var(--eq); border-color: var(--eq); color: var(--surface); }
@@ -75,3 +77,17 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
   background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
 a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
 a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--g)); outline-offset: 2px; }
+
+/* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit) */
+.armes-table, .armures-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
+.armes-table thead th, .armures-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600;
+  color: var(--muted); background: var(--eq-soft); border-bottom: 1px solid var(--eq-line); white-space: nowrap; }
+.armes-table tbody > tr + tr > *, .armures-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
+.armes-table tbody > tr > *, .armures-table tbody > tr > * { vertical-align: top; text-align: left; }
+.arme-fiche, .pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--eq-line); border-radius: var(--radius-lg); font-size: var(--fs-lg);
+  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
+.arme-fiche__vide, .pfiche__vide { margin: 0; color: var(--muted); }
+.arme-dgt, .pdgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: var(--fs-xs); border-radius: var(--radius-pill);
+  border: 1px solid var(--eq-line); background: var(--surface); white-space: nowrap; }
+.arme-dgt--taille, .pdgt--taille { border-color: color-mix(in srgb, var(--degats-taille) 45%, var(--border)); }
+.arme-dgt--estoc, .pdgt--estoc { border-color: color-mix(in srgb, var(--degats-estoc) 45%, var(--border)); }
