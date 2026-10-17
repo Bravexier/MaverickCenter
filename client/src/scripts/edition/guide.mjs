@@ -205,7 +205,7 @@ export const guide = {
     document.execCommand('defaultParagraphSeparator', false, 'p');
     etat.abandon = new AbortController();
     const { signal } = etat.abandon;
-    Object.assign(etat, { actif: true, morceaux, original: morceaux.map((m) => m.innerHTML), initial: morceaux.map((m) => markdownDe(ed, m)), envoye: null });
+    Object.assign(etat, { actif: true, morceaux, original: morceaux.map((m) => m.innerHTML), initial: [], envoye: null });
     for (const m of morceaux) {
       // modifiable en place (texte-en-place.mjs : saisie suivie, collage en texte seul, lien qui ne s'ouvre pas au clic)
       texte.rendreModifiable(ed, m, signal);
@@ -217,6 +217,8 @@ export const guide = {
         }
       }, { signal });
     }
+    // le Markdown relu à l'entrée, une fois les mots-clés en balises écrites (rendreModifiable) : un morceau qu'on ne retouche pas n'est pas envoyé
+    etat.initial = morceaux.map((m) => markdownDe(ed, m));
     etat.barre = barreDOutils(ed);
     document.body.append(etat.barre);
   },

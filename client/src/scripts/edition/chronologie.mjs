@@ -462,8 +462,9 @@ function saisieDuLien(ed, bloc) {
 function monterLeBloc(ed, el, ligne) {
   for (const m of el.querySelectorAll('mark.chrono-surligne')) m.replaceWith(...m.childNodes);
   el.normalize();
-  const bloc = { el, rang: ligne.rang, ligne, initial: markdownDe(ed, el), lien: { valeur: ligne.page_id ?? null, invalide: false, el: null }, retire: false };
+  const bloc = { el, rang: ligne.rang, ligne, initial: '', lien: { valeur: ligne.page_id ?? null, invalide: false, el: null }, retire: false };
   texte.rendreModifiable(ed, el, etat.abandon.signal);
+  bloc.initial = markdownDe(ed, el); // relu une fois les mots-clés en balises écrites (rendreModifiable)
   etat.blocs.push(bloc);
   el.after(saisieDuLien(ed, bloc));
   return bloc;

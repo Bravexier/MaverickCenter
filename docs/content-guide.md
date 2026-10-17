@@ -319,7 +319,8 @@ Recharge très longue, Mordhau, Dague et Arme de jet. »
   magique ?**. Les titres des panneaux et des tuiles sont ceux de la migration (les intitulés de la page, en minuscules).
 - **Mode modification** (site de dev, `src/scripts/edition/panneaux.mjs`, service `serveur/edition-panneaux.mjs`) : chaque panneau s'ouvre et reste
   ouvert ; son titre est un champ (un clic, une espace ou Entrée dans le `<summary>` ne le replient pas) ; le texte de chaque bloc et le contenu de chaque
-  tuile se modifient en place (l'éditeur de la chronologie : Texte, Mise en page, Liens), le titre d'une tuile est un champ ; sous chaque bloc, « ↑ » et
+  tuile se modifient en place (l'éditeur de la chronologie : Texte, Mise en page, Liens, Mots-clés ; sa barre à gauche de l'écran, à la hauteur du bloc
+  où est le curseur ; les mots-clés en balises écrites, la tuile **Recharge longue** montre `{{recharge-longue:}}`), le titre d'une tuile est un champ ; sous chaque bloc, « ↑ » et
   « ↓ » (il change de place avec son voisin, enregistré avec le reste), « Supprimer » (à l'enregistrement, après confirmation ; le dernier bloc d'un
   panneau reste), « + Texte » et « + Tuile » (insérés après ce bloc, créés tout de suite, puis modifiables). Un bloc de texte se coupe entre les deux colonnes comme
   en lecture, ses outils restent sous sa fin. Voir [`serveur.md`](serveur.md), « Édition ».
@@ -705,7 +706,9 @@ sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: non
   dans le frontmatter. Rendu : `components/guide/GuideChapitre.astro`, CSS `styles/guide/guide.css` (`?raw`).
 - **Modifier une page du guide sur le site de dev** (demande du propriétaire ; `docs/serveur.md`, « Édition ») : crayon, puis le texte se modifie en
   place, avec une barre d'outils (paragraphe, titres, citation, listes, gras, italique, barré, lien vers une page du wiki ou une adresse, retirer un
-  lien, tableau, ajouter ou supprimer une ligne ou une colonne, couleur des cases). Les blocs tirés de la base ne se modifient pas ; le titre, si
+  lien, mot-clé et définition du glossaire, tableau, ajouter ou supprimer une ligne ou une colonne, couleur des cases), à gauche de l'écran, à la hauteur
+  de la zone où est le curseur (la page décalée d'autant ; sous 48rem, en haut de l'écran ; demande du propriétaire du 2026-10-17, la même pour la
+  chronologie et les panneaux de règles). Les mots-clés du glossaire y sont en balises écrites (« Mots-clés (glossaire) »). Les blocs tirés de la base ne se modifient pas ; le titre, si
   (l'ancien devient un alias). À l'enregistrement, chaque morceau de texte modifié est réécrit en Markdown (`lib/markdown-edition.mjs`, aller-retour
   vérifié sur toutes les pages du guide par `test/markdown-edition.test.mjs`) : un morceau inchangé garde son écriture exacte.
 - **Couleur d'une case de tableau** : `{couleur:vert}` en tête de case (`| {couleur:vert} Réussite | … |`) ; couleurs : rouge, orange, jaune, vert,
@@ -842,8 +845,11 @@ ceux du glossaire (Mordhau, Recharge longue, Recharge très longue…).
   Le **supprimer** remplace chacune de ses balises par son texte simple (« Libellé : définition » pour le mode complet), partout ; le **fusionner** dans
   un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal), cela vaut aussi pour les textes
   que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux étiquettes ou aux balises que le lot a
-  reportées (sinon les balises sont retirées). Les outils « Mot-clé » et « Définition » de l'éditeur en place (guide, Codex, chronologie, panneaux de
-  règles) posent les balises sans les taper.
+  reportées (sinon les balises sont retirées). Dans l'éditeur en place du mode modification (guide, Codex, chronologie, panneaux de règles), les
+  mots-clés s'affichent **en balises écrites**, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je passe en mode édition le
+  texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : on les lit, les tape et les modifie comme le reste du
+  texte ; ils ne sont rendus (gras, infobulle, mode complet) qu'une fois enregistrés. Ses outils « Mot-clé » et « Définition » écrivent la balise du
+  mot-clé choisi à la place du texte choisi (`{{id}}`, `{{id|texte}}`, `{{id:}}`), ou, le curseur dans une balise, en changent le mot-clé.
 - **Ce qui n'est pas un mot-clé** : une capacité (de monstre, de classe) ou une altération d'état qui porte le nom d'un mot-clé reste la capacité ou
   l'état (le Non-mort, type de monstre ET capacité de monstre : la tuile de capacité n'est jamais un mot-clé) ; seule une balise fait un mot-clé. Les
   valeurs « {N} » des capacités communes (une accolade : `{{12}}` est une balise, jamais un emplacement) et la couleur de case « {couleur:x} » ne sont

@@ -199,8 +199,9 @@ non canonique pour la colonne (`formesNonCanoniques`, la règle de `formeCanoniq
 le libellé écrit en texte dans un texte mis en forme, `{{id|Libellé}}`). Le HTML que
 pose l'éditeur après le chargement (rendus des champs, cartes rendues par le service, frise, descriptions) a ses balises rendues d'après le vocabulaire
 **vivant**, comme le middleware du build, et les bulles et libellés de la page le suivent (`src/scripts/edition/mots-cles-vivants.mjs` : une définition
-modifiée se voit avant le build suivant) ; l'éditeur en place (guide, Codex, chronologie) relit un mot-clé en sa balise (`lib/markdown-edition.mjs`) et
-pose les balises par ses outils « Mot-clé » et « Définition » (`texte-en-place.mjs#outilsDesMotsCles`, le mode complet insécable).
+modifiée se voit avant le build suivant) ; l'éditeur en place (guide, Codex, chronologie, panneaux de règles) montre chaque mot-clé en sa balise écrite (`lib/markdown-edition.mjs#baliseEcrite`,
+à l'entrée en mode modification ; le vocabulaire vivant ne rend rien dans une zone en cours de saisie) et l'écrit par ses outils « Mot-clé » et
+« Définition » (`texte-en-place.mjs#outilsDesMotsCles`).
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
 `sort-etats`) : une page créée (race, classe, métier) a pour seule source sa provenance « Site de dev › édition du AAAA-MM-JJ » (tables `source`,

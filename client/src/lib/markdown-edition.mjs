@@ -40,8 +40,24 @@ function baliseDuMotCle(n, o) {
 }
 
 /**
- * Échappe un texte pour du Markdown en ligne : rien de ce qu'on a écrit ne devient une mise en forme, un lien Markdown ou une balise. Seule exception,
- * voulue : « [[Page]] » tapé dans le texte reste un lien du wiki (lib/wikilinks.mjs lit le texte, échappé ou non : il n'y a pas d'autre écriture).
+ * La balise écrite d'un mot-clé rendu (`strong.mot-cle`, `span.mot-cle-definition`), telle que le Markdown la garde : « {{id}} » ou « {{id|texte}} »
+ * d'après `data-balise` (son texte lu sans le vocabulaire : celui qui est écrit, jamais le libellé affiché), « {{id:}} » pour le mode complet ; sans
+ * `data-balise`, « {{id|texte affiché}} » ; null pour un autre nœud. L'éditeur en place la montre en texte (src/scripts/edition/texte-en-place.mjs) :
+ * echapperTexte n'échappe pas les accolades, versMarkdown la relit donc telle qu'elle est écrite (« | » échappé dans une case de tableau).
+ */
+export function baliseEcrite(n) {
+  if (!estElement(n) || !(estUnMotCle(n) || estUneDefinition(n))) return null;
+  const id = attribut(n, 'data-mot-cle');
+  if (estUneDefinition(n)) return `{{${id}:}}`;
+  const b = lireUneBalise(attribut(n, 'data-balise') ?? '');
+  const texte = b && !b.complet ? b.texte : texteBrut(n).replace(/\s+/g, ' ').trim().replace(/[{}]/g, '') || null;
+  return texte === null ? `{{${id}}}` : `{{${id}|${texte}}}`;
+}
+
+/**
+ * Échappe un texte pour du Markdown en ligne : rien de ce qu'on a écrit ne devient une mise en forme, un lien Markdown ou une balise HTML. Exceptions
+ * voulues : « [[Page]] » tapé dans le texte reste un lien du wiki (lib/wikilinks.mjs lit le texte, échappé ou non : il n'y a pas d'autre écriture), et
+ * une balise du glossaire « {{…}} » reste une balise (les accolades ne sont pas échappées : l'éditeur en place les montre telles qu'écrites).
  */
 export function echapperTexte(texte, { tableau = false } = {}) {
   let t = String(texte).replace(/([\\`*_[\]])/g, '\\$1').replace(/<(?=[a-zA-Z/!?])/g, '\\<');
