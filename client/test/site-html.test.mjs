@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -279,11 +279,15 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
     .map((l) => ({ ...l, parties: l.parties ? JSON.parse(l.parties) : null }));
   const [derniere, ...anciennes] = trierVersions(notes.map((n) => n.version)).map((v) => notes.find((n) => n.version === v));
   assert.ok(derniere, 'data/rows porte au moins une note (d’exemple ou livrée)');
+  // une ligne de note peut citer un texte qui porte une balise du glossaire (« 2 crans de {{solidite|solidité}} ») : le site construit la rend
+  // (le middleware : src/middleware.mjs), comme partout ; on compare donc au rendu pur passé par le même rendu des mots-clés
+  const vocabulaire = chargerVocabulaire(db);
+  const htmlDeLaNoteRendue = (...args) => htmlAvecMotsCles(htmlDeLaNote(...args), vocabulaire).html;
   // la plus récente en premier, telle que le rendu pur la donne ; les autres dans l'historique, de la plus récente à la plus ancienne
-  assert.ok(main.includes(htmlDeLaNote(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
+  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
   assert.equal(main.indexOf('<article class="nv-note"'), main.indexOf(`<article class="nv-note" id="v${derniere.version.replace('.', '-')}">`));
   assert.equal(main.includes('<h2 id="nv-historique">Historique</h2>'), anciennes.length > 0);
-  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNote(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
+  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
   const positions = [derniere, ...anciennes].map((n) => main.indexOf(`id="v${n.version.replace('.', '-')}"`));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   assert.equal(/class="nv-exemple" role="note"/.test(main), notes.some((n) => n.exemple === 1), 'le bandeau « donnée d’exemple » sur les seules notes d’exemple');
