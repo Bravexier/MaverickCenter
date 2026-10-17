@@ -1,14 +1,15 @@
 // Rendu HTML des lignes de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; données :
-// lib/ceinture-db.mjs) : les potions du sous-onglet Consommables, groupées par page (un <tbody> par page : « Fiole rouge » et ses paliers), et les
-// carquois et sacs du sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche
-// actuel ») : aucune ligne ne porte de texte de recherche.
+// lib/ceinture-db.mjs) : les potions du sous-onglet Consommables, un tableau par page (« Fiole rouge » et ses paliers ; demande du propriétaire,
+// 2026-10-17 : « Les tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), et les carquois et sacs du
+// sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche actuel ») : aucune ligne
+// ne porte de texte de recherche.
 // Chaque potion est sur la couleur de son palier dans le Doc « Alchimie » (demande du propriétaire, 2026-10-16 : « récupérer les couleurs utilisé
-// dans les tableaux du GoogleSheet pour les lignes présentes » ; lib/ceinture-couleurs.mjs) : `--ceint-fond` et `--ceint-texte` sur la ligne, le
-// texte que le Doc pose ou, sinon, le plus lisible sur le fond ; une potion que le Doc ne colore pas reste neutre. Les carquois et sacs n'ont pas de
-// couleur dans le classeur.
+// dans les tableaux du GoogleSheet pour les lignes présentes » ; lib/ceinture-couleurs.mjs) : la ligne colorée du gabarit commun des tableaux
+// (`ligne-couleur`, `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte que le Doc pose ou, sinon, le plus lisible sur le fond ;
+// une potion que le Doc ne colore pas reste neutre. Les carquois et sacs n'ont pas de couleur dans le classeur.
 // Prix et textes : monnaies en icônes (décision R63, lib/monnaies.mjs). Rien n'est calculé : chaque case écrit une valeur de la base, sauf la valeur en
 // Ricken de fer d'un prix, en infobulle (la conversion des monnaies, R61, comme sur la page « Composants »).
-// Fonctions pures, chaîne HTML en sortie, tout texte échappé. `lien(id)` donne l'adresse d'une page (url(cheminDePage(id)) dans l'onglet).
+// Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { htmlAvecMonnaies } from './monnaies.mjs';
 import { RENDUS_DES_COMPOSANTS, ancreDeComposant } from './composants-rendu.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
@@ -41,21 +42,14 @@ export function htmlDeLignes(texte) {
 /** Un prix tel qu'écrit, en icônes, et sa valeur en Ricken de fer en infobulle (le rendu des prix de la page « Composants »). */
 export const htmlDePrix = (prix) => RENDUS_DES_COMPOSANTS['composant-prix'](prix);
 
-/**
- * Le début d'un groupe de potions : le <tbody> (ouvert, à fermer par l'appelant) et sa ligne de titre, le nom de la page en lien et son résumé.
- */
-export function htmlDEnteteDeGroupe(page, lien, colonnes) {
-  const titre = page.existe ? `<a href="${e(lien(page.id))}">${e(page.titre)}</a>` : e(page.titre);
-  return '<tbody class="ceint-groupe">'
-    + `<tr class="ceint-groupe__titre"><th scope="rowgroup" colspan="${colonnes}">${titre}`
-    + `${page.resume ? ` <span class="ceint-groupe__resume">${htmlAvecMonnaies(page.resume)}</span>` : ''}</th></tr>`;
-}
+/** L'ancre du tableau d'une page de potions : « potions-fiole-rouge » pour « ressources/fiole-rouge ». */
+export const ancreDePotions = (pageId) => `potions-${String(pageId).slice(String(pageId).lastIndexOf('/') + 1).replace(/[^a-z0-9-]+/gi, '-')}`;
 
 /** Une potion : Nom | Niveau | Prix | Effet, sur la couleur de son palier (ou neutre). */
 export function htmlDeLigneDePotion(p) {
   const c = couleursDeLaLigne(p.couleur);
-  const style = c ? ` style="--ceint-fond: ${e(c.fond)}; --ceint-texte: ${e(c.texte)}"` : '';
-  return `<tr class="ceint-ligne${c ? ' ceint-ligne--couleur' : ''}" id="${e(ancreDObjet(p.id))}"${style}>`
+  const style = c ? ` style="--ligne-fond: ${e(c.fond)}; --ligne-texte: ${e(c.texte)}"` : '';
+  return `<tr class="ceint-ligne${c ? ' ligne-couleur' : ''}" id="${e(ancreDObjet(p.id))}"${style}>`
     + `<th scope="row" class="ceint-nom">${e(p.nom)}</th><td class="ceint-niveau">${e(p.niveau)}</td>`
     + `<td class="ceint-prix">${htmlDePrix(p.prix_brut)}</td><td class="ceint-effet">${htmlDeLignes(p.effet)}</td></tr>`;
 }

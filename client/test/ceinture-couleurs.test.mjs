@@ -36,7 +36,7 @@ test('une couleur par magie des bâtons ; la ligne d’une magie absente de l’
   assert.deepEqual(couleursDesBatons({ id: 'magies/inconnue', nom: 'Feu' }), { fond: couleurDeMagie('Feu'), texte: texteSurCouleur(couleurDeMagie('Feu')) });
   const batons = chargerBatons(db);
   const m = batons.magies.find((x) => x.magie.id === 'magies/magie-du-sang');
-  assert.ok(htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/').startsWith(`<tr class="baton" id="baton-magie-du-sang" data-niveau="1" style="--baton-fond: #980000; --baton-texte: #ffffff; --mag: ${couleurDeMagie('Sang')}">`),
+  assert.ok(htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/').startsWith(`<tr class="baton ligne-couleur" id="baton-magie-du-sang" data-niveau="1" style="--baton-fond: #980000; --baton-texte: #ffffff; --mag: ${couleurDeMagie('Sang')}">`),
     'Sang : la case de la magie (#980000), le texte le plus lisible (le classeur n’en pose pas) ; la teinte des infobulles reste la couleur de la magie sur le site');
 });
 
@@ -46,6 +46,6 @@ test('rendu : le texte que la source pose, sinon le plus lisible sur le fond ; u
   assert.equal(couleursDeLaLigne(null), null);
   const p = { id: 'ressources/fiole-rouge#potion:petite-fiole-rouge', nom: 'Petite fiole rouge', niveau: 'Novice', prix_brut: '2 Ro', effet: 'Récupère 2d8 + 5 santé' };
   assert.ok(htmlDeLigneDePotion({ ...p, couleur: { fond: '#f4cccc' } }).startsWith(
-    `<tr class="ceint-ligne ceint-ligne--couleur" id="objet-potion-petite-fiole-rouge" style="--ceint-fond: #f4cccc; --ceint-texte: ${texteSurCouleur('#f4cccc')}">`));
+    `<tr class="ceint-ligne ligne-couleur" id="objet-potion-petite-fiole-rouge" style="--ligne-fond: #f4cccc; --ligne-texte: ${texteSurCouleur('#f4cccc')}">`));
   assert.ok(htmlDeLigneDePotion({ ...p, couleur: null }).startsWith('<tr class="ceint-ligne" id="objet-potion-petite-fiole-rouge">'));
 });

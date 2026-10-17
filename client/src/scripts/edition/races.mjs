@@ -122,7 +122,7 @@ function htmlRelations(ed, { edition }) {
     </article>`;
   };
   const interne = relations.interne
-    ? `<div class="regards__interne"><h3>Entre ses peuples</h3><div class="race-tableau__defile"><table class="race-table regards__matrice">
+    ? `<div class="regards__interne"><h3>Entre ses peuples</h3><div class="race-tableau__defile tableau tableau--defile"><table class="race-table regards__matrice table-donnees">
         <caption>En ligne, le peuple qui voit ; en colonne, le peuple vu.</caption>
         <thead><tr><td></td>${relations.interne.peuples.map((p) => `<th scope="col">${echapperHtml(p.nom)}</th>`).join('')}</tr></thead>
         <tbody>${relations.interne.peuples

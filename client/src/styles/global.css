@@ -2,6 +2,7 @@
 @import './global/site-shell.css';
 @import './global/common.css';
 @import './global/wiki.css';
+@import './global/tableaux.css';
 @import './global/relations.css';
 @import './global/capacities.css';
 @import './global/data-browser.css';

@@ -5,6 +5,9 @@
   --met: var(--accent);
   --met-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --met-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--met);
+  --tab-soft: var(--met-soft);
+  --tab-line: var(--met-line);
   margin: 1rem 0 2rem;
 }
 .metiers .js-only { display: none; }
@@ -23,12 +26,7 @@ th[aria-sort="descending"] .metiers-tri::after { content: '↓'; opacity: 1; col
 .metiers-tri:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: var(--radius-xxs); }
 .metiers-table tbody.metier[hidden] { display: none; }
 .metier-detail__texte[hidden] { display: none; }
-.metiers-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.metiers-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
-.metiers-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--met-soft); border-bottom: 1px solid var(--met-line); }
 .metier { scroll-margin-top: 1rem; }
-.metiers-table tbody.metier + tbody.metier > tr:first-child > * { border-top: 1px solid var(--border); }
-.metier__main > * { padding: 0.55rem 0.75rem; vertical-align: top; }
 .metier__main { cursor: pointer; }
 .metier__main:hover { background: var(--met-soft); }
 .metier.is-selected > .metier__main { background: var(--met-soft); box-shadow: inset 4px 0 0 var(--met); }

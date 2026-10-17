@@ -141,7 +141,7 @@ test('ceinture, bâtons magiques : le panneau de règles en tête, une ligne par
   assert.ok(panneauDesBatons.length > 1000, 'le panneau des bâtons');
   assert.match(panneauDesBatons, /<h3 class="ceinture-panneau__titre" id="titre-batons-magiques">Bâtons magiques<\/h3><details class="preg" id="regles-batons-magiques" data-panneau-regles="batons-magiques">/);
   assert.ok(!panneauDesBatons.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
-  const lignes = [...panneauDesBatons.matchAll(/<tr class="baton" id="([^"]+)"/g)].map((m) => m[1]);
+  const lignes = [...panneauDesBatons.matchAll(/<tr class="baton ligne-couleur" id="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(lignes, batons.magies.map((m) => ancreDeBatons(m.magie.id)));
   // demande du propriétaire du 2026-10-16 : plus de colonne Magie ni de colonne par niveau ; le niveau au curseur, l'effet et le prix du niveau choisi
   const entetes = [...panneauDesBatons.slice(panneauDesBatons.indexOf('<thead>'), panneauDesBatons.indexOf('</thead>')).matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
@@ -150,7 +150,7 @@ test('ceinture, bâtons magiques : le panneau de règles en tête, une ligne par
   // la couleur de la magie sur le site
   for (const m of batons.magies) {
     const { fond, texte } = couleursDesBatons(m.magie);
-    assert.ok(panneauDesBatons.includes(`<tr class="baton" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`), m.magie.nom);
+    assert.ok(panneauDesBatons.includes(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`), m.magie.nom);
   }
   assert.equal((panneauDesBatons.match(/<input type="range" class="baton-curseur__champ" min="1" max="3"/g) ?? []).length, batons.magies.length, 'un curseur par ligne');
   assert.equal((panneauDesBatons.match(/<span class="bulle bulle--baton" role="tooltip" id="bulle-baton-[a-z-]+-(?:gemme|bois)" hidden>/g) ?? []).length, batons.magies.length * 2, 'une infobulle par gemme et par bois');

@@ -17,6 +17,10 @@
   --mag: var(--guide);
   --mag-soft: var(--guide-soft);
   --mag-line: var(--guide-line);
+  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur de la partie */
+  --tab: var(--guide);
+  --tab-soft: var(--guide-soft);
+  --tab-line: var(--guide-line);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
@@ -121,9 +125,7 @@ a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 
   background: var(--guide-soft);
 }
 .guide-texte blockquote p { margin: 0.3rem 0; }
-.guide-texte table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; margin: 1rem 0; }
-.guide-texte th, .guide-texte td { border: 1px solid var(--border); padding: 0.35rem 0.65rem; vertical-align: top; }
-.guide-texte thead th { background: var(--guide-soft); text-align: left; }
+.guide-texte table { margin: 1rem 0; }
 .guide-texte li + li { margin-top: 0.2rem; }
 .guide-texte code { font-size: 0.92em; }
 
@@ -203,14 +205,14 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 }
 
 /* ---- Blocs tirés de la base (components/guide/GuideBloc.astro) ---- */
-.guide-defile { max-width: 100%; margin: 1rem 0 1.25rem; overflow-x: auto; }
+/* les tableaux : le gabarit commun, le cadre à la largeur du tableau (sauf la montée de niveau, sur toute la largeur) */
+.guide-defile { width: fit-content; max-width: 100%; margin: 1rem 0 1.25rem; }
+.guide-defile:has(> .guide-table--niveaux) { width: auto; }
 .guide-defile:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
-.guide-table { border-collapse: collapse; font-size: var(--fs-lg); }
-.guide-table th, .guide-table td { padding: 0.4rem 0.65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
-.guide-table thead th { background: var(--guide-soft); }
+.guide-table { width: auto; }
 .guide-table tbody th { white-space: nowrap; }
 .guide-table--niveaux { width: 100%; }
-.guide-table--niveaux thead th { font-size: var(--fs-sm); line-height: 1.3; }
+.guide-table--niveaux thead th { white-space: normal; line-height: 1.3; }
 .guide-table--niveaux tbody th { text-align: center; color: var(--guide-texte); }
 .guide-table--niveaux tbody tr:nth-child(5n) { border-bottom: 3px solid var(--guide-line); }
 .guide-table--compacte td, .guide-table--compacte th { text-align: center; }

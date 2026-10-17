@@ -4,6 +4,10 @@
   --rac-readable: color-mix(in srgb, var(--rac) 55%, #000);
   --rac-soft: color-mix(in srgb, var(--rac) 9%, var(--surface));
   --rac-line: color-mix(in srgb, var(--rac) 35%, var(--border));
+  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur de la race */
+  --tab: var(--rac);
+  --tab-soft: var(--rac-soft);
+  --tab-line: var(--rac-line);
   --hero-1: color-mix(in srgb, var(--rac) 45%, #111);
   --hero-2: color-mix(in srgb, var(--rac) 70%, #111);
   /* échelle des relations : de l'amitié (vert) à l'animosité (rouge), autour de « Neutre » */

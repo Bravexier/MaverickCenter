@@ -19,7 +19,7 @@ if (racine) {
         tr.classList.toggle('est-filtree', !garde);
         if (garde) n += 1;
       }
-      const c = tableau.querySelector('[data-compte]');
+      const c = tableau.querySelector('.comp-tableau__compte');
       if (c) c.textContent = String(n);
       tableau.hidden = mots.length > 0 && n === 0;
       if (mots.length && n) tableau.open = true;

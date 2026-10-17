@@ -7,6 +7,10 @@
   --mag-readable: color-mix(in srgb, var(--mag) 40%, #000);
   --mag-soft: color-mix(in srgb, var(--mag) 9%, var(--surface));
   --mag-line: color-mix(in srgb, var(--mag) 35%, var(--border));
+  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur de la magie */
+  --tab: var(--mag);
+  --tab-soft: var(--mag-soft);
+  --tab-line: var(--mag-line);
   --gl: 34%;
   --hero-1: color-mix(in srgb, var(--mag) 35%, #111);
   --hero-2: color-mix(in srgb, var(--mag) 45%, #111);

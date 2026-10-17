@@ -70,8 +70,8 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         {i.tableau && i.tableau.lignes.length > 0 && (
           <details class="regles-texte">
             <summary>{i.tableau.titre}</summary>
-            <div class="sorts-wrap">
-              <table class="annexe">
+            <div class="sorts-wrap tableau tableau--defile">
+              <table class="annexe table-donnees table-donnees--serree">
                 <thead><tr><th scope="col">Amélioration</th><th scope="col">Effet</th></tr></thead>
                 <tbody>
                   {i.tableau.lignes.map((a) => (

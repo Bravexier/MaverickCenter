@@ -82,7 +82,7 @@ test('armures : les armures particulières en premier puis la liste par type, un
   const p = panneau('armures');
   // « tu met le tableau "Armure particulières" en tout premier de la liste des armures » (demande du propriétaire, 2026-10-16)
   const liste = p.slice(p.indexOf('<div class="armures-listes">'));
-  const blocs = [...liste.matchAll(/<details class="armures-bloc armures-liste" id="([^"]+)"/g)].map((m) => m[1]);
+  const blocs = [...liste.matchAll(/<details class="tableau armures-bloc armures-liste" id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(blocs[0], 'armures-particulieres');
   assert.ok(blocs.length > 1 && blocs.slice(1).every((id) => id.startsWith('armures-') && id !== 'armures-particulieres'), blocs.join(', '));
   const lignes = [...p.matchAll(/<tr class="armure(?: armure--particuliere)?" id="([^"]+)" data-armure=/g)].map((m) => m[1]);
@@ -156,8 +156,8 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
   assert.deepEqual(niveaux, armures.ameliorations.bouclier.map((x) => x.niveau));
 
   // la liste complète : un seul tableau, replié par défaut, un en-tête triable par colonne, AP et AM séparés
-  assert.match(p, /<details class="armures-bloc armures-liste" id="liste-des-boucliers">/, 'replié par défaut (pas d’attribut open)');
-  assert.equal((p.match(/<table class="armures-table armures-table--liste/g) ?? []).length, 1, 'un seul tableau de boucliers');
+  assert.match(p, /<details class="tableau armures-bloc armures-liste" id="liste-des-boucliers">/, 'replié par défaut (pas d’attribut open)');
+  assert.equal((p.match(/<table class="table-donnees armures-table armures-table--liste/g) ?? []).length, 1, 'un seul tableau de boucliers');
   const liste = p.slice(p.indexOf('data-triable'), p.indexOf('</table>', p.indexOf('data-triable')));
   assert.deepEqual([...liste.matchAll(/<th scope="col" data-tri="([^"]+)"/g)].map((m) => m[1]), ['nom', 'forme', 'matiere', 'ap', 'am', 'solidite', 'poids', 'prix']);
   const boucliers = [...liste.matchAll(/<tr class="bouclier" id="([^"]+)" data-bouclier="[^"]+" data-forme="([^"]+)" data-matiere="([^"]+)" data-ordre="(\d+)">/g)];
@@ -201,7 +201,7 @@ test('plus de tableau MATÉRIAUX sous les deux onglets : chacun renvoie au table
   // le renvoi reste en mode modification (la classe `armures-aide` y est cachée)
   assert.ok(html.includes('.armures-renvoi {') && !/body\.ed-mode[^{]*armures-renvoi/.test(html), 'le renvoi n’est pas caché en mode modification');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
-  assert.ok(composants.includes('<details class="comp-tableau" id="materiaux"'), 'l’ancre du tableau des matériaux de « Composants »');
+  assert.ok(composants.includes('<details class="tableau comp-tableau" id="materiaux"'), 'l’ancre du tableau des matériaux de « Composants »');
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {

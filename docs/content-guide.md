@@ -80,6 +80,36 @@ ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordr
 (`styles/magie/tableaux.css`, inséré en `?raw`) : les deux tableaux tiennent sans barre de défilement horizontale, du téléphone (360 px) à la largeur du site.
 
 
+## Tableaux : un gabarit commun à tout le site
+
+Demande du propriétaire (2026-10-17) : « De manière générale il faudrait uniformiser tous les tableaux sous le même template commun ». Tous les
+tableaux de règles suivent le même gabarit, écrit à un seul endroit (`styles/global/tableaux.css`, chargé sur toutes les pages) :
+
+- **le cadre** (`.tableau`) : fond, bordure, coins arrondis ; un **titre** facultatif (`.tableau__titre` : le `<summary>` d'un tableau repliable, avec
+  son chevron, ou un titre `<hN>`), le nom (`.tableau__nom`, en lien vers une page s'il le faut) et le compte à droite (`.tableau__compte`) ; une
+  **note** sous le titre (`.tableau__note`) ; la **zone qui défile** en largeur (`.tableau__defile`, ou le cadre lui-même : `.tableau--defile`) ;
+- **la table** (`.table-donnees`) : en-têtes en petites capitales sur un fond teinté, un filet entre deux lignes, cases alignées en haut à gauche ;
+  deux densités (`.table-donnees--serree` : tableaux où l'on choisit une ligne — matériaux, formes, améliorations, étapes des accessoires — et
+  bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) prend toute la couleur de sa source (potions, bâtons
+  magiques, matériaux des armes), un filet de sa teinte, un voile au survol ;
+- **plusieurs tableaux** : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur en tient : la largeur
+  minimale d'un tableau, `--tableau-largeur`, 26rem par défaut, en fixe le nombre ; 30rem pour les potions de la ceinture, deux ou trois dans la page
+  de 120rem) ; un tableau dans un groupe de tableaux a un nom plus petit que celui du groupe ;
+- **la teinte** : l'accent du site, sauf celle que la page pose sur son conteneur (`--tab`, `--tab-soft`, `--tab-line`) : la couleur de la magie, de
+  la race, de la partie du guide…
+
+Le composant `components/Tableau.astro` écrit ce HTML (cadre, titre, compte, note, zone qui défile, `<table>` ; slots `titre`, `outils`, `avant`,
+`apres`) ; son `bloc` pose aussi les classes de la page (`armes-famille`, `armes-famille__compte`…), auxquelles s'accrochent les scripts, les tests et
+la feuille de la page, qui ne garde que ce qui lui est propre (largeurs de colonnes, couleurs, lignes sélectionnables). Ceinture, Composants, Armes,
+Armures et boucliers l'emploient ; les accessoires, les sorts, les races, les métiers, le bestiaire et les blocs du guide posent les classes
+eux-mêmes. Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) prennent le même gabarit par leur conteneur (`.prose`, `.guide-texte`),
+leur cadre à la largeur du tableau, l'alignement que le Markdown écrit gardé (en mode modification, leurs cases sont marquées d'un pointillé, pour
+écrire dedans). La table et ses cases sont sous `:where()` : une règle de page les précise toujours, quel que soit l'ordre des feuilles. Restent à
+part deux grilles dont les colonnes portent le sens : les matrices des magies de `/magies/` et `/races/` (en-têtes verticaux, une colonne teintée
+par magie) et le butin d'une carte de monstre (une colonne par échelle) ; et les tableaux de saisie de la fiche de personnage, de la page Debug et de
+l'onglet DB. `test/tableaux.test.mjs` garde la règle : la présentation des en-têtes n'est écrite qu'une fois, et chaque tableau des
+pages de règles construites suit le gabarit, dans sa zone qui défile.
+
 ## Pages de magie : un gabarit commun, alimenté par la base
 
 **La carte de `/magies/`** (`components/magie/MagiesConstellation.astro`, CSS `styles/magie/orbit.css`) : une pastille par magie, le nom seul, **sans infobulle**
@@ -483,10 +513,13 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   personnage : Accessoires et Ceinture » (la liste « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
 - puis **trois sous-onglets** (`lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE`, `components/Onglets.astro` ; leur barre est un groupe à elle,
   `data-onglets="Ceinture"`), chacun un panneau `section.ceinture-panneau` dont l'id est l'ancre du sous-onglet :
-  - **Consommables** (`#ceinture-consommables`, ouvert au départ) : les tableaux repliables **Fioles**, **Remèdes**, **Philtres**, **Huiles**,
-    **Alchimie primitive**, dans cet ordre (`lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE`), un lien par tableau en tête — une potion par ligne (nom, niveau,
-    prix, effet tel qu'écrit), groupées par page de potion (« Fiole rouge » et ses paliers, dans l'ordre où la page les écrit ; le titre de la page en
-    lien, son résumé dessous) ;
+  - **Consommables** (`#ceinture-consommables`, ouvert au départ) : les groupes repliables **Fioles**, **Remèdes**, **Philtres**, **Huiles**,
+    **Alchimie primitive**, dans cet ordre (`lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE`), un lien par groupe en tête ; dans chacun, **un tableau par
+    page de potion**, deux ou trois côte à côte selon la largeur, un seul sur un écran étroit (demande du propriétaire, 2026-10-17 : « Les tableaux des
+    fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible » ; grille `.tableaux--cote-a-cote` du gabarit commun, largeur minimale
+    d'un tableau 30rem : au-delà de trois, l'effet n'aurait plus la place) : son titre (la page, en lien, ancre `#potions-<page>` :
+    `lib/ceinture-rendu.mjs#ancreDePotions`), son nombre de paliers, le résumé de la page, puis une potion par ligne (nom, niveau, prix, effet tel
+    qu'écrit), dans l'ordre où la page les écrit ;
   - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
     description) ;
   - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
@@ -507,7 +540,8 @@ pages citées sont lus dans la base ; une section de règles qu'une page n'écri
 dit (avertissement `[ceinture]`). Pas encore modifiable sur le site de dev : les potions ont leurs pages (« Fiole rouge »…), qu'une modification devra
 suivre, comme le fait `lib/corps-composants.mjs` pour les composants. Tests : `ceinture-db.test.mjs` (la vue, le chargement, l'ordre des tableaux et des
 sous-onglets, les sections telles que l'import les écrivait), `ceinture-couleurs.test.mjs` (une couleur par potion et par magie des bâtons, le rendu),
-`ceinture-html.test.mjs` (site construit : sous-onglets, tableaux, couleurs, liens, plus de recherche ni de page à part).
+`ceinture-html.test.mjs` (site construit : sous-onglets, tableaux, un tableau par page de potion côte à côte, couleurs, liens, plus de recherche ni
+de page à part).
 
 ### Bâtons magiques (sous-onglet Bâtons magiques de la ceinture)
 

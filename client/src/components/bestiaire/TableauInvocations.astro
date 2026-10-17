@@ -65,8 +65,8 @@ const npms = (t: (typeof tableaux)[number]) => {
                 Sort : {sort ? <a href={sort}>{t.invocation.sortNom}</a> : t.invocation.sortNom}
                 {t.invocation.magie && <> ({t.invocation.magie})</>} · <a href={url(`${t.invocation.id}/`)}>règles de l’invocation</a>
               </p>
-              <div class="btableau__defile" tabindex="0" role="region" aria-label={`Tableau « ${t.invocation.nom} » (défile)`}>
-                <table class={`btable btable--invocation${t.duo ? ' btable--duo' : ''}`}>
+              <div class="btableau__defile tableau tableau--defile" tabindex="0" role="region" aria-label={`Tableau « ${t.invocation.nom} » (défile)`}>
+                <table class={`btable btable--invocation${t.duo ? ' btable--duo' : ''} table-donnees table-donnees--serree`}>
                   <thead>
                     <tr>
                       {t.duo ? (

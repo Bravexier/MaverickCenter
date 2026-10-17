@@ -45,14 +45,10 @@
 
 .race-tableau { margin-top: 1rem; }
 .race-tableau h3 { margin: 0 0 0.5rem; font-size: var(--fs-xl); }
-.race-tableau__defile { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.race-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
-.race-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--rac-soft); border-bottom: 1px solid var(--rac-line); white-space: pre-line; }
-.race-table tbody th, .race-table td { padding: 0.45rem 0.75rem; vertical-align: top; text-align: left; border-top: 1px solid var(--border); }
-.race-table tbody th { font-weight: 600; }
+/* tableaux : le gabarit commun (styles/global/tableaux.css) ; un en-tête de la source sur plusieurs lignes le reste */
+.race-table thead th { white-space: pre-line; }
 .race-table .texte { margin: 0; }
 .race-table ul { margin: 0; padding-left: 1.1rem; }
-.race-table caption { caption-side: bottom; padding: 0.4rem 0.75rem; color: var(--muted); font-size: var(--fs-md); text-align: left; }
 
 .race-hyper { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--rac); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.9rem; }
 .race-hyper h3 { margin: 0 0 0.2rem; font-size: var(--fs-xl); color: var(--rac-readable); }

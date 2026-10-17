@@ -2,6 +2,7 @@
 import composantsCss from '../../styles/composants/composants.css?raw';
 import type { chargerComposants } from '../../lib/composants-db.mjs';
 import { url } from '../../lib/wiki';
+import Tableau from '../Tableau.astro';
 import {
   htmlDeLigneDeBois, htmlDeLigneDeGemme, htmlDeLigneDeMateriau, htmlDeLigneDeMonnaie, htmlDeLigneDIngredient, htmlDeLigneDObjet,
 } from '../../lib/composants-rendu.mjs';
@@ -13,7 +14,8 @@ import {
 // catégorie), puis les tableaux de l'onglet « Équipement inventaire ». Une recherche filtre les lignes de tous les tableaux (src/scripts/composants.mjs).
 // Mode modification (site de dev, src/scripts/edition/composants.mjs) : chaque case modifiable porte son `data-ed` (lib/composants-rendu.mjs) ; un bouton
 // « + Ajouter » par tableau (`data-ajout` : l'entité et ses valeurs données d'office), « Supprimer » sur chaque ligne qui n'est citée par aucune autre règle.
-// CSS : styles/composants/composants.css (?raw, inséré ici seulement).
+// Les tableaux suivent le gabarit commun du site (components/Tableau.astro, styles/global/tableaux.css) ; CSS de la page :
+// styles/composants/composants.css (?raw, inséré ici seulement).
 type Composants = ReturnType<typeof chargerComposants>;
 interface Props {
   composants: Composants;
@@ -99,28 +101,20 @@ const nombre = tableaux.reduce((n, t) => n + t.lignes.length, 0);
     <button type="button" class="composants-bouton" data-composants-tout="fermer">Tout replier</button>
   </div>
 
-  <div class="composants-tableaux">
+  <div class="tableaux composants-tableaux">
     {
       tableaux.map((t, i) => (
         <>
           {t.groupe && t.groupe !== tableaux[i - 1]?.groupe && <h2 class="composants-groupe">{t.groupe}</h2>}
-          <details class="comp-tableau" id={t.id} open data-repli>
-            <summary class="comp-tableau__titre">
-              <span class="comp-tableau__nom" id={`${t.id}-titre`}>{t.titre}</span>
-              <span class="comp-tableau__compte" data-compte>{t.lignes.length}</span>
-            </summary>
-            {t.note && <p class="comp-tableau__note">{t.note}</p>}
-            <div class="comp-wrap">
-              <table class="comp-table" aria-labelledby={`${t.id}-titre`} data-ajout={t.ajout ? JSON.stringify(t.ajout) : undefined}>
-                <thead>
-                  <tr>{t.entetes.map((h) => <th scope="col">{h}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {t.lignes.map((html) => <Fragment set:html={html} />)}
-                </tbody>
-              </table>
-            </div>
-          </details>
+          <Tableau id={t.id} titre={t.titre} compte={t.lignes.length} note={t.note} bloc="comp-tableau" classeTable="comp-table"
+            attributsTable={{ 'data-ajout': t.ajout ? JSON.stringify(t.ajout) : undefined }}>
+            <thead>
+              <tr>{t.entetes.map((h) => <th scope="col">{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {t.lignes.map((html) => <Fragment set:html={html} />)}
+            </tbody>
+          </Tableau>
         </>
       ))
     }

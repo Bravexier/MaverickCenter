@@ -3,6 +3,7 @@ import type { chargerBatons } from '../../lib/batons-db.mjs';
 import { htmlDeLigneDeBatons } from '../../lib/batons-rendu.mjs';
 import { url } from '../../lib/wiki';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import Tableau from '../Tableau.astro';
 import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
 // Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; demandes du
@@ -14,8 +15,9 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie dans l'onglet « Bâton magique » du
 // classeur (lib/ceinture-couleurs.mjs), sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec
 // son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le prix (les matériaux de la recette :
-// lib/batons-db.mjs#prixDuBaton) du niveau choisi. Le tableau n'est pas encore modifiable sur le site de dev (le panneau de règles l'est). CSS :
-// styles/ceinture/ceinture.css (la pastille de la gemme et le panneau de règles : styles/equipement/equipement.css).
+// lib/batons-db.mjs#prixDuBaton) du niveau choisi. Le tableau suit le gabarit commun (components/Tableau.astro) ; il n'est pas encore modifiable sur
+// le site de dev (le panneau de règles l'est). CSS : styles/ceinture/ceinture.css (la pastille de la gemme et le panneau de règles :
+// styles/equipement/equipement.css).
 type Batons = ReturnType<typeof chargerBatons>;
 interface Props {
   batons: Batons;
@@ -37,19 +39,15 @@ const composants = url('ressources/composants/');
     Un bâton par magie, dans la couleur de sa magie : sa gemme et son bois (leur description et leurs prix en infobulle, et dans{' '}
     <a href={`${composants}#gemmes`}>Composants</a>), le bonus passif qu’il donne aux sorts au niveau choisi, et le prix de ses matériaux.
   </p>
-  <div class="batons-bloc">
-    <div class="batons-wrap">
-      <table class="batons-table" aria-labelledby={`titre-${id}`}>
-        <thead>
-          <tr>
-            <th scope="col">Gemme</th><th scope="col">Bois</th><th scope="col">Niveau</th><th scope="col">Effet</th>
-            <th scope="col" title="Prix des matériaux de la recette : la gemme de la qualité du niveau et le bois">Prix</th>
-          </tr>
-        </thead>
-        <tbody set:html={batons.magies.map((m) => htmlDeLigneDeBatons(m, batons.niveaux, composants)).join('')} />
-      </table>
-    </div>
-  </div>
+  <Tableau bloc="batons-bloc" classeTable="batons-table" attributsTable={{ 'aria-labelledby': `titre-${id}` }}>
+    <thead>
+      <tr>
+        <th scope="col">Gemme</th><th scope="col">Bois</th><th scope="col">Niveau</th><th scope="col">Effet</th>
+        <th scope="col" title="Prix des matériaux de la recette : la gemme de la qualité du niveau et le bois">Prix</th>
+      </tr>
+    </thead>
+    <tbody set:html={batons.magies.map((m) => htmlDeLigneDeBatons(m, batons.niveaux, composants)).join('')} />
+  </Tableau>
 </section>
 
 <script>

@@ -3,13 +3,17 @@
    elle, et une matière) puis la liste classique (les boucliers : un seul tableau replié, triable), et à côté, dans un panneau qui suit le défilement,
    la fiche de l'armure ou du bouclier choisi (sur un écran étroit, il passe par-dessus la page), avec la pièce et l'amélioration pour une armure. Les
    cases « Matière » dans la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet), le poids d'un bouclier dans la
-   couleur de sa case (vert, jaune, orange, rouge : classeur original). Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le
+   couleur de sa case (vert, jaune, orange, rouge : classeur original). Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre,
+   titre repliable, en-têtes ; les tableaux où l'on choisit une matière, serrés) ; ici, ce qui leur est propre. Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le
    contenu à la suite, la liste des poids comprise. */
 main:has(.armures) { max-width: 120rem; }
 .armures {
   --pro: var(--accent);
   --pro-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --pro-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--pro);
+  --tab-soft: var(--pro-soft);
+  --tab-line: var(--pro-line);
   margin: 0 0 2rem;
 }
 .armures .js-seul { display: none; }
@@ -53,24 +57,11 @@ html.js body.ed-mode .armures-poids { display: block; }
 .armures-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armures-cote__fermer:hover { border-color: var(--pro); }
 
-/* Un bloc repliable (tableau) */
-.armures-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
-.armures-bloc__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.55rem 0.9rem; cursor: pointer; list-style: none; }
-.armures-bloc__titre::-webkit-details-marker { display: none; }
-.armures-bloc__titre::before { content: '▸'; color: var(--pro); transition: transform var(--duree); }
-.armures-bloc[open] > .armures-bloc__titre::before { transform: rotate(90deg); }
-.armures-bloc[open] > .armures-bloc__titre { border-bottom: 1px solid var(--pro-line); }
-.armures-bloc__nom { font-weight: 700; font-size: var(--fs-xl); letter-spacing: 0.02em; }
-.armures-bloc__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--pro); color: var(--surface); }
-.armures-bloc__compte { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
-.armures-bloc__note { margin: 0.45rem 0.9rem 0.5rem; font-size: var(--fs-md); color: var(--muted); }
+/* un écart relevé entre la grille et les matériaux (lib/armures-db.mjs), sous les deux tableaux de choix */
+.armures-ecart { margin: 0.45rem 0 0.5rem; font-size: var(--fs-md); color: var(--muted); }
 
-/* Tableaux (comme ceux des armes : styles/armes/armes.css) */
-.armures-wrap { overflow-x: auto; }
-.armures-table { line-height: 1.45; }
-.armures-table thead th { padding: 0.55rem 0.75rem; }
-.armures-table tbody > tr > * { padding: 0.5rem 0.75rem; }
-.armures-table--choix tbody > tr > * { padding-top: 0.35rem; padding-bottom: 0.35rem; vertical-align: middle; }
+/* Les tableaux (gabarit commun) : ceux où l'on choisit une matière ont des lignes centrées */
+.armures-table--choix tbody > tr > * { vertical-align: middle; }
 
 /* Lignes sélectionnables */
 html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier) { cursor: pointer; }
@@ -167,5 +158,4 @@ body.ed-mode .armures .armure__effet .ed-saisie { min-width: 18rem; }
   .armures-vue { grid-template-columns: minmax(0, 1fr) !important; }
   .armures-cote { display: grid !important; position: static !important; max-height: none !important; }
   .armures-panneau { display: block !important; }
-  .armures-wrap { overflow: visible; }
 }

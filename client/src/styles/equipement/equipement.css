@@ -78,12 +78,7 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
 a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
 a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--g)); outline-offset: 2px; }
 
-/* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit) */
-.armes-table, .armures-table { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); }
-.armes-table thead th, .armures-table thead th { text-align: left; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; font-weight: 600;
-  color: var(--muted); background: var(--eq-soft); border-bottom: 1px solid var(--eq-line); white-space: nowrap; }
-.armes-table tbody > tr + tr > *, .armures-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.armes-table tbody > tr > *, .armures-table tbody > tr > * { vertical-align: top; text-align: left; }
+/* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit ; leurs tableaux : le gabarit commun, styles/global/tableaux.css) */
 .arme-fiche, .pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--eq-line); border-radius: var(--radius-lg); font-size: var(--fs-lg);
   box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
 .arme-fiche__vide, .pfiche__vide { margin: 0; color: var(--muted); }

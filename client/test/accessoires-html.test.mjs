@@ -44,7 +44,7 @@ test('malédiction (décision R94) : l’aide du générateur dit la relance dep
 });
 
 test('une case au dé par tableau des étapes : identité, propriété, chaque propriété à effets ; pas la monture', options, () => {
-  const tables = (main.match(/<table class="acc-table/g) ?? []).length;
+  const tables = (main.match(/<table class="table-donnees table-donnees--serree acc-table/g) ?? []).length;
   const des = [...main.matchAll(/<button type="button" class="acc-de js-seul" data-de="(\d+)"(?: data-de-bonus="(\d+)")?/g)];
   assert.equal(tables, 2 + a.proprietes.filter((p) => p.effets.length).length + 1);
   // pas de dé sur la Monture (« Pas de random à faire sur la table des Montures »)
@@ -99,7 +99,7 @@ test('le script de la page n’importe que lib/accessoires-generateur.mjs et lib
 const decoder = (t) => t.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 test('compétences : une ligne par compétence (« Compétence Force »), le bonus d’acquis au curseur, au dé ou saisi, qui donne le niveau, la couleur et le prix', options, () => {
-  const debut = main.indexOf('<table class="acc-table acc-table--competences">');
+  const debut = main.indexOf('<table class="table-donnees table-donnees--serree acc-table acc-table--competences">');
   const table = main.slice(debut, main.indexOf('</table>', debut));
   // une ligne : ses attributs (les valeurs ne contiennent pas de « " », échappé) et son contenu
   const lignes = table.split('<tr class="acc-ligne acc-effet acc-competence"').slice(1).map((t) => {
@@ -139,7 +139,7 @@ test('effets : un onglet par propriété à effets, qui mène à son tableau ; p
   const onglets = [...main.matchAll(/<a class="onglet( is-active)?" id="onglet-effets-([^"]+)" href="#effets-([^"]+)" data-onglet-propriete="([^"]+)">/g)];
   assert.deepEqual(onglets.map((o) => [o[2], o[3], o[4]]), proprietes.map((p) => [p.id, p.id, p.id]));
   assert.deepEqual(onglets.map((o) => Boolean(o[1])), proprietes.map((_, i) => i === 0), 'le premier ouvert');
-  for (const [i, p] of proprietes.entries()) assert.match(main, new RegExp(`<section class="acc-famille${i === 0 ? ' is-active' : ''}" id="effets-${p.id}" data-propriete="${p.id}" data-table="effet"`));
+  for (const [i, p] of proprietes.entries()) assert.match(main, new RegExp(`<section class="tableau acc-famille${i === 0 ? ' is-active' : ''}" id="effets-${p.id}" data-propriete="${p.id}" data-table="effet"`));
   assert.ok(main.includes('data-onglets="Effets par propriété"'));
   assert.ok(!/<details class="acc-famille/.test(main), 'plus de <details>');
 });

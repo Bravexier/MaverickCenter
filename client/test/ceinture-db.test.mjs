@@ -13,7 +13,7 @@ import {
   CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
   chargerObjetsDeCeinture, sectionDuCorps,
 } from '../src/lib/ceinture-db.mjs';
-import { ancreDObjet, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
+import { ancreDObjet, ancreDePotions, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { COULEURS_DES_POTIONS } from '../src/lib/ceinture-couleurs.mjs';
 
@@ -132,6 +132,15 @@ test('sectionDuCorps : une section jusqu’au titre suivant de même niveau ou p
   assert.equal(sectionDuCorps(corps, '## B'), 'Texte B.');
   assert.equal(sectionDuCorps(corps, '## C'), null);
   assert.equal(sectionDuCorps('## A\n\nTexte.', null), null, 'pas d’introduction');
+});
+
+test('rendu : l’ancre du tableau d’une page de potions, unique par page (un tableau par page, côte à côte : demande du propriétaire, 2026-10-17)', () => {
+  assert.equal(ancreDePotions('ressources/fiole-rouge'), 'potions-fiole-rouge');
+  assert.equal(ancreDePotions('ressources/philtre-de-l-escamoteur'), 'potions-philtre-de-l-escamoteur');
+  const pages = objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages.map((p) => ancreDePotions(p.id)));
+  assert.ok(pages.length > 40);
+  assert.equal(new Set(pages).size, pages.length, 'une ancre par page');
+  for (const a of pages) assert.match(a, /^potions-[a-z0-9-]+$/);
 });
 
 test('rendu : lignes d’un effet sans leur puce, échappées ; monnaies en icônes ; plus de texte de recherche', () => {

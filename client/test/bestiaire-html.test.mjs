@@ -148,7 +148,7 @@ test('filtres : formulaire caché sans JavaScript, une case par valeur, le préf
 });
 
 test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres ; la carte à côté, avec son portrait', options, () => {
-  const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
+  const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable table-donnees table-donnees--serree">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable table-donnees table-donnees--serree">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes(panneau('monstres')), ['Espèce', 'Nom', 'Type', 'Catégorie', 'EP', 'Lieux']);
   // l'espèce d'abord, puis le nom, en-tête de ligne et lien vers la carte (une ligne de la base construite : le site de dev peut renommer une carte)
   const l = chargerBestiaire(ouvrirBase()).monstres.lignes.find((x) => x.carte);
