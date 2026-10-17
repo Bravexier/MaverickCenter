@@ -78,6 +78,8 @@ import { ameliorationsParCible, domainesDesArmures } from './edition-armures.mjs
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne as pageDesArmuresDeLaLigne, TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
+import { contexteDuCorpsDesPotions, domainesDesConsommables, niveauxDAlchimie, ressourcesParGenre } from './edition-consommables.mjs';
+import { corpsDeLaPotionApres, ErreurCorpsPotions, estUnePotion, pageDeLaPotion, TABLES_DES_POTIONS } from '../src/lib/corps-potions.mjs';
 import { categoriesDeLaChronologie, domainesDeLaChronologie } from './edition-chronologie.mjs';
 import { domainesDesPanneaux } from './edition-panneaux.mjs';
 import {
@@ -1297,6 +1299,10 @@ const CHRONOLOGIE = domainesDeLaChronologie({ refus, ErreurEdition, provenance, 
 const ARMES = domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye });
 const ARMURES = domainesDesArmures({ refus, ErreurEdition, synchroniser });
 
+/** La page des composants (serveur/edition-composants.mjs) et les consommables de l'onglet Ceinture (potions : serveur/edition-consommables.mjs). */
+const COMPOSANTS = domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye });
+const CONSOMMABLES = domainesDesConsommables({ refus, ErreurEdition, synchroniser });
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
@@ -1310,7 +1316,11 @@ const DOMAINES = {
   ...ARMURES.domaines,
   amelioration_equipement: ameliorationsParCible(ARMES.amelioration_equipement, ARMURES.amelioration),
   // la page des composants : matériaux, gemmes, bois, ingrédients d'alchimie, objets de l'équipement, monnaies (serveur/edition-composants.mjs)
-  ...domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
+  ...COMPOSANTS,
+  // les consommables de l'onglet Ceinture (serveur/edition-consommables.mjs) : une potion (niveau, effet) ; sa ressource (nom, prix) va à leur domaine,
+  // toute autre ressource à celui des composants
+  potion: CONSOMMABLES.potion,
+  ressource: ressourcesParGenre(COMPOSANTS.ressource, CONSOMMABLES.ressource),
   // la chronologie (événements, blocs de description) et le vocabulaire des mots-clés (serveur/edition-chronologie.mjs)
   ...CHRONOLOGIE.domaines,
   // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
@@ -1382,6 +1392,7 @@ export function recalculerLesPages(db, modifications) {
   const armes = []; // lignes des tables de la page des armes (lib/corps-armes.mjs)
   const armures = []; // lignes des tables des pages des armures et des boucliers (lib/corps-armures.mjs)
   const composants = []; // lignes des composants (lib/corps-composants.mjs)
+  const potions = []; // lignes des potions, consommables de l'onglet Ceinture (lib/corps-potions.mjs)
   const titres = [];
   const ajouter = (carte, id, ligne) => {
     if (!id) return;
@@ -1403,6 +1414,7 @@ export function recalculerLesPages(db, modifications) {
     if (l.table === 'metier') metiers.add(ligne.id);
     if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.genre === 'materiau' && l.avant.nom !== l.apres.nom))) armes.push(l);
     if (TABLES_DES_COMPOSANTS.includes(l.table)) composants.push(l);
+    if (TABLES_DES_POTIONS.includes(l.table) && estUnePotion(l.table, ligne)) potions.push(l);
     if (TABLES_DES_PAGES_DES_ARMURES.includes(l.table) && pageDesArmuresDeLaLigne(l.table, ligne)) armures.push(l);
     if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
     const anciennes = l.avant ?? l.inseree;
@@ -1570,6 +1582,32 @@ export function recalculerLesPages(db, modifications) {
           enErreur.add(id);
           illisibles.push({ page: id, raison: e.message });
         }
+      }
+    }
+    for (const [id, corps] of corpsDe) if (!enErreur.has(id)) ecrire(pageDe(id), { corps_md: corps });
+  }
+  // les consommables de l'onglet Ceinture : le tableau de chaque potion dans la page qui l'écrit (nom et prix d'abord : le nom désigne le tableau,
+  // puis niveau et effet) ; ni création ni suppression de potion depuis le site
+  if (potions.length) {
+    const contextePotions = contexteDuCorpsDesPotions(db);
+    const rang = (t) => TABLES_DES_POTIONS.indexOf(t);
+    const corpsDe = new Map();
+    const enErreur = new Set();
+    for (const l of [...potions].sort((a, b) => rang(a.table) - rang(b.table))) {
+      if (!l.avant || !l.apres) continue;
+      const id = pageDeLaPotion(l.table, l.apres, contextePotions);
+      if (!id || enErreur.has(id)) continue;
+      if (!corpsDe.has(id)) {
+        const page = pageDe(id);
+        if (!page) continue;
+        corpsDe.set(id, page.corps_md);
+      }
+      try {
+        corpsDe.set(id, corpsDeLaPotionApres(corpsDe.get(id), l.table, l.avant, l.apres, contextePotions));
+      } catch (e) {
+        if (!(e instanceof ErreurCorpsPotions)) throw e;
+        enErreur.add(id);
+        illisibles.push({ page: id, raison: e.message });
       }
     }
     for (const [id, corps] of corpsDe) if (!enErreur.has(id)) ecrire(pageDe(id), { corps_md: corps });
@@ -2106,6 +2144,8 @@ export function listes(db) {
     // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
     magiesSansGemme: magiesSansGemme(db),
     magiesSansBois: magiesSansBois(db),
+    // les consommables de l'onglet Ceinture : les niveaux d'alchimie (choix « Niveau » d'une potion, rendu « potion-niveau »)
+    niveauxDAlchimie: niveauxDAlchimie(db),
     // le vocabulaire des mots-clés (migration 0043) : leur écriture (pages créées, /recherche/), triés par libellé
     // (la définition telle qu'enregistrée : NULL tant qu'il n'est pas décrit ; le client affiche `?? ''`)
     motsCles: db.prepare('SELECT id, libelle, libelle_cle, description FROM mot_cle').all().map((m) => ({ ...m })).sort(parLibelle),

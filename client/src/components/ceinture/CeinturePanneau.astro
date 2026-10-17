@@ -28,8 +28,10 @@ import { url } from '../../lib/wiki';
 // où ils se modifient) et Bâtons magiques
 // (BatonsMagiques.astro, en tête son panneau de règles : components/equipement/PanneauDeRegles.astro). Plus de recherche (demande du propriétaire) :
 // pas de script de l'onglet, sauf le curseur des bâtons (src/scripts/batons.mjs). Sans JavaScript, tout est affiché, chaque sous-onglet sous son
-// titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). Les tableaux suivent le gabarit commun du site
-// (components/Tableau.astro, styles/global/tableaux.css) ; CSS de l'onglet : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
+// titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). En mode modification (site de dev ; demande du
+// propriétaire, 2026-10-17), les cases saisies des potions — nom, niveau, prix, effet — se modifient par l'éditeur commun (leurs `data-ed` :
+// lib/ceinture-rendu.mjs, service serveur/edition-consommables.mjs) ; le reste de l'onglet est en lecture. Les tableaux suivent le gabarit commun du
+// site (components/Tableau.astro, styles/global/tableaux.css) ; CSS de l'onglet : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
 type Objets = ReturnType<typeof chargerObjetsDeCeinture>;
 interface Props {
   objets: Objets;

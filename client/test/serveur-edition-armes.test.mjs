@@ -147,7 +147,7 @@ test('matériau renommé (même ressource que les armures et les boucliers) : le
     assert.ok(corps(db, id).includes('Armure Peau/Fer Noir') || !pages[id].includes('Armure Peau/Fer Noir'), `${id} : les noms d'armures restent`);
   }
   // une ressource qui n'est pas un composant (page « Composants ») ne se renomme pas
-  const autre = ligne("SELECT id FROM ressource WHERE genre = 'potion' LIMIT 1"); // un consommable : pas un composant
+  const autre = ligne("SELECT id FROM ressource WHERE genre = 'livre' LIMIT 1"); // un livre : pas un composant (une potion se modifie dans l'onglet Ceinture)
   assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: autre.id }, valeurs: { nom: 'X' } }]).statut, 400);
 });
 

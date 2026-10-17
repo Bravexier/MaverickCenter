@@ -278,7 +278,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `gemmes/` | Gemmes | `ressource` (partie) | créer, modifier, supprimer | — |
 | `bois/` | Bois | `ressource` (partie) | créer, modifier, supprimer | — |
 | `ingredients-d-alchimie/` | Ingrédients d’alchimie | `ressource` (partie) | créer, modifier, supprimer | — |
-| `potions/` | Potions | `ressource` (partie) | lecture seule | — |
+| `potions/` | Potions | `ressource` (partie) | modifier | — |
 | `kits-d-alchimie/` | Kits d’alchimie | `ressource` (partie) | lecture seule | — |
 | `livres-et-parchemins/` | Livres et parchemins | `ressource` (partie) | lecture seule | — |
 | `materiaux-de-construction/` | Matériaux de construction | `ressource` (partie) | lecture seule | — |
@@ -348,7 +348,7 @@ d'une extension ait son parent dans une ressource, condition comprise.
 ## Rendre une ressource modifiable
 
 L'API ne sait écrire que ce que le service d'édition sait écrire : rendre une ressource modifiable, c'est l'apprendre **au service**, puis le
-registre suit tout seul (`capacitesDe`). Une table en lecture seule aujourd'hui (armures, potions, états, dieux…) le devient ainsi :
+registre suit tout seul (`capacitesDe`). Une table en lecture seule aujourd'hui (états, dieux…) le devient ainsi :
 
 1. **Colonnes modifiables** : son entrée dans `TABLES` (`client/src/lib/edition-modele.mjs` : colonnes, types de champ, `requis`, bornes, `choix`
    ou `liste`) ; une colonne qui prend ses valeurs dans une liste l'ajoute dans `listes(db)` (`serveur/edition.mjs`).

@@ -33,6 +33,8 @@ const poidsDeBouclier = lesPoidsDeBouclier(db);
 const renvoisAuxDegatsMoyens = lesRenvois(db);
 const echellesDesCartes = lesEchelles(db);
 const magiesDesCibles = lesMagiesDesCibles(db);
+// les niveaux d'alchimie (rendu « potion-niveau » des consommables de l'onglet Ceinture, comme serveur/edition.mjs#listes)
+const niveauxDAlchimie = db.prepare('SELECT id AS valeur, nom AS libelle FROM niveau_alchimie ORDER BY rang').all();
 
 test('texte échappé, rendu inconnu = texte, champ vide', () => {
   assert.equal(echapperHtml(`<b a="1">'&'</b>`), '&lt;b a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/b&gt;');
@@ -151,7 +153,7 @@ const ligneDe = (table, cle) => {
   return lignes.get(k);
 };
 
-test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire, de la chronologie et de l’équipement (armes, armures) redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
+test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire, de la chronologie et de l’équipement (armes, armures, consommables de la ceinture) redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const sousPages = (type) => readdirSync(join(dist, type), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('exemple')).map((d) => `${type}/${d.name}`);
   const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'), 'ressources/equipement'];
   const parRendu = new Map();
@@ -168,7 +170,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, pastilles }));
+      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles }));
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }
@@ -179,7 +181,8 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
     'protection-prix', 'armure-type', 'armure-solidite', 'armure-resistance', 'armure-faiblesse', 'armure-effet', 'piece-cout',
     'protection-amelioration-cout', 'protection-amelioration-effet',
     'arme-competence', 'arme-cout', 'arme-degats', 'arme-depart', 'arme-durabilite', 'arme-effets', 'arme-mains', 'arme-origine', 'arme-portee',
-    'arme-type', 'arme-types-degats', 'amelioration-cout', 'amelioration-effet', 'materiau-effet', 'materiau-prix']) {
+    'arme-type', 'arme-types-degats', 'amelioration-cout', 'amelioration-effet', 'materiau-effet', 'materiau-prix',
+    'composant-prix', 'potion-niveau', 'potion-effet']) {
     assert.ok(parRendu.get(r) > 0, `rendu ${r} vérifié au moins une fois`);
   }
 });

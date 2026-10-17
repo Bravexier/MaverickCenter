@@ -15,6 +15,7 @@ import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 import { RENDUS_DES_ARMURES } from './armures-rendu.mjs';
 import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
+import { RENDUS_DE_LA_CEINTURE } from './ceinture-rendu.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
 import { avecLeursBalises } from './mots-cles-balises.mjs';
 
@@ -248,6 +249,9 @@ export const RENDUS = {
   ...RENDUS_DES_ARMURES,
   // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
   ...RENDUS_DES_COMPOSANTS,
+  // Consommables de l'onglet Ceinture de /ressources/equipement/ (lib/ceinture-rendu.mjs : les cases d'une potion ; son prix : « composant-prix ») : niveau
+  // d'alchimie (ctx.niveauxDAlchimie, liste du service), effet
+  ...RENDUS_DE_LA_CEINTURE,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */

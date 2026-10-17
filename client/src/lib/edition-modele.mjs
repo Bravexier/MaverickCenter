@@ -11,7 +11,8 @@
 // lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
 // forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
-// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs).
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs) ; celles des potions (consommables de l'onglet Ceinture,
+// serveur/edition-consommables.mjs).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -355,8 +356,9 @@ export const TABLES = {
   },
   // Composants (/ressources/composants/, demande du propriétaire, 2026-10-14 : « chaque élément est modifiable en édition, supprimable, ajoutable ») :
   // une ressource du catalogue — matériau, bois, ingrédient d'alchimie (son nom est aussi celui des armes, des armures et des boucliers : « comme c'est le même pour armure et
-  // bouclier, ça le changera aussi »), gemme (nom, description ; ses prix : table gemme), objet de l'onglet « Équipement inventaire » ; le service
-  // refuse les autres ressources (alchimie, livres…) et recalcule le prix en RF (lib/composants-champs.mjs)
+  // bouclier, ça le changera aussi »), gemme (nom, description ; ses prix : table gemme), objet de l'onglet « Équipement inventaire » — et le nom et
+  // le prix d'une potion (consommables de l'onglet Ceinture : serveur/edition-consommables.mjs) ; le service refuse les autres ressources (livres…) et
+  // recalcule le prix en RF (lib/composants-champs.mjs)
   ressource: {
     libelle: 'Composant',
     colonnes: {
@@ -389,6 +391,17 @@ export const TABLES = {
     colonnes: {
       type_brut: { type: 'ligne', libelle: 'Type (« Fruit », « Fruit (majeur) » pour un amplificateur majeur)', requis: true },
       affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
+    },
+  },
+  // Consommables (sous-onglet Consommables de l'onglet Ceinture de /ressources/equipement/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
+  // consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) ») : le niveau et l'effet d'une potion (son nom et son prix : sa
+  // ressource, colonnes de `ressource`) ; le service en refait les altérations d'état de l'effet (potion_etat) et suit le corps de la page de la potion
+  // (serveur/edition-consommables.mjs). Ni création ni suppression.
+  potion: {
+    libelle: 'Potion',
+    colonnes: {
+      niveau_id: { type: 'choix', libelle: 'Niveau', requis: true, liste: 'niveauxDAlchimie' },
+      effet: { type: 'texte', libelle: 'Effet', requis: true },
     },
   },
   // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : le nom et l'abréviation ; la valeur en RF ne se modifie pas (demande du propriétaire, décision
