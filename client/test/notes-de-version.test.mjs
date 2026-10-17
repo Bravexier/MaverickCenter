@@ -562,6 +562,18 @@ test('équipement (migration 0056) : les panneaux de règles en une ligne tant q
   assert.equal(TITRES_DOMAINES.equipement, 'Équipement');
 });
 
+test('composants (migration 0057) : les onglets en une ligne tant que la production ne les a pas ; puis le nom d’un onglet et sa note', () => {
+  const onglet = (id, titre, note = null, ordre = 1) => ({ id, titre, note, ordre });
+  const neuves = comparerBases({ tables: {} }, { tables: { composant_onglet: [onglet('monnaie', 'Monnaie'), onglet('bois', 'Bois', 'Un bois par magie.', 2)] } });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite, l.nature]), [['composants', '2 onglets de la page « Composants »', 'ajoute']]);
+  const ref = { tables: { composant_onglet: [onglet('monnaie', 'Monnaie', 'Une note.'), onglet('bois', 'Bois', 'Un bois par magie.', 2)] } };
+  const dev = { tables: { composant_onglet: [onglet('monnaie', 'Monnaie', null), onglet('bois', 'Bois des bâtons', 'Un bois par magie.', 2)] } };
+  assert.deepEqual(comparerBases(ref, dev).map((l) => [l.domaine, l.groupe, l.entite, l.champ, l.avant, l.apres]), [
+    ['composants', 'Onglets', 'Monnaie', 'Note (au-dessus du tableau)', 'Une note.', null],
+    ['composants', 'Onglets', 'Bois des bâtons', 'Nom de l’onglet', 'Bois', 'Bois des bâtons'],
+  ], 'dans l’ordre de la barre ; une note retirée');
+});
+
 test('équipement : l’ordre des blocs d’un panneau en une ligne au plus, seulement s’il change pour les blocs gardés ; un bloc nommé par ses premiers mots ou son mot-clé, jamais par son rang', () => {
   const panneau = { id: 'armes', titre: 'Règles des armes', page_id: 'ressources/armes' };
   const mot_cle = [{ id: 'recharge-longue', libelle: 'Recharge longue', libelle_cle: 'recharge longue', description: 'Doit recharger.' }];

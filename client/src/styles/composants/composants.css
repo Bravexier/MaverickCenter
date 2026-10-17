@@ -1,6 +1,8 @@
-/* Chargé uniquement depuis components/composants/ComposantsPage.astro (?raw) : la page /ressources/composants/. Un tableau repliable par liste, sur le
-   gabarit commun des tableaux (styles/global/tableaux.css : ici, ce qui est propre à la page) ; une recherche filtre les lignes. Mode modification du site de dev (body.ed-mode) : tous les
-   tableaux ouverts, la recherche cachée, un bouton « + Ajouter » sous chaque tableau. */
+/* Chargé uniquement depuis components/composants/ComposantsPage.astro (?raw) : la page /ressources/composants/. Un onglet par tableau, comme la page
+   « Équipement » (styles/equipement/equipement.css ; components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les
+   panneaux se suivent, chacun sous son titre) ; chaque panneau est un tableau du gabarit commun (styles/global/tableaux.css : ici, ce qui est propre
+   à la page) ; une recherche filtre les lignes de tous les tableaux. Mode modification du site de dev (body.ed-mode) : la
+   recherche cachée, le titre du panneau (que l'onglet reprend) et sa note en saisie, un bouton « + Ajouter » sous chaque tableau. */
 main:has(.composants) { max-width: 110rem; }
 .composants {
   --cmp: var(--accent);
@@ -18,31 +20,50 @@ html.js .composants .js-seul { display: flex; }
 .composants [hidden] { display: none !important; }
 .composants__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); max-width: 60rem; }
 
-/* Sommaire : un lien par tableau */
-.composants-sommaire { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.9rem; }
-.composants-sommaire a { font-size: var(--fs-sm); padding: 0.1rem 0.65rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface);
-  color: var(--text); text-decoration: none; }
-.composants-sommaire a:hover { border-color: var(--cmp); }
-
-/* Outils : recherche, nombre de lignes, tout déplier / replier */
+/* Outils : recherche, nombre de lignes trouvées */
 .composants-outils { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 1rem; }
 .composants-recherche { display: flex; align-items: center; gap: 0.45rem; font-size: var(--fs-md); font-weight: 700; color: var(--muted); }
 .composants-recherche input { font: inherit; font-weight: 400; color: var(--text); min-width: min(22rem, 70vw); padding: 0.3rem 0.65rem;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .composants-recherche input:focus-visible { outline: 2px solid var(--cmp); outline-offset: 1px; }
-.composants-aide { color: var(--muted); font-size: var(--fs-md); margin-right: auto; }
-.composants-bouton { font: inherit; font-size: var(--fs-sm); padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface);
-  color: var(--text); cursor: pointer; }
-.composants-bouton:hover { border-color: var(--cmp); }
+.composants-aide { color: var(--muted); font-size: var(--fs-md); }
 body.ed-mode .composants-outils { display: none !important; }
 .composants-rien { color: var(--muted); font-style: italic; }
 
-/* Les tableaux : sur un grand écran, deux colonnes (les petits tableaux côte à côte) ; un titre de groupe sur toute la largeur */
-@media (min-width: 80rem) {
-  .composants-tableaux { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .composants-tableaux > :is(#monnaie, #materiaux, #gemmes, #bois, #objets-matos-aventures, #objets-matos-fabrication, #objets-matos-projectile, .composants-groupe) { grid-column: 1 / -1; }
+/* Onglets : un par tableau (seize), le nom et le nombre de lignes (trouvées, pendant une recherche) sur une ligne ; ils passent à la ligne */
+.composants-onglets { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 2px solid var(--cmp-line); margin: 0 0 1rem; }
+.composants-onglets .onglet { display: flex; align-items: baseline; gap: 0.45rem; padding: 0.4rem 0.85rem 0.45rem; border: 1px solid var(--border);
+  border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+.composants-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.composants-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+html.js .composants-onglets .onglet.is-active { background: var(--cmp); border-color: var(--cmp); color: var(--surface); }
+html.js .composants-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .composants-onglets .onglet:not(.is-active):hover { background: var(--cmp-soft); }
+.composants-onglets .onglet:focus-visible { outline: 2px solid var(--cmp); outline-offset: 2px; }
+/* pendant une recherche, un onglet sans ligne trouvée s'estompe */
+.composants-onglets .onglet.est-vide:not(.is-active) { opacity: 0.45; }
+@media (max-width: 40rem) {
+  .composants-onglets { gap: 0.25rem; }
+  .composants-onglets .onglet { padding: 0.3rem 0.6rem; }
+  .composants-onglets .onglet__nom { font-size: var(--fs-md); }
 }
-.composants-groupe { margin: 0.6rem 0 -0.4rem; font-size: 1.15rem; }
+
+/* Panneaux : un tableau du gabarit chacun ; son titre est celui de l'onglet (caché sous html.js, sauf en mode modification où il se saisit) ; sans
+   JavaScript, il sépare les panneaux qui se suivent */
+html.js .composants-panneau:not(.is-active) { display: none; }
+html:not(.js) .composants-panneau + .composants-panneau { margin-top: 1.5rem; }
+html.js body:not(.ed-mode) .composants-panneau > .tableau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0;
+  border: 0; }
+.comp-tableau__note { white-space: pre-line; }
+.comp-rien { margin: 0.6rem 0.9rem 0.8rem; color: var(--muted); font-style: italic; }
+/* à l'impression, tous les panneaux, chacun sous son titre (comme sans JavaScript), sans la barre d'onglets ni la recherche */
+@media print {
+  .composants-onglets, .composants-outils { display: none !important; }
+  html.js .composants-panneau:not(.is-active) { display: block; }
+  html.js body:not(.ed-mode) .composants-panneau > .tableau__titre { position: static; width: auto; height: auto; overflow: visible; clip: auto; padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--tab-line); }
+  .composants-panneau + .composants-panneau { margin-top: 1.5rem; }
+}
 
 .comp-table tbody > tr:hover > * { background: var(--cmp-soft); }
 .comp-table tbody > tr.est-filtree { display: none; }
@@ -62,8 +83,9 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 .comp-table tr[style*="--mag"] > :first-child { box-shadow: inset 4px 0 0 var(--mag); }
 .comp-categorie { white-space: nowrap; }
 
-/* Mode modification : outils sous chaque tableau, ligne marquée pour suppression, ligne créée */
+/* Mode modification : outils sous chaque tableau, ligne marquée pour suppression, ligne créée ; la note se saisit sur toute la largeur */
 .comp-ajouter { margin: 0.5rem 0.9rem 0.7rem; }
+.comp-tableau__note.ed-champ { white-space: normal; }
 .comp-table tr.ed-supprime > * { opacity: 0.45; text-decoration: line-through; }
 .comp-table tr.ed-nouveau > :first-child { box-shadow: inset 4px 0 0 var(--cmp); }
 .comp-supprimer { margin-left: 0.4rem; }

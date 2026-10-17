@@ -1,8 +1,11 @@
 ---
 import composantsCss from '../../styles/composants/composants.css?raw';
-import type { chargerComposants } from '../../lib/composants-db.mjs';
-import { url } from '../../lib/wiki';
+import Onglets from '../Onglets.astro';
 import Tableau from '../Tableau.astro';
+import type { chargerComposants } from '../../lib/composants-db.mjs';
+import { idDuTableauDIngredients, idDuTableauDObjets } from '../../lib/composants-db.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { url } from '../../lib/wiki';
 import {
   htmlDeLigneDeBois, htmlDeLigneDeGemme, htmlDeLigneDeMateriau, htmlDeLigneDeMonnaie, htmlDeLigneDIngredient, htmlDeLigneDObjet,
 } from '../../lib/composants-rendu.mjs';
@@ -10,12 +13,19 @@ import {
 // Page /ressources/composants/ (demande du propriétaire, 2026-10-14 : « un onglet "Composants". Il comprendra les tableaux des gemmes, des matériaux, la
 // monnaie, et l'ensemble des tables de l'onglet "équipement inventaire" » ; « Il faut aussi y mettre la table des fruits. Ainsi que tout ce qui n'est pas
 // directement des consommables mais qui peut servir pour fabriquer les potions / fioles et autres ») : rendue depuis les tables de la base
-// (lib/composants-db.mjs), un tableau repliable par liste, dans l'ordre : monnaie, matériaux, gemmes, bois, fruits, ingrédients d'alchimie (par
-// catégorie), puis les tableaux de l'onglet « Équipement inventaire ». Une recherche filtre les lignes de tous les tableaux (src/scripts/composants.mjs).
-// Mode modification (site de dev, src/scripts/edition/composants.mjs) : chaque case modifiable porte son `data-ed` (lib/composants-rendu.mjs) ; un bouton
-// « + Ajouter » par tableau (`data-ajout` : l'entité et ses valeurs données d'office), « Supprimer » sur chaque ligne qui n'est citée par aucune autre règle.
-// Les tableaux suivent le gabarit commun du site (components/Tableau.astro, styles/global/tableaux.css) ; CSS de la page :
-// styles/composants/composants.css (?raw, inséré ici seulement).
+// (lib/composants-db.mjs) : monnaie, matériaux, gemmes, bois, fruits, ingrédients d'alchimie (par catégorie), puis les tableaux de l'onglet « Équipement
+// inventaire ». Un onglet par tableau, comme la page « Équipement » (demande du propriétaire du 2026-10-17 : « à l'image de la page d'équipement avoir
+// des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement liées en base ») : components/Onglets.astro, posé une fois
+// ici ; chaque onglet est une ligne de la table composant_onglet (migration 0057 : titre, note, place dans la barre), son id l'ancre de l'onglet et l'id
+// du panneau de son tableau. Le panneau est le tableau lui-même, sur le gabarit commun du site (components/Tableau.astro, styles/global/tableaux.css :
+// `section.tableau.comp-tableau.composants-panneau`, son titre `<h2>`, sa note), dont le titre se cache sous les onglets (l'onglet le dit). Sans
+// JavaScript, les panneaux se suivent, chacun sous son titre. Un lien vers une ligne (#composant-…, depuis la page « Équipement ») ouvre son onglet.
+// Une recherche filtre les lignes de tous les tableaux ; chaque onglet dit combien il en garde (src/scripts/composants.mjs). À l'impression, tous les
+// panneaux sortent, chacun sous son titre.
+// Mode modification (site de dev, src/scripts/edition/composants.mjs) : le titre (le titre du panneau, que l'onglet reprend) et la note de chaque onglet ;
+// chaque case modifiable porte son `data-ed` (lib/composants-rendu.mjs) ; un bouton « + Ajouter » par tableau (`data-ajout` : l'entité et ses valeurs
+// données d'office), « Supprimer » sur chaque ligne qui n'est citée par aucune autre règle.
+// CSS : styles/composants/composants.css (?raw, inséré ici seulement).
 type Composants = ReturnType<typeof chargerComposants>;
 interface Props {
   composants: Composants;
@@ -23,63 +33,56 @@ interface Props {
 const { composants } = Astro.props;
 const { monnaies } = composants;
 
-/** Un tableau de la page : son ancre, son titre, ses en-têtes, ses lignes (HTML), l'entité à créer (et les valeurs données d'office). */
-interface Tableau {
-  id: string;
-  titre: string;
-  groupe?: string | null;
-  note?: string;
+/** Le contenu d'un tableau : ses en-têtes, ses lignes (HTML), l'entité à créer (et les valeurs données d'office). */
+interface Contenu {
   entetes: string[];
   lignes: string[];
   ajout: { entite: string; valeurs?: Record<string, string>; montrer?: string[]; libelle: string } | null;
 }
-const slug = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const QUALITES = ['Commune', 'Raffinée', 'Parfaite'];
-const tableaux: Tableau[] = [
-  {
-    id: 'monnaie', titre: 'Monnaie', note: 'Chaque monnaie vaut un nombre de Ricken de fer, l’unité (CONVERTISSEUR de l’onglet « Équipement inventaire »).',
+/** Le contenu de chaque tableau, par l'id de son onglet (lib/composants-db.mjs#TABLEAUX_DES_COMPOSANTS). */
+const contenus: Record<string, Contenu> = {
+  monnaie: {
     entetes: ['Nom', 'Symbole', 'Valeur', 'Conversion'], lignes: monnaies.map((m) => htmlDeLigneDeMonnaie(m, monnaies)),
     ajout: { entite: 'monnaie', libelle: 'une monnaie' },
   },
-  {
-    id: 'materiaux', titre: 'Matériaux',
-    note: 'La référence des matériaux : nom, type (d’après l’armure), prix et effets sur une arme se modifient ici, les pages des armes et des armures les reprennent. La fabrication est la recette qui donne la matière.',
+  materiaux: {
     entetes: ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour'], lignes: composants.materiaux.map(htmlDeLigneDeMateriau),
     ajout: { entite: 'materiau', libelle: 'un matériau' },
   },
-  {
-    id: 'gemmes', titre: 'Gemmes précieuses', note: 'Une gemme par magie. Le prix de la gemme entière (bâton magique) et celui d’un quart de gemme (accessoires), par qualité.',
+  gemmes: {
     entetes: ['Magie', 'Gemme', 'Description', ...QUALITES.map((q) => `Gemme ${q.toLowerCase()}`), ...QUALITES.map((q) => `Quart ${q.toLowerCase()}`)],
     lignes: composants.gemmes.map(htmlDeLigneDeGemme), ajout: { entite: 'gemme', libelle: 'une gemme' },
   },
-  {
-    id: 'bois', titre: 'Bois des bâtons magiques', note: 'Un bois par magie (onglet « Bâton magique »).',
+  bois: {
     entetes: ['Magie', 'Bois', 'Description', 'Prix'], lignes: composants.bois.map(htmlDeLigneDeBois), ajout: { entite: 'bois', libelle: 'un bois' },
   },
-  {
-    id: 'fruits', titre: 'Fruits', groupe: 'Ingrédients d’alchimie',
-    note: 'Les ingrédients de type « Fruit » de la liste d’ingrédients (doc « Alchimie »).',
+  fruits: {
     entetes: ['Fruit', 'Catégorie', 'Type', 'Affinité'], lignes: composants.fruits.map((i) => htmlDeLigneDIngredient(i, { fruit: true })),
     ajout: { entite: 'ingredient', valeurs: { categorie: 'catalyseur', type_brut: 'Fruit' }, montrer: ['categorie', 'type_brut'], libelle: 'un fruit' },
   },
-  ...composants.ingredients.map((c) => ({
-    id: `ingredients-${c.categorie}`, titre: c.section, groupe: 'Ingrédients d’alchimie',
+  ...Object.fromEntries(composants.ingredients.map((c) => [idDuTableauDIngredients(c.categorie), {
     entetes: ['Ingrédient', 'Type', 'Affinité'], lignes: c.ingredients.map((i) => htmlDeLigneDIngredient(i)),
     ajout: { entite: 'ingredient', valeurs: { categorie: c.categorie }, libelle: `un ingrédient (${c.section.toLowerCase()})` },
-  })),
-  ...composants.objets.map((s) => ({
-    id: `objets-${slug(s.section)}`, titre: s.section.charAt(0) + s.section.slice(1).toLowerCase(), groupe: s.groupe ?? 'Équipement',
+  }])),
+  ...Object.fromEntries(composants.objets.map((s) => [idDuTableauDObjets(s.section), {
     entetes: s.description ? ['Nom', 'Prix', 'Description'] : ['Nom', 'Prix'], lignes: s.objets.map((r) => htmlDeLigneDObjet(r, s.description)),
     ajout: { entite: 'composant', valeurs: { tableau: `${s.genre}:${s.section}` }, libelle: 'un objet' },
-  })),
-];
+  }])),
+};
+// les onglets dans l'ordre de la barre (composant_onglet), chacun avec son tableau (lib/composants-db.mjs#ongletsDeLaPage : jamais l'un sans l'autre ;
+// un id de TABLEAUX_DES_COMPOSANTS sans contenu ici arrête aussi le build)
+const tableaux = composants.onglets.map((o) => {
+  if (!contenus[o.id]) throw new Error(`Composants : l’onglet « ${o.id} » n’a pas de contenu dans components/composants/ComposantsPage.astro.`);
+  return { ...o, ...contenus[o.id] };
+});
 const nombre = tableaux.reduce((n, t) => n + t.lignes.length, 0);
+const ed = (id: string, colonne: string) => attributEd('composant_onglet', { id }, colonne);
 ---
 
 <style is:inline set:html={composantsCss}></style>
-<script is:inline>
-  document.documentElement.classList.add('js');
-</script>
+{/* Onglets pose aussi `html.js` avant l'affichage (un panneau fermé n'est caché que sous html.js) */}
+<Onglets />
 <div class="composants" data-composants>
   <h1>Composants <span class="badge">Ressource</span></h1>
   <p class="composants__chapo">
@@ -87,38 +90,50 @@ const nombre = tableaux.reduce((n, t) => n + t.lignes.length, 0);
     d’alchimie (fruits compris) et l’équipement d’inventaire. Les potions sont dans <a href={url('ressources/alchimie/')}>Alchimie</a>.
   </p>
 
-  <nav class="composants-sommaire" aria-label="Tableaux de la page">
-    {tableaux.map((t) => <a href={`#${t.id}`}>{t.titre}</a>)}
-  </nav>
-
   <div class="composants-outils js-seul">
     <label class="composants-recherche">
       <span>Rechercher</span>
       <input type="search" data-composants-recherche placeholder="Nom, description, affinité…" autocomplete="off" />
     </label>
     <span class="composants-aide" data-composants-compte>{nombre} composants</span>
-    <button type="button" class="composants-bouton" data-composants-tout="ouvrir">Tout déplier</button>
-    <button type="button" class="composants-bouton" data-composants-tout="fermer">Tout replier</button>
   </div>
 
-  <div class="tableaux composants-tableaux">
+  <nav class="composants-onglets" aria-label="Composants" data-onglets="Composants">
     {
       tableaux.map((t, i) => (
-        <>
-          {t.groupe && t.groupe !== tableaux[i - 1]?.groupe && <h2 class="composants-groupe">{t.groupe}</h2>}
-          <Tableau id={t.id} titre={t.titre} compte={t.lignes.length} note={t.note} bloc="comp-tableau" classeTable="comp-table"
-            attributsTable={{ 'data-ajout': t.ajout ? JSON.stringify(t.ajout) : undefined }}>
-            <thead>
-              <tr>{t.entetes.map((h) => <th scope="col">{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {t.lignes.map((html) => <Fragment set:html={html} />)}
-            </tbody>
-          </Tableau>
-        </>
+        <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${t.id}`} href={`#${t.id}`}>
+          <span class="onglet__nom" data-ed-lecture={ed(t.id, 'titre')}>{t.titre}</span>
+          <span class="onglet__detail" data-compte>{t.lignes.length}</span>
+        </a>
       ))
     }
-  </div>
+  </nav>
+
+  {
+    tableaux.map((t, i) => (
+      <Tableau
+        id={t.id}
+        titre={t.titre}
+        note={t.note}
+        repliable={false}
+        niveau={2}
+        bloc="comp-tableau"
+        class={`composants-panneau${i === 0 ? ' is-active' : ''}`}
+        classeTable="comp-table"
+        attributsNom={{ 'data-ed': ed(t.id, 'titre') }}
+        attributsNote={{ 'data-ed': ed(t.id, 'note'), 'data-ed-cadre': '' }}
+        attributsTable={{ 'data-ajout': t.ajout ? JSON.stringify(t.ajout) : undefined }}
+      >
+        <thead>
+          <tr>{t.entetes.map((h) => <th scope="col">{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {t.lignes.map((html) => <Fragment set:html={html} />)}
+        </tbody>
+        <p slot="apres" class="comp-rien" data-rien hidden>Aucune ligne de cet onglet ne correspond à la recherche.</p>
+      </Tableau>
+    ))
+  }
   <p class="composants-rien" data-composants-rien hidden>Aucun composant ne correspond à la recherche.</p>
 </div>
 

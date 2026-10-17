@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 56;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 57;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -228,6 +228,21 @@ CREATE TABLE panneau_regles_bloc (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX panneau_regles_bloc_ordre ON panneau_regles_bloc (panneau_id, ordre);   -- les blocs d'un panneau dans l'ordre de lecture (puis le rang, clé de la table)
+
+-- Onglets de la page « Composants » (/ressources/composants/, migration 0057) : un onglet par tableau de la page. Demande du propriétaire du
+-- 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement
+-- liées en base ». Son id est l'ancre de l'onglet et l'id de son panneau, et désigne le tableau qu'il montre (client/src/lib/composants-db.mjs :
+-- 'monnaie', 'materiaux', 'gemmes', 'bois', 'fruits', 'ingredients-<catégorie>', 'objets-<section>') : le build s'arrête si un tableau n'a pas son
+-- onglet ou un onglet pas son tableau. Le titre et la note se modifient sur le site de dev ; les lignes des tableaux, elles, sont celles de leurs tables
+-- (monnaie, ressource, gemme…). Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE composant_onglet (
+  id     TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'ancre de l'onglet
+                                                       -- et l'id du panneau de son tableau (client/src/lib/composants-db.mjs#TABLEAUX_DES_COMPOSANTS)
+  titre  TEXT    NOT NULL CHECK (length(titre) > 0),     -- le nom de l'onglet
+  note   TEXT    CHECK (note IS NULL OR length(note) > 0),   -- le texte au-dessus du tableau ; NULL : sans note
+  ordre  INTEGER NOT NULL CHECK (ordre >= 1)             -- place dans la barre d'onglets (pas encore modifiable) ; pas UNIQUE, pour qu'un futur réordonnancement
+                                                       -- puisse échanger deux ordres dans un même lot (à égalité, l'id départage)
+) STRICT;
 
 -- ====================================================================================================================
 -- 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)

@@ -201,7 +201,7 @@ test('plus de tableau MATÉRIAUX sous les deux onglets : chacun renvoie au table
   // le renvoi reste en mode modification (la classe `armures-aide` y est cachée)
   assert.ok(html.includes('.armures-renvoi {') && !/body\.ed-mode[^{]*armures-renvoi/.test(html), 'le renvoi n’est pas caché en mode modification');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
-  assert.ok(composants.includes('<details class="tableau comp-tableau" id="materiaux"'), 'l’ancre du tableau des matériaux de « Composants »');
+  assert.match(composants, /<section class="tableau comp-tableau composants-panneau(?: is-active)?" id="materiaux"/, 'l’ancre de l’onglet des matériaux de « Composants »');
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {

@@ -53,7 +53,7 @@ export const TABLES_LUES = [
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
-  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -321,6 +321,11 @@ const DEFINITIONS = [
     table: 'ingredient_alchimie', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('ingredient_alchimie'), genre: 'Ingrédient', detail: true,
     groupe: () => GROUPES_DE_COMPOSANT.ingredient_alchimie, entite: (r, x) => x.nom('ressource', r.ressource_id),
     ordre: (r, x) => [1, 3, x.ligne('ressource', r.ressource_id)?.section ?? '', x.ordre('ressource', r.ressource_id)],
+  },
+  // les onglets de la page des composants (migration 0057) : le nom d'un onglet et sa note, après les composants ; à leur première livraison, une ligne
+  {
+    table: 'composant_onglet', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('composant_onglet'), genre: 'Onglet',
+    groupe: () => 'Onglets', entite: (r) => r.titre, ordre: (r) => [2, r.ordre ?? 0], resume: (n) => `${n} onglets de la page « Composants »`,
   },
   // la chronologie (migration 0043) : un événement (date, titre, Impact, lieu) ; ses blocs de description sous lui (un bloc d'un événement ajouté ou retiré est
   // dit par l'événement : `suit`) ; ses catégories en ensemble (comparerCategoriesDesEvenements)

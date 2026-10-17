@@ -32,7 +32,7 @@ const plan = mettreEnPage(structure);
 const tablesSeules = structure.tables.filter((t) => t.genre !== 'vue');
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
 
-test('structure (au build) : 18 sections, 190 tables (dont les 2 dérivées), 35 vues, sans FTS5 ; colonnes, types, clés et descriptions de la base', () => {
+test('structure (au build) : 18 sections, 191 tables (dont les 2 dérivées), 35 vues, sans FTS5 ; colonnes, types, clés et descriptions de la base', () => {
   assert.equal(structure.sections.length, 18);
   assert.deepEqual(structure.sections.map((s) => s.numero), ['0', '1', '2', '3', '4', '5', '5 bis', '6', '7', '8', '8 bis', '9', '10', '11', '12', '13', '14', '15']);
   assert.equal(structure.sections.find((s) => s.numero === '3').titre, 'MAGIES ET SORTS (famille « magies »)');
@@ -58,7 +58,7 @@ test('structure (au build) : 18 sections, 190 tables (dont les 2 dérivées), 35
     15: 'NOTES DE VERSION : ce que chaque version a changé dans les règles, et l\'historique des modifications faites sur le site de dev',
   });
   for (const s of structure.sections) assert.doesNotMatch(s.titre, /\s(le|la|les|de|des|du|sur|et|à|au|aux)$/, `${s.numero} : un titre coupé au milieu d’une phrase`);
-  assert.equal(tablesSeules.length, 190);
+  assert.equal(tablesSeules.length, 191);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 35);
   assert.deepEqual(structure.tables.filter((t) => t.genre === 'derivee').map((t) => t.nom).sort(), [...TABLES_DERIVEES].sort(), 'les mêmes dérivées que le service');
   assert.ok(!structure.tables.some((t) => /_fts(_|$)/.test(t.nom)), 'ni tables FTS5 ni leurs tables de shadow');
@@ -521,7 +521,7 @@ test('textes : nombres, lignes, étiquettes, infobulles (section et description 
   assert.deepEqual(clesASuivre(cellule, 'race_id').map((c) => c.table), ['race_don_tableau_ligne', 'race_don_tableau_colonne']);
   assert.equal(htmlDesCles([{ table: 'a"<', libelle: 'x <b>' }]),
     '<li role="none"><button type="button" role="menuitem" tabindex="-1" class="schema-cles__cle" data-cle-vers="a&quot;&lt;">x &lt;b&gt;</button></li>');
-  assert.equal(resumeDuSchema(structure), '190 tables, 35 vues, 402 clés étrangères');
+  assert.equal(resumeDuSchema(structure), '191 tables, 35 vues, 402 clés étrangères');
 });
 
 test('fenêtre du contenu : adresse (nom encodé, pages de 100, tri), en-têtes triables, valeurs telles que le service les rend, messages d’erreur', () => {
