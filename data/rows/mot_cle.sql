@@ -8,7 +8,7 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('hybride', '
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('hybride-animal', 'hybride animal', 'hybride-animal', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('magique', 'magique', 'magique', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('metier', 'métier', 'metier', NULL);
-INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('mordhau', 'Mordhau', 'mordhau', 'Ou demi-épée. Avec certaines armes de corps à corps (notamment les épées), prendre l''arme par la lame et frapper avec le manche. Elle peut ainsi faire des dégâts de frappe alors qu''elle en est incapable, mais a 30 % de chance de perdre un cran de solidité (exemple : plus de 70 au jet d''attaque).');
+INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('mordhau', 'Mordhau', 'mordhau', 'Avec certaines armes de corps à corps (notamment les épées), prendre l''arme par la lame et frapper avec le manche. Elle peut ainsi faire des dégâts de frappe alors qu''elle en est incapable, mais a 30 % de chance de perdre un cran de solidité (exemple : plus de 70 au jet d''attaque).');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('race', 'race', 'race', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('recharge-longue', 'Recharge longue', 'recharge-longue', 'Doit utiliser son action ou son mouvement pour recharger.');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('recharge-tres-longue', 'Recharge très longue', 'recharge-tres-longue', 'Doit utiliser son action ET son mouvement pour recharger.');
