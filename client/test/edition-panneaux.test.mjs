@@ -5,7 +5,8 @@
 // « Supprimer » (le titre d'une tuile supprimée quitte le lot), une modification de texte, rien quand on ne retouche rien (le Markdown relu au départ
 // fait foi, pas le texte de la base : apostrophes, espaces), la création d'un bloc après un autre, l'abandon (textes et ordre d'avant), la surcouche
 // (`ligne` : texte changé → bloc refait, ligne nulle → bloc retiré, ordre seul → bloc déplacé), et la course entre la surcouche et l'entrée en mode
-// modification. Reste hors de ces tests : la sélection et les commandes de mise en forme du navigateur (execCommand, barre d'outils de texte-en-place.mjs),
+// modification ; à l'entrée, les mots-clés rendus en balises écrites (« {{id:}} »). Reste hors de ces tests : la sélection et les commandes de mise en forme du
+// navigateur (execCommand, barre d'outils de texte-en-place.mjs : test/texte-en-place-mots-cles.test.mjs),
 // le collage, et la mise en page en colonnes (CSS).
 //   node --test test/edition-panneaux.test.mjs
 import assert from 'node:assert/strict';
@@ -116,6 +117,9 @@ test('à l’entrée : le panneau s’ouvre, chaque bloc a ses outils, « ↑ »
   const relu = versMarkdown(p.zone(1).childNodes.map(arbreDuDom).filter(Boolean));
   assert.notEqual(relu.trim(), BLOCS[0].texte);
   assert.match(relu, /l’ont\./);
+  // la tuile du glossaire : sa balise écrite, telle que le Markdown la garde (demande du propriétaire, 2026-10-17), relue telle quelle
+  assert.equal(p.zone(2).querySelector('.mot-cle-definition'), null);
+  assert.equal(p.zone(2).textContent.trim(), '{{recharge-longue:}}');
   assert.equal(versMarkdown(p.zone(2).childNodes.map(arbreDuDom).filter(Boolean)), '{{recharge-longue:}}\n', 'la tuile du glossaire relue en balise');
   assert.equal(p.extension.verifier(p.ed), null);
   assert.deepEqual(p.extension.operations(p.ed, []), []);
@@ -196,6 +200,7 @@ test('abandon : les textes et l’ordre d’avant reviennent, les outils et la b
   p.quitter();
   assert.deepEqual(p.rangs(), [1, 2, 4, 3], 'l’ordre de lecture de la base');
   assert.deepEqual([1, 2, 4, 3].map((r) => p.zone(r).innerHTML), avant, 'les textes d’avant');
+  assert.ok(p.zone(2).querySelector('.mot-cle-definition'), 'le mot-clé de nouveau rendu');
   assert.equal(p.corps().querySelector('.ed-preg-outils'), null);
   assert.equal(p.document.body.querySelector('.ed-barre-guide'), null);
   assert.ok([1, 2, 4, 3].every((r) => !p.zone(r).classList.contains('ed-supprime') && !p.zone(r).classList.contains('ed-texte-guide')));

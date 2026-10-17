@@ -38,7 +38,7 @@ const fragmentDe = (html) => {
 
 /**
  * Ce que permet l'endroit où se trouve `el` (options de htmlDeLaBalise) : ni focus dans un élément focalisable ou une bulle, ni bulle dans un bouton, un
- * résumé ou une bulle (aussi pour les outils de l'éditeur en place : texte-en-place.mjs).
+ * résumé ou une bulle.
  */
 export function contexteDe(el) {
   const bulle = Boolean(el?.closest('.bulle'));

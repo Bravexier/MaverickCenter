@@ -134,6 +134,9 @@ export class Element extends EventTarget {
     if (v) this.setAttribute('hidden', '');
     else this.removeAttribute('hidden');
   }
+  /** `contentEditable` suit l'attribut, comme dans un navigateur (« inherit » sans attribut). */
+  get contentEditable() { return this.getAttribute('contenteditable') ?? 'inherit'; }
+  set contentEditable(v) { this.setAttribute('contenteditable', v); }
   /** `open` (d'un `<details>`) suit l'attribut, comme dans un navigateur. */
   get open() { return this.hasAttribute('open'); }
   set open(v) {
@@ -200,6 +203,20 @@ export class Element extends EventTarget {
     const i = this.noeuds.indexOf(n);
     if (i >= 0) this.noeuds.splice(i, 1);
     n.parentElement = null;
+  }
+  /** Fusionne les textes voisins et retire les textes vides, dans tout l'élément (Node.normalize). */
+  normalize() {
+    for (const n of this.childNodes) {
+      if (n.nodeType === 1) n.normalize();
+      else if (n.nodeValue === '') this.retirer(n);
+    }
+    for (let i = 0; i < this.noeuds.length - 1; i += 1) {
+      const [a, b] = [this.noeuds[i], this.noeuds[i + 1]];
+      if (a.nodeType !== 3 || b.nodeType !== 3) continue;
+      a.nodeValue += b.nodeValue;
+      this.retirer(b);
+      i -= 1;
+    }
   }
   append(...noeuds) {
     for (const n of noeuds) {

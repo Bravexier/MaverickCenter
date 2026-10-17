@@ -217,12 +217,14 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   .ed-cote, .ed-annonce { display: none !important; }
 }
 
-/* Guide : texte modifiable en place (src/scripts/edition/guide.mjs) et sa barre d'outils, en haut de l'écran */
+/* Texte modifiable en place (src/scripts/edition/texte-en-place.mjs : guide, Codex, chronologie, panneaux de règles) et sa barre d'outils : à gauche de
+   l'écran, à la hauteur de la zone où est le curseur (son `top` posé par le script, hauteurDeLaBarre ; demande du propriétaire du 2026-10-17), en
+   colonne, la page décalée d'autant (la barre ne cache pas le début des lignes ; la bande de l'en-tête et le bandeau du serveur de dev restent sur toute
+   la largeur) ; plus étroit que 48rem (BARRE_A_GAUCHE du script), en haut de l'écran, sur toute sa largeur. Les mots-clés du glossaire y sont en
+   balises écrites (« {{id}} ») : plus de mot-clé rendu dans une zone modifiable. */
 .ed-texte-guide { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 6px; border-radius: var(--radius-xs); min-height: 2.5em; cursor: text; }
 .ed-texte-guide:focus { outline-style: solid; }
 .ed-texte-guide a { cursor: text; }
-/* le mode complet d'un mot-clé du glossaire (« Libellé : définition ») : un bloc insécable, qui vient du glossaire (texte-en-place.mjs) */
-[contenteditable='true'] .mot-cle-definition { outline: 1px dotted color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 1px; cursor: default; }
 .ed-texte-guide :is(td, th):empty::after, .ed-texte-guide :is(td, th):has(> br:only-child)::after { content: ' '; }
 .ed-barre-guide {
   position: fixed;
@@ -245,6 +247,26 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
 }
 .ed-barre-guide__groupe { display: flex; align-items: center; gap: 0.2rem; }
 .ed-barre-guide__groupe + .ed-barre-guide__groupe { padding-left: 0.6rem; border-left: 1px solid var(--border); }
+@media screen and (min-width: 48rem) {
+  :root { --ed-barre-largeur: 10.5rem; }
+  .ed-barre-guide {
+    top: 5rem;
+    left: 0.5rem;
+    transform: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    width: var(--ed-barre-largeur);
+    max-width: none;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+  .ed-barre-guide__groupe { flex-wrap: wrap; }
+  .ed-barre-guide__groupe + .ed-barre-guide__groupe { padding: 0.35rem 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  body:has(> .ed-barre-guide) { padding-left: calc(var(--ed-barre-largeur) + 1rem); }
+  body:has(> .ed-barre-guide) > :is(.site-header, .bandeau-test) { margin-left: calc(-1 * (var(--ed-barre-largeur) + 1rem)); }
+}
 .ed-barre-guide__titre { color: var(--muted); margin-right: 0.15rem; }
 .ed-barre-guide button {
   font: inherit;
