@@ -12,11 +12,11 @@ INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_d
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:fonte', '400 RF / 40 RO', NULL, 'Dégâts +7 pour l''arme
 -1 cran de solidité', 7, -1, NULL, 5, 'equipement', 'Ressources et Craft › Armes › O11:AC12', NULL);
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:laiton', '900 RF / 90 RO', NULL, 'Dégâts +7 pour l''arme
-dégâts doublés contre la barrière', 7, NULL, 'dégâts doublés contre la barrière', 9, 'equipement', 'Ressources et Craft › Armes › O19:AC20', NULL);
+dégâts doublés contre la {{barriere|barrière}}', 7, NULL, 'dégâts doublés contre la {{barriere|barrière}}', 9, 'equipement', 'Ressources et Craft › Armes › O19:AC20', NULL);
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:maverium', '400 RO', 40000, 'Dégâts +10 pour l''arme
-Casse barrière', 10, NULL, 'Casse barrière', 14, 'equipement', 'Ressources et Craft › Armes › O29:AC30', NULL);
+Casse {{barriere|barrière}}', 10, NULL, 'Casse {{barriere|barrière}}', 14, 'equipement', 'Ressources et Craft › Armes › O29:AC30', NULL);
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:mythril', '200 RO', 20000, 'Dégâts +8 pour l''arme
-Passe barrière', 8, NULL, 'Passe barrière', 12, 'equipement', 'Ressources et Craft › Armes › O25:AC26', NULL);
+Passe {{barriere|barrière}}', 8, NULL, 'Passe {{barriere|barrière}}', 12, 'equipement', 'Ressources et Craft › Armes › O25:AC26', NULL);
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:or', '100 RO', 10000, 'Dégâts +8 pour l''arme
 +1d de dégâts contre les démons', 8, NULL, '+1d de dégâts contre les démons', 10, 'equipement', 'Ressources et Craft › Armes › O21:AC22', NULL);
 INSERT INTO materiau_arme (ressource_id, prix_brut, prix_rf, effet_brut, bonus_degats, cran_solidite, effet_secondaire, ordre, origine, source_ref, remarque) VALUES ('ressources/armures#materiau:titane', '200 RO', 20000, 'Dégâts +9 pour l''arme

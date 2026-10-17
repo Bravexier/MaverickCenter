@@ -2260,7 +2260,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-ou-pas', 'capacites', 'arbaletrier-ou-pas', '... ou pas ? (Arbalétrier)', 'ou-pas-arbaletrier', 'Les dégâts au torse font +4 dégâts.', '{"classe": "classes/arbaletrier", "specialite": "GRAND ARBALÉTRIER", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/arbaletrier-choix"]}', 'Les dégâts au torse font +4 dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-pre-mythril', 'capacites', 'arbaletrier-pre-mythril', 'Pré-mythril (Arbalétrier)', 'pre-mythril-arbaletrier', 'Un carreau spécial qui ignore complètement la barrière de la cible.', '{"classe": "classes/arbaletrier", "specialite": "BALISTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/arbaletrier-anti-blindage"]}', 'Un carreau spécial qui ignore complètement la barrière de la cible.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-pre-mythril', 'capacites', 'arbaletrier-pre-mythril', 'Pré-mythril (Arbalétrier)', 'pre-mythril-arbaletrier', 'Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.', '{"classe": "classes/arbaletrier", "specialite": "BALISTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/arbaletrier-anti-blindage"]}', 'Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-tir-renforce', 'capacites', 'arbaletrier-tir-renforce', 'Tir renforcé (Arbalétrier)', 'tir-renforce-arbaletrier', 'Donne +5% à la Compétence « Arbalète » et augmente les dégâts de 3.', '{"classe": "classes/arbaletrier", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Donne +5% à la Compétence « Arbalète » et augmente les dégâts de 3.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
@@ -2337,7 +2337,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-balade-guerriere', 'capacites', 'barde-balade-guerriere', 'Ballade guerrière (Barde)', 'ballade-guerriere-barde', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.', '{"classe": "classes/barde", "specialite": "MÉNESTREL", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif (2 fois/Combat)", "choix_exclusif_avec": ["capacites/barde-amplification"]}', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-chant-double', 'capacites', 'barde-chant-double', 'Chant double (Barde)', 'chant-double-barde', 'Double les sorts utilisés pendant son tour. Mais double le cout en chakra.', '{"classe": "classes/barde", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Actif (1 fois/combat)"}', 'Double les sorts utilisés pendant son tour. Mais double le cout en chakra.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-chant-double', 'capacites', 'barde-chant-double', 'Chant double (Barde)', 'chant-double-barde', 'Double les sorts utilisés pendant son tour. Mais double le cout en {{chakra|chakra}}.', '{"classe": "classes/barde", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Actif (1 fois/combat)"}', 'Double les sorts utilisés pendant son tour. Mais double le cout en {{chakra|chakra}}.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-contournement', 'capacites', 'barde-contournement', 'Contournement (Barde)', 'contournement-barde', 'Annule une attaque d''opportunité pour se dégager.', '{"classe": "classes/barde", "specialite": "DANSEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Actif (1 fois/tour)", "choix_exclusif_avec": ["capacites/barde-perroquet"]}', 'Annule une attaque d''opportunité pour se dégager.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
@@ -2359,7 +2359,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 x=+2/6 niveaux de barde
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-shrapnel', 'capacites', 'barde-shrapnel', 'Shrapnel (Barde)', 'shrapnel-barde', 'À la rupture de sa barrière le barde bondit en arrière pendant qu''une explosion de magie se produit.', '{"classe": "classes/barde", "specialite": "DANSEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/barde-marche-lunaire"]}', 'À la rupture de sa barrière le barde bondit en arrière pendant qu''une explosion de magie se produit. (Limite max 30 dégâts)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-shrapnel', 'capacites', 'barde-shrapnel', 'Shrapnel (Barde)', 'shrapnel-barde', 'À la rupture de sa {{barriere|barrière}} le barde bondit en arrière pendant qu''une explosion de magie se produit.', '{"classe": "classes/barde", "specialite": "DANSEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/barde-marche-lunaire"]}', 'À la rupture de sa {{barriere|barrière}} le barde bondit en arrière pendant qu''une explosion de magie se produit. (Limite max 30 dégâts)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-son-perturbant', 'capacites', 'barde-son-perturbant', 'Son perturbant (Barde)', 'son-perturbant-barde', 'Malus de 5% au jet de défense pour tous les ennemis 3 tours.', '{"classe": "classes/barde", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (2 fois/Combat)"}', 'Malus de 5% au jet de défense pour tous les ennemis 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
@@ -2429,7 +2429,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-lieu-saint', 'capacites', 'clerc-lieu-saint', 'Lieu saint (Clerc)', 'lieu-saint-clerc', 'Invoque une zone de 3 cases autour qui repousse les utilisateurs des magies ennemies (les magies efficaces contre votre magie innée) Dure 3 tours.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/clerc-clerc-voyant"]}', 'Invoque une zone de 3 cases autour qui repousse les utilisateurs des magies ennemies (les magies efficaces contre votre magie innée) Dure 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-medi-profonde', 'capacites', 'clerc-medi-profonde', 'Médi profonde (Clerc)', 'medi-profonde-clerc', 'La méditation et le repos redonnent +8 Chakra.', '{"classe": "classes/clerc", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'La méditation et le repos redonnent +8 Chakra.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-medi-profonde', 'capacites', 'clerc-medi-profonde', 'Médi profonde (Clerc)', 'medi-profonde-clerc', 'La méditation et le repos redonnent +8 {{chakra|Chakra}}.', '{"classe": "classes/clerc", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'La méditation et le repos redonnent +8 {{chakra|Chakra}}.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-placebo', 'capacites', 'clerc-placebo', 'Placebo (Clerc)', 'placebo-clerc', 'Réussir un jet de social lors d''un soin permet d''ajouter +5 au soin prodigué.', '{"classe": "classes/clerc", "specialite": "ZÉLOTE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/clerc-infidele"]}', 'Réussir un jet de social lors d''un soin permet d''ajouter +5 au soin prodigué.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
@@ -2510,11 +2510,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-manteau-noir', 'capacites', 'fenrir-manteau-noir', 'Manteau noir (Fenrir)', 'manteau-noir-fenrir', 'Les coûts pour les sortilèges de Glace, Ombre et Foudre sont réduits de 4.', '{"classe": "classes/fenrir", "specialite": "GOUROU", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/fenrir-aura-lunaire"]}', 'Les coûts pour les sortilèges de Glace, Ombre et Foudre sont réduits de 4.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-rayon-lune', 'capacites', 'fenrir-rayon-lune', 'Rayon Lune (Fenrir)', 'rayon-lune-fenrir', 'Régénère 25% de la barrière la nuit.', '{"classe": "classes/fenrir", "specialite": "GOUROU", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (2 fois/nuit)", "choix_exclusif_avec": ["capacites/fenrir-aura-dombre"]}', 'Régénère 25% de la barrière la nuit.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-rayon-lune', 'capacites', 'fenrir-rayon-lune', 'Rayon Lune (Fenrir)', 'rayon-lune-fenrir', 'Régénère 25% de la {{barriere|barrière}} la nuit.', '{"classe": "classes/fenrir", "specialite": "GOUROU", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (2 fois/nuit)", "choix_exclusif_avec": ["capacites/fenrir-aura-dombre"]}', 'Régénère 25% de la {{barriere|barrière}} la nuit.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-sens-canin', 'capacites', 'fenrir-sens-canin', 'Sens canin (Fenrir)', 'sens-canin-fenrir', '+5% à tout jet impliquant la Perception.', '{"classe": "classes/fenrir", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', '+5% à tout jet impliquant la Perception.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-sucage', 'capacites', 'fenrir-sucage', 'Suçage (Fenrir)', 'sucage-fenrir', 'Infliger 2d8 avec la morsure permet de récupérer 20% des dégâts infligés en santé.', '{"classe": "classes/fenrir", "specialite": "BELLICISTE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/fenrir-grognement"]}', 'Infliger 2d8 avec la morsure permet de récupérer 20% des dégâts infligés en santé. (Si c''est la barrière, ça ne marche pas)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-sucage', 'capacites', 'fenrir-sucage', 'Suçage (Fenrir)', 'sucage-fenrir', 'Infliger 2d8 avec la morsure permet de récupérer 20% des dégâts infligés en santé.', '{"classe": "classes/fenrir", "specialite": "BELLICISTE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/fenrir-grognement"]}', 'Infliger 2d8 avec la morsure permet de récupérer 20% des dégâts infligés en santé. (Si c''est la {{barriere|barrière}}, ça ne marche pas)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-super-odorat', 'capacites', 'fenrir-super-odorat', 'Super Odorat (Fenrir)', 'super-odorat-fenrir', 'Permet de résister à 2 malus à la Perception.', '{"classe": "classes/fenrir", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Réaction (2 fois/session)"}', 'Permet de résister à 2 malus à la Perception.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
@@ -2635,10 +2635,10 @@ Permet de sacrifier les jets de défense pour augmenter les dégâts de +5/jet d
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-irreductible', 'capacites', 'goleois-irreductible', 'Irréductible (Goleois)', 'irreductible-goleois', '+5% Arme légères et lourdes, +5% Stabilité. Maîtrise les Armures Intermédiaires, 2 points de maîtrise à répartir.', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-saronide"]}', '+5% Arme légères et lourdes, +5% Stabilité. Maîtrise les Armures Intermédiaires, 2 points de maîtrise à répartir.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-jaune', 'capacites', 'goleois-jaune', '... jaune (Goleois)', 'jaune-goleois', '(Rage) Tant que la barrière est présente, les dégâts subis n''augmentent pas.', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-plumes"]}', '(Rage)  
-Tant que la barrière est présente, les dégâts subis n''augmentent pas.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-jaune', 'capacites', 'goleois-jaune', '... jaune (Goleois)', 'jaune-goleois', '(Rage) Tant que la {{barriere|barrière}} est présente, les dégâts subis n''augmentent pas.', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-plumes"]}', '(Rage)  
+Tant que la {{barriere|barrière}} est présente, les dégâts subis n''augmentent pas.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-plumes', 'capacites', 'goleois-plumes', 'Plumes ... (Goleois)', 'plumes-goleois', 'Abattre un ennemi redonne 10% de la barrière max.', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-jaune"]}', 'Abattre un ennemi redonne 10% de la barrière max.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-plumes', 'capacites', 'goleois-plumes', 'Plumes ... (Goleois)', 'plumes-goleois', 'Abattre un ennemi redonne 10% de la {{barriere|barrière}} max.', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-jaune"]}', 'Abattre un ennemi redonne 10% de la {{barriere|barrière}} max.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-rage', 'capacites', 'goleois-rage', 'Rage (Goleois)', 'rage-goleois', 'Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours + 1 tour tous les 5 niveaux de la classe', '{"classe": "classes/goleois", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Actif (X tour/combat)"}', 'Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours + 1 tour tous les 5 niveaux de la classe
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
@@ -2740,7 +2740,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/jackalope-polyglotte', 'capacites', 'jackalope-polyglotte', 'Polyglotte (Jackalope)', 'polyglotte-jackalope', '(Vide inné uniquement) Permet de parler et comprendre toutes les langues orales et manuscrites.', '{"classe": "classes/jackalope", "specialite": "ADEPTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/jackalope-jambiere"]}', '(Vide inné uniquement)  
 Permet de parler et comprendre toutes les langues orales et manuscrites. (sauf langue morte)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Jackalope »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/jackalope-serein', 'capacites', 'jackalope-serein', 'Serein (Jackalope)', 'serein-jackalope', 'Le repos donne toujours le maximum de Santé et Chakra et n''a plus besoin de jet de calme pour le faire.', '{"classe": "classes/jackalope", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Le repos donne toujours le maximum de Santé et Chakra et n''a plus besoin de jet de calme pour le faire.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/jackalope-serein', 'capacites', 'jackalope-serein', 'Serein (Jackalope)', 'serein-jackalope', 'Le repos donne toujours le maximum de Santé et {{chakra|Chakra}} et n''a plus besoin de jet de calme pour le faire.', '{"classe": "classes/jackalope", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Le repos donne toujours le maximum de Santé et {{chakra|Chakra}} et n''a plus besoin de jet de calme pour le faire.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Jackalope »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/jackalope-sursaut', 'capacites', 'jackalope-sursaut', 'Sursaut (Jackalope)', 'sursaut-jackalope', 'Une esquive réussie permet de faire un grand saut et déjouer les attaques d''opportunité', '{"classe": "classes/jackalope", "specialite": "NINJA", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/jackalope-survitamine"]}', 'Une esquive réussie permet de faire un grand saut et déjouer les attaques d''opportunité
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Jackalope »');
@@ -2862,7 +2862,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-contre-magique', 'capacites', 'maclier-contre-magique', 'Contre magique (Maclier)', 'contre-magique-maclier', 'Permet d''influer un sort offensif de niveau 1 dans le bouclier, si un coup est paré avec ce dernier, le sort est renvoyé contre l''agresseur.', '{"classe": "classes/maclier", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Action (3 fois/combat)"}', 'Permet d''influer un sort offensif de niveau 1 dans le bouclier, si un coup est paré avec ce dernier, le sort est renvoyé contre l''agresseur.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-frisbee', 'capacites', 'maclier-frisbee', 'Frisbee (Maclier)', 'frisbee-maclier', 'Permet de faire un mouvement de lancer avec le bouclier et inflige 3d6 dégâts à toutes les cibles dans la zone.', '{"classe": "classes/maclier", "specialite": "GRAND MACLIER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (Coût 10 Chakra)", "choix_exclusif_avec": ["capacites/maclier-aura-de-brock"]}', 'Permet de faire un mouvement de lancer avec le bouclier et inflige 3d6 dégâts à toutes les cibles dans la zone. Portée 6 en arc de cercle.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-frisbee', 'capacites', 'maclier-frisbee', 'Frisbee (Maclier)', 'frisbee-maclier', 'Permet de faire un mouvement de lancer avec le bouclier et inflige 3d6 dégâts à toutes les cibles dans la zone.', '{"classe": "classes/maclier", "specialite": "GRAND MACLIER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (Coût 10 {{chakra|Chakra}})", "choix_exclusif_avec": ["capacites/maclier-aura-de-brock"]}', 'Permet de faire un mouvement de lancer avec le bouclier et inflige 3d6 dégâts à toutes les cibles dans la zone. Portée 6 en arc de cercle.
 
 Note de cellule : Si un adversaire fait une parade parfaite. Le bouclier s''arrête dans sa course.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
@@ -2891,8 +2891,8 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-prudence', 'capacites', 'maclier-prudence', 'Prudence (Maclier)', 'prudence-maclier', '(Posture Focus) Peut Esquiver/Parer une fois.', '{"classe": "classes/maclier", "specialite": "ARCHICLIER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/maclier-le-centuple"]}', '(Posture Focus)  
 Peut Esquiver/Parer une fois.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-sacri-ba', 'capacites', 'maclier-sacri-ba', 'Sacri-BA (Maclier)', 'sacri-ba-maclier', 'Permet de sacrifier des PV et CK pour régénérer la Barrière.', '{"classe": "classes/maclier", "specialite": "GRAND MACLIER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/maclier-sacri-parm"]}', 'Permet de sacrifier des PV et CK pour régénérer la Barrière.  
-(1 PV/CK = 1 Barrière)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-sacri-ba', 'capacites', 'maclier-sacri-ba', 'Sacri-BA (Maclier)', 'sacri-ba-maclier', 'Permet de sacrifier des PV et CK pour régénérer la {{barriere|Barrière}}.', '{"classe": "classes/maclier", "specialite": "GRAND MACLIER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/maclier-sacri-parm"]}', 'Permet de sacrifier des PV et CK pour régénérer la {{barriere|Barrière}}.  
+(1 PV/CK = 1 {{barriere|Barrière}})
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-sacri-parm', 'capacites', 'maclier-sacri-parm', 'Sacri-PARM (Maclier)', 'sacri-parm-maclier', 'Permet de sacrifier des PV et CK pour augmenter les AP ou l''AM pour 1 tour.', '{"classe": "classes/maclier", "specialite": "GRAND MACLIER", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/maclier-sacri-ba"]}', 'Permet de sacrifier des PV et CK pour augmenter les AP ou l''AM pour 1 tour.  
 (3 PV/CK = 1 PA ou RM)
@@ -2903,7 +2903,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-bleu-ame-double', 'capacites', 'mage-bleu-ame-double', 'Âme double (Mage Bleu)', 'ame-double-mage-bleu', 'Votre magie ne blesse pas votre familier.', '{"classe": "classes/mage-bleu", "specialite": "DRESSEUR BLEU", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-bleu-ultime-sacrifice"]}', 'Votre magie ne blesse pas votre familier. Les sorts de soutien appliqués sur votre familier sont également appliqués sur vous et vice-versa.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Bleu »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-bleu-animagie', 'capacites', 'mage-bleu-animagie', 'Animagie (Mage Bleu)', 'animagie-mage-bleu', 'Vous pouvez utiliser le chakra de votre familier pour vos propres sorts ou l''inverse.', '{"classe": "classes/mage-bleu", "specialite": "DRESSEUR BLEU", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Actif (2 fois/jour)", "choix_exclusif_avec": ["capacites/mage-bleu-animal-totem"]}', 'Vous pouvez utiliser le chakra de votre familier pour vos propres sorts ou l''inverse.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-bleu-animagie', 'capacites', 'mage-bleu-animagie', 'Animagie (Mage Bleu)', 'animagie-mage-bleu', 'Vous pouvez utiliser le {{chakra|chakra}} de votre familier pour vos propres sorts ou l''inverse.', '{"classe": "classes/mage-bleu", "specialite": "DRESSEUR BLEU", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Actif (2 fois/jour)", "choix_exclusif_avec": ["capacites/mage-bleu-animal-totem"]}', 'Vous pouvez utiliser le {{chakra|chakra}} de votre familier pour vos propres sorts ou l''inverse.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Bleu »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-bleu-animal-totem', 'capacites', 'mage-bleu-animal-totem', 'Animal Totem (Mage Bleu)', 'animal-totem-mage-bleu', 'Le familier possède un bonus de 10% à tous ses jets.', '{"classe": "classes/mage-bleu", "specialite": "DRESSEUR BLEU", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-bleu-animagie"]}', 'Le familier possède un bonus de 10% à tous ses jets.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Bleu »');
@@ -2958,7 +2958,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-mage-noir', 'capacites', 'mage-mage-noir', 'Mage Noir (Mage)', 'mage-noir-mage', '+1 tour d''effet pour les altérations d''états, +1 point de maîtrise à répartir, +5% Magie.', '{"classe": "classes/mage", "specialite": "MAGE NOIR", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-mage-blanc"]}', '+1 tour d''effet pour les altérations d''états, +1 point de maîtrise à répartir, +5% Magie.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-magibalisme', 'capacites', 'mage-magibalisme', 'Magibalisme (Mage)', 'magibalisme-mage', 'Permet de récupérer 25% de Chakra après avoir mis hors combat un adversaire.', '{"classe": "classes/mage", "specialite": "MAGE NOIR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-exces"]}', 'Permet de récupérer 25% de Chakra après avoir mis hors combat un adversaire.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-magibalisme', 'capacites', 'mage-magibalisme', 'Magibalisme (Mage)', 'magibalisme-mage', 'Permet de récupérer 25% de {{chakra|Chakra}} après avoir mis hors combat un adversaire.', '{"classe": "classes/mage", "specialite": "MAGE NOIR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-exces"]}', 'Permet de récupérer 25% de {{chakra|Chakra}} après avoir mis hors combat un adversaire.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-meditation-cool', 'capacites', 'mage-meditation-cool', 'Méditation cool (Mage)', 'meditation-cool-mage', 'Méditation et repos ne demandent plus de jet de calme en situation de stress.', '{"classe": "classes/mage", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'Méditation et repos ne demandent plus de jet de calme en situation de stress.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
@@ -2967,17 +2967,17 @@ x = +2 dégâts/6 niveaux de Mage.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-1-des-deux', 'capacites', 'mage-rouge-1-des-deux', '1 des deux (Mage Rouge)', '1-des-deux-mage-rouge', 'Permet d''empêcher la cible d''esquiver ou parer l''arme ET le sort.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-les-deux"]}', 'Permet d''empêcher la cible d''esquiver ou parer l''arme ET le sort. Il doit choisir s''il veut prendre le premier ou deuxième coup.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-ange-rouge', 'capacites', 'mage-rouge-ange-rouge', 'Ange rouge (Mage Rouge)', 'ange-rouge-mage-rouge', 'Invoque des danseur(e)s fantomatiques de chakra pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-materiel"]}', 'Invoque des danseur(e)s fantomatiques de chakra pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-ange-rouge', 'capacites', 'mage-rouge-ange-rouge', 'Ange rouge (Mage Rouge)', 'ange-rouge-mage-rouge', 'Invoque des danseur(e)s fantomatiques de {{chakra|chakra}} pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-materiel"]}', 'Invoque des danseur(e)s fantomatiques de {{chakra|chakra}} pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-charge-lente', 'capacites', 'mage-rouge-charge-lente', 'Charge lente… (Mage Rouge)', 'charge-lente-mage-rouge', 'Les sorts offensifs préparés infligent +5 dégâts.', '{"classe": "classes/mage-rouge", "specialite": "MAGE RUBIS", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-rouge-ou-rapide"]}', 'Les sorts offensifs préparés infligent +5 dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-destructeur', 'capacites', 'mage-rouge-destructeur', 'Destructeur (Mage Rouge)', 'destructeur-mage-rouge', '(Posture Focus) Dégâts à la barrière avec la magie = x2', '{"classe": "classes/mage-rouge", "specialite": "MAGE RUBIS", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-rouge-passeur"]}', '(Posture Focus)  
-Dégâts à la barrière avec la magie = x2
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-destructeur', 'capacites', 'mage-rouge-destructeur', 'Destructeur (Mage Rouge)', 'destructeur-mage-rouge', '(Posture Focus) Dégâts à la {{barriere|barrière}} avec la magie = x2', '{"classe": "classes/mage-rouge", "specialite": "MAGE RUBIS", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-rouge-passeur"]}', '(Posture Focus)  
+Dégâts à la {{barriere|barrière}} avec la magie = x2
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-double-coup', 'capacites', 'mage-rouge-double-coup', 'Double coup (Mage Rouge)', 'double-coup-mage-rouge', 'Permet de conserver un sort dans la main et l''activer à chaque coup au corps à corps infligé.', '{"classe": "classes/mage-rouge", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Permet de conserver un sort dans la main et l''activer à chaque coup au corps à corps infligé. S''annule quand il y a un changement de sort.
 
 Note de cellule : Dans le cas d''un critique, ce sera que pour le premier coup, les prochains c''est fixé à 40 de réussite.  
-Consomme le chakra à chaque sort.
+Consomme le {{chakra|chakra}} à chaque sort.
 
 Pensez bien à noter la réussite du sort pour ne pas le perdre.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
@@ -3065,7 +3065,7 @@ La posture focus transforme ce don en IC.
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-double-coup', 'capacites', 'mage-vert-double-coup', 'Double coup (Mage Vert)', 'double-coup-mage-vert', 'Permet de conserver un sort dans la main et l''activer à chaque coup à distance infligé.', '{"classe": "classes/mage-vert", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Permet de conserver un sort dans la main et l''activer à chaque coup à distance infligé. S''annule quand il y a un changement de sort.
 
 Note de cellule : Dans le cas d''un critique, ce sera que pour le premier coup, les prochains c''est fixé à 40 de réussite.  
-Consomme le chakra à chaque sort.
+Consomme le {{chakra|chakra}} à chaque sort.
 
 Pensez bien à noter la réussite du sort pour ne pas le perdre.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
@@ -3083,8 +3083,8 @@ Le boost de dégâts magiques de la posture est aussi appliqué à l''arme.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-missile', 'capacites', 'mage-vert-missile', 'Missile ... (Mage Vert)', 'missile-mage-vert', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/mage-vert-enchante"]}', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-munition-speciale', 'capacites', 'mage-vert-munition-speciale', 'Munition Spéciale (Mage Vert)', 'munition-speciale-mage-vert', '(Posture Symbiose) Permet d''utiliser l''arme à distance et tirer des projectiles faits en chakra, tape dans l''élément de la symbiose.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/mage-vert-sur-le-pouce"]}', '(Posture Symbiose)  
-Permet d''utiliser l''arme à distance et tirer des projectiles faits en chakra, tape dans l''élément de la symbiose. Coûte 4 chakra.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-munition-speciale', 'capacites', 'mage-vert-munition-speciale', 'Munition Spéciale (Mage Vert)', 'munition-speciale-mage-vert', '(Posture Symbiose) Permet d''utiliser l''arme à distance et tirer des projectiles faits en {{chakra|chakra}}, tape dans l''élément de la symbiose.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/mage-vert-sur-le-pouce"]}', '(Posture Symbiose)  
+Permet d''utiliser l''arme à distance et tirer des projectiles faits en {{chakra|chakra}}, tape dans l''élément de la symbiose. Coûte 4 {{chakra|chakra}}.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-point-faible', 'capacites', 'mage-vert-point-faible', 'Point Faible (Mage Vert)', 'point-faible-mage-vert', '(Posture Focus) Le sort influé va ignorer la résistance de la cible à cette magie d''un cran.', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-visee-laser"]}', '(Posture Focus)  
 Le sort influé va ignorer la résistance de la cible à cette magie d''un cran.
@@ -3131,7 +3131,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Note de cellule : Si une cible réussit un jet de défense parfait, l''attaque est stoppée
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Marcass »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/marcass-necrophage', 'capacites', 'marcass-necrophage', 'Nécrophage (Marcass)', 'necrophage-marcass', 'Peut manger de la viande de mort sans avoir de malus pour se soigner de 3d8 barrière.', '{"classe": "classes/marcass", "specialite": "DÉVOT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/marcass-ca-va-plus-vite"]}', 'Peut manger de la viande de mort sans avoir de malus pour se soigner de 3d8 barrière.  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/marcass-necrophage', 'capacites', 'marcass-necrophage', 'Nécrophage (Marcass)', 'necrophage-marcass', 'Peut manger de la viande de mort sans avoir de malus pour se soigner de 3d8 {{barriere|barrière}}.', '{"classe": "classes/marcass", "specialite": "DÉVOT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/marcass-ca-va-plus-vite"]}', 'Peut manger de la viande de mort sans avoir de malus pour se soigner de 3d8 {{barriere|barrière}}.  
 (se cumule avec Recyclage)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Marcass »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/marcass-nomade', 'capacites', 'marcass-nomade', 'Nomade (Marcass)', 'nomade-marcass', 'Permet au groupe de faire 10Km de plus par jour.', '{"classe": "classes/marcass", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Permet au groupe de faire 10Km de plus par jour.
@@ -3152,7 +3152,7 @@ Note de cellule : Terre : Réduit les dégâts encaissés de 4.
 
 Feu : Augmente les dégâts infligés de 4.
 
-Nécromancie : Économise 1 chakra à chaque sort lancé.
+Nécromancie : Économise 1 {{chakra|chakra}} à chaque sort lancé.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Marcass »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-animosite', 'capacites', 'martiale-animosite', 'Animosité (Martiale)', 'animosite-martiale', '(Rage) Permet d''avoir une attaque de morsure bonus qui vient juste après l''attaque de corps à corps.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rage-sans-peur"]}', '(Rage)  
 Permet d''avoir une attaque de morsure bonus qui vient juste après l''attaque de corps à corps. Dégâts 2d8.
@@ -3211,9 +3211,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-aura-abyssale', 'capacites', 'medusain-aura-abyssale', 'Aura abyssale (Médusain)', 'aura-abyssale-medusain', 'Réduit les dégâts de foudre, terre, nécromancie et ombre de 6.', '{"classe": "classes/medusain", "specialite": "AUGURE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-acuite"]}', 'Réduit les dégâts de foudre, terre, nécromancie et ombre de 6.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-barriere-isolante', 'capacites', 'medusain-barriere-isolante', 'Barrière isolante (Médusain)', 'barriere-isolante-medusain', 'La barrière prend deux fois moins de dégâts magiques.', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-barriere-resistante"]}', 'La barrière prend deux fois moins de dégâts magiques.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-barriere-isolante', 'capacites', 'medusain-barriere-isolante', 'Barrière isolante (Médusain)', 'barriere-isolante-medusain', 'La {{barriere|barrière}} prend deux fois moins de dégâts magiques.', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-barriere-resistante"]}', 'La {{barriere|barrière}} prend deux fois moins de dégâts magiques.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-barriere-resistante', 'capacites', 'medusain-barriere-resistante', 'Barrière résistante (Médusain)', 'barriere-resistante-medusain', 'La barrière prend deux fois moins de dégâts physiques.', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-barriere-isolante"]}', 'La barrière prend deux fois moins de dégâts physiques.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-barriere-resistante', 'capacites', 'medusain-barriere-resistante', 'Barrière résistante (Médusain)', 'barriere-resistante-medusain', 'La {{barriere|barrière}} prend deux fois moins de dégâts physiques.', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-barriere-isolante"]}', 'La {{barriere|barrière}} prend deux fois moins de dégâts physiques.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-double-estoc', 'capacites', 'medusain-double-estoc', 'Double estoc (Médusain)', 'double-estoc-medusain', 'Si jamais les dégâts des dés sont inférieurs à la moitié théorique, les dés peuvent être relancés', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/medusain-passe-bouclier"]}', 'Si jamais les dégâts des dés sont inférieurs à la moitié théorique, les dés peuvent être relancés
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
@@ -3229,7 +3229,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-pointu', 'capacites', 'medusain-pointu', 'Pointu (Médusain)', 'pointu-medusain', 'Les dégâts d''estoc augmentent de +8.', '{"classe": "classes/medusain", "specialite": "HOPLITE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-tentattaque"]}', 'Les dégâts d''estoc augmentent de +8.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-shrapnel', 'capacites', 'medusain-shrapnel', 'Shrapnel (Médusain)', 'shrapnel-medusain', 'À la rupture de sa barrière le médusain bondit en arrière pendant qu''une explosion de magie se produit.', '{"classe": "classes/medusain", "specialite": "AUGURE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-fil-conducteur"]}', 'À la rupture de sa barrière le médusain bondit en arrière pendant qu''une explosion de magie se produit. (Limite max 30 dégâts)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-shrapnel', 'capacites', 'medusain-shrapnel', 'Shrapnel (Médusain)', 'shrapnel-medusain', 'À la rupture de sa {{barriere|barrière}} le médusain bondit en arrière pendant qu''une explosion de magie se produit.', '{"classe": "classes/medusain", "specialite": "AUGURE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/medusain-fil-conducteur"]}', 'À la rupture de sa {{barriere|barrière}} le médusain bondit en arrière pendant qu''une explosion de magie se produit. (Limite max 30 dégâts)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/medusain-tentalongue', 'capacites', 'medusain-tentalongue', 'Tentalongue (Médusain)', 'tentalongue-medusain', 'Les altérations d''états infligées par les tentacules durent 1 tour de plus.', '{"classe": "classes/medusain", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'Les altérations d''états infligées par les tentacules durent 1 tour de plus.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Médusain »');
@@ -3410,9 +3410,9 @@ Note de cellule : Sauf la zone vide
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Ocultomancien »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/ocultomancien-dereglement', 'capacites', 'ocultomancien-dereglement', 'Dérèglement (Ocultomancien)', 'dereglement-ocultomancien', 'Force le dé de météo au début de chaque combat.', '{"classe": "classes/ocultomancien", "specialite": "MÉTÉOROLOGUE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/ocultomancien-accalmie"]}', 'Force le dé de météo au début de chaque combat.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Ocultomancien »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/ocultomancien-econome', 'capacites', 'ocultomancien-econome', 'Économe (Ocultomancien)', 'econome-ocultomancien', 'Le coût en Chakra d''un sort est réduit d''un montant égal à son niveau de puissance.', '{"classe": "classes/ocultomancien", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Le coût en Chakra d''un sort est réduit d''un montant égal à son niveau de puissance.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/ocultomancien-econome', 'capacites', 'ocultomancien-econome', 'Économe (Ocultomancien)', 'econome-ocultomancien', 'Le coût en {{chakra|Chakra}} d''un sort est réduit d''un montant égal à son niveau de puissance.', '{"classe": "classes/ocultomancien", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Le coût en {{chakra|Chakra}} d''un sort est réduit d''un montant égal à son niveau de puissance.
 
-Note de cellule : un sort de puissance 1 coûte 1 Chakra de moins, un sort de puissance 4 coûte 4 Chakra de moins, etc
+Note de cellule : un sort de puissance 1 coûte 1 {{chakra|Chakra}} de moins, un sort de puissance 4 coûte 4 {{chakra|Chakra}} de moins, etc
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Ocultomancien »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/ocultomancien-maitrise', 'capacites', 'ocultomancien-maitrise', 'Maîtrise (Ocultomancien)', 'maitrise-ocultomancien', 'Gagne 4 niveaux de maîtrise (NM).', '{"classe": "classes/ocultomancien", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'Gagne 4 niveaux de maîtrise (NM).
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Ocultomancien »');
@@ -4016,7 +4016,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Dévoué à sa divinité, le Clerc canalise sa foi pour se protéger et guider ses alliés. Son lien sacré avec sa magie et divinité lui confère une résistance accrue à sa propre magie et lui permet de se rapprocher des volontés divines.
 
-Armé de haches ou de masses consacrées, il équilibre force physique et puissance spirituelle, régénérant mieux son Chakra par la méditation. Inébranlable face aux forces obscures, il se tient prêt à défendre son culte et à abattre les hérétiques d’un coup béni.
+Armé de haches ou de masses consacrées, il équilibre force physique et puissance spirituelle, régénérant mieux son {{chakra|Chakra}} par la méditation. Inébranlable face aux forces obscures, il se tient prêt à défendre son culte et à abattre les hérétiques d’un coup béni.
 
 ## Don de départ
 
@@ -4060,7 +4060,7 @@ Capable d’amplifier les soins et de repousser les forces ennemies, il crée de
 
 #### Description Zélote
 
-Le Zélote est le bras armé de sa divinité, un fervent serviteur qui impose la volonté divine par le chakra et l''acier. Il combat avec une ferveur inébranlable, punissant les impies et purifiant le monde des forces impures.
+Le Zélote est le bras armé de sa divinité, un fervent serviteur qui impose la volonté divine par le {{chakra|chakra}} et l''acier. Il combat avec une ferveur inébranlable, punissant les impies et purifiant le monde des forces impures.
 
 Maître des haches, il peut bannir les créatures d''autres plans et infliger de terribles châtiments aux indécis et aux neutres. À son apogée, il invoque des figures saintes pour combattre à ses côtés, incarnant la justice divine en pleine bataille. Il est là pour punir ceux qui le méritent.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
@@ -4649,13 +4649,13 @@ Le Myrmidon est un guerrier versatile. Grâce à son entraînement physique pous
 
 Capable d’ignorer les potentiels boucliers adverses et d’exploiter chaque ouverture, il allie mobilité et agressivité. Son style de combat lui permet d’interrompre l’élan de ses adversaires et de riposter instantanément.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/maclier', 'classes', 'maclier', 'Maclier', 'maclier', 'Le Maclier est un mage combattant qui allie la puissance du Chakra à l’imposante défense des grands boucliers.', NULL, '**Catégorie** : Classe Magique
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/maclier', 'classes', 'maclier', 'Maclier', 'maclier', 'Le Maclier est un mage combattant qui allie la puissance du {{chakra|Chakra}} à l’imposante défense des grands boucliers.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
 
 ## Description Maclier
 
-Le Maclier est un mage combattant qui allie la puissance du Chakra à l’imposante défense des grands boucliers. Sa technique unique lui permet de se protéger contre des attaques magiques normalement imparables tout en renforçant ses propres capacités défensives.
+Le Maclier est un mage combattant qui allie la puissance du {{chakra|Chakra}} à l’imposante défense des grands boucliers. Sa technique unique lui permet de se protéger contre des attaques magiques normalement imparables tout en renforçant ses propres capacités défensives.
 
 Capable de neutraliser certains sorts par la parade et d''influer ses sorts dans son bouclier, il excelle dans l’art de la riposte. Son style de combat repose sur une endurance exceptionnelle, absorbant les coups et détournant la puissance adverse pour mieux contre-attaquer.
 
@@ -4702,15 +4702,15 @@ Grâce à sa maîtrise de la parade, il peut bloquer complètement des attaques 
 
 Le Grand Maclier est un protecteur légendaire, maniant son bouclier comme personne. Capable de frapper plusieurs adversaires ou de bénir ses alliés.
 
-Il sacrifie son propre Chakra et sa Santé pour régénérer sa barrière ou amplifier ses défenses, repoussant sans relâche les assauts adverses. Il est capable de renvoyer intégralement les sorts offensifs, convertissant chaque assaut adversaire en une chance de contre-attaque et affirmant sa domination sur le champ de bataille.
+Il sacrifie son propre {{chakra|Chakra}} et sa Santé pour régénérer sa {{barriere|barrière}} ou amplifier ses défenses, repoussant sans relâche les assauts adverses. Il est capable de renvoyer intégralement les sorts offensifs, convertissant chaque assaut adversaire en une chance de contre-attaque et affirmant sa domination sur le champ de bataille.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/mage', 'classes', 'mage', 'Mage', 'mage', 'Le Mage est un expert du Chakra, capable de modeler la réalité à travers ses sorts.', NULL, '**Catégorie** : Classe Magique
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/mage', 'classes', 'mage', 'Mage', 'mage', 'Le Mage est un expert du {{chakra|Chakra}}, capable de modeler la réalité à travers ses sorts.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
 
 ## Description Mage
 
-Le Mage est un expert du Chakra, capable de modeler la réalité à travers ses sorts. Il puise dans son énergie spirituelle pour infliger de lourds dégâts à distance, exploitant sa ou ses magies.
+Le Mage est un expert du {{chakra|Chakra}}, capable de modeler la réalité à travers ses sorts. Il puise dans son énergie spirituelle pour infliger de lourds dégâts à distance, exploitant sa ou ses magies.
 
 Son style de combat repose sur la puissance et la concentration, renforcée par sa capacité à méditer même sous pression. Faiblement protégé, il compense par plus de sorts et une armure magique plus grande.
 
@@ -4837,7 +4837,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description Mage rouge
 
-Le Mage Rouge fusionne l’art du combat rapproché avec la puissance magique, utilisant sa volonté indomptable pour lancer ses sorts au cœur de la mêlée. Contrairement aux mages traditionnels, il ne dépend pas de l''intelligence, mais de la volonté pour canaliser son Chakra.
+Le Mage Rouge fusionne l’art du combat rapproché avec la puissance magique, utilisant sa volonté indomptable pour lancer ses sorts au cœur de la mêlée. Contrairement aux mages traditionnels, il ne dépend pas de l''intelligence, mais de la volonté pour canaliser son {{chakra|Chakra}}.
 
 Capable de frapper en même temps son arme et son sort, ou en perturbant l’esprit de ses adversaires, il impose un rythme imprévisible au combat. Un guerrier magique, simplement.
 
@@ -4879,7 +4879,7 @@ Armure de Peau complète
 
 Le Mage Rubis repousse les limites de la puissance magique en concentrant son énergie pour frapper plus fort que n’importe quel autre mage de mêlée. Chaque sort qu’il lance, qu’il soit préparé ou instantané, gagne en intensité, écrasant les adversaires.
 
-Sa magie brute lui permet de briser les barrières ou d’ignorer l’armure magique. Capable d’associer sa magie à son arme ou de déclencher des sorts directement par la tête, il est une volonté implacable, où chaque coup porte toute la détermination de sa mission.
+Sa magie brute lui permet de briser les {{barriere|barrières}} ou d’ignorer l’armure magique. Capable d’associer sa magie à son arme ou de déclencher des sorts directement par la tête, il est une volonté implacable, où chaque coup porte toute la détermination de sa mission.
 
 ### MAGE GRENAT
 
@@ -4943,9 +4943,9 @@ Grâce à son expertise, il renforce l’impact des sorts "fer", perce les rési
 
 #### Description Mage jade
 
-Le Mage Jade ne se contente pas d’enchanter ses projectiles, il fusionne complètement son arme et sa magie grâce à la posture Symbiose. Ses tirs deviennent une extension de son Chakra, perçant les défenses et ignorant les restrictions classiques de munitions.
+Le Mage Jade ne se contente pas d’enchanter ses projectiles, il fusionne complètement son arme et sa magie grâce à la posture Symbiose. Ses tirs deviennent une extension de son {{chakra|Chakra}}, perçant les défenses et ignorant les restrictions classiques de munitions.
 
-Capable de canaliser son Chakra directement dans ses projectiles, il tire à la main avec la puissance d’une arme chargée et amplifie ses dégâts en fonction de l’état de son équipement. Plus il pousse la symbiose avec son arme, plus il devient indomptable, où chaque coup est une manifestation de sa volonté.
+Capable de canaliser son {{chakra|Chakra}} directement dans ses projectiles, il tire à la main avec la puissance d’une arme chargée et amplifie ses dégâts en fonction de l’état de son équipement. Plus il pousse la symbiose avec son arme, plus il devient indomptable, où chaque coup est une manifestation de sa volonté.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/marcass', 'classes', 'marcass', 'Marcass', 'marcass', 'Le Marcass est un combattant qui fonce sans hésitation vers ses adversaires, écrasant tout sur son passage avec sa Charge Porcine, qui augmente sa vitesse lorsqu’il s’élance en ligne droite.', NULL, '**Catégorie** : Classe Hybride Animal
 
@@ -4999,7 +4999,7 @@ Il est capable d’utiliser sa propre tête pour renforcer ses coups de hache, p
 
 Le Dévot est un mage singulier, fusionnant sa foi et sa magie pour créer un lien profond avec les éléments et les forces mystiques. Son pouvoir dépend fortement de son apparence et des couleurs qu’il porte, lui conférant des bonus spécifiques en fonction de son affinité avec le Feu, la Terre ou la Nécromancie.
 
-Il possède une relation unique avec les esprits et les morts, capable de se nourrir de la chair des défunts pour restaurer sa propre Barrière, un talent qui le rapproche des anciennes pratiques de l''époque où les marcass étaient des esclaves. Son art du Totémisme lui permet d’ériger des sanctuaires de magie innée, offrant des avantages tactiques durables à lui et ses alliés.
+Il possède une relation unique avec les esprits et les morts, capable de se nourrir de la chair des défunts pour restaurer sa propre {{barriere|Barrière}}, un talent qui le rapproche des anciennes pratiques de l''époque où les marcass étaient des esclaves. Son art du Totémisme lui permet d’ériger des sanctuaires de magie innée, offrant des avantages tactiques durables à lui et ses alliés.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Marcass »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/martiale', 'classes', 'martiale', 'Martiale', 'martiale', 'Le Martiale est un combattant féroce qui canalise sa rage pour déchaîner une puissance brutale en combat.', NULL, '**Catégorie** : Classe Physique Corps à Corps
 
@@ -5100,7 +5100,7 @@ Armure de Peau/Corail
 
 #### Description Hoplite
 
-L’Hoplite est un médusain discipliné, spécialiste des armes d’estoc et des techniques défensives. Son style de combat repose sur des frappes précises et une défense inébranlable, exploitant la puissance de son épaisse barrière pour encaisser les assauts les plus brutaux.
+L’Hoplite est un médusain discipliné, spécialiste des armes d’estoc et des techniques défensives. Son style de combat repose sur des frappes précises et une défense inébranlable, exploitant la puissance de son épaisse {{barriere|barrière}} pour encaisser les assauts les plus brutaux.
 
 Armé de sa lance et de son bouclier, il repousse les attaques ennemies et ignore la protection de leurs boucliers. Capable d’absorber les dégâts physiques ou magiques, il transforme chaque affrontement en une vraie épreuve d’endurance.
 
@@ -5906,15 +5906,15 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## La magie
 
 - Sort réussi : son coût ; raté : la moitié ; échec critique : le double.
-- Plus assez de chakra, quelle qu’en soit la raison : 2 points de santé par point de chakra manquant.
-- Mode Hyper : les sorts ne coûtent plus de chakra, mais le mode en brûle 10 % du maximum par tour.
+- Plus assez de {{chakra|chakra}}, quelle qu’en soit la raison : 2 points de santé par point de {{chakra|chakra}} manquant.
+- Mode Hyper : les sorts ne coûtent plus de {{chakra|chakra}}, mais le mode en brûle 10 % du maximum par tour.
 - Emplacements de sorts = conditions remplies (magie innée, magie acquise, classe magique, seconde classe magique) × puissance magique.
 
 ## Les attributs à la création
 
 - Santé = race + classe(s) + magies.
-- Chakra = race + classe(s) + magies.
-- Barrière = chakra ÷ 2 (arrondi à l’inférieur) + bonus de race et de classe.
+- {{chakra}} = race + classe(s) + magies.
+- {{barriere}} = {{chakra|chakra}} ÷ 2 (arrondi à l’inférieur) + bonus de race et de classe.
 - Chaque classe magique : +4 AM.
 
 ## Le coma
@@ -6125,11 +6125,11 @@ Presque chaque magie est liée à une altération d’état, et beaucoup de sort
 
 ## Récupérer
 
-- Le **don de base** de la race, *Méditation* ou *Repos*, se prend comme action, plusieurs fois par jour : la méditation rend du chakra, le repos de la santé et du chakra. Au niveau 10, ils deviennent plus efficaces (6d6 + 12 de chakra pour la méditation, 6d4 + 12 de santé et de chakra pour le repos).
-- Les **potions** et remèdes de l’[alchimie](/ressources/alchimie/) soignent, rendent du chakra ou guérissent une altération.
+- Le **don de base** de la race, *Méditation* ou *Repos*, se prend comme action, plusieurs fois par jour : la méditation rend du {{chakra|chakra}}, le repos de la santé et du {{chakra|chakra}}. Au niveau 10, ils deviennent plus efficaces (6d6 + 12 de {{chakra|chakra}} pour la méditation, 6d4 + 12 de santé et de {{chakra|chakra}} pour le repos).
+- Les **potions** et remèdes de l’[alchimie](/ressources/alchimie/) soignent, rendent du {{chakra|chakra}} ou guérissent une altération.
 - Certains **sorts** soignent ou protègent, notamment ceux de la lumière et de l’eau.
 
-Attention : la **corruption** empêche de remonter son chakra au maximum, et le **Mode Hyper** interdit de récupérer du chakra tant qu’il dure.
+Attention : la **corruption** empêche de remonter son {{chakra|chakra}} au maximum, et le **Mode Hyper** interdit de récupérer du {{chakra|chakra}} tant qu’il dure.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/campagne-ou-scenario-one-shot', 'guide', 'campagne-ou-scenario-one-shot', '« Campagne » ou « Scénario one shot » ?', 'campagne-ou-scenario-one-shot', 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr.', NULL, 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr :
 
@@ -6230,7 +6230,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Ce que donne une classe
 
-- de la **santé**, du **chakra** et de la **barrière** de départ ;
+- de la **santé**, du **{{chakra|chakra}}** et de la **{{barriere|barrière}}** de départ ;
 - ses **maîtrises d’armes** : les armes que le personnage sait manier dès le départ, nommées (« 1 maîtrise Épée ») ou au choix (« 1 maîtrise dans une arme de contact au choix ») ;
 - les **armures** et **boucliers** qu’il sait porter ;
 - son **équipement de départ** : une arme, une armure et un inventaire de cinq objets ;
@@ -6266,10 +6266,10 @@ Avant les chiffres, une idée : qui est votre personnage ? D’où vient-il, que
 
 Maverick compte [27 races](/races/) : des races **pures** et des races **hybrides**. Certaines se divisent en **ethnies** (les Felfes forestiers, les Orios de Sang…), à préciser sur la fiche. La race fixe le point de départ du personnage :
 
-- sa **santé** et son **chakra de départ**, parfois un **bonus de barrière** ;
+- sa **santé** et son **{{chakra|chakra}} de départ**, parfois un **bonus de {{barriere|barrière}}** ;
 - sa **vitesse**, sur terre et à la nage ;
 - ses **avantages** et ses **inconvénients** ;
-- son **don de base**, *Méditation* ou *Repos*, qui lui permet de récupérer chakra ou santé plusieurs fois par jour ;
+- son **don de base**, *Méditation* ou *Repos*, qui lui permet de récupérer {{chakra|chakra}} ou santé plusieurs fois par jour ;
 - ses **dons raciaux**, et ceux de son ethnie ;
 - les **magies innées** possibles : toutes les races n’ont pas accès à toutes les magies ;
 - pour une race hybride, sa **classe raciale**.
@@ -6280,7 +6280,7 @@ La page de chaque race donne tout cela, avec son histoire et la façon dont elle
 
 <!-- guide:fil-rouge-race -->
 
-> **Sur votre fiche** : le nom, le surnom, l’origine, la race et son ethnie. Le don de base va dans la case **Base** des dons, le don racial dans la case **Race**. La santé et le chakra de la race serviront à l’étape 6.
+> **Sur votre fiche** : le nom, le surnom, l’origine, la race et son ethnie. Le don de base va dans la case **Base** des dons, le don racial dans la case **Race**. La santé et le {{chakra|chakra}} de la race serviront à l’étape 6.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-ses-magies', 'guide', 'choisir-ses-magies', 'Étape 2 : choisir ses magies', 'etape-2-choisir-ses-magies', 'La magie innée, obligatoire et seule à donner un bonus de caractéristique ; la magie acquise, facultative ; les résistances et faiblesses qui en découlent.', '{"chapitre": 7, "partie": "creer"}', '## La magie innée
 
@@ -6288,7 +6288,7 @@ Tout personnage naît avec une **magie innée**, héritée de l’un de ses pare
 
 > Seule la magie **innée** donne un bonus de caractéristique : **+1** dans la caractéristique liée à cette magie.
 
-Ce point s’ajoute aux autres sans compter dans ceux que vous répartirez à l’étape 4 : il permet d’atteindre 5 dans cette caractéristique et y garantit un minimum de 2. Les magies apportent aussi du chakra, et certaines de la santé :
+Ce point s’ajoute aux autres sans compter dans ceux que vous répartirez à l’étape 4 : il permet d’atteindre 5 dans cette caractéristique et y garantit un minimum de 2. Les magies apportent aussi du {{chakra|chakra}}, et certaines de la santé :
 
 <!-- guide:magie-bonus -->
 
@@ -6317,7 +6317,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 - **Personnage** : nom, surnom, race, origine, alignement, magies, dieux et bourse.
 - **Classe** et **expérience** : la ou les classes du personnage, son niveau et l’expérience accumulée.
-- **Attributs** : santé, chakra, barrière, vitesse, initiative…
+- **Attributs** : santé, {{chakra|chakra}}, {{barriere|barrière}}, vitesse, initiative…
 - **Caractéristiques** et **compétences** : les scores de tous les jets de dés.
 - **Dons** : ce que le personnage sait faire de particulier, grâce à sa race, sa classe, son métier ou ses entraînements.
 - **Armes, armure, accessoires, ceinture et inventaire** : son équipement.
@@ -6510,19 +6510,19 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Âme/Sang** : Appelée aussi la 4ème barre, il s''agit d''un attribut qui ne concerne que les utilisateurs de la Nécromancie et de la Magie du Sang . Il s''agit d''une réserve qui doit être utilisée lors de l''utilisation de certains sortilèges. Cet attribut se recharge de 1 point par tour dans les combats. Il est fixé à 10 pour les deux.
 
-**Chakra** : C''est le nombre de points de magie que possède le personnage, c''est ce qui permet de lancer des sortilèges, pas de chakra = pas de sortilèges. Le chakra est déterminé par plusieurs choses => La Race, la ou les Classes ainsi que les différentes magies.
+**{{chakra}}** : C''est le nombre de points de magie que possède le personnage, c''est ce qui permet de lancer des sortilèges, pas de {{chakra|chakra}} = pas de sortilèges. Le {{chakra|chakra}} est déterminé par plusieurs choses => La Race, la ou les Classes ainsi que les différentes magies.
 
-La consommation de chakra est indiquée sur les sorts mais il y a des cas particuliers : L’Échec critique avec un sort consomme le double du coût, l’échec au jet pour utiliser un sort fait consommer la moitié du coût de base.
+La consommation de {{chakra|chakra}} est indiquée sur les sorts mais il y a des cas particuliers : L’Échec critique avec un sort consomme le double du coût, l’échec au jet pour utiliser un sort fait consommer la moitié du coût de base.
 
-**Corruption** : Cet attribut un peu particulier possède le même taux que le Chakra et évolue en même temps que ce dernier. La corruption est un poison pour le lobe de chakra (un organe situé dans le cerveau).
+**Corruption** : Cet attribut un peu particulier possède le même taux que le {{chakra}} et évolue en même temps que ce dernier. La corruption est un poison pour le lobe de {{chakra|chakra}} (un organe situé dans le cerveau).
 
-Chaque point de corruption va empêcher l’utilisation du chakra, comme une substance parasite qui va prendre la place du chakra. Si la corruption atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de corruption sinon il va mourir et se transformer en abomination de corruption.
+Chaque point de corruption va empêcher l’utilisation du {{chakra|chakra}}, comme une substance parasite qui va prendre la place du {{chakra|chakra}}. Si la corruption atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de corruption sinon il va mourir et se transformer en abomination de corruption.
 
-Pour résumer : Vous avez par exemple 25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23/25 car la corruption prend la place.
+Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23/25 car la corruption prend la place.
 
 ***PS : Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle.***
 
-**Barrière** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La barrière est en quelque sorte de la santé magique, son taux est déterminé par le total de chakra : [Chakra total divisé par 2 = Barrière totale] (exemple : 20 Chakra = 10 Barrière). Il existe certaines classes/races qui offrent de la barrière. Par logique, plus vous avez de chakra, plus vous aurez de barrière. Ce qui fait que les mages ont des barrières colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la barrière, mais aussi le Maverium, qui lui, casse la barrière à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des barrières)
+**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2 = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})
 
 **Vitesse** : Il s''agit de l''attribut qui détermine le nombre de cases qu''un personnage peut parcourir le tour où il joue (plus détail [ici](https://maverick-jdr.fandom.com/fr/wiki/Combat))
 
@@ -6687,22 +6687,22 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Niveau 2 | **200** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Mode Hyper débloqué ! |
 | Niveau 3 | **550** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 4 | **950** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 2 |
-| Niveau 5 | **1650** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +10 maximum naturel<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 chakra OU 1d4 pour les deux) |
+| Niveau 5 | **1650** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +10 maximum naturel<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
 | Niveau 6 | **2450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 7 | **3850** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 8 | **5450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 3 |
 | Niveau 9 | **8250** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 10 | **11450** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- +10 maximum naturel<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 chakra OU 1d4 pour les deux)<br>- Mode Hyper 100% débloqué !<br>- Méditation redonne 6d6 + 12 chakra/Repos redonne 6d4 + 12 santé et chakra |
+| Niveau 10 | **11450** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- +10 maximum naturel<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux)<br>- Mode Hyper 100% débloqué !<br>- Méditation redonne 6d6 + 12 {{chakra\|chakra}}/Repos redonne 6d4 + 12 santé et {{chakra\|chakra}} |
 | Niveau 11 | **17050** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 12 | **23450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 4 |
 | Niveau 13 | **34650** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 14 | **47450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 15 | **69850** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 chakra OU 1d4 pour les deux) |
+| Niveau 15 | **69850** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
 | Niveau 16 | **95450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 5 (non disponible pour les personnages avec une magie acquise) |
 | Niveau 17 | **140250** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 18 | **191450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
 | Niveau 19 | **281050** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 20 | **460250** | - 15 points d''attributs à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 chakra OU 1d4 pour les deux) |
+| Niveau 20 | **460250** | - 15 points d''attributs à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
 
 *Rappel : Le Niveau global détermine le(s) niveau(x) de classe(s) (plus de détails dans* [*classe*](https://maverick-jdr.fandom.com/fr/wiki/Classe)*) ainsi que le Niveau de Magie (plus de détails dans* [*Magie*](https://maverick-jdr.fandom.com/fr/wiki/Magie)*)*
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -6849,9 +6849,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Les attributs se calculent à partir de la race, de la classe et des magies choisies aux étapes 1 à 3 :
 
 - **Santé** (les points de vie) = santé de la race + santé de la ou des classes + santé offerte par les magies. À 0 ou moins, le personnage tombe dans le coma et doit réussir un jet de survie : un seul réussi le stabilise, trois ratés et il meurt.
-- **Chakra** (les points de magie, que dépensent les sorts) = chakra de la race + chakra de la ou des classes + chakra offert par les magies.
-- **Barrière**, une seconde peau magique = la moitié du chakra (arrondie à l’inférieur) + les bonus de barrière de la race et de la classe. Le mithril passe à travers, et le maverium la brise à son contact.
-- **Corruption** : son maximum est celui du chakra. Chaque point de corruption prend la place d’un point de chakra ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
+- **{{chakra}}** (les points de magie, que dépensent les sorts) = {{chakra|chakra}} de la race + {{chakra|chakra}} de la ou des classes + {{chakra|chakra}} offert par les magies.
+- **{{barriere}}**, une seconde peau magique = la moitié du {{chakra|chakra}} (arrondie à l’inférieur) + les bonus de {{barriere|barrière}} de la race et de la classe. Le mithril passe à travers, et le maverium la brise à son contact.
+- **Corruption** : son maximum est celui du {{chakra|chakra}}. Chaque point de corruption prend la place d’un point de {{chakra|chakra}} ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
 - **Âme** ou **Sang** (la « 4ᵉ barre ») : seulement avec la nécromancie ou la magie du sang ; une réserve de 10 que dépensent certains sorts, qui se recharge de 1 par tour en combat.
 - **Vitesse** : celle de la race, sur terre et à la nage. Une armure lourde retire 1 point et rend la nage impossible.
 - **Armure de base** : chaque classe magique donne 4 d’armure magique (AM) ; certaines races donnent de l’armure physique (AP) ou magique.
@@ -6859,7 +6859,7 @@ Les attributs se calculent à partir de la race, de la classe et des magies choi
 
 <!-- guide:initiative -->
 
-Certaines ethnies ajoutent un bonus de santé, de chakra, de barrière ou de vitesse. À partir du niveau 2, chaque niveau donne aussi 15 points d’attributs à répartir entre la santé et le chakra.
+Certaines ethnies ajoutent un bonus de santé, de {{chakra|chakra}}, de {{barriere|barrière}} ou de vitesse. À partir du niveau 2, chaque niveau donne aussi 15 points d’attributs à répartir entre la santé et le {{chakra|chakra}}.
 
 ## Les dons
 
@@ -7004,7 +7004,7 @@ Le MJ reste seul juge de ce qui est possible, improbable ou impossible. Sa parol
 
 L’échec critique, dans sa définition la plus pure, correspond au fait de foirer totalement une action, entraînant conséquence négative.
 
-- **Attaque** : Abîme l’arme, attaque un allié par accident, double le coût en chakra, l’attaque revient vers le joueur, etc …
+- **Attaque** : Abîme l’arme, attaque un allié par accident, double le coût en {{chakra|chakra}}, l’attaque revient vers le joueur, etc …
 - **Amplification / Soin / Entrave / Protection** : le donne à l’ennemi, se trompe de sort.
 - **Défense** : Défense totalement à 0, donne +8 aux dégâts pour l’ennemi.
 - **Hors combat** : les effets sont laissés à l’imagination du MJ. Les situations sont trop nombreuses.
@@ -7086,13 +7086,13 @@ L’histoire du monde, sa mythologie, ses lieux et ses factions sont rassemblés
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort, ce qu’il coûte en chakra (même raté), les sorts de niveau 5 qui se chargent, et les niveaux de maîtrise (NM) qui renforcent un sort.', '{"chapitre": 17, "partie": "jouer"}', '## Lancer un sort
 
-Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines classes en utilisent une autre : le mage rouge lance ses sorts avec *Concentration*). Le sort coûte le chakra indiqué sur sa page :
+Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines classes en utilisent une autre : le mage rouge lance ses sorts avec *Concentration*). Le sort coûte le {{chakra|chakra}} indiqué sur sa page :
 
 - **réussi** : le coût normal ;
 - **raté** : la moitié du coût, arrondie à l’inférieur ;
 - **échec critique** : le double du coût, et d’autres ennuis au choix du MJ.
 
-À court de chakra, le personnage peut quand même lancer son sort : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra**. C’est le tarif de tout chakra dépensé sans l’avoir, quelle qu’en soit la raison. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
+À court de {{chakra|chakra}}, le personnage peut quand même lancer son sort : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de {{chakra|chakra}}**. C’est le tarif de tout {{chakra|chakra}} dépensé sans l’avoir, quelle qu’en soit la raison. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
 
 ## Les sorts de niveau 5
 
@@ -7126,7 +7126,7 @@ Chaque ligne donne l’expérience nécessaire pour atteindre le niveau, et ce q
 
 - **Compétences** : 100 points à la création, puis 20 par niveau et 40 aux niveaux 5, 10, 15 et 20. Le maximum naturel d’une compétence passe de 20 à 30 au niveau 5, puis à 40 au niveau 10.
 - **Caractéristiques** : un point de plus à répartir aux niveaux 5, 10 et 15.
-- **Attributs** : 15 points à répartir entre la santé et le chakra à chaque niveau à partir du 2, et un dé d’attributs bonus aux niveaux 5, 10, 15 et 20.
+- **Attributs** : 15 points à répartir entre la santé et le {{chakra|chakra}} à chaque niveau à partir du 2, et un dé d’attributs bonus aux niveaux 5, 10, 15 et 20.
 - **Classes** : 2 niveaux de classe par niveau global, sur une seule classe ou sur les deux (voir [le biclassage](/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage)).
 - **Magie** : un niveau de maîtrise pour un sort à chaque niveau à partir du 2 ; la puissance magique passe à 2, 3, 4 et 5 aux niveaux 4, 8, 12 et 16 (le niveau 5 n’est pas accessible avec une magie acquise).
 - **Mode Hyper** : débloqué au niveau 2, à 100 % au niveau 10 (voir [[Liste des effets mode hyper]]).
@@ -7193,21 +7193,21 @@ Avec une seule magie, le personnage est immunisé à sa magie innée ; avec deux
 | Dégâts physiques | +15 | +15 |
 | Dégâts de la magie | +15 | +7 |
 | Soins magiques | +15 | +15 |
-| Coût des sorts en chakra | 0 | 0 |
+| Coût des sorts en {{chakra\|chakra}} | 0 | 0 |
 
 S’y ajoutent un effet propre à chaque magie et un autre propre à chaque race : voir [[Liste des effets mode hyper]].
 
 ## Ce qu’il coûte, et ses limites
 
-- Les sorts ne coûtent plus de chakra, mais le Mode Hyper lui-même en brûle **10 % du maximum par tour**, et le chakra ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
-- Sans assez de chakra, le personnage peut quand même en dépenser : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra** (en Mode Hyper ou non).
+- Les sorts ne coûtent plus de {{chakra|chakra}}, mais le Mode Hyper lui-même en brûle **10 % du maximum par tour**, et le {{chakra|chakra}} ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
+- Sans assez de {{chakra|chakra}}, le personnage peut quand même en dépenser : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de {{chakra|chakra}}** (en Mode Hyper ou non).
 - Il dure au plus **le niveau global divisé par 2** en tours.
-- Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de chakra, objet magique, accord du MJ).
+- Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de {{chakra|chakra}}, objet magique, accord du MJ).
 - On peut le prolonger au-delà de ces limites, mais le corps le paie une fois le mode relâché : résistances brisées, vulnérabilités accentuées, croix sur les caractéristiques, coma… et, à cinq tours de trop, une chance sur deux de mourir.
 
 ## Le Mode Hyper 100 %
 
-Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine puissance pendant **3 tours** : le chakra ne s’évapore plus, toutes les postures sont actives et sans inconvénients, chaque sort peut être surchargé (un dé de dégâts en plus) et toutes les attaques font +10 dégâts de plus. Ensuite, il revient au Mode Hyper normal en dépensant **75 % de son chakra maximum** ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : **2 points de santé pour 1 point de chakra**.
+Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine puissance pendant **3 tours** : le {{chakra|chakra}} ne s’évapore plus, toutes les postures sont actives et sans inconvénients, chaque sort peut être surchargé (un dé de dégâts en plus) et toutes les attaques font +10 dégâts de plus. Ensuite, il revient au Mode Hyper normal en dépensant **75 % de son {{chakra|chakra}} maximum** ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : **2 points de santé pour 1 point de {{chakra|chakra}}**.
 
 ## Le Mode Super
 
@@ -7571,14 +7571,14 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **AM** (armure magique) : ce qui retire des points aux dégâts des sorts.
 - **AP** (armure physique) : ce qui retire des points aux dégâts des armes.
 - **Âme / Sang** : la « 4ᵉ barre » des utilisateurs de la nécromancie et de la magie du sang, que dépensent certains de leurs sorts.
-- **Attributs** : santé, chakra, barrière, corruption, vitesse, initiative…
-- **Barrière** : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du chakra.
+- **Attributs** : santé, {{chakra|chakra}}, {{barriere|barrière}}, corruption, vitesse, initiative…
+- **{{barriere}}** : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du {{chakra|chakra}}.
 - **Battlemap** : la carte quadrillée sur laquelle se joue un combat.
 - **Caractéristiques** : Force, Volonté, Intelligence, Perception, Social et Agilité.
-- **Chakra** : les points de magie, que dépensent les sorts ; à court de chakra, on paie 2 points de santé par point manquant.
+- **{{chakra}}** : les points de magie, que dépensent les sorts ; à court de {{chakra|chakra}}, on paie 2 points de santé par point manquant.
 - **Classe magique** : une classe qui donne +4 AM et un emplacement de sort.
 - **Compétence** : un savoir-faire (Diplomatie, Esquive, Magie…), lié à une caractéristique.
-- **Corruption** : un poison du chakra, qui en prend la place.
+- **Corruption** : un poison du {{chakra|chakra}}, qui en prend la place.
 - **D100, D20, d6…** : un dé à 100, 20, 6… faces. « 2d6+2 » : deux dés à six faces, plus 2.
 - **Défense partielle** : une parade ou une esquive réussie, mais moins bonne que l’attaque ; les dégâts sont divisés par 2.
 - **Dieu inné** : la divinité de la magie innée du personnage.
@@ -7801,15 +7801,15 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 | Stade 1 | Stade 2 | Stade 3 |
 | --- | --- | --- |
-| -  Consomme  5% de la Barrière Max<br>et du Chakra Max (3 Tours)<br><br>- Armure magique divisée par 2. | - Consomme 10% de la Barrière Max<br>et du Chakra Max (3 Tours)<br><br>- Armure magique divisée par 3. | - Consomme 15% de la Barrière Max<br>et du Chakra Max (3 Tours)<br><br>- Armure Magique divisée par 4. |
+| -  Consomme  5% de la {{barriere}} Max<br>et du {{chakra}} Max (3 Tours)<br><br>- Armure magique divisée par 2. | - Consomme 10% de la {{barriere}} Max<br>et du {{chakra}} Max (3 Tours)<br><br>- Armure magique divisée par 3. | - Consomme 15% de la {{barriere}} Max<br>et du {{chakra}} Max (3 Tours)<br><br>- Armure Magique divisée par 4. |
 
 **Résistances/Vulnérabilités**
 
 - **Sensibilité** : Croix à l''Intel et à la Volonté
 - **Grande vulnérabilité** : Résistance Magique annulées
-- **Vulnérabilité** : 5% de barrière et de chakra en moins.
+- **Vulnérabilité** : 5% de {{barriere|barrière}} et de {{chakra|chakra}} en moins.
 - **Résistances** : - 1 Tour
-- **Grande résistance** : La barrière n''est pas impactée
+- **Grande résistance** : La {{barriere|barrière}} n''est pas impactée
 
 ## Surdité
 
@@ -7903,12 +7903,12 @@ Activer le mode hyper ne demande aucun jet de dés et est considéré comme un I
 
 ## Fonctionnement
 
-Pendant le mode hyper, le chakra est utilisé comme carburant pour le mode hyper, il est consommé à raison de 10% du Chakra max par tour. Cependant, il est impossible de consommer une fiole bleue (ou équivalent qui redonnerait du chakra), de faire une méditation ou bien de se reposer. Le chakra ne peut pas être régénéré pendant le mode hyper. Le mode hyper peut durer au maximum un nombre de tours équivalent au niveau global divisé par 2, même s''il reste du chakra en réserve. Le mode hyper est très épuisant pour le corps et l''esprit.<br>
+Pendant le mode hyper, le {{chakra|chakra}} est utilisé comme carburant pour le mode hyper, il est consommé à raison de 10% du {{chakra}} max par tour. Cependant, il est impossible de consommer une fiole bleue (ou équivalent qui redonnerait du {{chakra|chakra}}), de faire une méditation ou bien de se reposer. Le {{chakra|chakra}} ne peut pas être régénéré pendant le mode hyper. Le mode hyper peut durer au maximum un nombre de tours équivalent au niveau global divisé par 2, même s''il reste du {{chakra|chakra}} en réserve. Le mode hyper est très épuisant pour le corps et l''esprit.<br>
 Il est utilisé à raison de 1 fois toutes les semaines vu qu''on parle d''un état qui épuise très rapidement le corps.
 
 ## Au-delà des limites
 
-Il est bien entendu possible de conserver son mode hyper même si la réserve de chakra est épuisée ou bien les tours passés, mais cela aura des conséquences sur le corps et l''esprit.
+Il est bien entendu possible de conserver son mode hyper même si la réserve de {{chakra|chakra}} est épuisée ou bien les tours passés, mais cela aura des conséquences sur le corps et l''esprit.
 
 Maintenir le mode hyper au-delà des limites aura pour conséquence une fois le mode hyper relâché :
 
@@ -7920,22 +7920,22 @@ Maintenir le mode hyper au-delà des limites aura pour conséquence une fois le 
 
 Le Mode Hyper ne peut être enclenché qu''une fois toutes les semaines dans le jeu, et qu''une seule créature sur le terrain ne peut activer son mode hyper pendant 1 combat, il existe des exceptions :
 
-- Les zones où le chakra est tellement présent que le simple fait de respirer permet de récupérer la totalité de son chakra, ici tout le monde peut activer son mode hyper et cela sans consommer le chakra, mais la limite des 10 tours, elle, reste présente.
+- Les zones où le {{chakra|chakra}} est tellement présent que le simple fait de respirer permet de récupérer la totalité de son {{chakra|chakra}}, ici tout le monde peut activer son mode hyper et cela sans consommer le {{chakra|chakra}}, mais la limite des 10 tours, elle, reste présente.
 - Un objet magique qui permet d''activer son mode hyper en même temps que quelqu''un d''autre.
 - Autorisation du MJ selon la situation.
 
 ## Mode Hyper 100%
 
-Il s''agit d''un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l''aura de chakra qui déferle en mode Hyper. Une fois scellée à l''intérieur de son corps, la puissance du lanceur est à son paroxysme.
+Il s''agit d''un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l''aura de {{chakra|chakra}} qui déferle en mode Hyper. Une fois scellée à l''intérieur de son corps, la puissance du lanceur est à son paroxysme.
 
 L''appellation "100%" vient du fait que le lanceur est à pleine puissance tant que l''aura est enfouie en lui, ainsi de nouveaux bonus s''offrent à lui en 100% :
 
-- Le Chakra ne s''évapore plus.
+- Le {{chakra}} ne s''évapore plus.
 - Toutes les postures sont activées et ne possèdent plus d''inconvénients.
 - Tous les sorts peuvent être surchargés (leur donnant 1d de dégâts en plus)
 - Toutes les attaques physiques et magiques infligent +10 dégâts en plus du mode hyper d''avant.
 
-En revanche, l''état 100% ne peut pas être conservé éternellement, il ne dure que 3 tours et après le lanceur revient dans le Mode Hyper normal, consommant au passage 75% de son Chakra Max (Prudence, si vous n''avez pas 75% de Chakra courant en réserve, le manque sera pris dans les PV).
+En revanche, l''état 100% ne peut pas être conservé éternellement, il ne dure que 3 tours et après le lanceur revient dans le Mode Hyper normal, consommant au passage 75% de son {{chakra}} Max (Prudence, si vous n''avez pas 75% de {{chakra}} courant en réserve, le manque sera pris dans les PV).
 
 Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
 
@@ -7947,11 +7947,11 @@ Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
 | Général | Dégâts de la magie +15 | Dégâts de la magie +7 |
 | Général | Dégâts physiques +15 | Dégâts physiques +15 |
 | Général | Soin magique +15 | Soin magique +15 |
-| Général | Consommation de chakra = 0 | Consommation de chakra = 0 |
+| Général | Consommation de {{chakra\|chakra}} = 0 | Consommation de {{chakra\|chakra}} = 0 |
 | Potentiel illimité | Dégâts physiques neutres, Résistance à la magie | Dégâts physiques neutres, Résistance à la magie |
 | Sang | Permet de récupérer 10 sang par tour au lieu de 1. | Divise par 2 le coût en sang pour les sorts. |
 | Arcane | Les sorts amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
-| Corruption | Le chakra active directement les effets secondaires | Divise par 2 le cout en corruption des sorts. |
+| Corruption | Le {{chakra\|chakra}} active directement les effets secondaires | Divise par 2 le cout en corruption des sorts. |
 | Temps/Espace | Donne l''état "Célérité" (voir le sort lvl 4) pendant le mode hyper, le sort portail passe à ICx3 et le sort téléportation passe à ICx2. | Donne l''état "Image diffuse" (voir le sort lvl 4) pendant le mode hyper, les clones se rechargent à hauteur de 1 par tour. |
 | Vide | Impose un désavantage (jette 2d100, garde le moins bon) aux ennemis qui tentent des attaques contre lui. | Impose un désavantage (jette 2d100, garde le moins bon) à la première attaque tentée contre lui. |
 | Nécromancie | Permet d''avoir deux invocations au lieu d''une seule. Passe le sort animation de mort en IC (ICx2 si jamais il est déjà en ic) | Permet d''avoir deux invocations au lieu d''une seule. |
@@ -7993,7 +7993,7 @@ Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
 | Lamia | Permet de cracher un venin à 3PO qui est capable d''empoisonner et de paralyser pendant 3 tours, oblige 2 jets de vigueur pour résister aux deux effets. |
 | Jackalope | +3 Vitesse |
 | Marcass | Les AP et AM naturels s’ajoutent à toute réduction de dégâts, quel que soit le type d’attaque. |
-| Anansi | Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière à la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour |
+| Anansi | Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 {{barriere\|barrière}} à la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour |
 | Goleois | Augmente les dégâts de tous les alliés de 5, le temps du mode hyper. |
 
 *Le classeur « Magie Maverick V8 » contient, dans un onglet masqué, une autre liste des effets du mode hyper (page « Mode Hyper (Magie) ») ; les deux listes ne donnent pas toujours les mêmes valeurs.*
@@ -8019,7 +8019,7 @@ Le mode super donne des bonus non négligeables au combat, il donne un bonus de 
 | 400.0 | Effet passif =<br>Effet actif = |  |
 | Bardiche du Bourreau déchiré | Effet passif =<br>Effet actif = |  |
 | Bâton de la destruction | Effet passif =<br>Effet actif = |  |
-| Champicer | Effet passif = Les 10 premiers dégâts de chaque tour sont annulés.<br>Effet actif = Permet de lancer une infection qui va pomper 1d4/NPM santé et chakra pendant 3 tours. (2 fois/combat) (non cumulable) | Le porteur va avoir des myriades de champignons sur tout le corps qui vont le protéger des premiers dégâts. |
+| Champicer | Effet passif = Les 10 premiers dégâts de chaque tour sont annulés.<br>Effet actif = Permet de lancer une infection qui va pomper 1d4/NPM santé et {{chakra\|chakra}} pendant 3 tours. (2 fois/combat) (non cumulable) | Le porteur va avoir des myriades de champignons sur tout le corps qui vont le protéger des premiers dégâts. |
 | Croc du volcan | Effet passif =<br>Effet actif = |  |
 | Excalibur/ Joyeuse | Effet passif = Réduit l''échec critique de 1%<br>Effet actif = Donne un boost de +5 à tous les dégâts des alliés pendant 2 tours. (2 fois/combat) | La peau du porteur va posséder les mêmes couleurs qu''Excalibur ou de Joyeuse, comme s''il était l''arme. |
 | Foudre étincelante | Effet passif = La cible qui se prend un coup de l''arme va voir son initiative réduite de 2 au prochain tour.<br>Effet actif = Permet de diffuser une électricité sur un cercle de 5 autour du lanceur qui infligera 1d8/NPM dégâts sur les ennemis et soignera de la même chose pour les alliées. (2 fois/combat) | Le porteur va être envahi d''une électricité blanche et brillante, comme si son armure était faite de cette même électricité. Le lanceur peut utiliser cette dernière pour attaquer ses ennemis et soigner ses alliés dans une attaque globale. |
@@ -8229,12 +8229,12 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Crachin Blanc
 
-**Description** : Un crachin blanc tombe doucement, enveloppant le monde d’une fine couche de chakra pure. Cette petite brume pousse le chakra des combattants à son paroxysme et permet d''énormes prouesses.
+**Description** : Un crachin blanc tombe doucement, enveloppant le monde d’une fine couche de {{chakra|chakra}} pure. Cette petite brume pousse le {{chakra|chakra}} des combattants à son paroxysme et permet d''énormes prouesses.
 
 **Effet(s)**
 
 - Magie Arcane = +5 dégâts
-- Chakra illimité
+- {{chakra}} illimité
 - Le mode hyper n''est plus limité à un être sur le terrain
 - Divise la corruption par 2
 
@@ -8246,7 +8246,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 - Magie Corruption = +5 dégâts
 - Toutes les autres magies = -3 dégâts
-- Lors du premier tour de la météo uniquement = -25% de chakra pour tous ceux qui ne sont pas de la Corruption
+- Lors du premier tour de la météo uniquement = -25% de {{chakra|chakra}} pour tous ceux qui ne sont pas de la Corruption
 - +2 Corruption par tour
 
 ## Saccage temporel
@@ -8278,7 +8278,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Avantages de base
 
-+10 Dégâts Physiques, +10 Soins, La consommation de Chakra passe à 0
++10 Dégâts Physiques, +10 Soins, La consommation de {{chakra}} passe à 0
 
 | Mono magie | Bi magie |
 | --- | --- |
@@ -8319,11 +8319,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Arcane + Vide | Rend les armes éthérées et ignorent les PA" |
 | Arcane + Nécromancie | Permet d''invoquer un ou des zombinox (voir catégorie invocation dans bestiaire) |
 | Arcane + Feu | Un feu pur et inflige brûlure aux ennemis |
-| Arcane + Eau | Boire l''eau produite par un utilisateur d''eau en Mode Hyper rend du Chakra (3d6/niveau de magie) |
+| Arcane + Eau | Boire l''eau produite par un utilisateur d''eau en Mode Hyper rend du {{chakra}} (3d6/niveau de magie) |
 | Arcane + Glace | Une armure de glace pure de 8RM qui a 50% de renvoyer les sorts à l''envoyeur |
 | Arcane + Terre | Une terre pure est invoquée et une plante carnivore y pousse |
 | Arcane + Vent | Un vent pur et tranchant qui fait reculer les ennemis et inflige 2d8 de dégâts |
-| Arcane + Foudre | Un orage pur s''abat sur les ennemis et inflige 3d6/par niveau de magie sur le Chakra" |
+| Arcane + Foudre | Un orage pur s''abat sur les ennemis et inflige 3d6/par niveau de magie sur le {{chakra}}" |
 | Arcane + Lumière | Une lumière pure qui inflige l''état confus aux ennemis |
 | Arcane + Ombre | Une ombre pure prend votre apparence et vous accompagne" |
 | Temps/Espace + Nécromancie | Permet d''invoquer une ou des momies (voir catégorie invocation dans bestiaire) |
@@ -8363,7 +8363,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Eau + Terre | Un ennemi se change en arbre infligeant Pétrification stade 2 |
 | Eau + Vent | Un siphon destructeur réunit tous les ennemis à un point choisi et inflige 2d8 de dégâts |
 | Eau + Foudre | Chaque attaque d''eau a 50% de chance de paralyser |
-| Eau + Lumière | Tous les alliés régénèrent 50% de leur barrière |
+| Eau + Lumière | Tous les alliés régénèrent 50% de leur {{barriere\|barrière}} |
 | Eau + Ombre | Une créature des abysses apparaît à vos côtés |
 | Glace + Terre | La permaglace vous recouvre et vous octroie +4 PA +4 RM et vous permet d''être neutre au feu au lieu d''être très vulnérable |
 | Glace + Vent | 1d10 de stalactites de glaces seront projetées sur vos ennemis faisant chacune 2d6 de dégâts |
@@ -8377,8 +8377,8 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Vent + Foudre | Un mini orage apparaît au-dessus de chaque ennemi infligeant 10  dégâts par tour |
 | Vent + Lumière | Booste tous les jets des alliés de 10% |
 | Vent + Ombre | Malus de 10% à tous les jets ennemis |
-| Foudre + Lumière | Supprime 50% de la barrière des ennemis |
-| Foudre + Ombre | Chaque attaque ponctionnera également le chakra avec les mêmes dégâts |
+| Foudre + Lumière | Supprime 50% de la {{barriere\|barrière}} des ennemis |
+| Foudre + Ombre | Chaque attaque ponctionnera également le {{chakra\|chakra}} avec les mêmes dégâts |
 | Lumière + Ombre | Invoque la météo Éclipse |
 
 ## Commentaire de cellule
@@ -8465,7 +8465,7 @@ Le nombre de conditions remplies est ensuite **multiplié par le niveau de puiss
 
 ## Choisir ses sorts
 
-Les sorts se trouvent sur la page de chaque [magie](/magies/), rangés par **niveau de puissance magique** (NPM), de 1 à 5. La puissance magique du personnage ouvre ces paliers un à un : on choisit d’abord parmi les sorts du premier. Chaque sort indique son coût en chakra, sa portée, ses dégâts ou son effet.
+Les sorts se trouvent sur la page de chaque [magie](/magies/), rangés par **niveau de puissance magique** (NPM), de 1 à 5. La puissance magique du personnage ouvre ces paliers un à un : on choisit d’abord parmi les sorts du premier. Chaque sort indique son coût en {{chakra|chakra}}, sa portée, ses dégâts ou son effet.
 
 Avec deux magies, les sorts de niveau 5 restent fermés, même quand la puissance magique les permettrait ; leurs emplacements, eux, s’ouvrent quand même.
 
@@ -8520,7 +8520,7 @@ Quand le MJ demande un jet, il nomme une compétence : *Diplomatie* pour convain
 ## Les critiques
 
 - **De 1 à 5 : réussite critique.** L’action réussit de façon exceptionnelle. En attaque, les dégâts sont doublés ; pour un soin ou une protection, l’effet ou la durée est doublé ; hors combat, le MJ décide de la récompense.
-- **De 96 à 100 : échec critique.** L’action rate de façon spectaculaire : une arme qui s’abîme, un allié touché par erreur, un sort qui coûte deux fois plus de chakra… Le MJ décide des conséquences.
+- **De 96 à 100 : échec critique.** L’action rate de façon spectaculaire : une arme qui s’abîme, un allié touché par erreur, un sort qui coûte deux fois plus de {{chakra|chakra}}… Le MJ décide des conséquences.
 
 Une réussite critique ne rend pas tout possible : le MJ reste seul juge de ce qui peut ou non réussir.
 
@@ -8638,11 +8638,11 @@ Les boss sont généralement de gros ennemis pensés pour affronter une équipe 
 
 ## Rater ses sortilèges
 
-Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en chakra est quand même consommé. Si le nombre est impair, la règle de Maverick dit “toujours arrondi à l’inférieur”
+Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en {{chakra|chakra}} est quand même consommé. Si le nombre est impair, la règle de Maverick dit “toujours arrondi à l’inférieur”
 
 **Cas particuliers :**
 
-Lors d’un échec critique, la consommation de chakra est doublée par défaut, après concernant les autres conséquences négatives … à vous de voir ;)
+Lors d’un échec critique, la consommation de {{chakra|chakra}} est doublée par défaut, après concernant les autres conséquences négatives … à vous de voir ;)
 
 ## Mordhau ou Demi-épée
 
@@ -8754,7 +8754,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Présentation générale
 
-L’Académie de Chakra est un lieu de savoir ancien et sacré, dédié à Mirada, la Déesse Primordiale du Chakra et de la Magie.
+L’Académie de Chakra est un lieu de savoir ancien et sacré, dédié à Mirada, la Déesse Primordiale du {{chakra}} et de la Magie.
 
 Située au cœur du territoire des Elfes Argentés, elle incarne l’équilibre parfait entre le terrestre et le céleste : un château majestueux au sol, couronné par une île flottante lévitant une centaine de mètres au-dessus, baignée d’arcanes scintillantes. Ces deux entités, bien que liées, possèdent chacune leurs propres règles, hiérarchies et fonctions — l’une tournée vers la pratique, l’autre vers la pure théorie et la recherche.
 
@@ -8765,7 +8765,7 @@ Les Elfes Argentés, qui règnent sur le territoire d’Elloris, ont toujours re
 ## Informations officielles
 
 * **Date de création :** \-112
-* **Divinité priée :** Mirada, Déesse Primordiale du Chakra
+* **Divinité priée :** Mirada, Déesse Primordiale du {{chakra}}
 * **Ambassadeur :** Ambassadeur de la Magie (entité collective sans identité propre)
 * **Gardien :** Variable selon les époques
 * **Forme d’État :** Temple / Institution académique
@@ -8776,11 +8776,11 @@ Les Elfes Argentés, qui règnent sur le territoire d’Elloris, ont toujours re
 
 ## Histoire
 
-Bien avant la fondation d’Elloris, la colline sur laquelle s’élève aujourd’hui l’Académie était déjà un point de convergence du chakra — un lieu où les courants magiques du monde se croisaient en un nœud d’énergie pure. C’est là que Mirada aurait posé la première pierre de son temple, offrant aux mortels le moyen d’étudier la magie non plus comme une arme, mais comme un langage divin.
+Bien avant la fondation d’Elloris, la colline sur laquelle s’élève aujourd’hui l’Académie était déjà un point de convergence du {{chakra|chakra}} — un lieu où les courants magiques du monde se croisaient en un nœud d’énergie pure. C’est là que Mirada aurait posé la première pierre de son temple, offrant aux mortels le moyen d’étudier la magie non plus comme une arme, mais comme un langage divin.
 
 Lorsque les Elfes Dorés devinrent Elfes Argentés après la Purification des Âmes, ils bâtirent leur capitale autour de ce sanctuaire, en hommage à leur créatrice. L’Académie, quant à elle, se développa dans une dualité architecturale unique :
 
-* Le Château terrestre, dédié à la transmission, à l’apprentissage et à la maîtrise du chakra.
+* Le Château terrestre, dédié à la transmission, à l’apprentissage et à la maîtrise du {{chakra|chakra}}.
 * L’Île flottante, laboratoire céleste et centre de recherche arcanique, réservée aux ambassadeurs et aux mages supérieurs.
 
 Depuis sa création, l’Académie est demeurée neutre dans les conflits mondiaux, préférant échanger le savoir contre des ressources ou des faveurs politiques plutôt que des alliances armées. Elle est considérée comme le berceau du savoir magique sur Maverick.
@@ -8791,7 +8791,7 @@ L’Académie est divisée en deux structures distinctes :
 
 **Le Château terrestre**
 
-Bâti en pierre blanche veinée de cristaux blanc brillant, il abrite tout ce qu’on peut retrouver dans une ville classique mais tout est à l’intérieur des murs. Des fontaines de chakra pur coulent à travers les couloirs, illuminant les murs d’une lueur blanche. C’est aussi au château qu’on retrouve toute la production, que ce soit nourriture, eau, vêtement, etc …
+Bâti en pierre blanche veinée de cristaux blanc brillant, il abrite tout ce qu’on peut retrouver dans une ville classique mais tout est à l’intérieur des murs. Des fontaines de {{chakra|chakra}} pur coulent à travers les couloirs, illuminant les murs d’une lueur blanche. C’est aussi au château qu’on retrouve toute la production, que ce soit nourriture, eau, vêtement, etc …
 
 **L’Île flottante**
 
@@ -8801,13 +8801,13 @@ Les deux parties sont reliées par un rayon d’énergie pur qui pulse à interv
 
 ## Divinité et culte
 
-Mirada, la Déesse du Chakra, est vénérée ici comme la Mère Brillante, source de toute énergie magique et protectrice des érudits. Son culte est moins religieux que spirituel : il s’agit avant tout d’une quête de compréhension.
+Mirada, la Déesse du {{chakra}}, est vénérée ici comme la Mère Brillante, source de toute énergie magique et protectrice des érudits. Son culte est moins religieux que spirituel : il s’agit avant tout d’une quête de compréhension.
 
-Les fidèles cherchent à unir leur chakra interne avec celui du monde, croyant qu’ainsi, ils peuvent entendre la voix de Mirada dans le silence des flux magiques.
+Les fidèles cherchent à unir leur {{chakra|chakra}} interne avec celui du monde, croyant qu’ainsi, ils peuvent entendre la voix de Mirada dans le silence des flux magiques.
 
 Les rituels sont sobres :
 
-* Méditation au lever du soleil pour “accorder” son chakra.
+* Méditation au lever du soleil pour “accorder” son {{chakra|chakra}}.
 * Purification du mana dans les bassins d’énergie.
 * Lecture publique des anciens textes de Mirada, dits Les Flux Primordiaux.
 
@@ -8836,21 +8836,21 @@ Les rituels sont sobres :
 
 ## Ambassadeur
 
-L’Ambassadeur de la Magie n’est pas une entité unique, mais une manifestation cyclique. Tous les deux siècles, Mirada sélectionne un être mortel — souvent un elfe, parfois un farfadet ou un felfe — pour incarner la volonté du chakra. Lorsqu’un ambassadeur meurt, son essence se dissout dans la magie du monde, fusionnant avec celle de Mirada avant qu’un nouveau corps ne soit choisi.
+L’Ambassadeur de la Magie n’est pas une entité unique, mais une manifestation cyclique. Tous les deux siècles, Mirada sélectionne un être mortel — souvent un elfe, parfois un farfadet ou un felfe — pour incarner la volonté du {{chakra|chakra}}. Lorsqu’un ambassadeur meurt, son essence se dissout dans la magie du monde, fusionnant avec celle de Mirada avant qu’un nouveau corps ne soit choisi.
 
 Rôle : Diriger l’Île flottante, réguler les flux magiques de Maverick, et transmettre les volontés de Mirada. L’Ambassadeur de la Magie n’a ni nom, ni visage fixe — il ou elle est le canal vivant de la Déesse.
 
 **Le cas du premier Ambassadeur : La chaîne de la magie**
 
-Ce dragon argenté était le premier représentant de la déesse du chakra, mais l''entretien de la chaîne de la magie a commencé à lui peser fort dans son énergie divine, il n''est actuellement plus capable d''être parfaitement lucide malgré sa puissance. Il errait sans fin, accomplissant la chaîne sans voir les conséquences de son carnage. Et oui, en étant que peu lucide, il agissait comme une bête sauvage et tuait tous ceux qui n''étaient pas dignes de la chaîne.
+Ce dragon argenté était le premier représentant de la déesse du {{chakra|chakra}}, mais l''entretien de la chaîne de la magie a commencé à lui peser fort dans son énergie divine, il n''est actuellement plus capable d''être parfaitement lucide malgré sa puissance. Il errait sans fin, accomplissant la chaîne sans voir les conséquences de son carnage. Et oui, en étant que peu lucide, il agissait comme une bête sauvage et tuait tous ceux qui n''étaient pas dignes de la chaîne.
 
-Il s''agit à la base d''un système qui permettait de maintenir le taux de chakra à son plus haut, un groupe qui se sacrifie pour le bien de tous. Stopper cette chaîne pourrait avoir de graves conséquences. C''est ce qui va entraîner l''existence de l''Âge de Fer pour seulement 1 mois. En effet, il se trouve que la chaîne de la magie n’était plus utile car le chakra est tellement devenu stable dans le monde que faire ça revenait à pisser dans un violon.
+Il s''agit à la base d''un système qui permettait de maintenir le taux de {{chakra|chakra}} à son plus haut, un groupe qui se sacrifie pour le bien de tous. Stopper cette chaîne pourrait avoir de graves conséquences. C''est ce qui va entraîner l''existence de l''Âge de Fer pour seulement 1 mois. En effet, il se trouve que la chaîne de la magie n’était plus utile car le {{chakra|chakra}} est tellement devenu stable dans le monde que faire ça revenait à pisser dans un violon.
 
 Au final, briser la chaîne aura eu une petite conséquence négative mais qui s’est vite réparée avec le temps.
 
 ## Gardien
 
-Le Gardien du Chakra est choisi parmi les mages les plus puissants de l’Académie, à la fois par sa sagesse et sa force intérieure. Il dirige le Château terrestre et veille à la sécurité de l’ensemble. Comme pour beaucoup de temples, c’est l’Ambassadeur qui le nomme.
+Le Gardien du {{chakra}} est choisi parmi les mages les plus puissants de l’Académie, à la fois par sa sagesse et sa force intérieure. Il dirige le Château terrestre et veille à la sécurité de l’ensemble. Comme pour beaucoup de temples, c’est l’Ambassadeur qui le nomme.
 
 Rôle :
 
@@ -9252,7 +9252,7 @@ Le Barrage argenté vénère principalement :
 
 * **Océane, Déesse de l’Eau.** Elle possède une place particulière dans cette nation, possédant même une très grande statue au centre du Barrage en son honneur. Elle est vue comme l’une des sauveuses qui a permis l’existence du Barrage argenté.
 * **Eaunoire, Dieu de la Corruption.** Celà peut sembler ironique vu de l’hostilité mutuelle entre corruption et eau mais une bonne partie de la population remercie Eaunoire pour l’existence du marais sans fond, cette réserve quasi inépuisable de brais qui leur a permis d’augmenter leur défense.
-* **Mirada, Déesse du Chakra.** Elle est priée car elle reste le point d’origine des elfes.
+* **Mirada, Déesse du {{chakra}}.** Elle est priée car elle reste le point d’origine des elfes.
 * **Brock, Dieu de la Force.** Bien que ce soit assez marginal, il y a une partie des elfes argentés d’ici qui prie le dieu de la force pour le remercier de leur avoir offert la force de survivre.
 
 ## Économie et Ressources
@@ -9482,7 +9482,7 @@ Réputés pour leur hostilité la majeure partie de l’année, ces bois connais
 
 L’origine des Bois du Printemps demeure inconnue. Les érudits parlent d’une forêt ancienne, antérieure à de nombreuses nations actuelles, dont le comportement défie les cycles naturels. Chaque année, à l’arrivée du printemps, la forêt semble relâcher son emprise : les monstres deviennent moins agressifs, certaines zones jusque-là impraticables s’ouvrent, et les ressources se renouvellent de façon anormalement abondante.
 
-Les tribus hybrides qui y vivent évoquent, dans leurs récits, une forêt consciente, capable de choisir quand frapper et quand laisser passer. Le consensus à peu près juste serait qu''avec la densité de la forêt et tout le mélange de chakra, ça provoque des évènements curieux voire effrayants.
+Les tribus hybrides qui y vivent évoquent, dans leurs récits, une forêt consciente, capable de choisir quand frapper et quand laisser passer. Le consensus à peu près juste serait qu''avec la densité de la forêt et tout le mélange de {{chakra|chakra}}, ça provoque des évènements curieux voire effrayants.
 
 ## Environnement
 
@@ -10778,7 +10778,7 @@ Ses fidèles tiennent pour sacré le travail honnête et la symbiose avec la nat
 
 ## Outils divins
 
-**La Graine Reine :** Permet de faire pousser un Yggdrasil, un arbre de chakra d’une puissance incommensurable, ces arbres sont importants pour la stabilité du chakra dans le monde. Certains d’entre eux servent même de refuge pour des peuples tribaux qui vénèrent Dimitri. On dit que planter cette graine nécessite un cœur pur et un sacrifice de vie. L’arbre qui en naît relie les royaumes spirituels à la matière.
+**La Graine Reine :** Permet de faire pousser un Yggdrasil, un arbre de {{chakra|chakra}} d’une puissance incommensurable, ces arbres sont importants pour la stabilité du {{chakra|chakra}} dans le monde. Certains d’entre eux servent même de refuge pour des peuples tribaux qui vénèrent Dimitri. On dit que planter cette graine nécessite un cœur pur et un sacrifice de vie. L’arbre qui en naît relie les royaumes spirituels à la matière.
 
 **L’Armure du Golem :** Il s’agit d’une armure colossale totalement en pierre. Forgée dans la même roche que celle qui compose Dimitri lui-même, cette armure est si lourde qu’aucun mortel ne peut la porter. Elle symbolise la solidité et la constance du dieu. Des répliques existent sous le nom d’Armure Montagne, bien que moins puissantes que l’originale, elles sont réputées pour être très lourdes et très résistantes, faisant partie des meilleures armures. Il est obligatoire d’être en excellente condition physique et fort pour pouvoir la porter.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
@@ -11111,7 +11111,7 @@ Les dragons de Maverick sont des êtres intelligents, dotés de conscience, de l
 
 Leur naissance survient peu après un événement majeur de l’histoire du monde : le massacre des élémentaires. Selon les récits anciens, les dieux auraient façonné les dragons à partir des restes des élémentaires détruits, recyclant leurs essences pour créer de nouveaux êtres capables d’incarner durablement les forces magiques du monde. Cette origine expliquerait leur lien organique et profond avec leur magie respective.
 
-C’est également ce qui justifie leur physiologie singulière : malgré leur taille titanesque, les dragons ont besoin de très peu de nourriture. Leur environnement saturé en chakra magique leur permet de subsister presque exclusivement de l’énergie ambiante. Certains dragons se nourrissent même directement de leur élément — un dragon de feu peut ainsi absorber braises et cendres encore chaudes, tandis qu’un dragon de terre peut être nourri directement par la végétation qui pousse sur lui.
+C’est également ce qui justifie leur physiologie singulière : malgré leur taille titanesque, les dragons ont besoin de très peu de nourriture. Leur environnement saturé en {{chakra|chakra}} magique leur permet de subsister presque exclusivement de l’énergie ambiante. Certains dragons se nourrissent même directement de leur élément — un dragon de feu peut ainsi absorber braises et cendres encore chaudes, tandis qu’un dragon de terre peut être nourri directement par la végétation qui pousse sur lui.
 
 ## Le projet divin et l’échec des ambassadeurs dragons
 
@@ -11195,9 +11195,9 @@ Ces dragons considèrent leur forme draconique comme une enveloppe archaïque, b
 
 | *Nom* | *Magie/Couleur* | *Description* |  |
 | ----- | :---: | ----- | ----- |
-| Dragon du Potentiel illimité Dragon Doré | Potentiel illimité | ***Alignement*** Neutre strict  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 14 mètres en moyenne  ***Apparence*** Le Dragon du Potentiel Illimité possède une morphologie classique à quatre pattes et une paire d’ailes, sans excroissances, difformités ou adaptations extrêmes. Son corps est recouvert d’écailles parfaitement dorées, ni ternes ni aveuglantes, reflétant la lumière comme le chakra elle-même. Ces écailles ne portent aucune trace d’un élément particulier, car elles peuvent résonner avec toutes les magies. Il incarne la quintessence de la sagesse draconique. Là où les autres dragons sont l’expression exacerbée d’un principe unique, celui-ci est l’origine, le point d’équilibre entre création et destruction. Il ne se spécialise pas : il comprend. Sa magie lui permet de puiser dans l’ensemble des autres formes magiques, non pas par imitation, mais parce qu’elles découlent toutes de lui. ***Milieu de vie*** Le Dragon du Potentiel Illimité n’a pas de territoire fixe. Il apparaît rarement, souvent à des moments charnières de l’histoire, lorsque l’équilibre du monde est menacé ou qu’un changement fondamental est en marche. |  |
+| Dragon du Potentiel illimité Dragon Doré | Potentiel illimité | ***Alignement*** Neutre strict  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 14 mètres en moyenne  ***Apparence*** Le Dragon du Potentiel Illimité possède une morphologie classique à quatre pattes et une paire d’ailes, sans excroissances, difformités ou adaptations extrêmes. Son corps est recouvert d’écailles parfaitement dorées, ni ternes ni aveuglantes, reflétant la lumière comme le {{chakra\|chakra}} elle-même. Ces écailles ne portent aucune trace d’un élément particulier, car elles peuvent résonner avec toutes les magies. Il incarne la quintessence de la sagesse draconique. Là où les autres dragons sont l’expression exacerbée d’un principe unique, celui-ci est l’origine, le point d’équilibre entre création et destruction. Il ne se spécialise pas : il comprend. Sa magie lui permet de puiser dans l’ensemble des autres formes magiques, non pas par imitation, mais parce qu’elles découlent toutes de lui. ***Milieu de vie*** Le Dragon du Potentiel Illimité n’a pas de territoire fixe. Il apparaît rarement, souvent à des moments charnières de l’histoire, lorsque l’équilibre du monde est menacé ou qu’un changement fondamental est en marche. |  |
 | Dragon du Sang Dragon Bordeaux | Sang | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 15 mètres en moyenne  ***Apparence*** Le Dragon du Sang possède une morphologie singulière : trois paires de pattes et une seule paire d’ailes, un trait partagé avec d’autres créatures liées au Sang et avec le Dieu du Sang lui-même. Cette anatomie lui confère une stabilité exceptionnelle et une puissance physique redoutable, aussi bien au sol qu’en combat prolongé. Ses écailles bordeaux sont incomplètes et irrégulières, laissant apparaître par endroits une chair épaisse parcourue de veines apparentes. Ces veines pulsent d’un sang dense et puissant, visible sous la peau. Là où d’autres dragons comptent sur une carapace, celui-ci s’appuie sur une musculature hypertrophiée, capable d’absorber les chocs, de se régénérer lentement et d’endurer des blessures qui seraient fatales à d’autres espèces. Il est connu que seul le Dragon de la Terre peut lui tenir tête en force pure. ***Milieu de vie*** Le Dragon du Sang vit dans des territoires marqués par la violence, la guerre ou les sacrifices anciens : champs de bataille oubliés, terres imprégnées de sang versé, forteresses en ruines ou régions où la vie lutte constamment pour survivre. |  |
-| Dragon de l’Arcane Dragon Gris | Arcane | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 4 mètres 11 \- 100 ans : 5 à 8 mètres 200 ans et plus : 9 à 12 mètres  ***Apparence*** Le Dragon de l’Arcane possède une morphologie classique à quatre pattes et une paire d’ailes, avec une corpulence moyenne et équilibrée. Il ne paie pas de mine au premier regard : ni colossal, ni monstrueusement altéré, ni excessivement orné. C’est précisément cette normalité qui le rend trompeur. Ses écailles parfaitement argentées sont lisses, régulières et étonnamment pures. Elles ne portent ni fissures élémentaires ni excroissances visibles, mais réagissent subtilement à la magie environnante, devenant plus brillantes si le chakra est présent. ***Milieu de vie*** Il vit souvent à proximité de lieux saturés de chakra: nœuds de magie, ruines antiques, académies magiques et cetera. |  |
+| Dragon de l’Arcane Dragon Gris | Arcane | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 4 mètres 11 \- 100 ans : 5 à 8 mètres 200 ans et plus : 9 à 12 mètres  ***Apparence*** Le Dragon de l’Arcane possède une morphologie classique à quatre pattes et une paire d’ailes, avec une corpulence moyenne et équilibrée. Il ne paie pas de mine au premier regard : ni colossal, ni monstrueusement altéré, ni excessivement orné. C’est précisément cette normalité qui le rend trompeur. Ses écailles parfaitement argentées sont lisses, régulières et étonnamment pures. Elles ne portent ni fissures élémentaires ni excroissances visibles, mais réagissent subtilement à la magie environnante, devenant plus brillantes si le {{chakra\|chakra}} est présent. ***Milieu de vie*** Il vit souvent à proximité de lieux saturés de {{chakra\|chakra}}: nœuds de magie, ruines antiques, académies magiques et cetera. |  |
 | Dragon de la Corruption Dragon Noir | Corruption | ***Alignement*** Alignements mauvais  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 6 mètres 11 \- 100 ans : 7 à 13 mètres 200 et plus : 18 mètres en moyenne  ***Apparence*** Le Dragon Noir possède une morphologie massive à quatre pattes et une paire d’ailes, mais son corps est plus large, plus lourd et plus oppressant que celui des autres dragons ailés. Ses écailles parfaitement noires ne reflètent presque aucune lumière. Son regard est profondément mauvais, chargé d’une intelligence hostile et d’une volonté de domination. La corruption suinte littéralement de son corps à certains endroits : entre les écailles, le long des articulations ou autour de la gueule. Cette matière sombre et visqueuse n’est pas incontrôlée ; le dragon y est totalement adapté, ce qui le rend dangereux vu qu’il a un potentiel de dégradation d’environnement a ne surtout pas sous-estimer. ***Milieu de vie*** Le Dragon de la Corruption vit principalement dans les marais, les terres noyées, les zones saturées de brai et de corruption. Son environnement naturel est un écosystème malsain où l’eau stagnante, la boue noire et les vapeurs toxiques sont omniprésentes. |  |
 | Dragon de l’Espace/Temps Dragon Rose | Espace/Temps | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 3 mètres 11 \- 100 ans : 4 à 7 mètres 200 ans et plus : 8 à 10 mètres  ***Apparence*** Le Dragon de l’Espace/Temps possède une morphologie classique à quatre pattes et une paire d’ailes, avec un corps relativement élancé et peu massif, comme si il était lui-même une momie. Ses écailles roses, aux reflets changeants, semblent parfois se décaler légèrement de la réalité, comme si elles n’étaient jamais totalement synchronisées avec le présent. Sa caractéristique la plus troublante est la présence de bandages semblables à ceux d’une momie, enroulés autour de différentes parties de son corps : cou, pattes, ailes ou torse. ***Milieu de vie*** Le Dragon de l’Espace/Temps vit dans des lieux où la réalité est instable : ruines antiques figées hors du temps, failles spatio-temporelles, zones où passé et futur se superposent. |  |
 | Dragon du Vide Dragon Blanc | Vide | ***Alignement*** Alignements chaotiques  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 4 à 6 mètres 11 \- 100 ans : 7 à 10 mètres 200 ans et plus : 11 à 16 mètres  ***Apparence*** Le Dragon du Vide est une créature profondément dérangeante à observer. Il est totalement dépourvu de membres, ne possédant qu’un long corps serpentin et une unique paire d’ailes, parfaitement adapté pour lui permettre de voler sans efforts. Ses écailles parfaitement blanches semblent trop pures pour être naturelles, comme si elles reflétaient le néant plutôt que la lumière. Son regard est l’un de ses traits les plus troublants : le blanc de ses yeux est intégralement noir, marque typique des êtres liés à la magie du Vide. Ce regard donne l’impression qu’il observe non pas ce qui est visible, mais ce qui manque. Il n’a nul besoin de bras ou de griffes : la télékinésie compense largement l’absence de membres, lui permettant de manipuler son environnement avec précision. ***Milieu de vie*** Le Dragon du Vide est un être intelligent, calculateur et distant. Il n’a pas de territoire fixe ni de lieu de prédilection. Il apparaît ici et là, sans logique apparente, toujours discret, souvent trop tardivement détecté. |  |
@@ -11365,7 +11365,7 @@ Isolés dans un territoire quasi imprenable au cœur des montagnes naines, les E
 * **Dirigeants actuels :** Le *Cercle Argenté* (Conseil des Mages Suprêmes)
 * **Localisation :** Erisia, au cœur des massifs nains
 * **Relations extérieures :** Isolationnisme strict
-* **Religion principale :** Mirada, Déesse de la Magie et du Chakra
+* **Religion principale :** Mirada, Déesse de la Magie et du {{chakra}}
 * **Races dominantes :** Elfes argentés
 * **Races opprimées :** Esclaves de diverses origines, dont des elfes argentés faibles en magie et les autres races d’elfes
 
@@ -11375,7 +11375,7 @@ Autrefois, cette région constituait le territoire sacré de l’Empire Doré, d
 
 Des siècles d’oppression menèrent en 205 à une révolte violente. Les Elfes argentés massacrèrent leurs maîtres, détruisirent l’Empire Doré et exilèrent les survivants restants. D’abord portés par une idéologie de libération, ils dérivèrent progressivement vers les doctrines suprématistes de leurs anciens oppresseurs… jusqu’à les dépasser en cruauté et en arrogance.
 
-Mirada, la Déesse de la magie et du chakra, prit une place centrale dans leur reconstruction. Son culte devint l’axe spirituel de la nation et justifia l’ascension du *Cercle Argenté* — une caste de mages suprêmes assurant la domination du pouvoir magique comme fondement politique.
+Mirada, la Déesse de la magie et du {{chakra|chakra}}, prit une place centrale dans leur reconstruction. Son culte devint l’axe spirituel de la nation et justifia l’ascension du *Cercle Argenté* — une caste de mages suprêmes assurant la domination du pouvoir magique comme fondement politique.
 
 Aujourd’hui, l’Empire Argenté tente d’étendre son influence, mais se heurte constamment aux nations humaines, seuls adversaires capables d’endiguer leurs ambitions.
 
@@ -11389,7 +11389,7 @@ L’Empire est enclavé dans un arc montagneux colossal contrôlé par les nains
 * **Sous-sol étendu**, sujet de nombreuses rumeurs :
   * cavernes aménagées,
   * anciens complexes dorés,
-  * forêt souterraine colossale nourrie par des sources de chakra.
+  * forêt souterraine colossale nourrie par des sources de {{chakra|chakra}}.
 
 Cette position unique en fait l’un des royaumes les plus fortifiés et les plus difficiles à envahir.
 
@@ -11414,7 +11414,7 @@ Un conseil fermé de 12 mages suprêmes. Ils détiennent tous les pouvoirs exéc
 **Critères d’accès :**
 
 * Puissance magique exceptionnelle
-* Maîtrise du chakra
+* Maîtrise du {{chakra|chakra}}
 * Victoire dans des épreuves arcanistes souvent mortelles
 * Les rares élus à être du Potentiel illimité ont un passe droit et ont leur mot à dire même s''ils ne sont pas du cercle directement.
 
@@ -11429,14 +11429,14 @@ Les castes sans puissance magique n’ont aucun droit politique.
 
 ## Religion
 
-Culte dominant : ***Mirada, Déesse de la Magie et du Chakra***
+Culte dominant : ***Mirada, Déesse de la Magie et du {{chakra}}***
 
 Mirada est considérée comme la mère spirituelle de la race argentée. Les Elfes argentés voient en elle la seule divinité véritable, supérieure à toutes les autres.
 
 Caractéristiques du culte :
 
 * temples en lévitation,
-* rituels de canalisation du chakra,
+* rituels de canalisation du {{chakra|chakra}},
 * sacrifices énergétiques (pas forcément mortels, mais extrêmement douloureux),
 * lectures d’aura obligatoires.
 
@@ -11470,14 +11470,14 @@ Automne est une petite ville qui est primordiale en minéraux, pierres précieus
 Arcanoste est le grand fort qui fait office de frontière dans le berceau des elfes argentés. D''apparence il semble y avoir que cette place forte mais un mur qui semble aller d''une montagne à l''autre fait que l''endroit est assez compliqué d''y accéder.
 
 **Forteresse de Chakra**\
-La forteresse de Chakra est ultime fort défensif des Elfes argentés (récupérer des elfes dorés) mais aussi le seul. Ce fort flotte dans les airs et est capable de se déplacer pour défendre là où on a besoin de lui. Beaucoup parlent d''un golem géant ou d''autres parlent d''une forteresse contrôlée par un fantôme. Dans tous les cas ce fort est quasiment imprenable, possède des machines de guerre comme des mangonneau et balistes, une petite armée est posté à l''intérieur et vit exclusivement à l''intérieur. Ses deux seuls défauts sont qu''il a besoin d''être à proximité d''Elloris sinon il ne sera plus alimenté en chakra suffisamment et qu''il ne peut pas aller à plus de 20 m de hauteur.
+La forteresse de Chakra est ultime fort défensif des Elfes argentés (récupérer des elfes dorés) mais aussi le seul. Ce fort flotte dans les airs et est capable de se déplacer pour défendre là où on a besoin de lui. Beaucoup parlent d''un golem géant ou d''autres parlent d''une forteresse contrôlée par un fantôme. Dans tous les cas ce fort est quasiment imprenable, possède des machines de guerre comme des mangonneau et balistes, une petite armée est posté à l''intérieur et vit exclusivement à l''intérieur. Ses deux seuls défauts sont qu''il a besoin d''être à proximité d''Elloris sinon il ne sera plus alimenté en {{chakra|chakra}} suffisamment et qu''il ne peut pas aller à plus de 20 m de hauteur.
 
 ## Armée
 
 * Garde d’Argent : élite magique et martiale
 * Légions Arcanistes : mages soldats organisés en unités spécialisées
 * Veilleurs d’Argent : police et inquisition
-* Des hordes de zombinox, un non-mort issu de leur expérience raté avec le chakra, ils s’en servent pour occuper l’ennemi
+* Des hordes de zombinox, un non-mort issu de leur expérience raté avec le {{chakra|chakra}}, ils s’en servent pour occuper l’ennemi
 * Machines : balistes, golems, dirigeables.
 
 L’Empire privilégie la puissance magique plutôt que la masse numérique.
@@ -12091,7 +12091,7 @@ L’origine de Foudre étincelante remonte à l’an 243, au cœur des cités na
 Un soir où il était moqué par ses pairs, la voix de Volt parla à travers la boîte :\
 	*« Ton œuvre ne doit pas être oubliée. Je vais t’offrir ce que tu désires, tant que tu l’utilises avec sagesse pour aider le plus grand nombre. »*
 
-Encouragé par cette apparition, Franz installa son invention au cœur d’un vaste réseau de câbles de chakra qu’il avait conçu pour illuminer la cité. Le système fonctionna à merveille… jusqu’à ce que des confrères jaloux sabotent son installation, le sabotage se passa très mal et provoqua une terrible explosion. Cette dernière fut dévastatrice : près de deux cents nains périrent, Franz y compris.
+Encouragé par cette apparition, Franz installa son invention au cœur d’un vaste réseau de câbles de {{chakra|chakra}} qu’il avait conçu pour illuminer la cité. Le système fonctionna à merveille… jusqu’à ce que des confrères jaloux sabotent son installation, le sabotage se passa très mal et provoqua une terrible explosion. Cette dernière fut dévastatrice : près de deux cents nains périrent, Franz y compris.
 
 Aurora, témoin de ce drame, fut touchée négativement. Sous la demande de Volt, elle envoya une équipe d’inquisiteurs traquer les coupables et les livrer à la justice.
 
@@ -12142,27 +12142,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ***AP (Armure Physique).*** Valeur qui réduit les dégâts des armes subis.
 
-***Attributs.*** Liste des données basiques et primaires du personnage : santé, chakra, barrière, etc…
+***Attributs.*** Liste des données basiques et primaires du personnage : santé, {{chakra|chakra}}, {{barriere|barrière}}, etc…
 
-***Barrière (BA).*** Seconde barre de santé dont la valeur dépend du chakra. Prend les coups avant la santé sauf contre indication.
+***{{barriere}} (BA).*** Seconde barre de santé dont la valeur dépend du {{chakra|chakra}}. Prend les coups avant la santé sauf contre indication.
 
 ***Bestiaire.*** Liste de créatures officielles de l’univers.
 
 ***Caractéristiques.*** Valeur de base représentant les capacités innées d’un personnage (ex : Force, Agilité, Intelligence…). Elles influencent en partie le taux de réussite d’un jet.
 
-***Chakra (CK).*** Énergie qui permet d’utiliser la magie et lancer des sorts, pas de chakra \= pas de sorts.
+***{{chakra}} (CK).*** Énergie qui permet d’utiliser la magie et lancer des sorts, pas de {{chakra|chakra}} \= pas de sorts.
 
 ***Classe.*** Le rôle principal d’un personnage. Détermine ses capacités, son style de combat, ses armes et l’armure qu’il peut porter. Les personnages peuvent en avoir deux.
 
 ***Compétence.*** Spécialisation ou savoir-faire lié à une caractéristique. Utilisée pour les jets de dés
 
-***Corruption**.* Énergie parasite qui envahi le lobe à chakra, peut entraîner la mort si surdose.
+***Corruption**.* Énergie parasite qui envahi le lobe à {{chakra|chakra}}, peut entraîner la mort si surdose.
 
-***Coût**.* Ressource nécessaire pour utiliser un sort (chakra, âme, etc…)
+***Coût**.* Ressource nécessaire pour utiliser un sort ({{chakra|chakra}}, âme, etc…)
 
 ***Critique**.* Résultat exceptionnel positif (1 \- 5\) ou négatif (96 \- 100\) sur le jet dés, pouvant entraîner de lourdes conséquences.
 
-***Dégâts.*** Perte de points de santé ou barrière subie après une attaque.
+***Dégâts.*** Perte de points de santé ou {{barriere|barrière}} subie après une attaque.
 
 ***Dieu acquis.*** Divinité que le personnage choisit ou sert volontairement. Peut offrir des bonus ou une orientation magique.
 
@@ -12182,7 +12182,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ***Invocation.*** Appel magique d’une créature, ça peut être des golems ou des non-morts.
 
-***Magie.*** Pouvoir surnaturel qui exploite le chakra pour permettre des prouesses comme lancer des sorts. La magie possède de nombreuses formes et chaque personnage va naître avec une magie.
+***Magie.*** Pouvoir surnaturel qui exploite le {{chakra|chakra}} pour permettre des prouesses comme lancer des sorts. La magie possède de nombreuses formes et chaque personnage va naître avec une magie.
 
 ***Mode Hyper.*** État de surpuissance qui se débloque au niveau 2 de personnage. Le personnage ne fait plus qu’un avec son être et libère sa vraie puissance.
 
@@ -12717,7 +12717,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## Primordiaux
 
 - [[Brock]] — Dieu primordial de la force
-- [[Mirada]] — Déesse primordiale du chakra
+- [[Mirada]] — Déesse primordiale du {{chakra|chakra}}
 - [[Notix]] — Dieu primordial du temps
 - [[Capse]] — Déesse primordiale de l''espace
 
@@ -13207,7 +13207,7 @@ La plus grosse ville de Londolor centre, un lieu de calme dans le danger que rep
 Seconde grosse ville de la Ligne de partage et située au sud, cette ville est connue pour être sur une île qui flotte au-dessus d’un véritable abîme sans fin, que l’on nomme l’*abysse de la surface*. Cette île flottait naturellement mais avec le poids de la ville il a fallu trouver une solution pour qu’elle ne tombe pas, les habitants sur place ont trouvé une solution qui est toujours un secret aujourd’hui.
 
 **Barrière**\
-La troisième grosse ville de la Ligne de partage et située au nord des montagnes, cette ville est réputée pour avoir un immense dôme de protection qui empêche les monstres d’approcher. Ce dernier rappelle énormément le principe de la barrière. Grâce à cette protection, ils n’ont pas de mur d’enceinte, juste une douve.
+La troisième grosse ville de la Ligne de partage et située au nord des montagnes, cette ville est réputée pour avoir un immense dôme de protection qui empêche les monstres d’approcher. Ce dernier rappelle énormément le principe de la {{barriere|barrière}}. Grâce à cette protection, ils n’ont pas de mur d’enceinte, juste une douve.
 
 ## Armée
 
@@ -13292,7 +13292,7 @@ L’Ordre est structuré en chapitres continentaux relativement autonomes, mais 
 * **Golopa** – Chapitre-mère, centre décisionnel et plus grand dépôt d’artefacts
 * **Erisia** – Spécialisé dans les reliques instables
 * **Désert Doré** – Expert en artefacts anciens
-* **Mrode** – Connu pour ses recherches sur le chakra
+* **Mrode** – Connu pour ses recherches sur le {{chakra|chakra}}
 * **Enhor** – Plus rigide idéologiquement, parfois en conflit avec les autres
 * **Engrevua** – Chapitre pragmatique, réputé pour ses méthodes expéditives
 
@@ -13499,18 +13499,18 @@ Les Métières inspirent un respect quasi universel, même chez les plus cruels 
 
 Une légende raconte qu’Aurora et Evravonie elles-mêmes protègent leurs pas, rendant aveugles les archers qui viserait leurs tentes. Cela n’a jamais été prouvé mais cette légende est suffisamment forte pour que personne ne tente sa chance.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/mirada', 'lore', 'mirada', 'Mirada', 'mirada', 'Déesse primordiale du chakra', NULL, '*Déesse primordiale du chakra*
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/mirada', 'lore', 'mirada', 'Mirada', 'mirada', 'Déesse primordiale du chakra', NULL, '*Déesse primordiale du {{chakra|chakra}}*
 
-Une ravissante elfe dorée qui est à l''origine du chakra tel qu''on le connaît aujourd''hui. Après les élémentaires, le chakra existait toujours mais sous une forme trop chaotique et dangereuse, la déesse est arrivée pour façonner le chakra sous une forme exploitable pour tous. Elle est la base de la magie de l''Arcane et indirectement de la Corruption.
+Une ravissante elfe dorée qui est à l''origine du {{chakra|chakra}} tel qu''on le connaît aujourd''hui. Après les élémentaires, le {{chakra|chakra}} existait toujours mais sous une forme trop chaotique et dangereuse, la déesse est arrivée pour façonner le {{chakra|chakra}} sous une forme exploitable pour tous. Elle est la base de la magie de l''Arcane et indirectement de la Corruption.
 
 ## Présentation générale
 
-Mirada est la personnification de la Magie elle-même — sa source, son flux et sa volonté. Créatrice du chakra sous sa forme exploitable, elle incarne l’esprit d’équilibre et de compréhension universelle. Son influence s’étend à tous ceux qui cherchent à maîtriser les arts mystiques ou à comprendre les lois cachées du monde. Les mortels la voient comme une divinité à la fois maternelle et insondable, bienveillante dans son savoir, mais dont la puissance dépasse toute compréhension humaine.
+Mirada est la personnification de la Magie elle-même — sa source, son flux et sa volonté. Créatrice du {{chakra|chakra}} sous sa forme exploitable, elle incarne l’esprit d’équilibre et de compréhension universelle. Son influence s’étend à tous ceux qui cherchent à maîtriser les arts mystiques ou à comprendre les lois cachées du monde. Les mortels la voient comme une divinité à la fois maternelle et insondable, bienveillante dans son savoir, mais dont la puissance dépasse toute compréhension humaine.
 
 ## Informations officielles
 
 * **Titres :** La Grande Magicienne, La Reine Blanche, Le Grand Prisme
-* **Thèmes :** Magie, Esprit, Chakra
+* **Thèmes :** Magie, Esprit, {{chakra}}
 * **Domaines :** Magie, Intelligence, Esprit
 * **Alignement :** Chaotique neutre
 * **Arme :** Bâton
@@ -13519,7 +13519,7 @@ Mirada est la personnification de la Magie elle-même — sa source, son flux et
 
 ## Histoire
 
-Lors de la création primordiale, le chakra — essence brute de la magie — existait déjà, mais demeurait inaccessible aux êtres inférieurs car totalement chaotique et contrôlé par les élémentaires. Mirada, émue par la fragilité des formes de vie émergentes face aux titans qu’étaient les élémentaires, décida de remodeler cette énergie pour la rendre manipulable par tous les mortels.
+Lors de la création primordiale, le {{chakra|chakra}} — essence brute de la magie — existait déjà, mais demeurait inaccessible aux êtres inférieurs car totalement chaotique et contrôlé par les élémentaires. Mirada, émue par la fragilité des formes de vie émergentes face aux titans qu’étaient les élémentaires, décida de remodeler cette énergie pour la rendre manipulable par tous les mortels.
 
 Cette décision, guidée par la compassion et la curiosité, provoqua un profond désaccord avec Brock, dieu de la Force, qui voyait dans ce don un danger pour l’équilibre des races naissantes. Il jugeait que la puissance devait d’abord venir du corps avant l’esprit. Leur querelle s’étendit au-delà des cieux, opposant leurs fidèles dans des sortes de petits conflits partout dans le monde.
 
@@ -13531,10 +13531,10 @@ Mirada se manifeste sous la forme d’une Elfe dorée d’une beauté éclatante
 
 ## Suivants
 
-Mirada est vénérée par tous ceux qui cherchent la connaissance, la maîtrise ou la compréhension du chakra :
+Mirada est vénérée par tous ceux qui cherchent la connaissance, la maîtrise ou la compréhension du {{chakra|chakra}} :
 
 * **Professeurs et érudits**, qui enseignent la structure de la magie.
-* **Mages et archimages**, qui honorent la source de tout ce que permet le chakra.
+* **Mages et archimages**, qui honorent la source de tout ce que permet le {{chakra|chakra}}.
 * **Utilisateurs du Potentiel illimité**, qui voient en elle la clef de leur ascension.
 * **Utilisateurs de la magie de l’Arcane**, qui voient en elle leur mère spirituelle.
 
@@ -13542,7 +13542,7 @@ Ses fidèles considèrent la pratique magique comme un acte sacré et méditatif
 
 ## Outils divins
 
-* **Le Tome Universel :** Permet à son porteur d’utiliser tout sort existant sans coût en chakra ni malus, en puisant directement dans la trame de la Magie pure. C’est l’un des artefacts les plus convoités par les mages du monde.
+* **Le Tome Universel :** Permet à son porteur d’utiliser tout sort existant sans coût en {{chakra|chakra}} ni malus, en puisant directement dans la trame de la Magie pure. C’est l’un des artefacts les plus convoités par les mages du monde.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/mont-cendre', 'lore', 'mont-cendre', 'Mont cendré', 'mont-cendre', 'Le Mont Cendré est l’un des plus grands volcans des terres de Maverick.', NULL, '## Présentation générale
 
@@ -13992,24 +13992,24 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Présentation
 
-Fondé en l’an 1140, l’Ordre des Abeilles est un petit groupe de dix chevaliers liés à la magie de l’Arcane. Leur mission sacrée est la protection des abeilles blanches, des créatures rares capables de produire un miel imprégné de chakra pur. Ces abeilles, symboles d’harmonie magique, sont essentielles à l’équilibre énergétique du monde.
+Fondé en l’an 1140, l’Ordre des Abeilles est un petit groupe de dix chevaliers liés à la magie de l’Arcane. Leur mission sacrée est la protection des abeilles blanches, des créatures rares capables de produire un miel imprégné de {{chakra|chakra}} pur. Ces abeilles, symboles d’harmonie magique, sont essentielles à l’équilibre énergétique du monde.
 
-Leur reine, Ormat, est une entité légendaire : autrefois une mort-vivante, elle fut bénie par la déesse du Chakra, fusionnée à une ruche vivante qui bat dans son torse. Ormat est aujourd’hui la Grande Reine des Abeilles Blanches, immortelle et gardienne d’un cycle magique unique.
+Leur reine, Ormat, est une entité légendaire : autrefois une mort-vivante, elle fut bénie par la déesse du {{chakra}}, fusionnée à une ruche vivante qui bat dans son torse. Ormat est aujourd’hui la Grande Reine des Abeilles Blanches, immortelle et gardienne d’un cycle magique unique.
 
-Les abeilles blanches sont des insectes blancs avec des rayures noires, ce sont des abeilles rares qui sont capable de produire un miel de couleur blanc qui est un véritable concentré de chakra pur. Ces abeilles sont gorgées de chakra et sont très recherchées par les mages. Leur rareté fait que dans certaines nations, leur chasse est illégale. Elles ont eu leur rôle au début du monde car elle permettait au chakra d’être abondant, même si c’est moins nécessaire, elles restent des insectes pollinisateurs importants pour certaines plantes reliées à des magies.
+Les abeilles blanches sont des insectes blancs avec des rayures noires, ce sont des abeilles rares qui sont capable de produire un miel de couleur blanc qui est un véritable concentré de {{chakra|chakra}} pur. Ces abeilles sont gorgées de {{chakra|chakra}} et sont très recherchées par les mages. Leur rareté fait que dans certaines nations, leur chasse est illégale. Elles ont eu leur rôle au début du monde car elle permettait au {{chakra|chakra}} d’être abondant, même si c’est moins nécessaire, elles restent des insectes pollinisateurs importants pour certaines plantes reliées à des magies.
 
 * **Date de création :** 1140
 * **Alignement :** Loyal neutre
 
 ## Crédo
 
-> *“Nous sommes le bourdonnement du monde, les gardiens du flux et du miel. Là où le chakra coule, la vie s’épanouit — que nul ne vienne troubler la ruche.”*
+> *“Nous sommes le bourdonnement du monde, les gardiens du flux et du miel. Là où le {{chakra|chakra}} coule, la vie s’épanouit — que nul ne vienne troubler la ruche.”*
 
-Les chevaliers récitent ce mantra avant chaque veille ou affrontement, croyant que leur âme s’accorde ainsi au rythme du chakra universel.
+Les chevaliers récitent ce mantra avant chaque veille ou affrontement, croyant que leur âme s’accorde ainsi au rythme du {{chakra|chakra}} universel.
 
 ## Symbole
 
-Une abeille blanche stylisée, posée sur un sceau arcanique circulaire. Ses ailes forment une spirale d’énergie et son abdomen laisse couler une goutte de miel blanc, symbole du chakra pur.
+Une abeille blanche stylisée, posée sur un sceau arcanique circulaire. Ses ailes forment une spirale d’énergie et son abdomen laisse couler une goutte de miel blanc, symbole du {{chakra|chakra}} pur.
 
 ## Organisation
 
@@ -14020,7 +14020,7 @@ Depuis leur disparition en 1160, on murmure que ces chevaliers sont devenus les 
 ## Doctrine
 
 * La ruche est sacrée, car elle est le cœur du monde.
-* Le miel blanc est la manifestation physique du chakra pur, à ne jamais souiller.
+* Le miel blanc est la manifestation physique du {{chakra|chakra}} pur, à ne jamais souiller.
 * Le chevalier et la ruche ne font qu’un — protéger l’un, c’est protéger l’autre.
 * La mort n’est qu’un état de veille pour ceux qui ont juré fidélité à Ormat.
 
@@ -15681,7 +15681,7 @@ Lorsqu’une gemme est détruite — un acte presque impossible —, elle finit 
 | Élément | Gemme associée | Description |
 | ----- | ----- | ----- |
 | Sang | Grenat | Bordeaux, pulsant d’une lueur rythmique presque comme un cœur. |
-| Arcane | Perle | Argentée, iridescente, elle semble pouvoir faire bouger le chakra ambiant autour d’elle. |
+| Arcane | Perle | Argentée, iridescente, elle semble pouvoir faire bouger le {{chakra\|chakra}} ambiant autour d’elle. |
 | Corruption | Onyx | Parfaitement noire, comme si on contemplait ce que la magie à fait de pire. |
 | Temps & Espace | Diamant rose | Rose, on aurait l’impression de regarder un ciel étoilé. |
 | Vide | Gypse | Blanche et mate, presque translucide. |
@@ -16912,7 +16912,7 @@ Situé au cœur de Rase, la capitale des elfes noirs, il incarne un paradoxe viv
 
 Considéré comme le temple principal le plus récent du continent, il est souvent vu avec méfiance par les autres ordres religieux. Pourtant, sa doctrine ne prêche pas le chaos, mais l’équilibre entre la corruption et l’arcane, entre la déchéance et la pureté.
 
-Les prêtres du Temple noir affirment que nier la corruption, c’est nier une partie essentielle du chakra.
+Les prêtres du Temple noir affirment que nier la corruption, c’est nier une partie essentielle du {{chakra|chakra}}.
 
 ## Informations officielles
 
@@ -17617,7 +17617,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Volt est le Dieu de la Foudre, des Orages et de la Science. Être mécanique à l’apparence de nain, il incarne la puissance destructrice et créatrice de l’électricité. Curieux, méthodique et exigeant, il observe les mortels, récompensant ceux qui cherchent à comprendre les lois de la magie et de la science.
 
-Dans le monde de Maverick, Volt est considéré comme le père de la magie-technologie, celui qui relie la logique du métal à la puissance du chakra. Il est vénéré autant par les inventeurs que par les guerriers.
+Dans le monde de Maverick, Volt est considéré comme le père de la magie-technologie, celui qui relie la logique du métal à la puissance du {{chakra|chakra}}. Il est vénéré autant par les inventeurs que par les guerriers.
 
 ## Informations officielles
 
@@ -17633,7 +17633,7 @@ Dans le monde de Maverick, Volt est considéré comme le père de la magie-techn
 
 Après que les eaux furent calmées par Océane, le ciel s’embrasa à son tour. Des éclairs zébrèrent les cieux, et les orages rugirent sans fin. De cette colère naquit Volt, dieu de la Foudre, qui imposa l’ordre au sein du chaos atmosphérique. On raconte qu’il sera à l’origine des nains.
 
-Volt observa les mortels et fut fasciné par leur ingéniosité. Contrairement à certains dieux, il décida de leur transmettre une part de sa logique divine : la technologie. Il guida les premiers nains vers l’étude du Maverium, ce métal conducteur de chakra, et les inspira à forger des merveilles mêlant science et magie.
+Volt observa les mortels et fut fasciné par leur ingéniosité. Contrairement à certains dieux, il décida de leur transmettre une part de sa logique divine : la technologie. Il guida les premiers nains vers l’étude du Maverium, ce métal conducteur de {{chakra|chakra}}, et les inspira à forger des merveilles mêlant science et magie.
 
 Sous son influence naquirent les prothèses et les premières bombes, fruit de l’union entre feu, terre et foudre. Lorsque les dieux furent brièvement séparés du monde des mortels durant le mois de fer, Volt observa avec fierté que ses disciples continuaient à progresser sans son aide.
 
@@ -17641,7 +17641,7 @@ Sous son influence naquirent les prothèses et les premières bombes, fruit de l
 
 ## Apparence
 
-Volt se manifeste sous la forme d’un nain entièrement forgé dans le Maverium raffiné, métal conducteur de chakra. Son corps est parcouru en permanence par des arcs électriques jaunes, illuminant ses articulations et ses yeux d’un éclat.
+Volt se manifeste sous la forme d’un nain entièrement forgé dans le Maverium raffiné, métal conducteur de {{chakra|chakra}}. Son corps est parcouru en permanence par des arcs électriques jaunes, illuminant ses articulations et ses yeux d’un éclat.
 
 Sa voix gronde comme un tonnerre lointain, et son regard étincelle d’une intelligence froide. Bien qu’il semble rigide, chaque geste émane d’une précision parfaite, rappelant le tic-tac d’une machine bien huilée.
 
@@ -17851,11 +17851,11 @@ Les utilisateurs de la corruption sont marqués surtout au niveau des cheveux et
 
 ## Explication
 
-L''utilisateur de la corruption est un combattant qui fait énormément de dégâts et utilise énormément d''entrave. Il utilise le Chakra et la Corruption comme un système de vases communicants.
+L''utilisateur de la corruption est un combattant qui fait énormément de dégâts et utilise énormément d''entrave. Il utilise le {{chakra|Chakra}} et la Corruption comme un système de vases communicants.
 
-Chaque sort demande du chakra, à chaque utilisation d''un sort, le coût en chakra se transfère dans la corruption (si un sort coûte 4, vous obtenez 4 corruption), il est possible d''utiliser cette réserve de corruption pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en corruption (si le sort coûte 4, il vous faut 8 corruption). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de corruption (qui est la transformation en abomination solvité, donc une mort du personnage) mais prudence, car quand on est gavé de corruption cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
+Chaque sort demande du {{chakra|chakra}}, à chaque utilisation d''un sort, le coût en {{chakra|chakra}} se transfère dans la corruption (si un sort coûte 4, vous obtenez 4 corruption), il est possible d''utiliser cette réserve de corruption pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en corruption (si le sort coûte 4, il vous faut 8 corruption). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de corruption (qui est la transformation en abomination solvité, donc une mort du personnage) mais prudence, car quand on est gavé de corruption cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
 
-Attention, si le chakra permet d''obtenir de la corruption, l''inverse ne se fait pas. Et la corruption n''empiète pas dans l''espace du chakra.
+Attention, si le {{chakra|chakra}} permet d''obtenir de la corruption, l''inverse ne se fait pas. Et la corruption n''empiète pas dans l''espace du {{chakra|chakra}}.
 
 ## Données
 
@@ -17872,7 +17872,7 @@ Attention, si le chakra permet d''obtenir de la corruption, l''inverse ne se fai
 
 | Type | Effets |
 | --- | --- |
-| Mono-Magie | Le chakra active directement les effets secondaires |
+| Mono-Magie | Le {{chakra\|chakra}} active directement les effets secondaires |
 | Bi-magie | Divise par 2 le coût en corruption des sorts. |
 
 ## Rôles
@@ -17892,20 +17892,20 @@ Attention, si le chakra permet d''obtenir de la corruption, l''inverse ne se fai
 | 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 cr (+1d/NM) | Retire de la corruption d''une cible pour la mettre dans la réserve. |
 | 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si CR : Bonus de +5 dégâts en plus. |
 | 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de corruption. |
-| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de chakra à la cible | Si CR : Inflige 2d6 de corruption en plus. |
+| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si CR : Inflige 2d6 de corruption en plus. |
 | 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si CR : Bloque entièrement les cibles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 chakra en + = 1 dé en +) (maximum 75 chakra en surcharge)<br>Si CR = Ignore 50% de l''AM. |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si CR = Ignore 50% de l''AM. |
 | 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si CR : Inflige 10 corruption |
-| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la barrière. Augmente la réussite critique de 1%/NM.<br>Si CR : La cible a -20% pour le jet de défense |
+| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si CR : La cible a -20% pour le jet de défense |
 | 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) corruption.<br>Si CR : Fait reculer la cible de 1 case. |
-| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la barrière | Si jet de fermeté raté : Empêche la régénération de la barrière pour 3 tours.<br>Si CR : L''inflige automatiquement. |
+| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si CR : L''inflige automatiquement. |
 | 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si CR : Ceux qui ratent le jet fuient. |
-| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si CR : Retire un effet positif de la cible et le transforme en 1d10 barrière pour le lanceur. |
+| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si CR : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
 | 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si CR : Le sort est inesquivable. |
 | 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
 | 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
 | 4.0 | Pluie huileuse | Météo | 50% CR max | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
-| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si CR : Ignore la barrière. |
+| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si CR : Ignore la {{barriere\|barrière}}. |
 | 5.0 | Sapeur | Entrave | x CR | 3 (+1/NM) | 1.0 | / | Donne autant de corruption à la cible que la réserve actuelle de corruption. |
 | 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si CR : Les retire complètement |
 
@@ -18010,7 +18010,7 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | 4.0 | Grenade paralysante | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Foudre. (3NM = Si jet de vigueur raté = Inflige paralysie 1). |
 | 4.0 | Armure conductrice | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +5AP, +10AM | Augmente la résistance à la Foudre et permet de guider la foudre à sa guise pendant 3 tours. |
 | 4.0 | Cercle électrique | Attaque | 21.0 | Soi-même | Cercle de 5 | 6d6 dégâts (+7/NM) | Frappe au sol pour invoquer un cercle qui va électriser les ennemis. |
-| 5.0 | Orage Violet | Attaque/ Entrave | 55 (-5/NM) | 5.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. 15% des dégâts se répercutent dans le chakra. |
+| 5.0 | Orage Violet | Attaque/ Entrave | 55 (-5/NM) | 5.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. 15% des dégâts se répercutent dans le {{chakra\|chakra}}. |
 | 5.0 | Fulguration | Attaque | 55 (-5/NM) | 8.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. Si jet de vigueur raté = Inflige paralysie 3. |
 | 5.0 | Manteau de Volt | Amplification | 45 (-2/NM) | 3.0 | 1.0 | +20 dégâts | La cible devient immunisée à la Foudre et tape dans l''élément foudre avec un bonus de +20 aux attaques. Dure 3 tours |
 
@@ -18210,12 +18210,12 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beiges, les yeu
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Frappe lumineuse | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de lumière. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre aveuglement 1. |
 | 1.0 | Inspiration Céleste | Protection (IC pour 3 NM) | 4.0 | 3.0 | 1.0 | / | Permet de résister à une altération d''état niveau 1. |
-| 1.0 | Champ de Force | Protection | 5.0 | 1.0 | 1.0 | / | Bloque 10 dégâts (+5/NM) (peut être surchargé en chakra +2 dégâts/chakra). |
+| 1.0 | Champ de Force | Protection | 5.0 | 1.0 | 1.0 | / | Bloque 10 dégâts (+5/NM) (peut être surchargé en {{chakra\|chakra}} +2 dégâts/{{chakra\|chakra}}). |
 | 1.0 | Vitaminé | Amplification (IC) | 4.0 | 3.0 | 1.0 | / | Permet d''infliger un bonus de +2 (+1/NM) dégâts pendant 2 tours. |
 | 1.0 | Premier soin | Soin | 4.0 | 1.0 | 1.0 | 2d6 soin (+1d6/NM) | Redonne des PV, ne soigne pas l''infirmité. |
 | 2.0 | Fer Lumineux | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme parfaitement lumineuse, tape dans l''élément lumière pendant 3 tours. |
 | 2.0 | Bénédiction | Amplification (IC) | 7.0 | 3.0 | 1.0 | +1d (+1d/3NM) de dégâts | Augmente les dégâts pendant 3 tours. |
-| 2.0 | Énergie Solaire | Soin | 8.0 | Soi-même | 1 (3NM = Croix 1x1) | / | Permet de récupérer \*10% de barrière lors des météos de soleil. |
+| 2.0 | Énergie Solaire | Soin | 8.0 | Soi-même | 1 (3NM = Croix 1x1) | / | Permet de récupérer \*10% de {{barriere\|barrière}} lors des météos de soleil. |
 | 2.0 | Panneau Solaire | Soin (IC) | 7.0 | 1.0 | 1.0 | +5PV/Tour | Régénère des PV pendant 3 tours. (3NM permet de le faire sur 2 alliés) |
 | 2.0 | Flash | Attaque/ Entrave | 6.0 | 6 (+1/NM) | Cône | 5d6 dégâts (+5/NM) | Si jet de vigueur raté = Inflige Aveuglement stade 1. Ce sort ne marche pas sur des créatures aveugles. |
 | 3.0 | Photon | Attaque | 15 (-1/NM) | 7.0 | 1.0 | 7d6 + 15 dégâts | Une puissante attaque de lumière. |
@@ -18234,11 +18234,11 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beiges, les yeu
 
 ## Notes et commentaires des sorts
 
-**Note de la cellule « Effets secondaires » du sort « Champ de Force »**
+**Remarque du sort « Champ de Force »**
 
 Le champ de force reste tant qu''aucun coup n''a été pris. Il disparaît après l''attaque ennemie. Il va réduire les dégâts AVANT l''armure.
 
-La surcharge peut être amplifiée avec 20 chakra maximum
+La surcharge peut être amplifiée avec 20 {{chakra|chakra}} maximum
 
 **Note de la cellule « Effets secondaires » du sort « Fer Lumineux »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveuglé au stade 1
 
@@ -18359,7 +18359,7 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | 4.0 | Répar''Os | Soin | 20 + 5 âmes | 1.0 | 1.0 | Soigne 6d6 (+7/NM) | Permet de soigner les os et chair. |
 | 5.0 | Déchirure | Attaque | 65 (-5/NM) | 5.0 | 1.0 | 10d6 + 50 dégâts (+10/NM) | Une terrible attaque qui inflige de gros dégâts, Si jet de vigueur raté = Inflige poison 2. |
 | 5.0 | Réanimation | Invocation | 45 (-2/NM) + 10 âmes | 1.0 | 1.0 | / | Permet de réanimer un corps mort et d’en garder le contrôle pendant 1h. |
-| 5.0 | Résurrection Noire | Soin | 35 (-2/NM) + 10 âmes | 5.0 | 1.0 | / | Revient sans PV, le chakra est utilisé comme énergie. |
+| 5.0 | Résurrection Noire | Soin | 35 (-2/NM) + 10 âmes | 5.0 | 1.0 | / | Revient sans PV, le {{chakra\|chakra}} est utilisé comme énergie. |
 
 ## Notes et commentaires des sorts
 
@@ -18466,7 +18466,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 2.0 | Arbre fertilisant | Invocation | 8.0 | 3.0 | Cercle de 3 | Soigne 2d6 (+2/NM) | Pose un arbre, soigne les alliés à 3 cases autour de lui. Possède 20 PV. Un seul à la fois. |
 | 2.0 | Infection | Soin/Entrave (IC pour 3 NM) | 8.0 | 6.0 | 1.0 | 4 dégâts (+1/NM) / tour | Lance une graine qui va aspirer la santé de la cible et la donner au lanceur pendant 3 tours. Les dégâts de l''infection ne sont pas élémentaires. |
 | 2.0 | Cuirasse de roche | Amplification (IC) | 7.0 | 1.0 | 1.0 | +4AP (+2AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Peau de Pierre. |
-| 3.0 | Barrière rocheuse | Protection | 16.0 | 1.0 | 1.0 | Donne une protection | Confère une protection par-dessus la barrière qui encaisse les coups inférieurs à 20 dégâts (+7/NM) |
+| 3.0 | Barrière rocheuse | Protection | 16.0 | 1.0 | 1.0 | Donne une protection | Confère une protection par-dessus la {{barriere\|barrière}} qui encaisse les coups inférieurs à 20 dégâts (+7/NM) |
 | 3.0 | Alourdissement | Amplification/ Entrave (IC pour 3 NM) | 15.0 | 5.0 | 1.0 | -20% Réussite / +1D dégâts | Rend l''arme plus lourde et augmente ses dégâts pendant 3 tours. |
 | 3.0 | Sable changeant | Construction | 10/3x3 | 2 (+2/NM) | Variable | / | Permet de créer un terrain sur lequel il est difficile de bouger. |
 | 3.0 | Frappe racine | Attaque | 14.0 | 6 (+1/NM) | 1.0 | 7d6 + 25 dégâts | Si jet de vigueur raté = -1 vitesse pour la cible pour 1 tour. |
@@ -18586,12 +18586,12 @@ Les utilisateurs de l''arcane sont marqués surtout au niveau des cheveux et du 
 
 ## Explication
 
-Chaque sort qui possède un coût en chakra "x/tour" ne possède pas de limite de tour et va consommer du chakra tant qu''il est actif. Le lanceur doit faire un jet de magie pour pouvoir réussir son sort (normal jusque-là) et une fois le sort lancé, le sort est maintenu tant que le lanceur le décide ou qu''il perd sa concentration. Il est possible de cumuler plusieurs fois le même sort ou alors de placer le même sort sur différentes cibles, le coût par tour en sera bien plus grand vu que tout se cumule.
+Chaque sort qui possède un coût en {{chakra|chakra}} "x/tour" ne possède pas de limite de tour et va consommer du {{chakra|chakra}} tant qu''il est actif. Le lanceur doit faire un jet de magie pour pouvoir réussir son sort (normal jusque-là) et une fois le sort lancé, le sort est maintenu tant que le lanceur le décide ou qu''il perd sa concentration. Il est possible de cumuler plusieurs fois le même sort ou alors de placer le même sort sur différentes cibles, le coût par tour en sera bien plus grand vu que tout se cumule.
 
 Perdre son sort : Si jamais une attaque est encaissée, il est nécessaire de faire un jet de magie/concentration, si jamais il est raté, la concentration est perdue et tous les sorts qui étaient actifs s''arrêtent immédiatement.
 
-Un sort qui possède la mention : XxN/tour, veut dire que le sort va coûter un certain nombre de chakra (X) par nombre d''applications qu''il y a eu (N) par tour.  
-Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en 1 tour je vais consommer 9 chakra.
+Un sort qui possède la mention : XxN/tour, veut dire que le sort va coûter un certain nombre de {{chakra|chakra}} (X) par nombre d''applications qu''il y a eu (N) par tour.  
+Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en 1 tour je vais consommer 9 {{chakra|chakra}}.
 
 ## Données
 
@@ -18621,33 +18621,33 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Chakra. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
+| 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de {{chakra\|Chakra}}. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
 | 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2=1 dégâts | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |
 | 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3xN/tour | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 1.0 | Claquement | Entrave (IC pour 3 NM) | 4.0 | 5.0 | 1.0 | 1d6 dégâts (+1/NM) | Si jet de fermeté raté = La cible ne peut utiliser de sorts pendant son tour. Ne peut être fait 2 fois de suite sur la même cible. |
-| 1.0 | Forge-Magie | Amplification (IC) | 2/taille | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
-| 2.0 | Inhalation magique | Amplification | 5% santé/tour | Soi-même | 1.0 | +5% de chakra | Aspire le chakra ambiant pour régénérer la réserve personnelle. |
-| 2.0 | Souffle magique | Amplification | Choix | 2 (+1/NM) | Cône | Donne X Chakra | Souffle du chakra pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le chakra donné est divisé. |
-| 2.0 | Échange | Soin | Choix | 1 (+1/NM) | 1.0 | / | Permet d''échanger son chakra en barrière. 2CK = 1BA (3CK = 2BA/3NM) |
+| 1.0 | Forge-Magie | Amplification (IC) | 2/taille | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de {{chakra\|chakra}} pur. (+1 utilisation/NM) |
+| 2.0 | Inhalation magique | Amplification | 5% santé/tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le {{chakra\|chakra}} ambiant pour régénérer la réserve personnelle. |
+| 2.0 | Souffle magique | Amplification | Choix | 2 (+1/NM) | Cône | Donne X {{chakra\|Chakra}} | Souffle du {{chakra\|chakra}} pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le {{chakra\|chakra}} donné est divisé. |
+| 2.0 | Échange | Soin | Choix | 1 (+1/NM) | 1.0 | / | Permet d''échanger son {{chakra\|chakra}} en {{barriere\|barrière}}. 2CK = 1BA (3CK = 2BA/3NM) |
 | 2.0 | Vision magique | Amplification (IC) | 8xN/heure | Soi-même | 1.0 | / | Permet de voir les auras magiques à travers les obstacles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 chakra en + = 1 dé en +) (maximum 75 chakra en surcharge) |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge) |
 | 3.0 | Mur de chakra | Entrave | 13.0 | 3.0 | 8x2 | / | Bloque 40 (+10/NM) dégâts par tour pendant 3 tours, est détruit s''il prend plus en 1 tour. |
-| 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Ignore totalement les AP, AM et la barrière. |
-| 3.0 | Pillage défensif | Attaque | 16 (-2/NM) | 1.0 | 1.0 | 7d6 + 15 dégâts | Inflige des dégâts et permet de récupérer 25% des dégâts en barrière. |
+| 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Ignore totalement les AP, AM et la {{barriere\|barrière}}. |
+| 3.0 | Pillage défensif | Attaque | 16 (-2/NM) | 1.0 | 1.0 | 7d6 + 15 dégâts | Inflige des dégâts et permet de récupérer 25% des dégâts en {{barriere\|barrière}}. |
 | 3.0 | Rune Arcane multiple | Amplification<br>(IC x 1/NM) | 10xN/tour | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
-| 3.0 | Champ Gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 Barrière et 12 dégâts | Invoque un cercle qui va rendre de la barrière aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
+| 3.0 | Champ Gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 {{barriere\|Barrière}} et 12 dégâts | Invoque un cercle qui va rendre de la {{barriere\|barrière}} aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
 | 4.0 | Peau de Chakra | Amplification<br>(IC x 1/NM) | 13xN/tour | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques subis. |
-| 4.0 | Pluie de Chakra | Amplification | 25% | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur chakra. |
+| 4.0 | Pluie de Chakra | Amplification | 25% | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur {{chakra\|chakra}}. |
 | 4.0 | Grenade de Chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
 | 4.0 | Miroir Magique | Amplification (IC pour 3 NM) | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3 NM = Ne prend plus l''effet en question). |
 | 4.0 | Foudre argentée | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
-| 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 4d10 (+1d/3NM) chakra | Vole du chakra aux ennemis visibles. Le chakra récupéré est redistribué aux alliés |
-| 5.0 | Voile Chakratique | Amplification | 15% santé/tour | Soi-même | 1.0 | / | Permet au Chakra de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
+| 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 4d10 (+1d/3NM) {{chakra\|chakra}} | Vole du {{chakra\|chakra}} aux ennemis visibles. Le {{chakra\|chakra}} récupéré est redistribué aux alliés |
+| 5.0 | Voile Chakratique | Amplification | 15% santé/tour | Soi-même | 1.0 | / | Permet au {{chakra\|Chakra}} de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
 | 5.0 | Planète Chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
 
 ## Notes et commentaires des sorts
 
-**Note de la cellule « Effets secondaires » du sort « Charge d''énergie »** : 30 chakra maximum en 1 fois
+**Remarque du sort « Charge d''énergie »** : 30 {{chakra|chakra}} maximum en 1 fois
 
 **Note de la cellule « Effets secondaires » du sort « Rune Arcane »** : Ne se cumule avec "Rune Arcane multiple"
 
@@ -18662,7 +18662,7 @@ Les bombes ne font pas les dégâts de zone.
 
 **Note de la cellule « Effets secondaires » du sort « Laser de chakra »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
-**Note de la cellule « Effets secondaires » du sort « Pillage défensif »** : Le regain ne peut être effectif que si c''est la barrière ennemie qui est touchée.
+**Remarque du sort « Pillage défensif »** : Le regain ne peut être effectif que si c''est la {{barriere|barrière}} ennemie qui est touchée.
 
 **Note de la cellule « Effets secondaires » du sort « Rune Arcane multiple »** : Ne se cumule avec "Rune Arcane"
 
@@ -18725,7 +18725,7 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | 2.0 | Fer Humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau, tape dans l''élément Eau pendant 3 tours. |
 | 2.0 | Souffle Hydraulique | Attaque/ Entrave (Imparable) | 7.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de fermeté raté = Inflige confus. |
 | 2.0 | Onde de Confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
-| 2.0 | Barrière d''eau | Soin | 10.0 | Soi-même | 1.0 | / | Régénère 10% de la barrière (+5% par Niveau de Maîtrise), +10 barrière bonus si jamais fait à 4 cases de l''eau. |
+| 2.0 | Barrière d''eau | Soin | 10.0 | Soi-même | 1.0 | / | Régénère 10% de la {{barriere\|barrière}} (+5% par Niveau de Maîtrise), +10 {{barriere\|barrière}} bonus si jamais fait à 4 cases de l''eau. |
 | 2.0 | Ruisseau conciliant | Soin | 10.0 | Soi-même | Croix de 1 | 3d6 (+6/NM) de soin | Des petits courants d''eau qui viennent soigner. La zone devient un cercle si un point d''eau est à 4 cases. |
 | 3.0 | Trombe d''eau | Attaque | 16 (-2/NM) | 5.0 | Carré de 3x3 | 7d6 + 15 dégâts | Une urne remplie d''eau se déverse sur la zone. Bonus de +15 dégâts si un point d''eau est à 2 cases. |
 | 3.0 | Lame sous pression | Attaque | 16.0 | 1.0 | 3 cases horizontales devant (ou verticales/3NM) | 7d6 dégâts | Une lame faite d''eau sous pression tranche les adversaires. Ignore les AM quand un point d''eau est à 4 cases. |
@@ -18739,7 +18739,7 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | 4.0 | Cascade apaisante | Soin | 26 (-2/NM) | 4.0 | 1.0 | 7d6 soin/tour | Régénération pendant 3 tours. +1 tour si utilisé à 4 cases de l''eau. Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet. |
 | 5.0 | Laser Hydraulique | Attaque/ Entrave | 55 (-5/NM) | 20.0 | Ligne | 10d6 + 60 dégâts | Une attaque d''Eau en ligne qui touche tout sur son chemin. Si jet de stabilité/réflexe raté = Tombe au sol |
 | 5.0 | Larmes d''Océane | Entrave | 60 (-5/NM) | Soi-même | Terrain | / | (S''ajoute avec la météo pluie ou +) Empêche les Sorts Feu et Foudre d''être utilisés le temps de la météo. |
-| 5.0 | Pitié d''Océane | Soin | 55 (-5/NM) | 2.0 | 1.0 | Sort la cible du coma. | Permet de ranimer un allié dans le coma en lui redonnant 1PV et 100% de sa barrière. Donne 10PV près d''un point d''eau. |
+| 5.0 | Pitié d''Océane | Soin | 55 (-5/NM) | 2.0 | 1.0 | Sort la cible du coma. | Permet de ranimer un allié dans le coma en lui redonnant 1PV et 100% de sa {{barriere\|barrière}}. Donne 10PV près d''un point d''eau. |
 
 ## Notes et commentaires des sorts
 
@@ -18786,7 +18786,7 @@ Cet effet dure maximum 5 tours.
 > Ô Océane, que ta marée relève le corps brisé,  
 > Que tes eaux referment ce que la douleur a ouvert,  
 > Que la mer rende souffle à celui qui l’a perdu,  
-> Que la barrière se reforme sous ton courant apaisant,  
+> Que la {{barriere|barrière}} se reforme sous ton courant apaisant,  
 > Et que ta bienveillance nous le ramène vers nous…
 >
 > PITIÉ D’OCÉANE !
@@ -18875,7 +18875,7 @@ Ce sort permet également de contrer les ennemis qui voudraient se téléporter,
 
 Si la case d''arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
 
-**Note de la cellule « Effets secondaires » du sort « Portail »** : Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du chakra.
+**Remarque du sort « Portail »** : Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du {{chakra|chakra}}.
 
 **Note de la cellule « Effets secondaires » du sort « Fer Temporel »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1
 
@@ -18897,9 +18897,9 @@ Si la case d''arrivée est occupée par une autre créature, le lanceur échange
 
 **Note de la cellule « Effets secondaires » du sort « État antérieur »** : Pour les armures, il faut faire le sort sur CHAQUE morceau.
 
-**Note de la cellule « Effets secondaires » du sort « Horloge aspirante »**
+**Remarque du sort « Horloge aspirante »**
 
-Si c''est la barrière, la barrière est vampirisée.  
+Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
 Si c''est les points de vie, c''est les points de vie qui sont vampirisés
 
 **Note de la cellule « Effets secondaires » du sort « Célérité »** : Un boss qui a naturellement 2 tours, n''aura qu''un seul tour avec deux actions.
@@ -18938,7 +18938,7 @@ Associée à la prudence, une émotion liée à la clairvoyance et à la parano�
 
 ## Description physique
 
-Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des mèches mauves, les yeux violets lors d''une utilisation de sort. Certains possèdent des bracelets faits d''ombre violettes, d''autres possèdent des cornes de Chakra couleur mauve (plus clair pour les femelles et plus sombre pour les mâles) si la race possède des cornes physiques : c''est une aura ténébreuse violette qui les entoure ou alors une aura sombre émane de leur main et pied.
+Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des mèches mauves, les yeux violets lors d''une utilisation de sort. Certains possèdent des bracelets faits d''ombre violettes, d''autres possèdent des cornes de {{chakra|Chakra}} couleur mauve (plus clair pour les femelles et plus sombre pour les mâles) si la race possède des cornes physiques : c''est une aura ténébreuse violette qui les entoure ou alors une aura sombre émane de leur main et pied.
 
 ## Données
 
@@ -19244,7 +19244,7 @@ Ne marche pas sur les effets magie niveau 3 ou plus
 
 **Note de la cellule « Effets secondaires » du sort « Saignée forcée »** : Saignement particulier = Saignement de stade 1 qui ne se soigne pas et qui se cumule pas avec le Saignement classique. N''augmente pas en intensité mais redémarre le nombre si répété.
 
-**Note de la cellule « Effets secondaires » du sort « Morsure aspirante »** : Ne marche pas si c''est la barrière qui encaisse le coup
+**Remarque du sort « Morsure aspirante »** : Ne marche pas si c''est la {{barriere|barrière}} qui encaisse le coup
 
 **Note de la cellule « Effets secondaires » du sort « Coagulation »** : Le mur est fixé au sol.
 
@@ -19475,9 +19475,9 @@ Magie 5 = TG
 
 **Commentaire résolu de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi donc les attaques et sorts ne fonctionnent pas, SEULES les armes spectrales fonctionnent dans cet état.
 
-**Note de la cellule « Effets secondaires » du sort « Toucher du Vide »**
+**Remarque du sort « Toucher du Vide »**
 
-Si c''est la barrière, la barrière est vampirisée.  
+Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
 Si c''est les points de vie, c''est les points de vie qui sont vampirisés
 
 **Note de la cellule « Effets secondaires » du sort « Aléa négatif »**
@@ -19769,7 +19769,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Bonus :** +2% Distinction, +2% Vigueur
 
-**Artisanat possible :** Fabriquer de l’alcool, ce dernier peut redonner 5 chakra si consommé \[VOLONTÉ + PERCEPTION\]
+**Artisanat possible :** Fabriquer de l’alcool, ce dernier peut redonner 5 {{chakra|chakra}} si consommé \[VOLONTÉ + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Tonnelet en bois
 
@@ -20199,7 +20199,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Bonus :** +2% Distinction, +2% Diplomatie
 
-**Artisanat possible :** Fabriquer des douceurs, ces dernières peuvent redonner 5 barrière si consommées \[INTELLIGENCE + PERCEPTION\]
+**Artisanat possible :** Fabriquer des douceurs, ces dernières peuvent redonner 5 {{barriere|barrière}} si consommées \[INTELLIGENCE + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Rien
 
@@ -20406,7 +20406,7 @@ Culture : Colombie
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -20443,7 +20443,7 @@ Nombre : 3.
 
 ## Capacité Mode Hyper
 
-**Toile suprême** : Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière à la cible | Nécromancie= Inflige Poison 1 automatiquement | Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour
+**Toile suprême** : Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 {{barriere|barrière}} à la cible | Nécromancie= Inflige Poison 1 automatiquement | Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour
 
 ## Sous-races et origines
 
@@ -20508,8 +20508,8 @@ Cette page suit l''onglet « Anansi » du Google Sheet « Les races », qui prim
 
 | Élément | Onglet « Anansi » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
-| Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Toile suprême<br>Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière à la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour | Les attaques vont obtenir une effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière a la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible toucher pour le prochaine tour. |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Toile suprême<br>Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 {{barriere\|barrière}} à la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour | Les attaques vont obtenir une effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière a la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible toucher pour le prochaine tour. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/drakos', 'races', 'drakos', 'Drakos', 'drakos', 'L''union de l''humain et du dragon', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'L''union de l''humain et du dragon
 
@@ -20567,7 +20567,7 @@ Culture : Variable selon la zone de départ
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -20837,7 +20837,7 @@ Cette page suit l''onglet « Drakos » du Google Sheet « Les races », qui prim
 | --- | --- | --- |
 | Santé de départ<br>(fiche : colonne « Santé ») | 13 | 10.0 |
 | Chakra de départ<br>(fiche : colonne « Chakra départ ») | 10 | 13.0 |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Souffle de l''aîné<br>(Action) Permet une attaque de souffle de l''élément de la magie innée, inflige 3d6/NPM dégâts et possède une portée de 4. Elle ne bénéficie pas des boosts de dégâts donnés par le mode hyper ou autre (mais est influencée par les postures). Demande un jet qui est choisi entre toutes les compétences d''attaques disponibles. | Les écailles absorbe les dégâts subits du même élément que la magie inné et les convertis en Barrière. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l''onglet : « la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial » | Peut planer avec ses ailes, la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial. |
@@ -20896,7 +20896,7 @@ Les Drassah''thac possèdent 5 variantes de leur race :
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -20934,7 +20934,7 @@ Nombre : 5.
 
 **Don**
 
-- +1 santé, +1 chakra
+- +1 santé, +1 {{chakra|chakra}}
 - Les contrôles mentaux ont deux fois moins d''effets, durent deux fois moins longtemps.
 - 1 cran de résistance au gel et à la brûlure.
 
@@ -20946,7 +20946,7 @@ Nombre : 5.
 
 **Don**
 
-- +1 santé, +1 chakra
+- +1 santé, +1 {{chakra|chakra}}
 - Les contrôles mentaux ont deux fois moins d''effets, durent deux fois moins longtemps.
 - +1 vitesse.
 
@@ -20958,7 +20958,7 @@ Nombre : 5.
 
 **Don**
 
-- +1 santé, +1 chakra
+- +1 santé, +1 {{chakra|chakra}}
 - Les contrôles mentaux ont deux fois moins d''effets, durent deux fois moins longtemps.
 - +5% Diplomatie et Manipulation en acquis.
 
@@ -21066,7 +21066,7 @@ Cette page suit l''onglet « Drassah''thac » du Google Sheet « Les races », q
 
 | Élément | Onglet « Drassah''thac » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Avantage(s) : Accès à toutes les magies | 14 sur 15 (à 0 dans la matrice : Potentiel Illimité) |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Don de l''ethnie « Drassah''thac Ouest »<br>(fiche : sous-race « Drassah''thac Ouest », colonne « Descriptif ») | \- +2 santé.<br>\- Les contrôles mentaux ont deux fois moins d''effets, durent deux fois moins longtemps.<br>\- +3 AP. | \- +2 santé.<br>\- Les contrôles mentaux ont deux fois moins d''effets, durent deux fois moins longtemps.<br>\- +3 AP |
@@ -21079,7 +21079,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Les descendants les plus proches des Elfes Dorés, ce sont les êtres qui sont le plus reliés à la magie.
 
-Il s''agit d''humanoïdes qui ont un excellent taux de Chakra et font partie des meilleurs mages de Maverick, au détriment de la force physique.
+Il s''agit d''humanoïdes qui ont un excellent taux de {{chakra|Chakra}} et font partie des meilleurs mages de Maverick, au détriment de la force physique.
 
 Cette race est apparue pour la première fois en l''an -100, après un "accident".
 
@@ -21123,7 +21123,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21136,7 +21136,7 @@ Nombre : 3.
 **Don**
 
 - +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux.
-- +3 Barrière.
+- +3 {{barriere|Barrière}}.
 
 **Fiche de personnage V15.2.2** : sous-race « Elfe Argenté Suprémaciste » (voir « Sous-races et origines »).
 
@@ -21154,7 +21154,7 @@ Nombre : 3.
 **Don**
 
 - +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux.
-- +3 Chakra.
+- +3 {{chakra|Chakra}}.
 
 **Fiche de personnage V15.2.2** : sous-race « Elfe Argenté Autre » (voir « Sous-races et origines »).
 
@@ -21231,7 +21231,7 @@ Cette page suit l''onglet « Elfe Argenté » du Google Sheet « Les races », q
 
 | Élément | Onglet « Elfe Argenté » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Sang argenté<br>Tous les sortilèges d''attaques sont imparables. | Toutes les sortilèges d''attaques sont imparable. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/elfe-dore', 'races', 'elfe-dore', 'Elfe doré', 'elfe-dore', 'Une race éteinte (race à conditions)', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Une race éteinte (race à conditions)
@@ -21278,7 +21278,7 @@ Culture : Grèce antique
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21326,7 +21326,7 @@ Cette page suit l''onglet « Elfe Doré » du Google Sheet « Les races », qui 
 
 | Élément | Onglet « Elfe Doré » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/elfe-forestier', 'races', 'elfe-forestier', 'Elfe forestier', 'elfe-forestier', 'Les elfes des arbres, agiles et rapides', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Les elfes des arbres, agiles et rapides
 
@@ -21388,7 +21388,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21470,7 +21470,7 @@ Cette page suit l''onglet « Elfe forestier » du Google Sheet « Les races », 
 
 | Élément | Onglet « Elfe forestier » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 
 Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l''onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.
@@ -21529,7 +21529,7 @@ Culture : Rome antique
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21611,7 +21611,7 @@ Cette page suit l''onglet « Elfe Noir » du Google Sheet « Les races », qui p
 
 | Élément | Onglet « Elfe Noir » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Sang du condamné<br>Permet de synthétiser un poison unique sur l''arme principale, inflige "poison 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tous les débuts de tour pour ne pas encaisser les dégâts. | Permet de synthétiser un poison unique sur l''arme principale, inflige "poison 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tout les début de tour pour ne pas encaisser les dégâts. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Don de l''ethnie « Elfe Charbon »<br>(fiche : sous-race « Elfe Noir Charbon », colonne « Descriptif ») | \- N''est pas forcé d''avoir la corruption en innée et peut avoir une autre magie avec.<br>\- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies) | \- Peut avoir une magie acquise avec la magie de la Corruption.<br>\- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies) |
@@ -21682,7 +21682,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21788,7 +21788,7 @@ Cette page suit l''onglet « Farfadet » du Google Sheet « Les races », qui pr
 
 | Élément | Onglet « Farfadet » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/felfe', 'races', 'felfe', 'Felfe', 'felfe', 'Une race hybride entre elfe et farfadet', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Une race hybride entre elfe et farfadet
 
@@ -21844,7 +21844,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -21940,7 +21940,7 @@ Cette page suit l''onglet « Felfe » du Google Sheet « Les races », qui prime
 
 | Élément | Onglet « Felfe » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Don de l''ethnie « Felfe Noir »<br>(fiche : sous-race « Felfe Noir », colonne « Descriptif ») | \- Magie, Concentration, Survie = 5% d''acquis.<br>\- N''est pas forcé d''avoir la corruption en innée et peut avoir une autre magie avec. | \- Magie, Concentration, Survie = 5% d''acquis.<br>\- Peut avoir une magie acquise en plus de la Corruption en innée. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/fenrir', 'races', 'fenrir', 'Fenrir', 'fenrir', 'Les semi-loups, bons partout', '{"magies_innees": ["Glace", "Foudre", "Ombre"]}', 'Les semi-loups, bons partout
@@ -22007,7 +22007,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22113,7 +22113,7 @@ Cette page suit l''onglet « Fenrir » du Google Sheet « Les races », qui prim
 
 | Élément | Onglet « Fenrir » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/goleois', 'races', 'goleois', 'Goleois', 'goleois', 'Les semi-poulets, LA FRAAAAAAAANCE !!!', '{"magies_innees": ["Sang", "Glace", "Lumière"]}', 'Les semi-poulets, LA FRAAAAAAAANCE !!!
 
@@ -22173,7 +22173,7 @@ Culture : France
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22279,7 +22279,7 @@ Cette page suit l''onglet « Goleois » du Google Sheet « Les races », qui pri
 
 | Élément | Onglet « Goleois » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Digne chef<br>Augmente les dégâts de tous les alliés de 5, le temps du mode hyper. | Augmente les dégâts de tous les alliés de 5. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/hujin', 'races', 'hujin', 'Hujin', 'hujin', 'Le fruit de deux mondes différents mais similaires', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Le fruit de deux mondes différents mais similaires
@@ -22326,7 +22326,7 @@ Culture : Japon féodale/Humaine
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22372,7 +22372,7 @@ Cette page suit l''onglet « Hujin » du Google Sheet « Les races », qui prime
 
 | Élément | Onglet « Hujin » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Gomme à mâcher<br>Diminue d''un cran les dés des attaques physiques ou magiques subies | Divise les dégâts physiques et magiques reçu par 2. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 
@@ -22428,7 +22428,7 @@ Culture : Variable selon la zone de départ
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22548,7 +22548,7 @@ Cette page suit l''onglet « Humain » du Google Sheet « Les races », qui prim
 
 | Élément | Onglet « Humain » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 
 Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l''onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.
@@ -22609,7 +22609,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22715,7 +22715,7 @@ Cette page suit l''onglet « Jackalope » du Google Sheet « Les races », qui p
 
 | Élément | Onglet « Jackalope » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Super Vitesse<br>+3 Vitesse | Les terrains, météos ou effets qui retire de la Vitesse et/ou de l''Initiative ne fonctionne pas sur lui. |
 | Don de l''ethnie « Foudre en innée »<br>(fiche : sous-race « Jackalope Foudre », colonne « Descriptif ») | \- Permet de faire des grands sauts de 4m de haut (+2 au niveau 10)<br>\- 1 cran de résistance en plus à la magie innée et son altération d''état. | \- Permet de faire des grands sauts de 4m de haut (+2 au niveau 10)<br>\- 1 cran de résistance en plus à la magie innée et son altération d''état." |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -22780,7 +22780,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22886,7 +22886,7 @@ Cette page suit l''onglet « Kitsune » du Google Sheet « Les races », qui pri
 
 | Élément | Onglet « Kitsune » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/lamia', 'races', 'lamia', 'Lamia', 'lamia', 'Les semi-serpents, une race exclusivement femelle', '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Les semi-serpents, une race exclusivement femelle
 
@@ -22946,7 +22946,7 @@ Culture : Aztèque
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -22994,7 +22994,7 @@ Cette page suit l''onglet « Lamia » du Google Sheet « Les races », qui prime
 
 | Élément | Onglet « Lamia » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Jet de Venin<br>(Action) Permet de cracher un venin à 3PO qui est capable d''empoisonné 2 et de paralysé 2 pendant 3 tours, oblige 2 jets de vigueur pour résister aux deux effets. | Permet de cracher un venin à 3PO qui est capable d''empoisonné 2 et de paralysé 2 pendant 3 tours, oblige 2 jet de vigueur pour résister au deux effets. |
 | Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Inconvénient(s) : Une seule magie autorisé | 13 sur 15 (à 0 dans la matrice : Potentiel Illimité, Corruption) |
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l''onglet : « Taux de PV élevé » | Taux de PV élevé, Vision Thermique, Peut porter une armure légère même si la classe l''interdit, Sang Froid, Une seule magie autorisé. |
@@ -23057,7 +23057,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -23103,7 +23103,7 @@ Cette page suit l''onglet « Majin » du Google Sheet « Les races », qui prime
 
 | Élément | Onglet « Majin » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Restriction : Volonté<br>(fiche : colonnes « \< ou > » et « Restrictions Volonté » de « Race ») | Inconvénient(s) : La Volonté a un maximum de 3 | \> 2.0 |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Avantage(s) : accès à toutes les magies | 14 sur 15 (à 0 dans la matrice : Potentiel Illimité) |
@@ -23160,9 +23160,9 @@ Culture : Mongole
 
 ## Avantage(s) et inconvénient(s)
 
-**Avantage(s)** : Barrière bonus, Classe possible : Marcass.
+**Avantage(s)** : {{barriere|Barrière}} bonus, Classe possible : Marcass.
 
-**Inconvénient(s)** : Taux de Chakra bas, magie Terre, Feu ou Nécromancie en innée, la Force a un minimum de 2.
+**Inconvénient(s)** : Taux de {{chakra|Chakra}} bas, magie Terre, Feu ou Nécromancie en innée, la Force a un minimum de 2.
 
 ## Restrictions
 
@@ -23174,7 +23174,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -23280,7 +23280,7 @@ Cette page suit l''onglet « Marcass » du Google Sheet « Les races », qui pri
 
 | Élément | Onglet « Marcass » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Corps isolant<br>Les AP et AM naturels s’ajoutent à toute réduction de dégâts, quel que soit le type d’attaque. | Les AP et AM réduit les dégâts infligés par les altérations d''états. |
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l''onglet : « Taux de PV élevé » | Taux de PV élevé, Barrière bonus,Taux de Chakra bas. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -23342,7 +23342,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -23454,7 +23454,7 @@ Cette page suit l''onglet « Médusain » du Google Sheet « Les races », qui p
 
 | Élément | Onglet « Médusain » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/minotaure', 'races', 'minotaure', 'Minotaure', 'minotaure', 'Les semi-boeufs, une race issue de l''alchimie mais enfin libre', '{"magies_innees": ["Sang", "Terre", "Ombre"]}', 'Les semi-boeufs, une race issue de l''alchimie mais enfin libre
 
@@ -23512,7 +23512,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -23618,7 +23618,7 @@ Cette page suit l''onglet « Minotaure » du Google Sheet « Les races », qui p
 
 | Élément | Onglet « Minotaure » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Mégacorne<br>Les coups avec les cornes ou sabots infligent 20% de la santé actuelle à la cible (une seule fois par mode hyper). | Les coups avec les cornes ou sabots inflige 20% des PV actuelle à la cible (une seule fois par mode hyper). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/mort-vivant', 'races', 'mort-vivant', 'Mort-vivant', 'mort-vivant', 'Un être encore avec sa tête relevé de la tombe par la déesse de la mort', '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Un être encore avec sa tête relevé de la tombe par la déesse de la mort
@@ -23667,7 +23667,7 @@ Culture : Variable selon la race quand il était vivant
 
 ## Avantage(s) et inconvénient(s)
 
-**Avantage(s)** : Accès à toutes les classes, accès à toutes les magies, un sommeil complet régénère complètement la santé en plus de la barrière.
+**Avantage(s)** : Accès à toutes les classes, accès à toutes les magies, un sommeil complet régénère complètement la santé en plus de la {{barriere|barrière}}.
 
 **Inconvénient(s)** : La Volonté est obligatoirement à 4, le Social est obligatoirement à 1, les Soins de la Lumière infligent des dégâts, doit énormément manger (3 fois plus qu''un vivant) , les fioles rouges, mauves et oranges infligent des dégâts.
 
@@ -23681,7 +23681,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -23936,7 +23936,7 @@ Cette page suit l''onglet « Mort-vivant » du Google Sheet « Les races », qui
 
 | Élément | Onglet « Mort-vivant » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Super santé<br>Régénère 20% de santé au début de son tour. | Régénère 20 Santé par tour. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Avantage(s) : accès à toutes les magies | 14 sur 15 (à 0 dans la matrice : Potentiel Illimité) |
@@ -23950,7 +23950,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Une race humanoïde dont la particularité est d''être petite en taille par rapport aux Humains ou Elfes Forestiers.
 
-Ce sont d''excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne en dépit d''un capital de chakra bien plus faible et d''une limitation des magies qui leur sont possibles d''avoir de manière innée.
+Ce sont d''excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne en dépit d''un capital de {{chakra|chakra}} bien plus faible et d''une limitation des magies qui leur sont possibles d''avoir de manière innée.
 
 Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorés.
 
@@ -23998,7 +23998,7 @@ Culture : Allemagne
 
 ## Don de base
 
-Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24094,7 +24094,7 @@ Cette page suit l''onglet « Nain » du Google Sheet « Les races », qui prime 
 
 | Élément | Onglet « Nain » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Magies innées<br>(fiche : matrice « Accessibilité Magie ») | Potentiel Illimité, Arcane, Feu, Terre, Foudre (5 sur 15) | Potentiel Illimité, Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre (15 sur 15) |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 
@@ -24150,7 +24150,7 @@ Culture : Espagne
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24256,7 +24256,7 @@ Cette page suit l''onglet « Namazus » du Google Sheet « Les races », qui pri
 
 | Élément | Onglet « Namazus » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Saignement de la mer<br>La prochaine attaque avec une arme inflige "saignement 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tous les débuts de tour pour ne pas encaisser les dégâts. | Double les AP donné par l''armure naturelle (+6 AP au lieu de +3). |
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l''onglet : « Mal de l''air » | Mal de l''air |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -24306,7 +24306,7 @@ Culture : Angleterre
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24412,7 +24412,7 @@ Cette page suit l''onglet « Olwman » du Google Sheet « Les races », qui prim
 
 | Élément | Onglet « Olwman » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Déplacement fluide<br>Peut se déplacer gratuitement de 2 cases et ce n''importe quand durant le tour. (1 fois par tour) | +3 en vitesse |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/orios', 'races', 'orios', 'Orios', 'orios', 'Les semi-ours, la force à l''état pur', '{"magies_innees": ["Sang", "Eau", "Terre"]}', 'Les semi-ours, la force à l''état pur
@@ -24479,7 +24479,7 @@ Valeurs de la fiche de personnage V15.2.2. Chaque valeur est précédée de l''o
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24585,7 +24585,7 @@ Cette page suit l''onglet « Orios » du Google Sheet « Les races », qui prime
 
 | Élément | Onglet « Orios » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/rokh', 'races', 'rokh', 'Rokh', 'rokh', 'Les semi-aigles, l''autre race capable de voler', '{"magies_innees": ["Vent", "Foudre", "Lumière"]}', 'Les semi-aigles, l''autre race capable de voler
 
@@ -24641,7 +24641,7 @@ Culture : Amérindien
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24747,7 +24747,7 @@ Cette page suit l''onglet « Rokh » du Google Sheet « Les races », qui prime 
 
 | Élément | Onglet « Rokh » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Colère du ciel<br>Chaque attaque physique ou magique se suit d''un appel d''une \[Élément Innée\] blanche \[dégâts non élémentaires\] qui inflige +1dx\* de dégâts en plus. \*le dégât est calqué sur le dégâts de l''arme ou du sort utilisé | Chaque attaque physique ou magique se suit d''un appel d''une \[Element Innée\] blanche \[dégâts non élémentaire\] qui inflige +1dx\* de dégâts en plus. \*le dégât est calqué sur le dégâts de l''arme ou du sort utilisé. |
 | Don de l''ethnie « Foudre en innée »<br>(fiche : sous-race « Rokh Foudre », colonne « Descriptif ») | \- Négociation, Diplomatie et Réflexe = 5% d''acquis<br>\- 1 cran de résistance en plus à la magie innée et son altération d''état. | \- Négotiation, Diplomatie et Réflexe = 5% d''acquis<br>\- 1 cran de résistance en plus à la magie innée et son altération d''état. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -24799,7 +24799,7 @@ Culture : Italie
 
 ## Don de base
 
-Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).
+Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).
 
 ## Ethnies et dons raciaux
 
@@ -24905,7 +24905,7 @@ Cette page suit l''onglet « Satyre » du Google Sheet « Les races », qui prim
 
 | Élément | Onglet « Satyre » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
-| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
+| Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Laine entravante<br>Impose un malus de 10% (augmente de 5% au niveau 10 global) à tous les jets des ennemis dans un rayon de 5 cases ou moins. | La cible lance un d4, 1 = État \[Étourdi\], 2 = État \[Poison stade 2\], 3 = État \[Sommeil\], 4 = État \[Couardise\] |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/accessoires', 'ressources', 'accessoires', 'Accessoires', 'accessoires', 'Les accessoires vierges de tout effet ont un coût de 100 Ro et leur effet est déterminé quand le porteur PORTE l''accessoire en question, bien entendu il y a une probabilité que l''accessoire aléatoire devienne moins cher.', NULL, 'Les accessoires vierges de tout effet ont un coût de 100 Ro et leur effet est déterminé quand le porteur PORTE l''accessoire en question, bien entendu il y a une probabilité que l''accessoire aléatoire devienne moins cher.
@@ -25410,12 +25410,12 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Breuvage immonde |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 6 Ro | Novice | - Redonne 15 chakra<br>- 1 croix à la volonté pendant 2 tours |
+| 6 Ro | Novice | - Redonne 15 {{chakra\|chakra}}<br>- 1 croix à la volonté pendant 2 tours |
 
 | Breuvage amer |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 20 Ro | Apprenti | - Redonne 35 chakra<br>- 1 croix à la volonté pendant 2 tours |
+| 20 Ro | Apprenti | - Redonne 35 {{chakra\|chakra}}<br>- 1 croix à la volonté pendant 2 tours |
 
 ## Bloc
 
@@ -25429,12 +25429,12 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Bloc dégoûtant |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 6 Ro | Novice | - Redonne 15 barrière<br>- 1 croix au social pendant 2 tours |
+| 6 Ro | Novice | - Redonne 15 {{barriere\|barrière}}<br>- 1 croix au social pendant 2 tours |
 
 | Bloc étrange |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 20 Ro | Apprenti | - Redonne 35 barrière<br>- 1 croix au social pendant 2 tours |
+| 20 Ro | Apprenti | - Redonne 35 {{barriere\|barrière}}<br>- 1 croix au social pendant 2 tours |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/armes', 'ressources', 'armes', 'Armes', 'armes', 'Toutes les armes ont de base 2 crans de solidité,  les armes de corps à corps non spécifiées n''ont que 1 de portée', NULL, 'Toutes les armes ont de base 2 crans de solidité,  les armes de corps à corps non spécifiées n''ont que 1 de portée
 
@@ -25493,12 +25493,12 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |
 | Bronze | 850 RF / 85 RO | Dégâts +5 pour l''arme<br>+1 cran de solidité |
 | Os | 800 RF / 80 RO | Dégâts +6 pour l''arme |
-| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la barrière |
+| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la {{barriere\|barrière}} |
 | Or | 100 RO | Dégâts +8 pour l''arme<br>+1d de dégâts contre les démons |
 | Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Touche l''immatériel |
-| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe barrière |
+| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe {{barriere\|barrière}} |
 | Titane | 200 RO | Dégâts +9 pour l''arme<br>+1 cran de solidité |
-| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse barrière |
+| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse {{barriere\|barrière}} |
 
 ## AMÉLIORATION
 
@@ -25664,7 +25664,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Louche | 8 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, -1 cran de solidité<br>C''est prêt ! : si un ennemi est mis hors combat par cette arme, les alliés ont un bonus de +2% à la RC pendant 3 tours. | Outil du cuisinier, elle peut servir de bâton de combat en cas de besoin mais reste fragile. |
 | Pelle | 8 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, -1 cran de solidité, 5% de chance d''infliger étourdi | Arme improvisée et peu robuste, la Pelle sert également de bâton de combat. Bien qu''elle soit fragile, elle offre une petite chance d''étourdir la cible avec un coup bien placé. |
 | Bannière de combat<br>(deux mains) | 45 Ro | Arme d''Hast/Bâton<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, +2 dégâts, 3 de Social minimum<br>Tenez bon ! : sur un jet de social réussi et un bon discours = +5% de réussite pour Esquive/Parade/Vigueur/Fermeté aux alliés pendant 3 tours (action 1 fois/combat) | La bannière est une longue hampe portant les couleurs de son porteur ou celles d''une organisation importante. Symbole de discipline et de cohésion, elle renforce l''équipe dans sa résilience. |
-| Crosse d''argent | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Chakra pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple de l''Arcane | Arme régulière du Temple de l''Arcane, cette crosse assez puissante permet d''exploiter son chakra pour augmenter les chances de réussite. |
+| Crosse d''argent | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 {{chakra\|Chakra}} pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple de l''Arcane | Arme régulière du Temple de l''Arcane, cette crosse assez puissante permet d''exploiter son {{chakra\|chakra}} pour augmenter les chances de réussite. |
 | Croc d''Obsidienne | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Corruption pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple Noir | Arme régulière du Temple noir, ce bâton qui a la forme d''un croc permet de sacrifier de la corruption pour augmenter les chances de réussite. |
 
 ## ARME DE JET - D6 \[Un matériau permet d''en faire 10 sauf pour la fronde qui elle est unique\]
@@ -26211,7 +26211,7 @@ Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton 
 | Magie | Gemme précieuse : Matière | Gemme précieuse : Description | Gemme précieuse : Prix (normal) | Gemme précieuse : Prix (Raffiné) | Gemme précieuse : Prix (Parfait) | Bois : Matière | Bois : Description | Bois : Prix |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Sang | Grenat | Une pierre rouge marron comme le sang. | 4 000 RF / 40 RO | 90 RO | 190 RO | Padouk | Cet arbre unique au tronc rouge pousse pas loin des champs de batailles, là où le sang a envahi le sol. | 2 400 RF / 24 RO |
-| Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bouleau pur | Ce bel arbre au tronc blanc est un arbre qui attire le chakra à l''état pur, il y a souvent des brumes de chakra qui se forment autour d''eux. | 1 200 RF / 12 RO |
+| Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bouleau pur | Ce bel arbre au tronc blanc est un arbre qui attire le {{chakra\|chakra}} à l''état pur, il y a souvent des brumes de {{chakra\|chakra}} qui se forment autour d''eux. | 1 200 RF / 12 RO |
 | Corruption | Onyx | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 100 RO | 210 RO | 430 RO | Bouleau impur | La version corrompue du bouleau, ce bouleau respire la corruption et est capable de la transmettre à tout créatures assez folle pour s''approcher. | 6 000 RF / 60 RO |
 | Espace/Temps | Diamant rose | Un diamant parfaitement taillé couleur rose, la gemme du temps et de l''espace. | 7 500 RF / 75 RO | 160 RO | 330 RO | Chêne | C''est un magnifique arbre très noble qui est capable de vivre très longtemps s''il est dans d''excellentes conditions, il est à l''épreuve du temps et de l''espace. | 4 400 RF / 44 RO |
 | Vide | Gypse | C''est un cristal parfaitement transparent sans aucune impureté. | 3 500 RF / 35 RO | 80 RO | 170 RO | Fungus Fantôme | C''est un champignon qui parasite les autres arbres, ainsi imprégnant l''arbre d''une sorte d''anti-magie qui s''approche de la magie du vide. | 2 000 RF / 20 RO |
@@ -26556,7 +26556,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Fiole d''huile noire | 5 RO | Flacon contenant une huile épaisse brûlant plus fort et plus longtemps que l’huile classique. |
 | Grappin chaîne | 100 RO | Outil composé d’une chaîne permettant de s’accrocher ou d’atteindre des points en hauteur. Donne un avantage lors des jets d''escalades. Peut être utilisé en combat pour se déplacer en combat rapidement, est une action. |
 | Lanterne | 1 000 RF / 10 RO | Objet en métal conçu pour contenir et protéger une flamme lumineuse. |
-| Lanterne blanche | 50 RO | Lanterne magique produisant une flamme blanche au contact du chakra, consommant 2 points de chakra par heure. |
+| Lanterne blanche | 50 RO | Lanterne magique produisant une flamme blanche au contact du {{chakra\|chakra}}, consommant 2 points de {{chakra\|chakra}} par heure. |
 | Longue-vue | 40 RO | Instrument optique permettant de grossir un point éloigné ; fragile à l’usage. |
 | Menottes | 500 RF / 5 RO | Dispositif de contention relié par une chaîne entravant les mains ou les pieds. |
 | Menottes anti-magie | 32 RO | Menottes intégrant un fragment du Vide empêchant toute utilisation de magie si les deux mains sont entravées. |
@@ -26572,7 +26572,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Tome vierge | 1 000 RF / 10 RO | Livre de plusieurs pages vierges, utilisé pour consigner sorts ou connaissances. |
 | Tonneau | 1 000 RF / 10 RO | Contenant en bois cerclé de métal permettant de stocker des liquides. |
 | Torche | 20 RF | Bâton pouvant être enflammé pour produire de la lumière. |
-| Torche blanche | 25 RO | Torche magique produisant une flamme blanche au contact du chakra, consommant 2 points de chakra par heure. |
+| Torche blanche | 25 RO | Torche magique produisant une flamme blanche au contact du {{chakra\|chakra}}, consommant 2 points de {{chakra\|chakra}} par heure. |
 
 ## MATOS FABRICATION
 
@@ -26787,27 +26787,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole blanche |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 7 Ro | Novice | Régénère 5 chakra chaque tour. Dure 3 tours |
+| 7 Ro | Novice | Régénère 5 {{chakra\|chakra}} chaque tour. Dure 3 tours |
 
 | Fiole blanche moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 35 Ro | Apprenti | Régénère 10 chakra chaque tour. Dure 3 tours |
+| 35 Ro | Apprenti | Régénère 10 {{chakra\|chakra}} chaque tour. Dure 3 tours |
 
 | Super fiole blanche |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 75 Ro | Avancé | Régénère 20 chakra chaque tour. Dure 3 tours |
+| 75 Ro | Avancé | Régénère 20 {{chakra\|chakra}} chaque tour. Dure 3 tours |
 
 | Méga fiole blanche |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 170 Ro | Expert | Régénère 40 chakra chaque tour. Dure 3 tours |
+| 170 Ro | Expert | Régénère 40 {{chakra\|chakra}} chaque tour. Dure 3 tours |
 
 | Ultime fiole blanche |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 300 Ro | Maître | Augmente la chakra maximum de 10 (une fois par personnage) |
+| 300 Ro | Maître | Augmente la {{chakra\|chakra}} maximum de 10 (une fois par personnage) |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-bleue', 'ressources', 'fiole-bleue', 'Fiole bleue', 'fiole-bleue', 'Les Fioles Bleues sont des potions destinées à restaurer le chakra, l’énergie mystique utilisée par les mages et certains pratiquants des arts spirituels.', NULL, '*Les Fioles Bleues sont des potions destinées à restaurer le chakra, l’énergie mystique utilisée par les mages et certains pratiquants des arts spirituels. Elles sont particulièrement prisées lors des affrontements, car elles permettent de reconstituer rapidement une réserve de chakra épuisée. En dehors du combat, elles peuvent également être utilisées dans certains traitements longs visant à soigner des maladies ou des déséquilibres liés au chakra dans le corps.*
 
@@ -26821,27 +26821,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole bleue |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 2 Ro | Novice | Récupère 2d8 + 5 chakra |
+| 2 Ro | Novice | Récupère 2d8 + 5 {{chakra\|chakra}} |
 
 | Fiole bleue moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 10 Ro | Apprenti | Récupère 3d8 + 10 chakra |
+| 10 Ro | Apprenti | Récupère 3d8 + 10 {{chakra\|chakra}} |
 
 | Super fiole bleue |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Avancé | Récupère 4d8 + 20 chakra |
+| 25 Ro | Avancé | Récupère 4d8 + 20 {{chakra\|chakra}} |
 
 | Méga fiole bleue |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Expert | Récupère 5d8 + 40 chakra |
+| 60 Ro | Expert | Récupère 5d8 + 40 {{chakra\|chakra}} |
 
 | Ultime fiole bleue |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 100 Ro | Maître | Récupère 100% de chakra |
+| 100 Ro | Maître | Récupère 100% de {{chakra\|chakra}} |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-bordeaux', 'ressources', 'fiole-bordeaux', 'Fiole bordeaux', 'fiole-bordeaux', 'Les Fioles Bordeaux sont des potions conçues pour provoquer une régénération lente et continue de la santé au fil du temps.', NULL, '*Les Fioles Bordeaux sont des potions conçues pour provoquer une régénération lente et continue de la santé au fil du temps. Contrairement aux fioles de soin classiques qui agissent rapidement, elles diffusent leurs effets progressivement, permettant au corps de se réparer de manière plus stable et durable. Elles sont particulièrement utiles pour les soins prolongés, le traitement de blessures graves ou la convalescence après des combats éprouvants.*
 
@@ -26957,27 +26957,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole jaune |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 2 Ro | Novice | Récupère 2d8 + 5 barrière |
+| 2 Ro | Novice | Récupère 2d8 + 5 {{barriere\|barrière}} |
 
 | Fiole jaune moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 10 Ro | Apprenti | Récupère 3d8 + 10 barrière |
+| 10 Ro | Apprenti | Récupère 3d8 + 10 {{barriere\|barrière}} |
 
 | Super fiole jaune |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Avancé | Récupère 4d8 + 20 barrière |
+| 25 Ro | Avancé | Récupère 4d8 + 20 {{barriere\|barrière}} |
 
 | Méga fiole jaune |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Expert | Récupère 5d8 + 40 barrière |
+| 60 Ro | Expert | Récupère 5d8 + 40 {{barriere\|barrière}} |
 
 | Ultime fiole jaune |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 100 Ro | Maître | Récupère 100% de barrière |
+| 100 Ro | Maître | Récupère 100% de {{barriere\|barrière}} |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-mauve', 'ressources', 'fiole-mauve', 'Fiole mauve', 'fiole-mauve', 'Les Fioles Mauves sont des potions plus complexes capables de restaurer à la fois la santé physique et le chakra.', NULL, '*Les Fioles Mauves sont des potions plus complexes capables de restaurer à la fois la santé physique et le chakra. Leur fabrication demande un savoir-faire bien plus avancé que celui requis pour les fioles classiques. Pour cette raison, elles sont plus rares et possèdent une valeur élevée, particulièrement auprès des aventuriers qui doivent souvent gérer à la fois leurs blessures et l’épuisement de leur chakra.*
 
@@ -26991,27 +26991,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole mauve |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 5 Ro | Novice | Récupère 2d8 + 5 santé et chakra |
+| 5 Ro | Novice | Récupère 2d8 + 5 santé et {{chakra\|chakra}} |
 
 | Fiole mauve moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Apprenti | Récupère 3d8 + 10 santé et chakra |
+| 25 Ro | Apprenti | Récupère 3d8 + 10 santé et {{chakra\|chakra}} |
 
 | Super fiole mauve |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Avancé | Récupère 4d8 + 20 santé et chakra |
+| 60 Ro | Avancé | Récupère 4d8 + 20 santé et {{chakra\|chakra}} |
 
 | Méga fiole mauve |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 130 Ro | Expert | Récupère 5d8 + 40 santé et chakra |
+| 130 Ro | Expert | Récupère 5d8 + 40 santé et {{chakra\|chakra}} |
 
 | Ultime fiole mauve |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 250 Ro | Maître | Récupère 100% de santé et chakra |
+| 250 Ro | Maître | Récupère 100% de santé et {{chakra\|chakra}} |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-multicolore', 'ressources', 'fiole-multicolore', 'Fiole multicolore', 'fiole-multicolore', 'Les Fioles multicolores sont considérées comme les préparations alchimiques ultimes.', NULL, '*Les Fioles multicolores sont considérées comme les préparations alchimiques ultimes. Extrêmement rares, elles sont élaborées à partir de substances exceptionnelles, dont la précieuse chair de blob royale, un ingrédient que très peu d’alchimistes ont la chance de manipuler au cours de leur vie. Contrairement aux autres fioles qui restaurent un seul type d’énergie, cette potion possède la capacité unique de régénérer simultanément tous les attributs du buveur, qu’il s’agisse de la santé, du chakra, de la barrière ou d’autres réserves vitales. Pour cette raison, elle est souvent vue comme un trésor alchimique capable de renverser le cours d’une situation désespérée.*
 
@@ -27025,27 +27025,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 15 Ro | Novice | Redonne 2d8 + 5 santé, chakra et barrière<br>Redonne 2 de la 4ème barre<br>Soigne 2d8 corruption<br>Augmente l’AM et l’AP de base de 3 pendant 3 tours<br>Augmente l’initiative de 2 pendant 3 tours |
+| 15 Ro | Novice | Redonne 2d8 + 5 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 2 de la 4ème barre<br>Soigne 2d8 corruption<br>Augmente l’AM et l’AP de base de 3 pendant 3 tours<br>Augmente l’initiative de 2 pendant 3 tours |
 
 | Fiole multicolore moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 50 Ro | Apprenti | Redonne 3d8 + 10 santé, chakra et barrière<br>Redonne 4 de la 4ème barre<br>Soigne 3d8 + 5 corruption<br>Augmente l’AM et l’AP de base de 5 pendant 3 tours<br>Augmente l’initiative de 5 pendant 3 tours |
+| 50 Ro | Apprenti | Redonne 3d8 + 10 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 4 de la 4ème barre<br>Soigne 3d8 + 5 corruption<br>Augmente l’AM et l’AP de base de 5 pendant 3 tours<br>Augmente l’initiative de 5 pendant 3 tours |
 
 | Super fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 100 Ro | Avancé | Redonne 4d8 + 20 santé, chakra et barrière<br>Redonne 7 de la 4ème barre<br>Soigne 4d8 + 10 corruption<br>Augmente l’AM et l’AP de base de 7 pendant 3 tours<br>Augmente la vitesse de 1 pendant 3 tours |
+| 100 Ro | Avancé | Redonne 4d8 + 20 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 7 de la 4ème barre<br>Soigne 4d8 + 10 corruption<br>Augmente l’AM et l’AP de base de 7 pendant 3 tours<br>Augmente la vitesse de 1 pendant 3 tours |
 
 | Méga fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 300 Ro | Expert | Redonne 5d8 + 40 santé, chakra et barrière<br>Redonne 10 de la 4ème barre<br>Soigne 5d8 + 15 corruption<br>Augmente l’AM et l’AP de base de 10 pendant 3 tours<br>Augmente la vitesse de 1 et l’INI de 2 pendant 3 tours |
+| 300 Ro | Expert | Redonne 5d8 + 40 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 10 de la 4ème barre<br>Soigne 5d8 + 15 corruption<br>Augmente l’AM et l’AP de base de 10 pendant 3 tours<br>Augmente la vitesse de 1 et l’INI de 2 pendant 3 tours |
 
 | Ultime fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 1000 Ro | Maître | Redonne 100% santé, chakra et barrière<br>Redonne 100% de la 4ème barre<br>Soigne 100% corruption<br>Augmente l’AM et l’AP de base de 12 pendant 3 tours<br>Augmente la vitesse de 2 et l’INI de 5 pendant 3 tours |
+| 1000 Ro | Maître | Redonne 100% santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 100% de la 4ème barre<br>Soigne 100% corruption<br>Augmente l’AM et l’AP de base de 12 pendant 3 tours<br>Augmente la vitesse de 2 et l’INI de 5 pendant 3 tours |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-noire', 'ressources', 'fiole-noire', 'Fiole noire', 'fiole-noire', NULL, NULL, '| Recette |  |  |  |  |  |
 | :-: | :-: | :-: | :-: | :-: | :-: |
@@ -27089,27 +27089,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole orange |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 5 Ro | Novice | Récupère 2d8 + 5 santé et barrière |
+| 5 Ro | Novice | Récupère 2d8 + 5 santé et {{barriere\|barrière}} |
 
 | Fiole orange moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Apprenti | Récupère 3d8 + 10 santé et barrière |
+| 25 Ro | Apprenti | Récupère 3d8 + 10 santé et {{barriere\|barrière}} |
 
 | Super fiole orange |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Avancé | Récupère 4d8 + 20 santé et barrière |
+| 60 Ro | Avancé | Récupère 4d8 + 20 santé et {{barriere\|barrière}} |
 
 | Méga fiole orange |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 130 Ro | Expert | Récupère 5d8 + 40 santé et barrière |
+| 130 Ro | Expert | Récupère 5d8 + 40 santé et {{barriere\|barrière}} |
 
 | Ultime fiole orange |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 250 Ro | Maître | Récupère 100% de santé et barrière |
+| 250 Ro | Maître | Récupère 100% de santé et {{barriere\|barrière}} |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-rose', 'ressources', 'fiole-rose', 'Fiole rose', 'fiole-rose', 'Les Fioles Roses sont des potions rares liées à la stimulation des réflexes et de la rapidité du corps.', NULL, '*Les Fioles Roses sont des potions rares liées à la stimulation des réflexes et de la rapidité du corps. Selon leur puissance, elles peuvent améliorer l’initiative, augmenter [[La Vitesse et la Portée|la vitesse]] de déplacement ou même permettre au buveur d’agir 2 fois par tour. Très recherchées, elles sont souvent utilisées au moment critique d’un affrontement pour prendre l’avantage sur l’adversaire.*
 
@@ -27191,27 +27191,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole verte |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 5 Ro | Novice | Récupère 2d8 + 5 chakra et barrière |
+| 5 Ro | Novice | Récupère 2d8 + 5 {{chakra\|chakra}} et {{barriere\|barrière}} |
 
 | Fiole verte moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Apprenti | Récupère 3d8 + 10 chakra et barrière |
+| 25 Ro | Apprenti | Récupère 3d8 + 10 {{chakra\|chakra}} et {{barriere\|barrière}} |
 
 | Super fiole verte |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Avancé | Récupère 4d8 + 20 chakra et barrière |
+| 60 Ro | Avancé | Récupère 4d8 + 20 {{chakra\|chakra}} et {{barriere\|barrière}} |
 
 | Méga fiole verte |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 130 Ro | Expert | Récupère 5d8 + 40 chakra et barrière |
+| 130 Ro | Expert | Récupère 5d8 + 40 {{chakra\|chakra}} et {{barriere\|barrière}} |
 
 | Ultime fiole verte |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 250 Ro | Maître | Récupère 100% de chakra et barrière |
+| 250 Ro | Maître | Récupère 100% de {{chakra\|chakra}} et {{barriere\|barrière}} |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-verte-fonce', 'ressources', 'fiole-verte-fonce', 'Fiole verte foncée', 'fiole-verte-foncee', NULL, NULL, '| Recettes |  |  |  |  |  |
 | :-: | :-: | :-: | :-: | :-: | :-: |
