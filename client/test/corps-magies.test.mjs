@@ -17,6 +17,7 @@ import {
   resumeDeMagie, resumeDeMagieApres, SECTIONS,
 } from '../src/lib/corps-magies.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
+import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const tout = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -540,4 +541,15 @@ print(json.dumps(out, ensure_ascii=False))
     assert.equal(premierePhrase(t), a.phrase, `first_sentence ${JSON.stringify(t)}`);
     if (a.entry) assert.deepEqual(lignesDEntree('Note du sort « *X* »', t.replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/^[ \t]+|[ \t]+$/g, '')).join('\n').replace(/^\n+|\n+$/g, '').split('\n')), a.entry, `entry_lines ${JSON.stringify(t)}`);
   });
+});
+
+test('balise du glossaire : son séparateur reste « | » dans une ligne qui n’est pas une ligne de tableau (commentaire), « \\| » dans une case', () => {
+  const vocabulaire = [{ id: 'chakra', libelle: 'Chakra' }];
+  assert.equal(echapperLigne('20 {{chakra|chakra}} | a', true), '20 {{chakra|chakra}} \\| a');
+  const entree = lignesDEntree('Remarque du sort « X »', ['La surcharge coûte 20 {{chakra|chakra}}.']);
+  assert.deepEqual(entree, ['**Remarque du sort « X »** : La surcharge coûte 20 {{chakra|chakra}}.']);
+  assert.deepEqual(formesNonCanoniques(entree.join('\n'), vocabulaire, { markdown: true }), []);
+  const ligne = `| ${celluleDeTableau('Coûte 5 {{chakra|chakra}}')} |`;
+  assert.equal(ligne, '| Coûte 5 {{chakra\\|chakra}} |');
+  assert.deepEqual(formesNonCanoniques(ligne, vocabulaire, { markdown: true }), []);
 });

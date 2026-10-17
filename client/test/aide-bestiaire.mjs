@@ -1,5 +1,6 @@
 // Aide des tests du site construit qui lisent les capacités d'une carte du bestiaire (lib/monstre-rendu.mjs#htmlDeCapacite) : sur /bestiaire/
 // (bestiaire-html) et dans les infobulles des pages de magie (magies-html). Module sans test (n'est pas un *.test.mjs).
+import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 /** Les tuiles de capacités d'un morceau de HTML, dans l'ordre : [commune ?, nom], chacune avec son en-tête (pastilles, nom) puis son texte. */
 export const tuilesDeCapacites = (html) =>
@@ -14,9 +15,10 @@ const echapper = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ({ '&
  * dans le bandeau du haut juste en dessous de ses tags avant le premier séparateur […] déroulable, enroulée par défaut ») ; celle de l'espèce, puis celle de
  * la créature (décision R65 : « l'espèce en premier, l'individu dans un second temps (si présent, séparés par un retour à la ligne) ») — l'espèce : son
  * groupe s'il en a un (les Ottar, R64), sinon l'espèce du doc ; la créature : l'espèce du doc quand elle est d'un groupe, sinon la carte. `attributEd` :
- * celui de lib/edition-modele.mjs. Renvoie la liste des écarts (vide si tout va bien).
+ * celui de lib/edition-modele.mjs ; `vocabulaire` : les mots-clés du glossaire, dont le middleware rend les balises (lib/mots-cles-db.mjs#chargerVocabulaire).
+ * Renvoie la liste des écarts (vide si tout va bien).
  */
-export function ecartsDeLaDescription(carte, l, attributEd) {
+export function ecartsDeLaDescription(carte, l, attributEd, vocabulaire = []) {
   const ecarts = [];
   const tete = carte.slice(carte.indexOf('<header class="bcarte__tete">'), carte.indexOf('</header>'));
   const g = l.espece.groupe;
@@ -24,7 +26,7 @@ export function ecartsDeLaDescription(carte, l, attributEd) {
   const creature = g ? ['monstre_espece', l.espece.id, l.espece.description] : l.carte ? ['monstre', l.id, l.carte.description] : null;
   const vide = (t) => String(t ?? '').trim() === '';
   const champ = ([table, id]) => `data-ed-lecture="${echapper(attributEd(table, { id }, 'description'))}"`;
-  const paragraphe = (classe, d) => `<p class="texte ${classe}" data-ed-cadre="[data-ed-sur-demande]"${vide(d[2]) ? ' hidden' : ''}><span ${champ(d)} data-ed-sur-demande>${echapper(d[2])}</span></p>`;
+  const paragraphe = (classe, d) => `<p class="texte ${classe}" data-ed-cadre="[data-ed-sur-demande]"${vide(d[2]) ? ' hidden' : ''}><span ${champ(d)} data-ed-sur-demande>${htmlAvecMotsCles(echapper(d[2]), vocabulaire).html}</span></p>`;
   const toutVide = vide(espece[2]) && (!creature || vide(creature[2]));
   const attendu = `</p></div><details class="bcarte__description" data-ed-cadre="[data-ed-sur-demande]"${toutVide ? ' hidden' : ''}><summary>Description</summary>`
     + paragraphe('bcarte__desc-espece', espece) + (creature ? paragraphe('bcarte__desc-creature', creature) : '') + '</details><figure class="bcarte__portrait"';

@@ -50,18 +50,27 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
   const ligne = (rang, table, cle, operation, avant, apres) =>
     `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES ('lot-essai', ${rang}, '2026-10-11T20:00:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
+  // l'historique réel des autres pages (le site de dev en modifie : textes, balises du glossaire), puis celui de cette page, écrit par le test
+  const toutes = readFileSync(join(racine, 'data', 'rows', 'historique_modification.sql'), 'utf8').split('\n').filter((l) => l.startsWith('INSERT'));
+  const reel = toutes.filter((l) => !l.includes('"lore/les-divinites"'));
+  // les pages comptées comme modifiées par le site : celles de l'historique réel, plus celle-ci si elle n'y est pas
+  const nDuSite = (sortie) => Number(/\((\d+) modifiées depuis par le site de dev/.exec(sortie)?.[1] ?? 0);
+  const attendues = nDuSite(codexPy('--verifier').stdout) + (reel.length === toutes.length ? 1 : 0);
+  const corpsDImport = pagesDImport.find((p) => p.id === 'lore/les-divinites').corps_md;
   const ecrireHistorique = (corpsDImport) => {
     const chemin = join(tmp, 'historique.sql');
     writeFileSync(chemin, [
+      ...reel,
       ligne(1, 'page', { id: 'lore/les-divinites' }, 'modifier', { titre, corps_md: corpsDImport }, { titre: 'Les dieux', corps_md: 'Un texte réécrit sur le site.\n' }),
       ligne(2, 'alias', { page_id: 'lore/les-divinites', ordre: 9 }, 'inserer', null, { page_id: 'lore/les-divinites', ordre: 9, texte: titre, cle: 'x' }),
     ].join('\n'));
     return chemin;
   };
   // fidèle à l'import : conforme, et la page est comptée parmi celles du site
-  let r = codexPy('--verifier', '--out', tmp, '--historique', ecrireHistorique(corps));
+  let r = codexPy('--verifier', '--out', tmp, '--historique', ecrireHistorique(corpsDImport));
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stdout, /116 pages du Codex conformes au document \(1 modifiées depuis par le site de dev/);
+  assert.match(r.stdout, /116 pages du Codex conformes au document \(\d+ modifiées depuis par le site de dev/);
+  assert.equal(nDuSite(r.stdout), attendues);
   // sans l'historique, la page diffère du document
   r = codexPy('--verifier', '--out', tmp, '--historique', join(tmp, 'absent.sql'));
   assert.equal(r.status, 1);
@@ -71,7 +80,7 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   assert.equal(r.status, 1);
   assert.match(r.stdout, /\(3\) page modifiée par le site de dev, différente du découpage dans son état d'import : lore\/les-divinites/);
   // une nouvelle écriture des pages ne touche pas celle que le site a modifiée
-  r = codexPy('--out', tmp, '--historique', ecrireHistorique(corps));
+  r = codexPy('--out', tmp, '--historique', ecrireHistorique(corpsDImport));
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /gardée telle que le site de dev l'a modifiée : lore\/les-divinites/);
   assert.equal(readFileSync(fichier, 'utf8'), modifiee);

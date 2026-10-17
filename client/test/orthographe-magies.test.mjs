@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = trouverRacine();
@@ -116,15 +117,17 @@ test('tables dérivées du sort : extraits d’état, bonus de maîtrise et type
   const col = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
   const ecarts = [];
   const sort = 's.type_brut, s.cout_brut, s.portee_brut, s.zone_brut, s.dsb_brut, s.effets, s.remarque';
+  // la case telle que les découpages la lisent : sans les balises du glossaire (lib/mots-cles-balises.mjs#texteSansBalises)
+  const caseDe = (r) => texteSansBalises(r[col[r.champ]] ?? '');
   for (const r of db.prepare(`SELECT e.sort_id, e.champ, e.extrait, e.forme_trouvee, ${sort} FROM sort_etat e JOIN sort s ON s.id = e.sort_id`).all()) {
-    if (!(r[col[r.champ]] ?? '').includes(r.extrait)) ecarts.push(`etat.extrait|${r.sort_id}`);
+    if (!caseDe(r).includes(r.extrait)) ecarts.push(`etat.extrait|${r.sort_id}`);
     else if (!r.extrait.toLowerCase().includes(r.forme_trouvee.toLowerCase())) ecarts.push(`etat.forme|${r.sort_id}`);
   }
   for (const r of db.prepare(`SELECT p.sort_id, p.champ, p.texte_brut, p.contexte, ${sort} FROM sort_bonus_maitrise p JOIN sort s ON s.id = p.sort_id`).all()) {
-    if (!(r[col[r.champ]] ?? '').includes(r.texte_brut) || !(r[col[r.champ]] ?? '').includes(r.contexte)) ecarts.push(`bonus.texte|${r.sort_id}`);
+    if (!caseDe(r).includes(r.texte_brut) || !caseDe(r).includes(r.contexte)) ecarts.push(`bonus.texte|${r.sort_id}`);
   }
   for (const r of db.prepare('SELECT t.sort_id, t.libelle, s.type_brut FROM sort_type t JOIN sort s ON s.id = t.sort_id').all()) {
-    if (!r.type_brut.includes(r.libelle)) ecarts.push(`type.libelle|${r.sort_id}`);
+    if (!texteSansBalises(r.type_brut).includes(r.libelle)) ecarts.push(`type.libelle|${r.sort_id}`);
   }
   assert.deepEqual([...new Set(ecarts)].filter((e) => !connus.has(e)), [], 'nouvel écart entre une table dérivée et le texte du sort');
 });

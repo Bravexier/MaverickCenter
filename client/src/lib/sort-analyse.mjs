@@ -256,7 +256,7 @@ const QUEUE_COMPOSEE = /[+–=,;%]|(?:^|\s)-|-(?:\s|\d|$)|(?:^|\s)(?:et|ou)(?:\s
  */
 export function analyserDegats(dsbBrut) {
   const illisible = { lisible: false, des: [], fixe: 0, pourcent: false, signe: 1, queue: null, moyenne: null };
-  const base = sansExpressionsNM(dsbBrut).replace(/\s+/g, ' ').trim();
+  const base = sansExpressionsNM(texteSansBalises(dsbBrut ?? '')).replace(/\s+/g, ' ').trim();
   const tete = /^([+\-–])?\s*/.exec(base);
   const signe = tete[1] === '-' || tete[1] === '–' ? -1 : 1;
   let reste = base.slice(tete[0].length);
@@ -298,7 +298,7 @@ export function analyserDegats(dsbBrut) {
  * @returns {{ tours: number } | null}
  */
 export function analyserDuree(texte) {
-  const base = sansExpressionsNM(texte).normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const base = sansExpressionsNM(texteSansBalises(texte ?? '')).normalize('NFD').replace(/\p{Diacritic}/gu, '');
   const durees = [...base.matchAll(/(?<![\p{L}\d])(?:dure|pendant)\s+(\d+)\s+tours?(?!\p{L})/giu)];
   return durees.length === 1 ? { tours: Number(durees[0][1]) } : null;
 }

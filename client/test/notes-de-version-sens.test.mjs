@@ -381,3 +381,13 @@ test('dons : un type réel inchangé est neutre ; chaque type comparé au suivan
     assert.equal(sens('capacite', 'type_brut', b, a), INVERSE[r.sens], `${dons[i].id} : ${a} ⇄ ${b}`);
   }
 });
+
+test('balises du glossaire : une case se lit sans elles (le texte affiché) ; une balise posée ne change pas le sens', () => {
+  assert.deepEqual(analyserDegats('2d6 + 3 {{barriere|Barrière}}'), analyserDegats('2d6 + 3 Barrière'));
+  assert.equal(analyserDegats('+5% de {{chakra|chakra}}').lisible, analyserDegats('+5% de chakra').lisible);
+  assert.deepEqual(analyserDuree('Régénère 5 {{chakra|chakra}}. Dure 3 tours.'), { tours: 3 });
+  assert.deepEqual(sensDuChangement('sort', 'dsb_brut', '+5% de chakra', '+5% de {{chakra|chakra}}'), { sens: 'neutre', parties: null });
+  assert.deepEqual(sensDuChangement('sort', 'effets', 'Vole 10 chakra.', 'Vole 10 {{chakra|chakra}}.'), { sens: 'neutre', parties: null });
+  assert.equal(sens('sort', 'dsb_brut', '2d6 + 3 {{barriere|Barrière}}', '3d6 + 3 {{barriere|Barrière}}'), 'amelioration');
+  assert.equal(sens('sort', 'effets', 'Dure 2 tours, vole du {{chakra|chakra}}.', 'Dure 3 tours, vole du {{chakra|chakra}}.'), 'amelioration');
+});

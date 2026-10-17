@@ -390,7 +390,8 @@ test('le portrait suit la tuile : la première carte d’une espèce prend le si
 test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs cartes, valeurs propres réglées, ajoutées et retirées d’une carte ; refus', () => {
   const html = (id) => appel('POST', '/api/edition/bestiaire/', { capacites: [id] }).corps.capacites[id];
   // une capacité à emplacement (« Minus », {10}) portée par plusieurs cartes, dont une à sa valeur propre
-  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description LIKE '%{%}%' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
+  // (un emplacement « {N} », jamais une balise du glossaire « {{…}} » : lib/monstre-champs.mjs#emplacements)
+  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description GLOB '*{[0-9]*}*' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
   assert.ok(gabarit, 'une capacité à emplacement');
   const porteurs = tous('SELECT * FROM monstre_capacite WHERE capacite_commune_id = ? ORDER BY monstre_id, rang', gabarit.id);
   const [p] = porteurs;

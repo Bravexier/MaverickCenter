@@ -16,6 +16,8 @@ import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
+import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'equipement', 'index.html');
@@ -27,6 +29,9 @@ const main = html.slice(html.indexOf('<section class="equipement-panneau is-acti
 const base = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
 const armes = present ? chargerArmes(base) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+// les balises du glossaire, rendues par le middleware (src/middleware.mjs) : en gras dans le texte, en texte simple dans un attribut
+const vocabulaire = present ? chargerVocabulaire(base) : [];
+const commeLaPage = (h) => htmlAvecMotsCles(h, vocabulaire).html;
 
 test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son panneau de règles replié et sans phrase au-dessus', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Armes');
@@ -63,7 +68,7 @@ test('effets supplémentaires sur une seconde ligne, sous l’arme (comme l’ef
     const fin = main.indexOf('</tr>', debut) + 5;
     const suite = main.slice(fin, main.indexOf('</tr>', fin) + 5);
     assert.ok(suite.startsWith(`<tr class="arme-suite" data-arme-suite="${echapper(a.id)}"><td class="arme-suite__marge"></td><td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${echapper(attributEd('arme', { id: a.id }, 'effet'))}" data-ed-rendu="arme-effets">`), a.id);
-    assert.ok(suite.includes(htmlDesEffets(a.effet)), `${a.id} : ses effets supplémentaires`);
+    assert.ok(suite.includes(commeLaPage(htmlDesEffets(a.effet))), `${a.id} : ses effets supplémentaires`);
     assert.ok(!main.slice(debut, fin).includes('class="arme__effets"'), `${a.id} : plus dans la ligne de l’arme`);
   }
 });
@@ -73,7 +78,7 @@ test('armes de départ en bleu avec l’infobulle « Arme de départ » ; descri
     const debut = main.indexOf(`id="${ancreDArme(a.id)}"`);
     const ligne = main.slice(main.lastIndexOf('<tr', debut), main.indexOf('</tr>', debut));
     assert.equal(ligne.includes('arme--depart') && ligne.includes('title="Arme de départ"'), a.depart_possible === 1, a.id);
-    if (a.description) assert.ok(ligne.includes(`title="${echapper(a.description)}"`), `${a.id} : description en infobulle`);
+    if (a.description) assert.ok(ligne.includes(`title="${echapper(texteSansBalises(a.description, vocabulaire))}"`), `${a.id} : description en infobulle`);
     assert.ok(ligne.includes(`data-ed="${echapper(attributEd('arme', { id: a.id }, 'effet'))}"`), `${a.id} : effet modifiable`);
     // la remarque (demande du propriétaire, décision R91) : modifiable dans sa colonne, l'étoile à côté du nom refaite depuis la ligne (en lecture)
     assert.ok(ligne.includes(`<td class="arme__remarque-texte ed-seul" data-ed="${echapper(attributEd('arme', { id: a.id }, 'remarque'))}">`), `${a.id} : remarque modifiable`);
@@ -144,7 +149,7 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
   assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
   // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets, en morceaux frères ; le mot « Dégâts » reste pour
   // les lecteurs d'écran (les effets se modifient sur la page Composants, R62 : le test lit ceux de la base)
-  for (const m of armes.materiaux) assert.ok(main.includes(RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)), `${m.nom} : ses effets`);
+  for (const m of armes.materiaux) assert.ok(main.includes(commeLaPage(RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut))), `${m.nom} : ses effets`);
   const avecBonus = armes.materiaux.map((m) => RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)).filter((h) => h.includes('materiau-effet__bonus'));
   assert.ok(avecBonus.length > 0);
   for (const h of avecBonus) assert.match(h, /^<span class="materiau-effet"[^>]*><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>[+−]\d+<\/span>(<span class="materiau-effet__(cran|secondaire)">[^<]+<\/span>)*<\/span>$/);

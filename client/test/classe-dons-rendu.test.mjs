@@ -17,6 +17,8 @@ import {
 import { chargerClasses } from '../src/lib/classes-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const C = 'classes/essai';
 const S1 = `${C}#specialite:lame`;
@@ -171,6 +173,9 @@ const fragment = (html) => (html ? normal(fromHtml(html, { fragment: true }).chi
 test('site construit : #dons et #specialites de chaque page de classe = le rendu pur de ses lignes', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const db = ouvrirBase({ sansExemples: false });
   const { classes, typesDon } = chargerClasses(db);
+  // le rendu pur, avec les balises du glossaire rendues comme le fait le middleware du site (src/middleware.mjs)
+  const vocabulaire = chargerVocabulaire(db);
+  const commeLaPage = (html) => fragment(htmlAvecMotsCles(html, vocabulaire).html);
   let comparees = 0;
   for (const classe of classes.values()) {
     const fichier = join(dist, classe.slug, 'index.html');
@@ -178,12 +183,12 @@ test('site construit : #dons et #specialites de chaque page de classe = le rendu
     const arbre = fromHtml(readFileSync(fichier, 'utf8'));
     const dons = trouverId(arbre, 'dons');
     const specialites = trouverId(arbre, 'specialites');
-    assert.equal(dons ? normal(dons) : null, fragment(htmlDesDons(classe, { typesDon, amMagique: classe.amMagique })), `${classe.id} : #dons`);
-    assert.equal(specialites ? normal(specialites) : null, fragment(htmlDesSpecialites(classe)), `${classe.id} : #specialites`);
+    assert.equal(dons ? normal(dons) : null, commeLaPage(htmlDesDons(classe, { typesDon, amMagique: classe.amMagique })), `${classe.id} : #dons`);
+    assert.equal(specialites ? normal(specialites) : null, commeLaPage(htmlDesSpecialites(classe)), `${classe.id} : #specialites`);
     // le repère « Classe magique », le lien « Spécialités » de la navigation et l'empreinte que l'éditeur compare (data-ed-structure)
     const repere = trouverId(arbre, 'repere-magique');
     const attendu = htmlDuRepereMagique(classe, { classeId: classe.id, amBase: classe.categorie?.amBase ?? null, amMagique: classe.amMagique, note: classe.categorie?.note ?? null });
-    assert.equal(repere ? normal(repere) : null, fragment(attendu), `${classe.id} : repère « Classe magique »`);
+    assert.equal(repere ? normal(repere) : null, commeLaPage(attendu), `${classe.id} : repère « Classe magique »`);
     const html = readFileSync(fichier, 'utf8');
     const nav = html.slice(html.indexOf('class="classe-nav'), html.indexOf('</nav>', html.indexOf('class="classe-nav')));
     if (html.includes('class="classe-nav')) assert.equal(nav.includes('<a href="#specialites">Spécialités</a>'), lienDesSpecialites(classe), `${classe.id} : lien « Spécialités »`);
