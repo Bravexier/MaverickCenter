@@ -8,12 +8,13 @@
 //     Le jeton du serveur ne sert QU'À déclencher et suivre ce workflow (permission Actions) ; tout le reste se fait côté GitHub.
 // L'état du lancement est gardé dans db/mise-a-jour/etat.json : le service redémarre pendant le processus (nouvelle version livrée sur dev).
 // Node seulement (node:…), sans dépendance.
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { signature } from './base-vivante.mjs';
+import { ErreurHttp, sha256 } from './partage.mjs';
 import { journalExporte } from './edition-journal.mjs';
 
 const DOSSIER_LOTS = 'mise-a-jour';
@@ -30,13 +31,7 @@ export const INTERVALLE_SUIVI = 20_000;
  */
 export const DUREE_MAX_RUN = 3 * 3_600_000;
 
-export class ErreurNotes extends Error {
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.statut = statut;
-    this.details = details;
-  }
-}
+export class ErreurNotes extends ErreurHttp {}
 
 /** Les tables de `noms` qui existent dans la base, lues entières : { tables: { nom: lignes[] } }. */
 export function lireTables(db, noms = TABLES_LUES) {
@@ -270,7 +265,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
               ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
   return ecrireLancement(dossier, {
-    lot: id, empreinte: createHash('sha256').update(texte).digest('hex'), lance_le: instant, version_cible: versionCible,
+    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible,
     modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
     etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
   });

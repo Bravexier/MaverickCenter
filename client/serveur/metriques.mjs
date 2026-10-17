@@ -52,12 +52,13 @@
 // notée une fois au journal (« ERREUR métriques : … »), la collecte continue en mémoire (bornée : MAX_EN_ATTENTE) et le versement suivant réessaie.
 // Node seulement (node:sqlite, node:perf_hooks…), sans dépendance ; le registre des ressources (pur) donne les routes de /api/v1/, le modèle de
 // l'édition et le format des fiches les colonnes d'image de la base vivante (octetsDesImages).
-import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync } from 'node:fs';
 import { loadavg, totalmem } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
+import { instant } from './instant.mjs';
+import { ErreurHttp, sha256 } from './partage.mjs';
 import { colonnesImage, TABLES } from '../src/lib/edition-modele.mjs';
 import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
@@ -239,17 +240,10 @@ const EXTENSIONS_CODE = new Set(['html', 'js', 'mjs', 'cjs', 'css', 'json', 'map
 const RESOLUTION_BOUCLE = 20;
 
 /** Erreur d'une lecture des métriques : statut HTTP et message en français. */
-export class ErreurMetriques extends Error {
-  constructor(statut, message) {
-    super(message);
-    this.name = 'ErreurMetriques';
-    this.statut = statut;
-    this.details = {};
-  }
-}
+export class ErreurMetriques extends ErreurHttp {}
 
 const arrondi = (x) => (x === null || x === undefined || !Number.isFinite(x) ? null : Math.round(x * 100) / 100);
-const iso = (secondes) => new Date(secondes * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+const iso = (secondes) => instant(new Date(secondes * 1000));
 const isoMs = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 const tranche = (secondes, pas) => Math.floor(secondes / pas) * pas;
 
@@ -1150,7 +1144,7 @@ export function limiteMemoire() {
 export function empreinteDePile(erreur) {
   const pile = String(erreur?.stack ?? '');
   const cadres = pile.split('\n').filter((l) => /^\s*at /.test(l)).slice(0, 8).map((l) => l.trim().replace(/:\d+:\d+\)?$/, '').replace(/\(?(?:file:\/\/)?\/[^\s()]*\//, ''));
-  const empreinte = createHash('sha256').update(`${erreur?.name ?? 'Error'}\n${cadres.join('\n')}`).digest('hex').slice(0, 12);
+  const empreinte = sha256(`${erreur?.name ?? 'Error'}\n${cadres.join('\n')}`).slice(0, 12);
   return { empreinte, nom: String(erreur?.name ?? 'Error').slice(0, 60), origine: cadres[0]?.replace(/^at /, '').slice(0, 120) ?? null };
 }
 
