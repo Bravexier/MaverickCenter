@@ -40,7 +40,9 @@ import {
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
+  creaturesDuSort, sacrificeDuSort,
 } from '../lib/fiche-moteur.mjs';
+import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 
 const racine = document.getElementById('fiche');
 const API = racine.dataset.api;
@@ -881,9 +883,128 @@ function construireSorts() {
           tr,
           // l'effet secondaire du sort, sur sa propre ligne (demande du propriétaire)
           l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '7' }, effet)) : null,
+          // les créatures d'un sort qui invoque, ou ce que donne l'invocation sacrifiée (décision R130)
+          ligneDInvocation(l),
         ];
       })),
   ]);
+}
+
+// ------------------------------------------------------------------ invocations (décision R130)
+/**
+ * La créature choisie sous chaque sort qui invoque ou sacrifie (un réglage du moment, jamais enregistré) : id du sort -> { id de la créature, NPM du sort
+ * quand on l'a choisie }.
+ */
+const creaturesChoisies = new Map();
+
+/** Une créature invoquée à son NPM (lib/creature-npm.mjs) : une carte resserrée, ses valeurs à ce NPM et les capacités qui y valent. */
+function carteDInvocation(c, npm) {
+  const v = creatureAuNpm(c.donnees, npm);
+  const rubrique = (nom, ...contenu) => el('div', { class: 'invocation-carte__rubrique' }, el('dt', {}, nom), el('dd', {}, ...contenu));
+  const caracs = el('span', { class: 'invocation-carte__caracs' }, FPVSIA.map((id, k) => {
+    const carac = trouver(regles.caracteristiques, id);
+    return el('span', { class: 'invocation-carte__carac', style: carac ? `--c: ${carac.couleur}; --c-texte: ${carac.texte}` : null, title: carac?.nom },
+      `${carac?.lettre ?? id[0].toUpperCase()} ${v.caracteristiques.valeurs[k] ?? '—'}`);
+  }));
+  const capacites = c.capacites.filter((x) => vautAuNpm(x.npm, npm));
+  return el('div', { class: 'invocation-carte' },
+    el('p', { class: 'invocation-carte__titre' }, el('strong', {}, c.nom), ` · ${c.bloc}`, c.npm === null ? ` · NPM ${npm}` : ''),
+    el('dl', {},
+      rubrique('Santé', v.sante),
+      v.chakra !== null ? rubrique('Chakra', v.chakra) : null,
+      v.barriere !== null ? rubrique('Barrière', v.barriere) : null,
+      v.ressources.map((r) => rubrique(r.libelle, r.valeur)),
+      v.defense !== null ? rubrique('Défense', v.defense) : null,
+      c.vitesse ? rubrique('Vitesse', c.vitesse) : null,
+      // un bonus sur deux caractéristiques (« +1 Force/Agilité ») n'est pas compté : rappelé
+      rubrique('F.P.V.S.I.A.', caracs, v.caracteristiques.nonComptes.length ? el('span', { class: 'muted' }, ` (non compté : ${v.caracteristiques.nonComptes.join(', ')})`) : null),
+      v.attaques.length ? rubrique('Dégâts', el('ul', {}, v.attaques.map((a) => el('li', {}, a)))) : null,
+      capacites.length ? rubrique('Capacités', el('ul', {}, capacites.map((x) => el('li', {}, el('strong', {}, x.nom), x.commune ? el('span', { class: 'muted' }, ' (commune)') : null, ` : ${x.texte}`)))) : null));
+}
+
+/**
+ * Sous un sort qui invoque (décision R130 : « avoir la liste des invocations possibles », « Toutes, les miennes d'abord ») : ses créatures, celles à la
+ * portée du personnage d'abord (creaturesDuSort), et la carte de la créature choisie au NPM du sort, le « × N » de son coût (décision R129 : borné au
+ * NPM accessible) ; une marionnette est la créature d'un NPM : la choisir règle le « × N », le changer la change. Sous un sort qui sacrifie une
+ * invocation (sacrificeDuSort) : l'effet de la marionnette sacrifiée au NPM du sort (« Manteau noir »), ou toutes les améliorations (« Amélioration
+ * cadavérique » : « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée »). Repliée au départ ; null pour un autre sort.
+ */
+function ligneDInvocation(l) {
+  const sort = l.sort;
+  const invoque = sort ? creaturesDuSort(regles, fiche, sort) : null;
+  const sacrifice = sort && !invoque ? sacrificeDuSort(regles, sort.id) : null;
+  if (!invoque && !sacrifice) return null;
+  // le NPM du sort : son « × N » (décision R129), borné
+  const npmDuSort = () => {
+    const bornes = bornesDuMultiplicateur(regles, fiche, sort);
+    return bornes ? Math.min(bornes.max, Math.max(bornes.min, foisDesSorts.get(sort.id) ?? 1)) : 1;
+  };
+  const magieDuSort = trouver(regles.magies, sort.magie_id);
+  const bouton = (c, choisir) => {
+    const [m1 = magieDuSort, m2 = m1] = c.magies.map((id) => trouver(regles.magies, id)).filter(Boolean);
+    return el('button', {
+      type: 'button', class: 'invocation-choix', 'aria-pressed': 'false', title: c.npm === null ? c.bloc : `NPM ${c.npm}`,
+      style: m1 ? `--c1: ${m1.couleur}; --c2: ${m2.couleur}` : null, onclick: choisir,
+    }, c.nom, c.npm === null ? null : el('span', { class: 'invocation-choix__npm' }, ` NPM ${c.npm}`));
+  };
+  // choisir une créature : une marionnette règle aussi le « × N » du sort sur son NPM, s'il est à la portée du personnage
+  const choisir = (c) => () => {
+    const bornes = bornesDuMultiplicateur(regles, fiche, sort);
+    if (c.npm !== null && bornes && c.npm <= bornes.max) foisDesSorts.set(sort.id, c.npm);
+    creaturesChoisies.set(sort.id, { id: c.id, npm: npmDuSort() });
+    rafraichir();
+  };
+  // la créature montrée : celle choisie (une marionnette, tant que le « × N » n'a pas changé depuis), sinon la marionnette du NPM du sort, sinon la
+  // première à la portée du personnage
+  const creatures = invoque ? invoque.invocation.creatures : sacrifice.type === 'effets' ? sacrifice.lignes.map((x) => x.creature) : [];
+  const montree = (npm) => {
+    const choix = creaturesChoisies.get(sort.id);
+    const choisie = choix && creatures.find((c) => c.id === choix.id);
+    if (choisie && (choisie.npm === null || choix.npm === npm)) return choisie;
+    return creatures.find((c) => c.npm === npm) ?? (invoque ? invoque.miennes[0] ?? creatures[0] : null);
+  };
+  const boutons = [];
+  const groupe = (titre, liste) => (liste.length ? el('div', { class: 'invocations__groupe' }, el('p', { class: 'invocations__titre' }, titre),
+    el('div', { class: 'invocations__choix' }, liste.map((c) => {
+      const b = bouton(c, choisir(c));
+      boutons.push([c, b]);
+      return b;
+    }))) : null);
+  const zone = el('div', { class: 'invocations__carte' });
+  let resume;
+  let contenu;
+  if (invoque) {
+    resume = `Créatures invocables : ${invoque.miennes.length} à votre portée sur ${creatures.length}`;
+    contenu = [
+      groupe('À votre portée', invoque.miennes),
+      groupe(invoque.raison === 'npm' ? 'Au-delà de votre NPM' : 'Avec l’aide d’un allié (sa magie)', invoque.autres),
+      el('p', { class: 'invocations__aide muted' }, creatures.some((c) => c.npm === null)
+        ? 'La carte suit le NPM de la créature, le « × N » du coût.' : 'Une créature par NPM : le « × N » du coût.'),
+      zone,
+    ];
+  } else if (sacrifice.type === 'effets') {
+    resume = `Selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
+    contenu = [groupe('Invocation sacrifiée', creatures), el('p', { class: 'invocations__aide muted' }, 'Le NPM de l’invocation sacrifiée : le « × N » du coût.'), zone];
+  } else {
+    resume = `Améliorations selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
+    contenu = [el('dl', { class: 'invocations__tableau' }, sacrifice.lignes.map((a) => el('div', {}, el('dt', {}, a.nom), el('dd', {}, a.effet))))];
+  }
+  if (boutons.length) {
+    synchro(() => {
+      const npm = npmDuSort();
+      const c = montree(npm);
+      for (const [x, b] of boutons) attribut(b, 'aria-pressed', String(x === c));
+      const cle = `${c?.id ?? ''}|${npm}`;
+      if (zone.dataset.cle === cle) return;
+      zone.dataset.cle = cle;
+      const effet = sacrifice && c ? sacrifice.lignes.find((x) => x.creature === c) : null;
+      zone.replaceChildren(...(!c ? [] : effet
+        ? [el('p', { class: 'invocations__effet' }, el('strong', {}, `${c.nom} (NPM ${c.npm}) — ${effet.libelle}`), el('br'), effet.texte)]
+        : [carteDInvocation(c, c.npm ?? npm)]));
+    });
+  }
+  return el('tr', { class: `sort-invocations${l.enTrop ? ' en-trop' : ''}` }, el('td', {}),
+    el('td', { colspan: '7' }, el('details', { class: 'invocations' }, el('summary', {}, resume), contenu)));
 }
 
 // ------------------------------------------------------------------ sort préparé (décision R115)

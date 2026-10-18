@@ -273,10 +273,15 @@ test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d�
 });
 
 test('créatures invoquées (et celles de « Manteau noir ») : un bouton par créature, sur la couleur de sa ou ses magies, sans lien « Bestiaire » ni lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
-  const { lignes } = chargerInvocations(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const { lignes } = chargerInvocations(db);
   const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
-  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), et les trois dans le Potentiel Illimité
-  const attendu = { 'magie-de-la-necromancie': [28, 28], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68] };
+  // les améliorations d'« Amélioration cadavérique » qui portent le nom d'une créature (décision R130 : sa carte en infobulle)
+  const ameliorees = [...chargerMagies(db).sorts.values()].flatMap((s) => s.ameliorations?.lignes ?? []).filter((a) => a.creature).length;
+  assert.ok(ameliorees > 0);
+  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), « Amélioration cadavérique »
+  // (Nécromancie), et tout cela dans le Potentiel Illimité
+  const attendu = { 'magie-de-la-necromancie': [28, 28 + ameliorees], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68 + ameliorees] };
   for (const { slug, html } of pages) {
     const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
     const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+" style="--creature-1: (#[0-9a-f]{6}); --creature-2: (#[0-9a-f]{6})">([^<]+)<\/button>/g)];
@@ -306,7 +311,8 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
     for (const s of bulles) {
       const debut = reserve.indexOf(`id="bulle-creature-${s}"`);
       const carte = reserve.slice(debut, reserve.indexOf('</article>', debut)).replace(/&#39;/g, "'");
-      assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}">`), `${slug} : carte de ${s}`);
+      // (`data-npm-carte` : une carte qui change avec le NPM, décision R130)
+      assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}"${parSlug.get(s).npmDuBloc === null ? ' data-npm-carte' : ''}>`), `${slug} : carte de ${s}`);
       assert.doesNotMatch(carte, /<(?:a|button|input|select|textarea)\b|\sid="(?!bulle-creature-)/, `${slug} : ${s} sans lien, bouton ni identifiant interne`);
       assert.match(carte, /<p class="bcarte__titre">/);
       // ses capacités en tuiles, propres puis communes (lib/monstre-rendu.mjs#htmlDeCapacite)
@@ -314,6 +320,33 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
     }
     // la CSS de la carte vient avec elle (styles/bestiaire/carte.css)
     assert.match(html, /\.bulle--carte \{ width: min\(30rem, calc\(100vw - 1rem\)\);/);
+  }
+});
+
+// Décision R130 : sur une page de magie, les cartes des golems et des non-morts suivent le NPM choisi au curseur de la liste des créatures (une bulle par
+// créature et par page : tous les curseurs vont ensemble, posés par le script de SortsInteractifs.astro, cachés sans JavaScript) ; « Amélioration
+// cadavérique » montre ses améliorations selon l'invocation sacrifiée (le tableau de l'invocation qui porte son nom).
+test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélioration cadavérique » selon l’invocation sacrifiée (décision R130)', options, () => {
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const { sorts } = chargerMagies(db);
+  const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+  for (const slug of ['magie-de-la-terre', 'magie-de-la-necromancie']) {
+    const curseurs = [...page(slug).matchAll(/<p class="invoque__npm" data-npm-page-bloc hidden>/g)];
+    assert.equal(curseurs.length, 1, `${slug} : un curseur, caché sans JavaScript`);
+    assert.match(page(slug), /<input type="range" min="1" max="5" step="1" value="1" data-npm-page aria-valuetext="NPM 1">/, slug);
+  }
+  // les marionnettes (une créature par NPM) : pas de curseur
+  assert.doesNotMatch(page('magie-de-lombre'), /<input[^>]* data-npm-page/);
+  const amelioration = [...sorts.values()].find((s) => s.ameliorations);
+  assert.ok(amelioration, 'un sort désigne le tableau de son invocation');
+  const html = page(amelioration.magieId.slice(amelioration.magieId.indexOf('/') + 1));
+  const debut = html.indexOf('Règles propres : selon l’invocation sacrifiée');
+  assert.ok(debut > 0, 'la section du sort');
+  const tableau = html.slice(debut, html.indexOf('</table>', debut));
+  assert.equal([...tableau.matchAll(/<tr><th scope="row">/g)].length, amelioration.ameliorations.lignes.length, 'une ligne par amélioration');
+  // une amélioration au nom d'une créature : sa carte en infobulle, sous le nom de la créature
+  for (const a of amelioration.ameliorations.lignes.filter((x) => x.creature)) {
+    assert.ok(tableau.includes(`data-bulle="bulle-creature-${a.creature.id.slice(a.creature.id.indexOf('/') + 1)}"`), a.nom);
   }
 });
 

@@ -59,12 +59,27 @@ function poserLEchelle(carte, ep) {
   const sortie = carte.querySelector('.bechelle__choix');
   if (sortie) sortie.textContent = `EP ${echelles[rang]}`;
 }
-const suivreLeCurseur = (zone) =>
+// Le niveau de puissance magique d'une créature invoquée qui change avec lui (décision R130, components/bestiaire/CarteInvoquee.astro : un curseur du NPM 1
+// au NPM 5) : la carte ne montre que les valeurs du NPM choisi (`data-npm` sur la carte ; styles/bestiaire/carte.css). Gardé d'une ouverture à l'autre.
+function poserLeNpm(carte, npm) {
+  const curseur = carte?.querySelector('input[type=range][data-npm-curseur]');
+  if (!curseur) return;
+  curseur.value = String(npm);
+  carte.dataset.npm = curseur.value;
+  curseur.setAttribute('aria-valuetext', `NPM ${curseur.value}`);
+  const sortie = carte.querySelector('.bcarte__npm .bechelle__choix');
+  if (sortie) sortie.textContent = `NPM ${curseur.value}`;
+}
+const suivreLeCurseur = (zone) => {
+  for (const curseur of zone?.querySelectorAll('input[type=range][data-npm-curseur]') ?? []) poserLeNpm(curseur.closest('.bcarte'), curseur.value);
   zone?.addEventListener('input', (e) => {
+    const npm = e.target.closest?.('input[type=range][data-npm-curseur]');
+    if (npm) return poserLeNpm(npm.closest('.bcarte'), npm.value);
     const curseur = e.target.closest?.('input[type=range][data-echelles]');
     if (!curseur) return;
     poserLEchelle(curseur.closest('.bcarte'), JSON.parse(curseur.dataset.echelles)[Number(curseur.value)]);
   });
+};
 
 // La carte tient dans la partie visible de sa vue (le tableau et la carte côte à côte) : ni son haut ni son bas coupés, quelle que soit la position de la
 // page (demande du propriétaire : la tuile « reste toujours affichée à l'écran » et n'a plus « soit le bas, soit le haut » ; styles/bestiaire/bestiaire.css,

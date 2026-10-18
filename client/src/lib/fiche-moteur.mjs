@@ -2638,6 +2638,45 @@ export function bornesDuMultiplicateur(regles, fiche, sort) {
   return { min: 1, max: plafond && cout && Number(cout[0]) > 0 ? Math.max(1, Math.floor(Number(plafond[1]) / Number(cout[0]))) : FOIS_MAX };
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Invocations (décision R130, demandes du propriétaire du 2026-10-18 : « avoir la liste des invocations possibles pour les sorts qui invoquent des
+// créatures », « Toutes, les miennes d'abord » ; « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée » pour « Amélioration
+// cadavérique ») : regles.invocations et regles.tableaux_de_sacrifice (lib/fiche-regles.mjs) ; les valeurs d'une créature à son NPM : lib/creature-npm.mjs.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Les créatures qu'un sort invoque (« Appel aux golems », « Animation de mort », « Marionnette de l'ombre ») : { invocation, miennes, autres, raison } ;
+ * null pour un autre sort. Toutes, celles à la portée du personnage d'abord (`miennes`), dans l'ordre du classeur. Le texte des invocations : « Pour
+ * pouvoir invoquer un golem double-magie, il faut posséder une seconde magie ou alors être à proximité d'un allié », « le potentiel illimité ne peut pas
+ * faire d'invocation double élément tout seul » : à sa portée, la combinaison mono et celle de sa seconde magie (l'innée ou l'acquise qui n'est pas celle du
+ * sort, jamais le Potentiel Illimité) ; deux fois la magie du sort (« Terre + Terre ») demande l'aide d'un allié (`raison` : 'allie'). Une marionnette (une
+ * créature par NPM, décision R53) est à sa portée jusqu'au NPM accessible (npmMax ; `raison` : 'npm').
+ */
+export function creaturesDuSort(regles, fiche, sort) {
+  const invocation = (regles.invocations ?? []).find((i) => i.sort_id === sort?.id);
+  if (!invocation) return null;
+  const seconde = [fiche.magie_innee_id, fiche.magie_acquise_id].filter((m) => m && m !== sort.magie_id && m !== POTENTIEL_ILLIMITE);
+  const max = npmMax(regles, fiche);
+  const parNpm = invocation.creatures.some((c) => c.npm !== null);
+  const aSaPortee = (c) => (c.npm !== null
+    ? c.npm <= max
+    : c.magies.length === 1 || (c.magies.length === 2 && c.magies[1] !== sort.magie_id && seconde.includes(c.magies[1])));
+  return { invocation, miennes: invocation.creatures.filter(aSaPortee), autres: invocation.creatures.filter((c) => !aSaPortee(c)), raison: parNpm ? 'npm' : 'allie' };
+}
+
+/**
+ * Ce que donne un sort qui sacrifie une invocation, selon l'invocation sacrifiée : { type: 'effets', lignes: [{ creature, libelle, texte }] } pour un effet
+ * écrit sur la carte de la créature (« Effet "Manteau noir" » des marionnettes : creature_effet.sort_id) ; { type: 'tableau', lignes: [{ nom, effet }] } pour
+ * le tableau d'invocation que le sort désigne par son nom (« Amélioration cadavérique ») ; null pour un autre sort.
+ */
+export function sacrificeDuSort(regles, sortId) {
+  const effets = (regles.invocations ?? []).flatMap((i) => i.creatures.flatMap((c) => c.effets.filter((e) => e.sort_id === sortId)
+    .map((e) => ({ creature: c, libelle: e.libelle, texte: e.texte }))));
+  if (effets.length) return { type: 'effets', lignes: effets };
+  const tableau = (regles.tableaux_de_sacrifice ?? []).find((t) => t.sort_id === sortId);
+  return tableau ? { type: 'tableau', lignes: tableau.lignes } : null;
+}
+
 /**
  * Un sort de la fiche à son moment (décision R102) : `auNm` = ses valeurs au NM du sort, telles que la page les lit (lib/sort-maitrise.mjs#valeurAuNm :
  * { cout, portee, dsb, effets }) ; `contexte` : contexteDesSorts ; `fois` : le multiplicateur du coût, pour un sort dont le coût augmente avec

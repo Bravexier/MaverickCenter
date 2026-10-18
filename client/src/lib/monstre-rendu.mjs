@@ -214,7 +214,7 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
  * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre
  * (htmlDesCapacitesDuMonstre, page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle
  * des pages de magie).
- * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
+ * `prefixes` : [{ texte, titre, classe }] (`classe` : « prefixe--npm », que la carte cache au NPM choisi) ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
  * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
  * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
  */
@@ -222,7 +222,7 @@ export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = 
   `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}>`
   + (prefixes.length || nom
     ? '<p class="bcapacite__tete">'
-      + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
+      + prefixes.map((p) => `<span class="prefixe${p.classe ? ` ${e(p.classe)}` : ''}"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
       + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
       // l'espace sépare le nom du texte dans textContent, que lit la recherche du bestiaire (« Haine mutuelle Cette créature… ») ; sans effet à l'écran
       + '</p> '

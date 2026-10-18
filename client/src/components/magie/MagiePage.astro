@@ -52,7 +52,15 @@ const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.
 // Les créatures citées par les sorts de la page (invocations, effets de carte comme « Manteau noir ») : leur carte du bestiaire en infobulle (demande du
 // propriétaire), une bulle par créature, posée hors des onglets et des détails de sort (components/Infobulles.astro ne montre pas une bulle dont un parent est caché)
 const sortsDeLaPage = [...groupes, ...autresMagies.flatMap((a) => a.groupes)].flatMap((g) => g.sorts);
-const creatures = [...new Set(sortsDeLaPage.flatMap((s) => [...s.invoque.flatMap((i) => i.creatures.map((c) => c.id)), ...s.effetsDeCarte.map((e) => e.id)]))]
+const creatures = [
+  ...new Set(
+    sortsDeLaPage.flatMap((s) => [
+      ...s.invoque.flatMap((i) => i.creatures.map((c) => c.id)),
+      ...s.effetsDeCarte.map((e) => e.id),
+      ...(s.ameliorations?.lignes ?? []).flatMap((a) => (a.creature ? [a.creature.id] : [])),
+    ]),
+  ),
+]
   .map((id) => carteDeCreature(id))
   .filter((c) => c !== undefined);
 const { avec, sans } = racesOfMagie(entries, entry);

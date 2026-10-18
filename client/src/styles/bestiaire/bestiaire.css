@@ -99,8 +99,6 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bep-lignes { display: grid; gap: 0.2rem; }
 .bep-ligne--vide { height: 0.15rem; }
 .bep-ligne--titre { font-weight: 700; }
-/* une valeur calculée à l'échelle choisie (« 5 (+2/3EP) », « 2 (+1/EP) », décisions R55, R59) : soulignée, la formule écrite en infobulle */
-.bcalcul { font-weight: 700; text-decoration: underline dotted color-mix(in srgb, var(--bes) 60%, transparent); text-underline-offset: 0.2em; cursor: help; }
 .bep-ligne .bcaracs { margin-top: 0.15rem; }
 .bstats--ep { grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
 .bstats__groupe, .bstats__texte { grid-column: 1 / -1; }

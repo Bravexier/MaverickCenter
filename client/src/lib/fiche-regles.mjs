@@ -19,6 +19,7 @@ import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureE
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
+import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -465,12 +466,36 @@ function reglesDeLaBase(db) {
     sort_prepare: { jet_min: 1, jet_max: 100 },
   };
 
+  // Les invocations (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « adapter le monstre invoqué en
+  // fonction de ses NPM ») : par sort qui invoque, ses créatures dans l'ordre du classeur, leurs magies de marge (la première est celle du sort), le NPM d'une
+  // marionnette, ce qui change avec le NPM (lib/creature-npm.mjs, `donneesNpm`), leurs capacités (« (NPM n) » : `npm`) et les effets d'un sacrifice
+  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie) ; et les tableaux qu'un sort désigne par son nom (« Amélioration cadavérique »).
+  const { tableaux: tableauxDInvocation } = chargerInvocations(db);
+  const invocations = tableauxDInvocation.filter((t) => t.invocation.sortId).map((t) => ({
+    id: t.invocation.id,
+    nom: t.invocation.nom,
+    sort_id: t.invocation.sortId,
+    magie_id: t.invocation.magieId,
+    creatures: t.lignes.flatMap((l) => l.cases).map((c) => ({
+      id: c.id,
+      nom: c.nom,
+      bloc: c.bloc,
+      npm: c.npmDuBloc,
+      magies: c.magiesDuBlocIds,
+      donnees: c.donneesNpm,
+      vitesse: c.vitesse,
+      capacites: [...c.capacites.map((x) => ({ npm: x.npm, nom: x.nom, texte: x.texte })), ...c.communes.map((x) => ({ npm: null, nom: x.nom, texte: x.texte, commune: true }))],
+      effets: c.effets.map((e) => ({ libelle: e.libelle, sort_id: e.sort_id, texte: e.texte })),
+    })),
+  }));
+  const tableaux_de_sacrifice = [...tableauxDesSorts(db)].map(([sortId, t]) => ({ sort_id: sortId, invocation_id: t.invocationId, lignes: t.lignes }));
+
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)
   const alignements = Object.fromEntries(Object.entries(COULEURS_ALIGNEMENTS).map(([nom, couleur]) => [nom, { couleur, texte: texteSurCouleur(couleur) }]));
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, invocations, tableaux_de_sacrifice, ...equipement,
   };
 }
 

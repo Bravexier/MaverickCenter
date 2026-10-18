@@ -153,6 +153,26 @@ html:not(.js) .bcarte__fermer { display: none; }
   .bcarte__portrait { width: 6rem; }
 }
 
+/* une valeur calculée à l'échelle choisie d'un monstre (« 5 (+2/3EP) », « 2 (+1/EP) », décisions R55, R59) ou au NPM choisi d'une créature invoquée
+   (décision R130) : soulignée, la formule écrite en infobulle */
+.bcalcul { font-weight: 700; text-decoration: underline dotted color-mix(in srgb, var(--bes) 60%, transparent); text-underline-offset: 0.2em; cursor: help; }
+
+/* Une créature invoquée au NPM choisi (décision R130, components/bestiaire/CarteInvoquee.astro) : `data-npm` sur la carte, posé par son curseur (bestiaire)
+   ou par celui de la liste des créatures d'un sort (pages de magie) ; chaque valeur qui change porte ses NPM (`data-npms`), une capacité ou une résistance
+   « (NPM n) » son NPM minimum (`data-npm-min`). Sans NPM choisi (sans JavaScript, à l'impression) : la carte telle qu'écrite. */
+.bcarte:not([data-npm]) [data-npms] { display: none; }
+.bcarte__npm-choisi { margin-left: 0.35rem; padding: 0 0.4rem; border-radius: var(--radius-pill); border: 1px solid var(--bes-line); font-size: var(--fs-xs); font-weight: 700;
+  white-space: nowrap; }
+@media screen {
+  .bcarte[data-npm] :is([data-npm-ecrit], .prefixe--npm) { display: none; }
+  .bcarte[data-npm="1"] :is([data-npms]:not([data-npms~="1"]), [data-npm-min="2"], [data-npm-min="3"], [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="2"] :is([data-npms]:not([data-npms~="2"]), [data-npm-min="3"], [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="3"] :is([data-npms]:not([data-npms~="3"]), [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="4"] :is([data-npms]:not([data-npms~="4"]), [data-npm-min="5"]),
+  .bcarte[data-npm="5"] [data-npms]:not([data-npms~="5"]) { display: none; }
+}
+@media print { .bcarte [data-npms] { display: none; } }
+
 /* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche ; l'élément porte aussi
    `.bulle`, dont il garde `overscroll-behavior: contain`) : la bulle prend la largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
 .bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; }
