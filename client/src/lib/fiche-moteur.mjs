@@ -1160,13 +1160,14 @@ export function quotaDeMaitrise(regles, fiche) {
  * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
  * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
  * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
- * ({ id, nom }), null sinon.
+ * ({ id, nom }), null sinon. `options.avecLaPosture` (vrai par défaut, la page) : faux, la posture du moment est ignorée, aucune magie n'est
+ * désactivée (l'export en tableur, qui écrit les valeurs de la fiche, pas celles de la posture : docs/character-generator.md, « Export »).
  * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], desactivee }
  */
-export function resistancesDe(regles, fiche) {
+export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
-  const desactivee = postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null;
+  const desactivee = avecLaPosture ? postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null : null;
   const cibles = new Map();
   const auChoix = [];
   const compter = (effet, origine) => {

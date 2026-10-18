@@ -3,6 +3,7 @@
 // véritable autocomplete […] à partir de 2 caractères »). Le bouclier de la fiche refait le calcul de lib/armure-forge.mjs#forgerBouclier (le moteur ne
 // peut pas l'importer : deux scripts de page ne partagent jamais un module) : comparé ici sur TOUTES les formes × matières × améliorations 0 à 5.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { forgerBouclier } from '../src/lib/armure-forge.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -142,6 +143,37 @@ test('R108 : un bouclier cassé (solidité 0) ne compte plus, même en parade pa
     const valeur = type === 'taille' ? M.bouclierDe(regles, b).ap : M.bouclierDe(regles, b).am;
     assert.equal(repare.armure, sansParade.armure + valeur, `${type} : réparé`);
   }
+});
+
+test('R108, la page (src/scripts/fiche.mjs, lue comme un texte) : les tuiles AP et AM d’un bouclier cassé grisées à 0, l’infobulle le dit (plus « Comptés en parade partielle ») ; réparé, ses valeurs', () => {
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const debut = script.indexOf("reconstruire($('bouclier')");
+  const corps = script.slice(debut, script.indexOf("reconstruire($('accessoires')", debut));
+  assert.ok(debut > 0 && corps.length > 0, 'le bloc du bouclier');
+  // la solidité de bouclierDe dit « cassé » ; les deux tuiles le marquent, comme la pastille d'une arme cassée (data-cassee)
+  assert.match(corps, /const casse = Boolean\(b\.solidite\?\.cassee\);/);
+  assert.match(corps, /for \(const t of \[tuileAp, tuileAm\]\) t\.li\.toggleAttribute\('data-cassee', casse\);/);
+  assert.match(corps, /ecrire\(tuileAp, String\(casse \? 0 : b\.ap\)\);/);
+  assert.match(corps, /ecrire\(tuileAm, String\(casse \? 0 : b\.am\)\);/);
+  // l'infobulle (habillée : infobulle() pose un title, que Infobulles.astro déplace) : pourquoi, et ses valeurs réparé ; « Comptés en parade partielle » seulement entier
+  assert.match(corps, /ses AP et AM ne comptent plus, même en parade partielle \(décision R108\)/);
+  assert.match(corps, /Réparé : \$\{b\.ap\} AP/);
+  assert.match(corps, /Réparé : \$\{b\.am\} AM/);
+  assert.match(corps, /\.\.\.\(casse \? \[\] : \['Comptés en parade partielle/);
+  assert.match(corps, /infobulle\(tuileAm\.li, casse \? .* : 'Comptés en parade partielle'\);/);
+  // grisées comme les autres valeurs cassées de la page (la pastille d'une arme : .objet__des[data-cassee])
+  const css = readFileSync(new URL('../src/styles/fiche/fiche.css', import.meta.url), 'utf8');
+  const regle = (selecteur) => new RegExp(`${selecteur.replace(/[.[\]]/g, '\\$&')} \\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+  for (const s of ['.objet__des[data-cassee]', '.bouclier__tuile[data-cassee]']) {
+    assert.match(regle(s), /background: var\(--border\)/, s);
+    assert.match(regle(s), /color: var\(--muted\)/, s);
+  }
+  // le moteur garde les valeurs du bouclier entier (l'infobulle « Réparé : … ») et dit qu'il est cassé ; la défense ne le compte plus
+  const casse = fiche({ bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer', bouclier_solidite: 0 });
+  const b = M.bouclierDe(regles, casse);
+  assert.deepEqual([b.solidite.cassee, b.ap > 0], [true, true]);
+  assert.equal(M.degatsRecus(regles, casse, { entrants: 30, type: 'taille', reduits: true, parade: true }).armure,
+    M.degatsRecus(regles, casse, { entrants: 30, type: 'taille', reduits: true }).armure);
 });
 
 test('R108 : chaque partie a l’AP et l’AM de l’armure, ou 0 cassée ; seule la part de l’armure tombe (base, accessoires, posture restent) ; le torse par défaut', () => {

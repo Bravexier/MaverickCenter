@@ -6,7 +6,9 @@
 // L'armure (décision R95) : une ligne en AQ21 (l'armure complète, son amélioration, son élément), son nom en AD22, et la solidité de chacune de ses
 // parties dans la ligne « Sol. » de la grille (AI24:AN24), « N / M » (celle d'une armure à solidité unifiée sur les six), relue ; l'AP et l'AM de
 // l'armure sur chaque partie dans les lignes « AP » et « AM » de la grille (AI22:AN23 ; décision R108 : la valeur de l'armure, 0 sur une partie cassée,
-// armureParPartie), calculés ; le bouclier cassé écrit 0 AP et 0 AM (R108 : ils ne comptent plus). La solidité d'une arme (AK17, AX17) : « N / M »,
+// armureParPartie), calculés ; le bouclier cassé écrit 0 AP et 0 AM (R108 : ils ne comptent plus, apAmDuBouclier). Comme les dégâts des armes et les
+// sorts, les résistances s'écrivent sans la posture du moment (en Symbiose, la page retire celles de la magie désactivée, R111 ; le classeur, non).
+// La solidité d'une arme (AK17, AX17) : « N / M »,
 // celle du moment et le maximum de l'arme forgée
 // (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : les compétences de
 // l'entraînement, « Magie 2 | Concentration 10 » (décision R104 ; ses textes libres dans la note), relue. La portée d'une
@@ -536,24 +538,37 @@ export function lignesDArme(regles, fiche, rang) {
  *   - toute autre ligne (`libres` : le joueur écrit sous le titre « Effet en plus » du modèle, sans préfixe) : de l'effet en plus aussi, dans l'ordre.
  * Une ligne « Deux armes : … » ou « Non compté : … » (estUneLigneDuSite), que seul le site écrit, n'est jamais de l'effet en plus hors du bloc « Effet en
  * plus : » : la part affichée d'un classeur exporté avant un changement des règles peut en porter une que la fiche relue n'écrit plus (« Non compté :
- * Vieille Branche (Mage Vert) +4 (selon la situation) », compté depuis la décision R107) ; le site refait les siennes.
+ * Vieille Branche (Mage Vert) +4 (selon la situation) », compté depuis la décision R107) ; le site refait les siennes. `ecartees` : ces lignes du site,
+ * hors du bloc « Effet en plus : », qui ne sont pas parmi celles que la fiche relue écrit pour cette arme (`affichees` ; une ligne coupée au bout d'une
+ * case coupée, si elle en commence une), telles qu'écrites dans la case : l'import les dit (« rien ne se perd sans être dit »), sans les reprendre.
  * `affichageRetrouve` : la part affichée attendue est dans la case, d'un bloc ou au bout d'une case coupée (ou il n'y en a pas) ; faux quand elle n'a été
  * reconnue que ligne à ligne (règles changées depuis l'export : une ligne de l'ancien effet du catalogue serait alors prise pour de l'effet en plus).
  * `entier` : le texte n'est que la part relue (recollée à sa suite dans la note), sans part affichée.
  */
 export function lireEffetDArme(texte, { affichees = null, catalogue = null, entier: seul = false } = {}) {
-  const lu = { composition: null, amelioration: null, element: null, ameliorationElement: null, effetEnPlus: null, libres: [], affichageRetrouve: true };
+  const lu = { composition: null, amelioration: null, element: null, ameliorationElement: null, effetEnPlus: null, libres: [], ecartees: [], affichageRetrouve: true };
   const champs = new Map([[cle(LIGNES_D_ARME.composition), 'composition'], [cle(LIGNES_D_ARME.amelioration), 'amelioration'],
     [cle(LIGNES_D_ARME.element), 'element'], [cle(LIGNES_D_ARME.ameliorationElement), 'ameliorationElement']]);
-  const { lignes, affichage, retrouvee } = seul
-    ? { lignes: String(texte ?? '').replace(/\r\n?/g, '\n').split('\n'), affichage: null, retrouvee: true }
+  const { lignes, affichage, retrouvee, coupee } = seul
+    ? { lignes: String(texte ?? '').replace(/\r\n?/g, '\n').split('\n'), affichage: null, retrouvee: true, coupee: false }
     : partAffichee(String(texte ?? '').replace(/\r\n?/g, '\n'), affichees, catalogue);
   lu.affichageRetrouve = retrouvee;
+  // une ligne du site que la fiche relue écrit pour cette arme (à la casse, aux blancs et aux accents près) ; la dernière d'une case coupée, si elle en
+  // commence une ; une autre est écartée, et dite
+  const attendues = String(affichees ?? '').split('\n').map(cle).filter(Boolean);
+  const ecriteParLeSite = (ligne, i) => {
+    const k = cle(ligne);
+    return attendues.includes(k) || (coupee && i === lignes.length - 1 && attendues.some((a) => a.startsWith(k)));
+  };
+  const ecarter = (ligne, i) => {
+    if (estUneLigneDuSite(ligne) && !ecriteParLeSite(ligne, i)) lu.ecartees.push(ligne.trim());
+  };
   const enPlus = [];
   let dedans = false; // dans le bloc « Effet en plus : … »
   lignes.forEach((ligne, i) => {
     if (affichage?.[i]) {
       dedans = false;
+      ecarter(ligne, i);
       return;
     }
     if (dedans) {
@@ -571,7 +586,11 @@ export function lireEffetDArme(texte, { affichees = null, catalogue = null, enti
       lu[champs.get(k)] = kv.valeur;
       return;
     }
-    if (!ligne.trim() || estUneLigneDuSite(ligne)) return;
+    if (!ligne.trim()) return;
+    if (estUneLigneDuSite(ligne)) {
+      ecarter(ligne, i);
+      return;
+    }
     lu.libres.push(ligne.trim());
     enPlus.push(ligne.trim());
   });
@@ -589,9 +608,9 @@ const estUneLigneDuSite = (ligne) => {
 
 /**
  * Les lignes de la case de l'effet d'une arme et, pour chacune, si elle est de la part affichée (lireEffetDArme) : { lignes, affichage: [booléen],
- * retrouvee }. Une case coupée par la page dans sa part affichée perd sa fin « … » (sa ligne coupée compte pour la part affichée) ; coupée dans une
- * ligne « Deux armes : » ou « Non compté : » que la fiche relue n'écrit plus (règles changées depuis l'export : décision R107), la part affichée est
- * cherchée sans ces lignes de la fin, qui en sont (retrouvee faux).
+ * retrouvee, coupee } (`coupee` : la case finit par « … », que `lignes` n'a plus). Une case coupée par la page dans sa part affichée perd sa fin « … »
+ * (sa ligne coupée compte pour la part affichée) ; coupée dans une ligne « Deux armes : » ou « Non compté : » que la fiche relue n'écrit plus (règles
+ * changées depuis l'export : décision R107), la part affichée est cherchée sans ces lignes de la fin, qui en sont (retrouvee faux).
  */
 function partAffichee(texte, affichees, catalogue) {
   let lignes = texte.split('\n');
@@ -599,7 +618,7 @@ function partAffichee(texte, affichees, catalogue) {
     // le bloc entier, le dernier s'il revient
     const A = affichees.split('\n');
     for (let j = lignes.length - A.length; j >= 0; j -= 1) {
-      if (A.every((l, k) => lignes[j + k] === l)) return { lignes, affichage: lignes.map((_, i) => i >= j && i < j + A.length), retrouvee: true };
+      if (A.every((l, k) => lignes[j + k] === l)) return { lignes, affichage: lignes.map((_, i) => i >= j && i < j + A.length), retrouvee: true, coupee: false };
     }
     const montre = sansLaCoupure(texte);
     if (montre !== null) {
@@ -612,7 +631,7 @@ function partAffichee(texte, affichees, catalogue) {
       const debut = departs.find((s) => s < montre.length && affichees.startsWith(montre.slice(s)));
       if (debut !== undefined || !estUneLigneDuSite(lignes[lignes.length - 1])) {
         const ligneDuDebut = debut === undefined ? lignes.length : montre.slice(0, debut).split('\n').length - 1;
-        return { lignes, affichage: lignes.map((_, i) => i >= ligneDuDebut), retrouvee: true };
+        return { lignes, affichage: lignes.map((_, i) => i >= ligneDuDebut), retrouvee: true, coupee: true };
       }
       // coupée dans une ligne du site que la fiche relue n'écrit plus : sans les lignes du site de la fin, le début de la part affichée attendue (une
       // fin de la case, depuis un début de ligne, qui commence `affichees`), sinon ces seules lignes
@@ -626,7 +645,7 @@ function partAffichee(texte, affichees, catalogue) {
           break;
         }
       }
-      return { lignes, affichage: lignes.map((_, i) => i >= depuis), retrouvee: false };
+      return { lignes, affichage: lignes.map((_, i) => i >= depuis), retrouvee: false, coupee: true };
     }
   }
   // ligne à ligne : l'effet du catalogue (ou une ligne de la part affichée attendue), « Deux armes : », « Non compté : »
@@ -635,6 +654,7 @@ function partAffichee(texte, affichees, catalogue) {
   return {
     lignes,
     retrouvee: !affichees,
+    coupee: false,
     affichage: lignes.map((l) => {
       const k = cle(l);
       return Boolean(k) && (connues.has(k) || ouvrantes.some((o) => k === o || k.startsWith(`${o}-`)));
@@ -782,6 +802,17 @@ const PLACES_DONS = DONS.classe1.length;
 const PLACES_SORTS = ORDINATEUR.sorts.lignes.length;
 const PLACES_INVENTAIRE = ORDINATEUR.inventaire.colonnes.length * ORDINATEUR.inventaire.lignes.length;
 const PLACES_EVENEMENTS = DONS.evenements.length;
+
+/**
+ * L'AP et l'AM du bouclier (bouclierDe) que le modèle ordinateur écrit en AN26 et AS26 : ceux du bouclier de la liste, 0 cassé (décision R108 : « Bouclier
+ * à 0 : ses AP/AM cessent-ils de compter, comme une arme cassée ? Oui ») ; null sans bouclier de la liste (une forme sans matière). Calculés : l'import
+ * ne les relit pas, il compare ce qu’écrit le classeur à ce calcul (lib/fiche-tableur-import.mjs). { ap, am, casse } | null.
+ */
+export function apAmDuBouclier(bouclier) {
+  if (!bouclier?.bouclier) return null;
+  const casse = Boolean(bouclier.solidite?.cassee);
+  return { ap: casse ? 0 : bouclier.ap, am: casse ? 0 : bouclier.am, casse };
+}
 
 /**
  * Les cases du modèle ordinateur pour une fiche (format de lib/fiche-format.mjs, celle qu'envoie la page) : { cellules: { A1: texte | nombre },
@@ -946,10 +977,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(O.bouclier.composition, [bouclier.matiere.nom, ...(amelioration ? [texteDAmelioration(amelioration)] : [])].join(SEPARATEUR_D_ARMURE), RELUE);
   }
   if (bouclier) ecrire(O.bouclier.classe, bouclier.forme.classe);
-  if (bouclier?.bouclier) {
-    const casse = Boolean(bouclier.solidite?.cassee);
-    ecrire(O.bouclier.ap, casse ? 0 : bouclier.ap);
-    ecrire(O.bouclier.am, casse ? 0 : bouclier.am);
+  const defenseDuBouclier = apAmDuBouclier(bouclier);
+  if (defenseDuBouclier) {
+    ecrire(O.bouclier.ap, defenseDuBouclier.ap);
+    ecrire(O.bouclier.am, defenseDuBouclier.am);
   }
   if (bouclier?.solidite) ecrire(O.bouclier.solidite, `${bouclier.solidite.actuelle} / ${bouclier.solidite.max}`, RELUE);
 
@@ -1064,8 +1095,9 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ]));
   });
 
-  // résistances et faiblesses : le palier (libellé et effet de la base) et ses cibles
-  const resistances = resistancesDe(regles, f);
+  // résistances et faiblesses : le palier (libellé et effet de la base) et ses cibles, sans la posture du moment (comme le reste de l'export : en
+  // Symbiose, la magie désactivée garde ses listes dans le classeur, décision R111 ; la page, elle, les retire)
+  const resistances = resistancesDe(regles, f, { avecLaPosture: false });
   for (const k of CASES_RESISTANCES) {
     const p = resistances.paliers.find((x) => x.id === k.palier);
     if (!p) continue;

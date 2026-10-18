@@ -3,6 +3,7 @@
 // niveau », « appliquer les effets passifs du bâton directement dans les cases concernées », « le calcul des dégâts de chaque sort […] à jour »). Les
 // lecteurs de textes (lib/posture-texte.mjs, lib/sort-bonus-texte.mjs, lib/ceinture-texte.mjs#effetsDeBaton) sont rejoués sur toute la base.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { effetsDeBaton } from '../src/lib/ceinture-texte.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -280,6 +281,69 @@ test('R110 : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux 
   assert.deepEqual(puissance.sorts.map((b) => [b.base, b.pas, b.niveaux, b.niveauGlobal ?? false]), [[3, 2, 6, false]]);
 });
 
+test('R110, repli : une autre écriture « qui augmente de +N tous les M niveaux » n’est pas comptée (raison « progression »), pas même sa base ; les Elfe et Felfe argentés restent comptés', () => {
+  const autres = [
+    ['+2 aux dégâts des sorts, qui augmente de +2 tous les 5 niveaux globaux', { tous: true }],
+    ['La magie innée inflige +2 dégâts, qui augmente de +2 tous les 5 niveaux globaux.', { innee: true }],
+  ];
+  for (const [texte, vises] of autres) assert.deepEqual(bonusDeSortsEcrits(texte), [{ cible: 'degats', valeur: 2, vises, raison: 'progression' }], texte);
+  // la lecture R110 reste la seule comptée
+  assert.deepEqual(bonusDeSortsEcrits('- +1 aux dégâts magiques, qui augmente de +1 tous les 5 niveaux globaux'),
+    [{ cible: 'degats', base: 1, pas: 1, niveaux: 5, niveauGlobal: true, vises: { tous: true } }]);
+  // sur la fiche : une règle d'essai qui donne ces textes au don « Ailleurs » de l'Elfe argenté ; non compté, avec sa raison, le D/S/B tel qu'écrit
+  const sort = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  const don = 'races/elfe-argente#don:ailleurs';
+  const ethnie = lignes('SELECT ethnie_id FROM race_don WHERE id = ?', don)[0].ethnie_id;
+  const f = fiche({ race_id: 'races/elfe-argente', ethnie_id: ethnie, xp: xpDuNiveau(10) });
+  const nomDuDon = (r) => { const d = r.races.find((x) => x.id === 'races/elfe-argente').dons.find((x) => x.id === don); return d.nom ?? d.etiquette; };
+  for (const [texte] of autres) {
+    const essai = { ...regles, races: regles.races.map((r) => (r.id !== 'races/elfe-argente' ? r : { ...r, dons: r.dons.map((d) => (d.id === don ? { ...d, sorts: bonusDeSortsEcrits(texte) } : d)) })) };
+    const m = M.sortDuMoment(essai, f, sort, auNm(sort));
+    assert.deepEqual(m.nonComptes.filter((n) => n.nom === nomDuDon(essai)), [{ nom: nomDuDon(essai), valeur: 2, raison: 'progression', cible: 'dsb' }], texte);
+    assert.ok(!m.dsb.detail.some((d) => d.nom === nomDuDon(essai)), texte);
+    assert.equal(m.dsb.texte, M.sortDuMoment(essai, fiche(), sort, auNm(sort)).dsb.texte, 'rien d’ajouté');
+  }
+  // les vraies règles : le don compté au niveau 10 (2 + 2 × 2), sans « non compté »
+  const vrai = M.sortDuMoment(regles, f, sort, auNm(sort));
+  assert.deepEqual(vrai.dsb.detail.filter((d) => d.nom === nomDuDon(regles)).map((d) => d.valeur), [6]);
+  assert.ok(!vrai.nonComptes.some((n) => n.raison === 'progression'));
+  // la page a le libellé de cette raison (src/scripts/fiche.mjs, RAISONS_DES_SORTS) : « Non compté (progression par niveau à préciser) : … »
+  const page = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  assert.match(/const RAISONS_DES_SORTS = \{([\s\S]*?)\};/.exec(page)[1], /\bprogression: 'progression par niveau à préciser'/);
+});
+
+test('R110, don de classe (règles d’essai) : « … tous les M niveaux globaux » au niveau global, « … tous les M niveaux » au niveau de la classe ; arrondi à l’inférieur', () => {
+  // « Contact » du Guerrier (niveau 1, passif, sans bonus de sort) porte ici un texte d'essai ; en mono-classe la classe 1 est à deux fois le niveau
+  // global (décision R2) : les deux lectures se distinguent
+  const classe = regles.classes.find((c) => c.id === 'classes/guerrier');
+  const don = classe.dons.find((d) => d.id === 'capacites/guerrier-contact');
+  assert.ok(don && !don.sorts?.length, 'un don sans bonus de sort à lui');
+  const essai = (texte) => ({ ...regles, classes: regles.classes.map((c) => (c.id !== classe.id ? c : { ...c, dons: c.dons.map((d) => (d.id === don.id ? { ...d, sorts: bonusDeSortsEcrits(texte) } : d)) })) });
+  const globaux = essai('+2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux');
+  const deClasse = essai('3+x dégâts avec les sorts. x = +2 dégâts/5 niveaux');
+  assert.deepEqual(globaux.classes.find((c) => c.id === classe.id).dons.find((d) => d.id === don.id).sorts,
+    [{ cible: 'degats', base: 2, pas: 2, niveaux: 5, niveauGlobal: true, vises: { tous: true } }]);
+  assert.deepEqual(deClasse.classes.find((c) => c.id === classe.id).dons.find((d) => d.id === don.id).sorts,
+    [{ cible: 'degats', base: 3, pas: 2, niveaux: 5, vises: { tous: true } }]);
+  const sort = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  const nom = `${don.nom} (${classe.nom})`;
+  for (const global of [1, 4, 5, 9, 10, 15]) {
+    const f = fiche({ classes: [{ rang: 1, classe_id: classe.id, specialite_id: null }], xp: xpDuNiveau(global) });
+    assert.equal(M.niveauGlobal(regles, f.xp), global);
+    const niveauDeClasse = M.donsAcquis(globaux, f).find((c) => c.classe.id === classe.id).niveau;
+    assert.equal(niveauDeClasse, Math.min(20, 2 * global), 'mono-classe (R2)');
+    for (const [r, niveau, base, attendu] of [[globaux, global, 2, 2 + 2 * Math.floor(global / 5)], [deClasse, niveauDeClasse, 3, 3 + 2 * Math.floor(niveauDeClasse / 5)]]) {
+      const b = M.bonusDeSortsDuPersonnage(r, f).filter((x) => x.nom === nom);
+      assert.deepEqual(b.map((x) => [x.base, x.niveau]), [[base, niveau]], `${nom}, niveau global ${global}`);
+      const lu = M.sortDuMoment(r, f, sort, auNm(sort)).dsb.detail.filter((d) => d.nom === nom);
+      assert.deepEqual(lu.map((d) => d.valeur), [attendu], `${nom}, niveau global ${global}`);
+    }
+  }
+  // au niveau global 4 (classe au niveau 8) : +2 au niveau global, quand le niveau de la classe donnerait +4
+  const f4 = fiche({ classes: [{ rang: 1, classe_id: classe.id, specialite_id: null }], xp: xpDuNiveau(4) });
+  assert.deepEqual(M.sortDuMoment(globaux, f4, sort, auNm(sort)).dsb.detail.filter((d) => d.nom === nom).map((d) => d.valeur), [2]);
+});
+
 test('lireDegatsDeSort / ecrireDegatsDeSort : les écritures sans ambiguïté, et l’aller-retour sur tous les D/S/B de la base au NM 0', () => {
   for (const [texte, attendu] of [
     ['3d6 dégâts', { nature: 'degats', nombre: 3, faces: 6, fixe: 0, prefixe: '', suite: 'dégâts', parTour: false }],
@@ -375,6 +439,42 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
     assert.ok(choix, 'un sort au coût non chiffré');
     const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
     assert.deepEqual([v.cout.texte, v.cout.calcule, v.nonComptes.map((n) => [n.raison, n.cible])], [choix.cout, null, [['non_chiffre', 'cout']]], choix.id);
+  }
+});
+
+test('R116 : le coût en corruption (2 × le coût réduit − le bâton) jamais sous 1 ; un sort qui ne coûte aucun chakra (« 0 ») n’a pas de coût en corruption', () => {
+  const corruption = (x = {}) => fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...x });
+  const baton = (n) => ceinture(`Bâton magique Corruption, niveau ${n}`);
+  // les réductions du bâton (« Coût sort −N », « Coût corruption −2N »), telles que la base les écrit
+  for (const [n, cout, coutCorruption] of [[1, -1, -2], [2, -2, -4], [3, -3, -6]]) {
+    const comptes = M.effetsDesBatons(regles, corruption(baton(n))).comptes;
+    assert.deepEqual([comptes.get('cout')?.valeur, comptes.get('cout_corruption')?.valeur], [cout, coutCorruption], `bâton niveau ${n}`);
+  }
+  // un sort de la Corruption au coût 1 (un sort d'essai : la base n'en a pas) : 2 × 1 = 2 sans bâton ; le bâton le ferait descendre à 0 ou moins : 1
+  const corr = regles.sorts.find((s) => s.magie_id === 'magies/magie-de-la-corruption' && /^\d+$/.test(s.cout) && Number(s.cout) >= 4);
+  const un = { ...corr, id: 'essai:sort-a-un', cout: '1', cout_secondaire: null, bonus: [] };
+  const coutDe = (sort, f) => M.sortDuMoment(regles, f, sort, auNm(sort)).cout;
+  assert.deepEqual([coutDe(un, corruption()).texte, coutDe(un, corruption()).corruption.valeur], ['1', 2]);
+  for (const n of [1, 2, 3]) {
+    const c = coutDe(un, corruption(baton(n)));
+    assert.equal(c.texte, '1', `bâton niveau ${n} : le coût en chakra, jamais moins de 1 (R102)`);
+    assert.equal(c.corruption.valeur, 1, `bâton niveau ${n} : 2 × 1 − ${2 * n} → 1 (R116)`);
+    assert.deepEqual(c.corruption.detail.map((d) => d.valeur), [2, -2 * n], 'le détail garde le calcul');
+  }
+  // un vrai sort : coût 4 (ou plus), bâton niveau 3 : réduit à max(1, coût − 3), corruption max(1, 2 × réduit − 6)
+  const c = coutDe(corr, corruption(baton(3)));
+  const reduit = Math.max(1, Number(corr.cout) - 3);
+  assert.deepEqual([c.texte, c.corruption.valeur], [String(reduit), Math.max(1, 2 * reduit - 6)]);
+  if (reduit === 1) assert.equal(c.corruption.valeur, 1, 'sous 1 sans le plancher');
+  // un coût « 0 » (Pluie huileuse, Sapeur : décision R106) : pas de coût en corruption, avec ou sans bâton, ses réductions non comptées
+  const sansChakra = regles.sorts.filter((s) => s.magie_id === 'magies/magie-de-la-corruption' && s.cout === '0');
+  assert.ok(sansChakra.length >= 2);
+  for (const s of sansChakra) {
+    for (const f of [corruption(), corruption(baton(1)), corruption(baton(3))]) {
+      const m = M.sortDuMoment(regles, f, s, auNm(s));
+      assert.deepEqual([m.cout.texte, m.cout.corruption], ['0', null], s.id);
+      assert.ok(m.nonComptes.filter((x) => x.cible === 'cout').every((x) => x.raison === 'sans_chakra'), s.id);
+    }
   }
 });
 

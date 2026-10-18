@@ -1027,6 +1027,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .bouclier__tuile[data-poids] { background: var(--c); color: var(--texte-sur-c); border-color: var(--c); }
 .bouclier__tuile[data-poids] small { color: inherit; opacity: 0.8; }
 .bouclier__tuile[data-trop] { outline: 2px solid var(--danger); outline-offset: 1px; }
+/* un bouclier cassé (décision R108 : ses AP et AM ne comptent plus) : ses tuiles AP et AM grisées, comme la pastille d'une arme cassée (R74) */
+.bouclier__tuile[data-cassee] { background: var(--border); border-color: var(--border); color: var(--muted); }
 
 /* la saisie d'un objet du sac et sa liste qui se filtre (demande du propriétaire : à partir de deux caractères) : la liste sous le champ, par-dessus la
    suite du tableau ; l'option parcourue au clavier surlignée */

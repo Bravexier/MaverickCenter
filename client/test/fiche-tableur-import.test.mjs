@@ -964,7 +964,7 @@ test('homonymes départagés par les dégâts écrits : les crans perdus y compt
   assert.equal(degatsDArme(regles, r.fiche, 1).texte, d.texte);
 });
 
-test('effet d’une arme (AA13) d’un classeur exporté avant la décision R107 : sa ligne « Non compté : Vieille Branche … » n’est pas de l’effet en plus', () => {
+test('effet d’une arme (AA13) d’un classeur exporté avant la décision R107 : sa ligne « Non compté : Vieille Branche … » n’est pas de l’effet en plus ; une remarque la cite', () => {
   // avant R107, l'export écrivait le don comme un bonus non compté (partiesDeLArme : « Non compté : <don> (<classe>) +N (<raison>) », raison « situation ») ;
   // la fiche relue le compte maintenant (ou ne l'écrit plus) : la ligne n'est plus dans la part affichée attendue, elle n'est pourtant pas du joueur
   const lus = regles.classes.flatMap((c) => (c.dons ?? []).filter((d) => d.degats?.parCranPerdu).map((d) => ({ classe: c, don: d })));
@@ -979,15 +979,45 @@ test('effet d’une arme (AA13) d’un classeur exporté avant la décision R107
   };
   const ecrit = cellulesDeLaFiche(regles, fiche).cellules.AA13;
   assert.ok(!ecrit.includes('Non compté'), ecrit);
-  // la ligne du don, une ligne « Deux armes : » d'une main qui n'est plus portée ; l'effet en plus du joueur gardé
+  // la ligne du don, une ligne « Deux armes : » d'une main qui n'est plus portée ; l'effet en plus du joueur gardé ; les lignes écartées, que la fiche
+  // n'écrit plus pour cette arme, dites par une remarque (« rien ne se perd sans être dit »), sans être reprises
   const grave = { ...fiche, armes: [{ ...fiche.armes[0], effet_en_plus: 'Gravée' }] };
   const ecritGrave = cellulesDeLaFiche(regles, grave).cellules.AA13;
   assert.match(ecritGrave, /\nEffet en plus : Gravée\n/);
-  for (const [f, AA13, attendu] of [[fiche, `${ecrit}\n${ancienne}`, null], [fiche, `${ecrit}\nDeux armes : −20 % (main directrice)\n${ancienne}`, null],
-    [grave, `${ecritGrave}\n${ancienne}`, 'Gravée']]) {
+  const deuxArmes = 'Deux armes : −20 % (main directrice)';
+  const dite = (...lignes) => `Arme 1 (${epee.nom}) : ligne${lignes.length > 1 ? 's' : ''} ${lignes.map((l) => `« ${l} »`).join(', ')} non reprise${lignes.length > 1 ? 's' : ''} (recalculée${lignes.length > 1 ? 's' : ''} par le site)`;
+  for (const [f, AA13, attendu, remarque] of [[fiche, `${ecrit}\n${ancienne}`, null, dite(ancienne)], [fiche, `${ecrit}\n${deuxArmes}\n${ancienne}`, null, dite(deuxArmes, ancienne)],
+    [grave, `${ecritGrave}\n${ancienne}`, 'Gravée', dite(ancienne)]]) {
     const r = ficheDuClasseur(regles, deLaPage(f, { AA13 }));
-    assert.deepEqual([r.fiche.armes[0].arme_id, r.fiche.armes[0].effet_en_plus, r.nonRepris, r.remarques], [epee.id, attendu, [], []], AA13);
+    assert.deepEqual([r.fiche.armes[0].arme_id, r.fiche.armes[0].effet_en_plus, r.nonRepris, r.remarques], [epee.id, attendu, [], [remarque]], AA13);
   }
+  // l'aller-retour exact : rien à dire
+  for (const f of [fiche, grave]) assert.deepEqual(ficheDuClasseur(regles, deLaPage(f)).remarques, []);
+});
+
+test('effet d’une arme (AA13) : une ligne « Deux armes : » ou « Non compté : » hors du bloc « Effet en plus : », autre que celle que la fiche écrit pour cette arme, est dite (recalculée par le site), même dans un classeur fait à la main', () => {
+  const epee = epeeLongue();
+  const dague = parNom(regles.armes, 'Dague');
+  // fait à la main (sans le marqueur de la note) : une seule arme, donc ni « Deux armes » ni bonus non compté écrits par la fiche
+  let r = ficheDuClasseur(regles, ordinateur({ I1: 'X', AA10: epee.nom, AA13: 'Deux armes : −10 %\nNon compté : Rage +3\nEffet en plus : Gravée' }));
+  assert.deepEqual([r.fiche.armes[0].effet_en_plus, r.nonRepris], ['Gravée', []]);
+  assert.deepEqual(r.remarques, [`Arme 1 (${epee.nom}) : lignes « Deux armes : −10 % », « Non compté : Rage +3 » non reprises (recalculées par le site)`]);
+  // sans la part affichée de la fiche, reconnue ligne à ligne : une ligne « Non compté : » ferme le bloc « Effet en plus : » (lireEffetDArme) ; elle
+  // n'est pas reprise, et c'est dit (avant, elle se perdait sans rien dire)
+  r = ficheDuClasseur(regles, ordinateur({ I1: 'X', AA10: epee.nom, AA13: 'Effet en plus : Gravée\nNon compté : par le MJ' }));
+  assert.deepEqual([r.fiche.armes[0].effet_en_plus, r.remarques], ['Gravée', [`Arme 1 (${epee.nom}) : ligne « Non compté : par le MJ » non reprise (recalculée par le site)`]]);
+  // deux armes portées (un classeur de la page) : la ligne « Deux armes » que la fiche écrit passe sans rien dire, une autre valeur est dite
+  const fiche = { ...ficheVide('Deux armes'), race_id: 'races/humain', magie_innee_id: magie('Feu').id,
+    armes: [{ rang: 1, arme_id: epee.id, materiau_id: regles.materiau_arme_defaut }, { rang: 2, arme_id: dague.id, materiau_id: regles.materiau_arme_defaut }] };
+  const ecrit = cellulesDeLaFiche(regles, fiche).cellules.AA13;
+  const sienne = ecrit.split('\n').find((l) => l.startsWith('Deux armes : '));
+  assert.ok(sienne, ecrit);
+  assert.deepEqual(ficheDuClasseur(regles, deLaPage(fiche)).remarques, []);
+  const autre = 'Deux armes : −35 % (main directrice)';
+  assert.notEqual(autre, sienne);
+  r = ficheDuClasseur(regles, deLaPage(fiche, { AA13: ecrit.replace(sienne, autre) }));
+  assert.equal(r.fiche.armes[0].effet_en_plus, null);
+  assert.ok(r.remarques.includes(`Arme 1 (${epee.nom}) : ligne « ${autre} » non reprise (recalculée par le site)`), JSON.stringify(r.remarques));
 });
 
 test('effet d’une arme (AA13) : une ligne sans clé est de l’effet en plus (le titre du modèle) ; dite par une remarque dans un classeur fait à la main', () => {
@@ -1105,6 +1135,8 @@ test('zones de saisie que le site ne garde pas (sac) et cases calculées écrite
   assert.deepEqual(r.nonRepris, [
     `Armure, ${emplacement('jambe-droit')} (solidité) : « 10/10 » sans armure reconnue`, 'Bouclier, solidité : « 20 / 20 » sans bouclier',
     `Armure, ${emplacement('casque')} (AP) : « 5 » sans armure reconnue`, `Armure, ${emplacement('torse')} (AM) : « 1 » sans armure reconnue`,
+    // une forme sans matière n'est pas un bouclier de la liste : ni AP ni AM calculés (décision R108, comme la grille de l'armure)
+    'Bouclier (AP) : « 4 » sans bouclier reconnu', 'Bouclier (AM) : « 2 » sans bouclier reconnu',
     'Inventaire, sac : « Sac à dos » sans place sur le site',
   ]);
   // la solidité (R74) : 12 crans, au-delà du maximum que calcule le site (R51) : l'arme est à son maximum ; le maximum écrit est dit
@@ -1133,6 +1165,30 @@ test('AP et AM de la grille de l’armure (décision R108) : calculés, non relu
     `Armure, Torse (AP) : « 99 », le site calcule ${armure.ap} (décision R108)`, `Armure, Bras Droit (AM) : « ${armure.am} », le site calcule 0 (décision R108)`,
   ]);
   assert.deepEqual(r.fiche.armure_parties, fiche.armure_parties);
+});
+
+test('AP et AM du bouclier (AN26, AS26 ; décision R108) : calculés, non relus, 0 cassé ; ceux que le site écrit passent sans rien dire, une autre valeur va dans nonRepris', () => {
+  const forme = regles.boucliers.find((b) => b.id === 'ecu');
+  const fiche = { ...ficheVide('Bouclier'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, bouclier_classe_id: forme.id, bouclier_materiau_id: 'ressources/armures#materiau:fer' };
+  const entier = M.bouclierDe(regles, fiche);
+  assert.ok(entier.ap > 0 && entier.solidite.max > 0, 'un bouclier qui a de l’AP');
+  const casse = { ...fiche, bouclier_solidite: 0 };
+  const { ap, am } = ORDINATEUR.bouclier;
+  // écrits par la page : rien à dire, entier (ses valeurs) ou cassé (0)
+  for (const f of [fiche, casse]) {
+    const r = ficheDuClasseur(regles, deLaPage(f));
+    assert.deepEqual([r.fiche.bouclier_classe_id, r.fiche.bouclier_materiau_id, r.fiche.bouclier_solidite ?? null, r.nonRepris], [forme.id, fiche.bouclier_materiau_id, f.bouclier_solidite ?? null, []]);
+  }
+  // un classeur qui écrit 4 AP pour un bouclier cassé (fait à la main, ou d'avant R108) : le site garde le sien (0), et le dit
+  let r = ficheDuClasseur(regles, deLaPage(casse, { [ap]: 4, [am]: String(entier.am) }));
+  assert.deepEqual(r.nonRepris, [
+    'Bouclier (AP) : « 4 », le site calcule 0 (bouclier cassé, décision R108)',
+    ...(entier.am ? [`Bouclier (AM) : « ${entier.am} », le site calcule 0 (bouclier cassé, décision R108)`] : []),
+  ]);
+  assert.equal(r.fiche.bouclier_solidite, 0, 'la solidité écrite reste celle du classeur');
+  // entier, une autre valeur que la sienne ; un texte qui n'est que le nombre passe
+  r = ficheDuClasseur(regles, deLaPage(fiche, { [ap]: entier.ap + 5, [am]: String(entier.am) }));
+  assert.deepEqual(r.nonRepris, [`Bouclier (AP) : « ${entier.ap + 5} », le site calcule ${entier.ap} (décision R108)`]);
 });
 
 test('solidité des parties de l’armure (modèle ordinateur, décision R95) : la ligne « Sol. » de la grille relue partie par partie ; une armure à solidité unifiée, la plus basse ; le maximum écrit est dit', () => {

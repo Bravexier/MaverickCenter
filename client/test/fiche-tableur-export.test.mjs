@@ -562,6 +562,32 @@ test('fiche riche : résistances, posture du moment, Mode Hyper', () => {
   assert.equal(c[ORDINATEUR.modeHyper.magieAcquise], h.magies.find((x) => x.magie.id === riche.magie_acquise_id).effet);
 });
 
+test('résistances (décision R111) : exportées sans la posture du moment — en Symbiose, la magie désactivée garde ses listes dans le classeur ; la page les retire', () => {
+  const POSTURE_SYMBIOSE = 'guide/postures#posture:symbiose';
+  assert.ok(CASES_POSTURES.some((p) => p.id === POSTURE_SYMBIOSE));
+  const bi = (x = {}) => ({
+    ...ficheVide('Essai'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-la-glace', ...x,
+  });
+  const sans = bi();
+  const enGlace = bi({ posture_id: POSTURE_SYMBIOSE, symbiose_magie_id: 'magies/magie-de-la-glace' });
+  // la page : le Feu désactivé perd ses listes, les paliers changent
+  assert.deepEqual(M.resistancesDe(regles, enGlace).desactivee, { id: 'magies/magie-du-feu', nom: 'Feu' });
+  assert.notDeepEqual(M.resistancesDe(regles, enGlace).paliers, M.resistancesDe(regles, sans).paliers, 'la page suit la posture');
+  // l'option de l'export : la posture ignorée, comme sans elle
+  assert.deepEqual(M.resistancesDe(regles, enGlace, { avecLaPosture: false }), M.resistancesDe(regles, sans));
+  // le classeur : les mêmes cases de résistances que sans posture
+  const cases = (f) => {
+    const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
+    return CASES_RESISTANCES.map((k) => [k.palier, v[k.libelle], v[k.cibles] ?? null]);
+  };
+  const attendu = cases(sans);
+  assert.ok(attendu.some(([, , cibles]) => cibles), 'au moins une résistance ou faiblesse sans posture');
+  assert.deepEqual(cases(enGlace), attendu);
+  // la posture, elle, est marquée
+  const symbiose = CASES_POSTURES.find((p) => p.id === POSTURE_SYMBIOSE);
+  assert.equal(cellulesDeLaFiche(regles, enGlace, { date: DATE }).cellules[symbiose.titre], `${MARQUE_DE_POSTURE} ${TITRES_DES_POSTURES[POSTURE_SYMBIOSE]}`);
+});
+
 test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas de case', () => {
   const texte = c[ORDINATEUR.note];
   assert.ok(texte.startsWith(`Notes du joueur\nDeuxième ligne\n\n${MARQUEUR_DES_NOTES}\n${ligneDExport(DATE)}\n`), 'les notes (sans leurs lignes vides de fin), une ligne vide, le marqueur, la date');
@@ -1013,7 +1039,7 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   const effet = [...relues, ...affichees].join('\n');
   const attendu = { composition: 'Acier', amelioration: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_id)),
     element: nomDe('armes_elementaires', riche.armes[0].arme_elementaire_id), ameliorationElement: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_elementaire_id)),
-    effetEnPlus: 'Lame chantante\nsur deux lignes', libres: [], affichageRetrouve: true };
+    effetEnPlus: 'Lame chantante\nsur deux lignes', libres: [], ecartees: [], affichageRetrouve: true };
   const A = affichees.join('\n');
   assert.deepEqual(lireEffetDArme(effet, { affichees: A }), attendu);
   const relu = relues.join('\n');
@@ -1033,22 +1059,28 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   // l'ancien ordre (l'effet en plus en dernier)
   assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu);
   assert.deepEqual(lireEffetDArme('Composition : Fer\nUn effet écrit à la main', { affichees: '' }),
-    { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], affichageRetrouve: true });
+    { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], ecartees: [], affichageRetrouve: true });
   // une ligne « Non compté : » ou « Deux armes : » que la fiche relue n'écrit plus (classeur exporté avant un changement des règles : « Vieille Branche »
-  // était un bonus non compté avant la décision R107) : jamais de l'effet en plus, après le bloc retrouvé, dans l'ancien ordre, ou dans une case coupée dedans
+  // était un bonus non compté avant la décision R107) : jamais de l'effet en plus, après le bloc retrouvé, dans l'ancien ordre, ou dans une case coupée
+  // dedans ; écartée, telle qu'écrite (`ecartees`, que l'import dit) ; une ligne du site que la fiche relue écrit pour cette arme ne l'est pas
   const ancienne = 'Non compté : Vieille Branche (Mage Vert) +4 (selon la situation)';
   assert.ok(ancienne.startsWith(`${LIGNES_D_ARME.nonCompte}${SEPARATEUR_DE_CLE}`) && `Deux armes : x`.startsWith(`${LIGNES_D_ARME.deuxArmes}${SEPARATEUR_DE_CLE}`), 'le format écrit par l’export');
-  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\n${ancienne}`, { affichees: A }), attendu, 'après le bloc');
-  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nDeux armes : −20 % (main directrice)\n${ancienne}`, { affichees: A }), attendu, 'deux lignes du site');
-  assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, ancienne, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu, 'l’ancien ordre');
+  assert.ok(!affichees.includes(ancienne));
+  const pasEcrites = (lignes) => lignes.filter((l) => !affichees.includes(l));
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\n${ancienne}`, { affichees: A }), { ...attendu, ecartees: [ancienne] }, 'après le bloc');
+  const deuxArmes = 'Deux armes : −20 % (main directrice)';
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\n${deuxArmes}\n${ancienne}`, { affichees: A }), { ...attendu, ecartees: pasEcrites([deuxArmes, ancienne]) }, 'deux lignes du site');
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nDeux armes : −99 % (main directrice)`, { affichees: A }), { ...attendu, ecartees: ['Deux armes : −99 % (main directrice)'] }, 'une autre valeur');
+  assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, ancienne, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), { ...attendu, ecartees: [ancienne] }, 'l’ancien ordre');
   for (const coupe of [`${relu}\n${A}\n${ancienne.slice(0, ancienne.indexOf(' ', 25))} …`, `${relu}\n${A}\n${ancienne.slice(0, 20)}…`]) {
-    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), attendu, coupe.slice(-40));
+    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), { ...attendu, ecartees: [coupe.split('\n').at(-1)] }, coupe.slice(-40));
   }
   // l'ancienne ligne au milieu de la part affichée, la case coupée dans la dernière ligne du site : la part affichée cherchée sans les lignes du site de la fin
   assert.ok(affichees.length >= 2 && /^(Deux armes|Non compté) : /.test(affichees.at(-1)), affichees.join(' | '));
   const auMilieu = [relu, affichees[0], ancienne, ...affichees.slice(1)].join('\n');
   for (const coupe of [`${auMilieu.slice(0, auMilieu.lastIndexOf(' '))} …`, `${auMilieu.slice(0, auMilieu.lastIndexOf('\n') + 16)}…`]) {
-    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), { ...attendu, affichageRetrouve: false }, coupe.slice(-40));
+    // la dernière ligne, coupée, commence une ligne que la fiche écrit : seule l'ancienne est écartée
+    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), { ...attendu, ecartees: [ancienne], affichageRetrouve: false }, coupe.slice(-40));
   }
   // une ligne du joueur dans le bloc « Effet en plus : » reste la sienne (l'export l'écrit avant la part affichée)
   assert.equal(lireEffetDArme(`${relu}\nNon compté : par le MJ\n${A}`, { affichees: A }).effetEnPlus, 'Lame chantante\nsur deux lignes\nNon compté : par le MJ');
