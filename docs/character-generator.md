@@ -528,8 +528,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   un texte libre de la fiche (R71, remplacée le 2026-10-17 par des lignes : R104) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
-  deux ; maximum de solidité d'une arme élémentaire (Q12), les bonus « selon la situation » douteux (Q20), et les bonus d'acquis des dons non comptés : « à
-  répartir au choix » (Q21), « l'arme choisie » (Q22), « les compétences d'arme » (Q23), « 2 sur les 3 » (Q24), les jets d'une caractéristique (Q25),
+  deux ; maximum de solidité d'une arme élémentaire (Q12), et les bonus d'acquis des dons non comptés :
+  « l'arme choisie » (Q22), « les compétences d'arme » (Q23), « 2 sur les 3 » (Q24), les jets d'une caractéristique (Q25),
   l'artisanat (Q26), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non comptés
   (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
 
