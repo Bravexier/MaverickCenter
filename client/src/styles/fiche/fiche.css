@@ -1072,3 +1072,20 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .baton-reglage[data-a-choisir] select { border-color: var(--a-choisir); }
 /* un bâton de la ceinture dont un effet n'est pas compté (un autre bâton a le même, plus fort : décision R101) */
 .ceinture__emplacement[data-ecarte] input { text-decoration: line-through dotted; }
+
+/* l'entraînement (décision R104) : une ligne par compétence (curseur), livre de sort ou texte libre ; les boutons d'ajout dessous */
+.entrainement { display: grid; gap: 0.3rem; margin: 0 0 0.4rem; padding: 0; list-style: none; }
+.entrainement__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.entrainement__ligne > select, .entrainement__ligne > input:not([type='range']) { flex: 1 1 10rem; min-width: 0; }
+.entrainement__type { min-width: 6.5rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.entrainement__ajouts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.4rem; }
+/* l'Acquis calculé (décision R104) : sa valeur, rognée au plafond signalée */
+.acquis-calcule { font-weight: 600; cursor: help; }
+.acquis-calcule[data-rogne] { color: var(--danger); }
+.nm-livre[hidden] { display: none; }
+.acquis-choix { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+/* « à répartir au choix » (décision R104) : chaque compétence et ses points, ce qui reste à répartir */
+.acquis-choix__reste { color: var(--muted); font-size: var(--fs-xs); }
+.acquis-choix__part { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.acquis-choix__part select { flex: 1 1 0; min-width: 0; }
+.acquis-choix__points { width: 4.5rem; }

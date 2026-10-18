@@ -76,7 +76,12 @@ ligne datée dans la fiche, la fiche listée dans `base.retraits` de `/api/etat`
 matériau du premier rang ; décision R96), chaque autre matériau un retrait noté de même. **Des lignes qu'une table garde mais que ses nouvelles règles
 refusent** ne sont pas recopiées (`LIGNES_ECARTEES` de `serveur/base-vivante.mjs` : un prédicat SQL, valable sur l'ancienne et la nouvelle forme de la
 table, et ce qu'on en note) : depuis 0060, un accessoire de la Ceinture ou d'« Autre », ou sans effet de la table (décision R97), noté comme le nom ou
-l'effet hors table qu'un accessoire gardé perd (`COLONNES_RETIREES` : `nom`, `texte`).
+l'effet hors table qu'un accessoire gardé perd (`COLONNES_RETIREES` : `nom`, `texte`). **Une colonne retirée qui porte une donnée à reprendre**
+est convertie de même (`COLONNES_CONVERTIES` de `serveur/base-vivante.mjs`, quand l'ancienne base a la colonne et la nouvelle ne l'a plus) : depuis
+la migration 0062 (décision R104), le texte de `personnage.entrainement` devient des lignes de texte de `personnage_entrainement` (une par ligne du
+texte : `entrainementEnLignes`), et l'acquis saisi de `personnage_competence` (au-dessus de 0) un retrait noté, daté, par compétence (l'Acquis se
+calcule). Sur une base d'avant 0062 (reconstruction échouée), une fiche se lit avec des listes `entrainements` et `acquis_choix` vides et s'enregistre
+sans elles (une liste non vide est refusée), l'acquis d'avant à 0.
 Des règles qui ont encore la table alors que le service la sait retirée
 (service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
@@ -119,12 +124,14 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`, `armure_parties`, `accessoires`,
-`inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`,
+`armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
-bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`). Rien de calculé n'y est
-stocké. Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045), comme l'entraînement (`entrainement`,
-R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilite`, R74).
+bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
+un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
+`409`) et l'`acquis` d'une compétence n'est plus repris, noté, daté, dans les notes (décision R104 : l'Acquis se calcule). Rien de calculé n'y est
+stocké. Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045) ; la durabilité d'une arme est une
+colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (une compétence et ses points, ou un texte : `entrainements`, R104).
 
 ```json
 { "nom": "Aldric", "race_id": "races/humain", "magie_innee_id": "magies/magie-du-feu", "xp": 0,
@@ -140,7 +147,8 @@ R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilit
   seulement renommé ne la change pas (la fiche n'a que des identifiants).
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
-  retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038) n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
+  retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038 ; `entrainement` et `competences[].acquis`, 0062, convertis plus haut)
+n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
   migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
   dire (le reste de la fiche vide d'une page d'avant, qui a repris les deux totaux d'une réponse du service), mais une `progression` **non vide** est
@@ -149,13 +157,16 @@ R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilit
   on ne sait pas les concilier avec les totaux (`progressionAvecGains` de `fiche-format.mjs`).
   **Repli sur une base vivante d'avant 0045** (sa reconstruction a échoué, le service continue avec elle) : la page à jour envoie toujours
   `gains_sante` et `gains_chakra` (0 dans une fiche vide). Une colonne ajoutée par 0045 que la base n'a pas (`gains_sante`, `gains_chakra`,
-  `entrainement`, `armes[].durabilite` : `DEPART_DES_COLONNES_AJOUTEES` de `serveur/fiches.mjs`) est **ignorée tant qu'elle ne porte rien** (sa
+  `armes[].durabilite` : `DEPART_DES_COLONNES_AJOUTEES` de `serveur/fiches.mjs`) est **ignorée tant qu'elle ne porte rien** (sa
   valeur de départ, 0 pour les gains, ou vide : `null`, `""`) : la fiche se crée, se lit, se liste et se modifie, et ses gains niveau par niveau
   restent dans `personnage_progression`, convertis à la reconstruction suivante (la fiche relue n'a pas de gains : la page affiche 0). Une autre
-  valeur (des gains, un entraînement, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
+  valeur (des gains, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
   le dire. De même pour les colonnes des migrations 0055 (l'armure), 0060 (le bouclier : `bouclier_materiau_id`, `bouclier_amelioration_id`,
   `bouclier_solidite`) et 0061 (`symbiose_magie_id`, la magie de la posture Symbiose) ; sur une base d'avant 0060, la page convertit elle-même la
-  fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd.
+  fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
+  (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062) se lit vide, et une liste non vide pour elle est
+  refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
+  `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.

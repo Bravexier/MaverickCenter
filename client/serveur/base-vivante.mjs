@@ -21,8 +21,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  accessoiresGardes, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, matiereDuBouclier, retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES,
-  TABLES_RETIREES,
+  accessoiresGardes, acquisRetires, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, matiereDuBouclier, retraitsDeLArmure,
+  retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
@@ -139,6 +139,52 @@ function ajouterLesRetraits(db, retraits, parFiche) {
     if (!retraits.has(id)) retraits.set(id, { personnage: id, nom: p.nom, nature: p.nature, retraits: [] });
     retraits.get(id).retraits.push(...d);
   }
+}
+
+/**
+ * Colonnes que les règles ont retirées (COLONNES_RETIREES) et dont le contenu ne se perd pas sans le dire, par table et colonne : une conversion
+ * (db, { retraits }) lue dans `ancienne`, faite après la copie des fiches. Décision R104 (migration 0062) : `personnage.entrainement`, le texte libre de
+ * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
+ * noté, daté, dans la fiche (acquisRetires).
+ */
+export const COLONNES_CONVERTIES = Object.freeze({
+  personnage: Object.freeze({
+    entrainement: (db) => {
+      const ecrire = db.prepare('INSERT INTO main.personnage_entrainement (personnage_id, rang, competence_id, valeur, texte) VALUES (?, ?, NULL, NULL, ?)');
+      for (const p of db.prepare('SELECT id, entrainement FROM ancienne.personnage WHERE entrainement IS NOT NULL').all()) {
+        for (const l of entrainementEnLignes(p.entrainement)) ecrire.run(p.id, l.rang, l.texte);
+      }
+    },
+  }),
+  personnage_competence: Object.freeze({
+    acquis: (db, { retraits }) => {
+      const nom = db.prepare('SELECT nom FROM main.competence WHERE id = ?');
+      const noms = { competence: (id) => nom.get(id)?.nom ?? null };
+      const parFiche = new Map();
+      for (const l of db.prepare('SELECT personnage_id, competence_id, acquis FROM ancienne.personnage_competence WHERE acquis > 0 ORDER BY personnage_id, competence_id').all()) {
+        if (!parFiche.has(l.personnage_id)) parFiche.set(l.personnage_id, []);
+        parFiche.get(l.personnage_id).push({ ...l });
+      }
+      ajouterLesRetraits(db, retraits, [...parFiche].map(([id, lignes]) => [id, acquisRetires(lignes, noms)]));
+    },
+  }),
+});
+
+/** Les conversions des colonnes retirées (COLONNES_CONVERTIES) que l'ancienne base a encore : rend les problèmes. */
+function convertirLesColonnesRetirees(db, retraits) {
+  const problemes = [];
+  for (const [t, parColonne] of Object.entries(COLONNES_CONVERTIES)) {
+    const avant = colonnes(db, 'ancienne', t);
+    for (const [c, convertir] of Object.entries(parColonne)) {
+      if (!avant.includes(c) || colonnes(db, 'main', t).includes(c)) continue;
+      try {
+        convertir(db, { retraits });
+      } catch (e) {
+        problemes.push(`${t}.${c} : ${e.message}`);
+      }
+    }
+  }
+  return problemes;
 }
 
 /**
@@ -309,6 +355,7 @@ function transferer(db, ancienne, instant, evenement = null) {
       // les lignes d'une table que les règles ont retirée (TABLES_RETIREES) sont converties, après la copie des fiches qu'elles complètent
       // (une conversion qui retire quelque chose d'une fiche le range dans `retraits`, noté avec les retraits de la décision R42, plus bas)
       if (!problemes.length) problemes.push(...convertirLesTablesRetirees(db, retraits));
+      if (!problemes.length) problemes.push(...convertirLesColonnesRetirees(db, retraits));
       // les modifications déjà livrées (leur lot est dans historique_modification des nouvelles règles : mise à jour ou rapatriement) sont
       // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production

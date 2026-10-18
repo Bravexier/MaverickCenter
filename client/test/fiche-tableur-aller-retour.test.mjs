@@ -45,7 +45,9 @@ function commeLaPage(fiche) {
   for (const cle of Object.keys(PARTIES_DE_FICHE)) f[cle] ??= [];
   f.caracteristiques = M.caracteristiquesCompletes(regles, f);
   f.caracteristiques = f.caracteristiques.filter((c) => c.base !== null && c.base !== undefined);
-  f.competences = f.competences.filter((c) => c.naturel || c.acquis);
+  f.competences = f.competences.filter((c) => c.naturel);
+  f.entrainements = M.entrainementsAEnregistrer(f);
+  f.acquis_choix = M.acquisChoixValables(regles, f);
   f.maitrises_armes = M.maitrisesValables(regles, f);
   f.armes = M.armesValables(regles, f);
   f.sorts = f.sorts.map((s, i) => ({ ...s, rang: i + 1 }));
@@ -161,7 +163,7 @@ const objet = (nom, quantite = 1) => ({ nom, quantite, ressource_id: regles.ress
 
 /**
  * Mono-classe à métier, tout rempli : 26 sorts, 55 objets, 6 événements, accessoires sur tous les emplacements, armes forgées (l'une abîmée, l'autre
- * cassée : décision R74), armure en pièces, gains de niveau (R73), un entraînement long sur trois lignes (R71).
+ * cassée : décision R74), armure en pièces, gains de niveau (R73), un entraînement en lignes et des choix d'acquis (R104).
  */
 function ficheRiche() {
   const f = {
@@ -177,8 +179,7 @@ function ficheRiche() {
     ],
     caracteristiques: regles.caracteristiques.map((k, i) => ({ caracteristique_id: k.id, base: 3 + (i % 2), croix: k.id === 'perception' ? 1 : 0 })),
     competences: [
-      { competence_id: 'connaissance', naturel: 15, acquis: 4 }, { competence_id: 'concentration', naturel: 5, acquis: 0 },
-      { competence_id: 'magie', naturel: 0, acquis: 3 }, { competence_id: 'esquive', naturel: 10, acquis: 2 }, { competence_id: 'ruse', naturel: 0, acquis: 1 },
+      { competence_id: 'connaissance', naturel: 15 }, { competence_id: 'concentration', naturel: 5 }, { competence_id: 'esquive', naturel: 10 },
     ],
     metier_bonus: [{ rang: 2, competence_id: 'magie' }],
     maitrises_armes: [{ arme_famille_id: 'epees', des: 4 }, { arme_famille_id: 'arc', des: 2 }, { arme_famille_id: 'pugilat', des: 3 }],
@@ -192,7 +193,17 @@ function ficheRiche() {
       },
       { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut, durabilite: 0 },
     ],
-    entrainement: `2 Magie | 10 Concentration | 10 Observation | 10 Distinction | 5 Survie | 5 Vigueur | 5 Fermeté\nLivre de magie lu : ${LONG}\nAccordé par le MJ : +5 Survie`,
+    // l'entraînement (décision R104) : quinze compétences, le maximum (trop pour la case L42, la suite dans la note), deux textes libres
+    entrainements: [...[['magie', 2], ['concentration', 10], ['observation', 10], ['distinction', 10], ['survie', 5], ['vigueur', 5], ['fermete', 5],
+      ['medecine', 3], ['psychologie', 3], ['orientation', 3], ['sabotage', 3], ['diplomatie', 3], ['negociation', 3], ['equilibre', 3], ['reflexe', 3]]
+      .map(([competence_id, valeur]) => ({ competence_id, valeur, texte: null })),
+    { competence_id: null, valeur: null, texte: `Livre de magie lu : ${LONG}` }, { competence_id: null, valeur: null, texte: 'Accordé par le MJ : +5 Survie' }]
+      .map((l, i) => ({ rang: i + 1, ...l })),
+    // les choix d'acquis de ses dons (décision R104) : « Arme lourde ou légère » de l'Épéiste, les 10 % de l'Humain central répartis
+    acquis_choix: [
+      { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null },
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 }, { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
+    ],
     // l'armure portée (décision R95) : une armure complète, son amélioration, son élément et l'amélioration de l'élément ; deux parties abîmées
     armure_id: trouve('armures', (a) => a.solidite >= 3 && Number(a.solidite_uni) !== 1, 'armure de solidité 3').id,
     armure_amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 2, 'armure 2').id,
@@ -252,8 +263,10 @@ test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue
   assert.deepEqual(r.fiche.armes.map((x) => x.durabilite), [1, 0]);
   assert.deepEqual(ORDINATEUR.armes.map((x) => r.cellules[x.solidite]), f.armes.map((x) => `${x.durabilite} / ${M.durabiliteMaxDArme(regles, x)}`));
   assert.equal(r.cellules[ORDINATEUR.armes[1].degats], M.degatsDArme(regles, f, 2).texte, 'une arme cassée garde ses dégâts dans le classeur');
-  // l'entraînement (décision R71), long et sur trois lignes : relu à l'identique ; les gains de niveau (R73) aussi
-  assert.equal(r.fiche.entrainement, f.entrainement);
+  // l'entraînement (décision R104) : ses lignes relues à l'identique ; les choix d'acquis des dons aussi ; les gains de niveau (R73) aussi
+  assert.deepEqual(r.fiche.entrainements, commeLaPage(f).entrainements);
+  assert.deepEqual(r.fiche.acquis_choix, commeLaPage(f).acquis_choix);
+  assert.equal(r.fiche.acquis_choix.length, 3, 'les trois choix sont ceux de dons débloqués');
   assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [f.gains_sante, f.gains_chakra]);
   // des textes que l'import relit, trop longs pour leur case : coupés (« … »), la suite dans la note, recollés à l'import
   const suites = r.cellules[ORDINATEUR.note].split('\n').filter((l) => l.startsWith('Suite de la case ')).map((l) => /^Suite de la case ([A-Z]+\d+) : /.exec(l)[1]);

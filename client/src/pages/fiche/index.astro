@@ -204,13 +204,17 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <h3 id="titre-dons">Dons débloqués</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
-            {/* « Entraînement » (décision R71), la case qui suit la race et le métier dans les dons de la fiche : texte libre, jamais compté */}
+            {/* « Entraînement » (décision R104) : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de sort (son NM), un
+                texte libre (« dons évènementiels ») */}
             <div class="dons-entrainement">
-              <h4 class="fiche-sous-titre"><label for="fiche-entrainement">Entraînement</label></h4>
-              <textarea id="fiche-entrainement" data-champ="entrainement" rows="2" aria-describedby="entrainement-aide"></textarea>
-              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment>Guide{entrainement.chapitre ? `, chapitre ${entrainement.chapitre}` : ''}, <cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Aussi les livres de magie lus (pour le NM) et tout autre élément à la libre volonté du MJ. Texte libre, jamais compté : les points gagnés se saisissent dans l’acquis de la compétence, le NM d’un livre sur son sort.</p>
+              <h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement</h4>
+              <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
+              <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
+              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment>Guide{entrainement.chapitre ? `, chapitre ${entrainement.chapitre}` : ''}, <cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
             </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
+            {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}
+            <div id="acquis-choix-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-choix">Acquis à choisir</h4><ul id="acquis-choix" class="acquis-choix" aria-labelledby="titre-acquis-choix"></ul></div>
           </div>
         </section>
       </div>

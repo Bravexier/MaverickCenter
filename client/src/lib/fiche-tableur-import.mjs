@@ -46,9 +46,9 @@
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
 // CLAUDE.md « Pièges connus » ; jamais lib/text.mjs, partagé par la recherche).
 
-import { ajouterAuxNotes, armureDesArmures, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
+import { ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
 import {
-  armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
+  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
   partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
@@ -155,7 +155,7 @@ const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.
 
 /**
  * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
- * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements ;
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement et les acquis au choix ;
  * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
  * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
  * d'information (refaites à chaque export) sont ignorées. Le dernier marqueur : des notes collées d'une autre fiche peuvent en porter un.
@@ -182,7 +182,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (lue.nom === 'evenement') (valeurs.evenement ??= []).push(lue.valeur);
+    } else if (lue.nom === 'evenement' || lue.nom === 'entrainementTexte' || lue.nom === 'acquisChoix') (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -193,8 +193,8 @@ export function lireLaNote(texte) {
  * Les bonus d'entraînement écrits dans la case « Entraînement » (L42) de la fiche auto : « 2 Magie | 10 Concentration » ou « Concentration 10 | Magie 2 »
  * → Map competence_id → points ; null pour une case vide ou qu'on ne lit pas en entier. Guide « Fiche de personnage : Capacités/Dons » : la case note
  * « tous les bonus relatifs à l'avancée des différents entraînements » (15 compétences au plus, 10 % au plus) ; la fiche auto les compte dans l'acquis
- * qu'elle affiche. Le texte de la case est gardé tel quel dans la fiche (personnage.entrainement, décision R71 : jamais compté, les points restent dans
- * l'acquis) ; ces nombres ne servent qu'à départager la compétence d'un accessoire.
+ * qu'elle affiche. Depuis la décision R104, ces bonus sont les lignes de l'entraînement de la fiche (personnage_entrainement), comptés dans l'Acquis
+ * calculé ; ils départagent aussi la compétence d'un accessoire.
  */
 export function bonusDEntrainement(regles, texte) {
   const brut = String(texte ?? '').trim();
@@ -481,7 +481,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     lieu_origine: texte(d.lieuOrigine) || null,
     race_id: null, ethnie_id: null, magie_innee_id: null, magie_acquise_id: null, caracteristique_magie_id: null, dieu_choisi_id: null, metier_id: null,
     bouclier_classe_id: null, bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null, sante_actuelle: null, chakra_actuel: null, barriere_actuelle: null, corruption: null, barre4_actuelle: null,
-    notes: null, evenements: null, posture_id: null, symbiose_magie_id: null, entrainement: null,
+    notes: null, evenements: null, posture_id: null, symbiose_magie_id: null,
   });
 
   // ---- identité, race, magies, ethnie, dieu, alignement, bourse, XP
@@ -766,6 +766,47 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const c of metierLus) if (!f.metier_bonus.includes(c)) perdu(`Métier : choix « ${nomDe(regles.competences, c.competence_id)} » du rang ${c.rang} hors des options`);
   f.maitrises_armes = maitrisesValables(regles, f);
 
+  // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; une case qui ne se lit
+  // pas ainsi (le texte libre d'avant, R71) devient des lignes de texte, une par ligne de la case, comme les lignes « Entraînement : … » de la note
+  const texteL42 = texte(casesDuDon(DONS.entrainement).effet);
+  const lusL42 = bonusDEntrainement(regles, texteL42);
+  f.entrainements = [
+    ...(lusL42 ? [...lusL42].map(([competence_id, valeur]) => ({ competence_id, valeur, texte: null })) : entrainementEnLignes(texteL42).map(({ rang: _r, ...l }) => l)),
+    ...notee('entrainementTexte').map((t) => ({ competence_id: null, valeur: null, texte: t })),
+  ].map((l, i) => ({ rang: i + 1, ...l }));
+
+  // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y » : une de ses options),
+  // « <don> : Arc 6, Calme 4 » (« à répartir au choix ») ; un don qui a deux choix est relu dans l'ordre de ses lignes
+  f.acquis_choix = [];
+  const choixDesDons = acquisDesDons(regles, f).choix;
+  const competenceNommee = (nom) => regles.competences.find((k) => cle(k.nom) === cle(nom)) ?? null;
+  for (const ligne of notee('acquisChoix')) {
+    const coupe = ligne.lastIndexOf(' : ');
+    const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
+    const quoi = `Acquis au choix « ${ligne} »`;
+    const libres = choixDesDons.filter((c) => cle(c.nom) === cle(nom) && !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const choix = libres.find((c) => c.repartition || c.options.includes(competenceNommee(valeur)?.id)) ?? null;
+    if (!choix) {
+      perdu(`${quoi} : ${libres.length ? 'pas une option de ce don' : 'aucun choix d’acquis de ce nom dans les dons de la fiche'}`);
+      continue;
+    }
+    if (!choix.repartition) {
+      f.acquis_choix.push({ source: choix.source, rang: choix.rang, competence_id: competenceNommee(valeur).id, valeur: null });
+      continue;
+    }
+    const parts = [];
+    for (const morceau of valeur.split(/\s*,\s*/)) {
+      const m = /^(.*\S)\s+(\d+)$/.exec(morceau.trim());
+      const k = m && competenceNommee(m[1]);
+      if (k) parts.push({ competence_id: k.id, valeur: Number(m[2]) });
+      else perdu(`${quoi} : « ${morceau} » illisible (une compétence et ses points)`);
+    }
+    f.acquis_choix.push(...acquisApresRepartition({}, choix.source, choix.rang, parts).acquis_choix);
+  }
+  const relus = f.acquis_choix.length;
+  f.acquis_choix = acquisChoixValables(regles, f);
+  if (f.acquis_choix.length < relus) perdu('Acquis au choix : des points répartis au-delà du bonus de leur don, retirés');
+
   // ---- compétences : naturel et acquis écrits (entiers)
   const caseDeCompetence = new Map(CASES_COMPETENCES.map((c) => [c.id, c]));
   const ecrits = new Map(regles.competences.filter((k) => caseDeCompetence.has(k.id)).map((k) => {
@@ -782,7 +823,6 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const ancienMetier = metierEcrit ? bonusDuMetierEcrit(regles, texteL41) : undefined;
   const nomDuMetier = metier?.nom ?? texteMetier;
   const metierDuClasseur = (id, c) => (ancienMetier ? ancienMetier.get(id) ?? 0 : c.metier);
-  const origineDuMetier = ancienMetier ? 'classeur' : 'base';
   const bonusEcrits = (parCompetence) => regles.competences.filter((k) => parCompetence.get(k.id)).map((k) => `${k.nom} +${parCompetence.get(k.id)}`).join(', ');
   if (ancienMetier === null && texteL41.trim() && metier?.bonus.some((b) => b.options.some((o) => o.competence_id))) {
     remarques.push(`Métier ${nomDuMetier} : bonus du classeur illisibles (« ${texteL41.replace(BLANCS, ' ').trim()} ») : l'acquis du joueur retire ceux de la base, à vérifier`);
@@ -798,7 +838,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier (celui du
   // classeur, R72) et les bonus d'entraînement (L42), vaut la valeur tirée
-  const entrainement = auto ? bonusDEntrainement(regles, texte(casesDuDon(DONS.entrainement).effet)) : null;
+  const entrainement = auto ? lusL42 : null;
   if (entrainement) {
     const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
     for (const a of f.accessoires) {
@@ -822,33 +862,46 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     }
   }
 
-  // ---- compétences : l'acquis du joueur = l'acquis écrit moins le métier (celui que le classeur comptait, R72 : bonusDuMetierEcrit ; celui de la base
-  // pour un classeur de la page) et les accessoires (que la fiche ajoute d'elle-même) ; un classeur qui ne vient pas de la page le dit, compétence par
-  // compétence ; un acquis écrit plus petit que ces bonus, toujours
-  const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
-  const accessoiresDe = (id) => effetsDesAccessoires(regles, f).filter((e) => e.cible === 'competence' && e.cible_id === id && !e.aChoisir && e.valeur !== null);
+  // ---- compétences : le naturel écrit ; l'Acquis se calcule (décision R104 : entraînement, dons, métier, accessoires) : celui du classeur n'est pas
+  // repris, un écart avec le calcul est dit (non repris)
   for (const k of regles.competences) {
     if (!caseDeCompetence.has(k.id)) continue;
     const naturel = Math.max(0, ecrits.get(k.id).naturel ?? 0);
-    const ecrit = ecrits.get(k.id).acquis ?? 0;
-    const c = calcul.get(k.id);
-    const duMetier = metierDuClasseur(k.id, c);
-    const plus = duMetier + c.accessoire;
-    let acquis = ecrit - plus;
-    if (plus) {
-      const termes = [];
-      const terme = (v, quoi) => termes.push(` ${v >= 0 ? '−' : '+'} ${Math.abs(v)} ${quoi}`);
-      if (duMetier) terme(duMetier, `du métier ${nomDuMetier} (${origineDuMetier})`);
-      if (c.accessoire) {
-        const emplacements = [...new Set(accessoiresDe(k.id).map((e) => libelleDEmplacement(e.emplacement)))];
-        terme(c.accessoire, `${emplacements.length > 1 ? 'des accessoires' : 'de l\'accessoire'} ${emplacements.join(', ')}`);
-      }
-      const debut = `${k.nom} : acquis ${ecrit} du classeur${termes.join('')}`;
-      if (acquis < 0) remarques.push(`${debut} : moins que ces bonus, 0 au joueur`);
-      else if (!deLaPage) remarques.push(`${debut} = ${acquis} au joueur`);
+    if (naturel) f.competences.push({ competence_id: k.id, naturel });
+  }
+  // l'écart entre l'acquis écrit et le calcul, le métier du classeur remplacé par celui de la base (décision R72 : son écart a déjà sa remarque)
+  const ecarts = () => {
+    const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
+    return regles.competences.filter((k) => caseDeCompetence.has(k.id)).map((k) => {
+      const c = calcul.get(k.id);
+      const ecrit = ecrits.get(k.id).acquis ?? 0;
+      return { k, ecrit, calcule: c.acquis, ecart: ecrit - metierDuClasseur(k.id, c) + c.metier - c.acquis };
+    });
+  };
+  // les choix d'acquis des dons que le classeur ne dit pas (une fiche auto, un classeur de la page d'avant la décision R104) : déduits de l'acquis écrit
+  // quand une seule lecture l'explique — « X ou Y » : la seule option dont l'acquis écrit dépasse le calcul de la valeur du bonus ; « à répartir au
+  // choix » : les compétences dont l'acquis écrit dépasse le calcul, si tout tient dans ce qui reste à répartir — ; une remarque chacun
+  for (const choix of acquisDesDons(regles, f).choix.filter((c) => !c.fait)) {
+    const parId = new Map(ecarts().map((x) => [x.k.id, x]));
+    if (!choix.repartition) {
+      const options = choix.options.filter((o) => parId.get(o)?.ecart === choix.valeur);
+      if (options.length !== 1) continue;
+      Object.assign(f, acquisApresChoix(f, choix.source, choix.rang, options[0]));
+      remarques.push(`Acquis au choix de ${choix.nom} (+${choix.valeur} %) déduit : ${nomDe(regles.competences, options[0])} (l'acquis du classeur)`);
+      continue;
     }
-    acquis = Math.max(0, acquis);
-    if (naturel || acquis) f.competences.push({ competence_id: k.id, naturel, acquis });
+    const plus = [...parId.values()].filter((x) => x.ecart > 0);
+    if (!plus.length || plus.reduce((t, x) => t + x.ecart, 0) > choix.reste) continue;
+    const parts = new Map(choix.parts.map((x) => [x.competence_id, x.valeur]));
+    for (const x of plus) parts.set(x.k.id, (parts.get(x.k.id) ?? 0) + x.ecart);
+    Object.assign(f, acquisApresRepartition(f, choix.source, choix.rang, [...parts].map(([competence_id, valeur]) => ({ competence_id, valeur }))));
+    remarques.push(`Acquis à répartir de ${choix.nom} (${choix.valeur} %) déduit : ${plus.map((x) => `${x.k.nom} ${x.ecart}`).join(', ')} (l'acquis du classeur)`);
+  }
+  f.acquis_choix = acquisChoixValables(regles, f);
+  for (const { k, ecrit, calcule, ecart } of ecarts()) {
+    // plus que le calcul : des points saisis que la fiche n'a plus (non repris) ; moins : la fiche en compte davantage (dons, métier…), une remarque
+    if (ecart > 0) perdu(`Acquis ${k.nom} : « ${ecrit} » dans le classeur, ${calcule} calculé (l’acquis se calcule : entraînement, dons, métier, accessoires ; décision R104)`);
+    else if (ecart < 0) remarques.push(`Acquis ${k.nom} : ${ecrit} dans le classeur, ${calcule} calculé (entraînement, dons, métier, accessoires : décision R104)`);
   }
 
   // ---- sorts et leurs NM
@@ -1167,8 +1220,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   evenements.push(...notee('evenement'));
   f.evenements = evenements.length ? evenements.join('\n') : null;
   f.notes = note.autres.length ? ajouterAuxNotes(note.notes, note.autres) : note.notes;
-  // l'entraînement (décision R71) : le texte de la case L42, tel quel (recollé à sa suite dans la note quand la page l'a coupé)
-  f.entrainement = texte(casesDuDon(DONS.entrainement).effet) || null;
+
 
   // ---- valeurs du moment (null : au maximum ; corruption : null à 0) et posture du moment
   const QUOI_DES_JAUGES = { sante_actuelle: 'Santé', chakra_actuel: 'Chakra', barriere_actuelle: 'Barrière', barre4_actuelle: '4ᵉ barre', corruption: 'Corruption' };

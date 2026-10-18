@@ -34,7 +34,7 @@
 import { RAISONS } from './degats-texte.mjs';
 import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
-  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
+  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisDesDons, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
   valeursDuMoment,
@@ -61,6 +61,10 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   sorts: 'Sorts (suite)',
   inventaire: 'Inventaire (suite)',
   evenement: 'Événement',
+  // une ligne de texte libre de l'entraînement (décision R104 : « dons évènementiels ») ; ses compétences sont dans la case L42
+  entrainementTexte: 'Entraînement',
+  // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »)
+  acquisChoix: 'Acquis au choix',
   resistancesAuChoix: 'Résistances au choix (non comptées)',
   modeHyperCent: 'Mode Hyper 100 %',
   choixAFaire: 'Choix à faire',
@@ -185,6 +189,15 @@ function sansLignesVidesDeFin(t) {
 /** Un texte de la base qui n'est qu'un entier (« 4 ») s'écrit en nombre ; sinon tel quel. */
 const nombreSiEntier = (t) => (typeof t === 'string' && /^-?(0|[1-9]\d*)$/.test(t.trim()) ? Number(t.trim()) : t);
 const nomDe = (liste, id) => (id ? trouver(liste ?? [], id)?.nom ?? id : null);
+
+/**
+ * La case « Entraînement » (L42) d'une fiche (décision R104) : ses compétences entraînées, « Nom points », jointes par « | » (la forme que relit
+ * bonusDEntrainement de l'import, celle de la fiche auto) ; '' sans compétence.
+ */
+export function texteDeLEntrainement(regles, f) {
+  return [...(f.entrainements ?? [])].sort((a, b) => a.rang - b.rang).filter((l) => l.competence_id)
+    .map((l) => `${nomDe(regles.competences, l.competence_id)} ${Math.max(0, Number(l.valeur) || 0)}`).join(' | ');
+}
 
 // ------------------------------------------------------------------ lignes de la note
 
@@ -833,8 +846,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const c = competences.find((x) => x.id === k.id);
     if (!c) continue;
     if (c.naturel) ecrire(k.naturel, c.naturel);
-    const acquis = c.acquis + c.metier + c.accessoire;
-    if (acquis) ecrire(k.acquis, acquis);
+    // l'Acquis calculé (décision R104 : entraînement, dons, métier, accessoires, au plus le plafond), affiché seulement : l'import ne le relit pas
+    if (c.acquis) ecrire(k.acquis, c.acquis);
     ecrire(k.total, c.score === null ? 'N/A' : c.score);
   }
 
@@ -945,7 +958,9 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrireEnDeuxParts(cases.effet, partiesDuMetier(regles, f), SEPARATEUR_EN_LIGNE);
   }
   // entraînement (décision R71) : le texte libre de la fiche ; le nom (« Entraînement ») et le type du modèle restent
-  ecrire(casesDuDon(DONS.entrainement).effet, String(f.entrainement ?? '').trim() || null, RELUE);
+  // l'entraînement (décision R104) : ses compétences dans la case, « Magie 2 | Concentration 10 » (relu par bonusDEntrainement, comme la fiche auto) ;
+  // ses lignes de texte libre dans la note
+  ecrire(casesDuDon(DONS.entrainement).effet, texteDeLEntrainement(regles, f) || null, RELUE);
   const donsEnSuite = { 1: [], 2: [] };
   for (const c of donsAcquis(regles, f)) {
     const lignes = c.rang === 1 ? DONS.classe1 : DONS.classe2;
@@ -1037,6 +1052,11 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   noter(K.sorts, sortsEnSuite.join(SEPARATEUR_DE_LISTE));
   noter(K.inventaire, inventaireEnSuite.join(SEPARATEUR_DE_LISTE));
   for (const ligne of evenements.slice(PLACES_EVENEMENTS)) noter(K.evenement, ligne);
+  for (const l of [...(f.entrainements ?? [])].sort((a, b) => a.rang - b.rang)) if (!l.competence_id && String(l.texte ?? '').trim()) noter(K.entrainementTexte, uneLigne(l.texte));
+  for (const c of acquisDesDons(regles, f).choix) {
+    const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);
+    if (choisi) noter(K.acquisChoix, `${c.nom} : ${choisi}`);
+  }
   noter(K.resistancesAuChoix, resistances.auChoix.join(', '));
   if (hyper?.cent.debloque) noter(K.modeHyperCent, MODE_HYPER_CENT_DEBLOQUE);
   noter(K.choixAFaire, choixEnAttente(regles, f).map((c) => c.libelle).join(SEPARATEUR_DE_LISTE));

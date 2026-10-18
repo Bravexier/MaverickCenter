@@ -33,7 +33,7 @@ function fiche(accessoires = [], surcharge = {}) {
     race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }],
     caracteristiques: Object.entries({ force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 }).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 })),
-    competences: [{ competence_id: 'arme-lourde', naturel: 20, acquis: 0 }],
+    competences: [{ competence_id: 'arme-lourde', naturel: 20 }],
     accessoires,
     ...surcharge,
   };
@@ -53,20 +53,23 @@ test('caractéristique : +1, sans dépasser 4 ni la borne de la race ; maudit, �
   const force = carac(fiche([porte('chef', 'caracteristique:force')]), 'force');
   assert.deepEqual([force.valeur, force.accessoire, force.accessoireBrut], [4, 0, 1], 'déjà à 4 : rien');
   assert.equal(carac(fiche([porte('chef', 'caracteristique:force', { maudit: 1 })]), 'force').valeur, 3);
-  assert.equal(comp(fiche([porte('chef', 'caracteristique:force', { maudit: 1 })]), 'arme-lourde').score, 3 * 10 + 20);
+  const lourde = comp(fiche([porte('chef', 'caracteristique:force', { maudit: 1 })]), 'arme-lourde');
+  assert.equal(lourde.score, 3 * 10 + 20 + lourde.acquis, 'l’acquis (les dons du Guerrier : décision R104) n’y change rien');
 });
 
 test('compétence : la valeur tirée en Acquis de la compétence choisie, de la bonne caractéristique, rognée au plafond ; sinon un choix en attente', () => {
   const bonne = fiche([porte('collier', 'competence:force:2', { valeur: 7, competence_id: 'arme-lourde' })]);
-  assert.deepEqual([comp(bonne, 'arme-lourde').accessoire, comp(bonne, 'arme-lourde').score], [7, 4 * 10 + 20 + 7]);
-  assert.equal(comp(bonne, 'arme-lourde').maxAcquis, 4 * 5 - 7);
+  // (les dons du Guerrier qui donnent de l'acquis en Arme lourde passent avant l'accessoire : décision R104)
+  const dons = comp(bonne, 'arme-lourde').dons;
+  assert.deepEqual([comp(bonne, 'arme-lourde').accessoire, comp(bonne, 'arme-lourde').score], [7, 4 * 10 + 20 + dons + 7]);
+  assert.equal(comp(bonne, 'arme-lourde').acquis, dons + 7);
   assert.deepEqual(choixEnAttente(regles, bonne).filter((c) => c.nature === 'accessoire'), []);
   const mauvaise = fiche([porte('collier', 'competence:force:2', { valeur: 7, competence_id: 'esquive' })]);
   assert.ok(competencesDe(regles, mauvaise).every((c) => c.accessoire === 0));
   assert.deepEqual(choixEnAttente(regles, mauvaise).filter((c) => c.nature === 'accessoire').map((c) => c.cle), ['accessoire:collier']);
-  // plafond : 5 par point de Force (4) = 20 ; deux accessoires (18 + 16) rognés à 20 : le plafond prévaut (comme pour le métier, R38)
+  // plafond : 5 par point de Force (4) = 20 ; deux accessoires (18 + 16) rognés à ce que les dons laissent : le plafond prévaut (comme pour le métier, R38)
   const pleine = fiche([porte('collier', 'competence:force:4', { valeur: 18, competence_id: 'arme-lourde' }), porte('chef', 'competence:force:4', { valeur: 16, competence_id: 'arme-lourde' })]);
-  assert.deepEqual([comp(pleine, 'arme-lourde').accessoireBrut, comp(pleine, 'arme-lourde').accessoire, comp(pleine, 'arme-lourde').maxAcquis], [34, 20, 0]);
+  assert.deepEqual([comp(pleine, 'arme-lourde').accessoireBrut, comp(pleine, 'arme-lourde').accessoire, comp(pleine, 'arme-lourde').acquis], [34, 20 - dons, 20]);
   const maudite = fiche([porte('collier', 'competence:force:2', { valeur: 7, competence_id: 'arme-lourde', maudit: 1 })]);
   assert.equal(comp(maudite, 'arme-lourde').accessoire, -7);
 });

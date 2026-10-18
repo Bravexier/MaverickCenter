@@ -47,11 +47,15 @@ test('choix à faire : spécialité au niveau de classe 10, dons à choisir, bon
   assert.deepEqual(choixEnAttente(regles, archer(5)).map((c) => c.nature), ['specialite'], 'classe niveau 10 : la spécialité');
   const specialite = 'classes/archer#specialite:tireur-delite';
   const avecSpecialite = archer(5, { classes: [{ rang: 1, classe_id: 'classes/archer', specialite_id: specialite }] });
-  assert.deepEqual(choixEnAttente(regles, avecSpecialite).map((c) => c.nature), ['don'], 'puis le don de niveau 10 de la spécialité');
+  // puis le don de niveau 10 de la spécialité, et l'acquis « Armes légères ou lourdes » de son don de spécialité (décision R104)
+  assert.deepEqual(choixEnAttente(regles, avecSpecialite).map((c) => c.nature), ['don', 'acquis'], 'puis le don de niveau 10 de la spécialité');
   assert.match(choixEnAttente(regles, avecSpecialite)[0].libelle, /Archer niv\. 10 : Archer monté ou Coup inéluctable/);
   assert.match(choixEnAttente(regles, avecSpecialite)[0].cle, /^don:1:capacites\/archer-/);
+  assert.deepEqual(choixEnAttente(regles, avecSpecialite)[1], {
+    nature: 'acquis', cle: 'acquis:capacites/archer-tireur-delite:1', libelle: 'Acquis Tireur d\'élite (Archer) : +5 % Arme Légère ou Arme Lourde' });
   assert.equal(choixEnAttente(regles, archer(5))[0].cle, 'specialite:1');
-  assert.deepEqual(choixEnAttente(regles, { ...avecSpecialite, capacites: [{ capacite_id: 'capacites/archer-coup-ineluctable' }] }), []);
+  const acquis = [{ source: 'capacites/archer-tireur-delite', rang: 1, competence_id: 'arme-legere', valeur: null }];
+  assert.deepEqual(choixEnAttente(regles, { ...avecSpecialite, capacites: [{ capacite_id: 'capacites/archer-coup-ineluctable' }], acquis_choix: acquis }), []);
   // le Chasseur : « +2% Arc OU Arbalète » et « Arc en acier (Arme) » ou « Arbalète en acier (Arme) »
   const chasseur = archer(1, { metier_id: 'metiers/chasseur' });
   assert.deepEqual(choixEnAttente(regles, chasseur).map((c) => c.nature), ['metier_bonus', 'metier_objet']);
@@ -59,8 +63,11 @@ test('choix à faire : spécialité au niveau de classe 10, dons à choisir, bon
   assert.deepEqual(choixEnAttente(regles, { ...chasseur, metier_bonus: [{ rang: 1, competence_id: 'arc' }], inventaire: [{ rang: 1, nom: 'Arc en acier (Arme)', quantite: 1 }] }), []);
   // le Potentiel Illimité laisse son +1 au choix
   const potentiel = { ...ficheVide('PI'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/potentiel-illimite' };
-  assert.deepEqual(choixEnAttente(regles, potentiel).map((c) => c.nature), ['carac_magie']);
-  assert.deepEqual(choixEnAttente(regles, { ...potentiel, caracteristique_magie_id: 'force' }), []);
+  // (et l'Humain central ses 10 % d'acquis à répartir au choix : décision R104)
+  assert.deepEqual(choixEnAttente(regles, potentiel).map((c) => [c.nature, c.libelle]), [['carac_magie', '+1 de la magie innée (Potentiel Illimité)'], ['acquis', 'Acquis Adaptation humaine : 10 % à répartir']]);
+  const repartis = [['arc', 6], ['calme', 4]].map(([competence_id, valeur]) => ({ source: 'races/humain#don:humain-central', rang: 1, competence_id, valeur }));
+  assert.deepEqual(choixEnAttente(regles, { ...potentiel, caracteristique_magie_id: 'force', acquis_choix: repartis.slice(0, 1) }).map((c) => c.libelle), ['Acquis Adaptation humaine : 4 % à répartir']);
+  assert.deepEqual(choixEnAttente(regles, { ...potentiel, caracteristique_magie_id: 'force', acquis_choix: repartis }), []);
 });
 
 test('attaque à deux armes (décision R46) : −20 % / −40 %, moitié avec une dague, moitié pour un Bimane, cumulables', () => {

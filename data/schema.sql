@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 61;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 62;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3910,9 +3910,6 @@ CREATE TABLE personnage (
   -- niveau ne devraient pas être un niveau à part. »
   gains_sante           INTEGER NOT NULL DEFAULT 0 CHECK (gains_sante >= 0),
   gains_chakra          INTEGER NOT NULL DEFAULT 0 CHECK (gains_chakra >= 0),
-  -- « Entraînement » (L42 du modèle ordinateur), texte libre (décision R71) : bonus d'entraînement (guide), livres de magie lus, ce que le MJ accorde ;
-  -- jamais compté (les points restent dans personnage_competence.acquis, les NM de livre dans personnage_sort.nm_livre)
-  entrainement          TEXT,
   -- Armure portée (décision R95, migration 0055 : « L'amélioration est pour l'armure complète », son élément aussi) : UNE armure complète (une armure
   -- ne se fabrique plus pièce par pièce, décision R93 ; « Nom Armure » AD21 de la fiche auto), son amélioration (AT20, cible 'armure'), son élément
   -- (l'armure élémentaire, AS21) et l'amélioration de l'élément (AX21, cible 'armure_elementaire') ; la solidité du moment de ses parties :
@@ -3976,15 +3973,45 @@ CREATE TABLE personnage_caracteristique (
   PRIMARY KEY (personnage_id, caracteristique_id)
 ) STRICT, WITHOUT ROWID;
 
--- Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond seuil_niveau 'competence_naturel_max') et « Acquis » (bonus de race,
--- classe, don, équipement, entraînement : au plus 5 par point de caractéristique de base, guide « Compétences »). Le total (K22…) se calcule.
--- Compétence absente = 0 et 0.
+-- Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond seuil_niveau 'competence_naturel_max'). L'« Acquis » ne se saisit plus
+-- (décision R104, migration 0062 : il se calcule, de l'entraînement, des dons, du métier et des accessoires, au plus 5 par point de caractéristique),
+-- ni le total (K22…). Compétence absente = 0.
 CREATE TABLE personnage_competence (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   competence_id  TEXT    NOT NULL REFERENCES competence(id),
   naturel        INTEGER NOT NULL CHECK (naturel >= 0),
-  acquis         INTEGER NOT NULL CHECK (acquis >= 0),
   PRIMARY KEY (personnage_id, competence_id)
+) STRICT, WITHOUT ROWID;
+
+-- « Entraînement » (L42 du modèle ordinateur ; décision R104, migration 0062, qui remplace personnage.entrainement, un texte libre : décision R71) :
+-- des lignes qu'on ajoute, chacune un entraînement de compétence — la compétence et ses points (« Vous ne pouvez monter que 15 compétences maximum
+-- grâce à cette case et à hauteur maximum 10% de bonus » : constantes entrainement.competences_max, entrainement.bonus_max_pct, contrôlées par
+-- v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort restent dans
+-- personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement.
+CREATE TABLE personnage_entrainement (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang >= 1),
+  competence_id  TEXT    REFERENCES competence(id),
+  valeur         INTEGER CHECK (valeur >= 0),
+  texte          TEXT,
+  PRIMARY KEY (personnage_id, rang),
+  CHECK ((competence_id IS NOT NULL AND valeur IS NOT NULL AND texte IS NULL)
+      OR (competence_id IS NULL AND valeur IS NULL AND texte IS NOT NULL AND length(trim(texte)) > 0))
+) STRICT, WITHOUT ROWID;
+
+CREATE UNIQUE INDEX personnage_entrainement_competence ON personnage_entrainement (personnage_id, competence_id) WHERE competence_id IS NOT NULL;
+
+-- Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le texte d'un don devient un choix du tiroir) : pour un don débloqué de la fiche
+-- (capacite.id ou race_don.id, `source` : pas de clé étrangère, un don disparu laisse un choix sans effet, que la page retire) et le rang de ce choix
+-- dans son texte (lib/acquis-texte.mjs, 1 = le premier), la compétence retenue (`valeur` NULL : le bonus du don), ou, pour « 10% de compétence en
+-- acquis à répartir au choix », chaque compétence et ses points (`valeur`, leur somme au plus le bonus : la page le garde).
+CREATE TABLE personnage_acquis_choix (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  source         TEXT    NOT NULL CHECK (length(source) > 0),
+  rang           INTEGER NOT NULL CHECK (rang >= 1),
+  competence_id  TEXT    NOT NULL REFERENCES competence(id),
+  valeur         INTEGER CHECK (valeur >= 1),
+  PRIMARY KEY (personnage_id, source, rang, competence_id)
 ) STRICT, WITHOUT ROWID;
 
 -- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
@@ -4274,7 +4301,7 @@ CREATE VIEW v_personnage_controle AS
   WHERE EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = n.personnage_id)
     AND (SELECT SUM(pc.base) FROM personnage_caracteristique pc WHERE pc.personnage_id = n.personnage_id) <> s.valeur
   UNION ALL
-  -- Compétences : naturel au plus le maximum du niveau, total naturel = budget cumulé (R3) ; acquis au plus 5 par point de caractéristique de base
+  -- Compétences : naturel au plus le maximum du niveau, total naturel = budget cumulé (R3)
   SELECT pc.personnage_id, 'competence_naturel_max', pc.competence_id || ' = ' || pc.naturel
   FROM personnage_competence pc
   JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
@@ -4286,23 +4313,17 @@ CREATE VIEW v_personnage_controle AS
   JOIN v_niveau v ON v.niveau = n.niveau_global
   WHERE COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
-  -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
-  -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur). Plafond : 5 par point de la caractéristique totale, le +1 de la magie innée
-  -- compris (sa caractéristique, ou celle que la fiche choisit quand la magie la laisse au choix), décision R41 : « 5 en volonté donnerait un max de
-  -- 25 aquis » (migration 0026)
-  SELECT pl.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond))
-  FROM (SELECT pca.personnage_id, pca.caracteristique_id,
-               (pca.base + CASE WHEN mi.id IS NOT NULL AND pca.caracteristique_id = COALESCE(mi.caracteristique_id, p.caracteristique_magie_id)
-                                THEN (SELECT r.valeur FROM regle_constante r WHERE r.id = 'caracteristique.bonus_magie_innee') ELSE 0 END)
-               * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique') AS plafond
-        FROM personnage_caracteristique pca
-        JOIN personnage p ON p.id = pca.personnage_id
-        LEFT JOIN magie mi ON mi.id = p.magie_innee_id) pl
-  JOIN competence co ON co.caracteristique_id = pl.caracteristique_id
-  LEFT JOIN personnage_competence pco ON pco.personnage_id = pl.personnage_id AND pco.competence_id = co.id
-  LEFT JOIN (SELECT personnage_id, competence_id, SUM(valeur) AS valeur FROM v_personnage_metier_bonus WHERE competence_id IS NOT NULL
-             GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pl.personnage_id AND mb.competence_id = co.id
-  WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond) > pl.plafond
+  -- Entraînement (décision R104) : 15 compétences au plus (« Vous ne pouvez monter que 15 compétences maximum »), 10 points au plus chacune (« à hauteur
+  -- maximum 10% de bonus » ; une ligne à 0 ne monte rien) ; l'Acquis, lui, se calcule (le plafond de 5 par point de caractéristique est appliqué par la page)
+  SELECT pe.personnage_id, 'entrainement_competences', COUNT(*) || ' / ' || (SELECT r.valeur FROM regle_constante r WHERE r.id = 'entrainement.competences_max')
+  FROM personnage_entrainement pe
+  WHERE pe.competence_id IS NOT NULL AND pe.valeur > 0
+  GROUP BY pe.personnage_id
+  HAVING COUNT(*) > (SELECT r.valeur FROM regle_constante r WHERE r.id = 'entrainement.competences_max')
+  UNION ALL
+  SELECT pe.personnage_id, 'entrainement_valeur', pe.competence_id || ' = ' || pe.valeur
+  FROM personnage_entrainement pe
+  WHERE pe.valeur > (SELECT r.valeur FROM regle_constante r WHERE r.id = 'entrainement.bonus_max_pct')
   UNION ALL
   -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien
   SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id

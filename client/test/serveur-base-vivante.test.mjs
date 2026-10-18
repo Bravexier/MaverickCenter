@@ -509,7 +509,7 @@ test('schéma changé : une colonne remplie qui disparaît (hors COLONNES_RETIRE
 });
 
 test('migration 0038 : une base vivante d’avant, dont les fiches ont encore leur statut rempli, est reprise sans blocage, la colonne perdue ; une autre colonne remplie disparue bloque toujours', () => {
-  assert.deepEqual(COLONNES_RETIREES.personnage, ['statut']);
+  assert.deepEqual(COLONNES_RETIREES.personnage, ['statut', 'entrainement']);
   const aStatut = (f, t) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = 'statut'`).n === 1;
   assert.equal(aStatut(REGLES, 'personnage'), false, 'les règles d’aujourd’hui n’ont plus de statut');
   // les règles d'avant 0038 : la colonne et ses contraintes (data/schema.sql d'alors ; une valeur par défaut, qu'ALTER TABLE exige pour NOT NULL) ;
@@ -570,12 +570,12 @@ test('migration 0038 : une base vivante d’avant, dont les fiches ont encore le
   }
 });
 
-// Les règles d'avant la migration 0045 (data/schema.sql d'alors) : la table personnage_progression, sans les gains en deux totaux, l'entraînement ni la
-// durabilité des armes (la vue qui les lit d'abord : SQLite refuse de retirer une colonne qu'une vue cite).
+// Les règles d'avant la migration 0045 (data/schema.sql d'alors) : la table personnage_progression, sans les gains en deux totaux ni la durabilité des
+// armes (la vue qui les lit d'abord : SQLite refuse de retirer une colonne qu'une vue cite ; l'entraînement en texte, que 0045 ajoutait, a été retiré
+// depuis par la migration 0062).
 const AVANT_0045 = `DROP VIEW v_personnage_controle;
   ALTER TABLE personnage DROP COLUMN gains_sante;
   ALTER TABLE personnage DROP COLUMN gains_chakra;
-  ALTER TABLE personnage DROP COLUMN entrainement;
   ALTER TABLE personnage_arme DROP COLUMN durabilite;
   CREATE TABLE personnage_progression (
     personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
@@ -587,7 +587,7 @@ const AVANT_0045 = `DROP VIEW v_personnage_controle;
     PRIMARY KEY (personnage_id, niveau),
     CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
   ) STRICT, WITHOUT ROWID;`;
-const COLONNES_0045 = { personnage: ['gains_sante', 'gains_chakra', 'entrainement'], personnage_arme: ['durabilite'] };
+const COLONNES_0045 = { personnage: ['gains_sante', 'gains_chakra'], personnage_arme: ['durabilite'] };
 /** Les lignes de la section 13 sans les colonnes de la migration 0045 : ce qu'une base d'avant doit retrouver à l'identique. */
 const sans0045 = (lignes) => Object.fromEntries(Object.entries(lignes).map(([t, l]) => [t, l.map((x) => {
   const ligne = JSON.parse(x);
@@ -652,7 +652,7 @@ test('migration 0045 : une base vivante d’avant, avec ses gains niveau par niv
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     const aldric = lireFiche(db, 'p1');
     assert.equal('progression' in aldric, false);
-    assert.deepEqual([aldric.gains_sante, aldric.gains_chakra, aldric.entrainement], [48, 18, null]);
+    assert.deepEqual([aldric.gains_sante, aldric.gains_chakra, aldric.entrainements], [48, 18, []]);
   } finally {
     db.close();
   }
@@ -822,6 +822,55 @@ test('migration 0060 : une base vivante d’avant est reprise ; le bouclier gard
   const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
   assert.equal(suivante.refaite, true);
   assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes.split('\n').length, 4, 'rien ajouté à la reconstruction suivante');
+});
+
+// Les règles d'avant la migration 0062 (data/schema.sql d'alors) : l'entraînement en texte (personnage.entrainement, R71) et l'acquis saisi des
+// compétences (personnage_competence.acquis). Les tables de l'entraînement et des choix d'acquis restent (vides) : la copie les reprend vides et la
+// conversion les remplit, comme depuis une base d'avant.
+const AVANT_0062 = `ALTER TABLE personnage ADD COLUMN entrainement TEXT;
+  ALTER TABLE personnage_competence ADD COLUMN acquis INTEGER NOT NULL DEFAULT 0 CHECK (acquis >= 0);`;
+
+test('migration 0062 : une base vivante d’avant est reprise ; l’entraînement en texte devient des lignes de texte, l’acquis saisi n’est plus repris et chaque fiche le note, daté (R104)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_competence, ['acquis']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0062), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.exec(`UPDATE personnage SET entrainement = 'Arc +5 % (entraîneur de Valbrume)\n\n  Livre lu : Boule de feu  ' WHERE id = 'p1';
+    UPDATE personnage SET entrainement = '  ' WHERE id = 'p2';
+    INSERT INTO personnage_competence (personnage_id, competence_id, naturel, acquis) VALUES ('p1', 'arc', 10, 7), ('p1', 'calme', 0, 0), ('p2', 'magie', 5, 3);`);
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-18T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  const aLaColonne = (f, t, c) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = '${c}'`).n === 1;
+  assert.equal(aLaColonne(chemin, 'personnage', 'entrainement') || aLaColonne(chemin, 'personnage_competence', 'acquis'), false, 'les colonnes ne sont plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    // (p2, fiche de joueur, que lireFiche ne rend pas : ses lignes lues directement)
+    const p1 = lireFiche(db, 'p1');
+    const p2 = { ...db.prepare("SELECT notes, modifie_le FROM personnage WHERE id = 'p2'").get(),
+      entrainements: db.prepare("SELECT * FROM personnage_entrainement WHERE personnage_id = 'p2'").all() };
+    assert.deepEqual(p1.entrainements, [
+      { rang: 1, competence_id: null, valeur: null, texte: 'Arc +5 % (entraîneur de Valbrume)' }, { rang: 2, competence_id: null, valeur: null, texte: 'Livre lu : Boule de feu' },
+    ]);
+    assert.deepEqual(p2.entrainements, [], 'un texte vide : rien');
+    assert.deepEqual(p1.competences, [{ competence_id: 'arc', naturel: 10 }, { competence_id: 'calme', naturel: 0 }]);
+    assert.equal(p1.notes, '[18/10/2026] Retrait (règles modifiées) : l’acquis saisi en Arc (7) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.');
+    assert.equal(p2.notes, '[18/10/2026] Retrait (règles modifiées) : l’acquis saisi en Magie (3) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.');
+    assert.deepEqual([p1.modifie_le, p2.modifie_le], ['2026-10-18T09:00:00Z', '2026-10-18T09:00:00Z'], 'une fiche notée est marquée modifiée');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, "SELECT group_concat(competence_id || '=' || acquis, ' ') AS s FROM (SELECT * FROM personnage_competence ORDER BY personnage_id, competence_id)").s,
+    'arc=7 calme=0 magie=3', 'l’archive garde l’acquis saisi');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes.split('\n').length, 1, 'rien ajouté à la reconstruction suivante');
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'p1'").n, 2);
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {
