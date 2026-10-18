@@ -235,7 +235,9 @@ function ficheRiche() {
   // les gains de niveau, deux totaux (décision R73)
   f.gains_sante = 37;
   f.gains_chakra = 54;
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4, nm_livre: i % 4 >= 1 && i % 3 === 0 ? 1 : 0, nm_cadeau: i % 4 >= 2 && i % 5 === 0 ? 1 : 0 }));
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4, nm_livre: i % 4 >= 1 && i % 3 === 0 ? 1 : 0 }));
+  // les NM du MJ, pour toute la fiche (décision R118)
+  f.nm_mj = 2;
   return f;
 }
 
@@ -251,7 +253,8 @@ function ficheBiPotentiel() {
   const possibles = M.sortsPossibles(regles, f);
   const magies = [...new Set(possibles.map((s) => s.magie_id))];
   const unNom = (s) => possibles.filter((x) => x.nom === s.nom).length === 1;
-  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3, nm_livre: 0, nm_cadeau: i % 3 === 2 ? 1 : 0 }));
+  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3, nm_livre: 0 }));
+  f.nm_mj = 1;
   return f;
 }
 

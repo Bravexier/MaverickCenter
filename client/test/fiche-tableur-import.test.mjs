@@ -168,8 +168,10 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   assert.equal(lireLaNote('').notes, null);
   assert.equal(lireLaNote(`\n${MARQUEUR_DES_NOTES}\nBi-classé : non`).notes, null);
   // des lignes illisibles : dites dans nonRepris
-  const r = ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nGains de niveau : niv. 2 : beaucoup\nNM offerts : Boule de feu` }));
-  assert.deepEqual(r.nonRepris, ['NM offerts : « Boule de feu » illisible', 'Gains de niveau : « niv. 2 : beaucoup » illisibles']);
+  const r = ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nGains de niveau : niv. 2 : beaucoup\nNM offerts : Boule de feu\nNM du MJ : deux` }));
+  assert.deepEqual(r.nonRepris, ['NM offerts : « Boule de feu » illisible', 'NM du MJ : « deux » illisible', 'Gains de niveau : « niv. 2 : beaucoup » illisibles']);
+  // les NM du MJ, pour toute la fiche (décision R118)
+  assert.equal(ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nNM du MJ : 2` })).fiche.nm_mj, 2);
 
   // la case « Entraînement » de la fiche auto : les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons »), « 2 Magie | 10 Concentration »
   // ou « Magie 2 | Concentration 10 » (« % » permis)
@@ -340,7 +342,8 @@ function verifierLeCommun(values, r) {
   const magies = [f.magie_innee_id, f.magie_acquise_id].filter(Boolean);
   const ecrits = AUTO.sorts.lignes.filter((l) => v(`AA${l}`)).map((l) => [v(`AA${l}`), Number(v(`AY${l}`) || 0)])
     .map(([nom, nm]) => [selon(regles.sorts.filter((s) => magies.includes(s.magie_id)), nom), nm]).filter(([s]) => s.length === 1);
-  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.nm_livre, s.nm_cadeau, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, 0, 0, i + 1]));
+  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.nm_livre, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, 0, i + 1]));
+  assert.equal(f.nm_mj, 0, 'la fiche auto n’écrit pas de NM du MJ');
   assert.ok(f.sorts.length >= 1);
   // inventaire : colonne par colonne, les lignes nommées ; la ressource de ce nom exact (comme la page)
   const objets = AUTO.inventaire.colonnes.flatMap((c) => AUTO.inventaire.lignes.map((l) => [v(`${c.nom}${l}`), v(`${c.quantite}${l}`)])).filter(([nom]) => nom);
@@ -434,10 +437,10 @@ test('fiche auto de Lucien : tout ce que le classeur choisit est repris, chaque 
   remarques.push(element);
   assert.deepEqual([f.bouclier_classe_id, f.bouclier_materiau_id], [null, null]);
   assert.equal(f.evenements, `${v('C71')} : ${v('L71')}\n${v('C72')} : ${v('L72')}`);
-  // les NM du classeur, plus que les NM de niveau : comptés comme NM de niveau, une remarque
+  // les NM du classeur, plus que les NM gagnés : tous comptés, une remarque
   const nm = M.maitriseDesSorts(regles, f);
-  if (nm.deNiveau > nm.disponibles) {
-    const x = `NM des sorts : les ${nm.total} NM du classeur sont comptés comme NM de niveau (${nm.disponibles} disponibles) ; le classeur ne dit pas lesquels viennent d'un livre ou du MJ`;
+  if (nm.comptes > nm.limite) {
+    const x = `NM des sorts : les ${nm.total} NM du classeur sont tous comptés (${nm.disponibles} gagnés par les niveaux) ; le classeur ne dit pas lesquels viennent d'un livre (à noter dans l'entraînement) ou du MJ (à noter à côté du décompte des NM)`;
     assert.ok(r.remarques.includes(x));
     remarques.push(x);
   }
@@ -664,11 +667,13 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   // la note d'un classeur exporté avant la décision R73, niveau par niveau : sommée
   assert.deepEqual({ gains_sante: f.gains_sante, gains_chakra: f.gains_chakra }, lireGains(note.split('\n').find((l) => l.startsWith('Gains')).split(' : ').slice(1).join(' : ')));
   assert.deepEqual([f.gains_sante, f.gains_chakra], [30, 36]);
+  // le NM du MJ d'un sort (« MJ 1 », écrit avant la décision R118) : un NM du MJ de la fiche
   assert.deepEqual(f.sorts, [
-    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3, nm_livre: 1, nm_cadeau: 1 },
-    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 },
-    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2, nm_livre: 0, nm_cadeau: 0 },
+    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3, nm_livre: 1 },
+    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1, nm_livre: 0 },
+    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2, nm_livre: 0 },
   ]);
+  assert.equal(f.nm_mj, 1);
   assert.deepEqual(f.armes, [{
     rang: 1, arme_id: epeeLongue.id, materiau_id: parNom(regles.materiaux_armes, 'Acier').id, amelioration_id: amelioration('arme', 2).id,
     arme_elementaire_id: epeeDeFeu.id, amelioration_elementaire_id: amelioration('arme_elementaire', 1).id, effet_en_plus: 'Première ligne\nSeconde ligne',

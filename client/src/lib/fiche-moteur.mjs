@@ -1360,32 +1360,70 @@ export function sortsPossibles(regles, fiche) {
 }
 
 /**
- * Niveaux de maîtrise (NM) des sorts (décisions R24, R26). Un NM vient d'un niveau, d'un livre de sort (un seul par sort, `nm_livre`) ou d'un cadeau du MJ
- * (`nm_cadeau`) ; `niveau_maitrise` les compte tous. Un sort a au plus `plafond` NM (3), toutes origines comprises ; ses NM de niveau au plus `maxParSort`
- * (niveau global − 1, BDD!BB6) ; les NM de niveau répartis (`deNiveau`) au plus ceux gagnés (`disponibles`, v_niveau.niveaux_maitrise_cumul) ;
- * ceux d'un livre ou du MJ (`offerts`) s'y ajoutent.
+ * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page : R118)
+ * compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `nm_livre`, noté dans l'entraînement) en fait partie sans compter dans le
+ * décompte. Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés par les niveaux
+ * (`disponibles`, v_niveau.niveaux_maitrise_cumul) plus ceux du MJ (`mj`, personnage.nm_mj : « Les NM du MJ […] vaudront donc pour toute la fiche »,
+ * R118). Sur un sort, au plus `plafond` NM (3, toutes origines comprises), et au plus `maxCompteParSort` comptés : ses NM de niveau au plus `maxParSort`
+ * (niveau global − 1, BDD!BB6), plus les NM du MJ (règles sort_nm_max et sorts_nm_total de v_personnage_controle).
  */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
-  const sorts = fiche.sorts ?? [];
-  const total = sorts.reduce((s, x) => s + entier(x.niveau_maitrise), 0);
-  const offerts = sorts.reduce((s, x) => s + entier(x.nm_livre) + entier(x.nm_cadeau), 0);
+  const sorts = (fiche.sorts ?? []).map(nmDuSort);
+  const maxParSort = Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global'));
+  const disponibles = ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul;
+  const mj = entier(fiche.nm_mj);
   return {
     plafond: constante(regles, 'sort.nm_max'),
-    maxParSort: Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global')),
-    total,
-    deNiveau: total - offerts,
-    offerts,
-    disponibles: ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul,
+    maxParSort,
+    maxCompteParSort: maxParSort + mj,
+    total: sorts.reduce((s, x) => s + x.total, 0),
+    livres: sorts.reduce((s, x) => s + x.livre, 0),
+    comptes: sorts.reduce((s, x) => s + x.comptes, 0),
+    disponibles,
+    mj,
+    limite: disponibles + mj,
   };
 }
 
-/** NM d'un sort de la fiche, par origine : de niveau, d'un livre (0 ou 1), du MJ, et en tout. */
+/** NM d'un sort de la fiche : en tout, dont celui d'un livre (0 ou 1), et ceux qui comptent dans le décompte (le livre ôté : décision R118). */
 export function nmDuSort(ligne) {
-  const livre = entier(ligne?.nm_livre);
-  const cadeau = entier(ligne?.nm_cadeau);
   const total = entier(ligne?.niveau_maitrise);
-  return { total, livre, cadeau, deNiveau: total - livre - cadeau };
+  const livre = entier(ligne?.nm_livre);
+  return { total, livre, comptes: Math.max(0, total - livre) };
+}
+
+/** Bornes du curseur de NM d'un sort (décision R118) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort. */
+export function bornesDuNm(regles, ligne) {
+  return { min: nmDuSort(ligne).livre ? 1 : 0, max: constante(regles, 'sort.nm_max') };
+}
+
+/** Le sort au NM `valeur` choisi au curseur, borné (bornesDuNm). */
+export function sortAuNm(regles, ligne, valeur) {
+  const { min, max } = bornesDuNm(regles, ligne);
+  return { ...ligne, niveau_maitrise: Math.min(max, Math.max(min, entier(valeur))) };
+}
+
+/**
+ * Le sort quand l'entraînement note (`livre` vrai) ou retire son livre (décision R118) : noter le livre lui donne son NM, en plus de ceux qu'il a ; au
+ * plafond (3 NM : livreAuPlafond), le sort les garde et le livre prend la place d'un NM compté. Le retirer lui reprend son NM, sauf avec `rendre` : le
+ * NM compté qu'il avait pris au plafond est rendu, le sort garde ses NM (la page le sait tant que le curseur n'a pas bougé). Le même sort quand rien ne
+ * change.
+ */
+export function sortAvecLivre(regles, ligne, livre, { rendre = false } = {}) {
+  const nm = nmDuSort(ligne);
+  if (Boolean(livre) === Boolean(nm.livre)) return ligne;
+  const total = livre ? Math.min(constante(regles, 'sort.nm_max'), nm.total + 1) : rendre ? nm.total : Math.max(0, nm.total - 1);
+  return { ...ligne, niveau_maitrise: total, nm_livre: livre ? 1 : 0 };
+}
+
+/** Vrai si noter le livre de ce sort prend la place d'un NM compté : le sort, sans livre, est au plafond (sortAvecLivre). */
+export const livreAuPlafond = (regles, ligne) => !nmDuSort(ligne).livre && nmDuSort(ligne).total >= constante(regles, 'sort.nm_max');
+
+/** L'index du sort qui reçoit un livre ajouté : le premier sans livre sous le plafond, sinon le premier sans livre ; −1 si chacun a le sien. */
+export function sortPourUnLivre(regles, sorts) {
+  const libres = (sorts ?? []).map((x, i) => [x, i]).filter(([x]) => !nmDuSort(x).livre);
+  return (libres.find(([x]) => !livreAuPlafond(regles, x)) ?? libres[0])?.[1] ?? -1;
 }
 
 /**

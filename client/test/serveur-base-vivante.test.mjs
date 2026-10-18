@@ -888,6 +888,74 @@ test('migration 0062 : une base vivante d’avant est reprise ; l’entraînemen
   assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'p1'").n, 2);
 });
 
+/** La base vivante comme avant la migration 0066 : les NM du MJ sort par sort (personnage_sort.nm_cadeau, décision R26), pas de personnage.nm_mj. */
+function enBaseDAvant0066(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+    const vueDAvant = vue.replaceAll(" || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END", '').replaceAll(' + p.nm_mj', '')
+      .replaceAll('ps.niveau_maitrise - ps.nm_livre', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau');
+    assert.ok(!vueDAvant.includes('p.nm_mj'));
+    db.exec(`DROP VIEW v_personnage_controle;
+      CREATE TABLE personnage_sort_avant (
+        personnage_id    TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        sort_id          TEXT    NOT NULL REFERENCES sort(id),
+        rang             INTEGER NOT NULL CHECK (rang >= 1),
+        niveau_maitrise  INTEGER NOT NULL CHECK (niveau_maitrise >= 0),
+        nm_livre         INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1)),
+        nm_cadeau        INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0 AND nm_livre + nm_cadeau <= niveau_maitrise),
+        PRIMARY KEY (personnage_id, sort_id),
+        UNIQUE (personnage_id, rang)
+      ) STRICT, WITHOUT ROWID;
+      INSERT INTO personnage_sort_avant (personnage_id, sort_id, rang, niveau_maitrise, nm_livre) SELECT personnage_id, sort_id, rang, niveau_maitrise, nm_livre FROM personnage_sort;
+      DROP TABLE personnage_sort;
+      ALTER TABLE personnage_sort_avant RENAME TO personnage_sort;
+      CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
+      ALTER TABLE personnage DROP COLUMN nm_mj;
+      ${vueDAvant};`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0066 : une base vivante d’avant est reprise ; les NM du MJ de chaque sort deviennent ceux de la fiche, leur somme, et le NM de chaque sort ne change pas (R118)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0066(chemin);
+  const deuxSorts = valeur(REGLES, "SELECT group_concat(id, '|') AS ids FROM (SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' AND id <> ? ORDER BY id LIMIT 2)", UN_SORT_DE_FEU).ids.split('|');
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.prepare("UPDATE personnage_sort SET niveau_maitrise = 3, nm_livre = 1, nm_cadeau = 1 WHERE personnage_id = 'p1'").run();
+  ecrire.prepare("INSERT INTO personnage_sort (personnage_id, sort_id, rang, niveau_maitrise, nm_livre, nm_cadeau) VALUES ('p1', ?, 2, 2, 0, 2), ('p2', ?, 1, 1, 0, 0)")
+    .run(deuxSorts[0], deuxSorts[1]);
+  ecrire.close();
+
+  // les règles changent (une livraison) : la base est refaite
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0066)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-18T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_sort') WHERE name = 'nm_cadeau'").n, 0, 'la colonne n’est plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.nm_mj, 3, '1 + 2 NM du MJ');
+    assert.deepEqual(p1.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[UN_SORT_DE_FEU, 3, 1], [deuxSorts[0], 2, 0]], 'le NM de chaque sort ne change pas');
+    assert.ok(p1.sorts.every((x) => !('nm_cadeau' in x)));
+    const p2 = db.prepare("SELECT nm_mj, notes, modifie_le FROM personnage WHERE id = 'p2'").get();
+    assert.deepEqual({ ...p2 }, { nm_mj: 0, notes: null, modifie_le: INSTANT }, 'rien du MJ : 0 ; rien n’est noté');
+    assert.deepEqual([p1.notes, p1.modifie_le], [null, INSTANT], 'une conversion sans perte : ni note ni modification');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, "SELECT sum(nm_cadeau) AS n FROM personnage_sort").n, 3, 'l’archive garde les NM du MJ sort par sort');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT nm_mj FROM personnage WHERE id = 'p1'").nm_mj, 3);
+});
+
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {
   const dossier = nouveau('db');
   preparerBaseVivante({ regles: REGLES, dossier });

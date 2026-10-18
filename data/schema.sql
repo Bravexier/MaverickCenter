@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 65;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 66;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3943,6 +3943,10 @@ CREATE TABLE personnage (
   -- choisie sur la case de la posture quand le personnage a deux magies (avec une seule, c'est elle : la page ne l'écrit pas) ; gardée quand la
   -- posture change. Contrôlée par la règle symbiose_magie de v_personnage_controle (une magie du personnage, pas le Potentiel Illimité).
   symbiose_magie_id     TEXT    REFERENCES magie(id),
+  -- NM donnés par le MJ (décision R118, migration 0066 : « Les NM du MJ seront noté à coté de la limit de NM et vaudront donc pour toute la fiche ») :
+  -- ils s'ajoutent aux NM gagnés par les niveaux (v_niveau.niveaux_maitrise_cumul), sans être liés à un sort ; contrôlés par les règles sort_nm_max et
+  -- sorts_nm_total de v_personnage_controle. Jusqu'à 0066, ils se notaient sort par sort (personnage_sort.nm_cadeau, décision R26).
+  nm_mj                 INTEGER NOT NULL DEFAULT 0 CHECK (nm_mj >= 0),   -- NM donnés par le MJ, pour toute la fiche (R118)
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -3999,7 +4003,7 @@ CREATE TABLE personnage_competence (
 -- des lignes qu'on ajoute, chacune un entraînement de compétence — la compétence et ses points (« Vous ne pouvez monter que 15 compétences maximum
 -- grâce à cette case et à hauteur maximum 10% de bonus » : constantes entrainement.competences_max, entrainement.bonus_max_pct, contrôlées par
 -- v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort restent dans
--- personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement.
+-- personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement (le curseur de NM du sort part alors de 1 : R118).
 CREATE TABLE personnage_entrainement (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang >= 1),
@@ -4053,9 +4057,10 @@ CREATE TABLE personnage_sort (
   personnage_id    TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   sort_id          TEXT    NOT NULL REFERENCES sort(id),
   rang             INTEGER NOT NULL CHECK (rang >= 1),   -- ligne de la liste sur la fiche
-  niveau_maitrise  INTEGER NOT NULL CHECK (niveau_maitrise >= 0),   -- NM du sort, toutes origines comprises
-  nm_livre         INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1)),   -- dont le NM d'un livre de sort (un par sort au plus ; migration 0021)
-  nm_cadeau        INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0 AND nm_livre + nm_cadeau <= niveau_maitrise),   -- dont les NM donnés par le MJ
+  niveau_maitrise  INTEGER NOT NULL CHECK (niveau_maitrise >= 0),   -- NM du sort, toutes origines comprises (un curseur de 0 à 3 sur la fiche : R118)
+  -- dont le NM d'un livre de sort (un par sort au plus ; migration 0021), noté dans l'entraînement : le sort a alors au moins 1 NM, et ce NM ne compte
+  -- pas dans le décompte des NM (décision R118, migration 0066 ; les NM du MJ sont ceux de la fiche, personnage.nm_mj)
+  nm_livre         INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1) AND nm_livre <= niveau_maitrise),   -- dont le NM d'un livre de sort (noté dans l'entraînement)
   PRIMARY KEY (personnage_id, sort_id),
   UNIQUE (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
@@ -4394,8 +4399,10 @@ CREATE VIEW v_personnage_controle AS
   -- Sorts : d'une magie du personnage (le Potentiel Illimité « pioche ses sorts dans toutes les magies existantes », son Explication) ;
   -- NPM au plus la puissance magique du niveau (niveau_global : niveau 16 pour la 5, décision R16), le palier dont la note dit « non disponible pour
   -- les personnages avec une magie acquise » ne comptant pas pour eux. NM (décision R26) : au plus 3 sur un sort, toutes origines comprises ; ceux de niveau
-  -- (hors livre et cadeau du MJ) au plus niveau global − 1 sur un sort (BDD!BB6) et au plus les NM gagnés en tout ; au-delà, ils viennent d'un livre ou du
-  -- MJ (décision R24)
+  -- au plus niveau global − 1 sur un sort (BDD!BB6) et au plus les NM gagnés en tout ; au-delà, ils viennent d'un livre ou du MJ (décision R24). Depuis la
+  -- décision R118 (migration 0066), les NM du MJ sont ceux de la fiche (personnage.nm_mj), pas d'un sort : les NM d'un sort sans celui de son livre
+  -- comptent, au plus niveau global − 1 plus les NM du MJ sur un sort, au plus les NM gagnés plus ceux du MJ en tout (tant qu'un niveau donne un NM, la
+  -- seconde règle implique la première, qui nomme le sort)
   SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
@@ -4413,13 +4420,16 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_sort ps
   WHERE ps.niveau_maitrise > (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_max')
   UNION ALL
-  SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || (ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau)
-  FROM personnage_sort ps JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
-  WHERE ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global')
+  SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || (ps.niveau_maitrise - ps.nm_livre)
+  FROM personnage_sort ps
+  JOIN personnage p ON p.id = ps.personnage_id
+  JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  WHERE ps.niveau_maitrise - ps.nm_livre > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global') + p.nm_mj
   UNION ALL
-  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / ' || v.niveaux_maitrise_cumul
-  FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global
-  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul
+  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / '
+         || v.niveaux_maitrise_cumul || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END
+  FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global JOIN personnage p ON p.id = n.personnage_id
+  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul + p.nm_mj
   UNION ALL
   -- Bouclier (décision R96) : une forme et une matière ; la matière, l'amélioration ou la solidité n'existent qu'avec la forme, et la forme attend sa matière
   SELECT p.id, 'bouclier_manquant', COALESCE(p.bouclier_materiau_id, p.bouclier_amelioration_id, CAST(p.bouclier_solidite AS TEXT))

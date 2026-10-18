@@ -32,11 +32,11 @@ test('descriptionDuRetrait : don, spécialité (et ses dons choisis), sort (NPM,
   assert.equal(descriptionDuRetrait({ ...lame, dons: ['A', 'B', 'C'] }), 'la spécialité « LAME COURBE » (classe Bretteur des dunes, avec les dons choisis « A », « B » et « C »)');
 
   const boule = { nature: 'sort', id: 'magies/magie-du-feu#sort:boule-de-feu', nom: 'Boule de feu', magie: 'Feu', npm: 2 };
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, nm_livre: 0, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 0, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 1, nm_cadeau: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 3, nm_livre: 0, nm_cadeau: 2 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 3 NM sur cette fiche dont 2 du MJ)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, nm_livre: 1, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
+  // les NM du MJ sont ceux de la fiche (décision R118) : ils restent quand le sort part, la description ne les cite pas
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
 
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: 'Forgeron' }), 'le métier « Forgeron »');
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: null }), 'le métier « metiers/forgeron »');

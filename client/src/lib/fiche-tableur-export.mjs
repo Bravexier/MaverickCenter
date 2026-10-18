@@ -58,7 +58,10 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   // la magie de la posture Symbiose quand le personnage en a deux (décision R100) : le modèle n'a pas de case pour elle
   symbioseMagie: 'Magie de la symbiose',
   gains: 'Gains de niveau',
+  // les livres de sort (« Boule de feu (livre 1) ») ; un classeur d'avant la décision R118 y écrit aussi les NM du MJ d'un sort (« MJ 2 »)
   nmOfferts: 'NM offerts',
+  // les NM du MJ, pour toute la fiche (décision R118)
+  nmMj: 'NM du MJ',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -327,16 +330,16 @@ export function lireGains(texte) {
   return gains;
 }
 
-/** Les NM offerts (livre, MJ) des sorts de la fiche : « Boule de feu (livre 1, MJ 2) ; Brasier (MJ 1) » ; vide quand aucun. */
+/**
+ * Les NM offerts des sorts de la fiche, ceux de leurs livres : « Boule de feu (livre 1) ; Brasier (livre 1) » ; vide quand aucun. Les NM du MJ sont ceux
+ * de la fiche (décision R118 : ligne « NM du MJ » de la note) ; un classeur d'avant les écrit ici, sort par sort (« Brasier (livre 1, MJ 2) »).
+ */
 export function texteDesNmOfferts(regles, sorts) {
-  return (sorts ?? []).map((ligne) => {
-    const nm = nmDuSort(ligne);
-    const parts = [nm.livre ? `livre ${nm.livre}` : null, nm.cadeau ? `MJ ${nm.cadeau}` : null].filter(Boolean);
-    return parts.length ? `${nomDe(regles.sorts, ligne.sort_id)} (${parts.join(', ')})` : null;
-  }).filter(Boolean).join(SEPARATEUR_DE_LISTE);
+  return (sorts ?? []).map((ligne) => [ligne, nmDuSort(ligne).livre]).filter(([, livre]) => livre)
+    .map(([ligne, livre]) => `${nomDe(regles.sorts, ligne.sort_id)} (livre ${livre})`).join(SEPARATEUR_DE_LISTE);
 }
 
-/** [{ nom, livre, cadeau }] d'un texte de texteDesNmOfferts ; null si un morceau ne se lit pas (l'import le dit). */
+/** [{ nom, livre, cadeau }] d'un texte de texteDesNmOfferts (`cadeau` : les NM du MJ d'un classeur d'avant la décision R118) ; null si un morceau ne se lit pas (l'import le dit). */
 export function lireNmOfferts(texte) {
   const offerts = [];
   for (const morceau of lireListe(texte)) {
@@ -1028,7 +1031,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   // sorts : titre, magies, une ligne par sort dans l'ordre de la fiche (au NM du sort, comme construireSorts) ; seuls le nom et le NM sont relus
   const emplacements = emplacementsDeSorts(regles, f);
   const nmDeLaFiche = maitriseDesSorts(regles, f);
-  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmMax(regles, f)} au plus · NM de niveau ${nmDeLaFiche.deNiveau}/${nmDeLaFiche.disponibles}`);
+  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmMax(regles, f)} au plus · NM ${nmDeLaFiche.comptes}/${nmDeLaFiche.disponibles}${nmDeLaFiche.mj ? ` + ${nmDeLaFiche.mj} du MJ` : ''}`);
   if (innee) ecrire(O.sorts.magieInnee, innee.nom);
   if (acquise) ecrire(O.sorts.magieAcquise, acquise.nom);
   const acc = accessoiresDesSorts(regles, f);
@@ -1087,6 +1090,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   if (f.symbiose_magie_id) noter(K.symbioseMagie, nomDe(regles.magies, f.symbiose_magie_id));
   noter(K.gains, texteDesGains(f));
   noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
+  if (entier(f.nm_mj) > 0) noter(K.nmMj, String(entier(f.nm_mj)));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
   noter(K.donsClasse2, donsEnSuite[2].join(SEPARATEUR_DE_LISTE));

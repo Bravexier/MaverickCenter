@@ -122,10 +122,10 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
   for (const id of sorts) {
     const s = db.prepare('SELECT s.id, s.nom, s.niveau, m.nom AS magie FROM main.sort s LEFT JOIN main.magie m ON m.id = s.magie_id WHERE s.id = ?').get(id);
     if (!s) continue;
-    for (const f of db.prepare(`SELECT ${champsDeFiche}, ps.niveau_maitrise, ps.nm_livre, ps.nm_cadeau FROM main.personnage_sort ps
+    for (const f of db.prepare(`SELECT ${champsDeFiche}, ps.niveau_maitrise, ps.nm_livre FROM main.personnage_sort ps
       JOIN main.personnage p ON p.id = ps.personnage_id WHERE ps.sort_id = ?`).all(s.id)) {
       aRetirer.push({ ...f, vise: 'sort', cle: [f.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom, magie: s.magie ?? null, npm: s.niveau ?? null,
-        nm: f.niveau_maitrise ?? null, nm_livre: f.nm_livre ?? null, nm_cadeau: f.nm_cadeau ?? null } });
+        nm: f.niveau_maitrise ?? null, nm_livre: f.nm_livre ?? null } });
     }
   }
   for (const id of metiers) {
@@ -235,7 +235,7 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
       : { nature: 'capacite', id: k.id, nom: k.nom ?? null, classe: k.classe ?? null, specialite: k.specialite ?? null, niveau: k.niveau ?? null } });
   }
   // sorts : absents des nouvelles règles, leur magie présente
-  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.nm_livre, ps.nm_cadeau, a.nom AS nom, a.niveau AS npm,
+  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.nm_livre, a.nom AS nom, a.niveau AS npm,
       coalesce(mm.nom, am.nom) AS magie
     FROM main.personnage_sort ps JOIN main.personnage p ON p.id = ps.personnage_id
     LEFT JOIN ancienne.sort a ON a.id = ps.sort_id
@@ -244,7 +244,7 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id) AND EXISTS (SELECT 1 FROM main.magie m WHERE m.id = a.magie_id)
     ORDER BY p.id, ps.rang`).all()) {
     aRetirer.push({ ...s, vise: 'sort', cle: [s.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null,
-      nm: s.niveau_maitrise ?? null, nm_livre: s.nm_livre ?? null, nm_cadeau: s.nm_cadeau ?? null } });
+      nm: s.niveau_maitrise ?? null, nm_livre: s.nm_livre ?? null } });
   }
   // métiers : absents des nouvelles règles
   for (const m of db.prepare(`SELECT ${champsDeFiche}, p.metier_id AS id, a.nom AS nom

@@ -110,8 +110,10 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
   // sa place dans le plan du site (lib/livres.mjs) : « Les bases, chapitre 10 »
   if (guide) assert.ok(aide.startsWith(`${guide.livre}, chapitre ${guide.chapitre}, <cite>`), 'le livre et le chapitre de la page');
-  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
+  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
+  // les NM du MJ, pour toute la fiche, juste après le décompte des NM (décision R118 : « noté à coté de la limit de NM »)
+  assert.match(bloc('sorts'), /<span class="budget" id="budget-nm"><\/span><label class="budget budget--mj"[^>]*><span aria-hidden="true">\+ MJ<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj"/);
   // III. selon la situation
   const posture = bloc('posture');
   assert.match(posture, /<div id="postures" class="postures__cartes" role="group" aria-labelledby="titre-postures"><\/div>/, 'les six postures en cases');

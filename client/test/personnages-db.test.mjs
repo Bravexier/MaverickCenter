@@ -402,26 +402,38 @@ test('classes, spécialités et dons : 2e classe selon R2, spécialité au nivea
   assert.throws(() => db.prepare('UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = ? AND rang = 1').run(autre, 'classe-2'), /FOREIGN KEY/, 'une spécialité d’une autre classe');
 });
 
-test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, ceux d’un livre ou du MJ en plus, 3 au plus sur un sort (R24, R26)', () => {
+test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, celui d’un livre en plus, ceux du MJ pour toute la fiche, 3 au plus sur un sort (R24, R26, R118)', () => {
   personnageValide('sorts', { xp: 550 });   // niveau 3 : 2 NM gagnés, NM max 2
   db.prepare("UPDATE personnage_competence SET naturel = 20 WHERE personnage_id = 'sorts'").run();
   for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20 });   // 100 + 20 + 20
   db.prepare("UPDATE personnage SET gains_sante = 30 WHERE id = 'sorts'").run();   // gains des niveaux 2 et 3 (R73)
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);
-  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 });
-  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26)');
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1 });
+  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26, R118)');
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'sans NM du MJ, un NM au-delà de ceux gagnés');
+  db.prepare("UPDATE personnage SET nm_mj = 2 WHERE id = 'sorts'").run();
   db.prepare("UPDATE personnage_sort SET nm_livre = 0 WHERE personnage_id = 'sorts' AND rang = 2").run();
-  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'un NM en plus non offert : de niveau, au-delà de ceux gagnés');
-  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1, nm_cadeau = 3 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  assert.deepEqual(controle('sorts'), [], 'les NM du MJ valent pour toute la fiche, sur n’importe quel sort');
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '4 / 2 + 1 du MJ' }], 'le détail cite les NM du MJ');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  db.prepare("UPDATE personnage SET nm_mj = 3 WHERE id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [{ regle: 'sort_nm_plafond', detail: 'magies/magie-du-feu#sort:cauterisation = 4' }], 'jamais plus de 3 NM sur un sort');
   assert.throws(() => db.prepare("UPDATE personnage_sort SET nm_livre = 2 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'un seul NM de livre par sort');
-  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 1 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'les NM offerts font partie du NM du sort');
+  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 0 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'le NM du livre fait partie du NM du sort');
+  assert.throws(() => db.prepare("UPDATE personnage SET nm_mj = -1 WHERE id = 'sorts'").run(), /CHECK/, 'pas de NM du MJ négatif');
+  assert.ok(!db.prepare("SELECT 1 FROM pragma_table_info('personnage_sort') WHERE name = 'nm_cadeau'").get(), 'plus de NM du MJ sort par sort (migration 0066)');
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
   db.prepare("DELETE FROM personnage_sort WHERE personnage_id = 'sorts' AND rang = 2").run();
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 3 });
   const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = 1 LIMIT 1").get().id;
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: glace, rang: 3, niveau_maitrise: 0 });
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sorts_nm_total'], 'un sort à 3 NM au niveau 3 : un NM du MJ (R118)');
 });
 
 test('posture Symbiose (R100, migration 0061) : sa magie est la magie innée ou acquise du personnage, jamais le Potentiel Illimité', () => {

@@ -145,7 +145,8 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * Colonnes que les règles ont retirées (COLONNES_RETIREES) et dont le contenu ne se perd pas sans le dire, par table et colonne : une conversion
  * (db, { retraits }) lue dans `ancienne`, faite après la copie des fiches. Décision R104 (migration 0062) : `personnage.entrainement`, le texte libre de
  * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
- * noté, daté, dans la fiche (acquisRetires).
+ * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
+ * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas.
  */
 export const COLONNES_CONVERTIES = Object.freeze({
   personnage: Object.freeze({
@@ -166,6 +167,14 @@ export const COLONNES_CONVERTIES = Object.freeze({
         parFiche.get(l.personnage_id).push({ ...l });
       }
       ajouterLesRetraits(db, retraits, [...parFiche].map(([id, lignes]) => [id, acquisRetires(lignes, noms)]));
+    },
+  }),
+  personnage_sort: Object.freeze({
+    nm_cadeau: (db) => {
+      const ecrire = db.prepare('UPDATE main.personnage SET nm_mj = ? WHERE id = ?');
+      for (const l of db.prepare('SELECT personnage_id, SUM(nm_cadeau) AS nm FROM ancienne.personnage_sort WHERE nm_cadeau > 0 GROUP BY personnage_id').all()) {
+        ecrire.run(l.nm, l.personnage_id);
+      }
     },
   }),
 });

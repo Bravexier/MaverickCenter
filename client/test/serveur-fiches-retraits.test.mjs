@@ -99,7 +99,7 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   inserer('personnage', { ...FICHE, id: 'p-retraits', nature: 'pretire', nom: 'Témoin des retraits', notes: 'Note du joueur.', metier_id: metier });
   inserer('personnage_classe', { personnage_id: 'p-retraits', rang: 1, classe_id: classe, specialite_id: spec });
   inserer('personnage_capacite', { personnage_id: 'p-retraits', capacite_id: donA });
-  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 0 });
+  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2, nm_livre: 1 });
   inserer('personnage', { ...FICHE, id: 'j-retraits', nature: 'joueur', proprietaire_id: 'u-retraits', visibilite: 'privee', nom: 'Nom secret du joueur',
     cree_le: '2026-10-12T00:00:00Z', modifie_le: '2026-10-12T00:00:00Z' });
   inserer('personnage_classe', { personnage_id: 'j-retraits', rang: 1, classe_id: classe });
