@@ -3,7 +3,7 @@
 // toutes les compétences Social et Volonté etc. » ; décision R100). Chaque ligne du tableau des postures de la fiche (posture_effet, version 'fiche')
 // se lit ici en un effet chiffré, seulement quand son écriture est l'une de celles ci-dessous ; une autre ligne n'est qu'affichée (« Intervention »,
 // « Provocation », « +5% à la réussite critique »…). Ce qu'aucune ligne n'écrit vient des réponses du propriétaire du 2026-10-17, citées.
-// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toutes les lignes de la base (test/posture-texte.test.mjs).
+// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toutes les lignes de la base (test/fiche-postures-sorts.test.mjs).
 
 /**
  * Les compétences d'attaque (réponse « Compétences d'attaque » du propriétaire à « Malus de 10% pour toucher une cible » de la posture Offensif : « −10

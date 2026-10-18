@@ -18,7 +18,7 @@ const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que 
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const fiche = (x = {}) => ({ ...ficheVide('Essai'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', ...x });
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;
-const auNm = (s, nm = 0) => Object.fromEntries(['cout', 'portee', 'dsb'].map((c) => [c, valeurAuNm(s[c], s.bonus ?? [], c, nm) ?? '']));
+const auNm = (s, nm = 0) => Object.fromEntries(['cout', 'portee', 'dsb', 'effets'].map((c) => [c, valeurAuNm(s[c], s.bonus ?? [], c, nm) ?? '']));
 const ceinture = (...noms) => ({ ceinture: noms.map((nom, i) => ({ rang: i + 1, nom, quantite: 1, ressource_id: null })) });
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 
@@ -90,12 +90,12 @@ test('Symbiose (R100) : sa magie (la seule, sinon choisie), +5 (+2/NPM au-delà 
 
 test('lireDegatsDeSort / ecrireDegatsDeSort : les écritures sans ambiguïté, et l’aller-retour sur tous les D/S/B de la base au NM 0', () => {
   for (const [texte, attendu] of [
-    ['3d6 dégâts', { nature: 'degats', nombre: 3, faces: 6, fixe: 0, prefixe: '', suite: 'dégâts' }],
-    ['8d6 + 35 dégâts', { nature: 'degats', nombre: 8, faces: 6, fixe: 35, prefixe: '', suite: 'dégâts' }],
-    ['23 dégâts', { nature: 'degats', nombre: 0, faces: null, fixe: 23, prefixe: '', suite: 'dégâts' }],
-    ['Soigne 6d6 + 7', { nature: 'soin', nombre: 6, faces: 6, fixe: 7, prefixe: 'Soigne', suite: '' }],
-    ['4d6 de soin/tour', { nature: 'soin', nombre: 4, faces: 6, fixe: 0, prefixe: '', suite: 'de soin/tour' }],
-    ["8d6 dégâts d'acide", { nature: 'degats', nombre: 8, faces: 6, fixe: 0, prefixe: '', suite: "dégâts d'acide" }],
+    ['3d6 dégâts', { nature: 'degats', nombre: 3, faces: 6, fixe: 0, prefixe: '', suite: 'dégâts', parTour: false }],
+    ['8d6 + 35 dégâts', { nature: 'degats', nombre: 8, faces: 6, fixe: 35, prefixe: '', suite: 'dégâts', parTour: false }],
+    ['23 dégâts', { nature: 'degats', nombre: 0, faces: null, fixe: 23, prefixe: '', suite: 'dégâts', parTour: false }],
+    ['Soigne 6d6 + 7', { nature: 'soin', nombre: 6, faces: 6, fixe: 7, prefixe: 'Soigne', suite: '', parTour: false }],
+    ['4d6 de soin/tour', { nature: 'soin', nombre: 4, faces: 6, fixe: 0, prefixe: '', suite: 'de soin/tour', parTour: true }],
+    ["8d6 dégâts d'acide", { nature: 'degats', nombre: 8, faces: 6, fixe: 0, prefixe: '', suite: "dégâts d'acide", parTour: false }],
   ]) assert.deepEqual(M.lireDegatsDeSort(texte), attendu, texte);
   for (const t of ['+8 dégâts', 'X dégâts', '2d6 cr', 'Vole 4d10 chakra', '5d6 dégâts + 10 /tour', '15 - 30 - 15', '3d6 + 4', '']) assert.equal(M.lireDegatsDeSort(t), null, t);
   const espaces = (t) => t.replace(/\s*\+\s*/g, ' + ').replace(/\.$/, '').trim();
@@ -172,7 +172,7 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
   // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée)
   const choix = regles.sorts.find((s) => s.cout === 'Variable');
   const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
-  assert.deepEqual([v.cout.texte, v.nonComptes.map((n) => n.raison)], ['Variable', ['cout']]);
+  assert.deepEqual([v.cout.texte, v.nonComptes.map((n) => [n.raison, n.cible])], ['Variable', [['non_chiffre', 'cout']]]);
 });
 
 test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), portée (accessoire, dons, bâton), amplifications chiffrées des bâtons', () => {
@@ -286,9 +286,70 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'races/farfadet#don:farfadet-maritime-forets-proches-de-leau': 'cran:1',
     'races/felfe#don:felfe-argente': 'degats:1!progression',
   });
-  // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule
+  // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule ; et deux autres effets chiffrés
   for (const e of regles.armures_elementaires) {
-    for (const b of e.sorts ?? []) assert.deepEqual(b.vises, { magies: [e.magie_id] }, e.id);
+    for (const b of (e.sorts ?? []).filter((x) => x.cible === 'degats')) assert.deepEqual(b.vises, { magies: [e.magie_id] }, e.id);
   }
-  assert.equal(regles.armures_elementaires.filter((e) => e.sorts?.length).length, regles.armures_elementaires.length);
+  assert.equal(regles.armures_elementaires.filter((e) => e.sorts?.some((b) => b.cible === 'degats')).length, regles.armures_elementaires.length);
+  const autres = regles.armures_elementaires.flatMap((e) => (e.sorts ?? []).filter((b) => b.cible !== 'degats').map((b) => [e.id.split(':').slice(1).join(':'), b]));
+  assert.deepEqual(autres, [
+    ['vetement:vent', { cible: 'portee', valeur: 2, vises: { types: ['placement'], magies: ['magies/magie-du-vent'] } }],
+    ['intermediaire:lumiere', { cible: 'soin', valeur: 7, vises: { soin: true } }],
+  ]);
+});
+
+test('relectures (R101, R102) : protection chiffrée, coût 0, valeur par tour, bonus négatif, plusieurs dés au maximum, effets d’armure élémentaire, NPM accessible', () => {
+  // protection (réponse « Compter où c'est chiffré ») : « −N dégâts » du D/S/B et « Bloque N dégâts » des effets, plus « protection = +N dégâts bloqués »
+  const mucus = regles.sorts.find((s) => s.id === 'magies/magie-de-leau#sort:mucus-protecteur');
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Glace, niveau 3')), mucus, auNm(mucus)).dsb.texte, '-13 dégâts magiques');
+  const champ = regles.sorts.find((s) => s.id === 'magies/magie-de-la-lumiere#sort:champ-de-force');
+  const c = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), champ, auNm(champ));
+  assert.match(c.effets.texte, /^Bloque 17 dégâts/);
+  assert.deepEqual(c.rappels, []);
+  const rocheuse = regles.sorts.find((s) => s.id === 'magies/magie-de-la-terre#sort:barriere-rocheuse');
+  assert.deepEqual(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), rocheuse, auNm(rocheuse)).rappels.map((r) => r.texte), ['protection = +7 dégâts bloqués']);
+  // un coût écrit 0 reste 0, même réduit
+  const planete = regles.sorts.find((s) => s.cout === '0');
+  assert.equal(M.sortDuMoment(regles, fiche(), planete, auNm(planete)).cout.texte, '0');
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete)).cout.texte, '0');
+  // une valeur par tour reste telle qu'écrite ; le bonus est dit non compté
+  const parTour = regles.sorts.find((s) => s.attaque && /^\d+d\d+ dégâts par tour$/.test(auNm(s).dsb));
+  const t = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Feu, niveau 3')), parTour, auNm(parTour));
+  assert.deepEqual([t.dsb.texte, t.dsb.lu, t.nonComptes.map((n) => [n.raison, n.cible, n.valeur])], [auNm(parTour).dsb, false, [['par_tour', 'dsb', 9]]]);
+  // un D/S/B illisible d'un sort d'attaque : ses bonus dits non comptés (l'accessoire « Dégâts magie » aussi)
+  const illisible = regles.sorts.find((s) => s.attaque && !M.lireDegatsDeSort(auNm(s).dsb) && !s.types.includes('amplification') && !s.types.includes('protection'));
+  const magie = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'degats_magie'));
+  const i = M.sortDuMoment(regles, fiche({ accessoires: [{ emplacement: 'chef', accessoire_effet_id: magie.id, valeur: null, maudit: 0 }] }), illisible, auNm(illisible));
+  assert.deepEqual(i.nonComptes.map((n) => n.raison), ['non_chiffre']);
+  // un accessoire maudit : un bonus négatif s'écrit « − 2 »
+  const boule = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  const v = magie.effets.find((e) => e.cible === 'degats_magie').valeur;
+  assert.equal(M.sortDuMoment(regles, fiche({ accessoires: [{ emplacement: 'chef', accessoire_effet_id: magie.id, valeur: null, maudit: 1 }] }), boule, auNm(boule)).dsb.texte, `2d6 − ${v} dégâts`);
+  assert.equal(M.ecrireDegatsDeSort({ nature: 'degats', nombre: 0, faces: null, fixe: -3, prefixe: '', suite: 'dégâts' }), '0 dégâts');
+  // deux accessoires « un dé au maximum » : deux dés
+  const max = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'de_maximum'));
+  const deux = fiche({ accessoires: ['chef', 'collier'].map((emplacement) => ({ emplacement, accessoire_effet_id: max.id, valeur: null, maudit: 0 })) });
+  assert.equal(M.sortDuMoment(regles, deux, boule, auNm(boule)).dsb.texte, '12 dégâts');
+  // armure élémentaire : « Les sorts de soin ont un bonus de +7 » ; « Les sorts de placement du Vent voient leur portée augmentée de 2 »
+  const lumiere = regles.armures_elementaires.find((e) => e.id.endsWith('intermediaire:lumiere'));
+  const soin = regles.sorts.find((s) => s.types.includes('soin') && /^\d+d6 soin/.test(auNm(s).dsb));
+  const n = M.lireDegatsDeSort(auNm(soin).dsb);
+  assert.equal(M.sortDuMoment(regles, fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: lumiere.id }), soin, auNm(soin)).dsb.texte, M.ecrireDegatsDeSort({ ...n, fixe: n.fixe + 7 }));
+  const vent = regles.armures_elementaires.find((e) => e.id.endsWith('vetement:vent'));
+  const fv = fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: vent.id });
+  const placement = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-vent' && s.types.includes('placement') && /^\d+$/.test(auNm(s).portee));
+  const autreVent = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-vent' && !s.types.includes('placement') && /^\d+$/.test(auNm(s).portee));
+  assert.equal(M.sortDuMoment(regles, fv, placement, auNm(placement)).portee.texte, String(Number(auNm(placement).portee) + 2));
+  assert.equal(M.sortDuMoment(regles, fv, autreVent, auNm(autreVent)).portee.texte, auNm(autreVent).portee);
+  // Symbiose : le NPM accessible (un personnage à magie acquise n'a pas le palier 5)
+  const n16 = regles.niveaux.find((l) => M.puissanceMagique(regles, l.niveau) === 5).niveau;
+  const bi = fiche({ posture_id: POSTURE('symbiose'), magie_acquise_id: 'magies/magie-de-la-glace', symbiose_magie_id: 'magies/magie-du-feu', xp: xpDuNiveau(n16) });
+  const p = M.postureDuMoment(regles, bi);
+  assert.deepEqual([M.npmMax(regles, bi), p.symbiose.degats, p.symbiose.am], [4, 5 + 2 * 3, 4 + 2 * 3]);
+  // le choix de la magie de la Symbiose, dans le tiroir des choix
+  assert.ok(M.choixEnAttente(regles, fiche({ posture_id: POSTURE('symbiose'), magie_acquise_id: 'magies/magie-de-la-glace' })).some((c) => c.nature === 'symbiose'));
+  assert.ok(!M.choixEnAttente(regles, bi).some((c) => c.nature === 'symbiose'));
+  // la ceinture : le bâton à régler n'est pas proposé, même choisi dans la liste
+  const sac = fiche({ inventaire: [{ rang: 1, nom: 'Bâton magique', quantite: 1 }] });
+  assert.equal(M.objetChoisiDansLaListe(sac, 'Bâton magique', 'insertReplacementText', regles), null);
 });

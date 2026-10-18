@@ -5,7 +5,7 @@
 // pour les armes : seul ce qu'une phrase dit sans ambiguïté est compté — une valeur ET les sorts qu'elle vise (tous, les sorts d'attaque, de soin, la magie
 // innée, des magies nommées) ; une phrase liée à une situation (« préparés », « chargés », « en cas de », « des alliés », « la météo »…) est rendue avec sa
 // raison, jamais comptée ; une phrase sur autre chose (maîtrise, compétence…) n'est pas rendue.
-// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/sort-bonus-texte.test.mjs).
+// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/fiche-postures-sorts.test.mjs).
 
 /** Les magies et les mots qui les nomment dans « les sortilèges de Glace, Ombre et Foudre », « les sorts d'Arcane » (identifiants de la table magie). */
 const MAGIES = [
@@ -31,9 +31,20 @@ function magiesNommees(phrase) {
   return MAGIES.filter(([, re]) => re.test(m[1])).map(([id]) => id);
 }
 
-/** Les sorts que vise une phrase : { tous } | { attaque } | { soin, sauf_soi_meme? } | { innee } | { magies } ; null si elle n'en dit rien. */
+/** Les types de sorts (sort_type) qu'une phrase nomme dans « les sorts de placement du Vent ». */
+const TYPES = ['placement', 'entrave', 'invocation', 'amplification', 'protection', 'construction'];
+
+/**
+ * Les sorts que vise une phrase : { tous } | { attaque } | { soin, sauf_soi_meme? } | { innee } | { magies, types? } | { types } ; null si elle n'en
+ * dit rien. `types` : « Les sorts de placement du Vent » (les sorts de ce type, de cette magie).
+ */
 function visesDe(phrase) {
   if (/magie inn[ée]e/.test(phrase)) return { innee: true };
+  const type = TYPES.find((x) => new RegExp(`sorts? d['e] ?${x}\\b`).test(phrase));
+  if (type) {
+    const magies = MAGIES.filter(([, re]) => re.test(phrase.replace(new RegExp(`^.*?sorts? d['e] ?${type}\\s*`), ''))).map(([id]) => id);
+    return { types: [type], ...(magies.length ? { magies } : {}) };
+  }
   const magies = magiesNommees(phrase);
   if (magies.length) return { magies };
   if (/sorts? d'attaque/.test(phrase)) return { attaque: true };
@@ -75,9 +86,10 @@ export function bonusDeSortsEcrits(texte) {
       const enPosture = /en posture ([a-zé]+)/.exec(phrase)?.[1] ?? posture;
       bonus.push({ cible, ...valeur, vises, ...(enPosture ? { posture: enPosture } : situation ? { raison: 'situation' } : {}) });
     };
-    // les dés des soins : « Augmente d'un cran les dés des soins magiques (D6 passe à D8 etc...) » (Farfadet maritime), comme la posture Focus
+    // les dés des soins : « Augmente d'un cran les dés des soins magiques (D6 passe à D8 etc...) » (Farfadet maritime), comme la posture Focus : les dés de
+    // tout soin d'un sort (la fiche ne le compte que sur un soin)
     if (/augmente d'un cran les d[ée]s des soins magiques/.test(phrase)) {
-      ajouter('cran', { valeur: 1 }, { soin: true });
+      ajouter('cran', { valeur: 1 }, { tous: true });
       continue;
     }
     // coût : « Les coûts pour les sortilèges de X, Y et Z sont réduits de 4 » ; « Le coût en chakra d'un sort est réduit d'un montant égal à son niveau de puissance »
@@ -89,7 +101,7 @@ export function bonusDeSortsEcrits(texte) {
     }
     // portée : « Augmente la portée des sorts de +2 », « voient leur portée augmentée de +2 »
     if (/port[ée]e/.test(phrase)) {
-      const n = /(?:port[ée]e[^+\d]*?|de )\+(\d+)/.exec(phrase);
+      const n = /(?:port[ée]e[^+\d]*?|de )\+(\d+)/.exec(phrase) ?? /port[ée]e augment[ée]e de (\d+)\b/.exec(phrase);
       if (n) ajouter('portee', { valeur: Number(n[1]) }, visesDeLaProposition);
       continue;
     }
@@ -111,6 +123,7 @@ export function bonusDeSortsEcrits(texte) {
     const generique = /bonus de \+(\d+)(?:\s*(?:aux? |de )?(d[ée]g[âa]ts?|soins?))?/.exec(phrase);
     if (generique && !/\+\d+\s*(?:aux? |de )?(?:d[ée]g[âa]ts?|soins?)\b/.test(phrase)) {
       if (generique[2]) ajouter(/soin/.test(generique[2]) ? 'soin' : 'degats', { valeur: Number(generique[1]) }, vises);
+      else if (vises?.soin && !vises.tous) ajouter('soin', { valeur: Number(generique[1]) }, vises);   // « Les sorts de soin ont un bonus de +7. »
       else {
         // « Les dégâts de sorts, les soins […] gagnent un bonus de +3 » : chacun de ce que la phrase nomme
         if (/d[ée]g[âa]ts de sorts/.test(phrase)) ajouter('degats', { valeur: Number(generique[1]) }, { tous: true });

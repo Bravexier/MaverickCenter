@@ -29,7 +29,7 @@ import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
@@ -37,7 +37,7 @@ import {
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
-  batonDuSac, degatsDArmeDuMoment, effetsDesBatons, magiesDeLaSymbiose, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
+  batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -666,7 +666,10 @@ function construireMaitrises() {
 
 // ------------------------------------------------------------------ sorts
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
-const RAISONS_DES_SORTS = { situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits' };
+const RAISONS_DES_SORTS = {
+  situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
+  non_chiffre: 'valeur écrite non chiffrée', par_tour: 'valeur par tour',
+};
 
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
@@ -757,17 +760,23 @@ function construireSorts() {
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
           // le sort à son moment (décision R102) : coût réduit (dons, bâton ; jamais moins de 1), portée et dégâts ou soins avec les bonus des dons, des
           // accessoires, du bâton, de l'armure élémentaire et de la posture ; chaque valeur changée en gras, son détail en infobulle
-          const m = l.sort ? sortDuMoment(regles, fiche, l.sort, { cout: auNm(l.sort.cout, 'cout'), portee: auNm(l.sort.portee, 'portee'), dsb: auNm(l.sort.dsb, 'dsb') }) : null;
+          const m = l.sort ? sortDuMoment(regles, fiche, l.sort, {
+            cout: auNm(l.sort.cout, 'cout'), portee: auNm(l.sort.portee, 'portee'), dsb: auNm(l.sort.dsb, 'dsb'), effets: auNm(l.sort.effets, 'effets'),
+          }, calcul.contexteSorts) : null;
           const detail = (base, lignes, fin = []) => [base, ...lignes.map((x) => (x.crans || x.des ? x.nom : x.maximum ? `${x.nom} (${x.valeur})` : `${x.nom} : ${signe(x.valeur)}`)), ...fin].join('\n');
-          // en gras la valeur que le moment change ; en infobulle son détail, et ce qui n'est pas compté
+          // en gras la valeur que le moment change ; en infobulle son détail, et ce qui n'est pas compté (la case prend alors le focus : l'infobulle se lit
+          // aussi au clavier)
           const poserValeur = (td, texte, change, titre, aDire = change) => {
             if (td.textContent !== texte) td.textContent = texte;
             td.toggleAttribute('data-calcule', Boolean(change));
             infobulle(td, aDire ? titre : '');
+            if (aDire) td.tabIndex = 0;
+            else td.removeAttribute('tabindex');
           };
-          const nonComptes = (raison) => (m?.nonComptes ?? []).filter((x) => x.raison === raison).map((x) => `Non compté (${raison === 'cout' ? 'coût non chiffré' : 'portée non chiffrée'}) : ${x.nom} ${signe(x.valeur)}`);
+          const nonComptes = (colonne) => (m?.nonComptes ?? []).filter((x) => x.cible === colonne)
+            .map((x) => `Non compté (${RAISONS_DES_SORTS[x.raison] ?? x.raison}) : ${x.nom} ${signe(x.valeur)}`);
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
-            m && (m.cout.detail.length || m.cout.corruption),
+            m && (m.cout.detail.length || m.cout.corruption?.detail.length > 1),
             m && detail(`Coût écrit : ${auNm(l.sort.cout, 'cout')}`, m.cout.detail, [
               'Jamais moins de 1',
               ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
@@ -780,8 +789,7 @@ function construireSorts() {
             class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
             title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
           }, m.texte)));
-          const autres = (m?.nonComptes ?? []).filter((x) => !['cout', 'portee'].includes(x.raison))
-            .map((x) => `Non compté (${RAISONS_DES_SORTS[x.raison] ?? x.raison}) : ${x.nom} ${signe(x.valeur)}`);
+          const autres = nonComptes('dsb');
           const texteDsb = m ? `${m.dsb.texte}${m.dsb.diviseur > 1 ? ` ÷ ${m.dsb.diviseur}` : ''}` : '';
           poserValeur(dsb, texteDsb, m && (m.dsb.detail.length || m.dsb.diviseur > 1),
             m && detail(`Écrit : ${auNm(l.sort.dsb, 'dsb')}`, m.dsb.detail, [
@@ -791,7 +799,11 @@ function construireSorts() {
           // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
           tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
           infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');
-          effet.textContent = auNm(l.sort?.effets, 'effets');
+          // les effets : ceux d'un sort de protection comptent les dégâts bloqués du bâton (« Bloque N dégâts »)
+          const texteEffet = m ? m.effets.texte : auNm(l.sort?.effets, 'effets');
+          if (effet.textContent !== texteEffet) effet.textContent = texteEffet;
+          effet.toggleAttribute('data-calcule', Boolean(m?.effets.detail.length));
+          infobulle(effet, m?.effets.detail.length ? detail(`Écrit : ${auNm(l.sort.effets, 'effets')}`, m.effets.detail) : '');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
           if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
           poser(livre, nm.livre);
@@ -1000,7 +1012,7 @@ function construirePostures() {
     // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
     // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée
     const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
-    const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true }, el('span', {}, 'Symbiose avec'), choix);
+    const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true, dataset: { choixCle: 'symbiose' } }, el('span', {}, 'Symbiose avec'), choix);
     synchro(() => {
       const s = calcul.posture?.symbiose;
       bloc.hidden = !s || s.possibles.length < 2;
@@ -1331,31 +1343,31 @@ function texteDEffet(e) {
 
 let numeroDeListe = 0;
 /**
- * Une saisie et sa liste de propositions qui se filtre à la frappe (demande du propriétaire du 2026-10-17 : « un véritable autocomplete (menu déroulant
- * qui se filtre sur la saisie actuelle et qui ne commence qu'à partir de 2 caractères saisis) ») : une liste déroulante ARIA (combobox : aria-expanded,
- * aria-activedescendant), ↑ ↓ pour la parcourir, Entrée pour choisir, Échap pour la fermer ; un clic (ou un appui) choisit ; la saisie libre reste
- * possible. `propositions(valeur)` rend les noms à montrer (propositionsDuCatalogue : rien sous deux caractères) ; `choisir(nom)` reçoit le nom choisi.
- * Rend l'enveloppe (le champ et sa liste).
- */
-/**
  * Le réglage d'un bâton magique d'une ligne du sac (décision R101 : « configurer correctement un "bâton magique" avec la magie et le niveau de ce dernier
- * avant de pouvoir l'assigner à un emplacement de ceinture ») : la magie, puis le niveau ; les deux choisis, `choisir` reçoit le nom du bâton. Caché
- * pour un autre objet. La magie choisie sans niveau attend dans la page (elle n'est pas un nom d'objet). { element, maj }.
+ * avant de pouvoir l'assigner à un emplacement de ceinture ») : la magie, puis le niveau ; les deux choisis, `choisir` reçoit le nom du bâton ; la magie
+ * vidée, la ligne redevient le bâton à régler. Caché pour un autre objet. La magie choisie sans niveau attend dans la page (elle n'est pas un nom
+ * d'objet). `emplacement` : le numéro de la ligne du sac, dans le nom des listes. { element, maj }.
  */
-const magiesEnAttente = new WeakMap();
-function reglageDuBaton(ligne, choisir) {
+function reglageDuBaton(ligne, emplacement, choisir) {
   const magies = magiesDesBatons(regles);
-  const magie = el('select', { 'aria-label': 'Bâton magique : magie' }, option('', 'Magie…'), magies.map((m) => option(m.id, m.nom)));
-  const niveau = el('select', { 'aria-label': 'Bâton magique : niveau' }, option('', 'Niveau…'));
+  const magie = el('select', { 'aria-label': `Sac, emplacement ${emplacement} : magie du bâton` }, option('', 'Magie…'), magies.map((m) => option(m.id, m.nom)));
+  const niveau = el('select', { 'aria-label': `Sac, emplacement ${emplacement} : niveau du bâton` }, option('', 'Niveau…'));
   const element = el('span', { class: 'baton-reglage', hidden: true }, magie, niveau);
   const niveauxDe = (id) => magies.find((m) => m.id === id)?.niveaux ?? [];
   const remplirNiveaux = (id, choisi) => {
     niveau.replaceChildren(option('', 'Niveau…'), ...niveauxDe(id).map((n) => option(String(n), `Niveau ${n}`)));
     niveau.value = choisi ? String(choisi) : '';
     niveau.disabled = !id;
+    niveau.dataset.pour = `${id ?? ''}:${choisi ?? ''}`;
   };
   magie.addEventListener('change', () => {
     magiesEnAttente.set(ligne, magie.value || null);
+    if (!magie.value) {
+      // la magie vidée : la ligne redevient le bâton à régler
+      if (batonDuSac(regles, ligne.nom)?.regle) choisir(regles.ceinture.baton_a_regler);
+      remplirNiveaux(null, null);
+      return;
+    }
     const n = nomDuBaton(regles, magie.value, niveau.value);
     if (n) choisir(n);
     else remplirNiveaux(magie.value, null);
@@ -1370,16 +1382,22 @@ function reglageDuBaton(ligne, choisir) {
     if (!b) return;
     const magieId = b.baton?.magie_id ?? magiesEnAttente.get(ligne) ?? '';
     if (magie.value !== magieId) magie.value = magieId;
-    if (niveau.dataset.pour !== `${magieId}:${b.baton?.niveau ?? ''}`) {
-      remplirNiveaux(magieId, b.baton?.niveau ?? null);
-      niveau.dataset.pour = `${magieId}:${b.baton?.niveau ?? ''}`;
-    }
+    if (niveau.dataset.pour !== `${magieId}:${b.baton?.niveau ?? ''}`) remplirNiveaux(magieId || null, b.baton?.niveau ?? null);
     element.toggleAttribute('data-a-choisir', !b.regle);
     infobulle(element, b.regle ? b.baton.effets.map((e) => e.texte).join('\n') : 'À régler avant la ceinture : sa magie et son niveau');
   };
   return { element, maj };
 }
+/** Les magies choisies d'un bâton à régler qui attend son niveau, par ligne du sac. */
+const magiesEnAttente = new WeakMap();
 
+/**
+ * Une saisie et sa liste de propositions qui se filtre à la frappe (demande du propriétaire du 2026-10-17 : « un véritable autocomplete (menu déroulant
+ * qui se filtre sur la saisie actuelle et qui ne commence qu'à partir de 2 caractères saisis) ») : une liste déroulante ARIA (combobox : aria-expanded,
+ * aria-activedescendant), ↑ ↓ pour la parcourir, Entrée pour choisir, Échap pour la fermer ; un clic (ou un appui) choisit ; la saisie libre reste
+ * possible. `propositions(valeur)` rend les noms à montrer (propositionsDuCatalogue : rien sous deux caractères) ; `choisir(nom)` reçoit le nom choisi.
+ * Rend l'enveloppe (le champ et sa liste).
+ */
 function autocompletion(champ, propositions, choisir) {
   const idListe = `propositions-${++numeroDeListe}`;
   const liste = el('ul', { class: 'autocompletion__liste', role: 'listbox', id: idListe, hidden: true, 'aria-label': 'Propositions' });
@@ -1830,7 +1848,7 @@ function construireEquipement() {
           onchange: () => poser(quantite, o.quantite),
         });
         // un bâton magique se règle ici, magie puis niveau, avant d'aller à la ceinture (décision R101) : la ligne prend alors le nom du bâton
-        const reglage = reglageDuBaton(o, (nomDuBatonChoisi) => { poser(nom, nomDuBatonChoisi); ecrire(nomDuBatonChoisi); });
+        const reglage = reglageDuBaton(o, i + 1, (nomDuBatonChoisi) => { poser(nom, nomDuBatonChoisi); ecrire(nomDuBatonChoisi); });
         const tr = el('tr', { 'data-ligne': String(i + 1) },
           el('td', {}, saisie, reglage.element), el('td', { class: 'nombre' }, quantite),
           el('td', {}, el('button', { type: 'button', class: 'retirer', 'aria-label': 'Retirer l’objet', onclick: () => { retirer('inventaire', (x) => x === o); changer(); } }, '✕')));
@@ -2021,7 +2039,11 @@ function construireCeinture() {
   // un nom refusé (absent du sac) : la raison, annoncée (role="status"), effacée à l'action suivante, à la frappe suivante, ou quand le sac a ce nom
   const refus = (n) => {
     nomRefuse = n;
-    const texte = n === null ? '' : `« ${n} » n’est pas dans le sac : ajoutez-le d’abord à l’inventaire, puis choisissez-le ici.`;
+    // le bâton magique pas encore réglé (décision R101) : il est dans le sac, mais sa magie et son niveau se choisissent d'abord
+    const texte = n === null ? ''
+      : n === regles.ceinture?.baton_a_regler && (fiche.inventaire ?? []).some((o) => String(o.nom ?? '').trim() === n)
+        ? `« ${n} » se règle d’abord dans le sac (sa magie, puis son niveau) avant d’aller à la ceinture.`
+        : `« ${n} » n’est pas dans le sac : ajoutez-le d’abord à l’inventaire, puis choisissez-le ici.`;
     if ($('ceinture-refus').textContent !== texte) $('ceinture-refus').textContent = texte;
   };
   if (nomRefuse !== null && suggestions.some((x) => x.nom === nomRefuse)) refus(null);
@@ -2059,7 +2081,7 @@ function construireCeinture() {
       list: 'liste-ceinture', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Un objet du sac',
       oninput: (ev) => {
         if (nomRefuse !== null) refus(null);
-        const choisi = objetChoisiDansLaListe(fiche, ev.target.value, ev.inputType);
+        const choisi = objetChoisiDansLaListe(fiche, ev.target.value, ev.inputType, regles);
         if (choisi !== null) choisir(choisi);
       },
       onchange: (ev) => choisir(ev.target.value),
@@ -2100,6 +2122,10 @@ function construireCeinture() {
           : sous ? `En dessous du minimum de l’emplacement (${a.min})`
             : a.genre === 'baton' ? 'Un bâton magique compte pour un (utilisations illimitées)'
               : a.genre === 'contenant' ? `Projectiles : ${a.quantite} sur ${a.max}` : `Exemplaires : ${a.quantite} sur ${a.max}`);
+      // un bâton dont un effet n'est pas compté : un autre bâton de la ceinture a le même, plus fort (décision R101 : « le meilleur seul »)
+      const ecartes = a?.genre === 'baton' ? calcul.contexteSorts.batons.ecartes.filter((e) => e.baton.nom === x?.nom) : [];
+      attribut(li, 'data-ecarte', ecartes.length > 0);
+      infobulle(nom, ecartes.length ? ecartes.map((e) => `Non compté : « ${e.texte} » (${e.par.nom} a le même effet, plus fort)`).join('\n') : '');
       attribut(actions, 'hidden', !a);
       attribut(utiliser, 'hidden', !a?.utiliser);
       infobulle(utiliser, !a ? '' : a.genre === 'contenant' ? 'Retire un projectile' : 'Retire un exemplaire (le dernier libère l’emplacement)');
@@ -2174,6 +2200,9 @@ function construireRetraits() {
 function rafraichir() {
   // les six caractéristiques sont toujours là, au minimum de la race (1) tant qu'on ne les a pas montées (demande du propriétaire)
   fiche.caracteristiques = caracteristiquesCompletes(regles, fiche);
+  // la magie de la Symbiose (décision R100) : une magie du personnage, jamais le Potentiel Illimité ; une autre (magies changées) est oubliée
+  if (fiche.symbiose_magie_id && (fiche.symbiose_magie_id === 'magies/potentiel-illimite'
+    || ![fiche.magie_innee_id, fiche.magie_acquise_id].includes(fiche.symbiose_magie_id))) fiche.symbiose_magie_id = null;
   calcul = {
     niveau: niveauGlobal(regles, fiche.xp),
     classes: classesDe(regles, fiche),
@@ -2183,6 +2212,8 @@ function rafraichir() {
     attributs: attributsDe(regles, fiche),
     // la posture du moment et ce qu'elle change (décision R100) : compétences, initiative, AP/AM, dégâts, sorts
     posture: postureDuMoment(regles, fiche),
+    // ce qui vaut pour tous les sorts (décisions R100 à R102), calculé une fois par rafraîchissement
+    contexteSorts: contexteDesSorts(regles, fiche),
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
   calcul.attente = choixEnAttente(regles, fiche);

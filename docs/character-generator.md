@@ -333,7 +333,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre et
-  du MJ (R26), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  du MJ (R26), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
   que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
@@ -461,7 +461,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
   deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13), ce que perd une armure ou un bouclier cassé (Q14),
-  la Symbiose du Potentiel Illimité (Q15), les bonus « tous les M niveaux globaux » (Q16) et la magie désactivée en Symbiose (Q17) :
+  la Symbiose du Potentiel Illimité (Q15), les bonus « tous les M niveaux globaux » (Q16), la magie désactivée en Symbiose (Q17), les objets en
+  Symbiose (Q18), les valeurs par tour (Q19) et les bonus « selon la situation » douteux (Q20) :
   [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`

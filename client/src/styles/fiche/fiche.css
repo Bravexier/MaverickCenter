@@ -1062,10 +1062,13 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--sorts td[data-calcule] { font-weight: 700; text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
 .fiche-table--sorts tr[data-inactif] td { opacity: 0.45; }
 .objet__des[data-posture] { outline: 2px dashed currentColor; outline-offset: 1px; }
-.posture-symbiose { align-self: center; }
+/* sous la case Symbiose, la dernière de la grille des postures (une colonne de plus à droite qu'à gauche n'en change pas la place) */
+.posture-symbiose { align-self: start; grid-column: -2 / -1; }
 .posture-symbiose[hidden] { display: none; }
 /* le réglage d'un bâton magique dans le sac (décision R101) : sa magie puis son niveau, sous le nom */
 .baton-reglage { display: flex; gap: 0.3rem; margin-top: 0.2rem; }
 .baton-reglage[hidden] { display: none; }
 .baton-reglage select { flex: 1 1 0; min-width: 0; }
 .baton-reglage[data-a-choisir] select { border-color: var(--a-choisir); }
+/* un bâton de la ceinture dont un effet n'est pas compté (un autre bâton a le même, plus fort : décision R101) */
+.ceinture__emplacement[data-ecarte] input { text-decoration: line-through dotted; }
