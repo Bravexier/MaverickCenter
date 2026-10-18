@@ -765,8 +765,8 @@ CREATE INDEX sort_etat_etat ON sort_etat (etat_id, relation);
 -- question Q20, 1) ; une autre étiquette viendra d'une autre décision. Pas d'ordre (un sort se lit avec ses étiquettes dans l'ordre de leur libellé)
 -- ni de provenance (origine, source_ref : une décision du propriétaire, pas une cellule ; feuille de route). Une étiquette est une règle posée par
 -- décision : pas de cascade vers mot_cle (à la différence de page_tag), la clé étrangère refuse de supprimer un mot-clé qui étiquette encore un sort ;
--- le site refusera aussi de le supprimer ou de le fusionner, et protégera « Sort grenade », dont il se sert (client/src/lib/mots-cles.mjs#
--- MOTS_CLES_PROTEGES ; partie du site à venir).
+-- le site refuse aussi de le supprimer ou de le fusionner (409 : client/serveur/edition-chronologie.mjs#verifierSansSort) et protège « Sort grenade »,
+-- dont il se sert (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
 CREATE TABLE sort_mot_cle (
   sort_id     TEXT NOT NULL REFERENCES sort(id),
   mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id),
