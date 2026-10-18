@@ -175,10 +175,16 @@ abandonne.
   en gras, rouge s'il est rogné, son détail en infobulle (`competencesDe` : `entrainement`, `dons`, `metier`, `accessoire` et leurs `…Brut`). Un bonus « X ou Y »
   d'un don est un **choix** (« Acquis à choisir », sous les dons, et le tiroir des choix : `acquisDesDons`, `acquisApresChoix`) ; « 10% de compétence en acquis à
   répartir au choix » (Humain central), une **répartition** : une ligne par compétence et ses points, « + Compétence » tant qu'il en reste
-  (`acquisApresRepartition`) ; les choix gardés sont ceux d'un don encore débloqué (`acquisChoixValables`, table `personnage_acquis_choix`). Un bonus que la
-  phrase lie à une situation, à « l'arme choisie », aux « compétences d'arme », à « 2 sur les 3 », aux jets d'une caractéristique ou à l'artisanat n'est pas
-  compté : listé sous « Bonus d'acquis non comptés », avec sa raison (questions Q22 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est
-  augmenté de +20 » (Mort-vivant) relève le plafond de chaque compétence du Social (`plafondBonus`, question Q28).
+  (`acquisApresRepartition`) ; les choix gardés sont ceux d'un don encore débloqué (`acquisChoixValables`, table `personnage_acquis_choix`). « Pour les
+  compétences d'arme » (Mercenaire, « Polyvalence » et « Combattant libre ») est le choix d'une compétence parmi Arc, Arbalète, Arme Légère et Arme Lourde
+  (décision R120) ; « choisir 2 sur les 3 » (Moine, « Templier ») deux choix, deux compétences différentes parmi les quatre, +5 à chacune (R121 : la liste de
+  l'un grise la compétence de l'autre). « +5% à tout jet impliquant la Perception » (Fenrir) et « +5% à tout test d'Agilité » (Elfe forestier) sont un
+  **bonus au jet** de chaque compétence de la caractéristique, compté dans le score, hors acquis et hors plafond (R122 : `jet`, `jetDetail`, en infobulle du
+  score comme la posture) ; les « tests d'artisanat » du Nain de Londolor ouest et de l'Elfe noir Sang purifié s'ajoutent à la compétence d'artisanat du
+  métier (R123 : `artisanatDe`, `bonus`), et ne comptent pas sans métier. Un bonus que la phrase lie à une situation, à « l'arme choisie » (R119, à
+  venir), à la falsification de documents (au MJ : R123) ou à « 5% parmi les autres » n'est pas compté : listé sous « Bonus d'acquis non comptés », avec sa
+  raison (questions Q22, Q27 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est augmenté de +20 » (Mort-vivant) relève le plafond de chaque
+  compétence du Social (`plafondBonus`, question Q28).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
   exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
   personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
@@ -401,7 +407,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte les
   compétences de l'entraînement (R104), « Nom points » jointes par « | » (« Magie 2 | Concentration 10 », la forme de la fiche auto ; une case relue, sa
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
-  une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition) ; le nom et le type du modèle restent. Les dés de maîtrise
+  une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition ; les deux choix du Templier, R121, deux lignes dans
+  l'ordre, une compétence répétée n'est pas reprise) ; le nom et le type du modèle restent. Les dés de maîtrise
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
@@ -542,9 +549,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
   deux ; maximum de solidité d'une arme élémentaire (Q12), et les bonus d'acquis des dons non comptés :
-  « l'arme choisie » (Q22), « les compétences d'arme » (Q23), « 2 sur les 3 » (Q24), les jets d'une caractéristique (Q25),
-  l'artisanat (Q26), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non comptés
-  (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
+  « l'arme choisie » (Q22), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non
+  comptés (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 
