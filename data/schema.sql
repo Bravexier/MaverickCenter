@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 66;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 67;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -119,7 +119,8 @@ CREATE INDEX alias_texte ON alias (texte);
 -- le mot-clé qui reçoit) par le chemin normal d'une modification, et db:check contrôle qu'aucune ne vise un mot-clé absent (règle du site).
 -- Depuis 0056, le vocabulaire ne garde que les mots-clés dont le site se sert pour ranger ses pages (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
 -- et ceux du glossaire ; les autres ont été retirés des pages. Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé sur les
--- pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis
+-- pages (page_tag) et, en étiquette, sur les sorts (sort_mot_cle, migration 0067 : décision R114) ; les événements de la chronologie ont leurs
+-- catégories (categorie_chronologie). id = normalize(libelle) à la création, puis
 -- FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
 -- des 400 mots-clés que la migration 0056 a retirés, qui peuvent resservir (une nouvelle entrée du glossaire « Feu » reprend `feu`, et l'ancienne
 -- adresse /recherche/?mot-cle=feu mène à elle : voulu). libelle_cle = normalize(libelle) : les écritures « espace/temps », « espace temps » et
@@ -756,6 +757,21 @@ CREATE TABLE sort_etat (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX sort_etat_etat ON sort_etat (etat_id, relation);
+
+-- Étiquettes d'un sort : un mot-clé du glossaire (mot_cle) posé sur un sort (décision R114 du propriétaire, migration 0067 : « Il faudra d'ailleurs
+-- redéfinir ce qu'est un sort "grenade" autrement que pas juste son nom (un tag en base par exemple, qu'on pourrait utiliser pour d'autres choses ») :
+-- le site reconnaît un sort à son étiquette, jamais à son nom (les +11 dégâts de « Pardon ?!? » du Grenadier vont aux sorts étiquetés « Sort
+-- grenade »). 0067 pose « Sort grenade » (id `sort-grenade`) sur les 14 sorts « Grenade… », un dans chaque magie (réponse du propriétaire à la
+-- question Q20, 1) ; une autre étiquette viendra d'une autre décision. Pas d'ordre (un sort se lit avec ses étiquettes dans l'ordre de leur libellé)
+-- ni de provenance (origine, source_ref : une décision du propriétaire, pas une cellule ; feuille de route). Supprimer un mot-clé retire ses étiquettes
+-- (ON DELETE CASCADE, comme page_tag) ; un mot-clé dont le site se sert est protégé (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
+CREATE TABLE sort_mot_cle (
+  sort_id     TEXT NOT NULL REFERENCES sort(id),
+  mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  PRIMARY KEY (sort_id, mot_cle_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX sort_mot_cle_mot_cle ON sort_mot_cle (mot_cle_id);   -- « les sorts grenades » : tous les sorts qui portent un mot-clé
 
 -- Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent
 -- des textes de règle). Conservés tels quels, sans rattachement inventé.
@@ -3947,6 +3963,16 @@ CREATE TABLE personnage (
   -- ils s'ajoutent aux NM gagnés par les niveaux (v_niveau.niveaux_maitrise_cumul), sans être liés à un sort ; contrôlés par les règles sort_nm_max et
   -- sorts_nm_total de v_personnage_controle. Jusqu'à 0066, ils se notaient sort par sort (personnage_sort.nm_cadeau, décision R26).
   nm_mj                 INTEGER NOT NULL DEFAULT 0 CHECK (nm_mj >= 0),   -- NM donnés par le MJ, pour toute la fiche (R118)
+  -- Sort préparé (décision R115, migration 0067 : « Le don niveau 1 (et son équivalent mage vert) permettrai de choisir le sort qui est préparé et de
+  -- noter le résultat du jet de magie si réussi » ; pas de case dans la fiche auto V15.2.2) : le sort chargé par « Préparation » (Mage Rouge) ou
+  -- « Chargement » (Mage Vert), le résultat de son jet de magie (un D100) et la posture du moment où il a été préparé, avec laquelle il se lance,
+  -- même répété (« Double coup », niveau 20 : « préparé en posture offensive, fera les dégâts maximals, même si l'attaque physique a lieu en posture
+  -- défensive ») ; les sorts « non préparés » (« … ou rapide ») sont tous les autres. NULL = aucun sort préparé : le jet et la posture n'existent
+  -- qu'avec lui (« Lâcher le sort » remet les trois à NULL) ; le jet est NULL tant qu'il n'est pas noté, la posture quand aucune n'était choisie
+  -- (posture_id NULL). Un sort supprimé des règles quitte les fiches (R42) : ici aussi, avec son jet et sa posture.
+  sort_prepare_id       TEXT    REFERENCES sort(id),   -- le sort préparé (R115) ; NULL = aucun
+  sort_prepare_jet      INTEGER CHECK (sort_prepare_jet IS NULL OR (sort_prepare_id IS NOT NULL AND sort_prepare_jet BETWEEN 1 AND 100)),   -- jet de magie (D100)
+  sort_prepare_posture_id TEXT  REFERENCES posture(id) CHECK (sort_prepare_posture_id IS NULL OR sort_prepare_id IS NOT NULL),   -- posture du moment de la préparation
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -4021,14 +4047,23 @@ CREATE UNIQUE INDEX personnage_entrainement_competence ON personnage_entrainemen
 -- (capacite.id ou race_don.id, `source` : pas de clé étrangère, un don disparu laisse un choix sans effet, que la page retire) et le rang de ce choix
 -- dans son texte (lib/acquis-texte.mjs, 1 = le premier), la compétence retenue (`valeur` NULL : le bonus du don), ou, pour « 10% de compétence en
 -- acquis à répartir au choix », chaque compétence et ses points (`valeur`, leur somme au plus le bonus : la page le garde).
+-- « +N% de la compétence de l'arme choisie » (décision R119, migration 0067 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui
+-- détermine le bonus. En cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. » ; Tueur Flétrisseur et Sicaire,
+-- Mage Bleu Mage saphir, Mage Vert Mage émeraude et Mage jade, Barde Ménestrel) : la ligne du choix garde aussi la famille d'armes de la maîtrise au
+-- choix de la classe (`arme_famille_id`, classe_maitrise_arme forme 'au_choix') ; `competence_id` est la compétence qui reçoit le bonus : celle de
+-- l'arme (R48 : arme.competence_brut), au choix quand l'arme peut être lourde ou légère (R119). Le choix d'une arme est celui d'un don, comme « X ou
+-- Y » : une ligne (pas de répartition, `valeur` NULL), une seule par choix (index personnage_acquis_choix_arme). NULL pour tout autre choix.
 CREATE TABLE personnage_acquis_choix (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   source         TEXT    NOT NULL CHECK (length(source) > 0),
   rang           INTEGER NOT NULL CHECK (rang >= 1),
   competence_id  TEXT    NOT NULL REFERENCES competence(id),
   valeur         INTEGER CHECK (valeur >= 1),
+  arme_famille_id TEXT   REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL),   -- l'arme choisie (R119, migration 0067)
   PRIMARY KEY (personnage_id, source, rang, competence_id)
 ) STRICT, WITHOUT ROWID;
+
+CREATE UNIQUE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (personnage_id, source, rang) WHERE arme_famille_id IS NOT NULL;   -- une arme par choix
 
 -- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
 -- de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ;
