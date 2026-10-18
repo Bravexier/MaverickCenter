@@ -3559,9 +3559,10 @@ CREATE VIEW v_creature_sort AS
          cs.rang AS rang, cs.sort_nom_brut AS sort_nom_brut, cs.sort_id AS sort_id
   FROM creature_capacite_sort cs JOIN creature_capacite ca ON ca.id = cs.capacite_id;
 
--- Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonnes « Coût » et « Coût secondaire », décision R105 ; les trois
--- sorts d'invocation attendent la décision du propriétaire et gardent l'écriture du classeur : « 6 (xNP de créature) », « 5 + 1 âme (xNPM de créature) »,
--- « 5 + 10% BA (xNPM de créature) »). Les commentaires du sort (table note_cellule, entité sort)) précisent que « chaque niveau de puissance de la créature invoqué double de le coût précédent ».
+-- Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonnes « Coût » et « Coût secondaire », décisions R105 et R106 :
+-- « 6 » et « Par NPM de la créature invoquée », « 5 » et « Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée. », « 5 » et « Par NPM
+-- de la créature invoquée. +10% Barrière » ; lus en une case par lib/bestiaire-db.mjs, lib/sort-cout.mjs#coutEnUneCase). Les commentaires du sort (table
+-- note_cellule, entité sort) précisent que « chaque niveau de puissance de la créature invoqué double de le coût précédent ».
 CREATE VIEW v_creature_cout_invocation AS
   SELECT c.id AS creature_id, i.id AS invocation_id, s.id AS sort_id, s.nom AS sort_nom,
          s.cout_brut AS cout_brut, s.cout_chakra AS cout_chakra, s.cout_ressource AS cout_ressource,

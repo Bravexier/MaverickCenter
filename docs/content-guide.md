@@ -148,7 +148,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Pas d'encart sans altération liée (Potentiel Illimité). `components/magie/MagieEtats.astro`.
 - **Capacité Mode Hyper** : un (+) à côté du titre mène à la liste des effets mode hyper (plus de lien en texte).
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
-  parenthèses (`(xNP de créature)`) passent en petit (parenthèses gardées), un coût encore écrit en une case comme le classeur (en attente de décision, ci-dessous) est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
+  parenthèses passent en petit (parenthèses gardées), un coût qui écrirait encore deux coûts en une case (« 5 + 1 âme ») serait séparé en coût et supplément (il n'y en a plus : décisions R105, R106), les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
 - **Coût et coût secondaire** (décisions R105 et R106, migrations `0063-cout-secondaire` et `0065-couts-des-sorts-tranches`) : « Coût » (`sort.cout_brut`) n'a que le chakra, un nombre
   avec son expression de NM (lecture qui attend la confirmation du propriétaire : `docs/sql/a-valider.md`, S1), « X » (au choix), « 0 » pour un sort qui n'en consomme pas, « N/A » pour

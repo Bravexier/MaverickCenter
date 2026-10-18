@@ -232,9 +232,10 @@ UPDATE page SET corps_md = replace(corps_md,
   '| 5.0 | Sapeur | Entrave | X Corruption | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |')
 WHERE id = 'magies/magie-de-la-corruption' AND instr(corps_md, '| 5.0 | Sapeur | Entrave | x CR | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |') > 0;
 
--- garde : les 26 lignes réécrites sont dans leur page
+-- garde : chacune des 26 lignes réécrites est dans sa page une seule fois, comme une ligne entière (un remplacement qui aurait touché
+--   une ligne en double ou le début d'une ligne plus longue la ferait échouer)
 CREATE TEMP TABLE garde_0065_corps (lignes INTEGER NOT NULL CHECK (lignes = 26));
-INSERT INTO garde_0065_corps SELECT count(*) FROM (VALUES
+WITH v(page_id, ligne) AS (VALUES
   ('magies/magie-de-larcane', '| 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2 pour 1 dégât supplémentaire | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |'),
   ('magies/magie-de-larcane', '| 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3 par tour et par cible | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |'),
   ('magies/magie-de-larcane', '| 1.0 | Forge-Magie | Amplification (IC) | 2 par taille de l''arme créée | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |'),
@@ -261,5 +262,8 @@ INSERT INTO garde_0065_corps SELECT count(*) FROM (VALUES
   ('magies/magie-du-sang', '| 4.0 | Perfusion | Soin (IC) | X Sang | 4.0 | 1.0 | 4 (+1/NM) soin pour 1 sang | Utilise du sang pour récupérer de la santé. L''inverse est possible aussi de sacrifier de la santé pour récupérer du sang. |'),
   ('magies/magie-de-la-corruption', '| 4.0 | Pluie huileuse | Météo | 50% corruption | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |'),
   ('magies/magie-de-la-corruption', '| 5.0 | Sapeur | Entrave | X Corruption | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |')
-) v JOIN page p ON p.id = v.column1 AND instr(p.corps_md, v.column2) > 0;
+)
+INSERT INTO garde_0065_corps SELECT count(*) FROM v JOIN page p ON p.id = v.page_id
+  AND instr(char(10) || p.corps_md || char(10), char(10) || v.ligne || char(10)) > 0
+  AND length(p.corps_md) - length(replace(p.corps_md, v.ligne, '')) = length(v.ligne);
 DROP TABLE garde_0065_corps;

@@ -304,7 +304,7 @@
 | `v_creature_magie` *(vue)* | Magies d'une créature : celles de la marge de son bloc (« Terre + Feu » -> Terre et Feu) ET celle du sort qui invoque son invocation (Terre pour tous les golems, Nécromancie pour les non-morts, Ombre |  |
 | `v_creature_resistance` *(vue)* | Résistances, vulnérabilités, immunités et sensibilités d'une créature, toutes provenances confondues (une ligne par fait) : provenance 'capacite' : écrit dans une capacité de la créature (creature_cap |  |
 | `v_creature_sort` *(vue)* | Sorts que peut lancer une créature (capacités « Lanceur de sorts » et « Sort supplémentaire »). |  |
-| `v_creature_cout_invocation` *(vue)* | Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonnes « Coût » et « Coût secondaire », décision R105 ; les trois sorts d'invocation attendent la décision du pro |  |
+| `v_creature_cout_invocation` *(vue)* | Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonnes « Coût » et « Coût secondaire », décisions R105 et R106 : « 6 » et « Par NPM de la créature invoquée », « |  |
 | `v_creature_meme_bloc` *(vue)* | « Autre créature du bloc » (ligne de la page actuelle) : la ou les autres cartes du même bloc. |  |
 | `v_arme` *(vue)* | Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ; solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 s |  |
 | `v_ingredient_possible` *(vue)* | Ingrédients qui conviennent à un emplacement d'alchimie : même catégorie et même affinité ; l'emplacement « Amplificateur majeur » n'accepte que les ingrédients marqués « (majeur) », les autres emplac |  |
