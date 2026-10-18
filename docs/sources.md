@@ -34,6 +34,16 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 > Ne pas utiliser le jeton d'un compte personnel (« self-bot ») : c'est contraire aux conditions d'utilisation de Discord
 > et ce jeton donne accès à tout le compte.
 
+## Tipeee — « Maverick JDR »
+
+- Page : <https://fr.tipeee.com/maverickjdr> (donnée par le propriétaire avec son plan du 2026-10-16), écrite par le créateur du jeu.
+- Lue le **2026-10-18** par l'API publique `https://api.tipeee.com/v2.0/projects/maverickjdr` (la page est rendue en JavaScript) ; aucun instantané
+  gardé dans `sources/` (la page change : contreparties, montants).
+- Ce qu'en tire le site : la présentation du lien Tipeee de la page Liens (`client/src/lib/livres.mjs#LIENS`) — un « chapeau virtuel » pour soutenir
+  le projet, ce qu'on y découvre (informations inédites, aperçus exclusifs, petites fiches de conseils pour les MJ en herbe), le soutien à plusieurs
+  paliers et le nom inscrit sur le mur des donateurs du Discord et dans les futurs livres. Ni le pseudonyme du créateur ni les montants des paliers ne
+  sont repris. **Texte à faire valider par le propriétaire** (`docs/sql/a-valider.md` §6).
+
 ## Google Docs / Sheets
 
 12 documents distincts (le doc `1vn5Tq11…` avait été cité deux fois), listés dans `sources/sources.json`

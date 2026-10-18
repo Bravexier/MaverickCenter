@@ -1,18 +1,21 @@
-// Pages du guide (type `guide` de la base) : leur plan (livres lus dans l'ordre, Règles avancées, Guide du MJ) et leurs adresses sont dans lib/livres.mjs.
+// Pages du guide (type `guide` de la base) : leur plan (Découvrir, Les bases, Règles avancées, Guide du MJ) et leurs adresses sont dans lib/livres.mjs.
 // Ici, ce que leur rendu partage : une page peut appeler un bloc tiré de la base (tableau de la montée de niveau, postures…) par une ligne seule
 // `<!-- guide:<bloc> -->` : invisible dans le Markdown, il est remplacé au rendu par le composant du bloc (components/guide/GuideBloc.astro, appelé par
-// PageDeLivre.astro et PageDuGuide.astro).
+// PageDuGuide.astro).
 // Sans dépendance (sauf lib/livres.mjs, pur lui aussi) : importé par lib/guide-rendu.ts, lib/recherche-index.ts, les composants du guide, la fiche
 // (couleurs des zones), le service (serveur/edition.mjs) et les tests.
 
-import { estDansUnLivre } from './livres.mjs';
+import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';
 
-/** Les couleurs des sections des livres, aussi celles des quatre zones de la fiche (pages/fiche/index.astro) : lib/livres.mjs#PARTIES. */
+/** Les couleurs des groupes de Découvrir et des Bases, aussi celles des quatre zones de la fiche (pages/fiche/index.astro) : lib/livres.mjs#PARTIES. */
 export { PARTIES } from './livres.mjs';
 
-/** Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). */
+/**
+ * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »
+ * (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : le menu Découvrir et les cartes de l'accueil mènent aux pages.
+ */
 export const BLOCS = [
-  'sommaire', 'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
+  'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
   // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
   'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
 ];
@@ -50,15 +53,19 @@ export const avecPrefixe = (markdown, base) => markdown.replace(/\]\(\/(?!\/)([^
 
 /**
  * Le chemin d'un lien écrit vers une ancienne adresse du guide (« guide/les-postures/ », « guide/choisir-sa-classe/#une-ou-deux-classes », « guide/ »),
- * mené à l'adresse de la page visée (`cheminDe(id)` : lib/metiers.mjs#cheminDePage), l'ancre gardée ; `existe(id)` dit si la page est chargée (sinon,
- * et pour tout autre chemin, le chemin tel qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE).
+ * mené à l'adresse de la page visée (`cheminDe(id)` : lib/metiers.mjs#cheminDePage) — celle de la page qui l'absorbe pour une page fusionnée dans une
+ * autre (lib/livres.mjs#PAGES_ABSORBEES), à l'ancre où se lit son contenu si le lien n'en écrit pas (ANCRES_DES_PAGES_ABSORBEES) —, l'ancre écrite gardée ; `existe(id)` dit si la page est chargée (sinon, et pour tout autre chemin, le chemin tel
+ * qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE).
  */
 export function adresseDesAnciensLiens(chemin, { cheminDe, existe, accueil }) {
   const m = chemin.match(/^guide\/(?:([a-z0-9-]+)\/?)?((?:[?#].*)?)$/);
   if (!m) return chemin;
   if (!m[1]) return `${accueil}${m[2]}`;
-  const id = `guide/${m[1]}`;
-  return existe(id) ? `${cheminDe(id)}${m[2]}` : chemin;
+  const ecrit = `guide/${m[1]}`;
+  const absorbee = !existe(ecrit) && Object.hasOwn(PAGES_ABSORBEES, ecrit);
+  const id = absorbee ? PAGES_ABSORBEES[ecrit] : ecrit;
+  if (!existe(id)) return chemin;
+  return `${cheminDe(id)}${absorbee && !m[2].includes('#') ? `${m[2]}#${ANCRES_DES_PAGES_ABSORBEES[ecrit]}` : m[2]}`;
 }
 
 /**
@@ -88,7 +95,7 @@ export function remarkAnciensLiensDuGuide({ base = '/', adresse }) {
 const ORDRE_DES_DOCUMENTS = ['Créer sa fiche de personnage', 'Règle du jeu/Guide pour MJ - Maverick', 'Magie Maverick V8', 'Mode hyper et co'];
 
 /**
- * Les pages de référence du type `guide` (tout sauf les pages des livres, lib/livres.mjs, les pages d'exemple et la page `sauf` : celle qui
+ * Les pages de référence du type `guide` (tout sauf les pages de Découvrir et des Bases, lib/livres.mjs, les pages d'exemple et la page `sauf` : celle qui
  * appelle le bloc), rangées par document source : le nom entre « » de la
  * première source (« Google Doc « Créer sa fiche de personnage » » → « Créer sa fiche de personnage »), ordre ORDRE_DES_DOCUMENTS puis alphabétique ;
  * dans un document, ordre alphabétique des titres. -> [{ document, genre: 'Doc' | 'Sheet' | null, pages: [{ id, titre }] }]
@@ -96,7 +103,7 @@ const ORDRE_DES_DOCUMENTS = ['Créer sa fiche de personnage', 'Règle du jeu/Gui
 export function pagesDeReference(entries, sauf = null) {
   const groupes = new Map();
   for (const e of entries) {
-    if (!e.id.startsWith('guide/') || estDansUnLivre(e.id) || e.id === sauf || e.data.status === 'example') continue;
+    if (!e.id.startsWith('guide/') || estDansDecouvrirOuLesBases(e.id) || e.id === sauf || e.data.status === 'example') continue;
     const libelle = (e.data.sources ?? []).find((s) => !/^https?:\/\//.test(s)) ?? '';
     const m = libelle.match(/^Google (Doc|Sheet) « (.+?) »/);
     const document = m ? m[2] : 'Autres pages';

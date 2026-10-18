@@ -335,8 +335,8 @@ const progression = evenement ? `${((position / evenements.length) * 100).toFixe
     if (lien) location.href = lien.href;
   });
 
-  // Écran tactile : glisser le doigt vers la gauche sur la page d'un événement passe au suivant, vers la droite au précédent, comme dans le guide :
-  // geste franchement horizontal (2 fois plus large que haut, 60 px ou le quart de l'écran), d'un seul doigt, hors de la frise, d'un champ, d'une
+  // Écran tactile : glisser le doigt vers la gauche sur la page d'un événement passe au suivant, vers la droite au précédent (repris de l'ancien
+  // livre du guide, retiré du guide le 2026-10-18) : geste franchement horizontal (2 fois plus large que haut, 60 px ou le quart de l'écran), d'un seul doigt, hors de la frise, d'un champ, d'une
   // sélection de texte, d'une page zoomée et du bord de l'écran. La page suit un peu le doigt, sauf mouvement réduit.
   (function () {
     var page = document.querySelector('.chrono--evenement .chrono-page');

@@ -545,7 +545,7 @@ test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0)
   assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
   assert.match(corps('guide/fiche-attributs'), /Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle/);
   assert.match(corps('magies/magie-de-la-corruption'), /la corruption n'empiète pas dans l'espace du chakra/);
-  assert.match(corps('guide/finaliser-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/);
+  assert.match(corps('guide/creer-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (guide/finaliser-son-personnage, fusionnée)
   // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
   const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
   const par = (fiche) => Object.fromEntries(valeursDuMoment(regles, { ...ficheVide(), ...fiche }, attributs).map((j) => [j.champ, j]));

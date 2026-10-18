@@ -31,7 +31,7 @@ const pagesModifiables = ['guide', 'lore'].flatMap((type) =>
 
 test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réécrit d’après le HTML redonne le même HTML', async () => {
   const effectif = (type) => pagesModifiables.filter((p) => p.type === type).length;
-  assert.ok(effectif('guide') >= 60, `${effectif('guide')} pages du guide`);
+  assert.ok(effectif('guide') >= 55, `${effectif('guide')} pages du guide`); // 57 depuis la refonte du 2026-10-18 (sept pages fusionnées, une nouvelle)
   assert.ok(effectif('lore') >= 100, `${effectif('lore')} pages du Codex`);
   let morceaux = 0;
   for (const page of pagesModifiables) {
@@ -64,10 +64,16 @@ test('liens : [[cible]] et [[cible|texte]] (cible gardée telle qu’écrite), l
 });
 
 test('liens du guide écrits vers une ancienne adresse (/guide/<slug>/) : rendus vers la page du plan, relus tels qu’écrits — modifier la page ne les réécrit pas', async () => {
-  const pages = pagesModifiables.filter((p) => p.type === 'guide' && /\]\(\/guide\//.test(p.corps));
+  // la base n'en écrit plus depuis la refonte des pages du 2026-10-18 (avant : neuf liens sur huit pages des livres « Découvrir » et « Les bases ») ;
+  // un texte modifié sur le site de dev en écrit encore (le lien d'une note de version publiée : « ](/guide/choisir-ses-magies/) ») : des pages
+  // d'essai — page fusionnée avec son ancre, page existante, ancien sommaire, entre des blocs —, plus celles de la base qui en auraient
+  const essais = [
+    { id: 'essai/une', corps: 'Voir [le choix des magies](/guide/choisir-ses-magies/) et [le biclassage](/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage).\n\n<!-- guide:magies -->\n\nPuis [les postures](/guide/les-postures/), [[guide/les-degats|les dégâts]] et [les races](/races/).\n' },
+    { id: 'essai/deux', corps: '## Pour commencer\n\nLe [sommaire](/guide/) et [la première partie](/guide/le-jeu-de-role/?a=1).\n' },
+  ];
+  const pages = [...pagesModifiables.filter((p) => p.type === 'guide' && /\]\(\/guide\//.test(p.corps)), ...essais];
   const liens = pages.flatMap((p) => [...p.corps.matchAll(/\]\((\/guide\/[^)\s]*)\)/g)].map((m) => ({ id: p.id, ecrit: m[1] })));
-  // ceux de la base aujourd'hui : neuf liens sur huit pages (les livres « Découvrir » et « Les bases »)
-  assert.ok(liens.length >= 9, `${liens.length} liens`);
+  assert.ok(liens.length >= 5, `${liens.length} liens`);
   for (const base of ['/', '/MaverickCenter/']) {
     const lienRelatif = (h) => (base !== '/' && h.startsWith(base) ? `/${h.slice(base.length)}` : h);
     for (const page of pages) {

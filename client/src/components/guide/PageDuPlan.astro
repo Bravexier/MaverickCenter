@@ -1,15 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import PageDeLivre from './PageDeLivre.astro';
 import PageDuGuide from './PageDuGuide.astro';
-import { livreDe, verifierLePlan } from '../../lib/livres.mjs';
+import { verifierLePlan } from '../../lib/livres.mjs';
 import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { loadWiki, typeOf, type WikiEntry } from '../../lib/wiki';
 
-// Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page de
-// livre (PageDeLivre : flèches, pagination) ou une page des Règles avancées ou du Guide du MJ (PageDuGuide : fil d'Ariane, mots-clés, rétroliens,
-// sources). Le plan est contrôlé contre les pages chargées (verifierLePlan : le build s'arrête sur une page absente ou nommée deux fois).
-// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables, comme avant l'éclatement du guide (src/scripts/edition/guide.mjs).
+// Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
+// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens, sources), quelle que soit sa rubrique. Le plan est contrôlé contre les pages
+// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée par une autre et toujours là).
+// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs).
 interface Props {
   entry: WikiEntry;
 }
@@ -20,5 +19,5 @@ const modifiable = texteDePageModifiable(typeOf(entry), entry.data.sources[0]) &
 ---
 
 <Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined}>
-  {livreDe(entry.id) ? <PageDeLivre entry={entry} entries={entries} /> : <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />}
+  <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
 </Base>

@@ -320,6 +320,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `pages-du-guide/` | Pages du guide | `page` (partie) | modifier | — |
 | `pages-du-codex/` | Pages du Codex | `page` (partie) | modifier | — |
 | `pages/` | Pages du wiki | `page` (partie) | lecture seule | — |
+| `annonces/` | Annonces | `annonce` | modifier | — |
 | `alias-des-pages/` | Alias des pages | `alias` | lecture seule | — |
 | `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages` |
 | `sources/` | Sources | `source` | lecture seule | `pages` |

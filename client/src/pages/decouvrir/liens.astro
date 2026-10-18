@@ -1,13 +1,52 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { LIENS } from '../../lib/livres.mjs';
+import liensCss from '../../styles/liens/liens.css?raw';
+import { DECOUVRIR, LIENS } from '../../lib/livres.mjs';
+import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../../lib/annonces.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { url } from '../../lib/wiki';
 
-// La page « Liens » (rubrique Découvrir ; lib/livres.mjs#LIENS) : le serveur Discord et la page Tipeee du jeu, rien d'autre que leurs libellés.
+// La page « Liens » (rubrique Découvrir ; lib/livres.mjs#LIENS) : le fil d'Ariane vers Découvrir (comme les autres pages de la rubrique), puis le serveur
+// Discord et la page Tipeee du jeu, chacun sous un titre (h2, au niveau de l'encart : la navigation par titres les trouve) avec son paragraphe de présentation
+// (LIENS.liens[].presentation : demande du propriétaire du 2026-10-18, « Étoffe un peu la présentation pour les liens Discord et Tipeee » ; vide, rien ne
+// s'affiche), puis l'encart « Notre prochaine rencontre IRL » (LIENS.rencontre : « pour faire la place à une annonce dédiée aux prochaines conventions où
+// Maverick sera présent ») : un titre fixe, l'annonce de la base (table annonce, migration 0068 ; lib/annonces.mjs) ou, vide, le texte d'attente.
+// Sur le site de dev, l'annonce se modifie en place en mode modification (src/scripts/edition/annonces.mjs), comme le texte d'un panneau de règles ;
+// elle part en production avec la mise à jour. Les textes sont du Markdown rendu comme celui des pages du guide (lib/guide-rendu.ts : [[liens]],
+// monnaies ; balises du glossaire par le middleware).
+const CONTEXTE = 'decouvrir/liens'; // le nom de la page dans les avertissements des [[liens]] cassés
+const liens = await Promise.all(LIENS.liens.map(async (l) => ({ ...l, html: l.presentation ? await rendreMarkdown(l.presentation, CONTEXTE) : '' })));
+const { rencontre } = LIENS;
+const annonce = chargerAnnonce(ouvrirBase(), rencontre.annonce);
+const texte = annonce?.texte ?? null;
+const contenu = contenuDeLAnnonce(texte, texte ? await rendreMarkdown(texte, CONTEXTE) : '', rencontre.vide);
 ---
 
-<Base title={LIENS.titre}>
+<Base title={LIENS.titre} edition={LIENS.chemin}>
+  <style is:inline set:html={liensCss}></style>
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url(DECOUVRIR.chemin)}>{DECOUVRIR.titre}</a></p>
   <h1>{LIENS.titre}</h1>
-  <ul class="entry-list">
-    {LIENS.liens.map((l) => <li><a href={l.url} rel="noopener">{l.libelle}</a></li>)}
-  </ul>
+  <div class="liens">
+    {
+      liens.map((l) => (
+        <section class="liens__element" id={`lien-${l.id}`} aria-labelledby={`lien-${l.id}-titre`}>
+          <h2 class="liens__titre" id={`lien-${l.id}-titre`}><a class="liens__lien" href={l.url} rel="noopener">{l.libelle}</a></h2>
+          {l.html && <div class="prose liens__presentation" set:html={l.html} />}
+        </section>
+      ))
+    }
+  </div>
+  <section class="annonce" id={rencontre.id} aria-labelledby={`${rencontre.id}-titre`}>
+    <h2 class="annonce__titre" id={`${rencontre.id}-titre`}>{rencontre.titre}</h2>
+    {/* data-annonce, data-annonce-texte : l'annonce modifiable sur le site de dev (src/scripts/edition/annonces.mjs) ; data-annonce-vide : le texte d'attente */}
+    <div
+      class="prose annonce__texte"
+      data-annonce={annonce ? annonce.id : undefined}
+      data-annonce-texte
+      data-annonce-vide={rencontre.vide}
+      data-annonce-empreinte={empreinteDeLAnnonce(texte)}
+      set:html={contenu}
+    />
+  </section>
 </Base>

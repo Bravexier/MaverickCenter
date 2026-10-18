@@ -107,9 +107,11 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
   const guide = aideDeLEntrainement(ouvrirBase());
   const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
-  // sa place dans le plan du site (lib/livres.mjs) : « Les bases, chapitre 10 »
-  if (guide) assert.ok(aide.startsWith(`${guide.livre}, chapitre ${guide.chapitre}, <cite>`), 'le livre et le chapitre de la page');
+  // le titre de la page, puis le paragraphe tel que la base l'écrit ; plus de numéro de chapitre (refonte des pages du guide, 2026-10-18), et pas de lien :
+  // la fiche reste sans lien vers le guide (demande du propriétaire, docs/character-generator.md, « Compacte »)
+  if (guide) assert.ok(aide.startsWith(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le titre de la page, puis le paragraphe du guide');
+  assert.doesNotMatch(aide, /<a /);
+  assert.doesNotMatch(aide, /chapitre \d/);
   assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // les NM du MJ, pour toute la fiche, juste après le décompte des NM (décision R118 : « noté à coté de la limit de NM »)

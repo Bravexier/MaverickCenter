@@ -177,7 +177,7 @@ test('après le rejeu : la première page dont le corps a gagné un fragment est
 });
 
 test('lot reçu : un bloc de panneau de règles (panneau_regles_bloc.texte) qui gagne du HTML brut ou un lien non sûr est refusé ; après le rejeu aussi', () => {
-  assert.deepEqual(Object.keys(TEXTES_EN_MARKDOWN).sort(), ['evenement_extrait', 'page', 'panneau_regles_bloc']);
+  assert.deepEqual(Object.keys(TEXTES_EN_MARKDOWN).sort(), ['annonce', 'evenement_extrait', 'page', 'panneau_regles_bloc']);
   assert.deepEqual(Object.keys(BLOCS_EN_MARKDOWN).sort(), ['evenement_extrait', 'panneau_regles_bloc']);
   const lot = (modification) => ({
     format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', texte: null,

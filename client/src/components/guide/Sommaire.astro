@@ -1,23 +1,28 @@
 ---
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 
-// Un sommaire (lib/livres.mjs : Règles avancées, Guide du MJ, Artisanat) : des groupes, chacun son titre (un libellé de navigation) et son ancre,
-// puis une ligne par page, son titre lié et son résumé (le `summary` de la page, tel que la base l'écrit ; rien si elle n'en a pas), comme l'index du
-// wiki (components/EntryList.astro). Aucun autre texte.
+// Un sommaire (lib/livres.mjs : Les bases, Règles avancées, Guide du MJ, Artisanat) : des groupes, chacun son titre (un libellé de navigation), son ancre
+// et, pour Les bases, sa couleur (`couleur` : un filet à gauche du titre du groupe), puis une ligne par page, son titre lié et son résumé (le `summary`
+// de la page, tel que la base l'écrit ; rien si elle n'en a pas), comme l'index du wiki (components/EntryList.astro). Aucun autre texte.
 interface Element {
   href: string;
   titre: string;
   resume?: string | null;
 }
 interface Props {
-  groupes: { id?: string; titre?: string; elements: Element[] }[];
+  groupes: { id?: string; titre?: string; couleur?: string | null; elements: Element[] }[];
 }
 const { groupes } = Astro.props;
 ---
 
 {
   groupes.map((g) => (
-    <section class="sommaire" id={g.id} aria-labelledby={g.id && g.titre ? `${g.id}-titre` : undefined}>
+    <section
+      class:list={['sommaire', { 'sommaire--couleur': g.couleur }]}
+      id={g.id}
+      style={g.couleur ? `--sommaire-couleur: ${g.couleur}` : undefined}
+      aria-labelledby={g.id && g.titre ? `${g.id}-titre` : undefined}
+    >
       {g.titre && <h2 id={g.id ? `${g.id}-titre` : undefined}>{g.titre}</h2>}
       <ul class="entry-list">
         {g.elements.map((e) => (

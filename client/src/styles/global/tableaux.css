@@ -65,19 +65,19 @@ details.tableau[open] > .tableau__titre, .tableau:not(details) > .tableau__titre
 :where(.table-donnees) tr.ligne-couleur:hover > * { background-image: linear-gradient(color-mix(in srgb, var(--ligne-texte) 10%, transparent),
   color-mix(in srgb, var(--ligne-texte) 10%, transparent)); }
 
-/* Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) : le même gabarit, le cadre à la largeur du tableau ; l'alignement que le
+/* Les tableaux écrits en Markdown (pages du wiki et du guide, dans `.prose`) : le même gabarit, le cadre à la largeur du tableau ; l'alignement que le
    Markdown écrit (« :---: », attribut align) est gardé */
-:where(.prose, .guide-texte) table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: var(--fs-lg);
+:where(.prose) table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: var(--fs-lg);
   line-height: 1.5; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-:where(.prose, .guide-texte) :is(th, td) { padding: 0.5rem 0.75rem; vertical-align: top; }
-:where(.prose, .guide-texte) :is(th, td):not([align]) { text-align: left; }
-:where(.prose, .guide-texte) thead th { vertical-align: bottom; font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase;
+:where(.prose) :is(th, td) { padding: 0.5rem 0.75rem; vertical-align: top; }
+:where(.prose) :is(th, td):not([align]) { text-align: left; }
+:where(.prose) thead th { vertical-align: bottom; font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase;
   color: var(--muted); background: var(--tab-soft); border-bottom: 1px solid var(--tab-line); }
-:where(.prose, .guide-texte) tbody > tr + tr > * { border-top: 1px solid var(--border); }
+:where(.prose) tbody > tr + tr > * { border-top: 1px solid var(--border); }
 /* en mode modification (site de dev), les cases d'un tableau qu'on écrit se voient : un pointillé, sans changer la mise en page */
-body.ed-mode :where(.prose, .guide-texte) :is(th, td) { outline: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); outline-offset: -1px; }
+body.ed-mode :where(.prose) :is(th, td) { outline: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); outline-offset: -1px; }
 
 /* À l'impression, un tableau ne défile pas : il s'imprime en entier */
 @media print {
-  .tableau__defile, .tableau--defile, :where(.prose, .guide-texte) table { overflow: visible; }
+  .tableau__defile, .tableau--defile, :where(.prose) table { overflow: visible; }
 }

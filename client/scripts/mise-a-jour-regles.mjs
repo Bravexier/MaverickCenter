@@ -3,7 +3,7 @@
 // Lancé par le workflow .github/workflows/mise-a-jour.yml (scripts/mise-a-jour-github.mjs), sur une branche feature/… partie de dev :
 //   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition.mjs#rejouerLeJournal : le corps des pages
 //      typées est refait depuis les tables rejouées) : un conflit arrête tout, comme du HTML brut ou un lien non sûr ajouté au Markdown d'une
-//      page, d'un bloc de description de la chronologie ou d'un bloc d'un panneau de règles, dans le lot ou après le rejeu (lib/markdown-sur.mjs ;
+//      page, d'un bloc de description de la chronologie, d'un bloc d'un panneau de règles ou d'une annonce, dans le lot ou après le rejeu (lib/markdown-sur.mjs ;
 //      ici TEXTES_EN_MARKDOWN, texteNonSurApresLeRejeu, que db:appliquer-edition emploie aussi après son rejeu) ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
 //   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
@@ -73,11 +73,13 @@ export const BLOCS_EN_MARKDOWN = Object.freeze({
 });
 
 /**
- * Les colonnes de Markdown d'un lot, par table : le texte d'une page (guide, Codex) et celui d'un bloc (BLOCS_EN_MARKDOWN) ; `cle(cle)` : la ligne
- * nommée dans un message (« guide/bienvenue », « armes#3 »).
+ * Les colonnes de Markdown d'un lot, par table : le texte d'une page (guide, Codex), celui d'une annonce (migration 0068 : l'encart « Notre prochaine
+ * rencontre IRL » ; NULL tant qu'elle est vide) et celui d'un bloc (BLOCS_EN_MARKDOWN) ; `cle(cle)` : la ligne nommée dans un message
+ * (« guide/bienvenue », « prochaine-rencontre-irl », « armes#3 »).
  */
 export const TEXTES_EN_MARKDOWN = Object.freeze({
   page: { colonne: 'corps_md', nom: 'page', cle: (c) => c?.id ?? JSON.stringify(c) },
+  annonce: { colonne: 'texte', nom: 'annonce', cle: (c) => c?.id ?? JSON.stringify(c) },
   ...Object.fromEntries(Object.entries(BLOCS_EN_MARKDOWN).map(([table, b]) => [table, { colonne: 'texte', nom: b.nom, cle: (c) => `${c?.[b.parent]}#${c?.rang}` }])),
 });
 
@@ -107,20 +109,39 @@ export function pageNonSure(db, corpsAvant) {
   return null;
 }
 
-/** Le Markdown de la base avant un rejeu, pour texteNonSurApresLeRejeu : le corps des pages, le texte des blocs (BLOCS_EN_MARKDOWN). */
+/** Le texte des annonces (Map id → texte, NULL compris), pour annonceNonSure ; vide dans une base sans la table (d'avant la migration 0068). */
+export function textesDesAnnonces(db) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annonce'").get()) return new Map();
+  return new Map(db.prepare('SELECT id, texte FROM annonce').all().map((a) => [a.id, a.texte]));
+}
+
+/** La première annonce dont le texte a gagné du HTML brut ou un lien non sûr depuis `avant` (textesDesAnnonces) : { id, fragments } ; sinon null. */
+export function annonceNonSure(db, avant) {
+  for (const [id, texte] of textesDesAnnonces(db)) {
+    if (texte === null || avant.get(id) === texte) continue;
+    const fragments = fragmentsAjoutes(avant.get(id) ?? '', texte);
+    if (fragments.length) return { id, fragments };
+  }
+  return null;
+}
+
+/** Le Markdown de la base avant un rejeu, pour texteNonSurApresLeRejeu : le corps des pages, le texte des annonces et des blocs (BLOCS_EN_MARKDOWN). */
 export const textesAvantLeRejeu = (db) => ({
   pages: new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md])),
+  annonces: textesDesAnnonces(db),
   blocs: Object.fromEntries(Object.keys(BLOCS_EN_MARKDOWN).map((table) => [table, textesDesBlocs(db, table)])),
 });
 
 /**
- * Le premier texte (corps d'une page, puis bloc de chaque table de BLOCS_EN_MARKDOWN) qui a gagné du HTML brut ou un lien non sûr depuis `avant`
- * (textesAvantLeRejeu) : { quoi (« page », « description », « bloc de règles »), id, fragments } ; sinon null. Lu après le rejeu d'un journal : par la mise
- * à jour (appliquerMiseAJour) et par le rapatriement (scripts/db-appliquer-edition.mjs).
+ * Le premier texte (corps d'une page, annonce, puis bloc de chaque table de BLOCS_EN_MARKDOWN) qui a gagné du HTML brut ou un lien non sûr depuis `avant`
+ * (textesAvantLeRejeu) : { quoi (« page », « annonce », « description », « bloc de règles »), id, fragments } ; sinon null. Lu après le rejeu d'un journal :
+ * par la mise à jour (appliquerMiseAJour) et par le rapatriement (scripts/db-appliquer-edition.mjs).
  */
 export function texteNonSurApresLeRejeu(db, avant) {
   const page = pageNonSure(db, avant.pages);
   if (page) return { quoi: 'page', ...page };
+  const annonce = annonceNonSure(db, avant.annonces ?? new Map());
+  if (annonce) return { quoi: 'annonce', ...annonce };
   for (const [table, textes] of Object.entries(avant.blocs)) {
     const bloc = blocNonSur(db, textes, table);
     if (bloc) return { quoi: BLOCS_EN_MARKDOWN[table].nom, ...bloc };

@@ -19,7 +19,7 @@ import { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
 import { entryHref } from '../../lib/wiki';
 import { entriesOfType, loadWiki } from '../../lib/wiki';
 
-// Pas de page /guide/ : les pages du guide sont rangées par lib/livres.mjs (livres Découvrir et Les bases, Règles avancées, Guide du MJ) ; l'ancienne
+// Pas de page /guide/ : les pages du guide sont rangées par lib/livres.mjs (Découvrir, Les bases, Règles avancées, Guide du MJ) ; l'ancienne
 // adresse mène à /decouvrir/ par la page 404.
 export function getStaticPaths() {
   return TYPE_KEYS.filter((type) => type !== 'guide').map((type) => ({ params: { type } }));

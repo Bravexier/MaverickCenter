@@ -2,7 +2,8 @@
 // propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide ») : le plan du site (lib/livres.mjs) range les pages, ordre de lecture et couleurs
 // compris. Le registre de la migration (0064-guide-sans-chapitres.json) garde la trace de ce qui est parti : les 24 chapitres de l'ancien guide, leur
 // numéro et leur partie. Ici : le registre est complet et s'accorde au SQL de la migration ; plus aucune page de la base n'a ces clés, plus rien ne
-// les déclare ni ne les lit ; les livres gardent l'ordre de lecture de l'ancien guide et chaque ancien chapitre a sa place dans le plan.
+// les déclare ni ne les lit ; Découvrir et Les bases gardent l'ordre de lecture de l'ancien guide et chaque ancien chapitre a sa place dans le plan, ou
+// est fusionné dans une page qui l'a (refonte des pages du guide, 2026-10-18 : lib/livres.mjs#PAGES_ABSORBEES).
 //   node --test test/guide-sans-chapitres.test.mjs
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -10,7 +11,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { estDansUnLivre, estDuGuideDuMj, groupeDeLaPage, LIVRES, livreDe, PARTIES, pagesDuLivre } from '../src/lib/livres.mjs';
+import { estDansDecouvrirOuLesBases, estDuGuideDuMj, groupeDeLaPage, PAGES_ABSORBEES, PARTIES, pagesDeLaRubrique, RUBRIQUES_DU_GUIDE } from '../src/lib/livres.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -34,9 +35,11 @@ test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, num�
     assert.ok(rang >= derniere, `${p.id} : la partie ${p.partie} revient après une partie suivante`);
     derniere = rang;
   }
-  // chaque page du registre existe toujours (son identifiant ne change jamais)
+  // chaque page du registre existe toujours (son identifiant ne change jamais), sauf celles fusionnées depuis dans une autre (2026-10-18), qui existe
   for (const p of registre.pages) {
-    assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = ? AND type = 'guide'").get(p.id).n, 1, `${p.id} n’existe plus`);
+    const id = Object.hasOwn(PAGES_ABSORBEES, p.id) ? PAGES_ABSORBEES[p.id] : p.id;
+    assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = ? AND type = 'guide'").get(id).n, 1, `${id} n’existe plus`);
+    if (id !== p.id) assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(p.id).n, 0, `${p.id} : fusionnée, retirée de la base`);
   }
 });
 
@@ -93,17 +96,19 @@ test('plus rien ne les déclare (content.config.ts) ni ne les lit (site, service
   assert.deepEqual(trouves, []);
 });
 
-test('le plan garde l’ordre de lecture de l’ancien guide, et chaque ancien chapitre y a sa place (livre ou Règles avancées)', () => {
-  for (const livre of LIVRES) {
-    const numeros = pagesDuLivre(livre).map((p) => parId.get(p.id)?.chapitre).filter((n) => n !== undefined);
-    assert.ok(numeros.length > 0, livre.titre);
-    assert.deepEqual(numeros, [...numeros].sort((a, b) => a - b), `${livre.titre} : les anciens chapitres ne sont plus dans l’ordre (${numeros.join(', ')})`);
+test('le plan garde l’ordre de lecture de l’ancien guide, et chaque ancien chapitre y a sa place (Découvrir, Les bases ou Règles avancées), ou celle de la page qui l’absorbe', () => {
+  const placeDe = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
+  for (const rubrique of RUBRIQUES_DU_GUIDE) {
+    const numeros = pagesDeLaRubrique(rubrique).map((p) => parId.get(p.id)?.chapitre).filter((n) => n !== undefined);
+    assert.ok(numeros.length > 0, rubrique.titre);
+    assert.deepEqual(numeros, [...numeros].sort((a, b) => a - b), `${rubrique.titre} : les anciens chapitres ne sont plus dans l’ordre (${numeros.join(', ')})`);
   }
   for (const p of registre.pages) {
-    const place = livreDe(p.id) ? 'livre' : estDuGuideDuMj(p.id) ? 'mj' : groupeDeLaPage(p.id) ? 'avancees' : null;
+    const id = placeDe(p.id);
+    const place = estDansDecouvrirOuLesBases(id) ? 'decouvrir-ou-bases' : estDuGuideDuMj(id) ? 'mj' : groupeDeLaPage(id) ? 'avancees' : null;
     assert.ok(place, `${p.id} (ancien chapitre ${p.chapitre}) n’a plus de place`);
   }
-  // les deux anciens chapitres hors des livres : le Mode Hyper (20) et les documents des règles (24), dans les Règles avancées
-  assert.deepEqual(registre.pages.filter((p) => !estDansUnLivre(p.id)).map((p) => [p.chapitre, groupeDeLaPage(p.id)?.id]),
+  // les deux anciens chapitres hors de Découvrir et des Bases : le Mode Hyper (20) et les documents des règles (24), dans les Règles avancées
+  assert.deepEqual(registre.pages.filter((p) => !estDansDecouvrirOuLesBases(placeDe(p.id))).map((p) => [p.chapitre, groupeDeLaPage(p.id)?.id]),
     [[20, 'magie-et-mode-hyper'], [24, 'autres']]);
 });

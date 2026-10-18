@@ -73,8 +73,12 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   }
   // les renvois des pages tels que la migration les a laissés (le site de dev, source des données qu'il modifie, peut créer ou supprimer une page)
   const ids = new Set(attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`));
-  // 1 069 après la migration 0014 ; 1 068 depuis la migration 0049, qui retire la page de l'onglet « Statistiques » de « Magie Maverick V8 » (décision R86)
-  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1068);
+  // 1 069 après la migration 0014 ; 1 068 depuis la migration 0049, qui retire la page de l'onglet « Statistiques » de « Magie Maverick V8 » (décision R86) ;
+  // 1 057 depuis la refonte des pages du guide (2026-10-18, db:sync-pages) : les sept pages fusionnées retirées (18 renvois), leurs sources reportées sur
+  // la page qui les absorbe (« Créer son personnage » : 6 de plus) et la nouvelle page « Rejoindre une partie » (1) ; 1 099 depuis la réécriture de leurs
+  // textes (le même jour) : les dix-sept pages réécrites citent chacune les documents dont elles tirent leurs faits (42 renvois de plus, et 2 vers le
+  // CODEX Maverick, hors des onze documents de la migration)
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1099);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);

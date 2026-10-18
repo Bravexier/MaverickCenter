@@ -1,23 +1,34 @@
-// Le plan des pages du guide (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour retravailler pleinement l'organisation des
-// onglets et de la présentation ») : les pages `guide/<slug>` de la base ne forment plus un seul livre servi sous /guide/, elles sont rangées ici.
-//   - Les LIVRES se lisent dans l'ordre, une page à la fois (flèches, ← →, glissement du doigt, pagination colorée par section :
-//     components/guide/PageDeLivre.astro) : « Découvrir » (/decouvrir/, rubrique Découvrir du menu, faite pour être vue même des non-membres) et
-//     « Les bases » (/regles/, rubrique Règles). La première page d'un livre est servie à l'adresse du livre, les autres à <livre>/<slug>/.
-//   - Les « Règles avancées » (/regles/avancees/) et le « Guide du MJ » (/mj/) sont des sommaires (titre et résumé de chaque page,
-//     components/guide/Sommaire.astro) ; leurs pages sont à /regles/avancees/<slug>/ et /mj/<slug>/ (components/guide/PageDuGuide.astro).
-//     Toute page `guide/…` qui n'est ni dans un livre ni dans le Guide du MJ est une page des Règles avancées (groupe « Autres pages de référence »
-//     si aucun groupe ne la nomme) : une page ajoutée plus tard a toujours une adresse.
-//   - « Artisanat » (/regles/artisanat/) est un sommaire de pages d'autres types ; « Liens » (/decouvrir/liens/), deux liens externes.
+// Le plan des pages du guide (demandes du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour retravailler pleinement l'organisation des
+// onglets et de la présentation », puis « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et
+// la pagination ») : les pages `guide/<slug>` de la base sont rangées ici. Plus de livre lu dans l'ordre : chaque page se lit seule, comme une page du
+// wiki (components/guide/PageDuGuide.astro : fil d'Ariane vers sa rubrique ou son sommaire, titre, texte, blocs, pied de page, ses sources pour une page de
+// référence seulement).
+//   - « Découvrir » (/decouvrir/, rubrique Découvrir du menu, faite pour être vue même des non-membres) : UNE page par entrée du menu (choix du
+//     propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/), L'univers, Créer son personnage (les six étapes sur une seule page), Rejoindre une
+//     partie —, puis la page « Liens » (/decouvrir/liens/, pages/decouvrir/liens.astro). Les autres à /decouvrir/<slug>/.
+//   - « Les bases » (/regles/, rubrique Règles) : un sommaire en trois groupes (« Jouer », « Progresser », « Pour aller plus loin » : titre et résumé de
+//     chaque page, components/guide/Sommaire.astro, comme les Règles avancées) ; une page par sujet, à /regles/<slug>/.
+//   - Les « Règles avancées » (/regles/avancees/) et le « Guide du MJ » (/mj/) sont des sommaires ; leurs pages sont à /regles/avancees/<slug>/ et
+//     /mj/<slug>/. Toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ est une page des Règles avancées (groupe
+//     « Autres pages de référence » si aucun groupe ne la nomme) : une page ajoutée plus tard a toujours une adresse.
+//   - « Artisanat » (/regles/artisanat/) est un sommaire de pages d'autres types ; « Liens » (/decouvrir/liens/), deux liens externes présentés et l'encart
+//     « Notre prochaine rencontre IRL » (table annonce, migration 0068).
+// Chaque groupe de Découvrir et des Bases a la couleur d'une ancienne partie du guide (PARTIES) : elle colore ses pages (filet du titre, blocs), ses
+// cartes « Par où commencer ? » et son groupe dans le sommaire des Bases.
+// Pages fusionnées (2026-10-18) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes de la création dans Créer son personnage
+// (PAGES_ABSORBEES) ; elles ne sont plus dans la base, leurs adresses mènent à la page qui les absorbe (page 404 : lib/metiers.mjs#renvoisDuGuide).
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
 // terme, les non-membres ne verront que Découvrir et Règles.
-// Seuls des libellés de navigation sont écrits ici (titres de livre, de section, de groupe, libellés des liens) : les textes des pages sont dans la base.
+// Seuls des libellés de navigation sont écrits ici (titres de rubrique, de groupe, libellés des liens) : les textes des pages sont dans la base. Une
+// exception : les deux présentations de la page Liens (LIENS.liens[].presentation), des textes écrits ici, donc ni modifiables sur le site de dev (un
+// commit les change), ni cherchés par la recherche, et emportés par la chaîne de l'édition du navigateur avec le reste du plan.
 // Les identifiants de page ne changent pas (« guide/le-tour-de-jeu ») : seules leurs adresses viennent d'ici (lib/metiers.mjs#adresseDePage, puis
 // cheminDePage, entryHref, pageHref, entryUrl, l'index de la recherche) ; les anciennes adresses /guide/… mènent aux nouvelles par la page 404.
 // Sans aucun import : lu par lib/metiers.mjs (chaîne de l'édition du navigateur comprise), lib/guide.mjs, lib/notes-de-version.mjs (service),
 // lib/fiche-regles.mjs, les composants et les tests.
 
 /**
- * Les couleurs des sections (celles des parties de l'ancien guide), assez foncées pour un texte blanc dessus (pastilles, numéros). Elles sont aussi
+ * Les couleurs des groupes de Découvrir et des Bases (celles des parties de l'ancien guide), assez foncées pour un texte blanc dessus. Elles sont aussi
  * celles des quatre zones de la fiche (pages/fiche/index.astro, par lib/guide.mjs#PARTIES).
  */
 export const PARTIES = Object.freeze([
@@ -32,49 +43,49 @@ const couleur = (id) => PARTIES.find((p) => p.id === id).couleur;
 const gele = (o) => Object.freeze(o);
 
 /**
- * Les livres, dans l'ordre : `chemin` (l'adresse du livre, relative à la racine du site, où est servie sa première page), `sections` (chacune sa
- * couleur ; ses pages, dans l'ordre de lecture). Le numéro d'une page (« chapitre N sur M ») est son rang dans le livre.
+ * Découvrir : quatre pages, une par entrée du menu, dans l'ordre du menu ; `accueil` est servie à l'adresse de la rubrique (/decouvrir/), les autres à
+ * /decouvrir/<slug>/. Les groupes ne donnent que la couleur de leurs pages (Découvrir n'a pas de sommaire).
  */
-export const LIVRES = Object.freeze([
-  gele({
-    id: 'decouvrir', titre: 'Découvrir', chemin: 'decouvrir/', sections: Object.freeze([
-      gele({ id: 'decouvrir', titre: 'Découvrir', couleur: couleur('decouvrir'), pages: Object.freeze(['guide/bienvenue', 'guide/le-jeu-de-role', 'guide/l-univers']) }),
-      gele({
-        id: 'creer', titre: 'Créer son personnage', couleur: couleur('creer'), pages: Object.freeze([
-          'guide/creer-son-personnage', 'guide/choisir-sa-race', 'guide/choisir-ses-magies', 'guide/choisir-sa-classe', 'guide/caracteristiques-et-competences',
-          'guide/premiers-sorts', 'guide/finaliser-son-personnage',
-        ]),
-      }),
-      gele({ id: 'rejoindre', titre: 'Rejoindre une partie', couleur: couleur('jouer'), pages: Object.freeze(['guide/campagne-ou-scenario-one-shot']) }),
-    ]),
-  }),
-  gele({
-    id: 'bases', titre: 'Les bases', chemin: 'regles/', sections: Object.freeze([
-      gele({
-        id: 'jouer', titre: 'Jouer', couleur: couleur('jouer'), pages: Object.freeze([
-          'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
-          'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
-        ]),
-      }),
-      gele({ id: 'progresser', titre: 'Progresser', couleur: couleur('progresser'), pages: Object.freeze(['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']) }),
-      gele({ id: 'plus-loin', titre: 'Pour aller plus loin', couleur: couleur('plus-loin'), pages: Object.freeze(['guide/aide-memoire', 'guide/lexique']) }),
-    ]),
-  }),
-]);
-
-/** Le livre Découvrir : son adresse est l'accueil des pages du guide (ancienne adresse /guide/, badge « Guide » de l'index du wiki). */
-export const ACCUEIL_DU_GUIDE = LIVRES[0].chemin;
+export const DECOUVRIR = gele({
+  id: 'decouvrir', titre: 'Découvrir', chemin: 'decouvrir/', accueil: 'guide/bienvenue', groupes: Object.freeze([
+    gele({ id: 'decouvrir', titre: 'Découvrir', couleur: couleur('decouvrir'), pages: Object.freeze(['guide/bienvenue', 'guide/l-univers']) }),
+    gele({ id: 'creer', titre: 'Créer son personnage', couleur: couleur('creer'), pages: Object.freeze(['guide/creer-son-personnage']) }),
+    gele({ id: 'rejoindre', titre: 'Rejoindre une partie', couleur: couleur('jouer'), pages: Object.freeze(['guide/rejoindre-une-partie']) }),
+  ]),
+});
 
 /**
- * Bloc de navigation rendu par le gabarit sous une page de livre (pas du texte de la page) : les rubriques qu'elle présente, par leur clé de
- * lib/types.mjs (le lien mène à `<clé>/`, le libellé est le titre de la rubrique, TYPES[clé].label).
+ * Les bases : un sommaire à /regles/ (pages/regles/index.astro), en trois groupes (chacun son ancre `id` et sa couleur) ; chaque page à /regles/<slug>/.
+ */
+export const LES_BASES = gele({
+  id: 'bases', titre: 'Les bases', chemin: 'regles/', accueil: null, groupes: Object.freeze([
+    gele({
+      id: 'jouer', titre: 'Jouer', couleur: couleur('jouer'), pages: Object.freeze([
+        'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
+        'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
+      ]),
+    }),
+    gele({ id: 'progresser', titre: 'Progresser', couleur: couleur('progresser'), pages: Object.freeze(['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']) }),
+    gele({ id: 'plus-loin', titre: 'Pour aller plus loin', couleur: couleur('plus-loin'), pages: Object.freeze(['guide/aide-memoire', 'guide/lexique']) }),
+  ]),
+});
+
+/** Les deux rubriques écrites pour le site (Découvrir, Les bases), dans l'ordre du menu. */
+export const RUBRIQUES_DU_GUIDE = Object.freeze([DECOUVRIR, LES_BASES]);
+
+/** L'adresse de l'ancien /guide/ (badge « Guide » de l'index du wiki, renvoi de la page 404) : Découvrir. */
+export const ACCUEIL_DU_GUIDE = DECOUVRIR.chemin;
+
+/**
+ * Bloc de navigation rendu par le gabarit sous une page (pas du texte de la page) : les rubriques qu'elle présente, par leur clé de lib/types.mjs (le lien
+ * mène à `<clé>/`, le libellé est le titre de la rubrique, TYPES[clé].label).
  */
 export const RUBRIQUES_SOUS_LA_PAGE = Object.freeze({ 'guide/l-univers': Object.freeze(['races', 'magies', 'classes']) });
 
 /**
  * Les Règles avancées : un sommaire en groupes (titre et résumé de chaque page), chaque groupe avec son ancre (`id`). Un groupe nomme ses pages
  * (`pages`, dans cet ordre), ou les prend par le début de leur id (`prefixe`, ordre des titres) ; le dernier (`reste`) reçoit toute autre page
- * `guide/…` qui n'est ni dans un livre, ni dans le Guide du MJ, ni dans un groupe précédent (ordre des titres).
+ * `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ, ni dans un groupe précédent (ordre des titres).
  */
 export const REGLES_AVANCEES = gele({
   titre: 'Règles avancées', chemin: 'regles/avancees/', groupes: Object.freeze([
@@ -102,8 +113,13 @@ export const REGLES_AVANCEES = gele({
   ]),
 });
 
-/** Le Guide du MJ : un sommaire (titre et résumé de chaque page), ses pages à /mj/<slug>/. */
-export const GUIDE_DU_MJ = gele({ titre: 'Guide du MJ', chemin: 'mj/', pages: Object.freeze(['guide/un-maitre-du-jeu', 'guide/guide-pour-mj-maverick']) });
+/**
+ * Le Guide du MJ : un sommaire (titre et résumé de chaque page), ses pages à /mj/<slug>/. « « Campagne » ou « Scénario one shot » ? » y passe (choix du
+ * propriétaire du 2026-10-18 ; elle était la dernière page du livre Découvrir).
+ */
+export const GUIDE_DU_MJ = gele({
+  titre: 'Guide du MJ', chemin: 'mj/', pages: Object.freeze(['guide/un-maitre-du-jeu', 'guide/guide-pour-mj-maverick', 'guide/campagne-ou-scenario-one-shot']),
+});
 
 /**
  * L'Artisanat : un sommaire de pages d'autres types (titre et résumé de chaque page). « ressources/composants » n'est pas une page du wiki mais la page
@@ -116,96 +132,145 @@ export const ARTISANAT = gele({
 });
 
 /**
- * La page Liens (rubrique Découvrir) : deux liens externes, rien d'autre. Le Discord : réponse du propriétaire du 2026-10-18 (« https://discord.gg/GMGBnjzfMk »),
- * aussi cité par les sources de « Bienvenue » ; Tipeee : plan du propriétaire du 2026-10-16 (« un ensemble de liens, sur le discord […] et le
- * https://fr.tipeee.com/maverickjdr »).
+ * La page Liens (rubrique Découvrir) : deux liens externes, chacun avec un paragraphe de présentation (`presentation`, Markdown de quelques phrases ;
+ * vide, rien ne s'affiche ; demande du propriétaire du 2026-10-18 : « Étoffe un peu la présentation pour les liens Discord et Tipeee »), puis l'encart « Notre prochaine rencontre IRL » (`rencontre`) : un titre fixe,
+ * l'annonce (table annonce, ligne `rencontre.annonce` : Markdown modifiable sur le site de dev, partie en production par la mise à jour) et le texte
+ * d'attente quand elle est vide (demande du propriétaire du 2026-10-18 : « Laisse également un encart « Notre prochaine rencontre IRL » pour faire la
+ * place à une annonce dédiée aux prochaines conventions où Maverick sera présent »).
+ * Le Discord : réponse du propriétaire du 2026-10-18 (« https://discord.gg/GMGBnjzfMk »), aussi cité par les sources de « Bienvenue » ; Tipeee : plan du
+ * propriétaire du 2026-10-16 (« un ensemble de liens, sur le discord […] et le https://fr.tipeee.com/maverickjdr »).
+ * Ce que disent les présentations : le Discord, le texte d'accueil du propriétaire (« L'activité JDR se fait principalement sur le Discord officiel ») et
+ * docs/sources.md (« Les salons du groupe contiennent, pour la plupart, des liens vers les Google Docs ») ; Tipeee, la page Tipeee elle-même, lue le
+ * 2026-10-18 (docs/sources.md, « Tipeee » : texte à faire valider par le propriétaire, docs/sql/a-valider.md §6).
  */
 export const LIENS = gele({
   titre: 'Liens', chemin: 'decouvrir/liens/', liens: Object.freeze([
-    gele({ libelle: 'Serveur Discord « L’univers de Maverick »', url: 'https://discord.gg/GMGBnjzfMk' }),
-    gele({ libelle: 'Maverick JDR sur Tipeee', url: 'https://fr.tipeee.com/maverickjdr' }),
+    gele({ id: 'discord', libelle: 'Serveur Discord « L’univers de Maverick »', url: 'https://discord.gg/GMGBnjzfMk', presentation:
+      '« L’univers de Maverick » est le serveur Discord officiel du jeu : c’est là que se fait l’essentiel de l’activité de jeu de rôle. Plusieurs de ses salons donnent aussi les liens vers les documents de règles et de lore dont ce site est tiré.',
+    }),
+    gele({ id: 'tipeee', libelle: 'Maverick JDR sur Tipeee', url: 'https://fr.tipeee.com/maverickjdr', presentation:
+      'MaverickJDR a sa page Tipeee, tenue par son créateur : un « chapeau virtuel » pour celles et ceux qui souhaitent et peuvent soutenir le projet, et l’aider à continuer de développer Maverick et d’approfondir son univers. On y découvre des informations inédites sur l’univers, des aperçus exclusifs et de petites fiches de conseils pour les MJ en herbe. Le soutien se fait à plusieurs paliers ; votre nom peut alors être inscrit sur le mur des donateurs du Discord et dans les futurs livres consacrés à MaverickJDR.',
+    }),
   ]),
+  rencontre: gele({
+    id: 'prochaine-rencontre', titre: 'Notre prochaine rencontre IRL', annonce: 'prochaine-rencontre-irl', vide: 'Aucune rencontre annoncée pour le moment.',
+  }),
 });
 
-/** Les quatre cartes « Par où commencer ? » de l'accueil, et les entrées du menu Découvrir qui mènent à ces pages, dans cet ordre. */
-export const PAR_OU_COMMENCER = Object.freeze(['guide/bienvenue', 'guide/l-univers', 'guide/creer-son-personnage', 'guide/campagne-ou-scenario-one-shot']);
+/** Les quatre cartes « Par où commencer ? » de l'accueil, et les entrées du menu Découvrir qui mènent à ces pages, dans cet ordre : les pages de Découvrir. */
+export const PAR_OU_COMMENCER = Object.freeze(DECOUVRIR.groupes.flatMap((g) => g.pages));
 
-/** Les pages Astro écrites à côté des pages d'un livre (decouvrir/liens, regles/artisanat, regles/avancees/) : aucune page d'un livre ne prend ce nom. */
+/** Les pages Astro écrites à côté des pages du plan (decouvrir/liens, regles/artisanat, regles/avancees/) : aucune page de Découvrir ni des Bases ne prend ce nom. */
 export const NOMS_RESERVES = Object.freeze(['liens', 'artisanat', 'avancees']);
+
+/**
+ * Les pages fusionnées dans une autre (choix du propriétaire du 2026-10-18 : « Bienvenue absorbe « Le jeu de rôle, comment ça marche » » ; « Créer son
+ * personnage = les six étapes sur une seule page ») : page retirée → page qui l'absorbe. Elles ne sont plus dans la base ; leurs anciennes adresses
+ * (/guide/<slug>/ et /decouvrir/<slug>/) mènent à la page qui les absorbe, à l'endroit où se lit leur contenu (ANCRES_DES_PAGES_ABSORBEES) — l'ancre
+ * et la requête d'origine gardées (lib/metiers.mjs#renvoisDuGuide, page 404) —, comme un lien Markdown écrit vers elles (lib/guide.mjs#adresseDesAnciensLiens).
+ */
+export const PAGES_ABSORBEES = Object.freeze({
+  'guide/le-jeu-de-role': 'guide/bienvenue',
+  'guide/choisir-sa-race': 'guide/creer-son-personnage',
+  'guide/choisir-ses-magies': 'guide/creer-son-personnage',
+  'guide/choisir-sa-classe': 'guide/creer-son-personnage',
+  'guide/caracteristiques-et-competences': 'guide/creer-son-personnage',
+  'guide/premiers-sorts': 'guide/creer-son-personnage',
+  'guide/finaliser-son-personnage': 'guide/creer-son-personnage',
+});
+
+/**
+ * Où se lit maintenant chaque page fusionnée, dans la page qui l'absorbe : l'id de son intertitre (posé par le rendu Markdown, github-slugger). Son
+ * ancienne adresse y mène quand elle n'écrit pas sa propre ancre (adresseDeLaPageAbsorbee : page 404, liens Markdown écrits vers elle). Un intertitre
+ * renommé change son id : test/livres.test.mjs compare ces ancres aux intertitres des pages, test/site-html.test.mjs au site construit.
+ */
+export const ANCRES_DES_PAGES_ABSORBEES = Object.freeze({
+  'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-',
+  'guide/choisir-sa-race': 'étape-1--imaginer-son-personnage-et-choisir-sa-race',
+  'guide/choisir-ses-magies': 'étape-2--choisir-ses-magies',
+  'guide/choisir-sa-classe': 'étape-3--choisir-sa-classe',
+  'guide/caracteristiques-et-competences': 'étape-4--répartir-caractéristiques-et-compétences',
+  'guide/premiers-sorts': 'étape-5--choisir-ses-premiers-sorts',
+  'guide/finaliser-son-personnage': 'étape-6--finaliser-son-personnage',
+});
+
+/** L'adresse où mène une page fusionnée (`ancienne`, une clé de PAGES_ABSORBEES) : la page qui l'absorbe (`cheminDe` : lib/metiers.mjs#cheminDePage), à son ancre. */
+export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => `${cheminDe(PAGES_ABSORBEES[ancienne])}#${ANCRES_DES_PAGES_ABSORBEES[ancienne]}`;
+
+/**
+ * Les adresses du plan précédent (livres Découvrir et Les bases, 2026-10-18) qui ont changé, hors pages absorbées : adresse → page qui y est maintenant.
+ * « « Campagne » ou « Scénario one shot » ? » était la dernière page de Découvrir ; elle est dans le Guide du MJ. (/regles/ reste une adresse : le
+ * sommaire des Bases.)
+ */
+export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({ 'decouvrir/campagne-ou-scenario-one-shot/': 'guide/campagne-ou-scenario-one-shot' });
 
 const slugDe = (id) => id.slice(id.indexOf('/') + 1);
 
-/** Les pages d'un livre dans l'ordre : [{ id, numero, section }] (numéro 1…M dans le livre). */
-export function pagesDuLivre(livre) {
-  let numero = 0;
-  return livre.sections.flatMap((section) => section.pages.map((id) => ({ id, numero: ++numero, section })));
+/** Les pages d'une rubrique (Découvrir, Les bases) dans l'ordre : [{ id, groupe, ordre }] (`ordre` : 0…M − 1 dans la rubrique). */
+export function pagesDeLaRubrique(rubrique) {
+  let ordre = 0;
+  return rubrique.groupes.flatMap((groupe) => groupe.pages.map((id) => ({ id, groupe, ordre: ordre++ })));
 }
 
-const PLACES = new Map(LIVRES.flatMap((livre) => {
-  const pages = pagesDuLivre(livre);
-  return pages.map((p, i) => [p.id, { livre, section: p.section, numero: p.numero, total: pages.length, rang: i }]);
-}));
+const PLACES = new Map(RUBRIQUES_DU_GUIDE.flatMap((rubrique) => pagesDeLaRubrique(rubrique).map((p) => [p.id, { rubrique, groupe: p.groupe, ordre: p.ordre }])));
 
-/** La place d'une page dans un livre : { livre, section, numero, total }, ou null si la page n'est dans aucun livre. */
-export function livreDe(id) {
+/** La place d'une page dans Découvrir ou Les bases : { rubrique, groupe, ordre }, ou null si elle n'y est pas. */
+export function rubriqueDe(id) {
   const place = PLACES.get(id);
-  return place ? { livre: place.livre, section: place.section, numero: place.numero, total: place.total } : null;
+  return place ? { ...place } : null;
 }
 
-/** Vrai si la page est dans un livre (Découvrir, Les bases). */
-export const estDansUnLivre = (id) => PLACES.has(id);
+/** Vrai si la page est dans Découvrir ou Les bases (les pages écrites pour le site, pas les pages de référence importées). */
+export const estDansDecouvrirOuLesBases = (id) => PLACES.has(id);
 
 /** Vrai si la page est dans le Guide du MJ. */
 export const estDuGuideDuMj = (id) => GUIDE_DU_MJ.pages.includes(id);
 
-/** La page et ses voisines dans son livre : { precedent, suivant } (ids, null au bord : flèche grisée), ou null si la page n'est dans aucun livre. */
-export function voisinsDansLeLivre(id) {
-  const place = PLACES.get(id);
-  if (!place) return null;
-  const pages = pagesDuLivre(place.livre);
-  return { precedent: pages[place.rang - 1]?.id ?? null, suivant: pages[place.rang + 1]?.id ?? null };
-}
+/** La couleur d'une page de Découvrir ou des Bases (celle de son groupe), ou null. */
+export const couleurDeLaPage = (id) => PLACES.get(id)?.groupe.couleur ?? null;
 
 /**
- * Où mène la dernière page d'un livre : le lien du bas (« Suivant › ») qui serait grisé mène à la suite du plan, le livre suivant puis les Règles
- * avancées (Découvrir → Les bases → Règles avancées) : { titre, chemin }. Les flèches, le clavier et le glissement du doigt restent dans le livre.
- */
-export function suiteDuLivre(livre) {
-  const suite = LIVRES[LIVRES.indexOf(livre) + 1] ?? REGLES_AVANCEES;
-  return { titre: suite.titre, chemin: suite.chemin };
-}
-
-/**
- * L'adresse d'une page `guide/<slug>`, relative à la racine du site : la première page d'un livre à l'adresse du livre, une autre page d'un livre à
- * `<livre>/<slug>/`, une page du Guide du MJ à `mj/<slug>/`, toute autre page `guide/…` à `regles/avancees/<slug>/` (les Règles avancées).
+ * L'adresse d'une page `guide/<slug>`, relative à la racine du site : Bienvenue à /decouvrir/, une autre page de Découvrir à `decouvrir/<slug>/`, une page
+ * des Bases à `regles/<slug>/`, une page du Guide du MJ à `mj/<slug>/`, toute autre page `guide/…` à `regles/avancees/<slug>/` (les Règles avancées).
  */
 export function adresseDuGuide(id) {
   const place = PLACES.get(id);
-  if (place) return place.rang === 0 ? place.livre.chemin : `${place.livre.chemin}${slugDe(id)}/`;
+  if (place) return place.rubrique.accueil === id ? place.rubrique.chemin : `${place.rubrique.chemin}${slugDe(id)}/`;
   if (estDuGuideDuMj(id)) return `${GUIDE_DU_MJ.chemin}${slugDe(id)}/`;
   return `${REGLES_AVANCEES.chemin}${slugDe(id)}/`;
 }
 
 /**
- * Où se range une page `guide/…`, pour la nommer et l'ordonner (notes de version, aide « Entraînement » de la fiche) : { rubrique, rang, numero } ;
- * `rubrique` est le titre du livre, « Règles avancées » ou « Guide du MJ », `rang` l'ordre de ces rubriques, `numero` le rang de la page dans son livre
- * (null hors livre).
+ * Où se range une page `guide/…`, pour la nommer et l'ordonner (notes de version, panneau de la ceinture) : { rubrique, rang, ordre } ; `rubrique` est
+ * « Découvrir », « Les bases », « Règles avancées » ou « Guide du MJ », `rang` l'ordre de ces rubriques, `ordre` la place de la page dans Découvrir ou
+ * Les bases (0…), null ailleurs.
  */
 export function placeDansLeGuide(id) {
   const place = PLACES.get(id);
-  if (place) return { rubrique: place.livre.titre, rang: LIVRES.indexOf(place.livre), numero: place.numero };
-  if (estDuGuideDuMj(id)) return { rubrique: GUIDE_DU_MJ.titre, rang: LIVRES.length + 1, numero: null };
-  return { rubrique: REGLES_AVANCEES.titre, rang: LIVRES.length, numero: null };
+  if (place) return { rubrique: place.rubrique.titre, rang: RUBRIQUES_DU_GUIDE.indexOf(place.rubrique), ordre: place.ordre };
+  if (estDuGuideDuMj(id)) return { rubrique: GUIDE_DU_MJ.titre, rang: RUBRIQUES_DU_GUIDE.length + 1, ordre: null };
+  return { rubrique: REGLES_AVANCEES.titre, rang: RUBRIQUES_DU_GUIDE.length, ordre: null };
 }
 
 const parTitre = (a, b) => String(a.data?.title ?? a.id).localeCompare(String(b.data?.title ?? b.id), 'fr');
+
+/**
+ * Les groupes des Bases remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, couleur, pages }] (`pages` :
+ * les éléments de `entries`, dans l'ordre du plan), un groupe vide omis. Une page nommée et absente de `entries` est sautée (verifierLePlan la signale).
+ */
+export function groupesDesBases(entries) {
+  const parId = new Map(entries.map((e) => [e.id, e]));
+  return LES_BASES.groupes
+    .map((g) => ({ id: g.id, titre: g.titre, couleur: g.couleur, pages: g.pages.map((id) => parId.get(id)).filter(Boolean) }))
+    .filter((g) => g.pages.length);
+}
 
 /**
  * Les groupes des Règles avancées remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, pages }] (`pages` :
  * les éléments de `entries`), un groupe vide omis. Une page nommée par un groupe et absente de `entries` est sautée (verifierLePlan la signale).
  */
 export function groupesDesReglesAvancees(entries) {
-  const guide = entries.filter((e) => e.id.startsWith('guide/') && !estDansUnLivre(e.id) && !estDuGuideDuMj(e.id));
+  const guide = entries.filter((e) => e.id.startsWith('guide/') && !estDansDecouvrirOuLesBases(e.id) && !estDuGuideDuMj(e.id));
   const parId = new Map(guide.map((e) => [e.id, e]));
   const pris = new Set();
   const groupes = [];
@@ -220,25 +285,40 @@ export function groupesDesReglesAvancees(entries) {
   return groupes;
 }
 
-/** Le groupe des Règles avancées d'une page (un élément de REGLES_AVANCEES.groupes), ou null si elle est dans un livre ou le Guide du MJ. */
+/** Le groupe des Règles avancées d'une page (un élément de REGLES_AVANCEES.groupes), ou null si elle est dans Découvrir, Les bases ou le Guide du MJ. */
 export function groupeDeLaPage(id) {
-  if (!id.startsWith('guide/') || estDansUnLivre(id) || estDuGuideDuMj(id)) return null;
+  if (!id.startsWith('guide/') || estDansDecouvrirOuLesBases(id) || estDuGuideDuMj(id)) return null;
   const nomme = REGLES_AVANCEES.groupes.find((g) => g.pages?.includes(id));
   if (nomme) return nomme;
   return REGLES_AVANCEES.groupes.find((g) => g.prefixe && id.startsWith(g.prefixe)) ?? REGLES_AVANCEES.groupes.find((g) => g.reste);
 }
 
 /**
- * Contrôle du plan contre les pages chargées (`entries` : { id, data: { status } }), appelé au build par les routes : chaque page nommée (livres,
- * Guide du MJ, groupes, cartes « Par où commencer ? ») existe et n'est pas une page d'exemple, aucune n'est nommée deux fois, aucune page d'un livre ne
- * prend un nom réservé, aucune section n'est vide. Lève une erreur (le build s'arrête plutôt que de montrer une pagination fausse) ; rend `entries`.
+ * Le fil d'Ariane d'une page `guide/…`, après « Accueil » : [{ titre, chemin }] (`chemin` relatif à la racine du site, ancre comprise) — sa rubrique
+ * (Découvrir), ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ. Le gabarit marque le maillon qui mène à la page elle-même
+ * (Bienvenue est servie à /decouvrir/).
+ */
+export function filDAriane(id) {
+  const place = PLACES.get(id);
+  if (place?.rubrique === DECOUVRIR) return [{ titre: DECOUVRIR.titre, chemin: DECOUVRIR.chemin }];
+  if (place) return [{ titre: LES_BASES.titre, chemin: LES_BASES.chemin }, { titre: place.groupe.titre, chemin: `${LES_BASES.chemin}#${place.groupe.id}` }];
+  if (estDuGuideDuMj(id)) return [{ titre: GUIDE_DU_MJ.titre, chemin: GUIDE_DU_MJ.chemin }];
+  const groupe = groupeDeLaPage(id);
+  return [{ titre: REGLES_AVANCEES.titre, chemin: REGLES_AVANCEES.chemin }, ...(groupe ? [{ titre: groupe.titre, chemin: `${REGLES_AVANCEES.chemin}#${groupe.id}` }] : [])];
+}
+
+/**
+ * Contrôle du plan contre les pages chargées (`entries` : { id, data: { status } }), appelé au build par les routes : chaque page nommée (Découvrir, Les
+ * bases, Guide du MJ, groupes des Règles avancées) existe et n'est pas une page d'exemple, aucune n'est nommée deux fois, aucune page de Découvrir ni des
+ * Bases ne prend un nom réservé, aucun groupe n'est vide, aucune page absorbée n'est encore là (elle s'afficherait dans les Règles avancées) et chaque
+ * page qui en absorbe une est dans le plan. Lève une erreur (le build s'arrête plutôt que de montrer un plan faux) ; rend `entries`.
  */
 export function verifierLePlan(entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
   const nommees = [
-    ...LIVRES.flatMap((l) => l.sections.flatMap((s) => {
-      if (!s.pages.length) throw new Error(`plan du guide : la section « ${s.titre} » du livre « ${l.titre} » est vide`);
-      return s.pages.map((id) => [id, `livre « ${l.titre} »`]);
+    ...RUBRIQUES_DU_GUIDE.flatMap((r) => r.groupes.flatMap((g) => {
+      if (!g.pages.length) throw new Error(`plan du guide : le groupe « ${g.titre} » de « ${r.titre} » est vide`);
+      return g.pages.map((id) => [id, `« ${r.titre} »`]);
     })),
     ...GUIDE_DU_MJ.pages.map((id) => [id, GUIDE_DU_MJ.titre]),
     ...REGLES_AVANCEES.groupes.flatMap((g) => (g.pages ?? []).map((id) => [id, `groupe « ${g.titre} »`])),
@@ -252,9 +332,12 @@ export function verifierLePlan(entries) {
     if (e.data?.status === 'example') throw new Error(`plan du guide : ${id} (${ou}) est une page d'exemple`);
     if (!id.startsWith('guide/')) throw new Error(`plan du guide : ${id} (${ou}) n'est pas une page du guide`);
   }
-  for (const l of LIVRES) {
-    for (const { id } of pagesDuLivre(l)) if (NOMS_RESERVES.includes(slugDe(id))) throw new Error(`plan du guide : ${id} prend un nom réservé (${NOMS_RESERVES.join(', ')})`);
+  for (const r of RUBRIQUES_DU_GUIDE) {
+    for (const { id } of pagesDeLaRubrique(r)) if (NOMS_RESERVES.includes(slugDe(id))) throw new Error(`plan du guide : ${id} prend un nom réservé (${NOMS_RESERVES.join(', ')})`);
   }
-  for (const id of PAR_OU_COMMENCER) if (!vues.has(id)) throw new Error(`plan du guide : la carte « Par où commencer ? » ${id} n'est dans aucun livre`);
+  for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
+    if (parId.has(ancienne)) throw new Error(`plan du guide : ${ancienne} est absorbée par ${nouvelle} et ne doit plus être dans la base`);
+    if (!vues.has(nouvelle)) throw new Error(`plan du guide : ${nouvelle}, qui absorbe ${ancienne}, n'est pas dans le plan`);
+  }
   return entries;
 }

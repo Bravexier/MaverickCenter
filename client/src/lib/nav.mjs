@@ -7,10 +7,11 @@
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // Six rubriques (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour retravailler pleinement l'organisation des onglets et
 // de la présentation ») : Découvrir (la vitrine, faite pour être vue même des non-membres), Règles, Espace joueur, Espace MJ, Codex, Outils ; plus de
-// rubrique Ressources ni d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs). Rien n'est caché ni filtré : « Pour l'instant comme les
-// menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
-// « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic). Composants va sous Artisanat ; Pièces élémentaires et Livres &
-// Parchemins restent visibles dans les Règles « pour l'instant » (ils iront plus tard dans les Armes, les Armures et la Ceinture de l'Équipement).
+// rubrique Ressources ni d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées,
+// Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à
+// terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. »
+// (sic). Composants va sous Artisanat ; Pièces élémentaires et Livres & Parchemins restent visibles dans les Règles « pour l'instant » (ils iront plus
+// tard dans les Armes, les Armures et la Ceinture de l'Équipement).
 // « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
 // « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires », puis « renommer l'onglet en "Ceinture" et le mettre dans les onglets de
 // équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs). La ceinture (potions et huiles, carquois et
@@ -22,12 +23,13 @@ export const NAV = [
   {
     key: 'decouvrir',
     label: 'Découvrir',
-    // les quatre pages des cartes « Par où commencer ? » de l'accueil (lib/livres.mjs#PAR_OU_COMMENCER), puis les liens (Discord, Tipeee)
+    // une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
+    // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER), puis les liens (Discord, Tipeee, rencontre IRL)
     items: [
       { label: 'Bienvenue', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },
       { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
-      { label: 'Rejoindre une partie', path: 'decouvrir/campagne-ou-scenario-one-shot/' },
+      { label: 'Rejoindre une partie', path: 'decouvrir/rejoindre-une-partie/' },
       { label: 'Liens', path: 'decouvrir/liens/' },
     ],
   },

@@ -1,12 +1,10 @@
-/* Chargé depuis components/guide/PageDeLivre.astro (avec styles/guide/guide.css) et components/guide/PageDuGuide.astro (seul), en ?raw : les couleurs
-   des pages du guide et les blocs tirés de la base (components/guide/GuideBloc.astro). */
-/* Couleur de la section (lib/livres.mjs), posée par `--couleur-partie` sur la page et sur chaque groupe de la pagination et du sommaire (sans elle,
-   l'accent du site : pages des Règles avancées et du Guide du MJ) :
-   --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
-.guide,
-.guide-reference,
-.guide-pagination__partie,
-.guide-sommaire__partie {
+/* Chargé depuis components/guide/PageDuGuide.astro, en ?raw : toutes les pages du guide (lib/livres.mjs : Découvrir, Les bases, Règles avancées, Guide du
+   MJ), des pages simples depuis la refonte du 2026-10-18 (plus de livre : ni flèches, ni pagination, ni glissement du doigt) ; leurs couleurs et les blocs
+   tirés de la base (components/guide/GuideBloc.astro). */
+/* Couleur du groupe de la page (lib/livres.mjs#couleurDeLaPage), posée par `--couleur-partie` sur la page (sans elle, l'accent du site : pages des Règles
+   avancées et du Guide du MJ) : --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème
+   sombre). */
+.guide-reference {
   --guide: var(--couleur-partie, var(--accent));
   --guide-texte: var(--guide);
   --guide-soft: color-mix(in srgb, var(--guide) 12%, var(--surface));
@@ -15,15 +13,36 @@
   --mag: var(--guide);
   --mag-soft: var(--guide-soft);
   --mag-line: var(--guide-line);
-  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur de la partie */
+  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur du groupe */
   --tab: var(--guide);
   --tab-soft: var(--guide-soft);
   --tab-line: var(--guide-line);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.guide, .guide-reference, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+  :root:not([data-theme="light"]) .guide-reference { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
 }
-:root[data-theme="dark"] :is(.guide, .guide-reference, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+:root[data-theme="dark"] .guide-reference { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+/* Une page de Découvrir ou des Bases : le titre souligné et les intertitres dans la couleur de son groupe. */
+.guide-reference--couleur > h1 { padding-bottom: 0.45rem; border-bottom: 3px solid var(--guide); }
+.guide-reference--couleur .guide-corps .prose h2 { color: var(--guide-texte); }
+.guide-fil a[aria-current='page'] { color: inherit; text-decoration: none; }
+
+/* Sous une page (lib/livres.mjs#RUBRIQUES_SOUS_LA_PAGE) : les rubriques qu'elle présente, une pastille par rubrique dans la couleur du groupe. */
+.guide-rubriques { margin-top: 1.75rem; padding-top: 1rem; border-top: 1px solid var(--guide-line); }
+.guide-rubriques ul { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.guide-rubriques__lien {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border: 2px solid var(--guide-line);
+  border-radius: var(--radius-pill);
+  background: var(--guide-soft);
+  color: var(--guide-texte);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-rubriques__lien:hover,
+.guide-rubriques__lien:focus-visible { border-color: var(--guide); background: var(--guide); color: #fff; }
+.guide-rubriques__lien:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
 /* ---- Blocs tirés de la base (components/guide/GuideBloc.astro) ---- */
 /* les tableaux : le gabarit commun, le cadre à la largeur du tableau (sauf la montée de niveau, sur toute la largeur) */
 .guide-defile { width: fit-content; max-width: 100%; margin: 1rem 0 1.25rem; }
@@ -42,50 +61,7 @@
 .guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }
 .guide-lettre { color: var(--muted); font-weight: 400; font-size: 0.9em; }
 
-/* Sommaire (chapitre 1) : les parties l'une sous l'autre, chacune dans sa couleur, une carte par chapitre. */
-.guide-sommaire { margin: 1rem 0 0.5rem; }
-.guide-sommaire__partie + .guide-sommaire__partie { margin-top: 1.1rem; }
-.guide-sommaire__titre-partie {
-  margin: 0 0 0.5rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid var(--guide);
-  color: var(--guide-texte);
-  font-size: var(--fs-xl);
-}
-.guide-sommaire__liste {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.guide-sommaire__liste li {
-  display: grid;
-  gap: 0.3rem;
-  align-content: start;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--guide);
-  border-radius: var(--radius);
-  background: var(--bg);
-}
-.guide-sommaire__lien { display: flex; align-items: baseline; gap: 0.55rem; color: var(--guide-texte); font-weight: 700; text-decoration: none; }
-.guide-sommaire__lien:hover .guide-sommaire__titre { text-decoration: underline; }
-.guide-sommaire__numero {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 50%;
-  background: var(--guide);
-  color: #fff;
-  font-size: var(--fs-lg);
-}
-.guide-sommaire__resume { color: var(--muted); font-size: var(--fs-lg); line-height: 1.45; }
-
-/* Les 15 magies (chapitre 2) et le tableau de ce qu'elles donnent (chapitre 3) : pastille de la couleur de la magie. */
+/* Les 15 magies (L'univers) et le tableau de ce qu'elles donnent (Créer son personnage) : pastille de la couleur de la magie. */
 .guide-magies {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
@@ -128,7 +104,7 @@
   line-height: 1.5;
 }
 
-/* Compétences (chapitre 3) : un cadre par caractéristique, dans sa couleur. */
+/* Compétences (Créer son personnage) : un cadre par caractéristique, dans sa couleur. */
 .guide-competences {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
@@ -147,7 +123,7 @@
 .guide-competences__groupe ul { margin: 0; padding-left: 1.1rem; font-size: var(--fs-lg); line-height: 1.45; }
 .guide-competences__groupe li + li { margin-top: 0.25rem; }
 
-/* Types de don (chapitre 5). */
+/* Types de don (Créer son personnage). */
 .guide-definitions { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 1rem 0; }
 .guide-definitions dt { font-weight: 700; color: var(--guide-texte); }
 .guide-definitions dd { margin: 0; }
@@ -187,7 +163,7 @@
 .guide-posture ul { margin: 0; padding: 0.5rem 0.6rem 0.6rem 1.5rem; font-size: var(--fs-md); line-height: 1.4; }
 .guide-posture li + li { margin-top: 0.3rem; }
 
-/* Pages de référence (dernier chapitre), par document source. */
+/* Pages de référence (« Les documents des règles »), par document source. */
 .guide-references {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));

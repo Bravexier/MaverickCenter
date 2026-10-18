@@ -1,0 +1,25 @@
+/* La page « Liens » (pages/decouvrir/liens.astro, en ?raw) : les liens externes, chacun avec sa présentation, puis l'encart « Notre prochaine rencontre
+   IRL » (lib/livres.mjs#LIENS.rencontre), un cadre à filet de l'accent comme les cartes du site ; son texte d'attente en gris. */
+.liens { display: grid; gap: 0.9rem; margin: 1rem 0 1.75rem; }
+.liens__element { padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.liens__titre { margin: 0; font-size: 1.1rem; }
+.liens__lien { font-weight: 700; }
+.liens__presentation { margin-top: 0.4rem; }
+.liens__presentation > :first-child { margin-top: 0; }
+.liens__presentation > :last-child { margin-bottom: 0; }
+
+.annonce {
+  padding: 0.9rem 1.1rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.annonce__titre { margin: 0 0 0.5rem; }
+.annonce__texte > :first-child { margin-top: 0; }
+.annonce__texte > :last-child { margin-bottom: 0; }
+.annonce__vide { color: var(--muted); font-style: italic; }
+/* mode modification du site de dev : une annonce vide montre le texte d'attente en filigrane (src/scripts/edition/annonces.mjs) */
+.annonce__texte[contenteditable] { min-height: 2.5rem; }
+.annonce__texte[contenteditable]:empty::before,
+.annonce__texte[contenteditable] > p:only-child:has(> br:only-child)::before { content: attr(data-annonce-vide); color: var(--muted); font-style: italic; pointer-events: none; }

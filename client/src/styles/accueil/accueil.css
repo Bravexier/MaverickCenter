@@ -12,7 +12,7 @@
   .accueil { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* « Par où commencer ? » : quatre cartes sous le texte et la galerie, chacune dans la couleur de sa section (lib/livres.mjs) ; toute la carte est cliquable
+/* « Par où commencer ? » : quatre cartes sous le texte et la galerie, les quatre pages de Découvrir, chacune dans la couleur de son groupe (lib/livres.mjs) ; toute la carte est cliquable
    (le lien couvre la carte) ; quatre de front, puis deux, puis une seule sur un écran étroit, jamais de défilement de côté. */
 .accueil-debut { margin-top: 2rem; }
 .accueil-debut h2 { margin: 0 0 0.8rem; }

@@ -48,13 +48,13 @@ test('la présentation des en-têtes n’est écrite qu’une fois : aucune feui
   assert.deepEqual(recopies, []);
 });
 
-// Le site construit : chaque <table> des pages de règles suit le gabarit, sauf les tableaux écrits en Markdown (une <table> nue dans `.prose` ou
-// `.guide-texte`, que le gabarit habille par leur conteneur) et les grilles à double entrée, qui gardent leurs filets de colonne : les matrices des
+// Le site construit : chaque <table> des pages de règles suit le gabarit, sauf les tableaux écrits en Markdown (une <table> nue dans `.prose`, que le
+// gabarit habille par son conteneur) et les grilles à double entrée, qui gardent leurs filets de colonne : les matrices des
 // magies (/magies/, /races/) et le butin d'une carte de monstre (une colonne par échelle).
 const GRILLES = ['tableau-magies__table', 'bbutin'];
 const PAGES = [
   ['ressources', 'equipement'], ['ressources', 'composants'], ['metiers'], ['bestiaire'], ['magies', 'magie-de-la-corruption'], ['races', 'elfe-noir'],
-  ['decouvrir', 'choisir-ses-magies'], ['regles', 'avancees', 'le-mode-hyper'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
+  ['decouvrir', 'creer-son-personnage'], ['regles', 'avancees', 'le-mode-hyper'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
 ];
 const construit = existsSync(join(dist, 'ressources', 'equipement', 'index.html'));
 
@@ -67,8 +67,8 @@ test('le site construit : chaque tableau des règles suit le gabarit, dans un ca
       const classe = /class="([^"]*)"/.exec(m[1])?.[1] ?? '';
       const avant = main.slice(0, m.index);
       if (!classe) {
-        // un tableau écrit en Markdown : dans le texte d'une page ou d'un chapitre
-        assert.ok(/class="(?:[^"]* )?(?:prose|guide-texte)\b/.test(avant.slice(avant.lastIndexOf('<div class="'))), `${chemin.join('/')} : <table> nue hors du texte`);
+        // un tableau écrit en Markdown : dans le texte d'une page du wiki ou du guide
+        assert.ok(/class="(?:[^"]* )?prose\b/.test(avant.slice(avant.lastIndexOf('<div class="'))), `${chemin.join('/')} : <table> nue hors du texte`);
         continue;
       }
       if (GRILLES.some((g) => classe.split(' ').includes(g))) continue;

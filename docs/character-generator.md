@@ -229,7 +229,7 @@ abandonne.
   livre, `nm_livre` ; noter le livre ajoute son NM au sort, au plus 3, le retirer le lui reprend : `sortAvecLivre`, R118 ; la case du livre a quitté le
   tableau des sorts, qui ne montre plus que « livre » à côté du curseur) ou un
   **texte libre** (« dons évènementiels », jamais compté) ; son aide cite, tel que la base l'écrit, le
-  paragraphe du guide « S’entraîner et exercer un métier » (livre « Les bases », chapitre 10 : sa place dans `lib/livres.mjs`) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
+  paragraphe du guide « S’entraîner et exercer un métier » (son titre seul, sans numéro de chapitre ni lien : la fiche reste sans lien vers le guide) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
   au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
 - **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
   **total attribué** et le **total à saisir** — « entre min et max » quand un dé bonus est atteint —, en rouge hors de la plage (`gainsDeNiveau`, les mêmes

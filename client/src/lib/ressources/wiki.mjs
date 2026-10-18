@@ -8,9 +8,10 @@
 // tables, en lecture seule. La page du Codex se reconnaît à sa provenance (`source_ref`, premier libellé de `sources:`) : la description des relations
 // entre les peuples est de type `lore` mais tirée du classeur « Les races », ce n'est pas une page du Codex.
 //
-// Les écritures sont celles que le site de dev sait déjà faire, rien de plus : le titre et le texte des pages du guide et du Codex (TABLES.page), le
-// vocabulaire des mots-clés (TABLES.mot_cle, ENTITES.mot_cle : serveur/edition-chronologie.mjs, MOT_CLE) et leur fusion (l'opération du lot
-// `fusionner_mots_cles`, ni TABLES ni ENTITES : l'action « fusion » d'un mot-clé). Aucune opération ne pose ni ne retire un mot-clé sur une page, ni ne
+// Les écritures sont celles que le site de dev sait déjà faire, rien de plus : le titre et le texte des pages du guide et du Codex (TABLES.page), le texte
+// d'une annonce (TABLES.annonce : l'encart « Notre prochaine rencontre IRL » de la page Liens), le vocabulaire des mots-clés (TABLES.mot_cle,
+// ENTITES.mot_cle : serveur/edition-chronologie.mjs, MOT_CLE) et leur fusion (l'opération du lot `fusionner_mots_cles`, ni TABLES ni ENTITES : l'action
+// « fusion » d'un mot-clé). Aucune opération ne pose ni ne retire un mot-clé sur une page, ni ne
 // change ses alias ou ses sources : ces tables sont en lecture seule ici.
 
 /** Première source (et `source_ref`) des pages du Codex : la même que lib/edition-modele.mjs#SOURCE_DU_CODEX (tools/docs/codex.py). */
@@ -22,8 +23,8 @@ export const RESSOURCES = [
     nom: 'Page du guide',
     noms: 'Pages du guide',
     description:
-      'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : deux livres lus dans l’ordre, ' +
-      '« Découvrir » (/decouvrir/…) et « Les bases » (/regles/…), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/…), toutes les autres ' +
+      'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : « Découvrir » (/decouvrir/…, une page par entrée du menu), ' +
+      '« Les bases » (/regles/<slug>/, un sommaire à /regles/), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/…), toutes les autres ' +
       'pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
       'personnage », et six pages tirées des classeurs : altérations d’état, météo, modes hyper et super, statistiques) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
@@ -70,6 +71,21 @@ export const RESSOURCES = [
     recherche: ['titre', 'resume'],
     tri: 'titre_cle',
     lectureSeule: true,
+  },
+  {
+    cle: 'annonces',
+    nom: 'Annonce',
+    noms: 'Annonces',
+    description:
+      'Les annonces que le site place (migration 0068, demande du propriétaire du 2026-10-18) : aujourd’hui l’encart « Notre prochaine rencontre IRL » ' +
+      'de la page Liens (/decouvrir/liens/, ligne « prochaine-rencontre-irl »), dont le titre et le texte d’attente sont fixes ; le texte (Markdown, ' +
+      'balises du glossaire comprises) se modifie par le service comme celui d’une page du guide : ni HTML brut ni lien non sûr ajouté ; vidé, NULL ' +
+      '(« Aucune rencontre annoncée pour le moment. » s’affiche) ; ni création ni suppression.',
+    table: 'annonce',
+    libelle: 'id',
+    liste: ['id', 'texte'],
+    recherche: ['id', 'texte'],
+    tri: 'id',
   },
   {
     cle: 'alias-des-pages',

@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 193 tables, 2 tables de recherche, 35 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 194 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -28,6 +28,7 @@
 | `panneau_regles` | Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). | **id**, titre, page_id→page |
 | `panneau_regles_bloc` | Un bloc d'un panneau, dans l'ordre de lecture : du texte (tuile = 0), qui suit les colonnes du panneau, ou une tuile (tuile = 1 : encadrée, titre facultatif). | **panneau_id**→panneau_regles, **rang**, ordre, tuile, titre?, texte |
 | `composant_onglet` | Onglets de la page « Composants » (/ressources/composants/, migration 0057) : un onglet par tableau de la page. | **id**, titre, note?, ordre |
+| `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » de la page « Liens » (/decouvrir/liens/). | **id**, texte? |
 
 ## 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 

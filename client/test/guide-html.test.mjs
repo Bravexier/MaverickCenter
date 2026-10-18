@@ -1,7 +1,9 @@
-// Pages du guide CONSTRUITES (client/dist/decouvrir/, dist/regles/, dist/mj/ ; plan : lib/livres.mjs, demande du propriétaire du 2026-10-18 : « éclater
-// le guide ») : les deux livres lus dans l'ordre (la page sur toute la largeur, une flèche de chaque côté par-dessus, grisée au bord du livre, le
-// glissement du doigt, la pagination par section colorée avec le titre de chaque page en infobulle, les tableaux tirés de la base), les sommaires des
-// Règles avancées, du Guide du MJ et de l'Artisanat, la page Liens ; plus rien sous /guide/.
+// Pages du guide CONSTRUITES (client/dist/decouvrir/, dist/regles/, dist/mj/ ; plan : lib/livres.mjs ; demandes du propriétaire du 2026-10-18 : « éclater
+// le guide », puis « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») :
+// chaque page du guide est une page simple (fil d'Ariane vers sa rubrique ou son sommaire, titre, texte et blocs tirés de la base, mots-clés,
+// rétroliens, sources), sans flèches, ni pagination, ni glissement du doigt ; les pages de Découvrir et des Bases dans la couleur de leur groupe ; les
+// sommaires des Bases, des Règles avancées, du Guide du MJ et de l'Artisanat ; la page Liens et l'encart « Notre prochaine rencontre IRL » ; plus rien
+// sous /guide/, plus rien aux adresses des pages fusionnées.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/guide-html.test.mjs
 import assert from 'node:assert/strict';
@@ -9,9 +11,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { chargerAnnonce } from '../src/lib/annonces.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
-import { ARTISANAT, groupesDesReglesAvancees, GUIDE_DU_MJ, LIENS, LIVRES, pagesDuLivre } from '../src/lib/livres.mjs';
+import {
+  ARTISANAT, couleurDeLaPage, DECOUVRIR, estDansDecouvrirOuLesBases, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, LIENS,
+  PAGES_ABSORBEES, pagesDeLaRubrique,
+} from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -21,98 +28,102 @@ const lire = (chemin) => {
   const html = readFileSync(join(dist, chemin, 'index.html'), 'utf8');
   return { html, main: html.slice(html.indexOf('<main'), html.indexOf('</main>')), ids: [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]) };
 };
-const vide = { html: '', main: '', ids: [] };
-const decouvrir = present ? lire('decouvrir') : vide;
-const numeros = (main) => [...main.matchAll(/class="guide-pagination__numero" href="([^"]+)"[^>]*?aria-label="Chapitre (\d+) : ([^"]+)"/g)].map((m) => ({ href: m[1], n: Number(m[2]), titre: m[3] }));
-const sections = (main) => [...main.matchAll(/<li class="guide-pagination__partie" style="--couleur-partie: (#[0-9a-f]{6})"><span class="guide-pagination__titre">([^<]+)</g)].map((m) => [m[2], m[1]]);
 const sansStyles = (main) => main.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '');
 const db = ouvrirBase({ sansExemples: false });
 const pagesConstruites = db.prepare("SELECT id, titre, resume, corps_md, statut FROM page WHERE type = 'guide'").all()
   .filter((p) => existsSync(join(dist, cheminDePage(p.id), 'index.html')))
   .map((p) => ({ ...p, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
-const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const pageDe = (id) => pagesConstruites.find((p) => p.id === id);
+const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+/** La page qui appelle un bloc (`<!-- guide:<bloc> -->`) : chaque bloc est appelé une fois dans tout le guide (test/guide.test.mjs). */
+const pageDuBloc = (bloc) => pagesConstruites.find((p) => morceauxDuChapitre(p.corps_md).some((m) => m.bloc === bloc));
 
-test('plus rien sous /guide/ : /decouvrir/ est la première page du livre Découvrir, flèche gauche grisée, flèche droite vers la page 2, 11 numéros en trois sections', options, () => {
+test('plus rien sous /guide/, ni aux adresses des pages fusionnées ; /decouvrir/ est Bienvenue, sans sommaire', options, () => {
   assert.ok(!existsSync(join(dist, 'guide')), 'pas de dossier dist/guide/');
-  assert.match(decouvrir.main, /<h1 id="guide-titre"[^>]*>Bienvenue dans Maverick<\/h1>/);
-  assert.match(decouvrir.main, /<p class="guide-numero"><span class="guide-partie">Découvrir<\/span> chapitre 1 sur 11<\/p>/);
-  assert.match(decouvrir.main, /<span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true"/);
-  assert.match(decouvrir.main, /<a class="guide-fleche guide-fleche--suivant" href="\/decouvrir\/le-jeu-de-role\/" rel="next"/);
-  const pagination = numeros(decouvrir.main);
-  assert.deepEqual(pagination.map((p) => p.n), Array.from({ length: 11 }, (_, i) => i + 1));
-  assert.deepEqual(pagination.map((p) => p.href), pagesDuLivre(LIVRES[0]).map((p) => `/${cheminDePage(p.id)}`));
-  assert.equal(pagination[0].href, '/decouvrir/', 'la page 1 est servie à /decouvrir/');
+  for (const ancienne of Object.keys(PAGES_ABSORBEES)) assert.ok(!existsSync(join(dist, 'decouvrir', ancienne.slice('guide/'.length))), `${ancienne} : plus construite`);
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'campagne-ou-scenario-one-shot')), 'la page du MJ n’est plus dans Découvrir');
+  assert.ok(existsSync(join(dist, 'mj', 'campagne-ou-scenario-one-shot', 'index.html')), '… elle est dans le Guide du MJ');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'bienvenue')), 'pas de page /decouvrir/bienvenue/');
-  assert.match(decouvrir.main, /aria-current="page"[^>]*>\s*1\s*</);
-  assert.deepEqual(sections(decouvrir.main), [['Découvrir', '#2a6f97'], ['Créer son personnage', '#2e7d4f'], ['Rejoindre une partie', '#b03030']]);
-  assert.match(decouvrir.main, /<nav class="guide-bas" aria-label="Chapitres : Découvrir">/);
-  for (const [, id] of decouvrir.main.matchAll(/class="guide-pagination__numero"[^>]*data-bulle="([^"]+)"/g)) assert.ok(decouvrir.ids.includes(id), `infobulle ${id} absente`);
+  const { main } = lire('decouvrir');
+  assert.match(main, new RegExp(`<h1 id="guide-titre"><span data-ed="[^"]+">${echappe(pageDe('guide/bienvenue').titre)}</span>\\s*</h1>`));
+  assert.doesNotMatch(main, /guide-sommaire/, 'plus de sommaire dans Bienvenue (demande du propriétaire du 2026-10-18)');
 });
 
-test('le livre Découvrir s’arrête à « Rejoindre une partie » ; Les bases (/regles/) : 12 numéros en trois sections, ses propres voisins', options, () => {
-  const dernier = lire('decouvrir/campagne-ou-scenario-one-shot');
-  assert.match(dernier.main, /<span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true"/);
-  assert.match(dernier.main, /<a class="guide-fleche guide-fleche--precedent" href="\/decouvrir\/finaliser-son-personnage\/" rel="prev"/);
-  assert.match(dernier.main, /class="guide-partie">Rejoindre une partie<\/span> Découvrir · chapitre 11 sur 11</);
-  // la dernière page n'est pas un cul-de-sac : le lien du bas mène à la suite du plan (lib/livres.mjs#suiteDuLivre), la flèche reste grisée
-  assert.match(dernier.main, /<a class="guide-voisin guide-voisin--suivant guide-voisin--suite" href="\/regles\/" data-guide-suite>\s*<span class="guide-voisin__sens">Suivant ›<\/span>\s*<span class="guide-voisin__titre">Les bases<\/span>/);
-  assert.doesNotMatch(dernier.main, /<a [^>]*data-guide-suivant/, 'ni ← → ni le doigt ne passent dans Les bases');
-  const bases = lire('regles');
-  assert.match(bases.main, /<h1 id="guide-titre"[^>]*>Réussir une action<\/h1>/);
-  assert.match(bases.main, /<span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true"/, 'première page des bases : rien avant');
-  assert.deepEqual(numeros(bases.main).map((p) => p.href), pagesDuLivre(LIVRES[1]).map((p) => `/${cheminDePage(p.id)}`));
-  assert.deepEqual(sections(bases.main), [['Jouer', '#b03030'], ['Progresser', '#6a4a9c'], ['Pour aller plus loin', '#5a6470']]);
-  const degats = lire('regles/les-degats');
-  assert.match(degats.main, /<a class="guide-fleche guide-fleche--precedent" href="\/regles\/l-equipement\/" rel="prev"/);
-  assert.match(degats.main, /<a class="guide-fleche guide-fleche--suivant" href="\/regles\/les-postures\/" rel="next"/);
-  assert.match(degats.main, /class="guide-partie">Jouer<\/span> Les bases · chapitre 5 sur 12</);
-  const lexique = lire('regles/lexique');
-  assert.match(lexique.main, /<span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true"/, 'dernière page des bases');
-  assert.match(lexique.main, /<a class="guide-voisin guide-voisin--suivant guide-voisin--suite" href="\/regles\/avancees\/" data-guide-suite>\s*<span class="guide-voisin__sens">Suivant ›<\/span>\s*<span class="guide-voisin__titre">Règles avancées<\/span>/);
-  assert.doesNotMatch(lexique.main, /<a [^>]*data-guide-suivant/);
-  // une page qui a une suivante dans son livre : pas de lien de suite
-  assert.doesNotMatch(degats.main, /<a [^>]*data-guide-suite/);
-  assert.match(degats.main, /<a [^>]*data-guide-suivant/);
+test('chaque page du guide est une page simple : ni flèches, ni pagination, ni ← →, ni glissement du doigt ; titre, texte, sources (pages de référence seulement)', options, () => {
+  assert.ok(pagesConstruites.length > 50, `${pagesConstruites.length} pages construites`);
+  for (const p of pagesConstruites) {
+    const { main } = lire(cheminDePage(p.id));
+    assert.doesNotMatch(main, /guide-fleche|guide-pagination|guide-voisin|guide-page|data-guide-(?:suivant|precedent|suite)/, `${p.id} : le chrome du livre`);
+    assert.doesNotMatch(main, /touchstart|ArrowLeft|overscroll-behavior-x|overflow-x: clip/, `${p.id} : ni geste, ni clavier, ni réglage de défilement du livre`);
+    assert.match(main, /<h1 id="guide-titre">/, p.id);
+    // le corps modifiable sur le site de dev, morceau par morceau ; une page d'exemple (HIDE_EXAMPLES=1 la retire) ne se modifie pas
+    const modifiable = p.statut !== 'example';
+    assert.match(main, modifiable ? new RegExp(`<div class="guide-corps" data-ed-corps="${p.id}">`) : /<div class="guide-corps">/, `${p.id} : le corps`);
+    const visibles = decouperCorps(p.corps_md).filter((m) => m.visible).length;
+    assert.equal((main.match(/data-ed-morceau/g) ?? []).length, modifiable ? visibles : 0, `${p.id} : un morceau modifiable par morceau visible`);
+    // les sources sous le texte : les pages de référence seulement ; une page de Découvrir ou des Bases n'en cite pas, comme ses anciennes pages de livre
+    assert.equal(/<h2>Sources<\/h2>/.test(main), !estDansDecouvrirOuLesBases(p.id), `${p.id} : sources`);
+    // aucun lien vers une ancienne adresse : ni /guide/, ni une page fusionnée
+    for (const [, href] of main.matchAll(/href="([^"]+)"/g)) {
+      assert.doesNotMatch(href, /^\/guide\//, `${p.id} : ${href}`);
+      for (const ancienne of Object.keys(PAGES_ABSORBEES)) assert.ok(!href.startsWith(`/decouvrir/${ancienne.slice('guide/'.length)}/`), `${p.id} : ${href}`);
+    }
+  }
 });
 
-test('sur écran tactile, glisser le doigt tourne la page, sans que le navigateur ajoute un retour dans l’historique', options, () => {
-  const { main } = lire('regles/les-degats');
-  for (const evenement of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) assert.match(main, new RegExp(`addEventListener\\('${evenement}', function \\(e?\\) \\{[\\s\\S]*?\\}, \\{ passive: true \\}\\)`), evenement);
-  assert.match(main, /dx < 0 \? '\[data-guide-suivant\]' : '\[data-guide-precedent\]'/, 'vers la gauche : page suivante ; vers la droite : précédente');
-  assert.match(main, /closest\('input, textarea, select, \[contenteditable\], \.guide-defile'\)/, 'pas sur un tableau qui défile ni dans un champ');
-  assert.match(main, /t\.clientX < 24 \|\| t\.clientX > window\.innerWidth - 24/, 'pas depuis le bord de l’écran (gestes du système)');
-  assert.match(main, /html \{ overscroll-behavior-x: none; \}/, 'Chrome ne fait pas du même geste un retour arrière');
+test('le fil d’Ariane : Découvrir pour ses pages, Les bases et le groupe, Règles avancées et le groupe, Guide du MJ ; la couleur du groupe sur les pages de Découvrir et des Bases', options, () => {
+  const fil = (chemin) => sansStyles(lire(chemin).main).match(/<p class="muted guide-fil">([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim();
+  assert.equal(fil('decouvrir'), '<a href="/">Accueil</a> › <a href="/decouvrir/" aria-current="page">Découvrir</a>');
+  assert.equal(fil('decouvrir/creer-son-personnage'), '<a href="/">Accueil</a> › <a href="/decouvrir/">Découvrir</a>');
+  assert.equal(fil('regles/les-degats'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a> › <a href="/regles/#jouer">Jouer</a>');
+  assert.equal(fil('regles/lexique'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a> › <a href="/regles/#plus-loin">Pour aller plus loin</a>');
+  assert.equal(fil('regles/avancees/meteo'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a> › <a href="/regles/avancees/#exploration-et-voyage">Exploration et voyage</a>');
+  assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
+  for (const p of pagesConstruites) {
+    const { main } = lire(cheminDePage(p.id));
+    const couleur = couleurDeLaPage(p.id);
+    if (couleur) assert.match(main, new RegExp(`<div class="guide-reference guide-reference--couleur" style="--couleur-partie: ${couleur}">`), p.id);
+    else assert.match(main, /<div class="guide-reference">/, p.id);
+    // le badge « Guide » sur les pages de référence seulement (comme avant)
+    assert.equal(/<span class="badge">Guide<\/span><\/h1>/.test(main.replace(/\s+<\/h1>/, '</h1>')), !estDansDecouvrirOuLesBases(p.id), `${p.id} : badge`);
+  }
+  // une page écrite pour le site a aussi son pied de page : mots-clés et pages liées (ses sources restent dans le frontmatter)
+  assert.match(lire('decouvrir/creer-son-personnage').main, /class="tags"|Cette page mentionne|Mentionnée par/);
 });
 
-test('la page prend toute la largeur : les flèches passent par-dessus, en bas de l’écran, et s’effacent quand les liens du bas arrivent', options, () => {
-  const { main } = lire('decouvrir/l-univers');
-  assert.match(main, /\.guide-cadre \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\);\s*\}/, 'une seule colonne : plus de colonnes pour les flèches');
-  assert.match(main, /\.guide-cadre > \* \{ grid-area: 1 \/ 1; \}/, 'page et flèches dans la même case');
-  assert.match(main, /\.guide-fleche \{\s*position: sticky;\s*bottom: 1\.5rem;/, 'flèches collées en bas de l’écran');
-  assert.match(main, /\.guide\[data-bas-visible\] \.guide-fleche \{ opacity: 0; visibility: hidden; \}/);
-  assert.match(main, /new IntersectionObserver\(function \(entrees\) \{\s*guide\.toggleAttribute\('data-bas-visible'[\s\S]*?\}\)\.observe\(bas\)/, 'effacées dès que les liens du bas sont à l’écran');
-  assert.doesNotMatch(main, /\.guide-texte \{ max-width/, 'le texte n’a plus sa colonne étroite');
-  assert.match(main, /main \{ overflow-x: clip; \}/, 'la page qui suit le doigt n’élargit pas l’écran');
+test('/regles/ : le sommaire des Bases, trois groupes dans leur couleur, chaque page liée avec son résumé', options, () => {
+  const { main } = lire('regles');
+  assert.match(main, /<h1>Les bases<\/h1>/);
+  const groupes = groupesDesBases(pagesConstruites);
+  assert.deepEqual([...main.matchAll(/<section class="sommaire sommaire--couleur" id="([^"]+)" style="--sommaire-couleur: (#[0-9a-f]{6})"[^>]*><h2 id="[^"]+">([^<]+)<\/h2>/g)].map((m) => [m[1], m[2], m[3]]),
+    LES_BASES.groupes.map((g) => [g.id, g.couleur, g.titre]));
+  const lignes = [...main.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a>(?:<div class="muted">([\s\S]*?)<\/div>)?<\/li>/g)];
+  assert.deepEqual(lignes.map((m) => m[1]), groupes.flatMap((g) => g.pages.map((p) => `/${cheminDePage(p.id)}`)));
+  assert.equal(lignes.length, 12);
+  assert.ok(lignes.every((m) => m[3]), 'chaque page des Bases a son résumé');
+  assert.doesNotMatch(main, /guide-titre|guide-corps/, 'un sommaire, pas une page du guide');
 });
 
-test('les tableaux viennent de la base : progression, postures, compétences, personnages fil rouge', options, () => {
-  const niveaux = lire('regles/la-montee-de-niveau').main;
+test('les tableaux viennent de la base : progression, postures, compétences, magies, personnages fil rouge (la page qui appelle le bloc)', options, () => {
+  const lireBloc = (bloc) => lire(cheminDePage(pageDuBloc(bloc).id)).main;
+  const niveaux = lireBloc('niveaux');
   assert.equal((niveaux.match(/<tr>\s*<th scope="row">\d+<\/th>/g) ?? []).length, 20);
   assert.match(niveaux, /460\s250/, 'XP du niveau 20 (espace fine insécable de toLocaleString)');
-  const postures = lire('regles/les-postures').main;
+  const postures = lireBloc('postures');
   assert.equal((postures.match(/class="guide-posture__nom"/g) ?? []).length, 6);
-  const competences = lire('decouvrir/caracteristiques-et-competences').main;
-  assert.equal((competences.match(/class="guide-competences__groupe"/g) ?? []).length, 6);
   // chacune dans sa couleur (demande du propriétaire, lib/caracteristiques-postures.mjs)
   assert.deepEqual([...postures.matchAll(/class="guide-posture" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
     ['#ff6666', '#99ff99', '#eeeeee', '#9999ff', '#ffff66', '#cc66ff'], 'Offensif, Défensif, Neutre, Focus, Vigilance, Symbiose');
+  const competences = lireBloc('competences');
+  assert.equal((competences.match(/class="guide-competences__groupe"/g) ?? []).length, 6);
   assert.deepEqual([...competences.matchAll(/class="guide-competences__groupe" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
     ['#ff6666', '#ff99ff', '#66ccff', '#ffcc00', '#dddddd', '#99ff66'], 'Force, Volonté, Intelligence, Perception, Social, Agilité');
-  assert.match(lire('decouvrir/choisir-ses-magies').main, /<span class="guide-carac" style="--c: #dddddd; --c-texte: #171210">Social<\/span>/, '+1 en Social du Feu');
-  const attributs = lire('decouvrir/finaliser-son-personnage').main;
-  assert.equal((attributs.match(/class="guide-fil-rouge__perso"/g) ?? []).length, 4);
+  assert.match(lireBloc('magie-bonus'), /<span class="guide-carac" style="--c: #dddddd; --c-texte: #171210">Social<\/span>/, '+1 en Social du Feu');
+  const attributs = lireBloc('fil-rouge-attributs');
+  assert.ok((attributs.match(/class="guide-fil-rouge__perso"/g) ?? []).length >= 4);
   assert.match(attributs, /20 de la race \+ 9 de la classe \+ 10 de la magie = 39/, 'santé du guerrier orios');
-  assert.doesNotMatch(lire('decouvrir/creer-son-personnage').main, /à préciser/, 'les quatre magies innées sont connues');
+  assert.doesNotMatch(lireBloc('fil-rouge'), /<em>à préciser<\/em>/, 'les quatre magies innées sont connues');
+  assert.equal(pageDuBloc('documents').id, 'guide/les-documents-des-regles');
 });
 
 test('sous « L’univers », et sous elle seule, la navigation vers Races, Magies et Classes (leurs titres, rien d’autre)', options, () => {
@@ -122,18 +133,7 @@ test('sous « L’univers », et sous elle seule, la navigation vers Races, Magi
   assert.deepEqual([...nav[1].matchAll(/<a class="guide-rubriques__lien" href="([^"]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]),
     [['/races/', 'Races'], ['/magies/', 'Magies'], ['/classes/', 'Classes']]);
   assert.equal(sansStyles(nav[1]).replace(/<[^>]+>/g, '').trim(), 'RacesMagiesClasses', 'aucun autre texte');
-  for (const chemin of ['decouvrir', 'decouvrir/le-jeu-de-role', 'regles', 'regles/les-degats']) assert.doesNotMatch(sansStyles(lire(chemin).main), /class="guide-rubriques"/, chemin);
-});
-
-test('le sommaire de « Bienvenue » : les dix autres pages de Découvrir par section, puis Les bases et Règles avancées', options, () => {
-  const sommaire = decouvrir.main.slice(decouvrir.main.indexOf('<div class="guide-sommaire">'));
-  const liens = [...sommaire.matchAll(/<a class="guide-sommaire__lien" href="([^"]+)">/g)].map((m) => m[1]);
-  assert.deepEqual(liens, [...pagesDuLivre(LIVRES[0]).slice(1).map((p) => `/${cheminDePage(p.id)}`), '/regles/', '/regles/avancees/']);
-  assert.deepEqual([...sommaire.matchAll(/<h3 class="guide-sommaire__titre-partie">([^<]+)<\/h3>/g)].map((m) => m[1]),
-    ['Découvrir', 'Créer son personnage', 'Rejoindre une partie', 'Règles']);
-  for (const p of pagesConstruites.filter((x) => pagesDuLivre(LIVRES[0]).slice(1).some((l) => l.id === x.id))) {
-    assert.ok(sommaire.includes(`<span class="guide-sommaire__titre">${echappe(p.titre)}</span>`), `${p.id} : titre`);
-  }
+  for (const p of pagesConstruites.filter((x) => x.id !== 'guide/l-univers')) assert.doesNotMatch(sansStyles(lire(cheminDePage(p.id)).main), /class="guide-rubriques"/, p.id);
 });
 
 test('/regles/avancees/ : les sept groupes dans l’ordre, chaque page liée avec son résumé (s’il y en a un), rien d’autre', options, () => {
@@ -150,47 +150,18 @@ test('/regles/avancees/ : les sept groupes dans l’ordre, chaque page liée ave
     assert.equal(Boolean(resume), Boolean(p.resume), `${p.id} : résumé`);
   }
   for (const id of ['guide/les-pieges', 'guide/les-portes', 'guide/meteo', 'guide/donjon-pas-bon']) assert.ok(lignes.some((m) => m[1] === `/${cheminDePage(id)}`), id);
-});
-
-test('une page des Règles avancées : fil d’Ariane vers son groupe, texte coupé à ses blocs (modifiable morceau par morceau), mots-clés, rétroliens, sources ; pas le chrome du livre', options, () => {
-  for (const id of ['guide/le-mode-hyper', 'guide/les-documents-des-regles', 'guide/meteo']) {
-    const p = pagesConstruites.find((x) => x.id === id);
-    const { main } = lire(cheminDePage(id));
-    assert.match(main, /<p class="muted"><a href="\/">Accueil<\/a> › <a href="\/regles\/avancees\/">Règles avancées<\/a> › <a href="\/regles\/avancees\/#[a-z-]+">[^<]+<\/a><\/p>/, id);
-    assert.match(main, new RegExp(`<div class="guide-reference" data-ed-corps="${id}">`), id);
-    const visibles = decouperCorps(p.corps_md).filter((m) => m.visible).length;
-    assert.equal((main.match(/data-ed-morceau/g) ?? []).length, visibles, `${id} : un morceau modifiable par morceau visible`);
-    assert.match(main, /<h2>Sources<\/h2>/, id);
-    assert.doesNotMatch(main, /class="guide-pagination|overscroll-behavior-x|main \{ overflow-x: clip; \}/, `${id} : pas le chrome du livre`);
-  }
-  // le bloc des documents : les pages de référence par document, liées à leur nouvelle adresse, sans les pages des livres
+  // le bloc des documents : les pages de référence par document, liées à leur nouvelle adresse, sans les pages de Découvrir ni des Bases
   const documents = lire('regles/avancees/les-documents-des-regles').main;
   assert.match(documents, /<div class="guide-references">/);
   const liees = [...documents.matchAll(/<section class="guide-references__groupe">[\s\S]*?<\/section>/g)].flatMap((s) => [...s[0].matchAll(/href="([^"]+)"/g)].map((m) => m[1]));
   assert.ok(liees.length > 20 && liees.every((h) => /^\/(?:regles\/avancees|mj)\//.test(h)), 'seulement des pages de référence');
-  const hyper = lire('regles/avancees/le-mode-hyper').main;
-  assert.match(hyper, /<h1><span data-ed="[^"]+">Le Mode Hyper et le Mode Super<\/span> <span class="badge">Guide<\/span><\/h1>/);
-  assert.match(hyper, /class="tags"|Cette page mentionne|Mentionnée par/, 'mots-clés ou pages liées');
 });
 
-test('une page de livre n’a ni fil d’Ariane, ni mots-clés, ni pages liées sous le texte', options, () => {
-  const page = lire('regles/le-tour-de-jeu').main;
-  assert.doesNotMatch(page, /Accueil<\/a> ›/);
-  assert.doesNotMatch(page, /class="tags"/);
-  assert.doesNotMatch(page, /Cette page mentionne|Mentionnée par/);
-  assert.match(page, /<article class="guide-page" aria-labelledby="guide-titre" data-ed-corps="guide\/le-tour-de-jeu">/);
-  // les liens écrits vers les anciennes adresses /guide/… mènent aux nouvelles
-  assert.match(page, /href="\/regles\/les-postures\/"/);
-});
-
-test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés ; Composants dans l’Artisanat', options, () => {
+test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés ; « Campagne » ou « Scénario one shot » dans le Guide du MJ ; Composants dans l’Artisanat', options, () => {
   const mj = lire('mj').main;
   assert.match(mj, /<h1>Guide du MJ<\/h1>/);
   assert.deepEqual([...mj.matchAll(/<li><a href="([^"]+)">/g)].map((m) => m[1]), GUIDE_DU_MJ.pages.map((id) => `/${cheminDePage(id)}`));
-  for (const id of GUIDE_DU_MJ.pages) {
-    const page = lire(cheminDePage(id)).main;
-    assert.match(page, /<p class="muted"><a href="\/">Accueil<\/a> › <a href="\/mj\/">Guide du MJ<\/a>\s*<\/p>/, id);
-  }
+  assert.ok(GUIDE_DU_MJ.pages.includes('guide/campagne-ou-scenario-one-shot'));
   const artisanat = lire('regles/artisanat').main;
   assert.match(artisanat, /<h1>Artisanat<\/h1>/);
   const liens = [...artisanat.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a><div class="muted">/g)].map((m) => [m[1], m[2]]);
@@ -199,8 +170,43 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(liens.slice(1).map((l) => l[0]), ARTISANAT.pages.slice(1).map((id) => `/${cheminDePage(id)}`));
 });
 
-test('/decouvrir/liens/ : le serveur Discord et la page Tipeee, rien d’autre que leurs libellés et le titre', options, () => {
+test('Découvrir : une page par entrée du menu, dans l’ordre ; « Rejoindre une partie » est une page à elle', options, () => {
+  assert.deepEqual(pagesDeLaRubrique(DECOUVRIR).map((p) => `/${cheminDePage(p.id)}`),
+    ['/decouvrir/', '/decouvrir/l-univers/', '/decouvrir/creer-son-personnage/', '/decouvrir/rejoindre-une-partie/']);
+  for (const { id } of pagesDeLaRubrique(DECOUVRIR)) assert.ok(pageDe(id), `${id} : construite`);
+  const accueil = lire('decouvrir').html;
+  const menu = accueil.slice(accueil.indexOf('<header'), accueil.indexOf('</header>'));
+  for (const chemin of ['/decouvrir/', '/decouvrir/l-univers/', '/decouvrir/creer-son-personnage/', '/decouvrir/rejoindre-une-partie/', '/decouvrir/liens/']) {
+    assert.ok(menu.includes(`href="${chemin}"`), `menu : ${chemin}`);
+  }
+});
+
+test('/decouvrir/liens/ : le serveur Discord et la page Tipeee (leur présentation quand elle est écrite), puis l’encart « Notre prochaine rencontre IRL »', options, () => {
   const { main } = lire('decouvrir/liens');
-  assert.deepEqual([...main.matchAll(/<a href="([^"]+)" rel="noopener">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]), LIENS.liens.map((l) => [l.url, l.libelle]));
-  assert.equal(sansStyles(main).replace(/<[^>]+>/g, '').replace(/\s+/g, ''), `Liens${LIENS.liens.map((l) => l.libelle).join('')}`.replace(/\s+/g, ''));
+  const corps = sansStyles(main);
+  // le fil d'Ariane vers Découvrir, comme les autres pages de la rubrique
+  assert.match(corps, /<p class="muted"><a href="\/">Accueil<\/a> › <a href="\/decouvrir\/">Découvrir<\/a><\/p>\s*<h1>Liens<\/h1>/);
+  // chaque lien sous son titre (h2, au niveau de l'encart)
+  assert.deepEqual([...corps.matchAll(/<h2 class="liens__titre" id="lien-([a-z]+)-titre"><a class="liens__lien" href="([^"]+)" rel="noopener">([^<]+)<\/a><\/h2>/g)].map((m) => [m[1], m[2], m[3]]),
+    LIENS.liens.map((l) => [l.id, l.url, l.libelle]));
+  for (const l of LIENS.liens) {
+    const element = corps.match(new RegExp(`<section class="liens__element" id="lien-${l.id}" aria-labelledby="lien-${l.id}-titre">([\\s\\S]*?)</section>`))?.[1] ?? '';
+    assert.equal(element.includes('class="prose liens__presentation"'), Boolean(l.presentation), `${l.id} : sa présentation, si elle est écrite`);
+  }
+  // l'encart : le titre fixe, l'annonce de la base ou le texte d'attente ; la zone modifiable sur le site de dev
+  assert.match(corps, /<section class="annonce" id="prochaine-rencontre" aria-labelledby="prochaine-rencontre-titre">\s*<h2 class="annonce__titre" id="prochaine-rencontre-titre">Notre prochaine rencontre IRL<\/h2>/);
+  const zone = corps.match(/<div class="prose annonce__texte"([^>]*)>([\s\S]*?)<\/div>\s*<\/section>/);
+  assert.ok(zone, 'la zone de l’annonce');
+  assert.match(zone[1], /data-annonce="prochaine-rencontre-irl"/);
+  assert.match(zone[1], /data-annonce-vide="Aucune rencontre annoncée pour le moment\."/);
+  const annonce = chargerAnnonce(db, LIENS.rencontre.annonce);
+  if (annonce.texte) assert.doesNotMatch(zone[2], /annonce__vide/);
+  else assert.equal(zone[2].trim(), '<p class="annonce__vide">Aucune rencontre annoncée pour le moment.</p>');
+  // le mode modification du site de dev se propose sur la page (components/edition/Edition.astro, hors de <main>)
+  assert.match(lire('decouvrir/liens').html, /<div data-edition data-api="\/api\/" data-page="decouvrir\/liens\/"/);
+  // rien d'autre : le titre, les libellés, les présentations, l'encart
+  const textes = ['Accueil', '›', 'Découvrir', LIENS.titre, ...LIENS.liens.map((l) => l.libelle), LIENS.rencontre.titre].map((t) => t.replace(/\s+/g, ''));
+  const reste = corps.replace(/<div class="prose liens__presentation"[\s\S]*?<\/div>/g, '').replace(/<div class="prose annonce__texte"[\s\S]*?<\/div>/, '')
+    .replace(/<[^>]+>/g, '').replace(/\s+/g, '');
+  assert.equal(reste, textes.join(''));
 });

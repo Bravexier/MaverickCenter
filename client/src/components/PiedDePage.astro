@@ -7,7 +7,8 @@ import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
 // Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, les pages qu'elle mentionne et celles
 // qui la mentionnent (rétroliens, lib/wiki.ts), puis ses sources (`sources` faux : les pages rendues par un gabarit de magie, de race ou de classe ne
-// citent pas leurs sources, demande du propriétaire ; `sources:` reste dans le front matter pour la traçabilité).
+// citent pas leurs sources, demande du propriétaire ; les pages de Découvrir et des Bases non plus, comme leurs anciennes pages de livre ; `sources:` reste
+// dans le front matter pour la traçabilité).
 interface Props {
   entry: WikiEntry;
   sources?: boolean;
