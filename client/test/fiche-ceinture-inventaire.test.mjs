@@ -212,7 +212,7 @@ test('ceinture : un bâton magique compte pour un, sans « Utiliser » ni « Rem
   const f = fiche({ inventaire: sac([baton.nom, 2]) });
   let r = apres(f, mettreALaCeinture(regles, f, 3, baton.nom));
   assert.deepEqual(comptes(r, baton.nom), [1, 1], '« Le max est 1 »');
-  assert.deepEqual(actionsDeLEmplacement(regles, r, 3), { quantite: 1, min: 1, max: 1, genre: 'baton', utiliser: false, remplir: false, duSac: 0 });
+  assert.deepEqual(actionsDeLEmplacement(regles, r, 3), { quantite: 1, min: 1, max: 1, genre: 'baton', utiliser: false, refus: null, remplir: false, duSac: 0 });
   assert.deepEqual(utiliserLObjet(regles, r, 3).ceinture, r.ceinture, '« Utiliser » masqué : rien ne change');
   assert.deepEqual(remplirLEmplacement(regles, r, 3).inventaire, r.inventaire);
   r = apres(r, rangerLEmplacement(regles, r, 3));
@@ -232,7 +232,7 @@ test('ceinture : un carquois arrive plein, « Remplir » ajoute 1 sans rien sort
   assert.equal(actionsDeLEmplacement(regles, r, 2).remplir, false, 'plein : « Remplir » masqué');
   r = apres(r, utiliserLObjet(regles, r, 2));
   assert.deepEqual(comptes(r, carquois), [1, n - 1]);
-  assert.deepEqual(actionsDeLEmplacement(regles, r, 2), { quantite: n - 1, min: 0, max: n, genre: 'contenant', utiliser: true, remplir: true, duSac: null });
+  assert.deepEqual(actionsDeLEmplacement(regles, r, 2), { quantite: n - 1, min: 0, max: n, genre: 'contenant', utiliser: true, refus: null, remplir: true, duSac: null });
   r = apres(r, remplirLEmplacement(regles, r, 2));
   assert.deepEqual(comptes(r, carquois), [1, n], '« ne fait qu’incrémenter de 1 » : le sac ne bouge pas');
   for (let i = 0; i < n; i += 1) r = apres(r, utiliserLObjet(regles, r, 2));
@@ -256,7 +256,7 @@ test('ceinture : un carquois se reconnaît aussi à son identifiant (renommé de
   const n = contenant.contenance;
   // la fiche garde l'ancien nom et l'identifiant : rangé, il rend un carquois au sac, pas autant de carquois que de projectiles
   const renomme = fiche({ ceinture: [{ rang: 1, nom: 'Carquois sous son ancien nom', quantite: n, ressource_id: contenant.ressource_id }] });
-  assert.deepEqual(actionsDeLEmplacement(regles, renomme, 1), { quantite: n, min: 0, max: n, genre: 'contenant', utiliser: true, remplir: false, duSac: null });
+  assert.deepEqual(actionsDeLEmplacement(regles, renomme, 1), { quantite: n, min: 0, max: n, genre: 'contenant', utiliser: true, refus: null, remplir: false, duSac: null });
   assert.deepEqual(rangerLEmplacement(regles, renomme, 1).inventaire.map((l) => [l.nom, l.quantite]), [['Carquois sous son ancien nom', 1]]);
   // au sac sous son ancien nom : assigné, il arrive plein, comme un carquois
   const auSac = fiche({ inventaire: [{ rang: 1, nom: 'Carquois sous son ancien nom', quantite: 2, ressource_id: contenant.ressource_id }] });
@@ -281,7 +281,7 @@ test('ceinture : un carquois se reconnaît aussi à son identifiant (renommé de
 test('ceinture : au-delà du maximum (une fiche importée), « Utiliser » retire 1, « Remplir » reste masqué', () => {
   const fiole = nomDe(potion.ressource_id);
   let f = fiche({ inventaire: sac([fiole, 5]), ceinture: [{ rang: 1, nom: fiole, quantite: 7, ressource_id: potion.ressource_id }] });
-  assert.deepEqual(actionsDeLEmplacement(regles, f, 1), { quantite: 7, min: 1, max: 3, genre: 'fiole', utiliser: true, remplir: false, duSac: 0 });
+  assert.deepEqual(actionsDeLEmplacement(regles, f, 1), { quantite: 7, min: 1, max: 3, genre: 'fiole', utiliser: true, refus: null, remplir: false, duSac: 0 });
   assert.deepEqual(remplirLEmplacement(regles, f, 1), { ceinture: f.ceinture, inventaire: f.inventaire });
   f = apres(f, utiliserLObjet(regles, f, 1));
   assert.deepEqual(comptes(f, fiole), [5, 6]);
@@ -295,7 +295,7 @@ test('ceinture : « Remplir » prend ce que le sac a, même moins que le maximum
   f = apres(f, remplirLEmplacement(regles, f, 1));
   assert.deepEqual(comptes(f, fiole), [0, 2]);
   assert.deepEqual(f.inventaire.map((l) => [l.rang, l.nom]), [[1, materiel.nom]], 'la ligne vidée disparaît');
-  assert.deepEqual(actionsDeLEmplacement(regles, f, 1), { quantite: 2, min: 1, max: 3, genre: 'fiole', utiliser: true, remplir: true, duSac: 0 });
+  assert.deepEqual(actionsDeLEmplacement(regles, f, 1), { quantite: 2, min: 1, max: 3, genre: 'fiole', utiliser: true, refus: null, remplir: true, duSac: 0 });
   assert.deepEqual(remplirLEmplacement(regles, f, 1), { ceinture: f.ceinture, inventaire: f.inventaire }, 'le sac n’en a plus : rien ne change');
   // un emplacement vide : ni action ni changement
   assert.equal(actionsDeLEmplacement(regles, f, 2), null);

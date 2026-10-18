@@ -1,6 +1,6 @@
 // Bonus de dégâts écrits dans les dons passifs (lib/degats-texte.mjs), lus pour la pastille des dégâts des armes de la fiche : entrées synthétiques qui
 // imitent les onglets des classes, puis tous les dons passifs de la base (chaque bonus « +N dégâts » d'arme est soit compté avec les armes qu'il vise,
-// soit rendu avec sa raison).
+// soit rendu avec sa raison ; « Pour chaque cran de solidité perdu » de Vieille Branche : compté sur toutes les armes, par cran perdu, décision R107).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { bonusDeDegatsEcrit, RAISONS, valeurAuNiveau } from '../src/lib/degats-texte.mjs';
@@ -17,6 +17,9 @@ test('comptés : la valeur et les armes visées écrites', () => {
     { base: 3, pas: 2, niveaux: 6, portee: { familles: ['arme-de-jet'] } });
   assert.equal(valeurAuNiveau({ base: 3, pas: 2, niveaux: 6 }, 12), 7);
   assert.equal(valeurAuNiveau({ valeur: 4 }, 12), 4);
+  // décision R107 (Vieille Branche) : « l'arme en question » = chaque arme portée, la valeur d'un cran perdu (lib/fiche-moteur.mjs#degatsDArme la multiplie)
+  assert.deepEqual(bonusDeDegatsEcrit('Pour chaque cran de solidité perdu, l’arme en question fera +4 Dégâts.'),
+    { valeur: 4, portee: { toutes: true }, parCranPerdu: true });
 });
 
 test('non comptés, avec leur raison ; pas un bonus d’arme : rien', () => {
@@ -26,6 +29,9 @@ test('non comptés, avec leur raison ; pas un bonus d’arme : rien', () => {
   assert.deepEqual(bonusDeDegatsEcrit('+8 dégâts, +1 à la vitesse, +4AP et +5% à tous les jets. Doit être dans l\'eau.'), { valeur: 8, raison: 'situation' });
   assert.deepEqual(bonusDeDegatsEcrit('Choisit une arme en particulier et gagne +6 dégâts avec cette arme.'), { valeur: 6, raison: 'au_choix' });
   assert.deepEqual(bonusDeDegatsEcrit('+4 dégâts avec les deux armes.'), { valeur: 4, raison: 'deux_armes' });
+  // R107 ne lit que l'écriture de Vieille Branche, le texte entier : une autre phrase « pour chaque cran » reste une situation
+  assert.deepEqual(bonusDeDegatsEcrit('Pour chaque cran de solidité perdu, l’arme en question fera +4 Dégâts si la cible est au sol.'), { valeur: 4, raison: 'situation' });
+  assert.deepEqual(bonusDeDegatsEcrit('Pour chaque cran de solidité perdu, +4 dégâts avec les épées.'), { valeur: 4, raison: 'situation' });
   assert.equal(bonusDeDegatsEcrit('+6 aux dégâts des sorts.'), null, 'les sorts');
   assert.equal(bonusDeDegatsEcrit('Les dégâts de Feu, Lumière et Vent augmentent de +10.'), null, 'une magie');
   assert.equal(bonusDeDegatsEcrit('+5% Arme légère, +5% Équilibre'), null, 'pas de dégâts');
@@ -51,4 +57,9 @@ test('tous les dons passifs de la base : chaque lecture a une valeur, et des arm
   assert.deepEqual(compte('capacites/archer-tir-parfait'), { valeur: 8, portee: { familles: ['arc'] } });
   assert.deepEqual(compte('capacites/guerrier-hyper-contact'), { valeur: 10, portee: { cac: true } });
   assert.deepEqual(compte('capacites/archer-coup-eloigne'), { valeur: 4, raison: 'situation' });
+  // décision R107 : Vieille Branche (Mage Vert, Mage jade), un bonus par cran perdu de chaque arme portée ; sa valeur (+4 à l'import) se modifie sur le
+  // site de dev, qui est la source des règles : une valeur entière positive, pas le 4 de l'import
+  const { valeur, ...vieilleBranche } = compte('capacites/mage-vert-vieille-branche');
+  assert.deepEqual(vieilleBranche, { portee: { toutes: true }, parCranPerdu: true });
+  assert.ok(Number.isInteger(valeur) && valeur > 0, `valeur ${valeur}`);
 });

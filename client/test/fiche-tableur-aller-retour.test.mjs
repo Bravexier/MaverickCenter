@@ -299,6 +299,20 @@ test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue
   assert.ok(f.sorts.length > ORDINATEUR.sorts.lignes.length && r.fiche.sorts.length === f.sorts.length);
   assert.ok(f.inventaire.length > 48 && r.fiche.inventaire.length === f.inventaire.length);
   assert.ok(r.cellules[ORDINATEUR.note].includes(MARQUEUR_DES_NOTES));
+  // l'AP et l'AM de l'armure sur chaque partie (décision R108), écrits dans la grille et non relus : 0 sur le torse cassé, la valeur de l'armure ailleurs
+  const parPartie = M.armureParPartie(regles, f);
+  assert.ok(parPartie.find((p) => p.id === 'torse').cassee && parPartie.some((p) => !p.cassee && p.ap > 0));
+  for (const p of parPartie) {
+    const colonne = ORDINATEUR.armure.colonnes[p.id];
+    assert.deepEqual([r.cellules[`${colonne}${ORDINATEUR.armure.lignes.ap}`], r.cellules[`${colonne}${ORDINATEUR.armure.lignes.am}`]], [p.ap, p.am], p.id);
+  }
+});
+
+test('bouclier cassé (décision R108) : 0 AP et 0 AM écrits, sa solidité « 0 / M » relue telle quelle, point fixe', async () => {
+  const f = { ...ficheRiche(), bouclier_solidite: 0 };
+  const r = await verifier(f, 'bouclier cassé');
+  assert.equal(r.fiche.bouclier_solidite, 0);
+  assert.deepEqual([r.cellules[ORDINATEUR.bouclier.ap], r.cellules[ORDINATEUR.bouclier.am]], [0, 0]);
 });
 
 test('bi-classe au Potentiel Illimité : relue telle quelle, point fixe', async () => {

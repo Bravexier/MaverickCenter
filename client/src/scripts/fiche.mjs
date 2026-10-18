@@ -35,7 +35,7 @@ import {
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
-  bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, valeurDeCompetenceBornee,
+  bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
 } from '../lib/fiche-moteur.mjs';
@@ -357,7 +357,7 @@ function construireMagies() {
  * sous le tableau, les dons qui laissent une résistance au choix (pas comptée).
  */
 function construireResistances() {
-  const { paliers, auChoix } = resistancesDe(regles, fiche);
+  const { paliers, auChoix, desactivee } = resistancesDe(regles, fiche);
   const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
   const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
     + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
@@ -369,9 +369,16 @@ function construireResistances() {
         return el('li', { class: `resistance resistance--${c.type}`, title: detail(c), style: magie && `--c: ${magie.couleur}; --c-texte: ${magie.texte}` }, c.nom);
       }))
       : el('span', { class: 'resistances__vide' }, '—')))));
+  // la ligne sous le tableau : les résistances au choix, et la magie que la Symbiose désactive (décision R111 : ses résistances et faiblesses ne
+  // comptent pas tant qu'elle l'est)
   const choix = $('resistances-choix');
-  choix.hidden = auChoix.length === 0;
-  choix.textContent = auChoix.length ? `Résistance laissée au choix, à noter à la main : ${auChoix.join(', ')}.` : '';
+  const lignes = [
+    auChoix.length ? `Résistance laissée au choix, à noter à la main : ${auChoix.join(', ')}.` : '',
+    desactivee ? `Posture Symbiose : la magie ${desactivee.nom} est désactivée, ses résistances et faiblesses ne comptent pas.` : '',
+  ].filter(Boolean);
+  choix.hidden = lignes.length === 0;
+  const texte = lignes.join(' ');
+  if (choix.textContent !== texte) choix.textContent = texte;
 }
 
 // ------------------------------------------------------------------ classes
@@ -663,8 +670,8 @@ function construireMaitrises() {
 // ------------------------------------------------------------------ sorts
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
 const RAISONS_DES_SORTS = {
-  situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
-  non_chiffre: 'valeur écrite non chiffrée', par_tour: 'valeur par tour', sans_chakra: 'le sort ne consomme pas de chakra',
+  situation: 'selon la situation', posture: 'dans une autre posture', des: 'pas de dés écrits',
+  non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra',
 };
 
 /**
@@ -2075,15 +2082,17 @@ function construireEquipement() {
 }
 
 // ------------------------------------------------------------------ défense et dégâts reçus (décision R98)
-/** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur). */
-const degatsEnCours = { entrants: '', type: 'estoc', reduits: false, parade: false, don: false };
+/** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur), la partie touchée comprise (R108). */
+const degatsEnCours = { entrants: '', type: 'estoc', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false };
 
 /**
  * La défense du personnage (demande du propriétaire du 2026-10-17 : « dans l'onglet Armure avoir la valeur totale d'AP et d'AM ») : l'AP et l'AM totaux
- * (defenseDe : base, accessoires, armure portée), le détail en infobulle, et ceux du bouclier à part (comptés en parade partielle) ; puis les dégâts
- * reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à cocher (dégâts
- * réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce calcul devra
- * inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en infobulle.
+ * (defenseDe : base, accessoires, armure portée) sur la partie touchée (décision R108 : « Partie touchée », le torse par défaut, l'armure d'une partie
+ * cassée ne compte pas), le détail en infobulle avec les parties cassées, et ceux du bouclier à part (comptés en parade partielle, plus du tout cassé) ;
+ * puis les dégâts reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à
+ * cocher (dégâts réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce
+ * calcul devra inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en
+ * infobulle.
  */
 function construireDefense() {
   // un réglage du calcul ne change pas la fiche : seules les synchronisations de ce bloc sont refaites
@@ -2104,20 +2113,44 @@ function construireDefense() {
     const type = el('select', { 'aria-label': 'Type de dégâts', onchange: (ev) => { degatsEnCours.type = ev.target.value; majDefense(); } },
       el('optgroup', { label: 'Physique' }, types.filter((t) => t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))),
       el('optgroup', { label: 'Magie' }, types.filter((t) => !t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))));
+    // la partie touchée (décision R108) : les six parties, le torse par défaut (« Une attaque "non ciblée" touche par défaut le torse ») ; seulement
+    // avec une armure (sans elle, toutes les parties se valent)
+    const parties = partiesDuCorps(regles);
+    const partie = el('select', {
+      'aria-label': 'Partie touchée',
+      title: 'Partie touchée : une attaque non ciblée touche le torse ; l’armure d’une partie cassée n’y compte pas (décision R108)',
+      onchange: (ev) => { degatsEnCours.partie = ev.target.value; majDefense(); },
+    }, parties.map((x) => option(x.id, x.nom, x.id === degatsEnCours.partie)));
     const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
     const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
     const paradeLabel = el('label', { class: 'fiche-coche', title: 'La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure' }, parade, 'Au bouclier');
     const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
     const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
     synchro(() => {
-      const d = defenseDe(regles, fiche, calcul.attributs);
+      const avecArmure = Boolean(partiesDeLArmure(regles, fiche));
+      const d = defenseDe(regles, fiche, calcul.attributs, { partie: degatsEnCours.partie });
+      // la partie touchée et les parties cassées (R108), avec une armure seulement
+      const parPartie = !avecArmure || !d.partie ? [] : [
+        `Partie touchée : ${d.partie.nom}${d.partie.cassee ? ' (cassée : l’armure n’y compte pas)' : ''}`,
+        ...(d.cassees.length ? [`Parties cassées (l’armure n’y compte pas, décision R108) : ${d.cassees.map((x) => x.nom).join(', ')}`] : []),
+      ];
       const detail = (x, nom) => [`${nom} : ${x.total}`, ...x.detail.map((l) => `${l.nom} : ${signe(l.valeur)}`),
-        ...(d.element ? [`Élément ${d.element.nom} : l’armure d’origine et son amélioration ne comptent plus (« Tous les bonus d’origine […] sont perdus »)`] : [])].join('\n');
+        ...(d.element ? [`Élément ${d.element.nom} : l’armure d’origine et son amélioration ne comptent plus (« Tous les bonus d’origine […] sont perdus »)`] : []),
+        ...parPartie].join('\n');
       ap.valeur.textContent = String(d.ap.total);
       am.valeur.textContent = String(d.am.total);
       infobulle(ap.li, detail(d.ap, 'Armure physique (AP)'));
       infobulle(am.li, detail(d.am, 'Armure magique (AM)'));
-      const texteBouclier = d.bouclier ? `Bouclier ${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM en parade partielle.` : '';
+      partie.hidden = !avecArmure;
+      for (const o of partie.options) {
+        const x = parties.find((y) => y.id === o.value);
+        const texte = `${x.nom}${d.cassees.some((y) => y.id === x.id) ? ' (cassée)' : ''}`;
+        if (o.textContent !== texte) o.textContent = texte;
+      }
+      poser(partie, d.partie?.id ?? degatsEnCours.partie);
+      const texteBouclier = !d.bouclier ? ''
+        : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
+          : `Bouclier ${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM en parade partielle.`;
       if (bouclier.textContent !== texteBouclier) bouclier.textContent = texteBouclier;
       bouclier.hidden = !d.bouclier;
       if (document.activeElement !== entrants) poser(entrants, degatsEnCours.entrants);
@@ -2137,7 +2170,7 @@ function construireDefense() {
       el('ul', { class: 'defense__tuiles', 'aria-label': 'Armure totale' }, ap.li, am.li),
       bouclier,
       el('div', { class: 'defense__degats', role: 'group', 'aria-label': 'Dégâts reçus' },
-        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type,
+        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type, partie,
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
         paradeLabel,
         el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
@@ -2305,7 +2338,9 @@ function construireCeinture() {
       infobulle(nom, ecartes.length ? ecartes.map((e) => `Non compté : « ${e.texte} » (${e.par.nom} a le même effet, plus fort)`).join('\n') : '');
       attribut(actions, 'hidden', !a);
       attribut(utiliser, 'hidden', !a?.utiliser);
-      infobulle(utiliser, !a ? '' : a.genre === 'contenant' ? 'Retire un projectile' : 'Retire un exemplaire (le dernier libère l’emplacement)');
+      // grisé en Symbiose, sauf un parchemin (décision R112 : actionsDeLEmplacement, `refus`)
+      attribut(utiliser, 'aria-disabled', a?.refus ? 'true' : null);
+      infobulle(utiliser, !a ? '' : a.refus ? a.refus : a.genre === 'contenant' ? 'Retire un projectile' : 'Retire un exemplaire (le dernier libère l’emplacement)');
       attribut(remplir, 'hidden', !a?.remplir);
       // le sac n'en a plus : le bouton reste, grisé, avec la raison
       attribut(remplir, 'aria-disabled', a?.duSac === 0 ? 'true' : null);

@@ -52,14 +52,14 @@ import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
-  partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
+  armureParPartie, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, casesDesDes, casesDuDon, cle, DONS, dispositionDe, EMPLACEMENTS_DU_MODELE, lettresDeColonne,
-  LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, MODELE_DE_LA_SOLIDITE, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE,
+  CASES_AP_AM_DE_L_ARMURE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, MODELE_DE_LA_SOLIDITE, ORDINATEUR, REMPLISSAGE_DE_ATTEINT,
   TITRE_DE_L_INVENTAIRE,
 } from './fiche-tableur-cases.mjs';
 import {
@@ -1022,6 +1022,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const avecLArme = (armeId) => (composition ? [...f.armes.filter((x) => x.rang !== rang), { ...ligne, arme_id: armeId }].sort((a, b) => a.rang - b.rang)
       // une composition absente : le fer (décision R49, armesApresChoix) ; écrite mais introuvable : rien
       : armesApresChoix(regles, { ...f, armes: [...f.armes.filter((x) => x.rang !== rang), ligne] }, rang, armeId));
+    // la solidité du moment écrite, pour les dégâts écrits : les crans perdus y comptent (décision R107, Vieille Branche)
+    const actuelleEcrite = solidite ? paireDe(cellule(cases.solidite))[0] : null;
+    const avecSaSolidite = (armes) => (actuelleEcrite === null ? armes
+      : armes.map((x) => (x.rang === rang ? { ...x, durabilite: durabiliteAEcrire(regles, x, Math.floor(actuelleEcrite)) } : x)));
     const departager = (candidats) => {
       // homonymes d'une famille à l'autre (« Étendard de guerre », « Crochet grappin ») : l'effet du catalogue écrit (son début, dans une case coupée
       // par la page), puis les dégâts écrits
@@ -1029,7 +1033,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const parEffet = candidats.filter((a) => a.effet && ecrites.some((l, k) => (k === ecrites.length - 1 ? ecritComme(l, lignesDe(a.effet)[0]) : cle(l) === cle(lignesDe(a.effet)[0]))));
       if (parEffet.length === 1) return parEffet;
       return (parEffet.length ? parEffet : candidats)
-        .filter((a) => degatsEcrits && ecritComme(degatsEcrits, degatsDArme(regles, { ...f, armes: avecLArme(a.id) }, rang)?.texte));
+        .filter((a) => degatsEcrits && ecritComme(degatsEcrits, degatsDArme(regles, { ...f, armes: avecSaSolidite(avecLArme(a.id)) }, rang)?.texte));
     };
     const arme = unSeul(retrouver(regles.armes, nom), quoi, nom, {
       departager, nom: (a) => `${a.nom} (${nomDe(regles.familles_armes, a.famille_id)})`, precisions: [composition, degatsEcrits].filter(Boolean).join(', '),
@@ -1175,14 +1179,19 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     else f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, entierDe(actuelle, soliditeDuBouclier, 'Bouclier, solidité'));
   }
 
-  // ---- zones de saisie que le site ne garde pas (modèle ordinateur) : leur valeur dans les notes
+  // ---- modèle ordinateur : l'AP et l'AM de l'armure sur chaque partie (grille AI22:AN23), calculés depuis la décision R108 (la valeur de l'armure, 0
+  // sur une partie cassée : armureParPartie), jamais relus ; une autre valeur que celle que calcule le site (un classeur fait à la main, ou d'avant R108)
+  // dans les notes ; puis les zones de saisie que le site ne garde pas
   if (!auto) {
     const valeurs = { ap: 'AP', am: 'AM' };
-    for (const s of SAISIES_SANS_PLACE) {
+    const parPartie = armureParPartie(regles, f);
+    for (const s of CASES_AP_AM_DE_L_ARMURE) {
       const t = texte(s.adresse);
       if (!t || t === s.modele) continue;
-      const quoi = s.quoi ?? `Armure, ${nomDe(regles.emplacements_armure, s.emplacement)} (${valeurs[s.valeur]})`;
-      perdu(`${quoi} : « ${t} » sans place sur le site`);
+      const quoi = `Armure, ${nomDe(regles.emplacements_armure, s.emplacement)} (${valeurs[s.valeur]})`;
+      const calcule = parPartie?.find((p) => p.id === s.emplacement)?.[s.valeur];
+      if (calcule === undefined) perdu(`${quoi} : « ${t} » sans armure reconnue`);
+      else if (t.trim() !== String(calcule) && cellule(s.adresse)?.valeur !== calcule) perdu(`${quoi} : « ${t} », le site calcule ${calcule} (décision R108)`);
     }
     const titre = texte(d.inventaire.titre);
     if (titre && cle(titre) !== cle(TITRE_DE_L_INVENTAIRE)) {
@@ -1262,8 +1271,9 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     }
   }
 
-  // ---- effet en plus des armes (modèle ordinateur) : les lignes du joueur, sans la part affichée de la fiche relue (lireEffetDArme) ; celles écrites sans
-  // « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page
+  // ---- effet en plus des armes (modèle ordinateur) : les lignes du joueur, sans la part affichée de la fiche relue (lireEffetDArme), ni une ligne « Deux
+  // armes : » ou « Non compté : » qu'elle n'écrit plus (seul le site les écrit : celle de Vieille Branche d'un classeur exporté avant la décision R107) ;
+  // celles écrites sans « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page
   for (const { rang, effet, arme, entier } of effetsEnPlus) {
     const ligne = f.armes.find((x) => x.rang === rang);
     if (!ligne) continue;

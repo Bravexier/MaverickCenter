@@ -707,11 +707,27 @@ export function mettreALaCeinture(regles, fiche, rang, nom) {
 }
 
 /**
- * Ce que l'emplacement `rang` montre et permet (décision R89), null s'il est vide : { quantite, min, max, genre, utiliser, remplir, duSac } ; min, max :
- * les bornes de la quantité (minimumDeLEmplacement, maximumDeLEmplacement : une fiche importée peut être au-delà) ; utiliser :
- * « Utiliser » s'affiche (« Masqué si bâton magique » ; « A zéro "Utiliser" disparait » pour un carquois) ; remplir : « Remplir » s'affiche (« Masqué si
- * quantité maximale atteinte ») ; duSac : ce que « Remplir » sortirait du sac (null pour un carquois ou un sac de projectiles, qui n'en sort rien ;
- * 0 quand le sac n'en a plus).
+ * Un parchemin (décision R112 : en Symbiose, « restent permis les parchemins ») : un objet du catalogue de genre « parchemin » (ressource.genre : les
+ * objets de la page « Livre / Parchemin », regles.ressources) — celui de la ligne (`ressource_id`), sinon un objet du catalogue de ce nom exact. Rien
+ * n'est deviné du nom seul : un objet hors du catalogue, ou de genre « matériel » (le « Parchemin vierge » de l'équipement d'inventaire, à écrire ou
+ * enchanter), n'en est pas un.
+ */
+export function estUnParchemin(regles, ligne) {
+  const ressources = regles.ressources ?? [];
+  const parId = ligne?.ressource_id ? ressources.find((r) => r.id === ligne.ressource_id) : null;
+  if (parId) return parId.genre === 'parchemin';
+  const nom = String(ligne?.nom ?? '').trim();
+  return Boolean(nom) && ressources.some((r) => r.nom === nom && r.genre === 'parchemin');
+}
+
+/**
+ * Ce que l'emplacement `rang` montre et permet (décision R89), null s'il est vide : { quantite, min, max, genre, utiliser, refus, remplir, duSac } ;
+ * min, max : les bornes de la quantité (minimumDeLEmplacement, maximumDeLEmplacement : une fiche importée peut être au-delà) ; utiliser :
+ * « Utiliser » s'affiche (« Masqué si bâton magique » ; « A zéro "Utiliser" disparait » pour un carquois) ; refus : pourquoi « Utiliser » est grisé, null
+ * s'il ne l'est pas — une posture qui interdit les objets (la ligne « Impossible d'utiliser les armes ou objets » de la Symbiose, `armesInutilisables`
+ * de postureDuMoment ; décision R112 : « on ne peut que lancer des sorts »), sauf pour un parchemin (estUnParchemin) ; remplir : « Remplir » s'affiche
+ * (« Masqué si quantité maximale atteinte » ; un geste de rangement, permis en Symbiose comme « Ranger ») ; duSac : ce que « Remplir » sortirait du sac
+ * (null pour un carquois ou un sac de projectiles, qui n'en sort rien ; 0 quand le sac n'en a plus).
  */
 export function actionsDeLEmplacement(regles, fiche, rang) {
   const x = ligneDeCeinture(fiche, rang);
@@ -719,12 +735,15 @@ export function actionsDeLEmplacement(regles, fiche, rang) {
   const genre = objetDeCeinture(regles, x.nom, x.ressource_id)?.genre ?? null;
   const quantite = entier(x.quantite);
   const max = maximumDeLEmplacement(regles, fiche, x.nom, x.ressource_id);
+  const utiliser = genre !== 'baton' && quantite > 0;
+  const posture = utiliser ? postureDuMoment(regles, fiche) : null;
   return {
     quantite,
     min: genre === 'contenant' ? 0 : 1,
     max,
     genre,
-    utiliser: genre !== 'baton' && quantite > 0,
+    utiliser,
+    refus: posture?.armesInutilisables && !estUnParchemin(regles, x) ? `Posture ${posture.posture.nom} : on ne peut que lancer des sorts` : null,
     remplir: quantite < max,
     duSac: genre === 'contenant' ? null : Math.max(0, Math.min(max - quantite, dansLeSac(fiche, x.nom))),
   };
@@ -733,11 +752,12 @@ export function actionsDeLEmplacement(regles, fiche, rang) {
 /**
  * « Utiliser » (décision R89 : « Utiliser, retire de 1 l'objet ») : la quantité de l'emplacement baisse de 1 et le sac ne change pas ; un objet utilisé
  * jusqu'au dernier quitte la ceinture (« saisie fioles bleue retirée de la ceinture »), un carquois ou un sac de projectiles y reste, vide (« Le carquois
- * reste si 0 »). Rien quand le bouton est masqué (actionsDeLEmplacement : un bâton magique, un carquois vide).
+ * reste si 0 »). Rien quand le bouton est masqué (actionsDeLEmplacement : un bâton magique, un carquois vide) ou grisé (`refus` : en Symbiose, un objet
+ * qui n'est pas un parchemin, décision R112).
  */
 export function utiliserLObjet(regles, fiche, rang) {
   const a = actionsDeLEmplacement(regles, fiche, rang);
-  if (!a?.utiliser) return inchangees(fiche);
+  if (!a?.utiliser || a.refus) return inchangees(fiche);
   const quantite = a.quantite - 1;
   const ligne = quantite > 0 || a.genre === 'contenant' ? { ...ligneDeCeinture(fiche, rang), quantite } : null;
   return { ceinture: avecLEmplacement(fiche, rang, ligne), inventaire: [...(fiche.inventaire ?? [])] };
@@ -1137,11 +1157,16 @@ export function quotaDeMaitrise(regles, fiche) {
  * (lib/resistance-texte.mjs ; race : don unique et don de l'ethnie, ligne de l'ethnie dans le tableau de dons ; classes : dons acquis). Une immunité
  * écrite (« Immunisé contre le poison ») met la cible en immunité quels que soient ses crans ; une résistance au choix n'est pas comptée et `auChoix`
  * nomme les dons qui en laissent une. Les accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
- * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom] }
+ * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
+ * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
+ * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
+ * ({ id, nom }), null sinon.
+ * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], desactivee }
  */
 export function resistancesDe(regles, fiche) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
+  const desactivee = postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null;
   const cibles = new Map();
   const auChoix = [];
   const compter = (effet, origine) => {
@@ -1161,7 +1186,9 @@ export function resistancesDe(regles, fiche) {
     if (resistances?.choix) auChoix.push(origine);
   };
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
-    for (const e of magie?.resistances ?? []) compter(e, `${magie.nom} (${role})`);
+    // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
+    if (!magie || magie.id === desactivee?.id) continue;
+    for (const e of magie.resistances ?? []) compter(e, `${magie.nom} (${role})`);
   }
   const race = donsDeRace(regles, fiche);
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id)?.nom ?? trouver(regles.races, fiche.race_id)?.nom;
@@ -1183,6 +1210,7 @@ export function resistancesDe(regles, fiche) {
   return {
     paliers: (regles.resistance_paliers ?? []).map((p) => ({ id: p.id, libelle: p.libelle, effet: p.effet, cibles: rangees.filter((c) => palierDe(c) === p.id) })),
     auChoix,
+    desactivee: desactivee ? { id: desactivee.id, nom: desactivee.nom } : null,
   };
 }
 
@@ -1719,6 +1747,68 @@ export function partiesApresReglage(regles, fiche, emplacementId, valeur) {
 }
 
 /**
+ * La partie du corps qu'une attaque touche quand elle n'est pas ciblée (décision R108 : « Une attaque "non ciblée" touche par défaut le torse, sauf
+ * indication contraire du MJ ») : un emplacement d'armure de la base.
+ */
+export const PARTIE_PAR_DEFAUT = 'torse';
+
+/**
+ * Les six parties du corps qu'une attaque peut toucher (décision R108 : « Chacune des 6 parties (Tête, torse, bras droit, bras gauche, jambe droite, jambe
+ * gauche) a sa propre solidité et son propre compte d'AP / AM en cas d'attaque précise à cet endroit ») : les emplacements d'armure de la base sans
+ * l'armure entière, dans leur ordre (casque, torse, bras, jambes). [{ id, nom }]
+ */
+export function partiesDuCorps(regles) {
+  return (regles.emplacements_armure ?? []).filter((e) => e.id !== ARMURE_ENTIERE).map((e) => ({ id: e.id, nom: e.nom }));
+}
+
+/**
+ * Ce que l'armure portée donne en AP et en AM (décision R98) : null sans armure ; sinon { element (l'armure élémentaire portée, ou null), ap, am, detail:
+ * { ap: [{ nom, valeur }], am: [{ nom, valeur }] } } — l'armure et son amélioration au niveau choisi (R77) ; avec un élément, l'armure élémentaire et son
+ * amélioration à la place (R99 : page « Pièces élémentaires », « Tous les bonus d'origine de l'arme ou de l'armure sont perdus, remplacés par les
+ * nouvelles propriétés magiques apportées par la pièce »). Une valeur nulle n'est pas dans le détail.
+ */
+function armurePortee(regles, fiche) {
+  const armure = trouver(regles.armures ?? [], fiche.armure_id);
+  if (!armure) return null;
+  const element = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+  const amelioration = (cible, id) => {
+    const a = trouver(regles.ameliorations ?? [], id);
+    return a?.cible === cible ? a : null;
+  };
+  const porte = element
+    ? [[`Élément : ${element.nom}`, element], [null, amelioration('armure_elementaire', fiche.armure_amelioration_elementaire_id)]]
+    : [[armure.nom, armure], [null, amelioration('armure', fiche.armure_amelioration_id)]];
+  const detail = { ap: [], am: [] };
+  for (const [nom, x] of porte) {
+    if (!x) continue;
+    const libelle = nom ?? `Amélioration niveau ${x.niveau}`;
+    const ap = entier(x.ap ?? x.bonus_ap);
+    const am = entier(x.am ?? x.bonus_am);
+    if (ap) detail.ap.push({ nom: libelle, valeur: ap });
+    if (am) detail.am.push({ nom: libelle, valeur: am });
+  }
+  const somme = (lignes) => lignes.reduce((t, l) => t + l.valeur, 0);
+  return { armure, element: element ?? null, ap: somme(detail.ap), am: somme(detail.am), detail };
+}
+
+/**
+ * L'AP et l'AM de l'armure portée sur chacune des six parties du corps (décision R108 : « Les AP . AM de chaque partie sont donc soit à 0 soit à la
+ * valeur de l'armure ») : null sans armure ; sinon [{ id, nom, cassee, ap, am }] dans l'ordre de partiesDuCorps — la valeur de l'armure portée
+ * (armurePortee : l'armure et son amélioration, ou l'élément et la sienne, R99), ou 0 quand la partie est cassée (solidité 0, partiesDeLArmure). Une
+ * armure à solidité unifiée (R95 : « Si un cran de solidité est perdu, c'est TOUTE l'armure qui est abimée ») n'a qu'une solidité : à 0, ses six
+ * parties sont cassées. Seule la part de l'armure : la base, les accessoires et la posture ne tombent jamais (« le reste demeure » : defenseDe).
+ */
+export function armureParPartie(regles, fiche) {
+  const portee = armurePortee(regles, fiche);
+  const a = partiesDeLArmure(regles, fiche);
+  if (!portee || !a) return null;
+  return partiesDuCorps(regles).map((p) => {
+    const cassee = Boolean((a.uni ? a.parties[0] : a.parties.find((x) => x.emplacement_id === p.id))?.cassee);
+    return { ...p, cassee, ap: cassee ? 0 : portee.ap, am: cassee ? 0 : portee.am };
+  });
+}
+
+/**
  * Les colonnes de l'armure de la fiche après le choix de `champ` (armure_id, armure_amelioration_id, armure_elementaire_id,
  * armure_amelioration_elementaire_id) à `valeur` : { armure_id, armure_amelioration_id, armure_elementaire_id, armure_amelioration_elementaire_id,
  * armure_parties }. Une autre armure est neuve (ses parties à leur maximum : comme une autre arme, R74) ; sans armure, ni amélioration ni élément ; une
@@ -1745,8 +1835,9 @@ export function armureApresChoix(regles, fiche, champ, valeur) {
 // +N ajoute l'AP (et l'AM) écrit au niveau choisi (R76). Le calcul de lib/armure-forge.mjs#forgerBouclier, que ce module ne peut pas importer
 // (src/scripts/armures.mjs l'importe ; test/fiche-bouclier-defense.test.mjs compare les deux sur toute la base). « Le Bouclier permet d'avoir des AP et AM en
 // plus de votre armure mais pour qu'ils soient comptés, ça implique une “Parade partielle” » (guide « Fiche de personnage : Armure/Défense/Bouclier ») :
-// ils ne s'ajoutent qu'aux dégâts reçus en parade partielle (degatsRecus). « Il est nécessaire d'avoir le score de Force ou plus pour le porter »
-// (règles de l'onglet) : `forceManquante`.
+// ils ne s'ajoutent qu'aux dégâts reçus en parade partielle (degatsRecus) ; cassé (solidité 0), plus du tout (décision R108 : « Bouclier à 0 : ses AP/AM
+// cessent-ils de compter, comme une arme cassée ? Oui »). « Il est nécessaire d'avoir le score de Force ou plus pour le porter » (règles de l'onglet) :
+// `forceManquante`.
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /** L'amélioration de bouclier `id` (cible 'bouclier') : { niveau, bonus_ap, bonus_am (ceux du niveau choisi), bonus_cran (cumulés de +1 à +N) } ; null sinon. */
@@ -1835,15 +1926,18 @@ export function typesDeDegats(regles) {
 }
 
 /**
- * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98) : { ap: { total, armure, detail }, am: { total, armure, detail },
- * element (l'armure élémentaire portée, ou null), bouclier ({ ap, am } du bouclier, comptés seulement en parade partielle ; null sans bouclier) }.
- * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier ») et
- * l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77) ; avec un élément, celles de l'armure élémentaire et de son amélioration
- * à la place (page « Pièces élémentaires » : « Tous les bonus d'origine de l'arme ou de l'armure sont perdus, remplacés par les nouvelles propriétés
- * magiques apportées par la pièce »). `armure` : la part de l'armure portée (que sa résistance aux dégâts physiques double : degatsRecus).
- * `detail` : [{ nom, valeur }].
+ * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98), sur la partie du corps `partie` (décision R108 ; un id de partiesDuCorps,
+ * le torse par défaut : « Une attaque "non ciblée" touche par défaut le torse ») : { ap: { total, armure, detail }, am: { total, armure, detail }, element
+ * (l'armure élémentaire portée, ou null), partie ({ id, nom, cassee }), cassees (les parties cassées : [{ id, nom }]), bouclier ({ nom, ap, am, cassee }
+ * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; null sans bouclier de la liste) }.
+ * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier »), la
+ * posture du moment (R100) et l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77) ; avec un élément, celles de l'armure
+ * élémentaire et de son amélioration à la place (R99 : armurePortee) —, sur une partie cassée 0 (R108 : « Seul l'AP et l'AM de l'armure tombe à zéro.
+ * quand elle est cassée. le reste demeure » : armureParPartie). `armure` : la part de l'armure portée sur cette partie (que sa résistance aux dégâts
+ * physiques double : degatsRecus). `detail` : [{ nom, valeur }].
  */
-export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche)) {
+export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche), options = {}) {
+  const partie = options.partie ?? PARTIE_PAR_DEFAUT;
   const ap = { detail: [], armure: 0 };
   const am = { detail: [], armure: 0 };
   const ajouter = (x, nom, valeur, armure = false) => {
@@ -1855,20 +1949,15 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche))
   ajouter(am, 'Base (race, ethnie, classes magiques)', attributs.am - attributs.amAccessoires);
   ajouter(ap, 'Accessoires', attributs.apAccessoires);
   ajouter(am, 'Accessoires', attributs.amAccessoires);
-  const armure = trouver(regles.armures ?? [], fiche.armure_id);
-  const element = armure ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
-  const amelioration = (cible, id) => {
-    const a = trouver(regles.ameliorations ?? [], id);
-    return a?.cible === cible ? a : null;
-  };
-  const porte = element
-    ? [[`Élément : ${element.nom}`, element], [null, amelioration('armure_elementaire', fiche.armure_amelioration_elementaire_id)]]
-    : armure ? [[armure.nom, armure], [null, amelioration('armure', fiche.armure_amelioration_id)]] : [];
-  for (const [nom, x] of porte) {
-    if (!x) continue;
-    const libelle = nom ?? `Amélioration niveau ${x.niveau}`;
-    ajouter(ap, libelle, entier(x.ap ?? x.bonus_ap), true);
-    ajouter(am, libelle, entier(x.am ?? x.bonus_am), true);
+  // la partie touchée (R108) : une partie inconnue, le torse
+  const parties = partiesDuCorps(regles);
+  const touchee = parties.find((p) => p.id === partie) ?? parties.find((p) => p.id === PARTIE_PAR_DEFAUT) ?? parties[0] ?? null;
+  const parPartie = armureParPartie(regles, fiche);
+  const etat = parPartie?.find((p) => p.id === touchee?.id);
+  const portee = armurePortee(regles, fiche);
+  if (portee && !etat?.cassee) {
+    for (const l of portee.detail.ap) ajouter(ap, l.nom, l.valeur, true);
+    for (const l of portee.detail.am) ajouter(am, l.nom, l.valeur, true);
   }
   // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique »
   const posture = postureDuMoment(regles, fiche);
@@ -1881,33 +1970,39 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche))
   return {
     ap: { total: total(ap), armure: ap.armure, detail: ap.detail },
     am: { total: total(am), armure: am.armure, detail: am.detail },
-    element: element ?? null,
-    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am } : null,
+    element: portee?.element ?? null,
+    partie: touchee ? { ...touchee, cassee: Boolean(etat?.cassee) } : null,
+    cassees: (parPartie ?? []).filter((p) => p.cassee).map((p) => ({ id: p.id, nom: p.nom })),
+    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee) } : null,
   };
 }
 
 /**
  * Les dégâts reçus (décision R98), d'après la formule du guide (« Les dégâts », « Formule des dégâts ») : « Dégâts finaux = [ ( dégâts de l'attaque × 2 si
  * réussite critique − armure de la cible ) ÷ 2 si défense partielle ÷ 2 si un don divise les dégâts ] × résistance ou faiblesse », « On arrondit à
- * l'inférieur ». `entrants` : les dégâts de l'attaque, critique compris (saisis) ; `type` : un type de typesDeDegats ; `reduits` : défense partielle (esquive
- * ou parade partielle) ; `parade` : la parade partielle se fait au bouclier, dont l'AP et l'AM s'ajoutent (« pour qu'ils soient comptés, ça implique une
- * “Parade partielle” »). L'armure : l'AP contre un dégât physique, l'AM contre une magie (« AP contre une arme, AM contre un sort »). Contre un dégât
- * physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital d'AP ») ;
- * réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4). Contre une magie,
- * le palier de résistance du personnage à cette magie multiplie le résultat (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). `don` :
- * l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans
- * type connu.
- * { recus, etapes: [{ texte, valeur }], armure, type }
+ * l'inférieur ». `entrants` : les dégâts de l'attaque, critique compris (saisis) ; `type` : un type de typesDeDegats ; `partie` : la partie du corps
+ * touchée (décision R108, le torse par défaut : defenseDe ; l'armure d'une partie cassée ne compte pas) ; `reduits` : défense partielle (esquive ou parade
+ * partielle) ; `parade` : la parade partielle se fait au bouclier, dont l'AP et l'AM s'ajoutent (« pour qu'ils soient comptés, ça implique une “Parade
+ * partielle” »), sauf cassé (R108). L'armure : l'AP contre un dégât physique, l'AM contre une magie (« AP contre une arme, AM contre un sort »). Contre
+ * un dégât physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital
+ * d'AP ») ; réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4) ; seulement
+ * la part de l'armure (rien sur une partie cassée). Contre une magie, le palier de résistance du personnage à cette magie multiplie le résultat
+ * (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
+ * joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans type connu.
+ * { recus, etapes: [{ texte, valeur }], armure, type, partie }
  */
-export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits = false, parade = false, don = false } = {}) {
+export function degatsRecus(regles, fiche, options = {}) {
+  const { entrants = 0, type = null, reduits = false, parade = false, don = false } = options;
+  const partie = options.partie ?? PARTIE_PAR_DEFAUT;
   const t = typesDeDegats(regles).find((x) => x.id === type);
   if (!t) return null;
-  const d = defenseDe(regles, fiche);
+  const d = defenseDe(regles, fiche, undefined, { partie });
   const brut = Math.max(0, entier(entrants));
   const etapes = [{ texte: 'Dégâts entrants', valeur: brut }];
   const x = t.physique ? d.ap : d.am;
   let facteur = 1;
-  if (t.physique && !d.element) {
+  // la résistance ou la faiblesse de l'armure ne porte que sur sa part : rien sur une partie cassée (décision R108)
+  if (t.physique && !d.element && !d.partie?.cassee) {
     const armure = trouver(regles.armures ?? [], fiche.armure_id);
     for (const r of (armure?.degats ?? []).filter((y) => y.type === t.id)) {
       const f = 2 * Math.max(1, entier(r.multiplicateur));
@@ -1915,13 +2010,17 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
     }
   }
   let armure = x.total - x.armure + x.armure * facteur;
-  const bouclier = reduits && parade && d.bouclier ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
+  const auBouclier = reduits && parade && d.bouclier;
+  const bouclier = auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
   armure += bouclier;
   const nomArmure = t.physique ? 'AP' : 'AM';
-  etapes.push({
-    texte: `− ${nomArmure}${facteur !== 1 ? ` (armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()})` : ''}${bouclier ? ` (bouclier +${bouclier})` : ''}`,
-    valeur: -armure,
-  });
+  const precisions = [
+    facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
+    d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
+    bouclier ? `bouclier +${bouclier}` : null,
+    auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
+  ].filter(Boolean);
+  etapes.push({ texte: `− ${nomArmure}${precisions.map((p) => ` (${p})`).join('')}`, valeur: -armure });
   let reste = Math.max(0, brut - armure);
   if (reduits) {
     reste /= 2;
@@ -1931,7 +2030,8 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
     reste /= 2;
     etapes.push({ texte: 'Don qui divise les dégâts : ÷ 2', valeur: reste });
   }
-  // la posture Symbiose : « Immunité à la magie de la symbiose » (décision R100)
+  // la posture Symbiose : « Immunité à la magie de la symbiose » (décision R100) ; le Potentiel Illimité n'a pas de magie de la symbiose, donc pas
+  // d'immunité (décision R109)
   const symbiose = t.physique ? null : postureDuMoment(regles, fiche)?.symbiose;
   if (symbiose?.immunite && symbiose.magie?.id === t.id) {
     reste = 0;
@@ -1944,7 +2044,7 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
       etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
     }
   }
-  return { recus: Math.floor(reste), etapes, armure, type: t };
+  return { recus: Math.floor(reste), etapes, armure, type: t, partie: d.partie };
 }
 
 /**
@@ -1954,8 +2054,11 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
  * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base ; avec un
  * élément, ceux de la composition et de l'amélioration sont remplacés : décision R99, rendus dans `nonComptes`, raison 'element') — et ceux des
  * dons passifs acquis qui visent cette arme (lib/degats-texte.mjs : sa famille, ses types de dégâts, les armes de corps à corps ou toutes les armes ; une
- * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don). Un bonus de don qui ne se compte pas (situation, au choix, armes visées non
- * écrites…) est rendu dans `nonComptes`. null sans arme. { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
+ * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don ; « Pour chaque cran de solidité perdu, l'arme en question fera +4 Dégâts »,
+ * Vieille Branche, `parCranPerdu` : décision R107, sa valeur × les crans perdus de CETTE arme, son maximum moins sa solidité du moment (durabiliteDArme),
+ * rien pour une arme intacte, sans solidité ou cassée — à 0, la pastille dit « Cassée » (R74) et sa valeur réparée est celle de l'arme sans cran perdu).
+ * Un bonus de don qui ne se compte pas (situation, au choix, armes visées non écrites…) est rendu dans `nonComptes`. null sans arme.
+ * { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
  */
 export function degatsDArme(regles, fiche, rang) {
   const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
@@ -1985,6 +2088,9 @@ export function degatsDArme(regles, fiche, rang) {
   ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
   const ameliorationElement = element ? trouver(regles.ameliorations, ligne.amelioration_elementaire_id) : null;
   ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
+  // décision R107 : les crans perdus de cette arme (maximum de l'arme forgée, R51, moins sa solidité du moment) ; une arme cassée n'en compte aucun (R74)
+  const solidite = durabiliteDArme(regles, fiche, rang);
+  const cransPerdus = solidite && !solidite.cassee ? solidite.max - solidite.actuelle : 0;
   for (const c of donsAcquis(regles, fiche)) {
     for (const d of c.dons) {
       const b = d.degats;
@@ -1998,7 +2104,8 @@ export function degatsDArme(regles, fiche, rang) {
       const p = b.portee;
       const vise = p.toutes || (p.cac && !estADistance(regles, arme)) || (p.types ?? []).some((t) => arme.types_degats?.includes(t))
         || ((p.familles ?? []).includes(arme.famille_id) && (!p.mains || arme.mains === p.mains));
-      if (vise) ajouter(nom, valeur);
+      if (vise && b.parCranPerdu) ajouter(`${nom} : ${cransPerdus} cran${cransPerdus > 1 ? 's' : ''} perdu${cransPerdus > 1 ? 's' : ''}`, valeur * cransPerdus);
+      else if (vise) ajouter(nom, valeur);
       else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
     }
   }
@@ -2021,12 +2128,16 @@ export function degatsDArme(regles, fiche, rang) {
 // besoin ») : les lignes du tableau des postures que lib/posture-texte.mjs sait lire (regles.postures[].chiffres), au rang de leur texte.
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** Le Potentiel Illimité : la magie de la symbiose n'en est pas une (question Q15 de docs/sql/a-valider.md : il n'a pas de sorts à lui). */
+/**
+ * Le Potentiel Illimité : la magie de la symbiose n'en est pas une (il n'a pas de sorts à lui) ; un personnage qui l'a en magie innée fait la symbiose
+ * sans magie (décision R109 : « Le cas du PI est particulier / Il a les bonus de dégâts, d'AM / Mais il n'a pas l'immunité à une magie ni même le devoir
+ * de choisir une magie » : postureDuMoment, `symbiose.potentielIllimite`).
+ */
 const POTENTIEL_ILLIMITE_INNE = 'magies/potentiel-illimite';
 
 /**
  * Les magies avec lesquelles le personnage peut faire la symbiose : sa magie innée et sa magie acquise (« Quand vous avez 2 magies, 1 de ces magies doit
- * être désactivée temporairement »), sans le Potentiel Illimité (Q15). [{ id, nom, couleur, texte }]
+ * être désactivée temporairement »), sans le Potentiel Illimité (R109 : il n'en choisit aucune). [{ id, nom, couleur, texte }]
  */
 export function magiesDeLaSymbiose(regles, fiche) {
   return [fiche.magie_innee_id, fiche.magie_acquise_id].filter((id) => id && id !== POTENTIEL_ILLIMITE_INNE)
@@ -2036,10 +2147,13 @@ export function magiesDeLaSymbiose(regles, fiche) {
 /**
  * La posture du moment et ce qu'elle change (décision R100), ou null sans posture :
  * { posture, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
- *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), aChoisir, degats (dégâts et soin des sorts de cette magie), am,
- *   immunite, inactive (l'autre magie) } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
+ *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), possibles, aChoisir, degats (dégâts et soin des sorts de cette
+ *   magie), am, immunite, inactive (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
  * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
  * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
+ * Magie innée Potentiel Illimité (décision R109) : `potentielIllimite` vrai, ni magie ni magie à choisir (`magie` null, `possibles` vide, `aChoisir`
+ * faux), le bonus de dégâts et de soin sur tous ses sorts, quelle que soit leur magie (sortDuMoment), l'AM de la posture, jamais l'immunité (degatsRecus :
+ * elle vise la magie de la symbiose, qu'il n'a pas).
  */
 export function postureDuMoment(regles, fiche) {
   const posture = trouver(regles.postures ?? [], fiche.posture_id);
@@ -2053,9 +2167,13 @@ export function postureDuMoment(regles, fiche) {
   };
   const symbiose = () => {
     if (!r.symbiose) {
-      const possibles = magiesDeLaSymbiose(regles, fiche);
+      // le Potentiel Illimité inné (R109) : pas de magie de la symbiose, ni à choisir
+      const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE_INNE;
+      const possibles = potentielIllimite ? [] : magiesDeLaSymbiose(regles, fiche);
       const magie = possibles.length === 1 ? possibles[0] : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
-      r.symbiose = { magie, possibles, aChoisir: possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false, inactive: null, uneSeule: false };
+      r.symbiose = {
+        magie, possibles, aChoisir: possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false, inactive: null, uneSeule: false, potentielIllimite,
+      };
     }
     return r.symbiose;
   };
@@ -2080,7 +2198,8 @@ export function postureDuMoment(regles, fiche) {
   }
   if (r.symbiose) {
     const s = r.symbiose;
-    // l'AM de la symbiose vaut dès la posture prise ; ses dégâts, son immunité et la magie désactivée attendent sa magie
+    // l'AM de la symbiose vaut dès la posture prise ; ses dégâts, son immunité et la magie désactivée attendent sa magie (le Potentiel Illimité, R109 :
+    // ses dégâts sur tous ses sorts, sans magie ni immunité)
     r.am += s.am;
     if (s.uneSeule && s.magie) s.inactive = s.possibles.find((m) => m.id !== s.magie.id) ?? null;
   }
@@ -2241,14 +2360,17 @@ function viseLeSort(vises, sort, fiche, portee) {
 
 /**
  * Les bonus de sorts écrits qui valent pour ce personnage (décision R102) : ceux des dons de classe débloqués, des dons de race de son ethnie et de
- * l'armure élémentaire portée, chacun avec son nom. [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveauDeClasse? }]
+ * l'armure élémentaire portée, chacun avec son nom. [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveau? }] — `niveau` :
+ * celui d'une progression « base + pas × ⌊niveau ÷ niveaux⌋ » (décision R110) : le niveau de la classe pour un don de classe (« 3+x […] x = +2/6
+ * niveaux »), sauf s'il écrit « niveaux globaux » ; le niveau global pour un don de race ou d'ethnie.
  */
 export function bonusDeSortsDuPersonnage(regles, fiche) {
   const bonus = [];
+  const global = niveauGlobal(regles, fiche.xp);
   for (const c of donsAcquis(regles, fiche)) {
-    for (const d of c.dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: `${d.nom} (${c.classe.nom})`, niveauDeClasse: c.niveau });
+    for (const d of c.dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: `${d.nom} (${c.classe.nom})`, niveau: b.niveauGlobal ? global : c.niveau });
   }
-  for (const d of donsDeRace(regles, fiche).dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: d.nom ?? d.etiquette ?? 'Don de race' });
+  for (const d of donsDeRace(regles, fiche).dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: d.nom ?? d.etiquette ?? 'Don de race', niveau: global });
   const element = fiche.armure_id ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
   for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)` });
   return bonus;
@@ -2284,15 +2406,16 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  *   sort de la Corruption se lance aussi avec la corruption : 2 × le coût réduit − « Coût corruption −N » du bâton (réponse « 2 × coût réduit − bâton »),
  *   au moins 1 (un coût, comme ci-dessus), sauf un coût écrit « 0 » (le sort ne consomme que son coût secondaire : « 50% corruption », R106) ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
- * - Dégâts (lireDegatsDeSort, pas une valeur « par tour » : question Q19) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
+ * - Dégâts (lireDegatsDeSort ; une valeur « par tour » comme une autre, ses bonus à chaque tour : décision R113, « 3d6 dégâts par tour » avec +5 →
+ *   « 3d6 + 5 dégâts par tour », la période écrite après la valeur) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
  *   de dégâts des sorts » ; un dé au maximum par accessoire (sauf en Offensif) ; les bonus fixes des dons, des accessoires (« Dégâts magie », sorts
- *   d'attaque), du bâton (« Dégâts sort »), de l'armure élémentaire, de la Symbiose (sa magie) ; en Offensif, le maximum (« 6 D6+4 devient alors 40 ») ;
+ *   d'attaque), du bâton (« Dégâts sort »), de l'armure élémentaire, de la Symbiose (sa magie ; tous les sorts du Potentiel Illimité : R109) ; en Offensif, le maximum (« 6 D6+4 devient alors 40 ») ;
  *   en Défensif, ÷ 2 (`diviseur`). Un accessoire maudit fait le contraire (R54) : un cran de moins, un dé au minimum, un bonus retiré ;
  * - Soin : les dés montés par Focus et par le don qui l'écrit, un dé de plus (accessoire « Augmente de 1d les soins magiques »), les bonus fixes des
  *   dons, du bâton (« Soin magique »), de la Symbiose ;
  * - Amplification : « +N dégâts » + « Sort qui amplifie dégâts » du bâton ; « +NAM », « +NAP » + « ampli am / ap » du bâton ; protection : « −N dégâts »
  *   (D/S/B) et « Bloque N dégâts » (effets) + « protection = +N dégâts bloqués » du bâton (réponse « Compter où c'est chiffré ») ;
- * - Un bonus qui viserait un D/S/B qui ne se lit pas (ou « par tour ») est dit non compté.
+ * - Un bonus qui viserait un D/S/B qui ne se lit pas est dit non compté.
  */
 export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche)) {
   const { posture, batons, ecrits, accessoires } = contexte;
@@ -2300,7 +2423,8 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const rappels = [];
   const symbiose = posture?.symbiose ?? null;
   const inactif = symbiose?.inactive && symbiose.inactive.id === sort.magie_id ? symbiose.inactive.nom : null;
-  const valeurEcrite = (b) => ('parNpm' in b ? b.parNpm * sort.niveau : 'pas' in b ? b.base + b.pas * Math.floor((b.niveauDeClasse ?? 0) / b.niveaux) : b.valeur);
+  // une progression (décision R110) : base + pas × ⌊niveau ÷ niveaux⌋, au niveau de classe ou global (bonusDeSortsDuPersonnage)
+  const valeurEcrite = (b) => ('parNpm' in b ? b.parNpm * sort.niveau : 'pas' in b ? b.base + b.pas * Math.floor((b.niveau ?? 0) / b.niveaux) : b.valeur);
   // les bonus écrits d'une cible qui visent ce sort ; ceux d'une situation ou d'une autre posture : non comptés (rangés sous leur colonne)
   const colonneDe = (cible) => (cible === 'cout' ? 'cout' : cible === 'portee' ? 'portee' : 'dsb');
   const ecritsPour = (cible) => {
@@ -2359,10 +2483,14 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const dsb = { texte: auNm.dsb ?? '', detail: [], diviseur: 1, lu: false };
   const effets = { texte: auNm.effets ?? '', detail: [] };
   const v = lireDegatsDeSort(auNm.dsb);
-  const deSymbiose = symbiose?.magie?.id === sort.magie_id && symbiose.degats ? [{ nom: `Posture Symbiose (${symbiose.magie.nom})`, valeur: symbiose.degats }] : [];
+  // la Symbiose : les sorts de sa magie ; le Potentiel Illimité, tous ses sorts, quelle que soit leur magie (décision R109)
+  const deSymbiose = !symbiose?.degats ? []
+    : symbiose.potentielIllimite ? [{ nom: 'Posture Symbiose (Potentiel Illimité)', valeur: symbiose.degats }]
+      : symbiose.magie?.id === sort.magie_id ? [{ nom: `Posture Symbiose (${symbiose.magie.nom})`, valeur: symbiose.degats }] : [];
   const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose];
   const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose];
-  if (v && !v.parTour) {
+  // une valeur par tour reçoit ses bonus à chaque tour, comme une autre (décision R113)
+  if (v) {
     dsb.lu = true;
     const x = { ...v };
     // crans de dé : Focus (dégâts et soins), l'accessoire (dégâts), un don qui l'écrit (« Augmente d'un cran les dés des soins magiques »)
@@ -2423,10 +2551,9 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     }
   }
   if (!dsb.lu) {
-    // les bonus qui viseraient ce sort, quand sa valeur ne se lit pas (ou se compte par tour) : dits non comptés
-    const raison = v?.parTour ? 'par_tour' : 'non_chiffre';
-    if (sort.attaque || v?.nature === 'degats') pasCompte(fixesDesDegats(), raison, 'dsb');
-    if (sort.types?.includes('soin') || v?.nature === 'soin') pasCompte(fixesDuSoin(), raison, 'dsb');
+    // les bonus qui viseraient ce sort, quand sa valeur ne se lit pas : dits non comptés
+    if (sort.attaque || v?.nature === 'degats') pasCompte(fixesDesDegats(), 'non_chiffre', 'dsb');
+    if (sort.types?.includes('soin') || v?.nature === 'soin') pasCompte(fixesDuSoin(), 'non_chiffre', 'dsb');
   }
   // rappels : ce que les bâtons ne chiffrent pas ici (invocation, malus d'esquive), et un sort de protection que la fiche ne sait pas chiffrer
   for (const r of batons.rappels) rappels.push({ nom: r.baton.nom, texte: r.texte });
