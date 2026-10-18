@@ -169,10 +169,33 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
   const corr = regles.sorts.find((s) => s.magie_id === 'magies/magie-de-la-corruption' && /^\d+$/.test(s.cout) && Number(s.cout) >= 10);
   const c = M.sortDuMoment(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...ceinture('Bâton magique Corruption, niveau 2') }), corr, auNm(corr)).cout;
   assert.deepEqual([c.texte, c.corruption.valeur], [String(Number(corr.cout) - 2), Math.max(1, 2 * (Number(corr.cout) - 2) - 4)]);
-  // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée)
-  const choix = regles.sorts.find((s) => s.cout === 'Variable');
-  const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
-  assert.deepEqual([v.cout.texte, v.nonComptes.map((n) => [n.raison, n.cible])], ['Variable', [['non_chiffre', 'cout']]]);
+  // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée) : « X » (au choix), « N/A » d'un coût qui n'est pas un pourcentage
+  // du chakra maximum (« Aléatoire » : décision R106)
+  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire === 'Aléatoire')];
+  for (const choix of nonChiffres) {
+    assert.ok(choix, 'un sort au coût non chiffré');
+    const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
+    assert.deepEqual([v.cout.texte, v.cout.calcule, v.nonComptes.map((n) => [n.raison, n.cible])], [choix.cout, null, [['non_chiffre', 'cout']]], choix.id);
+  }
+});
+
+test('sortDuMoment (R106) : « N/A » et « 25% Chakra maximum » : ce pourcentage du chakra maximum du personnage, arrondi à l’inférieur, puis réduit (R102)', () => {
+  const pluie = regles.sorts.find((s) => s.cout === 'N/A' && /^\d+% Chakra maximum$/.test(s.cout_secondaire ?? ''));
+  assert.ok(pluie, 'Pluie de Chakra');
+  const pourcent = Number(/^(\d+)%/.exec(pluie.cout_secondaire)[1]);
+  let arrondis = 0;
+  for (const gains of [0, 1, 2, 3, 7, 30]) {
+    const f = fiche({ gains_chakra: gains });
+    const chakra = M.attributsDe(regles, f).chakra;
+    const c = M.sortDuMoment(regles, f, pluie, auNm(pluie)).cout;
+    assert.deepEqual(c.calcule, { pourcent, chakra, valeur: Math.floor((chakra * pourcent) / 100) }, `chakra ${chakra}`);
+    assert.equal(c.texte, String(c.calcule.valeur));
+    if ((chakra * pourcent) % 100) arrondis += 1;
+  }
+  assert.ok(arrondis > 0, 'un chakra dont le pourcentage tombe entre deux entiers');
+  // le bâton de l'Arcane (« Coût sort −3 ») le réduit comme les autres, jamais moins de 1
+  const c = M.sortDuMoment(regles, fiche({ gains_chakra: 30, ...ceinture('Bâton magique Arcane, niveau 3') }), pluie, auNm(pluie)).cout;
+  assert.deepEqual([c.texte, c.detail.map((d) => d.valeur)], [String(Math.max(1, c.calcule.valeur - 3)), [-3]]);
 });
 
 test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), portée (accessoire, dons, bâton), amplifications chiffrées des bâtons', () => {

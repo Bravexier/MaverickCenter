@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R105, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R106, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -120,66 +120,58 @@ Relevées par la relecture complète de la base ([`relecture-2026-10-15.md`](rel
 | B13 | **Calme** n'a pas de description ; le guide décrit à sa place « *Prouesse (Volonté) :* Faire preuve de sang-froid dans les situations dangereuses. » (R4 ne retient que le nom). Cette phrase décrit-elle Calme ? | Pas de description |
 | B7 | Une magie a-t-elle **au plus une altération d'état liée** ? (C'est le cas des 14 magies aujourd'hui ; la source lie une altération à ses magies, jamais l'inverse) | La fiche suppose une seule altération par magie |
 
-## 5. Coût secondaire des sorts (décision R105)
+## 5. Coût secondaire des sorts (décisions R105, R106)
 
-La décision R105 sépare le coût d'un sort en deux colonnes : **« Coût »** (le chakra seul, un nombre, ou « X ») et **« Coût secondaire »** (âmes, Sang, ou un
-autre second coût). La migration `0063-cout-secondaire` a réparti les 38 coûts dont l'écriture se coupe d'elle-même en un chakra et un second coût
-(« 3 + 1 Sang » → 3 et « 1 Sang », « 10 (–1/NM) + 2 âmes » → « 10 (–1/NM) » et « 2 âmes », « 50 + 20% PV » → 50 et « 20% PV », « 5 + 10% santé » → 5
-et « 10% santé ») ; 8 d'entre eux dépendent pourtant d'une lecture à confirmer (S0 : le « 0 » de 4 sorts ; S1 : l'expression de NM de 4 autres).
-Les 26 sorts du second tableau **gardent l'écriture du classeur** dans « Coût » jusqu'à ta réponse (registre : `data/migrations/0063-cout-secondaire.json`,
-`en_attente`). La « proposition » n'est qu'une lecture possible, rien n'est appliqué. Aujourd'hui, la partie Arcane de R105 (« Canalisé ») ne s'applique
-encore à aucun sort.
+La décision R105 sépare le coût d'un sort en deux champs : **« Coût »** (le chakra seul) et **« Coût secondaire »** (âmes, Sang, ou un autre second coût). La
+migration `0063-cout-secondaire` a réparti les 38 coûts dont l'écriture se coupe d'elle-même (« 3 + 1 Sang » → 3 et « 1 Sang ») ; tu as tranché les 26 autres
+le 2026-10-18 (décision R106, migration `0065-couts-des-sorts-tranches`, registre `.json` : chaque réponse telle qu'écrite, et l'orthographe corrigée).
+Le coût secondaire n'a plus de colonne dans les tableaux de sorts : il s'écrit sous le coût, dans sa case, en plus discret, comme sur la fiche.
 
 **Questions générales**
 
 | # | Question | Ce que fait la base en attendant |
 | --- | --- | --- |
-| S0 | Un sort qui ne consomme **que** des âmes ou du Sang (Marquage, Annulation : « 2 Sang » ; Déflagration sanguine : « X Sang » ; Corruption d'âme : « 2 âmes ») : son coût est-il **« 0 »** ou une case vide ? Avec « 0 », ces 4 sorts comptent comme coûtant 0 chakra (`cout_chakra` passe de vide à 0) | « 0 » (la lecture de « le cout n'aura qu'une valeur chiffrée ») et le second coût dans « Coût secondaire » |
+| S0 | Un sort qui ne consomme **que** des âmes, du Sang ou de la corruption : son coût est-il « 0 » ? | **Tranché** (R106) : « 0 » ; tes réponses S24, S25, S27 et S28 l'écrivent (« Cout 0 »), comme 0063 le faisait pour Marquage, Annulation, Déflagration sanguine et Corruption d'âme |
 | S1 | L'**expression de NM** du chakra (« 55 (-5/NM) », « 10 (–1/NM) + 2 âmes » : Détection de vie, Détection de la mort, Réanimation, Résurrection Noire) reste-t-elle dans « Coût » ? Et le « Coût secondaire » peut-il en écrire une (aucun sort aujourd'hui) ? | Oui dans « Coût » : elle dit ce que devient le chakra par NM ; le site de dev refuse une expression de NM dans « Coût secondaire » |
-| S2 | L'« Explication » de l'Arcane appelle ces coûts « x/tour » (« Chaque sort qui possède un coût en chakra "x/tour" ne possède pas de limite de tour ») et définit « XxN/tour » : X chakra par application (N) et par tour. Les coûts de l'Arcane s'écrivent « XxN/tour » (S3 à S5), « … santé/tour » (S7, S8) ou « …/heure » (S6) : lesquels deviennent « Canalisé » ? Et l'**explication** de l'Arcane : la réécrire ainsi (proposition, à corriger) ? | L'explication actuelle est gardée |
+| S2 | La canalisation de l'Arcane : « Canalisé » est remplacé par son type, « Par tour », « Par tour et par cible », « Par jour » (**tranché**, R106). Reste l'**explication** de l'Arcane, « à revoir » (R105) : elle parle encore de la mention « XxN/tour », que les tableaux n'écrivent plus. La réécrire ainsi (proposition, à corriger) ? | L'explication actuelle est gardée |
+| S29 | Trois lectures de tes réponses, à confirmer : **a)** Inhalation magique et Voile Chakratique (S7, S8) : ta réponse ne donne que le coût secondaire (« 5% santé par tour », « 15% santé par tour ») ; leur « Coût » est « 0 », comme les sorts qui ne consomment que des âmes ou du Sang. **b)** Vision magique (S6) : le classeur écrit « 8xN/**heure** », ta réponse dit « Par **jour** » ; la base écrit « Par jour ». **c)** Pluie de Chakra (S13) sur la fiche : « 25% Chakra maximum » arrondi à l'inférieur (comme la barrière qu'on tire du chakra), puis réduit par les dons et le bâton comme les autres coûts (R102 ; jamais moins de 1) | Les trois lectures sont appliquées |
 
 Proposition pour l'explication de l'Arcane (S2), qui remplacerait son premier et son dernier paragraphe (« Perdre son sort », le jet de concentration
-quand une attaque est encaissée, ne change pas : à corriger si « sans relancer de jet » le visait aussi). Elle retire la phrase qui définit « XxN/tour » :
-seulement si S3 à S5 sont tranchées dans ce sens. Elle parle d'un coût en chakra : un coût en santé (S7, S8) n'y entre pas tel quel.
+quand une attaque est encaissée, ne change pas : à corriger si « sans relancer de jet » le visait aussi). Elle retire la phrase qui définit « XxN/tour ».
 
-> Chaque sort dont le coût secondaire est « Canalisé » ne possède pas de limite de tour : il coûte son coût en chakra à chaque tour où il est actif.
-> Le lanceur doit faire un jet de magie pour réussir son sort (normal jusque-là) ; une fois le sort lancé, il est maintenu sans relancer de jet, tant que
-> le lanceur le décide ou qu'il perd sa concentration. Il est possible de cumuler plusieurs fois le même sort ou de placer le même sort sur différentes
-> cibles : chaque application coûte son coût à chaque tour, tout se cumule.
-> Exemple : j'ai posé sur 3 personnes différentes un sort canalisé qui coûte 3. Donc en 1 tour je vais consommer 9 chakra.
+> Chaque sort dont le coût secondaire est « Par tour » (ou « Par tour et par cible ») ne possède pas de limite de tour : il coûte son coût en chakra à
+> chaque tour où il est actif. Le lanceur doit faire un jet de magie pour réussir son sort (normal jusque-là) ; une fois le sort lancé, il est maintenu
+> sans relancer de jet, tant que le lanceur le décide ou qu'il perd sa concentration. Il est possible de cumuler plusieurs fois le même sort ou de placer
+> le même sort sur différentes cibles : « Par tour et par cible », chaque cible coûte son coût à chaque tour, tout se cumule.
+> Exemple : j'ai posé sur 3 personnes différentes un sort qui coûte 3 par tour et par cible. Donc en 1 tour je vais consommer 9 chakra.
 
-Option : un mot-clé du glossaire « Canalisé » portant cette règle, pour que la case « Coût secondaire » l'affiche en infobulle.
+**Sort par sort : ce qui est appliqué** (décision R106 ; « Coût » / « Coût secondaire »)
 
-**Sort par sort** (coût écrit dans le classeur, ce que la ligne écrit ailleurs, proposition « Coût » / « Coût secondaire »). Deux limites des
-propositions : un multiplicateur (« par taille », « ×NP de la créature ») dans « Coût secondaire » étend cette colonne, que R105 définit comme un second
-coût ; et l'option « X / — » efface un taux (« 2=1 dégâts », « 2/taille », « 10/Clones »…) que la ligne n'écrit nulle part ailleurs — il faudrait alors
-le garder dans les effets.
-
-| # | Magie › sort | Coût écrit | Ce qui pose question | Proposition |
-| --- | --- | --- | --- | --- |
-| S3 | Arcane › Rune Arcane | 3xN/tour | Le « ×N » (une application par cible) est-il gardé, ou dit par l'explication (« tout se cumule ») ? | 3 / Canalisé |
-| S4 | Arcane › Rune Arcane multiple | 10xN/tour | idem (portée « Tous les alliés ») | 10 / Canalisé |
-| S5 | Arcane › Peau de Chakra | 13xN/tour | idem | 13 / Canalisé |
-| S6 | Arcane › Vision magique | 8xN/heure | Par **heure**, pas par tour | 8 / Canalisé (par heure) ? |
-| S7 | Arcane › Inhalation magique | 5% santé/tour | Le coût n'est pas du chakra (le sort en rend : D/S/B « +5% de chakra ») ; « Canalisé » est défini par un coût en chakra par tour | 0 / Canalisé, 5% santé ? |
-| S8 | Arcane › Voile Chakratique | 15% santé/tour | idem ; l'effet écrit « Le coût en santé passe à 10% si 3NM » | 0 / Canalisé, 15% santé ? |
-| S9 | Glace › Exécution froide | 20/tour | Pas de l'Arcane (R105 : « Pour ma magie Arcane ») ; l'effet écrit « Sort à maintenir pendant 4 tours, au bout du 5ème tour, la victime meurt », alors que l'explication proposée dit « pas de limite de tour » ; la remarque parle de la concentration | 20 / Canalisé ? (ou 20 / « par tour », hors de la règle de l'Arcane) |
-| S10 | Arcane › Charge d'énergie | 2=1 dégâts | Chakra au choix : 2 chakra pour 1 dégât, taux écrit seulement ici (D/S/B « +X dégâts magiques » ; remarque « 30 chakra maximum en 1 fois ») | X / — (le taux à garder ailleurs) ? |
-| S11 | Arcane › Souffle magique | Choix | Chakra donné au choix (D/S/B « Donne X Chakra ») | X / — |
-| S12 | Arcane › Échange | Choix | Chakra échangé contre de la barrière (« 2CK = 1BA ») | X / — |
-| S13 | Arcane › Pluie de Chakra | 25% | 25 % de quoi (chakra maximum du lanceur ?) ; les alliés reçoivent 25 % de leur chakra | 25% / — ? |
-| S14 | Arcane › Forge-Magie | 2/taille | Un coût par taille de l'arme créée (remarque : caillou taille 1, dague taille 2) | 2 / par taille ? ou X / — |
-| S15 | Glace › Sculpteur glacé | 3 / Taille | idem (« Une taille = une épée en taille ») | 3 / par taille ? ou X / — |
-| S16 | Vide › Télékinésie | 4/taille | idem (remarque : taille selon le niveau de magie) | 4 / par taille ? ou X / — |
-| S17 | Vide › Lien mental | 3/perso | Par personne reliée | 3 / par personne ? ou X / — |
-| S18 | Espace/Temps › Image diffuse | 10/Clones | Par clone (« Invoque 1 ou 2 clones (+1/NM) ») | 10 / par clone ? ou X / — |
-| S19 | Terre › Sable changeant | 10/3x3 | Par zone de 3x3 (Zone « Variable ») | 10 / par 3x3 ? ou X / — |
-| S20 | Terre › Appel aux Golems | 6 (xNP de créature) | Multiplié par le NP de la créature, mais la remarque écrit « Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l'invoquer » (calcul d'illustration, pas écrit dans la source : ×NP donnerait 6, 12, 18, le doublement 6, 12, 24) | 6 / ×NP de la créature ? |
-| S21 | Ombre › Manteau noir | 7 (xNP de créature) | ×NP de la créature (sacrifie l'invocation de l'ombre) | 7 / ×NP de la créature ? |
-| S22 | Ombre › Marionnette de l'ombre | 5 + 10% BA (xNPM de créature) | Le ×NPM vaut-il pour le chakra, la barrière, ou les deux ? | 5 / 10% BA, ×NPM de la créature ? |
-| S23 | Nécromancie › Animation de mort | 5 + 1 âme (xNPM de créature) | La remarque donne un autre barème : « Niveau 1 : 3 CK + 1 âme / Niveau 2 : 6 CK + 2 âmes / Niveau 3 : 12 CK + 3 âmes / Niveau 4 : 24 CK + 4 âmes / Niveau 5 : 48 CK + 5 âmes » (5 ou 3 au niveau 1 ?) | 5 / 1 âme, ×NPM de la créature ? |
-| S24 | Nécromancie › Forces des âmes | 1 âme pour +3 dégâts | Âmes au choix ; l'effet écrit « grâce à deux âmes » et « (Maxi 5 âmes d'un coup) » ; D/S/B « 3 dégâts/1 âme » | 0 / X âmes ? |
-| S25 | Sang › Perfusion | Variable | Du Sang contre de la santé, ou l'inverse (D/S/B « 4 (+1/NM) soin pour 1 sang ») | 0 / X Sang ? |
-| S26 | Vide › Métronome | Variable | Lance un sort aléatoire : son coût, ou rien ? | X / — ? |
-| S27 | Corruption › Pluie huileuse | 50% CR max | Que veut dire « CR » dans ce coût ? R103 dit seulement que « Si CR » (dans les effets) veut dire « si le sort est lancé en utilisant la corruption » ; un coût en corruption (la moitié de la réserve maximale ?), pas en chakra ? | 0 / 50% CR max ? |
-| S28 | Corruption › Sapeur | x CR | idem ; l'effet écrit « Donne autant de corruption à la cible que la réserve actuelle de corruption. » | 0 / X CR ? |
+| # | Magie › sort | Coût écrit dans le classeur | Coût / Coût secondaire |
+| --- | --- | --- | --- |
+| S3 | Arcane › Rune Arcane | 3xN/tour | « 3 » / « Par tour et par cible » |
+| S4 | Arcane › Rune Arcane multiple | 10xN/tour | « 10 » / « Par tour et par cible » |
+| S5 | Arcane › Peau de Chakra | 13xN/tour | « 13 » / « Par tour et par cible » |
+| S6 | Arcane › Vision magique | 8xN/heure | « 8 » / « Par jour » |
+| S7 | Arcane › Inhalation magique | 5% santé/tour | « 0 » / « 5% santé par tour » |
+| S8 | Arcane › Voile Chakratique | 15% santé/tour | « 0 » / « 15% santé par tour » |
+| S9 | Glace › Exécution froide | 20/tour | « 20 » / « Par tour » |
+| S10 | Arcane › Charge d'énergie | 2=1 dégâts | « 2 » / « Pour 1 dégât supplémentaire » |
+| S11 | Arcane › Souffle magique | Choix | « X » / — |
+| S12 | Arcane › Échange | Choix | « 2 » / « Pour 1 barrière » |
+| S13 | Arcane › Pluie de Chakra | 25% | « N/A » / « 25% Chakra maximum » |
+| S14 | Arcane › Forge-Magie | 2/taille | « 2 » / « Par taille de l'arme créée » |
+| S15 | Glace › Sculpteur glacé | 3 / Taille | « 3 » / « Par taille créée » |
+| S16 | Vide › Télékinésie | 4/taille | « 4 » / « Par taille créée » |
+| S17 | Vide › Lien mental | 3/perso | « 3 » / « Par personne » |
+| S18 | Espace/Temps › Image diffuse | 10/Clones | « 10 » / « Par clone » |
+| S19 | Terre › Sable changeant | 10/3x3 | « 10 » / « Par zone de 3x3 » |
+| S20 | Terre › Appel aux Golems | 6 (xNP de créature) | « 6 » / « Par NPM de la créature invoquée » |
+| S21 | Ombre › Manteau noir | 7 (xNP de créature) | « 7 » / « Par NPM de la créature sacrifiée » |
+| S22 | Ombre › Marionnette de l'ombre | 5 + 10% BA (xNPM de créature) | « 5 » / « Par NPM de la créature invoquée. +10% Barrière » |
+| S23 | Nécromancie › Animation de mort | 5 + 1 âme (xNPM de créature) | « 5 » / « Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée. » |
+| S24 | Nécromancie › Forces des âmes | 1 âme pour +3 dégâts | « 0 » / « 1 à 5 âmes » |
+| S25 | Sang › Perfusion | Variable | « 0 » / « X Sang » |
+| S26 | Vide › Métronome | Variable | « N/A » / « Aléatoire » |
+| S27 | Corruption › Pluie huileuse | 50% CR max | « 0 » / « 50% corruption » |
+| S28 | Corruption › Sapeur | x CR | « 0 » / « X Corruption » |

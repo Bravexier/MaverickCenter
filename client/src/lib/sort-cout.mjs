@@ -25,11 +25,17 @@ export function repartirLeCout(cout) {
 }
 
 /**
- * Les deux coûts écrits en une case, comme le classeur et les fiches en tableur les écrivent (« 3 + 1 Sang ») : le coût secondaire seul quand le sort ne
- * consomme pas de chakra (« 0 » et « 2 Sang » : « 2 Sang »). L'inverse de repartirLeCout.
+ * Les deux coûts écrits en une case, comme le classeur et les fiches en tableur les écrivent : un second coût chiffré après « + » (« 3 + 1 Sang », « 50 +
+ * 20% PV ») ; une précision (décision R106 : « Par tour et par cible », « Pour 1 barrière », « Par NPM de la créature invoquée ») à la suite du coût, sa
+ * première lettre en minuscule (« 3 par tour et par cible ») ; le coût secondaire seul quand le sort n'a pas de coût en chakra (« 0 » et « 2 Sang » :
+ * « 2 Sang » ; « N/A » et « Aléatoire » : « Aléatoire »). L'inverse de repartirLeCout pour les écritures qu'elle répartit.
  */
-export const coutEnUneCase = (cout, secondaire) =>
-  !secondaire ? String(cout ?? '') : String(cout ?? '') === '0' || String(cout ?? '') === '' ? secondaire : `${cout} + ${secondaire}`;
+export function coutEnUneCase(cout, secondaire) {
+  const c = String(cout ?? '');
+  if (!secondaire) return c;
+  if (c === '' || c === '0' || c === 'N/A') return secondaire;
+  return /^(?:\d|X\b)/.test(secondaire) ? `${c} + ${secondaire}` : `${c} ${secondaire.replace(/^\p{Lu}(?=\p{Ll})/u, (l) => l.toLowerCase())}`;
+}
 
 // Un second coût écrit dans « Coût » sans la forme exacte du classeur (casse, espaces, accents : « 3+1 sang », « 3 + 2 ames », « X + 2 Sang ») : le service
 // le refuse dans une valeur modifiée (serveur/edition.mjs), y compris pour un coût en attente de décision (le modifier, c'est le trancher).

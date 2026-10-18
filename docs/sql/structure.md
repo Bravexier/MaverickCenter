@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 64 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 65 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -468,7 +468,7 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `ic_nm_min` | INTEGER | non |  | N de « IC pour N NM » : niveau de maîtrise qui rend le sort IC |
 | `imparable` | INTEGER | oui |  | le type contient « imparable » (insensible à la casse) |
 | `inesquivable` | INTEGER | oui |  | le type contient « inesquivable » |
-| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 » ; en attente de décision : « 3xN/tour », « Variable »… |
+| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » |
 | `cout_chakra` | INTEGER | non |  | la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL |
 | `cout_ressource` | TEXT | non |  | ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) » |
 | `cout_ressource_valeur` | INTEGER | non |  | sa quantité ; NULL si « X » ou absente |
@@ -486,7 +486,7 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `mode_brut` | TEXT | non |  | le MODE du sort : ce qui est entre parenthèses dans la colonne « Type » (« IC pour 3 NM », « Imparable », « IC » puis « IC x 2 si 3NM » à la ligne) ; NULL quand le type n'a pas de parenthèses. Le TYPE (attaque, entrave…) est dans sort_type, le mode dans sort_mode (valeur de base) et sort_bonus_maitrise (condition de NM) |
 | `bonus_maitrise` | TEXT | non |  | les bonus de NM du sort, une ligne par bonus, « <Colonne> : <passage de la cellule> » (« Coût : -5/NM », « Effets : Dure 2 tours (+1/NM) »), dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord) |
-| `cout_secondaire` | TEXT | non |  | « 1 Sang », « 2 âmes », « X Sang », « 20% PV » ; NULL = pas de second coût |
+| `cout_secondaire` | TEXT | non |  | « 1 Sang », « 2 âmes », « X Sang », « 20% PV », « Par tour et par cible », « Pour 1 barrière » ; NULL = pas de second coût |
 
 ### `sort_type`
 

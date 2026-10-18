@@ -10,9 +10,7 @@
   .sorts .sort__main td[data-label]:not(.sort__type)::before { content: attr(data-label); display: block; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
   .sorts .sort__detail:not([hidden]) { display: block; }
   .sorts .sort__detail > td { display: block; }
-  .sort__cout, .sort__cout-secondaire, .sort__portee, .sort__zone { white-space: normal; }
-  /* un coût secondaire vide (la plupart des sorts : décision R105) n'occupe pas de place dans la carte, sauf en mode modification (à remplir) */
-  body:not(.ed-mode) .sorts .sort__main .sort__cout-secondaire:has(> .vide) { display: none; }
+  .sort__cout, .sort__portee, .sort__zone { white-space: normal; }
   .magie-hero { padding: 1.1rem 1rem 1.2rem; }
   .sort-detail { padding-inline: 0.8rem; }
 }

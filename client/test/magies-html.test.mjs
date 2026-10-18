@@ -231,7 +231,7 @@ test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du t
   assert.match(bdf, /<span class="val">2d6 dégâts<\/span> <span class="nm">\+1d6\/NM<\/span>/);
 });
 
-test('coût en deux colonnes (décision R105) : chaque tableau a « Coût » puis « Coût secondaire » ; chaque sort, sa case de coût secondaire, celle de la base ou « — »', options, () => {
+test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le coût secondaire sous le coût, dans sa case, caché quand le sort n’en a pas', options, () => {
   const sorts = ouvrirBase().prepare('SELECT magie_id, nom, cout_secondaire FROM sort').all();
   for (const p of avecSorts) {
     const id = `magies/${p.slug}`;
@@ -240,14 +240,24 @@ test('coût en deux colonnes (décision R105) : chaque tableau a « Coût » pui
     assert.ok(tableaux.length >= 5, `${p.slug} : un tableau par NPM`);
     for (const m of tableaux) {
       const colonnes = [...m[1].matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((t) => t[1]);
-      assert.deepEqual(colonnes, ['Nom', 'Type', 'Coût', 'Coût secondaire', 'Portée', 'Zone', 'D/S/B'], p.slug);
+      assert.deepEqual(colonnes, ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'], p.slug);
     }
-    const cases = [...p.html.matchAll(/<td data-label="Coût secondaire" class="sort__cout-secondaire"[^>]*>([\s\S]*?)<\/td>/g)].map((c) => c[1].replace(/<[^>]+>/g, '').trim());
+    assert.doesNotMatch(p.html, /data-label="Coût secondaire"/, `${p.slug} : plus de case à part`);
+    // chaque case « Coût » : le coût (son champ) puis le coût secondaire (son champ, caché s'il est vide)
+    const cases = [...p.html.matchAll(/<td data-label="Coût" class="sort__cout">([\s\S]*?)<\/td>/g)].map((c) => c[1]);
     assert.equal(cases.length, siens.length, `${p.slug} : une case par sort`);
-    assert.deepEqual(cases.filter((c) => c !== '—').sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);
+    const secondaires = cases.map((c) => {
+      assert.match(c, /^\s*<div class="sort__cout-chakra"[^>]*data-ed-rendu="sort-cout"/, p.slug);
+      const m = /<div class="sort__cout-secondaire"([^>]*)>([\s\S]*?)<\/div>\s*$/.exec(c.replace(/<div>([\s\S]*?)<\/div>/g, '$1'));
+      assert.ok(m, `${p.slug} : un champ de coût secondaire dans la case`);
+      const texte = m[2].replace(/<[^>]+>/g, '').trim();
+      assert.equal(/\shidden\b/.test(m[1]), texte === '', `${p.slug} : caché si et seulement si vide (${texte})`);
+      return texte;
+    });
+    assert.deepEqual(secondaires.filter(Boolean).sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);
   }
   const html = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
-  assert.ok(html('magie-du-sang').includes('1 Sang') && html('magie-du-feu').includes('20% PV'));
+  assert.ok(html('magie-du-sang').includes('1 Sang') && html('magie-du-feu').includes('20% PV') && html('magie-de-larcane').includes('Par tour et par cible'));
 });
 
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {

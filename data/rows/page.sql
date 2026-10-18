@@ -17904,9 +17904,9 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corrupti
 | 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{cr\|CR}} : Le sort est inesquivable. |
 | 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
 | 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
-| 4.0 | Pluie huileuse | Météo | 50% CR max | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
+| 4.0 | Pluie huileuse | Météo | 50% corruption | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
 | 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si {{cr\|CR}} : Ignore la {{barriere\|barrière}}. |
-| 5.0 | Sapeur | Entrave | x CR | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |
+| 5.0 | Sapeur | Entrave | X Corruption | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |
 | 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{cr\|CR}} : Les retire complètement |
 
 ## Notes et commentaires des sorts
@@ -18086,7 +18086,7 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Éclat glacé | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Glace. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre gel 1. |
 | 1.0 | Tir de givre | Attaque/ Entrave | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige gel 1. |
-| 1.0 | Sculpteur glacé | Construction (IC pour 3 NM) | 3 / Taille | Soi-même | 1.0 | / | Permet de créer un objet fait de glace. Sert 1 fois. Une taille = une épée en taille |
+| 1.0 | Sculpteur glacé | Construction (IC pour 3 NM) | 3 par taille créée | Soi-même | 1.0 | / | Permet de créer un objet fait de glace. Sert 1 fois. Une taille = une épée en taille |
 | 1.0 | Peau verglacée | Amplification (IC) | 4.0 | 1.0 | 1.0 | +2AM (+1AM/NM) | Augmente l''armure magique pendant 3 tours. Peut se cumuler avec Cuirasse arctique. |
 | 1.0 | Rafraîchissement | Soin (IC) | 3.0 | 1.0 | 1.0 | 2d4 soin (+3/NM) | Permet de soigner un état de brûlure. |
 | 2.0 | Fer froid | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Refroidit l’arme au point de la rendre gelée, tape dans l''élément glace pendant 3 tours. |
@@ -18105,7 +18105,7 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 | 4.0 | Cape hivernale | Amplification (IC pour 3 NM) | 20.0 | 3.0 | 1.0 | -50% dégâts magiques | Réduit les dégâts magiques subis pendant 2 tours. |
 | 4.0 | Pergélisol | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +2 crans de résistance | Augmente la résistance au Feu et au Vent de 1 cran. 3 tours. |
 | 5.0 | Frappe de Celsius | Attaque/ Entrave | 50 (-5/NM) | 6.0 | Carré de 4 | 10d6 + 60 dégâts | Une attaque surpuissante de glace qui tape en zone. Si jet de vigueur raté = Inflige gel 2. |
-| 5.0 | Exécution froide | Entrave | 20/tour | 3 (+1/NM) | 1.0 | 20 dégâts perce AM/tour | Sort à maintenir pendant 4 tours, au bout du 5ème tour, la victime meurt. |
+| 5.0 | Exécution froide | Entrave | 20 par tour | 3 (+1/NM) | 1.0 | 20 dégâts perce AM/tour | Sort à maintenir pendant 4 tours, au bout du 5ème tour, la victime meurt. |
 | 5.0 | Rayon polaire | Attaque | 50.0 | 11.0 | 1.0 | 10d6 + 80 (+10/NM) dégâts | Si jet de vigueur raté = Inflige gel 3. |
 
 ## Notes et commentaires des sorts
@@ -18338,11 +18338,11 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Tir d''âme | Attaque | 3 + 1 âme | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Tire une âme en direction de la cible. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre poison 1. |
-| 1.0 | Animation de mort | Invocation (IC pour 3 NM) | 5 + 1 âme (xNPM de créature) | 3.0 | 1.0 | / | Permet d''invoquer des non-morts (voir invocation) |
+| 1.0 | Animation de mort | Invocation (IC pour 3 NM) | 5 par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée. | 3.0 | 1.0 | / | Permet d''invoquer des non-morts (voir invocation) |
 | 1.0 | Mur d''os | Construction | 4 + 1 âme | 2.0 | 3 cases (+1/NM) | / | Invoque des murs d''os qui possèdent 10 PV chacun. |
 | 1.0 | Corruption d''âme | Attaque/ Entrave | 2 âmes | 1 (+1/NM) | 1.0 | 2d6 dégâts | Si jet de vigueur raté = Inflige "poison 1" |
 | 1.0 | Détection de vie | Amplification | 7 (–1/NM) + 1 âme | Soi-même | 100 mètres | / | Permet de voir distinctement les formes de vie (animaux et végétaux, ces derniers étant plus sombres) |
-| 2.0 | Forces des âmes | Amplification (IC pour 3 NM) | 1 âme pour +3 dégâts | 0 (+1/NM) | 1.0 | 3 dégâts/1 âme | Permet d''augmenter sa puissance grâce à deux âmes pour le prochain coup. (Maxi 5 âmes d''un coup) |
+| 2.0 | Forces des âmes | Amplification (IC pour 3 NM) | 1 à 5 âmes | 0 (+1/NM) | 1.0 | 3 dégâts/1 âme | Permet d''augmenter sa puissance grâce à deux âmes pour le prochain coup. (Maxi 5 âmes d''un coup) |
 | 2.0 | Pieu d''os | Attaque | 7 + 2 âmes | 6 (+1/NM) | Cercle de 2 | 3d8 + 4 dégâts. | Invoque de pieu depuis le sol. Si jet de vigueur raté = Inflige poison 1 |
 | 2.0 | Armure d''os | Amplification (IC pour 3 NM) | 5 + 2 âmes | 4.0 | 1.0 | +2AP (+1/NM) | Augmente les AP ainsi que la résistance aux attaques de taille. Dure 3 tours |
 | 2.0 | Détection de la mort | Amplification | 10 (–1/NM) + 2 âmes | Soi-même | 100 mètres | / | Permet de détecter distinctement les non-morts et les utilisateurs de la nécromancie. |
@@ -18459,7 +18459,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 1.0 | Lance-pierre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Terre. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre pétrifié 1. |
 | 1.0 | Tremblement | Attaque (Imparable) | 4.0 | 2 (+1/NM) | Cône | 1d6 dégâts (+2/NM) | Frappe le sol, oblige un jet de Stabilité/Réflexe aux cibles pour ne pas tomber. |
 | 1.0 | Peau de pierre | Amplification (IC) | 4.0 | 1.0 | 1.0 | +2AP (+1AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Cuirasse de Roche. |
-| 1.0 | Appel aux Golems | Invocation (IC pour 3 NM) | 6 (xNP de créature) | 3.0 | 1.0 | / | Permet d''invoquer des golems (voir invocation). Sort interdit aux familiers et aux invocations. |
+| 1.0 | Appel aux Golems | Invocation (IC pour 3 NM) | 6 par NPM de la créature invoquée | 3.0 | 1.0 | / | Permet d''invoquer des golems (voir invocation). Sort interdit aux familiers et aux invocations. |
 | 1.0 | Racine soignante | Soin | 3.0 | 4.0 | 1.0 | 2d6 soin (+1d6/NM) | Soigne la cible mais doit être dans environnement lié à la terre pour fonctionner |
 | 2.0 | Explosion rocheuse | Attaque | 7.0 | 3 (+1/NM) | Carré de 3 | 5d6 dégâts (+3/NM) | Une attaque de Terre de Zone. |
 | 2.0 | Fer Raffiné | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Renforce l''arme avec un métal raffiné, tape dans l''élément terre pendant 3 tours. |
@@ -18468,7 +18468,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 2.0 | Cuirasse de roche | Amplification (IC) | 7.0 | 1.0 | 1.0 | +4AP (+2AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Peau de Pierre. |
 | 3.0 | Barrière rocheuse | Protection | 16.0 | 1.0 | 1.0 | Donne une protection | Confère une protection par-dessus la {{barriere\|barrière}} qui encaisse les coups inférieurs à 20 dégâts (+7/NM) |
 | 3.0 | Alourdissement | Amplification/ Entrave (IC pour 3 NM) | 15.0 | 5.0 | 1.0 | -20% Réussite / +1D dégâts | Rend l''arme plus lourde et augmente ses dégâts pendant 3 tours. |
-| 3.0 | Sable changeant | Construction | 10/3x3 | 2 (+2/NM) | Variable | / | Permet de créer un terrain sur lequel il est difficile de bouger. |
+| 3.0 | Sable changeant | Construction | 10 par zone de 3x3 | 2 (+2/NM) | Variable | / | Permet de créer un terrain sur lequel il est difficile de bouger. |
 | 3.0 | Frappe racine | Attaque | 14.0 | 6 (+1/NM) | 1.0 | 7d6 + 25 dégâts | Si jet de vigueur raté = -1 vitesse pour la cible pour 1 tour. |
 | 3.0 | Enracinement | Soin/Entrave | 13.0 | Soi-même | Cercle de 2 (+1/NM) | 4d6 de soin/tour | Les ennemis dans la zone prennent 5 dégâts et perdent 2INI et 1 Vitesse tant qu''ils sont dans la zone. Le sort reste tant que le lanceur ne bouge pas. |
 | 4.0 | Rouille | Attaque | 20.0 | 4 (+1/NM) | 1.0 | 8d6 dégâts d''acide | 50% de chance de retirer un cran solidité à un morceau d’armure ou une arme. |
@@ -18622,27 +18622,27 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Chakra. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
-| 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2=1 dégâts | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |
-| 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3xN/tour | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
+| 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2 pour 1 dégât supplémentaire | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |
+| 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3 par tour et par cible | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 1.0 | Claquement | Entrave (IC pour 3 NM) | 4.0 | 5.0 | 1.0 | 1d6 dégâts (+1/NM) | Si jet de fermeté raté = La cible ne peut utiliser de sorts pendant son tour. Ne peut être fait 2 fois de suite sur la même cible. |
-| 1.0 | Forge-Magie | Amplification (IC) | 2/taille | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
-| 2.0 | Inhalation magique | Amplification | 5% santé/tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le chakra ambiant pour régénérer la réserve personnelle. |
-| 2.0 | Souffle magique | Amplification | Choix | 2 (+1/NM) | Cône | Donne X {{chakra\|Chakra}} | Souffle du {{chakra\|chakra}} pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le {{chakra\|chakra}} donné est divisé. |
-| 2.0 | Échange | Soin | Choix | 1 (+1/NM) | 1.0 | / | Permet d''échanger son {{chakra\|chakra}} en {{barriere\|barrière}}. 2CK = 1BA (3CK = 2BA/3NM) |
-| 2.0 | Vision magique | Amplification (IC) | 8xN/heure | Soi-même | 1.0 | / | Permet de voir les auras magiques à travers les obstacles. |
+| 1.0 | Forge-Magie | Amplification (IC) | 2 par taille de l''arme créée | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
+| 2.0 | Inhalation magique | Amplification | 5% santé par tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le chakra ambiant pour régénérer la réserve personnelle. |
+| 2.0 | Souffle magique | Amplification | X | 2 (+1/NM) | Cône | Donne X {{chakra\|Chakra}} | Souffle du {{chakra\|chakra}} pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le {{chakra\|chakra}} donné est divisé. |
+| 2.0 | Échange | Soin | 2 pour 1 barrière | 1 (+1/NM) | 1.0 | / | Permet d''échanger son {{chakra\|chakra}} en {{barriere\|barrière}}. 2CK = 1BA (3CK = 2BA/3NM) |
+| 2.0 | Vision magique | Amplification (IC) | 8 par jour | Soi-même | 1.0 | / | Permet de voir les auras magiques à travers les obstacles. |
 | 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge) |
 | 3.0 | Mur de chakra | Entrave | 13.0 | 3.0 | 8x2 | / | Bloque 40 (+10/NM) dégâts par tour pendant 3 tours, est détruit s''il prend plus en 1 tour. |
 | 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Ignore totalement les AP, AM et la {{barriere\|barrière}}. |
 | 3.0 | Pillage défensif | Attaque | 16 (-2/NM) | 1.0 | 1.0 | 7d6 + 15 dégâts | Inflige des dégâts et permet de récupérer 25% des dégâts en {{barriere\|barrière}}. |
-| 3.0 | Rune Arcane multiple | Amplification<br>(IC x 1/NM) | 10xN/tour | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
+| 3.0 | Rune Arcane multiple | Amplification<br>(IC x 1/NM) | 10 par tour et par cible | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 3.0 | Champ Gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 {{barriere\|Barrière}} et 12 dégâts | Invoque un cercle qui va rendre de la {{barriere\|barrière}} aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
-| 4.0 | Peau de Chakra | Amplification<br>(IC x 1/NM) | 13xN/tour | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques subis. |
-| 4.0 | Pluie de Chakra | Amplification | 25% | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur {{chakra\|chakra}}. |
+| 4.0 | Peau de Chakra | Amplification<br>(IC x 1/NM) | 13 par tour et par cible | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques subis. |
+| 4.0 | Pluie de Chakra | Amplification | 25% Chakra maximum | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur {{chakra\|chakra}}. |
 | 4.0 | Grenade de Chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
 | 4.0 | Miroir Magique | Amplification (IC pour 3 NM) | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3 NM = Ne prend plus l''effet en question). |
 | 4.0 | Foudre argentée | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
 | 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 4d10 (+1d/3NM) {{chakra\|chakra}} | Vole du {{chakra\|chakra}} aux ennemis visibles. Le {{chakra\|chakra}} récupéré est redistribué aux alliés |
-| 5.0 | Voile Chakratique | Amplification | 15% santé/tour | Soi-même | 1.0 | / | Permet au {{chakra\|Chakra}} de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
+| 5.0 | Voile Chakratique | Amplification | 15% santé par tour | Soi-même | 1.0 | / | Permet au {{chakra\|Chakra}} de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
 | 5.0 | Planète Chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
 
 ## Notes et commentaires des sorts
@@ -18860,7 +18860,7 @@ Les utilisateurs de l''Espace/Temps possèdent d''étranges bandages de momies c
 | 4.0 | Grenade Distordue | Attaque/ Placement | 23.0 | 7.0 | Cercle de 2 (+1/3NM) | 8d6 + 20 dégâts | Téléporte symétriquement par rapport à la grenade toutes les cibles dans son rayon d''action. |
 | 4.0 | Double Action | Amplification (IC pour 3 NM) | 22.0 | 1.0 | 1.0 | / | Invoque un clone qui va reproduire la prochaine action à hauteur de 50% des effets. |
 | 4.0 | Téléport parfait | Placement | 20.0 | 20Km (+20/NM) | 1.0 | / | Permet de voyager sur de grandes distances. Les autres doivent toucher le lanceur pour être téléportés. |
-| 4.0 | Image diffuse | Amplification (IC pour 3 NM) | 10/Clones | Soi-même | Carré 4x4 | / | Invoque 1 ou 2 clones (+1/NM) passifs du lanceur. |
+| 4.0 | Image diffuse | Amplification (IC pour 3 NM) | 10 par clone | Soi-même | Carré 4x4 | / | Invoque 1 ou 2 clones (+1/NM) passifs du lanceur. |
 | 5.0 | Trou Noir | Attaque | 50 (-5/NM) | 9.0 | Cercle de 3 | 10d6 + 60 dégâts | Une puissante attaque de Temps/Espace. Attire les cibles vers le centre de l''attaque, impossible de lutter contre. |
 | 5.0 | Prémonition | Attaque<br>(Imparable/ Inesquivable) | 50 (-5/NM) | Soi-même | 1.0 | 10d6 + 40 dégâts | Puissante attaque de temps arrivant avec une latence de deux tours, va frapper un adversaire au hasard. |
 | 5.0 | Distorsion | Entrave | 50 (-5/NM) | Vue | Terrain | / | Si jet de Fermeté raté = Perd le tour.<br>Si jet de Fermeté réussi = Réduit l''initiative de 5 immédiatement. |
@@ -18969,11 +18969,11 @@ Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des m
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Sphère Obscure | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque d''Ombre. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre peur 1. |
 | 1.0 | Perturbation | Attaque/ Entrave<br>(Imparable) | 3.0 | 6.0 | 1.0 | 2d4 dégâts | Si jet de fermeté raté = -10% (-10%/NM) à sa prochaine action |
-| 1.0 | Marionnette de l''ombre | Invocation (IC pour 3 NM) | 5 + 10% BA (xNPM de créature) | 3.0 | 1.0 | / | Permet d''animer sa propre ombre (voir invocation) |
+| 1.0 | Marionnette de l''ombre | Invocation (IC pour 3 NM) | 5 par NPM de la créature invoquée. +10% Barrière | 3.0 | 1.0 | / | Permet d''animer sa propre ombre (voir invocation) |
 | 1.0 | Brume mentale | Entrave (IC pour 3 NM) | 4.0 | 6.0 | 1.0 | / | Si jet de fermeté raté = Met une croix dans 1 une caractéristique au choix de l’adversaire pendant 1 tour. |
 | 1.0 | Pichenette | Entrave (IC) | 4.0 | 6.0 | 1.0 | / | Réduit de 5 l''initiative de l’adversaire pour le prochain tour. (+2/NM) |
 | 2.0 | Cri ébranleur | Attaque/ Entrave (Imparable) | 8.0 | 6.0 | Cône | 5d6 dégâts sonores (+3/NM) | Une attaque aux dégâts sonores qui inflige un malus de 10% au prochain test de la victime. |
-| 2.0 | Manteau noir | Amplification (IC pour 3 NM) | 7 (xNP de créature) | Soi-même | 1.0 | Variable | Permet de sacrifier l''invocation de l''ombre pour avoir des bonus pendant 3 tours (voir invocation) |
+| 2.0 | Manteau noir | Amplification (IC pour 3 NM) | 7 par NPM de la créature sacrifiée | Soi-même | 1.0 | Variable | Permet de sacrifier l''invocation de l''ombre pour avoir des bonus pendant 3 tours (voir invocation) |
 | 2.0 | Lame d’ombre | Attaque/ Amplification | 9.0 | Soi-même | 1.0 | 3d6 dégâts | Créer 1 (+1/NM) lame(s) autour du lanceur, chaque lame va taper après une attaque du lanceur réussie. |
 | 2.0 | Malédiction | Entrave (IC) | 7.0 | 3.0 | 1.0 | -1d (-1d/3NM) de dégâts | Diminue les dégâts pendant 3 tours. |
 | 2.0 | Fer Obscur | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme se charge d''une énergie sombre, tape dans l''élément ombre pendant 3 tours. |
@@ -19218,7 +19218,7 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 | 4.0 | Douleur partagée | Amplification (IC pour 3 NM) | 20 + 5 Sang | 3.0 | 1.0 | / | Prend la moitié des dégâts d''un allié ciblé pendant 3 tours. |
 | 4.0 | Grenade à Clous | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 40 dégâts | Inflige des dégâts de zone de Sang. (3NM = Si jet de vigueur raté = Inflige saignement stade 2) |
 | 4.0 | Autel Sanglant | Attaque<br>(Imparable) | 18 + 6 Sang | 5.0 | 1.0 | 8d6 + 10 (+5/NM) | Empale une cible, les dégâts sont répartis vers les ennemis qui sont à 3 de portée maximum |
-| 4.0 | Perfusion | Soin (IC) | Variable | 4.0 | 1.0 | 4 (+1/NM) soin pour 1 sang | Utilise du sang pour récupérer de la santé. L''inverse est possible aussi de sacrifier de la santé pour récupérer du sang. |
+| 4.0 | Perfusion | Soin (IC) | X Sang | 4.0 | 1.0 | 4 (+1/NM) soin pour 1 sang | Utilise du sang pour récupérer de la santé. L''inverse est possible aussi de sacrifier de la santé pour récupérer du sang. |
 | 5.0 | Sang Perfection | Amplification | 40 + 10 Sang | Soi-même | 1.0 | / | +10 dégâts, +6AP, +6AM, +2 Vitesse, +2INI dure 2 tours (+1/NM). |
 | 5.0 | Proportion démesurée | Amplification | 60 + 10 Sang | 5.0 | 1.0 | / | Augmente la taille d''un cran, +1 Force, +15 (+5/NM) aux dégâts physiques, +1 portée pour 3 tours, inflige fatigue à la fin. |
 | 5.0 | Sacrifice | Soin | 40.0 | Soi-même | Cercle de 5 | / | Donne toute sa santé à 4 cibles alliées. Coma. (Garde 1 santé à 3NM) |
@@ -19414,14 +19414,14 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Bulle de vide | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Vide. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre enragé 1. |
-| 1.0 | Télékinésie | Amplification (IC pour 3NM) | 4/taille | Vue | 1.0 | Variable | Permet au niveau 3 de maîtrise de soulever un objet et l''envoyer dans le même tour. |
+| 1.0 | Télékinésie | Amplification (IC pour 3NM) | 4 par taille créée | Vue | 1.0 | Variable | Permet au niveau 3 de maîtrise de soulever un objet et l''envoyer dans le même tour. |
 | 1.0 | Silence | Entrave | 5.0 | 5 (+1/NM) | 1.0 | / | La cible ne peut utiliser de sorts pendant 2 tours. Malus de 60% si jamais il est fait sur une cible qui a déjà subi le sort. |
 | 1.0 | Pression | Attaque/ Entrave<br>(Imparable) | 5.0 | 6.0 | Carré 4x4 | 2d4 dégâts (+2/NM) | Si jet d''athlétisme/équilibre raté = Les cibles s’affaissent et sont incapables de bouger pour leur prochain tour. |
 | 1.0 | Injonction du vide | Placement (IC pour 3 NM) | 3.0 | 6.0 | Croix | / | Force un jet de Stabilité/Réflexe ; si les cibles le ratent, elles sont repoussées ou attirées d''une case. |
 | 2.0 | Fer Vide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme transparente, tape dans l''élément Vide pendant 3 tours. |
 | 2.0 | Bisou du Vide | Entrave | 6 (-1/NM) | 6.0 | 1.0 | / | Rend la cible « Enragé » |
 | 2.0 | Poing du vide | Attaque/ Placement | 8.0 | 4.0 | 1.0 | 5d6 dégâts (+3/NM) | Frappe du poing vers la cible qui est attirée d''une case, inflige 1d6 dégâts en plus si la cible est déjà au corps à corps du lanceur. |
-| 2.0 | Lien mental | Amplification (IC pour 3 NM) | 3/perso | 50 m | Vue | / | Permet de communiquer par la pensée. |
+| 2.0 | Lien mental | Amplification (IC pour 3 NM) | 3 par personne | 50 m | Vue | / | Permet de communiquer par la pensée. |
 | 2.0 | Dissipation | Entrave/ Soin | 8.0 | 8.0 | 1.0 | / | Annule les effets positif et négatif d''une cible. (Un allié perd le négatif et un ennemi le positif pour 3NM) |
 | 3.0 | Sablier du Vide | Invocation | 12.0 | 1.0 | Cercle de 5 | 4d6 dégâts (+6/NM) | Invoque un sablier qui aspire la santé des adversaires autour de lui et la retransmet au tour suivant aux alliés. Possède 20 PV. |
 | 3.0 | Invisibilité | Amplification | 13.0 | 1 (+1/NM) | 1.0 | / | Rend la cible invisible pendant 3 tours. |
@@ -19434,7 +19434,7 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | 4.0 | Saccage Temporel | Météo | 20 (-2/NM) | Soi-même | Terrain | / | Invoque la météo "Saccage temporel" pendant 3 tours. |
 | 4.0 | Mot du vide | Amplification | 23.0 | 1 (+1/NM) | 1.0 | / | La cible sera partiellement immatérielle. Impose un désavantage aux jets d''attaques des agresseurs. Dure 2 tours. |
 | 5.0 | Anti-magie | Météo | 42.0 | 1.0 | Terrain | / | Pose la météo Zone Vide pendant 2 tours (+1/NM). |
-| 5.0 | Métronome | Aléatoire | Variable | Variable | Variable | Variable | Lance un sort aléatoire (1d12 pour la magie => 1d4 le niveau => 1d6 le sort)<br>Les NM sont utiles pour le sort aléatoire |
+| 5.0 | Métronome | Aléatoire | Aléatoire | Variable | Variable | Variable | Lance un sort aléatoire (1d12 pour la magie => 1d4 le niveau => 1d6 le sort)<br>Les NM sont utiles pour le sort aléatoire |
 | 5.0 | Marteau du Vide | Attaque | 55 (-5/NM) | 1.0 | Croix de 2 | 10d6 + 60 dégâts | Inflige de terribles dégâts de vide sur une zone. |
 
 ## Notes et commentaires des sorts

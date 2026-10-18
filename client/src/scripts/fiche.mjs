@@ -771,14 +771,18 @@ function construireSorts() {
           };
           const nonComptes = (colonne) => (m?.nonComptes ?? []).filter((x) => x.cible === colonne)
             .map((x) => `Non compté (${RAISONS_DES_SORTS[x.raison] ?? x.raison}) : ${x.nom} ${signe(x.valeur)}`);
+          // un coût en pourcentage du chakra maximum : la valeur calculée (décision R106), son calcul en tête de l'infobulle
+          const calcule = m?.cout.calcule;
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
-            m && (m.cout.detail.length || m.cout.corruption?.detail.length > 1),
-            m && detail(`Coût écrit : ${auNm(l.sort.cout, 'cout')}`, m.cout.detail, [
-              'Jamais moins de 1',
-              ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
-              ...nonComptes('cout'),
-            ]), m && (m.cout.detail.length || m.cout.corruption || nonComptes('cout').length));
-          // le second coût (âmes, Sang… : décision R105) sous le coût de chakra, dans la même case (poserValeur réécrit la case quand le coût change)
+            m && (calcule || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
+            m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}, arrondi à l'inférieur` : `Coût écrit : ${auNm(l.sort.cout, 'cout')}`,
+              m.cout.detail, [
+                'Jamais moins de 1',
+                ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
+                ...nonComptes('cout'),
+              ]), m && (calcule || m.cout.detail.length || m.cout.corruption || nonComptes('cout').length));
+          // le second coût (âmes, Sang, « Par tour » : décisions R105, R106) sous le coût de chakra, dans la même case (poserValeur réécrit la case quand le
+          // coût change)
           if (l.sort?.cout_secondaire) cout.append(el('span', { class: 'sort-cout-secondaire' }, l.sort.cout_secondaire));
           poserValeur(portee, m?.portee.texte ?? '', m && m.portee.detail.length,
             m && detail(`Portée écrite : ${auNm(l.sort.portee, 'portee')}`, m.portee.detail, nonComptes('portee')), m && (m.portee.detail.length || nonComptes('portee').length));

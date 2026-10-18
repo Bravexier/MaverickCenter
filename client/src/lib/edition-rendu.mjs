@@ -233,9 +233,10 @@ export const RENDUS = {
     return `${type ? `<span class="don-type" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
   },
   // le coût secondaire (décision R105) : une valeur courte, sans expression de NM (le service les refuse ici)
+  // le coût secondaire sous le coût, dans la même case (décision R106) : rien quand il est vide (son cadre se cache en lecture)
   'sort-cout-secondaire': (valeur) => {
     const v = valeurDeSort(valeur);
-    return v.vide ? VIDE : v.lignes.map((l) => `<div>${segmentsHtml(l)}</div>`).join('');
+    return v.vide ? '' : v.lignes.map((l) => `<div>${segmentsHtml(l)}</div>`).join('');
   },
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),

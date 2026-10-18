@@ -59,8 +59,15 @@ test('registre : aucune correction ne touche un chiffre, un signe, un dé (le se
 });
 
 test('base : chaque correction est faite (le texte corrigé est dans la colonne), et la forme fautive n’y est plus aux endroits corrigés', () => {
+  // un coût que le propriétaire a tranché depuis (décision R106, migration 0065 : « 1 à 5 âmes ») ne dit plus ce que la correction a corrigé ; elle était
+  // dans l'écriture que la réponse remplace
+  const tranches = new Map(JSON.parse(readFileSync(join(dossier, '0065-couts-des-sorts-tranches.json'), 'utf8')).tranches.map((t) => [t.id, t]));
   const lire = new Map();
   for (const c of corrections) {
+    if (c.table === 'sort' && c.col === 'cout_brut' && tranches.has(c.id)) {
+      assert.ok(tranches.get(c.id).avant.includes(c.apres), `${c.id} : « ${c.apres} » absent de l'écriture que 0065 remplace`);
+      continue;
+    }
     const cle = `${c.table}|${c.id}|${c.col}`;
     if (!lire.has(cle)) {
       // la cellule telle que les migrations l'ont laissée (avant les modifications du site de dev) ; la case « Coût » d'un sort est en deux colonnes

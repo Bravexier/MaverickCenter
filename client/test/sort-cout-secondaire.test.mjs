@@ -1,8 +1,8 @@
 // Coût d'un sort en deux colonnes, « Coût » et « Coût secondaire » (décision R105 du propriétaire, migration 0063 ; lib/sort-cout.mjs) : la règle de
 // répartition de l'écriture du classeur (« 3 + 1 Sang »), son registre (data/migrations/0063-cout-secondaire.json) comparé à la base dans son état
-// d'import (src/lib/historique-site.mjs : le site de dev est la source de ce qu'il modifie), les sorts en attente de décision, la case « Coût » du
-// corps Markdown des pages de magie, le service (refus d'un second coût dans « Coût », d'un NM dans « Coût secondaire ») et le rejeu d'un lot noté
-// avant la migration.
+// d'import (src/lib/historique-site.mjs : le site de dev est la source de ce qu'il modifie), les 26 coûts que 0063 laissait en attente, tranchés par le
+// propriétaire (décision R106, migration 0065, registre 0065-couts-des-sorts-tranches.json), la case « Coût » du corps Markdown des pages de magie, le
+// service (refus d'un second coût dans « Coût », d'un NM dans « Coût secondaire ») et le rejeu d'un lot noté avant 0063.
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,6 +20,7 @@ import { coutEnUneCase, ecritUnSecondCout, repartirLeCout } from '../src/lib/sor
 
 const RACINE = trouverRacine();
 const registre = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0063-cout-secondaire.json'), 'utf8'));
+const tranches = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0065-couts-des-sorts-tranches.json'), 'utf8')).tranches;
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
@@ -32,8 +33,8 @@ const coutsDImport = (id) => {
   const brut = dImport(id, 'cout_brut');
   return repartirLeCout(brut) ?? { cout_brut: brut, cout_secondaire: dImport(id, 'cout_secondaire') };
 };
-/** « Coût » une fois réparti (décision R105) : un nombre de chakra, « 0 », ou « X », avec l'expression de NM du chakra. */
-const COUT_REPARTI = /^(?:\d+|X)(?: \([-–]\d+\/NM\))?$/;
+/** « Coût » une fois réparti ou tranché (décisions R105, R106) : un nombre de chakra, « 0 », « X » ou « N/A », avec l'expression de NM du chakra. */
+const COUT_REPARTI = /^(?:\d+|X|N\/A)(?: \([-–]\d+\/NM\))?$/;
 
 test('repartirLeCout : les seules écritures réparties sans doute possible, et l’inverse coutEnUneCase', () => {
   const cas = [
@@ -53,7 +54,14 @@ test('repartirLeCout : les seules écritures réparties sans doute possible, et 
     // la copie de lib/corps-magies.mjs (qui n'importe rien) écrit de même
     assert.equal(coutDeLaCaseDuCorps(attendu.cout_brut, attendu.cout_secondaire), ecrit, `${ecrit} : corps Markdown`);
   }
-  for (const [cout, secondaire] of [['12', null], ['55 (-5/NM)', null], ['0', null], ['X', '2 Sang'], ['3', 'Canalisé'], ['', '2 Sang']]) {
+  // une précision du coût (décision R106) à la suite du coût, en minuscule ; le coût secondaire seul pour « 0 » et « N/A »
+  for (const [cout, secondaire, ecrit] of [['3', 'Par tour et par cible', '3 par tour et par cible'], ['2', 'Pour 1 barrière', '2 pour 1 barrière'],
+    ['5', 'Par NPM de la créature invoquée. +10% Barrière', '5 par NPM de la créature invoquée. +10% Barrière'], ['0', '5% santé par tour', '5% santé par tour'],
+    ['0', '1 à 5 âmes', '1 à 5 âmes'], ['N/A', '25% Chakra maximum', '25% Chakra maximum'], ['N/A', 'Aléatoire', 'Aléatoire'], ['X', null, 'X'], ['N/A', null, 'N/A']]) {
+    assert.equal(coutEnUneCase(cout, secondaire), ecrit, `${cout} / ${secondaire}`);
+  }
+  for (const [cout, secondaire] of [['12', null], ['55 (-5/NM)', null], ['0', null], ['X', '2 Sang'], ['3', 'Canalisé'], ['', '2 Sang'], ['3', 'Par tour'],
+    ['N/A', 'Aléatoire'], ['2', 'Pour 1 dégât supplémentaire'], ['6', 'NPM de la créature'], ['7', 'À part']]) {
     assert.equal(coutDeLaCaseDuCorps(cout, secondaire), coutEnUneCase(cout, secondaire), `${cout} / ${secondaire}`);
   }
   // en attente de la décision du propriétaire, ou sans second coût : rien n'est réparti
@@ -92,19 +100,35 @@ test('registre de 0063 : chaque coût réparti l’est par la règle, et la base
   assert.equal(registre.repartis.filter((r) => /Sang|âme/.test(r.cout_secondaire)).length, 36);
 });
 
-test('en attente de décision : le coût du classeur gardé tel quel, sans coût secondaire, et il ne se répartit pas ; tous les autres sorts sont répartis', () => {
+test('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tranchés, chacun avec la réponse du propriétaire ; tous les autres sorts sont répartis', () => {
   assert.equal(registre.en_attente.length, 26);
   const attente = new Map(registre.en_attente.map((a) => [a.id, a]));
   const repartis = new Set(registre.repartis.map((r) => r.id));
-  for (const a of registre.en_attente) {
-    assert.ok(!repartis.has(a.id), `${a.id} : réparti et en attente`);
-    assert.equal(dImport(a.id, 'cout_brut'), a.cout, `${a.id} : écriture du classeur`);
-    assert.equal(dImport(a.id, 'cout_secondaire'), null, `${a.id} : pas encore de coût secondaire`);
-    assert.equal(repartirLeCout(a.cout), null, `${a.id} : « ${a.cout} » se répartirait`);
-    assert.doesNotMatch(a.cout, COUT_REPARTI, `${a.id} : « ${a.cout} » est déjà un coût réparti`);
+  // le registre de 0065 reprend exactement les sorts en attente, leur écriture du classeur et les questions S3 à S28 de docs/sql/a-valider.md
+  assert.deepEqual(tranches.map((t) => t.id).sort(), [...attente.keys()].sort());
+  assert.deepEqual(tranches.map((t) => t.question), Array.from({ length: 26 }, (_, i) => `S${i + 3}`));
+  for (const t of tranches) {
+    const a = attente.get(t.id);
+    assert.ok(!repartis.has(t.id), `${t.id} : réparti et en attente`);
+    assert.deepEqual([t.avant, t.nom], [a.cout, a.nom], `${t.id} : écriture du classeur`);
+    assert.equal(repartirLeCout(a.cout), null, `${t.id} : « ${a.cout} » se répartirait`);
+    // la réponse, telle qu'écrite : la base l'écrit à l'orthographe près (champ « orthographe », qui dit ce qui change)
+    assert.ok(t.orthographe || t.cout_secondaire === null || t.reponse.includes(t.cout_secondaire), `${t.id} : « ${t.cout_secondaire} » n'est pas dans la réponse`);
+    assert.match(t.cout_brut, COUT_REPARTI, `${t.id} : « ${t.cout_brut} »`);
+    assert.ok(t.cout_secondaire === null || (t.cout_secondaire === t.cout_secondaire.trim() && !mentionneUnNm(t.cout_secondaire)), t.id);
+    assert.equal(ecritUnSecondCout(t.cout_brut), false, `${t.id} : « ${t.cout_brut} » écrit un second coût`);
+    // la base, dans son état d'import, porte les deux coûts ; dans son état courant (s'il n'a pas changé depuis), leurs colonnes typées
+    assert.deepEqual(coutsDImport(t.id), { cout_brut: t.cout_brut, cout_secondaire: t.cout_secondaire }, `${t.id} : Coût et Coût secondaire`);
+    const s = sorts.find((x) => x.id === t.id);
+    if (s.cout_brut === t.cout_brut && s.cout_secondaire === t.cout_secondaire) {
+      assert.deepEqual({ cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, analyserCout(t.cout_brut, t.cout_secondaire), t.id);
+    }
   }
-  // à l'import (après les migrations), un sort qui n'est ni réparti ni en attente n'a qu'un coût de chakra (le coût secondaire, s'il n'a pas été
-  // touché par un lot noté avant 0063 : son ajout y est écrit dans « Coût », l'historique n'a pas de ligne pour « Coût secondaire »)
+  // la canalisation de l'Arcane écrite dans le coût secondaire (« Au lieu de mettre "canalysé" on remet "Par tour" ») ; un coût « X » est NULL en chakra
+  assert.equal(tranches.filter((t) => /^Par tour/.test(t.cout_secondaire ?? '')).length, 4);
+  assert.deepEqual(analyserCout('X', null), { cout_chakra: null, cout_ressource: null, cout_ressource_valeur: null });
+  // à l'import (après les migrations), un autre sort n'a qu'un coût de chakra (le coût secondaire, s'il n'a pas été touché par un lot noté avant
+  // 0063 : son ajout y est écrit dans « Coût », l'historique n'a pas de ligne pour « Coût secondaire »)
   for (const s of sorts) {
     if (repartis.has(s.id) || attente.has(s.id) || historique.creee('sort', { id: s.id })) continue;
     assert.match(dImport(s.id, 'cout_brut'), COUT_REPARTI, `${s.id} : « ${dImport(s.id, 'cout_brut')} »`);
@@ -151,13 +175,13 @@ const modifier = (cle, valeurs) => traiter({
 }, service);
 const lire = (id, b = base) => ({ ...b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra, cout_ressource, cout_ressource_valeur FROM sort WHERE id = ?').get(id) });
 // lus dans la base (le site de dev est la source de ce qu'il modifie) : un sort à chakra et âmes, un sans chakra (Sang seul), deux sans second coût,
-// un en attente de décision (coût du classeur, ni réparti ni répartissable ; il n'y en aura plus quand le propriétaire aura tout tranché)
+// un dont le coût secondaire est une précision (décision R106 : « Par tour et par cible »)
 const premier = (f) => sorts.find(f)?.id ?? null;
 const NECRO = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^\d+ âmes?$/.test(s.cout_secondaire ?? ''));
 const SANS_CHAKRA = premier((s) => s.cout_brut === '0' && /^\d+ Sang$/.test(s.cout_secondaire ?? ''));
 const SIMPLE = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null);
 const SIMPLE2 = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null && s.id !== SIMPLE);
-const ATTENTE = premier((s) => s.cout_secondaire === null && !COUT_REPARTI.test(s.cout_brut) && !ecritUnSecondCout(s.cout_brut));
+const PRECISION = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^Par tour\b/.test(s.cout_secondaire ?? ''));
 
 test('service : « Coût » refuse un second coût (et dit où l’écrire), « Coût secondaire » refuse un NM ; les colonnes typées suivent les deux', () => {
   assert.ok(SIMPLE, 'un sort sans second coût');
@@ -175,12 +199,21 @@ test('service : « Coût » refuse un second coût (et dit où l’écrire), « 
   assert.deepEqual(lire(SIMPLE), { cout_brut: '12', cout_secondaire: null, cout_chakra: 12, cout_ressource: null, cout_ressource_valeur: null });
 });
 
-test('service : un sort en attente de décision garde l’écriture du classeur tant que son coût n’est pas modifié ; la page de sa magie suit les deux coûts', () => {
-  if (ATTENTE) {
-    const avant = lire(ATTENTE);
-    assert.equal(modifier({ id: ATTENTE }, { effets: 'Texte des effets réécrit par le test.' }).statut, 200);
-    assert.deepEqual(lire(ATTENTE), avant);
-  }
+test('service : une précision dans « Coût secondaire » (décision R106 : « Par tour »), « N/A » dans « Coût » ; la page de sa magie suit les deux coûts', () => {
+  assert.ok(PRECISION, 'un sort au coût « par tour »');
+  const avant = lire(PRECISION);
+  assert.equal(modifier({ id: PRECISION }, { effets: 'Texte des effets réécrit par le test.' }).statut, 200);
+  assert.deepEqual(lire(PRECISION), avant, 'les effets ne touchent pas au coût');
+  const page = () => {
+    const s = base.prepare('SELECT magie_id, ordre FROM sort WHERE id = ?').get(PRECISION);
+    return morceauxDuCorpsDeMagie(base.prepare('SELECT corps_md FROM page WHERE id = ?').get(s.magie_id).corps_md).sorts[s.ordre - 1][3];
+  };
+  assert.equal(modifier({ id: PRECISION }, { cout_secondaire: 'Par tour' }).statut, 200);
+  assert.equal(page(), `${avant.cout_brut} par tour`);
+  const na = modifier({ id: PRECISION }, { cout_brut: 'N/A', cout_secondaire: 'Aléatoire' });
+  assert.equal(na.statut, 200, JSON.stringify(na.corps));
+  assert.deepEqual(lire(PRECISION), { cout_brut: 'N/A', cout_secondaire: 'Aléatoire', cout_chakra: null, cout_ressource: null, cout_ressource_valeur: null });
+  assert.equal(page(), 'Aléatoire');
   assert.ok(NECRO, 'un sort à chakra et âmes');
   const r = modifier({ id: NECRO }, { cout_secondaire: '9 âmes' });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
@@ -189,9 +222,9 @@ test('service : un sort en attente de décision garde l’écriture du classeur 
   assert.equal(morceauxDuCorpsDeMagie(corps).sorts[s.ordre - 1][3], `${s.cout_brut} + 9 âmes`);
 });
 
-test('rejeu d’un lot noté avant 0063 (coût en une case) : rejoué en deux colonnes ; un coût en attente rejoué tel quel ; un lot noté depuis, tel quel', () => {
+test('rejeu d’un lot noté avant 0063 (coût en une case) : rejoué en deux colonnes ; un lot noté depuis, tel quel ; un coût tranché par 0065 modifié avant elle : conflit', () => {
   const neuve = vivante();
-  assert.ok(NECRO && SANS_CHAKRA && SIMPLE && SIMPLE2, 'des sorts de chaque forme');
+  assert.ok(NECRO && SANS_CHAKRA && SIMPLE && SIMPLE2 && PRECISION, 'des sorts de chaque forme');
   const lot = (cle, avant, apres) => {
     const { id, instant } = nouveauLot();
     return { id, fait_le: instant, page_id: null, resume: 'ancien lot', modifications: [{ rang: 1, table: 'sort', cle, operation: 'modifier', avant, apres }] };
@@ -218,22 +251,25 @@ test('rejeu d’un lot noté avant 0063 (coût en une case) : rejoué en deux co
     // noté depuis 0063 (les deux colonnes) : rejoué tel quel
     lot({ id: SIMPLE2 }, { cout_brut: simple2.cout_brut, cout_secondaire: null, cout_ressource: null, cout_ressource_valeur: null },
       { cout_brut: simple2.cout_brut, cout_secondaire: '2 âmes', cout_ressource: 'ame', cout_ressource_valeur: 2 }),
-    // le coût du classeur d'un sort en attente, modifié avant 0063 : il ne se répartit pas, il est rejoué tel quel
-    ...(ATTENTE ? [lot({ id: ATTENTE }, { cout_brut: lire(ATTENTE, neuve).cout_brut }, { cout_brut: '6 + 1 âme (xNPM de créature)' })] : []),
   ];
+  // le coût du classeur d'un sort que 0065 a tranché (décision R106), modifié sur le site de dev avant elle : la base n'a plus ce qu'il a lu, conflit
+  // (le propriétaire le refait sur le coût tranché) ; la base garde le coût tranché
+  const tranche = tranches.find((t) => t.id === PRECISION);
+  const ancien = lot({ id: PRECISION }, { cout_brut: tranche.avant }, { cout_brut: tranche.avant.replace(/^\d+/, '99') });
   neuve.exec('PRAGMA foreign_keys = OFF');
   neuve.exec('BEGIN');
-  chargerJournal(neuve, { format: 'maverick-edition/1', lots });
+  chargerJournal(neuve, { format: 'maverick-edition/1', lots: [...lots, ancien] });
   rejouerLeJournal(neuve, {});
   neuve.exec('COMMIT');
   for (const l of lots) {
     const e = { ...neuve.prepare('SELECT etat, detail FROM modification WHERE lot_id = ?').get(l.id) };
     assert.equal(e.etat, 'en_attente', `${l.modifications[0].cle.id} : ${JSON.stringify(e)}`);
   }
+  assert.equal(neuve.prepare('SELECT etat FROM modification WHERE lot_id = ?').get(ancien.id).etat, 'conflit');
+  assert.deepEqual([lire(PRECISION, neuve).cout_brut, lire(PRECISION, neuve).cout_secondaire], [tranche.cout_brut, tranche.cout_secondaire]);
   assert.deepEqual(lire(NECRO, neuve), { cout_brut: '14', cout_secondaire: null, cout_chakra: 14, cout_ressource: null, cout_ressource_valeur: null });
   assert.deepEqual(lire(SANS_CHAKRA, neuve), { cout_brut: '0', cout_secondaire: '5 Sang', cout_chakra: 0, cout_ressource: 'sang', cout_ressource_valeur: 5 });
   assert.deepEqual(lire(SIMPLE, neuve), { ...simple, cout_secondaire: '1 Sang', cout_ressource: 'sang', cout_ressource_valeur: 1 });
   assert.deepEqual(lire(SIMPLE2, neuve), { ...simple2, cout_secondaire: '2 âmes', cout_ressource: 'ame', cout_ressource_valeur: 2 });
-  if (ATTENTE) assert.equal(lire(ATTENTE, neuve).cout_brut, '6 + 1 âme (xNPM de créature)');
   neuve.close();
 });

@@ -6,10 +6,11 @@ import { attributEd } from '../../lib/edition-modele.mjs';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
 
-// Un sort dans son tableau (TableauNpm.astro) : sa ligne (Nom, Type, Coût, Coût secondaire, Portée, Zone, D/S/B) et, juste en dessous, ses détails
-// (SortDetail.astro), cachés jusqu'à ce qu'on sélectionne la ligne (SortsInteractifs.astro). Le coût en deux colonnes (décision R105) : le chakra, puis
-// le second coût (âmes, Sang…) ; un coût que le propriétaire n'a pas encore tranché garde l'écriture du classeur (« 5 + 1 âme (xNPM de créature) »),
-// sa partie après « + » en supplément sous la valeur.
+// Un sort dans son tableau (TableauNpm.astro) : sa ligne (Nom, Type, Coût, Portée, Zone, D/S/B) et, juste en dessous, ses détails (SortDetail.astro),
+// cachés jusqu'à ce qu'on sélectionne la ligne (SortsInteractifs.astro). Le coût est deux champs de la base (décision R105) : « Coût », le chakra, et
+// « Coût secondaire » (âmes, Sang, « Par tour et par cible »…), écrit juste en dessous dans la même case, en plus discret, quand le sort en a un (demande
+// du propriétaire du 2026-10-18, décision R106 : pas de colonne à lui, « à l'image de ce qui se fait dans la fiche de personnage ») ; sur le site de dev,
+// chacun a sa saisie, celle du coût secondaire même vide ([data-ed-cadre] : caché en lecture quand il n'a rien).
 // Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
 // (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
 interface Props {
@@ -62,23 +63,25 @@ const ed = (colonne: string) => attributEd('sort', { id: s.id }, colonne);
       {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
       {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
     </td>
-    <td data-label="Coût" class="sort__cout" data-ed={ed('cout_brut')} data-ed-rendu="sort-cout">
-      {
-        cout.vide ? (
-          <span class="vide" aria-label="aucun">—</span>
-        ) : (
-          partsDuCout.map((part, i) =>
-            i === 0 ? (
-              <div><Segments segments={part} /></div>
-            ) : (
-              <div class="supplement">+ <Segments segments={part} /></div>
-            ),
+    <td data-label="Coût" class="sort__cout">
+      <div class="sort__cout-chakra" data-ed={ed('cout_brut')} data-ed-rendu="sort-cout">
+        {
+          cout.vide ? (
+            <span class="vide" aria-label="aucun">—</span>
+          ) : (
+            partsDuCout.map((part, i) =>
+              i === 0 ? (
+                <div><Segments segments={part} /></div>
+              ) : (
+                <div class="supplement">+ <Segments segments={part} /></div>
+              ),
+            )
           )
-        )
-      }
-    </td>
-    <td data-label="Coût secondaire" class="sort__cout-secondaire" data-ed={ed('cout_secondaire')} data-ed-rendu="sort-cout-secondaire">
-      {secondaire.vide ? <span class="vide" aria-label="aucun">—</span> : secondaire.lignes.map((l) => <div><Segments segments={l} /></div>)}
+        }
+      </div>
+      <div class="sort__cout-secondaire" data-ed={ed('cout_secondaire')} data-ed-rendu="sort-cout-secondaire" data-ed-cadre hidden={secondaire.vide}>
+        {secondaire.lignes.map((l) => <div><Segments segments={l} /></div>)}
+      </div>
     </td>
     {
       valeurs.map(([label, v, cle]) => (
