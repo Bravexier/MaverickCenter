@@ -43,6 +43,8 @@ test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, num�
 test('le SQL de la migration est le registre : chaque page n’est vidée que si son objet est exactement celui de l’import (rien d’autre dans `donnees`)', () => {
   const paires = [...migration.matchAll(/\('(guide\/[a-z0-9-]+)', '(\{[^']*\})'\)/g)].map((m) => [m[1], m[2]]);
   assert.equal(paires.length, registre.pages.length);
+  // chaque page du registre exactement une fois (un doublon ne cache pas une page absente)
+  assert.deepEqual(paires.map(([id]) => id).sort(), registre.pages.map((p) => p.id).sort());
   for (const [id, donnees] of paires) {
     const p = parId.get(id);
     assert.ok(p, `${id} : absente du registre`);
@@ -65,8 +67,11 @@ test('la base : plus aucune page (de tout type) ne porte « chapitre » ou « pa
 test('plus rien ne les déclare (content.config.ts) ni ne les lit (site, service, scripts, importeurs)', () => {
   const config = lire('client/src/content.config.ts');
   assert.doesNotMatch(config, /^\s*(chapitre|partie)\s*:/m, 'content.config.ts déclare encore chapitre ou partie');
-  // une lecture de ces clés de page.donnees ou du frontmatter : chemin JSON, data.chapitre, ou `donnees` et la clé sur la même ligne (hors commentaires)
-  const lecture = [/\$\.(chapitre|partie)\b/, /\bdata\??\.(chapitre|partie)\b/, /\bdonnees\b.*\b(chapitre|partie)\b/, /\[['"](chapitre|partie)['"]\]/, /\.get\(['"](chapitre|partie)['"]/];
+  // une lecture de ces clés de page.donnees ou du frontmatter : chemin JSON, data.chapitre, `donnees` et la clé sur la même ligne, déstructuration
+  // (« const { chapitre } = … »), ou une propriété d'un objet nommé comme un frontmatter (fm, frontmatter) — hors commentaires ; une recherche par
+  // motifs : une lecture écrite autrement lui échapperait
+  const lecture = [/\$\.(chapitre|partie)\b/, /\bdata\??\.(chapitre|partie)\b/, /\bdonnees\b.*\b(chapitre|partie)\b/, /\[['"](chapitre|partie)['"]\]/, /\.get\(['"](chapitre|partie)['"]/,
+    /\{[^}]*\b(chapitre|partie)\b[^}]*\}\s*=[^=>]/, /\b(fm|frontmatter)\??\.(chapitre|partie)\b/];
   const commentaire = /^\s*(\/\/|\*|\/\*|#|--)/;
   const fichiers = [];
   const parcourir = (dossier) => {
