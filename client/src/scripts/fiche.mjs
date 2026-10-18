@@ -537,8 +537,12 @@ function construireCaracteristiques() {
           score.textContent = c.score === null ? 'N/A' : `${c.scoreDuMoment} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
           score.toggleAttribute('data-posture', c.score !== null && c.posture !== 0);
           score.dataset.sens = c.posture > 0 ? 'plus' : c.posture < 0 ? 'moins' : '';
-          infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable'
-            : c.posture ? `${c.score} % ${signe(c.posture)} (posture ${calcul.posture.posture.nom})` : '');
+          // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception ») est dans le score, hors acquis : son détail, comme la posture
+          const detail = [
+            ...(c.jet ? [`${c.score - c.jet} % ${signe(c.jet)} au jet = ${c.score} %`, ...c.jetDetail.map((d) => `${signe(d.valeur)} ${d.nom} (bonus au jet, hors acquis)`)] : []),
+            ...(c.posture ? [`${c.score} % ${signe(c.posture)} (posture ${calcul.posture.posture.nom})`] : []),
+          ];
+          infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable' : detail.join('\n'));
         });
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
           el('td', { class: 'nombre' }, valeurAcquis), el('td', { class: 'nombre' }, score));
@@ -605,8 +609,10 @@ function construireMetier() {
       const par = regles.constantes['metier.artisanat_par_point_caracteristique'];
       // une croix retire 20, comme −2 à la caractéristique ; deux croix rendent la compétence inutilisable (décision R39)
       const formule = a.caracteristiques.map((c) => `${c.nom} ${c.valeur} × ${par}${c.malus ? ` − ${-c.malus} (croix)` : ''}`).join(' + ');
+      // les bonus d'artisanat des dons (décision R123 : « +10% à tous les tests d'artisanat », Elfe noir Sang purifié)
+      const bonus = a.bonus.map((b) => ` + ${b.valeur} (${b.nom})`).join('');
       const resultat = a.inutilisable ? el('strong', {}, 'inutilisable (deux croix)') : a.score === null ? '' : el('strong', {}, `${a.score} %`);
-      artisanat.replaceChildren(el('strong', {}, 'Artisanat '), a.texte, a.score === null && !a.inutilisable ? '' : ` : ${a.inutilisable ? '' : `${formule} = `}`, resultat);
+      artisanat.replaceChildren(el('strong', {}, 'Artisanat '), a.texte, a.score === null && !a.inutilisable ? '' : ` : ${a.inutilisable ? '' : `${formule}${bonus} = `}`, resultat);
     });
     const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
       ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
@@ -933,18 +939,17 @@ function construireEntrainement() {
 
 /**
  * Les bonus d'acquis « X ou Y » des dons débloqués (décision R104 : « un texte à choix devient un choix du tiroir ») : une liste par choix, la
- * compétence retenue (personnage_acquis_choix) ; « à répartir au choix » : les compétences et leurs points ; un choix à faire est surligné et dans le
- * tiroir des choix.
+ * compétence retenue (personnage_acquis_choix) ; « pour les compétences d'arme » (R120) : une des quatre ; « choisir 2 sur les 3 » (R121) : une liste par
+ * compétence, chacune sans celles que les autres ont prises ; « à répartir au choix » : les compétences et leurs points ; un choix à faire est surligné et
+ * dans le tiroir des choix.
  */
 /** Pourquoi un bonus d'acquis écrit dans un don ou l'armure n'est pas compté (lib/acquis-texte.mjs, décision R104 ; questions de docs/sql/a-valider.md). */
 const RAISONS_DE_L_ACQUIS = {
   situation: 'selon la situation (à compter au moment du jet)',
   arme_choisie: '« l’arme choisie » : laquelle ? (question Q22)',
-  competences_d_arme: '« les compétences d’arme » : chacune, ou une au choix ? (question Q23)',
-  choix_multiple: '« 2 sur les 3 » (question Q24)',
-  jets: 'aux jets d’une caractéristique (question Q25)',
-  artisanat: 'artisanat (question Q26)',
-  inconnue: 'aucune compétence nommée (questions Q26, Q27)',
+  mj: 'à voir avec le MJ (décision R123 : un cas très particulier de la Ruse)',
+  sans_artisanat: 'sans métier, pas de compétence d’artisanat (décision R123)',
+  inconnue: 'aucune compétence nommée (question Q27)',
   element: 'l’armure transformée par un élément perd ses bonus d’origine (décision R99)',
 };
 
@@ -962,13 +967,16 @@ function construireAcquisAChoisir() {
   reconstruire($('acquis-choix'), cle, () => choix.map((c) => {
     const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.acquis(c.source, c.rang) } });
     if (!c.repartition) {
+      const groupe = c.sur ? ` (choix ${c.numero} sur ${c.sur})` : '';
       const liste = el('select', {
-        'aria-label': `${c.nom} : +${c.valeur} % à choisir`,
+        'aria-label': `${c.nom} : +${c.valeur} % à choisir${groupe}`,
         onchange: (ev) => { Object.assign(fiche, acquisApresChoix(fiche, c.source, c.rang, ev.target.value || null)); changer(); },
       }, option('', 'Choisir…'), c.options.map((o) => option(o, trouver(regles.competences, o)?.nom ?? o)));
-      li.append(el('span', {}, `${c.nom} : +${c.valeur} %`), liste);
+      li.append(el('span', {}, `${c.nom} : +${c.valeur} %${groupe}`), liste);
       synchro(() => {
         const fait = acquisDesDons(regles, fiche).choix.find((x) => x.source === c.source && x.rang === c.rang);
+        // deux compétences différentes (décision R121) : celles que les autres choix du groupe ont prises sont grisées
+        for (const o of liste.options) o.disabled = Boolean(o.value) && (fait?.exclues ?? []).includes(o.value);
         poser(liste, fait?.choisi ?? '');
         li.toggleAttribute('data-a-choisir', !fait?.fait);
       });

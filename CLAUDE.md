@@ -397,8 +397,11 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   quand il y en a ; une armure transformée par un élément ne compte pas les siens, R99 ; « acquis max en Social est augmenté de +20 » relève le plafond :
   `plafondBonus`), le métier puis l'accessoire, rognés dans cet ordre au plafond de R41 (un arbitrage) ; « X ou Y » et « à répartir au choix » sont des choix du tiroir (`personnage_acquis_choix` : `source` = le
   don, `rang` = le rang du choix dans son texte, `valeur` pour une répartition ; `acquisApresChoix`, `acquisApresRepartition`, `acquisChoixValables`, nature
-  `acquis` de `choixEnAttente`) ; ne rien compter d'autre (situation, « arme choisie », « compétences d'arme », « 2 sur les 3 », jets d'une caractéristique,
-  artisanat, « parmi les autres » : Q21 à Q29), mais le lister (`nonComptes`, bloc « Bonus d'acquis non comptés », `RAISONS_DE_L_ACQUIS` de la page). Entraînement : `personnage_entrainement` (une compétence et ses points, ou un texte ; règles `entrainement_valeur`,
+  `acquis` de `choixEnAttente`) ; « pour les compétences d'arme » est le choix d'une compétence parmi les quatre (R120), « choisir 2 sur les 3 » du Templier deux choix
+  différents parmi les quatre (R121) ; « à tout jet impliquant la Perception », « à tout test d'Agilité » sont un bonus au jet, hors acquis et hors plafond, compté dans le
+  score (R122 : `jet`, `jetDetail` de `competencesDe`) ; les « tests d'artisanat » s'ajoutent à `artisanatDe` (R123, rien sans métier) ; ne rien compter d'autre (situation,
+  « arme choisie » (R119, à venir), « parmi les autres », falsification de documents (au MJ, R123) : Q22, Q27 à Q29), mais le lister (`nonComptes`, bloc « Bonus d'acquis
+  non comptés », `RAISONS_DE_L_ACQUIS` de la page). Entraînement : `personnage_entrainement` (une compétence et ses points, ou un texte ; règles `entrainement_valeur`,
   `entrainement_competences`, une ligne à 0 ne compte pas ; deux lignes d'une compétence fusionnées à l'envoi : `entrainementsAEnregistrer`) ; un livre de sort
   reste `personnage_sort.nm_livre`. Fiche d'avant : `sansPartiesRetirees` (texte → lignes de texte, `entrainementEnLignes` ; acquis > 0 → un retrait noté,
   `acquisRetires`, nature `acquis`), base vivante : `COLONNES_CONVERTIES` de `serveur/base-vivante.mjs` (la même conversion, quand l'ancienne base a la colonne).

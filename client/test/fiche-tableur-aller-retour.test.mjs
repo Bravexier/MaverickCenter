@@ -258,6 +258,30 @@ function ficheBiPotentiel() {
   return f;
 }
 
+/**
+ * Bi-classe Mercenaire (Combattant libre) et Moine (Templier), niveau 10 : les choix d'acquis des compétences d'arme (décision R120 : « Polyvalence »
+ * et « Combattant libre », une compétence d'arme chacun) et les deux compétences différentes du Templier (R121 : « choisir 2 sur les 3 »).
+ */
+function ficheDesArmes() {
+  const f = {
+    ...ficheVide('Aldric'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    xp: xpDuNiveau(10), mode_classe: 'bi',
+    classes: [
+      { rang: 1, classe_id: 'classes/mercenaire', specialite_id: 'classes/mercenaire#specialite:combattant-libre' },
+      { rang: 2, classe_id: 'classes/moine', specialite_id: 'classes/moine#specialite:templier' },
+    ],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    acquis_choix: [
+      { source: 'capacites/mercenaire-polyvalence', rang: 1, competence_id: 'arbalete', valeur: null },
+      { source: 'capacites/mercenaire-combattant-libre', rang: 1, competence_id: 'arc', valeur: null },
+      { source: 'capacites/moine-templier', rang: 1, competence_id: 'arme-lourde', valeur: null },
+      { source: 'capacites/moine-templier', rang: 2, competence_id: 'arc', valeur: null },
+    ],
+  };
+  f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
+  return f;
+}
+
 // ------------------------------------------------------------------ les tests
 
 test('entraînement (décision R104) : ses lignes reviennent compétences d’abord, puis textes, chacune telle quelle ; les choix d’acquis aussi', async () => {
@@ -270,6 +294,27 @@ test('entraînement (décision R104) : ses lignes reviennent compétences d’ab
     [[1, 'arc', 3], [2, 'calme', 0], [3, 'Béni par la Dame du lac', null], [4, 'Livre lu : Boule de feu', null]]);
   assert.deepEqual(canonique(r.fiche).entrainements, canonique(f).entrainements);
   assert.deepEqual(r.fiche.acquis_choix, commeLaPage(f).acquis_choix);
+});
+
+test('choix d’acquis des compétences d’arme (décisions R120, R121) : une compétence d’arme par don, deux différentes pour le Templier, relues telles quelles', async () => {
+  const f = ficheDesArmes();
+  // les quatre choix sont ceux de dons débloqués, et tous faits
+  assert.deepEqual(commeLaPage(f).acquis_choix, f.acquis_choix);
+  assert.deepEqual(M.acquisDesDons(regles, f).choix.filter((c) => !c.repartition).map((c) => [c.source, c.rang, c.fait]),
+    f.acquis_choix.map((x) => [x.source, x.rang, true]));
+  const r = await verifier(f, 'compétences d’arme');
+  assert.deepEqual(r.fiche.acquis_choix, f.acquis_choix);
+  // une ligne « Acquis au choix » par choix, le Templier deux fois, dans l'ordre de ses rangs
+  const lignes = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'acquisChoix').map((l) => l.valeur);
+  assert.deepEqual(lignes.filter((l) => l.startsWith('Templier')), ['Templier (Moine) : Arme Lourde', 'Templier (Moine) : Arc']);
+  // la même compétence deux fois pour le Templier : la seconde ligne n'est pas reprise, et l'import le dit ; l'acquis écrit de l'Arc (+5 de plus que le
+  // calcul sans ce choix) déduit le second choix, une remarque (décision R104 : « déduit quand une seule option l'explique »)
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace('Templier (Moine) : Arc', 'Templier (Moine) : Arme Lourde') };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.ok(relu.nonRepris.some((x) => x.startsWith('Acquis au choix « Templier (Moine) : Arme Lourde » : déjà choisie pour ce don')), relu.nonRepris.join('\n'));
+  assert.deepEqual(relu.fiche.acquis_choix.filter((x) => x.source === 'capacites/moine-templier'), f.acquis_choix.slice(2));
+  assert.ok(relu.remarques.includes('Acquis au choix de Templier (Moine) (+5 %) déduit : Arc (l\'acquis du classeur)'), relu.remarques.join('\n'));
 });
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {

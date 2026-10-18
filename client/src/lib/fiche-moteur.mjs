@@ -270,7 +270,8 @@ export function choixDeMetierValables(regles, fiche) {
  * bonusDuMetier, R33 — et l'accessoire « Compétence X » — R54 —, chacun rogné à ce que le plafond laisse, dans cet ordre : `entrainement`, `dons`,
  * `metier`, `accessoire` ; les mêmes avant le plafond : `…Brut`), plafonds (naturel : seuil du niveau ; acquis : 5 par point de la caractéristique
  * totale, le +1 de la magie innée compris — décision R41 : « 5 en volonté donnerait un max de 25 aquis » —, `plafondAcquis` ; « le plafond prévaut »,
- * R38) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19).
+ * R38) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19),
+ * plus le bonus au jet des dons (décision R122 : « +5% à tout jet impliquant la Perception », hors acquis et hors plafond : `jet`, son détail `jetDetail`).
  */
 export function competencesDe(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
@@ -280,7 +281,7 @@ export function competencesDe(regles, fiche) {
   const { parCompetence } = bonusDuMetier(regles, fiche);
   const posture = postureDuMoment(regles, fiche);
   const entrainement = entrainementDe(regles, fiche).parCompetence;
-  const { parCompetence: dons, plafonds } = acquisDesDons(regles, fiche);
+  const { parCompetence: dons, plafonds, jets } = acquisDesDons(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
@@ -309,14 +310,18 @@ export function competencesDe(regles, fiche) {
     const metier = rogne(metierBrut);
     const accessoire = accessoireBrut > 0 ? rogne(accessoireBrut) : accessoireBrut;
     const acquis = entrainementCompte + donsComptes + metier + accessoire;
-    const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus : null;
+    // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception » du Fenrir, « +5% à tout test d'Agilité » de l'Elfe forestier) :
+    // « il s'ajoute au score sans passer par le plafond d'acquis », comme une posture ; toujours effectif (un don passif), il est dans `score`
+    const jetDetail = jets.get(k.caracteristique_id) ?? [];
+    const jet = jetDetail.reduce((t, d) => t + d.valeur, 0);
+    const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus + jet : null;
     // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
     const bonusPosture = bonusDePostureSurCompetence(posture, k);
     return {
       id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, maxNaturel, plafondAcquis, plafondBonus,
       acquis, acquisBrut: entrainementBrut + donsBrut + metierBrut + accessoireBrut,
       entrainement: entrainementCompte, entrainementBrut, dons: donsComptes, donsBrut, donsDetail, metier, metierBrut, accessoire, accessoireBrut,
-      score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
+      jet, jetDetail, score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
     };
   });
 }
@@ -364,10 +369,16 @@ export function entrainementsAEnregistrer(fiche) {
  * la ligne de son ethnie dans le tableau de la race (donsDeRace : « Bonus compétence » du Drakos) — et dans l'effet de l'armure portée (« Les bonus de
  * race/classe/don/équipement vont dans la case Acquis », guide « Fiche de personnage : Compétences » ; une armure transformée par un élément a perdu ses
  * bonus d'origine : décision R99) : { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
- * (« Son acquis max en Social est augmenté de +20 »), choix, nonComptes: [{ nom, valeur, raison, texte }] }. Un bonus « X ou Y » est un choix (personnage_acquis_choix : source = le don, rang = le rang du choix dans son texte) : { source,
- * rang, nom, valeur, options, choisi, fait } ; « à répartir au choix », une répartition : { source, rang, nom, valeur, repartition: true, parts:
- * [{ competence_id, valeur }], reste, fait } (les points où le joueur veut, leur somme au plus le bonus, dans l'ordre de la fiche). Tant qu'un choix
- * n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti.
+ * (« Son acquis max en Social est augmenté de +20 »), jets: Map(caracteristique_id → [{ nom, valeur }]) (« +5% à tout jet impliquant la Perception » :
+ * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), artisanat: [{ nom, valeur }]
+ * (« +10% à tous les tests d'artisanat » : la compétence d'artisanat du métier, décision R123 : artisanatDe), choix, nonComptes: [{ nom, valeur, raison,
+ * texte }] }. Un bonus « X ou Y » ou « pour les compétences d'arme » (R120) est un choix (personnage_acquis_choix : source = le don, rang = le rang du
+ * choix dans son texte) : { source, rang, nom, valeur, options, choisi, fait } ; « choisir 2 sur les 3 » (R121), autant de choix que le texte le dit, à
+ * des rangs qui se suivent, chacun avec `numero` (1, 2…), `sur` (leur nombre) et `exclues` (les compétences prises par les autres : deux compétences
+ * différentes ; une compétence déjà prise par un choix d'avant ne compte pas) ; « à répartir au choix », une répartition : { source, rang, nom, valeur,
+ * repartition: true, parts: [{ competence_id, valeur }], reste, fait } (les points où le joueur veut, leur somme au plus le bonus, dans l'ordre de la
+ * fiche). Tant qu'un choix n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti. Un bonus d'artisanat sans compétence d'artisanat
+ * (sans métier, ou un métier sans artisanat) ne compte nulle part : listé dans `nonComptes` (raison 'sans_artisanat').
  */
 export function acquisDesDons(regles, fiche) {
   const parCompetence = new Map();
@@ -378,7 +389,10 @@ export function acquisDesDons(regles, fiche) {
     parCompetence.get(id).push({ nom, valeur });
   };
   const plafonds = new Map();
+  const jets = new Map();
+  const artisanat = [];
   const competences = new Set(regles.competences.map((k) => k.id));
+  const sansArtisanat = !trouver(regles.metiers ?? [], fiche.metier_id)?.artisanat;
   const race = donsDeRace(regles, fiche);
   const armure = trouver(regles.armures ?? [], fiche.armure_id);
   const sources = [
@@ -396,7 +410,30 @@ export function acquisDesDons(regles, fiche) {
         if (!plafonds.has(b.caracteristique_id)) plafonds.set(b.caracteristique_id, []);
         plafonds.get(b.caracteristique_id).push({ nom: source.nom, valeur: b.plafond });
       } else if (b.raison) nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: b.raison, texte: b.texte });
-      else if (b.choix || b.repartir) {
+      else if (b.jet) {
+        // décision R122 : « +5% à tout jet impliquant la Perception » (Fenrir, « Sens canin »), « +5% à tout test d'Agilité » (Elfe forestier) : un bonus
+        // au jet, ajouté au score de chaque compétence de la caractéristique (competencesDe), pas un acquis
+        if (!jets.has(b.jet)) jets.set(b.jet, []);
+        jets.get(b.jet).push({ nom: source.nom, valeur: b.valeur });
+      } else if (b.artisanat) {
+        // décision R123 : « +5% à chaque test lié à l'artisanat » (Nain, Londolor ouest), « +10% à tous les tests d'artisanat » (Elfe noir, Sang purifié) :
+        // « Les test d'artisanat dépendent du métier » : la compétence d'artisanat du métier (artisanatDe) ; sans elle, rien
+        if (sansArtisanat) nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: 'sans_artisanat', texte: b.texte ?? null });
+        else artisanat.push({ nom: source.nom, valeur: b.valeur });
+      } else if (b.choix && entier(b.nombre) > 1) {
+        // « choisir 2 sur les 3 » (décision R121, Moine Templier : « C'est donc 2 options sur les 4 ») : un choix par compétence, à des rangs qui se suivent,
+        // deux compétences différentes (une compétence déjà prise par un choix d'avant n'est pas retenue)
+        const groupe = [];
+        for (let numero = 1; numero <= entier(b.nombre); numero += 1) {
+          rang += 1;
+          const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
+          const fait = notes.find((x) => b.choix.includes(x.competence_id) && !groupe.some((c) => c.choisi === x.competence_id));
+          const c = { source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), numero, sur: entier(b.nombre) };
+          groupe.push(c);
+          if (fait) ajouter(fait.competence_id, source.nom, b.valeur);
+        }
+        for (const c of groupe) choix.push({ ...c, exclues: groupe.filter((y) => y !== c && y.choisi).map((y) => y.choisi) });
+      } else if (b.choix || b.repartir) {
         rang += 1;
         const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
         if (b.choix) {
@@ -418,7 +455,7 @@ export function acquisDesDons(regles, fiche) {
       } else ajouter(b.competence_id, source.nom, b.valeur);
     }
   }
-  return { parCompetence, plafonds, choix, nonComptes };
+  return { parCompetence, plafonds, jets, artisanat, choix, nonComptes };
 }
 
 /** Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre. */
@@ -447,7 +484,9 @@ export function acquisApresRepartition(fiche, source, rang, parts) {
  * caractéristiques du métier (constante metier.artisanat_par_point_caracteristique), avec leur valeur (le +1 de la magie innée compris, comme le score
  * d'une compétence). Croix (décision R39 : « réduction de 20% aussi (fait comme -2 à la carac) ») : comme pour une compétence (R19, formule de la fiche
  * auto), une caractéristique à une croix retire 20 (constante competence.croix_1_malus), une caractéristique à deux croix rend la compétence
- * inutilisable. null sans métier ou sans artisanat ; `score` null quand le métier n'a pas ses deux caractéristiques, ou qu'elle est inutilisable.
+ * inutilisable. Les bonus d'artisanat des dons s'y ajoutent (décision R123 : « +5% à chaque test lié à l'artisanat » du Nain Londolor ouest, « +10% à
+ * tous les tests d'artisanat » de l'Elfe noir Sang purifié ; « Les test d'artisanat dépendent du métier » : acquisDesDons, `bonus` [{ nom, valeur }]).
+ * null sans métier ou sans artisanat ; `score` null quand le métier n'a pas ses deux caractéristiques, ou qu'elle est inutilisable.
  */
 export function artisanatDe(regles, fiche) {
   const metier = trouver(regles.metiers, fiche.metier_id);
@@ -458,9 +497,10 @@ export function artisanatDe(regles, fiche) {
   const parts = metier.artisanat.caracteristiques.map((id) => caracs.find((c) => c.id === id)).filter(Boolean)
     .map((c) => ({ id: c.id, nom: c.nom, valeur: c.valeur, croix: c.croix, malus: c.croix >= 1 ? malusCroix : 0, points: c.valeur * par + (c.croix >= 1 ? malusCroix : 0) }));
   const inutilisable = parts.some((c) => c.croix >= 2);
+  const bonus = acquisDesDons(regles, fiche).artisanat;
   return {
-    texte: metier.artisanat.texte, caracteristiques: parts, inutilisable,
-    score: parts.length === 2 && !inutilisable ? parts[0].points + parts[1].points : null,
+    texte: metier.artisanat.texte, caracteristiques: parts, inutilisable, bonus,
+    score: parts.length === 2 && !inutilisable ? parts[0].points + parts[1].points + bonus.reduce((t, b) => t + b.valeur, 0) : null,
   };
 }
 
@@ -1572,12 +1612,14 @@ export function choixEnAttente(regles, fiche) {
   }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
-  // les bonus d'acquis « X ou Y » et « à répartir au choix » des dons (décision R104)
+  // les bonus d'acquis « X ou Y », « pour les compétences d'arme » (R120), « choisir 2 sur les 3 » (R121) et « à répartir au choix » des dons (décision R104)
   for (const c of acquisDesDons(regles, fiche).choix) {
     if (c.fait) continue;
     attente.push({
       nature: 'acquis', cle: cleDeChoix.acquis(c.source, c.rang),
-      libelle: c.repartition ? `Acquis ${c.nom} : ${c.reste} % à répartir` : `Acquis ${c.nom} : +${c.valeur} % ${c.options.map((o) => trouver(regles.competences, o)?.nom ?? o).join(' ou ')}`,
+      // « choisir 2 sur les 3 » (décision R121) : chaque choix du groupe, sans les compétences que les autres ont prises
+      libelle: c.repartition ? `Acquis ${c.nom} : ${c.reste} % à répartir`
+        : `Acquis ${c.nom} : +${c.valeur} % ${c.options.filter((o) => !(c.exclues ?? []).includes(o)).map((o) => trouver(regles.competences, o)?.nom ?? o).join(' ou ')}${c.sur ? ` (choix ${c.numero} sur ${c.sur})` : ''}`,
     });
   }
   // la magie de la posture Symbiose prise avec deux magies (décision R100)

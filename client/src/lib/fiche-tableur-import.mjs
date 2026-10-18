@@ -784,8 +784,9 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     ...[...textesL42, ...notee('entrainementTexte')].map((t) => ({ competence_id: null, valeur: null, texte: t })),
   ].map((l, i) => ({ rang: i + 1, ...l }));
 
-  // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y » : une de ses options),
-  // « <don> : Arc 6, Calme 4 » (« à répartir au choix ») ; un don qui a deux choix est relu dans l'ordre de ses lignes
+  // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y », « pour les compétences
+  // d'arme » (R120) : une de ses options), « <don> : Arc 6, Calme 4 » (« à répartir au choix ») ; un don qui a deux choix est relu dans l'ordre de ses
+  // lignes (« choisir 2 sur les 3 » (R121) : une ligne par compétence, deux compétences différentes)
   f.acquis_choix = [];
   const choixDesDons = acquisDesDons(regles, f).choix;
   const competenceNommee = (nom) => regles.competences.find((k) => cle(k.nom) === cle(nom)) ?? null;
@@ -800,7 +801,12 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     if (!choix.repartition) {
-      f.acquis_choix.push({ source: choix.source, rang: choix.rang, competence_id: competenceNommee(valeur).id, valeur: null });
+      const k = competenceNommee(valeur);
+      if (choix.sur && f.acquis_choix.some((y) => y.source === choix.source && y.competence_id === k.id)) {
+        perdu(`${quoi} : déjà choisie pour ce don (des compétences différentes : décision R121)`);
+        continue;
+      }
+      f.acquis_choix.push({ source: choix.source, rang: choix.rang, competence_id: k.id, valeur: null });
       continue;
     }
     const parts = [];
