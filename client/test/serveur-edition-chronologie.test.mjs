@@ -356,6 +356,21 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
     assert.match(r.corps.erreur, /^operations\[0\] : Le mot-clé « Sort grenade » ne se (?:supprime|fusionne|renomme) pas depuis le site : il étiquette les sorts grenades, que la fiche de personnage reconnaît par lui \(décision R114/);
   }
   assert.equal(ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade'").n, 14);
+  // une base vivante d'avant la migration 0067 (le service y retombe si sa reconstruction échoue) : sans la table des étiquettes, supprimer ou fusionner
+  // un mot-clé passe (aucun n'y étiquette de sort), jamais un 500
+  const avant0067 = vivante();
+  try {
+    avant0067.exec('DROP TABLE sort_mot_cle');
+    const sur = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+      corps: JSON.stringify({ page: 'chronologie/', operations }) }, { base: () => avant0067, etat: () => ({}), edition: true });
+    const autre = sur([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai repli 0067' } }]);
+    ok(autre);
+    ok(sur([{ op: 'fusionner_mots_cles', mot_cle: autre.corps.crees[0].id, dans: ETIQUETTE_D_ESSAI.id }]));
+    ok(sur([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ETIQUETTE_D_ESSAI.id } }]));
+    assert.equal(avant0067.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(ETIQUETTE_D_ESSAI.id), undefined);
+  } finally {
+    avant0067.close();
+  }
 });
 
 test('une page supprimée par le site (métier) : le bloc de description qui la citait garde son texte et perd son lien', () => {

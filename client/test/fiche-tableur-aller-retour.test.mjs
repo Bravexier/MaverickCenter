@@ -335,6 +335,14 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   const sansDon = await relire({ ...f, classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }], capacites: [] },
     (note) => `${note}\nSort préparé : Boule de feu (jet 57, posture Offensif)`);
   assert.deepEqual(sansDon.nonRepris, ['Sort préparé : « Boule de feu (jet 57, posture Offensif) » : la fiche n’a pas le don qui le permet (« Préparation », « Chargement »), ou ce sort n’est pas de ceux qu’il autorise']);
+  // une seconde ligne « Sort préparé » : un seul sort préparé par fiche, la première est gardée, la seconde dite
+  const autre = commeLaPage(f).sorts.find((s) => !s.prepare && M.sortsAPreparer(regles, commeLaPage(f)).some((x) => x.sort.id === s.sort_id));
+  assert.ok(autre, 'un second sort que la fiche pourrait préparer');
+  const nomDeLAutre = regles.sorts.find((x) => x.id === autre.sort_id).nom;
+  const deux = await relire(f, (note) => note.replace('Sort préparé : Boule de feu (jet 57, posture Offensif)',
+    `Sort préparé : Boule de feu (jet 57, posture Offensif)\nSort préparé : ${nomDeLAutre} (jet 12)`));
+  assert.deepEqual(deux.nonRepris, [`Sort préparé : « ${nomDeLAutre} (jet 12) » : un seul sort préparé par fiche (décision R115)`]);
+  assert.deepEqual(deux.fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_jet]), [[BOULE_DE_FEU, 57]]);
   // la lecture de la ligne : des parenthèses qui ne disent ni un jet ni une posture font partie du nom
   assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus' });
   assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null });

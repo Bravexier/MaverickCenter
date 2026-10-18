@@ -108,7 +108,7 @@ test('R115 : seuls « Préparation » (Mage Rouge) et « Chargement » (Mage Ver
     assert.deepEqual([don(classe, id).niveau, don(classe, id).nature, don(classe, id).preparation], [1, 'classe', { types: ['attaque'], niveaux: [1, 2] }], id);
   }
   assert.equal(regles.classes.flatMap((c) => c.dons).filter((d) => d.preparation).length, 2);
-  // « Instant sort » change la préparation, le Maclier influe un sort dans le bouclier : ni l'un ni l'autre ne permet de préparer (R115)
+  // « Instant Sort » change la préparation, le Maclier influe un sort dans le bouclier : ni l'un ni l'autre ne permet de préparer (R115)
   assert.equal(preparationEcrite(don('classes/mage-rouge', 'capacites/mage-rouge-instant-sort').effet), null);
   assert.equal(preparationEcrite('Permet d\'influer un sort offensif de niveau 3 maximum. Va de pair avec « Contre magique »'), null);
 });
@@ -171,6 +171,61 @@ test('R115 : le don débloqué propose les sorts de la fiche qu’il autorise ; 
   assert.ok(M.donDePreparation(regles, { ...f, classes: [{ rang: 1, classe_id: 'classes/mage-vert', specialite_id: null }] }));
 });
 
+test('R115 : la liste du sort préparé n’a pas les sorts de la magie que la Symbiose du moment désactive, sauf le sort déjà préparé (préparé avant, il le reste)', () => {
+  const GLACE = 'magies/magie-de-la-glace';
+  const glace = regles.sorts.find((s) => s.magie_id === GLACE && s.niveau === 1 && s.types.includes('attaque')).id;
+  const bi = mage(3, [ATTAQUE_1, glace], { magie_acquise_id: GLACE, posture_id: POSTURE('symbiose'), symbiose_magie_id: GLACE });
+  assert.equal(M.postureDuMoment(regles, bi).symbiose.inactive.id, 'magies/magie-du-feu');
+  assert.deepEqual(M.sortsAPreparer(regles, bi).map((x) => x.sort.id), [glace], 'la Boule de feu (Feu désactivé) n’est pas proposée');
+  // préparée en Neutre, puis la Symbiose de la Glace : la Boule de feu reste préparée, proposée (la liste la montre) et calculée en Neutre
+  const neutre = { ...bi, posture_id: POSTURE('neutre') };
+  const prepare = { ...bi, sorts: M.sortsApresPreparation(regles, neutre, ATTAQUE_1) };
+  assert.deepEqual(M.sortsAPreparer(regles, prepare).map((x) => x.sort.id), [ATTAQUE_1, glace]);
+  assert.deepEqual([M.sortPrepare(regles, prepare).sort.id, M.sortPrepare(regles, prepare).posture.id], [ATTAQUE_1, POSTURE('neutre')]);
+  assert.ok(M.sortsAEnregistrer(regles, prepare).some((s) => s.sort_id === ATTAQUE_1 && s.prepare === 1), 'gardée à l’enregistrement');
+  const boule = sortDe(ATTAQUE_1);
+  const m = M.sortDuMoment(regles, prepare, boule, auNm(boule));
+  assert.deepEqual([m.prepare, m.posture.id, m.inactif], [true, POSTURE('neutre'), null]);
+});
+
+test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM, sans livre ni la préparation de l’ancien ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
+  const f = mage(3, [ATTAQUE_1, ATTAQUE_2]);
+  const avant = { ...f, sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2, nm_livre: 1 } : s)) };
+  const gele = structuredClone(avant);
+  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[0],
+    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+  assert.equal(M.sortPrepare(regles, avant).sort.id, ATTAQUE_1);
+  assert.equal(M.sortPrepare(regles, { ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1) }), null, 'plus de sort préparé');
+  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, null).map((s) => s.sort_id), [ATTAQUE_2]);
+  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 2, ATTAQUE_3).at(-1), { sort_id: ATTAQUE_3, rang: 3, niveau_maitrise: 0, nm_livre: 0 });
+  // l'autre ligne garde la sienne (rien de préparé, mais son objet n'est pas recréé) ; la fiche n'est pas touchée
+  assert.equal(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[1], avant.sorts[1]);
+  assert.deepEqual(avant, gele);
+});
+
+test('R119 : l’arme choisie d’un choix d’acquis (personnage_acquis_choix.arme_famille_id) suit le choix tant que sa compétence ne change pas ; jamais sur une répartition', () => {
+  const f = {
+    ...ficheVide('Lame'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', xp: xpDuNiveau(10),
+    classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:epeiste' }],
+    acquis_choix: [
+      { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'epees' },
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6, arme_famille_id: null },
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
+    ],
+  };
+  assert.deepEqual(M.acquisChoixValables(regles, f), [
+    { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'epees' },
+    { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 },
+    { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
+  ]);
+  // une autre compétence : un autre choix, sans l'arme
+  const change = { ...f, ...M.acquisApresChoix(f, 'capacites/guerrier-epeiste', 1, 'arme-lourde') };
+  assert.deepEqual(M.acquisChoixValables(regles, change)[0], { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-lourde', valeur: null });
+  // sans arme choisie, la ligne d'avant (aucune clé de plus)
+  const sansArme = { ...f, acquis_choix: f.acquis_choix.map(({ arme_famille_id: _a, ...x }) => x) };
+  assert.ok(M.acquisChoixValables(regles, sansArme).every((x) => !('arme_famille_id' in x)));
+});
+
 test('R115 : le sort préparé se calcule à la posture du moment de sa préparation — préparé en Offensif, ses dégâts maximum même en Défensif ; les autres à la posture cochée', () => {
   const offensif = mage(3, [ATTAQUE_1, ATTAQUE_2], { posture_id: POSTURE('offensif') });
   const prepare = { ...offensif, sorts: M.sortsApresPreparation(regles, offensif, ATTAQUE_1), posture_id: POSTURE('defensif') };
@@ -205,7 +260,7 @@ test('R115 : « Charge lente… » (+5 au sort préparé offensif) et « … ou 
   // aucun autre texte de la base ne vise le sort préparé ou les autres
   const textes = [...lignes('SELECT id, effet AS texte FROM capacite WHERE effet IS NOT NULL'), ...lignes('SELECT id, texte FROM race_don')];
   assert.deepEqual(textes.filter((t) => bonusDeSortsEcrits(t.texte).some((b) => 'prepare' in b.vises)).map((t) => t.id), ['capacites/mage-rouge-charge-lente', 'capacites/mage-rouge-ou-rapide']);
-  // « Soralonge » (Mage Vert : « Augmente la portée des sorts d'attaque chargés de +2 ») reste selon la situation : la décision ne le nomme pas
+  // « Soralongé » (Mage Vert : « Augmente la portée des sorts d'attaque chargés de +2 ») reste selon la situation : la décision ne le nomme pas (question Q33)
   assert.deepEqual(don('classes/mage-vert', 'capacites/mage-vert-soralonge').sorts, [{ cible: 'portee', valeur: 2, vises: { attaque: true }, raison: 'situation' }]);
 
   const nomDe = (d) => `${d.nom} (Mage Rouge)`;

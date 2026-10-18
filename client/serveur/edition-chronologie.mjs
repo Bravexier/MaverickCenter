@@ -83,9 +83,9 @@ export function vocabulaire(db) {
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
- *   reecrireLesBalises: Function, vocabulaireVivant: Function }} outils
+ *   reecrireLesBalises: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
  */
-export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant }) {
+export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant, tableExiste }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
     const erreur = erreurDeDate(e);
@@ -275,9 +275,11 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
    * Refus pour un mot-clé qui étiquette un sort (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » sur les sorts grenades) : une étiquette
    * est une règle posée par décision, que le site ne pose ni ne retire ; la base, elle, refuserait la suppression par sa clé étrangère (sans cascade),
    * sans message lisible. Supprimer le mot-clé, ou le fusionner dans un sens ou l'autre (l'un part, l'autre reçoit ses pages et ses balises), changerait
-   * ce que l'étiquette veut dire : 409, avec les sorts.
+   * ce que l'étiquette veut dire : 409, avec les sorts. Une base vivante d'avant la migration 0067 (le service y retombe si sa reconstruction échoue)
+   * n'a pas la table : aucun mot-clé n'y étiquette de sort.
    */
   function verifierSansSort(db, m, action) {
+    if (!tableExiste(db, 'sort_mot_cle')) return;
     const sorts = db.prepare('SELECT s.nom FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ? ORDER BY s.nom_cle, s.id').all(m.id).map((s) => s.nom);
     if (!sorts.length) return;
     const noms = sorts.slice(0, 3).map((n) => `« ${n} »`).join(', ') + (sorts.length > 3 ? '…' : '');

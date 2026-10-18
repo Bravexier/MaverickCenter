@@ -381,6 +381,9 @@ export function entrainementsAEnregistrer(fiche) {
  * (sans métier, ou un métier sans artisanat) ne compte nulle part : listé dans `nonComptes` (raison 'sans_artisanat').
  */
 export function acquisDesDons(regles, fiche) {
+  // l'arme choisie d'un choix (décision R119, personnage_acquis_choix.arme_famille_id, migration 0067) : la page ne la demande pas encore, mais une valeur
+  // posée ailleurs (l'API) reste avec le choix tant que la compétence choisie ne change pas (acquisChoixValables)
+  const armeDuChoix = (fait) => (fait?.arme_famille_id ? { arme_famille_id: fait.arme_famille_id } : {});
   const parCompetence = new Map();
   const choix = [];
   const nonComptes = [];
@@ -428,7 +431,10 @@ export function acquisDesDons(regles, fiche) {
           rang += 1;
           const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
           const fait = notes.find((x) => b.choix.includes(x.competence_id) && !groupe.some((c) => c.choisi === x.competence_id));
-          const c = { source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), numero, sur: entier(b.nombre) };
+          const c = {
+            source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), numero, sur: entier(b.nombre),
+            ...armeDuChoix(fait),
+          };
           groupe.push(c);
           if (fait) ajouter(fait.competence_id, source.nom, b.valeur);
         }
@@ -438,7 +444,7 @@ export function acquisDesDons(regles, fiche) {
         const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
         if (b.choix) {
           const fait = notes.find((x) => b.choix.includes(x.competence_id));
-          choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait) });
+          choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), ...armeDuChoix(fait) });
           if (fait) ajouter(fait.competence_id, source.nom, b.valeur);
         } else {
           let reste = b.valeur;
@@ -458,11 +464,15 @@ export function acquisDesDons(regles, fiche) {
   return { parCompetence, plafonds, jets, artisanat, choix, nonComptes };
 }
 
-/** Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre. */
+/**
+ * Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre.
+ * L'arme choisie d'un choix (`arme_famille_id`, décision R119) le suit tant que la compétence choisie reste la même ; une répartition n'en a jamais (la base
+ * la refuse avec des points : CHECK de personnage_acquis_choix).
+ */
 export function acquisChoixValables(regles, fiche) {
   return acquisDesDons(regles, fiche).choix.flatMap((c) => (c.repartition
     ? c.parts.map((x) => ({ source: c.source, rang: c.rang, competence_id: x.competence_id, valeur: x.valeur }))
-    : c.choisi ? [{ source: c.source, rang: c.rang, competence_id: c.choisi, valeur: null }] : []));
+    : c.choisi ? [{ source: c.source, rang: c.rang, competence_id: c.choisi, valeur: null, ...(c.arme_famille_id ? { arme_famille_id: c.arme_famille_id } : {}) }] : []));
 }
 
 /** La fiche après le choix de `competenceId` (null : retiré) pour le choix d'acquis (`source`, `rang`) : { acquis_choix }. */
@@ -2400,25 +2410,32 @@ export function donDePreparation(regles, fiche) {
   return { dons, types: union('types'), niveaux: union('niveaux').sort((a, b) => a - b) };
 }
 
-/**
- * Les sorts de la fiche que le don autorise à préparer (donDePreparation : un sort d'attaque, sort_type, du NPM 1 ou 2), dans l'ordre du tableau des
- * sorts : [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don.
- */
-export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fiche)) {
+/** Les sorts de la fiche que le don autorise (un sort d'attaque, sort_type, du NPM 1 ou 2) : [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don. */
+function sortsDuDon(regles, fiche, don) {
   if (!don) return [];
   return (fiche.sorts ?? []).map((ligne, index) => ({ index, ligne, sort: trouver(regles.sorts, ligne?.sort_id) }))
     .filter((x) => x.sort && don.niveaux.includes(x.sort.niveau) && don.types.some((t) => x.sort.types?.includes(t)));
 }
 
 /**
+ * Les sorts que la liste du sort préparé propose (donDePreparation : un sort d'attaque, sort_type, du NPM 1 ou 2), dans l'ordre du tableau des sorts :
+ * [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don. Pas ceux de la magie que la Symbiose du moment désactive (décisions R100, R111 : on ne
+ * prépare pas un sort qu'on ne peut pas lancer), sauf le sort déjà préparé : préparé avant, il garde la posture de sa préparation (décision R115).
+ */
+export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fiche)) {
+  const inactive = postureDuMoment(regles, fiche)?.symbiose?.inactive?.id ?? null;
+  return sortsDuDon(regles, fiche, don).filter((x) => x.sort.magie_id !== inactive || entier(x.ligne?.prepare) === 1);
+}
+
+/**
  * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, ou quand le sort marqué
- * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer). { index, ligne, sort, jet (1 à 100, ou null
+ * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer) ; la posture cochée depuis n'y change rien. { index, ligne, sort, jet (1 à 100, ou null
  * tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
  */
 export function sortPrepare(regles, fiche) {
   const don = donDePreparation(regles, fiche);
   const index = (fiche.sorts ?? []).findIndex((l) => entier(l?.prepare) === 1);
-  const choisi = index < 0 ? null : sortsAPreparer(regles, fiche, don).find((x) => x.index === index);
+  const choisi = index < 0 ? null : sortsDuDon(regles, fiche, don).find((x) => x.index === index);
   if (!choisi) return null;
   const jet = choisi.ligne.prepare_jet;
   return {
@@ -2430,6 +2447,19 @@ export function sortPrepare(regles, fiche) {
 
 /** Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture (la base les refuse hors du sort préparé : CHECK de personnage_sort). */
 const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+
+/**
+ * Les sorts de la fiche quand l'emplacement `index` du tableau des sorts reçoit le sort `sortId` : vide (`sortId` absent), la ligne part ; un autre
+ * sort sur une ligne existante, il la prend à 0 NM, sans livre et sans la préparation de l'ancien (décision R115 : le sort préparé est un sort, pas un
+ * emplacement) ; un emplacement libre, une ligne de plus. Une nouvelle liste, la fiche n'est pas touchée.
+ */
+export function sortsApresChoixDEmplacement(fiche, index, sortId) {
+  const sorts = [...(fiche.sorts ?? [])];
+  if (!sortId) sorts.splice(index, 1);
+  else if (sorts[index]) sorts[index] = { ...nonPrepare(sorts[index]), sort_id: sortId, niveau_maitrise: 0, nm_livre: 0 };
+  else sorts.push({ sort_id: sortId, rang: sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
+  return sorts;
+}
 
 /**
  * Les sorts de la fiche quand on prépare le sort `sortId` (décision R115) : lui seul est marqué, avec la posture cochée à cet instant (personnage.posture_id,

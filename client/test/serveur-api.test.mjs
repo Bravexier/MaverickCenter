@@ -893,6 +893,9 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
   assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
   assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id'), 'un seul sort préparé par fiche (décision R115)');
+  // un autre index unique sur la seule fiche : sa table, jamais « en double () »
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_ceinture.personnage_id'), 'une seule ligne par fiche (personnage_ceinture)');
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id, personnage_sort.rang'), 'en double (rang)');
 });
 
 test('arme choisie d’un choix d’acquis (décision R119, migration 0067) : enregistrée et relue (la page la laisse vide) ; jamais avec une répartition, une seule par choix', () => {

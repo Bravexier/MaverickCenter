@@ -34,7 +34,7 @@ import {
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
-  sortsApresPreparation,
+  sortsApresChoixDEmplacement, sortsApresPreparation,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
@@ -733,11 +733,8 @@ function construireSorts() {
           title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
-            const choix = ev.target.value;
-            if (!choix) fiche.sorts.splice(l.index, 1);
-            // un autre sort dans l'emplacement : la préparation (décision R115) ne le suit pas
-            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
-            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
+            // un autre sort dans l'emplacement : à 0 NM, sans livre ni la préparation de l'ancien (décision R115)
+            fiche.sorts = sortsApresChoixDEmplacement(fiche, l.index, ev.target.value || null);
             changer();
           },
         }, el('option', { value: '', class: 'option-vide' }, l.enTrop ? '— retirer —' : l.choix.length ? '— libre —' : '— aucun sort possible —'),
@@ -825,7 +822,6 @@ function construireSorts() {
             ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length || m.prepare));
           marquePrepare.hidden = !m?.prepare;
           infobulle(marquePrepare, m?.prepare ? `Sort préparé, à la posture du moment de sa préparation : ${m.posture?.nom ?? 'aucune'}` : '');
-          tr.toggleAttribute('data-prepare', Boolean(m?.prepare));
           // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
           tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
           infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');

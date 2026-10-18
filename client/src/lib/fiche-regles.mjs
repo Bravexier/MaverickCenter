@@ -284,7 +284,7 @@ function reglesDeLaBase(db) {
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
           ...(() => { const acquis = lireAcquis(d.effet); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
-          ...(preparationEcrite(d.effet) ? { preparation: preparationEcrite(d.effet) } : {}),
+          ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
         })),
       };
     });
@@ -302,7 +302,7 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
-  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade »), dans l'ordre de leur libellé : les bonus écrits pour « les sorts
+  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
   // "grenades" » visent les sorts qui la portent, jamais un sort par son nom (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
   const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
     ORDER BY e.sort_id, m.libelle_cle, e.mot_cle_id`), 'sort_id', (e) => e.mot_cle_id);

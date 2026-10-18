@@ -208,14 +208,17 @@ abandonne.
   même temps que l'attaque de contact le tour suivant. ») ou « Chargement » du Mage Vert (« Permet d'influer un sort d'attaque lvl1 ou 2 dans la main et
   de l'utiliser en même temps que l'attaque de distance le tour suivant. »), débloqués au niveau de classe 1 (`donDePreparation` ; le texte lu au build par
   `lib/sort-bonus-texte.mjs#preparationEcrite` : un sort d'attaque, `sort_type` `attaque`, de NPM 1 ou 2, `regles.classes[].dons[].preparation`). La liste
-  ne propose que les sorts de la fiche qu'il autorise (`sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
+  ne propose que les sorts de la fiche qu'il autorise, sans ceux de la magie que la Symbiose du moment désactive (R100, R111), sauf le sort déjà préparé
+  (`sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
   côté, sur sa couleur ; aucune si rien n'est coché : `sortsApresPreparation`), un seul par fiche ; le **jet de magie** (D100, de 1 à 100, facultatif :
   « si réussi ») se note ensuite (`sortsApresLeJet` ; les bornes du D100, valeurs de la décision, dans `regles.sort_prepare`) ; « **Lâcher le sort** » remet tout à zéro. Dans le tableau, le sort préparé porte la marque
   « préparé » et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
   maximals, même si l'attaque physique a lieu en posture défensive » : `contexteDesSorts`, `prepare`) ; les autres sorts suivent la posture cochée.
   Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067) ; une préparation que le don ne permet plus (classe changée,
   sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui
-  donne pas la préparation de l'ancien.
+  donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **Limite** : la magie de la Symbiose n'est pas enregistrée avec la préparation
+  (aucune colonne) ; un sort préparé en Symbiose se calcule avec la magie de Symbiose **actuelle** de la fiche (`personnage.symbiose_magie_id`), pas
+  celle du moment de sa préparation (question au propriétaire).
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
@@ -333,11 +336,12 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts préparés**
   (décision R115) : « Charge lente… » (Mage Rouge, spécialité Rubis, niveau de classe 10 : « Les sorts offensifs préparés infligent +5 dégâts. »)
   ajoute +5 au sort préparé, « … ou rapide » (« Les sorts offensifs non préparés infligent +5 dégâts. ») +5 à tous les autres sorts offensifs, lus
-  « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer) ; sans sort préparé, « … ou rapide » vaut pour tous les sorts
-  d'attaque. Le Mage Vert n'a pas d'équivalent écrit de ces deux dons ; ses dons qui parlent du sort chargé ou influé — « Soralonge » (« Augmente la portée
-  des sorts d'attaque chargés de +2 »), « À l'aise » (« Le sort influé aura toujours au minimum un Niveau de Maîtrise »), « Point faible », « Visée
-  laser », « Enchanté » —, comme « Instant sort » du Mage Rouge (« Préparer un sort de niveau 1 et 2 dans la main devient un IC »), ne sont pas comptés
-  (la décision ne les nomme pas ; « Soralonge » : « selon la situation » dans l'infobulle de la portée). Une
+  « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer ; une lecture, à confirmer : question Q32) ; sans sort
+  préparé, « … ou rapide » vaut pour tous les sorts d'attaque. Le Mage Vert n'a pas d'équivalent écrit de ces deux dons ; ses dons qui parlent du sort chargé ou
+  influé — « Soralongé » (« Augmente la portée des sorts d'attaque chargés de +2 », question Q33), « À l'aise » (« Le sort influé aura toujours au minimum
+  un Niveau de Maîtrise. », question Q34), « Point Faible », « Visée Laser », « ... Enchanté ! » —, comme « Instant Sort » du Mage Rouge (« Préparer un
+  sort de niveau 1 et 2 dans la main devient un IC. »), ne sont pas comptés (la décision ne les nomme pas ; « Soralongé » : « selon la situation » dans
+  l'infobulle de la portée). Une
   **progression par niveau** (décision R110 : arrondi à l'inférieur) : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux »
   (Elfe argenté ; « +1 … +1 » du Felfe argenté) vaut 2 + 2 × ⌊niveau global ÷ 5⌋ (+2, +4 au niveau 5, +6 au niveau 10… +10 au niveau 20 ; le niveau
   global pour un don de race ou d'ethnie) ; « 3+x […] x = +2 dégâts/6 niveaux » (Mage « Puissance ») vaut 3 + 2 × ⌊niveau de classe ÷ 6⌋.
@@ -641,7 +645,7 @@ pas, et la note datée est le seul signal.
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
 | `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
 | `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
-| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte ; l'arme de la maîtrise au choix de la classe (`arme_famille_id`, décision R119, migration 0067), que la page ne demande pas encore (deux questions attendent le propriétaire) : vide, gardée telle quelle par le service et l'aller-retour |
+| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte ; l'arme de la maîtrise au choix de la classe (`arme_famille_id`, décision R119, migration 0067), que la page ne demande pas encore (deux questions attendent le propriétaire) : vide ; posée ailleurs (l'API), gardée par le service, et par la page tant que la compétence du choix ne change pas (`acquisChoixValables`) ; la fiche en tableur ne l'écrit pas |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |

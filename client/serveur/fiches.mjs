@@ -252,7 +252,10 @@ export function expliquer(message) {
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
     // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
     if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
-    const cols = m[1].split(',').map((c) => c.trim().replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
+    const noms = m[1].split(',').map((c) => c.trim());
+    const cols = noms.map((c) => c.replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
+    // un autre index sur la seule fiche : sa table, plutôt que « en double () »
+    if (!cols.length) return `une seule ligne par fiche (${/^(\w+)\./.exec(noms[0])?.[1] ?? noms[0]})`;
     return `en double (${cols.join(', ')})`;
   }
   // un choix que les règles n'ont plus (don ou spécialité supprimé depuis le site de dev, D11) : la page a été construite avant

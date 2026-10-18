@@ -177,7 +177,7 @@ export function bonusDeSortsEcrits(texte) {
  * préparé ») : « Préparation » du Mage Rouge, « Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en même temps que
  * l'attaque de contact le tour suivant. », et « Chargement » du Mage Vert, « Permet d'influer un sort d'attaque lvl1 ou 2 dans la main et de l'utiliser en
  * même temps que l'attaque de distance le tour suivant. » : { types: ['attaque'] (sort_type), niveaux: [1, 2] (le NPM du sort) }. null pour tout autre
- * texte, dont « Préparer un sort de niveau 1 et 2 dans la main devient un IC » (Mage Rouge, « Instant sort » : il change la préparation, il ne la permet
+ * texte, dont « Préparer un sort de niveau 1 et 2 dans la main devient un IC » (Mage Rouge, « Instant Sort » : il change la préparation, il ne la permet
  * pas) et « Permet d'influer un sort offensif de niveau 3 maximum » (Maclier, dans le bouclier : pas la préparation de R115).
  */
 export function preparationEcrite(texte) {
