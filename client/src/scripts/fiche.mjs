@@ -35,7 +35,7 @@ import {
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
-  bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes,
+  bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
 } from '../lib/fiche-moteur.mjs';
 
@@ -1288,6 +1288,7 @@ function autocompletion(champ, propositions, choisir) {
     .forEach(([k, v]) => champ.setAttribute(k, v));
   let noms = [];
   let actif = -1;
+  let appui = null;
   const fermer = () => {
     liste.hidden = true;
     champ.setAttribute('aria-expanded', 'false');
@@ -1314,8 +1315,17 @@ function autocompletion(champ, propositions, choisir) {
     if (!noms.length || (noms.length === 1 && noms[0] === champ.value)) return fermer();
     liste.replaceChildren(...noms.map((n, i) => el('li', {
       id: `${idListe}-${i}`, role: 'option', 'aria-selected': 'false',
-      // pointerdown : le champ garde le focus (pas de blur qui fermerait la liste avant le choix)
-      onpointerdown: (ev) => { ev.preventDefault(); prendre(i); },
+      // pointerdown : le champ garde le focus (pas de blur qui fermerait la liste avant le choix) ; le choix au relâcher sur la même ligne, sans
+      // déplacement : au toucher, le doigt qui fait défiler la liste ne choisit rien (le défilement annule le pointeur : pointercancel)
+      onpointerdown: (ev) => { ev.preventDefault(); appui = { i, x: ev.clientX, y: ev.clientY }; },
+      onpointerup: (ev) => {
+        const a = appui;
+        appui = null;
+        if (a?.i === i && Math.hypot(ev.clientX - a.x, ev.clientY - a.y) < 10) prendre(i);
+      },
+      onpointercancel: () => { appui = null; },
+      // un clic sans pointeur (lecteur d'écran, clavier) choisit aussi
+      onclick: (ev) => { if (ev.detail === 0) prendre(i); },
     }, n)));
     liste.hidden = false;
     champ.setAttribute('aria-expanded', 'true');
@@ -1504,7 +1514,14 @@ function construireEquipement() {
     const matiere = selecteur(() => fiche.bouclier_materiau_id, regles.materiaux_bouclier.map((m) => option(m.id, m.nom)), choisir('bouclier_materiau_id'),
       { etiquette: 'Bouclier : matière' });
     const amelioration = selecteur(() => fiche.bouclier_amelioration_id, ameliorations('bouclier'), choisir('bouclier_amelioration_id'), { etiquette: 'Bouclier : amélioration' });
-    const tuiles = el('ul', { class: 'bouclier__tuiles', 'aria-label': 'Ce que donne le bouclier' });
+    // trois tuiles posées une fois, focalisables (leur infobulle se lit aussi au clavier, comme celles de la défense)
+    const tuile = (nom) => {
+      const texte = el('strong', {});
+      return { texte, li: el('li', { class: 'bouclier__tuile', tabindex: '0' }, el('small', {}, nom), texte) };
+    };
+    const [tuileAp, tuileAm, tuilePoids] = [tuile('AP'), tuile('AM'), tuile('Poids')];
+    const tuiles = el('ul', { class: 'bouclier__tuiles', 'aria-label': 'Ce que donne le bouclier' }, tuileAp.li, tuileAm.li, tuilePoids.li);
+    const labelMatiere = el('label', { class: 'fiche-champ' }, el('span', {}, 'Matière'), matiere);
     const curseur = el('input', {
       type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': 'Bouclier : solidité',
       oninput: (ev) => {
@@ -1518,15 +1535,26 @@ function construireEquipement() {
       const b = bouclierDe(regles, fiche);
       matiere.disabled = !b;
       amelioration.disabled = !b?.matiere;
+      // une forme sans sa matière : la matière est à choisir (règle bouclier_matiere_manquante)
+      labelMatiere.toggleAttribute('data-a-choisir', Boolean(b && !b.matiere));
       tuiles.hidden = !b?.bouclier;
-      const tuile = (nom, texte, titre = '', extra = {}) => el('li', { class: 'bouclier__tuile', title: titre || null, ...extra }, el('small', {}, nom), el('strong', {}, texte));
-      tuiles.replaceChildren(...(b?.bouclier ? [
-        tuile('AP', String(b.ap), [`${b.nom} : ${entier(b.bouclier.ap)} AP`, ...(b.amelioration?.bonus_ap ? [`Amélioration niveau ${b.amelioration.niveau} : +${b.amelioration.bonus_ap} AP`] : []),
-          'Comptés en parade partielle (guide « Fiche de personnage : Armure/Défense/Bouclier »)'].join('\n')),
-        tuile('AM', String(b.am), 'Comptés en parade partielle'),
-        b.poids ? tuile('Poids', b.poids.nom, `Requiert ${b.poids.force_min} Force minimum${b.forceManquante ? ` : Force ${b.force}, trop lourd` : ''}`,
-          { style: `--c: ${b.poids.couleur}; --texte-sur-c: ${b.poids.texte}`, dataset: { poids: '', ...(b.forceManquante ? { trop: '' } : {}) } }) : null,
-      ] : []).filter(Boolean));
+      if (b?.bouclier) {
+        const ecrire = (t, texte) => { if (t.texte.textContent !== texte) t.texte.textContent = texte; };
+        ecrire(tuileAp, String(b.ap));
+        infobulle(tuileAp.li, [`${b.nom} : ${entier(b.bouclier.ap)} AP`, ...(b.amelioration?.bonus_ap ? [`Amélioration niveau ${b.amelioration.niveau} : +${b.amelioration.bonus_ap} AP`] : []),
+          'Comptés en parade partielle (guide « Fiche de personnage : Armure/Défense/Bouclier »)'].join('\n'));
+        ecrire(tuileAm, String(b.am));
+        infobulle(tuileAm.li, 'Comptés en parade partielle');
+        tuilePoids.li.hidden = !b.poids;
+        if (b.poids) {
+          ecrire(tuilePoids, b.poids.nom);
+          infobulle(tuilePoids.li, `Requiert ${b.poids.force_min} Force minimum${b.forceManquante ? ` : Force ${b.force}, trop lourd` : ''}`);
+          tuilePoids.li.style.setProperty('--c', b.poids.couleur);
+          tuilePoids.li.style.setProperty('--texte-sur-c', b.poids.texte);
+          tuilePoids.li.dataset.poids = '';
+          tuilePoids.li.toggleAttribute('data-trop', b.forceManquante);
+        }
+      }
       soliditeLigne.hidden = !b?.solidite;
       if (b?.solidite) {
         const sol = b.solidite;
@@ -1541,7 +1569,7 @@ function construireEquipement() {
     return el('div', { class: 'objet' },
       el('div', { class: 'fiche-champs' },
         el('label', { class: 'fiche-champ' }, el('span', {}, 'Forme'), forme),
-        el('label', { class: 'fiche-champ' }, el('span', {}, 'Matière'), matiere),
+        labelMatiere,
         el('label', { class: 'fiche-champ' }, el('span', {}, 'Amélioration'), amelioration)),
       tuiles, soliditeLigne);
   });
@@ -1565,7 +1593,8 @@ function construireEquipement() {
           const x = l();
           const caracId = caracteristiqueDe(x);
           if (!x || !caracId) return;
-          x.valeur = ev.target.value === '' ? null : entier(ev.target.value);
+          // bornée aux plages écrites, comme le générateur : la valeur comptée est celle du niveau choisi
+          x.valeur = valeurDeCompetenceBornee(regles, caracId, ev.target.value);
           x.accessoire_effet_id = effetDeCompetence(regles, caracId, x.valeur)?.id ?? x.accessoire_effet_id;
           changer();
         },
@@ -1724,6 +1753,8 @@ function construireEquipement() {
           const champ = racine.querySelector(`#inventaire tr[data-ligne="${fiche.inventaire.length}"] input`);
           champ?.focus();
           champ?.setSelectionRange?.(champ.value.length, champ.value.length);
+          // la liste qui se filtre s'ouvre tout de suite (un collage de deux lettres ou plus n'attend pas la frappe suivante)
+          champ?.dispatchEvent(new Event('input'));
         };
         const champ = el('input', {
           'aria-label': `Sac, emplacement ${lignesDuSac.length + 1} : nouvel objet`, placeholder: 'Ajouter un objet (proposé dès 2 lettres, ou libre)…',
@@ -1794,7 +1825,9 @@ function construireDefense() {
       parade.disabled = !degatsEnCours.reduits;
       const r = degatsEnCours.entrants === '' ? null
         : degatsRecus(regles, fiche, degatsEnCours);
-      recus.textContent = r ? `${r.recus} reçus` : '—';
+      // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
+      const texteRecus = r ? `${r.recus} reçus` : '—';
+      if (recus.textContent !== texteRecus) recus.textContent = texteRecus;
       infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n') : '');
     });
     return [
@@ -2125,14 +2158,29 @@ function aEnvoyer() {
   return f;
 }
 
+/**
+ * Les noms qui décrivent ce qu'une fiche d'avant perd à sa conversion (sansPartiesRetirees) : une armure, un emplacement d'armure, un matériau de
+ * bouclier, un effet d'accessoire.
+ */
+const nomsDesRetraits = () => ({
+  armure: (x) => trouver(regles.armures ?? [], x)?.nom ?? null,
+  emplacement: (x) => trouver(regles.emplacements_armure ?? [], x)?.nom ?? null,
+  ressource: (x) => trouver(regles.ressources ?? [], x)?.nom ?? null,
+  accessoire: (x) => trouver(regles.accessoires ?? [], x)?.libelle ?? null,
+});
+
 function appliquer(donnees) {
-  fiche = { ...ficheVide(''), ...sansPartiesRetirees(donnees.personnage) };
+  // une fiche d'avant (le service retombé sur sa base d'avant : docs/serveur.md) est convertie ici ; ce qu'elle perd est noté, daté, dans ses notes,
+  // et la fiche est à enregistrer (sinon la conversion et ses notes se perdraient)
+  const brute = donnees.personnage;
+  const convertie = sansPartiesRetirees(brute, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: nomsDesRetraits() });
+  fiche = { ...ficheVide(''), ...convertie };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) fiche[cle] ??= [];
   id = fiche.id;
   version = fiche[CHAMP_VERSION];
   controles = donnees.controles ?? null;
-  modifie = false;
+  modifie = convertie !== brute && (convertie?.notes ?? null) !== (brute?.notes ?? null);
   enregistrementRefuse = false;
   rafraichir();
 }
@@ -2478,10 +2526,9 @@ function cibleDeLImport() {
 
 /** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
 function remplacerLaFiche(nouvelle, cible) {
-  // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées (R95)
-  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: {
-    armure: (x) => trouver(regles.armures, x)?.nom ?? null, emplacement: (x) => trouver(regles.emplacements_armure, x)?.nom ?? null,
-  } }) };
+  // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées
+  // (R95) ; des matériaux de bouclier, des accessoires Ceinture ou Autre, un nom ou un effet hors table : notés (R96, R97)
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: nomsDesRetraits() }) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
   controles = null;

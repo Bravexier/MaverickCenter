@@ -1050,3 +1050,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* l'inventaire, sous les accessoires (zone III) : le sac puis la bourse ; la liste qui se filtre déborde du tableau qui défile */
 .inventaire { display: grid; gap: 0.6rem; }
 #etape-inventaire .fiche-defile { overflow: visible; }
+/* sans défilement, le tableau du sac tient dans sa colonne, même sur un téléphone : le nom prend la place que laissent la quantité et le bouton */
+#inventaire { width: 100%; table-layout: fixed; }
+#inventaire th:nth-child(2) { width: 5.5rem; }
+#inventaire th:nth-child(3) { width: 2.5rem; }

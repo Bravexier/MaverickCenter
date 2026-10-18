@@ -557,11 +557,97 @@ test('une page d’avant la migration 0055 envoie une armure par emplacement (`a
   assert.match(PAGE_D_AVANT, /l’armure est une seule armure complète/);
 });
 
-test('colonnes ajoutées par les migrations 0045 et 0055 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('une page d’avant la migration 0060 envoie des matériaux de bouclier et des accessoires d’avant : la matière du bouclier, les accessoires gardés, le reste noté (R96, R97) ; avec les nouvelles clés du bouclier, refus 409', () => {
+  const [m1, m2] = db.prepare('SELECT m.ressource_id AS id, r.nom FROM materiau_bouclier m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre LIMIT 2').all().map((x) => ({ ...x }));
+  const effet = db.prepare("SELECT id, libelle FROM accessoire_effet WHERE propriete_id = 'attributs' AND bonus_min IS NULL AND malediction = 0 AND libelle IS NOT NULL ORDER BY id LIMIT 1").get();
+  // la fiche vide d'une page d'avant n'a pas les nouvelles clés du bouclier
+  const { bouclier_materiau_id: _m, bouclier_amelioration_id: _a, bouclier_solidite: _s, ...davant } = ficheConforme('Ancien bouclier');
+  const c = appel('POST', '/api/personnages', {
+    ...davant, bouclier_classe_id: 'targe',
+    bouclier_materiaux: [{ rang: 1, materiau_id: m1.id, quantite: 1 }, { rang: 2, materiau_id: m2.id, quantite: 1 }],
+    accessoires: [
+      { emplacement: 'chef', nom: 'Couronne', accessoire_effet_id: effet.id, texte: null, valeur: null, maudit: 0 },
+      { emplacement: 'ceinture', nom: null, accessoire_effet_id: effet.id, texte: null, valeur: null, maudit: 0 },
+      { emplacement: 'collier', nom: null, accessoire_effet_id: null, texte: 'Brille la nuit', valeur: null, maudit: 0 },
+    ],
+  });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  const p = c.corps.personnage;
+  assert.deepEqual([p.bouclier_classe_id, p.bouclier_materiau_id, 'bouclier_materiaux' in p], ['targe', m1.id, false]);
+  assert.deepEqual(p.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, 'nom' in a]), [['chef', effet.id, false]]);
+  const notes = p.notes.split('\n');
+  assert.equal(notes.length, 4, p.notes);
+  assert.ok(notes.every((l) => /^\[\d{2}\/\d{2}\/\d{4}\] Retrait \(règles modifiées\) : /.test(l)), p.notes);
+  assert.ok(notes.some((l) => l.includes(`« ${m2.nom} »`) && l.includes(`« ${m1.nom} »`)), 'le matériau qui n’est plus dans le bouclier, et sa matière');
+  assert.ok(notes.some((l) => l.includes('« Couronne »')), 'le nom perdu');
+  assert.ok(notes.some((l) => l.includes('Ceinture')), 'l’accessoire de la Ceinture');
+  assert.ok(notes.some((l) => l.includes('Brille la nuit')), 'l’effet hors table seul');
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, bouclier_materiaux: [{ rang: 1, materiau_id: m2.id, quantite: 1 }] });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /le bouclier a une forme et une matière/);
+});
+
+test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction a échoué) : le bouclier vide et les accessoires d’aujourd’hui s’enregistrent ; une matière, absente de la base, est refusée ; les matériaux d’avant restent', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0060') });
+  const ancienne = new DatabaseSync(avant);
+  // les tables d'avant 0060 : trois matériaux de bouclier, huit emplacements d'accessoire avec un nom et un effet hors table ; la vue des contrôles
+  // d'aujourd'hui lit les nouvelles colonnes du bouclier : une vue vide la remplace (ce test ne porte pas sur les contrôles)
+  ancienne.exec(`DROP VIEW v_personnage_controle;
+    ALTER TABLE personnage DROP COLUMN bouclier_materiau_id;
+    ALTER TABLE personnage DROP COLUMN bouclier_amelioration_id;
+    ALTER TABLE personnage DROP COLUMN bouclier_solidite;
+    CREATE TABLE personnage_bouclier_materiau (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, rang INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
+      materiau_id TEXT NOT NULL REFERENCES materiau_bouclier(ressource_id), quantite INTEGER NOT NULL CHECK (quantite >= 1),
+      PRIMARY KEY (personnage_id, rang)
+    ) STRICT, WITHOUT ROWID;
+    DROP TABLE personnage_accessoire;
+    CREATE TABLE personnage_accessoire (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+      emplacement TEXT NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
+      nom TEXT, accessoire_effet_id TEXT REFERENCES accessoire_effet(id), texte TEXT, valeur INTEGER, maudit INTEGER NOT NULL DEFAULT 0 CHECK (maudit IN (0, 1)),
+      competence_id TEXT REFERENCES competence(id), arme_famille_id TEXT REFERENCES arme_famille(id),
+      PRIMARY KEY (personnage_id, emplacement)
+    ) STRICT, WITHOUT ROWID;
+    CREATE VIEW v_personnage_controle AS SELECT id AS personnage_id, NULL AS regle, NULL AS detail FROM personnage WHERE 0;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const effet = base.prepare("SELECT id FROM accessoire_effet WHERE propriete_id = 'attributs' AND bonus_min IS NULL AND malediction = 0 AND libelle IS NOT NULL ORDER BY id LIMIT 1").get().id;
+    // ce qu'envoie la page à jour : les clés du bouclier vides (ficheVide n'en a pas, la page pose la solidité) et les accessoires d'aujourd'hui
+    const cree = enregistrerFiche(base, {
+      ...ficheConforme('Repli 0060'), bouclier_classe_id: 'targe', bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
+      accessoires: [{ emplacement: 'chef', accessoire_effet_id: effet, valeur: null, maudit: 0, competence_id: null, arme_famille_id: null }],
+    });
+    const p = cree.personnage;
+    assert.ok(!('bouclier_materiau_id' in p) && !('bouclier_solidite' in p), 'colonnes absentes de la base : ni écrites ni rendues');
+    assert.deepEqual(p.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id]), [['chef', effet]]);
+    // les matériaux que cette base garde encore (sa table d'avant 0060) survivent à un enregistrement : le service n'écrit pas une table qu'il ne connaît plus
+    const m = base.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 1').get().ressource_id;
+    base.prepare('INSERT INTO personnage_bouclier_materiau VALUES (?, 1, ?, 1)').run(p.id, m);
+    const lue = lireFiche(base, p.id);
+    assert.equal(enregistrerFiche(base, { ...lue, surnom: 'de secours', bouclier_solidite: null }, { id: p.id }).personnage.surnom, 'de secours');
+    assert.equal(base.prepare('SELECT count(*) AS n FROM personnage_bouclier_materiau WHERE personnage_id = ?').get(p.id).n, 1);
+    // une matière porte quelque chose que la base perdrait : « champ inconnu », rien n'est écrit
+    const avantEnvoi = lireFiche(base, p.id);
+    assert.throws(() => enregistrerFiche(base, { version: avantEnvoi.version, bouclier_materiau_id: m }, { id: p.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « bouclier_materiau_id »']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, p.id), avantEnvoi, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('colonnes ajoutées par les migrations 0045, 0055 et 0060 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0, entrainement: null,
       armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+      bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
     },
     personnage_arme: { durabilite: null },
   });

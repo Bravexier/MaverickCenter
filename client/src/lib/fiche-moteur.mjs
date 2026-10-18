@@ -845,6 +845,18 @@ export function effetDeCompetence(regles, caracteristiqueId, valeur = null) {
   return niveaux.find((a) => borne >= a.min && borne <= a.max) ?? niveaux[0];
 }
 
+/**
+ * La valeur tirée d'une « Compétence X » telle qu'elle s'enregistre (décision R97) : bornée aux plages écrites de la caractéristique, comme le générateur
+ * (lib/accessoires-generateur.mjs#bonusBorne) ; null sans valeur (vide, pas un nombre) ou sans niveau de compétence pour cette caractéristique.
+ */
+export function valeurDeCompetenceBornee(regles, caracteristiqueId, valeur) {
+  const niveaux = (regles.accessoires ?? []).filter((a) => a.propriete === 'competence' && a.caracteristique_id === caracteristiqueId);
+  if (!niveaux.length || valeur === null || valeur === undefined || String(valeur).trim() === '' || !Number.isFinite(Number(valeur))) return null;
+  const min = Math.min(...niveaux.map((a) => entier(a.min)));
+  const max = Math.max(...niveaux.map((a) => entier(a.max)));
+  return Math.min(max, Math.max(min, entier(valeur)));
+}
+
 /** La valeur d'un accessoire porté dans la liste des effets (effetsDAccessoireProposes) : la clé de sa caractéristique pour une « Compétence X ». */
 export function valeurDEffetDAccessoire(regles, a) {
   const effet = trouver(regles.accessoires ?? [], a?.accessoire_effet_id);
@@ -1573,7 +1585,7 @@ export function armureApresChoix(regles, fiche, champ, valeur) {
 // (fiche.bouclier_classe_id) et sa matière (fiche.bouclier_materiau_id) donnent le bouclier de la liste (regles.boucliers_formes_matieres : AP, AM,
 // poids, décision R92) ; sa solidité est celle de la matière (R78), plus les crans de son amélioration (R76 : « crans cumulés ») ; son amélioration
 // +N ajoute l'AP (et l'AM) écrit au niveau choisi (R76). Le calcul de lib/armure-forge.mjs#forgerBouclier, que ce module ne peut pas importer
-// (src/scripts/armures.mjs l'importe ; test/fiche-bouclier.test.mjs compare les deux sur toute la base). « Le Bouclier permet d'avoir des AP et AM en
+// (src/scripts/armures.mjs l'importe ; test/fiche-bouclier-defense.test.mjs compare les deux sur toute la base). « Le Bouclier permet d'avoir des AP et AM en
 // plus de votre armure mais pour qu'ils soient comptés, ça implique une “Parade partielle” » (guide « Fiche de personnage : Armure/Défense/Bouclier ») :
 // ils ne s'ajoutent qu'aux dégâts reçus en parade partielle (degatsRecus). « Il est nécessaire d'avoir le score de Force ou plus pour le porter »
 // (règles de l'onglet) : `forceManquante`.

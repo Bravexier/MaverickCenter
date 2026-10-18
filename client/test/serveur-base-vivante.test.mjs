@@ -805,13 +805,13 @@ test('migration 0060 : une base vivante d’avant est reprise ; le bouclier gard
     assert.deepEqual([p1.bouclier_classe_id, p1.bouclier_materiau_id, p1.bouclier_amelioration_id, p1.bouclier_solidite], ['targe', m1, null, null]);
     assert.equal('bouclier_materiaux' in p1, false);
     assert.deepEqual(p1.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, 'nom' in a, 'texte' in a]), [['chef', e1.id, false, false], ['collier', e2.id, false, false]]);
+    // dans l'ordre des retraits (ordreDesRetraits : par nature, le matériau avant les accessoires, puis par nom ou emplacement)
     assert.deepEqual(p1.notes.split('\n'), [
-      `[17/10/2026] Retrait (règles modifiées) : l’accessoire « Collier du vent » (Collier, effet « ${e2.libelle} ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`,
+      `[17/10/2026] Retrait (règles modifiées) : le matériau de bouclier « ${n2} » (×1) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« ${n1} », son premier matériau). Adaptez la fiche.`,
       `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Bague 1 (effet hors table « Brille la nuit ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
       `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Ceinture (effet « ${e1.libelle} ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
-      `[17/10/2026] Retrait (règles modifiées) : le matériau de bouclier « ${n2} » (×1) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« ${n1} », son premier matériau). Adaptez la fiche.`,
-    ].sort((a, b) => p1.notes.indexOf(a) - p1.notes.indexOf(b)));
-    assert.equal(p1.notes.split('\n').length, 4);
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire « Collier du vent » (Collier, effet « ${e2.libelle} ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`
+    ]);
     assert.equal(p1.modifie_le, '2026-10-17T18:00:00Z', 'une fiche notée est marquée modifiée');
   } finally {
     db.close();

@@ -102,7 +102,8 @@ test('degatsRecus (R98) : la formule du guide (« Les dégâts ») — armure, d
   // l'exemple 1 du guide : 20 dégâts de frappe, 5 AP qui résistent à la frappe (AP comptés double) → 10
   const frappe = regles.armures.find((a) => a.ap === 5 && a.degats.some((r) => r.sens === 'resistance' && r.type === 'frappe' && r.multiplicateur === 1)
     && !a.degats.some((r) => r.type === 'frappe' && r.sens !== 'resistance'));
-  if (frappe) assert.equal(M.degatsRecus(regles, fiche({ armure_id: frappe.id }), { entrants: 20, type: 'frappe' }).recus, 10);
+  assert.ok(frappe, 'une armure de 5 AP qui résiste à la frappe (l’exemple du guide)');
+  assert.equal(M.degatsRecus(regles, fiche({ armure_id: frappe.id }), { entrants: 20, type: 'frappe' }).recus, 10);
   // magie : l'AM, puis le palier de résistance (Feu : la magie innée du personnage lui résiste d'un cran, ÷ 2)
   const feu = fiche({ magie_innee_id: 'magies/magie-du-feu' });
   const palier = M.resistancesDe(regles, feu).paliers.find((p) => p.cibles.some((c) => c.id === 'magies/magie-du-feu'));
@@ -157,6 +158,10 @@ test('effetDeCompetence : la valeur tirée choisit le niveau ; valeurDEffetDAcce
   assert.equal(M.effetDeCompetence(regles, 'force', -3).id, niveaux[0].id, 'en dessous : le premier niveau');
   assert.equal(M.effetDeCompetence(regles, 'force', 'abc').id, niveaux[0].id);
   assert.equal(M.effetDeCompetence(regles, 'inconnue', 3), null);
+  // la valeur enregistrée : bornée de la même façon (l'Acquis compté est celui du niveau choisi)
+  assert.deepEqual([999, -3, '', 'abc', niveaux[1].min].map((v) => M.valeurDeCompetenceBornee(regles, 'force', v)),
+    [Math.max(...niveaux.map((n) => n.max)), Math.min(...niveaux.map((n) => n.min)), null, null, niveaux[1].min]);
+  assert.equal(M.valeurDeCompetenceBornee(regles, 'inconnue', 3), null);
   assert.equal(M.valeurDEffetDAccessoire(regles, { accessoire_effet_id: niveaux[2].id }), M.cleDEffetDeCompetence('force'));
   const autre = regles.accessoires.find((a) => a.propriete === 'attributs');
   assert.equal(M.valeurDEffetDAccessoire(regles, { accessoire_effet_id: autre.id }), autre.id);
