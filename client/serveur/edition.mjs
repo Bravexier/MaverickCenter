@@ -551,8 +551,8 @@ function deriverNomDuSort(ctx, avant, apres) {
 const SORT = {
   colonnes(ctx, ligne, valeurs = {}) {
     if (ligne.texte_niveau5 !== null && ligne.niveau !== 5) throw refus('Le texte du sort n’existe que pour un sort de niveau 5.');
-    // décision R105 : « Coût » n'a que le chakra, le second coût va dans « Coût secondaire » (lib/sort-cout.mjs#ecritUnSecondCout ; les coûts en attente
-    // de décision gardent l'écriture du classeur tant qu'on n'y touche pas) ; la répartition est proposée quand l'écriture est celle du classeur
+    // décisions R105, R106 : « Coût » n'a que le chakra, le second coût ou sa précision va dans « Coût secondaire » (lib/sort-cout.mjs#ecritUnSecondCout) ;
+    // la répartition est proposée quand l'écriture est celle du classeur
     if ('cout_brut' in valeurs && ecritUnSecondCout(ligne.cout_brut)) {
       const reparti = repartirLeCout(ligne.cout_brut);
       throw refus(`Coût « ${ligne.cout_brut} » : le second coût s’écrit dans « Coût secondaire » (décision R105)`
@@ -1868,8 +1868,9 @@ function ancienneEcritureDuGlossaire(db) {
 /**
  * Le coût d'un sort noté par un lot d'avant la migration 0063 (décision R105 : « Coût » et « Coût secondaire »), écrit en une case comme le classeur
  * (« 12 + 3 âmes ») : rejoué en deux colonnes par la règle de la migration (lib/sort-cout.mjs#repartirLeCout), son `avant` (la ligne des règles est
- * répartie de même) comme son `apres`, et leurs colonnes typées relues (analyserCout) ; un coût qui ne se répartit pas (en attente de décision du
- * propriétaire) reste tel quel, sans coût secondaire. Rien n'est perdu ni deviné : « 12 + 3 âmes » → « 14 » retire bien le coût secondaire. Un lot noté
+ * répartie de même) comme son `apres`, et leurs colonnes typées relues (analyserCout) ; un coût qui ne se répartit pas (l'un des 26 que le propriétaire
+ * a tranchés depuis : décision R106, migration 0065) reste tel quel, sans coût secondaire, et passe en conflit si la base n'a plus son `avant`. Rien
+ * n'est perdu ni deviné : « 12 + 3 âmes » → « 14 » retire bien le coût secondaire. Un lot noté
  * depuis écrit les deux colonnes (le service refuse un second coût dans « Coût ») : il passe tel quel. Rend l'adaptateur de edition-journal.mjs#rejouer.
  */
 function ancienneEcritureDuCout() {

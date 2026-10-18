@@ -175,9 +175,11 @@ abandonne.
   lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus
   sur un sort (décisions R24, R26). Colonnes (demandes du propriétaire) : coût, portée et **dégâts/soins/barrière**, à la **valeur du NM du sort** plutôt que
-  « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; le **coût secondaire** (âmes, Sang : décision R105) sous
-  le coût de chakra, dans la même case, et dans la case « Coût » de la fiche en tableur les deux en une (« 3 + 1 Sang », `lib/sort-cout.mjs#coutEnUneCase`,
-  relue ainsi par l'import) ; pas de colonne NPM ; l'**effet secondaire** sur sa
+  « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; le **coût secondaire** (âmes, Sang, « Par tour » : décisions R105, R106) sous
+  le coût de chakra, dans la même case, et dans la case « Coût » de la fiche en tableur les deux en une (« 3 + 1 Sang », « 3 par tour et par cible »,
+  `lib/sort-cout.mjs#coutEnUneCase`, relue ainsi par l'import) ; un coût « N/A » dont le coût secondaire est un pourcentage du chakra maximum (« 25% Chakra
+  maximum », Pluie de Chakra) s'affiche calculé, ce pourcentage du chakra du personnage arrondi à l'inférieur, puis réduit comme les autres (R106 : « sur la
+  fiche de personnage, on donnera directement la valeur calculée » ; `fiche-moteur.mjs#sortDuMoment`, `cout.calcule`) ; pas de colonne NPM ; l'**effet secondaire** sur sa
   propre ligne, sous le sort (au NM aussi) ; une **étoile** quand le sort a une remarque, son texte en infobulle.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la

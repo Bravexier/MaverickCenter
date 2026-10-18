@@ -23,7 +23,8 @@
 //   sort.nom, type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets
 //                                      case de la ligne du sort (n-ième ligne du tableau « ## Sorts », n = ordre ; « / » pour dsb_brut NULL) ;
 //                                      la case « Coût » écrit les deux coûts du sort (cout_brut, cout_secondaire : décision R105), comme le classeur,
-//                                      « 3 + 1 Sang », et le coût secondaire seul pour un coût « 0 » (« 2 Sang ») : lib/sort-cout.mjs#coutEnUneCase ;
+//                                      « 3 + 1 Sang », une précision à la suite (« 3 par tour et par cible » : décision R106), et le coût secondaire
+//                                      seul pour un coût « 0 » ou « N/A » (« 2 Sang ») : lib/sort-cout.mjs#coutEnUneCase ;
 //                                      le nom aussi dans les libellés des notes (« … du sort « Nom » ») et le titre de son texte de niveau 5
 //   sort.remarque                      entrées du sort dans « ## Notes et commentaires des sorts » (la remarque = leurs textes, séparés par une ligne
 //                                      vide) ; une remarque modifiée remplace ces entrées par une seule, « **Remarque du sort « Nom »** »
@@ -430,7 +431,12 @@ const CASES_DU_SORT = { nom: 1, type_brut: 2, cout_brut: 3, portee_brut: 4, zone
 export const COLONNES_DE_SORT = [...Object.keys(CASES_DU_SORT), 'cout_secondaire', 'remarque', 'texte_niveau5'];
 
 /** Les deux coûts d'un sort en une case (lib/sort-cout.mjs#coutEnUneCase, recopiée : ce module n'importe rien ; test/sort-cout-secondaire.test.mjs). */
-export const coutEnUneCase = (cout, secondaire) => (!secondaire ? cout : cout === '0' || cout === '' ? secondaire : `${cout} + ${secondaire}`);
+export function coutEnUneCase(cout, secondaire) {
+  const c = String(cout ?? '');
+  if (!secondaire) return c;
+  if (c === '' || c === '0' || c === 'N/A') return secondaire;
+  return /^(?:\d|X\b)/.test(secondaire) ? `${c} + ${secondaire}` : `${c} ${secondaire.replace(/^\p{Lu}(?=\p{Ll})/u, (l) => l.toLowerCase())}`;
+}
 
 /**
  * Valeur d'une case : « / » pour D/S/B NULL (la base garde NULL pour la cellule « / »), le coût et le coût secondaire ensemble dans la case « Coût »,

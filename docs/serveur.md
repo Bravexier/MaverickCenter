@@ -377,8 +377,9 @@ des capacités communes, et à quel rang : 0044 a détaché « Tome de la corrup
 s'explique pas — rien n'en est écrit, ni dans les règles ni dans l'historique. Les autres modifications des monstres notées avant 0044 passent. Un lot
 noté avant la migration 0063 qui écrit le coût d'un sort en une case, comme le classeur (« 12 + 3 âmes ») : l'adaptateur (`ancienneEcritureDuCout`,
 `serveur/edition.mjs`, décision R105) le rejoue en deux colonnes, « Coût » et « Coût secondaire », par la règle de la migration
-(`lib/sort-cout.mjs#repartirLeCout`), son `avant` comme son `apres`, colonnes typées relues ; un coût qui ne se répartit pas (en attente de décision)
-est rejoué tel quel, et un lot noté depuis (les deux colonnes) passe tel quel. Le journal stocké garde sa forme (l'historique aussi : un import qui y
+(`lib/sort-cout.mjs#repartirLeCout`), son `avant` comme son `apres`, colonnes typées relues ; un coût qui ne se répartit pas (l'un des 26 que le
+propriétaire a tranchés depuis : décision R106, migration 0065) est rejoué tel quel et passe donc en conflit (la base n'a plus son `avant`), et un lot
+noté depuis (les deux colonnes) passe tel quel. Le journal stocké garde sa forme (l'historique aussi : un import qui y
 écrit le coût en une case se lit en deux, comme au rejeu). Le
 **corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans

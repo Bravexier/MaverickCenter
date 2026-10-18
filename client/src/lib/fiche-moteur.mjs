@@ -2262,8 +2262,13 @@ export function contexteDesSorts(regles, fiche) {
   return {
     posture: postureDuMoment(regles, fiche), batons: effetsDesBatons(regles, fiche), ecrits: bonusDeSortsDuPersonnage(regles, fiche),
     accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
+    // le chakra maximum du personnage, pour un coût qui en est un pourcentage (décision R106)
+    chakraMax: attributsDe(regles, fiche).chakra,
   };
 }
+
+/** Un coût secondaire qui est un pourcentage du chakra maximum (décision R106 : « 25% Chakra maximum ») : le pourcentage, ou null. */
+const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
 
 /**
  * Un sort de la fiche à son moment (décision R102) : `auNm` = ses valeurs au NM du sort, telles que la page les lit (lib/sort-maitrise.mjs#valeurAuNm :
@@ -2271,9 +2276,13 @@ export function contexteDesSorts(regles, fiche) {
  * corruption }, portee: { texte, detail }, dsb: { texte, detail, diviseur, lu }, effets: { texte, detail }, nonComptes: [{ nom, valeur, raison, cible }],
  * rappels: [{ nom, texte }] } ; `detail` : [{ nom, valeur }] ; `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'.
  * - Coût (« Le coût en chakra »), seulement un nombre ou « N + autre chose » (la part en chakra) : réductions des dons (« réduits de 4 » pour les magies
- *   nommées, Économe : son NPM), du bâton (« Coût sort −N ») ; réduit, jamais moins de 1 (réponse « Jamais moins de 1 » ; un coût écrit 0 reste 0). Un
+ *   nommées, Économe : son NPM), du bâton (« Coût sort −N ») ; réduit, jamais moins de 1 (réponse « Jamais moins de 1 » ; un coût écrit 0 reste 0, ses
+ *   réductions non comptées : le sort ne consomme pas de chakra, décision R106). Un
+ *   coût « N/A » dont le coût secondaire est un pourcentage du chakra maximum (« 25% Chakra maximum ») est ce pourcentage du chakra du personnage,
+ *   arrondi à l'inférieur comme la barrière qu'on en tire (décision R106 : « sur la fiche de personnage, on donnera directement la valeur calculée » ;
+ *   `cout.calcule` : { pourcent, chakra, valeur }), puis réduit comme les autres. Un
  *   sort de la Corruption se lance aussi avec la corruption : 2 × le coût réduit − « Coût corruption −N » du bâton (réponse « 2 × coût réduit − bâton »),
- *   au moins 1 (un coût, comme ci-dessus) ;
+ *   au moins 1 (un coût, comme ci-dessus), sauf un coût écrit « 0 » (le sort ne consomme que son coût secondaire : « 50% corruption », R106) ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
  * - Dégâts (lireDegatsDeSort, pas une valeur « par tour » : question Q19) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
  *   de dégâts des sorts » ; un dé au maximum par accessoire (sauf en Offensif) ; les bonus fixes des dons, des accessoires (« Dégâts magie », sorts
@@ -2313,12 +2322,22 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const pasCompte = (lignes, raison, cible) => { for (const l of lignes) nonComptes.push({ ...l, raison, cible }); };
 
   // coût
-  const cout = { texte: auNm.cout ?? '', detail: [], corruption: null };
-  const brut = /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
+  const cout = { texte: auNm.cout ?? '', detail: [], corruption: null, calcule: null };
+  const pourcent = String(auNm.cout ?? '').trim() === 'N/A' && Number.isFinite(contexte.chakraMax)
+    ? POURCENT_DU_CHAKRA_MAX.exec(String(sort.cout_secondaire ?? '').trim()) : null;
+  if (pourcent) {
+    const p = Number(pourcent[1]);
+    cout.calcule = { pourcent: p, chakra: contexte.chakraMax, valeur: Math.floor((contexte.chakraMax * p) / 100) };
+  }
+  const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
   const reductions = [...ecritsPour('cout'), ...duBaton('cout')];
-  if (brut) {
+  if (brut && Number(brut[1]) === 0 && !cout.calcule) {
+    // un sort qui ne consomme pas de chakra (« 0 » : son coût est le coût secondaire, âmes, Sang, santé, corruption ; décision R106) : rien à réduire
+    pasCompte(reductions, 'sans_chakra', 'cout');
+    cout.texte = `0${brut[2] ?? ''}`;
+  } else if (brut) {
     const base = Number(brut[1]);
-    // réduit, jamais moins de 1 ; un coût écrit plus bas (0) ne change pas sans réduction
+    // réduit, jamais moins de 1 (un pourcentage du chakra calculé à 0 le reste)
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
     cout.detail = reductions;
     cout.texte = `${reduit}${brut[2] ?? ''}`;

@@ -657,7 +657,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--sorts td:nth-child(2) { width: 30%; }
 .fiche-table--sorts td.sort-valeur { font-size: var(--fs-sm); }
 /* le coût secondaire d'un sort (âmes, Sang… : décision R105), sous son coût de chakra */
-.fiche-table--sorts .sort-cout-secondaire { display: block; font-size: var(--fs-xs); color: var(--muted); }
+/* sous le coût, sans le gras ni le soulignement d'un coût calculé (td[data-calcule]) : un bloc atomique ne reçoit pas la décoration de sa case */
+.fiche-table--sorts .sort-cout-secondaire { display: inline-block; width: 100%; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
 /* l'indication IC (et imparable, inesquivable) au NM du sort, comme les marques des pages de magie ; une condition pas encore atteinte en grisé, en pointillés */
 .sort-modes { white-space: nowrap; }
 .sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--muted); font-size: var(--fs-xxs); }

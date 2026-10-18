@@ -251,7 +251,8 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type_brut: { type: 'ligne', libelle: 'Type', requis: true },
-      // décision R105 : « Coût », la consommation de chakra (un nombre, « 0 », ou « X ») ; « Coût secondaire », le second coût (« 2 âmes », « 3 Sang »)
+      // décision R105 : « Coût », la consommation de chakra (un nombre, « 0 », « X » ou « N/A ») ; « Coût secondaire », le second coût (« 2 âmes »,
+      // « 3 Sang ») ou une précision du coût (décision R106 : « Par tour et par cible », « Pour 1 barrière »)
       cout_brut: { type: 'ligne', libelle: 'Coût', requis: true },
       cout_secondaire: { type: 'ligne', libelle: 'Coût secondaire' },
       portee_brut: { type: 'ligne', libelle: 'Portée', requis: true },

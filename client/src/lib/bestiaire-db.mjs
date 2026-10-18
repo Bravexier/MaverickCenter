@@ -344,7 +344,7 @@ export function chargerInvocations(db) {
   const capacites = regrouper(all('SELECT creature_id, npm_min, etiquette, nom, nom_cle, texte FROM creature_capacite ORDER BY creature_id, rang'), 'creature_id');
   const effets = regrouper(all('SELECT creature_id, libelle, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
   const ressources = regrouper(all('SELECT creature_id, libelle, brut FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
-  // le coût du sort qui l'invoque, ses deux colonnes en une écriture (décision R105 : « 5 + 1 âme » ; lib/sort-cout.mjs#coutEnUneCase)
+  // le coût du sort qui l'invoque, ses deux colonnes en une écriture (décisions R105, R106 : « 6 par NPM de la créature invoquée » ; lib/sort-cout.mjs#coutEnUneCase)
   const couts = new Map(all('SELECT creature_id, cout_brut, cout_secondaire FROM v_creature_cout_invocation').map((r) => [r.creature_id, coutEnUneCase(r.cout_brut, r.cout_secondaire)]));
   const memeBloc = regrouper(all('SELECT v.creature_id, c.id, c.nom FROM v_creature_meme_bloc v JOIN creature c ON c.id = v.autre_creature_id'), 'creature_id');
   const defenses = regrouper(

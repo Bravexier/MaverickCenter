@@ -5,7 +5,7 @@ import LigneDeSort from './LigneDeSort.astro';
 
 // Tableau des sorts d'UNE magie à UN niveau de puissance magique (NPM) : le seul gabarit de tableau de sorts du site. Il ne varie que de la magie
 // (ses sorts) et du NPM : la page de chaque magie en pose un par NPM (MagieSorts.astro), celle du Potentiel Illimité un par magie et par NPM,
-// dans ses onglets (SortsDuPotentiel.astro). Une ligne par sort (LigneDeSort.astro) : Nom, Type, Coût, Coût secondaire (décision R105), Portée, Zone, D/S/B.
+// dans ses onglets (SortsDuPotentiel.astro). Une ligne par sort (LigneDeSort.astro) : Nom, Type, Coût (le coût secondaire sous le coût : décision R106), Portée, Zone, D/S/B.
 // La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre, juste après le texte du titre : texte et « i »
 // forment un seul bloc (`npm__intitule`) qui passe à la ligne d'un tenant sur un téléphone étroit, sans que le « i » se retrouve seul sous le badge.
 // Sans JavaScript (et à l'impression), le bloc s'efface (`display: contents`) et la règle est écrite en entier sur sa propre ligne sous le titre.
@@ -19,7 +19,7 @@ interface Props {
 }
 const { niveau, sorts, magies, prefixe = '', titre: Titre = 'h3' } = Astro.props;
 
-const COLONNES = ['Nom', 'Type', 'Coût', 'Coût secondaire', 'Portée', 'Zone', 'D/S/B'];
+const COLONNES = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
 const id = `npm-${prefixe}${niveau}`;
 const regles = magies.regles.filter((r) => r.niveau_sort === niveau);
 const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);

@@ -169,10 +169,40 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
   const corr = regles.sorts.find((s) => s.magie_id === 'magies/magie-de-la-corruption' && /^\d+$/.test(s.cout) && Number(s.cout) >= 10);
   const c = M.sortDuMoment(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...ceinture('Bâton magique Corruption, niveau 2') }), corr, auNm(corr)).cout;
   assert.deepEqual([c.texte, c.corruption.valeur], [String(Number(corr.cout) - 2), Math.max(1, 2 * (Number(corr.cout) - 2) - 4)]);
-  // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée)
-  const choix = regles.sorts.find((s) => s.cout === 'Variable');
-  const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
-  assert.deepEqual([v.cout.texte, v.nonComptes.map((n) => [n.raison, n.cible])], ['Variable', [['non_chiffre', 'cout']]]);
+  // un sort de la Corruption au coût « 0 » (« 50% corruption », « X Corruption » : décision R106) ne consomme que de la corruption : pas d'alternative
+  const sansChakra = regles.sorts.filter((s) => s.magie_id === 'magies/magie-de-la-corruption' && s.cout === '0');
+  assert.ok(sansChakra.length >= 2, 'Pluie huileuse et Sapeur');
+  for (const s of sansChakra) {
+    const z = M.sortDuMoment(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...ceinture('Bâton magique Corruption, niveau 2') }), s, auNm(s)).cout;
+    assert.deepEqual([z.texte, z.corruption], ['0', null], s.id);
+  }
+  // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée) : « X » (au choix), « N/A » d'un coût qui n'est pas un pourcentage
+  // du chakra maximum (« Aléatoire » : décision R106)
+  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire === 'Aléatoire')];
+  for (const choix of nonChiffres) {
+    assert.ok(choix, 'un sort au coût non chiffré');
+    const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
+    assert.deepEqual([v.cout.texte, v.cout.calcule, v.nonComptes.map((n) => [n.raison, n.cible])], [choix.cout, null, [['non_chiffre', 'cout']]], choix.id);
+  }
+});
+
+test('sortDuMoment (R106) : « N/A » et « 25% Chakra maximum » : ce pourcentage du chakra maximum du personnage, arrondi à l’inférieur, puis réduit (R102)', () => {
+  const pluie = regles.sorts.find((s) => s.cout === 'N/A' && /^\d+% Chakra maximum$/.test(s.cout_secondaire ?? ''));
+  assert.ok(pluie, 'Pluie de Chakra');
+  const pourcent = Number(/^(\d+)%/.exec(pluie.cout_secondaire)[1]);
+  let arrondis = 0;
+  for (const gains of [0, 1, 2, 3, 7, 30]) {
+    const f = fiche({ gains_chakra: gains });
+    const chakra = M.attributsDe(regles, f).chakra;
+    const c = M.sortDuMoment(regles, f, pluie, auNm(pluie)).cout;
+    assert.deepEqual(c.calcule, { pourcent, chakra, valeur: Math.floor((chakra * pourcent) / 100) }, `chakra ${chakra}`);
+    assert.equal(c.texte, String(c.calcule.valeur));
+    if ((chakra * pourcent) % 100) arrondis += 1;
+  }
+  assert.ok(arrondis > 0, 'un chakra dont le pourcentage tombe entre deux entiers');
+  // le bâton de l'Arcane (« Coût sort −3 ») le réduit comme les autres, jamais moins de 1
+  const c = M.sortDuMoment(regles, fiche({ gains_chakra: 30, ...ceinture('Bâton magique Arcane, niveau 3') }), pluie, auNm(pluie)).cout;
+  assert.deepEqual([c.texte, c.detail.map((d) => d.valeur)], [String(Math.max(1, c.calcule.valeur - 3)), [-3]]);
 });
 
 test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), portée (accessoire, dons, bâton), amplifications chiffrées des bâtons', () => {
@@ -308,10 +338,12 @@ test('relectures (R101, R102) : protection chiffrée, coût 0, valeur par tour, 
   assert.deepEqual(c.rappels, []);
   const rocheuse = regles.sorts.find((s) => s.id === 'magies/magie-de-la-terre#sort:barriere-rocheuse');
   assert.deepEqual(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), rocheuse, auNm(rocheuse)).rappels.map((r) => r.texte), ['protection = +7 dégâts bloqués']);
-  // un coût écrit 0 reste 0, même réduit
-  const planete = regles.sorts.find((s) => s.cout === '0');
-  assert.equal(M.sortDuMoment(regles, fiche(), planete, auNm(planete)).cout.texte, '0');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete)).cout.texte, '0');
+  // un coût écrit 0 reste 0, même réduit : le sort ne consomme pas de chakra (décision R106), la réduction est dite non comptée, rien n'est en gras
+  for (const planete of regles.sorts.filter((s) => s.cout === '0')) {
+    assert.equal(M.sortDuMoment(regles, fiche(), planete, auNm(planete)).cout.texte, '0');
+    const r = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete));
+    assert.deepEqual([r.cout.texte, r.cout.detail, r.nonComptes.filter((n) => n.cible === 'cout').map((n) => [n.raison, n.valeur])], ['0', [], [['sans_chakra', -3]]], planete.id);
+  }
   // une valeur par tour reste telle qu'écrite ; le bonus est dit non compté
   const parTour = regles.sorts.find((s) => s.attaque && /^\d+d\d+ dégâts par tour$/.test(auNm(s).dsb));
   const t = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Feu, niveau 3')), parTour, auNm(parTour));
