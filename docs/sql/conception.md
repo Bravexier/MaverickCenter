@@ -85,7 +85,7 @@ Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`m
 (deux sources qui se contredisent, une coquille, un prix incohérent) vont dans `ecart_source`, **sans rien corriger**. Les corrections voulues par le propriétaire passent par le registre (§4.4).
 
 **Index, clés étrangères.** `PRAGMA foreign_keys = ON` à **chaque** connexion (SQLite ne le mémorise pas). Index sur toute colonne servant de filtre ; index partiel `WHERE col IS NOT NULL`
-pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas) et les porteurs d'un mot-clé ou d'une catégorie (`page_tag`, `evenement_categorie` : en supprimer un le retire de partout, migration 0043 ; `sort_mot_cle`, migration 0067). Plus de 300 index.
+pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas) et les porteurs d'un mot-clé ou d'une catégorie (`page_tag`, `evenement_categorie` : en supprimer un le retire de partout, migration 0043). Pas de cascade pour les étiquettes des sorts (`sort_mot_cle`, migration 0067) : une étiquette est une règle posée par décision (R114), un mot-clé qui étiquette un sort ne se supprime pas. Plus de 300 index.
 
 **Tables dérivées et vues.** Une table dérivée est précédée d'une ligne `-- @derivee <commande>` : l'export l'ignore, `db:build` la remplit (§4.3). Quatre tables dérivées, 26 vues (toujours à jour).
 

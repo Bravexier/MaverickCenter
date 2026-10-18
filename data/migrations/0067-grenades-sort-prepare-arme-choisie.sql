@@ -5,18 +5,24 @@
 --      exemple, qu'on pourrait utiliser pour d'autres choses ») :
 --        * le mot-clé « Sort grenade » du glossaire (id `sort-grenade` = normalize(libelle), comme tout mot-clé à sa création), défini par le
 --          propriétaire « Type particulier de sort provoquant une explosion localisée », avec le point final de toutes les définitions du glossaire
---          (comme 0058 pour « Solidité ») ; le site s'en sert : il est protégé (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ;
---        * la table des étiquettes d'un sort, sort_mot_cle (sort, mot-clé ; supprimer le mot-clé retire ses étiquettes, ON DELETE CASCADE comme
---          page_tag), qui pose « Sort grenade » sur les 14 sorts « Grenade… » de la décision, un dans chaque magie (Collante, Paralysante,
---          Cryogénique, Flash, Caustique, Pétrifiante, de Chakra, Incapacitante, Distordue, Fumigène, Incendiaire, à Clous, Explosive, Implosive) :
---          les 14 sorts de la table `sort` dont le nom commence par « Grenade », cités par leur id (figé : 0006). Un id absent arrête la migration
---          (clé étrangère contrôlée avant le COMMIT).
+--          (comme 0058 pour « Solidité ») ; le site s'en sert : il est à protéger (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES, partie du site
+--          à venir) ;
+--        * la table des étiquettes d'un sort, sort_mot_cle (sort, mot-clé), qui pose « Sort grenade » sur les 14 sorts « Grenade… » de la
+--          décision, un dans chaque magie (Collante, Paralysante, Cryogénique, Flash, Caustique, Pétrifiante, de Chakra, Incapacitante,
+--          Distordue, Fumigène, Incendiaire, à Clous, Explosive, Implosive) : les 14 sorts de la table `sort` dont le nom commence par
+--          « Grenade », cités par leur id (figé : 0006). Un id absent arrête la migration
+--          (clé étrangère contrôlée avant le COMMIT). Une étiquette est une règle posée par décision : pas de cascade vers mot_cle (à la
+--          différence de page_tag), la clé étrangère refuse de supprimer un mot-clé qui étiquette encore un sort ; le site refusera aussi de le
+--          supprimer ou de le fusionner (partie du site à venir).
 --   2. R115 (Mage Rouge et Mage Vert : « Le don niveau 1 (et son équivalent mage vert) permettrai de choisir le sort qui est préparé et de noter le
---      résultat du jet de magie si réussi » ; le sort préparé se lance « avec les règles de postures du moment où il a été préparé ») : trois
---      colonnes de personnage (section 13), le sort préparé (sort_prepare_id), le résultat du jet de magie (sort_prepare_jet, un D100 : 1 à 100) et
---      la posture du moment de la préparation (sort_prepare_posture_id). NULL = aucun sort préparé ; le jet et la posture n'existent qu'avec le sort
---      (contraintes CHECK des deux colonnes : un jet ou une posture sans sort ne voudrait rien dire, et « Lâcher le sort » les efface avec lui) ;
---      le jet reste NULL tant qu'il n'est pas noté (« si réussi »), la posture quand aucune n'était choisie (posture_id NULL).
+--      résultat du jet de magie si réussi » ; le sort préparé se lance « avec les règles de postures du moment où il a été préparé ») : le sort
+--      préparé est un des sorts de la fiche (« Préparation » : « Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour… »), donc trois
+--      colonnes de personnage_sort (section 13) : `prepare` (1 = le sort préparé, 0 par défaut), le résultat du jet de magie (prepare_jet, un D100 :
+--      1 à 100) et la posture du moment de la préparation (prepare_posture_id → posture) ; un seul sort préparé par fiche (index unique partiel
+--      personnage_sort_prepare). Le jet et la posture n'existent que sur le sort préparé (CHECK : « Lâcher le sort » les efface avec lui) ; le jet
+--      reste NULL tant qu'il n'est pas noté (« si réussi »), la posture quand aucune n'était choisie (posture_id NULL). Sur personnage_sort plutôt
+--      que sur personnage : la clé garantit que le sort est de la fiche, et un sort retiré des fiches (R42) part avec sa ligne, préparation comprise
+--      (pas de nouvelle clé étrangère vers sort).
 --   3. R119 (« +N% de la compétence de l'arme choisie » : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En
 --      cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. ») : personnage_acquis_choix.arme_famille_id, la
 --      famille d'armes de la maîtrise au choix de la classe, à côté de la compétence qui reçoit le bonus. Une colonne de la table des choix d'acquis
@@ -33,7 +39,7 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('sort-grenad
 
 CREATE TABLE sort_mot_cle (
   sort_id     TEXT NOT NULL REFERENCES sort(id),
-  mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id),
   PRIMARY KEY (sort_id, mot_cle_id)
 ) STRICT, WITHOUT ROWID;
 
@@ -55,12 +61,14 @@ INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES
   ('magies/magie-du-vent#sort:grenade-explosive', 'sort-grenade'),
   ('magies/magie-du-vide#sort:grenade-implosive', 'sort-grenade');
 
--- 2. R115 : le sort préparé de la fiche (colonnes ajoutées en dernier, avant les contraintes de la table)
-ALTER TABLE personnage ADD COLUMN sort_prepare_id       TEXT    REFERENCES sort(id);
-ALTER TABLE personnage ADD COLUMN sort_prepare_jet      INTEGER CHECK (sort_prepare_jet IS NULL OR (sort_prepare_id IS NOT NULL AND sort_prepare_jet BETWEEN 1 AND 100));
-ALTER TABLE personnage ADD COLUMN sort_prepare_posture_id TEXT  REFERENCES posture(id) CHECK (sort_prepare_posture_id IS NULL OR sort_prepare_id IS NOT NULL);
+-- 2. R115 : le sort préparé, un des sorts de la fiche (colonnes ajoutées en dernier, avant les contraintes de la table)
+ALTER TABLE personnage_sort ADD COLUMN prepare            INTEGER NOT NULL DEFAULT 0 CHECK (prepare IN (0, 1));
+ALTER TABLE personnage_sort ADD COLUMN prepare_jet        INTEGER CHECK (prepare_jet IS NULL OR (prepare = 1 AND prepare_jet BETWEEN 1 AND 100));
+ALTER TABLE personnage_sort ADD COLUMN prepare_posture_id TEXT    REFERENCES posture(id) CHECK (prepare_posture_id IS NULL OR prepare = 1);
+
+CREATE UNIQUE INDEX personnage_sort_prepare ON personnage_sort (personnage_id) WHERE prepare = 1;
 
 -- 3. R119 : la famille d'armes de l'arme choisie
-ALTER TABLE personnage_acquis_choix ADD COLUMN arme_famille_id TEXT   REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL);
+ALTER TABLE personnage_acquis_choix ADD COLUMN arme_famille_id TEXT    REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL);
 
 CREATE UNIQUE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (personnage_id, source, rang) WHERE arme_famille_id IS NOT NULL;
