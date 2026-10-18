@@ -421,7 +421,7 @@ test('« Magie non compatible » : le Potentiel Illimité n’est cité nulle pa
 test('Mode Hyper : plus de texte « Liste des effets mode hyper », un (+) à côté du titre mène à la liste', options, () => {
   for (const { slug, html } of pages) {
     const titre = html.match(/<h2 id="mode-hyper-titre">[\s\S]*?<\/h2>/)?.[0] ?? '';
-    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/guide\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
+    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/regles\/avancees\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
     assert.ok(!html.includes('>Liste des effets mode hyper</a>'), `${slug} : le texte du lien est revenu`);
   }
 });
@@ -444,7 +444,7 @@ test('altération d’état liée : un encart après la présentation (et l’ex
     assert.ok(debut < html.indexOf('id="affinites"'), `${slug} : avant les résistances`);
     const encart = contenu(html, debut, 'section');
     assert.equal([...encart.matchAll(/<article class="etat-lie">/g)].length, 1, slug);
-    assert.match(encart, /<a href="[^"]*\/guide\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
+    assert.match(encart, /<a href="[^"]*\/regles\/avancees\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
     assert.deepEqual([...encart.matchAll(/<span class="etat-lie__stade-nom">([^<]+)<\/span>/g)].map((m) => m[1]), ['Stade 1', 'Stade 2', 'Stade 3'], slug);
     assert.ok(html.indexOf('href="#alteration"') < html.indexOf('href="#affinites"'), `${slug} : entrée de navigation`);
   }

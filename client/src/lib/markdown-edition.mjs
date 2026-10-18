@@ -130,7 +130,9 @@ function enLigne(noeuds, o = {}) {
           const libelle = texteBrut(n).replace(/\s+/g, ' ').trim();
           sortie += libelle === cible ? `[[${cible}]]` : `[[${cible}|${libelle}]]`;
         } else if (n.nom === 'a' && attribut(n, 'href')) {
-          const href = o.lienRelatif ? o.lienRelatif(attribut(n, 'href')) : attribut(n, 'href');
+          // l'adresse telle qu'écrite dans le Markdown quand le rendu l'a menée ailleurs (une ancienne adresse du guide : lib/guide.mjs#remarkAnciensLiensDuGuide)
+          const ecrit = attribut(n, 'data-lien-ecrit');
+          const href = ecrit !== null && LIEN_ECRIT.test(ecrit) ? ecrit : o.lienRelatif ? o.lienRelatif(attribut(n, 'href')) : attribut(n, 'href');
           const libelle = texteBrut(n);
           sortie += /^https?:\/\//.test(href) && libelle === href ? `<${href}>` : `[${dedans()}](${href})`;
         } else {
@@ -345,6 +347,8 @@ const GARDES = {
 };
 const VIDES = new Set(['hr', 'br']);
 const ADRESSE_SURE = /^(https?:\/\/|\/(?!\/)|#|\.\.?\/)/i;
+/** L'adresse écrite d'un lien du guide gardée au rendu (`data-lien-ecrit`) : une adresse du site depuis sa racine, rien d'autre. */
+const LIEN_ECRIT = /^\/(?!\/)[^\s"<>()]*$/;
 
 function attributsSurs(n, nom) {
   const a = [];
@@ -399,6 +403,8 @@ function attributsSurs(n, nom) {
     }
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
+  // l'adresse écrite d'un lien du guide (versMarkdown la relit) : l'aperçu la garde, une seconde modification ne la perd pas
+  if (nom === 'a' && LIEN_ECRIT.test(attribut(n, 'data-lien-ecrit') ?? '')) garder('data-lien-ecrit', attribut(n, 'data-lien-ecrit'));
   return a.join('');
 }
 

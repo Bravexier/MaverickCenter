@@ -3,9 +3,9 @@
 // s'ouvre sous sa ligne. Bonus liés aux compétences et à l'initiative, artisanat en texte + deux caractéristiques, objets de départ : décisions R33 à R35.
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
-// Sans dépendance (sauf lib/guide.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/livres.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
 import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from './equipement.mjs';
-import { PREMIER_CHAPITRE } from './guide.mjs';
+import { ACCUEIL_DU_GUIDE, adresseDuGuide } from './livres.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
 export const PAGE_DES_REGLES = 'metiers/regles-des-metiers';
@@ -28,20 +28,38 @@ const PAGES_DANS_UNE_AUTRE = Object.freeze(Object.fromEntries(PAGES_SERVIES_PAR_
 export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
 
 /**
- * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour le premier
- * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs) ; pour une page servie par un onglet (ou un sous-onglet) de la page « Équipement »,
- * cet onglet.
+ * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour une page du
+ * guide, sa place dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/…, /regles/avancees/…, /mj/… ; plus aucune sous /guide/) ;
+ * pour une page servie par un onglet (ou un sous-onglet) de la page « Équipement », cet onglet.
  */
 export function adresseDePage(id) {
   if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };
   if (pageSansAdresse(id)) return { ...PAGES_DANS_UNE_AUTRE[id] };
-  return { chemin: id === PREMIER_CHAPITRE ? 'guide/' : `${id}/`, ancre: '' };
+  if (id.startsWith('guide/')) return { chemin: adresseDuGuide(id), ancre: '' };
+  return { chemin: `${id}/`, ancre: '' };
 }
 
 /** La même adresse en une chaîne : « races/elfe/ », « metiers/#metier-forgeron ». */
 export function cheminDePage(id) {
   const { chemin, ancre } = adresseDePage(id);
   return ancre ? `${chemin}#${ancre}` : chemin;
+}
+
+/**
+ * Vrai si la page est servie à `<id>/` par la route des pages du wiki (pages/[type]/[slug].astro) : ni un métier, ni une page servie par une autre
+ * (onglets de l'Équipement), ni une page du guide (servies par les routes de lib/livres.mjs).
+ */
+export const estServieASonId = (id) => cheminDePage(id) === `${id}/`;
+
+/**
+ * Les renvois des anciennes adresses du guide (avant l'éclatement du guide, 2026-10-18) vers les nouvelles, relatifs à la racine du site :
+ * { 'guide/': <adresse du livre Découvrir>, 'guide/<slug>/': cheminDePage(id)… } pour les ids donnés (les pages chargées) ; lus par la page 404
+ * (pages/404.astro les écrit au build, lib/nav.mjs#nouvelleAdresse les reçoit : nav.mjs n'importe rien).
+ */
+export function renvoisDuGuide(ids) {
+  const renvois = { 'guide/': ACCUEIL_DU_GUIDE };
+  for (const id of ids) if (id.startsWith('guide/')) renvois[`${id}/`] = cheminDePage(id);
+  return renvois;
 }
 
 const espaces = (texte) => texte.replace(/\s+/g, ' ').trim();

@@ -22,6 +22,7 @@ import { lecteurDAcquis } from './acquis-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
+import { livreDe } from './livres.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
@@ -527,12 +528,14 @@ function titreDeLaCible(db, cible) {
 }
 
 /**
- * L'aide du champ « Entraînement » de la fiche (décision R71), écrite dans la page au build : { titre, chapitre, texte } de la page du guide, ou null si
- * la page manque ou n'écrit plus ce paragraphe.
+ * L'aide du champ « Entraînement » de la fiche (décision R71), écrite dans la page au build : { titre, livre, chapitre, texte } de la page du guide
+ * (`livre`, `chapitre` : sa place dans le plan du site, lib/livres.mjs, « Les bases », chapitre 10 ; null hors livre), ou null si la page manque ou
+ * n'écrit plus ce paragraphe.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function aideDeLEntrainement(db) {
-  const page = db.prepare("SELECT titre, corps_md, json_extract(donnees, '$.chapitre') AS chapitre FROM page WHERE id = ?").get(PAGE_DE_L_ENTRAINEMENT);
+  const page = db.prepare('SELECT titre, corps_md FROM page WHERE id = ?').get(PAGE_DE_L_ENTRAINEMENT);
   const texte = page ? limitesDeLEntrainement(page.corps_md, (cible) => titreDeLaCible(db, cible)) : null;
-  return texte ? { titre: page.titre, chapitre: page.chapitre ?? null, texte } : null;
+  const place = livreDe(PAGE_DE_L_ENTRAINEMENT);
+  return texte ? { titre: page.titre, livre: place?.livre.titre ?? null, chapitre: place?.numero ?? null, texte } : null;
 }

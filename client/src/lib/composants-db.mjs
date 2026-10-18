@@ -13,6 +13,12 @@ import { TABLES_FICHES } from './fiche-format.mjs';
 export { pourquoiPasSupprimable } from './composants-champs.mjs';
 
 export const PAGE_DES_COMPOSANTS = 'ressources/composants';
+/**
+ * Le titre et la description de la page Composants (son `<title>` et sa description, pages/ressources/composants.astro), repris par le sommaire de
+ * l'Artisanat (pages/regles/artisanat.astro, lib/livres.mjs#ARTISANAT) : la page n'a pas de ligne `page`, donc pas de résumé dans la base.
+ */
+export const TITRE_DES_COMPOSANTS = 'Composants';
+export const DESCRIPTION_DES_COMPOSANTS = 'Monnaie, matériaux, gemmes, bois, ingrédients d’alchimie et équipement d’inventaire.';
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 

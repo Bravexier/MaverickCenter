@@ -188,15 +188,20 @@ export function editeurEnPlace(zones) {
       titre: 'Lien vers une adresse',
       aide: 'Une adresse web complète (https://…) ou une adresse du site depuis sa racine (/races/).',
       libelle: 'Adresse',
-      valeur: existant && !existant.classList.contains('wikilink') ? existant.getAttribute('href') ?? '' : 'https://',
+      // un lien du guide écrit vers une ancienne adresse (lib/guide.mjs#remarkAnciensLiensDuGuide) : son adresse telle qu'écrite, pas celle du rendu
+      valeur: existant && !existant.classList.contains('wikilink') ? existant.dataset.lienEcrit ?? existant.getAttribute('href') ?? '' : 'https://',
       bouton: 'Lier',
       valider(adresse) {
         if (!/^(https?:\/\/[^\s]+|\/(?!\/)[^\s]*)$/.test(adresse)) throw new Error('Adresse attendue : https://… ou /…');
         return () => {
           if (existant) {
-            existant.classList.remove('wikilink');
-            delete existant.dataset.cible;
-            existant.setAttribute('href', adresse);
+            // la même adresse écrite (data-lien-ecrit) : le lien ne change pas, il mène toujours à la page du plan
+            if (existant.dataset.lienEcrit !== adresse) {
+              existant.classList.remove('wikilink');
+              delete existant.dataset.cible;
+              delete existant.dataset.lienEcrit;
+              existant.setAttribute('href', adresse);
+            }
           } else {
             restaurer(r);
             const texte = r.toString().trim() || adresse;

@@ -5877,7 +5877,7 @@ Dans le même tour, il est possible de faire 3 IC (jamais deux fois le même).
 
 **Attention ! Les IC doivent toujours être réalisés avant l''action !**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/aide-memoire', 'guide', 'aide-memoire', 'Aide-mémoire', 'aide-memoire', 'Les règles à garder sous la main pendant une partie : le jet de D100, le tour de combat, la défense, les dégâts et les formules de la fiche.', '{"chapitre": 22, "partie": "plus-loin"}', '## Réussir une action
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/aide-memoire', 'guide', 'aide-memoire', 'Aide-mémoire', 'aide-memoire', 'Les règles à garder sous la main pendant une partie : le jet de D100, le tour de combat, la défense, les dégâts et les formules de la fiche.', NULL, '## Réussir une action
 
 - On lance un **D100** : il faut faire **son score ou moins**.
 - **Score** = 10 × la caractéristique + les points naturels + les points acquis.
@@ -6055,7 +6055,7 @@ Encore par rapport aux attaques de zone, une personne ne peut pas protéger quel
 
   **Exemple :** pour un scorpion, la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaquer-et-se-defendre', 'guide', 'attaquer-et-se-defendre', 'Attaquer et se défendre', 'attaquer-et-se-defendre', 'Le jet d’attaque, la parade et l’esquive, la défense partielle qui divise les dégâts par deux, et les coups portés à la tête ou aux membres.', '{"chapitre": 13, "partie": "jouer"}', '## Attaquer
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaquer-et-se-defendre', 'guide', 'attaquer-et-se-defendre', 'Attaquer et se défendre', 'attaquer-et-se-defendre', 'Le jet d’attaque, la parade et l’esquive, la défense partielle qui divise les dégâts par deux, et les coups portés à la tête ou aux membres.', NULL, '## Attaquer
 
 Une attaque est un jet de D100 : il faut faire son score ou moins dans la compétence de l’arme (*Arme légère*, *Arme lourde*, *Arc*, *Arbalète*…) ou, pour un sort, dans la compétence qui sert à le lancer.
 
@@ -6097,7 +6097,7 @@ Pour un personnage gaucher, les effets des côtés droit et gauche sont inversé
 
 Prises en tenaille, attaques d’opportunité, attaques discrètes, embuscades… : ces cas plus rares sont dans [[Les situations avancées]].
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots : un univers médiéval-fantasy où la magie est omniprésente, un jeu complet mais accessible, joué sur le Discord officiel.', '{"chapitre": 1, "partie": "decouvrir"}', '## MaverickJDR ?
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots : un univers médiéval-fantasy où la magie est omniprésente, un jeu complet mais accessible, joué sur le Discord officiel.', NULL, '## MaverickJDR ?
 
 C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les [[races/humain|humains]], les elfes ou les [[races/nain|nains]]… mais aussi des peuples plus exotiques tels que les [[races/orios|Orios]], les [[races/drassahthac|Drassah’thac]] ou encore les [[races/drakos|Drakos]].
 
@@ -6113,7 +6113,7 @@ Ce guide est fait pour ceux qui découvrent Maverick, et même le jeu de rôle. 
 
 <!-- guide:sommaire -->
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/blessures-et-etats', 'guide', 'blessures-et-etats', 'Blessures et états', 'blessures-et-etats', 'Le coma et les jets de survie, les altérations d’état (poison, brûlure…), et comment récupérer santé et chakra.', '{"chapitre": 18, "partie": "jouer"}', '## Le coma et les jets de survie
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/blessures-et-etats', 'guide', 'blessures-et-etats', 'Blessures et états', 'blessures-et-etats', 'Le coma et les jets de survie, les altérations d’état (poison, brûlure…), et comment récupérer santé et chakra.', NULL, '## Le coma et les jets de survie
 
 Quand sa santé tombe à 0 ou moins, le personnage est **dans le coma**. Il doit faire des **jets de survie** (compétence *Survie*) : un seul jet réussi suffit à le stabiliser ; trois jets ratés, et il meurt. Un échec critique peut être fatal. Certains MJ font eux-mêmes ces jets, pour garder la main sur le destin des personnages.
 
@@ -6197,7 +6197,7 @@ Ce qui est conseillé est de déterminer une liste de personnages importants ave
 
 Après avoir une liste de pnj importante c''est bien, mais les joueurs aiment bien parler avec les passants ou ceux qui sont moins importants, d''où le conseil d''avoir une liste de nom généré à l''avance ce qui permet de sortir un prénom sans perdre trop de temps ou casser le rythme.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/caracteristiques-et-competences', 'guide', 'caracteristiques-et-competences', 'Étape 4 : caractéristiques et compétences', 'etape-4-caracteristiques-et-competences', 'Répartir 14 points entre les six caractéristiques, 100 points entre les compétences, et noter ses maîtrises d’armes.', '{"chapitre": 9, "partie": "creer"}', '## Les caractéristiques
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/caracteristiques-et-competences', 'guide', 'caracteristiques-et-competences', 'Étape 4 : caractéristiques et compétences', 'etape-4-caracteristiques-et-competences', 'Répartir 14 points entre les six caractéristiques, 100 points entre les compétences, et noter ses maîtrises d’armes.', NULL, '## Les caractéristiques
 
 Il y a six caractéristiques : **Force**, **Volonté**, **Intelligence**, **Perception**, **Social** et **Agilité**. Chacune compte pour dix fois sa valeur dans le score de ses cinq compétences (voir [Réussir une action](/guide/reussir-une-action/)).
 
@@ -6226,7 +6226,7 @@ La maîtrise d’une catégorie d’arme fait ses dégâts : sans maîtrise, l�
 
 > **Sur votre fiche** : la valeur de chaque caractéristique ; les points naturels de vos compétences ; les acquis de race et de classe ; vos maîtrises d’armes.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-classe', 'guide', 'choisir-sa-classe', 'Étape 3 : choisir sa classe', 'etape-3-choisir-sa-classe', 'Ce que donne une classe (santé, maîtrises, équipement, dons), les classes magiques, et le choix entre une ou deux classes.', '{"chapitre": 8, "partie": "creer"}', 'La classe, c’est la façon de se battre du personnage. Chacune a ses avantages, utiles dans des situations précises ou de manière générale. Les [classes](/classes/) sont rangées en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-classe', 'guide', 'choisir-sa-classe', 'Étape 3 : choisir sa classe', 'etape-3-choisir-sa-classe', 'Ce que donne une classe (santé, maîtrises, équipement, dons), les classes magiques, et le choix entre une ou deux classes.', NULL, 'La classe, c’est la façon de se battre du personnage. Chacune a ses avantages, utiles dans des situations précises ou de manière générale. Les [classes](/classes/) sont rangées en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales.
 
 ## Ce que donne une classe
 
@@ -6255,7 +6255,7 @@ Tous les quatre commencent avec une seule classe, au niveau 2 :
 
 > **Sur votre fiche** : la ou les classes et leur niveau ; les maîtrises d’armes (étape 4) ; l’arme, l’armure et l’inventaire de départ (étape 6).
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-race', 'guide', 'choisir-sa-race', 'Étape 1 : imaginer son personnage et choisir sa race', 'etape-1-imaginer-son-personnage-et-choisir-sa-race', 'Le nom, l’origine et le caractère du personnage, puis sa race : ce qu’elle apporte et ce qu’elle limite.', '{"chapitre": 6, "partie": "creer"}', '## Imaginer son personnage
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-race', 'guide', 'choisir-sa-race', 'Étape 1 : imaginer son personnage et choisir sa race', 'etape-1-imaginer-son-personnage-et-choisir-sa-race', 'Le nom, l’origine et le caractère du personnage, puis sa race : ce qu’elle apporte et ce qu’elle limite.', NULL, '## Imaginer son personnage
 
 Avant les chiffres, une idée : qui est votre personnage ? D’où vient-il, que cherche-t-il, comment se comporte-t-il ? Quelques mots suffisent, le reste viendra en jouant. Sur la fiche, notez :
 
@@ -6282,7 +6282,7 @@ La page de chaque race donne tout cela, avec son histoire et la façon dont elle
 
 > **Sur votre fiche** : le nom, le surnom, l’origine, la race et son ethnie. Le don de base va dans la case **Base** des dons, le don racial dans la case **Race**. La santé et le {{chakra|chakra}} de la race serviront à l’étape 6.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-ses-magies', 'guide', 'choisir-ses-magies', 'Étape 2 : choisir ses magies', 'etape-2-choisir-ses-magies', 'La magie innée, obligatoire et seule à donner un bonus de caractéristique ; la magie acquise, facultative ; les résistances et faiblesses qui en découlent.', '{"chapitre": 7, "partie": "creer"}', '## La magie innée
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-ses-magies', 'guide', 'choisir-ses-magies', 'Étape 2 : choisir ses magies', 'etape-2-choisir-ses-magies', 'La magie innée, obligatoire et seule à donner un bonus de caractéristique ; la magie acquise, facultative ; les résistances et faiblesses qui en découlent.', NULL, '## La magie innée
 
 Tout personnage naît avec une **magie innée**, héritée de l’un de ses parents : elle est obligatoire, et la race limite les choix possibles. Elle le relie à un **dieu inné**, la divinité de cette magie.
 
@@ -6311,7 +6311,7 @@ Chaque magie **résiste** à certaines magies et est **vulnérable** à d’autr
 
 > **Sur votre fiche** : la magie innée et, s’il y en a une, la magie acquise ; le dieu inné, et un dieu choisi si le personnage en prie un autre (facultatif) ; le +1 de la magie innée (case bleu clair sous la caractéristique) ; les résistances et faiblesses dans leur tableau.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/creer-son-personnage', 'guide', 'creer-son-personnage', 'Créer son personnage', 'creer-son-personnage', 'Ce que contient la fiche de personnage, les six étapes pour la remplir, et les quatre personnages qui nous accompagnent tout du long.', '{"chapitre": 5, "partie": "creer"}', 'Créer un personnage, c’est remplir sa **fiche de personnage**. Pas d’inquiétude : on la remplit dans l’ordre, une étape à la fois, et chaque étape tient sur une page.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/creer-son-personnage', 'guide', 'creer-son-personnage', 'Créer son personnage', 'creer-son-personnage', 'Ce que contient la fiche de personnage, les six étapes pour la remplir, et les quatre personnages qui nous accompagnent tout du long.', NULL, 'Créer un personnage, c’est remplir sa **fiche de personnage**. Pas d’inquiétude : on la remplit dans l’ordre, une étape à la fois, et chaque étape tient sur une page.
 
 ## Ce que contient la fiche
 
@@ -6842,7 +6842,7 @@ Ce que vous devez savoir c’est que les résistances et faiblesses communiquent
 
 Certains objets ou équipements peuvent faire modifier ces valeurs, soyez toujours à jour car les résistances et faiblesses pourraient être l’élément qui fait que votre personnage va survivre … ou pas.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/finaliser-son-personnage', 'guide', 'finaliser-son-personnage', 'Étape 6 : finaliser son personnage', 'etape-6-finaliser-son-personnage', 'Calculer les attributs (santé, chakra, barrière, vitesse, initiative), noter les dons, l’équipement de départ, la bourse et l’alignement.', '{"chapitre": 11, "partie": "creer"}', 'Tous les choix sont faits : il reste à en tirer les chiffres et à remplir les dernières cases.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/finaliser-son-personnage', 'guide', 'finaliser-son-personnage', 'Étape 6 : finaliser son personnage', 'etape-6-finaliser-son-personnage', 'Calculer les attributs (santé, chakra, barrière, vitesse, initiative), noter les dons, l’équipement de départ, la bourse et l’alignement.', NULL, 'Tous les choix sont faits : il reste à en tirer les chiffres et à remplir les dernières cases.
 
 ## Les attributs
 
@@ -7023,7 +7023,7 @@ Comme expliqué dans les compétences et les [[Altérations d''états et Mode Hy
 
 Le mj peut laisser les joueurs faire leur jet de survie ou alors il peut faire lui-même les jets de survie et avoir la capacité de tricher pour leur bien, un échec critique n''est jamais loin.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-equipement', 'guide', 'l-equipement', 'L’équipement', 'lequipement', 'Les armes et leurs dés, l’armure (AP, AM et les six parties du corps), le bouclier, les accessoires, la ceinture et le sac à dos.', '{"chapitre": 14, "partie": "jouer"}', '## Les armes
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-equipement', 'guide', 'l-equipement', 'L’équipement', 'lequipement', 'Les armes et leurs dés, l’armure (AP, AM et les six parties du corps), le bouclier, les accessoires, la ceinture et le sac à dos.', NULL, '## Les armes
 
 Un personnage a au plus **deux armes** en main ; les autres vont dans l’inventaire. Pour chacune, la fiche note :
 
@@ -7068,7 +7068,7 @@ Le nombre d’emplacements de l’inventaire dépend de la Force du personnage. 
 | Méga sac | +12 | 4 |
 | Ultra sac | tout l’inventaire | 5 |
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde médiéval-fantasy de 27 races où tout être vivant naît imprégné de l’une des 15 magies, héritée de l’un de ses parents.', '{"chapitre": 3, "partie": "decouvrir"}', '## Un monde de magie
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde médiéval-fantasy de 27 races où tout être vivant naît imprégné de l’une des 15 magies, héritée de l’un de ses parents.', NULL, '## Un monde de magie
 
 Maverick est un monde médiéval-fantasy où vivent [27 races](/races/), des plus familières aux plus exotiques. Chacune a son histoire, ses avantages, ses dons et sa façon de voir les autres peuples.
 
@@ -7084,7 +7084,7 @@ Les magies ne s’entendent pas toutes entre elles : certaines sont efficaces co
 
 L’histoire du monde, sa mythologie, ses lieux et ses factions sont rassemblés dans le [[Codex]] : [[Origine du monde|l’origine du monde]], [[Les Divinités|les divinités]], [[Temples/Cultes/Guildes|les temples, cultes et guildes]], [[Les races non-jouable|les races non jouables]], [[Les Civilisations|les civilisations]], [[Les Outils Légendaires, Uniques|les outils légendaires]] et un [[Glossaire|glossaire]] des termes du jeu. On y trouve aussi les [[Relations entre les races|relations entre les peuples]].
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort, ce qu’il coûte en chakra (même raté), les sorts de niveau 5 qui se chargent, et les niveaux de maîtrise (NM) qui renforcent un sort.', '{"chapitre": 17, "partie": "jouer"}', '## Lancer un sort
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort, ce qu’il coûte en chakra (même raté), les sorts de niveau 5 qui se chargent, et les niveaux de maîtrise (NM) qui renforcent un sort.', NULL, '## Lancer un sort
 
 Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines classes en utilisent une autre : le mage rouge lance ses sorts avec *Concentration*). Le sort coûte le {{chakra|chakra}} indiqué sur sa page :
 
@@ -7114,7 +7114,7 @@ Un sort a au plus **3 NM**, quelle que soit leur origine : un livre n’en donne
 
 Les dégâts d’un sort comptent double contre une cible vulnérable à sa magie, et moitié moins contre une cible qui y résiste (voir [Les dégâts](/guide/les-degats/)). La posture **Vigilance** permet de repérer une résistance ou une vulnérabilité d’un ennemi.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', '{"chapitre": 19, "partie": "progresser"}', 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', NULL, 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
 
 ## Le tableau de progression
 
@@ -7131,7 +7131,7 @@ Chaque ligne donne l’expérience nécessaire pour atteindre le niveau, et ce q
 - **Magie** : un niveau de maîtrise pour un sort à chaque niveau à partir du 2 ; la puissance magique passe à 2, 3, 4 et 5 aux niveaux 4, 8, 12 et 16 (le niveau 5 n’est pas accessible avec une magie acquise).
 - **Mode Hyper** : débloqué au niveau 2, à 100 % au niveau 10 (voir [[Liste des effets mode hyper]]).
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-jeu-de-role', 'guide', 'le-jeu-de-role', 'Le jeu de rôle, comment ça marche ?', 'le-jeu-de-role-comment-ca-marche', 'Le maître du jeu, les joueurs et leurs personnages, la façon dont une partie avance, et comment lire les dés (1D20, 2d6+2…).', '{"chapitre": 2, "partie": "decouvrir"}', 'Un jeu de rôle (JDR), c’est une histoire que l’on raconte à plusieurs. Il n’y a ni plateau ni gagnant : on joue pour vivre une aventure ensemble.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-jeu-de-role', 'guide', 'le-jeu-de-role', 'Le jeu de rôle, comment ça marche ?', 'le-jeu-de-role-comment-ca-marche', 'Le maître du jeu, les joueurs et leurs personnages, la façon dont une partie avance, et comment lire les dés (1D20, 2d6+2…).', NULL, 'Un jeu de rôle (JDR), c’est une histoire que l’on raconte à plusieurs. Il n’y a ni plateau ni gagnant : on joue pour vivre une aventure ensemble.
 
 ## Qui fait quoi ?
 
@@ -7180,7 +7180,7 @@ Les dés s’écrivent avec un **D** (ou un **d**) suivi du nombre de faces :
 
 Selon les tables, chacun lance ses propres dés ou le MJ les lance tous. Les jets des joueurs restent toujours visibles de tous ; le MJ, lui, peut lancer les siens en secret.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper', 'guide', 'le-mode-hyper', 'Le Mode Hyper et le Mode Super', 'le-mode-hyper-et-le-mode-super', 'L’état de surpuissance qui s’ouvre au niveau 2 : ce qu’il donne, ce qu’il coûte, ses limites, le Mode Hyper 100 % et le Mode Super.', '{"chapitre": 20, "partie": "progresser"}', '## Qu’est-ce que c’est ?
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper', 'guide', 'le-mode-hyper', 'Le Mode Hyper et le Mode Super', 'le-mode-hyper-et-le-mode-super', 'L’état de surpuissance qui s’ouvre au niveau 2 : ce qu’il donne, ce qu’il coûte, ses limites, le Mode Hyper 100 % et le Mode Super.', NULL, '## Qu’est-ce que c’est ?
 
 Le **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage : sa magie l’envahit, son aura déferle et son corps change. L’activer ne demande aucun jet : c’est une action rapide (IC).
 
@@ -7213,7 +7213,7 @@ Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine
 
 C’est un équivalent moins puissant du Mode Hyper : une symbiose, non pas avec soi-même, mais avec un **objet légendaire ou enchanté**. Il faut atteindre une parfaite harmonie avec l’objet, et le MJ en est seul juge. Il donne +10 aux dégâts physiques, plus un effet passif et un effet actif propres à l’objet. Il dure au plus le niveau global divisé par 2 en tours, revient au bout d’une semaine, et ne peut pas être prolongé ; il peut s’activer même si quelqu’un d’autre est déjà en Mode Hyper ou Super. Voir [[Liste des effets mode super]].
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat : l’initiative, puis, pour chacun à son tour, la posture, le déplacement, les actions rapides (IC) et l’action.', '{"chapitre": 12, "partie": "jouer"}', 'Hors combat, on joue en conversation libre. Quand un combat commence, le jeu se découpe en **tours** : chacun agit à son tour, dans un ordre précis. Le MJ peut alors sortir une **carte de combat** (*battlemap*), quadrillée, pour placer les personnages et mesurer les distances.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat : l’initiative, puis, pour chacun à son tour, la posture, le déplacement, les actions rapides (IC) et l’action.', NULL, 'Hors combat, on joue en conversation libre. Quand un combat commence, le jeu se découpe en **tours** : chacun agit à son tour, dans un ordre précis. Le MJ peut alors sortir une **carte de combat** (*battlemap*), quadrillée, pour placer les personnages et mesurer les distances.
 
 ## Le déroulement d’un tour
 
@@ -7250,7 +7250,7 @@ Un tour peut ressembler à l’un de ces enchaînements :
 
 Le détail est dans [[Les Actions et mouvements]] et [[En résumé|le résumé du tour]] du guide pour MJ.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'La formule des dégâts, étape par étape, avec les trois exemples du guide pour MJ.', '{"chapitre": 15, "partie": "jouer"}', 'Quand une attaque touche, les dégâts se calculent toujours dans le même ordre :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'La formule des dégâts, étape par étape, avec les trois exemples du guide pour MJ.', NULL, 'Quand une attaque touche, les dégâts se calculent toujours dans le même ordre :
 
 > **Dégâts finaux = [ ( dégâts de l’attaque × 2 si réussite critique − armure de la cible ) ÷ 2 si défense partielle ÷ 2 si un don divise les dégâts ] × résistance ou faiblesse**
 
@@ -7284,7 +7284,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Le guide pour MJ détaille la formule et ses exemples : [[Formule des dégâts]].
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 24, "partie": "plus-loin"}', 'Cette partie sera bientôt migrée dans la partie Archives.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', NULL, 'Cette partie sera bientôt migrée dans la partie Archives.
 
 <!-- guide:documents -->
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -7548,7 +7548,7 @@ Ces obstacles ne peuvent pas être enfoncés, cet obstacle répond magiquement �
 
 Les portes magiques peuvent être crochetées ou détruites.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-postures', 'guide', 'les-postures', 'Les postures', 'les-postures', 'Les six postures de combat, à choisir au début de chaque tour : leurs avantages, leurs inconvénients, et quand les prendre.', '{"chapitre": 16, "partie": "jouer"}', 'Au début de son tour, avant tout le reste, chaque personnage déclare sa **posture**. Elle donne des avantages et des inconvénients jusqu’à son prochain tour : c’est le choix tactique le plus important du combat. Le MJ peut annoncer celle des ennemis de façon détournée, pour que les joueurs la devinent.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-postures', 'guide', 'les-postures', 'Les postures', 'les-postures', 'Les six postures de combat, à choisir au début de chaque tour : leurs avantages, leurs inconvénients, et quand les prendre.', NULL, 'Au début de son tour, avant tout le reste, chaque personnage déclare sa **posture**. Elle donne des avantages et des inconvénients jusqu’à son prochain tour : c’est le choix tactique le plus important du combat. Le MJ peut annoncer celle des ennemis de façon détournée, pour que les joueurs la devinent.
 
 ## Le tableau des postures
 
@@ -7567,7 +7567,7 @@ Le tableau de la fiche de personnage (survolez le nom d’une posture pour sa de
 
 Le détail de chaque effet est dans [[Postures]].
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/lexique', 'guide', 'lexique', 'Lexique', 'lexique', 'Les mots et abréviations du jeu, de « Acquis » à « XP ».', '{"chapitre": 23, "partie": "plus-loin"}', '- **Acquis** : les points d’une compétence gagnés par l’entraînement, la race, la classe, les dons ou l’équipement.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/lexique', 'guide', 'lexique', 'Lexique', 'lexique', 'Les mots et abréviations du jeu, de « Acquis » à « XP ».', NULL, '- **Acquis** : les points d’une compétence gagnés par l’entraînement, la race, la classe, les dons ou l’équipement.
 - **AM** (armure magique) : ce qui retire des points aux dégâts des sorts.
 - **AP** (armure physique) : ce qui retire des points aux dégâts des armes.
 - **Âme / Sang** : la « 4ᵉ barre » des utilisateurs de la nécromancie et de la magie du sang, que dépensent certains de leurs sorts.
@@ -8448,7 +8448,7 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 - **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (“Forgemagie”, “Forge de ses morts”, Bâton magique et les parchemins ne sont pas interdits)
 - **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement, ainsi tous ses avantages et inconvénients sont annulés également.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/premiers-sorts', 'guide', 'premiers-sorts', 'Étape 5 : ses premiers sorts', 'etape-5-ses-premiers-sorts', 'Combien de sorts le personnage connaît (les emplacements de sorts) et où les choisir.', '{"chapitre": 10, "partie": "creer"}', 'Tout le monde a une magie innée, donc tout le monde a au moins un sort. Combien exactement ? Cela dépend de deux choses : des **conditions** que le personnage remplit et de sa **puissance magique**.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/premiers-sorts', 'guide', 'premiers-sorts', 'Étape 5 : ses premiers sorts', 'etape-5-ses-premiers-sorts', 'Combien de sorts le personnage connaît (les emplacements de sorts) et où les choisir.', NULL, 'Tout le monde a une magie innée, donc tout le monde a au moins un sort. Combien exactement ? Cela dépend de deux choses : des **conditions** que le personnage remplit et de sa **puissance magique**.
 
 ## Les emplacements de sorts
 
@@ -8503,7 +8503,7 @@ Chaque magie possède ses efficacités, ses résistances et ses vulnérabilités
 
 Quand vous êtes touché par un élément dont vous êtes vulnérable, vous prenez 2 fois plus de dégâts. Et inversement quand vous êtes résistant, vous prenez 2 fois moins de dégâts.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/reussir-une-action', 'guide', 'reussir-une-action', 'Réussir une action', 'reussir-une-action', 'La règle centrale du jeu : on lance un D100 et il faut faire son score ou moins. Le score, les réussites et échecs critiques, les bonus et malus.', '{"chapitre": 4, "partie": "decouvrir"}', 'Presque toutes les actions incertaines se jouent de la même façon : **on lance un D100, et il faut faire son score ou moins.**
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/reussir-une-action', 'guide', 'reussir-une-action', 'Réussir une action', 'reussir-une-action', 'La règle centrale du jeu : on lance un D100 et il faut faire son score ou moins. Le score, les réussites et échecs critiques, les bonus et malus.', NULL, 'Presque toutes les actions incertaines se jouent de la même façon : **on lance un D100, et il faut faire son score ou moins.**
 
 ## Le score
 
@@ -8534,7 +8534,7 @@ La situation peut rendre une action plus facile ou plus difficile : le score gag
 
 Pour aller plus loin, la page [[Jet de dés]] détaille les critiques du point de vue du MJ.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/s-entrainer-et-exercer-un-metier', 'guide', 's-entrainer-et-exercer-un-metier', 'S’entraîner et exercer un métier', 'sentrainer-et-exercer-un-metier', 'Gagner des points d’acquis en s’entraînant, et ce qu’apporte un métier : des bonus, des objets, et l’artisanat.', '{"chapitre": 21, "partie": "progresser"}', 'Les niveaux ne sont pas la seule façon de progresser : un personnage peut aussi s’entraîner, et exercer un métier.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/s-entrainer-et-exercer-un-metier', 'guide', 's-entrainer-et-exercer-un-metier', 'S’entraîner et exercer un métier', 'sentrainer-et-exercer-un-metier', 'Gagner des points d’acquis en s’entraînant, et ce qu’apporte un métier : des bonus, des objets, et l’artisanat.', NULL, 'Les niveaux ne sont pas la seule façon de progresser : un personnage peut aussi s’entraîner, et exercer un métier.
 
 ## S’entraîner
 

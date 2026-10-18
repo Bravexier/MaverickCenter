@@ -1,6 +1,7 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
-import { pagesDeReference, partiesDuGuide } from '../../lib/guide.mjs';
+import { pagesDeReference } from '../../lib/guide.mjs';
+import { LIVRES, livreDe, pagesDuLivre, REGLES_AVANCEES } from '../../lib/livres.mjs';
 import { couleurDeCaracteristique, couleurDePosture, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
 import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
@@ -15,16 +16,17 @@ import {
 import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { couleurDeMagie } from '../../lib/sort-format.mjs';
-import type { WikiEntry } from '../../lib/wiki';
+import { url, type WikiEntry } from '../../lib/wiki';
 
-// Un bloc d'un chapitre du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
+// Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
+// Le sommaire (page « Bienvenue ») : les pages de son livre (lib/livres.mjs, « Découvrir »), sauf elle-même, par section (numéro, titre, résumé), puis
+// les autres livres et les Règles avancées (leurs titres).
 interface Props {
   bloc: string;
   entry: WikiEntry;
   entries: WikiEntry[];
-  chapitres: { id: string; numero: number; titre: string; resume: string; partie: { id: string; titre: string; couleur: string } }[];
 }
-const { bloc, entry, entries, chapitres } = Astro.props;
+const { bloc, entry, entries } = Astro.props;
 const db = ouvrirBase();
 
 const niveaux = bloc === 'niveaux' ? chargerNiveaux(db) : [];
@@ -42,7 +44,24 @@ const competences =
         })),
       )
     : [];
-const references = bloc === 'documents' ? pagesDeReference(entries) : [];
+const references = bloc === 'documents' ? pagesDeReference(entries, entry.id) : [];
+const parId = new Map(entries.map((e) => [e.id, e]));
+const livreDuSommaire = livreDe(entry.id)?.livre ?? LIVRES[0];
+const sommaire = bloc === 'sommaire'
+  ? livreDuSommaire.sections
+      .map((section) => ({
+        section,
+        pages: pagesDuLivre(livreDuSommaire)
+          .filter((p) => p.section === section && p.id !== entry.id && parId.has(p.id))
+          .map((p) => ({ id: p.id, numero: p.numero, titre: parId.get(p.id)!.data.title, resume: parId.get(p.id)!.data.summary ?? '' })),
+      }))
+      .filter((g) => g.pages.length > 0)
+  : [];
+// à la suite du sommaire : les autres livres (« Les bases ») et les Règles avancées, dans la couleur de la première section du premier d'entre eux
+const suiteDuSommaire = bloc === 'sommaire'
+  ? [...LIVRES.filter((l) => l !== livreDuSommaire).map((l) => ({ chemin: l.chemin, titre: l.titre })), { chemin: REGLES_AVANCEES.chemin, titre: REGLES_AVANCEES.titre }]
+  : [];
+const couleurDeLaSuite = LIVRES.find((l) => l !== livreDuSommaire)?.sections[0]?.couleur;
 // Les personnages fil rouge (lib/guide-fil-rouge.mjs) : une carte par personnage, son contenu selon l'étape de la création.
 const filRouge = bloc.startsWith('fil-rouge') ? chargerFilRouge(db) : [];
 /** « 2 de la race + 6 de la classe = 8 » : le calcul d'un attribut, termes nuls omis (sauf le premier). */
@@ -54,11 +73,11 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
 {
   bloc === 'sommaire' && (
     <div class="guide-sommaire">
-      {partiesDuGuide(chapitres.filter((c) => c.id !== entry.id)).map(({ partie, chapitres: deLaPartie }) => (
-        <section class="guide-sommaire__partie" style={`--couleur-partie: ${partie.couleur}`} aria-label={partie.titre}>
-          <h3 class="guide-sommaire__titre-partie">{partie.titre}</h3>
+      {sommaire.map(({ section, pages }) => (
+        <section class="guide-sommaire__partie" style={`--couleur-partie: ${section.couleur}`} aria-label={section.titre}>
+          <h3 class="guide-sommaire__titre-partie">{section.titre}</h3>
           <ol class="guide-sommaire__liste">
-            {deLaPartie.map((c) => (
+            {pages.map((c) => (
               <li>
                 <a class="guide-sommaire__lien" href={pageHref(c.id)}>
                   <span class="guide-sommaire__numero" aria-hidden="true">{c.numero}</span>
@@ -70,6 +89,16 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
           </ol>
         </section>
       ))}
+      <section class="guide-sommaire__partie guide-sommaire__suite" style={couleurDeLaSuite ? `--couleur-partie: ${couleurDeLaSuite}` : undefined} aria-label="Règles">
+        <h3 class="guide-sommaire__titre-partie">Règles</h3>
+        <ul class="guide-sommaire__liste">
+          {suiteDuSommaire.map((l) => (
+            <li>
+              <a class="guide-sommaire__lien" href={url(l.chemin)}><span class="guide-sommaire__titre">{l.titre}</span></a>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }

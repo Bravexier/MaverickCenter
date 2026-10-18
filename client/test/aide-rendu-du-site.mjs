@@ -1,6 +1,7 @@
 // Le rendu Markdown du site, pour les tests : le processeur de @astrojs/markdown-remark avec les plugins du site ([[liens]] sur l'index des pages,
 // couleurs des cases, monnaies en icônes ; astro.config.mjs et lib/guide-rendu.ts), puis les balises du glossaire comme le middleware (src/middleware.mjs,
-// lib/mots-cles-balises.mjs#htmlAvecMotsCles) ; et le HTML relu comme un navigateur le lirait (hast-util-from-html, dépendance de
+// lib/mots-cles-balises.mjs#htmlAvecMotsCles) ; le rendu d'une page du guide (lib/guide-rendu.ts : liens Markdown préfixés, anciennes adresses du guide
+// menées à leur page du plan et gardées en `data-lien-ecrit`) ; et le HTML relu comme un navigateur le lirait (hast-util-from-html, dépendance de
 // @astrojs/markdown-remark) en l'arbre simple de lib/markdown-edition.mjs (celui qu'arbreDuDom tire du DOM). Partagé par test/markdown-edition.test.mjs et
 // test/edition-panneaux.test.mjs.
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,9 @@ import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
 import { remarkMonnaies } from '../src/lib/markdown-monnaies.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { buildIndex, remarkWikilinks, scanContent } from '../src/lib/wikilinks.mjs';
+import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from '../src/lib/guide.mjs';
+import { ACCUEIL_DU_GUIDE } from '../src/lib/livres.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
 
 /** Les pages fabriquées du wiki (npm run db:export-pages, lancé avant les tests). */
 export const DOSSIER_DU_WIKI = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
@@ -22,6 +26,24 @@ export async function rendreLeMarkdown(md) {
     remarkPlugins: [[remarkWikilinks, { index: buildIndex(scanContent(DOSSIER_DU_WIKI)), base: '/' }], remarkCouleursDeCase, remarkMonnaies],
   });
   return (await (await processeur).render(md, { frontmatter: { status: 'example' } })).code;
+}
+
+const processeursDuGuide = new Map();
+/**
+ * Le HTML d'un morceau d'une page du guide, rendu comme lib/guide-rendu.ts au build (préfixe de déploiement `base`) : avecPrefixe, puis les plugins
+ * du site et remarkAnciensLiensDuGuide sur les pages chargées (celles du dossier du wiki).
+ */
+export async function rendreCommeLeGuide(md, base = '/') {
+  if (!processeursDuGuide.has(base)) {
+    const pages = scanContent(DOSSIER_DU_WIKI);
+    const ids = new Set(pages.map((p) => p.id));
+    const adresse = (chemin) => adresseDesAnciensLiens(chemin, { cheminDe: cheminDePage, existe: (id) => ids.has(id), accueil: ACCUEIL_DU_GUIDE });
+    processeursDuGuide.set(base, createMarkdownProcessor({
+      syntaxHighlight: false,
+      remarkPlugins: [[remarkWikilinks, { index: buildIndex(pages), base }], remarkCouleursDeCase, remarkMonnaies, [remarkAnciensLiensDuGuide, { base, adresse }]],
+    }));
+  }
+  return (await (await processeursDuGuide.get(base)).render(avecPrefixe(md, base), { frontmatter: { status: 'example' } })).code;
 }
 
 /** Le HTML d'un Markdown tel que la page le montre : rendu (rendreLeMarkdown), puis ses balises du glossaire (`vocabulaire` : [{ id, libelle, description }]). */

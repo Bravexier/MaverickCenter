@@ -22,12 +22,13 @@ export const RESSOURCES = [
     nom: 'Page du guide',
     noms: 'Pages du guide',
     description:
-      'Les pages de la rubrique « guide » : les 24 chapitres du guide du joueur, lus dans l’ordre (numéro et partie dans `donnees` : chapitre, partie ; ' +
-      'le premier, guide/bienvenue, est servi à /guide/), et les pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
+      'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : deux livres lus dans l’ordre, ' +
+      '« Découvrir » (/decouvrir/…) et « Les bases » (/regles/…), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/…), toutes les autres ' +
+      'pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
       'personnage », et six pages tirées des classeurs : altérations d’état, météo, modes hyper et super, statistiques) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
-      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé, le numéro et ' +
-      'la partie ne se modifient pas ; ni création ni suppression.',
+      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé ne se ' +
+      'modifie pas ; ni création ni suppression.',
     table: 'page',
     condition: { type: ['guide'] },
     libelle: 'titre',

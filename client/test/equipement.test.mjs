@@ -70,12 +70,13 @@ test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs l
   for (const id of ['ressources/livre-parchemin', 'ressources/alchimie', 'ressources/equipement-inventaire']) assert.equal(cheminDePage(id), `${id}/`, id);
 });
 
-test('menu Ressources : « Équipement » remplace « Armes », « Armures », « Accessoires » et « Objets à la ceinture »', () => {
-  const items = NAV.find((g) => g.key === 'ressources').items;
+test('menu Règles (plus de rubrique Ressources depuis le 2026-10-18) : « Équipement » remplace « Armes », « Armures », « Accessoires » et « Objets à la ceinture »', () => {
+  const items = NAV.find((g) => g.key === 'regles').items;
   assert.deepEqual(items.find((i) => i.label === 'Équipement'), { label: 'Équipement', path: CHEMIN_DE_L_EQUIPEMENT });
   assert.ok(!items.some((i) => ['Armes', 'Armures', 'Accessoires', 'Objets à la ceinture'].includes(i.label)
     || /ressources\/(armes|armures|accessoires|objets-a-la-ceinture)\//.test(i.path ?? '')));
-  assert.equal(items[0].label, 'Équipement', 'à la place des armes, en tête de la rubrique');
+  assert.ok(!NAV.some((g) => g.key === 'ressources'), 'plus de rubrique Ressources');
+  assert.deepEqual(items.slice(1, 6).map((i) => i.label), ['Races', 'Magies', 'Classes', 'Équipement', 'Métiers'], 'après les classes, avant les métiers');
 });
 
 test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de la magie, un bonus par niveau ; tous les bâtons de la base', () => {

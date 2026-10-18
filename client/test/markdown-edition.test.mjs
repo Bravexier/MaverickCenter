@@ -16,7 +16,7 @@ import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs'
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneaux } from '../src/lib/panneaux-regles-db.mjs';
 // le processeur Markdown du site et la lecture du HTML comme le ferait le navigateur (hast-util-from-html, dépendance de @astrojs/markdown-remark)
-import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
+import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreCommeLeGuide, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
 
 const aller = async (md) => versMarkdown(enfants(await rendre(md)));
 
@@ -35,13 +35,15 @@ test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réé
   assert.ok(effectif('lore') >= 100, `${effectif('lore')} pages du Codex`);
   let morceaux = 0;
   for (const page of pagesModifiables) {
+    // une page du guide est rendue comme au build (lib/guide-rendu.ts : anciennes adresses du guide menées à leur page du plan)
+    const rendrePage = page.type === 'guide' ? rendreCommeLeGuide : rendre;
     for (const m of decouperCorps(page.corps)) {
       if (!m.visible) continue;
       morceaux++;
-      const html = await rendre(m.texte);
+      const html = await rendrePage(m.texte);
       const md = versMarkdown(enfants(html));
-      assert.equal(normal(await rendre(md)), normal(html), `${page.id} :\n${md}`);
-      assert.equal(await aller(md), md, `${page.id} : le Markdown réécrit est stable`);
+      assert.equal(normal(await rendrePage(md)), normal(html), `${page.id} :\n${md}`);
+      assert.equal(versMarkdown(enfants(await rendrePage(md))), md, `${page.id} : le Markdown réécrit est stable`);
       // ni HTML brut ni lien non sûr ajouté : le service refuserait le texte (lib/markdown-sur.mjs)
       assert.deepEqual(fragmentsAjoutes(m.texte, md), [], `${page.id} : fragments ajoutés par l’éditeur`);
       // l'aperçu assaini garde tout ce que le Markdown dit
@@ -59,6 +61,50 @@ test('liens : [[cible]] et [[cible|texte]] (cible gardée telle qu’écrite), l
   assert.equal(md, 'Lien [races](/races/)\n');
   // un lien retiré par l'éditeur : il ne reste que son texte
   assert.equal(versMarkdown(enfants('<p>Voir <span>Humain</span>.</p>')), 'Voir Humain.\n');
+});
+
+test('liens du guide écrits vers une ancienne adresse (/guide/<slug>/) : rendus vers la page du plan, relus tels qu’écrits — modifier la page ne les réécrit pas', async () => {
+  const pages = pagesModifiables.filter((p) => p.type === 'guide' && /\]\(\/guide\//.test(p.corps));
+  const liens = pages.flatMap((p) => [...p.corps.matchAll(/\]\((\/guide\/[^)\s]*)\)/g)].map((m) => ({ id: p.id, ecrit: m[1] })));
+  // ceux de la base aujourd'hui : neuf liens sur huit pages (les livres « Découvrir » et « Les bases »)
+  assert.ok(liens.length >= 9, `${liens.length} liens`);
+  for (const base of ['/', '/MaverickCenter/']) {
+    const lienRelatif = (h) => (base !== '/' && h.startsWith(base) ? `/${h.slice(base.length)}` : h);
+    for (const page of pages) {
+      const corps = decouperCorps(page.corps);
+      const visibles = corps.filter((m) => m.visible);
+      const modifies = [];
+      for (const m of visibles) {
+        if (!/\]\(\/guide\//.test(m.texte)) {
+          modifies.push(null);
+          continue;
+        }
+        const html = await rendreCommeLeGuide(m.texte, base);
+        // le lien mène à la page du plan (aucun lien du site construit ne mène à /guide/), l'adresse écrite gardée à côté
+        assert.doesNotMatch(html, new RegExp(`href="${base}guide/`), `${page.id} : un lien mène encore à /guide/`);
+        for (const [, ecrit] of m.texte.matchAll(/\]\((\/guide\/[^)\s]*)\)/g)) {
+          assert.ok(html.includes(`data-lien-ecrit="${ecrit}"`), `${page.id} : ${ecrit} n’est pas gardé (${base})`);
+        }
+        // relu par l'éditeur (et par l'aperçu assaini : une seconde modification avant le build), le Markdown redonne les adresses écrites
+        const md = versMarkdown(enfants(html), { lienRelatif });
+        assert.equal(md.trim(), m.texte.trim().replace(/\n{3,}/g, '\n\n'), `${page.id} : le morceau relu n’est plus celui de la base`);
+        assert.equal(versMarkdown(enfants(htmlSur(enfants(html))), { lienRelatif }), md, `${page.id} : aperçu assaini`);
+        // un mot ajouté au morceau : la page enregistrée garde ses liens tels qu'écrits (le service reçoit le corps refait : recomposerCorps)
+        modifies.push(md.replace(/\n$/, ' Ajouté.\n'));
+      }
+      const enregistre = recomposerCorps(page.corps, modifies);
+      assert.notEqual(enregistre, page.corps);
+      assert.deepEqual([...enregistre.matchAll(/\]\((\/[^)\s]*)\)/g)].map((m) => m[1]), [...page.corps.matchAll(/\]\((\/[^)\s]*)\)/g)].map((m) => m[1]),
+        `${page.id} : les adresses des liens ont changé à l’enregistrement`);
+    }
+  }
+  // un lien dont l'adresse a été changée dans l'éditeur (edition/texte-en-place.mjs#lienWeb retire data-lien-ecrit) : la nouvelle adresse
+  assert.equal(versMarkdown(enfants('<p>Voir <a href="/races/">les races</a>.</p>')), 'Voir [les races](/races/).\n');
+  // une adresse écrite qui ne serait pas une adresse du site depuis sa racine n'est pas relue (ni gardée par l'aperçu) : celle du lien
+  assert.equal(versMarkdown(enfants('<p><a href="/regles/" data-lien-ecrit="javascript:alert(1)">x</a></p>')), '[x](/regles/)\n');
+  assert.doesNotMatch(htmlSur(enfants('<p><a href="/regles/" data-lien-ecrit="//ailleurs.example/">x</a></p>')), /data-lien-ecrit/);
+  // les autres liens, au rendu du guide, ne portent rien de plus
+  assert.doesNotMatch(await rendreCommeLeGuide('[les races](/races/) et [[Humain]]'), /data-lien-ecrit/);
 });
 
 test('couleur des cases : écrite « {couleur:x} » en tête de case, rendue data-couleur ; couleur inconnue ignorée', async () => {

@@ -19,6 +19,7 @@ import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
+import { placeDansLeGuide } from './livres.mjs';
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
 export const DOMAINES = [
@@ -170,11 +171,12 @@ const DEFINITIONS = [
   {
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
-    groupe: (r) => {
-      const n = chapitreDe(r);
-      return n ? `Chapitre ${n}` : 'Pages de référence';
+    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre des livres
+    groupe: (r) => placeDansLeGuide(r.id).rubrique,
+    entite: (r) => r.titre, ordre: (r) => {
+      const place = placeDansLeGuide(r.id);
+      return [place.rang, place.numero ?? 999, r.titre];
     },
-    entite: (r) => r.titre, ordre: (r) => [chapitreDe(r) ?? 999, r.titre],
   },
   {
     // les pages du Codex (lore tiré du Google Doc « CODEX Maverick », famille docs : lib/edition-modele.mjs#texteDePageModifiable)
@@ -436,14 +438,6 @@ export function premiersMots(markdown, vocabulaire = null, n = MOTS_DU_NOM) {
 
 /** L'ordre de lecture d'un événement dans une note : époque, année, rang (lib/chronologie.mjs#ordonner). */
 const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.epoque), e.annee ?? 0, e.rang ?? 0];
-
-function chapitreDe(page) {
-  try {
-    return JSON.parse(page.donnees ?? 'null')?.chapitre ?? null;
-  } catch {
-    return null;
-  }
-}
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {

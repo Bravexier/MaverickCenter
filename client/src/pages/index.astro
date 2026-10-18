@@ -2,10 +2,19 @@
 import Base from '../layouts/Base.astro';
 import Carrousel from '../components/galerie/Carrousel.astro';
 import accueilCss from '../styles/accueil/accueil.css?raw';
-import { url } from '../lib/wiki';
+import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
+import { ACCUEIL_DU_GUIDE, livreDe, PAR_OU_COMMENCER, verifierLePlan } from '../lib/livres.mjs';
+import { entryHref, loadWiki, url } from '../lib/wiki';
 
-// Accueil (demande du propriétaire) : un texte de bienvenue et le défilement des images de la galerie (components/galerie/Carrousel.astro).
-// La présentation du jeu reprend le texte d'accueil du propriétaire (premier chapitre du guide, guide/bienvenue).
+// Accueil (demande du propriétaire ; rubrique Découvrir du menu) : un texte de bienvenue et le défilement des images de la galerie
+// (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (première page du livre Découvrir,
+// guide/bienvenue). Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé de chaque
+// page tels que la base les écrit, dans la couleur de sa section.
+const { entries } = await loadWiki();
+const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
+const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
+  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', couleur: livreDe(e.id)!.section.couleur,
+}));
 ---
 
 <Base title="Accueil">
@@ -22,10 +31,23 @@ import { url } from '../lib/wiki';
       </p>
       <p>Première visite ? Le guide vous accompagne pas à pas : découvrir le jeu, créer son personnage, jouer, progresser.</p>
       <p class="accueil__actions">
-        <a class="accueil__bouton accueil__bouton--principal" href={url('guide/')}>Lire le guide</a>
+        <a class="accueil__bouton accueil__bouton--principal" href={url(ACCUEIL_DU_GUIDE)}>Lire le guide</a>
         <a class="accueil__bouton" href={url('fiche/')}>Créer un personnage</a>
       </p>
     </section>
     <Carrousel />
   </div>
+  <section class="accueil-debut" aria-labelledby="titre-par-ou-commencer">
+    <h2 id="titre-par-ou-commencer">Par où commencer ?</h2>
+    <ul class="accueil-debut__cartes">
+      {
+        cartes.map((c) => (
+          <li class="accueil-debut__carte" style={`--c: ${c.couleur}`}>
+            <a class="accueil-debut__lien" href={c.href}>{c.titre}</a>
+            {c.resume && <p class="accueil-debut__resume" set:html={htmlAvecMonnaies(c.resume)} />}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Base>

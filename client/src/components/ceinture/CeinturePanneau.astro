@@ -10,6 +10,7 @@ import Tableau from '../Tableau.astro';
 import { ancreDePotions, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
+import { livreDe } from '../../lib/livres.mjs';
 import { url } from '../../lib/wiki';
 
 // Onglet « Ceinture » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demandes du propriétaire : le 2026-10-15,
@@ -117,7 +118,7 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
           {
             (sources.chapitre || sources.reference) && (
               <p class="ceinture-regles__source">
-                {sources.chapitre && <>Le guide : <a href={lien(sources.chapitre.id)}>{sources.chapitre.titre}</a></>}{sources.chapitre && sources.reference && ' ; '}{
+                {sources.chapitre && <>{livreDe(sources.chapitre.id)?.livre.titre ?? 'Le guide'} : <a href={lien(sources.chapitre.id)}>{sources.chapitre.titre}</a></>}{sources.chapitre && sources.reference && ' ; '}{
                   sources.reference && <>le détail : <a href={lien(sources.reference.id)}>{sources.reference.titre}</a></>
                 }.
               </p>

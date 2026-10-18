@@ -11,6 +11,8 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { PAR_OU_COMMENCER } from '../src/lib/livres.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -32,10 +34,31 @@ test('les pages sont à la racine du site, plus sous /wiki/', options, () => {
   assert.match(lire('races/nain/index.html'), /<a href="\/">Accueil<\/a> › <a href="\/races\/">Races<\/a>/, 'fil d’Ariane');
 });
 
+test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni lien, ni adresse dans l’index de la recherche', options, () => {
+  assert.ok(!existsSync(join(dist, 'guide')), 'dossier dist/guide/');
+  const avecGuide = walk(dist)
+    .filter((f) => f.endsWith('.html') || f.endsWith('.json'))
+    .filter((f) => /(?:href|action|src)="\/guide\/|"path":"guide\//.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecGuide.map((f) => relative(dist, f)), [], 'aucun lien vers /guide/');
+  const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
+  assert.ok(guide.length > 50 && guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
+});
+
 test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, () => {
   const html = lire('404.html');
-  assert.match(html, /<p id="introuvable" data-base="\/">/);
+  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*">/);
   assert.match(html, /location\.replace/);
+  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse
+  const attribut = html.match(/data-renvois="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const renvois = JSON.parse(attribut);
+  assert.equal(renvois['guide/'], 'decouvrir/');
+  const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
+  for (const e of guide) {
+    const slug = Object.keys(renvois).find((k) => renvois[k] === e.path);
+    assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
+  }
+  assert.equal(Object.keys(renvois).length, guide.length + 1);
+  assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c, 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
 test('en-tête : le logo à la place du titre, le menu à côté ; le logo en icône', options, () => {
@@ -54,21 +77,31 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['regles Règles', 'ressources Ressources', 'personnages Personnages', 'codex Codex', 'outils Outils']);
+    ['decouvrir Découvrir', 'regles Règles', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
+  assert.match(entete, /data-group="decouvrir" aria-pressed="true"/, 'l’accueil ouvre Découvrir');
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
   // (test/debug-page.test.mjs)
   const production = lire('debug/index.html').includes('class="debug-reservee"');
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
     ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="ressources" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Ressources');
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="regles" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Règles');
+  assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
   const html = lire('index.html');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
-  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/guide\/">Lire le guide<\/a>/);
+  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Lire le guide<\/a>/);
+  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse
+  assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
+  const cartes = [...main.matchAll(/<li class="accueil-debut__carte" style="--c: #[0-9a-f]{6}"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)];
+  const base = ouvrirBase();
+  const pages = PAR_OU_COMMENCER.map((id) => base.prepare('SELECT id, titre, resume FROM page WHERE id = ?').get(id));
+  assert.deepEqual(cartes.map((m) => m[1]), pages.map((p) => `/${cheminDePage(p.id)}`));
+  assert.deepEqual(cartes.map((m) => m[2].replace(/&#39;/g, "'")), pages.map((p) => p.titre));
+  assert.ok(cartes.every((m, i) => Boolean(m[3]) === Boolean(pages[i].resume)), 'un résumé quand la page en a un');
   assert.match(main, /<section class="carrousel" aria-roledescription="carrousel" aria-label="Galerie"/);
   assert.match(main, /<a href="\/galeries\/#image-logo"><img src="\/logo\.webp" alt="Logo de Maverick[^"]*" width="319" height="320"/, 'l’image mène à sa place sur /galeries/');
   assert.match(main, /class="carrousel__badge">En construction</);

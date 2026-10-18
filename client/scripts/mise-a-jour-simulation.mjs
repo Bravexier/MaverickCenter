@@ -25,6 +25,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { CONFIRMATION } from '../serveur/notes-de-version.mjs';
 import { recomposerCorps, decouperCorps } from '../src/lib/markdown-edition.mjs';
+import { LIVRES, pagesDuLivre } from '../src/lib/livres.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
@@ -58,9 +59,11 @@ const nomLibre = (base, pris) => {
  */
 function enregistrements(db, { guide = false } = {}) {
   const lire = (sql, ...p) => db.prepare(sql).get(...p);
-  // deux chapitres du guide : le premier et le deuxième (pages `guide/…` avec `chapitre`), une phrase ajoutée à un morceau de texte visible
+  // deux chapitres du guide : les deux premières pages du premier livre (lib/livres.mjs : « Bienvenue », « Le jeu de rôle »), une phrase ajoutée à un
+  // morceau de texte visible
   const chapitre = (n, dernier) => () => {
-    const p = lire("SELECT id, corps_md FROM page WHERE type = 'guide' AND json_extract(donnees, '$.chapitre') = ?", n);
+    const id = pagesDuLivre(LIVRES[0])[n - 1]?.id;
+    const p = id && lire("SELECT id, corps_md FROM page WHERE type = 'guide' AND id = ?", id);
     if (!p) throw new Error(`chapitre ${n} du guide introuvable`);
     const visibles = decouperCorps(p.corps_md).filter((m) => m.visible);
     const rang = dernier ? visibles.length - 1 : 0;

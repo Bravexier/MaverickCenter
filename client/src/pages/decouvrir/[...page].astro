@@ -1,0 +1,13 @@
+---
+import PageDuPlan from '../../components/guide/PageDuPlan.astro';
+import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
+
+// Le livre « Découvrir » (lib/livres.mjs) : sa première page à /decouvrir/, les autres à /decouvrir/<slug>/. La page « Liens » est pages/decouvrir/liens.astro.
+export async function getStaticPaths() {
+  const { entries } = await loadWiki();
+  return pagesSous(entries, 'decouvrir/').map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));
+}
+const { entry } = Astro.props as { entry: WikiEntry };
+---
+
+<PageDuPlan entry={entry} />

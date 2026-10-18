@@ -47,7 +47,7 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
 | E7 | Connexion par Discord seulement : touriste ou joueur, puis rôles | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
-| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
+| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrées « bientôt » « Groupes d’aventures » (Espace joueur) et « Groupes de jeu » (Espace MJ) du menu |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
 | E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
 | E12 | Statistiques | E · V1.4 | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
@@ -150,7 +150,7 @@ flowchart LR
   propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
   `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
 - **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
-  simulation) et montre chaque jet ; une page (aujourd'hui l'onglet Accessoires de Ressources › Équipement) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  simulation) et montre chaque jet ; une page (aujourd'hui l'onglet Accessoires de Règles › Équipement) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
   de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
 
 ### E5 — Chronologie (jalon B)
@@ -179,7 +179,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 
 - **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
 - **Deux statuts d'abord** (réponse du propriétaire, 2026-10-11) : **touriste** — pas connecté, ou connecté sans être membre du serveur Discord —, en
-  lecture seule « en surface » ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
+  lecture seule « en surface » (à terme, les rubriques Découvrir et Règles du menu seulement : réponse du propriétaire du 2026-10-18) ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
   `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions, et qui quitte le serveur redevient touriste.
 - **Rôles MJ, éditeur, administrateur** : plus tard (réponse du propriétaire), d'après des rôles Discord à choisir ; une correspondance de configuration
   (identifiant de rôle Discord → `mj`, `editeur`, `admin`) en tirera `utilisateur_role`.
@@ -193,7 +193,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 - **Déjà là** : tout le modèle (fiche de joueur ou prétiré, propriétaire, visibilité privée / MJ / tous, partage à des utilisateurs désignés,
   `v_personnage_visible`), voir « Fiches de personnages » plus bas.
 - **À faire** : le service ne lit que les fiches de `v_personnage_visible` et n'écrit que pour leur propriétaire (ou un administrateur) ; « Mes
-  personnages » dans le menu Personnages ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
+  personnages » dans l’Espace joueur du menu ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
   ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
 
 ### E9 — Groupes (OS, HC, campagne) et planning des parties (jalon D)
@@ -275,14 +275,44 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
    par le rapprochement (`docs/sql/rapprochement-classeurs.md`) ne sont pas réparées. Ce que le retrait emportera (`note_cellule`, `ecart_source`, les liens
    des pages vers leurs sources, ce que les archives disent des pages qui citent un document) se décidera avec le propriétaire au moment de le faire.
 
+### Réponses du propriétaire (2026-10-18)
+
+Le guide est éclaté (« éclater le guide pour retravailler pleinement l'organisation des onglets et de la présentation », 2026-10-16) : ses pages sont
+rangées par le plan du site, `client/src/lib/livres.mjs` (livres « Découvrir » et « Les bases », sommaires « Règles avancées » et « Guide du MJ » :
+[`content-guide.md`](content-guide.md), « Les pages du guide : livres et sommaires »).
+
+1. **Le menu en six rubriques**, dans cet ordre : **Découvrir** (la vitrine, faite pour être vue même des non-membres : Bienvenue, L'univers, Créer son
+   personnage, Rejoindre une partie, Liens), **Règles** (Les bases, Races, Magies, Classes, Équipement, Métiers, Artisanat, Règles avancées, Pièces
+   élémentaires, Livres & Parchemins), **Espace joueur** (Fiche de personnage, Personnages ; Groupes d'aventures, Table de jeu et Chroniques à venir),
+   **Espace MJ** (Guide du MJ ; Fiches de PNJ et scénarios, Groupes de jeu à venir), **Codex**, **Outils**. La rubrique « Ressources » et l'entrée
+   « Guide » disparaissent (`client/src/lib/nav.mjs`).
+2. **Visibilité** : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
+   onglets » ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic ; le site n'est utilisé que par deux personnes avant une
+   version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que **Découvrir** et **Règles** ; aujourd'hui, rien n'est
+   caché ni filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
+3. **Ressources** : « Composants en Artisanat ok. Pieces élémentaires seront ammenée directement dans armes et armures . Livre et parchemin seront dans
+   la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous Règles ›
+   Artisanat (`/regles/artisanat/`) ; Pièces élémentaires et Livres & Parchemins restent pour l'instant deux entrées des Règles. **À faire plus tard** : intégrer les Pièces élémentaires
+   aux onglets Armes et Armures de l'Équipement, les Livres & Parchemins aux consommables de l'onglet Ceinture.
+4. **Liens** (`/decouvrir/liens/`) : « https://discord.gg/GMGBnjzfMk », le serveur Discord « L'univers de Maverick » (déjà cité par les sources de
+   « Bienvenue »), et « Maverick JDR sur Tipeee » (https://fr.tipeee.com/maverickjdr), donné par le propriétaire avec son plan du 2026-10-16
+   (« un ensemble de liens, sur le discord […] et le https://fr.tipeee.com/maverickjdr »).
+5. **Pièges, portes, météo, « Donjon pas bon »** : « dans les règles avancées, pour tout le monde » (groupe « Exploration et voyage » des Règles
+   avancées, pas dans l'Espace MJ).
+
+L'**ordre de lecture** change : l'ancien guide (24 pages) faisait lire la règle du D100 (« Réussir une action ») avant la création du
+personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/`), après Découvrir ; la
+page des caractéristiques et compétences (livre Découvrir) renvoie vers elle.
+
 ### Questions encore ouvertes
 
-1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ?
+1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ? — *Répondue le 2026-10-18* (ci-dessus) :
+   à terme, Découvrir et Règles seulement ; rien n'est caché aujourd'hui.
 2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
 3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
 4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les fiches
    inachevées (celles qui ont des règles à revoir) comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
-5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
+5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (Espace joueur du menu) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
 6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
 7. **Copie de la production vers le dev après la mise en production** (réponse 2 ci-dessus, 2026-10-15) : aujourd'hui, le serveur de test
@@ -290,6 +320,14 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
    [`deploy/vps/README.md`](../deploy/vps/README.md)), parce qu'il est réinstallé à chaque version de `dev` et que la copie effacerait les
    modifications des règles en cours. Faut-il recopier la base de la production vers le dev **après chaque mise en production** — toute la
    base, ou seulement les fiches, les comptes et les groupes (section 13), le journal de l'édition du dev gardé ?
+8. **« Rejoindre une partie »** (menu Découvrir, quatrième carte de l'accueil, dernière section du livre Découvrir) mène à « « Campagne » ou « Scénario
+   one shot » ? », une page du « Guide pour MJ » écrite pour le maître du jeu (préparer une campagne, une table de rencontre, de butin, les PNJ) : la
+   garder là, ou la ranger dans le Guide du MJ — et alors, quelle page mettre derrière « Rejoindre une partie » (une entrée « bientôt » sinon) ?
+9. **Deux textes qui décrivent encore l'ancien guide d'un seul livre**, gardés tels quels : sur l'accueil, « Première visite ? Le guide vous accompagne
+    pas à pas : découvrir le jeu, créer son personnage, jouer, progresser. » et son bouton « Lire le guide » (vers `/decouvrir/`, qui s'arrête à
+    « Rejoindre une partie » ; sa dernière page mène maintenant aux Bases par le lien « Suivant › ») ; dans « Le jeu de rôle, comment ça marche ? »
+    (`/decouvrir/le-jeu-de-role/`), « deviennent plus forts (voir la partie « Progresser ») », une section qui est désormais dans « Les bases ». Les
+    corrigez-vous sur le site de dev (le second se modifie en place), ou le bouton doit-il mener ailleurs ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 

@@ -1,0 +1,20 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Sommaire from '../../../components/guide/Sommaire.astro';
+import { groupesDesReglesAvancees, REGLES_AVANCEES, verifierLePlan } from '../../../lib/livres.mjs';
+import { entryHref, loadWiki } from '../../../lib/wiki';
+
+// Le sommaire des Règles avancées (lib/livres.mjs#REGLES_AVANCEES ; réponse du propriétaire du 2026-10-18 : pièges, portes, météo, « Donjon pas bon »
+// « dans les règles avancées, pour tout le monde ») : un groupe par thème, le titre et le résumé de chaque page (tels que la base les écrit), rien d'autre.
+const { entries } = await loadWiki();
+const groupes = groupesDesReglesAvancees(verifierLePlan(entries)).map((g) => ({
+  id: g.id,
+  titre: g.titre,
+  elements: g.pages.map((e) => ({ href: entryHref(e), titre: e.data.title, resume: e.data.summary })),
+}));
+---
+
+<Base title={REGLES_AVANCEES.titre}>
+  <h1>{REGLES_AVANCEES.titre}</h1>
+  <Sommaire groupes={groupes} />
+</Base>

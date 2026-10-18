@@ -51,3 +51,16 @@ async function compute() {
 export const loadWiki = () => (cache ??= compute());
 
 export const entriesOfType = (entries: WikiEntry[], type: string) => entries.filter((e) => typeOf(e) === type);
+
+/**
+ * Les pages servies sous un chemin du plan du site (lib/livres.mjs : « decouvrir/ », « regles/ », « mj/ »), pour le paramètre de reste de leur route
+ * (pages/decouvrir/[...page].astro…) : [{ entry, reste }] (`reste` : le chemin de la page sans `prefixe` ni barre de fin ; undefined pour la page servie
+ * au chemin même, la première d'un livre). Une page servie par une autre (ancre) n'y est pas.
+ */
+export const pagesSous = (entries: WikiEntry[], prefixe: string) =>
+  entries.flatMap((entry) => {
+    const chemin = cheminDePage(entry.id);
+    if (!chemin.startsWith(prefixe) || chemin.includes('#')) return [];
+    const reste = chemin.slice(prefixe.length).replace(/\/$/, '');
+    return [{ entry, reste: reste || undefined }];
+  });
