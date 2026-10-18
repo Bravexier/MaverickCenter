@@ -7,8 +7,8 @@
 // Le coût d'un sort tel que le classeur l'écrit dans une seule case (« 3 + 1 Sang ») : deux formes seulement se répartissent sans doute possible entre « Coût »
 // et « Coût secondaire » (décision R105) — un nombre de chakra (avec son expression de NM) suivi de « + » et d'un second coût qui n'est que des Sang, des âmes
 // ou un pourcentage de santé (« 10 (–1/NM) + 2 âmes », « 50 + 20% PV ») ; ou des Sang, des âmes seuls (« 2 Sang », « X Sang » : le sort ne consomme pas de
-// chakra, son coût est « 0 » : lecture à confirmer, docs/sql/a-valider.md, S0). Toute autre écriture (« 5 + 1 âme (xNPM de créature) », « 3xN/tour ») attend la
-// décision du propriétaire et n'est pas répartie.
+// chakra, son coût est « 0 » : décision R106). Une autre écriture (« 5 + 1 âme (xNPM de créature) », « 3xN/tour ») n'est pas répartie par cette règle : le
+// propriétaire a tranché les 26 de la base, sort par sort (décision R106, migration 0065).
 const CHAKRA_PUIS_SECOND = /^(\d+(?: \([-–]\d+\/NM\))?) \+ ((?:\d+|X) (?:Sang|âmes?)|\d+% \p{L}+)$/u;
 const SECOND_SEUL = /^(?:\d+|X) (?:Sang|âmes?)$/;
 

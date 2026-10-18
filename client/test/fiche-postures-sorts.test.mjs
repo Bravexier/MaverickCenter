@@ -169,6 +169,13 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
   const corr = regles.sorts.find((s) => s.magie_id === 'magies/magie-de-la-corruption' && /^\d+$/.test(s.cout) && Number(s.cout) >= 10);
   const c = M.sortDuMoment(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...ceinture('Bâton magique Corruption, niveau 2') }), corr, auNm(corr)).cout;
   assert.deepEqual([c.texte, c.corruption.valeur], [String(Number(corr.cout) - 2), Math.max(1, 2 * (Number(corr.cout) - 2) - 4)]);
+  // un sort de la Corruption au coût « 0 » (« 50% corruption », « X Corruption » : décision R106) ne consomme que de la corruption : pas d'alternative
+  const sansChakra = regles.sorts.filter((s) => s.magie_id === 'magies/magie-de-la-corruption' && s.cout === '0');
+  assert.ok(sansChakra.length >= 2, 'Pluie huileuse et Sapeur');
+  for (const s of sansChakra) {
+    const z = M.sortDuMoment(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...ceinture('Bâton magique Corruption, niveau 2') }), s, auNm(s)).cout;
+    assert.deepEqual([z.texte, z.corruption], ['0', null], s.id);
+  }
   // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée) : « X » (au choix), « N/A » d'un coût qui n'est pas un pourcentage
   // du chakra maximum (« Aléatoire » : décision R106)
   const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire === 'Aléatoire')];

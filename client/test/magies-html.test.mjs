@@ -250,7 +250,7 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
       assert.match(c, /^\s*<div class="sort__cout-chakra"[^>]*data-ed-rendu="sort-cout"/, p.slug);
       const m = /<div class="sort__cout-secondaire"([^>]*)>([\s\S]*?)<\/div>\s*$/.exec(c.replace(/<div>([\s\S]*?)<\/div>/g, '$1'));
       assert.ok(m, `${p.slug} : un champ de coût secondaire dans la case`);
-      const texte = m[2].replace(/<[^>]+>/g, '').trim();
+      const texte = m[2].replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&').trim();
       assert.equal(/\shidden\b/.test(m[1]), texte === '', `${p.slug} : caché si et seulement si vide (${texte})`);
       return texte;
     });

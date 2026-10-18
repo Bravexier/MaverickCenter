@@ -2281,7 +2281,7 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  *   arrondi à l'inférieur comme la barrière qu'on en tire (décision R106 : « sur la fiche de personnage, on donnera directement la valeur calculée » ;
  *   `cout.calcule` : { pourcent, chakra, valeur }), puis réduit comme les autres. Un
  *   sort de la Corruption se lance aussi avec la corruption : 2 × le coût réduit − « Coût corruption −N » du bâton (réponse « 2 × coût réduit − bâton »),
- *   au moins 1 (un coût, comme ci-dessus) ;
+ *   au moins 1 (un coût, comme ci-dessus), sauf un coût écrit « 0 » (le sort ne consomme que de la corruption : « 50% corruption », R106) ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
  * - Dégâts (lireDegatsDeSort, pas une valeur « par tour » : question Q19) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
  *   de dégâts des sorts » ; un dé au maximum par accessoire (sauf en Offensif) ; les bonus fixes des dons, des accessoires (« Dégâts magie », sorts
@@ -2336,7 +2336,8 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
     cout.detail = reductions;
     cout.texte = `${reduit}${brut[2] ?? ''}`;
-    if (sort.magie_id === 'magies/magie-de-la-corruption') {
+    // un sort de la Corruption qui ne consomme pas de chakra (« 0 » ; son coût est de la corruption : « 50% corruption », décision R106) n'a pas d'alternative
+    if (sort.magie_id === 'magies/magie-de-la-corruption' && base > 0) {
       const corr = duBaton('cout_corruption');
       cout.corruption = { valeur: Math.max(Math.min(2 * reduit, 1), 2 * reduit + somme(corr)), detail: [{ nom: 'Coût en corruption : 2 × le coût', valeur: 2 * reduit }, ...corr] };
     }

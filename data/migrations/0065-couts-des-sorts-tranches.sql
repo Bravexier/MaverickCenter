@@ -5,7 +5,7 @@
 --   barrière », « Par NPM de la créature invoquée ») tels que le propriétaire les a écrits ; l'orthographe de ses réponses est corrigée (« Charka »,
 --   « crée », « saccrifée », « 1 dégâts », espaces doublées) et chaque correction est notée dans le registre 0065-couts-des-sorts-tranches.json (champ
 --   `orthographe`), relu par client/test/sort-cout-secondaire.test.mjs. La partie Arcane de R105 (« la mention canalisé dans le cout secondaire ») est
---   remplacée par R106 : « Au lieu de mettre "canalysé" on remet "Par tour" », et le type de canalisation est écrit dans le coût secondaire.
+--   remplacée par R106 : « Au lieux de mettre "canalysé" on remet "Par tour" », et le type de canalisation est écrit dans le coût secondaire.
 --   Les colonnes typées suivent (lib/sort-analyse.mjs#analyserCout : cout_chakra pour un nombre, NULL pour « X » et « N/A » ; la ressource de la 4ème
 --   barre pour « X Sang ») ; aucun de ces coûts n'écrivait d'expression de NM (sort_bonus_maitrise n'a pas de ligne « cout » pour eux) : rien d'autre ne
 --   change. La case « Coût » de chaque sort dans le corps Markdown de la page de sa magie (recherche, [[liens]]) écrit les deux coûts en une case
