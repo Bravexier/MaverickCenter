@@ -106,7 +106,9 @@ dont le contenu ne change pas. Aucun lien [[…]] n'est écrit (une cellule qui 
 signalée sur la sortie d'erreur).
 """
 import argparse
+import functools
 import copy
+import importlib.util
 import json
 import os
 import re
@@ -571,9 +573,19 @@ def magic_tags(margin):
     tags = []
     for part in norm_ws(margin).split("+"):
         part = re.sub(r"\s*\bmono$", "", part.strip(), flags=re.I).strip().lower()
-        if part and part not in tags:
+        if part and part not in tags and part not in magies_homonymes():
             tags.append(part)
     return tags
+
+@functools.lru_cache(maxsize=None)
+def magies_homonymes():
+    """tools/db/homonymes.py#MAGIES_HOMONYMES (les magies dont l'étiquette n'est pas posée), chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.MAGIES_HOMONYMES
+
 
 
 def note_lines(intitule, text):

@@ -109,6 +109,13 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
   assert.deepEqual(fichiers.filter((f) => !porteuses.includes(f)).map(tagsDe).filter((t) => t !== '["codex"]'), [], 'les autres : « codex » seul');
   r = avec('--verifier', '--historique', absent);
   assert.equal(r.status, 0, r.stdout + r.stderr);
+  // un mot-clé du glossaire qui porte le nom d'une magie dans un autre sens (« Corruption », la jauge : MAGIES_HOMONYMES) n'est pas posé sur ses temples
+  writeFileSync(vocabulaire, `INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL), ('corruption', 'Corruption', 'corruption', 'Poison du chakra.');\n`);
+  const cache = join(tmp, 'corruption');
+  cpSync(join(tmp, 'lore'), join(cache, 'lore'), { recursive: true });
+  assert.equal(codexPy('--out', cache, '--vocabulaire', vocabulaire, '--historique', absent).status, 0);
+  assert.deepEqual(readdirSync(join(cache, 'lore')).filter((f) => f.endsWith('.md') && /^tags: .*Corruption/m.test(readFileSync(join(cache, 'lore', f), 'utf8'))), []);
+  ecrireVocabulaire('Feu');
   // avec le vocabulaire de data/rows (sans « Feu ») : ces pages ne sont plus celles du découpage
   r = codexPy('--verifier', '--out', tmp, '--historique', absent);
   assert.equal(r.status, 1);

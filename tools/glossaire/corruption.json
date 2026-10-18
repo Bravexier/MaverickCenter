@@ -1,0 +1,147 @@
+[
+  {
+    "libelle": "Chakra",
+    "motif": "chakras?",
+    "description": "Énergie consommée lors de l'utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 2 points pour un de Chakra.",
+    "horsDe": ["page:lore/", "evenement_extrait.texte"],
+    "sauf": ["page:lore/glossaire", "page:lore/mirada"],
+    "exclus": {
+      "le chakra dans le récit de Mirada (sa création, son culte ; reste balisé : le Tome Universel, « sans coût en chakra »)": [
+        "à l'origine du chakra",
+        "le chakra existait toujours",
+        "le chakra — essence brute",
+        "façonner le chakra",
+        "Créatrice du chakra",
+        "Esprit, chakra",
+        "compréhension du chakra",
+        "tout ce que permet le chakra"
+      ],
+      "nom propre": [
+        "Académie de Chakra",
+        "Académie du Chakra",
+        "Forteresse de Chakra"
+      ]
+    },
+    "contextes": {
+      "titre d’une divinité ou d’un gardien": [
+        "(?:déesse|dieu|gardien)(?:\\s+primordiale)?(?:\\s+de\\s+la\\s+magie\\s+et)?\\s+du\\s+chakra"
+      ],
+      "organe (lobe à chakra)": [
+        "lobe\\s+(?:à|de)\\s+chakra"
+      ],
+      "le chakra comme matière ou énergie du monde : pur, ambiant, ce qui en est fait ou chargé": [
+        "chakras?\\s+(?:pure?s?|ambiant|universel|interne)(?!\\p{L})",
+        "(?:couche|fontaines?|sources?|câbles?|arbres?|brumes?|cornes?|ailes?|marques?|aura|attaque|concentré|danseur\\(e\\)s\\s+fantomatiques)\\s+de\\s+chakra",
+        "faits?\\s+en\\s+chakra",
+        "(?:saturée?s?|imprégnée?s?|gorgée?s?|conducteur|attire)\\s+(?:en|de|le)\\s+chakra",
+        "(?:au\\s+contact|libérer)\\s+du\\s+chakra",
+        "zones\\s+où\\s+le\\s+chakra",
+        "le\\s+chakra\\s+bouillonne",
+        "son\\s+chakra\\s+alimente",
+        "contient\\s+du\\s+chakra",
+        "exploite\\s+le\\s+chakra\\s+dans\\s+son\\s+corps"
+      ],
+      "le chakra dans un récit (effondrement, puissance, maîtrise)": [
+        "chakra\\s+s[’']\\s*(?:est\\s+totalement\\s+)?effondr",
+        "imploser\\s+son\\s+chakra",
+        "chakra\\s+refuse\\s+les\\s+lois",
+        "limites\\s+de\\s+leur\\s+chakra",
+        "utilisateurs\\s+intensifs\\s+du\\s+chakra",
+        "(?:puissance|expert|maîtrise)\\s+du\\s+chakra",
+        "canaliser\\s+son\\s+chakra",
+        "extension\\s+de\\s+son\\s+chakra",
+        "par\\s+le\\s+chakra\\s+et\\s+l[’']acier",
+        "imperméable\\s+aux\\s+chakras?",
+        "pousse\\s+le\\s+chakra\\s+des\\s+combattants"
+      ]
+    }
+  },
+  {
+    "libelle": "Barrière",
+    "motif": "barrières?",
+    "description": "Manifestation physique dérivée du {{chakra|Chakra}} d'un individu. Elle agit comme une seconde peau invisible protégeant le corps de blessures.",
+    "horsDe": ["page:lore/", "evenement_extrait.texte"],
+    "sauf": ["page:lore/glossaire", "page:lore/londolor"],
+    "exclus": {
+      "nom propre": [
+        "Barrières Crocs"
+      ],
+      "autre sens du mot (un obstacle, une limite)": [
+        "barrière naturelle",
+        "barrières naturelles",
+        "barrières sous la forme de barreaux",
+        "barrières ou des portes fragiles",
+        "barrières de la compréhension",
+        "barrière de glace",
+        "Franchir les barrières",
+        "barrières qu’elle génère"
+      ]
+    }
+  },
+  {
+    "libelle": "Corruption",
+    "motif": "corruptions?",
+    "description": "Poison du chakra : chaque point de corruption prend la place d'un point de chakra, jusqu'au maximum du chakra. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination de corruption. Les mages de la Corruption n'y sont pas soumis : pour eux, c'est la réserve où passe le chakra de leurs sorts.",
+    "horsDe": ["page:lore/", "evenement_extrait.texte", "race_onglet.histoire"],
+    "sauf": ["page:lore/glossaire"],
+    "exclus": {
+      "nom d’une créature": [
+        "Amplypyge de corruption"
+      ],
+      "une liste de magies": [
+        "sang, nécromancie et corruption"
+      ],
+      "la corruption comme matière ou mal du monde (récit)": [
+        "trace de corruption",
+        "piste de corruption",
+        "la corruption qui imprègne",
+        "forme ultime de la corruption",
+        "où la corruption a polluée",
+        "forte quantité de corruption",
+        "agoniser dans la corruption pure",
+        "brai et de la corruption",
+        "partager la corruption",
+        "fruit d’une corruption",
+        "exposé très longtemps à de la corruption",
+        "respire la corruption",
+        "marques de corruption",
+        "libérer de la corruption quasiment liquide"
+      ]
+    },
+    "contextes": {
+      "la magie de la Corruption, ses mages et ses sorts": [
+        "(?:magies?|mages?|sorts?|utilisateurs?|adeptes?|ceux|celles?)\\s+(?:qui\\s+(?:ne\\s+)?sont\\s+(?:pas\\s+)?)?(?:de\\s+la|de|d[’'])\\s*corruption",
+        "magies?\\s+corruption",
+        "avoir\\s+la\\s+corruption\\s+en\\s+innée",
+        "corruption\\s+(?:ne\\s+se\\s+mélange|offre\\s+une|érode|reste\\s+une\\s+magie|fait\\s+exception)",
+        "(?:vulnérabilité|résistance)\\s*:\\s*corruption",
+        "pouvoir\\s+de\\s+la\\s+corruption"
+      ],
+      "une liste de magies": [
+        "(?:arcan\\p{L}*|espace|temps)(?:(?:\\s*(?:,|/|<br>)\\s*)+|\\s+et\\s+(?:de\\s+la\\s+)?)corruption"
+      ],
+      "l’élément Corruption (dégâts, pièces élémentaires) ou le nom d’une magie dans un tableau": [
+        "[ée]l[ée]ment\\s+corruption",
+        "d[ée]g[âa]ts\\s+(?:de\\s+)?(?:la\\s+)?corruption",
+        "pièces?\\s+de\\s+corruption",
+        "^\\s*corruption\\s*=",
+        "^\\s*corruption\\s*$",
+        "^\\|\\s*corruption\\s*\\|"
+      ],
+      "une créature (abomination de corruption)": [
+        "abomination\\s+de\\s+corruption"
+      ]
+    }
+  },
+  {
+    "libelle": "CR",
+    "motif": "CR",
+    "casse": true,
+    "description": "« Si CR » : si le sort est lancé en utilisant la corruption.",
+    "contextes": {
+      "un « CR » qui ne suit pas « Si » (la réponse du propriétaire ne dit pas son sens)": [
+        "(?<!si\\s)CR"
+      ]
+    }
+  }
+]

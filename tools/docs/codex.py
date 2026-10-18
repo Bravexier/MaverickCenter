@@ -49,6 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(HERE, '..', 'db'))   # `python3 -I` n'ajoute pas le dossier du script au chemin des modules
 import maverick as T  # noqa: E402
+from homonymes import MAGIES_HOMONYMES  # noqa: E402
 import pages_md  # noqa: E402
 
 RACINE = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -364,7 +365,7 @@ class Codex:
             for ordre in section['enfants']:
                 if vide(ordre):
                     continue
-                p = self.entite(ordre, [tag, magie])
+                p = self.entite(ordre, [tag, None if magie in MAGIES_HOMONYMES else magie])   # un homonyme n'est pas posé
                 reste = nom_et_reste(ordre['titre'])[1]
                 liste.append(f'- [[{p["titre"]}]]' + (f' {reste}' if reste else ''))
                 entrees.append((p['titre'], 1))

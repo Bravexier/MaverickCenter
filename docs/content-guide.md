@@ -902,7 +902,7 @@ description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une
 (migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
 une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
 « met donc "solidité" partout à la place de durabilité. Et profite en pour en faire un mot clé ») : l'état de l'équipement, sa définition celle du
 propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf l'en-tête « Dur. » de la fiche auto, cité par le guide).
 
@@ -963,8 +963,9 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
 **Baliser un mot dans tous les textes** (demande du propriétaire du 2026-10-17 : « Transforme dans tous les textes le mot "Chakra" (ou chakra) en mot
 clé », puis « Barrière ») : l'outil hors ligne `client/scripts/baliser-mot-cle.mjs --mots <mots.json> --journal <journal.json> --appliquer` pose une fois
 les balises, que les textes gardent ensuite (le site, lui, ne repère jamais un mot tout seul). Il passe par le service du site de dev, comme le mode
-modification : chaque mot-clé est créé avec sa définition (`mots.json` : `[{ libelle, motif, description, exclus }]`, `motif` = les écritures du mot,
-« chakras? » ; celui de la demande : `tools/glossaire/chakra-barriere.json`),
+modification : chaque mot-clé est créé avec sa définition (`mots.json` : `[{ libelle, motif, casse, description, exclus, contextes, horsDe, sauf }]`,
+`motif` = les écritures du mot, « chakras? », avec la casse si `casse` (« CR » n'est pas « cr ») ; ceux des demandes : `tools/glossaire/chakra-barriere.json`,
+puis `tools/glossaire/corruption.json`),
 puis chaque texte que le site de dev modifie (champs « texte » et « markdown » de `lib/edition-modele.mjs#TABLES` : le guide et le Codex, les sorts, les
 dons, les races, les cartes de monstre, les potions…, plus quatre phrases d'une ligne : type d'un don, D/S/B d'un sort, artisanat d'un métier, case de
 butin) est réécrit dans sa forme canonique (« {{chakra}} » pour le libellé dans un texte mis en forme, « {{chakra|chakra}} » sinon) ; tout ce qui en
@@ -979,6 +980,28 @@ ou en pastilles (attributs, santé, chakra et barrière par échelle, défense, 
 immunités, réflexion), ni les noms, titres et libellés. Les textes que le site de dev ne modifie pas (créatures invoquées, altérations d'état, règles des
 niveaux, ethnies, météo, maladies, armes et armures élémentaires, objets de départ, glossaire du butin, introductions des pages de fioles, résumés des
 chapitres du guide…) et les libellés écrits par le code (« Chakra de départ », tuiles d'une carte de monstre) ne sont pas touchés.
+
+**Seulement là où il est pertinent** (demande du propriétaire du 2026-10-18, pour la Corruption : « il faudrait faire de même pour limiter les endroits
+pour Chakra et Barrière. Seulement là où il est pertinent ») : le mot n'est balisé que là où il a le sens de sa définition, la ressource que le jeu compte
+(points, coût, maximum, ce qu'on dépense, perd, vole, récupère ou donne ; l'attribut). L'entrée `tools/glossaire/corruption.json` reprend Chakra et
+Barrière et dit où le mot n'est pas balisé : `exclus` (des écritures, rangées par raison), `contextes` (des expressions régulières, rangées par raison,
+jamais commencées au milieu d'un mot : « Déesse du chakra », le chakra pur, ambiant, ce qui en est fait — projectiles, cornes, ailes —, le lobe à chakra,
+le chakra d'un récit — effondrement, puissance, maîtrise — ; la magie de la Corruption, ses mages et ses sorts, une liste de magies, l'élément Corruption
+— dégâts, pièces élémentaires —, l'abomination de corruption ; un « CR » qui ne suit pas « Si »), `horsDe` et `sauf` (les textes qu'il ne balise pas :
+le récit du Codex et de la chronologie, et pour la Corruption l'histoire des races ; le glossaire du Codex l'est, et une page du Codex qui écrit la
+règle aussi, ses passages de récit exclus : le Tome Universel de Mirada, « sans coût en chakra », la barrière de Londolor). Une écriture exclue ou un
+contexte ne cite pas un mot qui le précède dans l'entrée (il y est déjà balisé : refusé). Les balises du mot-clé déjà posées autour du mot sont relues,
+celles posées à la main comme celles de l'outil (rien ne les distingue) : l'outil les retire partout puis les repose là où elles sont pertinentes
+(`lib/glossaire-balisage.mjs#sansLesBalisesDuMot`) ; un second passage avec les mêmes règles ne change rien ; son rapport (`--rapport`) liste chaque
+balise retirée sans être reposée et chaque balise nouvelle (`changements`, avec un extrait), et ce que l'entrée écrit pour rien (`inutilises` : une
+exclusion ou un contexte qui ne se lit dans aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun ; les écritures exclues du Codex,
+gardées de la première entrée, le sont tant que le Codex n'est pas balisé). Le texte affiché ne change pas ; une colonne que le service tire d'un texte
+réécrit peut, elle, changer si l'import l'avait écrite autrement (le contexte du bonus de maîtrise de « Fouet ténébreux », visible sur `/donnees/`). La
+**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 » et l'explication de sa magie) et **CR** (« Si CR » : si
+le sort est lancé en utilisant la corruption, décision R103 ; ni « 50% CR max » ni « 2d6 cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
+homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/docs/codex.py`, `tools/sheets/magies.py` et `invocations.py`) : ni un
+temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
+jauge ; un homonyme n'est jamais lié implicitement).
 
 Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
 adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. Sur le site de dev, en mode
