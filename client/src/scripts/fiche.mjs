@@ -33,7 +33,7 @@ import {
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
-  livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
+  bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
@@ -689,6 +689,12 @@ const RAISONS_DES_SORTS = {
 const livresAuPlafond = new WeakSet();
 
 /**
+ * Combien de fois le coût d'un sort qui augmente avec l'utilisation (décision R129 : le NPM de la créature invoquée, les dégâts en plus, les tailles, les
+ * personnes…), par sort : un réglage du moment, pas un choix de la fiche (il n'est pas enregistré) ; 1 au départ.
+ */
+const foisDesSorts = new Map();
+
+/**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
  * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
  * sort se règle à un seul curseur, de 0 à 3 (décision R118 : plus de cases « livre » ni « MJ ») ; de 1 à 3 quand l'entraînement note un livre de ce
@@ -756,7 +762,24 @@ function construireSorts() {
         // coût, portée, zone, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm) ; l'indication IC (et
         // imparable, inesquivable) au NM du sort, une condition pas encore atteinte (« IC pour 3 NM ») en grisé (modesAuNm)
         const modes = el('td', { class: 'sort-modes' });
-        const cout = el('td', { class: 'sort-valeur' });
+        // le coût : le chakra, le coût secondaire dessous (âmes, Sang, « Par tour » : décisions R105, R106) et, pour un coût par unité, combien de fois
+        // (« × N » : décision R129, multiplié avant les réductions, borné par bornesDuMultiplicateur : le NPM accessible pour une créature)
+        const coutTexte = el('span', { class: 'sort-cout' });
+        const multiplicateur = l.sort ? multiplicateurDuCout(l.sort) : null;
+        const fois = multiplicateur ? el('input', {
+          type: 'number', min: '1', step: '1', inputmode: 'numeric', class: 'sort-fois__nombre',
+          'aria-label': `${l.sort.nom} : combien de fois le coût (${multiplicateur.unite})`,
+          oninput: (ev) => {
+            const bornes = bornesDuMultiplicateur(regles, fiche, l.sort);
+            foisDesSorts.set(l.sort.id, Math.min(bornes.max, Math.max(bornes.min, entier(ev.target.value, 1))));
+            rafraichir();
+          },
+          // en quittant le champ, il montre le nombre compté (borné, jamais vide)
+          onchange: (ev) => poser(ev.target, foisDesSorts.get(l.sort.id) ?? 1),
+        }) : null;
+        const champFois = fois ? el('label', { class: 'sort-fois' }, el('span', { 'aria-hidden': 'true' }, '×'), fois) : null;
+        const cout = el('td', { class: 'sort-valeur' }, coutTexte,
+          l.sort?.cout_secondaire ? el('span', { class: 'sort-cout-secondaire' }, l.sort.cout_secondaire) : null, champFois);
         const portee = el('td', { class: 'sort-valeur' });
         const zone = el('td', { class: 'sort-valeur' });
         const dsb = el('td', { class: 'sort-valeur' });
@@ -778,12 +801,13 @@ function construireSorts() {
           // accessoires, du bâton, de l'armure élémentaire et de la posture ; chaque valeur changée en gras, son détail en infobulle
           const m = l.sort ? sortDuMoment(regles, fiche, l.sort, {
             cout: auNm(l.sort.cout, 'cout'), portee: auNm(l.sort.portee, 'portee'), dsb: auNm(l.sort.dsb, 'dsb'), effets: auNm(l.sort.effets, 'effets'),
-          }, calcul.contexteSorts) : null;
+          }, calcul.contexteSorts, { fois: foisDesSorts.get(l.sort.id) ?? 1 }) : null;
           const detail = (base, lignes, fin = []) => [base, ...lignes.map((x) => (x.crans || x.des ? x.nom : x.maximum ? `${x.nom} (${x.valeur})` : `${x.nom} : ${signe(x.valeur)}`)), ...fin].join('\n');
           // en gras la valeur que le moment change ; en infobulle son détail, et ce qui n'est pas compté (la case prend alors le focus : l'infobulle se lit
           // aussi au clavier)
-          const poserValeur = (td, texte, change, titre, aDire = change) => {
-            if (td.textContent !== texte) td.textContent = texte;
+          // (`cible` : ce qui porte le texte, la case elle-même sauf pour le coût, dont la case garde le coût secondaire et le multiplicateur)
+          const poserValeur = (td, texte, change, titre, aDire = change, cible = td) => {
+            if (cible.textContent !== texte) cible.textContent = texte;
             td.toggleAttribute('data-calcule', Boolean(change));
             infobulle(td, aDire ? titre : '');
             if (aDire) td.tabIndex = 0;
@@ -791,19 +815,27 @@ function construireSorts() {
           };
           const nonComptes = (colonne) => (m?.nonComptes ?? []).filter((x) => x.cible === colonne)
             .map((x) => `Non compté (${RAISONS_DES_SORTS[x.raison] ?? x.raison}) : ${x.nom} ${signe(x.valeur)}`);
-          // un coût en pourcentage du chakra maximum : la valeur calculée (décision R106), son calcul en tête de l'infobulle
+          // un coût en pourcentage du chakra maximum : la valeur calculée (décision R106), son calcul en tête de l'infobulle ; un coût par unité : multiplié,
+          // puis réduit (décision R129)
           const calcule = m?.cout.calcule;
+          const parUnite = m?.cout.fois;
+          const ecrit = parUnite && parUnite.n > 1
+            ? `Coût écrit : ${parUnite.base} × ${parUnite.n} (${parUnite.unite}) = ${parUnite.base * parUnite.n}${m.cout.detail.length ? ', réduit ensuite' : ''}${parUnite.economeAuNpm ? ` ; Économe : le NPM de la créature (${parUnite.n})` : ''}`
+            : `Coût écrit : ${auNm(l.sort?.cout, 'cout')}`;
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
-            m && (calcule || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
-            m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}${(calcule.chakra * calcule.pourcent) % 100 ? ', arrondi à l\'inférieur' : ''}` : `Coût écrit : ${auNm(l.sort.cout, 'cout')}`,
+            m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
+            m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}${(calcule.chakra * calcule.pourcent) % 100 ? ', arrondi à l\'inférieur' : ''}` : ecrit,
               m.cout.detail, [
                 'Jamais moins de 1',
                 ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
                 ...nonComptes('cout'),
-              ]), m && (calcule || m.cout.detail.length || m.cout.corruption || nonComptes('cout').length));
-          // le second coût (âmes, Sang, « Par tour » : décisions R105, R106) sous le coût de chakra, dans la même case (poserValeur réécrit la case quand le
-          // coût change)
-          if (l.sort?.cout_secondaire) cout.append(el('span', { class: 'sort-cout-secondaire' }, l.sort.cout_secondaire));
+              ]), m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption || nonComptes('cout').length), coutTexte);
+          if (fois) {
+            // (le champ ne sert qu'à un coût chiffré : pas de « × N » pour un coût « 0 », « N/A » ou « X »)
+            champFois.hidden = !parUnite;
+            if (parUnite) fois.max = String(parUnite.max);
+            if (document.activeElement !== fois) poser(fois, parUnite?.n ?? 1);
+          }
           poserValeur(portee, m?.portee.texte ?? '', m && m.portee.detail.length,
             m && detail(`Portée écrite : ${auNm(l.sort.portee, 'portee')}`, m.portee.detail, nonComptes('portee')), m && (m.portee.detail.length || nonComptes('portee').length));
           zone.textContent = auNm(l.sort?.zone, 'zone');

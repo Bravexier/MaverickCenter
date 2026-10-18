@@ -325,7 +325,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   bâton et peut aller à la ceinture (pas avant). À la ceinture, ses effets passifs (`effetsDeBaton`, lus dans `baton_magique.bonus_brut`) valent pour
   tous les sorts du personnage ; deux bâtons au même effet : le plus fort seul (`effetsDesBatons`).
 - **Sorts du moment** (décision R102) : `sortDuMoment` refait le coût (dons « réduits de 4 », Économe, bâton ; jamais moins de 1 ; Corruption :
-  « ou 2 × le coût − bâton » en corruption), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
+  « ou 2 × le coût − bâton » en corruption ; un coût par unité — « Par NPM de la créature invoquée », « Pour 1 dégât supplémentaire », « Par taille
+  créée »… : `multiplicateurDuCout`, sans la canalisation ni Échange — se multiplie d'abord par le « × N » de sa case, puis se réduit, Économe
+  comptant le NPM de la créature d'une invocation surchargée (pas d'une créature sacrifiée) : décision R129 ; « × N » est un réglage du moment, non
+  enregistré, borné par `bornesDuMultiplicateur` : le NPM accessible pour une créature, 30 chakra pour Charge d'énergie, sinon 99), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
   (`lireDegatsDeSort` : crans de dé (Focus, accessoire, « Augmente d'un cran les dés des soins magiques » du Farfadet maritime), un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
