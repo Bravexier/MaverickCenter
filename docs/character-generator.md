@@ -177,7 +177,7 @@ abandonne.
   répartir au choix » (Humain central), une **répartition** : une ligne par compétence et ses points, « + Compétence » tant qu'il en reste
   (`acquisApresRepartition`) ; les choix gardés sont ceux d'un don encore débloqué (`acquisChoixValables`, table `personnage_acquis_choix`). Un bonus que la
   phrase lie à une situation, à « l'arme choisie », aux « compétences d'arme », à « 2 sur les 3 », aux jets d'une caractéristique ou à l'artisanat n'est pas
-  compté : listé sous « Bonus d'acquis non comptés », avec sa raison (questions Q21 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est
+  compté : listé sous « Bonus d'acquis non comptés », avec sa raison (questions Q22 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est
   augmenté de +20 » (Mort-vivant) relève le plafond de chaque compétence du Social (`plafondBonus`, question Q28).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
   exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
