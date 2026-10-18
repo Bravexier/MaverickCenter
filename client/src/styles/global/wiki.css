@@ -17,3 +17,5 @@ main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne d
 [data-couleur="bleu"] { --case: #2a6fb0; }
 [data-couleur="violet"] { --case: #7b4fb0; }
 [data-couleur="gris"] { --case: #8a8a8a; }
+/* Un groupe d'un sommaire dans la couleur de son groupe du plan (components/guide/Sommaire.astro : le sommaire des Bases, lib/livres.mjs#LES_BASES). */
+.sommaire--couleur > h2 { padding-left: 0.6rem; border-left: 4px solid var(--sommaire-couleur); }

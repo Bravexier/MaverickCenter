@@ -3,17 +3,17 @@ import Base from '../layouts/Base.astro';
 import Carrousel from '../components/galerie/Carrousel.astro';
 import accueilCss from '../styles/accueil/accueil.css?raw';
 import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
-import { ACCUEIL_DU_GUIDE, livreDe, PAR_OU_COMMENCER, verifierLePlan } from '../lib/livres.mjs';
+import { couleurDeLaPage, DECOUVRIR, PAR_OU_COMMENCER, verifierLePlan } from '../lib/livres.mjs';
 import { entryHref, loadWiki, url } from '../lib/wiki';
 
 // Accueil (demande du propriétaire ; rubrique Découvrir du menu) : un texte de bienvenue et le défilement des images de la galerie
-// (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (première page du livre Découvrir,
-// guide/bienvenue). Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé de chaque
-// page tels que la base les écrit, dans la couleur de sa section.
+// (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (guide/bienvenue, servie à /decouvrir/).
+// Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes, les quatre pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
+// de chaque page tels que la base les écrit, dans la couleur de son groupe. La phrase « Première visite ? » et son bouton ne disent que la navigation.
 const { entries } = await loadWiki();
 const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
 const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
-  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', couleur: livreDe(e.id)!.section.couleur,
+  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', couleur: couleurDeLaPage(e.id),
 }));
 ---
 
@@ -29,9 +29,9 @@ const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
         Maverick Center en rassemble les règles et le lore, en pages reliées entre elles par mots-clés, et les outils de vos personnages : la fiche pour
         les créer, la liste pour les retrouver.
       </p>
-      <p>Première visite ? Le guide vous accompagne pas à pas : découvrir le jeu, créer son personnage, jouer, progresser.</p>
+      <p>Première visite ? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie.</p>
       <p class="accueil__actions">
-        <a class="accueil__bouton accueil__bouton--principal" href={url(ACCUEIL_DU_GUIDE)}>Lire le guide</a>
+        <a class="accueil__bouton accueil__bouton--principal" href={url(DECOUVRIR.chemin)}>Découvrir Maverick</a>
         <a class="accueil__bouton" href={url('fiche/')}>Créer un personnage</a>
       </p>
     </section>

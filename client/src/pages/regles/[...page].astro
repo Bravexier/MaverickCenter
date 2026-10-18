@@ -2,11 +2,11 @@
 import PageDuPlan from '../../components/guide/PageDuPlan.astro';
 import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
 
-// Le livre « Les bases » (lib/livres.mjs) : sa première page à /regles/, les autres à /regles/<slug>/ ; les pages des Règles avancées à
-// /regles/avancees/<slug>/. Le sommaire des Règles avancées est pages/regles/avancees/index.astro, celui de l'Artisanat pages/regles/artisanat.astro.
+// Les pages des Bases (lib/livres.mjs#LES_BASES) à /regles/<slug>/, celles des Règles avancées à /regles/avancees/<slug>/. Le sommaire des Bases est
+// pages/regles/index.astro, celui des Règles avancées pages/regles/avancees/index.astro, celui de l'Artisanat pages/regles/artisanat.astro.
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
-  return pagesSous(entries, 'regles/').map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));
+  return pagesSous(entries, 'regles/').filter(({ reste }) => reste).map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));
 }
 const { entry } = Astro.props as { entry: WikiEntry };
 ---

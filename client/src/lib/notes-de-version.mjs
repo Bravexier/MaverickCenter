@@ -19,7 +19,13 @@ import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
-import { placeDansLeGuide } from './livres.mjs';
+import { DECOUVRIR, LIENS, PAGES_ABSORBEES, placeDansLeGuide } from './livres.mjs';
+
+/**
+ * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
+ * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue, pas dans les Règles avancées.
+ */
+const pageDuPlan = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
 export const DOMAINES = [
@@ -58,7 +64,7 @@ export const TABLES_LUES = [
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
-  'potion', 'niveau_alchimie',
+  'potion', 'niveau_alchimie', 'annonce',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -97,7 +103,8 @@ const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.
  * `ctx` = { dev, ref } : tables indexées des deux bases (une ligne se nomme d'après la base où elle existe, de préférence dev).
  * `detail` : une ligne qui n'existe qu'avec une autre (la rubrique d'une carte, le butin d'une espèce) ; seul un champ modifié est listé, son ajout ou
  * son retrait est dit par l'entité qui la porte. `resume(n)` : un contenu entièrement nouveau (aucune ligne en production : le Codex, le bestiaire
- * à leur première livraison) est dit en une ligne (« 116 pages du Codex »), pas entité par entité.
+ * à leur première livraison) est dit en une ligne (« 116 pages du Codex »), pas entité par entité. `vide(r)` : une ligne sans contenu (l'annonce de
+ * l'encart IRL, texte NULL) ; présente d'un seul côté, elle n'est ni ajoutée ni retirée, ses champs se comparent comme les autres quand elle est des deux.
  */
 const DEFINITIONS = [
   {
@@ -171,12 +178,21 @@ const DEFINITIONS = [
   {
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
-    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre des livres
-    groupe: (r) => placeDansLeGuide(r.id).rubrique,
+    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre du plan
+    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe, pageDuPlan)
+    groupe: (r) => placeDansLeGuide(pageDuPlan(r.id)).rubrique,
     entite: (r) => r.titre, ordre: (r) => {
-      const place = placeDansLeGuide(r.id);
-      return [place.rang, place.numero ?? 999, r.titre];
+      const place = placeDansLeGuide(pageDuPlan(r.id));
+      return [place.rang, place.ordre ?? 999, r.titre];
     },
+  },
+  {
+    // l'annonce de l'encart « Notre prochaine rencontre IRL » de la page Liens (migration 0068) : avec les pages de Découvrir, après elles
+    // une annonce vide (texte NULL : « Aucune rencontre annoncée pour le moment. ») qui n'existe pas de l'autre côté n'est pas listée (`vide`) : rien
+    // n'est annoncé ; écrite ou vidée, son texte se lit comme tout champ modifié
+    table: 'annonce', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('annonce'), genre: 'Annonce', vide: (r) => r.texte === null,
+    groupe: () => DECOUVRIR.titre, entite: (r) => (r.id === LIENS.rencontre.annonce ? `${LIENS.titre} › ${LIENS.rencontre.titre}` : `Annonce ${r.id}`),
+    ordre: (r) => [0, 900, r.id],
   },
   {
     // les pages du Codex (lore tiré du Google Doc « CODEX Maverick », famille docs : lib/edition-modele.mjs#texteDePageModifiable)
@@ -544,6 +560,7 @@ function comparerTable(def, ref, dev, x) {
     const base = decrire(r);
     if (!avant) {
       if (def.detail || def.suit?.(r, x)) continue; // dit par l'entité qui la porte
+      if (def.vide?.(r)) continue; // une ligne vide, absente de la production : rien n'est ajouté
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
       sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
@@ -559,7 +576,7 @@ function comparerTable(def, ref, dev, x) {
     });
   }
   for (const [k, r] of a) {
-    if (b.has(k) || def.detail || def.suit?.(r, x)) continue;
+    if (b.has(k) || def.detail || def.suit?.(r, x) || def.vide?.(r)) continue;
     sortie.push(ligneDeNote({ ...decrire(r), champ: devRows ? null : def.genre, nature: 'retire', avant: def.entite(r, x), apres: null }));
   }
   return sortie;

@@ -22,7 +22,6 @@ import { lecteurDAcquis } from './acquis-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
-import { livreDe } from './livres.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
@@ -476,7 +475,7 @@ function reglesDeLaBase(db) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------ aide du champ « Entraînement »
-/** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (chapitre « S’entraîner et exercer un métier » ; décision R71). */
+/** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (« S’entraîner et exercer un métier », Les bases ; décision R71). */
 export const PAGE_DE_L_ENTRAINEMENT = 'guide/s-entrainer-et-exercer-un-metier';
 
 /**
@@ -538,14 +537,13 @@ function titreDeLaCible(db, cible) {
 }
 
 /**
- * L'aide du champ « Entraînement » de la fiche (décision R71), écrite dans la page au build : { titre, livre, chapitre, texte } de la page du guide
- * (`livre`, `chapitre` : sa place dans le plan du site, lib/livres.mjs, « Les bases », chapitre 10 ; null hors livre), ou null si la page manque ou
- * n'écrit plus ce paragraphe.
+ * L'aide du champ « Entraînement » de la fiche (décision R71), écrite dans la page au build : { titre, texte } de la page du guide (plus de numéro de
+ * chapitre depuis la refonte des pages du guide, 2026-10-18 : la page cite le titre seul, la fiche restant sans lien vers le guide,
+ * docs/character-generator.md, « Compacte »), ou null si la page manque ou n'écrit plus ce paragraphe.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function aideDeLEntrainement(db) {
   const page = db.prepare('SELECT titre, corps_md FROM page WHERE id = ?').get(PAGE_DE_L_ENTRAINEMENT);
   const texte = page ? limitesDeLEntrainement(page.corps_md, (cible) => titreDeLaCible(db, cible)) : null;
-  const place = livreDe(PAGE_DE_L_ENTRAINEMENT);
-  return texte ? { titre: page.titre, livre: place?.livre.titre ?? null, chapitre: place?.numero ?? null, texte } : null;
+  return texte ? { titre: page.titre, texte } : null;
 }

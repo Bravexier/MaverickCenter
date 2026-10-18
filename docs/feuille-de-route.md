@@ -278,8 +278,12 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 ### Réponses du propriétaire (2026-10-18)
 
 Le guide est éclaté (« éclater le guide pour retravailler pleinement l'organisation des onglets et de la présentation », 2026-10-16) : ses pages sont
-rangées par le plan du site, `client/src/lib/livres.mjs` (livres « Découvrir » et « Les bases », sommaires « Règles avancées » et « Guide du MJ » :
-[`content-guide.md`](content-guide.md), « Les pages du guide : livres et sommaires »).
+rangées par le plan du site, `client/src/lib/livres.mjs` (« Découvrir », une page par entrée du menu ; sommaires « Les bases », « Règles avancées »
+et « Guide du MJ » : [`content-guide.md`](content-guide.md), « Les pages du guide : rubriques et sommaires »). Les livres lus dans l'ordre (flèches,
+glissement du doigt, pagination) sont retirés le même jour (« refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches
+suivant / précédent et la pagination ») ; « Le jeu de rôle, comment ça marche ? » rejoint Bienvenue, les six étapes de la création rejoignent « Créer
+son personnage » ; la page Liens gagne la présentation de chaque lien et l'encart « Notre prochaine rencontre IRL » (une annonce modifiable sur le site
+de dev, table `annonce`).
 
 1. **Le menu en six rubriques**, dans cet ordre : **Découvrir** (la vitrine, faite pour être vue même des non-membres : Bienvenue, L'univers, Créer son
    personnage, Rejoindre une partie, Liens), **Règles** (Les bases, Races, Magies, Classes, Équipement, Métiers, Artisanat, Règles avancées, Pièces
@@ -299,10 +303,24 @@ rangées par le plan du site, `client/src/lib/livres.mjs` (livres « Découvrir 
    (« un ensemble de liens, sur le discord […] et le https://fr.tipeee.com/maverickjdr »).
 5. **Pièges, portes, météo, « Donjon pas bon »** : « dans les règles avancées, pour tout le monde » (groupe « Exploration et voyage » des Règles
    avancées, pas dans l'Espace MJ).
+6. **Refaire les pages du guide** : « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et
+   la pagination. Prends chaque nouvelle page depuis le début à recommencer entièrement. Dans la page de bienvenue, retire le sommaire. » Les seize
+   pages de Découvrir et des Bases et « Le Mode Hyper et le Mode Super » sont réécrites de zéro d'après la base, les originaux des deux Docs (« Règle du
+   jeu/Guide pour MJ - Maverick », « Créer sa fiche de personnage ») et les décisions ; ce qui diffère entre un original et la base est consigné, rien
+   n'en est appliqué ([`sql/a-valider.md`](sql/a-valider.md) §6, R83).
+7. **Découvrir** : une page par entrée du menu — « Bienvenue absorbe « Le jeu de rôle, comment ça marche » », « L'univers présente race → magie →
+   classe », « Créer son personnage = les six étapes sur une seule page », « Rejoindre une partie = une nouvelle page pour les joueurs » ; « les pages
+   fusionnées disparaissent, leurs adresses renvoient vers la nouvelle page ». « « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ.
+8. **Les bases** : « une page par sujet, listées sur un sommaire « Les bases » à /regles/ (comme les Règles avancées) ».
+9. **Liens et rencontres** : « Étoffe un peu la présentation pour les liens Discord et Tipeee. Laisse également un encart « Notre prochaine rencontre
+   IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent. » L'encart a un titre fixe et une annonce
+   modifiable sur le site de dev (mode modification), qui part en production avec la mise à jour ; vide, il dit « Aucune rencontre annoncée pour le
+   moment. » (table `annonce`, migration `0068-annonces`). Il est posé sur la page Liens : la demande se lit aussi pour Bienvenue
+   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34).
 
 L'**ordre de lecture** change : l'ancien guide (24 pages) faisait lire la règle du D100 (« Réussir une action ») avant la création du
-personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/`), après Découvrir ; la
-page des caractéristiques et compétences (livre Découvrir) renvoie vers elle.
+personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/reussir-une-action/`,
+en tête du sommaire `/regles/`), après Découvrir ; « Créer son personnage » renvoie vers elle.
 
 ### Questions encore ouvertes
 
@@ -320,14 +338,16 @@ page des caractéristiques et compétences (livre Découvrir) renvoie vers elle.
    [`deploy/vps/README.md`](../deploy/vps/README.md)), parce qu'il est réinstallé à chaque version de `dev` et que la copie effacerait les
    modifications des règles en cours. Faut-il recopier la base de la production vers le dev **après chaque mise en production** — toute la
    base, ou seulement les fiches, les comptes et les groupes (section 13), le journal de l'édition du dev gardé ?
-8. **« Rejoindre une partie »** (menu Découvrir, quatrième carte de l'accueil, dernière section du livre Découvrir) mène à « « Campagne » ou « Scénario
-   one shot » ? », une page du « Guide pour MJ » écrite pour le maître du jeu (préparer une campagne, une table de rencontre, de butin, les PNJ) : la
-   garder là, ou la ranger dans le Guide du MJ — et alors, quelle page mettre derrière « Rejoindre une partie » (une entrée « bientôt » sinon) ?
-9. **Deux textes qui décrivent encore l'ancien guide d'un seul livre**, gardés tels quels : sur l'accueil, « Première visite ? Le guide vous accompagne
-    pas à pas : découvrir le jeu, créer son personnage, jouer, progresser. » et son bouton « Lire le guide » (vers `/decouvrir/`, qui s'arrête à
-    « Rejoindre une partie » ; sa dernière page mène maintenant aux Bases par le lien « Suivant › ») ; dans « Le jeu de rôle, comment ça marche ? »
-    (`/decouvrir/le-jeu-de-role/`), « deviennent plus forts (voir la partie « Progresser ») », une section qui est désormais dans « Les bases ». Les
-    corrigez-vous sur le site de dev (le second se modifie en place), ou le bouton doit-il mener ailleurs ?
+8. **« Rejoindre une partie »** — *Répondue le 2026-10-18* : « « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ
+   (`/mj/campagne-ou-scenario-one-shot/`, son ancienne adresse y renvoie) ; « Rejoindre une partie » est une page nouvelle, pour les joueurs
+   (`guide/rejoindre-une-partie`, `/decouvrir/rejoindre-une-partie/`).
+9. **Les textes qui décrivaient l'ancien guide d'un seul livre** — *Répondue le 2026-10-18* (« refaire toutes les anciennes pages du guide ») : les pages
+   de Découvrir et des Bases sont réécrites ; sur l'accueil, la phrase de la première visite et son bouton ne disent plus que la navigation (« Première
+   visite ? Commencez par Découvrir : le jeu, son univers, la création d'un personnage et comment rejoindre une partie. », bouton « Découvrir Maverick ») ;
+   la phrase de « Le jeu de rôle, comment ça marche ? » qui renvoyait à « la partie « Progresser » » disparaît avec la fusion de la page dans Bienvenue.
+10. **Ordre de lecture** : l'ancien guide, validé par vous, faisait lire la règle du D100 (« Réussir une action ») avant la création du personnage ;
+    aujourd'hui, Découvrir présente la création (« Créer son personnage ») avant Les bases, dont « Réussir une action » est la première page, et
+    « Créer son personnage » renvoie vers elle. Cet ordre vous convient-il ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 

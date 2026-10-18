@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 67;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 68;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -243,6 +243,17 @@ CREATE TABLE composant_onglet (
   note   TEXT    CHECK (note IS NULL OR length(note) > 0),   -- le texte au-dessus du tableau ; NULL : sans note
   ordre  INTEGER NOT NULL CHECK (ordre >= 1)             -- place dans la barre d'onglets (pas encore modifiable) ; pas UNIQUE, pour qu'un futur réordonnancement
                                                        -- puisse échanger deux ordres dans un même lot (à égalité, l'id départage)
+) STRICT;
+
+-- Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » de la page « Liens » (/decouvrir/liens/).
+-- Demande du propriétaire du 2026-10-18 : « un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines
+-- conventions où Maverick sera présent » ; titre fixe et texte d'attente (« Aucune rencontre annoncée pour le moment. ») écrits par le site
+-- (client/src/lib/livres.mjs#LIENS.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance
+-- (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE annonce (
+  id    TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'annonce
+                                                     -- que le site place ('prochaine-rencontre-irl')
+  texte TEXT CHECK (texte IS NULL OR length(texte) > 0)   -- Markdown des pages, balises du glossaire comprises ; NULL : rien d'annoncé (le texte d'attente s'affiche)
 ) STRICT;
 
 -- ====================================================================================================================

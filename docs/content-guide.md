@@ -104,7 +104,7 @@ la feuille de la page, qui ne garde que ce qui lui est propre (largeurs de colon
 `attributsNote` posent les champs du mode modification sur le nom et la note (avec `attributsNote`, la note est toujours écrite, cachée tant qu'elle est
 vide : les onglets de « Composants », dont chaque panneau est un tableau du gabarit). Ceinture, Composants, Armes,
 Armures et boucliers l'emploient ; les accessoires, les sorts, les races, les métiers, le bestiaire et les blocs du guide posent les classes
-eux-mêmes. Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) prennent le même gabarit par leur conteneur (`.prose`, `.guide-texte`),
+eux-mêmes. Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) prennent le même gabarit par leur conteneur (`.prose`),
 leur cadre à la largeur du tableau, l'alignement que le Markdown écrit gardé (en mode modification, leurs cases sont marquées d'un pointillé, pour
 écrire dedans). La table et ses cases sont sous `:where()` : une règle de page les précise toujours, quel que soit l'ordre des feuilles. Restent à
 part deux grilles dont les colonnes portent le sens : les matrices des magies de `/magies/` et `/races/` (en-têtes verticaux, une colonne teintée
@@ -783,63 +783,107 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 D11 ; `docs/serveur.md`, « Édition ») ou par une migration (`data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 Une page construite avant une création ou une suppression est redessinée par le mode modification avec le même HTML (`lib/classe-dons-rendu.mjs`, testé contre le site construit).
 
-## Les pages du guide : livres et sommaires
+## Les pages du guide : rubriques et sommaires
 
 Le guide n'est plus un seul livre de 24 chapitres servi sous `/guide/` (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour
-retravailler pleinement l'organisation des onglets et de la présentation ») : les pages `guide/<slug>` (famille `docs`, ids inchangés) sont rangées par
-le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son adresse
-(`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de navigation y
-sont écrits (titres de livre, de section, de groupe, libellés des liens) ; les textes sont ceux de la base.
+retravailler pleinement l'organisation des onglets et de la présentation »), ni deux livres lus dans l'ordre (2026-10-18 : « refaire toutes les anciennes
+pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : les pages `guide/<slug>` (famille `docs`, ids
+inchangés) sont rangées par le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son
+adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de
+navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ; les textes sont ceux de la base, sauf une exception : les deux
+présentations de la page Liens (`LIENS.liens[].presentation`, plus bas), écrites dans le plan, donc ni modifiables sur le site de dev (un commit les
+change) ni cherchées par la recherche.
 
-- **Deux livres**, lus dans l'ordre, une page à la fois (`components/guide/PageDeLivre.astro`) : « **Découvrir** » (`/decouvrir/`, rubrique Découvrir du
-  menu, faite pour être vue même des non-membres : sections Découvrir, Créer son personnage, Rejoindre une partie) et « **Les bases** » (`/regles/`,
-  rubrique Règles : sections Jouer, Progresser, Pour aller plus loin). La première page d'un livre est servie à l'adresse du livre (« Bienvenue » à
-  `/decouvrir/`, « Réussir une action » à `/regles/`), les autres à `<livre>/<slug>/`. L'ancien plan (24 pages, validé par le propriétaire) faisait lire
-  la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases, après Découvrir : ce remplacement
-  attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10). Le numéro d'une page (« chapitre N sur M ») est son rang dans le
-  livre ; d'un livre à l'autre, on ne passe pas par les flèches (ni par ← → ni par le doigt), mais à la dernière page d'un livre, le lien « Suivant › »
-  du bas mène à la suite du plan : « Les bases » après Découvrir, puis les « Règles avancées » (`suiteDuLivre`). Les couleurs des sections sont celles des anciennes parties (`PARTIES` : Découvrir
-  #2a6f97, Créer son personnage #2e7d4f, Jouer #b03030, Progresser #6a4a9c, Pour aller plus loin #5a6470), qui restent celles des quatre zones de la
-  fiche. Sous « L'univers », un bloc de navigation rendu par le gabarit (`RUBRIQUES_SOUS_LA_PAGE`) mène aux Races, aux Magies et aux Classes.
-- **Une page de livre** a une flèche de chaque côté du texte (grisée à la première et à la dernière page du livre), les touches ← → et, en bas, les pages
-  voisines et la pagination par section (titre en infobulle). Elle prend **toute la largeur** du site : les flèches ne prennent pas de place, elles passent
-  **par-dessus** ses bords, collées en bas de l'écran, et s'effacent dès que les liens du bas arrivent à l'écran (demande du propriétaire ;
-  `styles/guide/guide.css`, script de `PageDeLivre.astro`). Sous 52rem, elles disparaissent. Sur écran tactile, **glisser le doigt** vers la gauche mène
-  à la page suivante, vers la droite à la précédente : geste franchement horizontal, d'un seul doigt, ni sur un tableau qui défile, ni depuis le bord de
-  l'écran (gestes du système), ni sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: none` (dans `guide.css`, chargé par les
-  pages de livre seulement) empêche Chrome d'en faire aussi un retour dans l'historique. Une page de livre n'a ni fil d'Ariane, ni mots-clés, ni pages
-  liées, ni sources sous le texte (la lecture continue par la pagination) ; `sources:` reste dans le frontmatter.
-- **Deux sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a pas) :
-  « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper, Combat et actions, Altérations d'état, Alignement, Exploration et
-  voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du 2026-10-18 —, La fiche de
-  personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`** qu'aucun livre ni le Guide
-  du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à `/regles/avancees/<slug>/` ; et « **Guide du MJ** » (`/mj/`,
-  rubrique Espace MJ), pages à `/mj/<slug>/`. Leurs pages sont rendues par `components/guide/PageDuGuide.astro` : fil d'Ariane vers le sommaire, texte
-  coupé à ses blocs comme une page de livre (le Mode Hyper, les documents des règles…), puis mots-clés, rétroliens et sources
-  (`components/PiedDePage.astro`). « Les documents des règles » garde son adresse (Autres pages de référence) : son bloc liste les pages par document
-  source, avec leurs liens, ce que `/archives/` ne montre pas.
+- **Découvrir** (`/decouvrir/`, rubrique Découvrir du menu, faite pour être vue même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu**
+  (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/` ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
+  sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
+  Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page), « Rejoindre une partie » (une page pour les joueurs) —, à
+  `/decouvrir/<slug>/`, puis « Liens » (plus bas). Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
+- **Les bases** (`/regles/`, rubrique Règles ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
+  Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
+  propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
+  remplacement attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
+- **Les couleurs** des groupes sont celles des anciennes parties (`PARTIES` : Découvrir #2a6f97, Créer son personnage #2e7d4f, Jouer #b03030 — aussi
+  « Rejoindre une partie » —, Progresser #6a4a9c, Pour aller plus loin #5a6470), qui restent celles des quatre zones de la fiche : une page de Découvrir
+  ou des Bases a le filet de son titre, ses intertitres et ses blocs dans la couleur de son groupe (`couleurDeLaPage`), une carte de l'accueil et un
+  groupe du sommaire des Bases aussi.
+- **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`) : fil d'Ariane vers sa rubrique
+  (Découvrir) ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
+  base, puis mots-clés, rétroliens et, pour une page de référence seulement, sources (`components/PiedDePage.astro`, `sources` faux sur une page de
+  Découvrir ou des Bases, comme quand elles étaient des pages de livre ; `sources:` reste dans le frontmatter ; les montrer attend la réponse du
+  propriétaire, `docs/sql/a-valider.md` §6). Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination, ni
+  numéro de chapitre ; plus de `overscroll-behavior-x` (il ne servait qu'au glissement du doigt). Les pages de référence (Règles avancées, Guide du MJ)
+  gardent le badge « Guide » à côté du titre.
+- **Deux autres sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
+  pas) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
+  d'état, Alignement, Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du
+  2026-10-18 —, La fiche de personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`**
+  que ni Découvrir, ni Les bases, ni le Guide du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à
+  `/regles/avancees/<slug>/` ; et « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
+  « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/`. « Les documents des règles » garde son adresse
+  (Autres pages de référence) : son bloc liste les pages de référence par document source (`pagesDeReference` : sans les pages de Découvrir ni des
+  Bases), avec leurs liens, ce que `/archives/` ne montre pas.
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
-  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers. **Liens** (`/decouvrir/liens/`) : le serveur Discord
-  « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), rien d'autre. L'accueil (`/`) ajoute « Par où commencer ? » : quatre cartes
-  (`PAR_OU_COMMENCER`), titre et résumé de la page.
+  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers.
+- **Liens** (`/decouvrir/liens/`, `pages/decouvrir/liens.astro`, `LIENS`) : le fil d'Ariane vers Découvrir, puis le serveur Discord « L'univers de
+  Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun sous son titre (un `h2` qui porte le lien,
+  au niveau de celui de l'encart : la navigation par titres les trouve) et suivi de sa **présentation** (`LIENS.liens[].presentation`, Markdown écrit dans le
+  plan, une seule constante ; vide, rien ne s'affiche ; demande du propriétaire : « Étoffe un peu la présentation pour les liens Discord et Tipeee » ;
+  le Discord d'après le texte d'accueil du propriétaire et `docs/sources.md`, Tipeee d'après sa propre page, lue le 2026-10-18 — `docs/sources.md`,
+  « Tipeee » —, texte à faire valider : `docs/sql/a-valider.md` §6, G36),
+  puis l'encart **« Notre prochaine rencontre IRL »** (`LIENS.rencontre` ; « pour faire la place à une annonce dédiée aux prochaines conventions où
+  Maverick sera présent ») : un titre fixe, l'annonce lue dans la table `annonce` (ligne `prochaine-rencontre-irl`, migration `0068-annonces`,
+  `lib/annonces.mjs`), ou, tant qu'elle est vide (NULL), « Aucune rencontre annoncée pour le moment. ». Sur le site de dev, l'annonce se modifie **en
+  place** en mode modification (`src/scripts/edition/annonces.mjs`, la barre d'outils des panneaux de règles ; vide, la zone s'ouvre vide, le texte
+  d'attente en filigrane ; vidée, elle repart à NULL) ; le service la contrôle comme le texte d'une page (ni HTML brut ni lien non sûr ajouté, balises du
+  glossaire en forme canonique : `serveur/edition.mjs#ANNONCE`), la mise à jour aussi (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`,
+  `texteNonSurApresLeRejeu`), et elle part en production avec la mise à jour (note de version : domaine Guide, groupe Découvrir, « Liens › Notre
+  prochaine rencontre IRL »). Ni création ni suppression d'annonce : le site place les siennes.
+- **Pages fusionnées** (2026-10-18, `PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes (« Étape 1 : imaginer son
+  personnage et choisir sa race » … « Étape 6 : finaliser son personnage ») dans Créer son personnage. Elles ne sont plus dans la base (retirées par
+  `db:sync-pages`, famille `docs`) ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses — d'avant l'éclatement (`/guide/<slug>/`) et du plan
+  précédent (`/decouvrir/<slug>/`) — mènent à la page qui les absorbe, à l'intertitre où se lit leur contenu (`ANCRES_DES_PAGES_ABSORBEES` :
+  `#étape-5--choisir-ses-premiers-sorts`, `#le-jeu-de-rôle-comment-ça-marche-`… ; un intertitre renommé change l'ancre, `test/livres.test.mjs` et
+  `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées (`#une-ou-deux-classes--le-biclassage` reste une ancre de Créer son
+  personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ (`ADRESSES_DU_PLAN_PRECEDENT`).
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
-  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les numéros, les sections et leurs couleurs sont
-  dans le plan, contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la
-  nommer dans `lib/livres.mjs` (livre, Guide du MJ ou groupe), sinon elle va d'elle-même dans « Autres pages de référence ».
+  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
+  contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
+  `lib/livres.mjs` (Découvrir, Les bases, Guide du MJ ou groupe des Règles avancées), sinon elle va d'elle-même dans « Autres pages de référence ».
 - **Les anciennes adresses** `/guide/` et `/guide/<slug>/` mènent aux nouvelles par la page 404 (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`,
-  requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` (il en reste neuf dans les textes) mène à la nouvelle adresse au rendu
-  (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en `data-lien-ecrit` : un
-  morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse du plan qu'il montre,
-  qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page où que le plan la range.
-- **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`) est remplacée au rendu par un tableau lu dans
-  la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression (`niveau_global`), postures, compétences,
-  initiative, ce que donne chaque magie, types de don, entraînement… Le bloc `sommaire` (page « Bienvenue ») donne les pages du livre Découvrir par
-  section, puis les liens vers Les bases et les Règles avancées. Ne jamais recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs
-  compétences, « +1 en … » d'une magie) et les postures y sont dans leur couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés =
-  ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666,
-  Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66, Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien
-  Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) : le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les
-  blocs sont dans `styles/guide/blocs.css`, partagé par les pages de livre et `PageDuGuide`.
+  requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` mène à la nouvelle adresse au rendu — celle de la page qui l'absorbe
+  pour une page fusionnée, à son intertitre si le lien n'écrit pas d'ancre — (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en
+  `data-lien-ecrit` : un morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse
+  du plan qu'il montre, qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page
+  où que le plan la range.
+- **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`, chacun appelé une fois dans tout le guide) est
+  remplacée au rendu par un tableau lu dans la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression
+  (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge… Plus de bloc
+  `sommaire` (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : un marqueur inconnu arrête le rendu. Ne jamais
+  recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
+  couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
+  #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66,
+  Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
+  le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
+- **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
+  recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et les présentations de la page Liens sont réécrits de zéro à partir
+  de la base (tables, pages de référence importées des documents), des **originaux** de « Règle du jeu/Guide pour MJ - Maverick » et de « Créer sa
+  fiche de personnage » et des décisions R1 à R105 ; quand un original diffère de la base, la page suit la base et les décisions, et l'écart est
+  consigné pour le propriétaire (`docs/sql/a-valider.md` §6), jamais appliqué (R83). En réécrivant l'une d'elles : chaque fait vient d'une source
+  citée dans `sources:` (la première, « Google Doc « … » ») ; aucun chiffre d'un bloc n'est recopié dans le texte (il explique les colonnes et y
+  renvoie), ni celui d'un tableau que la base n'a qu'en texte (la localisation des dégâts de « Attaque et défense ») ; vers une page du guide,
+  `[[guide/<slug>|texte]]`, jamais un lien écrit vers `/guide/…` ; on vouvoie le lecteur ; le document « Règle du jeu/Guide pour MJ - Maverick » se
+  nomme « le Doc « Guide pour MJ » » (lié une fois par page à sa page d'accueil, `guide/guide-pour-mj-maverick`), « Guide du MJ » étant la rubrique du
+  menu. Un bloc des personnages fil rouge se pose sous l'intertitre qu'il illustre : `fil-rouge` sous un `##` (ses personnages en `h3`), les autres
+  sous un `###` (la sous-section, ou « Nos quatre personnages » ; leurs personnages en `h4`). Quelques phrases sont **lues par le code** : la section
+  `## La ceinture` de « L'équipement » (les règles de l'onglet Ceinture de l'Équipement, `lib/ceinture-db.mjs`, avec le mot « emplacements »), le
+  paragraphe de « S'entraîner et exercer un métier » qui écrit « case Entraînement » (l'aide du bloc Entraînement de la fiche,
+  `lib/fiche-regles.mjs#aideDeLEntrainement`), « 37 ÷ 2 = 18,5, arrondi à **18 dégâts** » dans « Les dégâts » (R17, `test/guide.test.mjs`),
+  « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Créer son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
+  l'onglet Boucliers de « L'équipement » (`test/equipement-html.test.mjs`), le titre « Bienvenue dans Maverick » et son alias « Guide du joueur »
+  (`test/serveur-edition-guide.test.mjs`), les intertitres « Le jeu de rôle, comment ça marche ? » de Bienvenue et « Étape 1 : … » à « Étape 6 : … » de
+  « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`) : les
+  garder en modifiant ces pages.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.

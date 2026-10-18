@@ -1303,6 +1303,21 @@ function apercuDe(op, corps) {
   return a;
 }
 
+/**
+ * L'annonce d'un encart du site (table annonce, migration 0068 : « Notre prochaine rencontre IRL » de la page Liens) : son texte, Markdown sûr comme celui
+ * d'une page du guide (ni HTML brut ni lien non sûr ajouté : lib/markdown-sur.mjs ; le texte part tel quel dans la page construite, puis en
+ * production) ; vidé, NULL (le texte d'attente s'affiche). Ni création ni suppression : le site place ses annonces.
+ */
+const ANNONCE = {
+  colonnes(ctx, ligne, valeurs, avant) {
+    if ('texte' in valeurs && ligne.texte !== null) {
+      const ajoutes = fragmentsAjoutes(avant.texte ?? '', ligne.texte);
+      if (ajoutes.length) throw refus(`Annonce ${ligne.id} : ${messageDeRefus(ajoutes)}`);
+    }
+    return {};
+  },
+};
+
 /** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
 const CHRONOLOGIE = domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant, tableExiste });
 
@@ -1336,6 +1351,8 @@ const DOMAINES = {
   ...CHRONOLOGIE.domaines,
   // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
   ...domainesDesPanneaux({ refus, ErreurEdition, rangLibre }),
+  // l'annonce de l'encart « Notre prochaine rencontre IRL » (page Liens, migration 0068)
+  annonce: ANNONCE,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

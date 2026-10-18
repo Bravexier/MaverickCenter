@@ -13,7 +13,7 @@
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
 // améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
 // défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
-// serveur/edition-consommables.mjs).
+// serveur/edition-consommables.mjs) ; le texte d'une annonce (l'encart « Notre prochaine rencontre IRL » de la page Liens, migration 0068).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -575,6 +575,13 @@ export const TABLES = {
       texte: { type: 'markdown', libelle: 'Texte', requis: true },
       ordre: { type: 'entier', libelle: 'Place (ordre de lecture)', requis: true, min: 1 },
     },
+  },
+  // Annonces placées par le site (migration 0068 ; demande du propriétaire du 2026-10-18 : l'encart « Notre prochaine rencontre IRL » de la page Liens,
+  // titre fixe, annonce modifiable sur le site de dev) : son texte (Markdown sûr, modifié en place comme le guide : src/scripts/edition/annonces.mjs ;
+  // serveur/edition.mjs#ANNONCE) ; vidé : NULL, le texte d'attente s'affiche ; ni création ni suppression
+  annonce: {
+    libelle: 'Annonce',
+    colonnes: { texte: { type: 'markdown', libelle: 'Annonce' } },
   },
   // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
   // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)

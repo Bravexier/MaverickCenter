@@ -55,7 +55,7 @@ export const entriesOfType = (entries: WikiEntry[], type: string) => entries.fil
 /**
  * Les pages servies sous un chemin du plan du site (lib/livres.mjs : « decouvrir/ », « regles/ », « mj/ »), pour le paramètre de reste de leur route
  * (pages/decouvrir/[...page].astro…) : [{ entry, reste }] (`reste` : le chemin de la page sans `prefixe` ni barre de fin ; undefined pour la page servie
- * au chemin même, la première d'un livre). Une page servie par une autre (ancre) n'y est pas.
+ * au chemin même : Bienvenue à /decouvrir/). Une page servie par une autre (ancre) n'y est pas.
  */
 export const pagesSous = (entries: WikiEntry[], prefixe: string) =>
   entries.flatMap((entry) => {

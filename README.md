@@ -27,10 +27,11 @@ npm run build    # site statique dans client/dist/ (avec le service, dans dist/_
   qui liste aussi tous les mots-clés).
 - **Accueil** : un texte de bienvenue et le défilement des images de la **galerie** (`/galeries/`, en construction : le logo seul) ;
   **Archives** (`/archives/`) : les Google Docs, Sheets et l'ancien wiki qui ont servi de source, avec leurs liens.
-- **Guide** : deux livres à lire dans l'ordre, avec flèches Précédent / Suivant et pagination colorée par section — « Découvrir » (`/decouvrir/`),
-  pour découvrir le jeu même sans jamais avoir joué à un JDR et créer son personnage, et « Les bases » (`/regles/`) — ; les « Règles avancées »
-  (`/regles/avancees/`) et le « Guide du MJ » (`/mj/`) en sommaires ; quatre personnages fil rouge sont créés étape par étape. Les tableaux
-  (progression, postures, compétences…) sont tirés de la base. Le plan est dans `client/src/lib/livres.mjs`.
+- **Guide** : « Découvrir » (`/decouvrir/`), une page par entrée du menu — Bienvenue, L'univers, Créer son personnage, Rejoindre une partie, puis
+  les liens (Discord, Tipeee) et l'encart « Notre prochaine rencontre IRL » —, pour découvrir le jeu même sans jamais avoir joué à un JDR et créer
+  son personnage ; « Les bases » (`/regles/`), les « Règles avancées » (`/regles/avancees/`) et le « Guide du MJ » (`/mj/`) en sommaires ; chaque page
+  se lit seule ; quatre personnages fil rouge sont créés étape par étape. Les tableaux (progression, postures, compétences…) sont tirés de la base. Le
+  plan est dans `client/src/lib/livres.mjs`.
 - **Fiche de personnage** (`/fiche/`) : créer et modifier un prétiré étape par étape (race, magies, classes, caractéristiques, compétences, sorts,
   progression, dons, équipement), les valeurs calculées au fil de la saisie et contrôlées par la base ; téléchargement en tableur (.xlsx au modèle
   de la fiche V15.2.2), export vers Google Sheets, import d'un .xlsx ou d'une feuille Google partagée par lien (fiche auto comprise).

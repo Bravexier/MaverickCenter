@@ -2,6 +2,7 @@
 // chaque étape : une extension peut dessiner ce qu'une autre attend).
 // Points d'entrée possibles : surcouche(ed, lignes), ligne(ed, table, cle, ligne), lignesACharger(ed), debut(ed), verifier(ed, editeurs),
 // operations(ed, operations, editeurs), apresEnregistrement(ed, resultat), fin(ed), pret(ed).
+import { annonces } from './annonces.mjs';
 import { armes } from './armes.mjs';
 import { armures } from './armures.mjs';
 import { bestiaire } from './bestiaire.mjs';
@@ -18,4 +19,5 @@ import { races } from './races.mjs';
 
 // `nouvelles` d'abord : sur la page d'une entité créée, elle dessine la page que les autres extensions complètent (`classes` : ses spécialités et ses dons).
 // `panneaux` (les panneaux de règles) après `armes` et `armures`, qui ouvrent les tableaux de leurs onglets et laissent les panneaux à `panneaux`.
-export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles];
+// `annonces` : l'encart « Notre prochaine rencontre IRL » de la page Liens (table annonce, migration 0068).
+export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles, annonces];

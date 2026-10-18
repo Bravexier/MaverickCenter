@@ -11,7 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
-import { PAR_OU_COMMENCER } from '../src/lib/livres.mjs';
+import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
@@ -48,7 +48,8 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   const html = lire('404.html');
   assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*">/);
   assert.match(html, /location\.replace/);
-  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse
+  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis, pour
+  // chaque page fusionnée dans une autre (refonte du 2026-10-18), /guide/<slug>/ et /decouvrir/<slug>/, et les adresses du plan précédent qui ont changé
   const attribut = html.match(/data-renvois="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
   const renvois = JSON.parse(attribut);
   assert.equal(renvois['guide/'], 'decouvrir/');
@@ -57,8 +58,18 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     const slug = Object.keys(renvois).find((k) => renvois[k] === e.path);
     assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
   }
-  assert.equal(Object.keys(renvois).length, guide.length + 1);
-  assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c, 'index.html'))), 'chaque renvoi mène à une page construite');
+  assert.equal(Object.keys(renvois).length, guide.length + 1 + 2 * Object.keys(PAGES_ABSORBEES).length + Object.keys(ADRESSES_DU_PLAN_PRECEDENT).length);
+  for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
+    const slug = ancienne.slice('guide/'.length);
+    assert.equal(renvois[`decouvrir/${slug}/`], renvois[`${ancienne}/`], `${ancienne} : ses deux anciennes adresses mènent au même endroit`);
+    // … à l'intertitre de la page qui l'absorbe où se lit son contenu
+    const [chemin, ancre] = renvois[`${ancienne}/`].split('#');
+    assert.equal(ancre, ANCRES_DES_PAGES_ABSORBEES[ancienne], ancienne);
+    assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
+    assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
+  }
+  assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
+  assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c.split('#')[0], 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
 test('en-tête : le logo à la place du titre, le menu à côté ; le logo en icône', options, () => {
@@ -93,7 +104,10 @@ test('accueil : texte de bienvenue et défilement des images de la galerie (en c
   const html = lire('index.html');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
-  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Lire le guide<\/a>/);
+  // la phrase de la première visite ne dit que la navigation (plus de livre : « Découvrir », la rubrique)
+  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie\.<\/p>/);
+  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Découvrir Maverick<\/a>/);
+  assert.doesNotMatch(main, /Lire le guide|pas à pas/);
   // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse
   assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
   const cartes = [...main.matchAll(/<li class="accueil-debut__carte" style="--c: #[0-9a-f]{6}"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)];

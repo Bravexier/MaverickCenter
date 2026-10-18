@@ -1,7 +1,6 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { pagesDeReference } from '../../lib/guide.mjs';
-import { LIVRES, livreDe, pagesDuLivre, REGLES_AVANCEES } from '../../lib/livres.mjs';
 import { couleurDeCaracteristique, couleurDePosture, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
 import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
@@ -16,11 +15,10 @@ import {
 import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { couleurDeMagie } from '../../lib/sort-format.mjs';
-import { url, type WikiEntry } from '../../lib/wiki';
+import type { WikiEntry } from '../../lib/wiki';
 
 // Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
-// Le sommaire (page « Bienvenue ») : les pages de son livre (lib/livres.mjs, « Découvrir »), sauf elle-même, par section (numéro, titre, résumé), puis
-// les autres livres et les Règles avancées (leurs titres).
+// (Plus de bloc « sommaire » : demande du propriétaire du 2026-10-18, « Dans la page de bienvenue, retire le sommaire ».)
 interface Props {
   bloc: string;
   entry: WikiEntry;
@@ -45,70 +43,27 @@ const competences =
       )
     : [];
 const references = bloc === 'documents' ? pagesDeReference(entries, entry.id) : [];
-const parId = new Map(entries.map((e) => [e.id, e]));
-const livreDuSommaire = livreDe(entry.id)?.livre ?? LIVRES[0];
-const sommaire = bloc === 'sommaire'
-  ? livreDuSommaire.sections
-      .map((section) => ({
-        section,
-        pages: pagesDuLivre(livreDuSommaire)
-          .filter((p) => p.section === section && p.id !== entry.id && parId.has(p.id))
-          .map((p) => ({ id: p.id, numero: p.numero, titre: parId.get(p.id)!.data.title, resume: parId.get(p.id)!.data.summary ?? '' })),
-      }))
-      .filter((g) => g.pages.length > 0)
-  : [];
-// à la suite du sommaire : les autres livres (« Les bases ») et les Règles avancées, dans la couleur de la première section du premier d'entre eux
-const suiteDuSommaire = bloc === 'sommaire'
-  ? [...LIVRES.filter((l) => l !== livreDuSommaire).map((l) => ({ chemin: l.chemin, titre: l.titre })), { chemin: REGLES_AVANCEES.chemin, titre: REGLES_AVANCEES.titre }]
-  : [];
-const couleurDeLaSuite = LIVRES.find((l) => l !== livreDuSommaire)?.sections[0]?.couleur;
 // Les personnages fil rouge (lib/guide-fil-rouge.mjs) : une carte par personnage, son contenu selon l'étape de la création.
 const filRouge = bloc.startsWith('fil-rouge') ? chargerFilRouge(db) : [];
 /** « 2 de la race + 6 de la classe = 8 » : le calcul d'un attribut, termes nuls omis (sauf le premier). */
 const calcul = (termes: [number | null | undefined, string][], total: number) =>
   `${termes.filter(([v], i) => i === 0 || v).map(([v, d]) => `${v ?? 0} ${d}`).join(' + ')} = ${total}`;
 const nombre = (n: number) => n.toLocaleString('fr-FR');
+// Le titre d'un personnage suit celui du texte : le bloc « fil-rouge » est posé sous un h2 (« Quatre personnages pour exemple »), les autres sous un h3
+// (la sous-section de leur étape, ou « Nos quatre personnages »).
+const TitreDuPerso = bloc === 'fil-rouge' ? 'h3' : 'h4';
+// La barrière : la moitié du chakra, sans arrondi écrit (Doc « Créer sa fiche de personnage », regle_constante barriere.diviseur_chakra) ; la fiche du
+// site arrondit à l'inférieur (lib/fiche-moteur.mjs), le calcul le dit quand le chakra est impair (question G13, docs/sql/a-valider.md §6).
+const moitieDuChakra = (chakra: number) =>
+  chakra % 2 ? 'pour la moitié du chakra (arrondie à l’inférieur par la fiche du site)' : 'pour la moitié du chakra';
 ---
-
-{
-  bloc === 'sommaire' && (
-    <div class="guide-sommaire">
-      {sommaire.map(({ section, pages }) => (
-        <section class="guide-sommaire__partie" style={`--couleur-partie: ${section.couleur}`} aria-label={section.titre}>
-          <h3 class="guide-sommaire__titre-partie">{section.titre}</h3>
-          <ol class="guide-sommaire__liste">
-            {pages.map((c) => (
-              <li>
-                <a class="guide-sommaire__lien" href={pageHref(c.id)}>
-                  <span class="guide-sommaire__numero" aria-hidden="true">{c.numero}</span>
-                  <span class="guide-sommaire__titre">{c.titre}</span>
-                </a>
-                <span class="guide-sommaire__resume">{c.resume}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
-      <section class="guide-sommaire__partie guide-sommaire__suite" style={couleurDeLaSuite ? `--couleur-partie: ${couleurDeLaSuite}` : undefined} aria-label="Règles">
-        <h3 class="guide-sommaire__titre-partie">Règles</h3>
-        <ul class="guide-sommaire__liste">
-          {suiteDuSommaire.map((l) => (
-            <li>
-              <a class="guide-sommaire__lien" href={url(l.chemin)}><span class="guide-sommaire__titre">{l.titre}</span></a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-  )
-}
 
 {
   bloc.startsWith('fil-rouge') && (
     <div class="guide-fil-rouge" role="group" aria-label="Les personnages fil rouge">
       {filRouge.map((p) => (
         <section class="guide-fil-rouge__perso" aria-label={p.titre}>
-          <h4 class="guide-fil-rouge__nom">{p.titre}</h4>
+          <TitreDuPerso class="guide-fil-rouge__nom">{p.titre}</TitreDuPerso>
           <dl>
             {bloc === 'fil-rouge' && (
               <>
@@ -202,7 +157,7 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
                 <dt>Chakra</dt>
                 <dd>{calcul([[p.race.chakra, 'de la race'], [p.classe.chakra, 'de la classe'], [p.magie?.chakra, 'de la magie'], [p.ethnie?.chakra, 'de l’ethnie']], p.attributs.chakra)}{!p.magieConnue && <> <em>(sans sa magie)</em></>}</dd>
                 <dt>Barrière</dt>
-                <dd>{calcul([[Math.floor(p.attributs.chakra / 2), 'pour la moitié du chakra'], [p.race.barriere, 'de la race'], [p.classe.barriere, 'de la classe'], [p.ethnie?.barriere, 'de l’ethnie']], p.attributs.barriere)}</dd>
+                <dd>{calcul([[Math.floor(p.attributs.chakra / 2), moitieDuChakra(p.attributs.chakra)], [p.race.barriere, 'de la race'], [p.classe.barriere, 'de la classe'], [p.ethnie?.barriere, 'de l’ethnie']], p.attributs.barriere)}</dd>
                 <dt>Corruption maximale</dt>
                 <dd>{p.attributs.chakra}</dd>
                 {p.attributs.quatriemeBarre && (<><dt>{p.attributs.quatriemeBarre.ressource} (4ᵉ barre)</dt><dd>{p.attributs.quatriemeBarre.max}</dd></>)}

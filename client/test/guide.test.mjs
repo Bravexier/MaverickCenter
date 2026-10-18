@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, BLOCS, pagesDeReference, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
-import { ACCUEIL_DU_GUIDE, estDansUnLivre, LIVRES, pagesDuLivre } from '../src/lib/livres.mjs';
+import { ACCUEIL_DU_GUIDE, estDansDecouvrirOuLesBases, PAGES_ABSORBEES, pagesDeLaRubrique, RUBRIQUES_DU_GUIDE } from '../src/lib/livres.mjs';
 import {
   chargerCompetences,
   chargerEntrainement,
@@ -55,11 +55,15 @@ test('les liens Markdown vers une rubrique du site prennent le préfixe de dépl
 });
 
 test('un lien Markdown écrit vers une ancienne adresse du guide mène à la nouvelle au rendu, ancre gardée ; le texte de la base ne change pas', () => {
-  const options = { cheminDe: cheminDePage, existe: (id) => id !== 'guide/disparue', accueil: ACCUEIL_DU_GUIDE };
+  // les pages chargées : ni la page disparue, ni les pages fusionnées dans une autre (lib/livres.mjs#PAGES_ABSORBEES, retirées de la base)
+  const options = { cheminDe: cheminDePage, existe: (id) => id !== 'guide/disparue' && !Object.hasOwn(PAGES_ABSORBEES, id), accueil: ACCUEIL_DU_GUIDE };
   const adresse = (chemin) => adresseDesAnciensLiens(chemin, options);
   assert.equal(adresse('guide/les-postures/'), 'regles/les-postures/');
-  assert.equal(adresse('guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'), 'decouvrir/choisir-sa-classe/#une-ou-deux-classes--le-biclassage');
-  assert.equal(adresse('guide/reussir-une-action/'), 'regles/');
+  assert.equal(adresse('guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'), 'decouvrir/creer-son-personnage/#une-ou-deux-classes--le-biclassage',
+    'une page fusionnée : la page qui l’absorbe, ancre gardée');
+  assert.equal(adresse('guide/le-jeu-de-role/'), 'decouvrir/#le-jeu-de-rôle-comment-ça-marche-', 'une page fusionnée, sans ancre écrite : l’ancre où se lit son contenu');
+  assert.equal(adresse('guide/premiers-sorts/?a=1'), 'decouvrir/creer-son-personnage/?a=1#étape-5--choisir-ses-premiers-sorts', '… après la requête');
+  assert.equal(adresse('guide/reussir-une-action/'), 'regles/reussir-une-action/');
   assert.equal(adresse('guide/'), 'decouvrir/');
   assert.equal(adresse('guide/disparue/'), 'guide/disparue/', 'une page absente : tel qu’écrit (la page 404 s’en charge)');
   assert.equal(adresse('races/elfe/'), 'races/elfe/', 'les autres adresses ne changent pas');
@@ -74,12 +78,12 @@ test('un lien Markdown écrit vers une ancienne adresse du guide mène à la nou
   const liens = [...arbre.children[0].children.slice(0, 5), arbre.children[0].children[5].children[0]];
   assert.deepEqual(liens.map((l) => [l.url, l.data?.hProperties?.dataLienEcrit ?? null]), [
     ['/MaverickCenter/regles/les-postures/', '/guide/les-postures/'],
-    ['/MaverickCenter/decouvrir/choisir-sa-classe/#une-ou-deux-classes--le-biclassage', '/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'],
+    ['/MaverickCenter/decouvrir/creer-son-personnage/#une-ou-deux-classes--le-biclassage', '/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'],
     ['/MaverickCenter/races/', null], ['https://discord.gg/x', null], ['//cdn/x', null], ['/MaverickCenter/decouvrir/', '/guide/'],
   ]);
 });
 
-test('les pages de référence du guide sont rangées par document source, sans les pages des livres, ni les exemples, ni la page qui les liste', () => {
+test('les pages de référence du guide sont rangées par document source, sans les pages de Découvrir ni des Bases, ni les exemples, ni la page qui les liste', () => {
   const ref = (id, title, sources, status = 'draft') => ({ id, data: { title, sources, status } });
   const groupes = pagesDeReference([
     ref('guide/postures', 'Postures', ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »', 'https://docs.google.com/document/d/x/edit']),
@@ -110,10 +114,10 @@ const pagesDuGuide = readdirSync(dossier)
     return { id: `guide/${f.slice(0, -3)}`, data, body };
   });
 
-test('le guide du site : chaque page des livres a un résumé (infobulle de la pagination, sommaire), chaque bloc est appelé une fois, les blocs sont connus', () => {
+test('le guide du site : chaque page de Découvrir et des Bases a un résumé (cartes de l’accueil, sommaire des Bases), chaque bloc est appelé une fois, les blocs sont connus', () => {
   const parId = new Map(pagesDuGuide.map((p) => [p.id, p]));
-  for (const livre of LIVRES) {
-    for (const { id } of pagesDuLivre(livre)) {
+  for (const rubrique of RUBRIQUES_DU_GUIDE) {
+    for (const { id } of pagesDeLaRubrique(rubrique)) {
       assert.ok(parId.has(id), `${id} : page absente`);
       assert.ok(parId.get(id).data.summary, `${id} : résumé absent`);
     }
@@ -122,12 +126,14 @@ test('le guide du site : chaque page des livres a un résumé (infobulle de la p
   const blocs = pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
   assert.deepEqual([...blocs].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois');
-  assert.equal(parId.get(PREMIER).body.includes('<!-- guide:sommaire -->'), true, 'sommaire en page 1');
+  // plus de sommaire dans Bienvenue (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : plus de bloc « sommaire »
+  assert.equal(BLOCS.includes('sommaire'), false);
+  assert.throws(() => morceauxDuChapitre('<!-- guide:sommaire -->\n'), /bloc inconnu « sommaire »/);
   const documents = pagesDuGuide.find((p) => morceauxDuChapitre(p.body).some((m) => m.bloc === 'documents'));
   assert.equal(documents.id, 'guide/les-documents-des-regles');
-  assert.equal(estDansUnLivre(documents.id), false, 'la liste des pages de référence est une page de référence');
+  assert.equal(estDansDecouvrirOuLesBases(documents.id), false, 'la liste des pages de référence est une page de référence');
   const ref = pagesDeReference(pagesDuGuide, documents.id).flatMap((g) => g.pages.map((p) => p.id));
-  assert.ok(ref.length > 20 && ref.every((id) => !estDansUnLivre(id) && id !== documents.id), `${ref.length} pages de référence`);
+  assert.ok(ref.length > 20 && ref.every((id) => !estDansDecouvrirOuLesBases(id) && id !== documents.id), `${ref.length} pages de référence`);
 });
 
 const db = ouvrirBase({ sansExemples: false });

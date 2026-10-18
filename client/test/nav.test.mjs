@@ -64,7 +64,8 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (D
   assert.equal(activeGroup('/regles/avancees/meteo/').key, 'regles');
   assert.equal(activeGroup('/regles/artisanat/').key, 'regles');
   assert.equal(activeGroup('/decouvrir/liens/').key, 'decouvrir');
-  assert.equal(activeGroup('/decouvrir/premiers-sorts/').key, 'decouvrir');
+  assert.equal(activeGroup('/decouvrir/rejoindre-une-partie/').key, 'decouvrir');
+  assert.equal(activeGroup('/regles/').key, 'regles', 'le sommaire des Bases');
   assert.equal(activeGroup('/mj/').key, 'mj');
   assert.equal(activeGroup('/mj/guide-pour-mj-maverick/').key, 'mj');
   assert.equal(activeGroup('/fiche/').key, 'joueur');

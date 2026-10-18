@@ -287,6 +287,32 @@ test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne co
   assert.deepEqual(comparerBases(ref, dev), []);
 });
 
+test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe, pas dans les Règles avancées', () => {
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'), page('guide/le-jeu-de-role', 'Le jeu de rôle'), page('guide/meteo', 'Météo')] } };
+  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/meteo', 'Météo')] } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [['Le jeu de rôle', 'retire', 'Découvrir'], ['Étape 1', 'retire', 'Découvrir']],
+    'Bienvenue (rang 0 de Découvrir) puis Créer son personnage (rang 2)');
+  // une page des Règles avancées retirée y reste
+  delete dev.tables.page[1];
+  dev.tables.page = dev.tables.page.filter(Boolean);
+  assert.equal(comparerBases(ref, dev).find((l) => l.entite === 'Météo').groupe, 'Règles avancées');
+});
+
+test('guide : l’annonce de l’encart IRL (migration 0068) vide n’est pas listée ; écrite, vidée ou changée, son texte se lit', () => {
+  const annonce = (texte) => ({ tables: { annonce: [{ id: 'prochaine-rencontre-irl', texte }] } });
+  assert.deepEqual(comparerBases({ tables: {} }, annonce(null)), [], 'production sans la table, annonce vide : rien d’annoncé');
+  assert.deepEqual(comparerBases(annonce(null), annonce(null)), []);
+  assert.deepEqual(comparerBases(annonce('Une annonce.'), { tables: { annonce: [] } }).map((l) => l.nature), ['retire'], 'une annonce écrite, retirée');
+  const ecrite = comparerBases({ tables: {} }, annonce('Une annonce.'));
+  assert.deepEqual(ecrite.map((l) => [l.groupe, l.champ, l.nature]), [['Découvrir', 'Annonce', 'ajoute']], 'production sans la table : ajoutée');
+  const champ = (avant, apres) => comparerBases(annonce(avant), annonce(apres)).map((l) => [l.colonne, l.nature, l.avant, l.apres]);
+  assert.deepEqual(champ(null, 'Une annonce.'), [['texte', 'ajoute', null, 'Une annonce.']], 'écrite : son texte');
+  assert.deepEqual(champ('Une annonce.', null), [['texte', 'retire', 'Une annonce.', null]], 'vidée : l’ancien texte');
+  assert.deepEqual(champ('Une annonce.', 'Une autre.'), [['texte', 'modifie', 'Une annonce.', 'Une autre.']]);
+});
+
 test('comparerBases : schéma plus ancien en production (table ou colonne absente) toléré', () => {
   const { ref, dev } = bases();
   // colonne absente de la production : la valeur de dev est « ajoutée »
