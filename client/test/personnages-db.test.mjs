@@ -57,10 +57,10 @@ function personnageValide(id, surcharge = {}) {
   inserer('personnage_classe', { personnage_id: id, rang: 1, classe_id: 'classes/guerrier' });
   const bases = { force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 };
   for (const [c, base] of Object.entries(bases)) inserer('personnage_caracteristique', { personnage_id: id, caracteristique_id: c, base, croix: 0 });
-  for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
+  for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20 });
 }
 
-test('les 18 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 20 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -189,7 +189,7 @@ test('race, ethnie, magies : classe et magie innée hors matrice, ethnie d’une
   assert.deepEqual(regles('race-6'), ['classe_inaccessible']);
 });
 
-test('caractéristiques et compétences : bornes, totaux exacts (décision R3), plafonds du naturel et de l’acquis', () => {
+test('caractéristiques et compétences : bornes, totaux exacts (décision R3), plafond du naturel (l’acquis se calcule : décision R104)', () => {
   personnageValide('carac-1');
   db.prepare("UPDATE personnage_caracteristique SET base = 3 WHERE personnage_id = 'carac-1' AND caracteristique_id = 'force'").run();
   assert.deepEqual(controle('carac-1'), [{ regle: 'caracteristiques_total', detail: '13 / 14' }]);
@@ -199,17 +199,13 @@ test('caractéristiques et compétences : bornes, totaux exacts (décision R3), 
 
   personnageValide('comp-1');
   db.prepare("UPDATE personnage_competence SET naturel = 25 WHERE personnage_id = 'comp-1' AND competence_id = 'arc'").run();
-  db.prepare("UPDATE personnage_competence SET acquis = 11 WHERE personnage_id = 'comp-1' AND competence_id = 'parade'").run();   // Force 4 : au plus 20
-  db.prepare("UPDATE personnage_competence SET acquis = 11 WHERE personnage_id = 'comp-1' AND competence_id = 'stabilite'").run();
-  inserer('personnage_competence', { personnage_id: 'comp-1', competence_id: 'calme', naturel: 0, acquis: 11 });   // Volonté 2 : au plus 10
   assert.deepEqual(controle('comp-1'), [
-    { regle: 'competence_acquis_max', detail: 'calme = 11' },
     { regle: 'competence_naturel_max', detail: 'arc = 25' },
     { regle: 'competences_total', detail: '105 / 100' },
   ]);
 });
 
-test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options, acquis plafonné, le plafond prévalant sur le bonus', () => {
+test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options', () => {
   const bonus = (id) => db.prepare('SELECT rang, competence_id, attribut, valeur FROM v_personnage_metier_bonus WHERE personnage_id = ? ORDER BY rang').all(id).map((r) => ({ ...r }));
   // un métier dont un rang est « +N INI » et un autre un choix entre deux compétences (le Coursier à l'import), lu dans la base
   const metier = db.prepare(`SELECT b.metier_id FROM metier_bonus b WHERE b.attribut = 'initiative'
@@ -229,40 +225,47 @@ test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang �
   assert.deepEqual(regles('metier-1'), ['metier_bonus_hors_choix'], 'sans métier, le choix noté est en trop');
   assert.deepEqual(bonus('metier-1'), []);
 
-  // l'acquis compte le bonus du métier : un métier qui donne +N à une compétence d'Intelligence, avec 2 en Intelligence (plafond 10)
-  const savant = db.prepare(`SELECT b.metier_id, b.competence_id, b.valeur FROM metier_bonus b JOIN competence c ON c.id = b.competence_id
-    WHERE c.caracteristique_id = 'intelligence' AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
-    ORDER BY b.valeur DESC, b.metier_id LIMIT 1`).get();
-  personnageValide('metier-2', { metier_id: savant.metier_id });
-  inserer('personnage_competence', { personnage_id: 'metier-2', competence_id: savant.competence_id, naturel: 0, acquis: 10 - savant.valeur });
-  assert.ok(!regles('metier-2').includes('competence_acquis_max'), 'au plafond : permis');
-  db.prepare('UPDATE personnage_competence SET acquis = acquis + 1 WHERE personnage_id = ? AND competence_id = ?').run('metier-2', savant.competence_id);
-  assert.deepEqual(controle('metier-2').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 11` }]);
-
-  // le plafond prévaut sur le bonus (décision R38) : avec 1 en Intelligence (plafond 5), un bonus plus grand est rogné, sans erreur ; un point saisi en plus en est une
-  personnageValide('metier-3', { metier_id: savant.metier_id });
-  db.prepare("UPDATE personnage_caracteristique SET base = base + 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'force'").run();
-  db.prepare("UPDATE personnage_caracteristique SET base = 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'intelligence'").run();
-  db.prepare("UPDATE metier_bonus SET valeur = 9 WHERE metier_id = ? AND competence_id = ?").run(savant.metier_id, savant.competence_id);
-  assert.ok(!regles('metier-3').includes('competence_acquis_max'), regles('metier-3').join());
-  inserer('personnage_competence', { personnage_id: 'metier-3', competence_id: savant.competence_id, naturel: 0, acquis: 1 });
-  assert.deepEqual(controle('metier-3').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 6` }]);
-  db.prepare("UPDATE metier_bonus SET valeur = ? WHERE metier_id = ? AND competence_id = ?").run(savant.valeur, savant.metier_id, savant.competence_id);
+  // l'acquis (bonus du métier compris, rogné au plafond : décisions R38, R41) se calcule par la page depuis la migration 0062 (décision R104), plus par
+  // la vue : test/fiche-moteur.test.mjs
 });
 
-test('décision R41 : l’acquis au plus 5 par point de la caractéristique totale, le +1 de la magie innée compris (fixé par la magie ou choisi)', () => {
-  const social = db.prepare("SELECT id FROM competence WHERE caracteristique_id = 'social' ORDER BY ordre LIMIT 1").get().id;
-  personnageValide('r41-1');   // Feu inné : +1 Social ; Social 2 + 1 = 3, au plus 15 d'acquis
-  inserer('personnage_competence', { personnage_id: 'r41-1', competence_id: social, naturel: 0, acquis: 15 });
-  assert.deepEqual(controle('r41-1'), []);
-  db.prepare('UPDATE personnage_competence SET acquis = 16 WHERE personnage_id = ? AND competence_id = ?').run('r41-1', social);
-  assert.deepEqual(controle('r41-1'), [{ regle: 'competence_acquis_max', detail: `${social} = 16` }]);
-  // le Potentiel Illimité laisse le point au choix (caracteristique_magie_id) : Volonté 2 + 1, au plus 15
-  personnageValide('r41-2', { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'volonte' });
-  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r41-2'").run();
-  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: 'calme', naturel: 0, acquis: 15 });
-  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: social, naturel: 0, acquis: 11 });
-  assert.deepEqual(controle('r41-2'), [{ regle: 'competence_acquis_max', detail: `${social} = 11` }], 'Social 2 sans bonus : au plus 10');
+test('entraînement en lignes (décision R104, migration 0062) : une compétence et ses points, ou un texte libre ; 15 compétences au plus, 10 points au plus chacune ; plus d’acquis saisi', () => {
+  const colonnes = (table) => db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all().map((c) => c.name);
+  assert.ok(!colonnes('personnage_competence').includes('acquis'), 'l’acquis se calcule');
+  assert.ok(!colonnes('personnage').includes('entrainement'), 'le texte libre de R71 est devenu une ligne');
+  const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
+  assert.deepEqual([constante('entrainement.competences_max'), constante('entrainement.bonus_max_pct')], [15, 10]);
+  personnageValide('entr-1');
+  const ligne = (rang, l) => inserer('personnage_entrainement', { personnage_id: 'entr-1', rang, competence_id: null, valeur: null, texte: null, ...l });
+  ligne(1, { competence_id: 'arc', valeur: 10 });
+  ligne(2, { texte: 'Don évènementiel : béni par la Dame du lac' });
+  ligne(3, { competence_id: 'calme', valeur: 0 });
+  assert.deepEqual(controle('entr-1'), [], '10 points, un texte, une ligne à 0');
+  db.prepare("UPDATE personnage_entrainement SET valeur = 11 WHERE personnage_id = 'entr-1' AND rang = 1").run();
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_valeur', detail: 'arc = 11' }]);
+  db.prepare("UPDATE personnage_entrainement SET valeur = 10 WHERE personnage_id = 'entr-1' AND rang = 1").run();
+  const autres = db.prepare("SELECT id FROM competence WHERE id NOT IN ('arc', 'calme') ORDER BY ordre LIMIT 14").all().map((c) => c.id);
+  autres.forEach((c, i) => ligne(10 + i, { competence_id: c, valeur: 1 }));
+  assert.deepEqual(controle('entr-1'), [], '15 compétences montées : la ligne à 0 ne monte rien');
+  db.prepare("UPDATE personnage_entrainement SET valeur = 1 WHERE personnage_id = 'entr-1' AND rang = 3").run();
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_competences', detail: '16 / 15' }]);
+  // une compétence une fois, une ligne compétence ou texte, jamais les deux ni aucun
+  assert.throws(() => ligne(40, { competence_id: 'arc', valeur: 2 }), /UNIQUE/);
+  assert.throws(() => ligne(41, { competence_id: 'arc', valeur: 2, texte: 'x' }), /CHECK/);
+  assert.throws(() => ligne(42, { texte: '  ' }), /CHECK/);
+  assert.throws(() => ligne(43, { competence_id: 'parade' }), /CHECK/);
+  assert.throws(() => ligne(44, { competence_id: 'parade', valeur: -1 }), /CHECK/);
+  // les choix d'acquis d'un don (personnage_acquis_choix) : « X ou Y », une compétence (valeur NULL : le bonus du don) ; « à répartir au choix », chaque
+  // compétence et ses points, une fois par choix (la somme et l'option, c'est la page qui les garde : le texte du don n'est pas dans la base)
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'capacites/x', rang: 1, competence_id: 'arc', valeur: null });
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 });
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 });
+  assert.throws(() => inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 1 }), /UNIQUE|PRIMARY/);
+  assert.throws(() => inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'capacites/x', rang: 2, competence_id: 'calme', valeur: 0 }), /CHECK/);
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_competences', detail: '16 / 15' }], 'les choix d’acquis ne sont pas des règles de la vue');
+  db.prepare("DELETE FROM personnage WHERE id = 'entr-1'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_acquis_choix WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
 });
 
 test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau à partir du 2, plus 1 à 8 par dé atteint (niveaux 5, 10, 15, 20) ; règle gains_niveau', () => {
@@ -276,7 +279,7 @@ test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau �
 
   // niveau 1 : rien à saisir ; une fiche neuve a 0 et 0
   personnageValide('gains-1');
-  assert.deepEqual({ ...db.prepare("SELECT gains_sante, gains_chakra, entrainement FROM personnage WHERE id = 'gains-1'").get() }, { gains_sante: 0, gains_chakra: 0, entrainement: null });
+  assert.deepEqual({ ...db.prepare("SELECT gains_sante, gains_chakra FROM personnage WHERE id = 'gains-1'").get() }, { gains_sante: 0, gains_chakra: 0 });
   assert.deepEqual(gains('gains-1'), []);
   poser('gains-1', 3, 0);
   assert.deepEqual(gains('gains-1'), ['3 / 0'], 'des gains au niveau 1 sont signalés');
@@ -295,7 +298,7 @@ test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau �
   personnageValide('prog', { xp: xp(5) });
   db.prepare("DELETE FROM personnage_competence WHERE personnage_id = 'prog'").run();
   for (const [c, n] of [['arc', 30], ['arme-lourde', 30], ['athletisme', 30], ['parade', 30], ['stabilite', 30], ['calme', 30], ['concentration', 20]]) {
-    inserer('personnage_competence', { personnage_id: 'prog', competence_id: c, naturel: n, acquis: 0 });   // 100 + 20 + 20 + 20 + 40 = 200
+    inserer('personnage_competence', { personnage_id: 'prog', competence_id: c, naturel: n });   // 100 + 20 + 20 + 20 + 40 = 200
   }
   db.prepare("UPDATE personnage_caracteristique SET base = 3 WHERE personnage_id = 'prog' AND caracteristique_id = 'volonte'").run();   // total 15 au niveau 5
   assert.deepEqual(controle('prog'), [{ regle: 'gains_niveau', detail: '0 / 61 à 68' }]);
@@ -344,12 +347,12 @@ test('bornes du dé bonus des niveaux (décision R73) : 1 et 8 aux niveaux dont 
   assert.throws(() => db.prepare('UPDATE niveau_global SET de_attributs_min = 0 WHERE niveau = 5').run(), /CHECK/);
 });
 
-test('migration 0045 : plus de table personnage_progression ; entraînement en texte libre (R71), jamais compté ; durabilité d’une arme (R74) : NULL = à son maximum, 0 = cassée', () => {
+test('migration 0045 : plus de table personnage_progression ; entraînement en texte libre (R71 ; une ligne depuis 0062), jamais compté ; durabilité d’une arme (R74) : NULL = à son maximum, 0 = cassée', () => {
   assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_progression'").get(), undefined);
   assert.equal(existsSync(join(racine, 'data', 'rows', 'personnage_progression.sql')), false);
   personnageValide('m45');
-  db.prepare("UPDATE personnage SET entrainement = ? WHERE id = 'm45'").run('Arc +5 % (entraîneur de Lunastre) ; livre de magie lu : Boule de feu');
-  assert.deepEqual(controle('m45'), [], 'le texte de l’entraînement n’est pas compté');
+  inserer('personnage_entrainement', { personnage_id: 'm45', rang: 1, competence_id: null, valeur: null, texte: 'Arc +5 % (entraîneur de Lunastre) ; livre de magie lu : Boule de feu' });
+  assert.deepEqual(controle('m45'), [], 'une ligne de texte de l’entraînement n’est pas comptée (R104 ; R71 avant la migration 0062)');
   const arme = db.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
   inserer('personnage_arme', { personnage_id: 'm45', rang: 1, arme_id: arme });
   const durabilite = () => db.prepare("SELECT durabilite FROM personnage_arme WHERE personnage_id = 'm45' AND rang = 1").get().durabilite;
@@ -402,7 +405,7 @@ test('classes, spécialités et dons : 2e classe selon R2, spécialité au nivea
 test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, ceux d’un livre ou du MJ en plus, 3 au plus sur un sort (R24, R26)', () => {
   personnageValide('sorts', { xp: 550 });   // niveau 3 : 2 NM gagnés, NM max 2
   db.prepare("UPDATE personnage_competence SET naturel = 20 WHERE personnage_id = 'sorts'").run();
-  for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20, acquis: 0 });   // 100 + 20 + 20
+  for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20 });   // 100 + 20 + 20
   db.prepare("UPDATE personnage SET gains_sante = 30 WHERE id = 'sorts'").run();   // gains des niveaux 2 et 3 (R73)
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);

@@ -32,7 +32,8 @@ s'étend sur toute sa rangée de menus. **Compacte** (demandes du propriétaire)
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
 referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
-naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base). Un **clic droit**
+naturel des compétences un curseur (jusqu'au maximum du niveau ; l'**acquis** n'est plus un curseur : le nombre calculé, son détail en infobulle, décision
+R104). Un **clic droit**
 sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
 abandonne.
 
@@ -153,7 +154,18 @@ abandonne.
   statistiques après qu'on ai finalisé toute la fiche de personnages. » ; pas dans la fiche : « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16) : la page
   Statistiques du site (E12, `feuille-de-route.md`).
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
-  compétences est « N/A ». L'acquis d'une compétence va jusqu'à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41).
+  compétences est « N/A ». L'**acquis** d'une compétence **se calcule** (décision R104) : l'entraînement, les dons débloqués (race, ethnie, classes) dont le
+  texte écrit « +N% Compétence » sans ambiguïté (`lib/acquis-texte.mjs`, lu au build ; dons de classe passifs seulement, ligne de l'ethnie du tableau de
+  la race comprise : « Bonus compétence » du Drakos), l'armure portée (« +25% Stabilité » ; sauf transformée par un élément, R99), le métier (R33) et
+  l'accessoire « Compétence X » (R54), dans cet ordre (un arbitrage),
+  rognés à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41 ; « le plafond prévaut », R38) ; le nombre s'affiche
+  en gras, rouge s'il est rogné, son détail en infobulle (`competencesDe` : `entrainement`, `dons`, `metier`, `accessoire` et leurs `…Brut`). Un bonus « X ou Y »
+  d'un don est un **choix** (« Acquis à choisir », sous les dons, et le tiroir des choix : `acquisDesDons`, `acquisApresChoix`) ; « 10% de compétence en acquis à
+  répartir au choix » (Humain central), une **répartition** : une ligne par compétence et ses points, « + Compétence » tant qu'il en reste
+  (`acquisApresRepartition`) ; les choix gardés sont ceux d'un don encore débloqué (`acquisChoixValables`, table `personnage_acquis_choix`). Un bonus que la
+  phrase lie à une situation, à « l'arme choisie », aux « compétences d'arme », à « 2 sur les 3 », aux jets d'une caractéristique ou à l'artisanat n'est pas
+  compté : listé sous « Bonus d'acquis non comptés », avec sa raison (questions Q21 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est
+  augmenté de +20 » (Mort-vivant) relève le plafond de chaque compétence du Social (`plafondBonus`, question Q28).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
   exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
   personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
@@ -168,8 +180,12 @@ abandonne.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
-  Entre les deux, l'**entraînement** (décision R71, `personnage.entrainement`) : un texte libre — bonus d'entraînement, livres de magie lus, ce que le MJ
-  accorde —, **jamais compté** (les points gagnés se saisissent dans l'acquis, le NM d'un livre sur son sort) ; son aide cite, tel que la base l'écrit, le
+  Entre les deux, l'**entraînement** (décision R104, table `personnage_entrainement` ; avant, un texte libre jamais compté : R71) : des **lignes** qu'on
+  ajoute (« + Compétence », « + Livre de sort », « + Texte »), chacune une **compétence** et ses points (un curseur de 0 à 10, comptés dans l'acquis ; 15
+  compétences au plus : règles `entrainement_valeur`, `entrainement_competences` de la vue, qui signalent sans bloquer ; deux lignes de la même compétence n'en
+  font qu'une à l'enregistrement, points additionnés : `entrainementsAEnregistrer`), un **livre de sort** (le sort choisi parmi ceux de la fiche : son NM de
+  livre, `nm_livre`, « sans changer le calcul » ; la case du livre a quitté le tableau des sorts, qui ne montre plus que « livre » à côté du NM) ou un
+  **texte libre** (« dons évènementiels », jamais compté) ; son aide cite, tel que la base l'écrit, le
   paragraphe du guide « S’entraîner et exercer un métier » (chapitre 21) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
   au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
 - **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
@@ -320,16 +336,18 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   auto, sont dans `lib/fiche-tableur-cases.mjs`.
 - **Export** (`lib/fiche-tableur-export.mjs`, `cellulesDeLaFiche`) : les valeurs de la fiche, calculées par les mêmes fonctions du moteur que la
   page, jamais une règle de plus. Deux sommes pour l'affichage, comme la fiche auto : bonus d'une caractéristique = magie + accessoires (G18,
-  correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = acquis du joueur + bonus du métier (R33, rogné au plafond : R38) +
-  accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
+  correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = l'acquis calculé (R104 : entraînement, dons, métier, accessoires, rognés
+  au plafond) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
   sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP et AM de la
   grille de l'armure. Le **bouclier** (R96) : la forme en AA26, la matière et l'amélioration en AF26 (« Bois · niv. 2 — +4 AP + matériaux »), sa classe
   en AK26, son AP et son AM (calculés) en AN26 et AS26, sa solidité du moment « N / M » en AX26, relue. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
   « N / M », la même sur les six pour une armure à solidité unifiée. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
   l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
-  deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte le
-  texte libre de la fiche (R71, `personnage.entrainement`), tel quel, blancs de bord retirés ; le nom et le type du modèle restent. Les dés de maîtrise
+  deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte les
+  compétences de l'entraînement (R104), « Nom points » jointes par « | » (« Magie 2 | Concentration 10 », la forme de la fiche auto ; une case relue, sa
+  suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
+  une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition) ; le nom et le type du modèle restent. Les dés de maîtrise
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre et
@@ -387,19 +405,24 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   de spécialité) :
   - **bi-classe** : la ligne de la note ; sinon deux classes au niveau global, sous le niveau 20 (R2 : en mono-classe, la classe 1 est à deux fois
     le niveau global, 20 au plus ; au niveau 20, les deux s'écrivent pareil : mono-classe) ;
-  - **acquis du joueur** = acquis écrit − bonus du métier − accessoires (R54). Le bonus du métier retiré : pour un classeur de la page, celui de la
-    base (R33, rogné au plafond : R38), qu'elle a écrit ; pour un classeur qui n'en vient pas (fiche auto, modèle rempli à la main), **celui qu'écrit
-    sa case L41** (R72 : « Le métier suit la base » — l'ancien bonus est retiré, brut, le site ajoute celui de la base, le joueur ne garde que ses
-    points ; `bonusDuMetierEcrit`). Lucien : Connaissance 0 au joueur (4 écrits, « 4% Connaissance »), affichée 3 ; Louise : Esquive, Réflexe et Ruse
-    0 (« +2% Reflexe, Esquive et Ruse »), affichées 3, 3 et 0. Une remarque de synthèse quand l'ancien bonus n'est pas celui de la base (« Métier
-    Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 : les acquis suivent la base (R72) ») ;
-    une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et autres mots, nom de compétence écrit
-    avant son « N% » (« Esquive +3% ») ou pris dans d'autres mots (« aux jets d'Esquive »), nombre précédé d'un signe moins, décimal, case coupée
-    dans un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son ancien bonus est retiré quand même, et
-    dit. L41 se lit comme la page l'écrit (rangs à choix « … → Compétence », « → ? » pas choisi ; l'artisanat « = N % » n'est pas un bonus) et comme
-    la fiche auto (« 4% Connaissance. … », « Bonus +2% Reflexe, Esquive et Ruse. ») ; le test relit la case de chaque métier de la base, pour chaque
-    choix. Une remarque par compétence touchée pour un classeur qui ne vient pas de la page (« Connaissance : acquis 4 du classeur − 4 du métier
-    Écrivain (classeur) = 0 au joueur »), et toujours quand l'acquis écrit est plus petit que ces bonus (« 0 au joueur ») ;
+  - **acquis** : il se calcule (R104), l'acquis écrit n'est pas repris ; il est comparé au calcul, le bonus du métier que le classeur comptait remplacé
+    par celui de la base — pour un classeur de la page, celui de la base, qu'elle a écrit ; pour un classeur qui n'en vient pas (fiche auto, modèle
+    rempli à la main), **celui qu'écrit sa case L41** (R72 : « Le métier suit la base » ; `bonusDuMetierEcrit`). Plus que le calcul : une ligne de
+    `nonRepris` (« Acquis Arbalète : « 6 » dans le classeur, 0 calculé (l'acquis se calcule : … ; décision R104) », des points saisis que la fiche n'a
+    plus) ; moins : une remarque (le calcul compte davantage : dons, armure, métier). Avant, un **choix « X ou Y »** d'un don que le classeur ne dit pas (fiche
+    auto, classeur de la page d'avant R104) est déduit quand une seule option l'explique — celle dont l'acquis écrit dépasse le calcul de la valeur du
+    bonus (un arbitrage, dit par une remarque : « Acquis au choix de Épéiste (Guerrier) (+5 %) déduit : Arme Légère (l'acquis du classeur) ») ; une
+    répartition (« à répartir au choix ») ne se déduit pas, ce que l'acquis écrit a de plus pouvant venir d'ailleurs : elle reste à faire. Une remarque de synthèse quand l'ancien bonus du
+    métier n'est pas celui de la base (« Métier Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 :
+    les acquis suivent la base (R72) ») ; une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et
+    autres mots, nom de compétence écrit avant son « N% » (« Esquive +3% ») ou pris dans d'autres mots (« aux jets d'Esquive »), nombre précédé d'un
+    signe moins, décimal, case coupée dans un bonus) : le bonus de la base, et « à vérifier » si le métier en donne un ; un métier introuvable : son
+    ancien bonus est retiré quand même, et dit. L41 se lit comme la page l'écrit (rangs à choix « … → Compétence », « → ? » pas choisi ; l'artisanat
+    « = N % » n'est pas un bonus) et comme la fiche auto (« 4% Connaissance. … », « Bonus +2% Reflexe, Esquive et Ruse. ») ; le test relit la case de
+    chaque métier de la base, pour chaque choix ;
+  - **entraînement** : la case L42 lue en compétences (« 2 Magie | 10 Concentration » ou « Magie 2 | Concentration 10 », `bonusDEntrainement`), une
+    ligne chacune ; une case qui ne se lit pas ainsi (le texte libre d'avant, R71), une ligne de texte libre par ligne de la case ; puis les lignes
+    « Entraînement » de la note ;
   - **gains de niveau** (classeur qui ne vient pas de la page, sans la ligne de la note) : deux totaux (R73 : « gains = maximum lu − le reste du
     calcul »), le maximum de santé et de chakra lu (fiche auto : F14, M14 ; modèle ordinateur : le « b » de « a / b ») moins ce que la fiche calcule
     sans gains (race, ethnie, magies, classes, accessoires : `gainsDesMaximums`) ; une remarque dit la déduction (« Gains de niveau déduits des
@@ -417,8 +440,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   sans bouclier ou illisible, une solidité d'arme illisible,
   sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui ne nomme pas d'armure, une pièce d'armure au-delà de la première (R95), la solidité d'une partie
   de l'armure illisible ou sans armure reconnue, une
-  ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R71), dans les
-  deux dispositions, tel quel (recollé à sa suite dans la note quand la page l'a coupé) ; dans le modèle ordinateur, la **solidité** de chaque arme
+  ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R104), dans les
+  deux dispositions, en lignes de compétence (recollé à sa suite dans la note quand la page l'a coupé) ; dans le modèle ordinateur, la **solidité** de chaque arme
   (AK17, AX17, R74 : « N / M » lu sur la ligne d'arme finale, composition et amélioration relues ; à son maximum ou au-delà, rien d'enregistré ; le
   « / » du modèle n'est pas une valeur ; un décimal arrondi vers le bas, dit) et celle de chaque partie de l'armure (AI24:AN24, R95 : à son maximum,
   rien ; une armure à solidité unifiée prend la plus basse) ; la « Solidité » de la fiche auto (AK15, AX15) n'est qu'un maximum
@@ -457,13 +480,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   règle (seul script de page : `src/scripts/fiche.mjs` ; le service et la page Astro l'importent aussi), sans aucun import (`test/google-sheets.test.mjs`).
 - **Décisions du 2026-10-15** (questions Q6 à Q11 de [`sql/a-valider.md`](sql/a-valider.md)) : les paliers de résistance sont ceux de la fiche auto
   et de la base, ÷2, ÷4, x2, x4, x8 (R70 : le modèle ordinateur, ÷3, x3, x4, se trompe ; l'export écrit ceux de la base) ; la case « Entraînement » est
-  un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
+  un texte libre de la fiche (R71, remplacée le 2026-10-17 par des lignes : R104) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
   deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13), ce que perd une armure ou un bouclier cassé (Q14),
   la Symbiose du Potentiel Illimité (Q15), les bonus « tous les M niveaux globaux » (Q16), la magie désactivée en Symbiose (Q17), les objets en
-  Symbiose (Q18), les valeurs par tour (Q19) et les bonus « selon la situation » douteux (Q20) :
-  [`sql/a-valider.md`](sql/a-valider.md).
+  Symbiose (Q18), les valeurs par tour (Q19), les bonus « selon la situation » douteux (Q20), et les bonus d'acquis des dons non comptés : « à
+  répartir au choix » (Q21), « l'arme choisie » (Q22), « les compétences d'arme » (Q23), « 2 sur les 3 » (Q24), les jets d'une caractéristique (Q25),
+  l'artisanat (Q26), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non comptés
+  (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 
@@ -522,11 +547,13 @@ pas, et la note datée est le seul signal.
 | Table | Contenu (cellules de la fiche) |
 | --- | --- |
 | `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage) et ses rôles : connexion Discord prévue à la 1.0 (`feuille-de-route.md`) |
-| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73), et **entraînement** (`entrainement`, case L42 : texte libre, jamais compté, décision R71) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes |
+| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes (l'entraînement en texte, `entrainement`, ajouté par la même migration (R71), est retiré par la migration 0062 : `personnage_entrainement`) |
 | `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche |
 | `personnage_classe` | Classes 1 et 2 (A9, A11) et leur spécialité (choisie au niveau de classe 10) |
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
-| `personnage_competence` | Points « Nat. » et « Acquis » de chaque compétence (G22, I22…) ; l'Acquis du métier n'y est pas écrit (il se calcule : `v_personnage_metier_bonus`) |
+| `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
+| `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
+| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |

@@ -36,7 +36,7 @@ function ficheConforme(surcharge = {}) {
     race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }],
     caracteristiques: Object.entries({ force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 }).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 })),
-    competences: ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite'].map((competence_id) => ({ competence_id, naturel: 20, acquis: 0 })),
+    competences: ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite'].map((competence_id) => ({ competence_id, naturel: 20 })),
     ...surcharge,
   };
 }
@@ -115,33 +115,37 @@ test('caractéristiques : +1 de la magie innée sur sa caractéristique (ou cell
   assert.ok(sansRace.every((c) => c.base === null && c.min === 1 && c.max === 4));
 });
 
-test('compétences : score = 10 × caractéristique + naturel + acquis ; une croix −20, deux croix inutilisable (R19) ; acquis au plus 5 par point, magie comprise (R41)', () => {
+test('compétences : score = 10 × caractéristique + naturel + acquis (calculé, décision R104) ; une croix −20, deux croix inutilisable (R19) ; acquis au plus 5 par point, magie comprise (R41)', () => {
   const fiche = ficheConforme({
-    competences: [{ competence_id: 'arme-lourde', naturel: 20, acquis: 5 }],
+    entrainements: [{ rang: 1, competence_id: 'arme-lourde', valeur: 5, texte: null }],
     caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'social' ? { ...c, croix: 1 } : c.caracteristique_id === 'agilite' ? { ...c, croix: 2 } : c)),
   });
   const parId = new Map(competencesDe(regles, fiche).map((c) => [c.id, c]));
   const force = regles.competences.find((c) => c.id === 'arme-lourde').caracteristique_id;
   assert.equal(force, 'force');
-  assert.deepEqual({ score: parId.get('arme-lourde').score, maxAcquis: parId.get('arme-lourde').maxAcquis }, { score: 4 * 10 + 20 + 5, maxAcquis: 20 });
+  const lourde = parId.get('arme-lourde');
+  // (les dons du Guerrier qui donnent de l'acquis en Arme lourde, lus dans leur texte, comptent aussi : acquisDesDons)
+  assert.deepEqual({ score: lourde.score, acquis: lourde.acquis, entrainement: lourde.entrainement, plafondAcquis: lourde.plafondAcquis },
+    { score: 4 * 10 + 20 + 5 + lourde.dons, acquis: 5 + lourde.dons, entrainement: 5, plafondAcquis: 20 });
+  assert.equal(lourde.dons, lourde.donsDetail.reduce((t, d) => t + d.valeur, 0));
   const social = regles.competences.find((c) => c.caracteristique_id === 'social');
-  assert.equal(parId.get(social.id).score, 3 * 10 - 20, 'Social 2 + 1 (Feu) ; une croix');
+  assert.equal(parId.get(social.id).score, 3 * 10 - 20 + parId.get(social.id).acquis, 'Social 2 + 1 (Feu) ; une croix');
   const agilite = regles.competences.find((c) => c.caracteristique_id === 'agilite');
   assert.equal(parId.get(agilite.id).score, null);
   // décision R41 : la caractéristique totale, le +1 de la magie innée compris (Social 2 + 1 du Feu : 15) ; l'exemple du propriétaire, 5 en Volonté : 25
-  assert.equal(parId.get(social.id).maxAcquis, 15);
+  assert.equal(parId.get(social.id).plafondAcquis, 15);
   const volonte = regles.magies.find((m) => m.caracteristique_id === 'volonte');
   assert.ok(volonte, 'une magie donne +1 en Volonté');
   const cinq = ficheConforme({
     magie_innee_id: volonte.id,
     caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'volonte' ? { ...c, base: 4 } : c.caracteristique_id === 'force' ? { ...c, base: 2 } : c)),
   });
-  assert.equal(competencesDe(regles, cinq).find((c) => c.id === 'calme').maxAcquis, 25);
-  // la base dit la même chose : 25 passe, 26 non
-  const { controles } = enregistrerFiche(vivante, { ...cinq, competences: [...cinq.competences, { competence_id: 'calme', naturel: 0, acquis: 25 }] });
-  assert.ok(!controles.some((c) => c.regle === 'competence_acquis_max'), JSON.stringify(controles));
-  const trop = enregistrerFiche(vivante, { ...cinq, competences: [...cinq.competences, { competence_id: 'calme', naturel: 0, acquis: 26 }] });
-  assert.deepEqual(trop.controles.filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: 'calme = 26' }]);
+  assert.equal(competencesDe(regles, cinq).find((c) => c.id === 'calme').plafondAcquis, 25);
+  // l'acquis n'est plus saisi : un « acquis » reçu n'est pas lu, et la base n'a plus de règle à son sujet (le plafond est appliqué, jamais une erreur)
+  const ancien = competencesDe(regles, { ...cinq, competences: [...cinq.competences, { competence_id: 'calme', naturel: 0, acquis: 26 }] }).find((c) => c.id === 'calme');
+  assert.equal(ancien.acquis, competencesDe(regles, cinq).find((c) => c.id === 'calme').acquis);
+  const { controles } = enregistrerFiche(vivante, { ...cinq, entrainements: [{ rang: 1, competence_id: 'calme', valeur: 10, texte: null }] });
+  assert.deepEqual(controles, []);
 });
 
 test('attributs des quatre personnages fil rouge : les mêmes que le guide (santé, chakra, barrière, vitesse, AP/AM, emplacements de sorts)', () => {
@@ -681,7 +685,7 @@ test('décision R33 : le métier donne son bonus en acquis (rang à choix : la c
   assert.deepEqual(choixDeMetierValables(regles, { ...bon, metier_id: null }), []);
 });
 
-test('décision R33 : le bonus du métier compte dans l’acquis — score, plafond de 5 par point de base, curseur réduit d’autant ; initiative 1D20 + Agilité + métier', () => {
+test('décision R33 : le bonus du métier compte dans l’acquis — score, plafond de 5 par point de base, acquis calculé ; initiative 1D20 + Agilité + métier', () => {
   const metier = regles.metiers.find((m) => m.bonus.some((b) => b.options.length === 1 && b.options[0].competence_id));
   const rang = metier.bonus.find((b) => b.options.length === 1 && b.options[0].competence_id);
   const id = rang.options[0].competence_id;
@@ -691,7 +695,7 @@ test('décision R33 : le bonus du métier compte dans l’acquis — score, plaf
   assert.equal(avec.metier, total);
   assert.equal(avec.score, sans.score + total);
   assert.equal(avec.plafondAcquis, sans.plafondAcquis);
-  assert.equal(avec.maxAcquis, Math.max(0, sans.maxAcquis - total));
+  assert.equal(avec.acquis, sans.acquis + total, 'compté dans l’acquis calculé (R104)');
   assert.equal(sans.metier, 0);
   // initiative : un métier « +N INI » s'ajoute au bonus de l'Agilité
   const coureur = regles.metiers.find((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative')));
@@ -776,7 +780,7 @@ test('décision R38 : le plafond d’Acquis prévaut sur le bonus du métier —
   const intelligence = fiche.caracteristiques.find((c) => c.caracteristique_id === 'intelligence');
   const plafond = intelligence.base * regles.constantes['competence.acquis_max_par_point_caracteristique'];
   const c = competencesDe(r, fiche).find((x) => x.id === 'connaissance');
-  assert.deepEqual([c.metierBrut, c.metier, c.plafondAcquis, c.maxAcquis], [7, Math.min(7, plafond), plafond, Math.max(0, plafond - 7)]);
+  assert.deepEqual([c.metierBrut, c.metier, c.plafondAcquis, c.acquis], [7, Math.min(7, plafond), plafond, Math.min(7, plafond)]);
   const sans = competencesDe(r, { ...fiche, metier_id: null }).find((x) => x.id === 'connaissance');
   assert.equal(c.score, sans.score + Math.min(7, plafond));
   // dans la base : un vrai métier dont le bonus dépasse le plafond d'une caractéristique de base 1
@@ -790,13 +794,12 @@ test('décision R38 : le plafond d’Acquis prévaut sur le bonus du métier —
     const caracteristiques = Object.entries(bases).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 }));
     const metier_bonus = grand.metier.bonus.filter((b) => b.options.filter((o) => o.competence_id).length > 1).map((b) => ({ rang: b.rang, competence_id: b.options.find((o) => o.competence_id).competence_id }));
     const { controles } = enregistrerFiche(vivante, ficheConforme({ metier_id: grand.metier.id, caracteristiques, metier_bonus }));
-    assert.ok(!controles.some((x) => x.regle === 'competence_acquis_max'), `${grand.metier.id} : bonus rogné, pas d’erreur`);
-    // un point d'acquis saisi sur cette compétence (en plus de son naturel s'il y en a)
-    const naturel = ficheConforme().competences.find((x) => x.competence_id === grand.competence.id)?.naturel ?? 0;
-    const competences = [...ficheConforme().competences.filter((x) => x.competence_id !== grand.competence.id), { competence_id: grand.competence.id, naturel, acquis: 1 }];
-    const unDePlus = ficheConforme({ metier_id: grand.metier.id, caracteristiques, metier_bonus, competences });
-    assert.ok(enregistrerFiche(vivante, unDePlus).controles.some((x) => x.regle === 'competence_acquis_max'), 'un point saisi au-delà de ce que le bonus laisse');
-    assert.equal(competencesDe(regles, unDePlus).find((x) => x.id === grand.competence.id).maxAcquis, 0);
+    assert.deepEqual(controles.filter((x) => String(x.detail).includes(grand.competence.id)), [], `${grand.metier.id} : bonus rogné, pas d’erreur`);
+    // l'entraînement sur cette compétence ne passe pas le plafond : il est compté en premier, le métier prend ce qui reste (R104)
+    const entraine = ficheConforme({ metier_id: grand.metier.id, caracteristiques, metier_bonus, entrainements: [{ rang: 1, competence_id: grand.competence.id, valeur: 3, texte: null }] });
+    const k = competencesDe(regles, entraine).find((x) => x.id === grand.competence.id);
+    assert.deepEqual([k.entrainement, k.metier, k.acquis], [3, k.plafondAcquis - 3, k.plafondAcquis]);
+    assert.ok(!enregistrerFiche(vivante, entraine).controles.some((x) => x.regle.startsWith('entrainement')), 'rogné, jamais une erreur');
   }
 });
 
@@ -853,7 +856,7 @@ test('dons de la race (demande du propriétaire) : le don de base d’abord, le 
   assert.ok(tableau, 'une race a un tableau de dons par ethnie');
   const ligne = tableau.dons_tableau.lignes.find((l) => l.ethnie_id);
   const avecTableau = donsDeRace(regles, { ...ficheVide(), race_id: tableau.id, ethnie_id: ligne.ethnie_id });
-  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null });
+  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null, acquis: ligne.acquis ?? [] });
   assert.deepEqual(donsDeRace(regles, ficheVide()), { base: null, dons: [], tableau: null, ethnieAChoisir: false }, 'sans race');
 });
 

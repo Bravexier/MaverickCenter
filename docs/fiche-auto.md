@@ -90,13 +90,14 @@ est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/
   compétences, maîtrises (« Nd » en AI et AN), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
   composition manque, R49), armure (AD21, AT20, AS21, AX21), bouclier et ses trois matériaux, accessoires (propriété, effet, valeur — « 18% » ou
   0,18 : 18 —, malédiction), ceinture (AQ29, AQ32, AQ35, et leur quantité en AX), inventaire, sorts et NM, dons à choix, métier, événements
-  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes, et l'**entraînement** (L42, tel
-  quel : le champ texte libre de la fiche, décision R71 ; Lucien : « 2 Magie | 10 Concentration | 10 Observation | 10 Distinction »).
-- **Déduit**, et dit dans les notes : l'acquis du joueur (l'acquis écrit moins le bonus du métier **que la fiche comptait**, celui qu'écrit sa case
-  L41 — décision R72, « Le métier suit la base » : l'ancien bonus est retiré, celui de la base s'applique, le joueur ne garde que ses points ;
-  Lucien, « 4% Connaissance » : Connaissance 0 au joueur ; Louise, « +2% Reflexe, Esquive et Ruse » : Esquive, Réflexe et Ruse 0 ; une remarque de
-  synthèse quand il diffère de la base ; L41 illisible : le bonus de la base, à vérifier —, et moins les accessoires, R54 ; une remarque par
-  compétence touchée), les gains de niveau (deux totaux, décision R73 : les maximums de santé et de chakra, F14 et M14, moins ce que la fiche calcule
+  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes, et l'**entraînement** (L42, lu
+  ligne par ligne en compétences et points, décision R104 ; une ligne qui ne se lit pas ainsi, une ligne de texte libre ; Lucien : « 2 Magie |
+  10 Concentration | 10 Observation | 10 Distinction »).
+- **Déduit**, et dit dans les notes : l'**acquis** n'est plus repris, il se calcule (décision R104 : entraînement, dons, armure, métier,
+  accessoires) ; l'acquis écrit, le bonus du métier **que la fiche comptait** (celui qu'écrit sa case L41 — décision R72, « Le métier suit la
+  base » ; Lucien, « 4% Connaissance » ; Louise, « +2% Reflexe, Esquive et Ruse » ; une remarque de synthèse quand il diffère de la base ; L41
+  illisible : le bonus de la base, à vérifier) remplacé par celui de la base, est comparé au calcul : plus, une ligne de `nonRepris` ; moins, une
+  remarque ; un choix « X ou Y » d'un don, quand une seule option l'explique ; les gains de niveau (deux totaux, décision R73 : les maximums de santé et de chakra, F14 et M14, moins ce que la fiche calcule
   sans gains ; Lucien : santé 41, chakra 121 ; Louise : santé 61, chakra 99 ; « à vérifier » quand un maximum est sous ce calcul ou que le total
   sort de ce que donnent les niveaux atteints), la compétence d'un accessoire « Compétence X » (d'après les bonus d'entraînement de la case L42 :
   guide « Fiche de personnage : Capacités/Dons »), l'élément d'une armure écrit par le nom de sa magie (l'armure élémentaire

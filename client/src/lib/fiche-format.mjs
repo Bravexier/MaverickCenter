@@ -12,8 +12,8 @@
  */
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
-  'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme',
+  'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
@@ -30,6 +30,8 @@ export const PARTIES_DE_FICHE = Object.freeze({
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
   ceinture: 'personnage_ceinture',
+  entrainements: 'personnage_entrainement',
+  acquis_choix: 'personnage_acquis_choix',
 });
 
 /** Tables qui citent une fiche sans en faire partie : le partage d'une fiche de joueur et les inscriptions dans les groupes de jeu. */
@@ -46,8 +48,37 @@ export const CHAMP_VERSION = 'version';
  * (serveur/base-vivante.mjs), et une fiche qui en porte encore une (fichier exporté avant, page restée ouverte) se lit sans elle (page /fiche/, service).
  * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038). `nom` et `texte` d'un accessoire (le nom
  * donné à l'objet, l'effet hors table) : décision R97, migration 0060 ; ce qu'ils portaient est noté, daté, dans la fiche (accessoiresGardes).
+ * `entrainement` (le texte libre de R71) : une ligne de texte de l'entraînement (décision R104, migration 0062 : entrainementEnLignes) ; `acquis` d'une
+ * compétence : l'Acquis se calcule, les points saisis sont notés, datés, dans la fiche (acquisRetires).
  */
-export const COLONNES_RETIREES = Object.freeze({ personnage: Object.freeze(['statut']), personnage_accessoire: Object.freeze(['nom', 'texte']) });
+export const COLONNES_RETIREES = Object.freeze({
+  personnage: Object.freeze(['statut', 'entrainement']), personnage_accessoire: Object.freeze(['nom', 'texte']), personnage_competence: Object.freeze(['acquis']),
+});
+
+/**
+ * Les lignes d'entraînement d'un ancien texte d'entraînement (personnage.entrainement, décision R71) : une ligne de texte libre par ligne non vide du
+ * texte, sans ses blancs de bord, rien pour un texte vide (décision R104 : « un texte libre pour les dons évènementiels »). La même conversion pour la
+ * base vivante (serveur/base-vivante.mjs), une fiche reçue d'une page d'avant et la case L42 d'un classeur qu'on ne lit pas en compétences.
+ */
+export const entrainementEnLignes = (texte) => (typeof texte === 'string' ? texte.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [])
+  .map((l, i) => ({ rang: i + 1, competence_id: null, valeur: null, texte: l }));
+
+/**
+ * Vrai si la fiche reçue porte à la fois l'ancien texte d'entraînement (non vide) et des lignes d'entraînement (décision R104) : une page d'avant qui a
+ * repris les lignes d'une réponse ; on ne sait pas les concilier, le service refuse (409).
+ */
+export const entrainementAvecLignes = (fiche) => typeof fiche?.entrainement === 'string' && fiche.entrainement.trim() !== ''
+  && Array.isArray(fiche?.entrainements) && fiche.entrainements.length > 0;
+
+/**
+ * Ce qu'une fiche perd avec l'acquis saisi de ses compétences (décision R104, réponse « Lus dans les dons » : les acquis saisis d'avant sont retirés et
+ * listés dans une note datée) : un descripteur par compétence dont l'acquis saisi est positif, dans l'ordre reçu. `noms.competence(id)` rend son nom.
+ */
+export function acquisRetires(competences, noms = {}) {
+  return (Array.isArray(competences) ? competences : [])
+    .filter((c) => entierPositif(c?.acquis) > 0)
+    .map((c) => ({ nature: 'acquis', id: c.competence_id, nom: noms.competence?.(c.competence_id) ?? null, valeur: entierPositif(c.acquis) }));
+}
 
 /**
  * Tables que les règles ont retirées de la section 13, avec leur ancienne clé dans le JSON d'une fiche (PARTIES_RETIREES : l'inverse). Leurs lignes ne
@@ -263,7 +294,10 @@ export function accessoiresGardes(lignes, noms = {}) {
 export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = null } = {}) {
   if (!fiche || typeof fiche !== 'object' || Array.isArray(fiche)) return fiche;
   const accessoires = Array.isArray(fiche.accessoires) && fiche.accessoires.some(accessoireAConvertir);
-  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires) return fiche;
+  // décision R104 : l'ancien texte d'entraînement et l'acquis saisi des compétences
+  const entrainement = 'entrainement' in fiche;
+  const acquis = Array.isArray(fiche.competences) && fiche.competences.some((c) => c && 'acquis' in c);
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis) return fiche;
   const { progression, armures, bouclier_materiaux, ...reste } = fiche;
   const retraits = [];
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
@@ -281,6 +315,17 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
     const conversion = accessoiresGardes(reste.accessoires, noms);
     reste.accessoires = conversion.lignes;
     retraits.push(...conversion.retraits);
+  }
+  if (entrainement) {
+    const { entrainement: texte } = reste;
+    delete reste.entrainement;
+    // la liste vide d'une page d'avant qui a repris une réponse (ficheVide) ne s'oppose pas au texte : il devient ses lignes (entrainementAvecLignes)
+    if (!Array.isArray(reste.entrainements) || !reste.entrainements.length) reste.entrainements = entrainementEnLignes(texte);
+  }
+  if (acquis) {
+    retraits.push(...acquisRetires(reste.competences, noms));
+    // (une ligne qui n'est pas un objet reste telle quelle : la vérification de forme du service la refuse, 400)
+    reste.competences = reste.competences.map((c) => (c && typeof c === 'object' && !Array.isArray(c) ? (({ acquis: _a, ...x }) => x)(c) : c));
   }
   if (retraits.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, retraits.map((d) => ligneDeRetrait(d, instant)));
   return reste;
@@ -323,7 +368,7 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
  * objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
  * matière), accessoire (R97 : plus d'emplacement Ceinture ni Autre, ni de nom, ni d'effet hors table).
  */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire']);
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire', 'acquis']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -352,11 +397,12 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                pièce de l'armure gardée, dont l'amélioration ou l'élément propres se perdent ;
  *   matériau   : « le matériau de bouclier « Fer » (×2) » : un matériau que le bouclier ne garde pas, il n'a plus qu'une matière (décision R96) ;
  *   accessoire : « l'accessoire « Bague » (Ceinture, effet « Dégâts magie +2 », effet hors table « Brille la nuit ») » ou, sans nom, « l'accessoire de
- *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table.
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table ;
+ *   acquis     : « l'acquis saisi en Arc (7) » : les points d'acquis saisis d'une compétence, l'Acquis se calculant (décision R104 ; `valeur`).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire' | 'acquis', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[], devenue?: boolean, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
- *   ecarte?: boolean }} d
+ *   ecarte?: boolean, valeur?: number }} d
  */
 export function descriptionDuRetrait(d) {
   const nom = d.nom ?? d.id;
@@ -400,6 +446,9 @@ export function descriptionDuRetrait(d) {
     if (d.nom && d.emplacement) parties.push(d.emplacement);
     if (d.effet) parties.push(`effet « ${d.effet} »`);
     if (d.texte) parties.push(`effet hors table « ${d.texte} »`);
+  } else if (d.nature === 'acquis') {
+    tete = `l’acquis saisi en ${nom}`;
+    if (positif(d.valeur)) parties.push(`${d.valeur}`);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }
@@ -426,7 +475,10 @@ export const ligneDeRetrait = (d, instant) =>
           ? (d.ecarte
             ? 'n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.'
             : 'reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.')
-          : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
+          : d.nature === 'acquis'
+            // décision R104 : l'Acquis se calcule (entraînement, dons, métier, accessoires)
+            ? 'n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.'
+            : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

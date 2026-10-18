@@ -114,8 +114,8 @@ function ficheRiche() {
     // F 2, V 3, I 4, P 2, S 3 (une croix), A 4 (deux croix : ses compétences sont inutilisables)
     caracteristiques: regles.caracteristiques.map((k, i) => ({ caracteristique_id: k.id, base: 2 + (i % 3), croix: k.id === 'social' ? 1 : k.id === 'agilite' ? 2 : 0 })),
     competences: [
-      { competence_id: 'connaissance', naturel: 20, acquis: 5 }, { competence_id: 'concentration', naturel: 10, acquis: 0 },
-      { competence_id: 'magie', naturel: 0, acquis: 2 }, { competence_id: 'arc', naturel: 15, acquis: 3 }, { competence_id: 'esquive', naturel: 10, acquis: 0 },
+      { competence_id: 'connaissance', naturel: 20 }, { competence_id: 'concentration', naturel: 10 }, { competence_id: 'arc', naturel: 15 },
+      { competence_id: 'esquive', naturel: 10 },
     ],
     metier_bonus: [{ rang: 2, competence_id: 'magie' }],
     maitrises_armes: [
@@ -131,8 +131,11 @@ function ficheRiche() {
       },
       { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut },
     ],
-    // le texte libre de l'entraînement (décision R71), sur deux lignes
-    entrainement: '2 Magie | 10 Concentration\nLivre de magie lu : Boule de feu',
+    // l'entraînement (décision R104) : des compétences (assez pour ne pas tenir sur une ligne de la case L42) et un texte libre ; un choix d'acquis
+    entrainements: [['magie', 2], ['concentration', 10], ['connaissance', 5], ['arc', 3], ['observation', 10], ['distinction', 10], ['survie', 5], ['vigueur', 5]]
+      .map(([competence_id, valeur], i) => ({ rang: i + 1, competence_id, valeur, texte: null }))
+      .concat([{ rang: 9, competence_id: null, valeur: null, texte: 'Livre de magie lu : Boule de feu' }]),
+    acquis_choix: [{ source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-lourde', valeur: null }],
     // l'armure portée (décision R95) : une armure complète (sans AM), son amélioration, son élément et l'amélioration de l'élément ; le casque abîmé,
     // le torse cassé
     armure_id: trouve('armures', (a) => a.am === null && a.solidite >= 3 && Number(a.solidite_uni) !== 1, 'armure sans AM, solidité 3').id,
@@ -253,7 +256,7 @@ test('fiche riche : caractéristiques (base, bonus, croix), compétences (nature
   for (const k of CASES_COMPETENCES) {
     const x = competences.find((y) => y.id === k.id);
     assert.equal(c[k.naturel], x.naturel || undefined, `${k.id} : naturel (0 vide)`);
-    assert.equal(c[k.acquis], x.acquis + x.metier + x.accessoire || undefined, `${k.id} : acquis affiché`);
+    assert.equal(c[k.acquis], x.acquis || undefined, `${k.id} : acquis calculé (R104)`);
     assert.equal(c[k.total], x.score === null ? 'N/A' : x.score, `${k.id} : total`);
   }
   const concentration = competences.find((x) => x.id === 'concentration');
@@ -410,11 +413,16 @@ test('fiche riche : dons (de base, race, métier, entraînement, classes), évé
   assert.equal(lignes.at(-1), `Artisanat : ${art.texte} (${art.caracteristiques.map((x) => x.nom).join(' + ')}) = ${art.score} %`);
   assert.deepEqual(partiesDuMetier(regles, riche).relues, lignes.slice(0, bm.rangs.filter((x) => x.aChoisir).length));
   assert.deepEqual(lireChoixDuMetier(c[m.effet]), bm.rangs.filter((x) => x.aChoisir).map((x) => ({ texte: x.texte, choix: nomDe('competences', x.retenue.competence_id) })));
-  // entraînement (décision R71) : le texte libre de la fiche, tel quel (une case relue) ; le libellé « Entraînement » et le type du modèle restent
+  // entraînement (décision R104) : ses compétences, « Nom points » jointes par « | » (une case relue, la forme de la fiche auto) ; le libellé
+  // « Entraînement » et le type du modèle restent ; un texte libre dans la note
   const e = casesDuDon(DONS.entrainement);
-  assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined, riche.entrainement]);
-  assert.equal(cellulesDeLaFiche(regles, { ...riche, entrainement: '  \n2 Magie\n ' }, { date: DATE }).cellules[e.effet], '2 Magie', 'blancs de bord retirés');
-  assert.equal(cellulesDeLaFiche(regles, { ...riche, entrainement: ' \n ' }, { date: DATE }).cellules[e.effet], undefined, 'rien d’écrit');
+  assert.deepEqual([c[e.nom], c[e.type], c[e.effet]], [undefined, undefined,
+    'Magie 2 | Concentration 10 | Connaissance 5 | Arc 3 | Observation 10 | Distinction 10 | Survie 5 | Vigueur 5']);
+  assert.ok(c[ORDINATEUR.note].split('\n').includes('Entraînement : Livre de magie lu : Boule de feu'));
+  const seulTexte = { ...riche, entrainements: [{ rang: 1, competence_id: null, valeur: null, texte: 'Béni par la Dame' }] };
+  assert.equal(cellulesDeLaFiche(regles, seulTexte, { date: DATE }).cellules[e.effet], undefined, 'sans compétence, rien dans la case');
+  // un choix d'acquis d'un don : dans la note, « <don> : <compétence> »
+  assert.ok(c[ORDINATEUR.note].split('\n').includes('Acquis au choix : Épéiste (Guerrier) : Arme Lourde'), c[ORDINATEUR.note]);
   // dons de classe : classe 1 en 43…55, classe 2 en 57…69, dans l'ordre de donsAcquis ; au-delà de sept (des dons ajoutés sur le site de dev), la note
   // (« Dons de classe N (suite) », test de la note)
   const acquis = M.donsAcquis(regles, riche);
@@ -587,8 +595,8 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
     ...[...DONS.classe1, ...DONS.classe2].map((l) => casesDuDon(l).nom), ...DONS.evenements.flatMap((l) => [casesDuDon(l).nom, casesDuDon(l).effet]),
     ...O.sorts.lignes.map((l) => `${O.sorts.colonnes.nom}${l}`)]);
   assert.deepEqual(suites.map((x) => x.adresse).filter((a) => !relues.has(a)), [], 'une suite pour une case affichée');
-  // l'entraînement (une rangée) sur deux lignes : la case en garde le début, la suite dans la note
-  assert.ok(suites.some((x) => x.adresse === casesDuDon(DONS.entrainement).effet), 'l’entraînement sur deux lignes a sa suite');
+  // l'entraînement (une rangée) trop long : la case en garde le début, la suite dans la note
+  assert.ok(suites.some((x) => x.adresse === casesDuDon(DONS.entrainement).effet), 'l’entraînement trop long pour sa case a sa suite');
   // chaque case coupée : son début (fini par « … ») tient dans sa case ; recollé à la suite, il redonne la part relue du texte (ici : l'arme sans son
   // effet du catalogue ni ses lignes non comptées ; l'armure portée sans les statistiques du catalogue ni l'effet des améliorations, qui ne tiennent
   // pas ; les autres en entier)

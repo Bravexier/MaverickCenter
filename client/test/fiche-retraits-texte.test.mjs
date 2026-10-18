@@ -135,7 +135,7 @@ test('matériau de bouclier (R96) et accessoire (R97) : la description, puis la 
 });
 
 test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom', () => {
-  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire']);
+  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire', 'acquis']);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },
     { nature: 'capacite', id: 'k1', nom: 'Don 9' }, { nature: 'specialite', id: 'sp', nom: 'LAME' }, { nature: 'metier', id: 'm', nom: 'Forgeron' },

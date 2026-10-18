@@ -18,6 +18,7 @@ import { couleurDuPoids } from './armures-rendu.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits } from './sort-bonus-texte.mjs';
+import { lecteurDAcquis } from './acquis-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -60,6 +61,8 @@ const CONSTANTES = [
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
   'classe.mono_niveaux_par_niveau_global', 'classe.mode_verrou_xp', 'sort.nm_ecart_niveau_global', 'barriere.diviseur_chakra',
   'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max', 'alignement.ecart_axe', 'metier.artisanat_par_point_caracteristique',
+  // l'entraînement (décision R104) : « 15 compétences maximum […] à hauteur maximum 10% de bonus »
+  'entrainement.competences_max', 'entrainement.bonus_max_pct',
   // inventaire et ceinture (décisions R88, R89, migration 0048)
   'inventaire.colonnes_de_depart', 'inventaire.lignes_par_colonne', 'inventaire.colonnes_max', 'inventaire.emplacements_force_2',
   'inventaire.emplacements_force_3', 'inventaire.emplacements_force_4', 'inventaire.force_tout_l_inventaire', 'ceinture.exemplaires_par_emplacement',
@@ -96,6 +99,8 @@ function reglesDeLaBase(db) {
   const caracteristiques = lignes(db, 'SELECT id, nom, lettre FROM caracteristique ORDER BY ordre')
     .map((c) => ({ ...c, couleur: couleurDeCaracteristique(c.id), texte: texteSurCouleur(couleurDeCaracteristique(c.id)) }));
   const competences = lignes(db, 'SELECT id, nom, caracteristique_id FROM competence ORDER BY ordre');
+  // les bonus d'acquis écrits dans le texte d'un don (décision R104, réponse « Lus dans les dons » : lib/acquis-texte.mjs)
+  const lireAcquis = lecteurDAcquis(competences);
   const initiative = lignes(db, 'SELECT agilite, bonus, bonus_brut, note FROM initiative_agilite ORDER BY agilite');
 
   // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
@@ -122,11 +127,16 @@ function reglesDeLaBase(db) {
   const magiesOnglet = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie_onglet ORDER BY race_id, rang'), 'race_id', (r) => r.magie_id);
   const magiesMatrice = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id', (r) => r.magie_id);
   const bornes = parCle(lignes(db, 'SELECT race_id, caracteristique_id, minimum, maximum FROM v_race_carac_borne'), 'race_id');
-  const donsDeRace = parCle(lignes(db, 'SELECT race_id, forme, etiquette, nom, texte, ethnie_id FROM race_don ORDER BY race_id, rang'), 'race_id',
+  const donsDeRace = parCle(lignes(db, 'SELECT id, race_id, forme, etiquette, nom, texte, ethnie_id FROM race_don ORDER BY race_id, rang'), 'race_id',
     (d) => {
-      // les bonus de sorts que le don écrit (« Les dégâts de sorts, les soins […] gagnent un bonus de +3 » : lib/sort-bonus-texte.mjs, décision R102)
+      // les bonus de sorts que le don écrit (« Les dégâts de sorts, les soins […] gagnent un bonus de +3 » : lib/sort-bonus-texte.mjs, décision R102) ;
+      // ses bonus d'acquis (« Magie, Concentration, Survie = 5% d'acquis » : lib/acquis-texte.mjs, décision R104)
       const sorts = bonusDeSortsEcrits(d.texte);
-      return { forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)), ...(sorts.length ? { sorts } : {}) };
+      const acquis = lireAcquis(d.texte);
+      return {
+        id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)),
+        ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}),
+      };
     });
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
   const cellulesDuTableau = parCle(lignes(db, 'SELECT race_id, ligne, colonne, valeur FROM race_don_tableau_cellule ORDER BY race_id, ligne, colonne'), 'race_id');
@@ -141,10 +151,13 @@ function reglesDeLaBase(db) {
           .filter((c) => c.valeur !== null);
         // la ligne de l'ethnie donne ce qu'écrivent ses cellules (« +1 cran de résistance » : Brûlure ; « Résistance à la magie du Sang »)
         const lectures = cellulesDeLaLigne.map((c) => lireResistances(c.valeur, { colonne: c.libelle }));
+        // et ses bonus d'acquis (« Bonus compétence » du Drakos : « 5% Athlétisme » ; décision R104), lus comme ceux d'un don
+        const acquis = cellulesDeLaLigne.flatMap((c) => lireAcquis(c.valeur));
         return {
           ethnie_id: l.ethnie_id,
           cellules: cellulesDeLaLigne,
           ...resistancesEcrites({ effets: lectures.flatMap((r) => r.effets), choix: lectures.some((r) => r.choix) }),
+          ...(acquis.length ? { acquis } : {}),
         };
       }),
     };
@@ -267,6 +280,8 @@ function reglesDeLaBase(db) {
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
+          // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
+          ...(() => { const acquis = lireAcquis(d.effet); return acquis.length ? { acquis } : {}; })(),
         })),
       };
     });
@@ -381,7 +396,12 @@ function reglesDeLaBase(db) {
     armures: (() => {
       const degats = parCle(lignes(db, 'SELECT armure_id, sens, type_degats, multiplicateur FROM armure_degats ORDER BY armure_id, sens, type_degats'), 'armure_id',
         (r) => ({ sens: r.sens, type: r.type_degats, multiplicateur: r.multiplicateur ?? 1 }));
-      return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni FROM armure ORDER BY ordre').map((a) => ({ ...a, degats: degats.get(a.id) ?? [] }));
+      // les bonus d'acquis qu'écrit son effet (« +25% Stabilité », « +5% Magie ou Concentration » : « Les bonus de race/classe/don/équipement vont dans la
+      // case Acquis », guide « Fiche de personnage : Compétences » ; décision R104)
+      return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
+        const acquis = lireAcquis(effet);
+        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };
+      });
     })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
