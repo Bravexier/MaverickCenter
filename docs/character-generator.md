@@ -203,6 +203,22 @@ abandonne.
   maximum », Pluie de Chakra) s'affiche calculé, ce pourcentage du chakra du personnage arrondi à l'inférieur, puis réduit comme les autres (R106 : « sur la
   fiche de personnage, on donnera directement la valeur calculée » ; `fiche-moteur.mjs#sortDuMoment`, `cout.calcule`) ; pas de colonne NPM ; l'**effet secondaire** sur sa
   propre ligne, sous le sort (au NM aussi) ; une **étoile** quand le sort a une remarque, son texte en infobulle.
+- **Sort préparé** (décision R115, présentation validée par le propriétaire le 2026-10-18), sous le tableau des sorts : le bloc n'apparaît qu'avec un don
+  qui permet de préparer un sort, « Préparation » du Mage Rouge (« Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en
+  même temps que l'attaque de contact le tour suivant. ») ou « Chargement » du Mage Vert (« Permet d'influer un sort d'attaque lvl1 ou 2 dans la main et
+  de l'utiliser en même temps que l'attaque de distance le tour suivant. »), débloqués au niveau de classe 1 (`donDePreparation` ; le texte lu au build par
+  `lib/sort-bonus-texte.mjs#preparationEcrite` : un sort d'attaque, `sort_type` `attaque`, de NPM 1 ou 2, `regles.classes[].dons[].preparation`). La liste
+  ne propose que les sorts de la fiche qu'il autorise, sans ceux de la magie que la Symbiose du moment désactive (R100, R111), sauf le sort déjà préparé
+  (`sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
+  côté, sur sa couleur ; aucune si rien n'est coché : `sortsApresPreparation`), un seul par fiche ; le **jet de magie** (D100, de 1 à 100, facultatif :
+  « si réussi ») se note ensuite (`sortsApresLeJet` ; les bornes du D100, valeurs de la décision, dans `regles.sort_prepare`) ; « **Lâcher le sort** » remet tout à zéro. Dans le tableau, le sort préparé porte la marque
+  « préparé » et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
+  maximals, même si l'attaque physique a lieu en posture défensive » : `contexteDesSorts`, `prepare`) ; les autres sorts suivent la posture cochée.
+  Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067) ; une préparation que le don ne permet plus (classe changée,
+  sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui
+  donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **Limite** : la magie de la Symbiose n'est pas enregistrée avec la préparation
+  (aucune colonne) ; un sort préparé en Symbiose se calcule avec la magie de Symbiose **actuelle** de la fiche (`personnage.symbiose_magie_id`), pas
+  celle du moment de sa préparation (question au propriétaire).
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
@@ -314,7 +330,18 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
   chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
-  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté. Une
+  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté. **Sorts
+  grenades** (décision R114) : « Pardon ?!? » du Grenadier (niveau de classe 20, passif : « Les bombes et les sorts "grenades" font +11 dégâts. ») ajoute
+  +11 aux sorts qui portent l'**étiquette** « Sort grenade » (`sort_mot_cle`, migration 0067 : les 14 sorts « Grenade… », `regles.sorts[].mots_cles` ;
+  jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts préparés**
+  (décision R115) : « Charge lente… » (Mage Rouge, spécialité Rubis, niveau de classe 10 : « Les sorts offensifs préparés infligent +5 dégâts. »)
+  ajoute +5 au sort préparé, « … ou rapide » (« Les sorts offensifs non préparés infligent +5 dégâts. ») +5 à tous les autres sorts offensifs, lus
+  « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer ; une lecture, à confirmer : question Q32) ; sans sort
+  préparé, « … ou rapide » vaut pour tous les sorts d'attaque. Le Mage Vert n'a pas d'équivalent écrit de ces deux dons ; ses dons qui parlent du sort chargé ou
+  influé — « Soralongé » (« Augmente la portée des sorts d'attaque chargés de +2 », question Q33), « À l'aise » (« Le sort influé aura toujours au minimum
+  un Niveau de Maîtrise. », question Q34), « Point Faible », « Visée Laser », « ... Enchanté ! » —, comme « Instant Sort » du Mage Rouge (« Préparer un
+  sort de niveau 1 et 2 dans la main devient un IC. »), ne sont pas comptés (la décision ne les nomme pas ; « Soralongé » : « selon la situation » dans
+  l'infobulle de la portée). Une
   **progression par niveau** (décision R110 : arrondi à l'inférieur) : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux »
   (Elfe argenté ; « +1 … +1 » du Felfe argenté) vaut 2 + 2 × ⌊niveau global ÷ 5⌋ (+2, +4 au niveau 5, +6 au niveau 10… +10 au niveau 20 ; le niveau
   global pour un don de race ou d'ethnie) ; « 3+x […] x = +2 dégâts/6 niveaux » (Mage « Puissance ») vaut 3 + 2 × ⌊niveau de classe ÷ 6⌋.
@@ -412,7 +439,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
-  « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
+  préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; relu si c'est un sort de la liste que
+  le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon perdu et dit : `texteDuSortPrepare`,
+  `lireSortPrepare`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
   que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
@@ -615,10 +645,10 @@ pas, et la note datée est le seul signal.
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
 | `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
 | `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
-| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte |
+| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte ; l'arme de la maîtrise au choix de la classe (`arme_famille_id`, décision R119, migration 0067), que la page ne demande pas encore (deux questions attendent le propriétaire) : vide ; posée ailleurs (l'API), gardée par le service, et par la page tant que la compétence du choix ne change pas (`acquisChoixValables`) ; la fiche en tableur ne l'écrit pas |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
-| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche |
+| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
 | `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) ; jamais sur ARME DE MONSTRES (R45, règle `maitrise_arme_exclue`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |

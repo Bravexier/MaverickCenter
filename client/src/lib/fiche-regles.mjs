@@ -17,7 +17,7 @@ import { DURABILITE_MIN } from './arme-forge.mjs';
 import { couleurDuPoids } from './armures-rendu.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
-import { bonusDeSortsEcrits } from './sort-bonus-texte.mjs';
+import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -283,6 +283,8 @@ function reglesDeLaBase(db) {
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
           ...(() => { const acquis = lireAcquis(d.effet); return acquis.length ? { acquis } : {}; })(),
+          // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
+          ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
         })),
       };
     });
@@ -300,6 +302,10 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
+  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
+  // "grenades" » visent les sorts qui la portent, jamais un sort par son nom (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
+  const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
+    ORDER BY e.sort_id, m.libelle_cle, e.mot_cle_id`), 'sort_id', (e) => e.mot_cle_id);
   const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
@@ -310,6 +316,7 @@ function reglesDeLaBase(db) {
       // un sort d'attaque (sort_type) reçoit les « Dégâts magie +N » d'un accessoire (décision R54)
       ...(attaques.has(s.id) ? { attaque: true } : {}),
       types: typesDesSorts.get(s.id) ?? [],
+      ...(etiquettesDesSorts.has(s.id) ? { mots_cles: etiquettesDesSorts.get(s.id) } : {}),
     }));
 
   // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
@@ -454,6 +461,9 @@ function reglesDeLaBase(db) {
     // quantité d'une ligne, un nombre saisi de 1 à 99 (« Maxé à 99 pour l'inventaire »), et la Force dont compte le sac d'un personnage qui a le don
     // « Organisé » (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » : lib/fiche-moteur.mjs#donDuSacSansForce)
     sac: { quantite_max: 99, force_avec_le_don: 5 },
+    // le sort préparé (décision R115 : « noter le résultat du jet de magie si réussi », « le jet de magie (le D100) » ; des valeurs de la décision, comme le
+    // sac, que le CHECK de personnage_sort.prepare_jet garde aussi) : le jet se note de 1 à 100 (lib/fiche-moteur.mjs#sortsApresLeJet)
+    sort_prepare: { jet_min: 1, jet_max: 100 },
   };
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)

@@ -101,7 +101,9 @@ export const RESSOURCES = [
       'l’action qui fusionne les deux) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
       'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; supprimé, ' +
       'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
-      'de classe », « métier », « codex ») ne se renomment, ne se suppriment ni ne se créent seuls (409), leur définition se modifie.',
+      'de classe », « métier », « codex ») et « Sort grenade », dont la fiche se sert (décision R114), ne se renomment, ne se suppriment ni ne se ' +
+      'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migration 0067) ne ' +
+      'se supprime ni ne se fusionne (409).',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -127,7 +129,7 @@ export const RESSOURCES = [
         nom: 'Fusionner dans un autre mot-clé',
         description:
           'Le mot-clé rejoint `dans` (l’identifiant d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
-          'l’ancien), puis il quitte le vocabulaire ; ni l’un ni l’autre ne peut être un mot-clé dont le site se sert (409).',
+          'l’ancien), puis il quitte le vocabulaire ; ni l’un ni l’autre ne peut être un mot-clé dont le site se sert ou qui étiquette un sort (409).',
         op: 'fusionner_mots_cles',
       },
     ],

@@ -12,7 +12,7 @@ import { INFOBULLES_DES_EXPORTS } from '../../lib/fiche-tableur-export.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts, dons débloqués et entraînement (R71), armes avec leur solidité (R74) et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
+// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74) et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
 // dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
 // XP, choix, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
@@ -196,6 +196,13 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <div class="fiche-etape__corps">
             <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span><label class="budget budget--mj" title="NM donnés par le MJ : ils valent pour toute la fiche et s’ajoutent aux NM gagnés par les niveaux (décision R118)"><span aria-hidden="true">+ MJ</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj" aria-label="NM donnés par le MJ, pour toute la fiche" /></label></span></div>
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
+            {/* le sort préparé (décision R115, présentation validée par le propriétaire) : avec « Préparation » (Mage Rouge) ou « Chargement » (Mage
+                Vert), un seul des sorts que le don autorise, le jet de magie (D100), la posture du moment enregistrée à la préparation, et « Lâcher le
+                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare */}
+            <div class="sort-prepare" id="sort-prepare-bloc" hidden>
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre" id="titre-sort-prepare">Sort préparé</h4><p class="fiche-aide" id="sort-prepare-aide"></p></div>
+              <div class="sort-prepare__champs" id="sort-prepare" role="group" aria-labelledby="titre-sort-prepare"></div>
+            </div>
           </div>
         </section>
 

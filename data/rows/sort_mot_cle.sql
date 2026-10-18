@@ -1,0 +1,15 @@
+-- data/rows/sort_mot_cle.sql : export déterministe, une instruction par ligne, triée par (sort_id, mot_cle_id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-corruption#sort:grenade-collante', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-foudre#sort:grenade-paralysante', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-glace#sort:grenade-cryogenique', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-lumiere#sort:grenade-flash', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-necromancie#sort:grenade-caustique', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-terre#sort:grenade-petrifiante', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-larcane#sort:grenade-de-chakra', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-leau#sort:grenade-incapacitante', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-lespace-temps#sort:grenade-distordue', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-lombre#sort:grenade-fumigene', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-du-feu#sort:grenade-incendiaire', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-du-sang#sort:grenade-a-clous', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-du-vent#sort:grenade-explosive', 'sort-grenade');
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-du-vide#sort:grenade-implosive', 'sort-grenade');

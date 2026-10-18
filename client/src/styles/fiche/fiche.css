@@ -682,6 +682,17 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .nm-sort .curseur-cellule { display: inline-flex; vertical-align: middle; }
 .nm-sort .curseur { width: 5rem; min-width: 5rem; }
 .nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: var(--fs-xs); }
+/* le sort préparé (décision R115) : sa marque dans le tableau des sorts (la posture de sa préparation en infobulle), puis son bloc sous le tableau — le
+   sort, sur la couleur de sa magie, le jet de magie (D100), la posture de la préparation sur sa couleur, « Lâcher le sort » */
+.sort-prepare__marque { flex: none; padding: 0 0.3rem; border: 1px solid var(--etape); border-radius: var(--radius-xxs); color: var(--etape); font-size: var(--fs-xs); font-weight: 600; cursor: help; }
+.sort-prepare__marque[hidden] { display: none; }
+.sort-prepare { margin-top: 0.6rem; }
+.sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
+.sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
+.fiche .sort-prepare__jet { width: 5.5rem; }
+.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+.sort-prepare option { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.sort-prepare__posture { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-xxs); }
 /* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */
 .budget--mj { align-items: center; color: var(--muted); }
 .fiche .budget--mj input { width: 3.2rem; padding: 0 0.25rem; font-size: var(--fs-sm); }

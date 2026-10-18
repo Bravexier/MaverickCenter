@@ -40,8 +40,8 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisDesDons, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
-  valeursDuMoment,
+  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
+  trouver, valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -64,6 +64,8 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   nmOfferts: 'NM offerts',
   // les NM du MJ, pour toute la fiche (décision R118)
   nmMj: 'NM du MJ',
+  // le sort préparé (décision R115) : « <sort> (jet 57, posture Offensif) » ; le modèle n'a pas de case pour lui (texteDuSortPrepare, lireSortPrepare)
+  sortPrepare: 'Sort préparé',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -356,6 +358,38 @@ export function lireNmOfferts(texte) {
     offerts.push(o);
   }
   return offerts;
+}
+
+/**
+ * Le sort préparé (décision R115 ; lib/fiche-moteur.mjs#sortPrepare), dans la note : « Boule de feu (jet 57, posture Offensif) » ; sans jet (« si
+ * réussi ») ni posture (aucune n'était cochée), le nom seul.
+ */
+export function texteDuSortPrepare(prepare) {
+  const parts = [prepare.jet === null || prepare.jet === undefined ? null : `jet ${prepare.jet}`, prepare.posture ? `posture ${prepare.posture.nom}` : null].filter(Boolean);
+  return `${prepare.sort.nom}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+}
+
+/**
+ * { nom, jet, posture } d'un texte de texteDuSortPrepare (`jet` : un nombre ou null ; `posture` : le nom écrit ou null). Des parenthèses finales qui ne
+ * disent ni un jet ni une posture font partie du nom.
+ */
+export function lireSortPrepare(texte) {
+  const brut = String(texte ?? '').trim();
+  const m = /^(.*\S)\s*\(([^()]*)\)$/.exec(brut);
+  if (m) {
+    const lu = { nom: m[1].trim(), jet: null, posture: null };
+    const parts = m[2].split(',').map((x) => x.trim()).filter(Boolean);
+    let lisible = parts.length > 0;
+    for (const part of parts) {
+      const jet = /^jet\s+(\d+)$/i.exec(part);
+      const posture = /^posture\s+(.+)$/i.exec(part);
+      if (jet && lu.jet === null) lu.jet = Number(jet[1]);
+      else if (posture && lu.posture === null) lu.posture = posture[1].trim();
+      else lisible = false;
+    }
+    if (lisible) return lu;
+  }
+  return { nom: brut, jet: null, posture: null };
 }
 
 /** Un sort au-delà des 20 lignes : « Boule de feu (NM 2) ». */
@@ -1123,6 +1157,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   noter(K.gains, texteDesGains(f));
   noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
   if (entier(f.nm_mj) > 0) noter(K.nmMj, String(entier(f.nm_mj)));
+  const prepare = sortPrepare(regles, f);
+  if (prepare) noter(K.sortPrepare, texteDuSortPrepare(prepare));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
   noter(K.donsClasse2, donsEnSuite[2].join(SEPARATEUR_DE_LISTE));
