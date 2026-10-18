@@ -112,8 +112,10 @@ test('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tr
     assert.ok(!repartis.has(t.id), `${t.id} : réparti et en attente`);
     assert.deepEqual([t.avant, t.nom], [a.cout, a.nom], `${t.id} : écriture du classeur`);
     assert.equal(repartirLeCout(a.cout), null, `${t.id} : « ${a.cout} » se répartirait`);
-    // la réponse, telle qu'écrite : la base l'écrit à l'orthographe près (champ « orthographe », qui dit ce qui change)
+    // la réponse, telle qu'écrite : la base l'écrit à l'orthographe près (champ « orthographe », qui dit ce qui change) ; son « Cout » quand elle en donne un
     assert.ok(t.orthographe || t.cout_secondaire === null || t.reponse.includes(t.cout_secondaire), `${t.id} : « ${t.cout_secondaire} » n'est pas dans la réponse`);
+    const coutDonne = /\bCout\s*:?\s*(N\/A|X|\d+)/.exec(t.reponse);
+    if (coutDonne) assert.equal(t.cout_brut, coutDonne[1], `${t.id} : le « Cout » de la réponse`);
     assert.match(t.cout_brut, COUT_REPARTI, `${t.id} : « ${t.cout_brut} »`);
     assert.ok(t.cout_secondaire === null || (t.cout_secondaire === t.cout_secondaire.trim() && !mentionneUnNm(t.cout_secondaire)), t.id);
     assert.equal(ecritUnSecondCout(t.cout_brut), false, `${t.id} : « ${t.cout_brut} » écrit un second coût`);
@@ -181,7 +183,7 @@ const NECRO = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^\d+ âmes?$/.te
 const SANS_CHAKRA = premier((s) => s.cout_brut === '0' && /^\d+ Sang$/.test(s.cout_secondaire ?? ''));
 const SIMPLE = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null);
 const SIMPLE2 = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null && s.id !== SIMPLE);
-const PRECISION = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^Par tour\b/.test(s.cout_secondaire ?? ''));
+const PRECISION = premier((s) => tranches.some((t) => t.id === s.id) && /^[1-9]\d*$/.test(s.cout_brut) && /^Par tour\b/.test(s.cout_secondaire ?? ''));
 
 test('service : « Coût » refuse un second coût (et dit où l’écrire), « Coût secondaire » refuse un NM ; les colonnes typées suivent les deux', () => {
   assert.ok(SIMPLE, 'un sort sans second coût');
@@ -255,6 +257,7 @@ test('rejeu d’un lot noté avant 0063 (coût en une case) : rejoué en deux co
   // le coût du classeur d'un sort que 0065 a tranché (décision R106), modifié sur le site de dev avant elle : la base n'a plus ce qu'il a lu, conflit
   // (le propriétaire le refait sur le coût tranché) ; la base garde le coût tranché
   const tranche = tranches.find((t) => t.id === PRECISION);
+  const precision = lire(PRECISION, neuve);
   const ancien = lot({ id: PRECISION }, { cout_brut: tranche.avant }, { cout_brut: tranche.avant.replace(/^\d+/, '99') });
   neuve.exec('PRAGMA foreign_keys = OFF');
   neuve.exec('BEGIN');
@@ -266,7 +269,7 @@ test('rejeu d’un lot noté avant 0063 (coût en une case) : rejoué en deux co
     assert.equal(e.etat, 'en_attente', `${l.modifications[0].cle.id} : ${JSON.stringify(e)}`);
   }
   assert.equal(neuve.prepare('SELECT etat FROM modification WHERE lot_id = ?').get(ancien.id).etat, 'conflit');
-  assert.deepEqual([lire(PRECISION, neuve).cout_brut, lire(PRECISION, neuve).cout_secondaire], [tranche.cout_brut, tranche.cout_secondaire]);
+  assert.deepEqual(lire(PRECISION, neuve), precision, 'le coût lu avant le rejeu est gardé');
   assert.deepEqual(lire(NECRO, neuve), { cout_brut: '14', cout_secondaire: null, cout_chakra: 14, cout_ressource: null, cout_ressource_valeur: null });
   assert.deepEqual(lire(SANS_CHAKRA, neuve), { cout_brut: '0', cout_secondaire: '5 Sang', cout_chakra: 0, cout_ressource: 'sang', cout_ressource_valeur: 5 });
   assert.deepEqual(lire(SIMPLE, neuve), { ...simple, cout_secondaire: '1 Sang', cout_ressource: 'sang', cout_ressource_valeur: 1 });

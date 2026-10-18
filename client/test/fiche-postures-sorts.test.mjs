@@ -338,10 +338,12 @@ test('relectures (R101, R102) : protection chiffrée, coût 0, valeur par tour, 
   assert.deepEqual(c.rappels, []);
   const rocheuse = regles.sorts.find((s) => s.id === 'magies/magie-de-la-terre#sort:barriere-rocheuse');
   assert.deepEqual(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), rocheuse, auNm(rocheuse)).rappels.map((r) => r.texte), ['protection = +7 dégâts bloqués']);
-  // un coût écrit 0 reste 0, même réduit
-  const planete = regles.sorts.find((s) => s.cout === '0');
-  assert.equal(M.sortDuMoment(regles, fiche(), planete, auNm(planete)).cout.texte, '0');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete)).cout.texte, '0');
+  // un coût écrit 0 reste 0, même réduit : le sort ne consomme pas de chakra (décision R106), la réduction est dite non comptée, rien n'est en gras
+  for (const planete of regles.sorts.filter((s) => s.cout === '0')) {
+    assert.equal(M.sortDuMoment(regles, fiche(), planete, auNm(planete)).cout.texte, '0');
+    const r = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete));
+    assert.deepEqual([r.cout.texte, r.cout.detail, r.nonComptes.filter((n) => n.cible === 'cout').map((n) => [n.raison, n.valeur])], ['0', [], [['sans_chakra', -3]]], planete.id);
+  }
   // une valeur par tour reste telle qu'écrite ; le bonus est dit non compté
   const parTour = regles.sorts.find((s) => s.attaque && /^\d+d\d+ dégâts par tour$/.test(auNm(s).dsb));
   const t = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Feu, niveau 3')), parTour, auNm(parTour));

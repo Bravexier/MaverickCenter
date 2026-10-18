@@ -252,6 +252,8 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
       assert.ok(m, `${p.slug} : un champ de coût secondaire dans la case`);
       const texte = m[2].replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&').trim();
       assert.equal(/\shidden\b/.test(m[1]), texte === '', `${p.slug} : caché si et seulement si vide (${texte})`);
+      // un cadre de l'éditeur : vide, il se montre en mode modification pour être rempli (src/scripts/edition/editeur.mjs#cadres)
+      assert.match(m[1], /\sdata-ed-cadre\b/, `${p.slug} : champ du coût secondaire sans data-ed-cadre`);
       return texte;
     });
     assert.deepEqual(secondaires.filter(Boolean).sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);

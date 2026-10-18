@@ -23,6 +23,7 @@
 /* le coût secondaire sous le coût, dans sa case (décision R106) : plus petit et plus discret, comme sur la fiche ; à la ligne quand il est long
    (« Par NPM de la créature invoquée. +10% Barrière »), sa largeur bornée par son contenu et non par la case (une case bornée décale les colonnes) */
 .sort__cout-secondaire { white-space: normal; max-width: 11rem; font-size: var(--fs-xs); line-height: 1.3; color: var(--muted); }
+.sort__cout-secondaire .val { font-weight: 400; }
 .sort__dsb { min-width: 9rem; }
 /* bonus de niveau de maîtrise écrit dans la cellule (« (+1/NM) », « IC pour 3 NM ») : pastille à côté de la valeur ; casse de la source gardée (« 1d6 ») */
 .nm { display: inline-block; padding: 0 0.4rem; font-size: var(--fs-xxs); line-height: 1.45; font-weight: 400; border-radius: var(--radius-xs); border: 1px solid var(--mag-line); color: var(--muted); white-space: nowrap; }

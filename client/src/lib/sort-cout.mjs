@@ -38,7 +38,7 @@ export function coutEnUneCase(cout, secondaire) {
 }
 
 // Un second coût écrit dans « Coût » sans la forme exacte du classeur (casse, espaces, accents : « 3+1 sang », « 3 + 2 ames », « X + 2 Sang ») : le service
-// le refuse dans une valeur modifiée (serveur/edition.mjs), y compris pour un coût en attente de décision (le modifier, c'est le trancher).
+// le refuse dans une valeur modifiée (serveur/edition.mjs).
 const SECOND_COUT_ECRIT = /\+\s*(?:\d+|x)\s*%?\s*(?:sang|[aâ]mes?|pv|sant[ée]|ba)(?!\p{L})/iu;
 const RESSOURCE_ECRITE_SEULE = /^(?:\d+|x)\s*(?:sang|[aâ]mes?)$/iu;
 

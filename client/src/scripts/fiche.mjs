@@ -664,7 +664,7 @@ function construireMaitrises() {
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
 const RAISONS_DES_SORTS = {
   situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
-  non_chiffre: 'valeur écrite non chiffrée', par_tour: 'valeur par tour',
+  non_chiffre: 'valeur écrite non chiffrée', par_tour: 'valeur par tour', sans_chakra: 'le sort ne consomme pas de chakra',
 };
 
 /**
@@ -775,7 +775,7 @@ function construireSorts() {
           const calcule = m?.cout.calcule;
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
             m && (calcule || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
-            m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}, arrondi à l'inférieur` : `Coût écrit : ${auNm(l.sort.cout, 'cout')}`,
+            m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}${(calcule.chakra * calcule.pourcent) % 100 ? ', arrondi à l\'inférieur' : ''}` : `Coût écrit : ${auNm(l.sort.cout, 'cout')}`,
               m.cout.detail, [
                 'Jamais moins de 1',
                 ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
