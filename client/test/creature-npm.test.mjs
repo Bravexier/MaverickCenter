@@ -49,12 +49,14 @@ test('caractéristiques : « +1 Force au niveau 2 magique » compte à partir du
     { niveau: 2, increment: 1, caracteristique: 'force', texte: '+1 Force au niveau 2 magique' },
     { niveau: 4, increment: 1, caracteristique: 'force', texte: '+1 Force au niveau 4 magique' },
   ];
-  assert.deepEqual(caracteristiquesAuNpm([5, 1, 10, 1, 1, 1], bonus, 1), { valeurs: [5, 1, 10, 1, 1, 1], comptes: [], nonComptes: [] });
+  assert.deepEqual(caracteristiquesAuNpm([5, 1, 10, 1, 1, 1], bonus, 1), { valeurs: [5, 1, 10, 1, 1, 1], comptes: [], nonComptes: [], parCase: [[], [], [], [], [], []] });
   assert.deepEqual(caracteristiquesAuNpm([5, 1, 10, 1, 1, 1], bonus, 3).valeurs, [6, 1, 10, 1, 1, 1]);
+  // les bonus comptés de chaque case (l'infobulle d'une case changée)
+  assert.deepEqual(caracteristiquesAuNpm([5, 1, 10, 1, 1, 1], bonus, 4).parCase[0], ['+1 Force au niveau 2 magique', '+1 Force au niveau 4 magique']);
   assert.deepEqual(caracteristiquesAuNpm([5, 1, 10, 1, 1, 1], bonus, 5).valeurs, [7, 1, 10, 1, 1, 1]);
   const ambigu = [{ niveau: 3, increment: 1, caracteristique: null, texte: '+1 Force/Agilité au niveau 3 magique' }];
   assert.deepEqual(caracteristiquesAuNpm([3, 3, 5, 0, 1, 3], ambigu, 2).nonComptes, []);
-  assert.deepEqual(caracteristiquesAuNpm([3, 3, 5, 0, 1, 3], ambigu, 3), { valeurs: [3, 3, 5, 0, 1, 3], comptes: [], nonComptes: ['+1 Force/Agilité au niveau 3 magique'] });
+  assert.deepEqual(caracteristiquesAuNpm([3, 3, 5, 0, 1, 3], ambigu, 3), { valeurs: [3, 3, 5, 0, 1, 3], comptes: [], nonComptes: ['+1 Force/Agilité au niveau 3 magique'], parCase: [[], [], [], [], [], []] });
   assert.deepEqual(FPVSIA, FPVSIA_DES_CARTES);
 });
 
@@ -72,7 +74,8 @@ test('coût d’une invocation au NPM : « 20 + 4 âmes » au NPM 4 d’Animatio
   assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée.', 4), '20 + 4 âmes');
   assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée.', 1), '5 + 1 âme');
   assert.equal(coutAuNpm('6', 'Par NPM de la créature invoquée', 3), '18');
-  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +10% Barrière', 3), '15 +10% Barrière');
+  // un autre second coût (« +10% Barrière » de la Marionnette de l'ombre) : à trancher, le coût reste tel qu'écrit
+  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +10% Barrière', 3), null);
   assert.equal(coutAuNpm('7', 'Par NPM de la créature sacrifiée', 3), null);
   assert.equal(coutAuNpm('X', 'Par NPM de la créature invoquée', 3), null);
 });

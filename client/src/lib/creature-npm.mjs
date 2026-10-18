@@ -11,9 +11,12 @@
 //     « /NPM » écrit à la fois dans la formule et après le type (« 1d6+2/NPM dégâts sonores/NPM ») ne compte qu'une fois ;
 //   - caractéristiques : « +1 Force au niveau 2 magique » s'ajoute à partir du NPM 2 de la créature (réponse du propriétaire) ; un bonus sur deux
 //     caractéristiques (« +1 Force/Agilité », sans dire l'une, l'autre ou les deux) n'est pas compté : il reste écrit ;
-//   - capacités : une capacité « (NPM 3) » ne vaut qu'à partir du NPM 3 (creature_capacite.npm_min) ;
+//   - capacités : une capacité « (NPM 3) » vaut à partir du NPM 3, encore aux NPM 4 et 5 (creature_capacite.npm_min ; lecture de Claude, comme « [EP3] »
+//     d'un monstre, R56 : « (NPM 5) Répression. La météo invoquée par cette créature ne peut être annulée » du Golem de glace suppose sa « (NPM 3) Neige
+//     permanente » encore là) ;
 //   - coût du sort qui l'invoque : « Par NPM de la créature invoquée » (décisions R106, R129) : le coût × NPM, « +1 Âme par NPM de la créature
-//     invoquée » : NPM âmes (« Le surcharger à NPM 4 donnerait 20 + 4 âmes », réponse du propriétaire pour R129).
+//     invoquée » : NPM âmes (« Le surcharger à NPM 4 donnerait 20 + 4 âmes », réponse du propriétaire pour R129) ; un autre second coût (« +10% Barrière »
+//     de la Marionnette de l'ombre, que le classeur écrit « 5 + 10% BA (xNPM de créature) ») est à trancher : le coût reste tel qu'écrit.
 // Le NPM d'une créature va de 1 à 5 (« seuls les utilisateurs d'une seule magie peuvent invoquer les créatures NPM 5 », texte des invocations).
 // Module pur, sans aucun import : le script de la fiche l'importe (src/scripts/fiche.mjs, le seul script de page), la carte d'une créature
 // (components/bestiaire/CarteInvoquee.astro) s'en sert au build. Une créature est décrite par `donneesNpm` (lib/bestiaire-db.mjs#chargerInvocations,
@@ -69,22 +72,24 @@ export function attaqueAuNpm(a, npm) {
 
 /**
  * Les caractéristiques au NPM `npm` : `fpvsia` (les six nombres de la carte) et `bonus` ([{ niveau, increment, caracteristique, texte }] :
- * creature_bonus_npm, `caracteristique` nul pour « Force/Agilité ») ; { valeurs, comptes, nonComptes } : les six valeurs avec les bonus atteints, les
- * textes de ces bonus, et ceux atteints mais non comptés (deux caractéristiques).
+ * creature_bonus_npm, `caracteristique` nul pour « Force/Agilité ») ; { valeurs, comptes, nonComptes, parCase } : les six valeurs avec les bonus atteints,
+ * les textes de ces bonus (et, dans `parCase`, ceux de chacune des six), et ceux atteints mais non comptés (deux caractéristiques).
  */
 export function caracteristiquesAuNpm(fpvsia, bonus, npm) {
   const valeurs = [...fpvsia];
   const comptes = [];
   const nonComptes = [];
+  const parCase = FPVSIA.map(() => []);
   for (const b of bonus) {
     if (b.niveau > npm) continue;
     const k = FPVSIA.indexOf(b.caracteristique);
     if (k >= 0 && valeurs[k] !== null && valeurs[k] !== undefined) {
       valeurs[k] += b.increment;
       comptes.push(b.texte);
+      parCase[k].push(b.texte);
     } else nonComptes.push(b.texte);
   }
-  return { valeurs, comptes, nonComptes };
+  return { valeurs, comptes, nonComptes, parCase };
 }
 
 /** Une capacité, ou une résistance qu'elle donne, vaut-elle au NPM `npm` ? `npmMin` : le « (NPM 3) » écrit devant elle, nul pour une capacité de base. */
@@ -96,16 +101,17 @@ const AMES_PAR_NPM = /^\+\s*(\d+)\s+âmes?\s+par NPM de la créature invoquée\.
 /**
  * Le coût d'un sort d'invocation au NPM de la créature : `cout` (« Coût », le chakra) et `secondaire` (« Coût secondaire » : « Par NPM de la créature
  * invoquée. +1 Âme par NPM de la créature invoquée. ») ; « 20 + 4 âmes » au NPM 4 d'Animation de mort, « 18 » au NPM 3 d'Appel aux golems ; ce qui suit
- * la précision et n'est pas « par NPM » reste tel qu'écrit (« 15 +10% Barrière »). null quand le coût n'est pas un nombre « Par NPM de la créature
- * invoquée » (Manteau noir : « Par NPM de la créature sacrifiée »). Sans réduction (le moteur de la fiche les applique ensuite : décision R129).
+ * la précision n'est lu que s'il est des âmes « par NPM de la créature invoquée ». null quand le coût n'est pas un nombre « Par NPM de la créature
+ * invoquée » (Manteau noir : « Par NPM de la créature sacrifiée ») ou qu'il a un autre second coût (« +10% Barrière » de la Marionnette de l'ombre :
+ * à trancher, il reste tel qu'écrit). Sans réduction (le moteur de la fiche les applique ensuite : décision R129).
  */
 export function coutAuNpm(cout, secondaire, npm) {
   const base = /^\d+$/.exec(String(cout ?? '').trim());
   if (!base || !PAR_NPM.test(String(secondaire ?? ''))) return null;
   const reste = String(secondaire).replace(PAR_NPM, '').trim();
   const ames = AMES_PAR_NPM.exec(reste);
-  const suite = ames ? `+ ${Number(ames[1]) * npm} âme${Number(ames[1]) * npm > 1 ? 's' : ''}` : reste;
-  return [String(Number(base[0]) * npm), suite].filter(Boolean).join(' ');
+  if (reste && !ames) return null;
+  return [String(Number(base[0]) * npm), ames ? `+ ${Number(ames[1]) * npm} âme${Number(ames[1]) * npm > 1 ? 's' : ''}` : ''].filter(Boolean).join(' ');
 }
 
 /**

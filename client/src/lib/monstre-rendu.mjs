@@ -39,11 +39,19 @@ const SIGLES = { force: ['F', 'Force'], perception: ['P', 'Perception'], volonte
 /** Un texte tel qu'écrit (retours à la ligne gardés par la feuille de style), ou « — » s'il est vide. */
 const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${htmlAvecMonnaies(texte)}</span>` : '<span class="vide">—</span>');
 
-/** Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). */
-export const htmlDesCaracteristiques = (valeurs) =>
+/**
+ * Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). `ecrites` (une créature invoquée au NPM choisi,
+ * décision R130) : les valeurs écrites, et `bonus`, les bonus comptés de chaque case ; une valeur qui en diffère est soulignée, l'écrite et ses bonus en
+ * infobulle (`.bcalcul`).
+ */
+export const htmlDesCaracteristiques = (valeurs, { ecrites = null, bonus = [] } = {}) =>
   `<span class="bcaracs">${FPVSIA.map((id, k) => {
     const [sigle, nom] = SIGLES[id];
-    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span><span class="bcarac__val">${valeurs[k] ?? '—'}</span></span>`;
+    const calcule = ecrites && ecrites[k] !== valeurs[k];
+    const valeur = calcule
+      ? `<span class="bcarac__val bcalcul" title="${e(`Écrit : ${ecrites[k] ?? '—'}${bonus[k]?.length ? `, ${bonus[k].join(', ')}` : ''}`)}">${valeurs[k] ?? '—'}</span>`
+      : `<span class="bcarac__val">${valeurs[k] ?? '—'}</span>`;
+    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span>${valeur}</span>`;
   }).join('')}</span>`;
 
 const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;

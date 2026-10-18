@@ -916,8 +916,10 @@ function carteDInvocation(c, npm) {
       v.ressources.map((r) => rubrique(r.libelle, r.valeur)),
       v.defense !== null ? rubrique('Défense', v.defense) : null,
       c.vitesse ? rubrique('Vitesse', c.vitesse) : null,
-      // un bonus sur deux caractéristiques (« +1 Force/Agilité ») n'est pas compté : rappelé
-      rubrique('F.P.V.S.I.A.', caracs, v.caracteristiques.nonComptes.length ? el('span', { class: 'muted' }, ` (non compté : ${v.caracteristiques.nonComptes.join(', ')})`) : null),
+      // les bonus « au niveau N magique » atteints, comptés ; un bonus sur deux caractéristiques (« +1 Force/Agilité ») ne l'est pas : rappelé
+      rubrique('F.P.V.S.I.A.', caracs,
+        v.caracteristiques.comptes.length ? el('span', { class: 'muted' }, ` (compté : ${v.caracteristiques.comptes.join(', ')})`) : null,
+        v.caracteristiques.nonComptes.length ? el('span', { class: 'muted' }, ` (non compté : ${v.caracteristiques.nonComptes.join(', ')})`) : null),
       v.attaques.length ? rubrique('Dégâts', el('ul', {}, v.attaques.map((a) => el('li', {}, a)))) : null,
       capacites.length ? rubrique('Capacités', el('ul', {}, capacites.map((x) => el('li', {}, el('strong', {}, x.nom), x.commune ? el('span', { class: 'muted' }, ' (commune)') : null, ` : ${x.texte}`)))) : null));
 }

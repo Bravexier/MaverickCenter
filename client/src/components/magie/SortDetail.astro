@@ -152,7 +152,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
                 <tr>
                   <th scope="row">
                     {a.creature ? (
-                      <span class="creature"><button type="button" class="chip creature__bouton" {...bulle(a.creature.id)} style={couleurs(a.creature.magies)}>{a.creature.nom}</button></span>
+                      <span class="creature"><button type="button" class="chip creature__bouton" {...bulle(a.creature.id)} style={couleurs(a.creature.magies)}>{a.nom}</button></span>
                     ) : (
                       a.nom
                     )}

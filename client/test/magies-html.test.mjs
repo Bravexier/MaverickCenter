@@ -296,7 +296,8 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
       assert.ok(boutons.some(([, , c1, c2]) => c1 === c2), `${slug} : créatures d'une seule magie`);
       assert.ok(boutons.some(([, , c1, c2]) => c1 !== c2), `${slug} : créatures de deux magies en dégradé`);
     }
-    for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'"), parSlug.get(s)?.nom, `${slug} : ${s}`);
+    // (une amélioration d'« Amélioration cadavérique » garde l'écriture de son tableau, « Os Froid », rattachée au nom exact à la casse près : R130)
+    for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'").toLocaleLowerCase('fr'), parSlug.get(s)?.nom.toLocaleLowerCase('fr'), `${slug} : ${s}`);
     // plus de fiche minimale sous les blocs
     assert.doesNotMatch(html, /creature__fiche|creature__rangee/, `${slug} : fiche minimale retirée`);
     // les cartes : une bulle par créature citée, cachée, role="tooltip", posée hors des onglets et des détails de sort (dans .cartes-creatures),

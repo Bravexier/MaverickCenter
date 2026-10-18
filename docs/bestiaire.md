@@ -37,9 +37,9 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
   `data-npms`, regroupées quand elles se suivent identiques) à côté de l'écrite (`data-npm-ecrit`, seule montrée sans JavaScript et à l'impression), une
   valeur calculée soulignée avec l'écriture en infobulle (`.bcalcul`) ; une capacité ou une résistance « (NPM n) » porte `data-npm-min` et se cache en dessous
   (`styles/bestiaire/carte.css`). Les valeurs : `lib/creature-npm.mjs` (« X/NPM » = X × NPM ; « 2 Armure Physique et Magique/NPM » = 2 × NPM chacune ;
-  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3 ; « +1 Force au niveau 2 magique » à partir du NPM 2 ; « +1 Force/Agilité » non compté, il reste
-  écrit), d'après les valeurs typées de l'import (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte donne le coût du
-  sort à son NPM.
+  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3 ; « +1 Force au niveau 2 magique » à partir du NPM 2, la case changée soulignée avec l'écrite et ses
+  bonus en infobulle, les bonus écrits restant sous les cases ; « +1 Force/Agilité » non compté, il reste écrit), d'après les valeurs typées de l'import
+  (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte garde le coût écrit (« +10% Barrière » : question Q35).
 
   Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
   que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les

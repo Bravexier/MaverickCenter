@@ -111,9 +111,13 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
       <div class="brubrique brubrique--caracteristiques">
         <dt>Caractéristiques (F.P.V.S.I.A.)</dt>
         <dd>
-          <ValeurParNpm html ecrit={htmlDesCaracteristiques(l.fpvsia)} groupes={groupes((c) => htmlDesCaracteristiques(c.caracteristiques.valeurs))} />
-          {/* les bonus écrits ; au NPM choisi, ceux atteints que la carte ne sait pas compter (« +1 Force/Agilité ») */}
-          {l.bonus.length > 0 && <span class="muted bcarte__bonus"><ValeurParNpm ecrit={l.bonus.join(', ')} groupes={groupes((c) => c.caracteristiques.nonComptes.join(', ') || null)} vide="" /></span>}
+          {/* au NPM choisi, une case changée par un bonus est soulignée, l'écrite et ses bonus en infobulle ; les bonus écrits restent dessous, tels qu'écrits */}
+          <ValeurParNpm
+            html
+            ecrit={htmlDesCaracteristiques(l.fpvsia)}
+            groupes={groupes((c) => htmlDesCaracteristiques(c.caracteristiques.valeurs, { ecrites: l.fpvsia, bonus: c.caracteristiques.parCase }))}
+          />
+          {l.bonus.length > 0 && <span class="muted bcarte__bonus">{l.bonus.join(', ')}</span>}
         </dd>
       </div>
       <div class="brubrique">
