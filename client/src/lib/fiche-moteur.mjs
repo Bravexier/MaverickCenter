@@ -278,6 +278,7 @@ export function competencesDe(regles, fiche) {
   const parId = new Map((fiche.competences ?? []).map((c) => [c.competence_id, c]));
   const maxNaturel = ligneDeNiveau(regles, niveau).competence_naturel_max;
   const { parCompetence } = bonusDuMetier(regles, fiche);
+  const posture = postureDuMoment(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
@@ -291,10 +292,13 @@ export function competencesDe(regles, fiche) {
     // accessoire « Compétence X » (décision R54) : la valeur tirée en Acquis de la compétence choisie, rognée au plafond après le métier ; maudit, retirée
     const accessoireBrut = sommeDesAccessoires(regles, fiche, 'competence', k.id);
     const accessoire = accessoireBrut > 0 ? Math.min(accessoireBrut, Math.max(0, plafondAcquis - metier)) : accessoireBrut;
+    const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + metier + accessoire + malus : null;
+    // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
+    const bonusPosture = bonusDePostureSurCompetence(posture, k);
     return {
       id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, metier, metierBrut, accessoire, accessoireBrut, maxNaturel, plafondAcquis,
       maxAcquis: Math.max(0, plafondAcquis - metier - Math.max(0, accessoire)),
-      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + metier + accessoire + malus : null,
+      score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
     };
   });
 }
@@ -550,7 +554,8 @@ export function rangerLEmplacement(regles, fiche, rang) {
  */
 export function mettreALaCeinture(regles, fiche, rang, nom) {
   const n = String(nom ?? '').trim();
-  if (!n) return null;
+  // un bâton magique se règle (magie, niveau) dans le sac avant d'aller à la ceinture (décision R101)
+  if (!n || n === regles.ceinture?.baton_a_regler) return null;
   const apres = { ...fiche, ...rangerLEmplacement(regles, fiche, rang) };
   if (dansLeSac(apres, n) === 0) return null;
   const duSac = apres.inventaire.find((l) => nomDe(l) === n && exemplairesDe(l) > 0)?.ressource_id ?? null;
@@ -616,13 +621,14 @@ export function remplirLEmplacement(regles, fiche, rang) {
 
 /**
  * Les objets du sac, proposés dans chaque emplacement de ceinture (décision R89 : « On peut assigner n'importe quel objet de l'inventaire ») :
- * [{ nom, quantite }], une fois chacun, dans l'ordre du sac.
+ * [{ nom, quantite }], une fois chacun, dans l'ordre du sac ; sans le bâton magique à régler quand les règles sont données (décision R101).
  */
-export function suggestionsDeCeinture(fiche) {
+export function suggestionsDeCeinture(fiche, regles = null) {
   const vus = new Map();
   for (const l of fiche.inventaire ?? []) {
     const n = nomDe(l);
-    if (!n || exemplairesDe(l) < 1) continue;
+    // un bâton magique pas encore réglé ne va pas à la ceinture (décision R101)
+    if (!n || exemplairesDe(l) < 1 || n === regles?.ceinture?.baton_a_regler) continue;
     vus.set(n, (vus.get(n) ?? 0) + exemplairesDe(l));
   }
   return [...vus].map(([nom, quantite]) => ({ nom, quantite }));
@@ -633,10 +639,10 @@ export function suggestionsDeCeinture(fiche) {
  * sélection : « insertReplacementText », ou aucun sur un navigateur qui n'en donne pas) ; null sinon : une saisie en cours (« Méga fiole verte » avant
  * « … foncée ») attend que le champ soit validé, pour ne pas sortir du sac un objet qu'on ne voulait pas.
  */
-export function objetChoisiDansLaListe(fiche, valeur, inputType) {
+export function objetChoisiDansLaListe(fiche, valeur, inputType, regles = null) {
   if (inputType && inputType !== 'insertReplacementText') return null;
   const n = String(valeur ?? '');
-  return suggestionsDeCeinture(fiche).some((s) => s.nom === n) ? n : null;
+  return suggestionsDeCeinture(fiche, regles).some((s) => s.nom === n) ? n : null;
 }
 
 /** Le nombre de caractères à partir duquel une saisie du sac propose des objets (demande du propriétaire du 2026-10-17 : « à partir de 2 caractères »). */
@@ -646,10 +652,11 @@ const plier = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu,
 
 /**
  * Le catalogue proposé dans le sac (décision R88 : « Chaque ligne étant un autocomplète mais dont on peux saisir un truc nouveau ») : les noms des
- * ressources, puis ceux des bâtons magiques (lib/ceinture-texte.mjs#nomDeBaton), une fois chacun, dans cet ordre.
+ * ressources, puis le bâton magique à régler (décision R101 : sa magie et son niveau se choisissent dans sa ligne), une fois chacun, dans cet ordre.
  */
 export function catalogueDuSac(regles) {
-  return [...new Set([...(regles.ressources ?? []).map((r) => r.nom), ...(regles.ceinture?.batons ?? []).map((b) => b.nom)].filter(Boolean))];
+  // un seul bâton magique, à régler dans sa ligne (décision R101), plutôt que les bâtons de chaque magie et de chaque niveau
+  return [...new Set([...(regles.ressources ?? []).map((r) => r.nom), regles.ceinture?.baton_a_regler].filter(Boolean))];
 }
 
 /**
@@ -1093,6 +1100,8 @@ export function attributsDe(regles, fiche) {
     initiativeMetier,
     initiativeAccessoires,
     initiativeBonus: (initiative?.bonus ?? 0) + initiativeMetier + initiativeAccessoires,
+    // la posture du moment (décision R100 : Vigilance « +2 initiative ») ; `initiativeBonus` reste celui de la fiche (tableur)
+    initiativePosture: postureDuMoment(regles, fiche)?.initiative ?? 0,
     quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max + acc('barre4_max') },
     corruptionMax: chakra,
   };
@@ -1357,6 +1366,8 @@ export function choixEnAttente(regles, fiche) {
   }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
+  // la magie de la posture Symbiose prise avec deux magies (décision R100)
+  if (postureDuMoment(regles, fiche)?.symbiose?.aChoisir) attente.push({ nature: 'symbiose', cle: 'symbiose', libelle: 'Magie de la symbiose' });
   return attente;
 }
 
@@ -1712,6 +1723,12 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche))
     ajouter(ap, libelle, entier(x.ap ?? x.bonus_ap), true);
     ajouter(am, libelle, entier(x.am ?? x.bonus_am), true);
   }
+  // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique »
+  const posture = postureDuMoment(regles, fiche);
+  if (posture) {
+    ajouter(ap, `Posture ${posture.posture.nom}`, posture.ap);
+    ajouter(am, `Posture ${posture.posture.nom}`, posture.am);
+  }
   const b = bouclierDe(regles, fiche);
   const total = (x) => x.detail.reduce((s, d) => s + d.valeur, 0);
   return {
@@ -1767,7 +1784,12 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
     reste /= 2;
     etapes.push({ texte: 'Don qui divise les dégâts : ÷ 2', valeur: reste });
   }
-  if (!t.physique) {
+  // la posture Symbiose : « Immunité à la magie de la symbiose » (décision R100)
+  const symbiose = t.physique ? null : postureDuMoment(regles, fiche)?.symbiose;
+  if (symbiose?.immunite && symbiose.magie?.id === t.id) {
+    reste = 0;
+    etapes.push({ texte: `Symbiose avec ${symbiose.magie.nom} : immunité`, valeur: 0 });
+  } else if (!t.physique) {
     const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
     const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
     if (palier) {
@@ -1847,6 +1869,83 @@ export function degatsDArme(regles, fiche, rang) {
   return { notation, nombre, de, total, texte, bonus, nonComptes, porteeEnPlus };
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Posture du moment (décision R100 ; demande du propriétaire du 2026-10-17 : « le fait de cocher une posture recalcule les valeurs de la fiche si
+// besoin ») : les lignes du tableau des postures que lib/posture-texte.mjs sait lire (regles.postures[].chiffres), au rang de leur texte.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Le Potentiel Illimité : la magie de la symbiose n'en est pas une (question Q15 de docs/sql/a-valider.md : il n'a pas de sorts à lui). */
+const POTENTIEL_ILLIMITE_INNE = 'magies/potentiel-illimite';
+
+/**
+ * Les magies avec lesquelles le personnage peut faire la symbiose : sa magie innée et sa magie acquise (« Quand vous avez 2 magies, 1 de ces magies doit
+ * être désactivée temporairement »), sans le Potentiel Illimité (Q15). [{ id, nom, couleur, texte }]
+ */
+export function magiesDeLaSymbiose(regles, fiche) {
+  return [fiche.magie_innee_id, fiche.magie_acquise_id].filter((id) => id && id !== POTENTIEL_ILLIMITE_INNE)
+    .map((id) => trouver(regles.magies, id)).filter(Boolean);
+}
+
+/**
+ * La posture du moment et ce qu'elle change (décision R100), ou null sans posture :
+ * { posture, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
+ *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), aChoisir, degats (dégâts et soin des sorts de cette magie), am,
+ *   immunite, inactive (l'autre magie) } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
+ * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
+ * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
+ */
+export function postureDuMoment(regles, fiche) {
+  const posture = trouver(regles.postures ?? [], fiche.posture_id);
+  if (!posture) return null;
+  const niveau = niveauGlobal(regles, fiche.xp);
+  // « +2 tous les niveaux de puissance magique » : le NPM accessible (npmMax : le palier 5 n'est pas pour un personnage à magie acquise)
+  const puissance = npmMax(regles, fiche);
+  const r = {
+    posture, competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false,
+    lignes: posture.effets.map((texte, i) => ({ texte, chiffre: posture.chiffres?.[i] ?? null, inconvenient: (posture.inconvenients ?? []).includes(i + 1) })),
+  };
+  const symbiose = () => {
+    if (!r.symbiose) {
+      const possibles = magiesDeLaSymbiose(regles, fiche);
+      const magie = possibles.length === 1 ? possibles[0] : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
+      r.symbiose = { magie, possibles, aChoisir: possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false, inactive: null, uneSeule: false };
+    }
+    return r.symbiose;
+  };
+  for (const c of posture.chiffres ?? []) {
+    if (!c) continue;
+    if (c.cible === 'competences') r.competences.push(c);
+    else if (c.cible === 'initiative') r.initiative += c.valeur;
+    else if (c.cible === 'armure') {
+      const v = c.pas * Math.ceil(niveau / c.niveaux);
+      if (c.ap) r.ap += v;
+      if (c.am) r.am += v;
+    } else if (c.cible === 'degats_maximum') r.degatsMaximum = true;
+    else if (c.cible === 'degats_diviseur') r.diviseur *= c.valeur;
+    else if (c.cible === 'cran_des_sorts') r.crans += c.valeur;
+    else if (c.cible === 'armes_inutilisables') r.armesInutilisables = true;
+    else if (c.cible === 'symbiose_sorts') symbiose().degats = c.base + c.pas * Math.max(0, puissance - 1);
+    else if (c.cible === 'symbiose_am') {
+      const s = symbiose();
+      s.am = c.base + c.pas * Math.max(0, puissance - 1);
+    } else if (c.cible === 'symbiose_immunite') symbiose().immunite = true;
+    else if (c.cible === 'une_seule_magie') symbiose().uneSeule = true;
+  }
+  if (r.symbiose) {
+    const s = r.symbiose;
+    // l'AM de la symbiose vaut dès la posture prise ; ses dégâts, son immunité et la magie désactivée attendent sa magie
+    r.am += s.am;
+    if (s.uneSeule && s.magie) s.inactive = s.possibles.find((m) => m.id !== s.magie.id) ?? null;
+  }
+  return r;
+}
+
+/** Le bonus de la posture du moment sur la compétence `k` ({ id, caracteristique_id }) : la somme des lignes qui la visent. */
+export function bonusDePostureSurCompetence(posture, k) {
+  if (!posture) return 0;
+  return posture.competences.reduce((s, c) => s + ((c.toutes || c.caracteristiques?.includes(k.caracteristique_id) || c.competences?.includes(k.id)) ? c.valeur : 0), 0);
+}
+
 /**
  * Le Mode Hyper et le Mode Hyper 100 % du personnage (demande du propriétaire : leurs cases à côté des postures, une fois débloqués) : débloqués au niveau
  * global qu'écrit la page « Liste des effets mode hyper » (2 et 10) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
@@ -1865,5 +1964,346 @@ export function modeHyperDe(regles, fiche) {
     // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
     toursAccessoires: sommeDesAccessoires(regles, fiche, 'mode_hyper_tours'),
     cent: { debloque: niveau >= h.cent.niveau, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite },
+  };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Bâtons magiques (décision R101 ; demandes du propriétaire du 2026-10-17 : « pouvoir configurer correctement un "bâton magique" avec la magie et le
+// niveau de ce dernier avant de pouvoir l'assigner à un emplacement de ceinture », « appliquer les effets passifs du bâton directement dans les cases
+// concernées (coût des sorts, etc.) »). Règles de la page « Bâtons magiques » : « Ces objets peuvent être portés à la ceinture ou dans un emplacement
+// d'arme pour que l'effet soit actif » (la fiche n'a pas d'emplacement d'arme pour eux : la ceinture seule), « Il n'est pas possible d'accumuler […] les
+// mêmes effets même si c'est différents niveaux ou gemmes » ; réponse du propriétaire « Tous les sorts, le meilleur seul ».
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Ce qu'est une ligne du sac pour les bâtons magiques : { regle: false } pour le bâton à régler (« Bâton magique ») ; { regle: true, baton } pour un
+ * bâton réglé (« Bâton magique Feu, niveau 2 ») ; null pour un autre objet.
+ */
+export function batonDuSac(regles, nom) {
+  const n = String(nom ?? '').trim();
+  if (!n) return null;
+  if (n === regles.ceinture?.baton_a_regler) return { regle: false, baton: null };
+  const baton = (regles.ceinture?.batons ?? []).find((b) => b.nom === n);
+  return baton ? { regle: true, baton } : null;
+}
+
+/** Les magies qui ont des bâtons, dans l'ordre des règles, avec leurs niveaux : [{ id, nom, niveaux: [1, 2, 3] }]. */
+export function magiesDesBatons(regles) {
+  const parMagie = new Map();
+  for (const b of regles.ceinture?.batons ?? []) {
+    if (!parMagie.has(b.magie_id)) parMagie.set(b.magie_id, { id: b.magie_id, nom: b.magie, niveaux: [] });
+    parMagie.get(b.magie_id).niveaux.push(b.niveau);
+  }
+  return [...parMagie.values()];
+}
+
+/** Le nom du bâton de cette magie et de ce niveau, ou null s'il n'existe pas. */
+export function nomDuBaton(regles, magieId, niveau) {
+  return (regles.ceinture?.batons ?? []).find((b) => b.magie_id === magieId && b.niveau === entier(niveau))?.nom ?? null;
+}
+
+/**
+ * Les effets passifs des bâtons portés à la ceinture (décision R101) : { comptes: Map(cle → { valeur, baton, texte }), ecartes: [{ baton, texte, par }],
+ * rappels: [{ baton, texte }] }. Deux bâtons au même effet (même `cle`, lib/ceinture-texte.mjs#effetsDeBaton) : le plus fort seul (la plus grande valeur
+ * absolue ; à égalité, le premier emplacement), l'autre dans `ecartes`. `rappels` : ce que la fiche ne chiffre pas (invocation, malus d'esquive, une
+ * ligne d'une autre écriture), rappelé sous les sorts.
+ */
+export function effetsDesBatons(regles, fiche) {
+  const comptes = new Map();
+  const ecartes = [];
+  const rappels = [];
+  const portes = [...(fiche.ceinture ?? [])].sort((a, b) => entier(a.rang) - entier(b.rang))
+    .map((l) => batonDuSac(regles, l.nom)).filter((x) => x?.regle).map((x) => x.baton);
+  for (const baton of portes) {
+    for (const e of baton.effets ?? []) {
+      if (!e.cle || e.cle === 'invocation' || e.cle === 'malus_esquive') {
+        rappels.push({ baton, texte: e.texte });
+        continue;
+      }
+      const deja = comptes.get(e.cle);
+      if (!deja) comptes.set(e.cle, { valeur: e.valeur, baton, texte: e.texte });
+      else if (Math.abs(e.valeur) > Math.abs(deja.valeur)) {
+        ecartes.push({ baton: deja.baton, texte: deja.texte, par: baton });
+        comptes.set(e.cle, { valeur: e.valeur, baton, texte: e.texte });
+      } else ecartes.push({ baton, texte: e.texte, par: deja.baton });
+    }
+  }
+  return { comptes, ecartes, rappels };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Les sorts du moment (décision R102 ; demande du propriétaire du 2026-10-17 : « Le coût devrait être mis à jour automatiquement en fonction des bonus […]
+// le calcul des dégâts de chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. et de posture choisie »).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les dés dans l'ordre des crans (posture Focus : « augmenter d'un cran la nature des dés […] il n'y a pas plus haut que le D20 »). */
+export const CRANS_DES_DES = Object.freeze([4, 6, 8, 10, 12, 20]);
+
+/** Le dé `faces` monté (ou descendu) de `crans` crans, sans dépasser le D20 ni descendre sous le D4 ; un dé hors de la liste ne change pas. */
+export function deMonte(faces, crans) {
+  const i = CRANS_DES_DES.indexOf(entier(faces));
+  if (i < 0 || !crans) return faces;
+  return CRANS_DES_DES[Math.min(CRANS_DES_DES.length - 1, Math.max(0, i + crans))];
+}
+
+const ECRITURE_DES_DEGATS = /^(soigne\s+)?(?:(\d+)\s*d\s*(\d+))?\s*(?:\+\s*(\d+)|(\d+))?\s*((?:de\s+)?(?:d[ée]g[âa]ts?|soins?))?(\s+(?:d['’]acide|sonores?))?(\s*(?:\/\s*tour|par tour))?\s*\.?$/i;
+
+/**
+ * La valeur d'un D/S/B de sort au NM du sort (lib/sort-maitrise.mjs#valeurAuNm), quand elle se lit sans ambiguïté — « 3d6 dégâts », « 8d6 + 35 dégâts »,
+ * « 23 dégâts », « 2d6 soin », « Soigne 6d6 + 7 », « 6d6 + 30 soin », suivies au plus d'une précision qui ne change pas la valeur (« d'acide »,
+ * « sonores ») ou d'une période (« /tour », « par tour » : `parTour`) — ; null sinon (« +8 dégâts », « X dégâts », « Vole 4d10 chakra », « 2d6 cr »…).
+ * { nature: 'degats' | 'soin', nombre (0 sans dés), faces, fixe, prefixe (« Soigne » ou ''), suite (ce qui suit, tel qu'écrit), parTour }.
+ */
+export function lireDegatsDeSort(texte) {
+  const m = ECRITURE_DES_DEGATS.exec(String(texte ?? '').trim());
+  if (!m) return null;
+  const [, soigne, nombre, faces, plus, seul, mot, precision = '', periode = ''] = m;
+  if (!nombre && !seul) return null;
+  if (seul && nombre) return null;          // « 3d6 4 dégâts » : pas une écriture connue
+  if (plus && !nombre) return null;
+  if (!soigne && !mot) return null;
+  return {
+    nature: soigne || /soin/i.test(mot ?? '') ? 'soin' : 'degats', nombre: nombre ? Number(nombre) : 0, faces: faces ? Number(faces) : null,
+    fixe: Number(plus ?? seul ?? 0), prefixe: soigne ? soigne.trim().replace(/^s/, 'S') : '', suite: `${mot ?? ''}${precision}${periode}`.trim(),
+    parTour: Boolean(periode),
+  };
+}
+
+/**
+ * L'écriture d'une valeur lue (lireDegatsDeSort) après ses changements : « 3d8 + 39 dégâts », « 2d6 − 2 dégâts » (un bonus négatif, d'un accessoire
+ * maudit), « 40 dégâts », « Soigne 6d6 + 7 » ; une valeur sans dés n'est jamais négative.
+ */
+export function ecrireDegatsDeSort(v) {
+  const des = v.nombre ? `${v.nombre}d${v.faces}` : '';
+  const fixe = des ? v.fixe : Math.max(0, v.fixe);
+  const valeur = des && fixe ? `${des} ${fixe > 0 ? '+' : '−'} ${Math.abs(fixe)}` : des || String(fixe);
+  return [v.prefixe, valeur, v.suite].filter(Boolean).join(' ');
+}
+
+/**
+ * Vrai si les sorts visés par un bonus écrit (lib/sort-bonus-texte.mjs : { tous | attaque | soin | innee | magies, types? }) comprennent ce sort ;
+ * `types` restreint aux sorts de ces types (« Les sorts de placement du Vent »).
+ */
+function viseLeSort(vises, sort, fiche, portee) {
+  if (!vises) return false;
+  if (vises.sauf_soi_meme && /^soi-m[êe]me$/i.test(String(portee ?? '').trim())) return false;
+  if (vises.types && !vises.types.some((t) => sort.types?.includes(t))) return false;
+  return Boolean(vises.tous || (vises.attaque && sort.types?.includes('attaque')) || (vises.soin && sort.types?.includes('soin'))
+    || (vises.innee && sort.magie_id === fiche.magie_innee_id) || vises.magies?.includes(sort.magie_id) || (vises.types && !vises.magies && !vises.innee));
+}
+
+/**
+ * Les bonus de sorts écrits qui valent pour ce personnage (décision R102) : ceux des dons de classe débloqués, des dons de race de son ethnie et de
+ * l'armure élémentaire portée, chacun avec son nom. [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveauDeClasse? }]
+ */
+export function bonusDeSortsDuPersonnage(regles, fiche) {
+  const bonus = [];
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const d of c.dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: `${d.nom} (${c.classe.nom})`, niveauDeClasse: c.niveau });
+  }
+  for (const d of donsDeRace(regles, fiche).dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: d.nom ?? d.etiquette ?? 'Don de race' });
+  const element = fiche.armure_id ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
+  for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)` });
+  return bonus;
+}
+
+/**
+ * Ce qui vaut pour tous les sorts de la fiche (sortDuMoment), calculé une fois : la posture du moment, les bâtons à la ceinture, les bonus écrits des
+ * dons et de l'armure élémentaire, les effets des accessoires.
+ */
+export function contexteDesSorts(regles, fiche) {
+  return {
+    posture: postureDuMoment(regles, fiche), batons: effetsDesBatons(regles, fiche), ecrits: bonusDeSortsDuPersonnage(regles, fiche),
+    accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
+  };
+}
+
+/**
+ * Un sort de la fiche à son moment (décision R102) : `auNm` = ses valeurs au NM du sort, telles que la page les lit (lib/sort-maitrise.mjs#valeurAuNm :
+ * { cout, portee, dsb, effets }) ; `contexte` : contexteDesSorts. Rend { inactif (la magie que la Symbiose désactive : son nom), cout: { texte, detail,
+ * corruption }, portee: { texte, detail }, dsb: { texte, detail, diviseur, lu }, effets: { texte, detail }, nonComptes: [{ nom, valeur, raison, cible }],
+ * rappels: [{ nom, texte }] } ; `detail` : [{ nom, valeur }] ; `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'.
+ * - Coût (« Le coût en chakra »), seulement un nombre ou « N + autre chose » (la part en chakra) : réductions des dons (« réduits de 4 » pour les magies
+ *   nommées, Économe : son NPM), du bâton (« Coût sort −N ») ; réduit, jamais moins de 1 (réponse « Jamais moins de 1 » ; un coût écrit 0 reste 0). Un
+ *   sort de la Corruption se lance aussi avec la corruption : 2 × le coût réduit − « Coût corruption −N » du bâton (réponse « 2 × coût réduit − bâton »),
+ *   au moins 1 (un coût, comme ci-dessus) ;
+ * - Portée, seulement un nombre : accessoires, dons, bâton ;
+ * - Dégâts (lireDegatsDeSort, pas une valeur « par tour » : question Q19) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
+ *   de dégâts des sorts » ; un dé au maximum par accessoire (sauf en Offensif) ; les bonus fixes des dons, des accessoires (« Dégâts magie », sorts
+ *   d'attaque), du bâton (« Dégâts sort »), de l'armure élémentaire, de la Symbiose (sa magie) ; en Offensif, le maximum (« 6 D6+4 devient alors 40 ») ;
+ *   en Défensif, ÷ 2 (`diviseur`). Un accessoire maudit fait le contraire (R54) : un cran de moins, un dé au minimum, un bonus retiré ;
+ * - Soin : les dés montés par Focus et par le don qui l'écrit, un dé de plus (accessoire « Augmente de 1d les soins magiques »), les bonus fixes des
+ *   dons, du bâton (« Soin magique »), de la Symbiose ;
+ * - Amplification : « +N dégâts » + « Sort qui amplifie dégâts » du bâton ; « +NAM », « +NAP » + « ampli am / ap » du bâton ; protection : « −N dégâts »
+ *   (D/S/B) et « Bloque N dégâts » (effets) + « protection = +N dégâts bloqués » du bâton (réponse « Compter où c'est chiffré ») ;
+ * - Un bonus qui viserait un D/S/B qui ne se lit pas (ou « par tour ») est dit non compté.
+ */
+export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche)) {
+  const { posture, batons, ecrits, accessoires } = contexte;
+  const nonComptes = [];
+  const rappels = [];
+  const symbiose = posture?.symbiose ?? null;
+  const inactif = symbiose?.inactive && symbiose.inactive.id === sort.magie_id ? symbiose.inactive.nom : null;
+  const valeurEcrite = (b) => ('parNpm' in b ? b.parNpm * sort.niveau : 'pas' in b ? b.base + b.pas * Math.floor((b.niveauDeClasse ?? 0) / b.niveaux) : b.valeur);
+  // les bonus écrits d'une cible qui visent ce sort ; ceux d'une situation ou d'une autre posture : non comptés (rangés sous leur colonne)
+  const colonneDe = (cible) => (cible === 'cout' ? 'cout' : cible === 'portee' ? 'portee' : 'dsb');
+  const ecritsPour = (cible) => {
+    const r = [];
+    for (const b of ecrits.filter((x) => x.cible === cible && viseLeSort(x.vises, sort, fiche, auNm.portee))) {
+      const valeur = valeurEcrite(b);
+      if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
+      else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
+      else r.push({ nom: b.nom, valeur });
+    }
+    return r;
+  };
+  const duBaton = (cle) => {
+    const e = batons.comptes.get(cle);
+    return e ? [{ nom: e.baton.nom, valeur: e.valeur }] : [];
+  };
+  const accessoire = (cible) => accessoires.filter((e) => e.cible === cible).map((e) => ({ nom: `${e.nom} (accessoire)`, valeur: e.valeur }));
+  const somme = (lignes) => lignes.reduce((s, l) => s + l.valeur, 0);
+  const pasCompte = (lignes, raison, cible) => { for (const l of lignes) nonComptes.push({ ...l, raison, cible }); };
+
+  // coût
+  const cout = { texte: auNm.cout ?? '', detail: [], corruption: null };
+  const brut = /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
+  const reductions = [...ecritsPour('cout'), ...duBaton('cout')];
+  if (brut) {
+    const base = Number(brut[1]);
+    // réduit, jamais moins de 1 ; un coût écrit plus bas (0) ne change pas sans réduction
+    const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
+    cout.detail = reductions;
+    cout.texte = `${reduit}${brut[2] ?? ''}`;
+    if (sort.magie_id === 'magies/magie-de-la-corruption') {
+      const corr = duBaton('cout_corruption');
+      cout.corruption = { valeur: Math.max(Math.min(2 * reduit, 1), 2 * reduit + somme(corr)), detail: [{ nom: 'Coût en corruption : 2 × le coût', valeur: 2 * reduit }, ...corr] };
+    }
+  } else pasCompte(reductions, 'non_chiffre', 'cout');
+
+  // portée
+  const portee = { texte: auNm.portee ?? '', detail: [] };
+  const bonusDePortee = [...accessoire('portee_sorts'), ...ecritsPour('portee'), ...duBaton('portee')];
+  if (/^\d+$/.test(String(auNm.portee ?? '').trim())) {
+    portee.detail = bonusDePortee;
+    portee.texte = String(Math.max(0, Number(auNm.portee) + somme(bonusDePortee)));
+  } else pasCompte(bonusDePortee, 'non_chiffre', 'portee');
+
+  // dégâts, soin, amplification, protection
+  const dsb = { texte: auNm.dsb ?? '', detail: [], diviseur: 1, lu: false };
+  const effets = { texte: auNm.effets ?? '', detail: [] };
+  const v = lireDegatsDeSort(auNm.dsb);
+  const deSymbiose = symbiose?.magie?.id === sort.magie_id && symbiose.degats ? [{ nom: `Posture Symbiose (${symbiose.magie.nom})`, valeur: symbiose.degats }] : [];
+  const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose];
+  const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose];
+  if (v && !v.parTour) {
+    dsb.lu = true;
+    const x = { ...v };
+    // crans de dé : Focus (dégâts et soins), l'accessoire (dégâts), un don qui l'écrit (« Augmente d'un cran les dés des soins magiques »)
+    const crans = (posture?.crans ?? 0) + (v.nature === 'degats' ? somme(accessoire('cran_des_sorts')) : somme(ecritsPour('cran')));
+    if (x.nombre && crans) {
+      const faces = deMonte(x.faces, crans);
+      if (faces !== x.faces) dsb.detail.push({ nom: `Dés d${x.faces} → d${faces}`, valeur: 0, crans: true });
+      x.faces = faces;
+    }
+    let fixes;
+    if (v.nature === 'degats') {
+      fixes = fixesDesDegats();
+      const deMax = somme(accessoire('de_maximum'));
+      if (x.nombre && deMax && !posture?.degatsMaximum) {
+        // « Permet à un dé de dégâts d'être maximum » (réponse « Oui, un dé au max » : « 3D6+4 » → « 2D6+6+4 ») : un dé par accessoire ; maudit, au minimum
+        const n = Math.min(x.nombre, Math.abs(deMax));
+        x.nombre -= n;
+        fixes.unshift({ nom: deMax > 0 ? `${n > 1 ? `${n} dés` : 'Un dé'} au maximum (accessoire)` : `${n > 1 ? `${n} dés` : 'Un dé'} au minimum (accessoire maudit)`, valeur: n * (deMax > 0 ? x.faces : 1) });
+      }
+    } else {
+      fixes = fixesDuSoin();
+      const desEnPlus = somme(accessoire('des_soins'));
+      if (desEnPlus && x.nombre) {
+        x.nombre = Math.max(0, x.nombre + desEnPlus);
+        dsb.detail.push({ nom: `${desEnPlus > 0 ? '+' : '−'}${Math.abs(desEnPlus)}d (accessoire)`, valeur: 0, des: desEnPlus });
+      } else if (desEnPlus) nonComptes.push({ nom: 'Augmente de 1d les soins magiques (accessoire)', valeur: desEnPlus, raison: 'des', cible: 'dsb' });
+    }
+    dsb.detail.push(...fixes);
+    x.fixe += somme(fixes);
+    if (v.nature === 'degats' && posture?.degatsMaximum) {
+      // Offensif : « 6 D6+4 deviens alors 40 » (demande du propriétaire) ; guide : « 2d6+2 de dégâts en offensif fera automatiquement 14 dégâts »
+      dsb.detail.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: x.nombre * x.faces, maximum: true });
+      x.fixe += x.nombre * x.faces;
+      x.nombre = 0;
+    }
+    dsb.texte = ecrireDegatsDeSort(x);
+    if (v.nature === 'degats' && posture?.diviseur > 1) dsb.diviseur = posture.diviseur;
+  } else if (sort.types?.includes('amplification') || sort.types?.includes('protection')) {
+    // chaque « +N dégâts », « +NAM », « +NAP » d'un sort d'amplification, plus ce que donne le bâton (« Sort qui amplifie dégâts », « ampli am / ap ») ;
+    // les dégâts bloqués d'un sort de protection (« −N dégâts magiques », « Bloque N dégâts »), plus « protection = +N dégâts bloqués »
+    const amplifier = (texte, cible) => String(texte ?? '').replace(/([+\-−])(\d+)(\s*)(d[ée]g[âa]ts|AM|AP)(?!\p{L})/giu, (tout, signe, n, espace, unite) => {
+      const protection = signe !== '+';
+      if (protection !== sort.types.includes('protection') || (protection && !/^d/i.test(unite))) return tout;
+      const ampli = duBaton(protection ? 'protection' : /^d/i.test(unite) ? 'ampli_degats' : `ampli_${unite.toLowerCase()}`);
+      if (!ampli.length) return tout;
+      cible.detail.push(...ampli);
+      return `${signe}${Number(n) + somme(ampli)}${espace}${unite}`;
+    });
+    dsb.texte = amplifier(auNm.dsb, dsb);
+    dsb.lu = dsb.detail.length > 0;
+    if (sort.types.includes('protection')) {
+      effets.texte = String(auNm.effets ?? '').replace(/(\bbloque\s+)(\d+)(\s+d[ée]g[âa]ts)/i, (tout, debut, n, fin) => {
+        const ampli = duBaton('protection');
+        if (!ampli.length) return tout;
+        effets.detail.push(...ampli);
+        return `${debut}${Number(n) + somme(ampli)}${fin}`;
+      });
+    }
+  }
+  if (!dsb.lu) {
+    // les bonus qui viseraient ce sort, quand sa valeur ne se lit pas (ou se compte par tour) : dits non comptés
+    const raison = v?.parTour ? 'par_tour' : 'non_chiffre';
+    if (sort.attaque || v?.nature === 'degats') pasCompte(fixesDesDegats(), raison, 'dsb');
+    if (sort.types?.includes('soin') || v?.nature === 'soin') pasCompte(fixesDuSoin(), raison, 'dsb');
+  }
+  // rappels : ce que les bâtons ne chiffrent pas ici (invocation, malus d'esquive), et un sort de protection que la fiche ne sait pas chiffrer
+  for (const r of batons.rappels) rappels.push({ nom: r.baton.nom, texte: r.texte });
+  const protection = batons.comptes.get('protection');
+  if (protection && sort.types?.includes('protection') && !dsb.lu && !effets.detail.length) rappels.push({ nom: protection.baton.nom, texte: protection.texte });
+  return { inactif, cout, portee, dsb, effets, nonComptes, rappels };
+}
+
+/**
+ * Les dégâts d'une arme à son moment (décisions R100, R102), sa pastille : degatsDArme, puis la posture du moment et les accessoires qui touchent les
+ * dés — un dé au maximum (« Permet à un dé de dégâts d'être maximum » : « 3D6+4 » → « 2D6+6+4 », réponse « Oui, un dé au max » ; sans effet en
+ * Offensif), Offensif « Dégâts maximum » (« 6D6+4 devient alors 40 »), Défensif « Divise par 2 les dégâts infligés » (`diviseur`), Symbiose « Impossible
+ * d'utiliser les armes » (`inutilisable`). null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur }], diviseur, inutilisable }.
+ */
+export function degatsDArmeDuMoment(regles, fiche, rang) {
+  const d = degatsDArme(regles, fiche, rang);
+  if (!d) return null;
+  const posture = postureDuMoment(regles, fiche);
+  const faces = /^D(\d+)$/i.exec(String(d.de ?? '').trim());
+  const moment = [];
+  let nombre = d.nombre;
+  let total = d.total;
+  const deMax = effetsDesAccessoires(regles, fiche).filter((e) => e.cible === 'de_maximum' && e.valeur).reduce((s, e) => s + e.valeur, 0);
+  if (deMax && faces && nombre >= 1 && !posture?.degatsMaximum) {
+    // un dé par accessoire ; maudit, au minimum (R54)
+    const n = Math.min(nombre, Math.abs(deMax));
+    nombre -= n;
+    const valeur = n * (deMax > 0 ? Number(faces[1]) : 1);
+    total += valeur;
+    moment.push({ nom: deMax > 0 ? `${n > 1 ? `${n} dés` : 'Un dé'} au maximum (accessoire)` : `${n > 1 ? `${n} dés` : 'Un dé'} au minimum (accessoire maudit)`, valeur });
+  }
+  let texte;
+  if (posture?.degatsMaximum && faces) {
+    const max = nombre * Number(faces[1]);
+    moment.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: max });
+    texte = String(max + total);
+  } else {
+    const notation = nombre ? notationDesDes(d.de, nombre) : '';
+    texte = notation && total ? `${notation}${total > 0 ? '+' : ''}${total}` : notation || String(total);
+  }
+  return {
+    ...d, texte, moment,
+    diviseur: posture?.diviseur > 1 ? posture.diviseur : 1,
+    inutilisable: posture?.armesInutilisables ? posture.posture.nom : null,
   };
 }

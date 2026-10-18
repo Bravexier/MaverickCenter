@@ -10,12 +10,14 @@
 import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
+import { effetDePosture } from './posture-texte.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
 import { couleurDuPoids } from './armures-rendu.mjs';
-import { contenanceEcrite, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
+import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
+import { bonusDeSortsEcrits } from './sort-bonus-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -121,7 +123,11 @@ function reglesDeLaBase(db) {
   const magiesMatrice = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id', (r) => r.magie_id);
   const bornes = parCle(lignes(db, 'SELECT race_id, caracteristique_id, minimum, maximum FROM v_race_carac_borne'), 'race_id');
   const donsDeRace = parCle(lignes(db, 'SELECT race_id, forme, etiquette, nom, texte, ethnie_id FROM race_don ORDER BY race_id, rang'), 'race_id',
-    (d) => ({ forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)) }));
+    (d) => {
+      // les bonus de sorts que le don écrit (« Les dégâts de sorts, les soins […] gagnent un bonus de +3 » : lib/sort-bonus-texte.mjs, décision R102)
+      const sorts = bonusDeSortsEcrits(d.texte);
+      return { forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)), ...(sorts.length ? { sorts } : {}) };
+    });
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
   const cellulesDuTableau = parCle(lignes(db, 'SELECT race_id, ligne, colonne, valeur FROM race_don_tableau_cellule ORDER BY race_id, ligne, colonne'), 'race_id');
   const tableauDeDons = (raceId, titre) => {
@@ -216,9 +222,11 @@ function reglesDeLaBase(db) {
   // dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs),
   // pour le quota de maîtrise de la fiche (décision R32).
   // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
+  // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
     const b = d.type === 'passif' ? bonusDeDegatsEcrit(d.effet) : null;
-    return b ? { degats: b } : {};
+    const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
+    return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
   };
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
@@ -274,6 +282,8 @@ function reglesDeLaBase(db) {
   const ciblesDesAccessoires = parCle(lignes(db, 'SELECT effet_id, cible, cible_id, valeur, choix FROM accessoire_effet_cible ORDER BY effet_id, rang'), 'effet_id',
     (c) => ({ cible: c.cible, cible_id: c.cible_id, valeur: c.valeur, choix: c.choix === 1 }));
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
+  // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
+  const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
   const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
@@ -281,6 +291,7 @@ function reglesDeLaBase(db) {
       bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
       // un sort d'attaque (sort_type) reçoit les « Dégâts magie +N » d'un accessoire (décision R54)
       ...(attaques.has(s.id) ? { attaque: true } : {}),
+      types: typesDesSorts.get(s.id) ?? [],
     }));
 
   // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
@@ -295,6 +306,8 @@ function reglesDeLaBase(db) {
     .map((p) => ({
       id: p.id, nom: p.nom, couleur: couleurDePosture(p.id), texte: texteSurCouleur(couleurDePosture(p.id)), effets: effetsDePosture.get(p.id) ?? [],
       inconvenients: inconvenientsDePosture.get(p.id) ?? [],
+      // ce que chaque ligne change aux valeurs de la fiche (décision R100 : lib/posture-texte.mjs), au même rang que `effets` ; null = affichée seulement
+      chiffres: (effetsDePosture.get(p.id) ?? []).map(effetDePosture),
     }));
 
   // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
@@ -372,7 +385,14 @@ function reglesDeLaBase(db) {
     })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
-    armures_elementaires: lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre'),
+    // les bonus de sorts qu'écrivent ses effets (« +4 dégâts avec les sorts d'Arcane » : lib/sort-bonus-texte.mjs, décision R102)
+    armures_elementaires: (() => {
+      const effets = parCle(lignes(db, 'SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'), 'armure_elementaire_id', (r) => r.texte);
+      return lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre').map((a) => {
+        const sorts = (effets.get(a.id) ?? []).flatMap(bonusDeSortsEcrits);
+        return { ...a, ...(sorts.length ? { sorts } : {}) };
+      });
+    })(),
     // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers et R78) : les formes (`boucliers`, bouclier_classe), les matières (leur
     // solidité, celle du bouclier : R78), les boucliers de la liste (une forme et une matière : AP, AM, poids R92) et les poids (Force minimum, couleur)
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
@@ -397,12 +417,15 @@ function reglesDeLaBase(db) {
     // la ceinture (décisions R81, R89) : les objets du catalogue qui y vont (v_objet_ceinture), avec la contenance écrite d'un carquois ou d'un sac
     // (sa quantité à la ceinture = ses projectiles), et les bâtons magiques, sous le nom que la fiche leur donne (lib/ceinture-texte.mjs#nomDeBaton)
     ceinture: {
+      // le bâton magique pas encore réglé (décision R101 : sa magie et son niveau se choisissent dans le sac avant la ceinture)
+      baton_a_regler: BATON_A_REGLER,
       objets: lignes(db, `SELECT v.famille, v.ressource_id, r.description FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id
                           ORDER BY v.famille, v.ressource_id`)
         .map((o) => ({ ressource_id: o.ressource_id, famille: o.famille, ...(o.famille === 'contenant' ? { contenance: contenanceEcrite(o.description) } : {}) })),
-      batons: lignes(db, `SELECT b.id, b.magie_id, b.niveau, m.nom AS magie FROM v_objet_ceinture v JOIN baton_magique b ON b.id = v.baton_id
+      // ses effets passifs (décision R101 : lib/ceinture-texte.mjs#effetsDeBaton, comptés à la ceinture)
+      batons: lignes(db, `SELECT b.id, b.magie_id, b.niveau, b.bonus_brut, m.nom AS magie FROM v_objet_ceinture v JOIN baton_magique b ON b.id = v.baton_id
                           JOIN magie m ON m.id = b.magie_id ORDER BY m.ordre, b.niveau`)
-        .map((b) => ({ id: b.id, nom: nomDeBaton(b.magie, b.niveau), magie_id: b.magie_id, niveau: b.niveau })),
+        .map((b) => ({ id: b.id, nom: nomDeBaton(b.magie, b.niveau), magie_id: b.magie_id, magie: b.magie, niveau: b.niveau, effets: effetsDeBaton(b.bonus_brut) })),
     },
     // le sac (décision R88, réponses du propriétaire du 2026-10-16 ; des valeurs de la décision, pas d'une table, comme regles.ambidextrie) : la
     // quantité d'une ligne, un nombre saisi de 1 à 99 (« Maxé à 99 pour l'inventaire »), et la Force dont compte le sac d'un personnage qui a le don

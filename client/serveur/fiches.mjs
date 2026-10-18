@@ -20,8 +20,8 @@ const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
 
 /**
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
- * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74), de la migration 0055 (l'armure de la fiche, R95) et de la
- * migration 0060 (le bouclier forme + matière, R96). Quand le
+ * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74), de la migration 0055 (l'armure de la fiche, R95), de la
+ * migration 0060 (le bouclier forme + matière, R96) et de la migration 0061 (la magie de la Symbiose, R100). Quand le
  * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 :
@@ -32,6 +32,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     gains_sante: 0, gains_chakra: 0, entrainement: null,
     armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
     bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
+    symbiose_magie_id: null,
   }),
   personnage_arme: Object.freeze({ durabilite: null }),
 });

@@ -30,3 +30,40 @@ export const sacSansForceEcrit = (effet) => /\bpermet d'utiliser n'importe quel 
  * fiche les propose sous « Bâton magique <magie>, niveau <n> », d'après l'exemple de la page (« un bâton magique 1 feu et un bâton magique foudre 2 »).
  */
 export const nomDeBaton = (magie, niveau) => `Bâton magique ${magie}, niveau ${niveau}`;
+
+/**
+ * Le nom d'un bâton magique pas encore réglé, dans le sac (décision R101 ; demande du propriétaire du 2026-10-17 : « pouvoir configurer correctement un
+ * "bâton magique" avec la magie et le niveau de ce dernier avant de pouvoir l'assigner à un emplacement de ceinture ») : la fiche le propose seul, sa
+ * magie et son niveau se choisissent dans sa ligne, qui prend alors le nom du bâton (nomDeBaton).
+ */
+export const BATON_A_REGLER = 'Bâton magique';
+
+/**
+ * Les effets passifs d'un bâton magique, lus dans son texte (baton_magique.bonus_brut, une ligne par effet), décision R101 : [{ cle, valeur, texte }].
+ * `cle` nomme ce qu'il amplifie : deux bâtons au même `cle` ne se cumulent pas (« Il n'est pas possible d'accumuler […] les mêmes effets même si c'est
+ * différents niveaux ou gemmes ») ; `valeur` : le nombre écrit, négatif pour une réduction de coût ou un malus. Une ligne d'une autre écriture est
+ * rendue avec `cle` null (rappelée, jamais comptée).
+ */
+export function effetsDeBaton(bonus) {
+  const lectures = [
+    ['cout', /^co[uû]t sort -(\d+)$/, -1],
+    ['cout_corruption', /^co[uû]t corruption -(\d+)$/, -1],
+    ['degats', /^d[ée]g[âa]ts sort \+(\d+)$/, 1],
+    ['soin', /^soin magique \+(\d+)$/, 1],
+    ['portee', /^port[ée]e sort \+(\d+)$/, 1],
+    ['ampli_degats', /^sort qui amplifie d[ée]g[âa]ts = \+(\d+) aux d[ée]g[âa]ts$/, 1],
+    ['ampli_am', /^ampli am = \+(\d+) am donn[ée]$/, 1],
+    ['ampli_ap', /^ampli ap = \+(\d+) ap donn[ée]$/, 1],
+    ['protection', /^protection = \+(\d+) d[ée]g[âa]ts bloqu[ée]s$/, 1],
+    ['invocation', /^invocation \+(\d+) sant[ée]$/, 1],
+    ['malus_esquive', /^malus de (\d+)% pour esquiver effet secondaire$/, -1],
+  ];
+  return String(bonus ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((texte) => {
+    const t = texte.toLowerCase().replace(/\s+/g, ' ');
+    for (const [cle, re, signe] of lectures) {
+      const m = re.exec(t);
+      if (m) return { cle, valeur: signe * Number(m[1]), texte };
+    }
+    return { cle: null, valeur: null, texte };
+  });
+}

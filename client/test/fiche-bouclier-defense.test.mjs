@@ -179,7 +179,7 @@ test('propositionsDuCatalogue : rien sous deux caractères ; sans accents ni cas
   assert.deepEqual(M.propositionsDuCatalogue(catalogue, 'fi', 2), ['Fiole de soin', 'Méga fiole verte']);
   const sac = M.catalogueDuSac(regles);
   assert.equal(new Set(sac).size, sac.length, 'chaque nom une fois');
-  assert.ok(sac.includes(regles.ceinture.batons[0].nom), 'les bâtons magiques');
+  assert.ok(sac.includes(regles.ceinture.baton_a_regler), 'le bâton magique à régler (décision R101)');
 });
 
 test('degatsDArme (R99, « L’élément remplace tout ») : avec un élément, les dés restent, les bonus du matériau et de l’amélioration sont remplacés par ceux de l’élément', () => {

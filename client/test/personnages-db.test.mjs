@@ -421,6 +421,19 @@ test('sorts : de la magie du personnage ; NM de niveau au plus niveau global −
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
 });
 
+test('posture Symbiose (R100, migration 0061) : sa magie est la magie innée ou acquise du personnage, jamais le Potentiel Illimité', () => {
+  personnageValide('symbiose', { symbiose_magie_id: 'magies/magie-du-feu', posture_id: 'guide/postures#posture:symbiose' });
+  assert.deepEqual(controle('symbiose'), [], 'sa magie innée');
+  db.prepare("UPDATE personnage SET symbiose_magie_id = 'magies/magie-de-la-glace' WHERE id = 'symbiose'").run();
+  assert.deepEqual(controle('symbiose'), [{ regle: 'symbiose_magie', detail: 'magies/magie-de-la-glace' }], 'une magie que le personnage n’a pas');
+  db.prepare("UPDATE personnage SET magie_acquise_id = 'magies/magie-de-la-glace' WHERE id = 'symbiose'").run();
+  assert.ok(!controle('symbiose').some((c) => c.regle === 'symbiose_magie'), 'sa magie acquise');
+  db.prepare("UPDATE personnage SET magie_innee_id = 'magies/potentiel-illimite', magie_acquise_id = NULL, symbiose_magie_id = 'magies/potentiel-illimite' WHERE id = 'symbiose'").run();
+  assert.ok(controle('symbiose').some((c) => c.regle === 'symbiose_magie' && c.detail === 'magies/potentiel-illimite'), 'pas le Potentiel Illimité (Q15)');
+  assert.throws(() => db.prepare("UPDATE personnage SET symbiose_magie_id = 'magies/inconnue' WHERE id = 'symbiose'").run(), /FOREIGN KEY/);
+  db.prepare("DELETE FROM personnage WHERE id = 'symbiose'").run();
+});
+
 test('équipement : bouclier forme et matière (R96), améliorations du bon genre, valeur d’accessoire dans la fourchette, six emplacements (R97)', () => {
   const [m1] = db.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 1').all().map((r) => r.ressource_id);
   personnageValide('equipement', { bouclier_classe_id: 'targe' });

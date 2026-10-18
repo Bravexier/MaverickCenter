@@ -153,7 +153,9 @@ R71) ; la durabilité d'une arme est une colonne de sa ligne (`armes[].durabilit
   valeur de départ, 0 pour les gains, ou vide : `null`, `""`) : la fiche se crée, se lit, se liste et se modifie, et ses gains niveau par niveau
   restent dans `personnage_progression`, convertis à la reconstruction suivante (la fiche relue n'a pas de gains : la page affiche 0). Une autre
   valeur (des gains, un entraînement, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
-  le dire.
+  le dire. De même pour les colonnes des migrations 0055 (l'armure), 0060 (le bouclier : `bouclier_materiau_id`, `bouclier_amelioration_id`,
+  `bouclier_solidite`) et 0061 (`symbiose_magie_id`, la magie de la posture Symbiose) ; sur une base d'avant 0060, la page convertit elle-même la
+  fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.

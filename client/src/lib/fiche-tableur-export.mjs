@@ -52,6 +52,8 @@ import { ajusterLeTexte, sansLaCoupure, tientDans } from './tableur-mesure.mjs';
 export const CLES_DE_LA_NOTE = Object.freeze({
   biClasse: 'Bi-classé',
   caracteristiqueMagie: 'Caractéristique de la magie innée',
+  // la magie de la posture Symbiose quand le personnage en a deux (décision R100) : le modèle n'a pas de case pour elle
+  symbioseMagie: 'Magie de la symbiose',
   gains: 'Gains de niveau',
   nmOfferts: 'NM offerts',
   donsClasse1: 'Dons de classe 1 (suite)',
@@ -1026,6 +1028,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   const K = CLES_DE_LA_NOTE;
   noter(K.biClasse, f.mode_classe === 'bi' ? OUI : NON);
   if (innee && !innee.caracteristique_id && f.caracteristique_magie_id) noter(K.caracteristiqueMagie, nomDe(regles.caracteristiques, f.caracteristique_magie_id));
+  if (f.symbiose_magie_id) noter(K.symbioseMagie, nomDe(regles.magies, f.symbiose_magie_id));
   noter(K.gains, texteDesGains(f));
   noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);

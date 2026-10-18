@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 60 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 61 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -2521,7 +2521,7 @@ Gemmes d'un effet d'accessoire (« Grenat + Malachite » : 2 rangs ; « Grenat/M
 
 ### `accessoire_effet_cible`
 
-Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » : comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base). Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 : Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe. cible : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme), armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran) valeur : NULL = la valeur tirée de l'accessoire (compétence) choix : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
+Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » : comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base). Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 : Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe. cible : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme), armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran), cran_des_sorts (le dé des sorts d'un cran), de_maximum (un dé de dégâts au maximum), des_soins (un dé de plus aux soins) : décision R102, migration 0061 valeur : NULL = la valeur tirée de l'accessoire (compétence) choix : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3320,6 +3320,7 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `bouclier_materiau_id` | TEXT | non | → materiau_bouclier.ressource_id |  |
 | `bouclier_amelioration_id` | TEXT | non | → amelioration_equipement.id |  |
 | `bouclier_solidite` | INTEGER | non |  |  |
+| `symbiose_magie_id` | TEXT | non | → magie.id |  |
 
 ### `personnage_partage`
 
