@@ -14,7 +14,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` (R1 à R127, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
+`docs/decisions-regles.md` (R1 à R128, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Équipe d'agents (`.claude/agents/`)

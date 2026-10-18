@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R127, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R128, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -100,7 +100,7 @@ Questions :
 | Q26 | « **+5% à chaque test lié à l'artisanat** » (Nain, Londolor ouest), « +10% à tous les tests d'artisanat » (Elfe noir Sang purifié) : s'ajoutent-ils à la compétence d'artisanat du métier (R34) ? Et « +15% à la falsification de documents » (Voleur Faussaire), qui ne nomme aucune compétence : laquelle (Ruse, Manipulation) ? | **Décidé** (R123) : ajoutés à la compétence d'artisanat du métier ; la falsification, un cas de la Ruse laissé au MJ (code à faire) |
 | Q27 | Drakos orange (Potentiel illimité), colonne « Bonus compétence » du tableau « Écaille draconique » : « **5% parmi les autres** » : une compétence au choix parmi celles des autres lignes du tableau (Athlétisme, Psychologie… Sabotage), donc un choix du tiroir ? | **Décidé** (R124) : la compétence (+5 %) et la résistance (+1 cran) au choix parmi celles des autres lignes du tableau, indépendamment ; à faire dans la fiche |
 | Q28 | Mort-vivant, « Trompe-mort » : « Son **acquis max en Social est augmenté de +20** » : +20 au plafond de **chaque** compétence du Social (Diplomatie, Dressage, Intimidation, Manipulation, Négociation), comme la fiche le lit ? | **Décidé** (R125) : oui ; Social verrouillé à 1, plafond 5 porté à 25, et à 30 avec le Feu ou l'Eau en magie innée (déjà ainsi) |
-| Q29 | Les bonus d'acquis **non comptés** (Q22 à Q27) ne se saisissent plus nulle part depuis que l'acquis se calcule (R104) : faut-il, en attendant tes réponses, un moyen de les compter à la main (une ligne d'« ajustement » de l'acquis, hors des limites de l'entraînement), ou leur liste sous les dons suffit-elle ? | La liste seule ; rien ne les compte |
+| Q29 | Les bonus d'acquis **non comptés** (Q22 à Q27) ne se saisissent plus nulle part depuis que l'acquis se calcule (R104) : faut-il, en attendant tes réponses, un moyen de les compter à la main (une ligne d'« ajustement » de l'acquis, hors des limites de l'entraînement), ou leur liste sous les dons suffit-elle ? | **Décidé** (R128) : un bonus d'un cas particulier est seulement mentionné ; la fiche ne calcule que ce qui joue tout le temps ; pas de ligne d'ajustement |
 | Q30 | Les armes « **Arc / Arme Légère** » (Arc court, Arc rétractable, Arc éolien) : quelle compétence, et pour le bonus « de l'arme choisie » (R119) d'une maîtrise de la famille Arc ? | **Décidé** (R126) : au choix du porteur, Arc ou Arme légère ; la famille Arc laisse la compétence au choix pour R119 |
 | Q31 | Quelles familles d'armes sont « **à distance** » (maîtrise « à distance au choix » du Mage Vert et du Barde) ? La base ne le dit pas | **Décidé** (R127) : Arc, Arbalète, Arme de jet et Bombes ; à typer en base |
 
