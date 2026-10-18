@@ -602,7 +602,7 @@ journal). Les tests s'en servent ainsi :
 
 **Simulation en CI** (job `simulation-de-mise-a-jour` de `.github/workflows/ci.yml`, parallèle au job `client`, sur chaque PR et après chaque
 fusion) : `client/scripts/mise-a-jour-simulation.mjs` fabrique un **lot synthétique** — le service fait de vraies modifications dans une base
-vivante tirée de `data/rows` (texte des chapitres 1 et 2 du guide, description et bonus d'un métier, coût d'un sort, un don créé et gardé, un
+vivante tirée de `data/rows` (texte des deux premières pages du livre « Découvrir » du guide, `lib/livres.mjs`, description et bonus d'un métier, coût d'un sort, un don créé et gardé, un
 autre créé puis supprimé ; valeurs lues avant d'écrire, noms libres), écrit le champ libre et fige le lot par `POST /api/mise-a-jour/lancer/`
 en simulation —, puis le job le rejoue comme `preparer` (`mise-a-jour-regles.mjs`, production `origin/master`), indexe `data/rows` et lance
 exactement les contrôles de `preparer` (`CONTROLES` de `mise-a-jour-github.mjs` : `db:build`, `db:check` puis tout le job `client` — `npm test`,
@@ -615,7 +615,7 @@ les minutes du job `client`. En local :
 ```bash
 cd client
 git fetch origin master
-node scripts/mise-a-jour-simulation.mjs --lot /tmp/lot.json --reference origin/master   # --guide : les deux chapitres seulement (comme le run 38151792080)
+node scripts/mise-a-jour-simulation.mjs --lot /tmp/lot.json --reference origin/master   # --guide : les deux pages du guide seulement (comme le run 38151792080)
 node scripts/mise-a-jour-regles.mjs --lot /tmp/lot.json --reference origin/master
 npm run db:build && npm run db:check && npm test                                        # puis, au besoin, le reste du job client (build…)
 git checkout -- ../data/rows                                                            # data/rows remis tel qu'il était

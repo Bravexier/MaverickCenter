@@ -10,9 +10,8 @@ import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../../li
 import { chargerPanneau } from '../../lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
-import { url } from '../../lib/wiki';
 
-// /ressources/equipement/ (menu Ressources ; demandes du propriétaire, 2026-10-16) : une page sans page du wiki, cinq onglets rendus depuis la base
+// /ressources/equipement/ (menu Règles, sans fil d'Ariane comme les autres entrées du menu ; demandes du propriétaire, 2026-10-16) : une page sans page du wiki, cinq onglets rendus depuis la base
 // (components/equipement/EquipementPage.astro, lib/equipement.mjs). En tête de chaque onglet ou sous-onglet qui sert une page du wiki (Armes, Armures,
 // Boucliers, Accessoires, et le sous-onglet Bâtons magiques de la ceinture : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT), son panneau de règles
 // (migration 0056 : tables panneau_regles et panneau_regles_bloc, lib/panneaux-regles-db.mjs ; components/equipement/PanneauDeRegles.astro), dont l'id
@@ -48,7 +47,6 @@ const accessoires = chargerAccessoires(db);
 ---
 
 <Base title="Équipement" description="Armes, armures, boucliers, ceinture (potions, huiles, carquois, bâtons magiques) et accessoires : matériaux, fabrication, améliorations et générateur d’accessoire." edition={CHEMIN_DE_L_EQUIPEMENT}>
-  <p class="muted"><a href={url()}>Accueil</a> › <a href={url('ressources/')}>Ressources</a></p>
   <EquipementPage
     armes={armes}
     contexteArmes={contexteDesArmes(db)}

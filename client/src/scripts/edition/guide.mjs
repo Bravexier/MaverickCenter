@@ -1,4 +1,5 @@
-// Extension de l'éditeur pour les pages du guide (chapitres : components/guide/GuideChapitre.astro ; pages de référence : pages/[type]/[slug].astro) —
+// Extension de l'éditeur pour les pages du guide (pages des livres : components/guide/PageDeLivre.astro ; Règles avancées et Guide du MJ :
+// components/guide/PageDuGuide.astro) et du Codex (pages/[type]/[slug].astro) —
 // demande du propriétaire : « le texte de chaque page, les liens (ou non), la mise en page, les tableaux et les cases, ainsi que leur couleur ».
 // En mode modification, chaque morceau de texte [data-ed-morceau] devient modifiable en place (contenteditable) ; les blocs tirés de la base (tableaux
 // de la montée de niveau, personnages fil rouge…) restent tels quels. Une barre d'outils pose la mise en page (paragraphe, titres, citation, listes,
@@ -33,7 +34,11 @@ function assainir(html) {
   return htmlSur(enfantsDe(doc.body));
 }
 
-/** Une adresse du site écrite depuis la racine, comme dans le Markdown (« /races/ ») : sans le préfixe de déploiement. */
+/**
+ * Une adresse du site écrite depuis la racine, comme dans le Markdown (« /races/ ») : sans le préfixe de déploiement. Un lien écrit vers une ancienne
+ * adresse du guide (« /guide/les-postures/ ») n'y passe pas : versMarkdown relit son adresse écrite (`data-lien-ecrit`, lib/guide.mjs#remarkAnciensLiensDuGuide),
+ * jamais celle du plan qu'il montre (« /regles/les-postures/ ») : modifier la page ne réécrit pas ses liens.
+ */
 function lienRelatif(ed) {
   const base = ed.base || '/';
   return (href) => (base !== '/' && href.startsWith(base) ? `/${href.slice(base.length)}` : href);

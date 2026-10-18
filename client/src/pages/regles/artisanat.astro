@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import Sommaire from '../../components/guide/Sommaire.astro';
+import { ARTISANAT } from '../../lib/livres.mjs';
+import { DESCRIPTION_DES_COMPOSANTS, PAGE_DES_COMPOSANTS, TITRE_DES_COMPOSANTS } from '../../lib/composants-db.mjs';
+import { entryHref, loadWiki, url } from '../../lib/wiki';
+
+// L'Artisanat (menu Règles ; réponse du propriétaire du 2026-10-18 : « Composants en Artisanat ok ») : le titre et le résumé de chaque page
+// (lib/livres.mjs#ARTISANAT), liés, tels que la base les écrit ; la page Composants, sans ligne `page`, par son titre et sa description
+// (lib/composants-db.mjs). Rien d'autre.
+const { entries } = await loadWiki();
+const parId = new Map(entries.map((e) => [e.id, e]));
+const elements = ARTISANAT.pages.map((id) => {
+  if (id === PAGE_DES_COMPOSANTS) return { href: url(`${PAGE_DES_COMPOSANTS}/`), titre: TITRE_DES_COMPOSANTS, resume: DESCRIPTION_DES_COMPOSANTS };
+  const e = parId.get(id);
+  if (!e) throw new Error(`artisanat : la page ${id} (lib/livres.mjs#ARTISANAT) n'existe pas`);
+  return { href: entryHref(e), titre: e.data.title, resume: e.data.summary };
+});
+---
+
+<Base title={ARTISANAT.titre}>
+  <h1>{ARTISANAT.titre}</h1>
+  <Sommaire groupes={[{ elements }]} />
+</Base>

@@ -1,10 +1,12 @@
-// Guide du joueur (lib/guide.mjs, lib/guide-db.mjs) : chapitres dans l'ordre, flèches Précédent / Suivant, blocs tirés de la base (demande du propriétaire).
+// Pages du guide (lib/guide.mjs, lib/guide-db.mjs) : blocs tirés de la base, liens Markdown, pages de référence (demande du propriétaire). Le plan des
+// pages (livres, Règles avancées, Guide du MJ) et leurs adresses : test/livres.test.mjs.
 //   node --test test/guide.test.mjs
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { avecPrefixe, BLOCS, chapitresDuGuide, pagesDeReference, PARTIES, partiesDuGuide, estUnChapitre, morceauxDuChapitre, PREMIER_CHAPITRE, sansMarqueurs, voisins } from '../src/lib/guide.mjs';
+import { adresseDesAnciensLiens, avecPrefixe, BLOCS, pagesDeReference, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
+import { ACCUEIL_DU_GUIDE, estDansUnLivre, LIVRES, pagesDuLivre } from '../src/lib/livres.mjs';
 import {
   chargerCompetences,
   chargerEntrainement,
@@ -22,37 +24,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
-const page = (id, chapitre, title = id, partie = 'decouvrir') => ({ id, data: { title, chapitre, partie, summary: `Résumé de ${title}` } });
-
-test('les chapitres sont les pages guide numérotées, dans l’ordre ; les autres pages du guide n’en sont pas', () => {
-  const entries = [page('guide/c', 3), page(PREMIER_CHAPITRE, 1), page('guide/postures'), page('guide/b', 2), page('races/elfe', 4)];
-  assert.equal(estUnChapitre(entries[2]), false);
-  assert.equal(estUnChapitre(entries[4]), false, 'seul le type guide a des chapitres');
-  assert.deepEqual(chapitresDuGuide(entries).map((c) => [c.numero, c.id]), [[1, PREMIER_CHAPITRE], [2, 'guide/b'], [3, 'guide/c']]);
-});
-
-test('une numérotation avec un trou, un doublon ou un mauvais premier chapitre arrête le build', () => {
-  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/c', 3)]), /chapitre 2 attendu/);
-  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 1)]), /chapitre 2 attendu/);
-  assert.throws(() => chapitresDuGuide([page('guide/b', 1)]), /doit être guide\/bienvenue/);
-});
-
-test('chaque chapitre a une partie connue ; les parties se suivent dans l’ordre, chacune avec sa couleur', () => {
-  assert.deepEqual(PARTIES.map((p) => p.id), ['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin']);
-  assert.ok(PARTIES.every((p) => /^#[0-9a-f]{6}$/.test(p.couleur)));
-  const chapitres = chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 2, 'b', 'creer'), page('guide/c', 3, 'c', 'creer'), page('guide/d', 4, 'd', 'plus-loin')]);
-  assert.deepEqual(partiesDuGuide(chapitres).map((g) => [g.partie.id, g.chapitres.map((c) => c.numero)]), [['decouvrir', [1]], ['creer', [2, 3]], ['plus-loin', [4]]]);
-  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 2, 'b', 'inconnue')]), /pas de partie connue/);
-  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1, 'a', 'creer'), page('guide/b', 2, 'b', 'decouvrir')]), /vient après un chapitre de la partie creer/);
-});
-
-test('précédent et suivant : rien avant le premier chapitre ni après le dernier (flèches grisées)', () => {
-  const chapitres = chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 2), page('guide/c', 3)]);
-  assert.deepEqual(Object.values(voisins(chapitres, PREMIER_CHAPITRE)).map((c) => c?.id ?? null), [PREMIER_CHAPITRE, null, 'guide/b']);
-  assert.deepEqual(Object.values(voisins(chapitres, 'guide/b')).map((c) => c?.id ?? null), ['guide/b', PREMIER_CHAPITRE, 'guide/c']);
-  assert.deepEqual(Object.values(voisins(chapitres, 'guide/c')).map((c) => c?.id ?? null), ['guide/c', 'guide/b', null]);
-  assert.throws(() => voisins(chapitres, 'guide/postures'), /n'est pas un chapitre/);
-});
+const PREMIER = 'guide/bienvenue';
 
 test('un chapitre est coupé à ses blocs ; un bloc inconnu est une erreur ; la recherche ne voit pas les marqueurs', () => {
   const corps = 'Intro.\n\n<!-- guide:niveaux -->\n\nSuite.\n<!-- guide:postures -->\n';
@@ -63,11 +35,16 @@ test('un chapitre est coupé à ses blocs ; un bloc inconnu est une erreur ; la 
   assert.deepEqual(morceauxDuChapitre('Un `<!-- guide:niveaux -->` dans une phrase reste du texte.\n').length, 1);
 });
 
-test('le premier chapitre est servi à /guide/ : ses liens y mènent, les autres pages gardent leur adresse', () => {
-  assert.deepEqual(adresseDePage(PREMIER_CHAPITRE), { chemin: 'guide/', ancre: '' });
-  assert.equal(cheminDePage('guide/le-combat'), 'guide/le-combat/');
-  const index = buildIndex([{ id: PREMIER_CHAPITRE, type: 'guide', slug: 'bienvenue', title: 'Bienvenue', aliases: [] }]);
-  assert.equal(entryUrl('/MaverickCenter/', index.byId.get(PREMIER_CHAPITRE)), '/MaverickCenter/guide/');
+test('plus rien sous /guide/ : la première page est servie à /decouvrir/, les autres à leur place dans le plan ; les [[liens]] y mènent', () => {
+  assert.deepEqual(adresseDePage(PREMIER), { chemin: 'decouvrir/', ancre: '' });
+  assert.equal(cheminDePage('guide/le-tour-de-jeu'), 'regles/le-tour-de-jeu/');
+  assert.equal(cheminDePage('guide/le-combat'), 'regles/avancees/le-combat/', 'une page hors des livres : les Règles avancées');
+  const index = buildIndex([
+    { id: PREMIER, type: 'guide', slug: 'bienvenue', title: 'Bienvenue', aliases: [] },
+    { id: 'guide/un-maitre-du-jeu', type: 'guide', slug: 'un-maitre-du-jeu', title: 'Un maître du Jeu', aliases: [] },
+  ]);
+  assert.equal(entryUrl('/MaverickCenter/', index.byId.get(PREMIER)), '/MaverickCenter/decouvrir/');
+  assert.equal(entryUrl('/', index.byId.get('guide/un-maitre-du-jeu')), '/mj/un-maitre-du-jeu/');
 });
 
 test('les liens Markdown vers une rubrique du site prennent le préfixe de déploiement ; les adresses externes non', () => {
@@ -77,7 +54,32 @@ test('les liens Markdown vers une rubrique du site prennent le préfixe de dépl
   assert.equal(avecPrefixe('[a](//cdn.example/x)', '/M/'), '[a](//cdn.example/x)');
 });
 
-test('les pages de référence du guide sont rangées par document source, sans les chapitres ni les exemples', () => {
+test('un lien Markdown écrit vers une ancienne adresse du guide mène à la nouvelle au rendu, ancre gardée ; le texte de la base ne change pas', () => {
+  const options = { cheminDe: cheminDePage, existe: (id) => id !== 'guide/disparue', accueil: ACCUEIL_DU_GUIDE };
+  const adresse = (chemin) => adresseDesAnciensLiens(chemin, options);
+  assert.equal(adresse('guide/les-postures/'), 'regles/les-postures/');
+  assert.equal(adresse('guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'), 'decouvrir/choisir-sa-classe/#une-ou-deux-classes--le-biclassage');
+  assert.equal(adresse('guide/reussir-une-action/'), 'regles/');
+  assert.equal(adresse('guide/'), 'decouvrir/');
+  assert.equal(adresse('guide/disparue/'), 'guide/disparue/', 'une page absente : tel qu’écrit (la page 404 s’en charge)');
+  assert.equal(adresse('races/elfe/'), 'races/elfe/', 'les autres adresses ne changent pas');
+  assert.equal(adresse('guidesse/'), 'guidesse/');
+  // le plugin du rendu (lib/guide-rendu.ts), sur l'arbre d'un Markdown passé par avecPrefixe : l'adresse du plan, l'adresse écrite gardée à côté
+  const lien = (url) => ({ type: 'link', url, children: [{ type: 'text', value: 'x' }] });
+  const arbre = { type: 'root', children: [{ type: 'paragraph', children: [
+    lien('/MaverickCenter/guide/les-postures/'), lien('/MaverickCenter/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'),
+    lien('/MaverickCenter/races/'), lien('https://discord.gg/x'), lien('//cdn/x'), { type: 'emphasis', children: [lien('/MaverickCenter/guide/')] },
+  ] }] };
+  remarkAnciensLiensDuGuide({ base: '/MaverickCenter/', adresse })(arbre);
+  const liens = [...arbre.children[0].children.slice(0, 5), arbre.children[0].children[5].children[0]];
+  assert.deepEqual(liens.map((l) => [l.url, l.data?.hProperties?.dataLienEcrit ?? null]), [
+    ['/MaverickCenter/regles/les-postures/', '/guide/les-postures/'],
+    ['/MaverickCenter/decouvrir/choisir-sa-classe/#une-ou-deux-classes--le-biclassage', '/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage'],
+    ['/MaverickCenter/races/', null], ['https://discord.gg/x', null], ['//cdn/x', null], ['/MaverickCenter/decouvrir/', '/guide/'],
+  ]);
+});
+
+test('les pages de référence du guide sont rangées par document source, sans les pages des livres, ni les exemples, ni la page qui les liste', () => {
   const ref = (id, title, sources, status = 'draft') => ({ id, data: { title, sources, status } });
   const groupes = pagesDeReference([
     ref('guide/postures', 'Postures', ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »', 'https://docs.google.com/document/d/x/edit']),
@@ -85,9 +87,10 @@ test('les pages de référence du guide sont rangées par document source, sans 
     ref('guide/fiche-classe', 'Fiche de personnage : Classe', ['Google Doc « Créer sa fiche de personnage »']),
     ref('guide/alignement', 'Alignement', ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »']),
     ref('guide/utiliser-ce-wiki', 'Utiliser ce wiki', ['Page de démonstration'], 'example'),
-    { id: PREMIER_CHAPITRE, data: { title: 'Bienvenue', chapitre: 1, sources: ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »'] } },
+    ref(PREMIER, 'Bienvenue', ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »']),
+    ref('guide/les-documents-des-regles', 'Les documents des règles', ['Google Doc « Règle du jeu/Guide pour MJ - Maverick »']),
     ref('races/elfe', 'Elfe', ['Google Sheet « Les races »']),
-  ]);
+  ], 'guide/les-documents-des-regles');
   assert.deepEqual(
     groupes.map((g) => [g.document, g.genre, g.pages.map((p) => p.titre)]),
     [
@@ -107,33 +110,24 @@ const pagesDuGuide = readdirSync(dossier)
     return { id: `guide/${f.slice(0, -3)}`, data, body };
   });
 
-test('le guide du site : chapitres numérotés sans trou, chacun avec un résumé (infobulle de la pagination), blocs connus', () => {
-  const chapitres = chapitresDuGuide(pagesDuGuide);
-  assert.ok(chapitres.length >= 5, `${chapitres.length} chapitres`);
-  assert.deepEqual(
-    chapitres.filter((c) => c.partie.id === 'decouvrir').map((c) => c.id),
-    [PREMIER_CHAPITRE, 'guide/le-jeu-de-role', 'guide/l-univers', 'guide/reussir-une-action'],
-    'découvrir le jeu, puis la règle du D100, avant la création',
-  );
-  assert.deepEqual(
-    chapitres.filter((c) => c.partie.id === 'creer').map((c) => c.id),
-    ['guide/creer-son-personnage', 'guide/choisir-sa-race', 'guide/choisir-ses-magies', 'guide/choisir-sa-classe', 'guide/caracteristiques-et-competences', 'guide/premiers-sorts', 'guide/finaliser-son-personnage'],
-    'la création dans l’ordre où l’on remplit la fiche ; les attributs, qui se calculent, à la fin',
-  );
-  assert.deepEqual(
-    partiesDuGuide(chapitres).map((g) => [g.partie.id, g.chapitres.length]),
-    [['decouvrir', 4], ['creer', 7], ['jouer', 7], ['progresser', 3], ['plus-loin', 3]],
-    'le plan validé par le propriétaire : 24 pages en cinq parties',
-  );
-  const jouer = chapitres.filter((c) => c.partie.id === 'jouer').map((c) => c.id);
-  assert.ok(jouer.indexOf('guide/l-equipement') < jouer.indexOf('guide/les-degats'), 'l’armure (AP/AM) avant la formule des dégâts');
-  for (const c of chapitres) assert.ok(c.resume, `${c.id} : résumé absent`);
-  const blocs = pagesDuGuide.filter(estUnChapitre).flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
+test('le guide du site : chaque page des livres a un résumé (infobulle de la pagination, sommaire), chaque bloc est appelé une fois, les blocs sont connus', () => {
+  const parId = new Map(pagesDuGuide.map((p) => [p.id, p]));
+  for (const livre of LIVRES) {
+    for (const { id } of pagesDuLivre(livre)) {
+      assert.ok(parId.has(id), `${id} : page absente`);
+      assert.ok(parId.get(id).data.summary, `${id} : résumé absent`);
+    }
+  }
+  // toutes les pages du guide (livres, Règles avancées, Guide du MJ) : un bloc est appelé une seule fois, chaque bloc déclaré l'est
+  const blocs = pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
   assert.deepEqual([...blocs].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois');
-  assert.equal(chapitres.at(-1).id, 'guide/les-documents-des-regles', 'le dernier chapitre mène aux pages de référence');
-  assert.ok(blocs.includes('documents'));
-  assert.equal(pagesDuGuide.find((p) => p.id === PREMIER_CHAPITRE).body.includes('<!-- guide:sommaire -->'), true, 'sommaire en page 1');
+  assert.equal(parId.get(PREMIER).body.includes('<!-- guide:sommaire -->'), true, 'sommaire en page 1');
+  const documents = pagesDuGuide.find((p) => morceauxDuChapitre(p.body).some((m) => m.bloc === 'documents'));
+  assert.equal(documents.id, 'guide/les-documents-des-regles');
+  assert.equal(estDansUnLivre(documents.id), false, 'la liste des pages de référence est une page de référence');
+  const ref = pagesDeReference(pagesDuGuide, documents.id).flatMap((g) => g.pages.map((p) => p.id));
+  assert.ok(ref.length > 20 && ref.every((id) => !estDansUnLivre(id) && id !== documents.id), `${ref.length} pages de référence`);
 });
 
 const db = ouvrirBase({ sansExemples: false });

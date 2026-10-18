@@ -1,0 +1,13 @@
+---
+import PageDuPlan from '../../components/guide/PageDuPlan.astro';
+import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
+
+// Les pages du Guide du MJ (lib/livres.mjs) à /mj/<slug>/ ; leur sommaire est pages/mj/index.astro.
+export async function getStaticPaths() {
+  const { entries } = await loadWiki();
+  return pagesSous(entries, 'mj/').filter(({ reste }) => reste).map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));
+}
+const { entry } = Astro.props as { entry: WikiEntry };
+---
+
+<PageDuPlan entry={entry} />

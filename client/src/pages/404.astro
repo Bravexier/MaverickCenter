@@ -1,20 +1,33 @@
 ---
 import Base from '../layouts/Base.astro';
-import { url } from '../lib/wiki';
+import { renvoisDuGuide } from '../lib/metiers.mjs';
+import { loadWiki, url } from '../lib/wiki';
+
+// Les anciennes adresses du guide (/guide/, /guide/<slug>/, avant son éclatement en livres et sommaires : lib/livres.mjs) → leurs nouvelles adresses,
+// calculées au build depuis le plan et passées au script (data-renvois) : nav.mjs, seul module du script, n'importe pas le plan.
+const renvois = renvoisDuGuide((await loadWiki()).entries.map((e) => e.id));
 ---
 
 <Base title="Page introuvable" edition="404">
   <h1>Page introuvable</h1>
-  <p id="introuvable" data-base={url()}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
+  <p id="introuvable" data-base={url()} data-renvois={JSON.stringify(renvois)}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
 </Base>
 
 <script>
   import { adresseComplete, nouvelleAdresse } from '../lib/nav.mjs';
 
   // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/ ; /tags/<clé>/, devenu
-  // /recherche/?mot-cle=<clé>) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée avec la sienne (adresseComplete : jamais deux « ? »).
-  const base = document.querySelector<HTMLElement>('#introuvable')!.dataset.base!;
-  const target = nouvelleAdresse(location.pathname, base);
+  // /recherche/?mot-cle=<clé> ; /guide/…, devenu /decouvrir/…, /regles/…, /mj/…) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée
+  // avec la sienne (adresseComplete : jamais deux « ? »).
+  const introuvable = document.querySelector<HTMLElement>('#introuvable')!;
+  const base = introuvable.dataset.base!;
+  let renvois: Record<string, string> = {};
+  try {
+    renvois = JSON.parse(introuvable.dataset.renvois || '{}');
+  } catch {
+    renvois = {};
+  }
+  const target = nouvelleAdresse(location.pathname, base, renvois);
   // jamais hors du site, quelle que soit l'adresse demandée
   const cible = target ? new URL(adresseComplete(target, location.search, location.hash), location.href) : null;
   if (cible && cible.origin === location.origin) location.replace(cible.href);

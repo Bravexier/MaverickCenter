@@ -54,7 +54,7 @@ test('la présentation des en-têtes n’est écrite qu’une fois : aucune feui
 const GRILLES = ['tableau-magies__table', 'bbutin'];
 const PAGES = [
   ['ressources', 'equipement'], ['ressources', 'composants'], ['metiers'], ['bestiaire'], ['magies', 'magie-de-la-corruption'], ['races', 'elfe-noir'],
-  ['guide', 'choisir-ses-magies'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
+  ['decouvrir', 'choisir-ses-magies'], ['regles', 'avancees', 'le-mode-hyper'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
 ];
 const construit = existsSync(join(dist, 'ressources', 'equipement', 'index.html'));
 

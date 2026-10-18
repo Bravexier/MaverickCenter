@@ -163,7 +163,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   La **règle spéciale d'un niveau** (`regle_magie`, « Règle spéciale pour sort niveau 5 ») est dans l'infobulle de la pastille « i » du titre du tableau concerné, pas sous le tableau. Pas de légende sur la page.
 - **Un clic sur la ligne** (ou `#sort-<slug>` dans l'adresse) **ouvre juste en dessous un panneau** : un seul cadre « **Effets** » qui contient le texte des effets secondaires (`sort.effets`), puis, à la ligne, la remarque du classeur (`sort.remarque`,
   la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
-  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/guide/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
+  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/avancees/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
   Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
   « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
@@ -187,7 +187,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   ouvre son onglet puis le sort ; pas de texte d'aide au-dessus des onglets. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
   l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
-- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/guide/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
+- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/avancees/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
   le test), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   **sans le Potentiel Illimité**, cité dans aucun bloc (il est incompatible avec toutes) ; une magie **mono-magie** (`magie.mono_magie` : Potentiel Illimité, Corruption) affiche à la place
@@ -286,7 +286,7 @@ Règles de sélection et questions en attente : [`chronologie.md`](chronologie.m
 Demandes du propriétaire (2026-10-16) : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" A l'instar de "Armure et bouclier"
 les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ;
 « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir intégralement la page des objets à la ceinture, renommer l'onglet
-en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Une seule entrée du menu Ressources, **Équipement**, à la place
+en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Une seule entrée du menu (rubrique Règles depuis le 2026-10-18), **Équipement**, à la place
 d'« Armes », d'« Armures », d'« Accessoires » et d'« Objets à la ceinture » ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
 `styles/equipement/equipement.css`), rendue depuis la base, en **cinq onglets** (`components/Onglets.astro`, posé une fois ; sans JavaScript, les panneaux
 se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT` :
@@ -702,7 +702,8 @@ fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui pe
 de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
 `styles/composants/`, lignes : `lib/composants-rendu.mjs`), **un onglet par tableau**, comme la page « Équipement » (demande du propriétaire du
 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement liées
-en base ») :
+en base »). Au menu, elle est la première page de Règles › Artisanat (`/regles/artisanat/` ; réponse du propriétaire du 2026-10-18 : « Composants en
+Artisanat ok ») :
 
 - **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
   sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
@@ -778,37 +779,66 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 D11 ; `docs/serveur.md`, « Édition ») ou par une migration (`data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 Une page construite avant une création ou une suppression est redessinée par le mode modification avec le même HTML (`lib/classe-dons-rendu.mjs`, testé contre le site construit).
 
-## Guide du joueur (`/guide/`) : des chapitres à lire dans l'ordre
+## Les pages du guide : livres et sommaires
 
-L'onglet Guide n'est plus une liste de liens (demande du propriétaire) : c'est un **guide du joueur** pour débutants, lu page après page, avec une flèche de
-chaque côté du texte (grisée au premier et au dernier chapitre), les touches ← → et, en bas, les chapitres voisins et la pagination (titre en infobulle).
-La page prend **toute la largeur** du site : les flèches ne prennent pas de place, elles passent **par-dessus** ses bords, collées en bas de l'écran, et
-s'effacent dès que les liens du bas arrivent à l'écran (demande du propriétaire ; `styles/guide/guide.css`, script de `GuideChapitre.astro`). Sous 52rem,
-elles disparaissent.
-Sur écran tactile, **glisser le doigt** vers la gauche mène au chapitre suivant, vers la droite au précédent (demande du propriétaire ; script de
-`GuideChapitre.astro`) : geste franchement horizontal, d'un seul doigt, ni sur un tableau qui défile, ni depuis le bord de l'écran (gestes du système), ni
-sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: none` empêche Chrome d'en faire aussi un retour dans l'historique.
+Le guide n'est plus un seul livre de 24 chapitres servi sous `/guide/` (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour
+retravailler pleinement l'organisation des onglets et de la présentation ») : les pages `guide/<slug>` (famille `docs`, ids inchangés) sont rangées par
+le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son adresse
+(`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de navigation y
+sont écrits (titres de livre, de section, de groupe, libellés des liens) ; les textes sont ceux de la base.
 
-- **Un chapitre** est une page `guide/<slug>` (famille `docs`) dont le frontmatter porte `chapitre: N` (1, 2, 3… sans trou : l'ordre de lecture) et
-  `partie: <id>`. Les autres pages du type `guide` (« Fiche de personnage : … », combat, conseils au MJ, listes) sont des **pages de référence** :
-  citées par les chapitres et listées, par document source, à la dernière page (« Les documents des règles »).
-- **Les parties** et leurs couleurs sont dans `client/src/lib/guide.mjs#PARTIES` : Découvrir, Créer son personnage, Jouer, Progresser, Pour aller plus
-  loin ; les chapitres d'une partie se suivent. La pagination et le sommaire de la page 1 sont regroupés par partie. Le plan (24 pages, validé par le
-  propriétaire) : découvrir le jeu et la règle du D100 **avant** de créer son personnage ; la création en six étapes, dans l'ordre où l'on remplit la
-  fiche, les attributs (qui se calculent) à la fin ; l'équipement avant les dégâts (la formule utilise l'armure). `test/guide.test.mjs` l'épingle.
-- **Le premier chapitre** (`guide/bienvenue`) est servi à `/guide/` : il n'a pas de page à lui, ses liens y mènent (`adresseDePage`).
+- **Deux livres**, lus dans l'ordre, une page à la fois (`components/guide/PageDeLivre.astro`) : « **Découvrir** » (`/decouvrir/`, rubrique Découvrir du
+  menu, faite pour être vue même des non-membres : sections Découvrir, Créer son personnage, Rejoindre une partie) et « **Les bases** » (`/regles/`,
+  rubrique Règles : sections Jouer, Progresser, Pour aller plus loin). La première page d'un livre est servie à l'adresse du livre (« Bienvenue » à
+  `/decouvrir/`, « Réussir une action » à `/regles/`), les autres à `<livre>/<slug>/`. L'ancien plan (24 pages, validé par le propriétaire) faisait lire
+  la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases, après Découvrir : ce remplacement
+  attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10). Le numéro d'une page (« chapitre N sur M ») est son rang dans le
+  livre ; d'un livre à l'autre, on ne passe pas par les flèches (ni par ← → ni par le doigt), mais à la dernière page d'un livre, le lien « Suivant › »
+  du bas mène à la suite du plan : « Les bases » après Découvrir, puis les « Règles avancées » (`suiteDuLivre`). Les couleurs des sections sont celles des anciennes parties (`PARTIES` : Découvrir
+  #2a6f97, Créer son personnage #2e7d4f, Jouer #b03030, Progresser #6a4a9c, Pour aller plus loin #5a6470), qui restent celles des quatre zones de la
+  fiche. Sous « L'univers », un bloc de navigation rendu par le gabarit (`RUBRIQUES_SOUS_LA_PAGE`) mène aux Races, aux Magies et aux Classes.
+- **Une page de livre** a une flèche de chaque côté du texte (grisée à la première et à la dernière page du livre), les touches ← → et, en bas, les pages
+  voisines et la pagination par section (titre en infobulle). Elle prend **toute la largeur** du site : les flèches ne prennent pas de place, elles passent
+  **par-dessus** ses bords, collées en bas de l'écran, et s'effacent dès que les liens du bas arrivent à l'écran (demande du propriétaire ;
+  `styles/guide/guide.css`, script de `PageDeLivre.astro`). Sous 52rem, elles disparaissent. Sur écran tactile, **glisser le doigt** vers la gauche mène
+  à la page suivante, vers la droite à la précédente : geste franchement horizontal, d'un seul doigt, ni sur un tableau qui défile, ni depuis le bord de
+  l'écran (gestes du système), ni sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: none` (dans `guide.css`, chargé par les
+  pages de livre seulement) empêche Chrome d'en faire aussi un retour dans l'historique. Une page de livre n'a ni fil d'Ariane, ni mots-clés, ni pages
+  liées, ni sources sous le texte (la lecture continue par la pagination) ; `sources:` reste dans le frontmatter.
+- **Deux sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a pas) :
+  « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper, Combat et actions, Altérations d'état, Alignement, Exploration et
+  voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du 2026-10-18 —, La fiche de
+  personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`** qu'aucun livre ni le Guide
+  du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à `/regles/avancees/<slug>/` ; et « **Guide du MJ** » (`/mj/`,
+  rubrique Espace MJ), pages à `/mj/<slug>/`. Leurs pages sont rendues par `components/guide/PageDuGuide.astro` : fil d'Ariane vers le sommaire, texte
+  coupé à ses blocs comme une page de livre (le Mode Hyper, les documents des règles…), puis mots-clés, rétroliens et sources
+  (`components/PiedDePage.astro`). « Les documents des règles » garde son adresse (Autres pages de référence) : son bloc liste les pages par document
+  source, avec leurs liens, ce que `/archives/` ne montre pas.
+- **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
+  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers. **Liens** (`/decouvrir/liens/`) : le serveur Discord
+  « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), rien d'autre. L'accueil (`/`) ajoute « Par où commencer ? » : quatre cartes
+  (`PAR_OU_COMMENCER`), titre et résumé de la page.
+- **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
+  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les numéros, les sections et leurs couleurs sont
+  dans le plan, contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la
+  nommer dans `lib/livres.mjs` (livre, Guide du MJ ou groupe), sinon elle va d'elle-même dans « Autres pages de référence ».
+- **Les anciennes adresses** `/guide/` et `/guide/<slug>/` mènent aux nouvelles par la page 404 (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`,
+  requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` (il en reste neuf dans les textes) mène à la nouvelle adresse au rendu
+  (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en `data-lien-ecrit` : un
+  morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse du plan qu'il montre,
+  qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page où que le plan la range.
 - **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`) est remplacée au rendu par un tableau lu dans
-  la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`) : progression (`niveau_global`), postures, compétences, initiative, ce que donne
-  chaque magie, types de don, entraînement… Ne jamais recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une
-  magie) et les postures y sont dans leur couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force
-  #FF6666, Volonté #FF99FF, Intelligence #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif
-  #99FF99, Focus #9999FF, Vigilance #FFFF66, Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien Markdown vers une rubrique s'écrit depuis la racine
-  (`[les races](/races/)`) : le préfixe de déploiement est ajouté au rendu (`avecPrefixe`).
+  la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression (`niveau_global`), postures, compétences,
+  initiative, ce que donne chaque magie, types de don, entraînement… Le bloc `sommaire` (page « Bienvenue ») donne les pages du livre Découvrir par
+  section, puis les liens vers Les bases et les Règles avancées. Ne jamais recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs
+  compétences, « +1 en … » d'une magie) et les postures y sont dans leur couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés =
+  ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666,
+  Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66, Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien
+  Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) : le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les
+  blocs sont dans `styles/guide/blocs.css`, partagé par les pages de livre et `PageDuGuide`.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
-- Un chapitre n'a ni fil d'Ariane, ni mots-clés, ni pages liées, ni sources sous le texte (la lecture continue par la pagination) ; `sources:` reste
-  dans le frontmatter. Rendu : `components/guide/GuideChapitre.astro`, CSS `styles/guide/guide.css` (`?raw`).
 - **Modifier une page du guide sur le site de dev** (demande du propriétaire ; `docs/serveur.md`, « Édition ») : crayon, puis le texte se modifie en
   place, avec une barre d'outils (paragraphe, titres, citation, listes, gras, italique, barré, lien vers une page du wiki ou une adresse, retirer un
   lien, mot-clé et définition du glossaire, tableau, ajouter ou supprimer une ligne ou une colonne, couleur des cases), à gauche de l'écran, à la hauteur

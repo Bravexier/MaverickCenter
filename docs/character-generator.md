@@ -7,8 +7,8 @@ Deux pages (demande du propriétaire), branchées sur le service des personnages
 | `/fiche/` (et `/fiche/?id=<id>`) | **Créer et modifier** un prétiré, sur le même écran | `client/src/pages/fiche/index.astro`, `src/scripts/fiche.mjs`, `styles/fiche/fiche.css` |
 | `/personnages/` | **Rechercher** les personnages : filtres, puis une liste (portrait, nom, race, magies, niveau) triée par la colonne choisie, chaque ligne étant le lien vers la fiche | `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs` |
 
-L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, la rubrique « Personnages » réunit
-« Fiche de personnage » (`/fiche/`) et « Listes » (`/personnages/`), puis « Groupes » et « Chroniques » (bientôt).
+L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, la rubrique « Espace joueur » réunit
+« Fiche de personnage » (`/fiche/`) et « Personnages » (`/personnages/`), puis « Groupes d’aventures », « Table de jeu » et « Chroniques » (bientôt).
 
 ## La page `/fiche/`
 
@@ -188,7 +188,7 @@ abandonne.
   font qu'une à l'enregistrement, points additionnés : `entrainementsAEnregistrer`), un **livre de sort** (le sort choisi parmi ceux de la fiche : son NM de
   livre, `nm_livre`, « sans changer le calcul » ; la case du livre a quitté le tableau des sorts, qui ne montre plus que « livre » à côté du NM) ou un
   **texte libre** (« dons évènementiels », jamais compté) ; son aide cite, tel que la base l'écrit, le
-  paragraphe du guide « S’entraîner et exercer un métier » (chapitre 21) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
+  paragraphe du guide « S’entraîner et exercer un métier » (livre « Les bases », chapitre 10 : sa place dans `lib/livres.mjs`) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
   au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
 - **Gains de niveau** (décision R73) : deux champs, la santé gagnée (bordée de rouge) et le chakra gagné (de bleu), jamais négatifs ni vides, et à côté le
   **total attribué** et le **total à saisir** — « entre min et max » quand un dé bonus est atteint —, en rouge hors de la plage (`gainsDeNiveau`, les mêmes

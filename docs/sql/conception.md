@@ -381,7 +381,7 @@ publication), l'auteur (connexion Discord) et le moment où la base devient cano
 | `STRICT`, `WITHOUT ROWID` | 133 / 49 | retirer les mots-clés (PostgreSQL type déjà strictement) |
 | `GLOB` dans des `CHECK` | 20 | `~` (expression rationnelle) |
 | `json_valid(...)`, `json_type(...)` | 3 / 2 | colonne `jsonb`, `jsonb_typeof` |
-| `json_extract(col, '$.cle')` | hors schéma : requêtes du service et du site (`json_extract(cle, '$.rang')`, `'$.id'` sur `modification` et `historique_modification` ; `json_extract(donnees, '$.chapitre')` sur `page`) | `(cle::jsonb->>'rang')::int` (`->>` rend du texte : convertir quand la valeur est un nombre) |
+| `json_extract(col, '$.cle')` | hors schéma : requêtes du service et du site (`json_extract(cle, '$.rang')`, `'$.id'` sur `modification` et `historique_modification`) | `(cle::jsonb->>'rang')::int` (`->>` rend du texte : convertir quand la valeur est un nombre) |
 | `instr(...)` | 3 | `position(... in ...)` |
 | FTS5 (`page_fts`, `entite_fts`) | 2 tables **dérivées** | `tsvector` + index GIN, requêtes `@@` / `ts_rank` ; seule la route `/recherche` change |
 | `group_concat(...)` | 1 vue (+ `data/derive.sql`, dérivé) | `string_agg(...)` |

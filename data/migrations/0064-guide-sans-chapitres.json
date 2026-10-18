@@ -1,0 +1,126 @@
+{
+  "migration": "0064-guide-sans-chapitres",
+  "lu": "data/rows/page.sql, schéma version 63 (avant la migration), le 2026-10-18 : page.donnees des pages guide/… qui portaient « chapitre » ou « partie » (rien d'autre dans leur objet, aucune page d'un autre type)",
+  "pages": [
+    {
+      "id": "guide/bienvenue",
+      "chapitre": 1,
+      "partie": "decouvrir"
+    },
+    {
+      "id": "guide/le-jeu-de-role",
+      "chapitre": 2,
+      "partie": "decouvrir"
+    },
+    {
+      "id": "guide/l-univers",
+      "chapitre": 3,
+      "partie": "decouvrir"
+    },
+    {
+      "id": "guide/reussir-une-action",
+      "chapitre": 4,
+      "partie": "decouvrir"
+    },
+    {
+      "id": "guide/creer-son-personnage",
+      "chapitre": 5,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/choisir-sa-race",
+      "chapitre": 6,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/choisir-ses-magies",
+      "chapitre": 7,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/choisir-sa-classe",
+      "chapitre": 8,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/caracteristiques-et-competences",
+      "chapitre": 9,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/premiers-sorts",
+      "chapitre": 10,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/finaliser-son-personnage",
+      "chapitre": 11,
+      "partie": "creer"
+    },
+    {
+      "id": "guide/le-tour-de-jeu",
+      "chapitre": 12,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/attaquer-et-se-defendre",
+      "chapitre": 13,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/l-equipement",
+      "chapitre": 14,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/les-degats",
+      "chapitre": 15,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/les-postures",
+      "chapitre": 16,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/la-magie-en-jeu",
+      "chapitre": 17,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/blessures-et-etats",
+      "chapitre": 18,
+      "partie": "jouer"
+    },
+    {
+      "id": "guide/la-montee-de-niveau",
+      "chapitre": 19,
+      "partie": "progresser"
+    },
+    {
+      "id": "guide/le-mode-hyper",
+      "chapitre": 20,
+      "partie": "progresser"
+    },
+    {
+      "id": "guide/s-entrainer-et-exercer-un-metier",
+      "chapitre": 21,
+      "partie": "progresser"
+    },
+    {
+      "id": "guide/aide-memoire",
+      "chapitre": 22,
+      "partie": "plus-loin"
+    },
+    {
+      "id": "guide/lexique",
+      "chapitre": 23,
+      "partie": "plus-loin"
+    },
+    {
+      "id": "guide/les-documents-des-regles",
+      "chapitre": 24,
+      "partie": "plus-loin"
+    }
+  ]
+}

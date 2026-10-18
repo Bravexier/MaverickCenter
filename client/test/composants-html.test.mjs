@@ -1,7 +1,7 @@
 // Page /ressources/composants/ construite (dist/) : rendue depuis les tables (lib/composants-db.mjs), un onglet par tableau dans l'ordre de la table
 // composant_onglet (migration 0057 : monnaie, matériaux, gemmes, bois, fruits, ingrédients par catégorie, tableaux de l'onglet « Équipement inventaire »),
 // leur titre et leur note modifiables, une ligne par composant, les champs du mode modification (data-ed), l'entité de chaque ligne (création,
-// suppression) et l'entrée du menu Ressources. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
+// suppression), sa place dans le menu (Règles › Artisanat) et son fil d'Ariane. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -43,7 +43,14 @@ test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, ge
   assert.ok(main.includes('<section class="tableau comp-tableau composants-panneau is-active" id="monnaie"'), 'son panneau aussi');
   assert.ok(!/<details class="[^"]*comp-tableau/.test(main), 'plus de tableaux repliables');
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
-  assert.match(html, /href="[^"]*ressources\/composants\/"[^>]*>Composants</, 'l’entrée du menu Ressources');
+  // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat, la rubrique Règles ouverte
+  assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la page ouvre les Règles');
+  assert.match(readFileSync(join(dist, 'regles', 'artisanat', 'index.html'), 'utf8'), /<a href="\/ressources\/composants\/">Composants<\/a>/, 'dans l’Artisanat');
+  // l'Artisanat, son sommaire, est son fil d'Ariane et l'entrée courante du menu (la rubrique « Ressources » n'existe plus)
+  assert.ok(main.includes('<p class="muted"><a href="/">Accueil</a> › <a href="/regles/artisanat/">Artisanat</a></p>'), 'fil d’Ariane vers l’Artisanat');
+  assert.ok(html.includes('<a href="/regles/artisanat/" aria-current="true">Artisanat</a>'), 'l’entrée Artisanat du menu marquée courante');
+  assert.ok(!html.includes('href="/ressources/"'), 'aucun lien vers l’ancienne rubrique Ressources');
+  assert.ok(!html.includes('aria-current="page"'), 'la page n’est pas une entrée du menu');
 });
 
 test('le titre et la note d’un onglet viennent de la base et se modifient (composant_onglet)', options, () => {

@@ -2,46 +2,71 @@
 // Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Ressources).
+// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Règles).
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
+// Six rubriques (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour retravailler pleinement l'organisation des onglets et
+// de la présentation ») : Découvrir (la vitrine, faite pour être vue même des non-membres), Règles, Espace joueur, Espace MJ, Codex, Outils ; plus de
+// rubrique Ressources ni d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs). Rien n'est caché ni filtré : « Pour l'instant comme les
+// menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
+// « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic). Composants va sous Artisanat ; Pièces élémentaires et Livres &
+// Parchemins restent visibles dans les Règles « pour l'instant » (ils iront plus tard dans les Armes, les Armures et la Ceinture de l'Équipement).
 // « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
 // « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires », puis « renommer l'onglet en "Ceinture" et le mettre dans les onglets de
 // équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs). La ceinture (potions et huiles, carquois et
 // sacs, bâtons magiques : décision R81) n'a plus d'entrée à elle : c'est l'onglet Ceinture de « Équipement ». Le bouclier ne va pas à la ceinture,
 // son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers de « Équipement ».
+// Les chemins des pages du guide (decouvrir/…, regles/…, mj/) sont ceux de lib/livres.mjs, écrits ici à part (nav.mjs n'importe rien : le script de la
+// page 404 l'importe) ; test/livres.test.mjs vérifie qu'ils s'accordent.
 export const NAV = [
+  {
+    key: 'decouvrir',
+    label: 'Découvrir',
+    // les quatre pages des cartes « Par où commencer ? » de l'accueil (lib/livres.mjs#PAR_OU_COMMENCER), puis les liens (Discord, Tipeee)
+    items: [
+      { label: 'Bienvenue', path: 'decouvrir/' },
+      { label: 'L’univers', path: 'decouvrir/l-univers/' },
+      { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
+      { label: 'Rejoindre une partie', path: 'decouvrir/campagne-ou-scenario-one-shot/' },
+      { label: 'Liens', path: 'decouvrir/liens/' },
+    ],
+  },
   {
     key: 'regles',
     label: 'Règles',
-    autres: ['capacites/'],
+    // les dons de classe vont avec les classes ; toutes les pages /ressources/… (Composants, alchimie…) ouvrent les Règles
+    autres: ['capacites/', 'ressources/'],
     items: [
-      { label: 'Guide', path: 'guide/' },
+      { label: 'Les bases', path: 'regles/' },
       { label: 'Races', path: 'races/' },
       { label: 'Magies', path: 'magies/' },
       { label: 'Classes', path: 'classes/' },
-      { label: 'Métiers', path: 'metiers/' },
-    ],
-  },
-  {
-    key: 'ressources',
-    label: 'Ressources',
-    autres: ['ressources/'],
-    items: [
       { label: 'Équipement', path: 'ressources/equipement/' },
-      { label: 'Composants', path: 'ressources/composants/' },
-      { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
+      { label: 'Métiers', path: 'metiers/' },
+      { label: 'Artisanat', path: 'regles/artisanat/' },
+      { label: 'Règles avancées', path: 'regles/avancees/' },
       { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
+      { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
     ],
   },
   {
-    key: 'personnages',
-    label: 'Personnages',
+    key: 'joueur',
+    label: 'Espace joueur',
     items: [
       { label: 'Fiche de personnage', path: 'fiche/' },
-      { label: 'Listes', path: 'personnages/' },
-      { label: 'Groupes' },
+      { label: 'Personnages', path: 'personnages/' },
+      { label: 'Groupes d’aventures' },
+      { label: 'Table de jeu' },
       { label: 'Chroniques' },
+    ],
+  },
+  {
+    key: 'mj',
+    label: 'Espace MJ',
+    items: [
+      { label: 'Guide du MJ', path: 'mj/' },
+      { label: 'Fiches de PNJ et scénarios' },
+      { label: 'Groupes de jeu' },
     ],
   },
   {
@@ -97,7 +122,7 @@ export function groupIsCurrent(group, pathname, base = '/') {
   return [...group.items.map((i) => i.path), ...(group.autres ?? [])].some((debut) => debut && rel.startsWith(debut));
 }
 
-/** Rubrique à ouvrir pour cette page : celle de la page, sinon la première (accueil, page 404…). */
+/** Rubrique à ouvrir pour cette page : celle de la page, sinon la première, Découvrir (accueil, page 404…). */
 export function activeGroup(pathname, base = '/', nav = NAV) {
   return nav.find((g) => groupIsCurrent(g, pathname, base)) ?? nav[0];
 }
@@ -135,22 +160,26 @@ export const PAGES_RENOMMEES = {
  * `/generateur/` est devenu la fiche `/fiche/`, la liste des mots-clés `/tags/` est dans la recherche) et la page d'un mot-clé `/tags/<clé>/`, devenue
  * la liste de ses éléments dans la recherche, `/recherche/?mot-cle=<clé>` (les ids du vocabulaire, migration 0043, sont les anciennes clés ; un mot-clé
  * disparu depuis y est dit « n'existe plus »). `null` si ce n'en est pas une. Lu par la page 404, qui y ajoute la requête et l'ancre (adresseComplete).
+ * `renvois` : d'autres anciennes adresses → nouvelles, relatives à la racine du site, calculées au build : celles des pages du guide, /guide/ et
+ * /guide/<slug>/ avant l'éclatement du guide (lib/metiers.mjs#renvoisDuGuide, écrites par pages/404.astro ; nav.mjs n'importe pas le plan, que la
+ * chaîne de l'édition importe aussi sur la page 404). PAGES_RENOMMEES l'emporte sur elles.
  */
-export function nouvelleAdresse(pathname, base = '/') {
+export function nouvelleAdresse(pathname, base = '/', renvois = {}) {
   const wiki = legacyWikiRedirect(pathname, base);
   // une ancienne adresse du wiki d'une page renommée depuis (« /wiki/ressources/bouclier/ ») : la nouvelle, sans second passage par la page 404
-  if (wiki) return adresseRenommee(wiki, base) ?? wiki;
-  return adresseRenommee(pathname, base);
+  if (wiki) return adresseRenommee(wiki, base, renvois) ?? wiki;
+  return adresseRenommee(pathname, base, renvois);
 }
 
-/** La nouvelle adresse d'une page renommée ou d'un mot-clé (voir nouvelleAdresse), `null` sinon. */
-function adresseRenommee(pathname, base) {
+/** La nouvelle adresse d'une page renommée, d'un renvoi ou d'un mot-clé (voir nouvelleAdresse), `null` sinon. */
+function adresseRenommee(pathname, base, renvois = {}) {
   const root = base.replace(/\/$/, '') + '/';
   if (!pathname.startsWith(root)) return null;
   const rel = pathname.slice(root.length).replace(/\/?$/, '/');
   const motCle = rel.match(/^tags\/([^/]+)\/$/);
   if (motCle) return `${root}recherche/?mot-cle=${motCle[1]}`;
-  return PAGES_RENOMMEES[rel] ? root + PAGES_RENOMMEES[rel] : null;
+  const cible = Object.hasOwn(PAGES_RENOMMEES, rel) ? PAGES_RENOMMEES[rel] : renvois && Object.hasOwn(renvois, rel) ? renvois[rel] : null;
+  return typeof cible === 'string' ? root + cible : null;
 }
 
 /**

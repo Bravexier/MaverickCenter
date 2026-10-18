@@ -108,6 +108,8 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   const guide = aideDeLEntrainement(ouvrirBase());
   const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
+  // sa place dans le plan du site (lib/livres.mjs) : « Les bases, chapitre 10 »
+  if (guide) assert.ok(aide.startsWith(`${guide.livre}, chapitre ${guide.chapitre}, <cite>`), 'le livre et le chapitre de la page');
   assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // III. selon la situation
@@ -278,12 +280,12 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   assert.match(html, /<ol class="personnages-lignes" id="lignes" aria-label="Personnages"><\/ol>/);
 });
 
-test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Personnages du menu', options, () => {
+test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Espace joueur du menu', options, () => {
   assert.ok(!existsSync(join(dist, 'generateur')), 'dossier dist/generateur/');
   // le script de la page 404 est inséré dans la page (petit) ou dans un fichier de _astro/
   const scripts = [lire('404.html'), ...readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.js')).map((f) => lire(`_astro/${f}`))];
   assert.ok(scripts.some((s) => /"generateur\/":`fiche\/`|"generateur\/":"fiche\/"/.test(s)), 'correspondance /generateur/ → /fiche/ dans le script de la page 404');
-  const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="personnages"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Fiche de personnage /fiche/', 'Listes /personnages/']);
-  assert.match(lire('fiche/index.html'), /<button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="true" aria-current="true">/, 'rubrique ouverte sur la fiche');
+  const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="joueur"[^>]*>([\s\S]*?)<\/ul>/)[1];
+  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Fiche de personnage /fiche/', 'Personnages /personnages/']);
+  assert.match(lire('fiche/index.html'), /<button type="button" class="nav-group__toggle" data-group="joueur" aria-pressed="true" aria-current="true">/, 'rubrique ouverte sur la fiche');
 });

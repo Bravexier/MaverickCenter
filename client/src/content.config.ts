@@ -34,9 +34,8 @@ const wiki = defineCollection({
     ligne: z.number().int().optional(), // ligne de la cellule « Lvl N » dans l'onglet (ordre de haut en bas)
     type_capacite: z.string().optional(), // type tel qu'écrit (« Actif (1 fois/Combat) »)
     choix_exclusif_avec: z.array(z.string()).optional(), // ids des capacités de la même ligne : une seule au choix
-    // Guide du joueur : numéro de chapitre (1, 2, 3… : ordre de lecture, flèches et pagination ; voir lib/guide.mjs). Absent = page de référence.
-    chapitre: z.number().int().positive().optional(),
-    partie: z.string().optional(), // partie du guide (lib/guide.mjs#PARTIES : decouvrir, creer, jouer…), qui donne sa couleur au chapitre
+    // Pages du guide : plus de numéro de chapitre ni de partie (le plan du site, ordre de lecture et couleurs compris, est dans lib/livres.mjs ;
+    // migration 0064-guide-sans-chapitres, qui les a retirés de page.donnees) ; un champ non déclaré ici est ignoré.
   }),
 });
 

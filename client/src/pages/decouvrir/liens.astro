@@ -1,0 +1,13 @@
+---
+import Base from '../../layouts/Base.astro';
+import { LIENS } from '../../lib/livres.mjs';
+
+// La page « Liens » (rubrique Découvrir ; lib/livres.mjs#LIENS) : le serveur Discord et la page Tipeee du jeu, rien d'autre que leurs libellés.
+---
+
+<Base title={LIENS.titre}>
+  <h1>{LIENS.titre}</h1>
+  <ul class="entry-list">
+    {LIENS.liens.map((l) => <li><a href={l.url} rel="noopener">{l.libelle}</a></li>)}
+  </ul>
+</Base>

@@ -48,7 +48,11 @@ test('le titre, puis les cinq onglets dans l’ordre, chacun un lien vers son pa
     assert.ok(main.includes(`<h2 class="equipement-panneau__titre" id="titre-${id}">`), `${id} : le titre du panneau`);
   }
   assert.equal((main.match(/<h1[\s>]/g) ?? []).length, 1, 'un seul titre de page');
-  assert.ok(html.includes(`href="/${CHEMIN_DE_L_EQUIPEMENT}"`), 'l’entrée du menu Ressources');
+  assert.ok(html.includes(`href="/${CHEMIN_DE_L_EQUIPEMENT}"`), 'l’entrée du menu Règles');
+  assert.ok(html.includes(`<a href="/${CHEMIN_DE_L_EQUIPEMENT}" aria-current="page">Équipement</a>`), 'marquée courante');
+  // une entrée du menu, sans fil d'Ariane comme les autres (Races, Métiers, Artisanat…) : plus de maillon vers l'ancienne rubrique Ressources
+  assert.ok(!html.includes('href="/ressources/"'), 'aucun lien vers l’ancienne rubrique Ressources');
+  assert.doesNotMatch(main, /<p class="muted"><a href="\/">Accueil<\/a>/);
 });
 
 test('identifiants uniques sur toute la page (les onglets réunis : matériaux, améliorations, matières…)', options, () => {
@@ -170,7 +174,7 @@ test('les anciennes pages ne sont plus construites et aucun lien du site n’y m
   const pages = readdirSync(dist, { recursive: true }).filter((n) => n.endsWith('.html') && n !== '404.html');
   for (const nom of pages) assert.ok(!anciennes.test(readFileSync(join(dist, nom), 'utf8')), nom);
   // le chapitre « L'équipement » du guide cite la page « Bouclier » (migration 0046) : son lien mène à l'onglet
-  assert.ok(readFileSync(join(dist, 'guide', 'l-equipement', 'index.html'), 'utf8').includes(`href="/${cheminDePage('ressources/bouclier')}"`));
+  assert.ok(readFileSync(join(dist, ...cheminDePage('guide/l-equipement').split('/').filter(Boolean), 'index.html'), 'utf8').includes(`href="/${cheminDePage('ressources/bouclier')}"`));
 });
 
 test('chaque onglet garde son script ; un seul script d’onglets sur la page', options, () => {

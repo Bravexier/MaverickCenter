@@ -14,8 +14,13 @@ interface Props {
   edition?: string;
   /** La page de maintenance (pages/maintenance.astro) : menus grisés et inertes, et pas de renvoi vers elle-même. */
   maintenance?: boolean;
+  /**
+   * L'entrée du menu (son `path`, lib/nav.mjs) d'une page qui n'en est pas une mais qu'on atteint par elle (Composants, dans le sommaire de
+   * l'Artisanat) : marquée courante (`aria-current="true"`, l'entrée de la page elle-même ayant `aria-current="page"`).
+   */
+  entree?: string;
 }
-const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false } = Astro.props;
+const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false, entree } = Astro.props;
 // Version portable (tools/build-artifact.mjs, INLINE_CSS=1) : pas de service, donc pas de mode modification.
 const portable = process.env.INLINE_CSS === '1';
 
@@ -110,7 +115,7 @@ const pageMesuree = Astro.url.pathname;
                   {entreesDuMenu(group, { dev }).map((item) => (
                     <li>
                       {item.path ? (
-                        <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : undefined}>{item.label}</a>
+                        <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : item.path === entree ? 'true' : undefined}>{item.label}</a>
                       ) : (
                         <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
                       )}

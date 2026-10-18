@@ -38,7 +38,8 @@ function bases() {
       echelle_relation: [{ id: 'neutre', libelle: 'Neutre' }, { id: 'haine', libelle: 'Haine' }],
       relation_peuple: [{ ligne_peuple_id: 'peuples/humain', colonne_peuple_id: 'peuples/elfe', echelle_id: 'neutre' }],
       page: [
-        { id: 'guide/combat', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: '{"chapitre":3}' },
+        // une page du livre « Les bases » (lib/livres.mjs) : rangée sous le titre du livre
+        { id: 'guide/le-tour-de-jeu', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: null },
         { id: 'guide/exemple', type: 'guide', statut: 'example', titre: 'Exemple', corps_md: 'a', donnees: null },
         { id: 'races/humain', type: 'races', statut: 'canon', titre: 'Humain', corps_md: 'a', donnees: null },
       ],
@@ -77,7 +78,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
     'races | Elfe | Elfe | Présentation | ajoute',
     'metiers |  | Alchimiste | (entité) | ajoute',
     'metiers |  | Forgeron | Bonus | modifie',
-    'guide | Chapitre 3 | Combat | Texte | modifie',
+    'guide | Les bases | Combat | Texte | modifie',
   ]);
   assert.deepEqual(lignes.map((l) => l.rang), lignes.map((_, i) => i + 1));
   const flash = lignes.filter((l) => l.entite === 'Flash');

@@ -1,36 +1,53 @@
 ---
 import guideCss from '../../styles/guide/guide.css?raw';
+import blocsCss from '../../styles/guide/blocs.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
-import { chapitresDuGuide, morceauxDuChapitre, partiesDuGuide, voisins } from '../../lib/guide.mjs';
+import { morceauxDuChapitre } from '../../lib/guide.mjs';
+import { livreDe, pagesDuLivre, RUBRIQUES_SOUS_LA_PAGE, suiteDuLivre, voisinsDansLeLivre } from '../../lib/livres.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
-import type { WikiEntry } from '../../lib/wiki';
+import { TYPES } from '../../lib/types.mjs';
+import { url, type WikiEntry } from '../../lib/wiki';
 import GuideBloc from './GuideBloc.astro';
 
-// Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). La page prend toute la largeur ; une
-// flèche de chaque côté (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre) passe par-dessus son bord, en bas de l'écran,
-// et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre du chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/Infobulles.astro ; sans JavaScript, `title`).
-// Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
-// Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
+// Une page d'un livre (lib/livres.mjs : « Découvrir », « Les bases ») : une page à la fois, à lire dans l'ordre (demande du propriétaire). La page prend
+// toute la largeur ; une flèche de chaque côté (Précédent à gauche, Suivant à droite ; grisée à la première et à la dernière page du livre) passe
+// par-dessus son bord, en bas de l'écran, et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre de la page voisine, puis la
+// pagination : un numéro par page du livre, son titre en infobulle (components/Infobulles.astro ; sans JavaScript, `title`).
+// Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de
+// la page, coupé à ses blocs tirés de la base (GuideBloc). Chaque section du livre a sa couleur : celle de la page colore la page, les numéros de la
+// pagination sont regroupés par section. Sous certaines pages, un bloc de navigation vers les rubriques qu'elles présentent (RUBRIQUES_SOUS_LA_PAGE).
+// À la dernière page du livre, le lien « Suivant › » du bas mène à la suite du plan (Les bases après Découvrir, puis les Règles avancées : suiteDuLivre) ;
+// la flèche de côté, ← → et le glissement du doigt restent dans le livre.
 interface Props {
   entry: WikiEntry;
   entries: WikiEntry[];
 }
 const { entry, entries } = Astro.props;
 
-const chapitres = chapitresDuGuide(entries);
-const { chapitre, precedent, suivant } = voisins(chapitres, entry.id);
+const place = livreDe(entry.id);
+if (!place) throw new Error(`guide : ${entry.id} n'est dans aucun livre (lib/livres.mjs)`);
+const { livre, section, numero, total } = place;
+const parId = new Map(entries.map((e) => [e.id, e]));
+const titreDe = (id: string) => parId.get(id)?.data.title ?? id;
+const voisins = voisinsDansLeLivre(entry.id)!;
+const page = (id: string | null) => (id ? { id, numero: livreDe(id)!.numero, titre: titreDe(id) } : null);
+const precedent = page(voisins.precedent);
+const suivant = page(voisins.suivant);
+const suite = suivant ? null : suiteDuLivre(livre);
 const morceaux = await Promise.all(
   morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
 );
-const parties = partiesDuGuide(chapitres);
-const css = [guideCss, magieTooltipsCss].join('\n');
+const pages = pagesDuLivre(livre);
+const sections = livre.sections.map((s) => ({ section: s, pages: pages.filter((p) => p.section === s).map((p) => ({ ...p, titre: titreDe(p.id) })) }));
+const rubriques = (RUBRIQUES_SOUS_LA_PAGE as Record<string, readonly string[]>)[entry.id] ?? [];
+const css = [guideCss, blocsCss, magieTooltipsCss].join('\n');
 const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero} : ${c.titre}`;
 ---
 
 <style is:inline set:html={css}></style>
-<div class="guide" data-guide style={`--couleur-partie: ${chapitre.partie.couleur}`}>
+<div class="guide" data-guide style={`--couleur-partie: ${section.couleur}`}>
   <div class="guide-cadre">
     {
       precedent ? (
@@ -39,20 +56,32 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
           <span class="guide-invisible">Précédent : {etiquette(precedent)}</span>
         </a>
       ) : (
-        <span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true" title="Premier chapitre">
+        <span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true" title="Première page du livre">
           <span aria-hidden="true">‹</span>
-          <span class="guide-invisible">Précédent (premier chapitre)</span>
+          <span class="guide-invisible">Précédent (première page du livre)</span>
         </span>
       )
     }
 
     {/* data-ed, data-ed-corps, data-ed-morceau : titre et morceaux de texte modifiables sur le site de dev (src/scripts/edition/guide.mjs) */}
     <article class="guide-page" aria-labelledby="guide-titre" data-ed-corps={entry.id}>
-      <p class="guide-numero"><span class="guide-partie">{chapitre.partie.titre}</span> Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
-      <h1 id="guide-titre" data-ed={attributEd('page', { id: entry.id }, 'titre')}>{chapitre.titre}</h1>
+      {/* « Créer son personnage — Découvrir · chapitre 4 sur 11 » ; le titre du livre n'est pas répété quand la section porte le même */}
+      <p class="guide-numero"><span class="guide-partie">{section.titre}</span> {livre.titre !== section.titre && `${livre.titre} · `}chapitre {numero} sur {total}</p>
+      <h1 id="guide-titre" data-ed={attributEd('page', { id: entry.id }, 'titre')}>{entry.data.title}</h1>
       {
         morceaux.map((m) =>
-          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} chapitres={chapitres} /> : <div class="guide-texte" data-ed-morceau set:html={m.html} />,
+          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} /> : <div class="guide-texte" data-ed-morceau set:html={m.html} />,
+        )
+      }
+      {
+        rubriques.length > 0 && (
+          <nav class="guide-rubriques" aria-label="Rubriques">
+            <ul>
+              {rubriques.map((cle) => (
+                <li><a class="guide-rubriques__lien" href={url(`${cle}/`)}>{TYPES[cle as keyof typeof TYPES].label}</a></li>
+              ))}
+            </ul>
+          </nav>
         )
       }
     </article>
@@ -64,15 +93,15 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
           <span class="guide-invisible">Suivant : {etiquette(suivant)}</span>
         </a>
       ) : (
-        <span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true" title="Dernier chapitre">
+        <span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true" title="Dernière page du livre">
           <span aria-hidden="true">›</span>
-          <span class="guide-invisible">Suivant (dernier chapitre)</span>
+          <span class="guide-invisible">Suivant (dernière page du livre)</span>
         </span>
       )
     }
   </div>
 
-  <nav class="guide-bas" aria-label="Chapitres du guide">
+  <nav class="guide-bas" aria-label={`Chapitres : ${livre.titre}`}>
     <div class="guide-voisins">
       {
         precedent ? (
@@ -92,6 +121,11 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
             <span class="guide-voisin__sens">Suivant ›</span>
             <span class="guide-voisin__titre">{suivant.titre}</span>
           </a>
+        ) : suite ? (
+          <a class="guide-voisin guide-voisin--suivant guide-voisin--suite" href={url(suite.chemin)} data-guide-suite>
+            <span class="guide-voisin__sens">Suivant ›</span>
+            <span class="guide-voisin__titre">{suite.titre}</span>
+          </a>
         ) : (
           <span class="guide-voisin guide-voisin--suivant" aria-disabled="true">
             <span class="guide-voisin__sens">Suivant ›</span>
@@ -101,11 +135,11 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     </div>
     <ol class="guide-pagination">
       {
-        parties.map(({ partie, chapitres: deLaPartie }) => (
-          <li class="guide-pagination__partie" style={`--couleur-partie: ${partie.couleur}`}>
-            <span class="guide-pagination__titre">{partie.titre}</span>
+        sections.map(({ section: s, pages: deLaSection }) => (
+          <li class="guide-pagination__partie" style={`--couleur-partie: ${s.couleur}`}>
+            <span class="guide-pagination__titre">{s.titre}</span>
             <ol class="guide-pagination__numeros">
-              {deLaPartie.map((c) => {
+              {deLaSection.map((c) => {
                 const id = idBulle('guide-chapitre');
                 return (
                   <li>
@@ -113,7 +147,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
                       <a
                         class="guide-pagination__numero"
                         href={pageHref(c.id)}
-                        aria-current={c.id === chapitre.id ? 'page' : undefined}
+                        aria-current={c.id === entry.id ? 'page' : undefined}
                         aria-label={etiquette(c)}
                         data-bulle={id}
                         title={etiquette(c)}
@@ -121,7 +155,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
                         {c.numero}
                       </a>
                       <span class="bulle" role="tooltip" id={id} hidden>
-                        <span class="bulle__sous">{partie.titre} · chapitre {c.numero}</span>
+                        <span class="bulle__sous">{s.titre} · chapitre {c.numero}</span>
                         <span class="bulle__titre">{c.titre}</span>
                       </span>
                     </span>
@@ -136,7 +170,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
   </nav>
 </div>
 <script is:inline>
-  // ← et → : chapitre précédent ou suivant, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
+  // ← et → : page précédente ou suivante du livre, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
   document.addEventListener('keydown', function (e) {
     var sens = { ArrowLeft: '[data-guide-precedent]', ArrowRight: '[data-guide-suivant]' }[e.key];
     if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
@@ -146,7 +180,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     if (lien) location.href = lien.href;
   });
 
-  // Écran tactile : glisser le doigt vers la gauche tourne la page (chapitre suivant), vers la droite revient au précédent (demande du propriétaire).
+  // Écran tactile : glisser le doigt vers la gauche tourne la page (page suivante), vers la droite revient à la précédente (demande du propriétaire).
   // Le geste doit être franchement horizontal (au moins 2 fois plus large que haut, et 60 px ou le quart de l'écran), d'un seul doigt ; il ne compte
   // pas sur un tableau qui défile, dans un champ, pendant une sélection de texte, sur une page zoomée (le doigt la déplace) ni au bord de l'écran
   // (gestes du système, comme le retour arrière). La page suit un peu le doigt pour montrer que le geste est compris, sauf mouvement réduit.
@@ -216,7 +250,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     });
   })();
 
-  // Les flèches de côté (collées en bas de l'écran) s'effacent dès que les liens du bas (Précédent / Suivant, avec le titre du chapitre) arrivent à
+  // Les flèches de côté (collées en bas de l'écran) s'effacent dès que les liens du bas (Précédent / Suivant, avec le titre de la page) arrivent à
   // l'écran : ils font le même travail, et les flèches ne doivent pas venir se poser à côté (demande du propriétaire). Sans JavaScript, elles s'arrêtent
   // au pied de la page.
   (function () {

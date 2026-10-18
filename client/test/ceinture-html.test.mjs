@@ -15,6 +15,7 @@ import { ancreDObjet, ancreDePotions, couleursDeLaLigne } from '../src/lib/ceint
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'equipement', 'index.html');
@@ -167,7 +168,7 @@ test('les liens mènent à des pages construites et à des ancres qui existent (
   for (const a of ancres) assert.ok(main.includes(`id="${a}"`), `ancre absente de la page : #${a}`);
   assert.ok(ancres.includes('famille-bombes'), 'les bombes, dans l’onglet Armes');
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) assert.ok(liens.includes(`/${p.id}/`), `la page ${p.id}`);
-  assert.ok(liens.includes('/guide/l-equipement/') && liens.includes('/guide/fiche-accessoires-et-ceinture/'), 'les pages du guide');
+  assert.ok(liens.includes(`/${cheminDePage('guide/l-equipement')}`) && liens.includes(`/${cheminDePage('guide/fiche-accessoires-et-ceinture')}`), 'les pages du guide');
 });
 
 test('les prix et les textes écrivent les monnaies en icônes, jamais en abréviations (R63)', options, () => {
