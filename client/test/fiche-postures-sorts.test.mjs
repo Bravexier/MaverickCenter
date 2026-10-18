@@ -74,7 +74,7 @@ test('Symbiose (R100) : sa magie (la seule, sinon choisie), +5 (+2/NPM au-delà 
   assert.deepEqual([sansChoix.symbiose.magie, sansChoix.symbiose.aChoisir, sansChoix.symbiose.inactive, sansChoix.am], [null, true, null, 4]);
   const glace = M.postureDuMoment(regles, fiche({ ...bi, symbiose_magie_id: 'magies/magie-de-la-glace' }));
   assert.deepEqual([glace.symbiose.magie.id, glace.symbiose.inactive.id], ['magies/magie-de-la-glace', 'magies/magie-du-feu']);
-  // immunité à sa magie dans les dégâts reçus ; le Potentiel Illimité n'a pas de magie de symbiose (Q15)
+  // immunité à sa magie dans les dégâts reçus ; le Potentiel Illimité n'a pas de magie de symbiose (R109 : test suivant)
   assert.equal(M.degatsRecus(regles, fiche({ ...bi, symbiose_magie_id: 'magies/magie-de-la-glace' }), { entrants: 50, type: 'magies/magie-de-la-glace' }).recus, 0);
   assert.ok(M.degatsRecus(regles, fiche({ ...bi, symbiose_magie_id: 'magies/magie-de-la-glace' }), { entrants: 50, type: 'magies/magie-du-feu' }).recus > 0);
   assert.deepEqual(M.magiesDeLaSymbiose(regles, fiche({ magie_innee_id: 'magies/potentiel-illimite' })), []);
@@ -86,6 +86,198 @@ test('Symbiose (R100) : sa magie (la seule, sinon choisie), +5 (+2/NPM au-delà 
   const m = M.sortDuMoment(regles, f, deGlace, auNm(deGlace));
   assert.equal(m.inactif, null);
   assert.ok(m.dsb.detail.some((d) => d.nom === 'Posture Symbiose (Glace)' && d.valeur === 5), JSON.stringify(m.dsb));
+});
+
+test('R113 : une valeur par tour reçoit les bonus fixes à chaque tour (dégâts et soin), la période après la valeur ; une valeur sans période inchangée', () => {
+  // un sort à dégâts par tour, un bonus de bâton (« Dégâts sort ») ; puis d'un don (Barde « Ménestrel », +2 dégâts des sorts)
+  const parTour = regles.sorts.find((s) => s.attaque && /^\d+d\d+ dégâts par tour$/.test(auNm(s).dsb));
+  const ecrit = auNm(parTour).dsb;
+  const baton = regles.ceinture.batons.find((b) => b.effets?.some((e) => e.cle === 'degats') && !b.effets.some((e) => e.cle === 'cran'));
+  const bonus = baton.effets.find((e) => e.cle === 'degats').valeur;
+  const avecBaton = M.sortDuMoment(regles, fiche(ceinture(baton.nom)), parTour, auNm(parTour));
+  assert.equal(avecBaton.dsb.texte, ecrit.replace(/^(\d+d\d+) /, `$1 + ${bonus} `), ecrit);
+  assert.ok(avecBaton.dsb.texte.endsWith(' dégâts par tour') && avecBaton.dsb.lu);
+  assert.ok(!avecBaton.nonComptes.some((n) => n.raison === 'par_tour'));
+  // « 5 dégâts / tour » : une valeur sans dés, la période telle qu'écrite
+  assert.equal(M.ecrireDegatsDeSort({ ...M.lireDegatsDeSort('5 dégâts / tour'), fixe: 5 + 4 }), '9 dégâts / tour');
+  assert.equal(M.ecrireDegatsDeSort({ ...M.lireDegatsDeSort('3d6 dégâts par tour'), fixe: 5 }), '3d6 + 5 dégâts par tour');
+  // un soin par tour : le bonus de soin (une armure élémentaire « Les sorts de soin ont un bonus de +7 ») à chaque tour
+  const soin = regles.sorts.find((s) => s.types.includes('soin') && M.lireDegatsDeSort(auNm(s).dsb)?.parTour && M.lireDegatsDeSort(auNm(s).dsb).nature === 'soin');
+  const lumiere = regles.armures_elementaires.find((e) => e.sorts?.some((b) => b.cible === 'soin' && b.valeur === 7));
+  assert.ok(soin && lumiere, 'un soin par tour dans la base');
+  const lu = M.lireDegatsDeSort(auNm(soin).dsb);
+  const m = M.sortDuMoment(regles, fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: lumiere.id }), soin, auNm(soin));
+  assert.equal(m.dsb.texte, M.ecrireDegatsDeSort({ ...lu, fixe: lu.fixe + 7 }), auNm(soin).dsb);
+  assert.match(m.dsb.texte, /(\/\s*tour|par tour)$/);
+  assert.equal(M.ecrireDegatsDeSort({ ...M.lireDegatsDeSort('4d6 de soin/tour'), fixe: 7 }), '4d6 + 7 de soin/tour');
+  // un sort sans période : inchangé
+  const boule = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture(baton.nom)), boule, auNm(boule)).dsb.texte, `2d6 + ${bonus} dégâts`);
+});
+
+test('Symbiose (R112) : « Utiliser » grisé à la ceinture, sauf un parchemin ; Remplir et Ranger permis ; armes grisées ; les effets passifs (accessoires, bâton, armure, bouclier) comptent', () => {
+  const symbiose = (x = {}) => fiche({ posture_id: POSTURE('symbiose'), ...x });
+  const potion = regles.ceinture.objets.find((o) => o.famille === 'fiole');
+  const parchemin = regles.ressources.find((r) => r.genre === 'parchemin' && r.nom === 'Parchemin gravé');
+  const vierge = regles.ressources.find((r) => r.genre === 'materiel' && r.nom === 'Parchemin vierge');
+  assert.ok(potion && parchemin && vierge);
+  const ligne = (o, quantite = 2, ressource = true) => ({ nom: o.nom, quantite, ressource_id: ressource ? (o.ressource_id ?? o.id) : null });
+  const aLaCeinture = (...lignes_) => ({ ceinture: lignes_.map((l, i) => ({ rang: i + 1, ...l })) });
+  const refus = 'Posture Symbiose : on ne peut que lancer des sorts';
+  // une potion : grisé, et « Utiliser » ne fait rien ; Remplir et Ranger restent
+  const f = symbiose({ ...aLaCeinture(ligne(potion)), inventaire: [{ rang: 1, nom: potion.nom, quantite: 3, ressource_id: potion.ressource_id }] });
+  const a = M.actionsDeLEmplacement(regles, f, 1);
+  assert.deepEqual([a.utiliser, a.refus, a.remplir], [true, refus, true]);
+  assert.deepEqual(M.utiliserLObjet(regles, f, 1), { ceinture: f.ceinture, inventaire: f.inventaire });
+  assert.equal(M.remplirLEmplacement(regles, f, 1).ceinture[0].quantite, 3, 'Remplir : un geste de rangement');
+  assert.deepEqual(M.rangerLEmplacement(regles, f, 1).ceinture, [], 'Ranger aussi');
+  // un parchemin (genre « parchemin » du catalogue, par l'objet de la ligne ou par son nom) : permis
+  for (const l of [ligne(parchemin), ligne(parchemin, 2, false)]) {
+    const p = symbiose(aLaCeinture(l));
+    assert.equal(M.estUnParchemin(regles, p.ceinture[0]), true);
+    assert.equal(M.actionsDeLEmplacement(regles, p, 1).refus, null);
+    assert.equal(M.utiliserLObjet(regles, p, 1).ceinture[0].quantite, 1);
+  }
+  // le « Parchemin vierge » de l'équipement d'inventaire (genre « matériel ») n'en est pas un ; un nom hors du catalogue non plus
+  assert.equal(M.estUnParchemin(regles, ligne(vierge)), false);
+  assert.equal(M.estUnParchemin(regles, { nom: 'Parchemin de feu du MJ', quantite: 1, ressource_id: null }), false);
+  // hors Symbiose : inchangé
+  for (const posture of [null, POSTURE('focus'), POSTURE('offensif')]) {
+    const g = fiche({ posture_id: posture, ...aLaCeinture(ligne(potion)) });
+    assert.equal(M.actionsDeLEmplacement(regles, g, 1).refus, null, String(posture));
+    assert.equal(M.utiliserLObjet(regles, g, 1).ceinture[0].quantite, 1);
+  }
+  // les armes : grisées en Symbiose (pastille « Symbiose »)
+  const arme = { rang: 1, arme_id: regles.armes.find((x) => x.solidite !== null).id, materiau_id: regles.materiau_arme_defaut };
+  assert.equal(M.degatsDArmeDuMoment(regles, symbiose({ armes: [arme] }), 1).inutilisable, 'Symbiose');
+  // les effets passifs comptent : accessoires, bâton à la ceinture, armure et bouclier (en parade partielle)
+  const acc = regles.accessoires.find((x) => x.effets.some((c) => c.cible === 'armure_ap'));
+  const armure = regles.armures.find((x) => x.ap >= 2 && Number(x.solidite_uni) !== 1);
+  const equipe = {
+    accessoires: [{ emplacement: 'chef', accessoire_effet_id: acc.id, valeur: null, maudit: 0 }], armure_id: armure.id,
+    bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer', ...ceinture(regles.ceinture.batons[0].nom),
+  };
+  const enSymbiose = symbiose(equipe);
+  const sans = fiche(equipe);
+  assert.deepEqual(M.effetsDesAccessoires(regles, enSymbiose), M.effetsDesAccessoires(regles, sans));
+  assert.ok(M.effetsDesBatons(regles, enSymbiose).comptes.size > 0);
+  assert.deepEqual([...M.effetsDesBatons(regles, enSymbiose).comptes], [...M.effetsDesBatons(regles, sans).comptes]);
+  const d = M.defenseDe(regles, enSymbiose);
+  const d0 = M.defenseDe(regles, sans);
+  assert.deepEqual([d.ap.total, d.ap.armure, d.am.armure, d.bouclier], [d0.ap.total, d0.ap.armure, d0.am.armure, d0.bouclier]);
+  assert.equal(d.am.total, d0.am.total + M.postureDuMoment(regles, enSymbiose).am, 'l’AM de la posture en plus');
+  const parade = (x) => M.degatsRecus(regles, x, { entrants: 40, type: 'taille', reduits: true, parade: true }).armure;
+  assert.equal(parade(enSymbiose), parade(sans), 'le bouclier en parade partielle');
+});
+
+test('Symbiose à deux magies (R111) : la magie désactivée perd ses résistances et faiblesses (et leur part du cumul, R85), rien d’autre ; sans Symbiose, rien ne change', () => {
+  const bi = (x = {}) => fiche({ magie_acquise_id: 'magies/magie-de-la-glace', ...x });
+  const enGlace = bi({ posture_id: POSTURE('symbiose'), symbiose_magie_id: 'magies/magie-de-la-glace' });
+  const sans = bi();
+  const cible = (r, id) => r.paliers.flatMap((p) => p.cibles.map((c) => ({ ...c, palier: p.id }))).find((c) => c.id === id) ?? null;
+  const origines = (r) => r.paliers.flatMap((p) => p.cibles.flatMap((c) => c.origines.map((o) => o.nom)));
+  const avant = M.resistancesDe(regles, sans);
+  const apres = M.resistancesDe(regles, enGlace);
+  assert.equal(avant.desactivee, null);
+  assert.deepEqual(apres.desactivee, { id: 'magies/magie-du-feu', nom: 'Feu' });
+  assert.ok(origines(avant).includes('Feu (magie innée)') && !origines(apres).includes('Feu (magie innée)'), 'les listes du Feu ne comptent plus');
+  assert.ok(origines(apres).includes('Glace (magie acquise)'), 'celles de la magie de la symbiose restent');
+  // le Feu : le Feu y résiste, la Glace y est faible (0 cran, rien) ; désactivé, seule la faiblesse de la Glace reste
+  const feu = regles.magies.find((m) => m.id === 'magies/magie-du-feu');
+  const glace = regles.magies.find((m) => m.id === 'magies/magie-de-la-glace');
+  const crans = (m, id) => (m.resistances.find((e) => e.type === 'magie' && e.id === id)?.crans ?? 0);
+  assert.deepEqual([crans(feu, feu.id), crans(glace, feu.id)], [1, -1]);
+  assert.equal(cible(avant, feu.id), null, 'R85 : une résistance et une faiblesse s’annulent');
+  assert.equal(cible(apres, feu.id).crans, -1);
+  // la Terre, que seul le Feu résiste : plus rien
+  assert.ok(crans(feu, 'magies/magie-de-la-terre') > 0 && crans(glace, 'magies/magie-de-la-terre') === 0);
+  assert.ok(cible(avant, 'magies/magie-de-la-terre') && !cible(apres, 'magies/magie-de-la-terre'));
+  // les dégâts reçus suivent (le palier de la faiblesse au Feu s'applique)
+  const r = M.degatsRecus(regles, enGlace, { entrants: 60, type: feu.id });
+  const palier = regles.resistance_paliers.find((p) => p.id === cible(apres, feu.id).palier);
+  assert.ok(r.etapes.some((e) => e.texte.startsWith(palier.libelle)), JSON.stringify(r.etapes));
+  assert.ok(!M.degatsRecus(regles, sans, { entrants: 60, type: feu.id }).etapes.some((e) => e.texte.startsWith(palier.libelle)));
+  // rien d'autre : Mode Hyper, santé, chakra, caractéristiques (le +1 de la magie innée), 4ᵉ barre
+  assert.deepEqual(M.modeHyperDe(regles, enGlace).magies.map((m) => m.magie.id), M.modeHyperDe(regles, sans).magies.map((m) => m.magie.id));
+  const a = (f) => { const x = M.attributsDe(regles, f); return [x.sante, x.chakra, x.barriere, x.barre4]; };
+  assert.deepEqual(a(enGlace), a(sans));
+  assert.deepEqual(M.caracteristiquesDe(regles, enGlace), M.caracteristiquesDe(regles, sans));
+  // sans Symbiose (une autre posture), ou en Symbiose sans magie désactivée (une seule magie) : rien ne change
+  assert.deepEqual(M.resistancesDe(regles, bi({ posture_id: POSTURE('focus') })), avant);
+  const mono = fiche({ posture_id: POSTURE('symbiose') });
+  assert.deepEqual(M.resistancesDe(regles, mono), M.resistancesDe(regles, fiche()));
+  // deux magies en Symbiose, la magie pas encore choisie : rien n'est désactivé
+  assert.deepEqual(M.resistancesDe(regles, bi({ posture_id: POSTURE('symbiose') })), avant);
+});
+
+test('Symbiose du Potentiel Illimité (R109) : le bonus de dégâts et de soin sur tous ses sorts, quelle que soit leur magie, et l’AM ; ni magie à choisir, ni immunité', () => {
+  const pi = (x = {}) => fiche({ magie_innee_id: 'magies/potentiel-illimite', posture_id: POSTURE('symbiose'), ...x });
+  const p = M.postureDuMoment(regles, pi());
+  assert.deepEqual([p.symbiose.potentielIllimite, p.symbiose.magie, p.symbiose.possibles, p.symbiose.aChoisir, p.symbiose.inactive, p.symbiose.degats, p.symbiose.am, p.am],
+    [true, null, [], false, null, 5, 4, 4]);
+  // une magie de symbiose enregistrée (fiche d'avant) n'y change rien
+  assert.deepEqual(M.postureDuMoment(regles, pi({ symbiose_magie_id: 'magies/magie-du-feu' })).symbiose, p.symbiose);
+  // le NPM (« +2/NPM ») : le Potentiel Illimité monte comme une autre magie innée
+  const niveau = regles.niveaux.find((l) => M.puissanceMagique(regles, l.niveau) === 3).niveau;
+  const haut = M.postureDuMoment(regles, pi({ xp: xpDuNiveau(niveau) }));
+  assert.deepEqual([haut.symbiose.degats, haut.symbiose.am], [5 + 2 * 2, 4 + 2 * 2]);
+  // pas de magie à choisir : rien dans le tiroir des choix
+  assert.ok(!M.choixEnAttente(regles, pi()).some((c) => c.nature === 'symbiose'));
+  // l'AM de la posture compte ; aucune immunité, quelle que soit la magie de l'attaque
+  const sansPosture = pi({ posture_id: null });
+  assert.equal(M.defenseDe(regles, pi()).am.total, M.defenseDe(regles, sansPosture).am.total + 4);
+  for (const m of regles.magies.filter((x) => x.id !== 'magies/potentiel-illimite')) {
+    const r = M.degatsRecus(regles, pi(), { entrants: 60, type: m.id });
+    const avant = M.degatsRecus(regles, sansPosture, { entrants: 60, type: m.id });
+    assert.ok(!r.etapes.some((e) => /Symbiose/.test(e.texte)), m.nom);
+    assert.equal(r.armure, avant.armure + 4, `${m.nom} : 4 d’AM de plus`);
+    assert.deepEqual(r.etapes.slice(2).map((e) => e.texte), avant.etapes.slice(2).map((e) => e.texte), `${m.nom} : le reste inchangé`);
+  }
+  // le bonus sur les sorts de deux magies différentes, et sur un soin
+  const feu = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  const deGlace = regles.sorts.find((s) => s.magie_id === 'magies/magie-de-la-glace' && /^\d+d\d+ dégâts/.test(s.dsb ?? ''));
+  const soin = regles.sorts.find((s) => s.types.includes('soin') && /^\d+d6 soin/.test(auNm(s).dsb));
+  assert.ok(feu && deGlace && soin && new Set([feu.magie_id, deGlace.magie_id]).size === 2);
+  for (const sort of [feu, deGlace, soin]) {
+    const m = M.sortDuMoment(regles, pi(), sort, auNm(sort));
+    assert.equal(m.inactif, null, sort.id);
+    assert.deepEqual(m.dsb.detail.filter((d) => d.nom.startsWith('Posture Symbiose')), [{ nom: 'Posture Symbiose (Potentiel Illimité)', valeur: 5 }], sort.id);
+    const sans = M.sortDuMoment(regles, sansPosture, sort, auNm(sort));
+    const lu = (t) => M.lireDegatsDeSort(t).fixe;
+    assert.equal(lu(m.dsb.texte), lu(sans.dsb.texte) + 5, `${sort.id} : ${m.dsb.texte}`);
+  }
+
+  // un personnage mono-magie ordinaire : inchangé (sa magie, ses sorts seulement, l'immunité)
+  const ordinaire = fiche({ posture_id: POSTURE('symbiose') });
+  const o = M.postureDuMoment(regles, ordinaire);
+  assert.deepEqual([o.symbiose.potentielIllimite, o.symbiose.magie.id, o.symbiose.aChoisir], [false, 'magies/magie-du-feu', false]);
+  assert.ok(M.sortDuMoment(regles, ordinaire, feu, auNm(feu)).dsb.detail.some((d) => d.nom === 'Posture Symbiose (Feu)' && d.valeur === 5));
+  assert.ok(!M.sortDuMoment(regles, ordinaire, deGlace, auNm(deGlace)).dsb.detail.some((d) => d.nom.startsWith('Posture Symbiose')));
+  assert.equal(M.degatsRecus(regles, ordinaire, { entrants: 50, type: 'magies/magie-du-feu' }).recus, 0);
+});
+
+test('R110 : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » vaut 2 + 2 × ⌊niveau global ÷ 5⌋ sur les sorts (Elfe argenté, Felfe argenté) ; « 3+x […] x = +2/6 niveaux » au niveau de classe', () => {
+  // la lecture (lib/sort-bonus-texte.mjs) : une progression, plus une raison « progression »
+  assert.deepEqual(bonusDeSortsEcrits('- +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux.\n- +3 Chakra.'),
+    [{ cible: 'degats', base: 2, pas: 2, niveaux: 5, niveauGlobal: true, vises: { tous: true } }]);
+  const sort = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  const ethnieDuDon = (id) => lignes('SELECT ethnie_id FROM race_don WHERE id = ?', id)[0].ethnie_id;
+  for (const [race, don, base, pas] of [['races/elfe-argente', 'races/elfe-argente#don:ailleurs', 2, 2], ['races/felfe', 'races/felfe#don:felfe-argente', 1, 1]]) {
+    const ecrit = regles.races.find((r) => r.id === race).dons.find((d) => d.id === don);
+    assert.deepEqual(ecrit?.sorts?.map((b) => [b.base, b.pas, b.niveaux, b.niveauGlobal]), [[base, pas, 5, true]], don);
+    for (const [niveau, attendu] of [[1, base], [4, base], [5, base + pas], [10, base + 2 * pas], [20, base + 4 * pas]]) {
+      const f = fiche({ race_id: race, ethnie_id: ethnieDuDon(don), xp: xpDuNiveau(niveau) });
+      assert.equal(M.niveauGlobal(regles, f.xp), niveau);
+      const m = M.sortDuMoment(regles, f, sort, auNm(sort));
+      const lu = m.dsb.detail.filter((d) => d.nom === (ecrit.nom ?? ecrit.etiquette));
+      assert.deepEqual(lu.map((d) => d.valeur), [attendu], `${don}, niveau ${niveau}`);
+      assert.ok(!m.nonComptes.some((n) => n.nom === (ecrit.nom ?? ecrit.etiquette)), 'plus « non compté »');
+    }
+  }
+  // « 3+x dégâts avec un sort d'attaque […] x = +2 dégâts/6 niveaux » (Mage « Puissance ») : au niveau de la classe, arrondi à l'inférieur (inchangé)
+  const mage = regles.classes.find((c) => c.id === 'classes/mage');
+  const puissance = mage.dons.find((d) => d.id === 'capacites/mage-puissance');
+  assert.deepEqual(puissance.sorts.map((b) => [b.base, b.pas, b.niveaux, b.niveauGlobal ?? false]), [[3, 2, 6, false]]);
 });
 
 test('lireDegatsDeSort / ecrireDegatsDeSort : les écritures sans ambiguïté, et l’aller-retour sur tous les D/S/B de la base au NM 0', () => {
@@ -285,7 +477,7 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
   const lus = new Map();
   for (const r of [...lignes('SELECT id, effet AS texte FROM capacite WHERE effet IS NOT NULL'), ...lignes('SELECT id, texte FROM race_don')]) {
     const b = bonusDeSortsEcrits(r.texte);
-    if (b.length) lus.set(r.id, b.map((x) => `${x.cible}:${x.valeur ?? (x.parNpm ? 'npm' : `${x.base}+${x.pas}/${x.niveaux}`)}${x.raison ? `!${x.raison}` : x.posture ? `@${x.posture}` : ''}`).join(' '));
+    if (b.length) lus.set(r.id, b.map((x) => `${x.cible}:${x.valeur ?? (x.parNpm ? 'npm' : `${x.base}+${x.pas}/${x.niveaux}${x.niveauGlobal ? ' global' : ''}`)}${x.raison ? `!${x.raison}` : x.posture ? `@${x.posture}` : ''}`).join(' '));
   }
   assert.deepEqual(Object.fromEntries(lus), {
     'capacites/archimage-tempus-figus': 'portee:2',
@@ -309,12 +501,12 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'capacites/ocultomancien-meteorologue': 'degats:4!situation',
     'capacites/rokh-diurne': 'cout:-4',
     'capacites/satyre-habitue': 'cout:-4',
-    'races/elfe-argente#don:ailleurs': 'degats:2!progression',
-    'races/elfe-argente#don:barrage-argente': 'degats:2!progression',
-    'races/elfe-argente#don:territoire-elfes-argentes': 'degats:2!progression',
+    'races/elfe-argente#don:ailleurs': 'degats:2+2/5 global',
+    'races/elfe-argente#don:barrage-argente': 'degats:2+2/5 global',
+    'races/elfe-argente#don:territoire-elfes-argentes': 'degats:2+2/5 global',
     'races/elfe-dore#don:sang-dore': 'degats:3 soin:3',
     'races/farfadet#don:farfadet-maritime-forets-proches-de-leau': 'cran:1',
-    'races/felfe#don:felfe-argente': 'degats:1!progression',
+    'races/felfe#don:felfe-argente': 'degats:1+1/5 global',
   });
   // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule ; et deux autres effets chiffrés
   for (const e of regles.armures_elementaires) {
@@ -344,10 +536,11 @@ test('relectures (R101, R102) : protection chiffrée, coût 0, valeur par tour, 
     const r = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 3')), planete, auNm(planete));
     assert.deepEqual([r.cout.texte, r.cout.detail, r.nonComptes.filter((n) => n.cible === 'cout').map((n) => [n.raison, n.valeur])], ['0', [], [['sans_chakra', -3]]], planete.id);
   }
-  // une valeur par tour reste telle qu'écrite ; le bonus est dit non compté
+  // une valeur par tour reçoit ses bonus à chaque tour (décision R113) : le bonus du bâton avant la période
   const parTour = regles.sorts.find((s) => s.attaque && /^\d+d\d+ dégâts par tour$/.test(auNm(s).dsb));
   const t = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Feu, niveau 3')), parTour, auNm(parTour));
-  assert.deepEqual([t.dsb.texte, t.dsb.lu, t.nonComptes.map((n) => [n.raison, n.cible, n.valeur])], [auNm(parTour).dsb, false, [['par_tour', 'dsb', 9]]]);
+  const [, desDuTour] = /^(\d+d\d+) dégâts par tour$/.exec(auNm(parTour).dsb);
+  assert.deepEqual([t.dsb.texte, t.dsb.lu, t.nonComptes], [`${desDuTour} + 9 dégâts par tour`, true, []]);
   // un D/S/B illisible d'un sort d'attaque : ses bonus dits non comptés (l'accessoire « Dégâts magie » aussi)
   const illisible = regles.sorts.find((s) => s.attaque && !M.lireDegatsDeSort(auNm(s).dsb) && !s.types.includes('amplification') && !s.types.includes('protection'));
   const magie = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'degats_magie'));

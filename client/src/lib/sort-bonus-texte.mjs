@@ -55,9 +55,11 @@ function visesDe(phrase) {
 
 /**
  * Les bonus de sorts qu'écrit un texte, phrase par phrase (une phrase finit par « . », « ; », une virgule avant « + » ou une ligne) :
- * [{ cible: 'cout' | 'degats' | 'soin' | 'portee' | 'cran' (les dés montés d'un cran), valeur | parNpm | { base, pas, niveaux }, vises, raison? }]. `parNpm` : « réduit d'un montant égal à
- * son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6 niveaux » (base + pas × ⌊niveau de classe ÷ niveaux⌋).
- * Une valeur de coût est négative (une réduction).
+ * [{ cible: 'cout' | 'degats' | 'soin' | 'portee' | 'cran' (les dés montés d'un cran), valeur | parNpm | { base, pas, niveaux, niveauGlobal? }, vises,
+ * raison? }]. `parNpm` : « réduit d'un montant égal à son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6
+ * niveaux » (base + pas × ⌊niveau de classe ÷ niveaux⌋), et « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » (décision R110 :
+ * base + pas × ⌊niveau ÷ niveaux⌋, arrondi à l'inférieur ; `niveauGlobal` quand le texte écrit « niveaux globaux » ; lib/fiche-moteur.mjs prend le
+ * niveau global pour un don de race ou d'ethnie). Une valeur de coût est négative (une réduction).
  */
 export function bonusDeSortsEcrits(texte) {
   const t = normaliser(texte);
@@ -108,10 +110,11 @@ export function bonusDeSortsEcrits(texte) {
     // dégâts et soins : « +6 aux dégâts des sorts », « +2 dégâts avec les sorts », « inflige +4 dégâts, +4 soins », « un bonus de +7 aux dégâts »,
     // « un bonus de +6 au soin », « gagnent un bonus de +3 », « +4 dégâts avec les sorts d'Arcane », « 3+x dégâts avec un sort d'attaque »
     const vises = visesDeLaProposition ?? (/d[ée]g[âa]ts magiques/.test(phrase) ? { tous: true } : null);
-    // « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » : la progression ne dit pas où commence le palier (question Q16)
-    if (/qui augmente de \+?\d+ tous les \d+ niveaux/.test(phrase)) {
-      const n = /\+(\d+)/.exec(phrase);
-      if (n && vises) bonus.push({ cible: 'degats', valeur: Number(n[1]), vises, raison: 'progression' });
+    // « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » (décision R110) : base + pas × ⌊niveau ÷ niveaux⌋, arrondi à l'inférieur
+    // (+2, puis +4 au niveau 5, +6 au niveau 10…)
+    const progression = /\+(\d+) aux d[ée]g[âa]ts magiques, qui augmente de \+?(\d+) tous les (\d+) niveaux( globaux)?/.exec(phrase);
+    if (progression) {
+      ajouter('degats', { base: Number(progression[1]), pas: Number(progression[2]), niveaux: Number(progression[3]), ...(progression[4] ? { niveauGlobal: true } : {}) }, vises);
       continue;
     }
     const formule = /(\d+)\s*\+\s*x\s+(?:de\s+)?d[ée]g[âa]ts?/.exec(phrase);

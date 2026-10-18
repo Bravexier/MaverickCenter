@@ -1015,7 +1015,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .defense__degats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; padding-top: 0.4rem; border-top: 1px dashed var(--etape-ligne); }
 .defense__titre { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .fiche .defense__degats input[type='number'] { width: 5.5rem; }
-.defense__degats label[hidden] { display: none; }
+.defense__degats label[hidden], .defense__degats select[hidden] { display: none; }
 .defense__recus { margin-left: auto; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
 
 /* le bouclier (décision R96) : forme, matière, amélioration ; AP, AM et poids en tuiles (le poids dans la couleur de sa case de l'onglet, R92 ; trop

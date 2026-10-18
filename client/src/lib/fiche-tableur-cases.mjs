@@ -219,13 +219,15 @@ export const AUTO = Object.freeze({
 export const MODELE_DE_LA_SOLIDITE = '/';
 
 /**
- * Modèle ordinateur : les zones de saisie dont le site ne garde rien — l'AP et l'AM de chaque partie de l'armure (grille AI22:AN23, colonnes de
- * ORDINATEUR.armure.colonnes, lignes ap et am de ORDINATEUR.armure.lignes) : la fiche ne les calcule pas (la solidité des armes a sa place depuis la
- * décision R74 : ORDINATEUR.armes[].solidite ; celle des parties de l'armure, la ligne « Sol. » de la grille, depuis la décision R95 ; l'AP et l'AM du
- * bouclier sont calculés et sa solidité relue depuis la décision R96). `modele` : le texte du modèle, qui n'est pas une valeur ; une autre valeur part
- * dans les notes à l'import (lib/fiche-tableur-import.mjs). `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am').
+ * Modèle ordinateur : l'AP et l'AM de chaque partie de l'armure (grille AI22:AN23, colonnes de ORDINATEUR.armure.colonnes, lignes ap et am de
+ * ORDINATEUR.armure.lignes) : depuis la décision R108 (« Chacune des 6 parties […] a sa propre solidité et son propre compte d'AP / AM »), la valeur de
+ * l'armure portée sur la partie, ou 0 quand elle est cassée (lib/fiche-moteur.mjs#armureParPartie) : écrites par l'export, calculées et non relues par
+ * l'import, où une autre valeur que celle que calcule le site part dans les notes (lib/fiche-tableur-import.mjs). Avant R108 la fiche ne les calculait
+ * pas : des zones de saisie sans place sur le site (la solidité des armes a sa place depuis la décision R74 : ORDINATEUR.armes[].solidite ; celle des
+ * parties de l'armure, la ligne « Sol. » de la grille, depuis la décision R95 ; l'AP et l'AM du bouclier sont calculés et sa solidité relue depuis la
+ * décision R96). `modele` : le texte du modèle, qui n'est pas une valeur. `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am').
  */
-export const SAISIES_SANS_PLACE = Object.freeze([
+export const CASES_AP_AM_DE_L_ARMURE = Object.freeze([
   ...Object.entries(ORDINATEUR.armure.colonnes).flatMap(([emplacement, colonne]) => Object.entries(ORDINATEUR.armure.lignes)
     .filter(([valeur]) => valeur !== 'solidite')
     .map(([valeur, ligne]) => ({ adresse: `${colonne}${ligne}`, emplacement, valeur, modele: '' }))),

@@ -124,6 +124,104 @@ test('degatsRecus (R98) : la formule du guide (« Les dégâts ») — armure, d
   assert.equal(M.degatsRecus(regles, feu, { entrants: 10, type: 'magies/potentiel-illimite' }), null);
 });
 
+test('R108 : un bouclier cassé (solidité 0) ne compte plus, même en parade partielle au bouclier ; réparé, il compte de nouveau', () => {
+  const b = fiche({ bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer' });
+  const casse = { ...b, bouclier_solidite: 0 };
+  assert.equal(M.bouclierDe(regles, casse).solidite.cassee, true);
+  const d = M.defenseDe(regles, casse);
+  assert.deepEqual([d.bouclier.cassee, d.bouclier.ap > 0], [true, true], 'ses AP et AM restent ceux du bouclier, pour l’infobulle');
+  assert.equal(M.defenseDe(regles, b).bouclier.cassee, false);
+  for (const type of ['taille', 'magies/magie-du-feu']) {
+    const options = { entrants: 30, type, reduits: true };
+    const sansParade = M.degatsRecus(regles, casse, options);
+    const auBouclier = M.degatsRecus(regles, casse, { ...options, parade: true });
+    assert.deepEqual([auBouclier.recus, auBouclier.armure], [sansParade.recus, sansParade.armure], `${type} : cassé, il ne compte plus`);
+    assert.match(auBouclier.etapes[1].texte, /bouclier cassé : il ne compte plus/);
+    // réparé (une solidité au-dessus de 0) : il compte
+    const repare = M.degatsRecus(regles, { ...b, bouclier_solidite: 1 }, { ...options, parade: true });
+    const valeur = type === 'taille' ? M.bouclierDe(regles, b).ap : M.bouclierDe(regles, b).am;
+    assert.equal(repare.armure, sansParade.armure + valeur, `${type} : réparé`);
+  }
+});
+
+test('R108 : chaque partie a l’AP et l’AM de l’armure, ou 0 cassée ; seule la part de l’armure tombe (base, accessoires, posture restent) ; le torse par défaut', () => {
+  const armure = regles.armures.find((a) => a.ap >= 2 && a.am >= 1 && Number(a.solidite_uni) !== 1 && a.solidite >= 2);
+  const amelioration = regles.ameliorations.find((a) => a.cible === 'armure' && a.niveau === 2);
+  const acc = regles.accessoires.find((a) => a.effets.some((c) => c.cible === 'armure_ap'));
+  const posture = regles.postures.find((p) => p.nom === 'Défensif');
+  const f = fiche({
+    armure_id: armure.id, armure_amelioration_id: amelioration.id, posture_id: posture.id,
+    accessoires: [{ emplacement: 'chef', accessoire_effet_id: acc.id, valeur: null, maudit: 0 }],
+    armure_parties: [{ emplacement_id: 'bras-droit', solidite: 0 }, { emplacement_id: 'casque', solidite: 1 }],
+  });
+  const valeurAp = armure.ap + amelioration.bonus_ap;
+  const valeurAm = armure.am + amelioration.bonus_am;
+  // les six parties du corps, dans l'ordre de la base ; le bras droit cassé, le casque abîmé mais pas cassé
+  assert.deepEqual(M.partiesDuCorps(regles).map((p) => p.id), ['casque', 'torse', 'bras-gauche', 'bras-droit', 'jambe-gauche', 'jambe-droit']);
+  assert.deepEqual(M.armureParPartie(regles, f).map((p) => [p.id, p.cassee, p.ap, p.am]),
+    M.partiesDuCorps(regles).map((p) => (p.id === 'bras-droit' ? [p.id, true, 0, 0] : [p.id, false, valeurAp, valeurAm])));
+  assert.equal(M.armureParPartie(regles, fiche()), null, 'sans armure');
+  const torse = M.defenseDe(regles, f);
+  assert.deepEqual(M.defenseDe(regles, f, undefined, { partie: 'torse' }), torse, 'le torse par défaut');
+  assert.deepEqual(M.defenseDe(regles, f, undefined, { partie: 'inconnue' }), torse, 'une partie inconnue : le torse');
+  assert.deepEqual([torse.partie, torse.cassees], [{ id: 'torse', nom: 'Torse', cassee: false }, [{ id: 'bras-droit', nom: 'Bras Droit' }]]);
+  assert.deepEqual([torse.ap.armure, torse.am.armure], [valeurAp, valeurAm]);
+  const bras = M.defenseDe(regles, f, undefined, { partie: 'bras-droit' });
+  assert.deepEqual([bras.partie.cassee, bras.ap.armure, bras.am.armure], [true, 0, 0]);
+  assert.deepEqual([bras.ap.total, bras.am.total], [torse.ap.total - valeurAp, torse.am.total - valeurAm], 'seule la part de l’armure tombe');
+  // le reste demeure : base, accessoires, posture (Défensif : AP et AM)
+  const restent = (d) => d.ap.detail.filter((l) => !l.nom.startsWith(armure.nom) && !l.nom.startsWith('Amélioration'));
+  assert.deepEqual(restent(bras), restent(torse));
+  assert.ok(restent(bras).some((l) => l.nom === 'Accessoires') && restent(bras).some((l) => l.nom === `Posture ${posture.nom}`), JSON.stringify(restent(bras)));
+  for (const id of ['casque', 'bras-gauche', 'jambe-gauche', 'jambe-droit']) assert.deepEqual(M.defenseDe(regles, f, undefined, { partie: id }).ap, torse.ap, id);
+  // les dégâts reçus suivent la partie (le torse par défaut), avec la raison dans l'étape de l'armure
+  const torseRecus = M.degatsRecus(regles, f, { entrants: 100, type: 'magies/magie-du-feu' });
+  assert.deepEqual(torseRecus, M.degatsRecus(regles, f, { entrants: 100, type: 'magies/magie-du-feu', partie: 'torse' }));
+  const brasRecus = M.degatsRecus(regles, f, { entrants: 100, type: 'magies/magie-du-feu', partie: 'bras-droit' });
+  assert.deepEqual([brasRecus.armure, brasRecus.recus, brasRecus.partie.id], [torseRecus.armure - valeurAm, torseRecus.recus + valeurAm, 'bras-droit']);
+  assert.match(brasRecus.etapes[1].texte, /partie Bras Droit cassée : l’armure n’y compte pas/);
+  // le torse cassé : l'attaque non ciblée ne compte plus l'armure
+  const torseCasse = M.defenseDe(regles, { ...f, armure_parties: [{ emplacement_id: 'torse', solidite: 0 }] });
+  assert.deepEqual([torseCasse.partie.cassee, torseCasse.ap.armure], [true, 0]);
+});
+
+test('R108 : une partie cassée n’a pas la résistance ni la faiblesse de l’armure aux dégâts physiques ; une armure à solidité unifiée à 0 : toutes ses parties cassées', () => {
+  const armure = regles.armures.find((a) => a.ap >= 2 && Number(a.solidite_uni) !== 1 && a.degats.some((r) => r.sens === 'resistance'));
+  const type = armure.degats.find((r) => r.sens === 'resistance').type;
+  const f = fiche({ armure_id: armure.id, armure_parties: [{ emplacement_id: 'jambe-gauche', solidite: 0 }] });
+  const torse = M.degatsRecus(regles, f, { entrants: 100, type });
+  assert.ok(torse.armure > armure.ap, `${armure.nom} : la résistance au ${type} double l’armure du torse`);
+  const jambe = M.degatsRecus(regles, f, { entrants: 100, type, partie: 'jambe-gauche' });
+  const base = M.defenseDe(regles, f, undefined, { partie: 'jambe-gauche' }).ap.total;
+  assert.deepEqual([jambe.armure, jambe.recus], [base, 100 - base], 'ni l’AP de l’armure ni sa résistance');
+  assert.ok(!/contre/.test(jambe.etapes[1].texte), jambe.etapes[1].texte);
+
+  const uni = regles.armures.find((a) => Number(a.solidite_uni) === 1 && a.solidite >= 2 && a.ap >= 1);
+  const intacte = fiche({ armure_id: uni.id });
+  const abimee = { ...intacte, armure_parties: [{ emplacement_id: M.ARMURE_ENTIERE, solidite: 1 }] };
+  const cassee = { ...intacte, armure_parties: [{ emplacement_id: M.ARMURE_ENTIERE, solidite: 0 }] };
+  assert.ok(M.armureParPartie(regles, abimee).every((p) => !p.cassee && p.ap === uni.ap), 'abîmée : la valeur de l’armure partout');
+  assert.ok(M.armureParPartie(regles, cassee).every((p) => p.cassee && p.ap === 0 && p.am === 0), 'à 0 : les six parties cassées');
+  assert.equal(M.defenseDe(regles, cassee).cassees.length, 6);
+  for (const p of M.partiesDuCorps(regles)) assert.equal(M.defenseDe(regles, cassee, undefined, { partie: p.id }).ap.armure, 0, p.id);
+});
+
+test('R108 avec un élément (R99) : chaque partie a la valeur de l’armure élémentaire et de son amélioration, ou 0 cassée', () => {
+  const armure = regles.armures.find((a) => a.ap >= 1 && Number(a.solidite_uni) !== 1 && a.solidite >= 1);
+  const element = regles.armures_elementaires.find((e) => e.ap && e.am && e.ap !== armure.ap);
+  const ameliorationElement = regles.ameliorations.find((a) => a.cible === 'armure_elementaire' && a.niveau === 2);
+  const f = fiche({ armure_id: armure.id, armure_elementaire_id: element.id, armure_amelioration_elementaire_id: ameliorationElement.id,
+    armure_parties: [{ emplacement_id: 'torse', solidite: 0 }] });
+  const ap = element.ap + ameliorationElement.bonus_ap;
+  const am = element.am + ameliorationElement.bonus_am;
+  assert.deepEqual(M.armureParPartie(regles, f).map((p) => [p.id, p.ap, p.am]),
+    M.partiesDuCorps(regles).map((p) => (p.id === 'torse' ? [p.id, 0, 0] : [p.id, ap, am])));
+  const torse = M.defenseDe(regles, f);
+  const bras = M.defenseDe(regles, f, undefined, { partie: 'bras-gauche' });
+  assert.deepEqual([torse.element.id, torse.ap.armure, torse.am.armure, bras.ap.armure, bras.am.armure], [element.id, 0, 0, ap, am]);
+  assert.ok(bras.ap.detail.some((l) => l.nom === `Élément : ${element.nom}`) && !bras.ap.detail.some((l) => l.nom === armure.nom), 'l’élément remplace l’armure');
+});
+
 test('typesDeDegats : Estoc, Taille, Frappe, puis les quatorze magies (sans le Potentiel Illimité)', () => {
   const t = M.typesDeDegats(regles);
   assert.deepEqual(t.slice(0, 3).map((x) => x.id), ['estoc', 'taille', 'frappe']);

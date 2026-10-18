@@ -15,12 +15,12 @@ import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
-  MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE, casesDesDes, casesDuDon, decouperAdresse,
+  MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, TITRE_DE_L_INVENTAIRE, casesDesDes, casesDuDon, decouperAdresse,
   numeroDeColonne,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
   ARMURE_COMPLETE, CLES_DE_LA_NOTE, CLES_DES_ACCESSOIRES_SANS_CASE, CLES_D_INFORMATION, ETOILE, LIGNES_D_ARME, LIGNES_D_ARMURE, MARQUE_DE_POSTURE,
-  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_DE_LISTE, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
+  MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_DE_CLE, SEPARATEUR_DE_LISTE, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
   avertissementDeCase, avertissementDesDonnees, avertissementDesNotes, cellulesDeLaFiche, decouperEvenement, ligneDExport, ligneDeNote, lignesDAccessoire,
   lignesDArme, lignesDArmure, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote,
   lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration, texteDObjet,
@@ -318,7 +318,7 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   for (const n of nonComptes) assert.ok(l1.some((x) => x.startsWith(`Non compté : ${n.nom} ${signe(n.valeur)} (`)), n.nom);
   assert.ok(c[ORDINATEUR.armes[0].effet].endsWith(parties.affichees.join('\n')), 'ce qui n’est qu’affiché, en dernier');
   // armure (décision R95) : son nom, une ligne (l'armure, son amélioration, son élément et l'amélioration de l'élément), sans emplacement ; la solidité
-  // de chaque partie dans la ligne « Sol. » de la grille, « N / M » ; rien de calculé en AP ni en AM
+  // de chaque partie dans la ligne « Sol. » de la grille, « N / M » ; l'AP et l'AM de l'armure sur chaque partie dans les lignes « AP » et « AM » (R108)
   const armure = M.trouver(regles.armures, riche.armure_id);
   assert.equal(c[ORDINATEUR.armure.nom], armure.nom);
   const lignes = c[ORDINATEUR.armure.bonus].split('\n');
@@ -340,11 +340,28 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   const solidites = Object.fromEntries(Object.entries(ORDINATEUR.armure.colonnes).map(([e, col]) => [e, c[`${col}${ORDINATEUR.armure.lignes.solidite}`]]));
   assert.deepEqual(solidites, { casque: `1 / ${max}`, torse: `0 / ${max}`, 'bras-gauche': `${max} / ${max}`, 'bras-droit': `${max} / ${max}`,
     'jambe-gauche': `${max} / ${max}`, 'jambe-droit': `${max} / ${max}` });
-  for (const col of ['AI', 'AJ', 'AK', 'AL', 'AM', 'AN']) for (const l of [22, 23]) assert.equal(c[`${col}${l}`], undefined, `${col}${l}`);
+  // l'AP et l'AM de l'armure sur chaque partie (décision R108) : la valeur de l'armure portée (ici l'élément et son amélioration, R99), 0 sur le torse cassé ;
+  // le casque, abîmé mais pas cassé, garde la valeur
+  const ameliorationDeLElement = M.trouver(regles.ameliorations, riche.armure_amelioration_elementaire_id);
+  const valeur = { ap: element.ap + ameliorationDeLElement.bonus_ap, am: element.am + ameliorationDeLElement.bonus_am };
+  assert.ok(valeur.ap > 0 && valeur.am > 0);
+  const grille = (cellules, ligne) => Object.fromEntries(Object.entries(ORDINATEUR.armure.colonnes).map(([e, col]) => [e, cellules[`${col}${ORDINATEUR.armure.lignes[ligne]}`]]));
+  for (const ligne of ['ap', 'am']) {
+    assert.deepEqual(grille(c, ligne), { casque: valeur[ligne], torse: 0, 'bras-gauche': valeur[ligne], 'bras-droit': valeur[ligne], 'jambe-gauche': valeur[ligne], 'jambe-droit': valeur[ligne] }, ligne);
+  }
+  const sansArmure = cellulesDeLaFiche(regles, { ...riche, armure_id: null }, { date: DATE }).cellules;
+  for (const ligne of ['ap', 'am']) assert.ok(Object.values(grille(sansArmure, ligne)).every((v) => v === undefined), `sans armure, rien (${ligne})`);
   // une armure à solidité unifiée : sa solidité sur les six parties
   const uni = trouve('armures', (a) => Number(a.solidite_uni) === 1 && a.solidite >= 2, 'armure à solidité unifiée');
   const solUni = cellulesDeLaFiche(regles, { ...riche, armure_id: uni.id, armure_amelioration_id: null, armure_parties: [{ emplacement_id: ARMURE_COMPLETE, solidite: 1 }] }, { date: DATE }).cellules;
   for (const col of Object.values(ORDINATEUR.armure.colonnes)) assert.equal(solUni[`${col}${ORDINATEUR.armure.lignes.solidite}`], `1 / ${uni.solidite}`, col);
+  // à 0, ses six parties sont cassées (R108) : 0 AP et 0 AM partout ; abîmée, la valeur de l'armure partout
+  const uniCassee = cellulesDeLaFiche(regles, { ...riche, armure_id: uni.id, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+    armure_parties: [{ emplacement_id: ARMURE_COMPLETE, solidite: 0 }] }, { date: DATE }).cellules;
+  for (const ligne of ['ap', 'am']) assert.ok(Object.values(grille(uniCassee, ligne)).every((v) => v === 0), ligne);
+  const uniAbimee = cellulesDeLaFiche(regles, { ...riche, armure_id: uni.id, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+    armure_parties: [{ emplacement_id: ARMURE_COMPLETE, solidite: 1 }] }, { date: DATE }).cellules;
+  assert.ok(Object.values(grille(uniAbimee, 'ap')).every((v) => v === M.trouver(regles.armures, uni.id).ap), 'abîmée : la valeur de l’armure');
   // bouclier (décision R96) : la forme, la matière et l'amélioration, la classe, l'AP et l'AM calculés, la solidité du moment « N / M »
   const bouclier = M.bouclierDe(regles, riche);
   assert.equal(c[ORDINATEUR.bouclier.nom], bouclier.forme.nom);
@@ -354,6 +371,9 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   assert.deepEqual([c[ORDINATEUR.bouclier.ap], c[ORDINATEUR.bouclier.am]], [bouclier.ap, bouclier.am]);
   assert.ok(bouclier.ap > 0 && bouclier.amelioration.niveau === 2);
   assert.equal(c[ORDINATEUR.bouclier.solidite], `1 / ${bouclier.solidite.max}`);
+  // cassé (solidité 0) : ses AP et AM ne comptent plus (décision R108), 0 ; sa solidité « 0 / M » relue
+  const casse = cellulesDeLaFiche(regles, { ...riche, bouclier_solidite: 0 }, { date: DATE }).cellules;
+  assert.deepEqual([casse[ORDINATEUR.bouclier.ap], casse[ORDINATEUR.bouclier.am], casse[ORDINATEUR.bouclier.solidite]], [0, 0, `0 / ${bouclier.solidite.max}`]);
 });
 
 test('fiche riche : accessoires (fourchette, choix, maudit, texte libre), ceinture, inventaire', () => {
@@ -1009,6 +1029,24 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu);
   assert.deepEqual(lireEffetDArme('Composition : Fer\nUn effet écrit à la main', { affichees: '' }),
     { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], affichageRetrouve: true });
+  // une ligne « Non compté : » ou « Deux armes : » que la fiche relue n'écrit plus (classeur exporté avant un changement des règles : « Vieille Branche »
+  // était un bonus non compté avant la décision R107) : jamais de l'effet en plus, après le bloc retrouvé, dans l'ancien ordre, ou dans une case coupée dedans
+  const ancienne = 'Non compté : Vieille Branche (Mage Vert) +4 (selon la situation)';
+  assert.ok(ancienne.startsWith(`${LIGNES_D_ARME.nonCompte}${SEPARATEUR_DE_CLE}`) && `Deux armes : x`.startsWith(`${LIGNES_D_ARME.deuxArmes}${SEPARATEUR_DE_CLE}`), 'le format écrit par l’export');
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\n${ancienne}`, { affichees: A }), attendu, 'après le bloc');
+  assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nDeux armes : −20 % (main directrice)\n${ancienne}`, { affichees: A }), attendu, 'deux lignes du site');
+  assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, ancienne, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu, 'l’ancien ordre');
+  for (const coupe of [`${relu}\n${A}\n${ancienne.slice(0, ancienne.indexOf(' ', 25))} …`, `${relu}\n${A}\n${ancienne.slice(0, 20)}…`]) {
+    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), attendu, coupe.slice(-40));
+  }
+  // l'ancienne ligne au milieu de la part affichée, la case coupée dans la dernière ligne du site : la part affichée cherchée sans les lignes du site de la fin
+  assert.ok(affichees.length >= 2 && /^(Deux armes|Non compté) : /.test(affichees.at(-1)), affichees.join(' | '));
+  const auMilieu = [relu, affichees[0], ancienne, ...affichees.slice(1)].join('\n');
+  for (const coupe of [`${auMilieu.slice(0, auMilieu.lastIndexOf(' '))} …`, `${auMilieu.slice(0, auMilieu.lastIndexOf('\n') + 16)}…`]) {
+    assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), { ...attendu, affichageRetrouve: false }, coupe.slice(-40));
+  }
+  // une ligne du joueur dans le bloc « Effet en plus : » reste la sienne (l'export l'écrit avant la part affichée)
+  assert.equal(lireEffetDArme(`${relu}\nNon compté : par le MJ\n${A}`, { affichees: A }).effetEnPlus, 'Lame chantante\nsur deux lignes\nNon compté : par le MJ');
 
   // métier : les rangs à choix, par leur ligne ; « → ? » pas choisi ; la fin « … » d'une case coupée juste après
   assert.deepEqual(lireChoixDuMetier('+2% Magie OU Concentration → Magie\n+1 Initiative → ?\nArtisanat : x'), [{ texte: '+2% Magie OU Concentration', choix: 'Magie' }, { texte: '+1 Initiative', choix: null }]);

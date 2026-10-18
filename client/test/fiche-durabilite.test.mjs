@@ -3,7 +3,8 @@
 // ne peut pas importer lib/arme-forge.mjs (le script de la page Armes l'importe : deux scripts de page ne partagent jamais un module) : il en recopie le
 // calcul, comparé ici à forgerArme sur TOUTES les combinaisons de la base (arme de la page × matériau ou aucun × amélioration 0 à 10), l'arme lue par
 // lib/armes-db.mjs et lib/arme-champs.mjs (la chaîne de la page), pas dans les règles de la fiche. Puis : armes de monstres sans solidité, bornage,
-// arme cassée, choix d'une autre arme, d'une autre composition ou amélioration, et l'aller-retour par le service.
+// arme cassée, les crans perdus dans les dégâts avec Vieille Branche (décision R107), choix d'une autre arme, d'une autre composition ou amélioration,
+// et l'aller-retour par le service.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +18,7 @@ import { chargerArmes, contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  armesApresChoix, armesApresReglage, armesValables, degatsDArme, durabiliteAEcrire, durabiliteDArme, durabiliteMaxDArme,
+  armesApresChoix, armesApresReglage, armesValables, degatsDArme, degatsDArmeDuMoment, donsAcquis, durabiliteAEcrire, durabiliteDArme, durabiliteMaxDArme,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 
@@ -34,6 +35,7 @@ const sansCran = regles.materiaux_armes.find((m) => !m.cran_solidite);
 const avecCran = regles.materiaux_armes.find((m) => m.cran_solidite > 0);
 const ameliorationAvecCran = ameliorationsDArme.find((a) => a.bonus_cran > 0);
 const ligne = (surcharge = {}) => ({ rang: 1, arme_id: armeDeBase.id, materiau_id: sansCran.id, ...surcharge });
+const entier = (v) => Number(v) || 0;
 
 test('les règles de la fiche : la solidité de l’arme nue (null pour une arme de monstre), les crans des matériaux et des améliorations, le minimum de R51', () => {
   assert.equal(regles.constantes['arme.durabilite_min'], DURABILITE_MIN);
@@ -107,6 +109,57 @@ test('une arme cassée garde ses dégâts (la pastille dit « Cassée », ses d�
   const intacte = degatsDArme(regles, fiche, 1);
   const cassee = degatsDArme(regles, { ...fiche, armes: [ligne({ durabilite: 0 })] }, 1);
   assert.deepEqual(cassee, intacte);
+});
+
+test('Vieille Branche (décision R107) : la valeur du don (+4 à l’import) par cran perdu de chaque arme portée, ses propres crans ; rien intacte, cassée ou sans le don', () => {
+  // le don lu « par cran perdu » (lib/degats-texte.mjs), tel que regles.json le transmet : Vieille Branche, choix du niveau 10 de la spécialité Mage jade
+  const lus = regles.classes.flatMap((c) => (c.dons ?? []).filter((d) => d.degats?.parCranPerdu).map((d) => ({ classe: c, don: d })));
+  assert.deepEqual(lus.map((x) => x.don.id), ['capacites/mage-vert-vieille-branche']);
+  const [{ classe, don }] = lus;
+  // la valeur d'un cran perdu, lue dans les règles (le site de dev en est la source ; +4 à l'import)
+  const { valeur, ...lecture } = don.degats;
+  assert.deepEqual(lecture, { portee: { toutes: true }, parCranPerdu: true });
+  assert.ok(Number.isInteger(valeur) && valeur > 0, `valeur ${valeur}`);
+  const autre = classe.dons.find((d) => d.nature === 'choix' && d.niveau === don.niveau && d.specialite_id === don.specialite_id && d.id !== don.id);
+  assert.ok(autre && !autre.degats?.parCranPerdu, 'l’autre don du choix (À l’aise)');
+  const mage = (capacites, armes) => ({
+    ...ficheVide('Mage jade'), xp: regles.niveaux.find((l) => l.niveau === don.niveau).xp_min,
+    classes: [{ rang: 1, classe_id: classe.id, specialite_id: don.specialite_id }], capacites: capacites.map((id) => ({ capacite_id: id })), armes,
+  });
+  const avecLeDon = (...armes) => mage([don.id], armes);
+  assert.ok(donsAcquis(regles, avecLeDon()).some((c) => c.dons.some((d) => d.id === don.id)), 'le don est débloqué');
+  // une arme d'au moins 4 crans (le matériau et l'amélioration qui en donnent le plus) : 1, 2 ou 3 crans perdus sans être cassée
+  const plus = (liste, champ) => liste.reduce((a, b) => (entier(b[champ]) > entier(a[champ]) ? b : a));
+  const solide = (surcharge = {}) => ligne({ materiau_id: plus(regles.materiaux_armes, 'cran_solidite').id, amelioration_id: plus(ameliorationsDArme, 'bonus_cran').id, ...surcharge });
+  const max = durabiliteMaxDArme(regles, solide());
+  assert.ok(max >= 4, `${max} crans`);
+  const nom = (n) => `${don.nom} (${classe.nom}) : ${n} cran${n > 1 ? 's' : ''} perdu${n > 1 ? 's' : ''}`;
+  const vieille = (d) => [...d.bonus, ...d.nonComptes].filter((b) => b.nom.startsWith(don.nom));
+
+  const intacte = degatsDArme(regles, avecLeDon(solide()), 1);
+  assert.deepEqual(vieille(intacte), [], 'intacte : 0 cran perdu, rien (ni bonus ni « non compté »)');
+  const deux = degatsDArme(regles, avecLeDon(solide({ durabilite: max - 2 })), 1);
+  assert.deepEqual(vieille(deux), [{ nom: nom(2), valeur: valeur * 2 }]);
+  assert.equal(deux.total, intacte.total + valeur * 2);
+  assert.equal(deux.texte, `${intacte.notation}+${intacte.total + valeur * 2}`);
+  assert.deepEqual(vieille(degatsDArme(regles, avecLeDon(solide({ durabilite: max - 1 })), 1)), [{ nom: nom(1), valeur }]);
+  // la pastille du moment le compte aussi (degatsDArmeDuMoment part de degatsDArme)
+  assert.equal(degatsDArmeDuMoment(regles, avecLeDon(solide({ durabilite: max - 2 })), 1).total, deux.total);
+  // cassée (R74) : la pastille dit « Cassée », sa valeur réparée est celle de l'arme sans cran perdu
+  assert.deepEqual(degatsDArme(regles, avecLeDon(solide({ durabilite: 0 })), 1), intacte);
+
+  // deux armes : chacune ses crans perdus ; une arme sans solidité (arme de monstre) n'en a pas
+  const armes = [solide({ durabilite: max - 1 }), { ...solide({ durabilite: max - 3 }), rang: 2 }];
+  assert.deepEqual([1, 2].map((r) => vieille(degatsDArme(regles, avecLeDon(...armes), r))), [[{ nom: nom(1), valeur }], [{ nom: nom(3), valeur: valeur * 3 }]]);
+  const monstre = regles.armes.find((a) => a.solidite === null);
+  assert.deepEqual(vieille(degatsDArme(regles, avecLeDon({ rang: 1, arme_id: monstre.id, durabilite: 0 }), 1)), []);
+
+  // sans le don (l'autre don du choix, ou aucun) : les crans perdus ne changent rien
+  for (const capacites of [[autre.id], []]) {
+    const sansLeDon = degatsDArme(regles, mage(capacites, [solide()]), 1);
+    assert.deepEqual(degatsDArme(regles, mage(capacites, [solide({ durabilite: max - 2 })]), 1), sansLeDon);
+    assert.equal(sansLeDon.total, intacte.total);
+  }
 });
 
 test('une autre arme est neuve ; une autre composition ou amélioration ramène la solidité sous son nouveau maximum (une arme pleine le reste)', () => {

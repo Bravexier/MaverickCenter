@@ -17,7 +17,7 @@ import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from 
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import {
   AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, casesDuDon, cle, DONS, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES,
-  MODELE_DE_LA_SOLIDITE, ORDINATEUR, SAISIES_SANS_PLACE, TITRE_DE_L_INVENTAIRE,
+  CASES_AP_AM_DE_L_ARMURE, MODELE_DE_LA_SOLIDITE, ORDINATEUR, TITRE_DE_L_INVENTAIRE,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
   bonusDEntrainement, bonusDuMetierEcrit, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, gainsDesMaximums, lireLaNote, nombreDe, paireDe,
@@ -936,6 +936,55 @@ function deLaPage(fiche, changements = {}) {
 }
 const epeeLongue = () => parNom(regles.armes, 'Épée Longue');
 
+test('homonymes départagés par les dégâts écrits : les crans perdus y comptent avec Vieille Branche (décision R107), lus dans la solidité écrite', () => {
+  // un Mage Vert (Mage jade) au niveau du don, Vieille Branche choisie, « Crochet grappin » de la hache abîmé : ses dégâts écrits comptent ses crans perdus
+  const lus = regles.classes.flatMap((c) => (c.dons ?? []).filter((d) => d.degats?.parCranPerdu).map((d) => ({ classe: c, don: d })));
+  assert.equal(lus.length, 1);
+  const [{ classe, don }] = lus;
+  const crochets = regles.armes.filter((a) => a.nom === 'Crochet grappin');
+  const dHache = crochets.find((a) => a.famille_id === 'hache');
+  const arme = { rang: 1, arme_id: dHache.id, materiau_id: regles.materiau_arme_defaut };
+  const max = M.durabiliteMaxDArme(regles, arme);
+  assert.ok(max >= 2, `${max} crans`);
+  const fiche = {
+    ...ficheVide('Mage jade'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, xp: regles.niveaux.find((l) => l.niveau === don.niveau).xp_min,
+    classes: [{ rang: 1, classe_id: classe.id, specialite_id: don.specialite_id }], capacites: [{ capacite_id: don.id }],
+    maitrises_armes: [{ arme_famille_id: 'hache', des: maitriseDArme(regles).desDe(2) }], armes: [{ ...arme, durabilite: max - 1 }],
+  };
+  const d = degatsDArme(regles, fiche, 1);
+  assert.ok(d.bonus.some((b) => b.nom.startsWith(don.nom) && b.valeur === don.degats.valeur), 'un cran perdu : +4');
+  const r = ficheDuClasseur(regles, deLaPage(fiche));
+  assert.deepEqual(r.fiche.armes.map((x) => [x.arme_id, x.durabilite]), [[dHache.id, max - 1]]);
+  assert.deepEqual(r.fiche.capacites.map((c) => c.capacite_id), [don.id]);
+  assert.equal(degatsDArme(regles, r.fiche, 1).texte, d.texte);
+});
+
+test('effet d’une arme (AA13) d’un classeur exporté avant la décision R107 : sa ligne « Non compté : Vieille Branche … » n’est pas de l’effet en plus', () => {
+  // avant R107, l'export écrivait le don comme un bonus non compté (partiesDeLArme : « Non compté : <don> (<classe>) +N (<raison>) », raison « situation ») ;
+  // la fiche relue le compte maintenant (ou ne l'écrit plus) : la ligne n'est plus dans la part affichée attendue, elle n'est pourtant pas du joueur
+  const lus = regles.classes.flatMap((c) => (c.dons ?? []).filter((d) => d.degats?.parCranPerdu).map((d) => ({ classe: c, don: d })));
+  assert.equal(lus.length, 1);
+  const [{ classe, don }] = lus;
+  const ancienne = `Non compté : ${don.nom} (${classe.nom}) +${don.degats.valeur} (selon la situation)`;
+  const epee = epeeLongue();
+  const fiche = {
+    ...ficheVide('Mage jade'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, xp: regles.niveaux.find((l) => l.niveau === don.niveau).xp_min,
+    classes: [{ rang: 1, classe_id: classe.id, specialite_id: don.specialite_id }], capacites: [{ capacite_id: don.id }],
+    armes: [{ rang: 1, arme_id: epee.id, materiau_id: regles.materiau_arme_defaut }],
+  };
+  const ecrit = cellulesDeLaFiche(regles, fiche).cellules.AA13;
+  assert.ok(!ecrit.includes('Non compté'), ecrit);
+  // la ligne du don, une ligne « Deux armes : » d'une main qui n'est plus portée ; l'effet en plus du joueur gardé
+  const grave = { ...fiche, armes: [{ ...fiche.armes[0], effet_en_plus: 'Gravée' }] };
+  const ecritGrave = cellulesDeLaFiche(regles, grave).cellules.AA13;
+  assert.match(ecritGrave, /\nEffet en plus : Gravée\n/);
+  for (const [f, AA13, attendu] of [[fiche, `${ecrit}\n${ancienne}`, null], [fiche, `${ecrit}\nDeux armes : −20 % (main directrice)\n${ancienne}`, null],
+    [grave, `${ecritGrave}\n${ancienne}`, 'Gravée']]) {
+    const r = ficheDuClasseur(regles, deLaPage(f, { AA13 }));
+    assert.deepEqual([r.fiche.armes[0].arme_id, r.fiche.armes[0].effet_en_plus, r.nonRepris, r.remarques], [epee.id, attendu, [], []], AA13);
+  }
+});
+
 test('effet d’une arme (AA13) : une ligne sans clé est de l’effet en plus (le titre du modèle) ; dite par une remarque dans un classeur fait à la main', () => {
   const epee = epeeLongue();
   const lire = (AA13) => ficheDuClasseur(regles, ordinateur({ I1: 'X', AA10: epee.nom, AA13 }));
@@ -1032,15 +1081,15 @@ test('nombres : « 20% » se lit 20 (le tableur en garde 0,2) ; un décimal là 
   assert.ok(louise.remarques.includes('Quantité de « Corde » : « 2,5 » lu 2'));
 });
 
-test('zones de saisie que le site ne garde pas (AP et AM de la grille de l’armure, bouclier, sac) : leur valeur dans nonRepris ; la solidité d’une arme, des parties de l’armure et l’entraînement repris ; le type d’un événement', () => {
+test('zones de saisie que le site ne garde pas (sac) et cases calculées écrites autrement (AP et AM de la grille de l’armure, R108) : leur valeur dans nonRepris ; la solidité d’une arme, des parties de l’armure et l’entraînement repris ; le type d’un événement', () => {
   // les textes du modèle (« / ») ne sont pas des valeurs ; les cases de solidité des armes aussi écrivent « / »
-  for (const s of SAISIES_SANS_PLACE) assert.equal(VIERGE.cellules.get(s.adresse)?.texte ?? '', s.modele, s.adresse);
+  for (const s of CASES_AP_AM_DE_L_ARMURE) assert.equal(VIERGE.cellules.get(s.adresse)?.texte ?? '', s.modele, s.adresse);
   for (const a of ORDINATEUR.armes) assert.equal(VIERGE.cellules.get(a.solidite)?.texte, MODELE_DE_LA_SOLIDITE, a.solidite);
   assert.equal(VIERGE.cellules.get(ORDINATEUR.inventaire.titre).texte, TITRE_DE_L_INVENTAIRE);
-  assert.equal(SAISIES_SANS_PLACE.length, 6 * 2, 'l’AP et l’AM du bouclier sont calculés, sa solidité relue (décision R96)');
-  assert.ok(!SAISIES_SANS_PLACE.some((x) => ORDINATEUR.armes.some((a) => a.solidite === x.adresse)), 'la solidité d’une arme a sa place (R74)');
+  assert.equal(CASES_AP_AM_DE_L_ARMURE.length, 6 * 2, 'l’AP et l’AM de chacune des six parties (R108) ; ceux du bouclier sont calculés, sa solidité relue (décision R96)');
+  assert.ok(!CASES_AP_AM_DE_L_ARMURE.some((x) => ORDINATEUR.armes.some((a) => a.solidite === x.adresse)), 'la solidité d’une arme a sa place (R74)');
   const solidites = Object.values(ORDINATEUR.armure.colonnes).map((c) => `${c}${ORDINATEUR.armure.lignes.solidite}`);
-  assert.ok(!SAISIES_SANS_PLACE.some((x) => solidites.includes(x.adresse)), 'la solidité des parties de l’armure a sa place (R95)');
+  assert.ok(!CASES_AP_AM_DE_L_ARMURE.some((x) => solidites.includes(x.adresse)), 'la solidité des parties de l’armure a sa place (R95)');
   const epee = epeeLongue();
   const max = M.durabiliteMaxDArme(regles, { arme_id: epee.id, materiau_id: regles.materiau_arme_defaut });
   const r = ficheDuClasseur(regles, ordinateur({
@@ -1050,7 +1099,7 @@ test('zones de saisie que le site ne garde pas (AP et AM de la grille de l’arm
   const emplacement = (id) => regles.emplacements_armure.find((e) => e.id === id).nom;
   assert.deepEqual(r.nonRepris, [
     `Armure, ${emplacement('jambe-droit')} (solidité) : « 10/10 » sans armure reconnue`, 'Bouclier, solidité : « 20 / 20 » sans bouclier',
-    `Armure, ${emplacement('casque')} (AP) : « 5 » sans place sur le site`, `Armure, ${emplacement('torse')} (AM) : « 1 » sans place sur le site`,
+    `Armure, ${emplacement('casque')} (AP) : « 5 » sans armure reconnue`, `Armure, ${emplacement('torse')} (AM) : « 1 » sans armure reconnue`,
     'Inventaire, sac : « Sac à dos » sans place sur le site',
   ]);
   // la solidité (R74) : 12 crans, au-delà du maximum que calcule le site (R51) : l'arme est à son maximum ; le maximum écrit est dit
@@ -1065,6 +1114,20 @@ test('zones de saisie que le site ne garde pas (AP et AM de la grille de l’arm
   // fiche auto : le type d'un événement aussi
   assert.equal(importer(avec(LOUISE, { C71: 'Titre', I71: 'Actif', L71: 'Texte', C72: '', I72: 'Réaction' })).fiche.evenements, 'Titre (Actif) : Texte\n(Réaction)');
   assert.deepEqual(ficheDuClasseur(regles, ordinateur({ AA38: 'INVENTAIRE | SAC = ' })).nonRepris, [], 'le titre du modèle, rien après « = »');
+});
+
+test('AP et AM de la grille de l’armure (décision R108) : calculés, non relus ; ceux que le site écrit passent sans rien dire, une autre valeur va dans nonRepris', () => {
+  const armure = regles.armures.find((a) => a.ap >= 2 && a.am >= 1 && Number(a.solidite_uni) !== 1 && a.solidite >= 2);
+  const fiche = { ...ficheVide('Grille'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, armure_id: armure.id, armure_parties: [{ emplacement_id: 'bras-droit', solidite: 0 }] };
+  const { colonnes, lignes } = ORDINATEUR.armure;
+  let r = ficheDuClasseur(regles, deLaPage(fiche));
+  assert.deepEqual([r.fiche.armure_id, r.fiche.armure_parties, r.nonRepris, r.remarques], [armure.id, fiche.armure_parties, [], []]);
+  // une valeur écrite autrement (classeur fait à la main, règles changées) : le site garde la sienne, et le dit ; un texte qui n'est que le nombre, aussi
+  r = ficheDuClasseur(regles, deLaPage(fiche, { [`${colonnes.torse}${lignes.ap}`]: 99, [`${colonnes['bras-droit']}${lignes.am}`]: String(armure.am), [`${colonnes.casque}${lignes.am}`]: String(armure.am) }));
+  assert.deepEqual(r.nonRepris, [
+    `Armure, Torse (AP) : « 99 », le site calcule ${armure.ap} (décision R108)`, `Armure, Bras Droit (AM) : « ${armure.am} », le site calcule 0 (décision R108)`,
+  ]);
+  assert.deepEqual(r.fiche.armure_parties, fiche.armure_parties);
 });
 
 test('solidité des parties de l’armure (modèle ordinateur, décision R95) : la ligne « Sol. » de la grille relue partie par partie ; une armure à solidité unifiée, la plus basse ; le maximum écrit est dit', () => {

@@ -2,10 +2,12 @@
 // tout moment depuis un Excel ou Google Sheet et réexportée sous le même modèle […] Inutile de mettre les formules dans le fichier généré, seul le
 // résultat […] Toute info supplémentaire peut être notée dans les « Notes » ») : les cases du modèle « Fiche-de-personnage-Maverick-V15.2.2
 // ordinateur » (lib/fiche-tableur-cases.mjs#ORDINATEUR) remplies des valeurs que la page /fiche/ affiche, calculées par les mêmes appels au moteur
-// (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs) — jamais une règle de plus : une case que la fiche ne calcule pas reste telle que dans le modèle (AP/AM
-// d'une partie de l'armure, AP/AM et solidité du bouclier). L'armure (décision R95) : une ligne en AQ21 (l'armure complète, son amélioration, son
-// élément), son nom en AD22, et la solidité de chacune de ses parties dans la ligne « Sol. » de la grille (AI24:AN24), « N / M » (celle d'une armure à
-// solidité unifiée sur les six), relue. La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
+// (lib/fiche-moteur.mjs, lib/sort-maitrise.mjs) — jamais une règle de plus : une case que la fiche ne calcule pas reste telle que dans le modèle.
+// L'armure (décision R95) : une ligne en AQ21 (l'armure complète, son amélioration, son élément), son nom en AD22, et la solidité de chacune de ses
+// parties dans la ligne « Sol. » de la grille (AI24:AN24), « N / M » (celle d'une armure à solidité unifiée sur les six), relue ; l'AP et l'AM de
+// l'armure sur chaque partie dans les lignes « AP » et « AM » de la grille (AI22:AN23 ; décision R108 : la valeur de l'armure, 0 sur une partie cassée,
+// armureParPartie), calculés ; le bouclier cassé écrit 0 AP et 0 AM (R108 : ils ne comptent plus). La solidité d'une arme (AK17, AX17) : « N / M »,
+// celle du moment et le maximum de l'arme forgée
 // (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : les compétences de
 // l'entraînement, « Magie 2 | Concentration 10 » (décision R104 ; ses textes libres dans la note), relue. La portée d'une
 // arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
@@ -36,7 +38,7 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisDesDons, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
+  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
   valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
@@ -529,6 +531,9 @@ export function lignesDArme(regles, fiche, rang) {
  *   - une ligne « <Clé> : <valeur> » de LIGNES_D_ARME (la composition, les améliorations, l'élément ; la première de chaque clé) ;
  *   - « Effet en plus : <texte> » et les lignes qui le suivent, jusqu'à la part affichée : l'effet en plus ;
  *   - toute autre ligne (`libres` : le joueur écrit sous le titre « Effet en plus » du modèle, sans préfixe) : de l'effet en plus aussi, dans l'ordre.
+ * Une ligne « Deux armes : … » ou « Non compté : … » (estUneLigneDuSite), que seul le site écrit, n'est jamais de l'effet en plus hors du bloc « Effet en
+ * plus : » : la part affichée d'un classeur exporté avant un changement des règles peut en porter une que la fiche relue n'écrit plus (« Non compté :
+ * Vieille Branche (Mage Vert) +4 (selon la situation) », compté depuis la décision R107) ; le site refait les siennes.
  * `affichageRetrouve` : la part affichée attendue est dans la case, d'un bloc ou au bout d'une case coupée (ou il n'y en a pas) ; faux quand elle n'a été
  * reconnue que ligne à ligne (règles changées depuis l'export : une ligne de l'ancien effet du catalogue serait alors prise pour de l'effet en plus).
  * `entier` : le texte n'est que la part relue (recollée à sa suite dans la note), sans part affichée.
@@ -563,7 +568,7 @@ export function lireEffetDArme(texte, { affichees = null, catalogue = null, enti
       lu[champs.get(k)] = kv.valeur;
       return;
     }
-    if (!ligne.trim()) return;
+    if (!ligne.trim() || estUneLigneDuSite(ligne)) return;
     lu.libres.push(ligne.trim());
     enPlus.push(ligne.trim());
   });
@@ -571,9 +576,19 @@ export function lireEffetDArme(texte, { affichees = null, catalogue = null, enti
   return lu;
 }
 
+/** Les clés des lignes de la part affichée que seul le site écrit (partiesDeLArme) : « Deux armes : … », « Non compté : … ». */
+const CLES_DES_LIGNES_DU_SITE = new Set([LIGNES_D_ARME.deuxArmes, LIGNES_D_ARME.nonCompte].map(cle));
+/** Une ligne « Deux armes : … » ou « Non compté : … », écrite comme l'export l'écrit (sa clé, puis « : ») ; une ligne coupée après « : » aussi. */
+const estUneLigneDuSite = (ligne) => {
+  const kv = deuxPoints(ligne);
+  return Boolean(kv) && CLES_DES_LIGNES_DU_SITE.has(cle(kv.cle));
+};
+
 /**
  * Les lignes de la case de l'effet d'une arme et, pour chacune, si elle est de la part affichée (lireEffetDArme) : { lignes, affichage: [booléen],
- * retrouvee }. Une case coupée par la page dans sa part affichée perd sa fin « … » (sa ligne coupée compte pour la part affichée).
+ * retrouvee }. Une case coupée par la page dans sa part affichée perd sa fin « … » (sa ligne coupée compte pour la part affichée) ; coupée dans une
+ * ligne « Deux armes : » ou « Non compté : » que la fiche relue n'écrit plus (règles changées depuis l'export : décision R107), la part affichée est
+ * cherchée sans ces lignes de la fin, qui en sont (retrouvee faux).
  */
 function partAffichee(texte, affichees, catalogue) {
   let lignes = texte.split('\n');
@@ -592,8 +607,23 @@ function partAffichee(texte, affichees, catalogue) {
       const departs = borne <= 0 ? [0] : [];
       for (let p = montre.indexOf('\n', Math.max(0, borne - 1)); p >= 0; p = montre.indexOf('\n', p + 1)) departs.push(p + 1);
       const debut = departs.find((s) => s < montre.length && affichees.startsWith(montre.slice(s)));
-      const ligneDuDebut = debut === undefined ? lignes.length : montre.slice(0, debut).split('\n').length - 1;
-      return { lignes, affichage: lignes.map((_, i) => i >= ligneDuDebut), retrouvee: true };
+      if (debut !== undefined || !estUneLigneDuSite(lignes[lignes.length - 1])) {
+        const ligneDuDebut = debut === undefined ? lignes.length : montre.slice(0, debut).split('\n').length - 1;
+        return { lignes, affichage: lignes.map((_, i) => i >= ligneDuDebut), retrouvee: true };
+      }
+      // coupée dans une ligne du site que la fiche relue n'écrit plus : sans les lignes du site de la fin, le début de la part affichée attendue (une
+      // fin de la case, depuis un début de ligne, qui commence `affichees`), sinon ces seules lignes
+      let fin = lignes.length;
+      while (fin > 0 && estUneLigneDuSite(lignes[fin - 1])) fin -= 1;
+      const avant = lignes.slice(0, fin);
+      let depuis = fin;
+      for (let j = 0; j < fin; j += 1) {
+        if (affichees.startsWith(avant.slice(j).join('\n'))) {
+          depuis = j;
+          break;
+        }
+      }
+      return { lignes, affichage: lignes.map((_, i) => i >= depuis), retrouvee: false };
     }
   }
   // ligne à ligne : l'effet du catalogue (ou une ligne de la part affichée attendue), « Deux armes : », « Non compté : »
@@ -888,6 +918,14 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const colonne = O.armure.colonnes[emplacement];
     if (colonne) ecrire(`${colonne}${O.armure.lignes.solidite}`, texte, RELUE);
   }
+  // l'AP et l'AM de l'armure sur chaque partie (décision R108 : la valeur de l'armure portée, 0 sur une partie cassée), dans les lignes « AP » et « AM »
+  // de la grille : calculés, jamais relus
+  for (const p of armureParPartie(regles, f) ?? []) {
+    const colonne = O.armure.colonnes[p.id];
+    if (!colonne) continue;
+    ecrire(`${colonne}${O.armure.lignes.ap}`, p.ap);
+    ecrire(`${colonne}${O.armure.lignes.am}`, p.am);
+  }
   // l'armure : avec les statistiques du catalogue et l'effet des améliorations s'ils tiennent, sinon sans
   let armure = lignesDArmure(regles, f).join('\n');
   for (const options of [{ stats: false }, { stats: false, effets: false }]) {
@@ -896,7 +934,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   }
   ecrire(O.armure.bonus, armure, RELUE);
   // le bouclier (décision R96 : une forme et une matière) : la forme en AA26, la matière et l'amélioration en AF26 (« Fer · niv. 2 — +4 AP… », comme une
-  // ligne d'armure), relues ; la classe, l'AP et l'AM que la fiche calcule ; la solidité du moment « N / M » en AX26, relue (comme une arme, R74)
+  // ligne d'armure), relues ; la classe, l'AP et l'AM que la fiche calcule (0 cassé : ils ne comptent plus, décision R108) ; la solidité du moment
+  // « N / M » en AX26, relue (comme une arme, R74)
   const bouclier = bouclierDe(regles, f);
   ecrire(O.bouclier.nom, bouclier?.forme.nom ?? f.bouclier_classe_id, RELUE);
   if (bouclier?.matiere) {
@@ -905,8 +944,9 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   }
   if (bouclier) ecrire(O.bouclier.classe, bouclier.forme.classe);
   if (bouclier?.bouclier) {
-    ecrire(O.bouclier.ap, bouclier.ap);
-    ecrire(O.bouclier.am, bouclier.am);
+    const casse = Boolean(bouclier.solidite?.cassee);
+    ecrire(O.bouclier.ap, casse ? 0 : bouclier.ap);
+    ecrire(O.bouclier.am, casse ? 0 : bouclier.am);
   }
   if (bouclier?.solidite) ecrire(O.bouclier.solidite, `${bouclier.solidite.actuelle} / ${bouclier.solidite.max}`, RELUE);
 

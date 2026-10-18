@@ -432,7 +432,7 @@ test('posture Symbiose (R100, migration 0061) : sa magie est la magie innée ou 
   db.prepare("UPDATE personnage SET magie_acquise_id = 'magies/magie-de-la-glace' WHERE id = 'symbiose'").run();
   assert.ok(!controle('symbiose').some((c) => c.regle === 'symbiose_magie'), 'sa magie acquise');
   db.prepare("UPDATE personnage SET magie_innee_id = 'magies/potentiel-illimite', magie_acquise_id = NULL, symbiose_magie_id = 'magies/potentiel-illimite' WHERE id = 'symbiose'").run();
-  assert.ok(controle('symbiose').some((c) => c.regle === 'symbiose_magie' && c.detail === 'magies/potentiel-illimite'), 'pas le Potentiel Illimité (Q15)');
+  assert.ok(controle('symbiose').some((c) => c.regle === 'symbiose_magie' && c.detail === 'magies/potentiel-illimite'), 'pas le Potentiel Illimité (R109 : il fait la symbiose sans magie)');
   assert.throws(() => db.prepare("UPDATE personnage SET symbiose_magie_id = 'magies/inconnue' WHERE id = 'symbiose'").run(), /FOREIGN KEY/);
   db.prepare("DELETE FROM personnage WHERE id = 'symbiose'").run();
 });

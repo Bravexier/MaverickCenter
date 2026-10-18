@@ -4,6 +4,9 @@
 // armes de corps à corps », « Les armes font », « dégâts de frappe »…). Le reste n'est jamais compté : un bonus lié à une situation (« si », « contre », « en
 // forêt », « (Rage) », « par case »…), au choix, aux deux armes ou au bouclier, ou dont le texte ne dit pas quelles armes il vise, est rendu avec sa raison
 // pour que la fiche le signale ; un bonus des sorts ou d'une magie (sans arme citée) n'est pas un bonus d'arme et n'est pas rendu.
+// Une seule exception à « chaque » (une situation) : « Pour chaque cran de solidité perdu, l'arme en question fera +4 Dégâts. » (Vieille Branche du
+// Mage Vert, décision R107), lu tel qu'écrit et seulement ainsi (`PAR_CRAN_PERDU`) : un bonus par cran perdu de chaque arme portée (`parCranPerdu`),
+// que lib/fiche-moteur.mjs#degatsDArme multiplie par les crans perdus de l'arme.
 // Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/degats-texte.test.mjs).
 
 /** Un mot entier (les lettres accentuées comptent comme des lettres : `\\b` ne les connaît pas). */
@@ -36,6 +39,8 @@ const AUGMENTE = /d[ée]g[âa]ts?[^.,/;]*?(?:augmentent?|font|de)\s+(?:de\s+)?\+
 const AUGMENTE_LES = /augmente(?:nt)?\s+(?:les |ses )?d[ée]g[âa]ts?\s+(?:de\s+)?\+?(\d+)\b(?!\s*%)/;
 const FORMULE_X = /(?:(\d+)\s*\+\s*)?x\s+(?:de\s+)?d[ée]g[âa]ts?/;
 const PAS_X = /x\s*=\s*\+?\s*(\d+)\s*d[ée]g[âa]ts?\s*\/\s*(\d+)\s*niveaux?/;
+/** Décision R107 (Vieille Branche) : tout le texte du don, tel qu'écrit (normalisé), et rien d'autre ; « l'arme en question » = chaque arme portée. */
+const PAR_CRAN_PERDU = /^pour chaque cran de solidit[ée] perdu, l'arme en question fera \+\s?(\d+) d[ée]g[âa]ts\.?$/;
 
 const normaliser = (texte) => String(texte ?? '').toLowerCase().replace(/[’]/g, "'").replace(/\s+/g, ' ');
 /** Le texte sans ce qui est entre guillemets (« Arc » : le nom d'une compétence, pas une arme visée) ni les maîtrises citées (« +1 maîtrise Dague »). */
@@ -68,11 +73,15 @@ function valeurDe(texte) {
 /**
  * Le bonus de dégâts d'arme qu'écrit le texte d'un don passif, ou null s'il n'en écrit pas (ni « dégâts » ni valeur, ou un bonus des sorts ou d'une magie
  * sans arme citée). { valeur | base, pas, niveaux, portee } quand il se compte ; { valeur | base, pas, niveaux, raison } sinon, `raison` ∈ 'situation',
- * 'au_choix', 'deux_armes', 'bouclier', 'portee' (les armes visées ne sont pas écrites).
+ * 'au_choix', 'deux_armes', 'bouclier', 'portee' (les armes visées ne sont pas écrites). « Pour chaque cran de solidité perdu, l'arme en question fera +4
+ * Dégâts. » (décision R107) : { valeur: 4, portee: { toutes: true }, parCranPerdu: true }, la valeur d'un cran perdu.
  */
 export function bonusDeDegatsEcrit(texte) {
   const t = normaliser(texte);
   if (!/d[ée]g[âa]t/.test(t)) return null;
+  // décision R107, avant les situations (« chaque ») : cette écriture seule, le texte entier
+  const parCran = PAR_CRAN_PERDU.exec(t.trim());
+  if (parCran) return { valeur: Number(parCran[1]), portee: { toutes: true }, parCranPerdu: true };
   // le morceau qui porte le bonus : la phrase (ou la ligne) où il est écrit ; une formule « x = … » se lit sur tout le texte
   const valeur = valeurDe(t);
   if (!valeur) return null;
