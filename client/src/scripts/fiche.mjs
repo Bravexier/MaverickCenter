@@ -28,7 +28,7 @@ import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  accessoiresDesSorts, actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
+  actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
   mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
@@ -37,6 +37,7 @@ import {
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
+  batonDuSac, degatsDArmeDuMoment, effetsDesBatons, magiesDeLaSymbiose, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -528,8 +529,12 @@ function construireCaracteristiques() {
             c.accessoireBrut ? `${signe(c.accessoire)} d’accessoire${c.accessoireBrut > c.accessoire ? ` (${c.accessoireBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : null,
           ].filter(Boolean).join(' ') : '';
           acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${enPlus > 0 ? `, moins les ${enPlus} du métier et des accessoires` : ''}`;
-          score.textContent = c.score === null ? 'N/A' : `${c.score} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
-          score.title = c.score === null ? 'Deux croix : compétence inutilisable' : '';
+          // le score du moment : la posture prise y ajoute son bonus (décision R100 : « Neutre donne +5 % à toutes les compétences Social et Volonté »)
+          score.textContent = c.score === null ? 'N/A' : `${c.scoreDuMoment} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
+          score.toggleAttribute('data-posture', c.score !== null && c.posture !== 0);
+          score.dataset.sens = c.posture > 0 ? 'plus' : c.posture < 0 ? 'moins' : '';
+          infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable'
+            : c.posture ? `${c.score} % ${signe(c.posture)} (posture ${calcul.posture.posture.nom})` : '');
         });
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
           el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
@@ -660,6 +665,9 @@ function construireMaitrises() {
 }
 
 // ------------------------------------------------------------------ sorts
+/** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
+const RAISONS_DES_SORTS = { situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits' };
+
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
  * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Les NM d'un
@@ -739,22 +747,50 @@ function construireSorts() {
         const remarque = l.sort?.remarque
           ? el('span', { class: 'sort-remarque', tabindex: '0', role: 'img', 'aria-label': `Remarque : ${l.sort.remarque}`, title: l.sort.remarque }, '★')
           : null;
+        const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
+        const tr = el('tr', { class: classe },
+          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
+          modes, cout, portee, zone, dsb,
+          el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total));
         synchro(() => {
           const nm = nmDuSort(fiche.sorts[l.index]);
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
-          cout.textContent = auNm(l.sort?.cout, 'cout');
-          // accessoires (décision R54) : « Augmente la portée des sorts de +N » ; « Dégâts magie +N » sur un sort d'attaque
-          const acc = accessoiresDesSorts(regles, fiche);
-          portee.textContent = auNm(l.sort?.portee, 'portee') + (l.sort && acc.portee ? ` ${signe(acc.portee)}` : '');
-          portee.title = l.sort && acc.portee ? `${signe(acc.portee)} de portée (accessoires)` : '';
+          // le sort à son moment (décision R102) : coût réduit (dons, bâton ; jamais moins de 1), portée et dégâts ou soins avec les bonus des dons, des
+          // accessoires, du bâton, de l'armure élémentaire et de la posture ; chaque valeur changée en gras, son détail en infobulle
+          const m = l.sort ? sortDuMoment(regles, fiche, l.sort, { cout: auNm(l.sort.cout, 'cout'), portee: auNm(l.sort.portee, 'portee'), dsb: auNm(l.sort.dsb, 'dsb') }) : null;
+          const detail = (base, lignes, fin = []) => [base, ...lignes.map((x) => (x.crans || x.des ? x.nom : x.maximum ? `${x.nom} (${x.valeur})` : `${x.nom} : ${signe(x.valeur)}`)), ...fin].join('\n');
+          // en gras la valeur que le moment change ; en infobulle son détail, et ce qui n'est pas compté
+          const poserValeur = (td, texte, change, titre, aDire = change) => {
+            if (td.textContent !== texte) td.textContent = texte;
+            td.toggleAttribute('data-calcule', Boolean(change));
+            infobulle(td, aDire ? titre : '');
+          };
+          const nonComptes = (raison) => (m?.nonComptes ?? []).filter((x) => x.raison === raison).map((x) => `Non compté (${raison === 'cout' ? 'coût non chiffré' : 'portée non chiffrée'}) : ${x.nom} ${signe(x.valeur)}`);
+          poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
+            m && (m.cout.detail.length || m.cout.corruption),
+            m && detail(`Coût écrit : ${auNm(l.sort.cout, 'cout')}`, m.cout.detail, [
+              'Jamais moins de 1',
+              ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
+              ...nonComptes('cout'),
+            ]), m && (m.cout.detail.length || m.cout.corruption || nonComptes('cout').length));
+          poserValeur(portee, m?.portee.texte ?? '', m && m.portee.detail.length,
+            m && detail(`Portée écrite : ${auNm(l.sort.portee, 'portee')}`, m.portee.detail, nonComptes('portee')), m && (m.portee.detail.length || nonComptes('portee').length));
           zone.textContent = auNm(l.sort?.zone, 'zone');
           modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nm.total) : []).map((m) => el('span', {
             class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
             title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
           }, m.texte)));
-          const degatsEnPlus = l.sort?.attaque && auNm(l.sort.dsb, 'dsb') ? acc.degats : 0;
-          dsb.textContent = auNm(l.sort?.dsb, 'dsb') + (degatsEnPlus ? ` ${signe(degatsEnPlus)}` : '');
-          dsb.title = degatsEnPlus ? `${signe(degatsEnPlus)} de dégâts (accessoires : ${acc.sources.filter((x) => x.cible === 'degats_magie').map((x) => x.nom).join(', ')})` : '';
+          const autres = (m?.nonComptes ?? []).filter((x) => !['cout', 'portee'].includes(x.raison))
+            .map((x) => `Non compté (${RAISONS_DES_SORTS[x.raison] ?? x.raison}) : ${x.nom} ${signe(x.valeur)}`);
+          const texteDsb = m ? `${m.dsb.texte}${m.dsb.diviseur > 1 ? ` ÷ ${m.dsb.diviseur}` : ''}` : '';
+          poserValeur(dsb, texteDsb, m && (m.dsb.detail.length || m.dsb.diviseur > 1),
+            m && detail(`Écrit : ${auNm(l.sort.dsb, 'dsb')}`, m.dsb.detail, [
+              ...(m.dsb.diviseur > 1 ? [`Posture ${calcul.posture.posture.nom} : dégâts infligés ÷ ${m.dsb.diviseur}, avant l’armure`] : []),
+              ...autres, ...m.rappels.map((r) => `${r.nom} : ${r.texte}`),
+            ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length));
+          // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
+          tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
+          infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');
           effet.textContent = auNm(l.sort?.effets, 'effets');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
           if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
@@ -765,12 +801,8 @@ function construireSorts() {
           total.toggleAttribute('data-hors', nm.total > calcul.nm.plafond);
           total.title = `${nm.total} NM sur ce sort ; ${calcul.nm.plafond} au plus`;
         });
-        const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
         return [
-          el('tr', { class: classe, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
-            el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
-            modes, cout, portee, zone, dsb,
-            el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total)),
+          tr,
           // l'effet secondaire du sort, sur sa propre ligne (demande du propriétaire)
           l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '7' }, effet)) : null,
         ];
@@ -924,9 +956,15 @@ function construireAttributs() {
   const a = calcul.attributs;
   const pastilles = [
     // 1D20 + le bonus de l'Agilité + celui du métier (« +X INI », décision R33)
-    ['Initiative', a.initiative || a.initiativeMetier || a.initiativeAccessoires ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
-      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
-        a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null].filter(Boolean).join(' · ')],
+    // la posture du moment y ajoute le sien (décision R100 : Vigilance « +2 initiative »)
+    ...(() => {
+      const bonus = a.initiativeBonus + a.initiativePosture;
+      const ecrit = a.initiative || a.initiativeMetier || a.initiativeAccessoires || a.initiativePosture;
+      return [['Initiative', ecrit ? `1D20 ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)}` : '1D20',
+        [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
+          a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null,
+          a.initiativePosture ? `${signe(a.initiativePosture)} de la posture ${calcul.posture.posture.nom}` : null].filter(Boolean).join(' · ')]];
+    })(),
     // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
     ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''})`],
     ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
@@ -958,7 +996,25 @@ function construirePostures() {
     })));
     synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
     return bouton;
-  }));
+  }).concat((() => {
+    // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
+    // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée
+    const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
+    const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true }, el('span', {}, 'Symbiose avec'), choix);
+    synchro(() => {
+      const s = calcul.posture?.symbiose;
+      bloc.hidden = !s || s.possibles.length < 2;
+      if (bloc.hidden) return;
+      const cle = s.possibles.map((m) => m.id).join();
+      if (choix.dataset.cle !== cle) {
+        choix.replaceChildren(option('', 'Choisir…'), ...s.possibles.map((m) => option(m.id, m.nom)));
+        choix.dataset.cle = cle;
+      }
+      poser(choix, s.magie?.id ?? '');
+      bloc.toggleAttribute('data-a-choisir', s.aChoisir);
+    });
+    return [bloc];
+  })()));
   const cartesHyper = $('postures-hyper');
   cartesHyper.hidden = !hyper?.debloque;
   reconstruire(cartesHyper, cleHyper, () => [
@@ -1281,6 +1337,49 @@ let numeroDeListe = 0;
  * possible. `propositions(valeur)` rend les noms à montrer (propositionsDuCatalogue : rien sous deux caractères) ; `choisir(nom)` reçoit le nom choisi.
  * Rend l'enveloppe (le champ et sa liste).
  */
+/**
+ * Le réglage d'un bâton magique d'une ligne du sac (décision R101 : « configurer correctement un "bâton magique" avec la magie et le niveau de ce dernier
+ * avant de pouvoir l'assigner à un emplacement de ceinture ») : la magie, puis le niveau ; les deux choisis, `choisir` reçoit le nom du bâton. Caché
+ * pour un autre objet. La magie choisie sans niveau attend dans la page (elle n'est pas un nom d'objet). { element, maj }.
+ */
+const magiesEnAttente = new WeakMap();
+function reglageDuBaton(ligne, choisir) {
+  const magies = magiesDesBatons(regles);
+  const magie = el('select', { 'aria-label': 'Bâton magique : magie' }, option('', 'Magie…'), magies.map((m) => option(m.id, m.nom)));
+  const niveau = el('select', { 'aria-label': 'Bâton magique : niveau' }, option('', 'Niveau…'));
+  const element = el('span', { class: 'baton-reglage', hidden: true }, magie, niveau);
+  const niveauxDe = (id) => magies.find((m) => m.id === id)?.niveaux ?? [];
+  const remplirNiveaux = (id, choisi) => {
+    niveau.replaceChildren(option('', 'Niveau…'), ...niveauxDe(id).map((n) => option(String(n), `Niveau ${n}`)));
+    niveau.value = choisi ? String(choisi) : '';
+    niveau.disabled = !id;
+  };
+  magie.addEventListener('change', () => {
+    magiesEnAttente.set(ligne, magie.value || null);
+    const n = nomDuBaton(regles, magie.value, niveau.value);
+    if (n) choisir(n);
+    else remplirNiveaux(magie.value, null);
+  });
+  niveau.addEventListener('change', () => {
+    const n = nomDuBaton(regles, magie.value, niveau.value);
+    if (n) choisir(n);
+  });
+  const maj = () => {
+    const b = batonDuSac(regles, ligne.nom);
+    element.hidden = !b;
+    if (!b) return;
+    const magieId = b.baton?.magie_id ?? magiesEnAttente.get(ligne) ?? '';
+    if (magie.value !== magieId) magie.value = magieId;
+    if (niveau.dataset.pour !== `${magieId}:${b.baton?.niveau ?? ''}`) {
+      remplirNiveaux(magieId, b.baton?.niveau ?? null);
+      niveau.dataset.pour = `${magieId}:${b.baton?.niveau ?? ''}`;
+    }
+    element.toggleAttribute('data-a-choisir', !b.regle);
+    infobulle(element, b.regle ? b.baton.effets.map((e) => e.texte).join('\n') : 'À régler avant la ceinture : sa magie et son niveau');
+  };
+  return { element, maj };
+}
+
 function autocompletion(champ, propositions, choisir) {
   const idListe = `propositions-${++numeroDeListe}`;
   const liste = el('ul', { class: 'autocompletion__liste', role: 'listbox', id: idListe, hidden: true, 'aria-label': 'Propositions' });
@@ -1404,19 +1503,25 @@ function construireEquipement() {
           'À 0, l’arme est cassée. Clic droit ou Entrée sur le curseur : saisir le nombre.',
         ].join('\n');
       }
-      const d = degatsDArme(regles, fiche, rang);
+      // les dégâts du moment (décisions R100, R102) : la posture (Offensif : le maximum ; Défensif : ÷ 2 ; Symbiose : arme inutilisable) et un dé au maximum
+      const d = degatsDArmeDuMoment(regles, fiche, rang);
       des.hidden = !d;
-      // une arme cassée : la pastille de ses dés grisée, « Cassée » (décision R74) ; ses dégâts, réparée, restent en infobulle
-      des.toggleAttribute('data-cassee', Boolean(d && dur?.cassee));
+      // une arme cassée : la pastille de ses dés grisée, « Cassée » (décision R74) ; ses dégâts, réparée, restent en infobulle ; de même en Symbiose
+      des.toggleAttribute('data-cassee', Boolean(d && (dur?.cassee || d.inutilisable)));
       if (d) {
-        des.textContent = dur?.cassee ? 'Cassée' : d.texte;
+        const valeur = d.diviseur > 1 ? `(${d.texte}) ÷ ${d.diviseur}` : d.texte;
+        des.textContent = dur?.cassee ? 'Cassée' : d.inutilisable ? d.inutilisable : valeur;
         des.title = [
-          ...(dur?.cassee ? [`Arme cassée (solidité 0 / ${dur.max}). Réparée : ${d.texte}`] : []),
+          ...(dur?.cassee ? [`Arme cassée (solidité 0 / ${dur.max}). Réparée : ${valeur}`] : []),
+          ...(d.inutilisable ? [`Posture ${d.inutilisable} : « Impossible d’utiliser les armes ou objets ». Hors de cette posture : ${valeur}`] : []),
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
+          ...d.moment.map((b) => `${b.nom} : ${b.valeur}`),
+          ...(d.diviseur > 1 ? [`Posture ${calcul.posture.posture.nom} : dégâts infligés ÷ ${d.diviseur}, avant l’armure`] : []),
           ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
           ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
         ].join('\n');
+        des.toggleAttribute('data-posture', Boolean(d.moment.length || d.diviseur > 1));
       }
       const deux = attaqueADeuxArmes(regles, fiche);
       const main = deux?.mains[rang - 1];
@@ -1724,11 +1829,14 @@ function construireEquipement() {
           },
           onchange: () => poser(quantite, o.quantite),
         });
+        // un bâton magique se règle ici, magie puis niveau, avant d'aller à la ceinture (décision R101) : la ligne prend alors le nom du bâton
+        const reglage = reglageDuBaton(o, (nomDuBatonChoisi) => { poser(nom, nomDuBatonChoisi); ecrire(nomDuBatonChoisi); });
         const tr = el('tr', { 'data-ligne': String(i + 1) },
-          el('td', {}, saisie), el('td', { class: 'nombre' }, quantite),
+          el('td', {}, saisie, reglage.element), el('td', { class: 'nombre' }, quantite),
           el('td', {}, el('button', { type: 'button', class: 'retirer', 'aria-label': 'Retirer l’objet', onclick: () => { retirer('inventaire', (x) => x === o); changer(); } }, '✕')));
         synchro(() => {
           poser(nom, o.nom ?? '');
+          reglage.maj();
           poser(quantite, o.quantite);
           attribut(quantite, 'data-un', entier(o.quantite) === 1);
           attribut(quantite, 'aria-invalid', entier(o.quantite) > regles.sac.quantite_max ? 'true' : null);
@@ -1903,7 +2011,7 @@ function construireCeinture() {
   const blocAide = $('ceinture-aide');
   if (blocAide.textContent !== aide) blocAide.textContent = aide;
   // les objets du sac, proposés dans chaque emplacement (refaits quand le sac change)
-  const suggestions = suggestionsDeCeinture(fiche);
+  const suggestions = suggestionsDeCeinture(fiche, regles);
   const liste = $('liste-ceinture');
   const cle = JSON.stringify(suggestions);
   if (liste.dataset.cle !== cle) {
@@ -2073,6 +2181,8 @@ function rafraichir() {
     competences: competencesDe(regles, fiche),
     nm: maitriseDesSorts(regles, fiche),
     attributs: attributsDe(regles, fiche),
+    // la posture du moment et ce qu'elle change (décision R100) : compétences, initiative, AP/AM, dégâts, sorts
+    posture: postureDuMoment(regles, fiche),
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
   calcul.attente = choixEnAttente(regles, fiche);

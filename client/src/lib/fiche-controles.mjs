@@ -40,6 +40,7 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   bouclier_manquant: 'Matière, amélioration ou solidité de bouclier sans sa forme',
   bouclier_matiere_manquante: 'Bouclier sans sa matière',
   bouclier_inconnu: 'Forme et matière de bouclier absentes de la liste des boucliers',
+  symbiose_magie: 'Magie de la symbiose hors des magies du personnage',
   maitrise_arme_exclue: 'Maîtrise sur des armes de monstres (pas de maîtrise)',
   amelioration_cible: 'Amélioration d’un autre genre d’objet',
   armure_manquante: 'Amélioration ou élément d’armure sans armure',

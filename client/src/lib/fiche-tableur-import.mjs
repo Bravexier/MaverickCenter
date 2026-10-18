@@ -481,7 +481,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     lieu_origine: texte(d.lieuOrigine) || null,
     race_id: null, ethnie_id: null, magie_innee_id: null, magie_acquise_id: null, caracteristique_magie_id: null, dieu_choisi_id: null, metier_id: null,
     bouclier_classe_id: null, bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null, sante_actuelle: null, chakra_actuel: null, barriere_actuelle: null, corruption: null, barre4_actuelle: null,
-    notes: null, evenements: null, posture_id: null, entrainement: null,
+    notes: null, evenements: null, posture_id: null, symbiose_magie_id: null, entrainement: null,
   });
 
   // ---- identité, race, magies, ethnie, dieu, alignement, bourse, XP
@@ -690,6 +690,14 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
         remarques.push(`Caractéristique de la magie innée (${innee.nom}) déduite du bonus du classeur : ${nomDe(regles.caracteristiques, avecBonus[0].id)}`);
       }
     }
+  }
+
+  // ---- la magie de la Symbiose (décision R100), dans la note : une magie du personnage, sinon perdue
+  const symbiose = notee('symbioseMagie')[0];
+  if (symbiose !== undefined) {
+    const magie = unSeul(retrouver(regles.magies, symbiose), 'Magie de la symbiose', symbiose);
+    if (magie && [f.magie_innee_id, f.magie_acquise_id].includes(magie.id)) f.symbiose_magie_id = magie.id;
+    else if (magie) perdu(`Magie de la symbiose : « ${symbiose} » n’est pas une magie du personnage`);
   }
 
   // ---- dons de classe : les dons à choix (les autres se déduisent), la spécialité d'après ses dons quand le classeur ne l'écrit pas

@@ -239,6 +239,21 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec un élément : R99) ; les étapes en infobulle, rien d'enregistré.
 - **Arme à pièce élémentaire** (décision R99) : les dés restent ; les bonus de dégâts du matériau et de l'amélioration sont remplacés par ceux de
   l'élément et de son amélioration (`degatsDArme` : ils passent dans « Non comptés », « remplacé par l'élément »).
+- **Posture du moment** (décision R100) : la posture cochée recalcule ce que son tableau chiffre (`lib/posture-texte.mjs`, `postureDuMoment`) — le
+  score du moment des compétences (`scoreDuMoment` : Neutre +5 Social et Volonté, Focus +10 partout, Vigilance +5 Perception, Offensif −10 aux
+  compétences d'attaque ; en vert ou en rouge, le détail en infobulle), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
+  +4 +2 par puissance magique au-delà de la première), les dégâts des armes (`degatsDArmeDuMoment` : Offensif le maximum, « 6D6+4 » → « 40 » ;
+  Défensif « ÷ 2 » ; Symbiose : pastille grisée), les sorts (ci-dessous) et les dégâts reçus (Symbiose : immunité à sa magie). La magie de la
+  Symbiose se choisit à côté des postures quand le personnage en a deux (`personnage.symbiose_magie_id`, migration 0061) ; l'autre magie est
+  désactivée (ses sorts grisés). Les scores et l'initiative de la fiche, eux, ne changent pas (tableur, contrôles).
+- **Bâtons magiques** (décision R101) : le sac propose « Bâton magique », dont la ligne demande sa magie puis son niveau ; réglé, il prend le nom du
+  bâton et peut aller à la ceinture (pas avant). À la ceinture, ses effets passifs (`effetsDeBaton`, lus dans `baton_magique.bonus_brut`) valent pour
+  tous les sorts du personnage ; deux bâtons au même effet : le plus fort seul (`effetsDesBatons`).
+- **Sorts du moment** (décision R102) : `sortDuMoment` refait le coût (dons « réduits de 4 », Économe, bâton ; jamais moins de 1 ; Corruption :
+  « ou 2 × le coût − bâton » en corruption), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
+  (`lireDegatsDeSort` : crans de dé, un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
+  chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
+  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) : elles signalent, elles n'empêchent jamais d'enregistrer, et toute fiche est contrôlée, même inachevée (une fiche n'a
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
@@ -445,7 +460,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
-  deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13) et ce que perd une armure ou un bouclier cassé (Q14) :
+  deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13), ce que perd une armure ou un bouclier cassé (Q14),
+  la Symbiose du Potentiel Illimité (Q15), les bonus « tous les M niveaux globaux » (Q16) et la magie désactivée en Symbiose (Q17) :
   [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`

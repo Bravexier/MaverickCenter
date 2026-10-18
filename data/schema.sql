@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 60;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 61;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3151,7 +3151,8 @@ CREATE TABLE accessoire_effet_cible (
   rang         INTEGER NOT NULL CHECK (rang >= 1),
   cible        TEXT    NOT NULL CHECK (cible IN ('caracteristique', 'competence', 'sante', 'chakra', 'barriere', 'initiative', 'vitesse', 'barre4_max',
                                                  'armure_ap', 'armure_am', 'degats_physiques', 'degats_magie', 'degats_famille', 'portee_distance',
-                                                 'portee_sorts', 'maitrise_arme', 'mode_hyper_tours', 'resistance')),
+                                                 'portee_sorts', 'maitrise_arme', 'mode_hyper_tours', 'resistance',
+                                                 'cran_des_sorts', 'de_maximum', 'des_soins')),
   cible_id     TEXT,
   valeur       INTEGER,
   choix        INTEGER NOT NULL CHECK (choix IN (0, 1)),
@@ -3928,6 +3929,10 @@ CREATE TABLE personnage (
   bouclier_materiau_id  TEXT    REFERENCES materiau_bouclier(ressource_id),
   bouclier_amelioration_id TEXT REFERENCES amelioration_equipement(id),
   bouclier_solidite     INTEGER CHECK (bouclier_solidite IS NULL OR bouclier_solidite >= 0),
+  -- Magie de la posture Symbiose (décision R100, migration 0061 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») :
+  -- choisie sur la case de la posture quand le personnage a deux magies (avec une seule, c'est elle : la page ne l'écrit pas) ; gardée quand la
+  -- posture change. Contrôlée par la règle symbiose_magie de v_personnage_controle (une magie du personnage, pas le Potentiel Illimité).
+  symbiose_magie_id     TEXT    REFERENCES magie(id),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -4396,6 +4401,12 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p
   WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = p.bouclier_classe_id AND b.materiau_id = p.bouclier_materiau_id)
+  UNION ALL
+  -- Posture Symbiose (décision R100) : sa magie est la magie innée ou la magie acquise du personnage, pas le Potentiel Illimité (question Q15)
+  SELECT p.id, 'symbiose_magie', p.symbiose_magie_id
+  FROM personnage p
+  WHERE p.symbiose_magie_id IS NOT NULL
+    AND (p.symbiose_magie_id = 'magies/potentiel-illimite' OR p.symbiose_magie_id NOT IN (coalesce(p.magie_innee_id, ''), coalesce(p.magie_acquise_id, '')))
   UNION ALL
   -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
   SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id

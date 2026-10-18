@@ -169,6 +169,7 @@ function ficheRiche() {
     magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-la-glace', dieu_choisi_id: regles.dieux.at(-1).id, metier_id: 'metiers/enchanteur',
     mode_classe: 'mono', xp: xpDuNiveau(14) + 250, alignement_loyal: 3, alignement_chaotique: 7, alignement_bon: 6, alignement_mauvais: 1,
     bourse_pp: 2, bourse_ro: 17, bourse_rf: 9, sante_actuelle: 12, chakra_actuel: 7, barriere_actuelle: 3, corruption: 2, posture_id: 'guide/postures#posture:vigilance',
+    symbiose_magie_id: 'magies/magie-de-la-glace',   // la magie de la Symbiose, gardée hors de la posture (décision R100) : dans la note
     notes: 'Une note : avec deux-points\nEt une seconde ligne', evenements: ['Naissance : à Port-Sable', 'Sans titre ici', `Deuil : ${LONG}`, 'Duel : perdu… de peu', 'Voyage : vers le nord…', 'Dernier : encore'].join('\n'),
     classes: [
       { rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:epeiste' },

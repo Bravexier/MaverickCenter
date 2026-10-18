@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 60 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 61 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3320,6 +3320,7 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `bouclier_materiau_id` | TEXT | non | → materiau_bouclier.ressource_id |  |
 | `bouclier_amelioration_id` | TEXT | non | → amelioration_equipement.id |  |
 | `bouclier_solidite` | INTEGER | non |  |  |
+| `symbiose_magie_id` | TEXT | non | → magie.id |  |
 
 ### `personnage_partage`
 
