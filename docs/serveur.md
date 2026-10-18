@@ -125,7 +125,7 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`,
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`,
 `armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
 bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
@@ -169,7 +169,8 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   `bouclier_solidite`), 0061 (`symbiose_magie_id`, la magie de la posture Symbiose) et 0066 (`nm_mj`, les NM du MJ : à 0 ignoré, une autre valeur
   refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) ; sur une
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
-  (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062) se lit vide, et une liste non vide pour elle est
+  (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
+  résistance au choix du Drakos orange, liste `resistance_choix`) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et

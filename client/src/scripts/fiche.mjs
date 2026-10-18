@@ -39,7 +39,7 @@ import {
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
-  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
+  acquisApresChoix, acquisApresChoixDArme, acquisApresRepartition, acquisChoixValables, acquisDesDons, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
@@ -358,10 +358,28 @@ function construireMagies() {
 /**
  * Résistances et faiblesses (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse » de la fiche auto) : les six paliers, chacun avec
  * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), le détail des crans en infobulle (resistancesDe) ;
- * sous le tableau, les dons qui laissent une résistance au choix (pas comptée).
+ * sous le tableau, la résistance à choisir de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124 : une liste
+ * des altérations des autres lignes, personnage_resistance_choix ; surlignée et dans le tiroir des choix tant qu'elle n'est pas faite), puis les dons qui
+ * laissent une résistance au choix (pas comptée).
  */
 function construireResistances() {
-  const { paliers, auChoix, desactivee } = resistancesDe(regles, fiche);
+  const { paliers, auChoix, aChoisir: resistancesAChoisir, desactivee } = resistancesDe(regles, fiche);
+  const blocDuChoix = $('resistances-a-choisir');
+  blocDuChoix.hidden = !resistancesAChoisir.length;
+  reconstruire(blocDuChoix, JSON.stringify(resistancesAChoisir.map((c) => [c.source, c.rang, c.options])), () => resistancesAChoisir.map((c) => {
+    const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.resistance(c.source, c.rang) } });
+    const liste = el('select', {
+      'aria-label': `${c.nom} : +${c.crans} cran de résistance à choisir`,
+      onchange: (ev) => { Object.assign(fiche, resistanceApresChoix(fiche, c.source, c.rang, ev.target.value || null)); changer(); },
+    }, option('', 'Choisir…'), c.options.map((o) => option(o, trouver(regles.etats, o)?.nom ?? o)));
+    li.append(el('span', {}, `${c.nom} : +${c.crans} cran de résistance`), liste);
+    synchro(() => {
+      const fait = resistancesDe(regles, fiche).aChoisir.find((x) => x.source === c.source && x.rang === c.rang);
+      poser(liste, fait?.choisi ?? '');
+      li.toggleAttribute('data-a-choisir', !fait?.fait);
+    });
+    return li;
+  }));
   const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
   const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
     + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
@@ -1169,10 +1187,10 @@ function construireEntrainement() {
 /** Pourquoi un bonus d'acquis écrit dans un don ou l'armure n'est pas compté (lib/acquis-texte.mjs, décision R104 ; questions de docs/sql/a-valider.md). */
 const RAISONS_DE_L_ACQUIS = {
   situation: 'selon la situation (à compter au moment du jet)',
-  arme_choisie: '« l’arme choisie » : laquelle ? (question Q22)',
+  arme_choisie: '« l’arme choisie » : aucune maîtrise d’arme au choix dont la fiche sache lire les armes pour ce don (décision R119 : celle de la classe du don ; un don de race ou une armure n’en a pas)',
   mj: 'à voir avec le MJ (décision R123 : un cas très particulier de la Ruse)',
   sans_artisanat: 'sans métier, pas de compétence d’artisanat (décision R123)',
-  inconnue: 'aucune compétence nommée (question Q27)',
+  inconnue: 'aucune compétence nommée',
   element: 'l’armure transformée par un élément perd ses bonus d’origine (décision R99)',
 };
 
@@ -1186,9 +1204,42 @@ function construireAcquisAChoisir() {
   const listeDesCompetences = (attributs, exclues = new Set()) => el('select', attributs, option('', 'Choisir…'),
     regles.caracteristiques.map((k) => el('optgroup', { label: k.nom },
       regles.competences.filter((c) => c.caracteristique_id === k.id && !exclues.has(c.id)).map((c) => option(c.id, c.nom)))));
-  const cle = JSON.stringify(choix.map((c) => [c.source, c.rang, c.options ?? c.parts.map((x) => x.competence_id)]));
+  // (un choix d'arme : ses familles seulement, la liste de ses compétences est refaite en place, sans perdre le focus du clavier)
+  const cle = JSON.stringify(choix.map((c) => [c.source, c.rang, c.arme ? ['arme', c.familles] : c.options ?? c.parts.map((x) => x.competence_id)]));
   reconstruire($('acquis-choix'), cle, () => choix.map((c) => {
     const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.acquis(c.source, c.rang) } });
+    if (c.arme) {
+      // « de la compétence de l'arme choisie » (décision R119) : l'arme, une des familles de la maîtrise au choix de la classe, puis sa compétence quand ses
+      // armes en donnent plusieurs (R48 ; Arc : Arc ou Arme légère, R126) ; une seule : déduite, la liste la montre sans choix. Une autre arme garde la
+      // compétence déjà choisie quand elle l'offre aussi.
+      const actuel = () => acquisDesDons(regles, fiche).choix.find((x) => x.source === c.source && x.rang === c.rang) ?? c;
+      const famille = el('select', {
+        'aria-label': `${c.nom} : +${c.valeur} %, l’arme de la maîtrise au choix`,
+        onchange: (ev) => { Object.assign(fiche, acquisApresChoixDArme(regles, fiche, c.source, c.rang, ev.target.value || null, actuel().choisi)); changer(); },
+      }, option('', 'Arme…'), c.familles.map((id) => option(id, trouver(regles.familles_armes, id)?.nom ?? id)));
+      const competence = el('select', {
+        'aria-label': `${c.nom} : +${c.valeur} %, la compétence de l’arme`,
+        onchange: (ev) => { Object.assign(fiche, acquisApresChoixDArme(regles, fiche, c.source, c.rang, actuel().arme_famille_id, ev.target.value || null)); changer(); },
+      });
+      const aide = el('small', { class: 'acquis-choix__reste', 'aria-live': 'polite' }, 'Une arme choisie sans sa compétence n’est pas enregistrée.');
+      li.append(el('span', {}, `${c.nom} : +${c.valeur} % de la compétence de l’arme choisie`), el('div', { class: 'acquis-choix__part' }, famille, competence), aide);
+      synchro(() => {
+        const x = actuel();
+        // les compétences de l'arme choisie, refaites seulement quand elles changent (la liste garde le focus du clavier)
+        const options = JSON.stringify(x.options);
+        if (competence.dataset.options !== options) {
+          competence.dataset.options = options;
+          competence.replaceChildren(option('', 'Compétence…'), ...x.options.map((o) => option(o, trouver(regles.competences, o)?.nom ?? o)));
+        }
+        poser(famille, x.arme_famille_id ?? '');
+        poser(competence, x.choisi ?? '');
+        competence.hidden = !x.arme_famille_id;
+        competence.disabled = x.options.length < 2;
+        aide.hidden = !x.arme_famille_id || x.fait;
+        li.toggleAttribute('data-a-choisir', !x.fait);
+      });
+      return li;
+    }
     if (!c.repartition) {
       const groupe = c.sur ? ` (choix ${c.numero} sur ${c.sur})` : '';
       const liste = el('select', {
@@ -2752,6 +2803,8 @@ function aEnvoyer() {
   // l'entraînement (décision R104) : une compétence par ligne, ou un texte non vide ; rangées dans l'ordre ; les choix d'acquis des dons débloqués
   f.entrainements = entrainementsAEnregistrer(f);
   f.acquis_choix = acquisChoixValables(regles, f);
+  // la résistance au choix de la ligne du tableau de la race (décision R124) : celle de la race et de l'ethnie de la fiche, une de ses options
+  f.resistance_choix = resistanceChoixValables(regles, f);
   f.maitrises_armes = maitrisesValables(regles, f);
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);

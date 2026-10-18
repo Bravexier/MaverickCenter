@@ -162,7 +162,11 @@ abandonne.
   (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
   « Résistance à la magie du Sang », colonne « +1 cran de résistance » du Drakos —, dons de classe débloqués — « Augmente d'un cran la résistance à la magie
   innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une résistance
-  au choix ou aléatoire (Drakos Orange, Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Pas encore : les objets.
+  au choix ou aléatoire (Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Le Drakos orange (« Au choix parmi les
+  autres », décision R124) **choisit** son cran : une liste sous le tableau (surlignée, et dans le tiroir des choix tant qu'elle n'est pas faite) propose les
+  altérations des autres lignes du tableau « Écaille draconique », lues au build (`lib/fiche-regles.mjs`, `resistances.au_choix` de la ligne : Saignement à
+  Peur, 13, jamais écrites à la main), et le cran choisi compte (`resistancesDe`, `aChoisir`, `resistanceApresChoix` ; table `personnage_resistance_choix`,
+  migration 0069 ; un choix d'une autre ethnie part à l'enregistrement : `resistanceChoixValables`). Pas encore : les objets.
   Les résistances et faiblesses des combinaisons de deux magies (R85, vue `v_resistance_combinaison`) ne sont pas affichées : « Il seront dans leur onglet
   statistiques après qu'on ai finalisé toute la fiche de personnages. » ; pas dans la fiche : « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16) : la page
   Statistiques du site (E12, `feuille-de-route.md`).
@@ -181,10 +185,29 @@ abandonne.
   l'un grise la compétence de l'autre). « +5% à tout jet impliquant la Perception » (Fenrir) et « +5% à tout test d'Agilité » (Elfe forestier) sont un
   **bonus au jet** de chaque compétence de la caractéristique, compté dans le score, hors acquis et hors plafond (R122 : `jet`, `jetDetail`, en infobulle du
   score comme la posture) ; les « tests d'artisanat » du Nain de Londolor ouest et de l'Elfe noir Sang purifié s'ajoutent à la compétence d'artisanat du
-  métier (R123 : `artisanatDe`, `bonus`), et ne comptent pas sans métier. Un bonus que la phrase lie à une situation, à « l'arme choisie » (R119, à
-  venir), à la falsification de documents (au MJ : R123) ou à « 5% parmi les autres » n'est pas compté : listé sous « Bonus d'acquis non comptés », avec sa
-  raison (questions Q22, Q27 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est augmenté de +20 » (Mort-vivant) relève le plafond de chaque
-  compétence du Social (`plafondBonus`, question Q28).
+  métier (R123 : `artisanatDe`, `bonus`), et ne comptent pas sans métier. « +N% de la compétence de l'arme choisie » (Tueur Flétrisseur et Sicaire, Mage
+  Bleu Mage saphir), « de l'arme de départ* » (Mage Vert Mage émeraude et Mage jade) et « Arme à distance liée » (Barde Ménestrel) sont un **choix d'arme**
+  (décision R119) : d'abord la famille d'armes de la maîtrise au choix de la classe (la ligne `au_choix` de `classe_maitrise_arme`, une seule par classe :
+  `armeAuChoixDeLaClasse` ; les familles maîtrisables de sa catégorie, contact ou distance, `arme_famille.categorie`, R127 : Arc, Arbalète, Arme de jet et
+  Bombes pour le Mage Vert et le Barde, toutes pour le Tueur et le Mage Bleu ; sans celle de son « sauf » ; jamais ARME DE MONSTRES), puis la compétence,
+  déduite quand les armes de la famille n'en donnent qu'une (Arbalète), au choix sinon (`familles_armes[].competences`, lues au build dans
+  `arme.competence_brut`, R48 : Arme lourde ou Arme légère, l'Arc : Arc ou Arme légère, R126) ; deux listes dans « Acquis à choisir »
+  (`acquisApresChoixDArme`), gardées dans `personnage_acquis_choix` (`competence_id` et `arme_famille_id`) ; une arme sans compétence choisie ne
+  s'enregistre pas (une aide le dit sous les listes ; une autre arme garde la compétence choisie quand elle l'offre aussi). La fiche n'exige pas que la
+  maîtrise soit posée dans cette famille : R119 dit « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus », mais ne
+  dit pas ce qu'il advient d'un choix d'arme sans la maîtrise sur la fiche ; ne pas l'exiger est un **arbitrage de Claude, en attente de la question
+  Q45**. Le « sauf » d'une maîtrise au choix est lu par le nom du bandeau d'une famille, chaque nom séparé par « / », au singulier (« Masse » :
+  MASSE/MARTEAU ; « Épée » : ÉPÉES ; `lib/fiche-regles.mjs#famillesAuChoix`) : une **lecture à confirmer (question Q44)**, comme les « sauf » qu'elle ne
+  lit pas. Une classe sans maîtrise au choix lisible (aucune, plusieurs, ou un « sauf » qui ne nomme aucune famille par son bandeau : « Hast »,
+  « Bâton », « Arme jet », Q44) laisse le bonus non compté
+  (raison « arme choisie »). « 5% parmi les autres » du Drakos orange (décision R124) est un « X ou Y » parmi les compétences des autres lignes du
+  tableau « Écaille draconique » (Athlétisme à Sabotage, 14, lues au build), +5, indépendant du choix de sa résistance. Un bonus que la phrase lie à une
+  situation, ou dont le don pose la condition dans une autre phrase (« Doit être dans l'eau. » du Namazu, « Roi des Eaux » ; « (Rage) » en tête : décision
+  R128, « On ne fait que les calculs automatique pour ce qui se passe tout le temps »), un bonus à un jet ou à la réussite d'une situation (« Contre un seul
+  ennemi, Bonus de 5% à un jet de défense », « Augmente le prochain jet de défense de 5% après un tir », « (Rage) Augmente les jets de défense de +10% »…),
+  ou la falsification de documents (au MJ : R123) n'est pas compté : listé sous « Bonus d'acquis non comptés », avec sa raison. « Son acquis max en Social
+  est augmenté de +20 » (Mort-vivant, « Trompe-mort ») relève le plafond de chaque compétence du Social (`plafondBonus`, décision R125 : 25, le Social
+  verrouillé à 1 ; 30 avec le Feu ou l'Eau inné).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
   exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
   personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
@@ -446,7 +469,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   compétences de l'entraînement (R104), « Nom points » jointes par « | » (« Magie 2 | Concentration 10 », la forme de la fiche auto ; une case relue, sa
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
   une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition ; les deux choix du Templier, R121, deux lignes dans
-  l'ordre, une compétence répétée n'est pas reprise) ; le nom et le type du modèle restent. Les dés de maîtrise
+  l'ordre, une compétence répétée n'est pas reprise ; un choix d'arme, R119, la famille entre parenthèses : « Flétrisseur (Tueur) : Arme Légère
+  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes), et chaque résistance au choix d'une
+  ligne du tableau de la race une ligne « Résistance au choix : <ligne> : <altération> » (« Écaille draconique : Poison », R124, relue si l'altération est
+  une option de la ligne de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
@@ -589,9 +615,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   un texte libre de la fiche (R71, remplacée le 2026-10-17 par des lignes : R104) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
-  deux ; maximum de solidité d'une arme élémentaire (Q12), et les bonus d'acquis des dons non comptés :
-  « l'arme choisie » (Q22), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non
-  comptés (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
+  deux ; maximum de solidité d'une arme élémentaire (Q12) : [`sql/a-valider.md`](sql/a-valider.md). Les bonus d'acquis des dons que la fiche ne comptait
+  pas (Q22 à Q31) sont tranchés par les décisions R119 à R128 (« l'arme choisie », le Drakos orange, le plafond du Mort-vivant, rien à compter à la main).
 
 ## La page `/personnages/`
 
@@ -656,7 +681,8 @@ pas, et la note datée est le seul signal.
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
 | `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
 | `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
-| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don, `rang` = le rang du choix dans son texte ; l'arme de la maîtrise au choix de la classe (`arme_famille_id`, décision R119, migration 0067), que la page ne demande pas encore (deux questions attendent le propriétaire) : vide ; posée ailleurs (l'API), gardée par le service, et par la page tant que la compétence du choix ne change pas (`acquisChoixValables`) ; la fiche en tableur ne l'écrit pas |
+| `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don (pour la ligne de l'ethnie du tableau de la race, `<race>#tableau:<ethnie>` : « 5% parmi les autres » du Drakos orange, R124), `rang` = le rang du choix dans son texte ; pour « de la compétence de l'arme choisie » (décision R119, migration 0067), la famille d'armes de la maîtrise au choix de la classe (`arme_famille_id`) et la compétence qui reçoit le bonus ; posée avec un autre choix (l'API), l'arme est gardée tant que la compétence du choix ne change pas (`acquisChoixValables`) ; la fiche en tableur l'écrit entre parenthèses dans sa ligne « Acquis au choix » |
+| `personnage_resistance_choix` | La résistance au choix d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069) : `source` (celle du choix d'acquis de la ligne), `rang` (1 = le premier) et l'altération d'état retenue (`etat_id`), +1 cran ; une option des autres lignes du tableau (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |

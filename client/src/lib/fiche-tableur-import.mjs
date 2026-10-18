@@ -49,7 +49,7 @@
 
 import { ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
 import {
-  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
+  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, resistanceChoixValables, resistancesDe, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
   armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver,
@@ -157,8 +157,8 @@ const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.
 
 /**
  * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
- * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les acquis au choix
- * et le sort préparé (un seul par fiche, mais l'import dit pourquoi le second ne l'est pas : décision R115) ;
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les acquis au choix,
+ * les résistances au choix et le sort préparé (un seul par fiche, mais l'import dit pourquoi le second ne l'est pas : décision R115) ;
  * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
  * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
  * d'information (refaites à chaque export) sont ignorées. Le dernier marqueur : des notes collées d'une autre fiche peuvent en porter un.
@@ -185,7 +185,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'acquisChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'acquisChoix', 'resistanceChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -786,19 +786,31 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   ].map((l, i) => ({ rang: i + 1, ...l }));
 
   // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y », « pour les compétences
-  // d'arme » (R120) : une de ses options), « <don> : Arc 6, Calme 4 » (« à répartir au choix ») ; un don qui a deux choix est relu dans l'ordre de ses
+  // d'arme » (R120) : une de ses options), « <don> : Arc 6, Calme 4 » (« à répartir au choix »), « <don> : <compétence> (<famille d'armes>) » (l'arme
+  // choisie, R119 : une famille de la maîtrise au choix de la classe, une compétence de ses armes) ; un don qui a deux choix est relu dans l'ordre de ses
   // lignes (« choisir 2 sur les 3 » (R121) : une ligne par compétence, deux compétences différentes)
   f.acquis_choix = [];
   const choixDesDons = acquisDesDons(regles, f).choix;
   const competenceNommee = (nom) => regles.competences.find((k) => cle(k.nom) === cle(nom)) ?? null;
+  /** « Arme Légère (DAGUES) » d'un choix d'arme : { competence_id, arme_famille_id } quand la famille est une des siennes et la compétence une de ses armes. */
+  const armeNommee = (choix, valeur) => {
+    const m = /^(.*\S)\s+\(([^()]+)\)$/.exec(valeur);
+    const famille = m && regles.familles_armes.find((x) => cle(x.nom) === cle(m[2]) && choix.familles.includes(x.id));
+    const k = famille && competenceNommee(m[1]);
+    return k && famille.competences.includes(k.id) ? { competence_id: k.id, arme_famille_id: famille.id } : null;
+  };
   for (const ligne of notee('acquisChoix')) {
     const coupe = ligne.lastIndexOf(' : ');
     const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
     const quoi = `Acquis au choix « ${ligne} »`;
     const libres = choixDesDons.filter((c) => cle(c.nom) === cle(nom) && !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
-    const choix = libres.find((c) => c.repartition || c.options.includes(competenceNommee(valeur)?.id)) ?? null;
+    const choix = libres.find((c) => c.repartition || (c.arme ? armeNommee(c, valeur) : c.options.includes(competenceNommee(valeur)?.id))) ?? null;
     if (!choix) {
       perdu(`${quoi} : ${libres.length ? 'pas une option de ce don' : 'aucun choix d’acquis de ce nom dans les dons de la fiche'}`);
+      continue;
+    }
+    if (choix.arme) {
+      f.acquis_choix.push({ source: choix.source, rang: choix.rang, valeur: null, ...armeNommee(choix, valeur) });
       continue;
     }
     if (!choix.repartition) {
@@ -822,6 +834,25 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const relus = f.acquis_choix.length;
   f.acquis_choix = acquisChoixValables(regles, f);
   if (f.acquis_choix.length < relus) perdu('Acquis au choix : des points répartis au-delà du bonus de leur don, retirés');
+
+  // ---- la résistance au choix de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124), lignes « Résistance au
+  // choix » de la note : « <ligne> : <altération> », une des options de la ligne de la race et de l'ethnie de la fiche
+  f.resistance_choix = [];
+  const resistancesAChoisir = resistancesDe(regles, f, { avecLaPosture: false }).aChoisir;
+  for (const ligne of notee('resistanceChoix')) {
+    const coupe = ligne.lastIndexOf(' : ');
+    const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
+    const quoi = `Résistance au choix « ${ligne} »`;
+    const libres = resistancesAChoisir.filter((c) => cle(c.nom) === cle(nom) && !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const etat = (regles.etats ?? []).find((e) => cle(e.nom) === cle(valeur));
+    const choix = libres.find((c) => etat && c.options.includes(etat.id)) ?? null;
+    if (!choix) {
+      perdu(`${quoi} : ${libres.length ? 'pas une option de cette ligne' : 'aucune résistance au choix de ce nom pour la race et l’ethnie de la fiche'}`);
+      continue;
+    }
+    f.resistance_choix.push({ source: choix.source, rang: choix.rang, etat_id: etat.id });
+  }
+  f.resistance_choix = resistanceChoixValables(regles, f);
 
   // ---- compétences : naturel et acquis écrits (entiers)
   const caseDeCompetence = new Map(CASES_COMPETENCES.map((c) => [c.id, c]));

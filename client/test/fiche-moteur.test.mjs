@@ -941,11 +941,12 @@ test('résistances des dons : ethnie hybride (sa magie innée et son altération
   const foudre = resistancesDe(regles, ficheConforme({ race_id: 'races/mort-vivant', ethnie_id: 'races/mort-vivant#ethnie:mort-vivant-foudre', magie_innee_id: 'magies/magie-de-la-foudre' }));
   assert.equal(cible(foudre, 'Poison').crans, -1);
   assert.equal(palier(foudre, 'Poison'), 'immunite');
-  // Drakos Rouge : « +1 cran de résistance » Brûlure (Feu inné : 1 + 1) ; Drakos Orange : au choix, pas compté
+  // Drakos Rouge : « +1 cran de résistance » Brûlure (Feu inné : 1 + 1) ; Drakos Orange : au choix parmi les autres lignes (décision R124), compté une
+  // fois choisi (test/fiche-arme-choisie.test.mjs)
   const rouge = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-rouge' }));
   assert.equal(cible(rouge, 'Brûlure').crans, 2);
   const orange = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-orange', magie_innee_id: 'magies/potentiel-illimite' }));
-  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles), orange.auChoix], [[], ['Écaille draconique']]);
+  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles), orange.auChoix, orange.aChoisir.map((c) => [c.nom, c.fait])], [[], [], [['Écaille draconique', false]]]);
   // Clerc, don de classe de niveau 1 « Proche » : la magie innée (Feu) et la Brûlure gagnent un cran
   const clerc = resistancesDe(regles, ficheConforme({ classes: [{ rang: 1, classe_id: 'classes/clerc', specialite_id: null }] }));
   assert.deepEqual([cible(clerc, 'Feu').crans, cible(clerc, 'Brûlure').crans, cible(clerc, 'Glace').crans], [2, 2, 1]);

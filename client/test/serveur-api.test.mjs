@@ -10,7 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { DEPART_DES_COLONNES_AJOUTEES, PAGE_D_AVANT, enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches } from '../serveur/fiches.mjs';
+import { DEPART_DES_COLONNES_AJOUTEES, PAGE_D_AVANT, enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches, ordreDe } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_RETIREES, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
@@ -898,7 +898,7 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id, personnage_sort.rang'), 'en double (rang)');
 });
 
-test('arme choisie d’un choix d’acquis (décision R119, migration 0067) : enregistrée et relue (la page la laisse vide) ; jamais avec une répartition, une seule par choix', () => {
+test('arme choisie d’un choix d’acquis (décision R119, migration 0067) : enregistrée et relue (la page la pose pour un choix d’arme) ; jamais avec une répartition, une seule par choix', () => {
   const choix = { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'dagues' };
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Lame grise'), acquis_choix: [choix] });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
@@ -924,14 +924,14 @@ test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction 
   const vueDAvant = vue.replace(/\n  UNION ALL\n  -- Entraînement \(décision R104\)[\s\S]*?'entrainement\.bonus_max_pct'\)/, '');
   assert.notEqual(vueDAvant, vue);
   ancienne.exec(`DROP VIEW v_personnage_controle; ${vueDAvant};
-    DROP TABLE personnage_entrainement; DROP TABLE personnage_acquis_choix;
+    DROP TABLE personnage_entrainement; DROP TABLE personnage_acquis_choix; DROP TABLE personnage_resistance_choix;
     ALTER TABLE personnage ADD COLUMN entrainement TEXT;
     ALTER TABLE personnage_competence ADD COLUMN acquis INTEGER NOT NULL DEFAULT 0 CHECK (acquis >= 0);`);
   ancienne.close();
   const base = ouvrirBaseVivante(avant);
   try {
-    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0062'), entrainements: [], acquis_choix: [] });
-    assert.deepEqual([cree.personnage.entrainements, cree.personnage.acquis_choix], [[], []], 'lues vides');
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0062'), entrainements: [], acquis_choix: [], resistance_choix: [] });
+    assert.deepEqual([cree.personnage.entrainements, cree.personnage.acquis_choix, cree.personnage.resistance_choix], [[], [], []], 'lues vides');
     assert.deepEqual(base.prepare('SELECT DISTINCT acquis FROM personnage_competence WHERE personnage_id = ?').all(cree.personnage.id).map((l) => l.acquis), [0]);
     const lue = lireFiche(base, cree.personnage.id);
     for (const [cle, liste] of [['entrainements', [{ rang: 1, competence_id: 'arc', valeur: 2, texte: null }]], ['acquis_choix', [{ source: 'x', rang: 1, competence_id: 'arc', valeur: null }]]]) {
@@ -969,6 +969,94 @@ test('repli sur une base vivante d’avant la migration 0066 (sa reconstruction 
     const lue = lireFiche(base, cree.personnage.id);
     assert.throws(() => enregistrerFiche(base, { version: lue.version, nm_mj: 2 }, { id: lue.id }), (e) => {
       assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « nm_mj »']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('résistance au choix (décision R124, migration 0069) : enregistrée et relue ; une altération inconnue, deux pour un même choix : refusées, rien n’est écrit', () => {
+  const choix = { source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' };
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Écaille orange'), resistance_choix: [choix] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.resistance_choix, [choix]);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  for (const [liste, motif] of [
+    [[{ ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:inconnue' }], /^resistance_choix : « etat_id » = « guide\/liste-des-alterations-d-etat#etat:inconnue » n’existe pas dans les règles/],
+    [[choix, { ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' }], /^resistance_choix\[1\] : en double \(source, rang\)$/],
+    [[{ ...choix, rang: 0 }], /^resistance_choix\[0\] : valeur hors des bornes/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, resistance_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  // un envoi sans la liste ne la touche pas
+  const m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, nom: 'Écaille orange (bis)' });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.resistance_choix, [choix]);
+});
+
+test('ordre de lecture des listes : un ordre total — le rang, puis le reste de la clé (choix d’acquis : source, compétence ; résistance au choix : source) ; une fiche relue garde sa version, quel que soit l’ordre d’envoi', () => {
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-ordre') });
+  const base = ouvrirBaseVivante(chemin);
+  try {
+    // l'ordre de chaque liste de la fiche : le rang d'abord quand elle en a un, puis les autres colonnes de sa clé
+    assert.equal(ordreDe(base, 'personnage_acquis_choix'), '"rang", "source", "competence_id"');
+    assert.equal(ordreDe(base, 'personnage_resistance_choix'), '"rang", "source"');
+    assert.equal(ordreDe(base, 'personnage_classe'), '"rang"');
+    assert.equal(ordreDe(base, 'personnage_maitrise_arme'), '"arme_famille_id"');
+    for (const table of Object.values(PARTIES_DE_FICHE)) {
+      const cols = base.prepare(`PRAGMA table_info("${table}")`).all();
+      const cle = cols.filter((c) => c.pk && c.name !== 'personnage_id').map((c) => `"${c.name}"`);
+      const rang = cols.some((c) => c.name === 'rang') ? ['"rang"'] : [];
+      const ordre = ordreDe(base, table).split(', ');
+      assert.deepEqual(ordre.slice(0, rang.length), rang, `${table} : le rang d'abord`);
+      assert.deepEqual([...new Set(ordre)].sort(), [...new Set([...rang, ...cle])].sort(), `${table} : toutes les colonnes de la clé (le rang en plus), aucune autre`);
+    }
+    // des rangs à égalité, envoyés dans le désordre : relus dans l'ordre (rang, source, compétence)
+    const POISON = 'guide/liste-des-alterations-d-etat#etat:poison';
+    const GEL = 'guide/liste-des-alterations-d-etat#etat:gel';
+    const acquis_choix = [
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4, arme_famille_id: null },
+      { source: 'capacites/tueur-fletrisseur', rang: 2, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'dagues' },
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6, arme_famille_id: null },
+      { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-lourde', valeur: null, arme_famille_id: 'epees' },
+    ];
+    const resistance_choix = [{ source: 'z-source', rang: 1, etat_id: GEL }, { source: 'a-source', rang: 2, etat_id: POISON }, { source: 'a-source', rang: 1, etat_id: POISON }];
+    const cree = enregistrerFiche(base, { ...ficheConforme('Ordre'), acquis_choix, resistance_choix });
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.deepEqual(lue.acquis_choix.map((x) => [x.rang, x.source, x.competence_id]), [
+      [1, 'capacites/tueur-fletrisseur', 'arme-lourde'], [1, 'races/humain#don:humain-central', 'arc'], [1, 'races/humain#don:humain-central', 'calme'],
+      [2, 'capacites/tueur-fletrisseur', 'arme-legere'],
+    ]);
+    assert.deepEqual(lue.resistance_choix.map((x) => [x.rang, x.source]), [[1, 'a-source'], [1, 'z-source'], [2, 'a-source']]);
+    // les mêmes lignes envoyées dans un autre ordre : la même fiche, la même version
+    const autre = enregistrerFiche(base, { version: lue.version, acquis_choix: [...acquis_choix].reverse(), resistance_choix: [...resistance_choix].reverse() }, { id: lue.id });
+    assert.deepEqual([autre.personnage.acquis_choix, autre.personnage.resistance_choix], [lue.acquis_choix, lue.resistance_choix]);
+    assert.equal(lireFiche(base, lue.id).version, lue.version);
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0069 (sa reconstruction a échoué) : sans la table des résistances au choix, la fiche se lit avec une liste vide, s’enregistre, et une liste non vide est refusée', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0069') });
+  const ancienne = new DatabaseSync(avant);
+  ancienne.exec('DROP TABLE personnage_resistance_choix;');
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0069'), resistance_choix: [] });
+    assert.deepEqual(cree.personnage.resistance_choix, [], 'lue vide');
+    const lue = lireFiche(base, cree.personnage.id);
+    const liste = [{ source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' }];
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, resistance_choix: liste }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['resistance_choix : pas encore dans cette base, ses lignes seraient perdues']]);
       return true;
     });
     assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
