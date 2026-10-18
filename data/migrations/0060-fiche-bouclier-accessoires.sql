@@ -7,8 +7,9 @@
 --     personnage_bouclier_materiau (jusqu'à trois matériaux et leurs quantités) disparaît : sa ligne du premier rang donne la matière ; la base
 --     vivante fait la même conversion à sa reconstruction et note dans la fiche, datée, chaque autre matériau qu'elle ne garde pas
 --     (serveur/base-vivante.mjs, CONVERSIONS ; TABLES_RETIREES de src/lib/fiche-format.mjs). La règle bouclier_quantite de v_personnage_controle part
---     avec la table ; bouclier_manquant (une matière, une amélioration ou une solidité sans forme) et bouclier_matiere_manquante (une forme sans
---     matière) la remplacent, et amelioration_cible contrôle aussi l'amélioration du bouclier.
+--     avec la table ; bouclier_manquant (une matière, une amélioration ou une solidité sans forme), bouclier_matiere_manquante (une forme sans
+--     matière) et bouclier_inconnu (une forme et une matière que la liste des boucliers n'écrit pas) la remplacent, et amelioration_cible contrôle
+--     aussi l'amélioration du bouclier.
 --   * Accessoires (décision R97 : « Il faudra tirer les lignes Ceinture et Autre des accessoires. De plus la colonne nom ne sert à rien. Les effets
 --     hors table non plus. ») : personnage_accessoire n'a plus que les six emplacements Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, ni `nom` ni
 --     `texte`, et son effet est toujours un effet de la table (accessoire_effet_id NOT NULL). Une ligne que la table refuse désormais (emplacement
@@ -47,7 +48,7 @@ INSERT INTO personnage_accessoire_0060 (personnage_id, emplacement, accessoire_e
 DROP TABLE personnage_accessoire;
 ALTER TABLE personnage_accessoire_0060 RENAME TO personnage_accessoire;
 
--- v_personnage_controle : copiée de data/schema.sql (règles bouclier_manquant et bouclier_matiere_manquante à la place de bouclier_quantite ;
+-- v_personnage_controle : copiée de data/schema.sql (règles bouclier_manquant, bouclier_matiere_manquante et bouclier_inconnu à la place de bouclier_quantite ;
 -- amelioration_cible : l'amélioration du bouclier)
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
@@ -267,6 +268,12 @@ CREATE VIEW v_personnage_controle AS
   SELECT p.id, 'bouclier_matiere_manquante', p.bouclier_classe_id
   FROM personnage p
   WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NULL
+  UNION ALL
+  -- la forme et la matière désignent un bouclier de la liste (table bouclier) : un couple que l'onglet Boucliers n'écrit pas est signalé
+  SELECT p.id, 'bouclier_inconnu', p.bouclier_classe_id || ' + ' || p.bouclier_materiau_id
+  FROM personnage p
+  WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = p.bouclier_classe_id AND b.materiau_id = p.bouclier_materiau_id)
   UNION ALL
   -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
   SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id

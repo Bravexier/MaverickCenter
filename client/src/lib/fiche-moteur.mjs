@@ -831,13 +831,18 @@ export function effetsDAccessoireProposes(regles, garder = []) {
 
 /**
  * L'effet « Compétence X » de la caractéristique `caracteristiqueId` dont la fourchette contient `valeur` (décision R97 : la valeur tirée donne le
- * niveau, comme dans le générateur de la page « Accessoires ») ; sans valeur dans une fourchette, le premier niveau. null si la caractéristique n'en a pas.
+ * niveau, comme dans le générateur de la page « Accessoires », qui borne la valeur aux plages écrites) ; sans valeur, le premier niveau. null si la
+ * caractéristique n'en a pas.
  */
 export function effetDeCompetence(regles, caracteristiqueId, valeur = null) {
   const niveaux = (regles.accessoires ?? []).filter((a) => a.propriete === 'competence' && a.caracteristique_id === caracteristiqueId)
     .sort((a, b) => entier(a.min) - entier(b.min));
-  const v = valeur === null || valeur === undefined || valeur === '' ? null : entier(valeur);
-  return (v === null ? null : niveaux.find((a) => v >= a.min && v <= a.max)) ?? niveaux[0] ?? null;
+  if (!niveaux.length) return null;
+  const v = valeur === null || valeur === undefined || String(valeur).trim() === '' || !Number.isFinite(Number(valeur)) ? null : entier(valeur);
+  if (v === null) return niveaux[0];
+  // bornée aux plages écrites, comme le générateur (lib/accessoires-generateur.mjs#bonusBorne)
+  const borne = Math.min(Math.max(...niveaux.map((a) => entier(a.max))), Math.max(entier(niveaux[0].min), v));
+  return niveaux.find((a) => borne >= a.min && borne <= a.max) ?? niveaux[0];
 }
 
 /** La valeur d'un accessoire porté dans la liste des effets (effetsDAccessoireProposes) : la clé de sa caractéristique pour une « Compétence X ». */
@@ -1713,11 +1718,12 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche))
  * “Parade partielle” »). L'armure : l'AP contre un dégât physique, l'AM contre une magie (« AP contre une arme, AM contre un sort »). Contre un dégât
  * physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital d'AP ») ;
  * réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4). Contre une magie,
- * le palier de résistance du personnage à cette magie multiplie le résultat (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). Un don
- * qui divise les dégâts n'est pas compté (il dépend de la situation). null sans type connu.
+ * le palier de résistance du personnage à cette magie multiplie le résultat (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). `don` :
+ * l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans
+ * type connu.
  * { recus, etapes: [{ texte, valeur }], armure, type }
  */
-export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits = false, parade = false } = {}) {
+export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits = false, parade = false, don = false } = {}) {
   const t = typesDeDegats(regles).find((x) => x.id === type);
   if (!t) return null;
   const d = defenseDe(regles, fiche);
@@ -1745,6 +1751,10 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
     reste /= 2;
     etapes.push({ texte: 'Défense partielle : ÷ 2', valeur: reste });
   }
+  if (don) {
+    reste /= 2;
+    etapes.push({ texte: 'Don qui divise les dégâts : ÷ 2', valeur: reste });
+  }
   if (!t.physique) {
     const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
     const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
@@ -1760,7 +1770,8 @@ export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits 
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
  * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
  * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —
- * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base) — et ceux des
+ * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base ; avec un
+ * élément, ceux de la composition et de l'amélioration sont remplacés : décision R99, rendus dans `nonComptes`, raison 'element') — et ceux des
  * dons passifs acquis qui visent cette arme (lib/degats-texte.mjs : sa famille, ses types de dégâts, les armes de corps à corps ou toutes les armes ; une
  * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don). Un bonus de don qui ne se compte pas (situation, au choix, armes visées non
  * écrites…) est rendu dans `nonComptes`. null sans arme. { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
@@ -1777,15 +1788,22 @@ export function degatsDArme(regles, fiche, rang) {
   const bonus = [];
   const ajouter = (nom, valeur) => { if (valeur) bonus.push({ nom, valeur }); };
   ajouter(arme.nom, arme.bonus_degats);
-  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
-  ajouter(materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats);
-  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
-  ajouter(amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats);
-  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
-  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
-  const ameliorationElement = trouver(regles.ameliorations, ligne.amelioration_elementaire_id);
-  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
   const nonComptes = [];
+  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
+  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
+  // décision R99 (« L'élément remplace tout ») : avec un élément, les bonus du matériau et de l'amélioration sont remplacés par ceux de l'élément
+  const origine = [
+    [materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats],
+    [amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats],
+  ];
+  for (const [nom, valeur] of origine) {
+    if (element && valeur) nonComptes.push({ nom, valeur, raison: 'element' });
+    else ajouter(nom, valeur);
+  }
+  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
+  const ameliorationElement = element ? trouver(regles.ameliorations, ligne.amelioration_elementaire_id) : null;
+  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
   for (const c of donsAcquis(regles, fiche)) {
     for (const d of c.dons) {
       const b = d.degats;

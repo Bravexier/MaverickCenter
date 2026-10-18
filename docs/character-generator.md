@@ -226,14 +226,19 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
 - **Bouclier** (décision R96 : « Forme + matière », comme l'onglet Boucliers) : la forme, la matière et l'amélioration (+1 à +5) ; le bouclier de la liste
   donne l'AP et l'AM (plus l'AP du niveau d'amélioration, R76) et le poids (R92 : tuile dans la couleur de l'onglet, en rouge quand la Force est sous son
-  minimum) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé ») au maximum
-  (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la liste).
+  minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
+  au maximum (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la
+  liste) ; un bouclier cassé garde son AP et son AM (rien ne dit ce qu'il perd : question Q14). Une forme et une matière que la liste n'écrit pas sont
+  signalées (règle `bouclier_inconnu`).
 - **Défense et dégâts reçus** (décision R98), en tête du bloc Armure : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
-  classes magiques, accessoires, armure portée et son amélioration ; avec un élément, l'armure élémentaire et son amélioration à la place), le détail en
+  classes magiques, accessoires, armure portée et son amélioration ; avec un élément, l'armure élémentaire et son amélioration à la place : R99), le détail en
   infobulle, le bouclier à part (« pour qu'ils soient comptés, ça implique une “Parade partielle” ») ; puis les **dégâts reçus** (`degatsRecus`) : dégâts
   entrants, type (Estoc, Taille, Frappe, ou l'une des quatorze magies), « Dégâts réduits » (esquive ou parade partielle, ÷ 2 après l'armure), « Au
-  bouclier » ; la formule du guide (armure, défense partielle, palier de résistance à la magie, arrondi à l'inférieur), l'armure portée appliquant sa
-  résistance (AP × 2) ou sa faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet ; les étapes en infobulle, rien d'enregistré.
+  bouclier », « Don ÷ 2 » (l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher : la fiche ne lit pas ces dons) ; la formule du guide
+  (armure, défense partielle, don, palier de résistance à la magie, arrondi à l'inférieur), l'armure portée appliquant sa résistance (AP × 2) ou sa
+  faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec un élément : R99) ; les étapes en infobulle, rien d'enregistré.
+- **Arme à pièce élémentaire** (décision R99) : les dés restent ; les bonus de dégâts du matériau et de l'amélioration sont remplacés par ceux de
+  l'élément et de son amélioration (`degatsDArme` : ils passent dans « Non comptés », « remplacé par l'élément »).
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) : elles signalent, elles n'empêchent jamais d'enregistrer, et toute fiche est contrôlée, même inachevée (une fiche n'a
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
@@ -440,7 +445,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
-  deux ; maximum de solidité d'une arme élémentaire (Q12) et « Vieille Branche » du Mage Vert (Q13) : [`sql/a-valider.md`](sql/a-valider.md).
+  deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13) et ce que perd une armure ou un bouclier cassé (Q14) :
+  [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 

@@ -427,6 +427,12 @@ test('équipement : bouclier forme et matière (R96), améliorations du bon genr
   assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_matiere_manquante', detail: 'targe' }], 'une forme sans matière');
   db.prepare("UPDATE personnage SET bouclier_materiau_id = ?, bouclier_solidite = 0 WHERE id = 'equipement'").run(m1);
   assert.deepEqual(controle('equipement'), []);
+  // un couple forme + matière que la liste des boucliers n'écrit pas (la base les a tous : db:check)
+  db.exec('SAVEPOINT bouclier_retire');
+  db.prepare("DELETE FROM bouclier WHERE classe_id = 'targe' AND materiau_id = ?").run(m1);
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_inconnu', detail: `targe + ${m1}` }]);
+  db.exec('ROLLBACK TO bouclier_retire; RELEASE bouclier_retire');
+  assert.deepEqual(controle('equipement'), []);
   db.prepare("UPDATE personnage SET bouclier_classe_id = NULL WHERE id = 'equipement'").run();
   assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_manquant', detail: m1 }], 'une matière sans forme');
   const amelioBouclier = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'bouclier' LIMIT 1").get().id;

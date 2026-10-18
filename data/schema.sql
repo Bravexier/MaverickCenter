@@ -4391,6 +4391,12 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p
   WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NULL
   UNION ALL
+  -- la forme et la matière désignent un bouclier de la liste (table bouclier) : un couple que l'onglet Boucliers n'écrit pas est signalé
+  SELECT p.id, 'bouclier_inconnu', p.bouclier_classe_id || ' + ' || p.bouclier_materiau_id
+  FROM personnage p
+  WHERE p.bouclier_classe_id IS NOT NULL AND p.bouclier_materiau_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = p.bouclier_classe_id AND b.materiau_id = p.bouclier_materiau_id)
+  UNION ALL
   -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
   SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id
   FROM personnage_maitrise_arme pm JOIN arme_famille f ON f.id = pm.arme_famille_id

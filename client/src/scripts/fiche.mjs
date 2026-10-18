@@ -1742,14 +1742,14 @@ function construireEquipement() {
 
 // ------------------------------------------------------------------ défense et dégâts reçus (décision R98)
 /** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur). */
-const degatsEnCours = { entrants: '', type: 'estoc', reduits: false, parade: false };
+const degatsEnCours = { entrants: '', type: 'estoc', reduits: false, parade: false, don: false };
 
 /**
  * La défense du personnage (demande du propriétaire du 2026-10-17 : « dans l'onglet Armure avoir la valeur totale d'AP et d'AM ») : l'AP et l'AM totaux
  * (defenseDe : base, accessoires, armure portée), le détail en infobulle, et ceux du bouclier à part (comptés en parade partielle) ; puis les dégâts
  * reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à cocher (dégâts
- * réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies), les étapes du calcul
- * en infobulle.
+ * réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce calcul devra
+ * inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en infobulle.
  */
 function construireDefense() {
   // un réglage du calcul ne change pas la fiche : seules les synchronisations de ce bloc sont refaites
@@ -1773,6 +1773,7 @@ function construireDefense() {
     const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
     const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
     const paradeLabel = el('label', { class: 'fiche-coche', title: 'La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure' }, parade, 'Au bouclier');
+    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
     const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
     synchro(() => {
       const d = defenseDe(regles, fiche, calcul.attributs);
@@ -1788,10 +1789,11 @@ function construireDefense() {
       if (document.activeElement !== entrants) poser(entrants, degatsEnCours.entrants);
       poser(reduits, degatsEnCours.reduits);
       poser(parade, degatsEnCours.parade);
+      poser(don, degatsEnCours.don);
       paradeLabel.hidden = !d.bouclier;
       parade.disabled = !degatsEnCours.reduits;
       const r = degatsEnCours.entrants === '' ? null
-        : degatsRecus(regles, fiche, { entrants: degatsEnCours.entrants, type: degatsEnCours.type, reduits: degatsEnCours.reduits, parade: degatsEnCours.parade });
+        : degatsRecus(regles, fiche, degatsEnCours);
       recus.textContent = r ? `${r.recus} reçus` : '—';
       infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n') : '');
     });
@@ -1801,7 +1803,9 @@ function construireDefense() {
       el('div', { class: 'defense__degats', role: 'group', 'aria-label': 'Dégâts reçus' },
         el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type,
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
-        paradeLabel, recus),
+        paradeLabel,
+        el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
+        recus),
     ];
   });
 }

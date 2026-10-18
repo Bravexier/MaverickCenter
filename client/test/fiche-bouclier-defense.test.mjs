@@ -115,6 +115,9 @@ test('degatsRecus (R98) : la formule du guide (« Les dégâts ») — armure, d
   const parade = M.degatsRecus(regles, b, { entrants: 30, type: 'taille', reduits: true, parade: true }).recus;
   assert.equal(sans - parade, Math.floor(30 / 2) - Math.floor(Math.max(0, 30 - M.bouclierDe(regles, b).ap) / 2));
   assert.equal(M.degatsRecus(regles, b, { entrants: 30, type: 'taille', parade: true }).recus, 30, 'sans défense partielle, pas de bouclier');
+  // « ÷ 2 si un don divise les dégâts » : à cocher, après la défense partielle
+  assert.equal(M.degatsRecus(regles, b, { entrants: 30, type: 'taille', don: true }).recus, Math.floor(30 / 2));
+  assert.equal(M.degatsRecus(regles, b, { entrants: 30, type: 'taille', reduits: true, don: true }).recus, Math.floor(30 / 4));
   // jamais négatif ; un type inconnu ou le Potentiel Illimité : rien
   assert.equal(M.degatsRecus(regles, fiche({ armure_id: frappe?.id ?? regles.armures[0].id }), { entrants: 1, type: 'estoc' }).recus, 0);
   assert.equal(M.degatsRecus(regles, feu, { entrants: 10, type: 'magies/potentiel-illimite' }), null);
@@ -149,7 +152,11 @@ test('effetDeCompetence : la valeur tirée choisit le niveau ; valeurDEffetDAcce
     for (const v of [n.min, n.max]) assert.equal(M.effetDeCompetence(regles, 'force', v).id, n.id, `${v}`);
   }
   assert.equal(M.effetDeCompetence(regles, 'force', null).id, niveaux[0].id);
-  assert.equal(M.effetDeCompetence(regles, 'force', 999).id, niveaux[0].id, 'hors des fourchettes : le premier niveau');
+  // bornée aux plages écrites, comme le générateur (bonusBorne) : au-dessus, le dernier niveau ; en dessous ou pas un nombre, le premier
+  assert.equal(M.effetDeCompetence(regles, 'force', 999).id, niveaux.at(-1).id, 'au-dessus des fourchettes : le dernier niveau');
+  assert.equal(M.effetDeCompetence(regles, 'force', -3).id, niveaux[0].id, 'en dessous : le premier niveau');
+  assert.equal(M.effetDeCompetence(regles, 'force', 'abc').id, niveaux[0].id);
+  assert.equal(M.effetDeCompetence(regles, 'inconnue', 3), null);
   assert.equal(M.valeurDEffetDAccessoire(regles, { accessoire_effet_id: niveaux[2].id }), M.cleDEffetDeCompetence('force'));
   const autre = regles.accessoires.find((a) => a.propriete === 'attributs');
   assert.equal(M.valeurDEffetDAccessoire(regles, { accessoire_effet_id: autre.id }), autre.id);
@@ -168,4 +175,22 @@ test('propositionsDuCatalogue : rien sous deux caractères ; sans accents ni cas
   const sac = M.catalogueDuSac(regles);
   assert.equal(new Set(sac).size, sac.length, 'chaque nom une fois');
   assert.ok(sac.includes(regles.ceinture.batons[0].nom), 'les bâtons magiques');
+});
+
+test('degatsDArme (R99, « L’élément remplace tout ») : avec un élément, les dés restent, les bonus du matériau et de l’amélioration sont remplacés par ceux de l’élément', () => {
+  const arme = regles.armes.find((a) => a.de && regles.familles_armes.find((f) => f.id === a.famille_id)?.maitrisable !== false);
+  const materiau = regles.materiaux_armes.find((m) => m.bonus_degats > 0);
+  const amelioration = regles.ameliorations.find((a) => a.cible === 'arme' && a.bonus_degats > 0);
+  const element = regles.armes_elementaires.find((e) => e.bonus_degats > 0);
+  const ameliorationElement = regles.ameliorations.find((a) => a.cible === 'arme_elementaire' && a.bonus_degats > 0);
+  assert.ok(arme && materiau && amelioration && element && ameliorationElement);
+  const ligne = { rang: 1, arme_id: arme.id, materiau_id: materiau.id, amelioration_id: amelioration.id };
+  const sans = M.degatsDArme(regles, fiche({ armes: [ligne] }), 1);
+  const avec = M.degatsDArme(regles, fiche({ armes: [{ ...ligne, arme_elementaire_id: element.id, amelioration_elementaire_id: ameliorationElement.id }] }), 1);
+  assert.equal(avec.notation, sans.notation, 'les dés restent');
+  assert.equal(avec.total, sans.total - materiau.bonus_degats - amelioration.bonus_degats + element.bonus_degats + ameliorationElement.bonus_degats);
+  assert.deepEqual(avec.nonComptes.filter((n) => n.raison === 'element').map((n) => n.valeur), [materiau.bonus_degats, amelioration.bonus_degats]);
+  // l'amélioration de l'élément ne compte qu'avec un élément
+  const seule = M.degatsDArme(regles, fiche({ armes: [{ ...ligne, amelioration_elementaire_id: ameliorationElement.id }] }), 1);
+  assert.equal(seule.total, sans.total);
 });

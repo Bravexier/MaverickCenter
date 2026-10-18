@@ -126,9 +126,13 @@ export const LIGNES_ECARTEES = Object.freeze({
   }),
 });
 
-/** Range des descripteurs de retrait par fiche (`parFiche` : [[id, descripteurs]]) dans `retraits` (nouveauxRetraitsDeFiches), nom et nature lus dans `main`. */
+/**
+ * Range des descripteurs de retrait par fiche (`parFiche` : [[id, descripteurs]]) dans `retraits` (nouveauxRetraitsDeFiches), nom et nature lus dans
+ * `ancienne` : une table écartée (LIGNES_ECARTEES) se note pendant la copie, que la fiche y soit déjà recopiée ou non (l'ordre de TABLES_VIVANTES n'y
+ * change rien).
+ */
 function ajouterLesRetraits(db, retraits, parFiche) {
-  const lire = db.prepare('SELECT nom, nature FROM main.personnage WHERE id = ?');
+  const lire = db.prepare('SELECT nom, nature FROM ancienne.personnage WHERE id = ?');
   for (const [id, d] of parFiche) {
     const p = d.length ? lire.get(id) : null;
     if (!p) continue;
