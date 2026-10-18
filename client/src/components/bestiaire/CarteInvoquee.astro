@@ -6,7 +6,14 @@
 // dans leur correspondance dans les tableaux des magies et leurs sorts associés » ; components/Infobulles.astro) : dans une bulle `role="tooltip"`
 // cachée, sans identifiant interne ni élément interactif (ni « Fermer », ni liens : une infobulle n'en a pas), le nom en titre simple. CSS :
 // styles/bestiaire/carte.css.
+// Au NPM choisi (décision R130, demande du propriétaire : « adapter le monstre invoqué en fonction de ses NPM de la même façon que la fiche des monstres
+// est adaptable par l'échelle de puissance ») : une carte qui change avec le NPM (golems, non-morts : lib/creature-npm.mjs#varieAvecLeNpm) porte
+// `data-npm-carte` et écrit chaque valeur qui change à chaque NPM (ValeurParNpm.astro) ; le NPM choisi est `data-npm` sur la carte, posé par le curseur
+// de la carte (bestiaire : src/scripts/bestiaire.mjs) ou par celui de la liste des créatures d'un sort (pages de magie : SortDetail.astro) ; sans NPM
+// choisi, la carte telle qu'écrite. Une capacité ou une résistance « (NPM n) » porte `data-npm-min` : cachée en dessous du NPM n.
 import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
+import { coutAuNpm, creatureAuNpm, NPMS, parNpm, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
+import ValeurParNpm from './ValeurParNpm.astro';
 import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
 import { url } from '../../lib/wiki';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
@@ -22,15 +29,25 @@ const enveloppe = bulle ? { class: 'bulle bulle--carte', role: 'tooltip', id: bu
 const id = `carte-${l.ancre}`;
 const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
 const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocation.magieId}/`)}#sort-${l.invocation.sortId.slice(l.invocation.sortId.indexOf('#sort:') + 6)}` : null;
+// les valeurs à chaque NPM, pour une carte qui change avec lui (sinon null : la valeur telle qu'écrite)
+const variable = varieAvecLeNpm(l.donneesNpm);
+const auNpm = NPMS.map((n) => creatureAuNpm(l.donneesNpm, n));
+const groupes = (valeurDe: (c: (typeof auNpm)[number], n: number) => string | null) => (variable ? parNpm((n) => valeurDe(auNpm[n - 1], n)) : null);
+// le coût du sort au NPM de la créature (« Par NPM de la créature invoquée », décisions R106, R129) : à chaque NPM pour un golem ou un non-mort, au sien pour
+// une marionnette (une créature par NPM, décision R53)
+const coutAu = (n: number) => (l.coutNpm ? coutAuNpm(l.coutNpm.cout, l.coutNpm.secondaire, n) : null);
+const coutParNpm = variable && coutAu(1) !== null ? parNpm((n) => `${coutAu(n)} (NPM ${n})`) : null;
+const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
 ---
 
 <Enveloppe {...enveloppe}>
-<article class="bcarte" id={bulle ? undefined : id} aria-labelledby={bulle ? undefined : `${id}-titre`} aria-label={bulle ? `Carte de ${l.nom}` : undefined} data-carte={bulle ? undefined : l.ancre}>
+<article class="bcarte" id={bulle ? undefined : id} aria-labelledby={bulle ? undefined : `${id}-titre`} aria-label={bulle ? `Carte de ${l.nom}` : undefined} data-carte={bulle ? undefined : l.ancre} data-npm-carte={variable ? '' : undefined}>
   <header class="bcarte__tete">
     <div class="bcarte__titres">
       {bulle ? <p class="bcarte__titre">{l.nom}</p> : <h3 id={`${id}-titre`}>{l.nom}</h3>}
       <p class="bcarte__espece">
         {l.invocation.nom} <span class="muted">({l.bloc})</span>
+        {variable && NPMS.map((n) => <span class="bcarte__npm-choisi" data-npms={String(n)}>NPM {n}</span>)}
       </p>
       <p class="bcarte__badges">
         {
@@ -49,6 +66,19 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
     </figure>
     {!bulle && <a class="bcarte__fermer" href={`#${l.ancre}`} aria-label={`Fermer la carte de ${l.nom}`}>Fermer</a>}
   </header>
+  {
+    // le curseur du NPM (pas dans une infobulle : elle n'a pas d'élément interactif ; sur une page de magie, le curseur est dans la liste des créatures)
+    variable && !bulle && (
+      <div class="bcarte__echelle bcarte__npm">
+        <p class="bechelle__curseur js-seul">
+          <label>
+            <span>Niveau de puissance magique</span> <input type="range" min={NPMS[0]} max={NPMS.at(-1)} step="1" value={NPMS[0]} data-npm-curseur aria-valuetext={`NPM ${NPMS[0]}`} />
+          </label>{' '}
+          <output class="bechelle__choix">NPM {NPMS[0]}</output> <span class="muted">(NPM {NPMS[0]} à {NPMS.at(-1)} ; NPM 5 : utilisateurs d’une seule magie)</span>
+        </p>
+      </div>
+    )
+  }
 
   <section class="bcarte__section" aria-label="La carte">
     <dl class="brubriques">
@@ -56,23 +86,23 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
         <dt>Santé, chakra, barrière</dt>
         <dd>
           <span class="bstats">
-            <span class="bstat bstat--sante"><span class="bstat__nom">Santé</span><span class="bstat__val">{l.sante}</span></span>
-            <span class="bstat bstat--chakra"><span class="bstat__nom">Chakra</span><span class="bstat__val">{l.chakra ?? '—'}</span></span>
-            <span class="bstat bstat--barriere"><span class="bstat__nom">Barrière</span><span class="bstat__val">{l.barriere ?? '—'}</span></span>
+            <span class="bstat bstat--sante"><span class="bstat__nom">Santé</span><span class="bstat__val"><ValeurParNpm ecrit={l.sante} groupes={groupes((c) => c.sante)} /></span></span>
+            <span class="bstat bstat--chakra"><span class="bstat__nom">Chakra</span><span class="bstat__val"><ValeurParNpm ecrit={l.chakra} groupes={groupes((c) => c.chakra)} /></span></span>
+            <span class="bstat bstat--barriere"><span class="bstat__nom">Barrière</span><span class="bstat__val"><ValeurParNpm ecrit={l.barriere} groupes={groupes((c) => c.barriere)} /></span></span>
           </span>
         </dd>
       </div>
       {
-        l.ressources.map((r) => (
+        l.ressources.map((r, k) => (
           <div class="brubrique">
             <dt>{r.libelle}</dt>
-            <dd>{r.brut}</dd>
+            <dd><ValeurParNpm ecrit={r.brut} groupes={groupes((c) => c.ressources[k].valeur)} /></dd>
           </div>
         ))
       }
       <div class="brubrique">
         <dt>Défense</dt>
-        <dd>{l.defense ?? '—'}</dd>
+        <dd><ValeurParNpm ecrit={l.defense} groupes={groupes((c) => c.defense)} /></dd>
       </div>
       <div class="brubrique">
         <dt>Vitesse</dt>
@@ -81,20 +111,30 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
       <div class="brubrique brubrique--caracteristiques">
         <dt>Caractéristiques (F.P.V.S.I.A.)</dt>
         <dd>
-          <Fragment set:html={htmlDesCaracteristiques(l.fpvsia)} />
+          {/* au NPM choisi, une case changée par un bonus est soulignée, l'écrite et ses bonus en infobulle ; les bonus écrits restent dessous, tels qu'écrits */}
+          <ValeurParNpm
+            html
+            ecrit={htmlDesCaracteristiques(l.fpvsia)}
+            groupes={groupes((c) => htmlDesCaracteristiques(c.caracteristiques.valeurs, { ecrites: l.fpvsia, bonus: c.caracteristiques.parCase }))}
+          />
           {l.bonus.length > 0 && <span class="muted bcarte__bonus">{l.bonus.join(', ')}</span>}
         </dd>
       </div>
       <div class="brubrique">
         <dt>Dégâts</dt>
-        <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a) => <li>{a.brut}</li>)}</ul> : '—'}</dd>
+        <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a, k) => <li><ValeurParNpm ecrit={a.brut} groupes={groupes((c) => c.attaques[k])} /></li>)}</ul> : '—'}</dd>
       </div>
       <div class="brubrique brubrique--capacites">
         <dt>Capacité(s)</dt>
         <dd>
           <Fragment
             set:html={htmlDesCapacites([
-              ...l.capacites.map((x) => ({ prefixes: [...(x.npm ? [{ texte: `NPM ${x.npm}` }] : []), ...(x.etiquette ? [{ texte: `[${x.etiquette}]` }] : [])], nom: x.nom, texte: x.texte })),
+              ...l.capacites.map((x) => ({
+                prefixes: [...(x.npm ? [{ texte: `NPM ${x.npm}`, titre: `À partir du NPM ${x.npm}`, classe: 'prefixe--npm' }] : []), ...(x.etiquette ? [{ texte: `[${x.etiquette}]` }] : [])],
+                nom: x.nom,
+                texte: x.texte,
+                attributs: x.npm ? ` data-npm-min="${x.npm}"` : '',
+              })),
               ...l.communes.map((x) => ({ prefixes: [{ texte: 'commune', titre: `Commune à toutes les créatures de « ${l.invocation.nom} »` }], nom: x.nom, texte: x.texte, commune: true })),
             ])}
           />
@@ -115,7 +155,7 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
             <dd>
               <span class="bcibles">
                 {l.defensesEcrites.map((x) => (
-                  <span class={`bcible bcible--${x.sens}`}>{x.libelle}</span>
+                  <span class={`bcible bcible--${x.sens}`} data-npm-min={x.npm_min ?? undefined} title={x.npm_min ? `À partir du NPM ${x.npm_min}` : undefined}>{x.libelle}</span>
                 ))}
               </span>
             </dd>
@@ -142,7 +182,7 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
     <p>
       <strong>Invoquée par</strong> {sort && !bulle ? <a href={sort}>{l.invocation.sortNom}</a> : l.invocation.sortNom}
       {l.invocation.magie && <> ({l.invocation.magie})</>}
-      {l.cout && <> · coût : {l.cout}</>}
+      {l.cout && <> · coût : {coutParNpm ? <ValeurParNpm ecrit={l.cout} groupes={coutParNpm} /> : coutDuBloc ? <span title={`Écrit : ${l.cout}`}>{coutDuBloc} (NPM {l.npmDuBloc})</span> : l.cout}</>}
     </p>
     {
       l.memeBloc.length > 0 && (

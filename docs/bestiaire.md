@@ -31,6 +31,16 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
     et le NPM dans `invocation_bloc.npm` (migration `0036-invocations-npm`) ; tableau, carte (« Marionnette de l'ombre (NPM 3) ») et pages de magie
     écrivent « NPM 3 » (`lib/bestiaire-db.mjs#libelleDuBloc`), comme les pages des marionnettes et de l'invocation.
 
+  **Au NPM choisi** (décision R130, demande du propriétaire : « adapter le monstre invoqué en fonction de ses NPM de la même façon que la fiche des monstres
+  est adaptable par l'échelle de puissance ») : la carte d'un golem ou d'un non-mort a un **curseur du NPM 1 au NPM 5** (`data-npm` sur la carte, posé par
+  `src/scripts/bestiaire.mjs#poserLeNpm`, gardé d'une ouverture à l'autre) ; chaque valeur qui change est écrite à chaque NPM (`ValeurParNpm.astro`,
+  `data-npms`, regroupées quand elles se suivent identiques) à côté de l'écrite (`data-npm-ecrit`, seule montrée sans JavaScript et à l'impression), une
+  valeur calculée soulignée avec l'écriture en infobulle (`.bcalcul`) ; une capacité ou une résistance « (NPM n) » porte `data-npm-min` et se cache en dessous
+  (`styles/bestiaire/carte.css`). Les valeurs : `lib/creature-npm.mjs` (« X/NPM » = X × NPM ; « 2 Armure Physique et Magique/NPM » = 2 × NPM chacune ;
+  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3 ; « +1 Force au niveau 2 magique » à partir du NPM 2, la case changée soulignée avec l'écrite et ses
+  bonus en infobulle, les bonus écrits restant sous les cases ; « +1 Force/Agilité » non compté, il reste écrit), d'après les valeurs typées de l'import
+  (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte garde le coût écrit (« +10% Barrière » : question Q35).
+
   Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
   que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les
   nombres du filtre comptent des créatures, comme le compte de la page. Les trois tableaux défilent avec la page (sur grand écran, l'en-tête reste en

@@ -324,6 +324,14 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 - **Bâtons magiques** (décision R101) : le sac propose « Bâton magique », dont la ligne demande sa magie puis son niveau ; réglé, il prend le nom du
   bâton et peut aller à la ceinture (pas avant). À la ceinture, ses effets passifs (`effetsDeBaton`, lus dans `baton_magique.bonus_brut`) valent pour
   tous les sorts du personnage ; deux bâtons au même effet : le plus fort seul (`effetsDesBatons`).
+- **Invocations** (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « Toutes, les miennes
+  d'abord ») : sous un sort qui invoque (`regles.invocations`, `creaturesDuSort`), une ligne repliée « Créatures invocables : N à votre portée sur M » :
+  celles à la portée du personnage (la combinaison mono et celle de sa seconde magie, l'innée ou l'acquise qui n'est pas celle du sort, jamais le
+  Potentiel Illimité ; une marionnette jusqu'au NPM accessible), puis celles qui demandent un allié (ou au-delà du NPM), un bouton chacune sur la couleur
+  de ses magies ; la carte resserrée de la créature choisie au NPM du sort, le « × N » de son coût (R129 ; `lib/creature-npm.mjs#creatureAuNpm`) ; une
+  marionnette est la créature d'un NPM : la choisir règle le « × N ». Sous un sort qui sacrifie une invocation (`sacrificeDuSort`) : l'effet « Manteau noir »
+  de la marionnette du NPM du sort, ou toutes les améliorations d'« Amélioration cadavérique » (`regles.tableaux_de_sacrifice`). Le choix d'une créature
+  est un réglage du moment, non enregistré.
 - **Sorts du moment** (décision R102) : `sortDuMoment` refait le coût (dons « réduits de 4 », Économe, bâton ; jamais moins de 1 ; Corruption :
   « ou 2 × le coût − bâton » en corruption ; un coût par unité — « Par NPM de la créature invoquée », « Pour 1 dégât supplémentaire », « Par taille
   créée »… : `multiplicateurDuCout`, sans la canalisation ni Échange — se multiplie d'abord par le « × N » de sa case, puis se réduit, Économe

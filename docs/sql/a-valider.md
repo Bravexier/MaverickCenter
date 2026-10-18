@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R129, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R130, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -106,6 +106,12 @@ Questions :
 | Q32 | « **Sort offensif** » (Mage Rouge, « Charge lente… » : « Les sorts offensifs préparés infligent +5 dégâts » ; « … ou rapide » : « Les sorts offensifs non préparés infligent +5 dégâts ») : la fiche le lit comme un sort d'attaque (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer). Des sorts à dégâts ne sont pas d'attaque (Claquement, Chaîne de l'entrave, Exécution froide, Infection, Bouclier de feu…) : sont-ils offensifs ? | « … ou rapide » ajoute +5 aux seuls sorts d'attaque non préparés ; « Charge lente… », au sort préparé (toujours un sort d'attaque) |
 | Q33 | « **Soralongé** » (Mage Vert, niveau 5 : « Augmente la portée des sorts d'attaque chargés de +2 ») : +2 de portée au sort préparé (« Chargement », R115) ? | Non compté : « selon la situation » dans l'infobulle de la portée |
 | Q34 | « **À l'aise** » (Mage Vert, niveau 10 : « Le sort influé aura toujours au minimum un Niveau de Maîtrise. ») : comment le compter (le sort préparé à 1 NM au moins, sans le compter dans le décompte des NM ?) | Non compté : le sort préparé garde le NM noté sur son curseur |
+| Q35 | Le coût de **Marionnette de l'ombre** (classeur : « 5 + 10% BA (xNPM de créature) », réécrit en R106 « 5 » / « Par NPM de la créature invoquée. +10% Barrière ») : au NPM 3, est-ce 15 chakra + 10 % de barrière, ou 15 chakra + 30 % (comme « 5 + 1 âme (xNPM) », qui donne « 20 + 4 âmes » au NPM 4, et comme la barrière de la marionnette, 30 % au NPM 3) ? | La carte d'une marionnette garde le coût écrit ; la fiche multiplie le chakra (R129) et garde « +10% Barrière » écrit (R130) |
+| Q36 | Une capacité « **(NPM 3)** » d'un golem ou d'un non-mort est-elle gagnée à partir du NPM 3, donc encore présente aux NPM 4 et 5, comme « [EP3] » pour un monstre (R56) ? | Oui (lecture de R130 : « Répression » du Golem de glace, NPM 5, suppose « Neige permanente », NPM 3) |
+| Q37 | **Arbalécho** du Golem de rouage, « (1d4/NPM)x1d4 » : au NPM 3, (3d4)x1d4 ? | (3d4)x1d4 (lecture de R130 : la règle des dés, appliquée entre parenthèses) |
+| Q38 | **Cri** du Crieur osseux, « 1d6+2/NPM dégâts sonores/NPM » : au NPM 3, 1d6+6 (le second « /NPM » est un doublon) ou 3d6+6 ? | 1d6+6 (lecture de R130) |
+| Q39 | **Amélioration cadavérique** : une amélioration vaut-elle pour la seule créature nommée ou pour les deux créatures de sa combinaison (Embrasé aussi pour le Charcabé) ? « S. de pierre » = Squelette de pierre ? « S. rayonnant » et « Zombi obscur » : quelles créatures ? Nécromancie + Nécromancie n'a-t-elle pas d'amélioration ? | Les 13 améliorations sont toutes affichées ; une amélioration au nom exact d'une créature montre sa carte (10 sur 13), les trois autres restent des noms (R130) |
+| Q40 | Les « 15/NPM » de santé du **Zombinox** comptent-ils déjà le doublement de « Super santé » (« Cette créature possède le double de santé ») ? | La carte au NPM choisi donne 15 × NPM, la capacité reste écrite à côté (R130) |
 
 ## 4. Questions de la relecture du 2026-10-15
 

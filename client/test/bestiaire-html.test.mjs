@@ -210,7 +210,8 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
     const debut = bloc.indexOf(`id="carte-${l.ancre}"`);
     const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
     for (const k of l.capacites) {
-      if (k.npm) assert.ok(carte.includes(`<span class="prefixe">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
+      // (décision R130 : la tuile porte son NPM minimum, que la carte cache en dessous du NPM choisi, et le préfixe se cache au NPM choisi)
+      if (k.npm) assert.ok(carte.includes(`<span class="prefixe prefixe--npm" title="À partir du NPM ${k.npm}">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
       if (k.etiquette) assert.ok(carte.replace(/&#39;/g, "'").includes(`<span class="prefixe">[${k.etiquette}]</span>`), `${l.nom} : [${k.etiquette}]`);
     }
     // une tuile par capacité, puis une par capacité commune de son invocation, chacune avec son nom (comme les dons de classe ; lib/monstre-rendu.mjs#htmlDeCapacite)
@@ -359,4 +360,38 @@ test('règles des échelles de puissance (demande du propriétaire : « retravai
     assert.deepEqual(lis, [...paragraphes(e.regle_brut), ...paragraphes(e.degats_brut)], `EP ${e.ep}`);
   }
   assert.match(bloc, new RegExp(`<p class="bregles__curseur js-seul">\\s*<label>\\s*<span>Échelle</span>\\s*<input type="range" min="${echelles[0].ep}" max="${echelles.at(-1).ep}" step="1" value="${echelles[0].ep}" data-regles-curseur>`));
+});
+
+// Décision R130 (« adapter le monstre invoqué en fonction de ses NPM de la même façon que la fiche des monstres est adaptable par l'échelle de puissance ») :
+// une carte qui change avec le NPM porte `data-npm-carte`, son curseur (NPM 1 à 5) et ses valeurs à chaque NPM (`data-npms`) à côté de l'écrite
+// (`data-npm-ecrit`) ; une marionnette (une créature par NPM, décision R53) n'en a pas. Valeurs : lib/creature-npm.mjs (test/creature-npm.test.mjs).
+test('créatures invoquées au NPM choisi : curseur, valeurs par NPM à côté de l’écrite, capacités « (NPM n) » marquées (décision R130)', options, () => {
+  const { invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('invoquees');
+  for (const l of invocations.lignes) {
+    const debut = bloc.indexOf(`id="carte-${l.ancre}"`);
+    const ouverture = bloc.slice(bloc.lastIndexOf('<article', debut), bloc.indexOf('>', debut) + 1);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    const marionnette = l.npmDuBloc !== null;
+    assert.equal(/ data-npm-carte\b/.test(ouverture), !marionnette, `${l.nom} : data-npm-carte`);
+    assert.equal(carte.includes('data-npm-curseur'), !marionnette, `${l.nom} : curseur du NPM`);
+    if (marionnette) {
+      assert.doesNotMatch(carte, /data-npms=/, `${l.nom} : rien par NPM`);
+      continue;
+    }
+    // le curseur va du NPM 1 au NPM 5 ; le NPM choisi est rappelé dans l'en-tête, pour chaque NPM
+    assert.match(carte, /<input type="range" min="1" max="5" step="1" value="1" data-npm-curseur aria-valuetext="NPM 1">/, l.nom);
+    for (const n of [1, 2, 3, 4, 5]) assert.ok(carte.includes(`<span class="bcarte__npm-choisi" data-npms="${n}">NPM ${n}</span>`), `${l.nom} : NPM ${n}`);
+    // la santé écrite « N/NPM » : la valeur écrite, puis N × NPM à chaque NPM
+    if (l.donneesNpm.sante.forme === 'par_npm') {
+      assert.ok(carte.includes(`<span data-npm-ecrit>${l.sante}</span>`), `${l.nom} : santé écrite`);
+      for (const n of [2, 5]) assert.match(carte, new RegExp(`<span data-npms="${n}" class="bcalcul" title="Écrit : ${l.sante.replace('/', '\\/')}">${l.donneesNpm.sante.valeur * n}</span>`), `${l.nom} : santé au NPM ${n}`);
+    }
+    // une capacité « (NPM n) » porte son NPM minimum ; une capacité de base n'en porte pas
+    const tuiles = [...carte.matchAll(/<li class="bcapacite(?: bcapacite--commune)?"( data-npm-min="(\d)")?>/g)].map((m) => (m[2] ? Number(m[2]) : null));
+    assert.deepEqual(tuiles, [...l.capacites.map((k) => k.npm ?? null), ...l.communes.map(() => null)], `${l.nom} : NPM minimum des capacités`);
+  }
+  // les règles d'affichage (styles/bestiaire/carte.css) : sans NPM choisi, les valeurs par NPM cachées ; au NPM choisi, l'écrite et les capacités d'un NPM plus haut
+  assert.match(html, /\.bcarte:not\(\[data-npm\]\) \[data-npms\] \{ display: none; \}/);
+  assert.match(html, /\.bcarte\[data-npm="3"\] :is\(\[data-npms\]:not\(\[data-npms~="3"\]\), \[data-npm-min="4"\], \[data-npm-min="5"\]\)/);
 });

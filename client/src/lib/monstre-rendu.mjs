@@ -39,11 +39,19 @@ const SIGLES = { force: ['F', 'Force'], perception: ['P', 'Perception'], volonte
 /** Un texte tel qu'écrit (retours à la ligne gardés par la feuille de style), ou « — » s'il est vide. */
 const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${htmlAvecMonnaies(texte)}</span>` : '<span class="vide">—</span>');
 
-/** Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). */
-export const htmlDesCaracteristiques = (valeurs) =>
+/**
+ * Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). `ecrites` (une créature invoquée au NPM choisi,
+ * décision R130) : les valeurs écrites, et `bonus`, les bonus comptés de chaque case ; une valeur qui en diffère est soulignée, l'écrite et ses bonus en
+ * infobulle (`.bcalcul`).
+ */
+export const htmlDesCaracteristiques = (valeurs, { ecrites = null, bonus = [] } = {}) =>
   `<span class="bcaracs">${FPVSIA.map((id, k) => {
     const [sigle, nom] = SIGLES[id];
-    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span><span class="bcarac__val">${valeurs[k] ?? '—'}</span></span>`;
+    const calcule = ecrites && ecrites[k] !== valeurs[k];
+    const valeur = calcule
+      ? `<span class="bcarac__val bcalcul" title="${e(`Écrit : ${ecrites[k] ?? '—'}${bonus[k]?.length ? `, ${bonus[k].join(', ')}` : ''}`)}">${valeurs[k] ?? '—'}</span>`
+      : `<span class="bcarac__val">${valeurs[k] ?? '—'}</span>`;
+    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span>${valeur}</span>`;
   }).join('')}</span>`;
 
 const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;
@@ -214,7 +222,7 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
  * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre
  * (htmlDesCapacitesDuMonstre, page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle
  * des pages de magie).
- * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
+ * `prefixes` : [{ texte, titre, classe }] (`classe` : « prefixe--npm », que la carte cache au NPM choisi) ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
  * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
  * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
  */
@@ -222,7 +230,7 @@ export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = 
   `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}>`
   + (prefixes.length || nom
     ? '<p class="bcapacite__tete">'
-      + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
+      + prefixes.map((p) => `<span class="prefixe${p.classe ? ` ${e(p.classe)}` : ''}"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
       + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
       // l'espace sépare le nom du texte dans textContent, que lit la recherche du bestiaire (« Haine mutuelle Cette créature… ») ; sans effet à l'écran
       + '</p> '

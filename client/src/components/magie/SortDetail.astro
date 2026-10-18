@@ -2,6 +2,7 @@
 import { bulleDeCreature, carteDeCreature, pageHref, sortAncre, titreDeCreature, type Magies, type SortDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { NPMS, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
 import Texte from './Texte.astro';
 
 // Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets (le texte des effets secondaires, puis la remarque du classeur
@@ -12,6 +13,10 @@ import Texte from './Texte.astro';
 // MagiePage.astro), sans lien « Bestiaire » à côté (demande du propriétaire), sur la couleur de sa magie, en dégradé quand il en a deux. De même pour la
 // créature d'un effet de carte (« Manteau noir ») : un bouton, pas un lien à bulle (au toucher, la carte couvre l'écran d'un téléphone, et un second
 // appui sur le lien tomberait sur elle).
+// Les cartes des golems et des non-morts suivent le NPM choisi au curseur de la liste (décision R130 : « adapter le monstre invoqué en fonction de ses NPM de la
+// même façon que la fiche des monstres est adaptable par l'échelle de puissance ») : `data-npm` sur chaque carte de la page qui change avec lui
+// (CarteInvoquee.astro), posé par le script de SortsInteractifs.astro ; tous les curseurs de la page vont ensemble (une bulle par créature et par page).
+// Le sort qui désigne un tableau d'invocation par son nom (« Amélioration cadavérique », décision R130) montre ses améliorations, selon l'invocation sacrifiée.
 // `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies (TableauNpm.astro).
 interface Props {
   sort: SortDb;
@@ -35,6 +40,11 @@ const couleurs = (magiesDeLaCreature: string[]) => {
   const [premiere, seconde = premiere] = magiesDeLaCreature.map(couleurDeMagie);
   return premiere ? `--creature-1: ${premiere}; --creature-2: ${seconde}` : undefined;
 };
+// le curseur du NPM, pour une invocation dont au moins une carte change avec lui
+const changeAvecLeNpm = (creatures: { id: string }[]) => creatures.some((c) => {
+  const carte = carteDeCreature(c.id);
+  return carte ? varieAvecLeNpm(carte.donneesNpm) : false;
+});
 // champs modifiables sur le site de dev : effets, remarque et texte du sort de niveau 5 (vides : cachés en lecture, affichés en mode modification)
 const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
 ---
@@ -86,6 +96,14 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
           </details>
         )}
         <h6 class="texte-titre">Créatures invoquées ({i.creatures.length})</h6>
+        {changeAvecLeNpm(i.creatures) && (
+          <p class="invoque__npm" data-npm-page-bloc hidden>
+            <label>
+              <span>Cartes au NPM</span> <input type="range" min={NPMS[0]} max={NPMS.at(-1)} step="1" value={NPMS[0]} data-npm-page aria-valuetext={`NPM ${NPMS[0]}`} />
+            </label>{' '}
+            <output>NPM {NPMS[0]}</output> <span class="muted">(survolez une créature pour voir sa carte à ce NPM)</span>
+          </p>
+        )}
         <ul class="invoque">
           {[...new Set(i.creatures.map((c) => c.bloc))].map((bloc) => (
             <li>
@@ -119,6 +137,34 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         <Texte blocs={e.blocs} />
       </section>
     ))
+  }
+
+  {
+    sort.ameliorations && (
+      <section class="sort-detail__regles">
+        <h5>Règles propres : selon l’invocation sacrifiée</h5>
+        <p class="muted">Le tableau de l’invocation « {sort.ameliorations.invocation} » : l’amélioration dépend de l’invocation sacrifiée.</p>
+        <div class="sorts-wrap tableau tableau--defile">
+          <table class="annexe table-donnees table-donnees--serree">
+            <thead><tr><th scope="col">Invocation sacrifiée</th><th scope="col">Amélioration</th></tr></thead>
+            <tbody>
+              {sort.ameliorations.lignes.map((a) => (
+                <tr>
+                  <th scope="row">
+                    {a.creature ? (
+                      <span class="creature"><button type="button" class="chip creature__bouton" {...bulle(a.creature.id)} style={couleurs(a.creature.magies)}>{a.nom}</button></span>
+                    ) : (
+                      a.nom
+                    )}
+                  </th>
+                  <td>{a.effets.length > 1 ? <ul>{a.effets.map((e: string) => <li>{e}</li>)}</ul> : a.effets[0]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
   }
 
   {

@@ -2,9 +2,12 @@
 // (bestiaire-html) et dans les infobulles des pages de magie (magies-html). Module sans test (n'est pas un *.test.mjs).
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
-/** Les tuiles de capacités d'un morceau de HTML, dans l'ordre : [commune ?, nom], chacune avec son en-tête (pastilles, nom) puis son texte. */
+/**
+ * Les tuiles de capacités d'un morceau de HTML, dans l'ordre : [commune ?, nom], chacune avec son en-tête (pastilles, nom) puis son texte ; une capacité
+ * « (NPM n) » d'une créature invoquée porte son NPM minimum (`data-npm-min`, décision R130).
+ */
 export const tuilesDeCapacites = (html) =>
-  [...html.matchAll(/<li class="bcapacite( bcapacite--commune)?"><p class="bcapacite__tete">(?:<span class="prefixe"[^>]*>[^<]*<\/span> )*<strong class="bcapacite__nom">([^<]+)<\/strong><\/p> <div class="bcapacite__texte">/g)]
+  [...html.matchAll(/<li class="bcapacite( bcapacite--commune)?"(?: data-npm-min="\d")?><p class="bcapacite__tete">(?:<span class="prefixe[^"]*"[^>]*>[^<]*<\/span> )*<strong class="bcapacite__nom">([^<]+)<\/strong><\/p> <div class="bcapacite__texte">/g)]
     .map((m) => [Boolean(m[1]), m[2]]);
 
 const echapper = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

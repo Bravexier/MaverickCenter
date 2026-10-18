@@ -1112,3 +1112,29 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .acquis-choix__points { width: 4.5rem; }
 /* les bonus d'acquis écrits dans un don ou l'armure que la fiche ne compte pas (décision R104) : chacun avec sa raison */
 .acquis-non-comptes { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: var(--fs-sm); }
+/* les créatures d'un sort qui invoque, ou ce que donne l'invocation sacrifiée (décision R130) : repliées sous le sort ; un bouton par créature, sur la
+   couleur de sa magie (en dégradé vers la seconde), celle montrée appuyée ; sa carte resserrée au NPM du sort */
+.fiche-table--sorts tr.sort-invocations td { padding-top: 0; font-size: var(--fs-sm); }
+.invocations > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.invocations[open] > summary { margin-bottom: 0.3rem; }
+.invocations__groupe { margin: 0.25rem 0; }
+.invocations__titre { margin: 0 0 0.15rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.invocations__choix { display: flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; }
+.fiche .invocation-choix { padding: 0.05rem 0.45rem; border: 1px solid color-mix(in srgb, var(--c1) 55%, var(--border)); border-right-color: color-mix(in srgb, var(--c2) 55%, var(--border));
+  border-radius: var(--radius-pill); background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 22%, var(--surface)), color-mix(in srgb, var(--c2) 22%, var(--surface)));
+  color: var(--text); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.fiche .invocation-choix[aria-pressed='true'] { border-color: var(--c1); border-right-color: var(--c2); font-weight: 700;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 50%, var(--surface)), color-mix(in srgb, var(--c2) 50%, var(--surface))); }
+.fiche .invocation-choix:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; }
+.invocation-choix__npm { color: var(--muted); }
+.invocations__aide { margin: 0.3rem 0 0; font-size: var(--fs-xs); }
+.invocation-carte { margin-top: 0.35rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.invocation-carte__titre { margin: 0 0 0.3rem; }
+.invocation-carte dl, .invocations__tableau { display: grid; gap: 0.2rem; margin: 0; }
+.invocation-carte__rubrique, .invocations__tableau > div { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
+.invocation-carte dt, .invocations__tableau dt { font-weight: 600; color: var(--muted); }
+.invocation-carte dd, .invocations__tableau dd { margin: 0; }
+.invocation-carte ul { margin: 0; padding-left: 1rem; }
+.invocation-carte__caracs { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; }
+.invocation-carte__carac { padding: 0 0.35rem; border-radius: var(--radius-xxs); background: var(--c); color: var(--c-texte); font-variant-numeric: tabular-nums; font-weight: 600; }
+.invocations__effet { margin: 0.35rem 0 0; white-space: pre-line; }

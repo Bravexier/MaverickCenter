@@ -17,3 +17,9 @@ button.creature__bouton:hover, button.creature__bouton[data-ouverte] {
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 50%, var(--surface)), color-mix(in srgb, var(--creature-2) 50%, var(--surface)));
 }
 button.creature__bouton:focus-visible { outline: 2px solid var(--creature-1); outline-offset: 2px; }
+/* le NPM des cartes (décision R130, SortDetail.astro) : son curseur au-dessus de la liste des créatures */
+.invoque__npm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0.3rem 0; }
+.invoque__npm[hidden] { display: none; }
+.invoque__npm label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; font-weight: 600; }
+.invoque__npm input[type=range] { accent-color: var(--mag); width: min(14rem, 50vw); }
+.invoque__npm output { font-weight: 700; font-variant-numeric: tabular-nums; }

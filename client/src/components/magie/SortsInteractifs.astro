@@ -90,4 +90,25 @@
   }
   window.addEventListener('hashchange', depuisLien);
   depuisLien();
+
+  // Le NPM des cartes des créatures invoquées (décision R130, SortDetail.astro) : chaque curseur de la page pose `data-npm` sur les cartes qui changent avec
+  // lui (CarteInvoquee.astro, `data-npm-carte` : une bulle par créature et par page) et entraîne les autres curseurs ; sans JavaScript, ni curseur ni NPM :
+  // les cartes telles qu'écrites.
+  const curseursNpm = [...document.querySelectorAll<HTMLInputElement>('input[data-npm-page]')];
+  function poserLeNpm(npm: string) {
+    for (const c of curseursNpm) {
+      c.value = npm;
+      c.setAttribute('aria-valuetext', `NPM ${npm}`);
+      const sortie = c.closest('[data-npm-page-bloc]')?.querySelector('output');
+      if (sortie) sortie.textContent = `NPM ${npm}`;
+    }
+    for (const carte of document.querySelectorAll<HTMLElement>('.bcarte[data-npm-carte]')) carte.dataset.npm = npm;
+  }
+  if (curseursNpm.length) {
+    for (const c of curseursNpm) {
+      c.closest<HTMLElement>('[data-npm-page-bloc]')!.hidden = false;
+      c.addEventListener('input', () => poserLeNpm(c.value));
+    }
+    poserLeNpm(curseursNpm[0].value);
+  }
 </script>
