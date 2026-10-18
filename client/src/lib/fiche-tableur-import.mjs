@@ -52,7 +52,7 @@ import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
-  armureParPartie, bouclierDe, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
+  armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -64,7 +64,7 @@ import {
 } from './fiche-tableur-cases.mjs';
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
-  lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
+  lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, lireSortPrepare, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -984,6 +984,28 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     else perdu(`NM du MJ : « ${v} » illisible`);
   }
   f.nm_mj = nmDuMj;
+  // le sort préparé (décision R115), dans la note : un sort de la liste, que le don de préparation de la fiche autorise (sortPrepare), son jet de magie
+  // (1 à 100) et la posture de la préparation ; sinon perdu, et dit
+  for (const v of notee('sortPrepare')) {
+    const lu = lireSortPrepare(v);
+    const lignes = f.sorts.filter((s) => cle(nomDe(regles.sorts, s.sort_id)) === cle(lu.nom) || segment(s.sort_id) === cle(lu.nom));
+    if (lignes.length !== 1) {
+      perdu(`Sort préparé : « ${v} » ne désigne pas un sort de la liste`);
+      continue;
+    }
+    const bornes = jetDuSortPrepare(regles);
+    if (lu.jet !== null && (lu.jet < bornes.min || lu.jet > bornes.max)) {
+      perdu(`Sort préparé : « ${v} » : jet de magie hors de ${bornes.min} à ${bornes.max}`);
+      continue;
+    }
+    const posture = lu.posture === null ? null : unSeul(retrouver(regles.postures, lu.posture), 'Sort préparé (posture)', lu.posture);
+    if (lu.posture !== null && !posture) continue;
+    Object.assign(lignes[0], { prepare: 1, prepare_jet: lu.jet, prepare_posture_id: posture?.id ?? null });
+    if (!sortPrepare(regles, f)) {
+      Object.assign(lignes[0], { prepare: 0, prepare_jet: null, prepare_posture_id: null });
+      perdu(`Sort préparé : « ${v} » : la fiche n’a pas le don qui le permet (« Préparation », « Chargement »), ou ce sort n’est pas de ceux qu’il autorise`);
+    }
+  }
   if (auto) {
     const nm = maitriseDesSorts(regles, f);
     if (nm.comptes > nm.limite) {

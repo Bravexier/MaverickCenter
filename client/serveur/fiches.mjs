@@ -25,7 +25,8 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
- * 0061 (la magie de la Symbiose, R100) et de la migration 0066 (les NM du MJ de la fiche, R118). Quand le
+ * 0061 (la magie de la Symbiose, R100), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
+ * posture, R115 ; l'arme choisie d'un choix d'acquis, R119, que la page laisse vide). Quand le
  * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
@@ -40,6 +41,8 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     nm_mj: 0,
   }),
   personnage_arme: Object.freeze({ durabilite: null }),
+  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
+  personnage_acquis_choix: Object.freeze({ arme_famille_id: null }),
 });
 
 /** Vrai si `valeur`, reçue pour la colonne `colonne` de `table` que la base vivante n'a pas, ne porte rien (DEPART_DES_COLONNES_AJOUTEES). */
@@ -238,12 +241,17 @@ function valeurDeCellule(v, ou, problemes) {
   return null;
 }
 
+/** Index uniques partiels qui ne nomment que la fiche (« UNIQUE constraint failed: <table>.personnage_id ») : ce qu'ils refusent. */
+const UNIQUES_DE_LA_FICHE = Object.freeze({ 'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)' });
+
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */
 export function expliquer(message) {
   let m;
   if ((m = /^NOT NULL constraint failed: \w+\.(\w+)$/.exec(message))) return `« ${m[1]} » est obligatoire`;
   if ((m = /^CHECK constraint failed: ([\s\S]+)$/.exec(message))) return `valeur hors des bornes (${m[1].replace(/\s+/g, ' ').trim()})`;
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
+    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
+    if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
     const cols = m[1].split(',').map((c) => c.trim().replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
     return `en double (${cols.join(', ')})`;
   }

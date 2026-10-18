@@ -90,6 +90,21 @@ export const RESSOURCES = [
       'modification, comme la ligne du sort dans la page de sa magie ; magie, NPM et ordre ne se modifient pas, l’identifiant ne suit pas un renommage ' +
       '(migration 0006) ; ni création ni suppression.',
     table: 'sort',
+    enfants: [
+      {
+        cle: 'mots-cles',
+        nom: 'Étiquette du sort',
+        noms: 'Étiquettes du sort',
+        table: 'sort_mot_cle',
+        parent: { sort_id: 'id' },
+        tri: 'mot_cle_id',
+        lectureSeule: true,
+        description:
+          'Les mots-clés du glossaire posés sur le sort en étiquette (décision R114, migration 0067 : « Sort grenade » sur les 14 sorts « Grenade… ») : ' +
+          'le site reconnaît un sort à son étiquette, jamais à son nom (les +11 dégâts de « Pardon ?!? » du Grenadier) ; une étiquette est une règle ' +
+          'posée par décision : en lecture seule, et un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne (409).',
+      },
+    ],
     derivees: [
       { table: 'sort_type', parent: { sort_id: 'id' } },
       { table: 'sort_mode', parent: { sort_id: 'id' } },

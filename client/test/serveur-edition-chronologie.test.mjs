@@ -25,7 +25,7 @@ import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { lirePages } from '../src/lib/pages-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
-import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
+import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -318,6 +318,44 @@ test('mots-clés dont le site se sert : ni renommés (même en casse), ni suppri
   assert.equal(m.pages, ligne('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?', magique.id).n);
   assert.match(m.protege, /Magiques/);
   assert.equal(v.corps.motsCles.find((x) => x.id === libre).protege, null);
+});
+
+test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décision R114) : ni supprimés, ni fusionnés (dans un sens ou l’autre), 409 avec une raison lisible ; « Sort grenade » est protégé ; renommer et définir restent possibles', () => {
+  const etiquette = ligne('SELECT * FROM mot_cle WHERE id = ?', ETIQUETTE_D_ESSAI.id);
+  assert.ok(etiquette, 'le mot-clé d’essai est dans les règles des tests');
+  assert.equal(MOTS_CLES_PROTEGES.has(etiquette.libelle_cle), false, 'il n’est pas protégé : seul son rôle d’étiquette le garde');
+  const etiquettes = () => lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', etiquette.id).map((l) => l.sort_id);
+  assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort());
+  const libre = creerMotCle(motLibre('Essai sans étiquette'));
+  const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  for (const [quoi, operation, action] of [
+    ['suppression', { op: 'supprimer', entite: 'mot_cle', cle: { id: etiquette.id } }, 'supprime'],
+    ['fusion du mot-clé dans un autre', { op: 'fusionner_mots_cles', mot_cle: etiquette.id, dans: libre }, 'fusionne'],
+    ['fusion d’un autre dans le mot-clé', { op: 'fusionner_mots_cles', mot_cle: libre, dans: etiquette.id }, 'fusionne'],
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, `${quoi} : ${JSON.stringify(r.corps)}`);
+    assert.equal(r.corps.erreur, `operations[0] : Le mot-clé « ${etiquette.libelle} » ne se ${action} pas depuis le site : il étiquette 2 sorts (« Boule de feu », « Cautérisation »), une règle posée par décision du propriétaire.`, quoi);
+    assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${quoi} : rien n’est écrit`);
+    assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), `${quoi} : les étiquettes restent`);
+  }
+  // le libellé et la définition se modifient (les sorts citent l'id) ; « Sort grenade », lui, est protégé : la fiche le lit (R114)
+  const nouveau = motLibre(`${etiquette.libelle} renommée`);
+  ok(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: etiquette.id }, valeurs: { libelle: nouveau, description: 'Autre définition.' }, avant: { libelle: etiquette.libelle } }]));
+  assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), 'renommé : ses étiquettes restent');
+  const grenade = ligne("SELECT * FROM mot_cle WHERE id = 'sort-grenade'");
+  assert.equal(ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade'").n, 14, 'les 14 sorts « Grenade… » (R114)');
+  for (const operation of [
+    { op: 'supprimer', entite: 'mot_cle', cle: { id: grenade.id } },
+    { op: 'fusionner_mots_cles', mot_cle: grenade.id, dans: libre },
+    { op: 'fusionner_mots_cles', mot_cle: libre, dans: grenade.id },
+    { op: 'modifier', table: 'mot_cle', cle: { id: grenade.id }, valeurs: { libelle: 'Sort explosif' } },
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, /^operations\[0\] : Le mot-clé « Sort grenade » ne se (?:supprime|fusionne|renomme) pas depuis le site : il étiquette les sorts grenades, que la fiche de personnage reconnaît par lui \(décision R114/);
+  }
+  assert.equal(ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade'").n, 14);
 });
 
 test('une page supprimée par le site (métier) : le bloc de description qui la citait garde son texte et perd son lien', () => {

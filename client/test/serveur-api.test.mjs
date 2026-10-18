@@ -644,7 +644,7 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061 et 0066 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066 et 0067 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
@@ -654,6 +654,8 @@ test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061 et 0066 (DEPA
       nm_mj: 0,
     },
     personnage_arme: { durabilite: null },
+    personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },
+    personnage_acquis_choix: { arme_famille_id: null },
   });
   for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
     const colonnes = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.dflt_value]));
@@ -784,7 +786,8 @@ test('entraînement en lignes et choix d’acquis (décision R104, migration 006
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Ysaline'), entrainements, acquis_choix });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
-  assert.deepEqual([p.entrainements, p.acquis_choix], [entrainements, acquis_choix]);
+  // (l'arme choisie d'un choix d'acquis, R119 : vide tant que la page ne la demande pas)
+  assert.deepEqual([p.entrainements, p.acquis_choix], [entrainements, acquis_choix.map((x) => ({ ...x, arme_famille_id: null }))]);
   assert.ok(p.competences.every((c) => !('acquis' in c)), 'plus d’acquis saisi');
   assert.deepEqual(r.corps.controles, []);
   assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
@@ -814,7 +817,7 @@ test('entraînement en lignes et choix d’acquis (décision R104, migration 006
   assert.deepEqual(q.entrainements.map((l) => l.texte), ['Arc +5 % (entraîneur de Valbrume)', 'Livre lu : Boule de feu']);
   assert.ok(q.competences.every((c) => !('acquis' in c)));
   assert.equal(q.notes, `[${jourDuRetrait(q.modifie_le)}] Retrait (règles modifiées) : l’acquis saisi en Arc (7) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.`);
-  assert.deepEqual(q.acquis_choix, acquis_choix, 'un envoi sans la liste ne la touche pas');
+  assert.deepEqual(q.acquis_choix, acquis_choix.map((x) => ({ ...x, arme_famille_id: null })), 'un envoi sans la liste ne la touche pas');
   // les deux formes à la fois (une page d'avant qui a repris les lignes d'une réponse) : rien ne les concilie
   const avant = lire(p.id);
   const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, entrainement: 'Arc +5 %' });
@@ -829,7 +832,7 @@ test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et 
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombeline'), nm_mj: 2, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }] });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
-  assert.deepEqual([p.nm_mj, p.sorts], [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }]]);
+  assert.deepEqual([p.nm_mj, p.sorts], [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, prepare: 0, prepare_jet: null, prepare_posture_id: null }]]);
   assert.deepEqual(r.corps.controles, [], 'niveau 1 : le NM compté vient du MJ, celui du livre ne compte pas');
   // une page d'avant : les NM du MJ de chaque sort (nm_cadeau), sans nm_mj
   const { nm_mj: _n, ...sansNmMj } = lire(p.id).personnage;
@@ -850,6 +853,64 @@ test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et 
   m = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 0 })) });
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
   assert.equal(m.corps.personnage.nm_mj, 2);
+});
+
+test('sort préparé (décision R115, migration 0067) : marque, jet et posture enregistrés et relus ; un seul par fiche, jet de 1 à 100, jet ou posture hors du sort préparé, posture inconnue : refusés, rien n’est écrit', () => {
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  const offensif = 'guide/postures#posture:offensif';
+  const sorts = [
+    { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif },
+    { sort_id: cau, rang: 2, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombre rouge'), sorts });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.sorts, sorts);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : enregistré tel quel
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, sorts: [{ ...sorts[0], prepare_jet: null, prepare_posture_id: null }, sorts[1]] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.sorts[0], { ...sorts[0], prepare_jet: null, prepare_posture_id: null });
+  for (const [liste, motif] of [
+    [[sorts[0], { ...sorts[1], prepare: 1 }], /^sorts\[1\] : un seul sort préparé par fiche \(décision R115\)$/],
+    [[{ ...sorts[0], prepare_jet: 0 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare_jet: 101 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[sorts[0], { ...sorts[1], prepare_jet: 12 }], /^sorts\[1\] : valeur hors des bornes/],
+    [[sorts[0], { ...sorts[1], prepare_posture_id: offensif }], /^sorts\[1\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare: 2 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare_posture_id: 'guide/postures#posture:inconnue' }, sorts[1]], /^sorts : « prepare_posture_id » = « guide\/postures#posture:inconnue » n’existe pas dans les règles/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  // un sort retiré de la fiche part avec sa préparation (sa ligne) ; la marque absente d'un envoi vaut 0
+  const avant = lire(p.id);
+  m = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0 }] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id'), 'un seul sort préparé par fiche (décision R115)');
+});
+
+test('arme choisie d’un choix d’acquis (décision R119, migration 0067) : enregistrée et relue (la page la laisse vide) ; jamais avec une répartition, une seule par choix', () => {
+  const choix = { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'dagues' };
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Lame grise'), acquis_choix: [choix] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.acquis_choix, [choix]);
+  for (const [liste, motif] of [
+    [[{ ...choix, valeur: 3 }], /^acquis_choix\[0\] : valeur hors des bornes/],
+    [[choix, { ...choix, competence_id: 'arme-lourde' }], /^acquis_choix\[1\] : en double \(source, rang\)$/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, acquis_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
 });
 
 test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction a échoué) : sans les tables de l’entraînement et des choix d’acquis, la fiche se lit avec des listes vides, s’enregistre (l’acquis d’avant à 0), et une liste non vide est refusée', () => {
@@ -908,6 +969,39 @@ test('repli sur une base vivante d’avant la migration 0066 (sa reconstruction 
       return true;
     });
     assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction a échoué) : sans les colonnes du sort préparé ni l’arme choisie, la page à jour (marque à 0, jet et posture vides) s’enregistre ; un sort préparé est refusé, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0067') });
+  const ancienne = new DatabaseSync(avant);
+  // les tables d'avant 0067 : personnage_sort sans prepare, prepare_jet, prepare_posture_id ; personnage_acquis_choix sans arme_famille_id
+  ancienne.exec(`DROP INDEX personnage_sort_prepare; DROP INDEX personnage_acquis_choix_arme;
+    ALTER TABLE personnage_sort DROP COLUMN prepare_jet; ALTER TABLE personnage_sort DROP COLUMN prepare_posture_id; ALTER TABLE personnage_sort DROP COLUMN prepare;
+    ALTER TABLE personnage_acquis_choix DROP COLUMN arme_famille_id;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+    const sort = { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
+    const choix = { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6, arme_famille_id: null };
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0067'), sorts: [sort], acquis_choix: [choix] });
+    const p = cree.personnage;
+    assert.deepEqual([p.sorts, p.acquis_choix], [[{ sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0 }], [{ source: choix.source, rang: 1, competence_id: 'arc', valeur: 6 }]],
+      'colonnes absentes de la base : ni écrites ni rendues');
+    for (const [cle, liste, champ] of [
+      ['sorts', [{ ...sort, prepare: 1 }], 'prepare'], ['sorts', [{ ...sort, prepare_jet: 40 }], 'prepare_jet'],
+      ['acquis_choix', [{ ...choix, valeur: null, arme_famille_id: 'dagues' }], 'arme_famille_id'],
+    ]) {
+      const lue = lireFiche(base, p.id);
+      assert.throws(() => enregistrerFiche(base, { version: lue.version, [cle]: liste }, { id: p.id }), (e) => {
+        assert.deepEqual([e.statut, e.details.problemes], [400, [`${cle}[0] : champ inconnu « ${champ} »`]]);
+        return true;
+      });
+      assert.deepEqual(lireFiche(base, p.id), lue, 'rien n’est écrit');
+    }
   } finally {
     base.close();
   }

@@ -941,7 +941,12 @@ description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une
 (migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
 une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). Un mot-clé peut aussi **étiqueter un
+sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
+explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
+« Sort grenade » est protégé comme les mots-clés qui rangent les pages, et tout mot-clé qui étiquette un sort ne se supprime ni ne se fusionne depuis le
+site (`409`, avec les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`) ; ces étiquettes se lisent dans l'API (`/api/v1/sorts/<id>/mots-cles/`),
+en lecture seule. « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
 « met donc "solidité" partout à la place de durabilité. Et profite en pour en faire un mot clé ») : l'état de l'équipement, sa définition celle du
 propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf l'en-tête « Dur. » de la fiche auto, cité par le guide).
 

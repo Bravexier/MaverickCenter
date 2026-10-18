@@ -2379,6 +2379,91 @@ export function effetsDesBatons(regles, fiche) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
+// Le sort préparé (décision R115 ; présentation validée par le propriétaire le 2026-10-18 : « Le don niveau 1 (et son équivalent mage vert) permettrai de
+// choisir le sort qui est préparé et de noter le résultat du jet de magie si réussi » ; « le sort même répété plusieurs fois (don lvl 20) se lance toujours
+// avec les règles de postures du moment où il a été préparé ») : un des sorts de la fiche (personnage_sort.prepare, migration 0067), son jet de magie (un
+// D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les bornes du jet de magie d'un sort préparé : un D100 (regles.sort_prepare, décision R115 ; personnage_sort.prepare_jet, de 1 à 100). { min, max }. */
+export const jetDuSortPrepare = (regles) => ({ min: regles.sort_prepare.jet_min, max: regles.sort_prepare.jet_max });
+
+/**
+ * Les dons débloqués qui permettent de préparer un sort (décision R115 : « Préparation » du Mage Rouge, « Chargement » du Mage Vert, lus dans leur texte
+ * par lib/sort-bonus-texte.mjs#preparationEcrite : regles.classes[].dons[].preparation), et les sorts qu'ils autorisent (« un sort d'attaque lvl1 ou
+ * lvl2 » : ses types et ses NPM, réunis quand un bi-classé a les deux dons) ; null sans un tel don. { dons: [{ don, classe }], types, niveaux }.
+ */
+export function donDePreparation(regles, fiche) {
+  const dons = donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.preparation).map((d) => ({ don: d, classe: c.classe })));
+  if (!dons.length) return null;
+  const union = (cle) => [...new Set(dons.flatMap((x) => x.don.preparation[cle]))];
+  return { dons, types: union('types'), niveaux: union('niveaux').sort((a, b) => a - b) };
+}
+
+/**
+ * Les sorts de la fiche que le don autorise à préparer (donDePreparation : un sort d'attaque, sort_type, du NPM 1 ou 2), dans l'ordre du tableau des
+ * sorts : [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don.
+ */
+export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fiche)) {
+  if (!don) return [];
+  return (fiche.sorts ?? []).map((ligne, index) => ({ index, ligne, sort: trouver(regles.sorts, ligne?.sort_id) }))
+    .filter((x) => x.sort && don.niveaux.includes(x.sort.niveau) && don.types.some((t) => x.sort.types?.includes(t)));
+}
+
+/**
+ * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, ou quand le sort marqué
+ * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer). { index, ligne, sort, jet (1 à 100, ou null
+ * tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
+ */
+export function sortPrepare(regles, fiche) {
+  const don = donDePreparation(regles, fiche);
+  const index = (fiche.sorts ?? []).findIndex((l) => entier(l?.prepare) === 1);
+  const choisi = index < 0 ? null : sortsAPreparer(regles, fiche, don).find((x) => x.index === index);
+  if (!choisi) return null;
+  const jet = choisi.ligne.prepare_jet;
+  return {
+    ...choisi, dons: don.dons,
+    jet: jet === null || jet === undefined || jet === '' ? null : borner(jet, jetDuSortPrepare(regles).min, jetDuSortPrepare(regles).max),
+    posture: trouver(regles.postures ?? [], choisi.ligne.prepare_posture_id),
+  };
+}
+
+/** Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture (la base les refuse hors du sort préparé : CHECK de personnage_sort). */
+const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+
+/**
+ * Les sorts de la fiche quand on prépare le sort `sortId` (décision R115) : lui seul est marqué, avec la posture cochée à cet instant (personnage.posture_id,
+ * « la posture du moment où il a été préparé » ; null sans posture), son jet effacé (à noter : noterLeJet) ; les autres ne le sont plus. Sans `sortId`
+ * (« Lâcher le sort »), aucun ne l'est : marque, jet et posture remis à zéro.
+ */
+export function sortsApresPreparation(regles, fiche, sortId) {
+  const posture = trouver(regles.postures ?? [], fiche.posture_id)?.id ?? null;
+  return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture } : nonPrepare(l)));
+}
+
+/**
+ * Les sorts de la fiche avec le jet de magie du sort préparé noté (`saisie` bornée de 1 à 100 : jetDuSortPrepare ; vide ou illisible : effacé, « si
+ * réussi ») ; inchangés sans sort préparé.
+ */
+export function sortsApresLeJet(regles, fiche, saisie) {
+  const { min, max } = jetDuSortPrepare(regles);
+  const jet = String(saisie ?? '').trim() === '' ? null : borner(saisie, min, max);
+  return (fiche.sorts ?? []).map((l) => (entier(l?.prepare) === 1 ? { ...l, prepare_jet: jet } : l));
+}
+
+/**
+ * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet et sa
+ * posture, tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
+ */
+export function sortsAEnregistrer(regles, fiche) {
+  const prepare = sortPrepare(regles, fiche);
+  return (fiche.sorts ?? []).map((s, i) => {
+    if (prepare?.index !== i) return { ...nonPrepare(s), rang: i + 1 };
+    return { ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null };
+  });
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
 // Les sorts du moment (décision R102 ; demande du propriétaire du 2026-10-17 : « Le coût devrait être mis à jour automatiquement en fonction des bonus […]
 // le calcul des dégâts de chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. et de posture choisie »).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2428,15 +2513,19 @@ export function ecrireDegatsDeSort(v) {
 }
 
 /**
- * Vrai si les sorts visés par un bonus écrit (lib/sort-bonus-texte.mjs : { tous | attaque | soin | innee | magies, types? }) comprennent ce sort ;
- * `types` restreint aux sorts de ces types (« Les sorts de placement du Vent »).
+ * Vrai si les sorts visés par un bonus écrit (lib/sort-bonus-texte.mjs : { tous | attaque | soin | innee | magies, types? | mots_cles }, prepare?) comprennent
+ * ce sort ; `types` restreint aux sorts de ces types (« Les sorts de placement du Vent ») ; `mots_cles` : les sorts qui portent l'une de ces étiquettes
+ * (regles.sorts[].mots_cles : « les sorts "grenades" », décision R114), jamais un sort par son nom ; `prepare` (décision R115) : vrai, le sort préparé
+ * seulement (`estPrepare`) ; faux, tous les autres.
  */
-function viseLeSort(vises, sort, fiche, portee) {
+function viseLeSort(vises, sort, fiche, portee, estPrepare = false) {
   if (!vises) return false;
   if (vises.sauf_soi_meme && /^soi-m[êe]me$/i.test(String(portee ?? '').trim())) return false;
   if (vises.types && !vises.types.some((t) => sort.types?.includes(t))) return false;
+  if (vises.prepare !== undefined && Boolean(vises.prepare) !== Boolean(estPrepare)) return false;
   return Boolean(vises.tous || (vises.attaque && sort.types?.includes('attaque')) || (vises.soin && sort.types?.includes('soin'))
-    || (vises.innee && sort.magie_id === fiche.magie_innee_id) || vises.magies?.includes(sort.magie_id) || (vises.types && !vises.magies && !vises.innee));
+    || (vises.innee && sort.magie_id === fiche.magie_innee_id) || vises.magies?.includes(sort.magie_id) || (vises.types && !vises.magies && !vises.innee)
+    || vises.mots_cles?.some((m) => sort.mots_cles?.includes(m)));
 }
 
 /**
@@ -2459,11 +2548,14 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
 
 /**
  * Ce qui vaut pour tous les sorts de la fiche (sortDuMoment), calculé une fois : la posture du moment, les bâtons à la ceinture, les bonus écrits des
- * dons et de l'armure élémentaire, les effets des accessoires.
+ * dons et de l'armure élémentaire, les effets des accessoires ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
+ * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture) }, null sans sort préparé).
  */
 export function contexteDesSorts(regles, fiche) {
+  const prepare = sortPrepare(regles, fiche);
   return {
     posture: postureDuMoment(regles, fiche), batons: effetsDesBatons(regles, fiche), ecrits: bonusDeSortsDuPersonnage(regles, fiche),
+    prepare: prepare && { sort_id: prepare.sort.id, posture: postureDuMoment(regles, { ...fiche, posture_id: prepare.posture?.id ?? null }) },
     accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
     // le chakra maximum du personnage, pour un coût qui en est un pourcentage (décision R106)
     chakraMax: attributsDe(regles, fiche).chakra,
@@ -2477,7 +2569,9 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  * Un sort de la fiche à son moment (décision R102) : `auNm` = ses valeurs au NM du sort, telles que la page les lit (lib/sort-maitrise.mjs#valeurAuNm :
  * { cout, portee, dsb, effets }) ; `contexte` : contexteDesSorts. Rend { inactif (la magie que la Symbiose désactive : son nom), cout: { texte, detail,
  * corruption }, portee: { texte, detail }, dsb: { texte, detail, diviseur, lu }, effets: { texte, detail }, nonComptes: [{ nom, valeur, raison, cible }],
- * rappels: [{ nom, texte }] } ; `detail` : [{ nom, valeur }] ; `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'.
+ * rappels: [{ nom, texte }], prepare (le sort préparé, décision R115), posture (celle à laquelle il se calcule, ou null) } ; `detail` : [{ nom, valeur }] ;
+ * `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'. Le sort préparé (contexte.prepare) se calcule à la posture du moment de sa préparation, tout
+ * le reste à la posture cochée ; « Charge lente… » ne vise que lui, « … ou rapide » tous les autres (lib/sort-bonus-texte.mjs, `prepare`).
  * - Coût (« Le coût en chakra »), seulement un nombre ou « N + autre chose » (la part en chakra) : réductions des dons (« réduits de 4 » pour les magies
  *   nommées, Économe : son NPM), du bâton (« Coût sort −N ») ; réduit, jamais moins de 1 (réponse « Jamais moins de 1 » ; un coût écrit 0 reste 0, ses
  *   réductions non comptées : le sort ne consomme pas de chakra, décision R106). Un
@@ -2499,7 +2593,11 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  * - Un bonus qui viserait un D/S/B qui ne se lit pas est dit non compté.
  */
 export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche)) {
-  const { posture, batons, ecrits, accessoires } = contexte;
+  const { batons, ecrits, accessoires } = contexte;
+  // le sort préparé se calcule à la posture du moment où il a été préparé (décision R115 : « préparé en posture offensive, fera les dégâts maximals, même si
+  // l'attaque physique a lieu en posture défensive ») ; les autres, à la posture cochée
+  const estPrepare = Boolean(contexte.prepare) && contexte.prepare.sort_id === sort.id;
+  const posture = estPrepare ? contexte.prepare.posture : contexte.posture;
   const nonComptes = [];
   const rappels = [];
   const symbiose = posture?.symbiose ?? null;
@@ -2510,7 +2608,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const colonneDe = (cible) => (cible === 'cout' ? 'cout' : cible === 'portee' ? 'portee' : 'dsb');
   const ecritsPour = (cible) => {
     const r = [];
-    for (const b of ecrits.filter((x) => x.cible === cible && viseLeSort(x.vises, sort, fiche, auNm.portee))) {
+    for (const b of ecrits.filter((x) => x.cible === cible && viseLeSort(x.vises, sort, fiche, auNm.portee, estPrepare))) {
       const valeur = valeurEcrite(b);
       if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
       else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
@@ -2640,7 +2738,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   for (const r of batons.rappels) rappels.push({ nom: r.baton.nom, texte: r.texte });
   const protection = batons.comptes.get('protection');
   if (protection && sort.types?.includes('protection') && !dsb.lu && !effets.detail.length) rappels.push({ nom: protection.baton.nom, texte: protection.texte });
-  return { inactif, cout, portee, dsb, effets, nonComptes, rappels };
+  return { inactif, cout, portee, dsb, effets, nonComptes, rappels, prepare: estPrepare, posture: posture?.posture ?? null };
 }
 
 /**

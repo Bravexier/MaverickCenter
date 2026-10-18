@@ -18,7 +18,7 @@ import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
-import { cellulesDeLaFiche, CLES_DE_LA_NOTE, enChiffres, lireLigneDeNote, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
+import { cellulesDeLaFiche, CLES_DE_LA_NOTE, enChiffres, lireLigneDeNote, lireSortPrepare, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
 import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src/lib/fiche-tableur-import.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
@@ -50,7 +50,8 @@ function commeLaPage(fiche) {
   f.acquis_choix = M.acquisChoixValables(regles, f);
   f.maitrises_armes = M.maitrisesValables(regles, f);
   f.armes = M.armesValables(regles, f);
-  f.sorts = f.sorts.map((s, i) => ({ ...s, rang: i + 1 }));
+  // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
+  f.sorts = M.sortsAEnregistrer(regles, f);
   f.bouclier_solidite = M.soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id);
@@ -282,7 +283,64 @@ function ficheDesArmes() {
   return f;
 }
 
+/**
+ * Mage Rouge, spécialité Rubis, niveau 10, « Charge lente… » choisi : le sort préparé (décision R115) — un sort d'attaque de NPM 1, son jet de magie et
+ * la posture du moment de sa préparation (Offensif), alors que la posture cochée est Défensif.
+ */
+const BOULE_DE_FEU = 'magies/magie-du-feu#sort:boule-de-feu';
+function ficheDuMageRouge() {
+  const f = {
+    ...ficheVide('Ignis'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    xp: xpDuNiveau(10), posture_id: 'guide/postures#posture:defensif',
+    classes: [{ rang: 1, classe_id: 'classes/mage-rouge', specialite_id: 'classes/mage-rouge#specialite:mage-rubis' }],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    capacites: [{ capacite_id: 'capacites/mage-rouge-charge-lente' }],
+  };
+  f.sorts = M.sortsPossibles(regles, f).filter((s) => s.magie_id === 'magies/magie-du-feu').slice(0, 6)
+    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 0, nm_livre: 0 }));
+  assert.ok(f.sorts.some((s) => s.sort_id === BOULE_DE_FEU), 'Boule de feu parmi les sorts');
+  f.sorts = f.sorts.map((s) => (s.sort_id === BOULE_DE_FEU ? { ...s, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' } : s));
+  return f;
+}
+
 // ------------------------------------------------------------------ les tests
+
+test('sort préparé (décision R115) : le sort, son jet de magie et sa posture dans la note (« Sort préparé »), relus tels quels, point fixe ; sans jet ni posture, le nom seul ; ce que la fiche ne peut pas préparer est dit', async () => {
+  const f = ficheDuMageRouge();
+  assert.equal(M.sortPrepare(regles, commeLaPage(f))?.sort.id, BOULE_DE_FEU);
+  const r = await verifier(f, 'sort préparé');
+  const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
+  assert.deepEqual(preparees(r.cellules), ['Boule de feu (jet 57, posture Offensif)']);
+  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' }]);
+  // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : le nom seul
+  const sansJet = { ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_jet: null, prepare_posture_id: null } : s)) };
+  assert.deepEqual(preparees((await verifier(sansJet, 'sort préparé sans jet ni posture')).cellules), ['Boule de feu']);
+  // une ligne que la fiche ne peut pas reprendre : un sort absent de la liste, un jet hors du D100, une posture inconnue, une fiche sans « Préparation »
+  const relire = async (fiche, remplacer) => {
+    const a = await allerRetour(fiche);
+    const cellules = { ...a.cellules, [ORDINATEUR.note]: remplacer(a.cellules[ORDINATEUR.note]) };
+    const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: a.remplis, alignements: a.alignements, descriptionImage: 'logo', titre: fiche.nom }), { nom: 'essai.xlsx' });
+    return ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  };
+  for (const [ecrit, perdu] of [
+    ['Fouet ténébreux (jet 57)', 'Sort préparé : « Fouet ténébreux (jet 57) » ne désigne pas un sort de la liste'],
+    ['Boule de feu (jet 140, posture Offensif)', 'Sort préparé : « Boule de feu (jet 140, posture Offensif) » : jet de magie hors de 1 à 100'],
+    ['Boule de feu (posture Rêveuse)', 'Sort préparé (posture) : « Rêveuse » introuvable dans les règles'],
+  ]) {
+    const relu = await relire(f, (note) => note.replace('Sort préparé : Boule de feu (jet 57, posture Offensif)', `Sort préparé : ${ecrit}`));
+    assert.deepEqual(relu.nonRepris, [perdu], ecrit);
+    assert.ok(relu.fiche.sorts.every((s) => !s.prepare), `${ecrit} : aucun sort préparé`);
+  }
+  assert.deepEqual((await relire(f, (note) => note)).nonRepris, [], 'la note telle quelle');
+  const sansDon = await relire({ ...f, classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }], capacites: [] },
+    (note) => `${note}\nSort préparé : Boule de feu (jet 57, posture Offensif)`);
+  assert.deepEqual(sansDon.nonRepris, ['Sort préparé : « Boule de feu (jet 57, posture Offensif) » : la fiche n’a pas le don qui le permet (« Préparation », « Chargement »), ou ce sort n’est pas de ceux qu’il autorise']);
+  // la lecture de la ligne : des parenthèses qui ne disent ni un jet ni une posture font partie du nom
+  assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus' });
+  assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null });
+  assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null });
+});
+
 
 test('entraînement (décision R104) : ses lignes reviennent compétences d’abord, puis textes, chacune telle quelle ; les choix d’acquis aussi', async () => {
   const f = { ...ficheRiche(), entrainements: [

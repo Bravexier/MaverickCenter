@@ -33,7 +33,8 @@ import {
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
-  livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre,
+  livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
+  sortsApresPreparation,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
@@ -734,7 +735,8 @@ function construireSorts() {
           onchange: (ev) => {
             const choix = ev.target.value;
             if (!choix) fiche.sorts.splice(l.index, 1);
-            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0 };
+            // un autre sort dans l'emplacement : la préparation (décision R115) ne le suit pas
+            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
             else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
             changer();
           },
@@ -765,9 +767,11 @@ function construireSorts() {
         const remarque = l.sort?.remarque
           ? el('span', { class: 'sort-remarque', tabindex: '0', role: 'img', 'aria-label': `Remarque : ${l.sort.remarque}`, title: l.sort.remarque }, '★')
           : null;
+        // le sort préparé (décision R115) : marqué, sa posture enregistrée en infobulle (son bloc est sous le tableau)
+        const marquePrepare = el('span', { class: 'sort-prepare__marque', tabindex: '0', hidden: true }, 'préparé');
         const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
         const tr = el('tr', { class: classe },
-          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
+          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque, marquePrepare)),
           modes, cout, portee, zone, dsb,
           el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
@@ -814,9 +818,14 @@ function construireSorts() {
           const texteDsb = m ? `${m.dsb.texte}${m.dsb.diviseur > 1 ? ` ÷ ${m.dsb.diviseur}` : ''}` : '';
           poserValeur(dsb, texteDsb, m && (m.dsb.detail.length || m.dsb.diviseur > 1),
             m && detail(`Écrit : ${auNm(l.sort.dsb, 'dsb')}`, m.dsb.detail, [
-              ...(m.dsb.diviseur > 1 ? [`Posture ${calcul.posture.posture.nom} : dégâts infligés ÷ ${m.dsb.diviseur}, avant l’armure`] : []),
+              ...(m.dsb.diviseur > 1 ? [`Posture ${m.posture?.nom} : dégâts infligés ÷ ${m.dsb.diviseur}, avant l’armure`] : []),
+              // le sort préparé : à la posture du moment de sa préparation (décision R115)
+              ...(m.prepare ? [`Sort préparé : calculé à la posture de sa préparation (${m.posture?.nom ?? 'aucune'})`] : []),
               ...autres, ...m.rappels.map((r) => `${r.nom} : ${r.texte}`),
-            ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length));
+            ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length || m.prepare));
+          marquePrepare.hidden = !m?.prepare;
+          infobulle(marquePrepare, m?.prepare ? `Sort préparé, à la posture du moment de sa préparation : ${m.posture?.nom ?? 'aucune'}` : '');
+          tr.toggleAttribute('data-prepare', Boolean(m?.prepare));
           // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
           tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
           infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');
@@ -847,6 +856,69 @@ function construireSorts() {
         ];
       })),
   ]);
+}
+
+// ------------------------------------------------------------------ sort préparé (décision R115)
+/**
+ * Le sort préparé (décision R115, présentation validée par le propriétaire le 2026-10-18 : « un bloc « Sort préparé » avec « Préparation » ou « Chargement »,
+ * un seul sort d'attaque de niveau 1 ou 2, le jet de magie (le D100), la posture du moment enregistrée, « Lâcher le sort » ») : caché sans l'un de ces dons
+ * (donDePreparation) ; la liste ne propose que les sorts de la fiche que le don autorise (sortsAPreparer). Choisir un sort le prépare à la posture cochée à
+ * cet instant, qu'on voit à côté ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
+ * dans le tableau des sorts, se calculent à la posture enregistrée (sortDuMoment).
+ */
+function construireSortPrepare() {
+  const don = donDePreparation(regles, fiche);
+  $('sort-prepare-bloc').hidden = !don;
+  if (!don) {
+    reconstruire($('sort-prepare'), '', () => []);
+    return;
+  }
+  const noms = don.dons.map((x) => `« ${x.don.nom} » (${x.classe.nom})`).join(' et ');
+  const aide = $('sort-prepare-aide');
+  const texteAide = `${noms} : ${don.dons.map((x) => x.don.effet).join(' ')}`;
+  if (aide.textContent !== texteAide) aide.textContent = texteAide;
+  const choix = sortsAPreparer(regles, fiche, don);
+  const cle = JSON.stringify([choix.map((x) => x.sort.id), don.dons.map((x) => x.don.id)]);
+  reconstruire($('sort-prepare'), cle, () => {
+    const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
+    const liste = el('select', {
+      'aria-label': 'Sort préparé', disabled: !choix.length,
+      onchange: (ev) => { fiche.sorts = sortsApresPreparation(regles, fiche, ev.target.value || null); changer(); },
+    }, el('option', { value: '', class: 'option-vide' }, choix.length ? '— aucun —' : `— aucun sort ${don.types.includes('attaque') ? 'd’attaque ' : ''}de NPM ${don.niveaux.join(' ou ')} dans la fiche —`),
+    choix.map((x) => {
+      const m = couleurDe(x.sort);
+      return el('option', { value: x.sort.id, style: m ? `background-color: ${m.couleur}; color: ${m.texte}` : null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
+    }));
+    const jet = el('input', {
+      type: 'number', min: String(jetDuSortPrepare(regles).min), max: String(jetDuSortPrepare(regles).max), step: '1', inputmode: 'numeric', class: 'sort-prepare__jet',
+      'aria-label': 'Jet de magie du sort préparé (D100, facultatif)', placeholder: 'D100',
+      onchange: (ev) => { fiche.sorts = sortsApresLeJet(regles, fiche, ev.target.value); changer(); },
+    });
+    const posture = el('output', { class: 'sort-prepare__posture', 'aria-live': 'polite' });
+    const lacher = el('button', { type: 'button', class: 'retirer sort-prepare__lacher', onclick: () => { fiche.sorts = sortsApresPreparation(regles, fiche, null); changer(); } }, 'Lâcher le sort');
+    synchro(() => {
+      const p = sortPrepare(regles, fiche);
+      poser(liste, p?.sort.id ?? '');
+      // la couleur de la magie du sort, celle de la posture (comme le tableau des sorts et les cases des postures), posées seulement quand elles changent
+      const m = couleurDe(p?.sort);
+      attribut(liste, 'data-couleur', Boolean(m));
+      attribut(liste, 'style', m ? `--c: ${m.couleur}; --texte-sur-c: ${m.texte}` : null);
+      jet.disabled = !p;
+      if (document.activeElement !== jet) poser(jet, p?.jet ?? '');
+      const texte = p ? (p.posture?.nom ?? 'aucune') : '—';
+      if (posture.textContent !== texte) posture.textContent = texte;
+      attribut(posture, 'data-couleur', Boolean(p?.posture));
+      attribut(posture, 'style', p?.posture ? `--c: ${p.posture.couleur}; --texte-sur-c: ${p.posture.texte}` : null);
+      infobulle(posture, p ? 'La posture du moment où le sort a été préparé : ses dégâts se calculent à elle, même si la posture change ensuite (décision R115)' : '');
+      lacher.disabled = !p;
+    });
+    return [
+      el('label', { class: 'fiche-champ sort-prepare__sort' }, el('span', {}, 'Sort'), liste),
+      el('label', { class: 'fiche-champ' }, el('span', {}, 'Jet de magie (D100)'), jet),
+      el('span', { class: 'fiche-champ' }, el('span', {}, 'Posture à la préparation'), posture),
+      lacher,
+    ];
+  });
 }
 
 // ------------------------------------------------------------------ entraînement (décision R104)
@@ -2478,6 +2550,7 @@ function rafraichir() {
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
+  construireSortPrepare();
   construireDons();
   construireEntrainement();
   construireAcquisAChoisir();
@@ -2534,7 +2607,8 @@ function aEnvoyer() {
   // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)
   f.armure_parties = partiesValables(regles, f);
   for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
-  f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
+  // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, une préparation que le don ne permet plus part (décision R115)
+  f.sorts = sortsAEnregistrer(regles, f);
   // la solidité du moment du bouclier bornée à son maximum (décision R96 : à son maximum ou au-delà, rien d'enregistré)
   f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));

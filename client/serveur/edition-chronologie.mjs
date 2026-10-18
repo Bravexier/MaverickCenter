@@ -271,6 +271,20 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
 
   const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 
+  /**
+   * Refus pour un mot-clé qui étiquette un sort (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » sur les sorts grenades) : une étiquette
+   * est une règle posée par décision, que le site ne pose ni ne retire ; la base, elle, refuserait la suppression par sa clé étrangère (sans cascade),
+   * sans message lisible. Supprimer le mot-clé, ou le fusionner dans un sens ou l'autre (l'un part, l'autre reçoit ses pages et ses balises), changerait
+   * ce que l'étiquette veut dire : 409, avec les sorts.
+   */
+  function verifierSansSort(db, m, action) {
+    const sorts = db.prepare('SELECT s.nom FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ? ORDER BY s.nom_cle, s.id').all(m.id).map((s) => s.nom);
+    if (!sorts.length) return;
+    const noms = sorts.slice(0, 3).map((n) => `« ${n} »`).join(', ') + (sorts.length > 3 ? '…' : '');
+    throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se ${action} pas depuis le site : il étiquette ${nombre(sorts.length, 'sort', 'sorts')} (${noms}), `
+      + 'une règle posée par décision du propriétaire.');
+  }
+
   const MOT_CLE = {
     // la définition (même d'un mot-clé dont le site se sert) : vidée, NULL ; renommer ne réécrit aucun texte (pages et balises citent l'id : une balise
     // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
@@ -293,13 +307,14 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
     },
     /**
      * Un mot-clé supprimé : retiré de tous les textes qui le citent (chaque balise devient son texte simple, « Libellé : définition » pour le mode complet),
-     * de toutes les pages qui le portent, puis du vocabulaire.
+     * de toutes les pages qui le portent, puis du vocabulaire ; refusé s'il étiquette un sort (verifierSansSort).
      */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
       const m = motCle(db, cle?.id);
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
       verifierNonProtege(m, 'supprime');
+      verifierSansSort(db, m, 'supprime');
       const avant = vocabulaireVivant(db);
       const textes = reecrireLesBalises(ctx, m.id, (texte, o) => retirerLeMotCle(texte, avant, m.id, o), { sauf: m.id });
       const pages = db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(m.id);
@@ -349,7 +364,7 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
   /**
    * `{ op: 'fusionner_mots_cles', mot_cle, dans }` : le mot-clé `mot_cle` rejoint `dans` (ses pages passent à `dans`, sans doublon : une
    * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé), puis quitte le vocabulaire. Ni l'un ni
-   * l'autre ne peut être un mot-clé dont le site se sert.
+   * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort).
    */
   function fusionner(ctx, op) {
     const { db, w } = ctx;
@@ -359,6 +374,8 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
     if (source.id === cible.id) throw refus(`« ${source.libelle} » : un mot-clé ne se fusionne pas avec lui-même.`);
     verifierNonProtege(source, 'fusionne');
     verifierNonProtege(cible, 'fusionne');
+    verifierSansSort(db, source, 'fusionne');
+    verifierSansSort(db, cible, 'fusionne');
     const avant = vocabulaireVivant(db);
     reecrireLesBalises(ctx, source.id, (texte, o) => reciblerLeMotCle(texte, avant, source.id, cible.id, o), { sauf: source.id });
     for (const t of db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source.id)) {

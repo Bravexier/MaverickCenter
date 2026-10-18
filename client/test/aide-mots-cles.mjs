@@ -29,9 +29,23 @@ export const MOTS_CLES_D_ESSAI = Object.fromEntries([
   ['Essai guide', ['lore/barrage-argente']],
 ].map(([libelle, pages]) => [normalize(libelle), { libelle, pages }]));
 
+/**
+ * Un mot-clé d'essai qui étiquette des sorts (sort_mot_cle, migration 0067 : décision R114), sans être un mot-clé dont le site se sert : il ne se supprime ni
+ * ne se fusionne (serveur/edition-chronologie.mjs#verifierSansSort). Posé sur deux sorts, sur aucune page (les tests du vocabulaire choisissent leurs
+ * mots-clés parmi ceux des pages).
+ */
+export const ETIQUETTE_D_ESSAI = Object.freeze({
+  id: normalize('Essai étiquette de sort'), libelle: 'Essai étiquette de sort', pages: [],
+  sorts: ['magies/magie-du-feu#sort:boule-de-feu', 'magies/magie-du-feu#sort:cauterisation'],
+});
+const TOUS_LES_MOTS_CLES_D_ESSAI = { ...MOTS_CLES_D_ESSAI, [ETIQUETTE_D_ESSAI.id]: { libelle: ETIQUETTE_D_ESSAI.libelle, pages: ETIQUETTE_D_ESSAI.pages } };
+
 const sql = (v) => `'${String(v).replace(/'/g, "''")}'`;
 
-/** Ajoute les mots-clés d'essai aux fichiers mot_cle.sql et page_tag.sql de `rows` (une copie de data/rows), triés comme l'exporteur. */
+/**
+ * Ajoute les mots-clés d'essai aux fichiers mot_cle.sql et page_tag.sql de `rows` (une copie de data/rows), et les étiquettes de l'étiquette d'essai à
+ * sort_mot_cle.sql, triés comme l'exporteur.
+ */
 export function ajouterLesMotsClesDEssai(rows) {
   const lire = (table) => readFileSync(join(rows, `${table}.sql`), 'utf8').split('\n');
   const ecrire = (table, lignes, cle) => {
@@ -45,7 +59,7 @@ export function ajouterLesMotsClesDEssai(rows) {
     writeFileSync(join(rows, `${table}.sql`), `${[tete, ...corps].join('\n')}\n`);
   };
   const motsCles = lire('mot_cle');
-  for (const [id, { libelle }] of Object.entries(MOTS_CLES_D_ESSAI)) {
+  for (const [id, { libelle }] of Object.entries(TOUS_LES_MOTS_CLES_D_ESSAI)) {
     motsCles.push(`INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (${sql(id)}, ${sql(libelle)}, ${sql(id)}, ${sql(DEFINITION_D_ESSAI)});`);
   }
   ecrire('mot_cle', motsCles, (l) => [/VALUES \('((?:[^']|'')*)'/.exec(l)[1]]);
@@ -55,7 +69,7 @@ export function ajouterLesMotsClesDEssai(rows) {
     const m = /VALUES \('((?:[^']|'')*)', (\d+),/.exec(l);
     if (m) ordres.set(m[1], Math.max(ordres.get(m[1]) ?? -1, Number(m[2])));
   }
-  for (const [id, { pages }] of Object.entries(MOTS_CLES_D_ESSAI)) {
+  for (const [id, { pages }] of Object.entries(TOUS_LES_MOTS_CLES_D_ESSAI)) {
     for (const page of pages) {
       const ordre = (ordres.get(page) ?? -1) + 1;
       ordres.set(page, ordre);
@@ -66,6 +80,9 @@ export function ajouterLesMotsClesDEssai(rows) {
     const m = /VALUES \('((?:[^']|'')*)', (\d+),/.exec(l);
     return [m[1], Number(m[2])];
   });
+  const etiquettes = lire('sort_mot_cle');
+  for (const sort of ETIQUETTE_D_ESSAI.sorts) etiquettes.push(`INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES (${sql(sort)}, ${sql(ETIQUETTE_D_ESSAI.id)});`);
+  ecrire('sort_mot_cle', etiquettes, (l) => [...(/VALUES \('((?:[^']|'')*)', '((?:[^']|'')*)'\)/.exec(l) ?? []).slice(1, 3)]);
 }
 
 /**
