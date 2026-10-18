@@ -155,14 +155,17 @@ abandonne.
   Statistiques du site (E12, `feuille-de-route.md`).
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'**acquis** d'une compétence **se calcule** (décision R104) : l'entraînement, les dons débloqués (race, ethnie, classes) dont le
-  texte écrit « +N% Compétence » sans ambiguïté (`lib/acquis-texte.mjs`, lu au build), le métier (R33) et l'accessoire « Compétence X » (R54), dans cet ordre,
+  texte écrit « +N% Compétence » sans ambiguïté (`lib/acquis-texte.mjs`, lu au build ; dons de classe passifs seulement, ligne de l'ethnie du tableau de
+  la race comprise : « Bonus compétence » du Drakos), l'armure portée (« +25% Stabilité » ; sauf transformée par un élément, R99), le métier (R33) et
+  l'accessoire « Compétence X » (R54), dans cet ordre (un arbitrage),
   rognés à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41 ; « le plafond prévaut », R38) ; le nombre s'affiche
   en gras, rouge s'il est rogné, son détail en infobulle (`competencesDe` : `entrainement`, `dons`, `metier`, `accessoire` et leurs `…Brut`). Un bonus « X ou Y »
   d'un don est un **choix** (« Acquis à choisir », sous les dons, et le tiroir des choix : `acquisDesDons`, `acquisApresChoix`) ; « 10% de compétence en acquis à
   répartir au choix » (Humain central), une **répartition** : une ligne par compétence et ses points, « + Compétence » tant qu'il en reste
   (`acquisApresRepartition`) ; les choix gardés sont ceux d'un don encore débloqué (`acquisChoixValables`, table `personnage_acquis_choix`). Un bonus que la
   phrase lie à une situation, à « l'arme choisie », aux « compétences d'arme », à « 2 sur les 3 », aux jets d'une caractéristique ou à l'artisanat n'est pas
-  compté (questions Q21 à Q26 de `docs/sql/a-valider.md`).
+  compté : listé sous « Bonus d'acquis non comptés », avec sa raison (questions Q21 à Q29 de `docs/sql/a-valider.md`). « Son acquis max en Social est
+  augmenté de +20 » (Mort-vivant) relève le plafond de chaque compétence du Social (`plafondBonus`, question Q28).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
   exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
   personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
@@ -406,10 +409,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
     par celui de la base — pour un classeur de la page, celui de la base, qu'elle a écrit ; pour un classeur qui n'en vient pas (fiche auto, modèle
     rempli à la main), **celui qu'écrit sa case L41** (R72 : « Le métier suit la base » ; `bonusDuMetierEcrit`). Plus que le calcul : une ligne de
     `nonRepris` (« Acquis Arbalète : « 6 » dans le classeur, 0 calculé (l'acquis se calcule : … ; décision R104) », des points saisis que la fiche n'a
-    plus) ; moins : une remarque (les dons, que la fiche auto ne comptait pas). Avant, un **choix d'acquis** d'un don que le classeur ne dit pas (fiche
-    auto, classeur de la page d'avant R104) est déduit quand une seule lecture l'explique : « X ou Y », la seule option dont l'acquis écrit dépasse le
-    calcul de la valeur du bonus ; « à répartir au choix », les compétences dont l'acquis écrit dépasse le calcul, si tout tient dans le bonus
-    (« Acquis à répartir de Adaptation humaine (10 %) déduit : Équilibre 3 (l'acquis du classeur) »). Une remarque de synthèse quand l'ancien bonus du
+    plus) ; moins : une remarque (le calcul compte davantage : dons, armure, métier). Avant, un **choix « X ou Y »** d'un don que le classeur ne dit pas (fiche
+    auto, classeur de la page d'avant R104) est déduit quand une seule option l'explique — celle dont l'acquis écrit dépasse le calcul de la valeur du
+    bonus (un arbitrage, dit par une remarque : « Acquis au choix de Épéiste (Guerrier) (+5 %) déduit : Arme Légère (l'acquis du classeur) ») ; une
+    répartition (« à répartir au choix ») ne se déduit pas, ce que l'acquis écrit a de plus pouvant venir d'ailleurs : elle reste à faire. Une remarque de synthèse quand l'ancien bonus du
     métier n'est pas celui de la base (« Métier Acrobate : le classeur comptait Esquive +2, Réflexe +2, Ruse +2 ; la base donne Esquive +3, Réflexe +3 :
     les acquis suivent la base (R72) ») ; une case L41 qui ne se lit pas exactement (liste en « OU » sans « → », liste où se mêlent compétences et
     autres mots, nom de compétence écrit avant son « N% » (« Esquive +3% ») ou pris dans d'autres mots (« aux jets d'Esquive »), nombre précédé d'un
@@ -484,7 +487,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   la Symbiose du Potentiel Illimité (Q15), les bonus « tous les M niveaux globaux » (Q16), la magie désactivée en Symbiose (Q17), les objets en
   Symbiose (Q18), les valeurs par tour (Q19), les bonus « selon la situation » douteux (Q20), et les bonus d'acquis des dons non comptés : « à
   répartir au choix » (Q21), « l'arme choisie » (Q22), « les compétences d'arme » (Q23), « 2 sur les 3 » (Q24), les jets d'une caractéristique (Q25),
-  l'artisanat (Q26) : [`sql/a-valider.md`](sql/a-valider.md).
+  l'artisanat (Q26), « 5% parmi les autres » du Drakos orange (Q27), le plafond du Mort-vivant (Q28), un moyen de compter à la main les bonus non comptés
+  (Q29) : [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 

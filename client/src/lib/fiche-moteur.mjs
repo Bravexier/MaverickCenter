@@ -280,17 +280,19 @@ export function competencesDe(regles, fiche) {
   const { parCompetence } = bonusDuMetier(regles, fiche);
   const posture = postureDuMoment(regles, fiche);
   const entrainement = entrainementDe(regles, fiche).parCompetence;
-  const dons = acquisDesDons(regles, fiche).parCompetence;
+  const { parCompetence: dons, plafonds } = acquisDesDons(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
     const naturel = saisie ? entier(saisie.naturel) : 0;
     const utilisable = carac.croix < 2;
     const malus = carac.croix === 1 ? constante(regles, 'competence.croix_1_malus') : 0;
-    const plafondAcquis = (carac.base === null ? 0 : carac.valeur) * constante(regles, 'competence.acquis_max_par_point_caracteristique');
-    // l'Acquis se calcule (décision R104) : l'entraînement, les dons (« +N% Compétence » lus dans leur texte), le métier (R33) et l'accessoire
-    // « Compétence X » (R54), dans cet ordre, rognés au plafond de 5 par point de caractéristique (R41 ; « le plafond prévaut », R38) ; un accessoire
-    // maudit retire sa valeur
+    // le plafond qu'un don relève (« Son acquis max en Social est augmenté de +20 », Mort-vivant)
+    const plafondBonus = carac.base === null ? 0 : (plafonds.get(k.caracteristique_id) ?? []).reduce((t, p) => t + p.valeur, 0);
+    const plafondAcquis = (carac.base === null ? 0 : carac.valeur) * constante(regles, 'competence.acquis_max_par_point_caracteristique') + plafondBonus;
+    // l'Acquis se calcule (décision R104) : l'entraînement, les dons et l'armure (« +N% Compétence » lus dans leur texte), le métier (R33) et l'accessoire
+    // « Compétence X » (R54), rognés au plafond de 5 par point de caractéristique (R41 ; « le plafond prévaut », R38) dans cet ordre (un arbitrage :
+    // l'ordre ne change pas le total, seulement la part dite rognée) ; un accessoire maudit retire sa valeur
     let reste = plafondAcquis;
     const rogne = (v) => {
       const pris = Math.min(Math.max(0, v), Math.max(0, reste));
@@ -311,7 +313,7 @@ export function competencesDe(regles, fiche) {
     // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
     const bonusPosture = bonusDePostureSurCompetence(posture, k);
     return {
-      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, maxNaturel, plafondAcquis,
+      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, maxNaturel, plafondAcquis, plafondBonus,
       acquis, acquisBrut: entrainementBrut + donsBrut + metierBrut + accessoireBrut,
       entrainement: entrainementCompte, entrainementBrut, dons: donsComptes, donsBrut, donsDetail, metier, metierBrut, accessoire, accessoireBrut,
       score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
@@ -321,15 +323,16 @@ export function competencesDe(regles, fiche) {
 
 /**
  * L'entraînement de la fiche (décision R104 : des lignes, chacune une compétence et ses points, de 0 à 10, ou un texte libre) : { lignes (dans
- * l'ordre), parCompetence: Map(competence_id → points), competences (le nombre de compétences entraînées), max (entrainement.competences_max : 15),
+ * l'ordre), parCompetence: Map(competence_id → points), competences (le nombre de compétences montées : au-dessus de 0), max (entrainement.competences_max : 15),
  * valeurMax (entrainement.bonus_max_pct : 10) }. Les points comptent dans l'Acquis (competencesDe) ; au-delà des limites, signalés (contrôle).
  */
 export function entrainementDe(regles, fiche) {
   const lignes = [...(fiche.entrainements ?? [])].sort((a, b) => entier(a.rang) - entier(b.rang));
   const parCompetence = new Map();
   for (const l of lignes) if (l.competence_id) parCompetence.set(l.competence_id, (parCompetence.get(l.competence_id) ?? 0) + Math.max(0, entier(l.valeur)));
+  // « Vous ne pouvez monter que 15 compétences maximum » : une compétence à 0 n'est pas montée (comme la règle entrainement_competences de la vue)
   return {
-    lignes, parCompetence, competences: parCompetence.size,
+    lignes, parCompetence, competences: [...parCompetence.values()].filter((v) => v > 0).length,
     max: constante(regles, 'entrainement.competences_max'), valeurMax: constante(regles, 'entrainement.bonus_max_pct'),
   };
 }
@@ -357,8 +360,11 @@ export function entrainementsAEnregistrer(fiche) {
 
 /**
  * Les bonus d'acquis écrits dans les dons débloqués de la fiche (décision R104, réponse « Lus dans les dons » : lib/acquis-texte.mjs) — dons de classe
- * (donsAcquis) et dons de race de son ethnie (donsDeRace) : { parCompetence: Map(competence_id → [{ nom, valeur }]), choix, nonComptes: [{ nom, valeur,
- * raison, texte }] }. Un bonus « X ou Y » est un choix (personnage_acquis_choix : source = le don, rang = le rang du choix dans son texte) : { source,
+ * passifs (donsAcquis ; guide « Capacités/Dons » : « Passif : Don qui est toujours effectif », un don actif se déclare), dons de race de son ethnie et
+ * la ligne de son ethnie dans le tableau de la race (donsDeRace : « Bonus compétence » du Drakos) — et dans l'effet de l'armure portée (« Les bonus de
+ * race/classe/don/équipement vont dans la case Acquis », guide « Fiche de personnage : Compétences » ; une armure transformée par un élément a perdu ses
+ * bonus d'origine : décision R99) : { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
+ * (« Son acquis max en Social est augmenté de +20 »), choix, nonComptes: [{ nom, valeur, raison, texte }] }. Un bonus « X ou Y » est un choix (personnage_acquis_choix : source = le don, rang = le rang du choix dans son texte) : { source,
  * rang, nom, valeur, options, choisi, fait } ; « à répartir au choix », une répartition : { source, rang, nom, valeur, repartition: true, parts:
  * [{ competence_id, valeur }], reste, fait } (les points où le joueur veut, leur somme au plus le bonus, dans l'ordre de la fiche). Tant qu'un choix
  * n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti.
@@ -371,15 +377,25 @@ export function acquisDesDons(regles, fiche) {
     if (!parCompetence.has(id)) parCompetence.set(id, []);
     parCompetence.get(id).push({ nom, valeur });
   };
+  const plafonds = new Map();
   const competences = new Set(regles.competences.map((k) => k.id));
+  const race = donsDeRace(regles, fiche);
+  const armure = trouver(regles.armures ?? [], fiche.armure_id);
   const sources = [
-    ...donsAcquis(regles, fiche).flatMap((c) => c.dons.map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis }))),
-    ...donsDeRace(regles, fiche).dons.map((d) => ({ id: d.id, nom: d.nom ?? d.etiquette ?? 'Don de race', acquis: d.acquis })),
+    ...donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.type === 'passif').map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis }))),
+    ...race.dons.map((d) => ({ id: d.id, nom: d.nom ?? d.etiquette ?? 'Don de race', acquis: d.acquis })),
+    ...(race.tableau ? [{ id: `${fiche.race_id}#tableau:${fiche.ethnie_id}`, nom: race.tableau.titre ?? 'Selon l’ethnie', acquis: race.tableau.acquis }] : []),
+    ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, element: Boolean(fiche.armure_elementaire_id) }] : []),
   ];
   for (const source of sources) {
     let rang = 0;
     for (const b of source.acquis ?? []) {
-      if (b.raison) nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: b.raison, texte: b.texte });
+      // décision R99 : l'armure transformée par un élément perd ses bonus d'origine
+      if (source.element) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'element', texte: b.texte ?? null });
+      else if (b.plafond) {
+        if (!plafonds.has(b.caracteristique_id)) plafonds.set(b.caracteristique_id, []);
+        plafonds.get(b.caracteristique_id).push({ nom: source.nom, valeur: b.plafond });
+      } else if (b.raison) nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: b.raison, texte: b.texte });
       else if (b.choix || b.repartir) {
         rang += 1;
         const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
@@ -402,7 +418,7 @@ export function acquisDesDons(regles, fiche) {
       } else ajouter(b.competence_id, source.nom, b.valeur);
     }
   }
-  return { parCompetence, choix, nonComptes };
+  return { parCompetence, plafonds, choix, nonComptes };
 }
 
 /** Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre. */
@@ -1084,7 +1100,7 @@ export function donsDeRace(regles, fiche) {
   return {
     base: race.don_base ?? null,
     dons: (race.dons ?? []).filter(pourLEthnie),
-    tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null },
+    tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null, acquis: ligne.acquis ?? [] },
     ethnieAChoisir: parEthnie && !fiche.ethnie_id,
   };
 }

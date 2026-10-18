@@ -60,7 +60,7 @@ function personnageValide(id, surcharge = {}) {
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20 });
 }
 
-test('les 18 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 20 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');

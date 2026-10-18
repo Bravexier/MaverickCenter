@@ -6,8 +6,8 @@
 // d'une partie de l'armure, AP/AM et solidité du bouclier). L'armure (décision R95) : une ligne en AQ21 (l'armure complète, son amélioration, son
 // élément), son nom en AD22, et la solidité de chacune de ses parties dans la ligne « Sol. » de la grille (AI24:AN24), « N / M » (celle d'une armure à
 // solidité unifiée sur les six), relue. La solidité d'une arme (AK17, AX17) : « N / M », celle du moment et le maximum de l'arme forgée
-// (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : le texte libre de la fiche
-// (décision R71, personnage.entrainement : bonus d'entraînement, livres de magie lus, ce que le MJ accorde ; jamais compté), relu. La portée d'une
+// (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : les compétences de
+// l'entraînement, « Magie 2 | Concentration 10 » (décision R104 ; ses textes libres dans la note), relue. La portée d'une
 // arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
 // gains de niveau — deux totaux, décision R73 : « santé X, chakra Y » —, NM offerts, accessoires de ceinture, débordements des listes…) va dans la case
 // NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) : leur mise en forme et leur lecture sont
@@ -957,9 +957,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(cases.type, 'Passif');
     ecrireEnDeuxParts(cases.effet, partiesDuMetier(regles, f), SEPARATEUR_EN_LIGNE);
   }
-  // entraînement (décision R71) : le texte libre de la fiche ; le nom (« Entraînement ») et le type du modèle restent
   // l'entraînement (décision R104) : ses compétences dans la case, « Magie 2 | Concentration 10 » (relu par bonusDEntrainement, comme la fiche auto) ;
-  // ses lignes de texte libre dans la note
+  // ses lignes de texte libre dans la note ; le nom (« Entraînement ») et le type du modèle restent
   ecrire(casesDuDon(DONS.entrainement).effet, texteDeLEntrainement(regles, f) || null, RELUE);
   const donsEnSuite = { 1: [], 2: [] };
   for (const c of donsAcquis(regles, f)) {

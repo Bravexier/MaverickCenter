@@ -15,13 +15,14 @@
 //     armure de chaque pièce et du bouclier, sac de l'inventaire, bonus et malus de l'armure ; solidité d'une arme sans solidité, sans arme reconnue ou
 //     illisible ; lignes de la note en double ; image hors de A1) ; ce qui a pu se perdre avant l'import est dit dans `remarques` (case coupée par le
 //     tableur, case relue finie par « … » sans sa suite) ;
-//   - relus dans les deux dispositions : la case « Entraînement » (L42), un texte libre de la fiche (décision R71) ; dans le modèle ordinateur, la
+//   - relus dans les deux dispositions : la case « Entraînement » (L42), les compétences de l'entraînement (décision R104 ; une ligne qui ne se lit pas
+//     ainsi, une ligne de texte libre) ; dans le modèle ordinateur, la
 //     solidité du moment de chaque arme (AK17, AX17 : « N / M », décision R74 ; à son maximum ou au-delà, rien d'enregistré ; un maximum écrit autre que
 //     celui du site, une remarque). La case « Solidité » de la fiche auto (AK15, AX15) est un maximum calculé : pas relue ;
 //   - ce que la fiche calcule (niveaux, totaux, dégâts, AP/AM, résistances, maximum de solidité…) n'est pas relu, sauf pour retrouver un choix que le
-//     classeur n'écrit pas : l'acquis du joueur (acquis écrit − bonus du métier − accessoires, competencesDe ; pour un classeur qui ne vient pas de la
-//     page, le bonus du métier retiré est celui qu'écrit sa case L41, bonusDuMetierEcrit — décision R72 : « Le métier suit la base » —, une remarque
-//     par compétence touchée), les gains de niveau (décision R73 : les maximums de santé et de chakra lus, moins ce que la fiche calcule sans gains), la
+//     classeur n'écrit pas : un choix d'acquis « X ou Y » d'un don (décision R104 : l'acquis se calcule, l'acquis écrit lui est comparé, le bonus du
+//     métier que comptait un classeur qui ne vient pas de la page étant celui qu'écrit sa case L41, bonusDuMetierEcrit — décision R72 : « Le métier
+//     suit la base » ; plus que le calcul : `nonRepris`, moins : une remarque), les gains de niveau (décision R73 : les maximums de santé et de chakra lus, moins ce que la fiche calcule sans gains), la
 //     compétence d'un accessoire « Compétence X » de la fiche auto (départagée par les bonus d'entraînement de la case L42, guide « Fiche de
 //     personnage : Capacités/Dons »), la caractéristique du Potentiel Illimité ; chaque déduction est dite dans `remarques` ;
 //   - un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » : 20, pas 0,2), sinon sa valeur ; décimal là où la fiche veut un entier :
@@ -766,13 +767,20 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const c of metierLus) if (!f.metier_bonus.includes(c)) perdu(`Métier : choix « ${nomDe(regles.competences, c.competence_id)} » du rang ${c.rang} hors des options`);
   f.maitrises_armes = maitrisesValables(regles, f);
 
-  // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; une case qui ne se lit
-  // pas ainsi (le texte libre d'avant, R71) devient des lignes de texte, une par ligne de la case, comme les lignes « Entraînement : … » de la note
+  // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; la case est lue ligne
+  // par ligne : une ligne qui se lit ainsi en entier donne ses compétences, une autre (le texte libre d'avant, R71) une ligne de texte, puis les
+  // lignes « Entraînement : … » de la note (l'ordre entre compétences et textes n'est donc pas gardé par le tableur : les compétences d'abord)
   const texteL42 = texte(casesDuDon(DONS.entrainement).effet);
-  const lusL42 = bonusDEntrainement(regles, texteL42);
+  const lusL42 = new Map();
+  const textesL42 = [];
+  for (const l of entrainementEnLignes(texteL42)) {
+    const lus = bonusDEntrainement(regles, l.texte);
+    if (lus) for (const [id, n] of lus) lusL42.set(id, (lusL42.get(id) ?? 0) + n);
+    else textesL42.push(l.texte);
+  }
   f.entrainements = [
-    ...(lusL42 ? [...lusL42].map(([competence_id, valeur]) => ({ competence_id, valeur, texte: null })) : entrainementEnLignes(texteL42).map(({ rang: _r, ...l }) => l)),
-    ...notee('entrainementTexte').map((t) => ({ competence_id: null, valeur: null, texte: t })),
+    ...[...lusL42].map(([competence_id, valeur]) => ({ competence_id, valeur, texte: null })),
+    ...[...textesL42, ...notee('entrainementTexte')].map((t) => ({ competence_id: null, valeur: null, texte: t })),
   ].map((l, i) => ({ rang: i + 1, ...l }));
 
   // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y » : une de ses options),
@@ -838,7 +846,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- compétence d'un accessoire « Compétence X » de la fiche auto : celle de la caractéristique dont l'acquis écrit, moins le métier (celui du
   // classeur, R72) et les bonus d'entraînement (L42), vaut la valeur tirée
-  const entrainement = auto ? lusL42 : null;
+  const entrainement = auto && lusL42.size ? lusL42 : null;
   if (entrainement) {
     const calcul = new Map(competencesDe(regles, f).map((k) => [k.id, k]));
     for (const a of f.accessoires) {
@@ -878,24 +886,15 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       return { k, ecrit, calcule: c.acquis, ecart: ecrit - metierDuClasseur(k.id, c) + c.metier - c.acquis };
     });
   };
-  // les choix d'acquis des dons que le classeur ne dit pas (une fiche auto, un classeur de la page d'avant la décision R104) : déduits de l'acquis écrit
-  // quand une seule lecture l'explique — « X ou Y » : la seule option dont l'acquis écrit dépasse le calcul de la valeur du bonus ; « à répartir au
-  // choix » : les compétences dont l'acquis écrit dépasse le calcul, si tout tient dans ce qui reste à répartir — ; une remarque chacun
-  for (const choix of acquisDesDons(regles, f).choix.filter((c) => !c.fait)) {
+  // un choix « X ou Y » d'un don que le classeur ne dit pas (une fiche auto, un classeur de la page d'avant la décision R104) : déduit quand une seule
+  // option a un acquis écrit qui dépasse le calcul de la valeur du bonus (un arbitrage, dit par une remarque) ; une répartition (« à répartir au
+  // choix ») ne se déduit pas : ce que l'acquis écrit a de plus peut venir d'ailleurs (points du joueur, équipement, MJ), elle reste à faire
+  for (const choix of acquisDesDons(regles, f).choix.filter((c) => !c.fait && !c.repartition)) {
     const parId = new Map(ecarts().map((x) => [x.k.id, x]));
-    if (!choix.repartition) {
-      const options = choix.options.filter((o) => parId.get(o)?.ecart === choix.valeur);
-      if (options.length !== 1) continue;
-      Object.assign(f, acquisApresChoix(f, choix.source, choix.rang, options[0]));
-      remarques.push(`Acquis au choix de ${choix.nom} (+${choix.valeur} %) déduit : ${nomDe(regles.competences, options[0])} (l'acquis du classeur)`);
-      continue;
-    }
-    const plus = [...parId.values()].filter((x) => x.ecart > 0);
-    if (!plus.length || plus.reduce((t, x) => t + x.ecart, 0) > choix.reste) continue;
-    const parts = new Map(choix.parts.map((x) => [x.competence_id, x.valeur]));
-    for (const x of plus) parts.set(x.k.id, (parts.get(x.k.id) ?? 0) + x.ecart);
-    Object.assign(f, acquisApresRepartition(f, choix.source, choix.rang, [...parts].map(([competence_id, valeur]) => ({ competence_id, valeur }))));
-    remarques.push(`Acquis à répartir de ${choix.nom} (${choix.valeur} %) déduit : ${plus.map((x) => `${x.k.nom} ${x.ecart}`).join(', ')} (l'acquis du classeur)`);
+    const options = choix.options.filter((o) => parId.get(o)?.ecart === choix.valeur);
+    if (options.length !== 1) continue;
+    Object.assign(f, acquisApresChoix(f, choix.source, choix.rang, options[0]));
+    remarques.push(`Acquis au choix de ${choix.nom} (+${choix.valeur} %) déduit : ${nomDe(regles.competences, options[0])} (l'acquis du classeur)`);
   }
   f.acquis_choix = acquisChoixValables(regles, f);
   for (const { k, ecrit, calcule, ecart } of ecarts()) {

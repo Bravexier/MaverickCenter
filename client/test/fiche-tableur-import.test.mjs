@@ -633,20 +633,22 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
     'Accessoire Bracelet 1, effet hors table : « Porte-bonheur » (décision R97)',
     'Accessoire Ceinture : « Ceinture de force / Caractéristique : Force » (la fiche n’a plus d’emplacement Ceinture ni Autre : décision R97)',
     'Accessoire Autre : « Effet : Un porte-clé » (la fiche n’a plus d’emplacement Ceinture ni Autre : décision R97)',
+    'Acquis Équilibre : « 12 » dans le classeur, 9 calculé (l’acquis se calcule : entraînement, dons, métier, accessoires ; décision R104)',
     `Armure (Torse : ${torse.nom}) : une fiche ne porte plus qu’une armure complète (décision R95)`,
     'Bouclier, matériau : « Fer » (un bouclier n’a plus qu’une forme et une matière : décision R96)',
   ]);
-  // l'acquis se calcule (décision R104) : les 3 points d'Équilibre que l'acquis écrit a de plus que le calcul sont les 10 % à répartir de l'Humain
-  // central (une remarque) ; les dons du Guerrier, que la page d'avant ne comptait pas, en donnent plus (une remarque chacun)
+  // l'acquis se calcule (décision R104) : les 3 points d'Équilibre que l'acquis écrit a de plus que le calcul (ceux du joueur) ne sont pas repris ; les
+  // 10 % à répartir de l'Humain central ne se déduisent pas (ils restent à faire) ; les dons du Guerrier, que la page d'avant ne comptait pas, en
+  // donnent plus (une remarque chacun)
   const plusQueLeClasseur = (nom, n) => `Acquis ${nom} : 0 dans le classeur, ${n} calculé (entraînement, dons, métier, accessoires : décision R104)`;
-  const plus = competencesDe(regles, f).filter((k) => k.dons && k.id !== 'equilibre');
+  const plus = competencesDe(regles, f).filter((k) => k.dons);
   assert.deepEqual(r.remarques, [
-    "Acquis à répartir de Adaptation humaine (10 %) déduit : Équilibre 3 (l'acquis du classeur)",
     ...plus.map((k) => plusQueLeClasseur(k.nom, k.acquis)),
     `Armure (Casque : ${casque.nom}) : devenue l’armure complète de la fiche (décision R95)`,
   ]);
   assert.ok(plus.length >= 2, plus.map((k) => k.id).join());
-  assert.deepEqual(f.acquis_choix, [{ source: 'races/humain#don:humain-central', rang: 1, competence_id: 'equilibre', valeur: 3 }]);
+  assert.deepEqual(f.acquis_choix, []);
+  assert.ok(M.choixEnAttente(regles, f).some((c) => c.libelle === 'Acquis Adaptation humaine : 10 % à répartir'));
   assert.deepEqual([f.nom, f.surnom, f.lieu_origine, f.race_id, f.magie_innee_id, f.ethnie_id, f.dieu_choisi_id, f.xp, f.mode_classe],
     ['Essai', 'Le Test', 'Champieu', 'races/humain', magie('Feu').id, 'races/humain#ethnie:humain-central', parNom(regles.dieux, 'Mirada').id, xpDuNiveau(5), 'mono']);
   assert.deepEqual([f.alignement_loyal, f.alignement_chaotique, f.alignement_bon, f.alignement_mauvais, f.bourse_pp, f.bourse_ro, f.bourse_rf], [8, 1, 2, 3, 1, 245, 50]);
@@ -655,9 +657,9 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   assert.deepEqual(f.capacites, [{ capacite_id: don('Guerrier', 'Duelliste').id }]);
   assert.deepEqual(f.caracteristiques.map((c) => [c.base, c.croix]), [[3, 1], [2, 0], [2, 0], [2, 0], [3, 2], [3, 0]]);
   assert.deepEqual(f.metier_bonus, [{ rang: rangAChoisir.rang, competence_id: 'equilibre' }]);
-  // l'acquis calculé : les 12 écrits = le métier + l'accessoire (7) + les points répartis
+  // l'acquis calculé : le métier + l'accessoire (7) ; les 12 écrits en avaient 3 de plus (non repris)
   const equilibre = competencesDe(regles, f).find((k) => k.id === 'equilibre');
-  assert.deepEqual([equilibre.naturel, equilibre.acquis, equilibre.metier, equilibre.accessoire, equilibre.dons], [5, 12, rangAChoisir.valeur, 7, 12 - rangAChoisir.valeur - 7]);
+  assert.deepEqual([equilibre.naturel, equilibre.acquis, equilibre.metier, equilibre.accessoire, equilibre.dons], [5, rangAChoisir.valeur + 7, rangAChoisir.valeur, 7, 0]);
   assert.deepEqual(f.competences.find((c) => c.competence_id === 'arc'), { competence_id: 'arc', naturel: 10 });
   // la note d'un classeur exporté avant la décision R73, niveau par niveau : sommée
   assert.deepEqual({ gains_sante: f.gains_sante, gains_chakra: f.gains_chakra }, lireGains(note.split('\n').find((l) => l.startsWith('Gains')).split(' : ').slice(1).join(' : ')));
@@ -1391,6 +1393,9 @@ test('entraînement (décision R104) : la case L42 relue en lignes de compétenc
     L42: '  Livre lu : Boule de feu\r\nAccordé par le MJ : +5 Survie  ', BA54: `${MARQUEUR_DES_NOTES}\nEntraînement : Béni par la Dame du lac`,
   }))), [[1, 'Livre lu : Boule de feu', null], [2, 'Accordé par le MJ : +5 Survie', null], [3, 'Béni par la Dame du lac', null]]);
   assert.deepEqual(ficheDuClasseur(regles, VIERGE).fiche.entrainements, []);
+  // une case mixte d'avant (R71) : la ligne des compétences lue, l'autre en texte
+  assert.deepEqual(lignes(ficheDuClasseur(regles, ordinateur({ L42: '2 Magie | 10 Concentration\nLivre de magie lu : Boule de feu' }))),
+    [[1, 'magie', 2], [2, 'concentration', 10], [3, 'Livre de magie lu : Boule de feu', null]]);
   // coupé par la page (une rangée) : le début dans la case, la suite dans la note
   const r = ficheDuClasseur(regles, ordinateur({
     L42: 'Magie 2 | Concentration 10 …', BA54: `${MARQUEUR_DES_NOTES}\nSuite de la case L42 : | Observation 10\nEntraînement : Livre lu : Boule de feu`,

@@ -12,17 +12,20 @@ const plier = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu,
 const cle = (nom) => plier(nom).replace(/[«»"]/g, '').split(' ').filter(Boolean).map((m) => m.replace(/(?<=[a-z]{3})(?:s|x)$/, '')).join(' ');
 
 /** Ce qui rend une proposition dépendante d'une situation (jamais comptée). */
-const SITUATION = /\bprochaine?\b|pour (?:le )?toucher|\bsi\b|\bquand\b|lorsqu|en l'air|dans un interieur|\bdure \d+ tours?\b|\bla cible\b|\baux ennemis\b|\bmalus\b|\bchance\b|\bdoit\b|sacrifi|\bboost\b|\bperd\b|\badversaire\b|\bennemi/;
+const SITUATION = /\bprochaine?\b|pour (?:le )?toucher|\bsi\b|\bquand\b|lorsqu|en l'air|dans un interieur|\bdure \d+ tours?\b|\bpendant\b|\bla cible\b|\baux ennemis\b|\baux allies\b|\bmalus\b|\bchance\b|\bdoit\b|sacrifi|\bboost\b|\bperd\b|\badversaire\b|\bennemi/;
 /** Ce qui n'est pas un bonus de compétence du personnage (ni compté ni rendu). */
-const AUTRE = /reussite critique|\bdegats\b|points? de vie|jets des cibles/;
+const AUTRE = /reussite crit|\bdegats\b|points? de vie|jets des cibles/;
 /** « toutes les compétences perception » : les compétences d'une caractéristique (son identifiant). */
-const CARACTERISTIQUE = /^(?:toutes )?les competences (force|agilite|intelligence|perception|social|volonte)$/;
+const CARACTERISTIQUE = /^(?:toutes )?les competences (?:de |d')?(force|agilite|intelligence|perception|social|volonte)$/;
+/** « Son acquis max en Social est augmenté de +20 » (Mort-vivant, Trompe-mort) : le plafond de chaque compétence de cette caractéristique. */
+const PLAFOND = /acquis max(?:imum)? (?:en |de |d')(force|agilite|intelligence|perception|social|volonte) est augmente de \+?(\d+)/;
 
 /**
  * Lecteur des bonus d'acquis : `competences` = [{ id, nom, caracteristique_id }] de la base. Rend `lire(texte)` → [{ valeur, competence_id }] (un bonus acquis),
  * [{ valeur, choix: [competence_id], nombre: 1 }] (« X ou Y » : une compétence à choisir), [{ valeur, repartir: true }] (« à répartir au choix » : les
- * points dans les compétences que le joueur veut) ou [{ valeur, raison, texte }] (non compté : 'situation', 'arme_choisie', 'competences_d_arme',
- * 'choix_multiple', 'jets' (aux jets d'une caractéristique), 'artisanat', 'inconnue').
+ * points dans les compétences que le joueur veut), [{ plafond, caracteristique_id }] (« Son acquis max en Social est augmenté de +20 » : le plafond de
+ * chaque compétence de cette caractéristique, décision R41) ou [{ valeur, raison, texte }] (non compté : 'situation', 'arme_choisie',
+ * 'competences_d_arme', 'choix_multiple', 'jets' (aux jets d'une caractéristique), 'artisanat', 'inconnue').
  */
 export function lecteurDAcquis(competences) {
   const parCle = new Map(competences.map((k) => [cle(k.nom), k.id]));
@@ -55,6 +58,8 @@ export function lecteurDAcquis(competences) {
     const phrases = String(texte ?? '').replace(/\{\{[^}|]*\|([^}]*)\}\}/g, '$1').split(/\n|(?<=[.;])\s+/).map((p) => p.replace(/^\s*-\s*/, '').trim()).filter(Boolean);
     for (const phrase of phrases) {
       const t = plier(phrase).replace(/\.$/, '');
+      const plafond = PLAFOND.exec(t);
+      if (plafond) bonus.push({ plafond: Number(plafond[2]), caracteristique_id: plafond[1] });
       if (!/%/.test(t)) continue;
       // « Magie, Concentration, Survie = 5% d'acquis », « Distinction, Observation et Réflexe = 5% en acquis »
       const egal = /^(.+?)\s*=\s*(\d+)\s*%\s*(?:d'|en )acquis$/.exec(t);

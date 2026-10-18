@@ -856,7 +856,7 @@ test('dons de la race (demande du propriétaire) : le don de base d’abord, le 
   assert.ok(tableau, 'une race a un tableau de dons par ethnie');
   const ligne = tableau.dons_tableau.lignes.find((l) => l.ethnie_id);
   const avecTableau = donsDeRace(regles, { ...ficheVide(), race_id: tableau.id, ethnie_id: ligne.ethnie_id });
-  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null });
+  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null, acquis: ligne.acquis ?? [] });
   assert.deepEqual(donsDeRace(regles, ficheVide()), { base: null, dons: [], tableau: null, ethnieAChoisir: false }, 'sans race');
 });
 

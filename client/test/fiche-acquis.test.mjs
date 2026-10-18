@@ -2,6 +2,7 @@
 // (lib/acquis-texte.mjs), le calcul (lib/fiche-moteur.mjs : entraînement, dons, métier, accessoires, rognés au plafond de R41 dans cet ordre), les choix
 // « X ou Y » et « à répartir au choix » du tiroir, et la conversion d'une fiche d'avant (lib/fiche-format.mjs).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -27,9 +28,15 @@ test('lecture des dons : une valeur et des compétences nommées comptent ; « X
   assert.deepEqual(lire('+5% Armes légères ou lourdes'), [{ valeur: 5, choix: ['arme-legere', 'arme-lourde'], nombre: 1 }]);
   assert.deepEqual(lire('- 10% de compétence en acquis à répartir au choix.'), [{ valeur: 10, repartir: true }]);
   assert.deepEqual(ids('+5% pour toutes les compétences perception'), regles.competences.filter((k) => k.caracteristique_id === 'perception').map((k) => k.id));
+  assert.deepEqual(ids('+3% à toutes les compétences de Volonté'), regles.competences.filter((k) => k.caracteristique_id === 'volonte').map((k) => k.id), 'Tenue du Flagelleur');
+  assert.deepEqual(lire('+5% Magie ou Concentration'), [{ valeur: 5, choix: ['magie', 'concentration'], nombre: 1 }], 'Robe de mage');
+  // le plafond relevé (Mort-vivant, Trompe-mort) : la phrase n'a pas de « % »
+  assert.deepEqual(lire('Immunisé contre le poison et la maladie. Son acquis max en Social est augmenté de +20 et un petit plus de selon les conditions de la mort.'),
+    [{ plafond: 20, caracteristique_id: 'social' }]);
   assert.deepEqual(ids('+5% {{magie|Magie}}'), ['magie'], 'une balise du glossaire se lit par son texte');
   // ce qui n'est pas compté, avec sa raison
   assert.deepEqual(ids('+10% esquive en l’air'), ['situation']);
+  assert.deepEqual(ids('Donne +10% à tous les jets de perception et la vision nocturne aux alliés pendant 3 tours'), ['situation'], 'une action, pas un passif (Lunatique)');
   assert.deepEqual(ids('La cible aura un malus de 10% à son esquive'), ['situation']);
   assert.deepEqual(ids('+5% de la compétence de l’arme choisie, +5% Vigueur'), ['arme_choisie', 'vigueur']);
   assert.deepEqual(ids('+7% d’acquis pour les compétences d’arme.'), ['competences_d_arme']);
@@ -39,6 +46,7 @@ test('lecture des dons : une valeur et des compétences nommées comptent ; « X
   assert.deepEqual(ids('+15% à la falsification de documents'), ['inconnue']);
   // ce qui n'est pas un bonus de compétence : rien
   assert.deepEqual(lire('+5% de réussite critique'), []);
+  assert.deepEqual(lire('+5% chance réussite crit avec des chaotiques'), [], 'Bonimenteur');
   assert.deepEqual(lire('+2 dégâts avec les armes lourdes'), []);
   assert.deepEqual(lire('+4AM, +2 points de maîtrise à répartir'), []);
   assert.deepEqual(lire(''), []);
@@ -46,17 +54,19 @@ test('lecture des dons : une valeur et des compétences nommées comptent ; « X
 
 test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la plupart comptent', () => {
   const competences = new Set(regles.competences.map((k) => k.id));
-  const dons = [...regles.classes.flatMap((c) => c.dons ?? []), ...regles.races.flatMap((r) => r.dons ?? [])];
+  const dons = [...regles.classes.flatMap((c) => c.dons ?? []), ...regles.races.flatMap((r) => r.dons ?? []),
+    ...regles.races.flatMap((r) => (r.dons_tableau?.lignes ?? []).map((l, i) => ({ ...l, id: `${r.id}#tableau:${i}` }))), ...regles.armures];
   let comptes = 0;
   for (const d of dons) {
     // (un don sans bonus d'acquis n'en porte pas la liste : regles.json reste léger)
     assert.ok(d.acquis === undefined || (Array.isArray(d.acquis) && d.acquis.length), d.id);
     for (const b of d.acquis ?? []) {
-      assert.ok(Number.isInteger(b.valeur) && b.valeur > 0, `${d.id} : ${JSON.stringify(b)}`);
+      assert.ok(b.plafond || (Number.isInteger(b.valeur) && b.valeur > 0), `${d.id} : ${JSON.stringify(b)}`);
       if (b.competence_id) {
         assert.ok(competences.has(b.competence_id), d.id);
         comptes += 1;
       } else if (b.choix) assert.ok(b.choix.length >= 2 && new Set(b.choix).size === b.choix.length && b.choix.every((c) => competences.has(c)) && b.nombre === 1, d.id);
+      else if (b.plafond) assert.ok(Number.isInteger(b.plafond) && regles.caracteristiques.some((k) => k.id === b.caracteristique_id), d.id);
       else if (!b.repartir) assert.ok(RAISONS.includes(b.raison) && b.texte, `${d.id} : ${JSON.stringify(b)}`);
     }
   }
@@ -139,7 +149,7 @@ test('entraînement en lignes (décision R104) : les points d’une compétence 
     { rang: 3, competence_id: 'arc', valeur: 3, texte: null }, { rang: 4, competence_id: null, valeur: null, texte: '  ' }, { rang: 5, competence_id: 'calme', valeur: -2, texte: null },
   ];
   const e = M.entrainementDe(regles, { entrainements: lignes });
-  assert.deepEqual([[...e.parCompetence], e.competences, e.max, e.valeurMax], [[['arc', 7], ['calme', 0]], 2, 15, 10]);
+  assert.deepEqual([[...e.parCompetence], e.competences, e.max, e.valeurMax], [[['arc', 7], ['calme', 0]], 1, 15, 10], 'une compétence à 0 n’est pas « montée »');
   assert.deepEqual(M.entrainementsAEnregistrer({ entrainements: lignes }), [
     { rang: 1, competence_id: null, valeur: null, texte: 'Béni par la Dame du lac' }, { rang: 2, competence_id: 'arc', valeur: 7, texte: null },
     { rang: 3, competence_id: 'calme', valeur: 0, texte: null },
@@ -165,7 +175,60 @@ test('fiche d’avant (décision R104) : le texte d’entraînement en lignes de
     entrainements: [{ rang: 1, competence_id: null, valeur: null, texte: 'Livre lu' }], competences: [{ competence_id: 'arc', naturel: 10 }],
   });
   assert.deepEqual(recue.competences[0].acquis, 7, 'jamais modifiée en place');
-  // des lignes déjà là : le texte (vide) ne les remplace pas
+  // des lignes déjà là : le texte (vide) ne les remplace pas ; une liste vide (la fiche vide d'une page d'avant) : le texte devient ses lignes
   const lignes = [{ rang: 1, competence_id: 'arc', valeur: 2, texte: null }];
   assert.deepEqual(sansPartiesRetirees({ entrainement: '', entrainements: lignes }).entrainements, lignes);
+  assert.deepEqual(sansPartiesRetirees({ entrainement: 'Livre lu', entrainements: [] }).entrainements, entrainementEnLignes('Livre lu'));
+  // une ligne de compétence qui n'est pas un objet reste telle quelle (le service la refuse : 400, pas 500)
+  assert.deepEqual(sansPartiesRetirees({ competences: [null, { competence_id: 'arc', naturel: 1, acquis: 0 }] }).competences, [null, { competence_id: 'arc', naturel: 1 }]);
+});
+
+test('acquis de la race, de l’armure et du plafond (décision R104) : la ligne de l’ethnie du tableau (Drakos), l’armure portée (sauf transformée : R99), le plafond relevé ; un don actif ne compte pas', () => {
+  // la ligne de l'ethnie du tableau de la race : « Bonus compétence » du Drakos
+  const drakos = regles.races.find((x) => (x.dons_tableau?.lignes ?? []).some((l) => (l.acquis ?? []).some((b) => b.competence_id)));
+  const ligne = drakos.dons_tableau.lignes.find((l) => (l.acquis ?? []).some((b) => b.competence_id));
+  const vise = ligne.acquis.find((b) => b.competence_id);
+  const fd = fiche({ race_id: drakos.id, ethnie_id: ligne.ethnie_id });
+  assert.ok(competence(fd, vise.competence_id, regles).donsDetail.some((d) => d.valeur === vise.valeur && d.nom === drakos.dons_tableau.titre), JSON.stringify(vise));
+  // une ligne qui ne nomme pas de compétence (« 5% parmi les autres ») : listée, non comptée
+  const autre = drakos.dons_tableau.lignes.find((l) => (l.acquis ?? []).some((b) => b.raison));
+  if (autre) assert.ok(M.acquisDesDons(regles, fiche({ race_id: drakos.id, ethnie_id: autre.ethnie_id })).nonComptes.some((x) => x.nom === drakos.dons_tableau.titre));
+  // l'armure portée : son effet compte (« Les bonus de race/classe/don/équipement vont dans la case Acquis ») ; un choix « X ou Y » va au tiroir
+  const armure = regles.armures.find((a) => (a.acquis ?? []).some((b) => b.competence_id));
+  const va = armure.acquis.find((b) => b.competence_id);
+  const fa = fiche({ armure_id: armure.id, caracteristiques: fiche().caracteristiques.map((c) => ({ ...c, base: 4 })) });
+  assert.ok(competence(fa, va.competence_id, regles).donsDetail.some((d) => d.nom === `${armure.nom} (armure)`), armure.id);
+  const choix = regles.armures.find((a) => (a.acquis ?? []).some((b) => b.choix));
+  assert.ok(M.acquisDesDons(regles, fiche({ armure_id: choix.id })).choix.some((c) => c.source === choix.id && c.options.length === 2), choix.id);
+  // transformée par un élément (R99) : ses bonus d'origine sont perdus, listés
+  const element = regles.armures_elementaires.find((x) => x.categorie === armure.type) ?? regles.armures_elementaires[0];
+  const transformee = M.acquisDesDons(regles, { ...fa, armure_elementaire_id: element.id });
+  assert.ok(!(transformee.parCompetence.get(va.competence_id) ?? []).some((d) => d.nom === `${armure.nom} (armure)`));
+  assert.ok(transformee.nonComptes.some((x) => x.raison === 'element' && x.nom === `${armure.nom} (armure)`));
+  // le plafond relevé d'une caractéristique (« Son acquis max en Social est augmenté de +20 ») : chaque compétence de la caractéristique
+  const rp = { ...r, races: r.races.map((x) => (x.id !== 'races/humain' ? x : { ...x, dons: [{ id: 'races/humain#don:plafond', forme: 'unique', nom: 'Plafond', texte: '', acquis: [{ plafond: 20, caracteristique_id: 'social' }] }] })) };
+  const social = regles.competences.filter((k) => k.caracteristique_id === 'social');
+  for (const k of social) assert.equal(competence(fiche(), k.id, rp).plafondAcquis, competence(fiche(), k.id, regles).plafondAcquis + 20, k.id);
+  assert.equal(competence(fiche(), 'calme', rp).plafondAcquis, competence(fiche(), 'calme', regles).plafondAcquis, 'les autres caractéristiques : rien');
+  // un don de classe actif (« Actif : Le joueur doit déclarer le don ») ne compte pas, même s'il écrit un bonus
+  const classe = regles.classes.find((c) => (c.dons ?? []).some((d) => d.niveau === 1 && d.nature === 'classe' && (d.acquis ?? []).some((b) => b.competence_id)));
+  const don = classe.dons.find((d) => d.niveau === 1 && d.nature === 'classe' && (d.acquis ?? []).some((b) => b.competence_id));
+  const ra = { ...regles, classes: regles.classes.map((c) => (c.id !== classe.id ? c : { ...c, dons: c.dons.map((d) => (d.id === don.id ? { ...d, type: 'actif' } : d)) })) };
+  const fc = fiche({ classes: [{ rang: 1, classe_id: classe.id, specialite_id: null }] });
+  const k = don.acquis.find((b) => b.competence_id).competence_id;
+  assert.ok(competence(fc, k, regles).donsDetail.some((d) => d.nom.startsWith(don.nom)));
+  assert.ok(!competence(fc, k, ra).donsDetail.some((d) => d.nom.startsWith(don.nom)), 'actif : non compté');
+});
+
+test('la page (src/scripts/fiche.mjs, lue comme un texte) : les lignes d’entraînement se relient à une fiche relue ; les ajouts relisent la fiche au clic ; chaque raison d’un bonus non compté a son libellé', () => {
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const corps = script.slice(script.indexOf('function construireEntrainement()'), script.indexOf('function construireAcquisAChoisir()'));
+  // une fiche relue (enregistrement, rechargement, import) remplace ses objets : la clé des lignes porte versionInventaire, comme l'inventaire
+  assert.match(corps, /const cle = JSON\.stringify\(\[versionInventaire, /);
+  // « + Compétence » et « + Livre de sort » cherchent la compétence libre et le sort sans livre au moment du clic
+  assert.match(corps, /onclick: \(\) => \{ const k = libre\(\);/);
+  assert.match(corps, /onclick: \(\) => \{ const j = sansLivre\(\);/);
+  // les raisons que rend le lecteur (et la pièce élémentaire, R99) ont toutes un libellé dans la page
+  const raisons = script.slice(script.indexOf('const RAISONS_DE_L_ACQUIS = {'), script.indexOf('};', script.indexOf('const RAISONS_DE_L_ACQUIS = {')));
+  for (const r of [...RAISONS, 'element']) assert.match(raisons, new RegExp(`\\b${r}:`), r);
 });

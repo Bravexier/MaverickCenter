@@ -502,8 +502,8 @@ function construireCaracteristiques() {
           oninput: (ev) => ecrire('naturel', entier(ev.target.value)),
         });
         const valeurNaturel = el('output', { class: 'curseur__valeur' });
-        // l'Acquis se calcule (décision R104 : « retirer le slider des acquis à cet endroit-là, et n'afficher que le chiffre calculé par tous les autres
-        // bonus ») : la valeur, son détail en infobulle (focalisable)
+        // l'Acquis se calcule (décision R104 : « il faudrai d'ailleurs retirer le slider des aquis à cet endroit là, et n'afficher que le chiffre calculé
+        // par tous les autres bonus. ») : la valeur, son détail en infobulle (focalisable)
         const valeurAcquis = el('output', { class: 'acquis-calcule', tabindex: '0' });
         const score = el('span', { class: 'score' });
         synchro(() => {
@@ -519,7 +519,7 @@ function construireCaracteristiques() {
           valeurAcquis.toggleAttribute('data-rogne', c.acquisBrut > c.acquis);
           const part = (nom, compte, brut) => (brut ? `${signe(compte)} ${nom}${brut > compte ? ` (${brut}, rogné au plafond)` : ''}` : null);
           infobulle(valeurAcquis, [
-            `Acquis : ${c.acquis} (au plus ${c.plafondAcquis} : 5 par point de caractéristique)`,
+            `Acquis : ${c.acquis} (au plus ${c.plafondAcquis} : 5 par point de caractéristique${c.plafondBonus ? `, +${c.plafondBonus} d’un don` : ''})`,
             part('d’entraînement', c.entrainement, c.entrainementBrut),
             ...c.donsDetail.map((d) => `+${d.valeur} ${d.nom}`), c.donsBrut > c.dons ? `(dons : ${c.donsBrut}, rognés à ${c.dons})` : null,
             part('du métier', c.metier, c.metierBrut),
@@ -731,7 +731,7 @@ function construireSorts() {
         const deNiveau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM de niveau de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
           oninput: (ev) => ecrireNm('deNiveau', entier(ev.target.value)) });
         // le NM d'un livre se note dans l'entraînement (décision R104 : « déplacer la case [livre] du sort, sans changer le calcul ») : rappelé ici
-        const livre = el('span', { class: 'nm-livre', title: 'NM d’un livre de sort (noté dans l’entraînement)' }, 'livre');
+        const livre = el('span', { class: 'nm-livre', tabindex: '0', title: 'NM d’un livre de sort (noté dans l’entraînement)' }, 'livre');
         const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
           oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
         const total = el('output', { class: 'curseur__valeur' });
@@ -820,16 +820,17 @@ function construireSorts() {
 
 // ------------------------------------------------------------------ entraînement (décision R104)
 /**
- * L'entraînement (demande du propriétaire : « remplacer le texte des "Entraînement" par des lignes qu'on peut ajouter (+) et remplir soit par
- * "entraînement compétence" : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Acquis […] Soit par un livre de compétence et lister le
- * sort associé (et du coup déplacer la case [livre] du sort, sans changer le calcul). Soit un texte libre pour les "dons évènementiels" ») : une ligne
+ * L'entraînement (demande du propriétaire : « Il faudrai remplacer le texte des "Entraînement" par des lignes qu'on peut ajouter (+) et remplir soit par
+ * "entrainement compétence : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Aquis. […] Soit par un livre de compétence et lister le
+ * sort associé (et du coup déplacer la case [livre] du sort, sans changer le calcul. Soit un texte libre pour les "dons évènementiels". ») : une ligne
  * par compétence entraînée (curseur de 0 à entrainement.bonus_max_pct), par livre lu (le NM de livre d'un sort, personnage_sort.nm_livre) et par texte ;
  * trois boutons en ajoutent.
  */
 function construireEntrainement() {
   const e = entrainementDe(regles, fiche);
   const livres = (fiche.sorts ?? []).map((x, i) => ({ x, i })).filter(({ x }) => entier(x.nm_livre) > 0);
-  const cle = JSON.stringify([e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map(({ x }) => x.sort_id), (fiche.sorts ?? []).map((x) => x.sort_id)]);
+  // (versionInventaire : une fiche relue ou rechargée a d'autres objets, auxquels chaque ligne doit se lier de nouveau)
+  const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map(({ x }) => x.sort_id), (fiche.sorts ?? []).map((x) => x.sort_id)]);
   const nomDuSort = (id) => trouver(regles.sorts, id)?.nom ?? id;
   const poserLivre = (index, oui) => {
     const x = fiche.sorts[index];
@@ -839,18 +840,19 @@ function construireEntrainement() {
     Object.assign(x, { niveau_maitrise: nm.deNiveau + livre + nm.cadeau, nm_livre: livre });
   };
   reconstruire($('entrainement'), cle, () => [
-    ...e.lignes.map((l) => {
-      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': 'Retirer la ligne d’entraînement',
+    ...e.lignes.map((l, i) => {
+      const n = i + 1;
+      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer la ligne ${n} de l’entraînement`,
         onclick: () => { fiche.entrainements = (fiche.entrainements ?? []).filter((y) => y !== l); changer(); } }, '✕');
       if (l.competence_id === null) {
-        const texte = el('input', { 'aria-label': 'Entraînement : texte libre (don évènementiel)', placeholder: 'Don évènementiel, ce que le MJ accorde…',
+        const texte = el('input', { 'aria-label': `Entraînement, ligne ${n} : texte libre (don évènementiel)`, placeholder: 'Don évènementiel, ce que le MJ accorde…',
           oninput: (ev) => { l.texte = ev.target.value; changer(); } });
         synchro(() => { if (document.activeElement !== texte) poser(texte, l.texte ?? ''); });
         return el('li', { class: 'entrainement__ligne entrainement__ligne--texte' }, el('span', { class: 'entrainement__type' }, 'Texte'), texte, retirer_);
       }
-      const competence = el('select', { 'aria-label': 'Entraînement : compétence', onchange: (ev) => { l.competence_id = ev.target.value; changer(); } },
+      const competence = el('select', { 'aria-label': `Entraînement, ligne ${n} : compétence`, onchange: (ev) => { l.competence_id = ev.target.value; changer(); } },
         regles.caracteristiques.map((k) => el('optgroup', { label: k.nom }, regles.competences.filter((c) => c.caracteristique_id === k.id).map((c) => option(c.id, c.nom)))));
-      const curseur = el('input', { type: 'range', min: '0', max: String(e.valeurMax), step: '1', class: 'curseur', 'aria-label': 'Entraînement : points',
+      const curseur = el('input', { type: 'range', min: '0', max: String(e.valeurMax), step: '1', class: 'curseur', 'aria-label': `Entraînement, ligne ${n} : points`,
         oninput: (ev) => { l.valeur = entier(ev.target.value); changer(); } });
       const valeur = el('output', { class: 'curseur__valeur' });
       synchro(() => {
@@ -865,7 +867,7 @@ function construireEntrainement() {
     }),
     // les livres de sort : le NM de livre du sort (« sans changer le calcul »), choisi parmi les sorts de la fiche
     ...livres.map(({ x, i }) => {
-      const sort = el('select', { 'aria-label': 'Livre de sort : le sort',
+      const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(x.sort_id)})`,
         onchange: (ev) => {
           const j = fiche.sorts.findIndex((y) => y.sort_id === ev.target.value);
           if (j < 0 || j === i) return;
@@ -879,22 +881,25 @@ function construireEntrainement() {
       return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, retirer_);
     }),
   ]);
-  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre), un texte
+  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre), un texte ; ce qui est libre se
+  // relit au clic (les boutons ne sont refaits que quand l'un d'eux se grise ou se dégrise)
   const ajouts = $('entrainement-ajouts');
-  const cleAjouts = JSON.stringify([e.competences >= e.max, (fiche.sorts ?? []).some((x) => !entier(x.nm_livre))]);
+  const libre = () => regles.competences.find((c) => !entrainementDe(regles, fiche).parCompetence.has(c.id)) ?? null;
+  const sansLivre = () => (fiche.sorts ?? []).findIndex((x) => !entier(x.nm_livre));
+  const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), sansLivre() < 0]);
   reconstruire(ajouts, cleAjouts, () => {
     const ajouter = (ligne) => {
-      fiche.entrainements = [...(fiche.entrainements ?? []), { rang: (fiche.entrainements ?? []).length + 1, ...ligne }];
+      const rang = Math.max(0, ...(fiche.entrainements ?? []).map((y) => entier(y.rang))) + 1;
+      fiche.entrainements = [...(fiche.entrainements ?? []), { rang, ...ligne }];
       changer();
     };
-    const libre = regles.competences.find((c) => !e.parCompetence.has(c.id));
-    const sansLivre = (fiche.sorts ?? []).findIndex((x) => !entier(x.nm_livre));
+    const plein = e.competences >= e.max || !libre();
     return [
-      el('button', { type: 'button', class: 'ajouter', disabled: e.competences >= e.max || !libre,
+      el('button', { type: 'button', class: 'ajouter', disabled: plein,
         title: e.competences >= e.max ? `${e.max} compétences au plus (« Vous ne pouvez monter que 15 compétences maximum »)` : null,
-        onclick: () => ajouter({ competence_id: libre.id, valeur: 0, texte: null }) }, '+ Compétence'),
-      el('button', { type: 'button', class: 'ajouter', disabled: sansLivre < 0, title: sansLivre < 0 ? 'Chaque sort de la fiche a déjà son livre' : null,
-        onclick: () => { poserLivre(sansLivre, true); changer(); } }, '+ Livre de sort'),
+        onclick: () => { const k = libre(); if (k) ajouter({ competence_id: k.id, valeur: 0, texte: null }); } }, '+ Compétence'),
+      el('button', { type: 'button', class: 'ajouter', disabled: sansLivre() < 0, title: sansLivre() < 0 ? 'Chaque sort de la fiche a déjà son livre' : null,
+        onclick: () => { const j = sansLivre(); if (j >= 0) { poserLivre(j, true); changer(); } } }, '+ Livre de sort'),
       el('button', { type: 'button', class: 'ajouter', onclick: () => ajouter({ competence_id: null, valeur: null, texte: '' }) }, '+ Texte'),
     ];
   });
@@ -905,9 +910,25 @@ function construireEntrainement() {
  * compétence retenue (personnage_acquis_choix) ; « à répartir au choix » : les compétences et leurs points ; un choix à faire est surligné et dans le
  * tiroir des choix.
  */
+/** Pourquoi un bonus d'acquis écrit dans un don ou l'armure n'est pas compté (lib/acquis-texte.mjs, décision R104 ; questions de docs/sql/a-valider.md). */
+const RAISONS_DE_L_ACQUIS = {
+  situation: 'selon la situation (à compter au moment du jet)',
+  arme_choisie: '« l’arme choisie » : laquelle ? (question Q22)',
+  competences_d_arme: '« les compétences d’arme » : chacune, ou une au choix ? (question Q23)',
+  choix_multiple: '« 2 sur les 3 » (question Q24)',
+  jets: 'aux jets d’une caractéristique (question Q25)',
+  artisanat: 'artisanat (question Q26)',
+  inconnue: 'aucune compétence nommée (questions Q26, Q27)',
+  element: 'l’armure transformée par un élément perd ses bonus d’origine (décision R99)',
+};
+
 function construireAcquisAChoisir() {
-  const choix = acquisDesDons(regles, fiche).choix;
+  const { choix, nonComptes } = acquisDesDons(regles, fiche);
   $('acquis-choix-bloc').hidden = !choix.length;
+  // les bonus que la fiche ne compte pas, chacun avec sa raison (le texte du don, lu, en infobulle)
+  $('acquis-non-comptes-bloc').hidden = !nonComptes.length;
+  reconstruire($('acquis-non-comptes'), JSON.stringify(nonComptes), () => nonComptes.map((x) => el('li', { title: x.texte ?? null },
+    `${x.nom} : ${x.valeur ? `${x.valeur} % — ` : ''}${RAISONS_DE_L_ACQUIS[x.raison] ?? x.raison}`)));
   const listeDesCompetences = (attributs, exclues = new Set()) => el('select', attributs, option('', 'Choisir…'),
     regles.caracteristiques.map((k) => el('optgroup', { label: k.nom },
       regles.competences.filter((c) => c.caracteristique_id === k.id && !exclues.has(c.id)).map((c) => option(c.id, c.nom)))));
@@ -951,7 +972,7 @@ function construireAcquisAChoisir() {
       });
       return el('span', { class: 'acquis-choix__part' }, competence, points, retirer_);
     });
-    const ajouter_ = el('button', { type: 'button', class: 'ajouter', onclick: () => {
+    const ajouter_ = el('button', { type: 'button', class: 'ajouter', 'aria-label': `${c.nom} : ajouter une compétence à la répartition`, onclick: () => {
       const a = actuelle();
       const libre = regles.competences.find((k) => !a.parts.some((y) => y.competence_id === k.id));
       if (libre && a.reste > 0) repartir([...a.parts, { competence_id: libre.id, valeur: a.reste }]);
@@ -1279,15 +1300,18 @@ function bulleDeChoix() {
     const i = [...copie.querySelectorAll(CHAMPS_DE_TUILE)].indexOf(champ);
     return i < 0 ? null : tuile.querySelectorAll(CHAMPS_DE_TUILE)[i] ?? null;
   };
+  // une saisie (un nombre, un texte) se relaie à son changement, comme une liste ; un bouton ou une case, à son clic
+  const saisie = (x) => x instanceof HTMLSelectElement || (x instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(x.type));
   bulle.addEventListener('click', (ev) => {
     const champ = ev.target instanceof Element ? ev.target.closest('button, input') : null;
+    if (saisie(champ)) return;
     const cible = champ && original(champ);
     if (!cible) return;
     ev.preventDefault();
     cible.click();
   });
   bulle.addEventListener('change', (ev) => {
-    const cible = ev.target instanceof HTMLSelectElement ? original(ev.target) : null;
+    const cible = saisie(ev.target) ? original(ev.target) : null;
     if (!cible) return;
     cible.value = ev.target.value;
     cible.dispatchEvent(new Event('input', { bubbles: true }));

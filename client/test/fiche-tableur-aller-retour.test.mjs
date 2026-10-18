@@ -105,6 +105,8 @@ function canonique(fiche) {
     accessoires: parCle('emplacement', emplacementsAccessoire),
     ceinture: (a, b) => a.rang - b.rang,
   };
+  // l'entraînement : ses compétences (la case L42) puis ses textes (la note), renumérotées (le tableur ne garde pas l'ordre entre les deux : R104)
+  f.entrainements = [...f.entrainements.filter((l) => l.competence_id), ...f.entrainements.filter((l) => !l.competence_id)].map((l, i) => ({ ...l, rang: i + 1 }));
   const resultat = sansVides(f);
   for (const cle of Object.keys(PARTIES_DE_FICHE)) {
     const liste = (f[cle] ?? []).map(sansVides);
@@ -254,6 +256,18 @@ function ficheBiPotentiel() {
 }
 
 // ------------------------------------------------------------------ les tests
+
+test('entraînement (décision R104) : ses lignes reviennent compétences d’abord, puis textes, chacune telle quelle ; les choix d’acquis aussi', async () => {
+  const f = { ...ficheRiche(), entrainements: [
+    { rang: 1, competence_id: null, valeur: null, texte: 'Béni par la Dame du lac' }, { rang: 2, competence_id: 'arc', valeur: 3, texte: null },
+    { rang: 3, competence_id: null, valeur: null, texte: 'Livre lu : Boule de feu' }, { rang: 4, competence_id: 'calme', valeur: 0, texte: null },
+  ] };
+  const r = await allerRetour(commeLaPage(f));
+  assert.deepEqual(r.fiche.entrainements.map((l) => [l.rang, l.competence_id ?? l.texte, l.valeur]),
+    [[1, 'arc', 3], [2, 'calme', 0], [3, 'Béni par la Dame du lac', null], [4, 'Livre lu : Boule de feu', null]]);
+  assert.deepEqual(canonique(r.fiche).entrainements, canonique(f).entrainements);
+  assert.deepEqual(r.fiche.acquis_choix, commeLaPage(f).acquis_choix);
+});
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {
   const f = ficheRiche();

@@ -4016,7 +4016,7 @@ CREATE TABLE personnage_acquis_choix (
 
 -- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
 -- de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ;
--- le bonus de métier se calcule (v_personnage_metier_bonus), il ne s'écrit pas dans personnage_competence.acquis.
+-- le bonus de métier se calcule (v_personnage_metier_bonus), comme tout l'Acquis depuis la migration 0062 (décision R104).
 CREATE TABLE personnage_metier_bonus (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang >= 1),   -- rang du bonus dans metier_bonus (métier de la fiche)

@@ -151,10 +151,13 @@ function reglesDeLaBase(db) {
           .filter((c) => c.valeur !== null);
         // la ligne de l'ethnie donne ce qu'écrivent ses cellules (« +1 cran de résistance » : Brûlure ; « Résistance à la magie du Sang »)
         const lectures = cellulesDeLaLigne.map((c) => lireResistances(c.valeur, { colonne: c.libelle }));
+        // et ses bonus d'acquis (« Bonus compétence » du Drakos : « 5% Athlétisme » ; décision R104), lus comme ceux d'un don
+        const acquis = cellulesDeLaLigne.flatMap((c) => lireAcquis(c.valeur));
         return {
           ethnie_id: l.ethnie_id,
           cellules: cellulesDeLaLigne,
           ...resistancesEcrites({ effets: lectures.flatMap((r) => r.effets), choix: lectures.some((r) => r.choix) }),
+          ...(acquis.length ? { acquis } : {}),
         };
       }),
     };
@@ -393,7 +396,12 @@ function reglesDeLaBase(db) {
     armures: (() => {
       const degats = parCle(lignes(db, 'SELECT armure_id, sens, type_degats, multiplicateur FROM armure_degats ORDER BY armure_id, sens, type_degats'), 'armure_id',
         (r) => ({ sens: r.sens, type: r.type_degats, multiplicateur: r.multiplicateur ?? 1 }));
-      return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni FROM armure ORDER BY ordre').map((a) => ({ ...a, degats: degats.get(a.id) ?? [] }));
+      // les bonus d'acquis qu'écrit son effet (« +25% Stabilité », « +5% Magie ou Concentration » : « Les bonus de race/classe/don/équipement vont dans la
+      // case Acquis », guide « Fiche de personnage : Compétences » ; décision R104)
+      return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
+        const acquis = lireAcquis(effet);
+        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };
+      });
     })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)

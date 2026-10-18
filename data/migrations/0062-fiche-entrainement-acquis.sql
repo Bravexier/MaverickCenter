@@ -1,7 +1,7 @@
--- 0062-fiche-entrainement-acquis : demande du propriétaire du 2026-10-17 (« remplacer le texte des "Entraînement" par des lignes qu'on peut ajouter
--- (+) et remplir soit par "entraînement compétence" : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Acquis (il faudrait d'ailleurs
--- retirer le slider des acquis à cet endroit-là, et n'afficher que le chiffre calculé par tous les autres bonus). Soit par un livre de compétence et
--- lister le sort associé […] Soit un texte libre pour les "dons évènementiels". ») ; réponse « Lus dans les dons » (décision R104). Migration de
+-- 0062-fiche-entrainement-acquis : demande du propriétaire du 2026-10-17 (« Il faudrai remplacer le texte des "Entraînement" par des lignes qu'on peut
+-- ajouter (+) et remplir soit par "entrainement compétence : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Aquis.( il faudrai
+-- d'ailleurs retirer le slider des aquis à cet endroit là, et n'afficher que le chiffre calculé par tous les autres bonus.) Soit par un livre de
+-- compétence et lister le sort associé […] Soit un texte libre pour les "dons évènementiels". ») ; réponse « Lus dans les dons » (décision R104). Migration de
 -- STRUCTURE (section 13 seulement : data/rows garde les tables des fiches vides).
 --   * personnage_entrainement : les lignes de l'entraînement (compétence et points, ou texte libre) ; personnage.entrainement (le texte libre de R71)
 --     disparaît : la base vivante en fait une ligne de texte libre (serveur/base-vivante.mjs, COLONNES_CONVERTIES) ;

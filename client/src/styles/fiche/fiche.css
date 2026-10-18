@@ -1089,3 +1089,5 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .acquis-choix__part { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
 .acquis-choix__part select { flex: 1 1 0; min-width: 0; }
 .acquis-choix__points { width: 4.5rem; }
+/* les bonus d'acquis écrits dans un don ou l'armure que la fiche ne compte pas (décision R104) : chacun avec sa raison */
+.acquis-non-comptes { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: var(--fs-sm); }

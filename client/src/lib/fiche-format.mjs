@@ -71,8 +71,8 @@ export const entrainementAvecLignes = (fiche) => typeof fiche?.entrainement === 
   && Array.isArray(fiche?.entrainements) && fiche.entrainements.length > 0;
 
 /**
- * Ce qu'une fiche perd avec l'acquis saisi de ses compétences (décision R104 : « Lus dans les dons […] acquis saisis d'avant retirés, listés dans une
- * note datée ») : un descripteur par compétence dont l'acquis saisi est positif, dans l'ordre reçu. `noms.competence(id)` rend son nom.
+ * Ce qu'une fiche perd avec l'acquis saisi de ses compétences (décision R104, réponse « Lus dans les dons » : les acquis saisis d'avant sont retirés et
+ * listés dans une note datée) : un descripteur par compétence dont l'acquis saisi est positif, dans l'ordre reçu. `noms.competence(id)` rend son nom.
  */
 export function acquisRetires(competences, noms = {}) {
   return (Array.isArray(competences) ? competences : [])
@@ -324,7 +324,8 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
   }
   if (acquis) {
     retraits.push(...acquisRetires(reste.competences, noms));
-    reste.competences = reste.competences.map(({ acquis: _a, ...c }) => c);
+    // (une ligne qui n'est pas un objet reste telle quelle : la vérification de forme du service la refuse, 400)
+    reste.competences = reste.competences.map((c) => (c && typeof c === 'object' && !Array.isArray(c) ? (({ acquis: _a, ...x }) => x)(c) : c));
   }
   if (retraits.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, retraits.map((d) => ligneDeRetrait(d, instant)));
   return reste;
@@ -396,11 +397,12 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                pièce de l'armure gardée, dont l'amélioration ou l'élément propres se perdent ;
  *   matériau   : « le matériau de bouclier « Fer » (×2) » : un matériau que le bouclier ne garde pas, il n'a plus qu'une matière (décision R96) ;
  *   accessoire : « l'accessoire « Bague » (Ceinture, effet « Dégâts magie +2 », effet hors table « Brille la nuit ») » ou, sans nom, « l'accessoire de
- *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table.
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table ;
+ *   acquis     : « l'acquis saisi en Arc (7) » : les points d'acquis saisis d'une compétence, l'Acquis se calculant (décision R104 ; `valeur`).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire' | 'acquis', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[], devenue?: boolean, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
- *   ecarte?: boolean }} d
+ *   ecarte?: boolean, valeur?: number }} d
  */
 export function descriptionDuRetrait(d) {
   const nom = d.nom ?? d.id;
