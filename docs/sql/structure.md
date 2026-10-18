@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 65 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 66 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3322,6 +3322,7 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `bouclier_amelioration_id` | TEXT | non | → amelioration_equipement.id |  |
 | `bouclier_solidite` | INTEGER | non |  |  |
 | `symbiose_magie_id` | TEXT | non | → magie.id |  |
+| `nm_mj` | INTEGER | oui |  | NM donnés par le MJ, pour toute la fiche (R118) |
 
 ### `personnage_partage`
 
@@ -3366,7 +3367,7 @@ Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond se
 
 ### `personnage_entrainement`
 
-« Entraînement » (L42 du modèle ordinateur ; décision R104, migration 0062, qui remplace personnage.entrainement, un texte libre : décision R71) : des lignes qu'on ajoute, chacune un entraînement de compétence — la compétence et ses points (« Vous ne pouvez monter que 15 compétences maximum grâce à cette case et à hauteur maximum 10% de bonus » : constantes entrainement.competences_max, entrainement.bonus_max_pct, contrôlées par v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort restent dans personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement.
+« Entraînement » (L42 du modèle ordinateur ; décision R104, migration 0062, qui remplace personnage.entrainement, un texte libre : décision R71) : des lignes qu'on ajoute, chacune un entraînement de compétence — la compétence et ses points (« Vous ne pouvez monter que 15 compétences maximum grâce à cette case et à hauteur maximum 10% de bonus » : constantes entrainement.competences_max, entrainement.bonus_max_pct, contrôlées par v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort restent dans personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement (le curseur de NM du sort part alors de 1 : R118).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3416,9 +3417,8 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `sort_id` | TEXT | oui | PK 2, → sort.id |  |
 | `rang` | INTEGER | oui |  | ligne de la liste sur la fiche |
-| `niveau_maitrise` | INTEGER | oui |  | NM du sort, toutes origines comprises |
-| `nm_livre` | INTEGER | oui |  | dont le NM d'un livre de sort (un par sort au plus ; migration 0021) |
-| `nm_cadeau` | INTEGER | oui |  | dont les NM donnés par le MJ |
+| `niveau_maitrise` | INTEGER | oui |  | NM du sort, toutes origines comprises (un curseur de 0 à 3 sur la fiche : R118) |
+| `nm_livre` | INTEGER | oui |  | dont le NM d'un livre de sort (noté dans l'entraînement) |
 
 ### `personnage_maitrise_arme`
 

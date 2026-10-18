@@ -644,13 +644,14 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060 et 0061 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061 et 0066 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
       armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
       bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
       symbiose_magie_id: null,
+      nm_mj: 0,
     },
     personnage_arme: { durabilite: null },
   });
@@ -822,6 +823,35 @@ test('entraînement en lignes et choix d’acquis (décision R104, migration 006
   assert.match(PAGE_D_AVANT, /l’entraînement se note en lignes et l’acquis se calcule/);
 });
 
+test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et relus ; une page d’avant qui les note sort par sort donne leur somme ; les deux à la fois : 409', () => {
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombeline'), nm_mj: 2, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual([p.nm_mj, p.sorts], [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }]]);
+  assert.deepEqual(r.corps.controles, [], 'niveau 1 : le NM compté vient du MJ, celui du livre ne compte pas');
+  // une page d'avant : les NM du MJ de chaque sort (nm_cadeau), sans nm_mj
+  const { nm_mj: _n, ...sansNmMj } = lire(p.id).personnage;
+  let m = appel('PUT', `/api/personnages/${p.id}`, {
+    ...sansNmMj, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 }, { sort_id: cau, rang: 2, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 1 }],
+  });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.equal(m.corps.personnage.nm_mj, 2, 'leur somme');
+  assert.deepEqual(m.corps.personnage.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[bdf, 2, 1], [cau, 1, 0]]);
+  assert.ok(m.corps.personnage.sorts.every((x) => !('nm_cadeau' in x)));
+  // les deux formes à la fois (une page d'avant qui a repris nm_mj d'une réponse, puis noté un NM du MJ sur un sort) : rien ne les concilie
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 1 })) });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /les NM du MJ se notent pour toute la fiche/);
+  // nm_cadeau à 0 avec nm_mj : une page d'avant qui n'a rien noté du MJ sur un sort, ses NM du MJ gardés
+  m = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 0 })) });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.equal(m.corps.personnage.nm_mj, 2);
+});
+
 test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction a échoué) : sans les tables de l’entraînement et des choix d’acquis, la fiche se lit avec des listes vides, s’enregistre (l’acquis d’avant à 0), et une liste non vide est refusée', () => {
   const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0062') });
   const ancienne = new DatabaseSync(avant);
@@ -846,6 +876,37 @@ test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction 
         return true;
       });
     }
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0066 (sa reconstruction a échoué) : sans `nm_mj`, une fiche à 0 NM du MJ s’enregistre (les sorts à 0 NM du MJ chacun) ; des NM du MJ sont refusés, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0066') });
+  const ancienne = new DatabaseSync(avant);
+  // la vue et la table d'avant (décision R26 : les NM du MJ sort par sort, personnage_sort.nm_cadeau)
+  const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const vueDAvant = vue.replaceAll(" || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END", '').replaceAll(' + p.nm_mj', '')
+    .replaceAll('ps.niveau_maitrise - ps.nm_livre', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau');
+  assert.ok(!vueDAvant.includes('p.nm_mj'));
+  ancienne.exec(`DROP VIEW v_personnage_controle;
+    ALTER TABLE personnage DROP COLUMN nm_mj;
+    ALTER TABLE personnage_sort ADD COLUMN nm_cadeau INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0);
+    ${vueDAvant};`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0066'), sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 1, nm_livre: 1 }] });
+    assert.ok(!('nm_mj' in cree.personnage), 'la colonne n’est pas dans cette base');
+    assert.deepEqual(base.prepare('SELECT niveau_maitrise, nm_livre, nm_cadeau FROM personnage_sort WHERE personnage_id = ?').all(cree.personnage.id).map((l) => ({ ...l })),
+      [{ niveau_maitrise: 1, nm_livre: 1, nm_cadeau: 0 }]);
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, nm_mj: 2 }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « nm_mj »']]);
+      return true;
+    });
     assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
   } finally {
     base.close();

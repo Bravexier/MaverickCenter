@@ -49,11 +49,27 @@ export const CHAMP_VERSION = 'version';
  * `statut` (brouillon, validé, archivé) : la fiche n'a plus de statut (demande du propriétaire, migration 0038). `nom` et `texte` d'un accessoire (le nom
  * donné à l'objet, l'effet hors table) : décision R97, migration 0060 ; ce qu'ils portaient est noté, daté, dans la fiche (accessoiresGardes).
  * `entrainement` (le texte libre de R71) : une ligne de texte de l'entraînement (décision R104, migration 0062 : entrainementEnLignes) ; `acquis` d'une
- * compétence : l'Acquis se calcule, les points saisis sont notés, datés, dans la fiche (acquisRetires).
+ * compétence : l'Acquis se calcule, les points saisis sont notés, datés, dans la fiche (acquisRetires). `nm_cadeau` d'un sort (les NM du MJ, sort par
+ * sort : décision R26) : les NM du MJ sont ceux de la fiche, personnage.nm_mj, la somme de ses nm_cadeau (décision R118, migration 0066 : nmDuMjDesSorts) ;
+ * le NM de chaque sort ne change pas.
  */
 export const COLONNES_RETIREES = Object.freeze({
   personnage: Object.freeze(['statut', 'entrainement']), personnage_accessoire: Object.freeze(['nom', 'texte']), personnage_competence: Object.freeze(['acquis']),
+  personnage_sort: Object.freeze(['nm_cadeau']),
 });
+
+/**
+ * Les NM du MJ d'une fiche d'avant la migration 0066, notés sort par sort (`nm_cadeau`, décision R26) : leur somme, les NM du MJ de la fiche (décision
+ * R118 : « Les NM du MJ […] vaudront donc pour toute la fiche »). La même somme pour la base vivante (serveur/base-vivante.mjs), une fiche reçue d'une
+ * page d'avant et la migration 0066.
+ */
+export const nmDuMjDesSorts = (sorts) => (Array.isArray(sorts) ? sorts : []).reduce((n, x) => n + (x && typeof x === 'object' ? entierPositif(x.nm_cadeau) : 0), 0);
+
+/**
+ * Vrai si la fiche reçue porte à la fois des NM du MJ sur ses sorts (`nm_cadeau` positif, avant la décision R118) et ceux de la fiche (`nm_mj`) : une
+ * page d'avant qui a repris les NM du MJ d'une réponse, puis en a noté sur un sort ; on ne sait pas s'ils s'ajoutent, le service refuse (409).
+ */
+export const nmDuMjAvecCadeaux = (fiche) => Boolean(fiche) && typeof fiche === 'object' && 'nm_mj' in fiche && nmDuMjDesSorts(fiche.sorts) > 0;
 
 /**
  * Les lignes d'entraînement d'un ancien texte d'entraînement (personnage.entrainement, décision R71) : une ligne de texte libre par ligne non vide du
@@ -284,7 +300,9 @@ export function accessoiresGardes(lignes, noms = {}) {
  * (armuresAvecArmure) et jetée par la page. De même une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier
  * (matiereDuBouclier) quand la fiche n'a aucune des nouvelles clés du bouclier (COLONNES_DU_BOUCLIER), chaque autre matériau une ligne datée
  * (retraitsDuBouclier) ; et des accessoires qui portent encore un nom, un effet hors table, ou un emplacement retiré (Ceinture, Autre) sont convertis
- * (accessoiresGardes), ce qu'ils perdent noté. Une fiche sans rien à convertir est rendue telle quelle (le même objet) ; jamais modifiée en place.
+ * (accessoiresGardes), ce qu'ils perdent noté. Des sorts qui portent encore leurs NM du MJ (`nm_cadeau`, avant la migration 0066) les perdent : leur
+ * somme devient les NM du MJ de la fiche (nmDuMjDesSorts, décision R118) quand elle n'a pas `nm_mj` (avec, positifs : refusés par le service,
+ * nmDuMjAvecCadeaux, et jetés par la page). Une fiche sans rien à convertir est rendue telle quelle (le même objet) ; jamais modifiée en place.
  * @param {object} fiche
  * @param {{ instant?: string, noms?: { armure?: (id: string) => string | null, emplacement?: (id: string) => string | null,
  *   ressource?: (id: string) => string | null, accessoire?: (id: string) => string | null }, notes?: string | null }} [options]
@@ -297,7 +315,9 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
   // décision R104 : l'ancien texte d'entraînement et l'acquis saisi des compétences
   const entrainement = 'entrainement' in fiche;
   const acquis = Array.isArray(fiche.competences) && fiche.competences.some((c) => c && 'acquis' in c);
-  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis) return fiche;
+  // décision R118 : les NM du MJ notés sort par sort
+  const cadeaux = Array.isArray(fiche.sorts) && fiche.sorts.some((x) => x && typeof x === 'object' && 'nm_cadeau' in x);
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis && !cadeaux) return fiche;
   const { progression, armures, bouclier_materiaux, ...reste } = fiche;
   const retraits = [];
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
@@ -327,13 +347,17 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
     // (une ligne qui n'est pas un objet reste telle quelle : la vérification de forme du service la refuse, 400)
     reste.competences = reste.competences.map((c) => (c && typeof c === 'object' && !Array.isArray(c) ? (({ acquis: _a, ...x }) => x)(c) : c));
   }
+  if (cadeaux) {
+    if (!('nm_mj' in reste)) reste.nm_mj = nmDuMjDesSorts(reste.sorts);
+    reste.sorts = reste.sorts.map((x) => (x && typeof x === 'object' && !Array.isArray(x) ? (({ nm_cadeau: _c, ...y }) => y)(x) : x));
+  }
   if (retraits.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, retraits.map((d) => ligneDeRetrait(d, instant)));
   return reste;
 }
 
 /**
  * Une fiche neuve : feuille blanche, pas une règle. Les colonnes obligatoires de `personnage` reçoivent leur valeur de départ (mono-classe, 0 XP,
- * alignement, bourse, ambidextrie et gains de niveau à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
+ * alignement, bourse, ambidextrie, gains de niveau et NM du MJ à zéro), les listes sont vides ; le reste (race, magies…) est à choisir.
  */
 export function ficheVide(nom = '') {
   return {
@@ -350,6 +374,7 @@ export function ficheVide(nom = '') {
     ambidextrie: 0,
     gains_sante: 0,
     gains_chakra: 0,
+    nm_mj: 0,
     ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])),
   };
 }
@@ -388,7 +413,8 @@ const positif = (n) => typeof n === 'number' && n > 0;
  * L'élément retiré, en mots : sa nature, son nom (l'id quand le nom manque), puis entre parenthèses ce qui le situe (les parties absentes sont omises) :
  *   don        : « le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) » ;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
- *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ) » (des faits, rien sur ce qu'ils deviennent) ;
+ *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre) » (des faits, rien sur ce qu'ils deviennent ; les NM
+ *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
  *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60) ;
@@ -400,7 +426,7 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table ;
  *   acquis     : « l'acquis saisi en Arc (7) » : les points d'acquis saisis d'une compétence, l'Acquis se calculant (décision R104 ; `valeur`).
  * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'materiau_bouclier' | 'accessoire' | 'acquis', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
- *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
+ *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null,
  *   dons?: string[], devenue?: boolean, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number }} d
  */
@@ -423,8 +449,7 @@ export function descriptionDuRetrait(d) {
     if (d.magie) parties.push(`magie ${d.magie}`);
     if (d.npm !== null && d.npm !== undefined) parties.push(`NPM ${d.npm}`);
     if (positif(d.nm)) {
-      const dont = [positif(d.nm_livre) && `${d.nm_livre} de livre`, positif(d.nm_cadeau) && `${d.nm_cadeau} du MJ`].filter(Boolean);
-      parties.push(`${d.nm} NM sur cette fiche${dont.length ? ` dont ${dont.join(' et ')}` : ''}`);
+      parties.push(`${d.nm} NM sur cette fiche${positif(d.nm_livre) ? ` dont ${d.nm_livre} de livre` : ''}`);
     }
   } else if (d.nature === 'metier') {
     tete = `le métier « ${nom} »`;

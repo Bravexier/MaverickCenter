@@ -194,7 +194,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <section class="fiche-etape zp-sorts" id="etape-sorts" aria-labelledby="titre-sorts">
           <h3 id="titre-sorts">Sorts</h3>
           <div class="fiche-etape__corps">
-            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
+            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span><label class="budget budget--mj" title="NM donnés par le MJ : ils valent pour toute la fiche et s’ajoutent aux NM gagnés par les niveaux (décision R118)"><span aria-hidden="true">+ MJ</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj" aria-label="NM donnés par le MJ, pour toute la fiche" /></label></span></div>
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
           </div>
         </section>
@@ -210,7 +210,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement</h4>
               <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
               <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
-              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment>{entrainement.livre ?? 'Guide'}{entrainement.chapitre ? `, chapitre ${entrainement.chapitre}` : ''}, <cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
+              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment>{entrainement.livre ?? 'Guide'}{entrainement.chapitre ? `, chapitre ${entrainement.chapitre}` : ''}, <cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
             </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
             {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}

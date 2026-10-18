@@ -32,7 +32,8 @@ import {
   mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
+  livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
@@ -675,10 +676,16 @@ const RAISONS_DES_SORTS = {
 };
 
 /**
+ * Les sorts dont le livre, noté au plafond, a pris la place d'un NM compté (livreAuPlafond) : ce NM leur est rendu si le livre part ou change de sort,
+ * tant que leur curseur n'a pas bougé (sortAvecLivre, `rendre`) ; une fiche relue ou rechargée a d'autres objets.
+ */
+const livresAuPlafond = new WeakSet();
+
+/**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
- * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Les NM d'un
- * sort se notent par origine : de niveau (au plus niveau − 1 sur un sort, et en tout au plus ceux gagnés), d'un livre (un par sort), du MJ ; 3 au plus
- * sur un sort (décisions R24, R26).
+ * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
+ * sort se règle à un seul curseur, de 0 à 3 (décision R118 : plus de cases « livre » ni « MJ ») ; de 1 à 3 quand l'entraînement note un livre de ce
+ * sort, dont le NM ne compte pas dans le décompte. Les NM du MJ sont ceux de la fiche, notés à côté de la limite des NM (champ nm_mj du gabarit).
  */
 function construireSorts() {
   const emplacements = emplacementsDeSorts(regles, fiche);
@@ -688,10 +695,13 @@ function construireSorts() {
     ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
+  // le décompte des NM (décision R118) : ceux des sorts sans leurs livres, sur les NM gagnés par les niveaux plus ceux du MJ, notés juste à côté (la
+  // limite affichée est celle des niveaux : « 9 / 11 + MJ 2 »)
   const badge = $('budget-nm');
-  etatBudget(badge, nm.deNiveau, nm.disponibles, 'NM de niveau');
-  if (nm.offerts) badge.textContent += ` · livre/MJ +${nm.offerts}`;
-  badge.title = `NM de niveau répartis / gagnés ; ceux d’un livre (un par sort) ou du MJ en plus ; ${nm.plafond} NM au plus sur un sort`;
+  etatBudget(badge, nm.comptes, nm.limite, 'NM');
+  badge.textContent = `NM : ${nm.comptes} / ${nm.disponibles}`;
+  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}) / NM gagnés par les niveaux, plus ceux du MJ, `
+    + `notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
 
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
@@ -700,7 +710,7 @@ function construireSorts() {
       el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
       el('th', { title: 'Chakra, puis le coût secondaire (âmes, Sang…)' }, 'Coût'), el('th', {}, 'Portée'), el('th', {}, 'Zone'),
       el('th', { title: 'Dégâts, soins ou barrière' }, 'D/S/B'),
-      el('th', { title: 'NM de niveau, d’un livre (un par sort, noté dans l’entraînement), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
+      el('th', { title: `NM du sort, ${nm.plafond} au plus ; à partir de 1 quand l’entraînement note un livre de ce sort, dont le NM ne compte pas dans le décompte` }, 'NM'))),
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '8', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.flatMap((l) => {
@@ -718,30 +728,26 @@ function construireSorts() {
           onchange: (ev) => {
             const choix = ev.target.value;
             if (!choix) fiche.sorts.splice(l.index, 1);
-            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 };
-            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 });
+            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0 };
+            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
             changer();
           },
         }, el('option', { value: '', class: 'option-vide' }, l.enTrop ? '— retirer —' : l.choix.length ? '— libre —' : '— aucun sort possible —'),
         l.enTrop ? null : sortsParNpm(regles, l.choix).map((g) => el('optgroup', { label: `NPM ${g.npm}` }, g.sorts.map(optionDeSort))),
         l.enTrop || l.horsDesRegles ? el('optgroup', { label: l.enTrop ? 'Au-delà des emplacements' : 'Hors des magies ou du niveau' }, optionDeSort(l.sort)) : null);
         liste.setAttribute('aria-invalid', String(l.horsDesRegles || l.enTrop));
-        // NM par origine : niveau_maitrise = niveau + livre + MJ
-        const ecrireNm = (origine, valeur) => {
-          const x = fiche.sorts[l.index];
-          if (!x) return;
-          const nm = nmDuSort(x);
-          const parts = { deNiveau: nm.deNiveau, livre: nm.livre, cadeau: nm.cadeau, [origine]: valeur };
-          Object.assign(x, { niveau_maitrise: parts.deNiveau + parts.livre + parts.cadeau, nm_livre: parts.livre, nm_cadeau: parts.cadeau });
-          changer();
-        };
-        const deNiveau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM de niveau de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
-          oninput: (ev) => ecrireNm('deNiveau', entier(ev.target.value)) });
-        // le NM d'un livre se note dans l'entraînement (décision R104 : « déplacer la case [livre] du sort, sans changer le calcul ») : rappelé ici
-        const livre = el('span', { class: 'nm-livre', tabindex: '0', title: 'NM d’un livre de sort (noté dans l’entraînement)' }, 'livre');
-        const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
-          oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
+        // le NM du sort : un curseur de 0 à 3, de 1 à 3 avec un livre (décision R118 ; sortAuNm le borne)
+        const curseur = el('input', { type: 'range', step: '1', class: 'curseur', 'aria-label': `NM du sort de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
+          oninput: (ev) => {
+            const x = fiche.sorts[l.index];
+            if (!x) return;
+            Object.assign(x, sortAuNm(regles, x, ev.target.value));
+            livresAuPlafond.delete(x);
+            changer();
+          } });
         const total = el('output', { class: 'curseur__valeur' });
+        // le NM d'un livre se note dans l'entraînement (décision R104 : « déplacer la case [livre] du sort, sans changer le calcul ») : rappelé ici
+        const livre = el('span', { class: 'nm-livre', tabindex: '0', title: 'Dont 1 NM d’un livre de sort (noté dans l’entraînement), qui ne compte pas dans le décompte' }, 'livre');
         // coût, portée, zone, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm) ; l'indication IC (et
         // imparable, inesquivable) au NM du sort, une condition pas encore atteinte (« IC pour 3 NM ») en grisé (modesAuNm)
         const modes = el('td', { class: 'sort-modes' });
@@ -757,7 +763,7 @@ function construireSorts() {
         const tr = el('tr', { class: classe },
           el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
           modes, cout, portee, zone, dsb,
-          el('td', { class: 'nm-origines' }, deNiveau, livre, cadeau, total));
+          el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
           const nm = nmDuSort(fiche.sorts[l.index]);
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
@@ -813,14 +819,20 @@ function construireSorts() {
           if (effet.textContent !== texteEffet) effet.textContent = texteEffet;
           effet.toggleAttribute('data-calcule', Boolean(m?.effets.detail.length));
           infobulle(effet, m?.effets.detail.length ? detail(`Écrit : ${auNm(l.sort.effets, 'effets')}`, m.effets.detail) : '');
-          if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
-          if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
+          const bornes = bornesDuNm(regles, fiche.sorts[l.index]);
+          curseur.min = String(bornes.min);
+          curseur.max = String(bornes.max);
+          poser(curseur, nm.total);
           livre.hidden = !nm.livre;
-          deNiveau.setAttribute('aria-invalid', String(nm.deNiveau > calcul.nm.maxParSort));
-          deNiveau.title = `NM de niveau : au plus ${calcul.nm.maxParSort} sur un sort (niveau − 1)`;
-          total.textContent = `= ${nm.total}`;
+          // sur un sort : au plus 3 NM, et au plus niveau − 1 comptés, plus les NM du MJ (règles sort_nm_plafond et sort_nm_max de la base)
+          const tropCompte = nm.comptes > calcul.nm.maxCompteParSort;
+          curseur.setAttribute('aria-invalid', String(nm.total > calcul.nm.plafond || tropCompte));
+          infobulle(curseur, [
+            `${nm.total} NM sur ce sort${nm.livre ? `, dont 1 de livre : ${nm.comptes} compté${nm.comptes > 1 ? 's' : ''} dans le décompte` : ''} ; ${calcul.nm.plafond} au plus`,
+            ...(tropCompte ? [`Au plus ${calcul.nm.maxParSort} NM de niveau sur un sort (niveau − 1)${calcul.nm.mj ? `, plus les ${calcul.nm.mj} du MJ` : ''}`] : []),
+          ].join('\n'));
+          total.textContent = String(nm.total);
           total.toggleAttribute('data-hors', nm.total > calcul.nm.plafond);
-          total.title = `${nm.total} NM sur ce sort ; ${calcul.nm.plafond} au plus`;
         });
         return [
           tr,
@@ -845,12 +857,13 @@ function construireEntrainement() {
   // (versionInventaire : une fiche relue ou rechargée a d'autres objets, auxquels chaque ligne doit se lier de nouveau)
   const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map(({ x }) => x.sort_id), (fiche.sorts ?? []).map((x) => x.sort_id)]);
   const nomDuSort = (id) => trouver(regles.sorts, id)?.nom ?? id;
+  // noter le livre d'un sort lui donne son NM (au plus 3), le retirer le lui reprend, sauf le NM compté qu'il avait pris au plafond (sortAvecLivre,
+  // décision R118) : déplacer un livre d'un sort à l'autre ne fait perdre aucun NM
   const poserLivre = (index, oui) => {
     const x = fiche.sorts[index];
     if (!x) return;
-    const nm = nmDuSort(x);
-    const livre = oui ? 1 : 0;
-    Object.assign(x, { niveau_maitrise: nm.deNiveau + livre + nm.cadeau, nm_livre: livre });
+    if (oui && livreAuPlafond(regles, x)) livresAuPlafond.add(x);
+    Object.assign(x, sortAvecLivre(regles, x, oui, { rendre: !oui && livresAuPlafond.delete(x) }));
   };
   reconstruire($('entrainement'), cle, () => [
     ...e.lignes.map((l, i) => {
@@ -894,11 +907,11 @@ function construireEntrainement() {
       return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, retirer_);
     }),
   ]);
-  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre), un texte ; ce qui est libre se
-  // relit au clic (les boutons ne sont refaits que quand l'un d'eux se grise ou se dégrise)
+  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre sous le plafond : sortPourUnLivre),
+  // un texte ; ce qui est libre se relit au clic (les boutons ne sont refaits que quand l'un d'eux se grise ou se dégrise)
   const ajouts = $('entrainement-ajouts');
   const libre = () => regles.competences.find((c) => !entrainementDe(regles, fiche).parCompetence.has(c.id)) ?? null;
-  const sansLivre = () => (fiche.sorts ?? []).findIndex((x) => !entier(x.nm_livre));
+  const sansLivre = () => sortPourUnLivre(regles, fiche.sorts);
   const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), sansLivre() < 0]);
   reconstruire(ajouts, cleAjouts, () => {
     const ajouter = (ligne) => {

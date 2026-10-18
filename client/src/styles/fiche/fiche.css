@@ -606,8 +606,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
 .budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: #b45309; }
 .budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
-/* NM donnés par le MJ en plus de ceux gagnés : permis (décision R24), signalés sans alarme */
-.budget[data-etat='info'] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); color: var(--accent); }
 .fiche-entete-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem; }
 .fiche-budgets { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 
@@ -679,11 +677,14 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
 .fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
-/* NM d'un sort par origine : niveau · livre · MJ = total (3 au plus, décision R26) */
-.nm-origines { white-space: nowrap; }
-.nm-origines > * { vertical-align: middle; }
-.fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
+/* le NM d'un sort (décision R118) : un curseur de 0 à 3, sa valeur, et « livre » quand l'entraînement en note un */
+.nm-sort { white-space: nowrap; }
+.nm-sort .curseur-cellule { display: inline-flex; vertical-align: middle; }
+.nm-sort .curseur { width: 5rem; min-width: 5rem; }
 .nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: var(--fs-xs); }
+/* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */
+.budget--mj { align-items: center; color: var(--muted); }
+.fiche .budget--mj input { width: 3.2rem; padding: 0 0.25rem; font-size: var(--fs-sm); }
 /* gains de niveau (décision R73) : deux totaux sur une ligne, santé bordée de rouge, chakra de bleu, puis le total attribué et le total à saisir, en rouge
    hors de la plage */
 .gains { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.9rem; margin-top: 0.3rem; }

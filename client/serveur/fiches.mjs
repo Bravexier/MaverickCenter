@@ -5,7 +5,8 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, nmDuMjAvecCadeaux, progressionAvecGains,
+  sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -24,7 +25,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
- * 0061 (la magie de la Symbiose, R100). Quand le
+ * 0061 (la magie de la Symbiose, R100) et de la migration 0066 (les NM du MJ de la fiche, R118). Quand le
  * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
@@ -36,6 +37,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
     bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
     symbiose_magie_id: null,
+    nm_mj: 0,
   }),
   personnage_arme: Object.freeze({ durabilite: null }),
 });
@@ -51,7 +53,8 @@ function ajouteeSansRien(table, colonne, valeur) {
 export const PAGE_D_AVANT = 'La page vient d’une version précédente du site : rien n’a été enregistré. Rechargez-la, puis saisissez de nouveau ce '
   + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra ; '
   + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
-  + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule).';
+  + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule ; '
+  + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -295,10 +298,14 @@ function verifierForme(db, entree, problemes) {
  * migration 0055) donne l'armure de la fiche, chaque autre pièce une ligne datée dans les notes (décision R95) ; envoyée avec les nouvelles clés de
  * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
+ * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409.
  */
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
-  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)) {
+    throw new ErreurFiche(409, PAGE_D_AVANT);
+  }
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
   // les notes enregistrées : une ligne de conversion s'y ajoute quand l'envoi (partiel) n'a pas les siennes ; la version, contrôlée plus bas, garantit
   // qu'elles n'ont pas changé depuis

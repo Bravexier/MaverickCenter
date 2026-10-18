@@ -6,15 +6,16 @@
 // 0055) devient une seule armure complète (décision R95 : armureDesArmures), chaque autre pièce notée, datée, dans la fiche (lignesDesPiecesRetirees) ;
 // envoyée avec les nouvelles clés de l'armure, elle est refusée par le service (armuresAvecArmure). Enfin les matériaux du bouclier
 // (personnage_bouclier_materiau, migration 0060) deviennent sa matière (décision R96 : matiereDuBouclier), et les accessoires perdent Ceinture, Autre, nom
-// et effet hors table (décision R97 : accessoiresGardes), chaque perte notée, datée.
+// et effet hors table (décision R97 : accessoiresGardes), chaque perte notée, datée. Les NM du MJ notés sort par sort (personnage_sort.nm_cadeau,
+// migration 0066) deviennent ceux de la fiche (décision R118 : nmDuMjDesSorts).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import {
   accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
-  matiereDuBouclier, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression, lignesDesPiecesRetirees,
-  progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees,
+  matiereDuBouclier, nmDuMjAvecCadeaux, nmDuMjDesSorts, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression,
+  lignesDesPiecesRetirees, progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 
 test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
@@ -198,4 +199,24 @@ test('bouclierAvecMatiere : une liste `bouclier_materiaux` non vide ET une des n
   assert.equal(bouclierAvecMatiere({ bouclier_materiaux: materiaux }), false, 'sans nouvelle clé : la conversion');
   assert.equal(bouclierAvecMatiere({ bouclier_materiaux: [], bouclier_materiau_id: 'fer' }), false, 'une liste vide : un reste');
   for (const autre of [null, undefined, 'texte', [1]]) assert.equal(bouclierAvecMatiere(autre), false);
+});
+
+test('NM du MJ (décision R118, migration 0066) : `nm_cadeau` d’un sort est une colonne retirée ; une fiche d’avant donne leur somme à `nm_mj`, le NM de chaque sort gardé ; avec `nm_mj`, il est gardé', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau']);
+  assert.equal(ficheVide().nm_mj, 0);
+  const sorts = [{ sort_id: 'a', rang: 1, niveau_maitrise: 3, nm_livre: 1, nm_cadeau: 1 }, { sort_id: 'b', rang: 2, niveau_maitrise: 2, nm_livre: 0, nm_cadeau: 2 },
+    { sort_id: 'c', rang: 3, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 }];
+  assert.equal(nmDuMjDesSorts(sorts), 3);
+  assert.equal(nmDuMjDesSorts(null), 0);
+  const avant = { nom: 'Aldric', sorts };
+  const convertie = sansPartiesRetirees(avant);
+  assert.deepEqual(convertie, { nom: 'Aldric', nm_mj: 3, sorts: sorts.map(({ nm_cadeau: _c, ...x }) => x) });
+  assert.equal(avant.sorts[0].nm_cadeau, 1, 'jamais modifiée en place');
+  // une page d'avant qui a repris les NM du MJ d'une réponse, sans en noter sur un sort : ses NM du MJ gardés
+  assert.deepEqual(sansPartiesRetirees({ nm_mj: 2, sorts: [{ ...sorts[2] }] }), { nm_mj: 2, sorts: [sorts[2]].map(({ nm_cadeau: _c, ...x }) => x) });
+  assert.equal(nmDuMjAvecCadeaux({ nm_mj: 2, sorts: [{ ...sorts[2] }] }), false);
+  assert.equal(nmDuMjAvecCadeaux({ nm_mj: 2, sorts }), true, 'des NM du MJ sur un sort ET ceux de la fiche : le service refuse (409)');
+  assert.equal(nmDuMjAvecCadeaux({ sorts }), false, 'sans `nm_mj` : convertie');
+  const sans = { nm_mj: 1, sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 1, nm_livre: 0 }] };
+  assert.equal(sansPartiesRetirees(sans), sans, 'rien à convertir : la même fiche');
 });

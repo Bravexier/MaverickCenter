@@ -946,7 +946,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
     if (!sort) return;
     pris.add(sort.id);
-    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm), nm_livre: 0, nm_cadeau: 0 });
+    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm), nm_livre: 0 });
   };
   for (const l of d.sorts.lignes) {
     const nom = texte(`${colonnes.nom}${l}`);
@@ -955,6 +955,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const v of notee('sorts')) {
     for (const { nom, nm } of lireListe(v).map(lireSortEnSuite)) ajouterSort(nom, nm ?? 0, null);
   }
+  // les livres de sort ; les NM du MJ sont ceux de la fiche (décision R118 : ligne « NM du MJ »), un classeur d'avant les écrit sort par sort (« MJ 2 »)
+  let nmDuMj = 0;
   for (const v of notee('nmOfferts')) {
     const offerts = lireNmOfferts(v);
     if (!offerts) {
@@ -968,13 +970,18 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
         continue;
       }
       lignes[0].nm_livre = o.livre;
-      lignes[0].nm_cadeau = o.cadeau;
+      nmDuMj += o.cadeau;
     }
   }
+  for (const v of notee('nmMj')) {
+    if (/^\d+$/.test(v.trim())) nmDuMj += Number(v.trim());
+    else perdu(`NM du MJ : « ${v} » illisible`);
+  }
+  f.nm_mj = nmDuMj;
   if (auto) {
     const nm = maitriseDesSorts(regles, f);
-    if (nm.deNiveau > nm.disponibles) {
-      remarques.push(`NM des sorts : les ${nm.total} NM du classeur sont comptés comme NM de niveau (${nm.disponibles} disponibles) ; le classeur ne dit pas lesquels viennent d'un livre ou du MJ`);
+    if (nm.comptes > nm.limite) {
+      remarques.push(`NM des sorts : les ${nm.total} NM du classeur sont tous comptés (${nm.disponibles} gagnés par les niveaux) ; le classeur ne dit pas lesquels viennent d'un livre (à noter dans l'entraînement) ou du MJ (à noter à côté du décompte des NM)`);
     }
   }
 

@@ -14,7 +14,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` (R1 à R117, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
+`docs/decisions-regles.md` (R1 à R118, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Équipe d'agents (`.claude/agents/`)
@@ -378,8 +378,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   acquise que la race ou l'innée ferme part d'office (`magieAcquiseValable`) ;
   un don à choix d'une classe ou d'une spécialité retirée part avec elle, et un don qu'aucun choix des règles ne range (supprimé sur le site de dev, devenu reçu d'office : D11) aussi (`donsValables`). Page compacte (demandes du propriétaire) : choix en menus déroulants
   (`<details class="choix">`), caractéristiques (1 par défaut, jamais vides : `caracteristiquesCompletes`) et naturel des compétences en curseurs, tableau des sorts
-  à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27 ; groupée par NPM, chaque sort sur la couleur de sa magie : `sortsParNpm`), NM par origine — niveau, livre (un par sort), MJ — et 3 au plus sur un sort (R24, R26 :
-  `personnage_sort.nm_livre`, `nm_cadeau`, migration `0021-nm-plafond` ; le livre se choisit dans l'entraînement, le tableau des sorts n'en montre que la marque), maîtrises d'armes (bloc à part, curseur étroit, dé du Pugilat
+  à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27 ; groupée par NPM, chaque sort sur la couleur de sa magie : `sortsParNpm`), le NM d'un sort à **un seul curseur de 0 à 3** (R24, R26, R118 :
+  `bornesDuNm`, `sortAuNm`), de 1 à 3 avec un livre (`personnage_sort.nm_livre`, choisi dans l'entraînement, `sortAvecLivre` ; le tableau des sorts n'en montre que la marque), dont le NM ne compte pas dans le décompte ; les NM du MJ
+  pour toute la fiche, un champ « + MJ » à côté du décompte (`personnage.nm_mj`, migration `0066-nm-mj-fiche`, qui a retiré `personnage_sort.nm_cadeau` : `COLONNES_CONVERTIES`, `nmDuMjDesSorts`), maîtrises d'armes (bloc à part, curseur étroit, dé du Pugilat
   selon la Force : `deDeLaFamille` ; quota des classes et de leurs dons dans le coin : `quotaDeMaitrise`, R32, textes des dons lus par `lib/maitrise-arme.mjs`) et valeurs du moment
   en curseurs aussi, dans les cartes des attributs avec leur maximum, plus des boutons + et − (`ajusterValeurDuMoment` ; chakra actuel ≤ chakra − corruption hors magie de la Corruption :
   `valeursDuMoment` ; santé rouge, barrière jaune, chakra bleu, corruption noire), clic droit ou Entrée sur un curseur = saisie bornée (`borner`), alignement calculé à côté de ses quatre
