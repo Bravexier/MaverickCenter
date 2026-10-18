@@ -442,6 +442,50 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
   }
 });
 
+test('sortDuMoment (R129) : le coût d’un sort qui augmente avec l’utilisation est multiplié, puis réduit ; Économe compte le NPM de la créature invoquée surchargée, sinon celui du sort ; bornes', () => {
+  const sortNomme = (magie, nom) => regles.sorts.find((s) => s.magie_id === magie && s.nom === nom);
+  // (les sorts de la base se modifient sur le site de dev : les exemples du propriétaire sont rejoués sur leur écriture d'alors, recopiée)
+  const animation = { ...sortNomme('magies/magie-de-la-necromancie', 'Animation de mort'), cout: '5', niveau: 1, bonus: [],
+    cout_secondaire: 'Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée.' };
+  const charge = { ...sortNomme('magies/magie-de-larcane', 'Charge d\'énergie'), cout: '2', niveau: 1, bonus: [], cout_secondaire: 'Pour 1 dégât supplémentaire',
+    remarque: '30 chakra maximum en 1 fois' };
+  const manteau = { ...sortNomme('magies/magie-de-lombre', 'Manteau noir'), cout: '7', niveau: 2, bonus: [], cout_secondaire: 'Par NPM de la créature sacrifiée' };
+  // les sorts dont le coût est un coût par unité (décision R106), pas une durée (la canalisation : « Par tour », « Par jour ») ni un taux qui change avec le NM
+  assert.deepEqual(M.multiplicateurDuCout(animation), { unite: 'Par NPM de la créature invoquée', creature: true, npm: true });
+  assert.deepEqual(M.multiplicateurDuCout(manteau), { unite: 'Par NPM de la créature sacrifiée', creature: true, npm: false }, 'sacrifiée : Économe garde le NPM du sort');
+  assert.deepEqual(M.multiplicateurDuCout(charge), { unite: 'Pour 1 dégât supplémentaire', creature: false, npm: false });
+  for (const s of regles.sorts.filter((x) => M.multiplicateurDuCout(x))) assert.match(s.cout_secondaire, /^(Par (?!tour|jour)|Pour 1 )/i, s.nom);
+  for (const s of regles.sorts.filter((x) => /^Par (tour|jour)/i.test(x.cout_secondaire ?? ''))) assert.equal(M.multiplicateurDuCout(s), null, s.nom);
+  assert.equal(M.multiplicateurDuCout(sortNomme('magies/magie-de-larcane', 'Échange')), null, 'Échange : « 3CK = 2BA/3NM », en attente du propriétaire');
+  // l'exemple du propriétaire : un Ocultomancien (Économe) avec un bâton d'Arcane de rang 3, ici au niveau 12 (puissance magique 4)
+  const niveau12 = { xp: xpDuNiveau(12), classes: [{ rang: 1, classe_id: 'classes/ocultomancien', specialite_id: null }], ...ceinture('Bâton magique Arcane, niveau 3') };
+  const f = fiche({ magie_innee_id: 'magies/magie-de-la-necromancie', ...niveau12 });
+  assert.equal(M.npmMax(regles, f), 4);
+  const cout = (sort, fois, x = f) => M.sortDuMoment(regles, x, sort, auNm(sort), undefined, { fois }).cout;
+  assert.equal(cout(animation, 1).texte, '1', 'NPM 1 : 5 − 3 (pour le bâton) − 1 (pour économe) = 1');
+  const npm4 = cout(animation, 4);
+  assert.deepEqual([npm4.texte, npm4.fois, npm4.detail], ['13', { n: 4, unite: 'Par NPM de la créature invoquée', base: 5, npm: true, economeAuNpm: true, max: 4 },
+    [{ nom: 'Économe (Ocultomancien)', valeur: -4 }, { nom: 'Bâton magique Arcane, niveau 3', valeur: -3 }]], 'NPM 4 : 20 − 3 (pour le bâton) − 4 (pour économe) = 13');
+  assert.deepEqual([cout(charge, 15).texte, cout(charge, 15).detail.map((d) => d.valeur)], ['26', [-1, -3]], 'chargé au maximum : 30 − 3 (bâton) − 1 (ça reste un sort NPM 1)');
+  assert.equal(cout(charge, 1).texte, '1', '2 − 4 : jamais moins de 1');
+  // Manteau noir (sort de NPM 2) : Économe −2 quel que soit le NPM de la créature sacrifiée
+  assert.deepEqual([cout(manteau, 1).texte, cout(manteau, 3).texte, cout(manteau, 3).detail[0].valeur, cout(manteau, 3).fois.economeAuNpm], ['2', '16', -2, false], '7 − 3 − 2 ; 21 − 3 − 2');
+  // bornes : le NPM d'une créature jusqu'au NPM accessible ; Charge d'énergie jusqu'à 30 chakra (15 fois) ; sinon 99 ; au moins 1, un nombre
+  assert.deepEqual([M.bornesDuMultiplicateur(regles, f, animation), M.bornesDuMultiplicateur(regles, f, charge)], [{ min: 1, max: 4 }, { min: 1, max: 15 }]);
+  assert.equal(M.bornesDuMultiplicateur(regles, f, { ...charge, remarque: null }).max, 99);
+  assert.equal(M.bornesDuMultiplicateur(regles, f, { ...charge, remarque: '30 {{chakra|chakra}} maximum en 1 fois' }).max, 15, 'une balise du glossaire');
+  assert.deepEqual([cout(animation, 9).fois.n, cout(animation, 9).texte], [4, '13'], 'au-delà du NPM accessible : borné');
+  assert.equal(cout(animation, 4, fiche({ magie_innee_id: 'magies/magie-de-la-necromancie', ...niveau12, xp: 0 })).fois.n, 1, 'niveau 1 : puissance magique 1');
+  assert.equal(cout(charge, 40).fois.n, 15);
+  for (const fois of [undefined, 0, -3, Infinity, NaN, '2.7']) assert.ok([1, 2].includes(cout(animation, fois).fois.n), String(fois));
+  assert.equal(cout(animation, '2.7').fois.n, 2, 'tronqué');
+  // sans Économe : rien n'est dit de lui
+  assert.equal(cout(animation, 3, fiche({ magie_innee_id: 'magies/magie-de-la-necromancie', xp: xpDuNiveau(12) })).fois.economeAuNpm, false);
+  // un coût fixe n'est pas multiplié
+  const boule = { ...regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu'), cout: '4', cout_secondaire: null };
+  assert.deepEqual([cout(boule, 4).fois, M.bornesDuMultiplicateur(regles, f, boule)], [null, null]);
+});
+
 test('R116 : le coût en corruption (2 × le coût réduit − le bâton) jamais sous 1 ; un sort qui ne coûte aucun chakra (« 0 ») n’a pas de coût en corruption', () => {
   const corruption = (x = {}) => fiche({ magie_innee_id: 'magies/magie-de-la-corruption', ...x });
   const baton = (n) => ceinture(`Bâton magique Corruption, niveau ${n}`);

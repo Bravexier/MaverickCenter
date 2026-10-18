@@ -2596,12 +2596,57 @@ export function contexteDesSorts(regles, fiche) {
 const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
 
 /**
+ * Sorts dont le coût par unité change avec le NM (décision R129, en attente du propriétaire) : Échange, « 2CK = 1BA (3CK = 2BA/3NM) » ; multiplier
+ * « 2 » par le nombre de barrières serait faux à 3 NM. Pas de multiplicateur pour eux.
+ */
+const TAUX_SELON_LE_NM = new Set(['magies/magie-de-larcane#sort:echange']);
+
+/**
+ * Le multiplicateur du coût d'un sort, pour « les sorts qui peuvent augmenter leur coût en fonction de l'utilisation » (décision R129) : son coût
+ * secondaire écrit un coût par unité (décision R106 : « Par NPM de la créature invoquée », « Par NPM de la créature sacrifiée », « Pour 1 dégât
+ * supplémentaire », « Par taille créée », « Par personne », « Par clone », « Par zone de 3x3 »… : lecture de Claude de la phrase du propriétaire),
+ * pas une durée (« Par tour », « Par tour et par cible », « Par jour » : la canalisation, payée à chaque tour) ni un taux qui change avec le NM
+ * (TAUX_SELON_LE_NM). Rend { unite (le texte écrit, jusqu'au premier point), creature (le NPM d'une créature, invoquée ou sacrifiée), npm (une
+ * créature invoquée : le sort est surchargé à ce NPM, qui est alors son niveau de puissance pour Économe ; pas une créature sacrifiée, dont le
+ * sort garde le sien) } ou null.
+ */
+export function multiplicateurDuCout(sort) {
+  const m = /^(?:par|pour 1)\s+([^.]+)/i.exec(String(sort?.cout_secondaire ?? '').trim());
+  if (!m || /^(?:tour|jour)\b/i.test(m[1]) || TAUX_SELON_LE_NM.has(sort.id)) return null;
+  const creature = /^NPM de la créature\b/i.test(m[1]);
+  return { unite: m[0].trim(), creature, npm: creature && /^NPM de la créature invoquée\b/i.test(m[1]) };
+}
+
+/** « 30 chakra maximum en 1 fois » (remarque de Charge d'énergie ; une balise du glossaire tolérée sur « chakra ») : le chakra maximum, ou null. */
+const CHAKRA_MAX_EN_UNE_FOIS = /(\d+)\s*(?:\{\{chakra(?:\|[^}]*)?\}\}|chakra)\s+maximum en 1 fois/i;
+/** Le plus grand multiplicateur d'un sort sans autre borne : une borne de saisie, comme les quantités du sac. */
+const FOIS_MAX = 99;
+
+/**
+ * Les bornes du multiplicateur du coût d'un sort (décision R129), ou null sans multiplicateur : au moins 1 ; le NPM d'une créature jusqu'au NPM
+ * accessible du personnage (npmMax ; texte des invocations : « Avoir le bon niveau de puissance magique permet d'avoir des invocations plus
+ * puissantes […] seuls les utilisateurs d'une seule magie peuvent invoquer les créatures NPM 5 ») ; un sort dont la remarque écrit un chakra
+ * maximum en une fois (Charge d'énergie, « 30 chakra maximum en 1 fois », que le propriétaire reprend : « Chargé au maximum 30 chakra »), jusqu'à ce
+ * maximum divisé par son coût ; sinon FOIS_MAX.
+ */
+export function bornesDuMultiplicateur(regles, fiche, sort) {
+  const m = multiplicateurDuCout(sort);
+  if (!m) return null;
+  if (m.creature) return { min: 1, max: Math.max(1, npmMax(regles, fiche)) };
+  const plafond = CHAKRA_MAX_EN_UNE_FOIS.exec(String(sort.remarque ?? ''));
+  const cout = /^\d+/.exec(String(sort.cout ?? '').trim());
+  return { min: 1, max: plafond && cout && Number(cout[0]) > 0 ? Math.max(1, Math.floor(Number(plafond[1]) / Number(cout[0]))) : FOIS_MAX };
+}
+
+/**
  * Un sort de la fiche à son moment (décision R102) : `auNm` = ses valeurs au NM du sort, telles que la page les lit (lib/sort-maitrise.mjs#valeurAuNm :
- * { cout, portee, dsb, effets }) ; `contexte` : contexteDesSorts. Rend { inactif (la magie que la Symbiose désactive : son nom), cout: { texte, detail,
- * corruption }, portee: { texte, detail }, dsb: { texte, detail, diviseur, lu }, effets: { texte, detail }, nonComptes: [{ nom, valeur, raison, cible }],
- * rappels: [{ nom, texte }], prepare (le sort préparé, décision R115), posture (celle à laquelle il se calcule, ou null) } ; `detail` : [{ nom, valeur }] ;
- * `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'. Le sort préparé (contexte.prepare) se calcule à la posture du moment de sa préparation, tout
- * le reste à la posture cochée ; « Charge lente… » ne vise que lui, « … ou rapide » tous les autres (lib/sort-bonus-texte.mjs, `prepare`).
+ * { cout, portee, dsb, effets }) ; `contexte` : contexteDesSorts ; `fois` : le multiplicateur du coût, pour un sort dont le coût augmente avec
+ * l'utilisation (multiplicateurDuCout ; 1 par défaut). Rend { inactif (la magie que la Symbiose désactive : son nom), cout: { texte, detail,
+ * corruption, calcule, fois }, portee: { texte, detail }, dsb: { texte, detail, diviseur, lu }, effets: { texte, detail }, nonComptes: [{ nom, valeur,
+ * raison, cible }], rappels: [{ nom, texte }], prepare (le sort préparé, décision R115), posture (celle à laquelle il se calcule, ou null) } ;
+ * `detail` : [{ nom, valeur }] ; `cible` d'un bonus non compté : 'cout', 'portee', 'dsb'. Le sort préparé (contexte.prepare) se calcule à la posture
+ * du moment de sa préparation, tout le reste à la posture cochée ; « Charge lente… » ne vise que lui, « … ou rapide » tous les autres
+ * (lib/sort-bonus-texte.mjs, `prepare`).
  * - Coût (« Le coût en chakra »), seulement un nombre ou « N + autre chose » (la part en chakra) : réductions des dons (« réduits de 4 » pour les magies
  *   nommées, Économe : son NPM), du bâton (« Coût sort −N ») ; réduit, jamais moins de 1 (réponse « Jamais moins de 1 » ; un coût écrit 0 reste 0, ses
  *   réductions non comptées : le sort ne consomme pas de chakra, décision R106). Un
@@ -2609,7 +2654,11 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  *   arrondi à l'inférieur comme la barrière qu'on en tire (décision R106 : « sur la fiche de personnage, on donnera directement la valeur calculée » ;
  *   `cout.calcule` : { pourcent, chakra, valeur }), puis réduit comme les autres. Un
  *   sort de la Corruption se lance aussi avec la corruption : 2 × le coût réduit − « Coût corruption −N » du bâton (réponse « 2 × coût réduit − bâton »),
- *   au moins 1 (un coût, comme ci-dessus), sauf un coût écrit « 0 » (le sort ne consomme que son coût secondaire : « 50% corruption », R106) ;
+ *   au moins 1 (un coût, comme ci-dessus), sauf un coût écrit « 0 » (le sort ne consomme que son coût secondaire : « 50% corruption », R106). Un coût
+ *   par unité (multiplicateurDuCout, borné : bornesDuMultiplicateur) est multiplié d'abord, puis réduit (décision R129 : les réductions de chakra
+ *   s'appliquent après la multiplication du prix) ; surchargé au NPM d'une créature invoquée, le sort a ce niveau de puissance pour Économe
+ *   (exemple du propriétaire : 20 − 3 pour le bâton − 4 pour Économe = 13 au NPM 4), sinon le sien (Charge d'énergie chargée à 30 : 30 − 3 − 1) :
+ *   `cout.fois` { n, unite, base, npm, economeAuNpm (Économe a compté le NPM de la créature), max } ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
  * - Dégâts (lireDegatsDeSort ; une valeur « par tour » comme une autre, ses bonus à chaque tour : décision R113, « 3d6 dégâts par tour » avec +5 →
  *   « 3d6 + 5 dégâts par tour », la période écrite après la valeur) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
@@ -2622,7 +2671,7 @@ const POURCENT_DU_CHAKRA_MAX = /^(\d+)\s?% chakra maximum$/i;
  *   (D/S/B) et « Bloque N dégâts » (effets) + « protection = +N dégâts bloqués » du bâton (réponse « Compter où c'est chiffré ») ;
  * - Un bonus qui viserait un D/S/B qui ne se lit pas est dit non compté.
  */
-export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche)) {
+export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche), { fois = 1 } = {}) {
   const { batons, ecrits, accessoires } = contexte;
   // le sort préparé se calcule à la posture du moment où il a été préparé (décision R115 : « préparé en posture offensive, fera les dégâts maximals, même si
   // l'attaque physique a lieu en posture défensive ») ; les autres, à la posture cochée
@@ -2633,16 +2682,22 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const symbiose = posture?.symbiose ?? null;
   const inactif = symbiose?.inactive && symbiose.inactive.id === sort.magie_id ? symbiose.inactive.nom : null;
   // une progression (décision R110) : base + pas × ⌊niveau ÷ niveaux⌋, au niveau de classe ou global (bonusDeSortsDuPersonnage)
-  const valeurEcrite = (b) => ('parNpm' in b ? b.parNpm * sort.niveau : 'pas' in b ? b.base + b.pas * Math.floor((b.niveau ?? 0) / b.niveaux) : b.valeur);
+  // (`npm` : le niveau de puissance du sort, celui de la créature pour une invocation surchargée : décision R129)
+  const valeurEcrite = (b, npm = sort.niveau) => ('parNpm' in b ? b.parNpm * npm : 'pas' in b ? b.base + b.pas * Math.floor((b.niveau ?? 0) / b.niveaux) : b.valeur);
   // les bonus écrits d'une cible qui visent ce sort ; ceux d'une situation ou d'une autre posture : non comptés (rangés sous leur colonne)
   const colonneDe = (cible) => (cible === 'cout' ? 'cout' : cible === 'portee' ? 'portee' : 'dsb');
-  const ecritsPour = (cible) => {
+  // (un bonus « égal à son niveau de puissance » compté : Économe, lu au NPM d'une créature invoquée surchargée, décision R129)
+  let parNpmCompte = false;
+  const ecritsPour = (cible, npm = sort.niveau) => {
     const r = [];
     for (const b of ecrits.filter((x) => x.cible === cible && viseLeSort(x.vises, sort, fiche, auNm.portee, estPrepare))) {
-      const valeur = valeurEcrite(b);
+      const valeur = valeurEcrite(b, npm);
       if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
       else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
-      else r.push({ nom: b.nom, valeur });
+      else {
+        r.push({ nom: b.nom, valeur });
+        if ('parNpm' in b) parNpmCompte = true;
+      }
     }
     return r;
   };
@@ -2654,8 +2709,11 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const somme = (lignes) => lignes.reduce((s, l) => s + l.valeur, 0);
   const pasCompte = (lignes, raison, cible) => { for (const l of lignes) nonComptes.push({ ...l, raison, cible }); };
 
-  // coût
-  const cout = { texte: auNm.cout ?? '', detail: [], corruption: null, calcule: null };
+  // coût ; multiplié d'abord quand il augmente avec l'utilisation (décision R129)
+  const multiplicateur = multiplicateurDuCout(sort);
+  const bornes = bornesDuMultiplicateur(regles, fiche, sort);
+  const n = bornes ? Math.min(bornes.max, Math.max(bornes.min, Number.isFinite(Number(fois)) ? Math.trunc(Number(fois)) : 1)) : 1;
+  const cout = { texte: auNm.cout ?? '', detail: [], corruption: null, calcule: null, fois: null };
   const pourcent = String(auNm.cout ?? '').trim() === 'N/A' && Number.isFinite(contexte.chakraMax)
     ? POURCENT_DU_CHAKRA_MAX.exec(String(sort.cout_secondaire ?? '').trim()) : null;
   if (pourcent) {
@@ -2663,13 +2721,16 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     cout.calcule = { pourcent: p, chakra: contexte.chakraMax, valeur: Math.floor((contexte.chakraMax * p) / 100) };
   }
   const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
-  const reductions = [...ecritsPour('cout'), ...duBaton('cout')];
+  const reductions = [...ecritsPour('cout', multiplicateur?.npm ? n : sort.niveau), ...duBaton('cout')];
   if (brut && Number(brut[1]) === 0 && !cout.calcule) {
     // un sort qui ne consomme pas de chakra (« 0 » : son coût est le coût secondaire, âmes, Sang, santé, corruption ; décision R106) : rien à réduire
     pasCompte(reductions, 'sans_chakra', 'cout');
     cout.texte = `0${brut[2] ?? ''}`;
   } else if (brut) {
-    const base = Number(brut[1]);
+    const base = Number(brut[1]) * n;
+    if (multiplicateur && !cout.calcule) {
+      cout.fois = { n, unite: multiplicateur.unite, base: Number(brut[1]), npm: multiplicateur.npm, economeAuNpm: multiplicateur.npm && parNpmCompte, max: bornes.max };
+    }
     // réduit, jamais moins de 1 (un pourcentage du chakra calculé à 0 le reste)
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
     cout.detail = reductions;

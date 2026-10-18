@@ -657,6 +657,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* le coût secondaire d'un sort (âmes, Sang… : décision R105), sous son coût de chakra */
 /* sous le coût, sans le gras ni le soulignement d'un coût calculé (td[data-calcule]) : un bloc atomique ne reçoit pas la décoration de sa case */
 .fiche-table--sorts .sort-cout-secondaire { display: inline-block; width: 100%; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+/* combien de fois le coût d'un sort qui augmente avec l'utilisation (décision R129) : « × N » sous le coût secondaire */
+.fiche-table--sorts .sort-fois { display: inline-flex; align-items: center; gap: 0.2rem; margin-top: 0.15rem; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.fiche-table--sorts .sort-fois[hidden] { display: none; }
+.fiche .fiche-table--sorts .sort-fois__nombre { width: 3.2rem; padding: 0 0.25rem; font-size: var(--fs-xs); }
 /* l'indication IC (et imparable, inesquivable) au NM du sort, comme les marques des pages de magie ; une condition pas encore atteinte en grisé, en pointillés */
 .sort-modes { white-space: nowrap; }
 .sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--muted); font-size: var(--fs-xxs); }
