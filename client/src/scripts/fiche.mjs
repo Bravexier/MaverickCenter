@@ -952,7 +952,8 @@ function construireAcquisAChoisir() {
     // bonus ; « + Compétence » tant qu'il reste des points
     const actuelle = () => acquisDesDons(regles, fiche).choix.find((x) => x.source === c.source && x.rang === c.rang) ?? c;
     const repartir = (parts) => { Object.assign(fiche, acquisApresRepartition(fiche, c.source, c.rang, parts)); changer(); };
-    const reste = el('span', { class: 'acquis-choix__reste', 'aria-live': 'polite' });
+    // (ni le reste ni les parts ne sont des « span » : la marque « à choisir » ne suit que le titre)
+    const reste = el('small', { class: 'acquis-choix__reste', 'aria-live': 'polite' });
     const parts = c.parts.map((x, i) => {
       const autres = new Set(c.parts.filter((_, j) => j !== i).map((y) => y.competence_id));
       const competence = listeDesCompetences({
@@ -970,7 +971,7 @@ function construireAcquisAChoisir() {
         if (document.activeElement !== points) poser(points, part.valeur);
         points.max = String(part.valeur + actuelle().reste);
       });
-      return el('span', { class: 'acquis-choix__part' }, competence, points, retirer_);
+      return el('div', { class: 'acquis-choix__part' }, competence, points, retirer_);
     });
     const ajouter_ = el('button', { type: 'button', class: 'ajouter', 'aria-label': `${c.nom} : ajouter une compétence à la répartition`, onclick: () => {
       const a = actuelle();

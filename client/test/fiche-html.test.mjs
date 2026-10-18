@@ -28,7 +28,7 @@ test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les donné
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-modele="\/fiche\/modele\.xlsx" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
   const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
-  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements', 'gains_sante', 'gains_chakra', 'entrainement']) {
+  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements', 'gains_sante', 'gains_chakra']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }
   // plus de statut (brouillon, validé, archivé : demande du propriétaire, migration 0038) : les contrôles signalent, n'empêchent jamais d'enregistrer
@@ -96,17 +96,19 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
-  // « Entraînement » (décision R71) : un texte libre entre les dons de la race et ceux des classes, avec l'aide du guide (le paragraphe que la base écrit)
-  const entrainement = dons.indexOf('data-champ="entrainement"');
+  // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, entre les dons de la race et ceux des classes, les boutons d'ajout dessous,
+  // avec l'aide du guide (le paragraphe que la base écrit) ; puis les acquis à choisir et les bonus non comptés des dons
+  const entrainement = dons.indexOf('<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement">');
   assert.ok(entrainement > dons.indexOf('id="dons-race"') && entrainement < dons.indexOf('id="dons-classes"'), 'entre les dons de la race et ceux des classes');
-  assert.match(dons, /<label for="fiche-entrainement">Entraînement<\/label><\/h4>\s*<textarea id="fiche-entrainement" data-champ="entrainement" rows="2" aria-describedby="entrainement-aide"><\/textarea>/);
+  assert.match(dons, /<h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement<\/h4>\s*<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"><\/ul>\s*<p class="entrainement__ajouts" id="entrainement-ajouts"><\/p>/);
+  assert.ok(!html.includes('data-champ="entrainement"') && !html.includes('id="fiche-entrainement"'), 'plus de texte libre d’entraînement');
+  assert.match(html, /<div id="acquis-choix-bloc" hidden>/);
+  assert.match(html, /<div id="acquis-non-comptes-bloc" hidden>/);
   const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
   const guide = aideDeLEntrainement(ouvrirBase());
   const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   if (guide) assert.ok(aide.includes(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le paragraphe du guide, tel que la base l’écrit');
-  assert.match(aide, /livres de magie lus \(pour le NM\) et tout autre élément à la libre volonté du MJ/, 'les mots du propriétaire (R71)');
-  assert.match(aide, /jamais compté/);
-  assert.equal([...html.matchAll(/data-champ="entrainement"/g)].length, 1);
+  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // III. selon la situation
   const posture = bloc('posture');
