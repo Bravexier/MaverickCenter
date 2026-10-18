@@ -266,7 +266,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
   au maximum (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la
   liste) ; **un bouclier cassé** (solidité 0) : ses AP et AM ne comptent plus, même en parade partielle au bouclier (décision R108 : « Bouclier à 0 : ses
-  AP/AM cessent-ils de compter, comme une arme cassée ? Oui »), ce que dit la ligne du bouclier sous la défense. Une forme et une matière que la liste n'écrit pas sont
+  AP/AM cessent-ils de compter, comme une arme cassée ? Oui »), ce que dit la ligne du bouclier sous la défense ; ses tuiles AP et AM sont alors grisées
+  à 0, comme la pastille d'une arme cassée, l'infobulle le dit et donne ses valeurs une fois réparé. Une forme et une matière que la liste n'écrit pas sont
   signalées (règle `bouclier_inconnu`).
 - **Défense et dégâts reçus** (décision R98), en tête du bloc Armure : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
   classes magiques, accessoires, posture, armure portée et son amélioration ; avec un élément, l'armure élémentaire et son amélioration à la place : R99)
@@ -289,13 +290,15 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   Symbiose se choisit à côté des postures quand le personnage en a deux (`personnage.symbiose_magie_id`, migration 0061) ; l'autre magie est
   désactivée : ses sorts grisés et **ses résistances et faiblesses retirées** (décision R111 : « La seule perte de la magie sont ses sorts et ses
   résistances et faiblesses » ; `resistancesDe` ne compte plus ses listes, ni leur part du cumul ou de l'annulation avec l'autre magie (R85), et le dit
-  sous le tableau des résistances ; les dons, l'ethnie et les accessoires restent, et les dégâts reçus suivent) ; elle garde son effet de Mode Hyper,
+  sous le tableau des résistances ; les dons, l'ethnie et les accessoires restent, et les dégâts reçus suivent ; le classeur, lui, les écrit sans la
+  posture du moment, comme le reste de l'export : `resistancesDe(…, { avecLaPosture: false })`) ; elle garde son effet de Mode Hyper,
   sa 4ᵉ barre (Sang, âmes…), la santé et le chakra qu'elle donne et le +1 de caractéristique de la magie innée. En Symbiose (décision R112 : « on ne
   peut que lancer des sorts »), les armes des emplacements sont grisées et « Utiliser » à la ceinture aussi, sauf pour un parchemin ; **tous les effets
   passifs restent** : accessoires, bâtons à la ceinture, armure et bouclier (en parade partielle). **Le Potentiel Illimité** (décision R109 : « Le cas du PI est particulier / Il a les bonus de dégâts, d'AM / Mais il
   n'a pas l'immunité à une magie ni même le devoir de choisir une magie ») : en Symbiose, ni magie à choisir ni immunité, l'AM de la posture et son
   bonus de dégâts et de soin (« +5 (+2/NPM) ») sur **tous ses sorts, quelle que soit leur magie** (« Posture Symbiose (Potentiel Illimité) » dans le
-  détail ; `postureDuMoment`, `symbiose.potentielIllimite`). Les scores et l'initiative de la fiche, eux, ne changent pas (tableur, contrôles).
+  détail ; `postureDuMoment`, `symbiose.potentielIllimite`). Les scores et l'initiative de la fiche, eux, ne changent pas (tableur, contrôles), ni les
+  résistances du tableur.
 - **Bâtons magiques** (décision R101) : le sac propose « Bâton magique », dont la ligne demande sa magie puis son niveau ; réglé, il prend le nom du
   bâton et peut aller à la ceinture (pas avant). À la ceinture, ses effets passifs (`effetsDeBaton`, lus dans `baton_magique.bonus_brut`) valent pour
   tous les sorts du personnage ; deux bâtons au même effet : le plus fort seul (`effetsDesBatons`).
@@ -309,7 +312,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   **progression par niveau** (décision R110 : arrondi à l'inférieur) : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux »
   (Elfe argenté ; « +1 … +1 » du Felfe argenté) vaut 2 + 2 × ⌊niveau global ÷ 5⌋ (+2, +4 au niveau 5, +6 au niveau 10… +10 au niveau 20 ; le niveau
   global pour un don de race ou d'ethnie) ; « 3+x […] x = +2 dégâts/6 niveaux » (Mage « Puissance ») vaut 3 + 2 × ⌊niveau de classe ÷ 6⌋.
-  `bonusDeSortsDuPersonnage` donne à chaque bonus son niveau de référence. Ne sont pas encore lus du tout (rien n'est compté, pas même la base) :
+  `bonusDeSortsDuPersonnage` donne à chaque bonus son niveau de référence (un don de classe qui écrit « niveaux globaux » : le niveau global). Une autre
+  écriture d'un bonus de sort « qui augmente de +N tous les M niveaux » (« +2 aux dégâts des sorts, qui augmente… », « La magie innée inflige +2
+  dégâts, qui augmente… ») n'est pas comptée, pas même sa base : « Non compté (progression par niveau à préciser) » dans l'infobulle, jusqu'à ce que sa
+  lecture soit ajoutée. Ne sont pas encore lus du tout (rien n'est compté, pas même la base) :
   « +2 aux dégâts avec les armes, qui augmente de +2 tous les 5 niveaux globaux » (Orios, Drassah'thac Est : des dons de race, quand
   `degatsDArme` ne lit que les dons de classe), « +2 Armure magique (+2 tous les 5 niveaux) » des Marcass (la colonne `ethnie.bonus_am` est vide :
   une donnée à fournir), « Écaille solide » de la Lamia (AP par partie), « Sournois » du Tueur (« +2d4 dégâts tous les 5 niveaux de classe ») et
@@ -383,10 +389,12 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = l'acquis calculé (R104 : entraînement, dons, métier, accessoires, rognés
   au plafond) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **L'AP et l'AM de la grille de l'armure** (AI22:AN23, une colonne par
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R70), sans la posture du moment (en Symbiose, la magie désactivée garde ses
+  listes dans le classeur : R111 ne vaut que sur la page). **L'AP et l'AM de la grille de l'armure** (AI22:AN23, une colonne par
   partie, R108) : ceux de l'armure portée sur chaque partie, 0 sur une partie cassée (`armureParPartie` ; l'« AP Base » et l'« AM Base », AA22 et AA24,
   restent la base : race, ethnie, classes magiques, accessoires), calculés et non relus. Le **bouclier** (R96) : la forme en AA26, la matière et
-  l'amélioration en AF26 (« Bois · niv. 2 — +4 AP + matériaux »), sa classe en AK26, son AP et son AM (calculés ; 0 cassé : R108) en AN26 et AS26, sa
+  l'amélioration en AF26 (« Bois · niv. 2 — +4 AP + matériaux »), sa classe en AK26, son AP et son AM (calculés et non relus, comme ceux de la grille ;
+  0 cassé : R108, `apAmDuBouclier`) en AN26 et AS26, sa
   solidité du moment « N / M » en AX26, relue. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
   « N / M », la même sur les six pour une armure à solidité unifiée. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
   l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
@@ -423,7 +431,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   case. Une case à la fois relue et affichée écrit d'abord ses lignes relues : l'effet d'une arme (AA13, AN13) donne la composition, les
   améliorations, l'élément et l'effet en plus, puis l'effet du catalogue, « Deux armes » et « Non compté » (`partiesDeLArme`) — une ligne « Deux armes :
   … » ou « Non compté : … » que la fiche relue n'écrit plus (celle de Vieille Branche d'un classeur exporté avant R107) n'est jamais reprise comme effet
-  en plus, hors du bloc « Effet en plus : » (`lireEffetDArme`) ; le métier (L41), les
+  en plus, hors du bloc « Effet en plus : » (`lireEffetDArme`) ; une telle ligne, qui n'est pas celle que la fiche écrit aujourd'hui pour cette arme,
+  est dite par une remarque qui la cite (« … non reprise (recalculée par le site) », `ecartees`), dans tout classeur ; le métier (L41), les
   rangs à choix « → compétence », puis les autres rangs et l'artisanat (`partiesDuMetier`). Un texte affiché coupé sert encore à départager deux
   homonymes (sorts, armes) par son début. Une note qui déborde elle-même s'aligne en haut : ses premières lignes restent lisibles à l'impression.
   Google Sheets ne réduit pas un texte : il rogne ce qui dépasse.
@@ -485,8 +494,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
   de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
   sans place sur le site (sac de l'inventaire en AA38), un AP ou un AM de la grille de l'armure autre que celui que calcule le site (R108 ; sans armure
-  reconnue aussi), le second matériau d'un bouclier d'avant R96, une solidité de bouclier
-  sans bouclier ou illisible, une solidité d'arme illisible,
+  reconnue aussi), de même pour l'AP et l'AM du bouclier (AN26, AS26 : 0 cassé, R108 ; sans bouclier de la liste aussi), le second matériau d'un
+  bouclier d'avant R96, une solidité de bouclier sans bouclier ou illisible, une solidité d'arme illisible,
   sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui ne nomme pas d'armure, une pièce d'armure au-delà de la première (R95), la solidité d'une partie
   de l'armure illisible ou sans armure reconnue, une
   ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R104), dans les

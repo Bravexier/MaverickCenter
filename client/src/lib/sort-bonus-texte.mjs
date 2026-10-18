@@ -59,7 +59,8 @@ function visesDe(phrase) {
  * raison? }]. `parNpm` : « réduit d'un montant égal à son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6
  * niveaux » (base + pas × ⌊niveau de classe ÷ niveaux⌋), et « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » (décision R110 :
  * base + pas × ⌊niveau ÷ niveaux⌋, arrondi à l'inférieur ; `niveauGlobal` quand le texte écrit « niveaux globaux » ; lib/fiche-moteur.mjs prend le
- * niveau global pour un don de race ou d'ethnie). Une valeur de coût est négative (une réduction).
+ * niveau global pour un don de race ou d'ethnie). Une autre phrase « qui augmente de +N tous les M niveaux » est rendue avec la raison `progression`
+ * (jamais comptée). Une valeur de coût est négative (une réduction).
  */
 export function bonusDeSortsEcrits(texte) {
   const t = normaliser(texte);
@@ -115,6 +116,14 @@ export function bonusDeSortsEcrits(texte) {
     const progression = /\+(\d+) aux d[ée]g[âa]ts magiques, qui augmente de \+?(\d+) tous les (\d+) niveaux( globaux)?/.exec(phrase);
     if (progression) {
       ajouter('degats', { base: Number(progression[1]), pas: Number(progression[2]), niveaux: Number(progression[3]), ...(progression[4] ? { niveauGlobal: true } : {}) }, vises);
+      continue;
+    }
+    // toute autre progression « qui augmente de +N tous les M niveaux » (une écriture que la lecture R110 ne prend pas : « +2 aux dégâts des sorts, qui
+    // augmente… », « La magie innée inflige +2 dégâts, qui augmente… ») : rendue avec sa raison, jamais comptée, pas même sa base (rien n'est lu par
+    // vraisemblance : la lecture d'une nouvelle écriture s'ajoute ci-dessus, avec son test)
+    if (/qui augmente de \+?\d+ tous les \d+ niveaux/.test(phrase)) {
+      const n = /\+(\d+)\s*(?:aux? |de )?(d[ée]g[âa]ts?|soins?)?/.exec(phrase);
+      if (n && vises) bonus.push({ cible: /soin/.test(n[2] ?? '') ? 'soin' : 'degats', valeur: Number(n[1]), vises, raison: 'progression' });
       continue;
     }
     const formule = /(\d+)\s*\+\s*x\s+(?:de\s+)?d[ée]g[âa]ts?/.exec(phrase);

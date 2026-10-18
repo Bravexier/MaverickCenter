@@ -671,7 +671,7 @@ function construireMaitrises() {
 // ------------------------------------------------------------------ sorts
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
 const RAISONS_DES_SORTS = {
-  situation: 'selon la situation', posture: 'dans une autre posture', des: 'pas de dés écrits',
+  situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
   non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra',
 };
 
@@ -1822,8 +1822,9 @@ function construireEquipement() {
   });
 
   // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers) : sa forme, sa matière et son amélioration (bouclierApresChoix : une autre
-  // forme ou matière est neuve) ; puis son AP et son AM (comptés en parade partielle : construireDefense), son poids (Force minimum) et sa solidité du
-  // moment, un curseur de 0 au maximum (la matière et les crans de l'amélioration), « Cassé » à 0 ; clic droit ou Entrée : saisir le nombre
+  // forme ou matière est neuve) ; puis son AP et son AM (comptés en parade partielle : construireDefense ; cassé, 0 et grisés : R108), son poids (Force
+  // minimum) et sa solidité du moment, un curseur de 0 au maximum (la matière et les crans de l'amélioration), « Cassé » à 0 ; clic droit ou Entrée :
+  // saisir le nombre
   reconstruire($('bouclier'), 'fixe', () => {
     const choisir = (champ) => (v) => {
       Object.assign(fiche, bouclierApresChoix(regles, fiche, champ, v));
@@ -1860,11 +1861,17 @@ function construireEquipement() {
       tuiles.hidden = !b?.bouclier;
       if (b?.bouclier) {
         const ecrire = (t, texte) => { if (t.texte.textContent !== texte) t.texte.textContent = texte; };
-        ecrire(tuileAp, String(b.ap));
-        infobulle(tuileAp.li, [`${b.nom} : ${entier(b.bouclier.ap)} AP`, ...(b.amelioration?.bonus_ap ? [`Amélioration niveau ${b.amelioration.niveau} : +${b.amelioration.bonus_ap} AP`] : []),
-          'Comptés en parade partielle (guide « Fiche de personnage : Armure/Défense/Bouclier »)'].join('\n'));
-        ecrire(tuileAm, String(b.am));
-        infobulle(tuileAm.li, 'Comptés en parade partielle');
+        // un bouclier cassé (décision R108 : « Bouclier à 0 : ses AP/AM cessent-ils de compter, comme une arme cassée ? Oui ») : ses tuiles AP et AM
+        // grisées à 0, comme la pastille d'une arme cassée (l'export écrit aussi 0) ; ses valeurs, réparé, restent en infobulle
+        const casse = Boolean(b.solidite?.cassee);
+        const pourquoi = casse ? [`Bouclier cassé (solidité 0 / ${b.solidite.max}) : ses AP et AM ne comptent plus, même en parade partielle (décision R108)`] : [];
+        for (const t of [tuileAp, tuileAm]) t.li.toggleAttribute('data-cassee', casse);
+        ecrire(tuileAp, String(casse ? 0 : b.ap));
+        infobulle(tuileAp.li, [...pourquoi, ...(casse ? [`Réparé : ${b.ap} AP`] : []),
+          `${b.nom} : ${entier(b.bouclier.ap)} AP`, ...(b.amelioration?.bonus_ap ? [`Amélioration niveau ${b.amelioration.niveau} : +${b.amelioration.bonus_ap} AP`] : []),
+          ...(casse ? [] : ['Comptés en parade partielle (guide « Fiche de personnage : Armure/Défense/Bouclier »)'])].join('\n'));
+        ecrire(tuileAm, String(casse ? 0 : b.am));
+        infobulle(tuileAm.li, casse ? [...pourquoi, `Réparé : ${b.am} AM`].join('\n') : 'Comptés en parade partielle');
         tuilePoids.li.hidden = !b.poids;
         if (b.poids) {
           ecrire(tuilePoids, b.poids.nom);

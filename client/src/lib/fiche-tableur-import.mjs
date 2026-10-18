@@ -52,7 +52,7 @@ import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
-  armureParPartie, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
+  armureParPartie, bouclierDe, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -63,7 +63,7 @@ import {
   TITRE_DE_L_INVENTAIRE,
 } from './fiche-tableur-cases.mjs';
 import {
-  ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
+  ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
@@ -1188,7 +1188,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- modèle ordinateur : l'AP et l'AM de l'armure sur chaque partie (grille AI22:AN23), calculés depuis la décision R108 (la valeur de l'armure, 0
   // sur une partie cassée : armureParPartie), jamais relus ; une autre valeur que celle que calcule le site (un classeur fait à la main, ou d'avant R108)
-  // dans les notes ; puis les zones de saisie que le site ne garde pas
+  // dans les notes ; de même ceux du bouclier (AN26, AS26 ; 0 cassé) ; puis les zones de saisie que le site ne garde pas
   if (!auto) {
     const valeurs = { ap: 'AP', am: 'AM' };
     const parPartie = armureParPartie(regles, f);
@@ -1199,6 +1199,19 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const calcule = parPartie?.find((p) => p.id === s.emplacement)?.[s.valeur];
       if (calcule === undefined) perdu(`${quoi} : « ${t} » sans armure reconnue`);
       else if (t.trim() !== String(calcule) && cellule(s.adresse)?.valeur !== calcule) perdu(`${quoi} : « ${t} », le site calcule ${calcule} (décision R108)`);
+    }
+    // de même l'AP et l'AM du bouclier (AN26, AS26) : ceux du bouclier de la liste, 0 cassé (décision R108 : ses AP et AM ne comptent plus),
+    // apAmDuBouclier, ce qu'écrit l'export ; un classeur qui en écrit d'autres (4 AP pour un bouclier cassé) le voit dit
+    const duBouclier = apAmDuBouclier(bouclierDe(regles, f));
+    for (const [valeur, adresse] of [['ap', d.bouclier.ap], ['am', d.bouclier.am]]) {
+      const t = texte(adresse);
+      if (!t) continue;
+      const quoi = `Bouclier (${valeurs[valeur]})`;
+      const calcule = duBouclier?.[valeur];
+      if (calcule === undefined) perdu(`${quoi} : « ${t} » sans bouclier reconnu`);
+      else if (t.trim() !== String(calcule) && cellule(adresse)?.valeur !== calcule) {
+        perdu(`${quoi} : « ${t} », le site calcule ${calcule} (${duBouclier.casse ? 'bouclier cassé, ' : ''}décision R108)`);
+      }
     }
     const titre = texte(d.inventaire.titre);
     if (titre && cle(titre) !== cle(TITRE_DE_L_INVENTAIRE)) {
@@ -1280,7 +1293,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
 
   // ---- effet en plus des armes (modèle ordinateur) : les lignes du joueur, sans la part affichée de la fiche relue (lireEffetDArme), ni une ligne « Deux
   // armes : » ou « Non compté : » qu'elle n'écrit plus (seul le site les écrit : celle de Vieille Branche d'un classeur exporté avant la décision R107) ;
-  // celles écrites sans « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page
+  // celles écrites sans « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page ; une ligne du site écartée qui n'est pas celle que
+  // la fiche écrit aujourd'hui pour cette arme est dite aussi (« rien ne se perd sans être dit »), dans tout classeur, sans être reprise
   for (const { rang, effet, arme, entier } of effetsEnPlus) {
     const ligne = f.armes.find((x) => x.rang === rang);
     if (!ligne) continue;
@@ -1291,6 +1305,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const s = lue.libres.length > 1 ? 's' : '';
       const pourquoi = deLaPage ? ' (la case ne porte plus ce que le site y écrit pour cette arme)' : '';
       remarques.push(`Arme ${rang} (${arme.nom}) : ligne${s} ${lue.libres.map((l) => `« ${l} »`).join(', ')} reprise${s} comme effet en plus${pourquoi}`);
+    }
+    if (lue.ecartees.length) {
+      const s = lue.ecartees.length > 1 ? 's' : '';
+      remarques.push(`Arme ${rang} (${arme.nom}) : ligne${s} ${lue.ecartees.map((l) => `« ${l} »`).join(', ')} non reprise${s} (recalculée${s} par le site)`);
     }
   }
 
