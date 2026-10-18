@@ -1,17 +1,20 @@
 // L'outil qui pose les balises d'un mot du glossaire dans les textes de la base (scripts/baliser-mot-cle.mjs ; demande du propriétaire du 2026-10-17 :
 // « Transforme dans tous les textes le mot "Chakra" (ou chakra) en mot clé », puis « Barrière ») : les textes qu'il réécrit (ceux que le site de dev
 // modifie, jamais un nom ni une rubrique de carte découpée), puis, sur une copie de data/rows et un mot d'essai, le chemin entier : mot-clé créé par le
-// service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), journal rapatrié sans conflit.
+// service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), journal rapatrié sans conflit ; puis
+// (2026-10-18 : « Seulement là où il est pertinent ») un second passage qui retire les balises là où le mot n'a plus le sens du mot-clé, et l'entrée de
+// la Corruption (tools/glossaire/corruption.json : « CR », décision R103).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { baliser, nomsAvecLeMot, PHRASES_D_UNE_LIGNE, RUBRIQUES_DECOUPEES, TEXTES } from '../scripts/baliser-mot-cle.mjs';
+import { baliseDans, baliser, nomsAvecLeMot, PHRASES_D_UNE_LIGNE, RUBRIQUES_DECOUPEES, TEXTES } from '../scripts/baliser-mot-cle.mjs';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baliserLeMot } from '../src/lib/glossaire-balisage.mjs';
 import { TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { formesNonCanoniques, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -84,4 +87,94 @@ test('chemin entier sur une copie de data/rows (mot d’essai) : mot-clé créé
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   assert.equal(r.ecrit, true);
+});
+
+test('textes balisés : `horsDe` les retire (une page dont l’identifiant commence ainsi, une page, une colonne), `sauf` les rend', () => {
+  const mot = { horsDe: ['page:lore/', 'evenement_extrait.texte'], sauf: ['page:lore/glossaire'] };
+  assert.equal(baliseDans(mot, 'page:guide/lexique'), true);
+  assert.equal(baliseDans(mot, 'page:lore/mirada'), false);
+  assert.equal(baliseDans(mot, 'page:lore/glossaire'), true);
+  assert.equal(baliseDans(mot, 'page:lore/glossaire-bis'), false, 'sans « / » final, une seule page');
+  assert.equal(baliseDans(mot, 'evenement_extrait.texte'), false);
+  assert.equal(baliseDans(mot, 'sort.effets'), true);
+  assert.equal(baliseDans({}, 'page:lore/mirada'), true);
+});
+
+test('second passage (copie de data/rows, mot d’essai) : seules partent les balises que les nouvelles règles excluent, rien ne change à l’écran', () => {
+  // les exclusions rangées par raison (une liste par raison, comme tools/glossaire/corruption.json)
+  const mot = { libelle: 'Initiative d’essai bis', motif: 'initiatives?', description: 'Mot-clé d’essai de test/baliser-mot-cle.test.mjs.',
+    exclus: { 'écriture d’essai': ['initiative de la cible'] } };
+  const rows = join(tmp, 'rows-second-passage');
+  cpSync(ROWS, rows, { recursive: true });
+  const premier = baliser([mot], { rows });
+  assert.ok(premier.rapport.colonnes.flatMap((c) => c.changements).every((x) => x.sens === 'posee'));
+  assert.ok(!premier.rapport.colonnes.flatMap((c) => c.changements).some((x) => /initiative de la cible/i.test(x.extrait) && /initiative de la cible/i.test(x.extrait.slice(50, 90))));
+  assert.deepEqual(appliquerJournal(premier.journal, { rows }).conflits, []);
+  // le même passage ne change plus rien
+  const meme = baliser([mot], { rows });
+  assert.equal(meme.journal.lots.length, 0, 'avec les mêmes règles, aucun texte réécrit');
+  assert.deepEqual(meme.rapport.colonnes.flatMap((c) => c.changements), []);
+  // un contexte exclu et les pages du guide hors du balisage : leurs balises partent, les autres restent (rapport : changements) ; ce qui ne sert à
+  // rien est dit (inutilises)
+  const bonus = /[+-]\s*\{?\d+\}?\s+initiative/i;
+  const contextes = { 'bonus chiffré d’initiative (essai)': [bonus.source], 'jamais écrit (essai)': ['zzz\\s+initiative\\s+zzz'] };
+  const second = baliser([{ ...mot, contextes, horsDe: ['page:guide/', 'page:zzz/'] }], { rows });
+  const [m] = second.rapport.motsCles;
+  assert.equal(m.cree, false, 'le mot-clé existe déjà');
+  assert.deepEqual(m.inutilises, { exclus: [], contextes: ['zzz\\s+initiative\\s+zzz'], horsDe: ['page:zzz/'], sauf: [] });
+  const changements = second.rapport.colonnes.flatMap((c) => c.changements.map((x) => ({ ...x, ou: c.table === 'page' ? c.cle.id : c.table })));
+  assert.ok(changements.length > 0);
+  for (const x of changements) {
+    assert.equal(x.sens, 'retiree', `${x.ou} : aucune balise nouvelle`);
+    if (!/^guide\//.test(x.ou)) assert.match(x.extrait, bonus, `${x.ou} : une balise retirée hors d’un contexte exclu`);
+  }
+  assert.ok(changements.some((x) => /^guide\//.test(x.ou)) && changements.some((x) => !/^guide\//.test(x.ou)));
+  const vocabulaire = [...chargerVocabulaire(ouvrirBase({ sansExemples: false })), { id: m.id, libelle: m.libelle }];
+  for (const x of second.journal.lots.flatMap((l) => l.modifications).filter((x) => x.operation === 'modifier')) {
+    for (const [colonne, apres] of Object.entries(x.apres)) {
+      const avant = x.avant[colonne];
+      if (typeof apres !== 'string' || !TEXTES.some((t) => t.table === x.table && t.colonne === colonne)) continue;
+      if (x.table === 'page' && !/^(guide|lore)\//.test(x.cle.id)) continue;
+      const markdown = typeDeTexte(x.table, colonne) === 'markdown';
+      assert.equal(texteSansBalises(apres, vocabulaire, { markdown }), texteSansBalises(avant, vocabulaire, { markdown }), `${x.table} ${JSON.stringify(x.cle)}`);
+      if (x.table === 'page' && /^guide\//.test(x.cle.id)) assert.ok(!apres.includes(`{{${m.id}`), `${x.cle.id} : une page du guide n’est plus balisée`);
+    }
+  }
+  assert.deepEqual(appliquerJournal(second.journal, { rows }).conflits, []);
+});
+
+test('une écriture exclue ou un contexte qui cite un mot précédent de l’entrée est refusé (il ne se lirait jamais : ce mot y est déjà balisé)', () => {
+  assert.throws(() => baliser([
+    { libelle: 'Initiative d’essai ter', motif: 'initiatives?', description: 'Essai.' },
+    { libelle: 'Vitesse d’essai', motif: 'vitesses?', description: 'Essai.', exclus: ['vitesse et initiative'] },
+  ], { rows: ROWS }), /cite « Initiative d’essai ter »/);
+});
+
+test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures exclues comprises), « CR » écrit avec sa casse et après « Si » (R103), contextes et textes valides', () => {
+  const mots = JSON.parse(readFileSync(new URL('../../tools/glossaire/corruption.json', import.meta.url), 'utf8'));
+  const pages = ouvrirBase({ sansExemples: false }).prepare('SELECT id FROM page').all().map((p) => p.id);
+  const precedent = JSON.parse(readFileSync(new URL('../../tools/glossaire/chakra-barriere.json', import.meta.url), 'utf8'));
+  for (const p of precedent) {
+    const m = mots.find((x) => x.libelle === p.libelle);
+    assert.ok(m, p.libelle);
+    assert.equal(m.motif, p.motif);
+    assert.equal(m.description, p.description);
+    const exclus = Object.values(m.exclus).flat();
+    for (const e of p.exclus) assert.ok(exclus.includes(e), `${p.libelle} : « ${e} » reste exclue`);
+  }
+  for (const m of mots) {
+    for (const motif of Object.values(m.contextes ?? {}).flat()) assert.doesNotThrow(() => new RegExp(motif, 'gimu'), motif);
+    for (const e of [...(m.horsDe ?? []), ...(m.sauf ?? [])]) {
+      // une page ou un début d'identifiant de page qui existe, ou une colonne relue par l'outil
+      if (e.startsWith('page:')) assert.ok(pages.some((id) => (e.endsWith('/') ? id.startsWith(e.slice(5)) : id === e.slice(5))), e);
+      else assert.ok(TEXTES.some((t) => `${t.table}.${t.colonne}` === e), e);
+    }
+  }
+  const cr = mots.find((m) => m.libelle === 'CR');
+  assert.equal(cr.casse, true);
+  assert.match(cr.description, /si le sort est lancé en utilisant la corruption/);
+  // « Si CR » seulement : ni « cr », ni un « CR » d'un autre sens (« 50% CR max » de la colonne Coût, que la réponse n'explique pas)
+  const contextes = Object.entries(cr.contextes).flatMap(([raison, l]) => l.map((motif) => ({ motif, raison })));
+  assert.equal(baliserLeMot('Si CR : +1d. 2d6 cr. 50% CR max. Si CR = ignore 50% de l’AM.', { id: 'cr', libelle: 'CR', ...cr, contextes }).texte,
+    'Si {{cr|CR}} : +1d. 2d6 cr. 50% CR max. Si {{cr|CR}} = ignore 50% de l’AM.');
 });

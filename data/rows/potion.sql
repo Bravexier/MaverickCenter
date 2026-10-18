@@ -53,39 +53,39 @@ INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, sour
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-mauve#potion:ultime-fiole-mauve', 'fiole', 5, 'maitre', 'Récupère 100% de santé et {{chakra|chakra}}', 'docs_typees', 'Google Doc « Alchimie » › Fiole mauve › tableau « Ultime fiole mauve »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-multicolore#potion:fiole-multicolore-moyenne', 'fiole', 2, 'apprenti', 'Redonne 3d8 + 10 santé, {{chakra|chakra}} et {{barriere|barrière}}
 Redonne 4 de la 4ème barre
-Soigne 3d8 + 5 corruption
+Soigne 3d8 + 5 {{corruption|corruption}}
 Augmente l’AM et l’AP de base de 5 pendant 3 tours
 Augmente l’initiative de 5 pendant 3 tours', 'docs_typees', 'Google Doc « Alchimie » › Fiole multicolore › tableau « Fiole multicolore moyenne »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-multicolore#potion:mega-fiole-multicolore', 'fiole', 4, 'expert', 'Redonne 5d8 + 40 santé, {{chakra|chakra}} et {{barriere|barrière}}
 Redonne 10 de la 4ème barre
-Soigne 5d8 + 15 corruption
+Soigne 5d8 + 15 {{corruption|corruption}}
 Augmente l’AM et l’AP de base de 10 pendant 3 tours
 Augmente la vitesse de 1 et l’INI de 2 pendant 3 tours', 'docs_typees', 'Google Doc « Alchimie » › Fiole multicolore › tableau « Méga fiole multicolore »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-multicolore#potion:petite-fiole-multicolore', 'fiole', 1, 'novice', 'Redonne 2d8 + 5 santé, {{chakra|chakra}} et {{barriere|barrière}}
 Redonne 2 de la 4ème barre
-Soigne 2d8 corruption
+Soigne 2d8 {{corruption|corruption}}
 Augmente l’AM et l’AP de base de 3 pendant 3 tours
 Augmente l’initiative de 2 pendant 3 tours', 'docs_typees', 'Google Doc « Alchimie » › Fiole multicolore › tableau « Petite fiole multicolore »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-multicolore#potion:super-fiole-multicolore', 'fiole', 3, 'avance', 'Redonne 4d8 + 20 santé, {{chakra|chakra}} et {{barriere|barrière}}
 Redonne 7 de la 4ème barre
-Soigne 4d8 + 10 corruption
+Soigne 4d8 + 10 {{corruption|corruption}}
 Augmente l’AM et l’AP de base de 7 pendant 3 tours
 Augmente la vitesse de 1 pendant 3 tours', 'docs_typees', 'Google Doc « Alchimie » › Fiole multicolore › tableau « Super fiole multicolore »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-multicolore#potion:ultime-fiole-multicolore', 'fiole', 5, 'maitre', 'Redonne 100% santé, {{chakra|chakra}} et {{barriere|barrière}}
 Redonne 100% de la 4ème barre
-Soigne 100% corruption
+Soigne 100% {{corruption|corruption}}
 Augmente l’AM et l’AP de base de 12 pendant 3 tours
 Augmente la vitesse de 2 et l’INI de 5 pendant 3 tours', 'docs_typees', 'Google Doc « Alchimie » › Fiole multicolore › tableau « Ultime fiole multicolore »');
-INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:fiole-noire-moyenne', 'fiole', 2, 'apprenti', 'Soigne 3d8 + 7 corruption
-Donne 3d8 + 7 corruption à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Fiole noire moyenne »');
-INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:mega-fiole-noire', 'fiole', 4, 'expert', 'Soigne 5d8 + 15 corruption
-Donne 5d8 + 15 corruption à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Méga fiole noire »');
-INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:petite-fiole-noire', 'fiole', 1, 'novice', 'Soigne 2d8 + 5 corruption
-Donne 2d8 + 5 corruption à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Petite fiole noire »');
-INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:super-fiole-noire', 'fiole', 3, 'avance', 'Soigne 4d8 + 10 corruption
-Donne 4d8 + 10 corruption à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Super fiole noire »');
-INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:ultime-fiole-noire', 'fiole', 5, 'maitre', 'Soigne 100% corruption
-Donne 100% corruption à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Ultime fiole noire »');
+INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:fiole-noire-moyenne', 'fiole', 2, 'apprenti', 'Soigne 3d8 + 7 {{corruption|corruption}}
+Donne 3d8 + 7 {{corruption|corruption}} à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Fiole noire moyenne »');
+INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:mega-fiole-noire', 'fiole', 4, 'expert', 'Soigne 5d8 + 15 {{corruption|corruption}}
+Donne 5d8 + 15 {{corruption|corruption}} à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Méga fiole noire »');
+INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:petite-fiole-noire', 'fiole', 1, 'novice', 'Soigne 2d8 + 5 {{corruption|corruption}}
+Donne 2d8 + 5 {{corruption|corruption}} à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Petite fiole noire »');
+INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:super-fiole-noire', 'fiole', 3, 'avance', 'Soigne 4d8 + 10 {{corruption|corruption}}
+Donne 4d8 + 10 {{corruption|corruption}} à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Super fiole noire »');
+INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-noire#potion:ultime-fiole-noire', 'fiole', 5, 'maitre', 'Soigne 100% {{corruption|corruption}}
+Donne 100% {{corruption|corruption}} à ceux de la corruption', 'docs_typees', 'Google Doc « Alchimie » › Fiole noire › tableau « Ultime fiole noire »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-orange#potion:fiole-orange-moyenne', 'fiole', 2, 'apprenti', 'Récupère 3d8 + 10 santé et {{barriere|barrière}}', 'docs_typees', 'Google Doc « Alchimie » › Fiole orange › tableau « Fiole orange moyenne »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-orange#potion:mega-fiole-orange', 'fiole', 4, 'expert', 'Récupère 5d8 + 40 santé et {{barriere|barrière}}', 'docs_typees', 'Google Doc « Alchimie » › Fiole orange › tableau « Méga fiole orange »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/fiole-orange#potion:petite-fiole-orange', 'fiole', 1, 'novice', 'Récupère 2d8 + 5 santé et {{barriere|barrière}}', 'docs_typees', 'Google Doc « Alchimie » › Fiole orange › tableau « Petite fiole orange »');

@@ -1,17 +1,22 @@
 // La pose des balises d'un mot du glossaire dans un texte (lib/glossaire-balisage.mjs ; demande du propriétaire du 2026-10-17 : « Transforme dans tous les
 // textes le mot "Chakra" (ou chakra) en mot clé », puis « Barrière ») : la forme canonique de chaque colonne, le texte affiché inchangé, et ce qui ne se
-// balise jamais (mot collé, nom d'une chose, balise déjà écrite, HTML, code, liens, titres de section).
+// balise jamais (mot collé, nom d'une chose, balise déjà écrite, HTML, code, liens, titres de section) ; puis (2026-10-18 : « Seulement là où il est
+// pertinent ») les contextes exclus, un mot écrit avec sa casse (« CR ») et le retrait des balises posées autour du mot.
 //   node --test test/glossaire-balisage.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { baliserLeMot } from '../src/lib/glossaire-balisage.mjs';
+import { baliserLeMot, ecrituresDuMotDans, sansLesBalisesDuMot } from '../src/lib/glossaire-balisage.mjs';
 import { formesNonCanoniques, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
 const CHAKRA = { id: 'chakra', libelle: 'Chakra', motif: 'chakras?' };
 const BARRIERE = { id: 'barriere', libelle: 'Barrière', motif: 'barrières?' };
+const CORRUPTION = { id: 'corruption', libelle: 'Corruption', motif: 'corruptions?' };
+const CR = { id: 'cr', libelle: 'CR', motif: 'CR', casse: true };
 const VOCABULAIRE = [
   { id: 'chakra', libelle: 'Chakra', description: 'Énergie consommée lors de l’utilisation de magie.' },
   { id: 'barriere', libelle: 'Barrière', description: 'Une seconde peau invisible.' },
+  { id: 'corruption', libelle: 'Corruption', description: 'Poison du chakra.' },
+  { id: 'cr', libelle: 'CR', description: 'Sort lancé en utilisant la corruption.' },
 ];
 
 /** Le texte balisé, contrôlé : sa forme est canonique et il s'affiche comme le texte d'origine. */
@@ -101,4 +106,54 @@ test('ni une adresse, ni une définition de lien, ni un titre souligné ; « _ch
   assert.equal(r.texte, md.replace('Un _chakra_', 'Un _{{chakra|chakra}}_'));
   assert.deepEqual([...new Set(r.ignorees.map((i) => i.raison))].sort(), ['adresse', 'lien', 'titre de section']);
   assert.equal(balise('Coût : 5 chakra, https://ex.fr/chakra', CHAKRA).texte, 'Coût : 5 {{chakra|chakra}}, https://ex.fr/chakra', 'aussi dans un texte de case');
+});
+
+test('un contexte exclu (expression régulière et raison) laisse le mot là où il n’a pas le sens du mot-clé ; « ^ » et « $ » bornent une ligne', () => {
+  const contextes = [
+    { motif: '(?:magies?|sorts?|ceux)\\s+de\\s+(?:la\\s+)?corruption', raison: 'la magie de la Corruption' },
+    { motif: '^\\|\\s*corruption\\s*\\|', raison: 'le nom d’une magie dans un tableau' },
+  ];
+  const r = balise('Inflige 3 corruption à ceux de la Corruption. Les sorts de corruption coûtent de la corruption.', CORRUPTION, { contextes });
+  assert.equal(r.texte, 'Inflige 3 {{corruption|corruption}} à ceux de la Corruption. Les sorts de corruption coûtent de la {{corruption|corruption}}.');
+  assert.deepEqual(r.ignorees, [
+    { ecriture: 'Corruption', raison: 'la magie de la Corruption' },
+    { ecriture: 'corruption', raison: 'la magie de la Corruption' },
+  ]);
+  const t = balise('| Magie | Effet |\n| --- | --- |\n| Corruption | Divise par 2 le coût en corruption |', CORRUPTION, { contextes, markdown: true });
+  assert.equal(t.texte, '| Magie | Effet |\n| --- | --- |\n| Corruption | Divise par 2 le coût en {{corruption\\|corruption}} |');
+  assert.deepEqual(t.ignorees, [{ ecriture: 'Corruption', raison: 'le nom d’une magie dans un tableau' }]);
+});
+
+test('un mot écrit avec sa casse (« CR ») : « cr » n’est pas le mot', () => {
+  const r = balise('Si CR : +1d de dégâts. 2d6 cr (+1d/NM).', CR);
+  assert.equal(r.texte, 'Si {{cr|CR}} : +1d de dégâts. 2d6 cr (+1d/NM).');
+  assert.deepEqual(r.balisees, ['CR']);
+});
+
+test('sansLesBalisesDuMot retire les balises posées autour du mot, rien d’autre ; rebaliser avec les mêmes règles redonne le texte', () => {
+  const markdown = '**{{chakra}}** : le {{chakra|chakra}} du {{barriere|Barrière}}.\n\n| a | b |\n| --- | --- |\n| {{chakra\\|chakra}} | {{chakra\\|énergie}} |\n\n{{chakra:}}';
+  const r = sansLesBalisesDuMot(markdown, { ...CHAKRA, markdown: true });
+  assert.equal(r.texte, '**Chakra** : le chakra du {{barriere|Barrière}}.\n\n| a | b |\n| --- | --- |\n| chakra | {{chakra\\|énergie}} |\n\n{{chakra:}}');
+  assert.equal(r.retirees, 3, 'ni un autre texte (« énergie »), ni le mode complet, ni un autre mot-clé');
+  assert.equal(baliserLeMot(r.texte, { ...CHAKRA, markdown: true }).texte, markdown);
+  // dans un texte de case, « {{chakra}} » n'est pas une balise posée par l'outil (il y écrit toujours le texte) : elle reste
+  assert.deepEqual(sansLesBalisesDuMot('Coûte 4 {{chakra|Chakra}}, {{chakra}}.', CHAKRA), { texte: 'Coûte 4 Chakra, {{chakra}}.', retirees: 1 });
+  // avec la casse : « {{cr|cr}} » n'entoure pas le mot « CR »
+  assert.deepEqual(sansLesBalisesDuMot('Si {{cr|CR}}, {{cr|cr}}.', CR), { texte: 'Si CR, {{cr|cr}}.', retirees: 1 });
+  assert.deepEqual(sansLesBalisesDuMot('Sans balise.', CHAKRA), { texte: 'Sans balise.', retirees: 0 });
+});
+
+test('un contexte ne commence jamais au milieu d’un mot : « sources? de chakra » ne prend pas « ressources de chakra »', () => {
+  const contextes = [{ motif: 'sources?\\s+de\\s+chakra', raison: 'le chakra du monde' }];
+  const r = balise('Des sources de chakra coulent. Les ressources de chakra du lanceur baissent.', CHAKRA, { contextes });
+  assert.equal(r.texte, 'Des sources de chakra coulent. Les ressources de {{chakra|chakra}} du lanceur baissent.');
+});
+
+test('ecrituresDuMotDans : chaque écriture du mot, dans l’ordre, balisée ou non ; la même suite avant et après un passage', () => {
+  const avant = 'Le **{{chakra}}** pur, 3 chakra, {{chakra|énergie}} et {{barriere|chakra}}.';
+  assert.deepEqual(ecrituresDuMotDans(avant, { ...CHAKRA, markdown: true }).map(({ ecriture, balisee }) => [ecriture, balisee]),
+    [['Chakra', true], ['chakra', false]], 'ni un autre texte du mot-clé, ni le mot dans la balise d’un autre mot-clé');
+  const apres = sansLesBalisesDuMot(avant, { ...CHAKRA, markdown: true }).texte;
+  assert.deepEqual(ecrituresDuMotDans(apres, { ...CHAKRA, markdown: true }).map(({ ecriture, balisee }) => [ecriture, balisee]), [['Chakra', false], ['chakra', false]]);
+  assert.deepEqual(ecrituresDuMotDans('Si {{cr|CR}} ; 2d6 cr ; Si CR.', CR).map(({ ecriture, balisee }) => [ecriture, balisee]), [['CR', true], ['CR', false]]);
 });

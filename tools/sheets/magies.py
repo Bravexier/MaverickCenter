@@ -158,6 +158,7 @@ Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'�
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
 """
 import argparse
+import functools
 import importlib.util
 import json
 import os
@@ -598,6 +599,16 @@ def a1(r, c):
     return "%s%d" % (col_letters(c), r)
 
 
+@functools.lru_cache(maxsize=None)
+def magies_homonymes():
+    """tools/db/homonymes.py#MAGIES_HOMONYMES (les magies dont l'étiquette n'est pas posée), chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.MAGIES_HOMONYMES
+
+
 def load_xlsx_comments():
     """tools/sheets/xlsx_comments.py, chargé par son chemin : `python3 -I` n'ajoute pas le dossier du script à sys.path."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xlsx_comments.py")
@@ -990,7 +1001,7 @@ def render(cfg, page, by_ref, relations=()):
     L.append("---")
     L.append("title: " + yaml_str(cfg["titre"]))
     L.append("aliases: " + yaml_list(cfg["aliases"]))
-    L.append("tags: " + yaml_list(cfg["tags"]))
+    L.append("tags: " + yaml_list([t for t in cfg["tags"] if t not in magies_homonymes()]))
     L.append("nom_court: " + yaml_str(cfg["nom_court"]))
     for key, names in relations:
         L.append("%s: %s" % (key, yaml_list(names)))
