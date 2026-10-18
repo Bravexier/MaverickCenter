@@ -19,6 +19,9 @@ const SANS_NM = /\(([^()]*)\)/g;
 const groupes = (texte) => [...String(texte ?? '').matchAll(SANS_NM)].map((m) => ({ debut: m.index, fin: m.index + m[0].length, interieur: m[1] }));
 const mentionneNM = (texte) => /\d\s?NM|\/\s*NM|\bpar\s+(?:NM|niveau de ma[iî]trise)|niveaux?\s+(?:\d\s+)?de\s+ma[iî]trise|\bNM\b/i.test(texte);
 
+/** La case parle-t-elle de niveaux de maîtrise (« -1/NM », « si 3NM », « par NM ») ? Le coût secondaire n'en écrit pas (décision R105, migration 0063). */
+export const mentionneUnNm = (texte) => mentionneNM(String(texteSansBalises(texte ?? '')));
+
 /** Le texte d'une case sans ses précisions de NM entre parenthèses (« 55 (-5/NM) » → « 55 ») : la valeur de base que les colonnes typées lisent. */
 export const sansExpressionsNM = (texte) =>
   String(texte ?? '')
@@ -69,22 +72,18 @@ export function analyserType(typeBrut) {
 }
 
 /**
- * Colonne « Coût » : la consommation de chakra quand la forme est « N », « N (k/NM) » ou « N + M Sang/âme(s) » ; la ressource de la 4ème barre
- * citée (« Sang », « âme(s) ») et sa quantité (NULL pour « X »).
+ * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N » ou « N (k/NM) » ; la ressource de la
+ * 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa quantité (NULL pour « X »).
  */
-export function analyserCout(coutBrut) {
+export function analyserCout(coutBrut, coutSecondaire = null) {
   const base = sansExpressionsNM(texteSansBalises(coutBrut));
   const seul = /^(\d+)$/.exec(base);
-  if (seul) return { cout_chakra: Number(seul[1]), cout_ressource: null, cout_ressource_valeur: null };
-  const avec = /^(?:(\d+)\s*\+\s*)?(\d+|X)\s+(Sang|âmes?)$/.exec(base);
-  if (avec) {
-    return {
-      cout_chakra: avec[1] === undefined ? null : Number(avec[1]),
-      cout_ressource: avec[3] === 'Sang' ? 'sang' : 'ame',
-      cout_ressource_valeur: avec[2] === 'X' ? null : Number(avec[2]),
-    };
-  }
-  return { cout_chakra: null, cout_ressource: null, cout_ressource_valeur: null };
+  const second = /^(\d+|X)\s+(Sang|âmes?)$/.exec(String(texteSansBalises(coutSecondaire ?? '')).trim());
+  return {
+    cout_chakra: seul ? Number(seul[1]) : null,
+    cout_ressource: second ? (second[2] === 'Sang' ? 'sang' : 'ame') : null,
+    cout_ressource_valeur: second && second[1] !== 'X' ? Number(second[1]) : null,
+  };
 }
 
 /** Colonne « Portée » : nombre (sa valeur de base), soi, vue, illimitée, variable, ou autre (le brut fait foi). */

@@ -148,9 +148,14 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Pas d'encart sans altération liée (Potentiel Illimité). `components/magie/MagieEtats.astro`.
 - **Capacité Mode Hyper** : un (+) à côté du titre mène à la liste des effets mode hyper (plus de lien en texte).
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
-  parenthèses (`(xNP de créature)`) passent en petit (parenthèses gardées), le coût « 10 + 4 Sang » est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
+  parenthèses (`(xNP de créature)`) passent en petit (parenthèses gardées), un coût encore écrit en une case comme le classeur (en attente de décision, ci-dessous) est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
-- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
+- **Coût et coût secondaire** (décision R105, migration `0063-cout-secondaire`) : « Coût » (`sort.cout_brut`) n'a que le chakra, un nombre ou « X », avec son expression de NM, et « 0 » pour un
+  sort qui n'en consomme pas (ces deux lectures attendent la confirmation du propriétaire : `docs/sql/a-valider.md`, S0 et S1) ; « Coût secondaire » (`sort.cout_secondaire`) le second coût (âmes, Sang, « 20% PV »), « — » sans second coût. Le classeur les écrivait en une case
+  (« 3 + 1 Sang ») : `lib/sort-cout.mjs#repartirLeCout` ; le corps Markdown de la page et la fiche en tableur les gardent en une case (`coutEnUneCase`). Les 26 sorts dont l'écriture ne
+  se répartit pas sans doute possible gardent celle du classeur jusqu'à la décision du propriétaire (`docs/sql/a-valider.md`, §5). Sur le site de dev, les deux cases se modifient ; le
+  service refuse un second coût dans « Coût » (il dit où l'écrire) et une expression de NM dans « Coût secondaire » (`sort_bonus_maitrise` n'a pas de champ pour elle).
+- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Coût secondaire, Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
   `components/magie/TableauNpm.astro` (une magie, un NPM ; une ligne : `LigneDeSort.astro` ; le comportement au clic : `SortsInteractifs.astro`, une fois par page). Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »
   ci-dessous) qu'une cellule de Coût, Portée, Zone ou D/S/B écrit entre parenthèses est une **pastille à sa place, à côté de la valeur** (« 55 » puis la pastille « -5/NM », « 5d6 [+3/NM] dégâts sonores » ;
   `marquerBonus` de `lib/sort-maitrise.mjs`). La colonne Type montre les types (`sort_type`), le **mode** de base (`sort_mode` : IC, imparable, inesquivable) puis, en pastille, le mode qui dépend d'un NM (« IC pour 3 NM »).

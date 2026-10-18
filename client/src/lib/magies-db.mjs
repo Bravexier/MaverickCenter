@@ -206,6 +206,8 @@ export function chargerMagies(db) {
         seuilNm: b.seuil_nm,
       })),
       coutBrut: s.cout_brut,
+      // décision R105 : le second coût (âmes, Sang…), NULL quand le sort n'en a pas
+      coutSecondaire: s.cout_secondaire,
       porteeBrut: s.portee_brut,
       zoneBrut: s.zone_brut,
       dsbBrut: s.dsb_brut,

@@ -6,8 +6,10 @@ import { attributEd } from '../../lib/edition-modele.mjs';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
 
-// Un sort dans son tableau (TableauNpm.astro) : sa ligne (Nom, Type, Coût, Portée, Zone, D/S/B) et, juste en dessous, ses détails (SortDetail.astro),
-// cachés jusqu'à ce qu'on sélectionne la ligne (SortsInteractifs.astro).
+// Un sort dans son tableau (TableauNpm.astro) : sa ligne (Nom, Type, Coût, Coût secondaire, Portée, Zone, D/S/B) et, juste en dessous, ses détails
+// (SortDetail.astro), cachés jusqu'à ce qu'on sélectionne la ligne (SortsInteractifs.astro). Le coût en deux colonnes (décision R105) : le chakra, puis
+// le second coût (âmes, Sang…) ; un coût que le propriétaire n'a pas encore tranché garde l'écriture du classeur (« 5 + 1 âme (xNPM de créature) »),
+// sa partie après « + » en supplément sous la valeur.
 // Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
 // (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
 interface Props {
@@ -26,6 +28,7 @@ const cellule = (brut: string | null, cle: string, liste = false) => {
   const v = valeurDeSort(brut, { liste });
   return { vide: v.vide, lignes: marquerBonus(v.lignes, s.bonus, cle) };
 };
+const secondaire = valeurDeSort(s.coutSecondaire);
 const valeurs = [
   ['Portée', cellule(s.porteeBrut, 'portee'), 'portee'],
   ['Zone', cellule(s.zoneBrut, 'zone'), 'zone'],
@@ -73,6 +76,9 @@ const ed = (colonne: string) => attributEd('sort', { id: s.id }, colonne);
           )
         )
       }
+    </td>
+    <td data-label="Coût secondaire" class="sort__cout-secondaire" data-ed={ed('cout_secondaire')} data-ed-rendu="sort-cout-secondaire">
+      {secondaire.vide ? <span class="vide" aria-label="aucun">—</span> : secondaire.lignes.map((l) => <div><Segments segments={l} /></div>)}
     </td>
     {
       valeurs.map(([label, v, cle]) => (

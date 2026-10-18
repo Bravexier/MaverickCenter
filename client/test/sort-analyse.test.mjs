@@ -34,9 +34,9 @@ test('type : types, mode, IC, imparable, inesquivable redonnent sort, sort_type 
   }
 });
 
-test('coût, portée, zone : colonnes typées en place', () => {
+test('coût (et coût secondaire : décision R105), portée, zone : colonnes typées en place', () => {
   for (const s of sorts) {
-    assert.deepEqual(analyserCout(s.cout_brut), { cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, `${s.id} : ${s.cout_brut}`);
+    assert.deepEqual(analyserCout(s.cout_brut, s.cout_secondaire), { cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, `${s.id} : ${s.cout_brut}`);
     assert.deepEqual(analyserPortee(s.portee_brut), { portee_nature: s.portee_nature, portee_valeur: s.portee_valeur }, `${s.id} : ${s.portee_brut}`);
     assert.deepEqual(analyserZone(s.zone_brut), { zone_forme: s.zone_forme, zone_taille: s.zone_taille }, `${s.id} : ${s.zone_brut}`);
   }

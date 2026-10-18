@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 62;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 63;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -587,11 +587,15 @@ CREATE TABLE sort (
   ic_nm_min             INTEGER CHECK (ic_nm_min BETWEEN 1 AND 3),      -- N de « IC pour N NM » : niveau de maîtrise qui rend le sort IC
   imparable             INTEGER NOT NULL CHECK (imparable IN (0, 1)),   -- le type contient « imparable » (insensible à la casse)
   inesquivable          INTEGER NOT NULL CHECK (inesquivable IN (0, 1)),   -- le type contient « inesquivable »
-  -- Coût (colonne « Coût ») : le nombre seul est la consommation de chakra (guide/fiche-attributs : « La consommation de chakra
-  -- est indiqué sur les sorts » ; « + 3 Sang » ajoute une consommation de la 4ème barre)
-  cout_brut             TEXT    NOT NULL,               -- « 3 + 1 Sang », « 55 (-5/NM) », « X Sang », « Variable »…
-  cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- partie chakra quand la forme est « N », « N (-k/NM) », « N + … Sang/âme(s) » ; sinon NULL
-  cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre citée dans le coût
+  -- Coût, en deux colonnes (décision R105 du propriétaire, migration 0063 : « séparer le cout avec une seconde colonne cout secondaire ») : « Coût »
+  -- (cout_brut) n'a que la consommation de chakra, un nombre (guide/fiche-attributs : « La consommation de chakra est indiqué sur les sorts »), ou « X »,
+  -- et « 0 » pour un sort qui n'en consomme pas (lecture à confirmer : docs/sql/a-valider.md, S0) ; « Coût secondaire » (cout_secondaire, en dernière colonne)
+  -- le second coût du sort (la 4ème barre : âmes de la Nécromancie, Sang ; « 20% PV »…). Le classeur les écrivait dans une seule case (« 3 + 1 Sang ») :
+  -- lib/sort-cout.mjs#repartirLeCout. Les coûts que le propriétaire doit encore trancher gardent l'écriture du classeur (docs/sql/a-valider.md, « Coût
+  -- secondaire des sorts »).
+  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 » ; en attente de décision : « 3xN/tour », « Variable »…
+  cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL
+  cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) »
   cout_ressource_valeur INTEGER CHECK (cout_ressource_valeur >= 0),          -- sa quantité ; NULL si « X » ou absente
   -- Portée (colonne « Portée »)
   portee_brut           TEXT    NOT NULL,               -- « 6 », « Soi même », « 5 (+1/NM) », « Vue »…
@@ -621,9 +625,13 @@ CREATE TABLE sort (
                                                         -- et sort_bonus_maitrise (condition de NM)
   bonus_maitrise        TEXT,                           -- les bonus de NM du sort, une ligne par bonus, « <Colonne> : <passage de la cellule> » (« Coût : -5/NM », « Effets : Dure 2 tours (+1/NM) »),
                                                         -- dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord)
+  -- Colonne ajoutée par la migration 0063 (décision R105) : la colonne « Coût secondaire » des tables de sorts. Elle n'écrit pas d'expression de NM (le
+  -- bonus de NM du coût est dans « Coût » : sort_bonus_maitrise n'a pas de champ pour elle, le service et db:check refusent un NM ici)
+  cout_secondaire       TEXT    CHECK (cout_secondaire IS NULL OR (length(cout_secondaire) > 0 AND cout_secondaire = trim(cout_secondaire))),   -- « 1 Sang », « 2 âmes », « X Sang », « 20% PV » ; NULL = pas de second coût
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
-  -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : tools/db/magies.py et db:check recalculent avec le même analyseur)
+  -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : le service la recalcule avec lib/sort-analyse.mjs, que
+  -- test/sort-analyse.test.mjs rejoue sur toute la base ; db:check refait le coût, analyserCout)
   CHECK (imparable = (instr(lower(type_brut), 'imparable') > 0)),
   CHECK (inesquivable = (instr(lower(type_brut), 'inesquivable') > 0)),
   CHECK (ic_direct = (instr(type_brut, '(IC)') > 0)),
@@ -631,7 +639,8 @@ CREATE TABLE sort (
   CHECK (ic_nm_min IS NULL OR instr(lower(replace(type_brut, char(10), ' ')), 'ic pour ' || ic_nm_min) > 0),
   CHECK (cout_chakra IS NULL OR (substr(cout_brut, 1, length(CAST(cout_chakra AS TEXT))) = CAST(cout_chakra AS TEXT)
                                  AND substr(cout_brut || ' ', length(CAST(cout_chakra AS TEXT)) + 1, 1) NOT GLOB '[0-9]')),
-  CHECK (cout_ressource IS NULL OR (cout_ressource = 'sang' AND instr(cout_brut, 'Sang') > 0) OR (cout_ressource = 'ame' AND instr(cout_brut, 'âme') > 0)),
+  CHECK (cout_ressource IS NULL OR (cout_ressource = 'sang' AND instr(coalesce(cout_secondaire, ''), 'Sang') > 0)
+                                OR (cout_ressource = 'ame' AND instr(coalesce(cout_secondaire, ''), 'âme') > 0)),
   CHECK (portee_valeur IS NULL OR (substr(portee_brut, 1, length(CAST(portee_valeur AS TEXT))) = CAST(portee_valeur AS TEXT)
                                    AND substr(portee_brut || ' ', length(CAST(portee_valeur AS TEXT)) + 1, 1) NOT GLOB '[0-9]')),
   CHECK (texte_niveau5 IS NULL OR niveau = 5),
@@ -3549,12 +3558,13 @@ CREATE VIEW v_creature_sort AS
          cs.rang AS rang, cs.sort_nom_brut AS sort_nom_brut, cs.sort_id AS sort_id
   FROM creature_capacite_sort cs JOIN creature_capacite ca ON ca.id = cs.capacite_id;
 
--- Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonne « Coût » : « 6 (xNP de créature) »,
--- « 5 + 1 âme (xNPM de créature) », « 5 + 10% BA (xNPM de créature) »). Les commentaires du sort (table note_cellule, entité sort)) précisent que « chaque niveau de puissance de la créature invoqué double de le coût précédent ».
+-- Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui invoque (colonnes « Coût » et « Coût secondaire », décision R105 ; les trois
+-- sorts d'invocation attendent la décision du propriétaire et gardent l'écriture du classeur : « 6 (xNP de créature) », « 5 + 1 âme (xNPM de créature) »,
+-- « 5 + 10% BA (xNPM de créature) »). Les commentaires du sort (table note_cellule, entité sort)) précisent que « chaque niveau de puissance de la créature invoqué double de le coût précédent ».
 CREATE VIEW v_creature_cout_invocation AS
   SELECT c.id AS creature_id, i.id AS invocation_id, s.id AS sort_id, s.nom AS sort_nom,
          s.cout_brut AS cout_brut, s.cout_chakra AS cout_chakra, s.cout_ressource AS cout_ressource,
-         s.cout_ressource_valeur AS cout_ressource_valeur, b.npm AS npm
+         s.cout_ressource_valeur AS cout_ressource_valeur, b.npm AS npm, s.cout_secondaire AS cout_secondaire
   FROM creature c
   JOIN invocation i ON i.id = c.invocation_id
   JOIN invocation_bloc b ON b.id = c.bloc_id

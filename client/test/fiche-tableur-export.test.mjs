@@ -27,9 +27,13 @@ import {
   texteDeLaNote, texteDeSortEnSuite, texteDesGains, texteDesNmOfferts,
 } from '../src/lib/fiche-tableur-export.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
+import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
 import { modesAuNm, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import { zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { recollerLeTexte, sansLaCoupure, tientDans } from '../src/lib/tableur-mesure.mjs';
+
+// les coûts que la migration 0063 a répartis (décision R105) et leur écriture dans le classeur
+const REPARTIS = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0063-cout-secondaire.json', import.meta.url), 'utf8')).repartis.map((r) => [r.id, r]));
 
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
 const DATE = '15/10/2026';
@@ -462,6 +466,7 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
   assert.ok(acc.portee && acc.degats, 'les bagues ajoutent portée et dégâts aux sorts');
   const enNombre = (t) => (/^-?(0|[1-9]\d*)$/.test(t) ? Number(t) : t || undefined);
   let attaques = 0;
+  let couts = 0;
   S.lignes.forEach((r, i) => {
     const ligne = riche.sorts[i];
     const sort = M.trouver(regles.sorts, ligne.sort_id);
@@ -472,7 +477,13 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
     assert.equal(c[`${col.nm}${r}`], n);
     // une rangée par sort : chaque case sur une ligne, la description ses parties séparées par « · »
     assert.equal(c[`${col.type}${r}`], uneLigne(auNm(sort.type, 'type')) || undefined, `${sort.nom} : type`);
-    assert.equal(c[`${col.cout}${r}`], enNombre(uneLigne(auNm(sort.cout, 'cout'))));
+    // les deux coûts en une case, comme le classeur (« 3 + 1 âme » : décision R105) ; un coût réparti par 0063 sans NM : l'écriture même du classeur
+    assert.equal(c[`${col.cout}${r}`], enNombre(uneLigne(coutEnUneCase(auNm(sort.cout, 'cout'), sort.cout_secondaire ?? null))), `${sort.nom} : coût`);
+    const reparti = REPARTIS.get(sort.id);
+    if (reparti && !reparti.avant.includes('NM') && sort.cout === reparti.cout_brut && sort.cout_secondaire === reparti.cout_secondaire) {
+      assert.equal(c[`${col.cout}${r}`], enNombre(reparti.avant), `${sort.nom} : coût du classeur`);
+      couts += 1;
+    }
     assert.equal(c[`${col.portee}${r}`], enNombre(`${uneLigne(auNm(sort.portee, 'portee'))} ${signe(acc.portee)}`));
     assert.equal(c[`${col.zone}${r}`], enNombre(uneLigne(auNm(sort.zone, 'zone'))));
     const dsb = auNm(sort.dsb, 'dsb');
@@ -485,6 +496,7 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
     for (const col_ of ['type', 'cout', 'portee', 'zone', 'description']) assert.ok(!String(c[`${col[col_]}${r}`] ?? '').includes('\n'), `${sort.nom} : ${col_} sur une ligne`);
   });
   assert.ok(attaques > 0, 'un sort d’attaque reçoit les dégâts des accessoires');
+  assert.ok(couts > 0, 'un sort au coût réparti par la migration 0063 (âmes, Sang) : sa case « Coût » redit le classeur');
   assert.ok(riche.sorts.slice(0, 20).some((l) => /IC|NM/.test(M.trouver(regles.sorts, l.sort_id).type ?? '')), 'un type qui écrit un NM est essayé');
 });
 
@@ -1017,9 +1029,11 @@ test('export déterministe et sans effet sur la fiche', () => {
 test('le module n’importe que des modules réservés à la page /fiche/ (pas de module partagé, pas d’import dynamique)', () => {
   const source = readFileSync(new URL('../src/lib/fiche-tableur-export.mjs', import.meta.url), 'utf8');
   const imports = [...source.matchAll(/^import [^;]*? from '([^']+)';/gm)].map((m) => m[1]);
-  const permis = ['./fiche-moteur.mjs', './sort-maitrise.mjs', './fiche-format.mjs', './fiche-tableur-cases.mjs', './degats-texte.mjs', './tableur-mesure.mjs'];
+  const permis = ['./fiche-moteur.mjs', './sort-maitrise.mjs', './sort-cout.mjs', './fiche-format.mjs', './fiche-tableur-cases.mjs', './degats-texte.mjs', './tableur-mesure.mjs'];
   assert.deepEqual(imports.filter((x) => !permis.includes(x)), []);
   assert.doesNotMatch(source, /\bimport\(/);
   // lib/degats-texte.mjs : seul src/scripts/fiche.mjs l'importe parmi les scripts de page, et il n'importe rien
   assert.doesNotMatch(readFileSync(new URL('../src/lib/degats-texte.mjs', import.meta.url), 'utf8'), /^import /m);
+  // lib/sort-cout.mjs (les deux coûts d'un sort en une case, décision R105) : de même
+  assert.doesNotMatch(readFileSync(new URL('../src/lib/sort-cout.mjs', import.meta.url), 'utf8'), /^import /m);
 });

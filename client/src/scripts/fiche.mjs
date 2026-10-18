@@ -691,7 +691,7 @@ function construireSorts() {
   reconstruire($('sorts'), cle, () => [
     el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'),
       el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
-      el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', {}, 'Zone'),
+      el('th', { title: 'Chakra, puis le coût secondaire (âmes, Sang…)' }, 'Coût'), el('th', {}, 'Portée'), el('th', {}, 'Zone'),
       el('th', { title: 'Dégâts, soins ou barrière' }, 'D/S/B'),
       el('th', { title: 'NM de niveau, d’un livre (un par sort, noté dans l’entraînement), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
     el('tbody', {}, lignes.length === 0
@@ -778,6 +778,8 @@ function construireSorts() {
               ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
               ...nonComptes('cout'),
             ]), m && (m.cout.detail.length || m.cout.corruption || nonComptes('cout').length));
+          // le second coût (âmes, Sang… : décision R105) sous le coût de chakra, dans la même case (poserValeur réécrit la case quand le coût change)
+          if (l.sort?.cout_secondaire) cout.append(el('span', { class: 'sort-cout-secondaire' }, l.sort.cout_secondaire));
           poserValeur(portee, m?.portee.texte ?? '', m && m.portee.detail.length,
             m && detail(`Portée écrite : ${auNm(l.sort.portee, 'portee')}`, m.portee.detail, nonComptes('portee')), m && (m.portee.detail.length || nonComptes('portee').length));
           zone.textContent = auNm(l.sort?.zone, 'zone');

@@ -22,6 +22,8 @@
 //                                      « - **Forme Complète** : effet » (repérée par variante_brut) ; `nom` n'est pas écrit dans une page de magie
 //   sort.nom, type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets
 //                                      case de la ligne du sort (n-ième ligne du tableau « ## Sorts », n = ordre ; « / » pour dsb_brut NULL) ;
+//                                      la case « Coût » écrit les deux coûts du sort (cout_brut, cout_secondaire : décision R105), comme le classeur,
+//                                      « 3 + 1 Sang », et le coût secondaire seul pour un coût « 0 » (« 2 Sang ») : lib/sort-cout.mjs#coutEnUneCase ;
 //                                      le nom aussi dans les libellés des notes (« … du sort « Nom » ») et le titre de son texte de niveau 5
 //   sort.remarque                      entrées du sort dans « ## Notes et commentaires des sorts » (la remarque = leurs textes, séparés par une ligne
 //                                      vide) ; une remarque modifiée remplace ces entrées par une seule, « **Remarque du sort « Nom »** »
@@ -424,11 +426,21 @@ function poserModeHyper(morceaux, effet) {
 
 /** Colonnes de `sort` écrites dans la ligne du tableau « ## Sorts », avec leur case (Niveau, Nom, Type, Coût, Portée, Zone, D/S/B, Effets secondaires). */
 const CASES_DU_SORT = { nom: 1, type_brut: 2, cout_brut: 3, portee_brut: 4, zone_brut: 5, dsb_brut: 6, effets: 7 };
-/** Colonnes de `sort` qui ont une place dans le corps de la page de sa magie. */
-export const COLONNES_DE_SORT = [...Object.keys(CASES_DU_SORT), 'remarque', 'texte_niveau5'];
+/** Colonnes de `sort` qui ont une place dans le corps de la page de sa magie (le coût secondaire : dans la case « Coût »). */
+export const COLONNES_DE_SORT = [...Object.keys(CASES_DU_SORT), 'cout_secondaire', 'remarque', 'texte_niveau5'];
 
-/** Valeur d'une case : « / » pour D/S/B NULL (la base garde NULL pour la cellule « / »), texte vide pour une autre case vide. */
-const valeurDeCase = (sort, colonne) => (colonne === 'dsb_brut' && (sort.dsb_brut === null || sort.dsb_brut === undefined) ? '/' : sort[colonne] ?? '');
+/** Les deux coûts d'un sort en une case (lib/sort-cout.mjs#coutEnUneCase, recopiée : ce module n'importe rien ; test/sort-cout-secondaire.test.mjs). */
+export const coutEnUneCase = (cout, secondaire) => (!secondaire ? cout : cout === '0' || cout === '' ? secondaire : `${cout} + ${secondaire}`);
+
+/**
+ * Valeur d'une case : « / » pour D/S/B NULL (la base garde NULL pour la cellule « / »), le coût et le coût secondaire ensemble dans la case « Coût »,
+ * texte vide pour une autre case vide.
+ */
+const valeurDeCase = (sort, colonne) => {
+  if (colonne === 'dsb_brut' && (sort.dsb_brut === null || sort.dsb_brut === undefined)) return '/';
+  if (colonne === 'cout_brut') return coutEnUneCase(sort.cout_brut ?? '', sort.cout_secondaire ?? null);
+  return sort[colonne] ?? '';
+};
 /**
  * Un nom de sort tel que la base l'écrit (retours à la ligne et espaces insécables remplacés par des espaces : identifiant) : la case du tableau peut
  * garder le retour à la ligne (« Amélioration<br>Cadavérique ») ou l'insécable du classeur.

@@ -171,6 +171,8 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
 {
   const { texteDeBonus, ORDRE_CHAMPS_NM } = await import(pathToFileURL(`${LIB}/sort-maitrise.mjs`).href);
   const { texteSansBalises } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { analyserCout, mentionneUnNm } = await import(pathToFileURL(`${LIB}/sort-analyse.mjs`).href);
+  const { repartirLeCout } = await import(pathToFileURL(`${LIB}/sort-cout.mjs`).href);
   const COLONNE = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
   const bonus = new Map();
   for (const l of db.prepare('SELECT sort_id, champ, rang, texte_brut, contexte FROM sort_bonus_maitrise').all()) {
@@ -184,6 +186,16 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
       if (typeof cellule !== 'string' || !cellule.includes(l.contexte) || !l.contexte.includes(l.texte_brut)) problemes.push(`bonus de maîtrise ${s.id} (${l.champ} #${l.rang}) : « ${l.texte_brut} » ne figure pas dans la cellule`);
     }
     if ((s.bonus_maitrise ?? null) !== texteDeBonus(lignes)) problemes.push(`bonus de maîtrise ${s.id} : la colonne bonus_maitrise ne suit pas les lignes de sort_bonus_maitrise`);
+    // décision R105 (migration 0063) : le bonus de NM du coût est dans « Coût », jamais dans « Coût secondaire », qui n'a pas de champ dans sort_bonus_maitrise ;
+    // et le second coût n'est plus écrit dans « Coût » (une écriture qui se répartit sans doute possible : lib/sort-cout.mjs#repartirLeCout)
+    if (s.cout_secondaire !== null && mentionneUnNm(s.cout_secondaire)) problemes.push(`coût secondaire ${s.id} : « ${s.cout_secondaire} » écrit un niveau de maîtrise (il va dans « Coût »)`);
+    const reparti = repartirLeCout(s.cout_brut);
+    if (reparti) problemes.push(`coût ${s.id} : « ${s.cout_brut} » écrit deux coûts (Coût « ${reparti.cout_brut} », Coût secondaire « ${reparti.cout_secondaire} »)`);
+    // les colonnes typées du coût suivent les deux cases (la lecture du service : lib/sort-analyse.mjs#analyserCout)
+    const lu = analyserCout(s.cout_brut, s.cout_secondaire);
+    if (['cout_chakra', 'cout_ressource', 'cout_ressource_valeur'].some((c) => (s[c] ?? null) !== lu[c])) {
+      problemes.push(`coût ${s.id} : colonnes typées (${s.cout_chakra}, ${s.cout_ressource}, ${s.cout_ressource_valeur}) au lieu de la lecture de « ${s.cout_brut} » et « ${s.cout_secondaire ?? '—'} »`);
+    }
   }
   bilan.sorts_avec_bonus_maitrise = bonus.size;
 }

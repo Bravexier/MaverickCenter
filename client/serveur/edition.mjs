@@ -45,7 +45,8 @@ import {
 import {
   changementsDePageDeClasse, changementsDePageDeDon, choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeClasse, resumeDeDon,
 } from '../src/lib/corps-classes.mjs';
-import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
+import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, mentionneUnNm, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
+import { ecritUnSecondCout, repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 import { CHAMPS_DES_ETATS, etatsDuTexte, formesDesEtats } from '../src/lib/sort-etats.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
@@ -548,8 +549,18 @@ function deriverNomDuSort(ctx, avant, apres) {
 }
 
 const SORT = {
-  colonnes(ctx, ligne) {
+  colonnes(ctx, ligne, valeurs = {}) {
     if (ligne.texte_niveau5 !== null && ligne.niveau !== 5) throw refus('Le texte du sort n’existe que pour un sort de niveau 5.');
+    // décision R105 : « Coût » n'a que le chakra, le second coût va dans « Coût secondaire » (lib/sort-cout.mjs#ecritUnSecondCout ; les coûts en attente
+    // de décision gardent l'écriture du classeur tant qu'on n'y touche pas) ; la répartition est proposée quand l'écriture est celle du classeur
+    if ('cout_brut' in valeurs && ecritUnSecondCout(ligne.cout_brut)) {
+      const reparti = repartirLeCout(ligne.cout_brut);
+      throw refus(`Coût « ${ligne.cout_brut} » : le second coût s’écrit dans « Coût secondaire » (décision R105)`
+        + (reparti ? ` — Coût « ${reparti.cout_brut} », Coût secondaire « ${reparti.cout_secondaire} »` : ''));
+    }
+    if ('cout_secondaire' in valeurs && mentionneUnNm(ligne.cout_secondaire)) {
+      throw refus(`Coût secondaire « ${ligne.cout_secondaire} » : un bonus de niveau de maîtrise s’écrit dans « Coût » (décision R105)`);
+    }
     // le corps de la page de la magie retrouve les notes et le texte de niveau 5 d'un sort par son nom, sans casse, accents ni espaces en trop
     // (lib/corps-magies.mjs) : un nom qui ne diffère d'un autre sort de la magie que par là confondrait les deux
     if (ligne.nom !== lireLigne(ctx.db, 'sort', { id: ligne.id }).nom) {
@@ -564,7 +575,7 @@ const SORT = {
     return {
       dsb_brut: ligne.dsb_brut === '/' ? null : ligne.dsb_brut,
       mode_brut: type.mode_brut, ic_direct: type.ic_direct, ic_nm_min: type.ic_nm_min, imparable: type.imparable, inesquivable: type.inesquivable,
-      ...analyserCout(ligne.cout_brut),
+      ...analyserCout(ligne.cout_brut, ligne.cout_secondaire),
       ...analyserPortee(ligne.portee_brut),
       ...analyserZone(ligne.zone_brut),
     };
@@ -1631,14 +1642,16 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes) et 0056 (glossaire), et d'avant la saisie de l'AP et de
-    // l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 : serveur/edition-armures.mjs#ancienneEcritureDesArmures)
+    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire) et 0063 (coût secondaire des sorts),
+    // et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 :
+    // serveur/edition-armures.mjs#ancienneEcritureDesArmures)
     adapter: () => {
       const motsCles = ancienneEcritureDesMotsCles(db);
       const glossaire = ancienneEcritureDuGlossaire(db);
       const capacites = ancienneEcritureDesCapacites(db);
       const armures = ancienneEcritureDesArmures(db);
-      return (m) => armures(capacites(glossaire(motsCles(m))));
+      const couts = ancienneEcritureDuCout();
+      return (m) => couts(armures(capacites(glossaire(motsCles(m)))));
     },
     // les balises d'un mot-clé supprimé ou fusionné, dans les textes que le lot n'a pas réécrits : au moment où il est rejoué, dans son lot
     apresLeLot: (lot) => balisesRetireesParLeLot(db, lot),
@@ -1849,6 +1862,30 @@ function ancienneEcritureDuGlossaire(db) {
       if (ligneRetiree) return sansEffet(m, k);
     } else lignesCreees.add(k);
     return m;
+  };
+}
+
+/**
+ * Le coût d'un sort noté par un lot d'avant la migration 0063 (décision R105 : « Coût » et « Coût secondaire »), écrit en une case comme le classeur
+ * (« 12 + 3 âmes ») : rejoué en deux colonnes par la règle de la migration (lib/sort-cout.mjs#repartirLeCout), son `avant` (la ligne des règles est
+ * répartie de même) comme son `apres`, et leurs colonnes typées relues (analyserCout) ; un coût qui ne se répartit pas (en attente de décision du
+ * propriétaire) reste tel quel, sans coût secondaire. Rien n'est perdu ni deviné : « 12 + 3 âmes » → « 14 » retire bien le coût secondaire. Un lot noté
+ * depuis écrit les deux colonnes (le service refuse un second coût dans « Coût ») : il passe tel quel. Rend l'adaptateur de edition-journal.mjs#rejouer.
+ */
+function ancienneEcritureDuCout() {
+  const enDeux = (valeurs) => {
+    const r = repartirLeCout(valeurs.cout_brut) ?? { cout_brut: valeurs.cout_brut, cout_secondaire: null };
+    Object.assign(valeurs, r, analyserCout(r.cout_brut, r.cout_secondaire));
+  };
+  return (m) => {
+    if (m.table_nom !== 'sort' || m.operation !== 'modifier') return m;
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
+    if (!avant || !apres || !('cout_brut' in avant) || !('cout_brut' in apres) || 'cout_secondaire' in avant || 'cout_secondaire' in apres) return m;
+    if (!repartirLeCout(avant.cout_brut) && !repartirLeCout(apres.cout_brut)) return m;
+    enDeux(avant);
+    enDeux(apres);
+    return { ...m, avant: JSON.stringify(avant), apres: JSON.stringify(apres) };
   };
 }
 

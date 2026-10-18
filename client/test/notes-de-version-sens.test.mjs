@@ -14,7 +14,7 @@ const sort = (nom) => sorts.find((s) => s.nom === nom);
 const dons = db.prepare('SELECT id, nom, type_brut FROM capacite ORDER BY id').all();
 const sens = (table, colonne, avant, apres) => sensDuChangement(table, colonne, avant, apres).sens;
 const INVERSE = { amelioration: 'affaiblissement', affaiblissement: 'amelioration', neutre: 'neutre' };
-const COLONNES_DE_SORT = ['nom', 'type_brut', 'cout_brut', 'portee_brut', 'zone_brut', 'dsb_brut', 'effets', 'remarque', 'texte_niveau5'];
+const COLONNES_DE_SORT = ['nom', 'type_brut', 'cout_brut', 'cout_secondaire', 'portee_brut', 'zone_brut', 'dsb_brut', 'effets', 'remarque', 'texte_niveau5'];
 
 // --- Lectures ----------------------------------------------------------------------------------------------------------------------------------
 
@@ -137,6 +137,25 @@ const deuxSens = (table, colonne, avant, apres, attendu) => {
   assert.equal(sens(table, colonne, avant, apres), attendu, `${colonne} : ${avant} → ${apres}`);
   assert.equal(sens(table, colonne, apres, avant), INVERSE[attendu], `${colonne} : ${apres} → ${avant}`);
 };
+
+test('coût secondaire (décision R105) : moins de la même ressource = amélioration ; ajouté, retiré, autre ressource ou illisible = neutre', () => {
+  deuxSens('sort', 'cout_secondaire', '3 Sang', '2 Sang', 'amelioration');
+  deuxSens('sort', 'cout_secondaire', '1 âme', '3 âmes', 'affaiblissement');
+  deuxSens('sort', 'cout_secondaire', '20% PV', '15% PV', 'amelioration');
+  deuxSens('sort', 'cout_secondaire', null, '2 âmes', 'neutre');
+  deuxSens('sort', 'cout_secondaire', '2 Sang', '2 âmes', 'neutre');
+  deuxSens('sort', 'cout_secondaire', '10% santé', '10% BA', 'neutre');
+  deuxSens('sort', 'cout_secondaire', 'X Sang', '2 Sang', 'neutre');
+  deuxSens('sort', 'cout_secondaire', '20% PV', '20 PV', 'neutre');
+});
+
+test('coût réparti (décision R105) face à l’écriture du classeur que la production garde jusqu’à sa livraison : le chakra seul est comparé', () => {
+  deuxSens('sort', 'cout_brut', '3 + 1 Sang', '2', 'amelioration');
+  deuxSens('sort', 'cout_brut', '3 + 1 Sang', '4', 'affaiblissement');
+  deuxSens('sort', 'cout_brut', '3 + 1 Sang', '3', 'neutre');
+  deuxSens('sort', 'cout_brut', '10 (–1/NM) + 2 âmes', '8 (–1/NM)', 'amelioration');
+  deuxSens('sort', 'cout_brut', '2 Sang', '0', 'neutre');
+});
 
 test('coût : réduit = amélioration, augmenté = affaiblissement (chakra, Sang, âmes, NM)', () => {
   deuxSens('sort', 'cout_brut', '20', '15', 'amelioration');

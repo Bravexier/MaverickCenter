@@ -231,6 +231,25 @@ test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du t
   assert.match(bdf, /<span class="val">2d6 dégâts<\/span> <span class="nm">\+1d6\/NM<\/span>/);
 });
 
+test('coût en deux colonnes (décision R105) : chaque tableau a « Coût » puis « Coût secondaire » ; chaque sort, sa case de coût secondaire, celle de la base ou « — »', options, () => {
+  const sorts = ouvrirBase().prepare('SELECT magie_id, nom, cout_secondaire FROM sort').all();
+  for (const p of avecSorts) {
+    const id = `magies/${p.slug}`;
+    const siens = sorts.filter((s) => s.magie_id === id);
+    const tableaux = [...p.html.matchAll(/<table class="sorts\b[^"]*">\s*<thead>([\s\S]*?)<\/thead>/g)];
+    assert.ok(tableaux.length >= 5, `${p.slug} : un tableau par NPM`);
+    for (const m of tableaux) {
+      const colonnes = [...m[1].matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((t) => t[1]);
+      assert.deepEqual(colonnes, ['Nom', 'Type', 'Coût', 'Coût secondaire', 'Portée', 'Zone', 'D/S/B'], p.slug);
+    }
+    const cases = [...p.html.matchAll(/<td data-label="Coût secondaire" class="sort__cout-secondaire"[^>]*>([\s\S]*?)<\/td>/g)].map((c) => c[1].replace(/<[^>]+>/g, '').trim());
+    assert.equal(cases.length, siens.length, `${p.slug} : une case par sort`);
+    assert.deepEqual(cases.filter((c) => c !== '—').sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);
+  }
+  const html = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+  assert.ok(html('magie-du-sang').includes('1 Sang') && html('magie-du-feu').includes('20% PV'));
+});
+
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
   for (const { slug, html } of avecSorts) {
     assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, 23, `${slug} : 23 cadres « Effets »`);

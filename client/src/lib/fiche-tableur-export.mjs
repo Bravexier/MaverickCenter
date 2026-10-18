@@ -43,6 +43,7 @@ import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
   MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, casesDesDes, casesDuDon, cle,
 } from './fiche-tableur-cases.mjs';
+import { coutEnUneCase } from './sort-cout.mjs';
 import { modesAuNm, valeurAuNm } from './sort-maitrise.mjs';
 import { ajusterLeTexte, sansLaCoupure, tientDans } from './tableur-mesure.mjs';
 
@@ -1007,7 +1008,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     // une rangée par sort : chaque case sur une ligne (« Amplification\n(IC) » → « Amplification (IC) ») ; la description, ses parties séparées par « · »
     const auNm = (brut, champ) => uneLigne(valeurAuNm(brut ?? null, sort.bonus ?? [], champ, nm) ?? '');
     ecrire(`${col.type}${r}`, auNm(sort.type, 'type'));
-    ecrire(`${col.cout}${r}`, nombreSiEntier(auNm(sort.cout, 'cout')));
+    // la case « Coût » du modèle écrit les deux coûts, comme le classeur (« 3 + 1 Sang » : décision R105, lib/sort-cout.mjs#coutEnUneCase)
+    ecrire(`${col.cout}${r}`, nombreSiEntier(coutEnUneCase(auNm(sort.cout, 'cout'), sort.cout_secondaire ?? null)));
     ecrire(`${col.portee}${r}`, nombreSiEntier(auNm(sort.portee, 'portee') + (acc.portee ? ` ${signe(acc.portee)}` : '')));
     ecrire(`${col.zone}${r}`, nombreSiEntier(auNm(sort.zone, 'zone')));
     const dsb = valeurAuNm(sort.dsb ?? null, sort.bonus ?? [], 'dsb', nm) ?? '';
