@@ -121,8 +121,21 @@ test('pièce d’armure (décision R95) : une pièce que la fiche ne porte plus,
     `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) reste l’armure de la fiche, sans l’amélioration ni l’élément propres à cette pièce : ${fin}`);
 });
 
+test('matériau de bouclier (R96) et accessoire (R97) : la description, puis la fin de la ligne', () => {
+  const m = { nature: 'materiau_bouclier', id: 'ressources/armures#materiau:bois', nom: 'Bois', quantite: 2, matiere: 'Fer' };
+  assert.equal(descriptionDuRetrait(m), 'le matériau de bouclier « Bois » (×2)');
+  assert.equal(ligneDeRetrait(m, '2026-10-17T12:00:00Z'),
+    `[17/10/2026] ${PREFIXE_DE_RETRAIT}le matériau de bouclier « Bois » (×2) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« Fer », son premier matériau). Adaptez la fiche.`);
+  const a = { nature: 'accessoire', id: 'collier', nom: 'Collier du vent', emplacement: 'Collier', effet: '+5 Santé', texte: 'Brille', ecarte: false };
+  assert.equal(descriptionDuRetrait(a), 'l’accessoire « Collier du vent » (Collier, effet « +5 Santé », effet hors table « Brille »)');
+  assert.equal(ligneDeRetrait(a, '2026-10-17T12:00:00Z'),
+    `[17/10/2026] ${PREFIXE_DE_RETRAIT}l’accessoire « Collier du vent » (Collier, effet « +5 Santé », effet hors table « Brille ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`);
+  assert.equal(descriptionDuRetrait({ nature: 'accessoire', id: 'ceinture', nom: null, emplacement: 'Ceinture', effet: null, texte: null, ecarte: true }),
+    'l’accessoire de l’emplacement Ceinture');
+});
+
 test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom', () => {
-  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure']);
+  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire']);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },
     { nature: 'capacite', id: 'k1', nom: 'Don 9' }, { nature: 'specialite', id: 'sp', nom: 'LAME' }, { nature: 'metier', id: 'm', nom: 'Forgeron' },

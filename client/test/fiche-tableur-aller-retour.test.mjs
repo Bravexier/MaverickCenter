@@ -49,9 +49,9 @@ function commeLaPage(fiche) {
   f.maitrises_armes = M.maitrisesValables(regles, f);
   f.armes = M.armesValables(regles, f);
   f.sorts = f.sorts.map((s, i) => ({ ...s, rang: i + 1 }));
-  f.bouclier_materiaux = f.bouclier_materiaux.filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
+  f.bouclier_solidite = M.soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
-  f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id || a.texte);
+  f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id);
   f.ceinture = f.ceinture.filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
   return f;
 }
@@ -198,17 +198,17 @@ function ficheRiche() {
     armure_elementaire_id: regles.armures_elementaires[1].id,
     armure_amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
     armure_parties: [{ emplacement_id: 'torse', solidite: 0 }, { emplacement_id: 'jambe-droit', solidite: 2 }],
-    bouclier_classe_id: regles.boucliers[0].id,
-    bouclier_materiaux: [{ rang: 1, materiau_id: 'ressources/armures#materiau:bois', quantite: 2 }, { rang: 2, materiau_id: 'ressources/armures#materiau:fer', quantite: 1 }],
+    // le bouclier (décision R96) : une forme, une matière, son amélioration, la solidité du moment
+    bouclier_classe_id: regles.boucliers[0].id, bouclier_materiau_id: 'ressources/armures#materiau:fer',
+    bouclier_amelioration_id: trouve('ameliorations', (a) => a.cible === 'bouclier' && a.niveau === 4, 'bouclier 4').id, bouclier_solidite: 2,
+    // six emplacements, un effet de la table chacun (décision R97)
     accessoires: [
-      { emplacement: 'chef', nom: 'Diadème de la reine des neiges, forgé dans la glace éternelle', accessoire_effet_id: 'ressources/accessoires#effet:competence:volonte:2', valeur: 8, maudit: 0, competence_id: 'concentration' },
+      { emplacement: 'chef', accessoire_effet_id: 'ressources/accessoires#effet:competence:volonte:2', valeur: 8, maudit: 0, competence_id: 'concentration' },
       { emplacement: 'collier', accessoire_effet_id: 'ressources/accessoires#effet:attributs:1', maudit: 1 },
-      { emplacement: 'bracelet-1', nom: 'Brassard', accessoire_effet_id: 'ressources/accessoires#effet:attaque:15', maudit: 0, arme_famille_id: 'epees' },
-      { emplacement: 'bracelet-2', texte: 'Brille dans le noir', maudit: 0 },
-      { emplacement: 'bague-1', nom: 'Anneau gravé', accessoire_effet_id: 'ressources/accessoires#effet:attaque:17', texte: 'Gravé de runes', maudit: 0 },
-      { emplacement: 'bague-2', accessoire_effet_id: 'ressources/accessoires#effet:attaque:19', maudit: 0 },
-      { emplacement: 'ceinture', nom: 'Boucle', accessoire_effet_id: 'ressources/accessoires#effet:attributs:6', maudit: 0 },
-      { emplacement: 'autre', accessoire_effet_id: 'ressources/accessoires#effet:defense:1', maudit: 1 },
+      { emplacement: 'bracelet-1', accessoire_effet_id: 'ressources/accessoires#effet:attaque:15', maudit: 0, arme_famille_id: 'epees' },
+      { emplacement: 'bracelet-2', accessoire_effet_id: 'ressources/accessoires#effet:attributs:6', maudit: 0 },
+      { emplacement: 'bague-1', accessoire_effet_id: 'ressources/accessoires#effet:attaque:17', maudit: 0 },
+      { emplacement: 'bague-2', accessoire_effet_id: 'ressources/accessoires#effet:defense:1', maudit: 1 },
     ],
     // la 12e place (AA51) : un nom trop long pour sa case
     inventaire: [...regles.ressources.slice(0, 11).map((r, i) => objet(r.nom, (i % 3) + 1)), objet('Lettre de la mère, scellée à la cire rouge, jamais ouverte depuis la nuit de l’incendie'),
@@ -256,7 +256,7 @@ test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue
   assert.deepEqual([r.fiche.gains_sante, r.fiche.gains_chakra], [f.gains_sante, f.gains_chakra]);
   // des textes que l'import relit, trop longs pour leur case : coupés (« … »), la suite dans la note, recollés à l'import
   const suites = r.cellules[ORDINATEUR.note].split('\n').filter((l) => l.startsWith('Suite de la case ')).map((l) => /^Suite de la case ([A-Z]+\d+) : /.exec(l)[1]);
-  const lues = [ORDINATEUR.armes[0].effet, ORDINATEUR.accessoires.chef, ORDINATEUR.ceinture[2], 'L73', 'AA51', casesDuDon(DONS.entrainement).effet];
+  const lues = [ORDINATEUR.armes[0].effet, ORDINATEUR.accessoires['bracelet-1'], ORDINATEUR.ceinture[2], 'L73', 'AA51', casesDuDon(DONS.entrainement).effet];
   assert.deepEqual(lues.filter((a) => !suites.includes(a)), [], `cases coupées : ${suites.join(', ')}`);
   for (const a of lues) assert.match(r.cellules[a], /…$/, a);
   // la suite de l'effet de l'arme ne porte que ce que l'import relit : ni l'effet du catalogue, ni les lignes « Deux armes », « Non compté »

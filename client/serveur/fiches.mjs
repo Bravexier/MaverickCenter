@@ -5,7 +5,7 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -20,7 +20,8 @@ const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
 
 /**
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
- * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74) et de la migration 0055 (l'armure de la fiche, R95). Quand le
+ * (gains de niveau en deux totaux, R73 ; entraînement, R71 ; durabilité d'une arme, R74), de la migration 0055 (l'armure de la fiche, R95) et de la
+ * migration 0060 (le bouclier forme + matière, R96). Quand le
  * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 :
@@ -30,6 +31,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
     gains_sante: 0, gains_chakra: 0, entrainement: null,
     armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+    bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
   }),
   personnage_arme: Object.freeze({ durabilite: null }),
 });
@@ -44,7 +46,8 @@ function ajouteeSansRien(table, colonne, valeur) {
 /** Message d'un envoi qui porte les deux formes des gains de niveau (progressionAvecGains de src/lib/fiche-format.mjs). */
 export const PAGE_D_AVANT = 'La page vient d’une version précédente du site : rien n’a été enregistré. Rechargez-la, puis saisissez de nouveau ce '
   + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra ; '
-  + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties).';
+  + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
+  + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -286,16 +289,21 @@ function verifierForme(db, entree, problemes) {
  * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
  * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire. De même une liste `armures` (une armure par emplacement, avant la
  * migration 0055) donne l'armure de la fiche, chaque autre pièce une ligne datée dans les notes (décision R95) ; envoyée avec les nouvelles clés de
- * l'armure (armuresAvecArmure) : refus 409.
+ * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
+ * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  */
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
-  if (progressionAvecGains(recue) || armuresAvecArmure(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue)) throw new ErreurFiche(409, PAGE_D_AVANT);
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
   // les notes enregistrées : une ligne de conversion s'y ajoute quand l'envoi (partiel) n'a pas les siennes ; la version, contrôlée plus bas, garantit
   // qu'elles n'ont pas changé depuis
   const notes = id === null ? null : db.prepare('SELECT notes FROM personnage WHERE id = ?').get(id)?.notes ?? null;
-  const entree = sansPartiesRetirees(recue, { instant: instant(maintenant), noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement') }, notes });
+  const libelle = db.prepare('SELECT libelle FROM accessoire_effet WHERE id = ?');
+  const entree = sansPartiesRetirees(recue, {
+    instant: instant(maintenant), notes,
+    noms: { armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null },
+  });
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 

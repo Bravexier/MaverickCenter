@@ -98,6 +98,8 @@ export const RAISONS = Object.freeze({
   deux_armes: 'avec deux armes',
   bouclier: 'avec un bouclier',
   portee: 'armes visées non écrites',
+  // décision R99 : avec un élément, les bonus du matériau et de l'amélioration de l'arme sont remplacés par les siens (lib/fiche-moteur.mjs#degatsDArme)
+  element: 'remplacé par l’élément',
 });
 
 /** La valeur d'un bonus lu pour un niveau de classe (une formule « base + pas / N niveaux » s'y calcule). */

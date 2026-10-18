@@ -20,11 +20,11 @@ restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie 
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
 2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) **et maîtrises
    d'armes** et la **ceinture** ; les sorts, à côté les **dons débloqués** (et l'**entraînement**).
-3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure et les accessoires, à côté l'initiative et les vitesses, les
-   résistances et faiblesses, le bouclier.
+3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure (avec la **défense** totale et les **dégâts reçus**, R98),
+   les accessoires et, juste en dessous, l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté l'initiative et les vitesses,
+   les résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
-   choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies) · Inventaire (sac, bourse) · Notes et
-   événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
+   choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies) · Notes et événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
    les panneaux se suivent.
 
 La page prend plus de largeur que les autres (100rem au plus) ; sur un écran étroit, les blocs passent l'un sous l'autre. Le panneau d'un menu déroulant
@@ -62,14 +62,17 @@ abandonne.
   perdu) est marquée en rouge, la raison en infobulle. Un bâton se reconnaît à son nom (« Bâton magique Feu, niveau 2 »,
   `nomDeBaton`) : il n'est pas lié au catalogue dans la fiche (pas de clé vers `baton_magique`) ; une magie renommée sur le site de dev fait de ses
   bâtons des objets ordinaires (maximum 3 au lieu de 1).
-- **Sac** (onglet Inventaire ; décision R88) : **autant d'emplacements que la Force en donne** — une colonne = 12 lignes (la grille de la fiche auto), 24
+- **Sac** (bloc Inventaire, sous les accessoires ; décision R88) : **autant d'emplacements que la Force en donne** — une colonne = 12 lignes (la grille de la fiche auto), 24
   à Force 1, 28, 32, 36, puis 48 (« tout l'inventaire ») à partir de Force 5 (`emplacementsSelonLaForce`, constantes `inventaire.*` de `regle_constante`,
   migration `0050-inventaire-ceinture`) ; la Force est la valeur affichée (base, magie innée, accessoire ; les croix n'y sont pas) ; **avec le don
   « Organisé »**, le sac de Force 5 quelle que soit la Force (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » :
   `donDuSacSansForce`, `regles.sac.force_avec_le_don`), dit à côté du compte. **Une ligne = un emplacement**, chacune [objet][quantité], la quantité un
   nombre saisi **de 1 à 99** (`quantiteDuSac`, `regles.sac.quantite_max`), qui ne se voit qu'au survol de la ligne ou au focus quand elle vaut 1 ; le
   tableau montre autant de lignes que d'emplacements : les objets, l'emplacement libre suivant (y écrire crée la ligne ; une ligne dont le nom a été
-  effacé en tient lieu), puis les emplacements vides. Chaque ligne propose le catalogue (ressources et bâtons magiques) ou une saisie libre. Un objet
+  effacé en tient lieu), puis les emplacements vides. Chaque ligne propose le catalogue (ressources et bâtons magiques : `catalogueDuSac`) dans une liste
+  qui se filtre à la frappe **à partir de deux caractères** (demande du propriétaire du 2026-10-17 : « un véritable autocomplete ») : sans accents ni casse,
+  les noms qui commencent par la saisie d'abord, puis ceux dont un mot commence par elle, puis les autres, douze au plus (`propositionsDuCatalogue`) ; ↑ ↓
+  pour la parcourir, Entrée pour choisir, Échap pour la fermer (combobox ARIA, `src/scripts/fiche.mjs#autocompletion`) ; la saisie libre reste possible. Un objet
   rendu par la ceinture remplit sa ligne jusqu'à 99, le reste sur une ligne nouvelle. Au-delà de la place (une Force qui baisse, un import), les lignes
   restent, signalées en rouge (`inventaireDe`) : rien n'est retiré. Ni le sac trop plein ni une ceinture au-delà du maximum ne sont des règles de
   `v_personnage_controle` : la page les signale seule.
@@ -208,7 +211,11 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
   débloqués (`donsAcquis`) et dons de la race (`donsDeRace`) ; résistances et faiblesses (`resistancesDe`).
-- **Accessoires** (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54) : ce que chaque effet change est dans la table
+- **Accessoires** (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54 ; **six emplacements**, Chef, Collier, Bracelet 1 et 2,
+  Bague 1 et 2, chacun un effet de la table, ni nom ni effet hors table : décision R97) : un tableau Emplacement, Effet, Valeur, Maudit ; la liste des effets
+  rangée (`effetsDAccessoireProposes` : par propriété dans l'ordre de la page Accessoires, puis par cible et valeur croissante, sans les lignes « MALÉDICTION »
+  des tableaux) ; une « Compétence X » est une entrée par caractéristique, la **valeur** tirée (de 1 à 20, la seule saisie) en donne le niveau
+  (`effetDeCompetence`) ; ce que chaque effet change est dans la table
   `accessoire_effet_cible` (migration `0037`, découpage `lib/accessoire-champs.mjs`, comme les armes) ; `effetsDesAccessoires` le lit pour les accessoires
   portés, signé par la malédiction (effet contraire). Caractéristique : +1, sans dépasser 4 ni la borne de la race ; « Compétence X » : la valeur tirée en
   Acquis d'une compétence de cette caractéristique choisie sous l'effet (`personnage_accessoire.competence_id`), rognée au plafond après le métier ;
@@ -217,6 +224,21 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   seuls sorts d'attaque, `sort_type`) ; point de maîtrise (`quotaDeMaitrise`) ; tour de Mode Hyper ; un cran de résistance par cible (`resistancesDe`).
   Un choix qui manque est dans le tiroir (`choixEnAttente`, nature `accessoire`). Les effets « (Action) » et à usage compté (`accessoire_effet.usage`)
   sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
+- **Bouclier** (décision R96 : « Forme + matière », comme l'onglet Boucliers) : la forme, la matière et l'amélioration (+1 à +5) ; le bouclier de la liste
+  donne l'AP et l'AM (plus l'AP du niveau d'amélioration, R76) et le poids (R92 : tuile dans la couleur de l'onglet, en rouge quand la Force est sous son
+  minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
+  au maximum (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la
+  liste) ; un bouclier cassé garde son AP et son AM (rien ne dit ce qu'il perd : question Q14). Une forme et une matière que la liste n'écrit pas sont
+  signalées (règle `bouclier_inconnu`).
+- **Défense et dégâts reçus** (décision R98), en tête du bloc Armure : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
+  classes magiques, accessoires, armure portée et son amélioration ; avec un élément, l'armure élémentaire et son amélioration à la place : R99), le détail en
+  infobulle, le bouclier à part (« pour qu'ils soient comptés, ça implique une “Parade partielle” ») ; puis les **dégâts reçus** (`degatsRecus`) : dégâts
+  entrants, type (Estoc, Taille, Frappe, ou l'une des quatorze magies), « Dégâts réduits » (esquive ou parade partielle, ÷ 2 après l'armure), « Au
+  bouclier », « Don ÷ 2 » (l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher : la fiche ne lit pas ces dons) ; la formule du guide
+  (armure, défense partielle, don, palier de résistance à la magie, arrondi à l'inférieur), l'armure portée appliquant sa résistance (AP × 2) ou sa
+  faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec un élément : R99) ; les étapes en infobulle, rien d'enregistré.
+- **Arme à pièce élémentaire** (décision R99) : les dés restent ; les bonus de dégâts du matériau et de l'amélioration sont remplacés par ceux de
+  l'élément et de son amélioration (`degatsDArme` : ils passent dans « Non comptés », « remplacé par l'élément »).
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) : elles signalent, elles n'empêchent jamais d'enregistrer, et toute fiche est contrôlée, même inachevée (une fiche n'a
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
@@ -287,7 +309,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   accessoires (R54) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
   sort ; paliers de résistance et leur effet tels que la base les écrit (R70). **Restent vides** les cases que la fiche ne calcule pas : AP et AM de la
-  grille de l'armure, AP, AM et solidité du bouclier. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
+  grille de l'armure. Le **bouclier** (R96) : la forme en AA26, la matière et l'amélioration en AF26 (« Bois · niv. 2 — +4 AP + matériaux »), sa classe
+  en AK26, son AP et son AM (calculés) en AN26 et AS26, sa solidité du moment « N / M » en AX26, relue. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
   « N / M », la même sur les six pour une armure à solidité unifiée. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
   l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
   deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte le
@@ -295,15 +318,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre et
-  du MJ (R26), accessoires de ceinture et « autre », dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  du MJ (R26), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
   que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
   `lib/tableur-ecriture.mjs` (le modèle, ses styles gardés, les valeurs, les fonds, la taille des polices réduites, le portrait).
-- **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, son nom en première ligne, puis l'effet sur
-  une ligne, « <libellé>[ = valeur][ → compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas :
-  vide, comme « Attaque : », ou partagé par plusieurs propriétés, comme « MALÉDICTION »), « Effet : <texte> » pour l'effet hors table, « Maudit »
-  sur sa ligne ; l'armure sur une ligne (AQ21, R95), « <armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N (effet) », avec les
+- **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, l'effet sur une ligne, « <libellé>[ = valeur][ →
+  compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas : vide, comme « Attaque : », ou partagé par
+  plusieurs propriétés, comme « MALÉDICTION »), « Maudit » sur sa ligne (un classeur d'avant R97 : son nom, son « Effet : <texte> » hors table, et les
+  « Accessoire Ceinture : … », « Accessoire Autre : … » de la note vont dans `nonRepris`) ; l'armure sur une ligne (AQ21, R95), « <armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N (effet) », avec les
   statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis sans l'effet des améliorations ; « Nom Armure » (AD22) : l'armure. Une case d'une seule rangée (description et
   colonnes d'un sort, dons de base, de race et du métier) écrit ses parties sur une ligne, séparées par « · ». L'import lit aussi l'ancienne
   écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … · Amélioration : niv. 1 — … » ; parties sur plusieurs lignes) ; d'un
@@ -375,7 +398,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   Un nombre : celui qu'écrit la case quand elle montre « % » (« 20% » = 20) ; un décimal où la fiche veut un entier est arrondi vers le bas (une
   remarque). **Rien ne se perd sans être dit** (`nonRepris`, une ligne par information avec sa valeur) : nom introuvable ou ambigu, ce que la chaîne
   de la page retire, la case « Ambidextrie » de la fiche auto (l'attaque à deux armes est calculée, R46) ; dans le modèle ordinateur, les saisies
-  sans place sur le site (grille AP/AM de l'armure, AP, AM et solidité du bouclier, sac de l'inventaire en AA38), une solidité d'arme illisible,
+  sans place sur le site (grille AP/AM de l'armure, sac de l'inventaire en AA38), le second matériau d'un bouclier d'avant R96, une solidité de bouclier
+  sans bouclier ou illisible, une solidité d'arme illisible,
   sans arme reconnue ou pour une arme sans solidité (arme de monstre), une ligne de « Bonus/ Malus » (AQ21) qui ne nomme pas d'armure, une pièce d'armure au-delà de la première (R95), la solidité d'une partie
   de l'armure illisible ou sans armure reconnue, une
   ligne de note en double (la première compte), une image hors de A1 ou une seconde image. **Relus** aussi : l'**entraînement** (L42, R71), dans les
@@ -421,7 +445,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   un texte libre de la fiche (R71) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).
 - **Questions ouvertes** : « Vague déferlante » (Corruption et Arcane) reste ambiguë dans les lignes de la note d'un Potentiel Illimité qui aurait les
-  deux ; maximum de solidité d'une arme élémentaire (Q12) et « Vieille Branche » du Mage Vert (Q13) : [`sql/a-valider.md`](sql/a-valider.md).
+  deux ; maximum de solidité d'une arme élémentaire (Q12), « Vieille Branche » du Mage Vert (Q13) et ce que perd une armure ou un bouclier cassé (Q14) :
+  [`sql/a-valider.md`](sql/a-valider.md).
 
 ## La page `/personnages/`
 
@@ -489,7 +514,7 @@ pas, et la note datée est le seul signal.
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |
 | `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) ; jamais sur ARME DE MONSTRES (R45, règle `maitrise_arme_exclue`) |
-| `personnage_arme`, `personnage_armure_partie`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
+| `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
@@ -507,7 +532,7 @@ pas, et la note datée est le seul signal.
   hors des options du métier ou rang à choix sans choix (R33), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
   plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM de niveau au plus niveau global − 1 sur un sort et au plus ceux gagnés, les autres d'un livre ou du MJ, R24, R26), matériaux du bouclier, améliorations, valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM de niveau au plus niveau global − 1 sur un sort et au plus ceux gagnés, les autres d'un livre ou du MJ, R24, R26), bouclier (forme et matière : R96), améliorations, valeur d'un
   accessoire ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
   Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.

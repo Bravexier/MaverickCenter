@@ -51,12 +51,13 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
     .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
   assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
-    '[situation]', 'posture', 'armure', 'accessoires', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'inventaire', 'jeu', 'controles']);
+    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'jeu', 'controles']);
   assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
   assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
   // zone IV : des onglets (components/Onglets.astro), le compteur des choix et celui du contrôle
   const onglets = [...fiche.matchAll(/<a class="onglet[^"]*" id="onglet-([a-z]+)" href="#etape-([a-z]+)"/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['inventaire', 'inventaire'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  // l'inventaire est sous les accessoires (zone III), plus dans un onglet (demande du propriétaire du 2026-10-17)
+  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['jeu', 'jeu'], ['controles', 'controles']]);
   assert.match(fiche, /<div class="parametres" data-onglets="Paramètres et suivi">/);
   assert.match(fiche, /id="choix-compte" hidden><\/span>/);
   assert.match(fiche, /id="controles-compte" hidden><\/span>/);
@@ -114,8 +115,10 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('mouvement'), /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage');
   assert.match(bloc('resistances'), /<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
   assert.match(bloc('resistances'), /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
-  // une armure complète et la solidité de ses parties (décision R95), remplies par le script comme le bouclier
+  // une armure complète et la solidité de ses parties (décision R95), remplies par le script comme le bouclier ; la défense totale et les dégâts reçus
+  // en tête (décision R98)
   assert.match(bloc('armure'), /<div id="armures" class="equipement"><\/div>/);
+  assert.ok(bloc('armure').indexOf('<div id="defense" class="defense"></div>') >= 0 && bloc('armure').indexOf('id="defense"') < bloc('armure').indexOf('id="armures"'), 'la défense en tête de l’armure');
   assert.match(bloc('bouclier'), /<div id="bouclier" class="equipement"><\/div>/);
   // IV. paramètres et suivi
   const progression = bloc('progression');
@@ -132,7 +135,9 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
     assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);
   }
+  // l'inventaire, juste sous les accessoires (zone III) : le sac puis la bourse
   const inventaire = bloc('inventaire');
+  assert.ok(html.indexOf('id="etape-inventaire"') > html.indexOf('id="etape-accessoires"') && html.indexOf('id="etape-inventaire"') < html.indexOf('id="zone-parametres"'));
   assert.ok(inventaire.indexOf('data-champ="bourse_pp"') > inventaire.indexOf('id="inventaire"'), 'la bourse après le sac');
   for (const champ of ['bourse_pp', 'bourse_ro', 'bourse_rf']) assert.match(inventaire, new RegExp(`data-champ="${champ}"`), champ);
   const jeu = bloc('jeu');

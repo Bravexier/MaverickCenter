@@ -215,23 +215,20 @@ export const AUTO = Object.freeze({
   image: 'A1',
 });
 
-/** Modèle ordinateur : le texte des cases de solidité (armes : AK17, AX17 ; bouclier : AX26), « / », qui n'est pas une valeur. */
+/** Modèle ordinateur : le texte des cases de solidité (armes : AK17, AX17 ; bouclier : AX26, relue depuis la décision R96), « / », qui n'est pas une valeur. */
 export const MODELE_DE_LA_SOLIDITE = '/';
 
 /**
  * Modèle ordinateur : les zones de saisie dont le site ne garde rien — l'AP et l'AM de chaque partie de l'armure (grille AI22:AN23, colonnes de
- * ORDINATEUR.armure.colonnes, lignes ap et am de ORDINATEUR.armure.lignes) et l'AP, l'AM et la solidité du bouclier : la fiche ne les calcule pas (la
- * solidité des armes a sa place depuis la décision R74 : ORDINATEUR.armes[].solidite ; celle des parties de l'armure, la ligne « Sol. » de la grille,
- * depuis la décision R95). `modele` : le texte du modèle (« / » : MODELE_DE_LA_SOLIDITE), qui n'est pas une valeur ; une autre valeur part dans les
- * notes à l'import (lib/fiche-tableur-import.mjs). Grille : `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am') ; les autres : `quoi`.
+ * ORDINATEUR.armure.colonnes, lignes ap et am de ORDINATEUR.armure.lignes) : la fiche ne les calcule pas (la solidité des armes a sa place depuis la
+ * décision R74 : ORDINATEUR.armes[].solidite ; celle des parties de l'armure, la ligne « Sol. » de la grille, depuis la décision R95 ; l'AP et l'AM du
+ * bouclier sont calculés et sa solidité relue depuis la décision R96). `modele` : le texte du modèle, qui n'est pas une valeur ; une autre valeur part
+ * dans les notes à l'import (lib/fiche-tableur-import.mjs). `emplacement` (id de armure_emplacement) et `valeur` ('ap', 'am').
  */
 export const SAISIES_SANS_PLACE = Object.freeze([
   ...Object.entries(ORDINATEUR.armure.colonnes).flatMap(([emplacement, colonne]) => Object.entries(ORDINATEUR.armure.lignes)
     .filter(([valeur]) => valeur !== 'solidite')
     .map(([valeur, ligne]) => ({ adresse: `${colonne}${ligne}`, emplacement, valeur, modele: '' }))),
-  { adresse: ORDINATEUR.bouclier.ap, quoi: 'Bouclier, armure physique', modele: '' },
-  { adresse: ORDINATEUR.bouclier.am, quoi: 'Bouclier, armure magique', modele: '' },
-  { adresse: ORDINATEUR.bouclier.solidite, quoi: 'Bouclier, solidité', modele: MODELE_DE_LA_SOLIDITE },
 ].map(Object.freeze));
 
 /** Modèle ordinateur : le titre de l'inventaire (AA38), où le joueur écrit son sac à la suite (« INVENTAIRE | SAC = Sac à dos ») : le site n'en a pas. */

@@ -987,3 +987,70 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .accessoire-effet { font-size: var(--fs-sm); color: var(--good, #2e7d32); }
 .accessoire-effet:empty { display: none; }
 .accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
+
+/* ----------------------------------------------------------------- défense et dégâts reçus (décision R98) : l'AP et l'AM totaux en deux tuiles (le
+   détail en infobulle), le bouclier à part, puis une ligne de calcul : dégâts entrants, type, « Dégâts réduits » (et « Au bouclier »), le résultat */
+.defense { display: grid; gap: 0.4rem; margin-bottom: 0.6rem; }
+.defense__tuiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.defense__tuile, .bouclier__tuile {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.3rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--etape-doux);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  cursor: help;
+}
+.defense__tuile small, .bouclier__tuile small { color: var(--muted); font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.defense__bouclier { margin: 0; }
+.defense__bouclier[hidden] { display: none; }
+.defense__degats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; padding-top: 0.4rem; border-top: 1px dashed var(--etape-ligne); }
+.defense__titre { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.fiche .defense__degats input[type='number'] { width: 5.5rem; }
+.defense__degats label[hidden] { display: none; }
+.defense__recus { margin-left: auto; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
+
+/* le bouclier (décision R96) : forme, matière, amélioration ; AP, AM et poids en tuiles (le poids dans la couleur de sa case de l'onglet, R92 ; trop
+   lourd pour la Force : en rouge), puis la solidité du moment */
+.bouclier__tuiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin: 0.5rem 0; padding: 0; list-style: none; }
+.bouclier__tuiles[hidden] { display: none; }
+.bouclier__tuile { font-size: 1.1rem; }
+.bouclier__tuile[data-poids] { background: var(--c); color: var(--texte-sur-c); border-color: var(--c); }
+.bouclier__tuile[data-poids] small { color: inherit; opacity: 0.8; }
+.bouclier__tuile[data-trop] { outline: 2px solid var(--danger); outline-offset: 1px; }
+
+/* la saisie d'un objet du sac et sa liste qui se filtre (demande du propriétaire : à partir de deux caractères) : la liste sous le champ, par-dessus la
+   suite du tableau ; l'option parcourue au clavier surlignée */
+.autocompletion { position: relative; display: block; }
+.fiche .autocompletion input { width: 100%; max-width: none; }
+.autocompletion__liste {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  max-height: 15rem;
+  margin: 0.1rem 0 0;
+  padding: 0.2rem 0;
+  overflow-y: auto;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  list-style: none;
+}
+.autocompletion__liste[hidden] { display: none; }
+.autocompletion__liste li { padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
+.autocompletion__liste li:hover, .autocompletion__liste li[aria-selected='true'] { background: var(--etape-doux); color: var(--text); }
+/* l'inventaire, sous les accessoires (zone III) : le sac puis la bourse ; la liste qui se filtre déborde du tableau qui défile */
+.inventaire { display: grid; gap: 0.6rem; }
+#etape-inventaire .fiche-defile { overflow: visible; }
+/* sans défilement, le tableau du sac tient dans sa colonne, même sur un téléphone : le nom prend la place que laissent la quantité et le bouton */
+#inventaire { width: 100%; table-layout: fixed; }
+#inventaire th:nth-child(2) { width: 5.5rem; }
+#inventaire th:nth-child(3) { width: 2.5rem; }

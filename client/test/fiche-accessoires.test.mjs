@@ -24,7 +24,7 @@ after(() => rmSync(racine, { recursive: true, force: true }));
 const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
 
 const E = (id) => `ressources/accessoires#effet:${id}`;
-const porte = (emplacement, effet, autres = {}) => ({ emplacement, nom: null, accessoire_effet_id: E(effet), valeur: null, texte: null, maudit: 0, ...autres });
+const porte = (emplacement, effet, autres = {}) => ({ emplacement, accessoire_effet_id: E(effet), valeur: null, maudit: 0, ...autres });
 
 /** Humain central, Feu inné (Social), Guerrier ; Force 4, le reste à 2. */
 function fiche(accessoires = [], surcharge = {}) {
@@ -73,7 +73,7 @@ test('compétence : la valeur tirée en Acquis de la compétence choisie, de la 
 
 test('attributs : santé, initiative, vitesse, AP et AM de base, 4ᵉ barre ; maudit, en moins', () => {
   const a0 = attributsDe(regles, fiche());
-  const a = attributsDe(regles, fiche([porte('chef', 'attributs:7'), porte('collier', 'attributs:9'), porte('bague-1', 'defense:14'), porte('bague-2', 'defense:7'), porte('ceinture', 'attributs:5', { maudit: 1 })]));
+  const a = attributsDe(regles, fiche([porte('chef', 'attributs:7'), porte('collier', 'attributs:9'), porte('bague-1', 'defense:14'), porte('bague-2', 'defense:7'), porte('bracelet-1', 'attributs:5', { maudit: 1 })]));
   assert.equal(a.initiativeBonus, a0.initiativeBonus + 5);
   assert.equal(a.vitesseSol, a0.vitesseSol + 1);
   assert.deepEqual([a.ap - a0.ap, a.am - a0.am], [5, 5]);
@@ -109,9 +109,10 @@ test('maîtrise d’arme, Mode Hyper, résistances (maudit : vulnérabilité)', 
 });
 
 test('rappel sous les dons de race : les effets « (Action) » et à usage compté, pas les autres', () => {
-  const f = fiche([porte('chef', 'autre:13', { nom: 'Collier de la marée' }), porte('collier', 'autre:16'), porte('bague-1', 'attaque:1')]);
+  // un accessoire n'a plus de nom donné (décision R97) : son emplacement le nomme
+  const f = fiche([porte('chef', 'autre:13'), porte('collier', 'autre:16'), porte('bague-1', 'attaque:1')]);
   assert.deepEqual(actionsDesAccessoires(regles, f), [
-    { nom: 'Collier de la marée', type: 'action', texte: 'Permet de respirer sous l\'eau pendant 1 heure (1 semaine de recharge)', maudit: false },
+    { nom: 'Accessoire : Chef', type: 'action', texte: 'Permet de respirer sous l\'eau pendant 1 heure (1 semaine de recharge)', maudit: false },
     { nom: 'Accessoire : Collier', type: null, texte: 'Rend Invisible pendant un tour (1 fois par combat)', maudit: false },
   ]);
 });

@@ -35,6 +35,8 @@ import {
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
+  bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, valeurDeCompetenceBornee,
+  propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -1271,6 +1273,81 @@ function texteDEffet(e) {
 }
 
 
+let numeroDeListe = 0;
+/**
+ * Une saisie et sa liste de propositions qui se filtre à la frappe (demande du propriétaire du 2026-10-17 : « un véritable autocomplete (menu déroulant
+ * qui se filtre sur la saisie actuelle et qui ne commence qu'à partir de 2 caractères saisis) ») : une liste déroulante ARIA (combobox : aria-expanded,
+ * aria-activedescendant), ↑ ↓ pour la parcourir, Entrée pour choisir, Échap pour la fermer ; un clic (ou un appui) choisit ; la saisie libre reste
+ * possible. `propositions(valeur)` rend les noms à montrer (propositionsDuCatalogue : rien sous deux caractères) ; `choisir(nom)` reçoit le nom choisi.
+ * Rend l'enveloppe (le champ et sa liste).
+ */
+function autocompletion(champ, propositions, choisir) {
+  const idListe = `propositions-${++numeroDeListe}`;
+  const liste = el('ul', { class: 'autocompletion__liste', role: 'listbox', id: idListe, hidden: true, 'aria-label': 'Propositions' });
+  Object.entries({ role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', 'aria-controls': idListe, autocomplete: 'off' })
+    .forEach(([k, v]) => champ.setAttribute(k, v));
+  let noms = [];
+  let actif = -1;
+  let appui = null;
+  const fermer = () => {
+    liste.hidden = true;
+    champ.setAttribute('aria-expanded', 'false');
+    champ.removeAttribute('aria-activedescendant');
+    actif = -1;
+  };
+  const surligner = (i) => {
+    actif = i;
+    [...liste.children].forEach((li, k) => li.setAttribute('aria-selected', String(k === i)));
+    const li = liste.children[i];
+    if (li) {
+      champ.setAttribute('aria-activedescendant', li.id);
+      li.scrollIntoView({ block: 'nearest' });
+    }
+  };
+  const prendre = (i) => {
+    const n = noms[i];
+    fermer();
+    if (n !== undefined) choisir(n);
+  };
+  const montrer = () => {
+    noms = propositions(champ.value);
+    // rien à proposer, ou le seul nom proposé est déjà écrit : la liste se ferme
+    if (!noms.length || (noms.length === 1 && noms[0] === champ.value)) return fermer();
+    liste.replaceChildren(...noms.map((n, i) => el('li', {
+      id: `${idListe}-${i}`, role: 'option', 'aria-selected': 'false',
+      // pointerdown : le champ garde le focus (pas de blur qui fermerait la liste avant le choix) ; le choix au relâcher sur la même ligne, sans
+      // déplacement : au toucher, le doigt qui fait défiler la liste ne choisit rien (le défilement annule le pointeur : pointercancel)
+      onpointerdown: (ev) => { ev.preventDefault(); appui = { i, x: ev.clientX, y: ev.clientY }; },
+      onpointerup: (ev) => {
+        const a = appui;
+        appui = null;
+        if (a?.i === i && Math.hypot(ev.clientX - a.x, ev.clientY - a.y) < 10) prendre(i);
+      },
+      onpointercancel: () => { appui = null; },
+      // un clic sans pointeur (lecteur d'écran, clavier) choisit aussi
+      onclick: (ev) => { if (ev.detail === 0) prendre(i); },
+    }, n)));
+    liste.hidden = false;
+    champ.setAttribute('aria-expanded', 'true');
+    actif = -1;
+  };
+  champ.addEventListener('input', (ev) => { if (!ev.isComposing) montrer(); });
+  champ.addEventListener('keydown', (ev) => {
+    if (liste.hidden) {
+      if (ev.key === 'ArrowDown') { montrer(); if (!liste.hidden) ev.preventDefault(); }
+      return;
+    }
+    if (ev.key === 'ArrowDown') surligner((actif + 1) % noms.length);
+    else if (ev.key === 'ArrowUp') surligner(actif <= 0 ? noms.length - 1 : actif - 1);
+    else if (ev.key === 'Enter' && actif >= 0) prendre(actif);
+    else if (ev.key === 'Escape') fermer();
+    else return;
+    ev.preventDefault();
+  });
+  champ.addEventListener('blur', fermer);
+  return el('span', { class: 'autocompletion' }, champ, liste);
+}
+
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
@@ -1424,63 +1501,152 @@ function construireEquipement() {
       parties);
   });
 
+  // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers) : sa forme, sa matière et son amélioration (bouclierApresChoix : une autre
+  // forme ou matière est neuve) ; puis son AP et son AM (comptés en parade partielle : construireDefense), son poids (Force minimum) et sa solidité du
+  // moment, un curseur de 0 au maximum (la matière et les crans de l'amélioration), « Cassé » à 0 ; clic droit ou Entrée : saisir le nombre
   reconstruire($('bouclier'), 'fixe', () => {
-    const badge = el('span', { class: 'budget' });
+    const choisir = (champ) => (v) => {
+      Object.assign(fiche, bouclierApresChoix(regles, fiche, champ, v));
+      changer();
+    };
+    const forme = selecteur(() => fiche.bouclier_classe_id, regles.boucliers.map((b) => option(b.id, `${b.nom} (classe ${b.classe})`)), choisir('bouclier_classe_id'),
+      { vide: 'Aucun', etiquette: 'Bouclier : forme' });
+    const matiere = selecteur(() => fiche.bouclier_materiau_id, regles.materiaux_bouclier.map((m) => option(m.id, m.nom)), choisir('bouclier_materiau_id'),
+      { etiquette: 'Bouclier : matière' });
+    const amelioration = selecteur(() => fiche.bouclier_amelioration_id, ameliorations('bouclier'), choisir('bouclier_amelioration_id'), { etiquette: 'Bouclier : amélioration' });
+    // trois tuiles posées une fois, focalisables (leur infobulle se lit aussi au clavier, comme celles de la défense)
+    const tuile = (nom) => {
+      const texte = el('strong', {});
+      return { texte, li: el('li', { class: 'bouclier__tuile', tabindex: '0' }, el('small', {}, nom), texte) };
+    };
+    const [tuileAp, tuileAm, tuilePoids] = [tuile('AP'), tuile('AM'), tuile('Poids')];
+    const tuiles = el('ul', { class: 'bouclier__tuiles', 'aria-label': 'Ce que donne le bouclier' }, tuileAp.li, tuileAm.li, tuilePoids.li);
+    const labelMatiere = el('label', { class: 'fiche-champ' }, el('span', {}, 'Matière'), matiere);
+    const curseur = el('input', {
+      type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': 'Bouclier : solidité',
+      oninput: (ev) => {
+        fiche.bouclier_solidite = soliditeDuBouclierAEcrire(regles, fiche, ev.target.value);
+        changer();
+      },
+    });
+    const valeur = el('output', { class: 'curseur__valeur' });
+    const soliditeLigne = el('div', { class: 'objet__solidite' }, el('span', { class: 'objet__solidite-nom' }, 'Solidité'), curseur, valeur);
     synchro(() => {
-      const bouclier = trouver(regles.boucliers, fiche.bouclier_classe_id);
-      const quantites = (fiche.bouclier_materiaux ?? []).reduce((s, m) => s + entier(m.quantite), 0);
-      etatBudget(badge, quantites, bouclier?.classe ?? 0, 'Matériaux', false);
+      const b = bouclierDe(regles, fiche);
+      matiere.disabled = !b;
+      amelioration.disabled = !b?.matiere;
+      // une forme sans sa matière : la matière est à choisir (règle bouclier_matiere_manquante)
+      labelMatiere.toggleAttribute('data-a-choisir', Boolean(b && !b.matiere));
+      tuiles.hidden = !b?.bouclier;
+      if (b?.bouclier) {
+        const ecrire = (t, texte) => { if (t.texte.textContent !== texte) t.texte.textContent = texte; };
+        ecrire(tuileAp, String(b.ap));
+        infobulle(tuileAp.li, [`${b.nom} : ${entier(b.bouclier.ap)} AP`, ...(b.amelioration?.bonus_ap ? [`Amélioration niveau ${b.amelioration.niveau} : +${b.amelioration.bonus_ap} AP`] : []),
+          'Comptés en parade partielle (guide « Fiche de personnage : Armure/Défense/Bouclier »)'].join('\n'));
+        ecrire(tuileAm, String(b.am));
+        infobulle(tuileAm.li, 'Comptés en parade partielle');
+        tuilePoids.li.hidden = !b.poids;
+        if (b.poids) {
+          ecrire(tuilePoids, b.poids.nom);
+          infobulle(tuilePoids.li, `Requiert ${b.poids.force_min} Force minimum${b.forceManquante ? ` : Force ${b.force}, trop lourd` : ''}`);
+          tuilePoids.li.style.setProperty('--c', b.poids.couleur);
+          tuilePoids.li.style.setProperty('--texte-sur-c', b.poids.texte);
+          tuilePoids.li.dataset.poids = '';
+          tuilePoids.li.toggleAttribute('data-trop', b.forceManquante);
+        }
+      }
+      soliditeLigne.hidden = !b?.solidite;
+      if (b?.solidite) {
+        const sol = b.solidite;
+        curseur.max = String(sol.max);
+        poser(curseur, sol.actuelle);
+        valeur.textContent = sol.cassee ? 'Cassé' : `${sol.actuelle} / ${sol.max}`;
+        soliditeLigne.toggleAttribute('data-cassee', sol.cassee);
+        soliditeLigne.title = [`Solidité : ${sol.actuelle} / ${sol.max} cran${sol.max > 1 ? 's' : ''}${sol.cassee ? ' : le bouclier est cassé' : ''}`,
+          ...sol.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}`)), 'Clic droit ou Entrée sur le curseur : saisir le nombre.'].join('\n');
+      }
     });
-    const lignes = [1, 2, 3].map((rang) => {
-      const l = () => ligneDe('bouclier_materiaux', (x) => x.rang === rang);
-      const quantite = el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Matériau ${rang} : quantité`, oninput: (ev) => { const x = l(); if (x) { x.quantite = entier(ev.target.value, 1); changer(); } } });
-      synchro(() => { poser(quantite, l()?.quantite ?? ''); quantite.disabled = !l(); });
-      return el('div', { class: 'fiche-champs fiche-champs--paire' },
-        el('label', { class: 'fiche-champ' }, el('span', {}, `Matériau ${rang}`), selecteur(() => l()?.materiau_id, regles.materiaux_bouclier.map((m) => option(m.id, `${m.nom}${stats(m) ? ` (${stats(m)})` : ''}`)),
-          (v) => {
-            if (!v) retirer('bouclier_materiaux', (x) => x.rang === rang);
-            else ligne('bouclier_materiaux', (x) => x.rang === rang, () => ({ rang, materiau_id: v, quantite: 1 })).materiau_id = v;
-            changer();
-          }, { etiquette: `Matériau ${rang}` })),
-        el('label', { class: 'fiche-champ' }, el('span', {}, 'Quantité'), quantite));
-    });
-    return el('div', { class: 'objet' }, el('div', { class: 'fiche-entete-bloc' }, el('h4', {}, 'Bouclier et matériaux'), badge),
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Bouclier'), selecteur(() => fiche.bouclier_classe_id, regles.boucliers.map((b) => option(b.id, `${b.nom} (classe ${b.classe})`)), (v) => { fiche.bouclier_classe_id = v; changer(); }, { vide: 'Aucun', etiquette: 'Bouclier' })),
-      lignes);
+    return el('div', { class: 'objet' },
+      el('div', { class: 'fiche-champs' },
+        el('label', { class: 'fiche-champ' }, el('span', {}, 'Forme'), forme),
+        labelMatiere,
+        el('label', { class: 'fiche-champ' }, el('span', {}, 'Amélioration'), amelioration)),
+      tuiles, soliditeLigne);
   });
 
+  // les accessoires (décision R97) : six emplacements, chacun un effet de la table, choisi dans une liste rangée (effetsDAccessoireProposes : par
+  // propriété, puis par ce qu'il vise et sa valeur) ; une « Compétence X » est une entrée par caractéristique, dont la valeur tirée (de 1 à 20) donne le
+  // niveau (effetDeCompetence) : la seule valeur saisie ; la case « Maudit » (effet contraire, R54)
   reconstruire($('accessoires'), 'fixe', () => [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Emplacement'), el('th', {}, 'Nom'), el('th', {}, 'Effet'), el('th', { class: 'nombre etroite' }, 'Valeur'), el('th', {}, 'Effet hors table'), el('th', { class: 'etroite' }, 'Maudit'))),
+    el('thead', {}, el('tr', {}, el('th', {}, 'Emplacement'), el('th', {}, 'Effet'), el('th', { class: 'nombre etroite' }, 'Valeur'), el('th', { class: 'etroite' }, 'Maudit'))),
     el('tbody', {}, EMPLACEMENTS_ACCESSOIRES.map(([cle, nom]) => {
       const l = () => ligneDe('accessoires', (x) => x.emplacement === cle);
-      const obtenir = () => ligne('accessoires', (x) => x.emplacement === cle, () => ({ emplacement: cle, nom: null, accessoire_effet_id: null, valeur: null, texte: null, maudit: 0 }));
-      const nettoyer = () => { const x = l(); if (x && !x.accessoire_effet_id && !x.texte && !x.nom && !x.maudit) retirer('accessoires', (y) => y === x); };
-      const nomObjet = el('input', { 'aria-label': `${nom} : nom`, oninput: (ev) => { obtenir().nom = ev.target.value || null; nettoyer(); changer(); } });
-      const valeur = el('input', { type: 'number', step: '1', 'aria-label': `${nom} : valeur tirée`, oninput: (ev) => { obtenir().valeur = ev.target.value === '' ? null : entier(ev.target.value); changer(); } });
-      const texte = el('input', { 'aria-label': `${nom} : effet hors table`, oninput: (ev) => { obtenir().texte = ev.target.value || null; nettoyer(); changer(); } });
-      const maudit = el('input', { type: 'checkbox', 'aria-label': `${nom} : maudit`, onchange: (ev) => { obtenir().maudit = ev.target.checked ? 1 : 0; nettoyer(); changer(); } });
+      const obtenir = () => ligne('accessoires', (x) => x.emplacement === cle, () => ({ emplacement: cle, accessoire_effet_id: null, valeur: null, maudit: 0 }));
+      const caracteristiqueDe = (x) => {
+        const effet = trouver(regles.accessoires, x?.accessoire_effet_id);
+        return effet?.propriete === 'competence' ? effet.caracteristique_id : null;
+      };
+      const niveaux = (caracId) => regles.accessoires.filter((a) => a.propriete === 'competence' && a.caracteristique_id === caracId);
+      const valeur = el('input', {
+        type: 'number', step: '1', 'aria-label': `${nom} : valeur tirée`,
+        oninput: (ev) => {
+          const x = l();
+          const caracId = caracteristiqueDe(x);
+          if (!x || !caracId) return;
+          // bornée aux plages écrites, comme le générateur : la valeur comptée est celle du niveau choisi
+          x.valeur = valeurDeCompetenceBornee(regles, caracId, ev.target.value);
+          x.accessoire_effet_id = effetDeCompetence(regles, caracId, x.valeur)?.id ?? x.accessoire_effet_id;
+          changer();
+        },
+      });
+      const maudit = el('input', { type: 'checkbox', 'aria-label': `${nom} : maudit`, onchange: (ev) => { const x = l(); if (x) { x.maudit = ev.target.checked ? 1 : 0; changer(); } } });
       // l'effet à choix (décision R54) : « Compétence X » → une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » → une famille
       const choixCompetence = el('select', { 'aria-label': `${nom} : compétence de l’accessoire`,
         onchange: (ev) => { obtenir().competence_id = ev.target.value || null; changer(); } });
       const choixFamille = el('select', { 'aria-label': `${nom} : famille d’armes de l’accessoire`,
         onchange: (ev) => { obtenir().arme_famille_id = ev.target.value || null; changer(); } });
       const resumeEffet = el('span', { class: 'accessoire-effet' });
+      const effets = el('select', {
+        'aria-label': `${nom} : effet`,
+        onchange: (ev) => {
+          const v = ev.target.value;
+          if (!v) {
+            retirer('accessoires', (y) => y.emplacement === cle);
+            return changer();
+          }
+          const x = obtenir();
+          const avant = caracteristiqueDe(x);
+          const caracId = v.startsWith('competence:') ? v.slice('competence:'.length) : null;
+          // la même caractéristique garde sa valeur tirée et sa compétence ; un autre effet repart de rien
+          if (caracId !== avant || !caracId) Object.assign(x, { valeur: null, competence_id: null });
+          if (v !== valeurDEffetDAccessoire(regles, x)) x.arme_famille_id = null;
+          x.accessoire_effet_id = caracId ? effetDeCompetence(regles, caracId, x.valeur)?.id ?? null : v;
+          changer();
+        },
+      });
       synchro(() => {
         const x = l();
         const effet = trouver(regles.accessoires, x?.accessoire_effet_id);
-        const cibles = (effet?.effets ?? []).map((c) => c.cible);
-        const caracId = effet?.effets.find((c) => c.cible === 'competence')?.cible_id ?? null;
+        // la liste (refaite quand l'effet porté n'y est pas encore : un effet que la liste ne propose pas reste visible et choisi)
+        const cleListe = effet && effet.propriete !== 'competence' ? effet.id : '';
+        if (effets.dataset.cle !== cleListe || !effets.options.length) {
+          effets.dataset.cle = cleListe;
+          effets.replaceChildren(el('option', { value: '' }, '—'), ...effetsDAccessoireProposes(regles, cleListe ? [cleListe] : [])
+            .map((g) => el('optgroup', { label: g.nom }, g.options.map((o) => el('option', { value: o.valeur }, o.texte)))));
+        }
+        effets.value = valeurDEffetDAccessoire(regles, x);
+        const caracId = caracteristiqueDe(x);
         choixCompetence.hidden = !caracId;
         if (caracId) {
           const options = regles.competences.filter((k) => k.caracteristique_id === caracId);
-          const cleOptions = `${caracId}`;
-          if (choixCompetence.dataset.options !== cleOptions) {
+          if (choixCompetence.dataset.options !== caracId) {
             choixCompetence.replaceChildren(el('option', { value: '' }, '— compétence —'), ...options.map((k) => el('option', { value: k.id }, k.nom)));
-            choixCompetence.dataset.options = cleOptions;
+            choixCompetence.dataset.options = caracId;
           }
           choixCompetence.value = options.some((k) => k.id === x?.competence_id) ? x.competence_id : '';
           choixCompetence.toggleAttribute('data-a-choisir', !choixCompetence.value);
         }
+        const cibles = (effet?.effets ?? []).map((c) => c.cible);
         choixFamille.hidden = !cibles.includes('degats_famille');
         if (!choixFamille.hidden) {
           if (!choixFamille.options.length) {
@@ -1495,35 +1661,31 @@ function construireEquipement() {
           else liste.dataset.choixCle = cleDeChoix.accessoire(cle);
         }
         // ce que l'accessoire change sur la fiche (effetsDesAccessoires)
-        const effets = effetsDesAccessoires(regles, { ...fiche, accessoires: x ? [x] : [] });
-        resumeEffet.textContent = effets.filter((e) => !e.aChoisir && e.valeur !== null).map(texteDEffet).join(' · ');
-        poser(nomObjet, x?.nom ?? '');
-        poser(valeur, x?.valeur ?? '');
-        valeur.disabled = !effet || effet.min === null;
-        valeur.min = effet?.min ?? '';
-        valeur.max = effet?.max ?? '';
-        valeur.title = effet && effet.min !== null ? `Entre ${effet.min} et ${effet.max}` : 'Seulement pour un effet à fourchette';
-        poser(texte, x?.texte ?? '');
+        const rendus = effetsDesAccessoires(regles, { ...fiche, accessoires: x ? [x] : [] });
+        resumeEffet.textContent = rendus.filter((e) => !e.aChoisir && e.valeur !== null).map(texteDEffet).join(' · ');
+        // la valeur : seulement pour une « Compétence X » (demande du propriétaire : « la valeur ne devrait s'afficher que pour les compétences »)
+        valeur.hidden = !caracId;
+        if (caracId) {
+          const n = niveaux(caracId);
+          valeur.min = String(Math.min(...n.map((a) => a.min)));
+          valeur.max = String(Math.max(...n.map((a) => a.max)));
+          valeur.title = `Entre ${valeur.min} et ${valeur.max} : le niveau de l’effet en découle${effet ? ` (niveau ${effet.niveau})` : ''}`;
+          if (document.activeElement !== valeur) poser(valeur, x?.valeur ?? '');
+          valeur.toggleAttribute('data-a-choisir', x?.valeur === null || x?.valeur === undefined);
+        }
+        maudit.disabled = !x;
         poser(maudit, x?.maudit);
       });
-      return el('tr', {}, el('td', {}, nom), el('td', {}, nomObjet),
-        el('td', { class: 'accessoire-cellule' }, selecteur(() => l()?.accessoire_effet_id, optionsGroupees(regles.accessoires, (a) => a.propriete, (a) => a.libelle + (a.min !== null ? ` (${a.min} à ${a.max})` : '')),
-          (v) => {
-            const x = obtenir();
-            x.accessoire_effet_id = v;
-            if (!v || trouver(regles.accessoires, v)?.min === null) x.valeur = null;
-            x.competence_id = null;
-            x.arme_famille_id = null;
-            nettoyer();
-            changer();
-          }, { etiquette: `${nom} : effet` }), choixCompetence, choixFamille, resumeEffet),
-        el('td', { class: 'nombre' }, valeur), el('td', {}, texte), el('td', {}, maudit));
+      return el('tr', {}, el('td', {}, nom),
+        el('td', { class: 'accessoire-cellule' }, effets, choixCompetence, choixFamille, resumeEffet),
+        el('td', { class: 'nombre' }, valeur), el('td', {}, maudit));
     })),
   ]);
 
   // le sac (décision R88) : autant d'emplacements que la Force en donne, une ligne par emplacement quelle que soit sa quantité, et le tableau en montre
   // autant (les objets, l'emplacement libre suivant, puis les emplacements vides) ; chaque ligne propose le catalogue (ressources et bâtons magiques :
-  // liste-ressources) ou une saisie libre. Au-delà de la place (une Force qui baisse, un import), les lignes restent, signalées : rien n'est retiré.
+  // catalogueDuSac) dans une liste qui se filtre à la frappe, à partir de deux caractères (autocompletion), ou une saisie libre. Au-delà de la place (une
+  // Force qui baisse, un import), les lignes restent, signalées : rien n'est retiré.
   const sac = inventaireDe(regles, fiche);
   const place = $('inventaire-place');
   // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
@@ -1534,19 +1696,22 @@ function construireEquipement() {
   attribut(place, 'data-trop', sac.auDela > 0);
   const lignesDuSac = fiche.inventaire ?? [];
   const ressourceDe = (nom) => regles.ressources.find((r) => r.nom === nom)?.id ?? null;
+  const catalogue = catalogueDuSac(regles);
   const occupee = (o) => String(o?.nom ?? '').trim() !== '';
   const libre = lignesDuSac.length < sac.emplacements;
   reconstruire($('inventaire'), `${versionInventaire}:${lignesDuSac.length}:${sac.emplacements}`, () => [
     el('thead', {}, el('tr', {}, el('th', {}, 'Objet'), el('th', { class: 'nombre' }, 'Quantité'), el('th', {}, ''))),
     el('tbody', {}, [
       ...lignesDuSac.map((o, i) => {
-        const nom = el('input', {
-          list: 'liste-ressources', 'aria-label': `Sac, emplacement ${i + 1} : objet`,
-          oninput: (ev) => {
-            o.nom = ev.target.value;
-            o.ressource_id = ressourceDe(ev.target.value);
-            changer();
-          },
+        const ecrire = (valeur) => {
+          o.nom = valeur;
+          o.ressource_id = ressourceDe(valeur);
+          changer();
+        };
+        const nom = el('input', { 'aria-label': `Sac, emplacement ${i + 1} : objet`, oninput: (ev) => ecrire(ev.target.value) });
+        const saisie = autocompletion(nom, (v) => propositionsDuCatalogue(catalogue, v), (choisi) => {
+          poser(nom, choisi);
+          ecrire(choisi);
         });
         // un nombre saisi, de 1 (personnage_inventaire : CHECK quantite >= 1) à 99 (décision R88 : quantiteDuSac) ; un champ vidé attend la saisie
         // suivante, la valeur validée reprend celle de la fiche ; 1 ne se voit qu'au survol de la ligne ou au focus (data-un, fiche.css)
@@ -1560,7 +1725,7 @@ function construireEquipement() {
           onchange: () => poser(quantite, o.quantite),
         });
         const tr = el('tr', { 'data-ligne': String(i + 1) },
-          el('td', {}, nom), el('td', { class: 'nombre' }, quantite),
+          el('td', {}, saisie), el('td', { class: 'nombre' }, quantite),
           el('td', {}, el('button', { type: 'button', class: 'retirer', 'aria-label': 'Retirer l’objet', onclick: () => { retirer('inventaire', (x) => x === o); changer(); } }, '✕')));
         synchro(() => {
           poser(nom, o.nom ?? '');
@@ -1588,9 +1753,11 @@ function construireEquipement() {
           const champ = racine.querySelector(`#inventaire tr[data-ligne="${fiche.inventaire.length}"] input`);
           champ?.focus();
           champ?.setSelectionRange?.(champ.value.length, champ.value.length);
+          // la liste qui se filtre s'ouvre tout de suite (un collage de deux lettres ou plus n'attend pas la frappe suivante)
+          champ?.dispatchEvent(new Event('input'));
         };
         const champ = el('input', {
-          list: 'liste-ressources', 'aria-label': `Sac, emplacement ${lignesDuSac.length + 1} : nouvel objet`, placeholder: 'Ajouter un objet (proposé ou libre)…',
+          'aria-label': `Sac, emplacement ${lignesDuSac.length + 1} : nouvel objet`, placeholder: 'Ajouter un objet (proposé dès 2 lettres, ou libre)…',
           oninput: (ev) => { if (!ev.isComposing) creer(ev.target.value); },
           oncompositionend: (ev) => creer(ev.target.value),
         });
@@ -1602,6 +1769,78 @@ function construireEquipement() {
         () => el('tr', { class: 'inventaire__vide', 'aria-hidden': 'true' }, el('td', { colspan: '3' }))),
     ]),
   ]);
+}
+
+// ------------------------------------------------------------------ défense et dégâts reçus (décision R98)
+/** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur). */
+const degatsEnCours = { entrants: '', type: 'estoc', reduits: false, parade: false, don: false };
+
+/**
+ * La défense du personnage (demande du propriétaire du 2026-10-17 : « dans l'onglet Armure avoir la valeur totale d'AP et d'AM ») : l'AP et l'AM totaux
+ * (defenseDe : base, accessoires, armure portée), le détail en infobulle, et ceux du bouclier à part (comptés en parade partielle) ; puis les dégâts
+ * reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à cocher (dégâts
+ * réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce calcul devra
+ * inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en infobulle.
+ */
+function construireDefense() {
+  // un réglage du calcul ne change pas la fiche : seules les synchronisations de ce bloc sont refaites
+  const majDefense = () => { for (const f of synchros.get($('defense')) ?? []) f(); };
+  reconstruire($('defense'), 'fixe', () => {
+    const tuile = (nom) => {
+      const valeur = el('strong', {});
+      return { valeur, li: el('li', { class: 'defense__tuile', tabindex: '0' }, el('small', {}, nom), valeur) };
+    };
+    const ap = tuile('AP');
+    const am = tuile('AM');
+    const bouclier = el('p', { class: 'fiche-aide defense__bouclier' });
+    const entrants = el('input', {
+      type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': 'Dégâts entrants', placeholder: 'Dégâts',
+      oninput: (ev) => { degatsEnCours.entrants = ev.target.value; majDefense(); },
+    });
+    const types = typesDeDegats(regles);
+    const type = el('select', { 'aria-label': 'Type de dégâts', onchange: (ev) => { degatsEnCours.type = ev.target.value; majDefense(); } },
+      el('optgroup', { label: 'Physique' }, types.filter((t) => t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))),
+      el('optgroup', { label: 'Magie' }, types.filter((t) => !t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))));
+    const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
+    const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
+    const paradeLabel = el('label', { class: 'fiche-coche', title: 'La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure' }, parade, 'Au bouclier');
+    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
+    const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
+    synchro(() => {
+      const d = defenseDe(regles, fiche, calcul.attributs);
+      const detail = (x, nom) => [`${nom} : ${x.total}`, ...x.detail.map((l) => `${l.nom} : ${signe(l.valeur)}`),
+        ...(d.element ? [`Élément ${d.element.nom} : l’armure d’origine et son amélioration ne comptent plus (« Tous les bonus d’origine […] sont perdus »)`] : [])].join('\n');
+      ap.valeur.textContent = String(d.ap.total);
+      am.valeur.textContent = String(d.am.total);
+      infobulle(ap.li, detail(d.ap, 'Armure physique (AP)'));
+      infobulle(am.li, detail(d.am, 'Armure magique (AM)'));
+      const texteBouclier = d.bouclier ? `Bouclier ${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM en parade partielle.` : '';
+      if (bouclier.textContent !== texteBouclier) bouclier.textContent = texteBouclier;
+      bouclier.hidden = !d.bouclier;
+      if (document.activeElement !== entrants) poser(entrants, degatsEnCours.entrants);
+      poser(reduits, degatsEnCours.reduits);
+      poser(parade, degatsEnCours.parade);
+      poser(don, degatsEnCours.don);
+      paradeLabel.hidden = !d.bouclier;
+      parade.disabled = !degatsEnCours.reduits;
+      const r = degatsEnCours.entrants === '' ? null
+        : degatsRecus(regles, fiche, degatsEnCours);
+      // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
+      const texteRecus = r ? `${r.recus} reçus` : '—';
+      if (recus.textContent !== texteRecus) recus.textContent = texteRecus;
+      infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n') : '');
+    });
+    return [
+      el('ul', { class: 'defense__tuiles', 'aria-label': 'Armure totale' }, ap.li, am.li),
+      bouclier,
+      el('div', { class: 'defense__degats', role: 'group', 'aria-label': 'Dégâts reçus' },
+        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type,
+        el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
+        paradeLabel,
+        el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
+        recus),
+    ];
+  });
 }
 
 // ------------------------------------------------------------------ portrait et ceinture (demandes du propriétaire)
@@ -1863,6 +2102,7 @@ function rafraichir() {
   construirePostures();
   construireProgression();
   construireEquipement();
+  construireDefense();
   construireCeinture();
   construirePortrait();
   for (const liste of synchros.values()) for (const s of liste) s();
@@ -1909,22 +2149,38 @@ function aEnvoyer() {
   f.armure_parties = partiesValables(regles, f);
   for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
-  f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
+  // la solidité du moment du bouclier bornée à son maximum (décision R96 : à son maximum ou au-delà, rien d'enregistré)
+  f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
-  f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id || a.texte);
+  f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id);
   // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent
   f.ceinture = (f.ceinture ?? []).filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
   return f;
 }
 
+/**
+ * Les noms qui décrivent ce qu'une fiche d'avant perd à sa conversion (sansPartiesRetirees) : une armure, un emplacement d'armure, un matériau de
+ * bouclier, un effet d'accessoire.
+ */
+const nomsDesRetraits = () => ({
+  armure: (x) => trouver(regles.armures ?? [], x)?.nom ?? null,
+  emplacement: (x) => trouver(regles.emplacements_armure ?? [], x)?.nom ?? null,
+  ressource: (x) => trouver(regles.ressources ?? [], x)?.nom ?? null,
+  accessoire: (x) => trouver(regles.accessoires ?? [], x)?.libelle ?? null,
+});
+
 function appliquer(donnees) {
-  fiche = { ...ficheVide(''), ...sansPartiesRetirees(donnees.personnage) };
+  // une fiche d'avant (le service retombé sur sa base d'avant : docs/serveur.md) est convertie ici ; ce qu'elle perd est noté, daté, dans ses notes,
+  // et la fiche est à enregistrer (sinon la conversion et ses notes se perdraient)
+  const brute = donnees.personnage;
+  const convertie = sansPartiesRetirees(brute, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: nomsDesRetraits() });
+  fiche = { ...ficheVide(''), ...convertie };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) fiche[cle] ??= [];
   id = fiche.id;
   version = fiche[CHAMP_VERSION];
   controles = donnees.controles ?? null;
-  modifie = false;
+  modifie = convertie !== brute && (convertie?.notes ?? null) !== (brute?.notes ?? null);
   enregistrementRefuse = false;
   rafraichir();
 }
@@ -2270,10 +2526,9 @@ function cibleDeLImport() {
 
 /** La fiche importée remplace celle de la page : mise à jour, elle garde l'identifiant et la version du prétiré ouvert ; nouvelle, elle les oublie. */
 function remplacerLaFiche(nouvelle, cible) {
-  // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées (R95)
-  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: {
-    armure: (x) => trouver(regles.armures, x)?.nom ?? null, emplacement: (x) => trouver(regles.emplacements_armure, x)?.nom ?? null,
-  } }) };
+  // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées
+  // (R95) ; des matériaux de bouclier, des accessoires Ceinture ou Autre, un nom ou un effet hors table : notés (R96, R97)
+  fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: nomsDesRetraits() }) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
   controles = null;
@@ -2426,10 +2681,8 @@ function remplirListesFixes() {
   $('dieux').append(...regles.dieux.map((d) => option(d.id, d.nom)));
   $('metiers').append(...regles.metiers.map((m) => option(m.id, m.nom)));
   $('carac-magie').replaceChildren(option('', '—'), ...regles.caracteristiques.map((c) => option(c.id, c.nom)));
-  // le catalogue proposé dans le sac : les ressources, puis les bâtons magiques (sous le nom que la fiche leur donne : décision R89) ; la ceinture propose
-  // tous les objets du sac (liste-ceinture, refaite par construireCeinture)
-  racine.append(el('datalist', { id: 'liste-ressources' }, regles.ressources.map((r) => el('option', { value: r.nom })),
-    (regles.ceinture?.batons ?? []).map((b) => el('option', { value: b.nom }))), el('datalist', { id: 'liste-ceinture' }));
+  // la ceinture propose tous les objets du sac (liste-ceinture, refaite par construireCeinture) ; le sac, son catalogue (autocompletion)
+  racine.append(el('datalist', { id: 'liste-ceinture' }));
 }
 
 async function demarrer() {

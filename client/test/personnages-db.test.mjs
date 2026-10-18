@@ -21,7 +21,7 @@ db.exec('PRAGMA foreign_keys = ON');
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
@@ -60,7 +60,7 @@ function personnageValide(id, surcharge = {}) {
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
 }
 
-test('les 19 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 18 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -421,15 +421,33 @@ test('sorts : de la magie du personnage ; NM de niveau au plus niveau global −
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
 });
 
-test('équipement : matériaux du bouclier au plus sa classe, améliorations du bon genre, valeur d’accessoire dans la fourchette', () => {
+test('équipement : bouclier forme et matière (R96), améliorations du bon genre, valeur d’accessoire dans la fourchette, six emplacements (R97)', () => {
+  const [m1] = db.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 1').all().map((r) => r.ressource_id);
   personnageValide('equipement', { bouclier_classe_id: 'targe' });
-  const classe = db.prepare("SELECT classe FROM bouclier_classe WHERE id = 'targe'").get().classe;
-  const [m1, m2] = db.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 2').all().map((r) => r.ressource_id);
-  inserer('personnage_bouclier_materiau', { personnage_id: 'equipement', rang: 1, materiau_id: m1, quantite: classe });
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_matiere_manquante', detail: 'targe' }], 'une forme sans matière');
+  db.prepare("UPDATE personnage SET bouclier_materiau_id = ?, bouclier_solidite = 0 WHERE id = 'equipement'").run(m1);
   assert.deepEqual(controle('equipement'), []);
-  inserer('personnage_bouclier_materiau', { personnage_id: 'equipement', rang: 2, materiau_id: m2, quantite: 1 });
-  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_quantite', detail: `${classe + 1} / ${classe}` }]);
-  db.prepare("DELETE FROM personnage_bouclier_materiau WHERE personnage_id = 'equipement' AND rang = 2").run();
+  // un couple forme + matière que la liste des boucliers n'écrit pas (la base les a tous : db:check)
+  db.exec('SAVEPOINT bouclier_retire');
+  db.prepare("DELETE FROM bouclier WHERE classe_id = 'targe' AND materiau_id = ?").run(m1);
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_inconnu', detail: `targe + ${m1}` }]);
+  db.exec('ROLLBACK TO bouclier_retire; RELEASE bouclier_retire');
+  assert.deepEqual(controle('equipement'), []);
+  db.prepare("UPDATE personnage SET bouclier_classe_id = NULL WHERE id = 'equipement'").run();
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_manquant', detail: m1 }], 'une matière sans forme');
+  const amelioBouclier = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'bouclier' LIMIT 1").get().id;
+  const amelioArme = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'arme' LIMIT 1").get().id;
+  db.prepare("UPDATE personnage SET bouclier_classe_id = 'targe', bouclier_amelioration_id = ? WHERE id = 'equipement'").run(amelioBouclier);
+  assert.deepEqual(controle('equipement'), []);
+  db.prepare("UPDATE personnage SET bouclier_amelioration_id = ? WHERE id = 'equipement'").run(amelioArme);
+  assert.deepEqual(controle('equipement'), [{ regle: 'amelioration_cible', detail: `bouclier : ${amelioArme}` }]);
+  assert.throws(() => db.prepare("UPDATE personnage SET bouclier_solidite = -1 WHERE id = 'equipement'").run(), /CHECK/);
+  db.prepare("UPDATE personnage SET bouclier_classe_id = NULL, bouclier_materiau_id = NULL, bouclier_amelioration_id = NULL, bouclier_solidite = NULL WHERE id = 'equipement'").run();
+  const unEffet = db.prepare('SELECT id FROM accessoire_effet LIMIT 1').get().id;
+  for (const emplacement of ['ceinture', 'autre']) {
+    assert.throws(() => inserer('personnage_accessoire', { personnage_id: 'equipement', emplacement, accessoire_effet_id: unEffet, maudit: 0 }), /CHECK/, emplacement);
+  }
+  assert.throws(() => inserer('personnage_accessoire', { personnage_id: 'equipement', emplacement: 'chef', accessoire_effet_id: null, maudit: 0 }), /NOT NULL/, 'un effet de la table');
 
   const arme = db.prepare('SELECT id FROM arme LIMIT 1').get().id;
   const amelioArmure = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'armure' LIMIT 1").get().id;

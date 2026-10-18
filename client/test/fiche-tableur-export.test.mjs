@@ -140,17 +140,17 @@ function ficheRiche() {
     armure_elementaire_id: regles.armures_elementaires[0].id,
     armure_amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
     armure_parties: [{ emplacement_id: 'casque', solidite: 1 }, { emplacement_id: 'torse', solidite: 0 }],
-    bouclier_classe_id: 'ecu',
-    bouclier_materiaux: [{ rang: 2, materiau_id: 'ressources/armures#materiau:fer', quantite: 1 }, { rang: 1, materiau_id: 'ressources/armures#materiau:bois', quantite: 2 }],
+    // le bouclier (décision R96) : une forme, une matière, son amélioration et sa solidité du moment
+    bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:bois',
+    bouclier_amelioration_id: trouve('ameliorations', (a) => a.cible === 'bouclier' && a.niveau === 2, 'bouclier 2').id, bouclier_solidite: 1,
+    // six emplacements, un effet de la table chacun (décision R97)
     accessoires: [
-      { emplacement: 'chef', nom: 'Diadème', accessoire_effet_id: 'ressources/accessoires#effet:competence:volonte:2', valeur: 8, texte: null, maudit: 0, competence_id: 'concentration', arme_famille_id: null },
-      { emplacement: 'collier', nom: null, accessoire_effet_id: 'ressources/accessoires#effet:attributs:1', valeur: null, texte: null, maudit: 1, competence_id: null, arme_famille_id: null },
-      { emplacement: 'bracelet-1', nom: 'Brassard', accessoire_effet_id: 'ressources/accessoires#effet:attaque:15', valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: 'epees' },
-      { emplacement: 'bracelet-2', nom: null, accessoire_effet_id: null, valeur: null, texte: 'Brille dans le noir', maudit: 0, competence_id: null, arme_famille_id: null },
-      { emplacement: 'bague-1', nom: 'Anneau gravé', accessoire_effet_id: 'ressources/accessoires#effet:attaque:17', valeur: null, texte: 'Gravé de runes', maudit: 0, competence_id: null, arme_famille_id: null },
-      { emplacement: 'bague-2', nom: null, accessoire_effet_id: 'ressources/accessoires#effet:attaque:19', valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: null },
-      { emplacement: 'ceinture', nom: 'Boucle', accessoire_effet_id: 'ressources/accessoires#effet:attributs:6', valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: null },
-      { emplacement: 'autre', nom: null, accessoire_effet_id: 'ressources/accessoires#effet:defense:1', valeur: null, texte: null, maudit: 1, competence_id: null, arme_famille_id: null },
+      { emplacement: 'chef', accessoire_effet_id: 'ressources/accessoires#effet:competence:volonte:2', valeur: 8, maudit: 0, competence_id: 'concentration', arme_famille_id: null },
+      { emplacement: 'collier', accessoire_effet_id: 'ressources/accessoires#effet:attributs:1', valeur: null, maudit: 1, competence_id: null, arme_famille_id: null },
+      { emplacement: 'bracelet-1', accessoire_effet_id: 'ressources/accessoires#effet:attaque:15', valeur: null, maudit: 0, competence_id: null, arme_famille_id: 'epees' },
+      { emplacement: 'bracelet-2', accessoire_effet_id: 'ressources/accessoires#effet:attributs:6', valeur: null, maudit: 0, competence_id: null, arme_famille_id: null },
+      { emplacement: 'bague-1', accessoire_effet_id: 'ressources/accessoires#effet:attaque:17', valeur: null, maudit: 0, competence_id: null, arme_famille_id: null },
+      { emplacement: 'bague-2', accessoire_effet_id: 'ressources/accessoires#effet:attaque:19', valeur: null, maudit: 0, competence_id: null, arme_famille_id: null },
     ],
     inventaire: regles.ressources.slice(0, 60).map((r, i) => ({ rang: i + 1, nom: r.nom, quantite: (i % 4) + 1, ressource_id: r.id })),
     ceinture: [{ rang: 1, nom: regles.ressources[100].nom, quantite: 20, ressource_id: regles.ressources[100].id }, { rang: 3, nom: 'Corde', quantite: 1, ressource_id: null }],
@@ -229,7 +229,7 @@ test('fiche riche : valeurs du moment, 4ᵉ barre, initiative, vitesses, armure 
   assert.match(c[O.sante], /^10 \/ \d+$/, 'la santé saisie');
   assert.equal(c[O.libelleBarre4], a.quatriemeBarre.ressource);
   assert.equal(c[O.libelleBarre4], 'Âme', 'la Nécromancie donne l’Âme');
-  assert.ok(a.initiativeAccessoires, 'l’accessoire de ceinture donne de l’initiative');
+  assert.ok(a.initiativeAccessoires, 'l’accessoire « +2 Initiative » donne de l’initiative');
   assert.equal(c[O.initiative], `D20${a.initiativeBonus >= 0 ? '+' : '-'}${Math.abs(a.initiativeBonus)}`);
   assert.equal(c[O.vitesse], a.vitesseSol);
   assert.equal(c[O.vitesseNage], a.vitesseNage);
@@ -338,12 +338,15 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   const uni = trouve('armures', (a) => Number(a.solidite_uni) === 1 && a.solidite >= 2, 'armure à solidité unifiée');
   const solUni = cellulesDeLaFiche(regles, { ...riche, armure_id: uni.id, armure_amelioration_id: null, armure_parties: [{ emplacement_id: ARMURE_COMPLETE, solidite: 1 }] }, { date: DATE }).cellules;
   for (const col of Object.values(ORDINATEUR.armure.colonnes)) assert.equal(solUni[`${col}${ORDINATEUR.armure.lignes.solidite}`], `1 / ${uni.solidite}`, col);
-  // bouclier : nom, matériaux dans l'ordre des rangs, classe ; ni AP, ni AM, ni solidité
-  const bouclier = M.trouver(regles.boucliers, 'ecu');
-  assert.equal(c[ORDINATEUR.bouclier.nom], bouclier.nom);
-  assert.equal(c[ORDINATEUR.bouclier.composition], `${nomDe('materiaux_bouclier', 'ressources/armures#materiau:bois')} ×2, ${nomDe('materiaux_bouclier', 'ressources/armures#materiau:fer')} ×1`);
-  assert.equal(c[ORDINATEUR.bouclier.classe], bouclier.classe);
-  for (const k of ['ap', 'am', 'solidite']) assert.equal(c[ORDINATEUR.bouclier[k]], undefined, `bouclier : ${k}`);
+  // bouclier (décision R96) : la forme, la matière et l'amélioration, la classe, l'AP et l'AM calculés, la solidité du moment « N / M »
+  const bouclier = M.bouclierDe(regles, riche);
+  assert.equal(c[ORDINATEUR.bouclier.nom], bouclier.forme.nom);
+  const ameliorationDuBouclier = M.trouver(regles.ameliorations, riche.bouclier_amelioration_id);
+  assert.equal(c[ORDINATEUR.bouclier.composition], `${nomDe('materiaux_bouclier', 'ressources/armures#materiau:bois')} · ${texteDAmelioration(ameliorationDuBouclier)}`);
+  assert.equal(c[ORDINATEUR.bouclier.classe], bouclier.forme.classe);
+  assert.deepEqual([c[ORDINATEUR.bouclier.ap], c[ORDINATEUR.bouclier.am]], [bouclier.ap, bouclier.am]);
+  assert.ok(bouclier.ap > 0 && bouclier.amelioration.niveau === 2);
+  assert.equal(c[ORDINATEUR.bouclier.solidite], `1 / ${bouclier.solidite.max}`);
 });
 
 test('fiche riche : accessoires (fourchette, choix, maudit, texte libre), ceinture, inventaire', () => {
@@ -351,15 +354,14 @@ test('fiche riche : accessoires (fourchette, choix, maudit, texte libre), ceintu
     const a = riche.accessoires.find((x) => x.emplacement === emplacement);
     assert.equal(c[ORDINATEUR.accessoires[emplacement]], lignesDAccessoire(regles, a).join('\n'), emplacement);
   }
-  // l'effet sur une ligne, « <libellé>[ = valeur][ → choix] », sans sa propriété quand le libellé suffit ; le nom en tête, « Maudit » à part
+  // l'effet sur une ligne, « <libellé>[ = valeur][ → choix] », sans sa propriété quand le libellé suffit ; « Maudit » à part ; ni nom ni effet hors
+  // table (décision R97)
   const chef = M.trouver(regles.accessoires, riche.accessoires[0].accessoire_effet_id);
-  assert.equal(c[ORDINATEUR.accessoires.chef], `Diadème\n${chef.libelle} = 8 → ${nomDe('competences', 'concentration')}`);
+  assert.equal(c[ORDINATEUR.accessoires.chef], `${chef.libelle} = 8 → ${nomDe('competences', 'concentration')}`);
   const collier = M.trouver(regles.accessoires, riche.accessoires[1].accessoire_effet_id);
   assert.equal(c[ORDINATEUR.accessoires.collier], `${collier.libelle}\nMaudit`, 'pas de valeur hors fourchette');
   const bracelet = M.trouver(regles.accessoires, riche.accessoires[2].accessoire_effet_id);
-  assert.equal(c[ORDINATEUR.accessoires['bracelet-1']], `Brassard\n${bracelet.libelle} → ${nomDe('familles_armes', 'epees')}`);
-  assert.equal(c[ORDINATEUR.accessoires['bracelet-2']], 'Effet : Brille dans le noir');
-  assert.match(c[ORDINATEUR.accessoires['bague-1']], /^Anneau gravé\n.+\nEffet : Gravé de runes$/);
+  assert.equal(c[ORDINATEUR.accessoires['bracelet-1']], `${bracelet.libelle} → ${nomDe('familles_armes', 'epees')}`);
   // la propriété écrite quand le libellé seul ne suffit pas : vide (« Attaque : ») ou partagé par plusieurs propriétés (« MALÉDICTION »)
   const sansLibelle = regles.accessoires.find((x) => !x.libelle);
   assert.deepEqual(lignesDAccessoire(regles, { accessoire_effet_id: sansLibelle.id }), [`${sansLibelle.propriete_nom} :`]);
@@ -531,11 +533,9 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   const offerts = riche.sorts.filter((s) => s.nm_livre || s.nm_cadeau);
   assert.ok(offerts.some((s) => s.nm_livre) && offerts.some((s) => s.nm_cadeau));
   assert.deepEqual(lireNmOfferts(note.valeur(K.nmOfferts)[0]), offerts.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: s.nm_livre, cadeau: s.nm_cadeau })));
-  for (const emplacement of ['ceinture', 'autre']) {
-    const a = riche.accessoires.find((x) => x.emplacement === emplacement);
-    assert.deepEqual(note.valeur(CLES_DES_ACCESSOIRES_SANS_CASE[emplacement]), [lignesDAccessoire(regles, a).join(' / ')], emplacement);
-  }
-  assert.ok(note.valeur(K.accessoireAutre)[0].endsWith(' / Maudit'));
+  // plus d'accessoire de la Ceinture ni d'« Autre » (décision R97) : aucun accessoire dans la note
+  assert.deepEqual(CLES_DES_ACCESSOIRES_SANS_CASE, {});
+  assert.ok(!note.lues.some((l) => l.nom === 'accessoire'));
   // les dons de classe au-delà des sept places de chaque classe (aucun tant que les règles en donnent sept au plus par classe)
   for (const x of M.donsAcquis(regles, riche)) {
     const enSuite = x.dons.slice((x.rang === 1 ? DONS.classe1 : DONS.classe2).length).map((d) => d.nom);
@@ -560,13 +560,12 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
 
 test('textes trop longs pour leur case (zones du modèle) : la case en garde le début ; seule la part relue a une suite dans la note, avant les informations', async () => {
   const zones = await zonesDuClasseur(await modeleXlsx());
-  // la fiche riche, avec des textes relus trop longs : un nom d'objet, un événement, l'effet en plus d'une arme, le nom d'un accessoire
+  // la fiche riche, avec des textes relus trop longs : un nom d'objet, un événement, l'effet en plus d'une arme
   const long = 'Banni du Temple de Morfot pour avoir ouvert le Livre des Cendres, il doit se présenter chaque nouvelle lune devant le Haut Conseil, sans arme ni armure.';
   const fiche = {
     ...riche, evenements: `${riche.evenements}\n`.replace(EVENEMENTS[1], `Rencontre avec Mirada ${long}`),
     inventaire: riche.inventaire.map((o, i) => (i === 5 ? { ...o, nom: `${o.nom}, ${long}` } : o)),
     armes: riche.armes.map((x) => (x.rang === 1 ? { ...x, effet_en_plus: `${long}\n${long}` } : x)),
-    accessoires: riche.accessoires.map((x) => (x.emplacement === 'bague-1' ? { ...x, nom: `Anneau gravé, ${long}` } : x)),
   };
   const sans = cellulesDeLaFiche(regles, fiche, { date: DATE }).cellules;
   const avec = cellulesDeLaFiche(regles, fiche, { date: DATE, zones });
@@ -577,7 +576,7 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
   const suites = lues.filter((l) => l.nom === 'suite');
   const effetArme1 = ORDINATEUR.armes[0].effet;
   const placeDeL = ORDINATEUR.inventaire.colonnes[0] + ORDINATEUR.inventaire.lignes[5];
-  const ajoutees = [effetArme1, ORDINATEUR.accessoires['bague-1'], placeDeL, `L${DONS.evenements[1]}`];
+  const ajoutees = [effetArme1, placeDeL, `L${DONS.evenements[1]}`];
   assert.deepEqual(ajoutees.filter((a) => !suites.some((x) => x.adresse === a)), [], 'les textes relus trop longs ont leur suite');
   // seules des cases relues (des choix du personnage) ont une suite : jamais un texte de règles
   const O = ORDINATEUR;
@@ -822,7 +821,7 @@ test('bi-classe : les deux classes au niveau global, « Bi-classé : oui »', ()
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/archer', specialite_id: null }],
     // un arc seul (pas d'attaque à deux armes) et la portée des armes à distance d'un accessoire
     armes: [{ rang: 1, arme_id: 'ressources/armes#arme:arc:arc', materiau_id: regles.materiau_arme_defaut }],
-    accessoires: [{ emplacement: 'chef', nom: null, accessoire_effet_id: 'ressources/accessoires#effet:attaque:3', valeur: null, texte: null, maudit: 0, competence_id: null, arme_famille_id: null }],
+    accessoires: [{ emplacement: 'chef', accessoire_effet_id: 'ressources/accessoires#effet:attaque:3', valeur: null, maudit: 0, competence_id: null, arme_famille_id: null }],
   };
   const e = cellulesDeLaFiche(regles, f, { date: DATE });
   verifierLesAdresses(e);

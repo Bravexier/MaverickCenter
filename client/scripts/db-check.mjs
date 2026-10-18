@@ -64,6 +64,12 @@ for (const r of db.prepare('SELECT id, empreinte, texte, occurrence FROM comment
 for (const r of db.prepare(`SELECT c.id, c.bouclier_classe_max AS stocke, (SELECT max(m.classe_max) FROM classe_maitrise_armure m WHERE m.classe_id = c.id) AS calcule FROM classe c`).all()) {
   if ((r.stocke ?? null) !== (r.calcule ?? null)) problemes.push(`classe ${r.id} : bouclier_classe_max=${r.stocke} != max(classe_maitrise_armure.classe_max)=${r.calcule}`);
 }
+// La liste des boucliers (onglet Boucliers, R78) a un bouclier pour chaque forme et chaque matière : la fiche de personnage en tire celui qu'elle porte
+// (décision R96, forme + matière ; une fiche dont le couple manque est signalée par la règle bouclier_inconnu de v_personnage_controle).
+for (const r of db.prepare(`SELECT c.id AS classe, m.ressource_id AS matiere FROM bouclier_classe c CROSS JOIN materiau_bouclier m
+  WHERE NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = c.id AND b.materiau_id = m.ressource_id)`).all()) {
+  problemes.push(`bouclier : pas de bouclier pour la forme ${r.classe} et la matière ${r.matiere} (la fiche ne pourrait pas le porter : R96)`);
+}
 
 // Complétude de page_entite : une table dont TOUS les id sont des ids de page (ou '<id de page>#…') est une table d'entités rattachées à une page ;
 // chacune de ses lignes doit avoir sa ligne page_entite (principale = 1 si l'id est celui de la page, sinon 0).

@@ -639,6 +639,38 @@ export function objetChoisiDansLaListe(fiche, valeur, inputType) {
   return suggestionsDeCeinture(fiche).some((s) => s.nom === n) ? n : null;
 }
 
+/** Le nombre de caractères à partir duquel une saisie du sac propose des objets (demande du propriétaire du 2026-10-17 : « à partir de 2 caractères »). */
+export const SAISIE_MIN_DES_PROPOSITIONS = 2;
+/** Un texte sans accents ni casse, pour comparer une saisie à un nom. */
+const plier = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+/**
+ * Le catalogue proposé dans le sac (décision R88 : « Chaque ligne étant un autocomplète mais dont on peux saisir un truc nouveau ») : les noms des
+ * ressources, puis ceux des bâtons magiques (lib/ceinture-texte.mjs#nomDeBaton), une fois chacun, dans cet ordre.
+ */
+export function catalogueDuSac(regles) {
+  return [...new Set([...(regles.ressources ?? []).map((r) => r.nom), ...(regles.ceinture?.batons ?? []).map((b) => b.nom)].filter(Boolean))];
+}
+
+/**
+ * Les noms d'un catalogue proposés pour une saisie (demande du propriétaire du 2026-10-17 : « un véritable autocomplete (menu déroulant qui se filtre sur
+ * la saisie actuelle et qui ne commence qu'à partir de 2 caractères saisis) ») : rien sous SAISIE_MIN_DES_PROPOSITIONS caractères ; sinon les noms qui
+ * contiennent la saisie, sans tenir compte des accents ni de la casse — ceux qui commencent par elle d'abord, puis ceux dont un mot commence par elle,
+ * puis les autres, chaque groupe dans l'ordre du catalogue —, au plus `max`.
+ */
+export function propositionsDuCatalogue(catalogue, saisie, max = 12) {
+  const q = plier(saisie);
+  if (q.length < SAISIE_MIN_DES_PROPOSITIONS) return [];
+  const rangs = [[], [], []];
+  for (const nom of catalogue) {
+    const n = plier(nom);
+    const i = n.indexOf(q);
+    if (i < 0) continue;
+    rangs[i === 0 ? 0 : new RegExp(`(?:^|[^\\p{L}\\p{N}])${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'u').test(n) ? 1 : 2].push(nom);
+  }
+  return rangs.flat().slice(0, max);
+}
+
 /** Total des points naturels et budget cumulé exact du niveau (v_niveau.points_competences_cumul, décision R3). */
 export function budgetCompetences(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
@@ -752,10 +784,85 @@ function sommeDesAccessoires(regles, fiche, cible, cibleId) {
 
 const TYPE_D_USAGE = { action: 'action', limite: null };
 
-/** Les emplacements d'accessoire de la fiche (personnage_accessoire.emplacement ; « ACCESSOIRES » de la fiche auto V15.2.2, AA28:AY37), dans leur ordre. */
-export const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['bracelet-1', 'Bracelet 1'], ['bracelet-2', 'Bracelet 2'], ['bague-1', 'Bague 1'], ['bague-2', 'Bague 2'], ['ceinture', 'Ceinture'], ['autre', 'Autre']];
-/** Le nom d'un accessoire porté : celui que le joueur lui donne, sinon son emplacement (« Accessoire : Collier »). */
-const nomDAccessoire = (a) => a.nom || `Accessoire : ${EMPLACEMENTS_ACCESSOIRES.find(([cle]) => cle === a.emplacement)?.[1] ?? a.emplacement}`;
+/**
+ * Les emplacements d'accessoire de la fiche (personnage_accessoire.emplacement ; « ACCESSOIRES » de la fiche auto V15.2.2, AA28:AY37), dans leur ordre :
+ * plus de Ceinture ni d'Autre (décision R97, migration 0060).
+ */
+export const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['bracelet-1', 'Bracelet 1'], ['bracelet-2', 'Bracelet 2'], ['bague-1', 'Bague 1'], ['bague-2', 'Bague 2']];
+/** Le nom d'un accessoire porté : son emplacement (« Accessoire : Collier ») ; un accessoire n'a plus de nom donné (décision R97). */
+const nomDAccessoire = (a) => `Accessoire : ${EMPLACEMENTS_ACCESSOIRES.find(([cle]) => cle === a.emplacement)?.[1] ?? a.emplacement}`;
+
+/** La clé d'une « Compétence X » dans la liste des effets : une par caractéristique (décision R97), quel que soit son niveau. */
+export const cleDEffetDeCompetence = (caracteristiqueId) => `competence:${caracteristiqueId}`;
+/** Le libellé triable d'un effet : le nombre qui l'ouvre passe après ce qu'il vise (« +25 Santé » → « Santé +25 »), pour ranger ensemble les mêmes cibles. */
+const libelleTriable = (libelle) => String(libelle ?? '').replace(/^([+-]?\d+)\s*(.+)$/, '$2 $1');
+const collation = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+
+/**
+ * La liste des effets d'accessoire que la fiche propose (décision R97 : « Il faudrait également trier les effets de manière plus lisible ») : un groupe
+ * par propriété, dans l'ordre des propriétés de la page « Accessoires » (Caractéristique, Compétence, Attributs, Attaque, Défense, Jet de dé, Autre) ;
+ * dans un groupe, les effets par ce qu'ils visent puis par valeur croissante (« Barrière +5 », « Barrière +10 »…), ceux d'une caractéristique dans l'ordre
+ * des caractéristiques de la fiche. Une « Compétence X » est une seule entrée par caractéristique (« Compétence Force »), dont la valeur tirée choisit
+ * le niveau (effetDeCompetence). Ni les lignes « MALÉDICTION » des
+ * tableaux (un résultat du générateur, pas un effet porté) ni les lignes sans libellé ; sauf `garder` (l'effet d'une fiche, toujours proposé).
+ * [{ propriete, nom, options: [{ valeur (id de l'effet ou cleDEffetDeCompetence), texte }] }]
+ */
+export function effetsDAccessoireProposes(regles, garder = []) {
+  const groupes = new Map();
+  const rangDeCaracteristique = (id) => String((regles.caracteristiques ?? []).findIndex((k) => k.id === id)).padStart(3, '0');
+  const ajouter = (a, option) => {
+    if (!groupes.has(a.propriete)) groupes.set(a.propriete, { propriete: a.propriete, nom: a.propriete_nom ?? a.propriete, ordre: a.propriete_ordre ?? 99, options: [] });
+    const g = groupes.get(a.propriete);
+    if (!g.options.some((o) => o.valeur === option.valeur)) g.options.push(option);
+  };
+  for (const a of regles.accessoires ?? []) {
+    if (a.propriete === 'competence') {
+      const carac = trouver(regles.caracteristiques ?? [], a.caracteristique_id);
+      ajouter(a, { valeur: cleDEffetDeCompetence(a.caracteristique_id), texte: `Compétence ${carac?.nom ?? a.caracteristique_id}`, tri: rangDeCaracteristique(a.caracteristique_id) });
+    } else if ((a.libelle && !a.malediction) || garder.includes(a.id)) {
+      ajouter(a, { valeur: a.id, texte: a.libelle ?? a.id, tri: a.propriete === 'caracteristique' ? rangDeCaracteristique(a.caracteristique_id) : libelleTriable(a.libelle ?? a.id) });
+    }
+  }
+  return [...groupes.values()].sort((a, b) => a.ordre - b.ordre).map((g) => ({
+    propriete: g.propriete, nom: g.nom,
+    options: g.options.sort((a, b) => collation.compare(a.tri, b.tri)).map(({ valeur, texte }) => ({ valeur, texte })),
+  }));
+}
+
+/**
+ * L'effet « Compétence X » de la caractéristique `caracteristiqueId` dont la fourchette contient `valeur` (décision R97 : la valeur tirée donne le
+ * niveau, comme dans le générateur de la page « Accessoires », qui borne la valeur aux plages écrites) ; sans valeur, le premier niveau. null si la
+ * caractéristique n'en a pas.
+ */
+export function effetDeCompetence(regles, caracteristiqueId, valeur = null) {
+  const niveaux = (regles.accessoires ?? []).filter((a) => a.propriete === 'competence' && a.caracteristique_id === caracteristiqueId)
+    .sort((a, b) => entier(a.min) - entier(b.min));
+  if (!niveaux.length) return null;
+  const v = valeur === null || valeur === undefined || String(valeur).trim() === '' || !Number.isFinite(Number(valeur)) ? null : entier(valeur);
+  if (v === null) return niveaux[0];
+  // bornée aux plages écrites, comme le générateur (lib/accessoires-generateur.mjs#bonusBorne)
+  const borne = Math.min(Math.max(...niveaux.map((a) => entier(a.max))), Math.max(entier(niveaux[0].min), v));
+  return niveaux.find((a) => borne >= a.min && borne <= a.max) ?? niveaux[0];
+}
+
+/**
+ * La valeur tirée d'une « Compétence X » telle qu'elle s'enregistre (décision R97) : bornée aux plages écrites de la caractéristique, comme le générateur
+ * (lib/accessoires-generateur.mjs#bonusBorne) ; null sans valeur (vide, pas un nombre) ou sans niveau de compétence pour cette caractéristique.
+ */
+export function valeurDeCompetenceBornee(regles, caracteristiqueId, valeur) {
+  const niveaux = (regles.accessoires ?? []).filter((a) => a.propriete === 'competence' && a.caracteristique_id === caracteristiqueId);
+  if (!niveaux.length || valeur === null || valeur === undefined || String(valeur).trim() === '' || !Number.isFinite(Number(valeur))) return null;
+  const min = Math.min(...niveaux.map((a) => entier(a.min)));
+  const max = Math.max(...niveaux.map((a) => entier(a.max)));
+  return Math.min(max, Math.max(min, entier(valeur)));
+}
+
+/** La valeur d'un accessoire porté dans la liste des effets (effetsDAccessoireProposes) : la clé de sa caractéristique pour une « Compétence X ». */
+export function valeurDEffetDAccessoire(regles, a) {
+  const effet = trouver(regles.accessoires ?? [], a?.accessoire_effet_id);
+  if (!effet) return '';
+  return effet.propriete === 'competence' ? cleDEffetDeCompetence(effet.caracteristique_id) : effet.id;
+}
 
 /**
  * Les effets d'accessoire rappelés à la suite des dons de race, sous le même format (demande du propriétaire : « Dans le cas d'une action ajoute-le à la
@@ -1473,11 +1580,210 @@ export function armureApresChoix(regles, fiche, champ, valeur) {
   return apres;
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/) : sa forme
+// (fiche.bouclier_classe_id) et sa matière (fiche.bouclier_materiau_id) donnent le bouclier de la liste (regles.boucliers_formes_matieres : AP, AM,
+// poids, décision R92) ; sa solidité est celle de la matière (R78), plus les crans de son amélioration (R76 : « crans cumulés ») ; son amélioration
+// +N ajoute l'AP (et l'AM) écrit au niveau choisi (R76). Le calcul de lib/armure-forge.mjs#forgerBouclier, que ce module ne peut pas importer
+// (src/scripts/armures.mjs l'importe ; test/fiche-bouclier-defense.test.mjs compare les deux sur toute la base). « Le Bouclier permet d'avoir des AP et AM en
+// plus de votre armure mais pour qu'ils soient comptés, ça implique une “Parade partielle” » (guide « Fiche de personnage : Armure/Défense/Bouclier ») :
+// ils ne s'ajoutent qu'aux dégâts reçus en parade partielle (degatsRecus). « Il est nécessaire d'avoir le score de Force ou plus pour le porter »
+// (règles de l'onglet) : `forceManquante`.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** L'amélioration de bouclier `id` (cible 'bouclier') : { niveau, bonus_ap, bonus_am (ceux du niveau choisi), bonus_cran (cumulés de +1 à +N) } ; null sinon. */
+function ameliorationDuBouclier(regles, id) {
+  const choisie = trouver(regles.ameliorations ?? [], id);
+  if (choisie?.cible !== 'bouclier') return null;
+  const faites = (regles.ameliorations ?? []).filter((a) => a.cible === 'bouclier' && a.niveau <= choisie.niveau);
+  return { niveau: choisie.niveau, bonus_ap: entier(choisie.bonus_ap), bonus_am: entier(choisie.bonus_am), bonus_cran: faites.reduce((s, a) => s + entier(a.bonus_cran), 0) };
+}
+
+/**
+ * Le bouclier de la fiche (décision R96) : null sans forme ; sinon { forme, matiere, bouclier (la ligne de la liste, null sans matière), nom,
+ * amelioration, ap, am, solidite: { max, actuelle, cassee, detail: [{ nom, valeur }] } | null (sans matière), poids ({ id, nom, force_min, couleur,
+ * texte } | null), force (la Force du personnage), forceManquante }.
+ */
+export function bouclierDe(regles, fiche) {
+  const forme = trouver(regles.boucliers ?? [], fiche?.bouclier_classe_id);
+  if (!forme) return null;
+  const matiere = trouver(regles.materiaux_bouclier ?? [], fiche.bouclier_materiau_id);
+  const bouclier = matiere ? (regles.boucliers_formes_matieres ?? []).find((b) => b.classe_id === forme.id && b.materiau_id === matiere.id) ?? null : null;
+  const amelioration = ameliorationDuBouclier(regles, fiche.bouclier_amelioration_id);
+  let solidite = null;
+  if (matiere) {
+    const detail = [{ nom: `Matière : ${matiere.nom}`, valeur: entier(matiere.solidite) }];
+    if (amelioration?.bonus_cran) detail.push({ nom: `Amélioration niveau ${amelioration.niveau}`, valeur: amelioration.bonus_cran });
+    const max = Math.max(0, detail.reduce((t, d) => t + d.valeur, 0));
+    const v = fiche.bouclier_solidite;
+    const enregistree = v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Math.round(Number(v));
+    const actuelle = enregistree === null ? max : Math.min(max, Math.max(0, enregistree));
+    solidite = { max, actuelle, cassee: actuelle === 0, detail };
+  }
+  const poids = trouver(regles.poids_bouclier ?? [], bouclier?.poids_id);
+  const force = caracteristiquesDe(regles, fiche).find((c) => c.id === 'force');
+  return {
+    forme, matiere, bouclier, nom: bouclier?.nom ?? forme.nom, amelioration,
+    ap: bouclier ? entier(bouclier.ap) + (amelioration?.bonus_ap ?? 0) : 0,
+    am: bouclier ? entier(bouclier.am) + (amelioration?.bonus_am ?? 0) : 0,
+    solidite, poids, force: force?.valeur ?? null,
+    forceManquante: Boolean(poids && force && force.base !== null && force.valeur < poids.force_min),
+  };
+}
+
+/** Ce qui s'enregistre comme solidité du moment du bouclier (personnage.bouclier_solidite) : null à son maximum (ou au-delà), sans valeur ou sans matière. */
+export function soliditeDuBouclierAEcrire(regles, fiche, valeur) {
+  const max = bouclierDe(regles, fiche)?.solidite?.max ?? null;
+  if (max === null || valeur === null || valeur === undefined || String(valeur).trim() === '' || !Number.isFinite(Number(valeur))) return null;
+  const crans = Math.max(0, Math.round(Number(valeur)));
+  return crans >= max ? null : crans;
+}
+
+/**
+ * Les colonnes du bouclier de la fiche après le choix de `champ` (bouclier_classe_id, bouclier_materiau_id, bouclier_amelioration_id) à `valeur` :
+ * { bouclier_classe_id, bouclier_materiau_id, bouclier_amelioration_id, bouclier_solidite }. Une autre forme ou une autre matière : un bouclier neuf (à
+ * son maximum, comme une autre arme : R74) ; sans forme, rien ; une autre amélioration borne la solidité au nouveau maximum.
+ */
+export function bouclierApresChoix(regles, fiche, champ, valeur) {
+  const v = valeur === '' || valeur === undefined ? null : valeur;
+  const apres = {
+    bouclier_classe_id: fiche.bouclier_classe_id ?? null, bouclier_materiau_id: fiche.bouclier_materiau_id ?? null,
+    bouclier_amelioration_id: fiche.bouclier_amelioration_id ?? null, bouclier_solidite: fiche.bouclier_solidite ?? null,
+    [champ]: v,
+  };
+  if ((champ === 'bouclier_classe_id' || champ === 'bouclier_materiau_id') && v !== (fiche[champ] ?? null)) apres.bouclier_solidite = null;
+  if (!apres.bouclier_classe_id) Object.assign(apres, { bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null });
+  apres.bouclier_solidite = soliditeDuBouclierAEcrire(regles, { ...fiche, ...apres }, apres.bouclier_solidite);
+  return apres;
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Défense et dégâts reçus (décision R98, demande du propriétaire du 2026-10-17 : « avoir la valeur totale d'AP et d'AM », « saisir le nombre de dégâts
+// entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à cocher (dégâts réduits) pour les cas d'esquive ou parade
+// partielle », « le type de dégâts (L'une des 14 formes de magie hors PI, ou Physique Estoc / Taille / Frappe) »).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Le Potentiel Illimité : pas un type de dégâts (« L'une des 14 formes de magie hors PI »). */
+const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
+/** Les dégâts physiques (armure_degats.type_degats), dans l'ordre de la page « Armes ». */
+export const DEGATS_PHYSIQUES = Object.freeze([['estoc', 'Estoc'], ['taille', 'Taille'], ['frappe', 'Frappe']]);
+
+/** Les types de dégâts reçus proposés : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }] */
+export function typesDeDegats(regles) {
+  return [
+    ...DEGATS_PHYSIQUES.map(([id, nom]) => ({ id, nom, physique: true })),
+    ...(regles.magies ?? []).filter((m) => m.id !== POTENTIEL_ILLIMITE).map((m) => ({ id: m.id, nom: m.nom, physique: false })),
+  ];
+}
+
+/**
+ * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98) : { ap: { total, armure, detail }, am: { total, armure, detail },
+ * element (l'armure élémentaire portée, ou null), bouclier ({ ap, am } du bouclier, comptés seulement en parade partielle ; null sans bouclier) }.
+ * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier ») et
+ * l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77) ; avec un élément, celles de l'armure élémentaire et de son amélioration
+ * à la place (page « Pièces élémentaires » : « Tous les bonus d'origine de l'arme ou de l'armure sont perdus, remplacés par les nouvelles propriétés
+ * magiques apportées par la pièce »). `armure` : la part de l'armure portée (que sa résistance aux dégâts physiques double : degatsRecus).
+ * `detail` : [{ nom, valeur }].
+ */
+export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const ap = { detail: [], armure: 0 };
+  const am = { detail: [], armure: 0 };
+  const ajouter = (x, nom, valeur, armure = false) => {
+    if (!valeur) return;
+    x.detail.push({ nom, valeur });
+    if (armure) x.armure += valeur;
+  };
+  ajouter(ap, 'Base (race, ethnie)', attributs.ap - attributs.apAccessoires);
+  ajouter(am, 'Base (race, ethnie, classes magiques)', attributs.am - attributs.amAccessoires);
+  ajouter(ap, 'Accessoires', attributs.apAccessoires);
+  ajouter(am, 'Accessoires', attributs.amAccessoires);
+  const armure = trouver(regles.armures ?? [], fiche.armure_id);
+  const element = armure ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
+  const amelioration = (cible, id) => {
+    const a = trouver(regles.ameliorations ?? [], id);
+    return a?.cible === cible ? a : null;
+  };
+  const porte = element
+    ? [[`Élément : ${element.nom}`, element], [null, amelioration('armure_elementaire', fiche.armure_amelioration_elementaire_id)]]
+    : armure ? [[armure.nom, armure], [null, amelioration('armure', fiche.armure_amelioration_id)]] : [];
+  for (const [nom, x] of porte) {
+    if (!x) continue;
+    const libelle = nom ?? `Amélioration niveau ${x.niveau}`;
+    ajouter(ap, libelle, entier(x.ap ?? x.bonus_ap), true);
+    ajouter(am, libelle, entier(x.am ?? x.bonus_am), true);
+  }
+  const b = bouclierDe(regles, fiche);
+  const total = (x) => x.detail.reduce((s, d) => s + d.valeur, 0);
+  return {
+    ap: { total: total(ap), armure: ap.armure, detail: ap.detail },
+    am: { total: total(am), armure: am.armure, detail: am.detail },
+    element: element ?? null,
+    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am } : null,
+  };
+}
+
+/**
+ * Les dégâts reçus (décision R98), d'après la formule du guide (« Les dégâts », « Formule des dégâts ») : « Dégâts finaux = [ ( dégâts de l'attaque × 2 si
+ * réussite critique − armure de la cible ) ÷ 2 si défense partielle ÷ 2 si un don divise les dégâts ] × résistance ou faiblesse », « On arrondit à
+ * l'inférieur ». `entrants` : les dégâts de l'attaque, critique compris (saisis) ; `type` : un type de typesDeDegats ; `reduits` : défense partielle (esquive
+ * ou parade partielle) ; `parade` : la parade partielle se fait au bouclier, dont l'AP et l'AM s'ajoutent (« pour qu'ils soient comptés, ça implique une
+ * “Parade partielle” »). L'armure : l'AP contre un dégât physique, l'AM contre une magie (« AP contre une arme, AM contre un sort »). Contre un dégât
+ * physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital d'AP ») ;
+ * réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4). Contre une magie,
+ * le palier de résistance du personnage à cette magie multiplie le résultat (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). `don` :
+ * l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans
+ * type connu.
+ * { recus, etapes: [{ texte, valeur }], armure, type }
+ */
+export function degatsRecus(regles, fiche, { entrants = 0, type = null, reduits = false, parade = false, don = false } = {}) {
+  const t = typesDeDegats(regles).find((x) => x.id === type);
+  if (!t) return null;
+  const d = defenseDe(regles, fiche);
+  const brut = Math.max(0, entier(entrants));
+  const etapes = [{ texte: 'Dégâts entrants', valeur: brut }];
+  const x = t.physique ? d.ap : d.am;
+  let facteur = 1;
+  if (t.physique && !d.element) {
+    const armure = trouver(regles.armures ?? [], fiche.armure_id);
+    for (const r of (armure?.degats ?? []).filter((y) => y.type === t.id)) {
+      const f = 2 * Math.max(1, entier(r.multiplicateur));
+      facteur *= r.sens === 'resistance' ? f : 1 / f;
+    }
+  }
+  let armure = x.total - x.armure + x.armure * facteur;
+  const bouclier = reduits && parade && d.bouclier ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
+  armure += bouclier;
+  const nomArmure = t.physique ? 'AP' : 'AM';
+  etapes.push({
+    texte: `− ${nomArmure}${facteur !== 1 ? ` (armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()})` : ''}${bouclier ? ` (bouclier +${bouclier})` : ''}`,
+    valeur: -armure,
+  });
+  let reste = Math.max(0, brut - armure);
+  if (reduits) {
+    reste /= 2;
+    etapes.push({ texte: 'Défense partielle : ÷ 2', valeur: reste });
+  }
+  if (don) {
+    reste /= 2;
+    etapes.push({ texte: 'Don qui divise les dégâts : ÷ 2', valeur: reste });
+  }
+  if (!t.physique) {
+    const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
+    const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
+    if (palier) {
+      reste *= mult;
+      etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
+    }
+  }
+  return { recus: Math.floor(reste), etapes, armure, type: t };
+}
+
 /**
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
  * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
  * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —
- * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base) — et ceux des
+ * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base ; avec un
+ * élément, ceux de la composition et de l'amélioration sont remplacés : décision R99, rendus dans `nonComptes`, raison 'element') — et ceux des
  * dons passifs acquis qui visent cette arme (lib/degats-texte.mjs : sa famille, ses types de dégâts, les armes de corps à corps ou toutes les armes ; une
  * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don). Un bonus de don qui ne se compte pas (situation, au choix, armes visées non
  * écrites…) est rendu dans `nonComptes`. null sans arme. { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
@@ -1494,15 +1800,22 @@ export function degatsDArme(regles, fiche, rang) {
   const bonus = [];
   const ajouter = (nom, valeur) => { if (valeur) bonus.push({ nom, valeur }); };
   ajouter(arme.nom, arme.bonus_degats);
-  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
-  ajouter(materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats);
-  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
-  ajouter(amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats);
-  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
-  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
-  const ameliorationElement = trouver(regles.ameliorations, ligne.amelioration_elementaire_id);
-  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
   const nonComptes = [];
+  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
+  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
+  // décision R99 (« L'élément remplace tout ») : avec un élément, les bonus du matériau et de l'amélioration sont remplacés par ceux de l'élément
+  const origine = [
+    [materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats],
+    [amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats],
+  ];
+  for (const [nom, valeur] of origine) {
+    if (element && valeur) nonComptes.push({ nom, valeur, raison: 'element' });
+    else ajouter(nom, valeur);
+  }
+  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
+  const ameliorationElement = element ? trouver(regles.ameliorations, ligne.amelioration_elementaire_id) : null;
+  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
   for (const c of donsAcquis(regles, fiche)) {
     for (const d of c.dons) {
       const b = d.degats;

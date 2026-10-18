@@ -34,7 +34,7 @@
 import { RAISONS } from './degats-texte.mjs';
 import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
-  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
+  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, trouver,
   valeursDuMoment,
@@ -54,8 +54,6 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   caracteristiqueMagie: 'Caractéristique de la magie innée',
   gains: 'Gains de niveau',
   nmOfferts: 'NM offerts',
-  accessoireCeinture: 'Accessoire Ceinture',
-  accessoireAutre: 'Accessoire Autre',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -78,10 +76,15 @@ const LIGNE_DE_SUITE = /^suite-de-la-case-([a-z]{1,3}[1-9]\d*)$/;
 /** Les lignes d'information : refaites à chaque export d'après le reste de la fiche, l'import les ignore (la ligne d'export aussi : ligneDExport). */
 export const CLES_D_INFORMATION = Object.freeze([CLES_DE_LA_NOTE.resistancesAuChoix, CLES_DE_LA_NOTE.modeHyperCent, CLES_DE_LA_NOTE.choixAFaire]);
 
-/** Emplacement d'accessoire sans case dans le modèle (ceinture, autre) → sa clé dans la note (« Accessoire Ceinture »). */
+/** Emplacement d'accessoire sans case dans le modèle → sa clé dans la note ; aucun depuis que la fiche n'a plus Ceinture ni Autre (décision R97). */
 export const CLES_DES_ACCESSOIRES_SANS_CASE = Object.freeze(Object.fromEntries(EMPLACEMENTS_ACCESSOIRES
   .filter(([emplacement]) => !EMPLACEMENTS_DU_MODELE.includes(emplacement))
   .map(([emplacement, nom]) => [emplacement, `Accessoire ${nom}`])));
+/**
+ * Les clés de la note des accessoires de la Ceinture et d'« Autre », qu'un classeur d'avant la décision R97 écrit (« Accessoire Ceinture : … ») : la
+ * fiche n'a plus ces emplacements, l'import les relit pour dire qu'ils sont perdus.
+ */
+export const CLES_DES_ACCESSOIRES_RETIRES = Object.freeze({ ceinture: 'Accessoire Ceinture', autre: 'Accessoire Autre' });
 
 /** « Bi-classé : oui » / « non ». */
 export const OUI = 'oui';
@@ -192,7 +195,8 @@ export const ligneDeNote = (cle_, valeur) => `${cle_}${SEPARATEUR_DE_CLE}${valeu
 
 const CLES_CONNUES = new Map([
   ...Object.entries(CLES_DE_LA_NOTE).map(([nom, libelle]) => [cle(libelle), { nom, libelle }]),
-  ...Object.entries(CLES_DES_ACCESSOIRES_SANS_CASE).map(([emplacement, libelle]) => [cle(libelle), { nom: 'accessoire', libelle, emplacement }]),
+  ...Object.entries({ ...CLES_DES_ACCESSOIRES_RETIRES, ...CLES_DES_ACCESSOIRES_SANS_CASE })
+    .map(([emplacement, libelle]) => [cle(libelle), { nom: 'accessoire', libelle, emplacement }]),
 ]);
 
 /**
@@ -380,10 +384,10 @@ function proprieteAEcrire(regles, effet) {
 }
 
 /**
- * Les lignes d'un accessoire porté (cases AD29… ; note pour la ceinture et « autre », jointes par SEPARATEUR_D_ACCESSOIRE) : son nom s'il en a un ;
- * l'effet de la table sur une ligne, « <libellé>[ = valeur][ → choix] » (la valeur seulement pour un effet à fourchette, le choix : la compétence ou la
- * famille d'armes ; « <propriété> : » devant quand le libellé seul ne suffit pas, proprieteAEcrire) ; « Effet : <texte> » pour l'effet hors table ;
- * « Maudit ». Le nom et le texte libre sur une ligne (l'import découpe la case par lignes).
+ * Les lignes d'un accessoire porté (cases AD29…) : l'effet de la table sur une ligne, « <libellé>[ = valeur][ → choix] » (la valeur seulement pour un
+ * effet à fourchette, le choix : la compétence ou la famille d'armes ; « <propriété> : » devant quand le libellé seul ne suffit pas, proprieteAEcrire) ;
+ * « Maudit ». Un accessoire n'a plus ni nom ni effet hors table (décision R97) : ceux d'un accessoire d'avant (un objet resté en mémoire) s'écrivent
+ * encore, sur une ligne chacun (l'import découpe la case par lignes, et les dit perdus).
  */
 export function lignesDAccessoire(regles, a) {
   const lignes = [];
@@ -875,11 +879,20 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     armure = lignesDArmure(regles, f, options).join('\n');
   }
   ecrire(O.armure.bonus, armure, RELUE);
-  const bouclier = trouver(regles.boucliers ?? [], f.bouclier_classe_id);
-  ecrire(O.bouclier.nom, bouclier?.nom ?? f.bouclier_classe_id, RELUE);
-  ecrire(O.bouclier.composition, [...f.bouclier_materiaux].filter((m) => !vide(m.materiau_id)).sort((x, y) => entier(x.rang) - entier(y.rang))
-    .map((m) => `${nomDe(regles.materiaux_bouclier, m.materiau_id)} ${MULTIPLICATION}${vide(m.quantite) ? 1 : entier(m.quantite)}`).join(', '), RELUE);
-  if (bouclier) ecrire(O.bouclier.classe, bouclier.classe);
+  // le bouclier (décision R96 : une forme et une matière) : la forme en AA26, la matière et l'amélioration en AF26 (« Fer · niv. 2 — +4 AP… », comme une
+  // ligne d'armure), relues ; la classe, l'AP et l'AM que la fiche calcule ; la solidité du moment « N / M » en AX26, relue (comme une arme, R74)
+  const bouclier = bouclierDe(regles, f);
+  ecrire(O.bouclier.nom, bouclier?.forme.nom ?? f.bouclier_classe_id, RELUE);
+  if (bouclier?.matiere) {
+    const amelioration = trouver(regles.ameliorations ?? [], f.bouclier_amelioration_id);
+    ecrire(O.bouclier.composition, [bouclier.matiere.nom, ...(amelioration ? [texteDAmelioration(amelioration)] : [])].join(SEPARATEUR_D_ARMURE), RELUE);
+  }
+  if (bouclier) ecrire(O.bouclier.classe, bouclier.forme.classe);
+  if (bouclier?.bouclier) {
+    ecrire(O.bouclier.ap, bouclier.ap);
+    ecrire(O.bouclier.am, bouclier.am);
+  }
+  if (bouclier?.solidite) ecrire(O.bouclier.solidite, `${bouclier.solidite.actuelle} / ${bouclier.solidite.max}`, RELUE);
 
   // accessoires : une case par emplacement du modèle, la ceinture et « autre » dans la note
   const accessoiresSansCase = [];
