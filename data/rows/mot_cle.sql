@@ -5,6 +5,8 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('capacite-de
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('chakra', 'Chakra', 'chakra', 'Énergie consommée lors de l''utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 2 points pour un de Chakra.');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('classe', 'classe', 'classe', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL);
+INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('corruption', 'Corruption', 'corruption', 'Poison du chakra : chaque point de corruption prend la place d''un point de chakra, jusqu''au maximum du chakra. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination de corruption. Les mages de la Corruption n''y sont pas soumis : pour eux, c''est la réserve où passe le chakra de leurs sorts.');
+INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('cr', 'CR', 'cr', '« Si CR » : si le sort est lancé en utilisant la corruption.');
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('distance', 'distance', 'distance', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('hybride', 'hybride', 'hybride', NULL);
 INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('hybride-animal', 'hybride animal', 'hybride-animal', NULL);

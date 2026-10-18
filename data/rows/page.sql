@@ -2321,7 +2321,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-occultiste', 'capacites', 'archimage-occultiste', 'Occultiste (Archimage)', 'occultiste-archimage', '+7% Magie, +7% connaissance, +7% intimidation, +1 point de maîtrise d''arme à distance', '{"classe": "classes/archimage", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 18, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-elementaliste"]}', '+7% Magie, +7% connaissance, +7% intimidation, +1 point de maîtrise d''arme à distance
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-pacte-noire', 'capacites', 'archimage-pacte-noire', 'Pacte Noir (Archimage)', 'pacte-noir-archimage', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 3, "ligne": 33, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-rituel-interdit"]}', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-pacte-noire', 'capacites', 'archimage-pacte-noire', 'Pacte Noir (Archimage)', 'pacte-noir-archimage', 'Permet d''utiliser la {{corruption|corruption}} accumulée pour lancer des sorts de corruption.', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 3, "ligne": 33, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-rituel-interdit"]}', 'Permet d''utiliser la {{corruption|corruption}} accumulée pour lancer des sorts de corruption.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-rituel-interdit', 'capacites', 'archimage-rituel-interdit', 'Rituel Interdit (Archimage)', 'rituel-interdit-archimage', '(Barre de sang débloquée) Par un rituel, permet de sacrifier 1pv par sang, jusqu''à un maximum de +10 sang', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 33, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-pacte-noire"]}', '(Barre de sang débloquée) Par un rituel, permet de sacrifier 1pv par sang, jusqu''à un maximum de +10 sang
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
@@ -2967,7 +2967,7 @@ x = +2 dégâts/6 niveaux de Mage.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-1-des-deux', 'capacites', 'mage-rouge-1-des-deux', '1 des deux (Mage Rouge)', '1-des-deux-mage-rouge', 'Permet d''empêcher la cible d''esquiver ou parer l''arme ET le sort.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-les-deux"]}', 'Permet d''empêcher la cible d''esquiver ou parer l''arme ET le sort. Il doit choisir s''il veut prendre le premier ou deuxième coup.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-ange-rouge', 'capacites', 'mage-rouge-ange-rouge', 'Ange rouge (Mage Rouge)', 'ange-rouge-mage-rouge', 'Invoque des danseur(e)s fantomatiques de {{chakra|chakra}} pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-materiel"]}', 'Invoque des danseur(e)s fantomatiques de {{chakra|chakra}} pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-ange-rouge', 'capacites', 'mage-rouge-ange-rouge', 'Ange rouge (Mage Rouge)', 'ange-rouge-mage-rouge', 'Invoque des danseur(e)s fantomatiques de chakra pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.', '{"classe": "classes/mage-rouge", "specialite": "MAGE GRENAT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/mage-rouge-materiel"]}', 'Invoque des danseur(e)s fantomatiques de chakra pendant 1d4 +1 tour(s), inflige un malus de 10% pour toucher et pour les jets de défense.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-rouge-charge-lente', 'capacites', 'mage-rouge-charge-lente', 'Charge lente… (Mage Rouge)', 'charge-lente-mage-rouge', 'Les sorts offensifs préparés infligent +5 dégâts.', '{"classe": "classes/mage-rouge", "specialite": "MAGE RUBIS", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-rouge-ou-rapide"]}', 'Les sorts offensifs préparés infligent +5 dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Rouge »');
@@ -3083,8 +3083,8 @@ Le boost de dégâts magiques de la posture est aussi appliqué à l''arme.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-missile', 'capacites', 'mage-vert-missile', 'Missile ... (Mage Vert)', 'missile-mage-vert', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/mage-vert-enchante"]}', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-munition-speciale', 'capacites', 'mage-vert-munition-speciale', 'Munition Spéciale (Mage Vert)', 'munition-speciale-mage-vert', '(Posture Symbiose) Permet d''utiliser l''arme à distance et tirer des projectiles faits en {{chakra|chakra}}, tape dans l''élément de la symbiose.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/mage-vert-sur-le-pouce"]}', '(Posture Symbiose)  
-Permet d''utiliser l''arme à distance et tirer des projectiles faits en {{chakra|chakra}}, tape dans l''élément de la symbiose. Coûte 4 {{chakra|chakra}}.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-munition-speciale', 'capacites', 'mage-vert-munition-speciale', 'Munition Spéciale (Mage Vert)', 'munition-speciale-mage-vert', '(Posture Symbiose) Permet d''utiliser l''arme à distance et tirer des projectiles faits en chakra, tape dans l''élément de la symbiose.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/mage-vert-sur-le-pouce"]}', '(Posture Symbiose)  
+Permet d''utiliser l''arme à distance et tirer des projectiles faits en chakra, tape dans l''élément de la symbiose. Coûte 4 {{chakra|chakra}}.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-point-faible', 'capacites', 'mage-vert-point-faible', 'Point Faible (Mage Vert)', 'point-faible-mage-vert', '(Posture Focus) Le sort influé va ignorer la résistance de la cible à cette magie d''un cran.', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-visee-laser"]}', '(Posture Focus)  
 Le sort influé va ignorer la résistance de la cible à cette magie d''un cran.
@@ -3865,7 +3865,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description
 
-L’Archimage est la quintessence du pouvoir arcanique, un être qui transcende les limites des mortels pour maîtriser tous les aspects de la magie. Réservée aux individus au Potentiel Illimité, cette classe offre un accès inégalé à la puissance magique. Au plus haut niveau, certains d''entre eux peuvent même exploiter le sang, âme ou corruption.
+L’Archimage est la quintessence du pouvoir arcanique, un être qui transcende les limites des mortels pour maîtriser tous les aspects de la magie. Réservée aux individus au Potentiel Illimité, cette classe offre un accès inégalé à la puissance magique. Au plus haut niveau, certains d''entre eux peuvent même exploiter le sang, âme ou {{corruption|corruption}}.
 
 ## CHOSE À SAVOIR
 
@@ -4060,7 +4060,7 @@ Capable d’amplifier les soins et de repousser les forces ennemies, il crée de
 
 #### Description Zélote
 
-Le Zélote est le bras armé de sa divinité, un fervent serviteur qui impose la volonté divine par le {{chakra|chakra}} et l''acier. Il combat avec une ferveur inébranlable, punissant les impies et purifiant le monde des forces impures.
+Le Zélote est le bras armé de sa divinité, un fervent serviteur qui impose la volonté divine par le chakra et l''acier. Il combat avec une ferveur inébranlable, punissant les impies et purifiant le monde des forces impures.
 
 Maître des haches, il peut bannir les créatures d''autres plans et infliger de terribles châtiments aux indécis et aux neutres. À son apogée, il invoque des figures saintes pour combattre à ses côtés, incarnant la justice divine en pleine bataille. Il est là pour punir ceux qui le méritent.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
@@ -4649,13 +4649,13 @@ Le Myrmidon est un guerrier versatile. Grâce à son entraînement physique pous
 
 Capable d’ignorer les potentiels boucliers adverses et d’exploiter chaque ouverture, il allie mobilité et agressivité. Son style de combat lui permet d’interrompre l’élan de ses adversaires et de riposter instantanément.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/maclier', 'classes', 'maclier', 'Maclier', 'maclier', 'Le Maclier est un mage combattant qui allie la puissance du {{chakra|Chakra}} à l’imposante défense des grands boucliers.', NULL, '**Catégorie** : Classe Magique
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/maclier', 'classes', 'maclier', 'Maclier', 'maclier', 'Le Maclier est un mage combattant qui allie la puissance du Chakra à l’imposante défense des grands boucliers.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
 
 ## Description Maclier
 
-Le Maclier est un mage combattant qui allie la puissance du {{chakra|Chakra}} à l’imposante défense des grands boucliers. Sa technique unique lui permet de se protéger contre des attaques magiques normalement imparables tout en renforçant ses propres capacités défensives.
+Le Maclier est un mage combattant qui allie la puissance du Chakra à l’imposante défense des grands boucliers. Sa technique unique lui permet de se protéger contre des attaques magiques normalement imparables tout en renforçant ses propres capacités défensives.
 
 Capable de neutraliser certains sorts par la parade et d''influer ses sorts dans son bouclier, il excelle dans l’art de la riposte. Son style de combat repose sur une endurance exceptionnelle, absorbant les coups et détournant la puissance adverse pour mieux contre-attaquer.
 
@@ -4704,13 +4704,13 @@ Le Grand Maclier est un protecteur légendaire, maniant son bouclier comme perso
 
 Il sacrifie son propre {{chakra|Chakra}} et sa Santé pour régénérer sa {{barriere|barrière}} ou amplifier ses défenses, repoussant sans relâche les assauts adverses. Il est capable de renvoyer intégralement les sorts offensifs, convertissant chaque assaut adversaire en une chance de contre-attaque et affirmant sa domination sur le champ de bataille.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/mage', 'classes', 'mage', 'Mage', 'mage', 'Le Mage est un expert du {{chakra|Chakra}}, capable de modeler la réalité à travers ses sorts.', NULL, '**Catégorie** : Classe Magique
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/mage', 'classes', 'mage', 'Mage', 'mage', 'Le Mage est un expert du Chakra, capable de modeler la réalité à travers ses sorts.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
 
 ## Description Mage
 
-Le Mage est un expert du {{chakra|Chakra}}, capable de modeler la réalité à travers ses sorts. Il puise dans son énergie spirituelle pour infliger de lourds dégâts à distance, exploitant sa ou ses magies.
+Le Mage est un expert du Chakra, capable de modeler la réalité à travers ses sorts. Il puise dans son énergie spirituelle pour infliger de lourds dégâts à distance, exploitant sa ou ses magies.
 
 Son style de combat repose sur la puissance et la concentration, renforcée par sa capacité à méditer même sous pression. Faiblement protégé, il compense par plus de sorts et une armure magique plus grande.
 
@@ -4837,7 +4837,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description Mage rouge
 
-Le Mage Rouge fusionne l’art du combat rapproché avec la puissance magique, utilisant sa volonté indomptable pour lancer ses sorts au cœur de la mêlée. Contrairement aux mages traditionnels, il ne dépend pas de l''intelligence, mais de la volonté pour canaliser son {{chakra|Chakra}}.
+Le Mage Rouge fusionne l’art du combat rapproché avec la puissance magique, utilisant sa volonté indomptable pour lancer ses sorts au cœur de la mêlée. Contrairement aux mages traditionnels, il ne dépend pas de l''intelligence, mais de la volonté pour canaliser son Chakra.
 
 Capable de frapper en même temps son arme et son sort, ou en perturbant l’esprit de ses adversaires, il impose un rythme imprévisible au combat. Un guerrier magique, simplement.
 
@@ -4943,9 +4943,9 @@ Grâce à son expertise, il renforce l’impact des sorts "fer", perce les rési
 
 #### Description Mage jade
 
-Le Mage Jade ne se contente pas d’enchanter ses projectiles, il fusionne complètement son arme et sa magie grâce à la posture Symbiose. Ses tirs deviennent une extension de son {{chakra|Chakra}}, perçant les défenses et ignorant les restrictions classiques de munitions.
+Le Mage Jade ne se contente pas d’enchanter ses projectiles, il fusionne complètement son arme et sa magie grâce à la posture Symbiose. Ses tirs deviennent une extension de son Chakra, perçant les défenses et ignorant les restrictions classiques de munitions.
 
-Capable de canaliser son {{chakra|Chakra}} directement dans ses projectiles, il tire à la main avec la puissance d’une arme chargée et amplifie ses dégâts en fonction de l’état de son équipement. Plus il pousse la symbiose avec son arme, plus il devient indomptable, où chaque coup est une manifestation de sa volonté.
+Capable de canaliser son Chakra directement dans ses projectiles, il tire à la main avec la puissance d’une arme chargée et amplifie ses dégâts en fonction de l’état de son équipement. Plus il pousse la symbiose avec son arme, plus il devient indomptable, où chaque coup est une manifestation de sa volonté.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/marcass', 'classes', 'marcass', 'Marcass', 'marcass', 'Le Marcass est un combattant qui fonce sans hésitation vers ses adversaires, écrasant tout sur son passage avec sa Charge Porcine, qui augmente sa vitesse lorsqu’il s’élance en ligne droite.', NULL, '**Catégorie** : Classe Hybride Animal
 
@@ -6129,7 +6129,7 @@ Presque chaque magie est liée à une altération d’état, et beaucoup de sort
 - Les **potions** et remèdes de l’[alchimie](/ressources/alchimie/) soignent, rendent du {{chakra|chakra}} ou guérissent une altération.
 - Certains **sorts** soignent ou protègent, notamment ceux de la lumière et de l’eau.
 
-Attention : la **corruption** empêche de remonter son {{chakra|chakra}} au maximum, et le **Mode Hyper** interdit de récupérer du {{chakra|chakra}} tant qu’il dure.
+Attention : la **{{corruption|corruption}}** empêche de remonter son {{chakra|chakra}} au maximum, et le **Mode Hyper** interdit de récupérer du {{chakra|chakra}} tant qu’il dure.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/campagne-ou-scenario-one-shot', 'guide', 'campagne-ou-scenario-one-shot', '« Campagne » ou « Scénario one shot » ?', 'campagne-ou-scenario-one-shot', 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr.', NULL, 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr :
 
@@ -6514,11 +6514,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 La consommation de {{chakra|chakra}} est indiquée sur les sorts mais il y a des cas particuliers : L’Échec critique avec un sort consomme le double du coût, l’échec au jet pour utiliser un sort fait consommer la moitié du coût de base.
 
-**Corruption** : Cet attribut un peu particulier possède le même taux que le {{chakra}} et évolue en même temps que ce dernier. La corruption est un poison pour le lobe de {{chakra|chakra}} (un organe situé dans le cerveau).
+**{{corruption}}** : Cet attribut un peu particulier possède le même taux que le {{chakra}} et évolue en même temps que ce dernier. La {{corruption|corruption}} est un poison pour le lobe de chakra (un organe situé dans le cerveau).
 
-Chaque point de corruption va empêcher l’utilisation du {{chakra|chakra}}, comme une substance parasite qui va prendre la place du {{chakra|chakra}}. Si la corruption atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de corruption sinon il va mourir et se transformer en abomination de corruption.
+Chaque point de {{corruption|corruption}} va empêcher l’utilisation du {{chakra|chakra}}, comme une substance parasite qui va prendre la place du {{chakra|chakra}}. Si la {{corruption|corruption}} atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de {{corruption|corruption}} sinon il va mourir et se transformer en abomination de corruption.
 
-Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23/25 car la corruption prend la place.
+Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais vous avez 2 points de {{corruption|corruption}}, vous ne pourrez pas monter au-delà de 23/25 car la {{corruption|corruption}} prend la place.
 
 ***PS : Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle.***
 
@@ -6851,7 +6851,7 @@ Les attributs se calculent à partir de la race, de la classe et des magies choi
 - **Santé** (les points de vie) = santé de la race + santé de la ou des classes + santé offerte par les magies. À 0 ou moins, le personnage tombe dans le coma et doit réussir un jet de survie : un seul réussi le stabilise, trois ratés et il meurt.
 - **{{chakra}}** (les points de magie, que dépensent les sorts) = {{chakra|chakra}} de la race + {{chakra|chakra}} de la ou des classes + {{chakra|chakra}} offert par les magies.
 - **{{barriere}}**, une seconde peau magique = la moitié du {{chakra|chakra}} (arrondie à l’inférieur) + les bonus de {{barriere|barrière}} de la race et de la classe. Le mithril passe à travers, et le maverium la brise à son contact.
-- **Corruption** : son maximum est celui du {{chakra|chakra}}. Chaque point de corruption prend la place d’un point de {{chakra|chakra}} ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
+- **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. Chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}} ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
 - **Âme** ou **Sang** (la « 4ᵉ barre ») : seulement avec la nécromancie ou la magie du sang ; une réserve de 10 que dépensent certains sorts, qui se recharge de 1 par tour en combat.
 - **Vitesse** : celle de la race, sur terre et à la nage. Une armure lourde retire 1 point et rend la nage impossible.
 - **Armure de base** : chaque classe magique donne 4 d’armure magique (AM) ; certaines races donnent de l’armure physique (AP) ou magique.
@@ -7202,7 +7202,7 @@ S’y ajoutent un effet propre à chaque magie et un autre propre à chaque race
 - Les sorts ne coûtent plus de {{chakra|chakra}}, mais le Mode Hyper lui-même en brûle **10 % du maximum par tour**, et le {{chakra|chakra}} ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
 - Sans assez de {{chakra|chakra}}, le personnage peut quand même en dépenser : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de {{chakra|chakra}}** (en Mode Hyper ou non).
 - Il dure au plus **le niveau global divisé par 2** en tours.
-- Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de {{chakra|chakra}}, objet magique, accord du MJ).
+- Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de chakra, objet magique, accord du MJ).
 - On peut le prolonger au-delà de ces limites, mais le corps le paie une fois le mode relâché : résistances brisées, vulnérabilités accentuées, croix sur les caractéristiques, coma… et, à cinq tours de trop, une chance sur deux de mourir.
 
 ## Le Mode Hyper 100 %
@@ -7571,14 +7571,14 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **AM** (armure magique) : ce qui retire des points aux dégâts des sorts.
 - **AP** (armure physique) : ce qui retire des points aux dégâts des armes.
 - **Âme / Sang** : la « 4ᵉ barre » des utilisateurs de la nécromancie et de la magie du sang, que dépensent certains de leurs sorts.
-- **Attributs** : santé, {{chakra|chakra}}, {{barriere|barrière}}, corruption, vitesse, initiative…
+- **Attributs** : santé, {{chakra|chakra}}, {{barriere|barrière}}, {{corruption|corruption}}, vitesse, initiative…
 - **{{barriere}}** : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du {{chakra|chakra}}.
 - **Battlemap** : la carte quadrillée sur laquelle se joue un combat.
 - **Caractéristiques** : Force, Volonté, Intelligence, Perception, Social et Agilité.
 - **{{chakra}}** : les points de magie, que dépensent les sorts ; à court de {{chakra|chakra}}, on paie 2 points de santé par point manquant.
 - **Classe magique** : une classe qui donne +4 AM et un emplacement de sort.
 - **Compétence** : un savoir-faire (Diplomatie, Esquive, Magie…), lié à une caractéristique.
-- **Corruption** : un poison du {{chakra|chakra}}, qui en prend la place.
+- **{{corruption}}** : un poison du {{chakra|chakra}}, qui en prend la place.
 - **D100, D20, d6…** : un dé à 100, 20, 6… faces. « 2d6+2 » : deux dés à six faces, plus 2.
 - **Défense partielle** : une parade ou une esquive réussie, mais moins bonne que l’attaque ; les dégâts sont divisés par 2.
 - **Dieu inné** : la divinité de la magie innée du personnage.
@@ -7920,13 +7920,13 @@ Maintenir le mode hyper au-delà des limites aura pour conséquence une fois le 
 
 Le Mode Hyper ne peut être enclenché qu''une fois toutes les semaines dans le jeu, et qu''une seule créature sur le terrain ne peut activer son mode hyper pendant 1 combat, il existe des exceptions :
 
-- Les zones où le {{chakra|chakra}} est tellement présent que le simple fait de respirer permet de récupérer la totalité de son {{chakra|chakra}}, ici tout le monde peut activer son mode hyper et cela sans consommer le {{chakra|chakra}}, mais la limite des 10 tours, elle, reste présente.
+- Les zones où le chakra est tellement présent que le simple fait de respirer permet de récupérer la totalité de son {{chakra|chakra}}, ici tout le monde peut activer son mode hyper et cela sans consommer le {{chakra|chakra}}, mais la limite des 10 tours, elle, reste présente.
 - Un objet magique qui permet d''activer son mode hyper en même temps que quelqu''un d''autre.
 - Autorisation du MJ selon la situation.
 
 ## Mode Hyper 100%
 
-Il s''agit d''un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l''aura de {{chakra|chakra}} qui déferle en mode Hyper. Une fois scellée à l''intérieur de son corps, la puissance du lanceur est à son paroxysme.
+Il s''agit d''un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l''aura de chakra qui déferle en mode Hyper. Une fois scellée à l''intérieur de son corps, la puissance du lanceur est à son paroxysme.
 
 L''appellation "100%" vient du fait que le lanceur est à pleine puissance tant que l''aura est enfouie en lui, ainsi de nouveaux bonus s''offrent à lui en 100% :
 
@@ -7951,7 +7951,7 @@ Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
 | Potentiel illimité | Dégâts physiques neutres, Résistance à la magie | Dégâts physiques neutres, Résistance à la magie |
 | Sang | Permet de récupérer 10 sang par tour au lieu de 1. | Divise par 2 le coût en sang pour les sorts. |
 | Arcane | Les sorts amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
-| Corruption | Le {{chakra\|chakra}} active directement les effets secondaires | Divise par 2 le cout en corruption des sorts. |
+| Corruption | Le {{chakra\|chakra}} active directement les effets secondaires | Divise par 2 le cout en {{corruption\|corruption}} des sorts. |
 | Temps/Espace | Donne l''état "Célérité" (voir le sort lvl 4) pendant le mode hyper, le sort portail passe à ICx3 et le sort téléportation passe à ICx2. | Donne l''état "Image diffuse" (voir le sort lvl 4) pendant le mode hyper, les clones se rechargent à hauteur de 1 par tour. |
 | Vide | Impose un désavantage (jette 2d100, garde le moins bon) aux ennemis qui tentent des attaques contre lui. | Impose un désavantage (jette 2d100, garde le moins bon) à la première attaque tentée contre lui. |
 | Nécromancie | Permet d''avoir deux invocations au lieu d''une seule. Passe le sort animation de mort en IC (ICx2 si jamais il est déjà en ic) | Permet d''avoir deux invocations au lieu d''une seule. |
@@ -8229,25 +8229,25 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Crachin Blanc
 
-**Description** : Un crachin blanc tombe doucement, enveloppant le monde d’une fine couche de {{chakra|chakra}} pure. Cette petite brume pousse le {{chakra|chakra}} des combattants à son paroxysme et permet d''énormes prouesses.
+**Description** : Un crachin blanc tombe doucement, enveloppant le monde d’une fine couche de chakra pure. Cette petite brume pousse le chakra des combattants à son paroxysme et permet d''énormes prouesses.
 
 **Effet(s)**
 
 - Magie Arcane = +5 dégâts
 - {{chakra}} illimité
 - Le mode hyper n''est plus limité à un être sur le terrain
-- Divise la corruption par 2
+- Divise la {{corruption|corruption}} par 2
 
 ## Pluie pétrole
 
-**Description** : Une pluie de pétrole tombe du ciel, noire et épaisse, recouvrant tout d’une couche glissante , infligeant de la corruption à tout le monde.
+**Description** : Une pluie de pétrole tombe du ciel, noire et épaisse, recouvrant tout d’une couche glissante , infligeant de la {{corruption|corruption}} à tout le monde.
 
 **Effet(s)**
 
 - Magie Corruption = +5 dégâts
 - Toutes les autres magies = -3 dégâts
 - Lors du premier tour de la météo uniquement = -25% de {{chakra|chakra}} pour tous ceux qui ne sont pas de la Corruption
-- +2 Corruption par tour
+- +2 {{corruption}} par tour
 
 ## Saccage temporel
 
@@ -8754,7 +8754,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Présentation générale
 
-L’Académie de Chakra est un lieu de savoir ancien et sacré, dédié à Mirada, la Déesse Primordiale du {{chakra}} et de la Magie.
+L’Académie de Chakra est un lieu de savoir ancien et sacré, dédié à Mirada, la Déesse Primordiale du Chakra et de la Magie.
 
 Située au cœur du territoire des Elfes Argentés, elle incarne l’équilibre parfait entre le terrestre et le céleste : un château majestueux au sol, couronné par une île flottante lévitant une centaine de mètres au-dessus, baignée d’arcanes scintillantes. Ces deux entités, bien que liées, possèdent chacune leurs propres règles, hiérarchies et fonctions — l’une tournée vers la pratique, l’autre vers la pure théorie et la recherche.
 
@@ -8765,7 +8765,7 @@ Les Elfes Argentés, qui règnent sur le territoire d’Elloris, ont toujours re
 ## Informations officielles
 
 * **Date de création :** \-112
-* **Divinité priée :** Mirada, Déesse Primordiale du {{chakra}}
+* **Divinité priée :** Mirada, Déesse Primordiale du Chakra
 * **Ambassadeur :** Ambassadeur de la Magie (entité collective sans identité propre)
 * **Gardien :** Variable selon les époques
 * **Forme d’État :** Temple / Institution académique
@@ -8776,11 +8776,11 @@ Les Elfes Argentés, qui règnent sur le territoire d’Elloris, ont toujours re
 
 ## Histoire
 
-Bien avant la fondation d’Elloris, la colline sur laquelle s’élève aujourd’hui l’Académie était déjà un point de convergence du {{chakra|chakra}} — un lieu où les courants magiques du monde se croisaient en un nœud d’énergie pure. C’est là que Mirada aurait posé la première pierre de son temple, offrant aux mortels le moyen d’étudier la magie non plus comme une arme, mais comme un langage divin.
+Bien avant la fondation d’Elloris, la colline sur laquelle s’élève aujourd’hui l’Académie était déjà un point de convergence du chakra — un lieu où les courants magiques du monde se croisaient en un nœud d’énergie pure. C’est là que Mirada aurait posé la première pierre de son temple, offrant aux mortels le moyen d’étudier la magie non plus comme une arme, mais comme un langage divin.
 
 Lorsque les Elfes Dorés devinrent Elfes Argentés après la Purification des Âmes, ils bâtirent leur capitale autour de ce sanctuaire, en hommage à leur créatrice. L’Académie, quant à elle, se développa dans une dualité architecturale unique :
 
-* Le Château terrestre, dédié à la transmission, à l’apprentissage et à la maîtrise du {{chakra|chakra}}.
+* Le Château terrestre, dédié à la transmission, à l’apprentissage et à la maîtrise du chakra.
 * L’Île flottante, laboratoire céleste et centre de recherche arcanique, réservée aux ambassadeurs et aux mages supérieurs.
 
 Depuis sa création, l’Académie est demeurée neutre dans les conflits mondiaux, préférant échanger le savoir contre des ressources ou des faveurs politiques plutôt que des alliances armées. Elle est considérée comme le berceau du savoir magique sur Maverick.
@@ -8791,7 +8791,7 @@ L’Académie est divisée en deux structures distinctes :
 
 **Le Château terrestre**
 
-Bâti en pierre blanche veinée de cristaux blanc brillant, il abrite tout ce qu’on peut retrouver dans une ville classique mais tout est à l’intérieur des murs. Des fontaines de {{chakra|chakra}} pur coulent à travers les couloirs, illuminant les murs d’une lueur blanche. C’est aussi au château qu’on retrouve toute la production, que ce soit nourriture, eau, vêtement, etc …
+Bâti en pierre blanche veinée de cristaux blanc brillant, il abrite tout ce qu’on peut retrouver dans une ville classique mais tout est à l’intérieur des murs. Des fontaines de chakra pur coulent à travers les couloirs, illuminant les murs d’une lueur blanche. C’est aussi au château qu’on retrouve toute la production, que ce soit nourriture, eau, vêtement, etc …
 
 **L’Île flottante**
 
@@ -8801,13 +8801,13 @@ Les deux parties sont reliées par un rayon d’énergie pur qui pulse à interv
 
 ## Divinité et culte
 
-Mirada, la Déesse du {{chakra}}, est vénérée ici comme la Mère Brillante, source de toute énergie magique et protectrice des érudits. Son culte est moins religieux que spirituel : il s’agit avant tout d’une quête de compréhension.
+Mirada, la Déesse du Chakra, est vénérée ici comme la Mère Brillante, source de toute énergie magique et protectrice des érudits. Son culte est moins religieux que spirituel : il s’agit avant tout d’une quête de compréhension.
 
-Les fidèles cherchent à unir leur {{chakra|chakra}} interne avec celui du monde, croyant qu’ainsi, ils peuvent entendre la voix de Mirada dans le silence des flux magiques.
+Les fidèles cherchent à unir leur chakra interne avec celui du monde, croyant qu’ainsi, ils peuvent entendre la voix de Mirada dans le silence des flux magiques.
 
 Les rituels sont sobres :
 
-* Méditation au lever du soleil pour “accorder” son {{chakra|chakra}}.
+* Méditation au lever du soleil pour “accorder” son chakra.
 * Purification du mana dans les bassins d’énergie.
 * Lecture publique des anciens textes de Mirada, dits Les Flux Primordiaux.
 
@@ -8836,21 +8836,21 @@ Les rituels sont sobres :
 
 ## Ambassadeur
 
-L’Ambassadeur de la Magie n’est pas une entité unique, mais une manifestation cyclique. Tous les deux siècles, Mirada sélectionne un être mortel — souvent un elfe, parfois un farfadet ou un felfe — pour incarner la volonté du {{chakra|chakra}}. Lorsqu’un ambassadeur meurt, son essence se dissout dans la magie du monde, fusionnant avec celle de Mirada avant qu’un nouveau corps ne soit choisi.
+L’Ambassadeur de la Magie n’est pas une entité unique, mais une manifestation cyclique. Tous les deux siècles, Mirada sélectionne un être mortel — souvent un elfe, parfois un farfadet ou un felfe — pour incarner la volonté du chakra. Lorsqu’un ambassadeur meurt, son essence se dissout dans la magie du monde, fusionnant avec celle de Mirada avant qu’un nouveau corps ne soit choisi.
 
 Rôle : Diriger l’Île flottante, réguler les flux magiques de Maverick, et transmettre les volontés de Mirada. L’Ambassadeur de la Magie n’a ni nom, ni visage fixe — il ou elle est le canal vivant de la Déesse.
 
 **Le cas du premier Ambassadeur : La chaîne de la magie**
 
-Ce dragon argenté était le premier représentant de la déesse du {{chakra|chakra}}, mais l''entretien de la chaîne de la magie a commencé à lui peser fort dans son énergie divine, il n''est actuellement plus capable d''être parfaitement lucide malgré sa puissance. Il errait sans fin, accomplissant la chaîne sans voir les conséquences de son carnage. Et oui, en étant que peu lucide, il agissait comme une bête sauvage et tuait tous ceux qui n''étaient pas dignes de la chaîne.
+Ce dragon argenté était le premier représentant de la déesse du chakra, mais l''entretien de la chaîne de la magie a commencé à lui peser fort dans son énergie divine, il n''est actuellement plus capable d''être parfaitement lucide malgré sa puissance. Il errait sans fin, accomplissant la chaîne sans voir les conséquences de son carnage. Et oui, en étant que peu lucide, il agissait comme une bête sauvage et tuait tous ceux qui n''étaient pas dignes de la chaîne.
 
-Il s''agit à la base d''un système qui permettait de maintenir le taux de {{chakra|chakra}} à son plus haut, un groupe qui se sacrifie pour le bien de tous. Stopper cette chaîne pourrait avoir de graves conséquences. C''est ce qui va entraîner l''existence de l''Âge de Fer pour seulement 1 mois. En effet, il se trouve que la chaîne de la magie n’était plus utile car le {{chakra|chakra}} est tellement devenu stable dans le monde que faire ça revenait à pisser dans un violon.
+Il s''agit à la base d''un système qui permettait de maintenir le taux de chakra à son plus haut, un groupe qui se sacrifie pour le bien de tous. Stopper cette chaîne pourrait avoir de graves conséquences. C''est ce qui va entraîner l''existence de l''Âge de Fer pour seulement 1 mois. En effet, il se trouve que la chaîne de la magie n’était plus utile car le chakra est tellement devenu stable dans le monde que faire ça revenait à pisser dans un violon.
 
 Au final, briser la chaîne aura eu une petite conséquence négative mais qui s’est vite réparée avec le temps.
 
 ## Gardien
 
-Le Gardien du {{chakra}} est choisi parmi les mages les plus puissants de l’Académie, à la fois par sa sagesse et sa force intérieure. Il dirige le Château terrestre et veille à la sécurité de l’ensemble. Comme pour beaucoup de temples, c’est l’Ambassadeur qui le nomme.
+Le Gardien du Chakra est choisi parmi les mages les plus puissants de l’Académie, à la fois par sa sagesse et sa force intérieure. Il dirige le Château terrestre et veille à la sécurité de l’ensemble. Comme pour beaucoup de temples, c’est l’Ambassadeur qui le nomme.
 
 Rôle :
 
@@ -9252,7 +9252,7 @@ Le Barrage argenté vénère principalement :
 
 * **Océane, Déesse de l’Eau.** Elle possède une place particulière dans cette nation, possédant même une très grande statue au centre du Barrage en son honneur. Elle est vue comme l’une des sauveuses qui a permis l’existence du Barrage argenté.
 * **Eaunoire, Dieu de la Corruption.** Celà peut sembler ironique vu de l’hostilité mutuelle entre corruption et eau mais une bonne partie de la population remercie Eaunoire pour l’existence du marais sans fond, cette réserve quasi inépuisable de brais qui leur a permis d’augmenter leur défense.
-* **Mirada, Déesse du {{chakra}}.** Elle est priée car elle reste le point d’origine des elfes.
+* **Mirada, Déesse du Chakra.** Elle est priée car elle reste le point d’origine des elfes.
 * **Brock, Dieu de la Force.** Bien que ce soit assez marginal, il y a une partie des elfes argentés d’ici qui prie le dieu de la force pour le remercier de leur avoir offert la force de survivre.
 
 ## Économie et Ressources
@@ -9482,7 +9482,7 @@ Réputés pour leur hostilité la majeure partie de l’année, ces bois connais
 
 L’origine des Bois du Printemps demeure inconnue. Les érudits parlent d’une forêt ancienne, antérieure à de nombreuses nations actuelles, dont le comportement défie les cycles naturels. Chaque année, à l’arrivée du printemps, la forêt semble relâcher son emprise : les monstres deviennent moins agressifs, certaines zones jusque-là impraticables s’ouvrent, et les ressources se renouvellent de façon anormalement abondante.
 
-Les tribus hybrides qui y vivent évoquent, dans leurs récits, une forêt consciente, capable de choisir quand frapper et quand laisser passer. Le consensus à peu près juste serait qu''avec la densité de la forêt et tout le mélange de {{chakra|chakra}}, ça provoque des évènements curieux voire effrayants.
+Les tribus hybrides qui y vivent évoquent, dans leurs récits, une forêt consciente, capable de choisir quand frapper et quand laisser passer. Le consensus à peu près juste serait qu''avec la densité de la forêt et tout le mélange de chakra, ça provoque des évènements curieux voire effrayants.
 
 ## Environnement
 
@@ -10778,7 +10778,7 @@ Ses fidèles tiennent pour sacré le travail honnête et la symbiose avec la nat
 
 ## Outils divins
 
-**La Graine Reine :** Permet de faire pousser un Yggdrasil, un arbre de {{chakra|chakra}} d’une puissance incommensurable, ces arbres sont importants pour la stabilité du {{chakra|chakra}} dans le monde. Certains d’entre eux servent même de refuge pour des peuples tribaux qui vénèrent Dimitri. On dit que planter cette graine nécessite un cœur pur et un sacrifice de vie. L’arbre qui en naît relie les royaumes spirituels à la matière.
+**La Graine Reine :** Permet de faire pousser un Yggdrasil, un arbre de chakra d’une puissance incommensurable, ces arbres sont importants pour la stabilité du chakra dans le monde. Certains d’entre eux servent même de refuge pour des peuples tribaux qui vénèrent Dimitri. On dit que planter cette graine nécessite un cœur pur et un sacrifice de vie. L’arbre qui en naît relie les royaumes spirituels à la matière.
 
 **L’Armure du Golem :** Il s’agit d’une armure colossale totalement en pierre. Forgée dans la même roche que celle qui compose Dimitri lui-même, cette armure est si lourde qu’aucun mortel ne peut la porter. Elle symbolise la solidité et la constance du dieu. Des répliques existent sous le nom d’Armure Montagne, bien que moins puissantes que l’originale, elles sont réputées pour être très lourdes et très résistantes, faisant partie des meilleures armures. Il est obligatoire d’être en excellente condition physique et fort pour pouvoir la porter.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
@@ -11111,7 +11111,7 @@ Les dragons de Maverick sont des êtres intelligents, dotés de conscience, de l
 
 Leur naissance survient peu après un événement majeur de l’histoire du monde : le massacre des élémentaires. Selon les récits anciens, les dieux auraient façonné les dragons à partir des restes des élémentaires détruits, recyclant leurs essences pour créer de nouveaux êtres capables d’incarner durablement les forces magiques du monde. Cette origine expliquerait leur lien organique et profond avec leur magie respective.
 
-C’est également ce qui justifie leur physiologie singulière : malgré leur taille titanesque, les dragons ont besoin de très peu de nourriture. Leur environnement saturé en {{chakra|chakra}} magique leur permet de subsister presque exclusivement de l’énergie ambiante. Certains dragons se nourrissent même directement de leur élément — un dragon de feu peut ainsi absorber braises et cendres encore chaudes, tandis qu’un dragon de terre peut être nourri directement par la végétation qui pousse sur lui.
+C’est également ce qui justifie leur physiologie singulière : malgré leur taille titanesque, les dragons ont besoin de très peu de nourriture. Leur environnement saturé en chakra magique leur permet de subsister presque exclusivement de l’énergie ambiante. Certains dragons se nourrissent même directement de leur élément — un dragon de feu peut ainsi absorber braises et cendres encore chaudes, tandis qu’un dragon de terre peut être nourri directement par la végétation qui pousse sur lui.
 
 ## Le projet divin et l’échec des ambassadeurs dragons
 
@@ -11195,9 +11195,9 @@ Ces dragons considèrent leur forme draconique comme une enveloppe archaïque, b
 
 | *Nom* | *Magie/Couleur* | *Description* |  |
 | ----- | :---: | ----- | ----- |
-| Dragon du Potentiel illimité Dragon Doré | Potentiel illimité | ***Alignement*** Neutre strict  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 14 mètres en moyenne  ***Apparence*** Le Dragon du Potentiel Illimité possède une morphologie classique à quatre pattes et une paire d’ailes, sans excroissances, difformités ou adaptations extrêmes. Son corps est recouvert d’écailles parfaitement dorées, ni ternes ni aveuglantes, reflétant la lumière comme le {{chakra\|chakra}} elle-même. Ces écailles ne portent aucune trace d’un élément particulier, car elles peuvent résonner avec toutes les magies. Il incarne la quintessence de la sagesse draconique. Là où les autres dragons sont l’expression exacerbée d’un principe unique, celui-ci est l’origine, le point d’équilibre entre création et destruction. Il ne se spécialise pas : il comprend. Sa magie lui permet de puiser dans l’ensemble des autres formes magiques, non pas par imitation, mais parce qu’elles découlent toutes de lui. ***Milieu de vie*** Le Dragon du Potentiel Illimité n’a pas de territoire fixe. Il apparaît rarement, souvent à des moments charnières de l’histoire, lorsque l’équilibre du monde est menacé ou qu’un changement fondamental est en marche. |  |
+| Dragon du Potentiel illimité Dragon Doré | Potentiel illimité | ***Alignement*** Neutre strict  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 14 mètres en moyenne  ***Apparence*** Le Dragon du Potentiel Illimité possède une morphologie classique à quatre pattes et une paire d’ailes, sans excroissances, difformités ou adaptations extrêmes. Son corps est recouvert d’écailles parfaitement dorées, ni ternes ni aveuglantes, reflétant la lumière comme le chakra elle-même. Ces écailles ne portent aucune trace d’un élément particulier, car elles peuvent résonner avec toutes les magies. Il incarne la quintessence de la sagesse draconique. Là où les autres dragons sont l’expression exacerbée d’un principe unique, celui-ci est l’origine, le point d’équilibre entre création et destruction. Il ne se spécialise pas : il comprend. Sa magie lui permet de puiser dans l’ensemble des autres formes magiques, non pas par imitation, mais parce qu’elles découlent toutes de lui. ***Milieu de vie*** Le Dragon du Potentiel Illimité n’a pas de territoire fixe. Il apparaît rarement, souvent à des moments charnières de l’histoire, lorsque l’équilibre du monde est menacé ou qu’un changement fondamental est en marche. |  |
 | Dragon du Sang Dragon Bordeaux | Sang | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 5 mètres 11 \- 100 ans : 6 à 12 mètres 200 et plus : 15 mètres en moyenne  ***Apparence*** Le Dragon du Sang possède une morphologie singulière : trois paires de pattes et une seule paire d’ailes, un trait partagé avec d’autres créatures liées au Sang et avec le Dieu du Sang lui-même. Cette anatomie lui confère une stabilité exceptionnelle et une puissance physique redoutable, aussi bien au sol qu’en combat prolongé. Ses écailles bordeaux sont incomplètes et irrégulières, laissant apparaître par endroits une chair épaisse parcourue de veines apparentes. Ces veines pulsent d’un sang dense et puissant, visible sous la peau. Là où d’autres dragons comptent sur une carapace, celui-ci s’appuie sur une musculature hypertrophiée, capable d’absorber les chocs, de se régénérer lentement et d’endurer des blessures qui seraient fatales à d’autres espèces. Il est connu que seul le Dragon de la Terre peut lui tenir tête en force pure. ***Milieu de vie*** Le Dragon du Sang vit dans des territoires marqués par la violence, la guerre ou les sacrifices anciens : champs de bataille oubliés, terres imprégnées de sang versé, forteresses en ruines ou régions où la vie lutte constamment pour survivre. |  |
-| Dragon de l’Arcane Dragon Gris | Arcane | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 4 mètres 11 \- 100 ans : 5 à 8 mètres 200 ans et plus : 9 à 12 mètres  ***Apparence*** Le Dragon de l’Arcane possède une morphologie classique à quatre pattes et une paire d’ailes, avec une corpulence moyenne et équilibrée. Il ne paie pas de mine au premier regard : ni colossal, ni monstrueusement altéré, ni excessivement orné. C’est précisément cette normalité qui le rend trompeur. Ses écailles parfaitement argentées sont lisses, régulières et étonnamment pures. Elles ne portent ni fissures élémentaires ni excroissances visibles, mais réagissent subtilement à la magie environnante, devenant plus brillantes si le {{chakra\|chakra}} est présent. ***Milieu de vie*** Il vit souvent à proximité de lieux saturés de {{chakra\|chakra}}: nœuds de magie, ruines antiques, académies magiques et cetera. |  |
+| Dragon de l’Arcane Dragon Gris | Arcane | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 4 mètres 11 \- 100 ans : 5 à 8 mètres 200 ans et plus : 9 à 12 mètres  ***Apparence*** Le Dragon de l’Arcane possède une morphologie classique à quatre pattes et une paire d’ailes, avec une corpulence moyenne et équilibrée. Il ne paie pas de mine au premier regard : ni colossal, ni monstrueusement altéré, ni excessivement orné. C’est précisément cette normalité qui le rend trompeur. Ses écailles parfaitement argentées sont lisses, régulières et étonnamment pures. Elles ne portent ni fissures élémentaires ni excroissances visibles, mais réagissent subtilement à la magie environnante, devenant plus brillantes si le chakra est présent. ***Milieu de vie*** Il vit souvent à proximité de lieux saturés de chakra: nœuds de magie, ruines antiques, académies magiques et cetera. |  |
 | Dragon de la Corruption Dragon Noir | Corruption | ***Alignement*** Alignements mauvais  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 3 à 6 mètres 11 \- 100 ans : 7 à 13 mètres 200 et plus : 18 mètres en moyenne  ***Apparence*** Le Dragon Noir possède une morphologie massive à quatre pattes et une paire d’ailes, mais son corps est plus large, plus lourd et plus oppressant que celui des autres dragons ailés. Ses écailles parfaitement noires ne reflètent presque aucune lumière. Son regard est profondément mauvais, chargé d’une intelligence hostile et d’une volonté de domination. La corruption suinte littéralement de son corps à certains endroits : entre les écailles, le long des articulations ou autour de la gueule. Cette matière sombre et visqueuse n’est pas incontrôlée ; le dragon y est totalement adapté, ce qui le rend dangereux vu qu’il a un potentiel de dégradation d’environnement a ne surtout pas sous-estimer. ***Milieu de vie*** Le Dragon de la Corruption vit principalement dans les marais, les terres noyées, les zones saturées de brai et de corruption. Son environnement naturel est un écosystème malsain où l’eau stagnante, la boue noire et les vapeurs toxiques sont omniprésentes. |  |
 | Dragon de l’Espace/Temps Dragon Rose | Espace/Temps | ***Alignement*** Alignements neutres  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 2 à 3 mètres 11 \- 100 ans : 4 à 7 mètres 200 ans et plus : 8 à 10 mètres  ***Apparence*** Le Dragon de l’Espace/Temps possède une morphologie classique à quatre pattes et une paire d’ailes, avec un corps relativement élancé et peu massif, comme si il était lui-même une momie. Ses écailles roses, aux reflets changeants, semblent parfois se décaler légèrement de la réalité, comme si elles n’étaient jamais totalement synchronisées avec le présent. Sa caractéristique la plus troublante est la présence de bandages semblables à ceux d’une momie, enroulés autour de différentes parties de son corps : cou, pattes, ailes ou torse. ***Milieu de vie*** Le Dragon de l’Espace/Temps vit dans des lieux où la réalité est instable : ruines antiques figées hors du temps, failles spatio-temporelles, zones où passé et futur se superposent. |  |
 | Dragon du Vide Dragon Blanc | Vide | ***Alignement*** Alignements chaotiques  ***Taille (de la tête au bout de la queue)*** 1 \- 10 ans : 4 à 6 mètres 11 \- 100 ans : 7 à 10 mètres 200 ans et plus : 11 à 16 mètres  ***Apparence*** Le Dragon du Vide est une créature profondément dérangeante à observer. Il est totalement dépourvu de membres, ne possédant qu’un long corps serpentin et une unique paire d’ailes, parfaitement adapté pour lui permettre de voler sans efforts. Ses écailles parfaitement blanches semblent trop pures pour être naturelles, comme si elles reflétaient le néant plutôt que la lumière. Son regard est l’un de ses traits les plus troublants : le blanc de ses yeux est intégralement noir, marque typique des êtres liés à la magie du Vide. Ce regard donne l’impression qu’il observe non pas ce qui est visible, mais ce qui manque. Il n’a nul besoin de bras ou de griffes : la télékinésie compense largement l’absence de membres, lui permettant de manipuler son environnement avec précision. ***Milieu de vie*** Le Dragon du Vide est un être intelligent, calculateur et distant. Il n’a pas de territoire fixe ni de lieu de prédilection. Il apparaît ici et là, sans logique apparente, toujours discret, souvent trop tardivement détecté. |  |
@@ -11365,7 +11365,7 @@ Isolés dans un territoire quasi imprenable au cœur des montagnes naines, les E
 * **Dirigeants actuels :** Le *Cercle Argenté* (Conseil des Mages Suprêmes)
 * **Localisation :** Erisia, au cœur des massifs nains
 * **Relations extérieures :** Isolationnisme strict
-* **Religion principale :** Mirada, Déesse de la Magie et du {{chakra}}
+* **Religion principale :** Mirada, Déesse de la Magie et du Chakra
 * **Races dominantes :** Elfes argentés
 * **Races opprimées :** Esclaves de diverses origines, dont des elfes argentés faibles en magie et les autres races d’elfes
 
@@ -11375,7 +11375,7 @@ Autrefois, cette région constituait le territoire sacré de l’Empire Doré, d
 
 Des siècles d’oppression menèrent en 205 à une révolte violente. Les Elfes argentés massacrèrent leurs maîtres, détruisirent l’Empire Doré et exilèrent les survivants restants. D’abord portés par une idéologie de libération, ils dérivèrent progressivement vers les doctrines suprématistes de leurs anciens oppresseurs… jusqu’à les dépasser en cruauté et en arrogance.
 
-Mirada, la Déesse de la magie et du {{chakra|chakra}}, prit une place centrale dans leur reconstruction. Son culte devint l’axe spirituel de la nation et justifia l’ascension du *Cercle Argenté* — une caste de mages suprêmes assurant la domination du pouvoir magique comme fondement politique.
+Mirada, la Déesse de la magie et du chakra, prit une place centrale dans leur reconstruction. Son culte devint l’axe spirituel de la nation et justifia l’ascension du *Cercle Argenté* — une caste de mages suprêmes assurant la domination du pouvoir magique comme fondement politique.
 
 Aujourd’hui, l’Empire Argenté tente d’étendre son influence, mais se heurte constamment aux nations humaines, seuls adversaires capables d’endiguer leurs ambitions.
 
@@ -11389,7 +11389,7 @@ L’Empire est enclavé dans un arc montagneux colossal contrôlé par les nains
 * **Sous-sol étendu**, sujet de nombreuses rumeurs :
   * cavernes aménagées,
   * anciens complexes dorés,
-  * forêt souterraine colossale nourrie par des sources de {{chakra|chakra}}.
+  * forêt souterraine colossale nourrie par des sources de chakra.
 
 Cette position unique en fait l’un des royaumes les plus fortifiés et les plus difficiles à envahir.
 
@@ -11414,7 +11414,7 @@ Un conseil fermé de 12 mages suprêmes. Ils détiennent tous les pouvoirs exéc
 **Critères d’accès :**
 
 * Puissance magique exceptionnelle
-* Maîtrise du {{chakra|chakra}}
+* Maîtrise du chakra
 * Victoire dans des épreuves arcanistes souvent mortelles
 * Les rares élus à être du Potentiel illimité ont un passe droit et ont leur mot à dire même s''ils ne sont pas du cercle directement.
 
@@ -11429,14 +11429,14 @@ Les castes sans puissance magique n’ont aucun droit politique.
 
 ## Religion
 
-Culte dominant : ***Mirada, Déesse de la Magie et du {{chakra}}***
+Culte dominant : ***Mirada, Déesse de la Magie et du Chakra***
 
 Mirada est considérée comme la mère spirituelle de la race argentée. Les Elfes argentés voient en elle la seule divinité véritable, supérieure à toutes les autres.
 
 Caractéristiques du culte :
 
 * temples en lévitation,
-* rituels de canalisation du {{chakra|chakra}},
+* rituels de canalisation du chakra,
 * sacrifices énergétiques (pas forcément mortels, mais extrêmement douloureux),
 * lectures d’aura obligatoires.
 
@@ -11470,14 +11470,14 @@ Automne est une petite ville qui est primordiale en minéraux, pierres précieus
 Arcanoste est le grand fort qui fait office de frontière dans le berceau des elfes argentés. D''apparence il semble y avoir que cette place forte mais un mur qui semble aller d''une montagne à l''autre fait que l''endroit est assez compliqué d''y accéder.
 
 **Forteresse de Chakra**\
-La forteresse de Chakra est ultime fort défensif des Elfes argentés (récupérer des elfes dorés) mais aussi le seul. Ce fort flotte dans les airs et est capable de se déplacer pour défendre là où on a besoin de lui. Beaucoup parlent d''un golem géant ou d''autres parlent d''une forteresse contrôlée par un fantôme. Dans tous les cas ce fort est quasiment imprenable, possède des machines de guerre comme des mangonneau et balistes, une petite armée est posté à l''intérieur et vit exclusivement à l''intérieur. Ses deux seuls défauts sont qu''il a besoin d''être à proximité d''Elloris sinon il ne sera plus alimenté en {{chakra|chakra}} suffisamment et qu''il ne peut pas aller à plus de 20 m de hauteur.
+La forteresse de Chakra est ultime fort défensif des Elfes argentés (récupérer des elfes dorés) mais aussi le seul. Ce fort flotte dans les airs et est capable de se déplacer pour défendre là où on a besoin de lui. Beaucoup parlent d''un golem géant ou d''autres parlent d''une forteresse contrôlée par un fantôme. Dans tous les cas ce fort est quasiment imprenable, possède des machines de guerre comme des mangonneau et balistes, une petite armée est posté à l''intérieur et vit exclusivement à l''intérieur. Ses deux seuls défauts sont qu''il a besoin d''être à proximité d''Elloris sinon il ne sera plus alimenté en chakra suffisamment et qu''il ne peut pas aller à plus de 20 m de hauteur.
 
 ## Armée
 
 * Garde d’Argent : élite magique et martiale
 * Légions Arcanistes : mages soldats organisés en unités spécialisées
 * Veilleurs d’Argent : police et inquisition
-* Des hordes de zombinox, un non-mort issu de leur expérience raté avec le {{chakra|chakra}}, ils s’en servent pour occuper l’ennemi
+* Des hordes de zombinox, un non-mort issu de leur expérience raté avec le chakra, ils s’en servent pour occuper l’ennemi
 * Machines : balistes, golems, dirigeables.
 
 L’Empire privilégie la puissance magique plutôt que la masse numérique.
@@ -12091,7 +12091,7 @@ L’origine de Foudre étincelante remonte à l’an 243, au cœur des cités na
 Un soir où il était moqué par ses pairs, la voix de Volt parla à travers la boîte :\
 	*« Ton œuvre ne doit pas être oubliée. Je vais t’offrir ce que tu désires, tant que tu l’utilises avec sagesse pour aider le plus grand nombre. »*
 
-Encouragé par cette apparition, Franz installa son invention au cœur d’un vaste réseau de câbles de {{chakra|chakra}} qu’il avait conçu pour illuminer la cité. Le système fonctionna à merveille… jusqu’à ce que des confrères jaloux sabotent son installation, le sabotage se passa très mal et provoqua une terrible explosion. Cette dernière fut dévastatrice : près de deux cents nains périrent, Franz y compris.
+Encouragé par cette apparition, Franz installa son invention au cœur d’un vaste réseau de câbles de chakra qu’il avait conçu pour illuminer la cité. Le système fonctionna à merveille… jusqu’à ce que des confrères jaloux sabotent son installation, le sabotage se passa très mal et provoqua une terrible explosion. Cette dernière fut dévastatrice : près de deux cents nains périrent, Franz y compris.
 
 Aurora, témoin de ce drame, fut touchée négativement. Sous la demande de Volt, elle envoya une équipe d’inquisiteurs traquer les coupables et les livrer à la justice.
 
@@ -12156,7 +12156,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ***Compétence.*** Spécialisation ou savoir-faire lié à une caractéristique. Utilisée pour les jets de dés
 
-***Corruption**.* Énergie parasite qui envahi le lobe à {{chakra|chakra}}, peut entraîner la mort si surdose.
+***{{corruption}}**.* Énergie parasite qui envahi le lobe à chakra, peut entraîner la mort si surdose.
 
 ***Coût**.* Ressource nécessaire pour utiliser un sort ({{chakra|chakra}}, âme, etc…)
 
@@ -12717,7 +12717,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## Primordiaux
 
 - [[Brock]] — Dieu primordial de la force
-- [[Mirada]] — Déesse primordiale du {{chakra|chakra}}
+- [[Mirada]] — Déesse primordiale du chakra
 - [[Notix]] — Dieu primordial du temps
 - [[Capse]] — Déesse primordiale de l''espace
 
@@ -13292,7 +13292,7 @@ L’Ordre est structuré en chapitres continentaux relativement autonomes, mais 
 * **Golopa** – Chapitre-mère, centre décisionnel et plus grand dépôt d’artefacts
 * **Erisia** – Spécialisé dans les reliques instables
 * **Désert Doré** – Expert en artefacts anciens
-* **Mrode** – Connu pour ses recherches sur le {{chakra|chakra}}
+* **Mrode** – Connu pour ses recherches sur le chakra
 * **Enhor** – Plus rigide idéologiquement, parfois en conflit avec les autres
 * **Engrevua** – Chapitre pragmatique, réputé pour ses méthodes expéditives
 
@@ -13499,18 +13499,18 @@ Les Métières inspirent un respect quasi universel, même chez les plus cruels 
 
 Une légende raconte qu’Aurora et Evravonie elles-mêmes protègent leurs pas, rendant aveugles les archers qui viserait leurs tentes. Cela n’a jamais été prouvé mais cette légende est suffisamment forte pour que personne ne tente sa chance.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/mirada', 'lore', 'mirada', 'Mirada', 'mirada', 'Déesse primordiale du chakra', NULL, '*Déesse primordiale du {{chakra|chakra}}*
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/mirada', 'lore', 'mirada', 'Mirada', 'mirada', 'Déesse primordiale du chakra', NULL, '*Déesse primordiale du chakra*
 
-Une ravissante elfe dorée qui est à l''origine du {{chakra|chakra}} tel qu''on le connaît aujourd''hui. Après les élémentaires, le {{chakra|chakra}} existait toujours mais sous une forme trop chaotique et dangereuse, la déesse est arrivée pour façonner le {{chakra|chakra}} sous une forme exploitable pour tous. Elle est la base de la magie de l''Arcane et indirectement de la Corruption.
+Une ravissante elfe dorée qui est à l''origine du chakra tel qu''on le connaît aujourd''hui. Après les élémentaires, le chakra existait toujours mais sous une forme trop chaotique et dangereuse, la déesse est arrivée pour façonner le chakra sous une forme exploitable pour tous. Elle est la base de la magie de l''Arcane et indirectement de la Corruption.
 
 ## Présentation générale
 
-Mirada est la personnification de la Magie elle-même — sa source, son flux et sa volonté. Créatrice du {{chakra|chakra}} sous sa forme exploitable, elle incarne l’esprit d’équilibre et de compréhension universelle. Son influence s’étend à tous ceux qui cherchent à maîtriser les arts mystiques ou à comprendre les lois cachées du monde. Les mortels la voient comme une divinité à la fois maternelle et insondable, bienveillante dans son savoir, mais dont la puissance dépasse toute compréhension humaine.
+Mirada est la personnification de la Magie elle-même — sa source, son flux et sa volonté. Créatrice du chakra sous sa forme exploitable, elle incarne l’esprit d’équilibre et de compréhension universelle. Son influence s’étend à tous ceux qui cherchent à maîtriser les arts mystiques ou à comprendre les lois cachées du monde. Les mortels la voient comme une divinité à la fois maternelle et insondable, bienveillante dans son savoir, mais dont la puissance dépasse toute compréhension humaine.
 
 ## Informations officielles
 
 * **Titres :** La Grande Magicienne, La Reine Blanche, Le Grand Prisme
-* **Thèmes :** Magie, Esprit, {{chakra}}
+* **Thèmes :** Magie, Esprit, Chakra
 * **Domaines :** Magie, Intelligence, Esprit
 * **Alignement :** Chaotique neutre
 * **Arme :** Bâton
@@ -13519,7 +13519,7 @@ Mirada est la personnification de la Magie elle-même — sa source, son flux et
 
 ## Histoire
 
-Lors de la création primordiale, le {{chakra|chakra}} — essence brute de la magie — existait déjà, mais demeurait inaccessible aux êtres inférieurs car totalement chaotique et contrôlé par les élémentaires. Mirada, émue par la fragilité des formes de vie émergentes face aux titans qu’étaient les élémentaires, décida de remodeler cette énergie pour la rendre manipulable par tous les mortels.
+Lors de la création primordiale, le chakra — essence brute de la magie — existait déjà, mais demeurait inaccessible aux êtres inférieurs car totalement chaotique et contrôlé par les élémentaires. Mirada, émue par la fragilité des formes de vie émergentes face aux titans qu’étaient les élémentaires, décida de remodeler cette énergie pour la rendre manipulable par tous les mortels.
 
 Cette décision, guidée par la compassion et la curiosité, provoqua un profond désaccord avec Brock, dieu de la Force, qui voyait dans ce don un danger pour l’équilibre des races naissantes. Il jugeait que la puissance devait d’abord venir du corps avant l’esprit. Leur querelle s’étendit au-delà des cieux, opposant leurs fidèles dans des sortes de petits conflits partout dans le monde.
 
@@ -13531,10 +13531,10 @@ Mirada se manifeste sous la forme d’une Elfe dorée d’une beauté éclatante
 
 ## Suivants
 
-Mirada est vénérée par tous ceux qui cherchent la connaissance, la maîtrise ou la compréhension du {{chakra|chakra}} :
+Mirada est vénérée par tous ceux qui cherchent la connaissance, la maîtrise ou la compréhension du chakra :
 
 * **Professeurs et érudits**, qui enseignent la structure de la magie.
-* **Mages et archimages**, qui honorent la source de tout ce que permet le {{chakra|chakra}}.
+* **Mages et archimages**, qui honorent la source de tout ce que permet le chakra.
 * **Utilisateurs du Potentiel illimité**, qui voient en elle la clef de leur ascension.
 * **Utilisateurs de la magie de l’Arcane**, qui voient en elle leur mère spirituelle.
 
@@ -13992,24 +13992,24 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Présentation
 
-Fondé en l’an 1140, l’Ordre des Abeilles est un petit groupe de dix chevaliers liés à la magie de l’Arcane. Leur mission sacrée est la protection des abeilles blanches, des créatures rares capables de produire un miel imprégné de {{chakra|chakra}} pur. Ces abeilles, symboles d’harmonie magique, sont essentielles à l’équilibre énergétique du monde.
+Fondé en l’an 1140, l’Ordre des Abeilles est un petit groupe de dix chevaliers liés à la magie de l’Arcane. Leur mission sacrée est la protection des abeilles blanches, des créatures rares capables de produire un miel imprégné de chakra pur. Ces abeilles, symboles d’harmonie magique, sont essentielles à l’équilibre énergétique du monde.
 
-Leur reine, Ormat, est une entité légendaire : autrefois une mort-vivante, elle fut bénie par la déesse du {{chakra}}, fusionnée à une ruche vivante qui bat dans son torse. Ormat est aujourd’hui la Grande Reine des Abeilles Blanches, immortelle et gardienne d’un cycle magique unique.
+Leur reine, Ormat, est une entité légendaire : autrefois une mort-vivante, elle fut bénie par la déesse du Chakra, fusionnée à une ruche vivante qui bat dans son torse. Ormat est aujourd’hui la Grande Reine des Abeilles Blanches, immortelle et gardienne d’un cycle magique unique.
 
-Les abeilles blanches sont des insectes blancs avec des rayures noires, ce sont des abeilles rares qui sont capable de produire un miel de couleur blanc qui est un véritable concentré de {{chakra|chakra}} pur. Ces abeilles sont gorgées de {{chakra|chakra}} et sont très recherchées par les mages. Leur rareté fait que dans certaines nations, leur chasse est illégale. Elles ont eu leur rôle au début du monde car elle permettait au {{chakra|chakra}} d’être abondant, même si c’est moins nécessaire, elles restent des insectes pollinisateurs importants pour certaines plantes reliées à des magies.
+Les abeilles blanches sont des insectes blancs avec des rayures noires, ce sont des abeilles rares qui sont capable de produire un miel de couleur blanc qui est un véritable concentré de chakra pur. Ces abeilles sont gorgées de chakra et sont très recherchées par les mages. Leur rareté fait que dans certaines nations, leur chasse est illégale. Elles ont eu leur rôle au début du monde car elle permettait au chakra d’être abondant, même si c’est moins nécessaire, elles restent des insectes pollinisateurs importants pour certaines plantes reliées à des magies.
 
 * **Date de création :** 1140
 * **Alignement :** Loyal neutre
 
 ## Crédo
 
-> *“Nous sommes le bourdonnement du monde, les gardiens du flux et du miel. Là où le {{chakra|chakra}} coule, la vie s’épanouit — que nul ne vienne troubler la ruche.”*
+> *“Nous sommes le bourdonnement du monde, les gardiens du flux et du miel. Là où le chakra coule, la vie s’épanouit — que nul ne vienne troubler la ruche.”*
 
-Les chevaliers récitent ce mantra avant chaque veille ou affrontement, croyant que leur âme s’accorde ainsi au rythme du {{chakra|chakra}} universel.
+Les chevaliers récitent ce mantra avant chaque veille ou affrontement, croyant que leur âme s’accorde ainsi au rythme du chakra universel.
 
 ## Symbole
 
-Une abeille blanche stylisée, posée sur un sceau arcanique circulaire. Ses ailes forment une spirale d’énergie et son abdomen laisse couler une goutte de miel blanc, symbole du {{chakra|chakra}} pur.
+Une abeille blanche stylisée, posée sur un sceau arcanique circulaire. Ses ailes forment une spirale d’énergie et son abdomen laisse couler une goutte de miel blanc, symbole du chakra pur.
 
 ## Organisation
 
@@ -14020,7 +14020,7 @@ Depuis leur disparition en 1160, on murmure que ces chevaliers sont devenus les 
 ## Doctrine
 
 * La ruche est sacrée, car elle est le cœur du monde.
-* Le miel blanc est la manifestation physique du {{chakra|chakra}} pur, à ne jamais souiller.
+* Le miel blanc est la manifestation physique du chakra pur, à ne jamais souiller.
 * Le chevalier et la ruche ne font qu’un — protéger l’un, c’est protéger l’autre.
 * La mort n’est qu’un état de veille pour ceux qui ont juré fidélité à Ormat.
 
@@ -15681,7 +15681,7 @@ Lorsqu’une gemme est détruite — un acte presque impossible —, elle finit 
 | Élément | Gemme associée | Description |
 | ----- | ----- | ----- |
 | Sang | Grenat | Bordeaux, pulsant d’une lueur rythmique presque comme un cœur. |
-| Arcane | Perle | Argentée, iridescente, elle semble pouvoir faire bouger le {{chakra\|chakra}} ambiant autour d’elle. |
+| Arcane | Perle | Argentée, iridescente, elle semble pouvoir faire bouger le chakra ambiant autour d’elle. |
 | Corruption | Onyx | Parfaitement noire, comme si on contemplait ce que la magie à fait de pire. |
 | Temps & Espace | Diamant rose | Rose, on aurait l’impression de regarder un ciel étoilé. |
 | Vide | Gypse | Blanche et mate, presque translucide. |
@@ -16912,7 +16912,7 @@ Situé au cœur de Rase, la capitale des elfes noirs, il incarne un paradoxe viv
 
 Considéré comme le temple principal le plus récent du continent, il est souvent vu avec méfiance par les autres ordres religieux. Pourtant, sa doctrine ne prêche pas le chaos, mais l’équilibre entre la corruption et l’arcane, entre la déchéance et la pureté.
 
-Les prêtres du Temple noir affirment que nier la corruption, c’est nier une partie essentielle du {{chakra|chakra}}.
+Les prêtres du Temple noir affirment que nier la corruption, c’est nier une partie essentielle du chakra.
 
 ## Informations officielles
 
@@ -17617,7 +17617,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Volt est le Dieu de la Foudre, des Orages et de la Science. Être mécanique à l’apparence de nain, il incarne la puissance destructrice et créatrice de l’électricité. Curieux, méthodique et exigeant, il observe les mortels, récompensant ceux qui cherchent à comprendre les lois de la magie et de la science.
 
-Dans le monde de Maverick, Volt est considéré comme le père de la magie-technologie, celui qui relie la logique du métal à la puissance du {{chakra|chakra}}. Il est vénéré autant par les inventeurs que par les guerriers.
+Dans le monde de Maverick, Volt est considéré comme le père de la magie-technologie, celui qui relie la logique du métal à la puissance du chakra. Il est vénéré autant par les inventeurs que par les guerriers.
 
 ## Informations officielles
 
@@ -17633,7 +17633,7 @@ Dans le monde de Maverick, Volt est considéré comme le père de la magie-techn
 
 Après que les eaux furent calmées par Océane, le ciel s’embrasa à son tour. Des éclairs zébrèrent les cieux, et les orages rugirent sans fin. De cette colère naquit Volt, dieu de la Foudre, qui imposa l’ordre au sein du chaos atmosphérique. On raconte qu’il sera à l’origine des nains.
 
-Volt observa les mortels et fut fasciné par leur ingéniosité. Contrairement à certains dieux, il décida de leur transmettre une part de sa logique divine : la technologie. Il guida les premiers nains vers l’étude du Maverium, ce métal conducteur de {{chakra|chakra}}, et les inspira à forger des merveilles mêlant science et magie.
+Volt observa les mortels et fut fasciné par leur ingéniosité. Contrairement à certains dieux, il décida de leur transmettre une part de sa logique divine : la technologie. Il guida les premiers nains vers l’étude du Maverium, ce métal conducteur de chakra, et les inspira à forger des merveilles mêlant science et magie.
 
 Sous son influence naquirent les prothèses et les premières bombes, fruit de l’union entre feu, terre et foudre. Lorsque les dieux furent brièvement séparés du monde des mortels durant le mois de fer, Volt observa avec fierté que ses disciples continuaient à progresser sans son aide.
 
@@ -17641,7 +17641,7 @@ Sous son influence naquirent les prothèses et les premières bombes, fruit de l
 
 ## Apparence
 
-Volt se manifeste sous la forme d’un nain entièrement forgé dans le Maverium raffiné, métal conducteur de {{chakra|chakra}}. Son corps est parcouru en permanence par des arcs électriques jaunes, illuminant ses articulations et ses yeux d’un éclat.
+Volt se manifeste sous la forme d’un nain entièrement forgé dans le Maverium raffiné, métal conducteur de chakra. Son corps est parcouru en permanence par des arcs électriques jaunes, illuminant ses articulations et ses yeux d’un éclat.
 
 Sa voix gronde comme un tonnerre lointain, et son regard étincelle d’une intelligence froide. Bien qu’il semble rigide, chaque geste émane d’une précision parfaite, rappelant le tic-tac d’une machine bien huilée.
 
@@ -17851,11 +17851,11 @@ Les utilisateurs de la corruption sont marqués surtout au niveau des cheveux et
 
 ## Explication
 
-L''utilisateur de la corruption est un combattant qui fait énormément de dégâts et utilise énormément d''entrave. Il utilise le {{chakra|Chakra}} et la Corruption comme un système de vases communicants.
+L''utilisateur de la corruption est un combattant qui fait énormément de dégâts et utilise énormément d''entrave. Il utilise le {{chakra|Chakra}} et la {{corruption|Corruption}} comme un système de vases communicants.
 
-Chaque sort demande du {{chakra|chakra}}, à chaque utilisation d''un sort, le coût en {{chakra|chakra}} se transfère dans la corruption (si un sort coûte 4, vous obtenez 4 corruption), il est possible d''utiliser cette réserve de corruption pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en corruption (si le sort coûte 4, il vous faut 8 corruption). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de corruption (qui est la transformation en abomination solvité, donc une mort du personnage) mais prudence, car quand on est gavé de corruption cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
+Chaque sort demande du {{chakra|chakra}}, à chaque utilisation d''un sort, le coût en {{chakra|chakra}} se transfère dans la {{corruption|corruption}} (si un sort coûte 4, vous obtenez 4 {{corruption|corruption}}), il est possible d''utiliser cette réserve de {{corruption|corruption}} pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en {{corruption|corruption}} (si le sort coûte 4, il vous faut 8 {{corruption|corruption}}). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de {{corruption|corruption}} (qui est la transformation en abomination solvité, donc une mort du personnage) mais prudence, car quand on est gavé de {{corruption|corruption}} cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
 
-Attention, si le {{chakra|chakra}} permet d''obtenir de la corruption, l''inverse ne se fait pas. Et la corruption n''empiète pas dans l''espace du {{chakra|chakra}}.
+Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corruption}}, l''inverse ne se fait pas. Et la {{corruption|corruption}} n''empiète pas dans l''espace du {{chakra|chakra}}.
 
 ## Données
 
@@ -17873,7 +17873,7 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la corruption, l''invers
 | Type | Effets |
 | --- | --- |
 | Mono-Magie | Le {{chakra\|chakra}} active directement les effets secondaires |
-| Bi-magie | Divise par 2 le coût en corruption des sorts. |
+| Bi-magie | Divise par 2 le coût en {{corruption\|corruption}} des sorts. |
 
 ## Rôles
 
@@ -17885,29 +17885,29 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la corruption, l''invers
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si CR : +1d de dégâts. |
-| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si CR : Inflige 3 corruption. |
-| 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
-| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
-| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 cr (+1d/NM) | Retire de la corruption d''une cible pour la mettre dans la réserve. |
-| 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si CR : Bonus de +5 dégâts en plus. |
-| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de corruption. |
-| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si CR : Inflige 2d6 de corruption en plus. |
-| 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si CR : Bloque entièrement les cibles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si CR = Ignore 50% de l''AM. |
-| 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si CR : Inflige 10 corruption |
-| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si CR : La cible a -20% pour le jet de défense |
-| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) corruption.<br>Si CR : Fait reculer la cible de 1 case. |
-| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si CR : L''inflige automatiquement. |
-| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si CR : Ceux qui ratent le jet fuient. |
-| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si CR : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
-| 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si CR : Le sort est inesquivable. |
-| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
-| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
+| 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si {{cr\|CR}} : +1d de dégâts. |
+| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{cr\|CR}} : Inflige 3 {{corruption\|corruption}}. |
+| 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
+| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
+| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 cr (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
+| 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{cr\|CR}} : Bonus de +5 dégâts en plus. |
+| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de {{corruption\|corruption}}. |
+| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{cr\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
+| 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si {{cr\|CR}} : Bloque entièrement les cibles. |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si {{cr\|CR}} = Ignore 50% de l''AM. |
+| 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si {{cr\|CR}} : Inflige 10 {{corruption\|corruption}} |
+| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si {{cr\|CR}} : La cible a -20% pour le jet de défense |
+| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) {{corruption\|corruption}}.<br>Si {{cr\|CR}} : Fait reculer la cible de 1 case. |
+| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si {{cr\|CR}} : L''inflige automatiquement. |
+| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si {{cr\|CR}} : Ceux qui ratent le jet fuient. |
+| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si {{cr\|CR}} : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
+| 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{cr\|CR}} : Le sort est inesquivable. |
+| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
+| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
 | 4.0 | Pluie huileuse | Météo | 50% CR max | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
-| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si CR : Ignore la {{barriere\|barrière}}. |
-| 5.0 | Sapeur | Entrave | x CR | 3 (+1/NM) | 1.0 | / | Donne autant de corruption à la cible que la réserve actuelle de corruption. |
-| 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si CR : Les retire complètement |
+| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si {{cr\|CR}} : Ignore la {{barriere\|barrière}}. |
+| 5.0 | Sapeur | Entrave | x CR | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |
+| 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{cr\|CR}} : Les retire complètement |
 
 ## Notes et commentaires des sorts
 
@@ -18621,12 +18621,12 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de {{chakra\|Chakra}}. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
+| 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Chakra. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
 | 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2=1 dégâts | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |
 | 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3xN/tour | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 1.0 | Claquement | Entrave (IC pour 3 NM) | 4.0 | 5.0 | 1.0 | 1d6 dégâts (+1/NM) | Si jet de fermeté raté = La cible ne peut utiliser de sorts pendant son tour. Ne peut être fait 2 fois de suite sur la même cible. |
-| 1.0 | Forge-Magie | Amplification (IC) | 2/taille | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de {{chakra\|chakra}} pur. (+1 utilisation/NM) |
-| 2.0 | Inhalation magique | Amplification | 5% santé/tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le {{chakra\|chakra}} ambiant pour régénérer la réserve personnelle. |
+| 1.0 | Forge-Magie | Amplification (IC) | 2/taille | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
+| 2.0 | Inhalation magique | Amplification | 5% santé/tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le chakra ambiant pour régénérer la réserve personnelle. |
 | 2.0 | Souffle magique | Amplification | Choix | 2 (+1/NM) | Cône | Donne X {{chakra\|Chakra}} | Souffle du {{chakra\|chakra}} pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le {{chakra\|chakra}} donné est divisé. |
 | 2.0 | Échange | Soin | Choix | 1 (+1/NM) | 1.0 | / | Permet d''échanger son {{chakra\|chakra}} en {{barriere\|barrière}}. 2CK = 1BA (3CK = 2BA/3NM) |
 | 2.0 | Vision magique | Amplification (IC) | 8xN/heure | Soi-même | 1.0 | / | Permet de voir les auras magiques à travers les obstacles. |
@@ -18938,7 +18938,7 @@ Associée à la prudence, une émotion liée à la clairvoyance et à la parano�
 
 ## Description physique
 
-Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des mèches mauves, les yeux violets lors d''une utilisation de sort. Certains possèdent des bracelets faits d''ombre violettes, d''autres possèdent des cornes de {{chakra|Chakra}} couleur mauve (plus clair pour les femelles et plus sombre pour les mâles) si la race possède des cornes physiques : c''est une aura ténébreuse violette qui les entoure ou alors une aura sombre émane de leur main et pied.
+Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des mèches mauves, les yeux violets lors d''une utilisation de sort. Certains possèdent des bracelets faits d''ombre violettes, d''autres possèdent des cornes de Chakra couleur mauve (plus clair pour les femelles et plus sombre pour les mâles) si la race possède des cornes physiques : c''est une aura ténébreuse violette qui les entoure ou alors une aura sombre émane de leur main et pied.
 
 ## Données
 
@@ -21544,7 +21544,7 @@ Nombre : 2.
 **Don**
 
 - N''est pas forcé d''avoir la corruption en innée et peut avoir une autre magie avec.
-- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies)
+- Inflige 1 {{corruption|corruption}} à chacune des attaques qui touche (armes ou magies)
 
 **Fiche de personnage V15.2.2** : sous-race « Elfe Noir Charbon » (voir « Sous-races et origines »).
 
@@ -21555,7 +21555,7 @@ Nombre : 2.
 **Don**
 
 - +10% à tous les tests d''artisanat.
-- Chaque soin (physique, magique, sort, objet) soigne 1 point de corruption
+- Chaque soin (physique, magique, sort, objet) soigne 1 point de {{corruption|corruption}}
 
 **Fiche de personnage V15.2.2** : sous-race « Elfe Noir Salé » (voir « Sous-races et origines »).
 
@@ -21614,8 +21614,8 @@ Cette page suit l''onglet « Elfe Noir » du Google Sheet « Les races », qui p
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Sang du condamné<br>Permet de synthétiser un poison unique sur l''arme principale, inflige "poison 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tous les débuts de tour pour ne pas encaisser les dégâts. | Permet de synthétiser un poison unique sur l''arme principale, inflige "poison 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tout les début de tour pour ne pas encaisser les dégâts. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
-| Don de l''ethnie « Elfe Charbon »<br>(fiche : sous-race « Elfe Noir Charbon », colonne « Descriptif ») | \- N''est pas forcé d''avoir la corruption en innée et peut avoir une autre magie avec.<br>\- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies) | \- Peut avoir une magie acquise avec la magie de la Corruption.<br>\- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies) |
-| Don de l''ethnie « Elfe Salé »<br>(fiche : sous-race « Elfe Noir Salé », colonne « Descriptif ») | \- +10% à tous les tests d''artisanat.<br>\- Chaque soin (physique, magique, sort, objet) soigne 1 point de corruption | \- +10% à tout les tests d''artisanat.<br>\- Chaque soin (physique, magique, sort, objet) soin 1 point de corruption |
+| Don de l''ethnie « Elfe Charbon »<br>(fiche : sous-race « Elfe Noir Charbon », colonne « Descriptif ») | \- N''est pas forcé d''avoir la corruption en innée et peut avoir une autre magie avec.<br>\- Inflige 1 {{corruption\|corruption}} à chacune des attaques qui touche (armes ou magies) | \- Peut avoir une magie acquise avec la magie de la Corruption.<br>\- Inflige 1 corruption à chacune des attaques qui touche (armes ou magies) |
+| Don de l''ethnie « Elfe Salé »<br>(fiche : sous-race « Elfe Noir Salé », colonne « Descriptif ») | \- +10% à tous les tests d''artisanat.<br>\- Chaque soin (physique, magique, sort, objet) soigne 1 point de {{corruption\|corruption}} | \- +10% à tout les tests d''artisanat.<br>\- Chaque soin (physique, magique, sort, objet) soin 1 point de corruption |
 
 Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l''onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -25487,7 +25487,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | --- | --- | --- |
 | Fer | 100 RF / 10 RO | rien de particulier |
 | Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme |
-| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de corruption à chaque coup qui touche |
+| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de {{corruption\|corruption}} à chaque coup qui touche |
 | Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1d de dégâts contre les non-morts |
 | Fonte | 400 RF / 40 RO | Dégâts +7 pour l''arme<br>-1 cran de solidité |
 | Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |
@@ -25665,7 +25665,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Pelle | 8 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, -1 cran de solidité, 5% de chance d''infliger étourdi | Arme improvisée et peu robuste, la Pelle sert également de bâton de combat. Bien qu''elle soit fragile, elle offre une petite chance d''étourdir la cible avec un coup bien placé. |
 | Bannière de combat<br>(deux mains) | 45 Ro | Arme d''Hast/Bâton<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, +2 dégâts, 3 de Social minimum<br>Tenez bon ! : sur un jet de social réussi et un bon discours = +5% de réussite pour Esquive/Parade/Vigueur/Fermeté aux alliés pendant 3 tours (action 1 fois/combat) | La bannière est une longue hampe portant les couleurs de son porteur ou celles d''une organisation importante. Symbole de discipline et de cohésion, elle renforce l''équipe dans sa résilience. |
 | Crosse d''argent | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 {{chakra\|Chakra}} pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple de l''Arcane | Arme régulière du Temple de l''Arcane, cette crosse assez puissante permet d''exploiter son {{chakra\|chakra}} pour augmenter les chances de réussite. |
-| Croc d''Obsidienne | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Corruption pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple Noir | Arme régulière du Temple noir, ce bâton qui a la forme d''un croc permet de sacrifier de la corruption pour augmenter les chances de réussite. |
+| Croc d''Obsidienne | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 {{corruption\|Corruption}} pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple Noir | Arme régulière du Temple noir, ce bâton qui a la forme d''un croc permet de sacrifier de la {{corruption\|corruption}} pour augmenter les chances de réussite. |
 
 ## ARME DE JET - D6 \[Un matériau permet d''en faire 10 sauf pour la fronde qui elle est unique\]
 
@@ -26211,7 +26211,7 @@ Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton 
 | Magie | Gemme précieuse : Matière | Gemme précieuse : Description | Gemme précieuse : Prix (normal) | Gemme précieuse : Prix (Raffiné) | Gemme précieuse : Prix (Parfait) | Bois : Matière | Bois : Description | Bois : Prix |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Sang | Grenat | Une pierre rouge marron comme le sang. | 4 000 RF / 40 RO | 90 RO | 190 RO | Padouk | Cet arbre unique au tronc rouge pousse pas loin des champs de batailles, là où le sang a envahi le sol. | 2 400 RF / 24 RO |
-| Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bouleau pur | Ce bel arbre au tronc blanc est un arbre qui attire le {{chakra\|chakra}} à l''état pur, il y a souvent des brumes de {{chakra\|chakra}} qui se forment autour d''eux. | 1 200 RF / 12 RO |
+| Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bouleau pur | Ce bel arbre au tronc blanc est un arbre qui attire le chakra à l''état pur, il y a souvent des brumes de chakra qui se forment autour d''eux. | 1 200 RF / 12 RO |
 | Corruption | Onyx | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 100 RO | 210 RO | 430 RO | Bouleau impur | La version corrompue du bouleau, ce bouleau respire la corruption et est capable de la transmettre à tout créatures assez folle pour s''approcher. | 6 000 RF / 60 RO |
 | Espace/Temps | Diamant rose | Un diamant parfaitement taillé couleur rose, la gemme du temps et de l''espace. | 7 500 RF / 75 RO | 160 RO | 330 RO | Chêne | C''est un magnifique arbre très noble qui est capable de vivre très longtemps s''il est dans d''excellentes conditions, il est à l''épreuve du temps et de l''espace. | 4 400 RF / 44 RO |
 | Vide | Gypse | C''est un cristal parfaitement transparent sans aucune impureté. | 3 500 RF / 35 RO | 80 RO | 170 RO | Fungus Fantôme | C''est un champignon qui parasite les autres arbres, ainsi imprégnant l''arbre d''une sorte d''anti-magie qui s''approche de la magie du vide. | 2 000 RF / 20 RO |
@@ -26556,7 +26556,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Fiole d''huile noire | 5 RO | Flacon contenant une huile épaisse brûlant plus fort et plus longtemps que l’huile classique. |
 | Grappin chaîne | 100 RO | Outil composé d’une chaîne permettant de s’accrocher ou d’atteindre des points en hauteur. Donne un avantage lors des jets d''escalades. Peut être utilisé en combat pour se déplacer en combat rapidement, est une action. |
 | Lanterne | 1 000 RF / 10 RO | Objet en métal conçu pour contenir et protéger une flamme lumineuse. |
-| Lanterne blanche | 50 RO | Lanterne magique produisant une flamme blanche au contact du {{chakra\|chakra}}, consommant 2 points de {{chakra\|chakra}} par heure. |
+| Lanterne blanche | 50 RO | Lanterne magique produisant une flamme blanche au contact du chakra, consommant 2 points de {{chakra\|chakra}} par heure. |
 | Longue-vue | 40 RO | Instrument optique permettant de grossir un point éloigné ; fragile à l’usage. |
 | Menottes | 500 RF / 5 RO | Dispositif de contention relié par une chaîne entravant les mains ou les pieds. |
 | Menottes anti-magie | 32 RO | Menottes intégrant un fragment du Vide empêchant toute utilisation de magie si les deux mains sont entravées. |
@@ -26572,7 +26572,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Tome vierge | 1 000 RF / 10 RO | Livre de plusieurs pages vierges, utilisé pour consigner sorts ou connaissances. |
 | Tonneau | 1 000 RF / 10 RO | Contenant en bois cerclé de métal permettant de stocker des liquides. |
 | Torche | 20 RF | Bâton pouvant être enflammé pour produire de la lumière. |
-| Torche blanche | 25 RO | Torche magique produisant une flamme blanche au contact du {{chakra\|chakra}}, consommant 2 points de {{chakra\|chakra}} par heure. |
+| Torche blanche | 25 RO | Torche magique produisant une flamme blanche au contact du chakra, consommant 2 points de {{chakra\|chakra}} par heure. |
 
 ## MATOS FABRICATION
 
@@ -27025,27 +27025,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 15 Ro | Novice | Redonne 2d8 + 5 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 2 de la 4ème barre<br>Soigne 2d8 corruption<br>Augmente l’AM et l’AP de base de 3 pendant 3 tours<br>Augmente l’initiative de 2 pendant 3 tours |
+| 15 Ro | Novice | Redonne 2d8 + 5 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 2 de la 4ème barre<br>Soigne 2d8 {{corruption\|corruption}}<br>Augmente l’AM et l’AP de base de 3 pendant 3 tours<br>Augmente l’initiative de 2 pendant 3 tours |
 
 | Fiole multicolore moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 50 Ro | Apprenti | Redonne 3d8 + 10 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 4 de la 4ème barre<br>Soigne 3d8 + 5 corruption<br>Augmente l’AM et l’AP de base de 5 pendant 3 tours<br>Augmente l’initiative de 5 pendant 3 tours |
+| 50 Ro | Apprenti | Redonne 3d8 + 10 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 4 de la 4ème barre<br>Soigne 3d8 + 5 {{corruption\|corruption}}<br>Augmente l’AM et l’AP de base de 5 pendant 3 tours<br>Augmente l’initiative de 5 pendant 3 tours |
 
 | Super fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 100 Ro | Avancé | Redonne 4d8 + 20 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 7 de la 4ème barre<br>Soigne 4d8 + 10 corruption<br>Augmente l’AM et l’AP de base de 7 pendant 3 tours<br>Augmente la vitesse de 1 pendant 3 tours |
+| 100 Ro | Avancé | Redonne 4d8 + 20 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 7 de la 4ème barre<br>Soigne 4d8 + 10 {{corruption\|corruption}}<br>Augmente l’AM et l’AP de base de 7 pendant 3 tours<br>Augmente la vitesse de 1 pendant 3 tours |
 
 | Méga fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 300 Ro | Expert | Redonne 5d8 + 40 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 10 de la 4ème barre<br>Soigne 5d8 + 15 corruption<br>Augmente l’AM et l’AP de base de 10 pendant 3 tours<br>Augmente la vitesse de 1 et l’INI de 2 pendant 3 tours |
+| 300 Ro | Expert | Redonne 5d8 + 40 santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 10 de la 4ème barre<br>Soigne 5d8 + 15 {{corruption\|corruption}}<br>Augmente l’AM et l’AP de base de 10 pendant 3 tours<br>Augmente la vitesse de 1 et l’INI de 2 pendant 3 tours |
 
 | Ultime fiole multicolore |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 1000 Ro | Maître | Redonne 100% santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 100% de la 4ème barre<br>Soigne 100% corruption<br>Augmente l’AM et l’AP de base de 12 pendant 3 tours<br>Augmente la vitesse de 2 et l’INI de 5 pendant 3 tours |
+| 1000 Ro | Maître | Redonne 100% santé, {{chakra\|chakra}} et {{barriere\|barrière}}<br>Redonne 100% de la 4ème barre<br>Soigne 100% {{corruption\|corruption}}<br>Augmente l’AM et l’AP de base de 12 pendant 3 tours<br>Augmente la vitesse de 2 et l’INI de 5 pendant 3 tours |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-noire', 'ressources', 'fiole-noire', 'Fiole noire', 'fiole-noire', NULL, NULL, '| Recette |  |  |  |  |  |
 | :-: | :-: | :-: | :-: | :-: | :-: |
@@ -27055,27 +27055,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Petite fiole noire |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 5 Ro | Novice | Soigne 2d8 + 5 corruption<br>Donne 2d8 + 5 corruption à ceux de la corruption |
+| 5 Ro | Novice | Soigne 2d8 + 5 {{corruption\|corruption}}<br>Donne 2d8 + 5 {{corruption\|corruption}} à ceux de la corruption |
 
 | Fiole noire moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 10 Ro | Apprenti | Soigne 3d8 + 7 corruption<br>Donne 3d8 + 7 corruption à ceux de la corruption |
+| 10 Ro | Apprenti | Soigne 3d8 + 7 {{corruption\|corruption}}<br>Donne 3d8 + 7 {{corruption\|corruption}} à ceux de la corruption |
 
 | Super fiole noire |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 25 Ro | Avancé | Soigne 4d8 + 10 corruption<br>Donne 4d8 + 10 corruption à ceux de la corruption |
+| 25 Ro | Avancé | Soigne 4d8 + 10 {{corruption\|corruption}}<br>Donne 4d8 + 10 {{corruption\|corruption}} à ceux de la corruption |
 
 | Méga fiole noire |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 60 Ro | Expert | Soigne 5d8 + 15 corruption<br>Donne 5d8 + 15 corruption à ceux de la corruption |
+| 60 Ro | Expert | Soigne 5d8 + 15 {{corruption\|corruption}}<br>Donne 5d8 + 15 {{corruption\|corruption}} à ceux de la corruption |
 
 | Ultime fiole noire |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 100 Ro | Maître | Soigne 100% corruption<br>Donne 100% corruption à ceux de la corruption |
+| 100 Ro | Maître | Soigne 100% {{corruption\|corruption}}<br>Donne 100% {{corruption\|corruption}} à ceux de la corruption |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-orange', 'ressources', 'fiole-orange', 'Fiole orange', 'fiole-orange', 'Les Fioles Orange sont des potions capables de restaurer à la fois la santé et la barrière magique.', NULL, '*Les Fioles Orange sont des potions capables de restaurer à la fois la santé et la barrière magique. Leur création demande un travail délicat et un bon savoir-faire. Pour cette raison, ces fioles sont plus difficiles à produire que les préparations simples et sont particulièrement prisées des guerriers qui souhaitent à la fois refermer leurs blessures et rétablir leur protection magique.*
 

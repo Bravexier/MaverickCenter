@@ -26,7 +26,7 @@ Attaque multiple. Cette créature peut taper sur 3 axes quand il attaque avec se
 
 Force surhumaine. La Force augmente de 1.', 'monstres', 'Bestiaire 2.0 › lignes 22858-22880');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 3, 'ARCANE', 'DESCRIPTION
-Les marques de {{chakra|chakra}} vont briller d''une lumière particulièrement désagréable et libérer du {{chakra|chakra}} quasiment liquide. Sa peau devient parfaitement argenté.
+Les marques de chakra vont briller d''une lumière particulièrement désagréable et libérer du chakra quasiment liquide. Sa peau devient parfaitement argenté.
 Compétence mono magie
 Compétence bi-magie
 +15% compétence d’intelligence
@@ -54,7 +54,7 @@ Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effe
 (Dans le cas de l''arcane et corruption, ça ne fonctionne pas)
 
 Cicatrices pétrolières. Chaque attaque réussit empêche la cible de récupérer de la {{barriere|barrière}} pendant 1 tour.
-Poison Noir. Les attaques de cette créature ajoutent 10% des dégâts infligés en corruption.
+Poison Noir. Les attaques de cette créature ajoutent 10% des dégâts infligés en {{corruption|corruption}}.
 
 Contestation. Chaque malus qui lui est infligé deviendra un bonus.', 'monstres', 'Bestiaire 2.0 › lignes 22904-22927');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 5, 'ESPACE/TEMPS', 'DESCRIPTION
@@ -188,7 +188,7 @@ Courant électrisant. Chaque attaque physique prodigué avec une arme métalliqu
 
 Lance Foudre. Cette créature est capable d''envoyer une lance faite entièrement de foudre, gratuitement en IC, peut la lancer en cloche et va atterrir sur un ennemi aléatoire. (dégâts a déterminé par le mj)', 'monstres', 'Bestiaire 2.0 › lignes 23106-23130');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 14, 'LUMIÈRE', 'DESCRIPTION
-Le corps brille d''une lumière tamisée et négative, les yeux sont parfaitement beige. Les ailes de {{chakra|chakra}} sont de couleur beige cassé.
+Le corps brille d''une lumière tamisée et négative, les yeux sont parfaitement beige. Les ailes de chakra sont de couleur beige cassé.
 Compétence mono magie
 Compétence bi-magie
 +15% compétence de perception
