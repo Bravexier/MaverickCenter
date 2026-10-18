@@ -69,10 +69,10 @@ export const RESSOURCES = [
     noms: 'Familles d’armes',
     description:
       'Les bandeaux de l’onglet « Armes » (« ÉPÉES - D10 », « PUGILAT », … « ARME DE MONSTRES »), sous lesquels chaque arme est listée : le bandeau tel ' +
-      'qu’écrit, son nom, son ou ses dés, sa note (dé du Pugilat selon la Force…), l’en-tête de sa colonne de coût et si une maîtrise d’arme peut s’y ' +
-      'mettre (décision R45) ; en lecture seule.',
+      'qu’écrit, son nom, son ou ses dés, sa note (dé du Pugilat selon la Force…), l’en-tête de sa colonne de coût, si une maîtrise d’arme peut s’y ' +
+      'mettre (décision R45) et sa catégorie, arme de contact ou à distance (décision R127 ; aucune pour ARME DE MONSTRES) ; en lecture seule.',
     table: 'arme_famille',
-    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'ordre'],
+    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'categorie', 'ordre'],
     recherche: ['nom', 'libelle_brut'],
     tri: 'ordre',
   },

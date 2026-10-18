@@ -30,7 +30,8 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
- * personnage_entrainement et personnage_acquis_choix, 0062 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 :
+ * partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -83,11 +84,17 @@ const annuler = (db) => {
   }
 };
 
-/** Ordre de lecture d'une liste : son rang quand elle en a un, sinon sa clé (une fiche relue est toujours écrite pareil). */
-function ordreDe(db, table) {
+/**
+ * Ordre de lecture d'une liste (une fiche relue est toujours écrite pareil, sa version aussi) : un ordre total, son rang quand elle en a un, puis les
+ * autres colonnes de sa clé, sans `personnage_id`, dans l'ordre de la clé ; sinon sa clé. Un rang qui n'est pas unique (un choix d'acquis : plusieurs
+ * sources au même rang, une répartition sur plusieurs compétences ; une résistance au choix) est départagé par la clé : `"rang", "source",
+ * "competence_id"`, `"rang", "source"` (exporté pour les tests).
+ */
+export function ordreDe(db, table) {
   const cols = infos(db, table);
-  if (cols.some((c) => c.name === 'rang')) return '"rang"';
-  return cols.filter((c) => c.pk && c.name !== 'personnage_id').sort((a, b) => a.pk - b.pk).map((c) => `"${c.name}"`).join(', ');
+  const cle = cols.filter((c) => c.pk && c.name !== 'personnage_id').sort((a, b) => a.pk - b.pk).map((c) => c.name);
+  const ordre = cols.some((c) => c.name === 'rang') ? ['rang', ...cle.filter((c) => c !== 'rang')] : cle;
+  return ordre.map((c) => `"${c}"`).join(', ');
 }
 
 function versionDe(fiche) {

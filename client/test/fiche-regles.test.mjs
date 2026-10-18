@@ -98,7 +98,8 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
   for (const r of db.prepare('SELECT classe_id, brut, nombre FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang').all()) {
     parClasse.set(r.classe_id, [...(parClasse.get(r.classe_id) ?? []), { brut: r.brut, nombre: r.nombre }]);
   }
-  for (const c of regles.classes) assert.deepEqual(c.maitrises, parClasse.get(c.id) ?? [], c.id);
+  // (les familles d'une maîtrise au choix, `au_choix` : décisions R119, R127, test/fiche-arme-choisie.test.mjs)
+  for (const c of regles.classes) assert.deepEqual(c.maitrises.map(({ au_choix: _a, ...m }) => m), parClasse.get(c.id) ?? [], c.id);
   const capacites = new Map(db.prepare('SELECT id, classe_id, effet FROM capacite').all().map((r) => [r.id, r]));
   assert.equal(regles.classes.reduce((n, c) => n + c.dons.length, 0), capacites.size, 'chaque don, une fois');
   for (const c of regles.classes) {

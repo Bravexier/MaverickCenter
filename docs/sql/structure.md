@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 68 : 194 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 69 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -998,7 +998,7 @@ MAÎTRISES DE DÉPART : cellules « Maîtrise Arme » (A7:F9) et « Maîtrise Ar
 | `nombre` | INTEGER | non |  | N de « N maîtrise(s) » |
 | `arme` | TEXT | non |  | forme nommee : l'arme telle qu'écrite (« Épée », « Hast », « Arme Jet ») ; NULL sinon |
 | `arme_cle` | TEXT | non |  |  |
-| `categorie` | TEXT | non |  | forme au_choix : « arme contact au choix », « arme à distance au choix » |
+| `categorie` | TEXT | non |  | forme au_choix : « arme contact au choix », « arme à distance au choix » ; les familles de chaque catégorie : arme_famille.categorie (décision R127) |
 | `sauf` | TEXT | non |  | forme au_choix : « (sauf épée) » -> « épée » (tel qu'écrit) |
 | `sauf_cle` | TEXT | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
@@ -1088,7 +1088,7 @@ ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, orig
 
 ### `ethnie_resistance`
 
-Résistances d'une ethnie (col. E/F = résistance 1, G/H = résistance 2 : un nom et une valeur). Le nom est soit une magie (« Sang », « Espace/Temps »), soit une altération d'état (« Brûlure », « Surcharge magique », « Pétrification ») : `cible_type` le dit, et la clé étrangère correspondante est renseignée. `valeur` est le nombre de crans écrit dans la cellule (+1 = un cran de résistance, -1 = un cran de vulnérabilité : les Mort-Vivant ont +1 à une magie et -1 à la magie opposée). 78 lignes : 65 ethnies ont au moins une résistance, dont 13 en ont deux (12 Mort-Vivant et Drassah'thac Nord). Drakos Orange (« résistance à l'altération choisie parmi toutes ») et Anansi d'Arcane (« sur une magie aléatoire ») n'ont rien de codé : pas de ligne, le choix reste dans le descriptif.
+Résistances d'une ethnie (col. E/F = résistance 1, G/H = résistance 2 : un nom et une valeur). Le nom est soit une magie (« Sang », « Espace/Temps »), soit une altération d'état (« Brûlure », « Surcharge magique », « Pétrification ») : `cible_type` le dit, et la clé étrangère correspondante est renseignée. `valeur` est le nombre de crans écrit dans la cellule (+1 = un cran de résistance, -1 = un cran de vulnérabilité : les Mort-Vivant ont +1 à une magie et -1 à la magie opposée). 78 lignes : 65 ethnies ont au moins une résistance, dont 13 en ont deux (12 Mort-Vivant et Drassah'thac Nord). Drakos Orange (« résistance à l'altération choisie parmi toutes ») et Anansi d'Arcane (« sur une magie aléatoire ») n'ont rien de codé : pas de ligne, le choix reste dans le descriptif. La résistance que le joueur d'un Drakos orange choisit (décision R124 : une de celles des autres lignes du tableau « Écaille draconique ») est gardée dans sa fiche : personnage_resistance_choix (section 13, migration 0069).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1850,7 +1850,7 @@ Affinités alchimiques (colonne « Affinité » des listes d'ingrédients et cel
 
 ### `arme_famille`
 
-Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES - D6, … ARME DE MONSTRES). Une arme est listée sous UN bandeau ; les armes à deux catégories (Crochet grappin, Étendard de guerre…) apparaissent sous deux bandeaux, avec deux lignes distinctes.
+Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES - D6, … ARME DE MONSTRES). Une arme est listée sous UN bandeau ; les armes à deux catégories (Crochet grappin, Étendard de guerre…) apparaissent sous deux bandeaux, avec deux lignes distinctes. Arme de contact ou à distance (décision R127 du propriétaire, migration 0069 : « Arc / arbalète / arme de jet ou Bombe sont bien les 4 types d'armes à distance. ») : `categorie`, dans le vocabulaire de classe_maitrise_arme.categorie ; ce sont les familles que propose une maîtrise « arme à distance au choix » ou « arme contact au choix » d'une classe (décision R119 ; la répartition des points de maîtrise, R32, ne la lit pas).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1865,6 +1865,7 @@ Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES 
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `maitrisable` | INTEGER | oui |  | 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES : des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030) |
+| `categorie` | TEXT | non |  | R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN) |
 
 ### `arme_type`
 
@@ -3407,6 +3408,17 @@ Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le tex
 | `competence_id` | TEXT | oui | PK 4, → competence.id |  |
 | `valeur` | INTEGER | non |  |  |
 | `arme_famille_id` | TEXT | non | → arme_famille.id | l'arme choisie (R119, migration 0067) |
+
+### `personnage_resistance_choix`
+
+Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ; les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres ») est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ; pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance par choix (clé primaire).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `source` | TEXT | oui | PK 2 |  |
+| `rang` | INTEGER | oui | PK 3 |  |
+| `etat_id` | TEXT | oui | → etat.id |  |
 
 ### `personnage_metier_bonus`
 

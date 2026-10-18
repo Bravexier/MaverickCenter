@@ -377,12 +377,17 @@ export function entrainementsAEnregistrer(fiche) {
  * des rangs qui se suivent, chacun avec `numero` (1, 2…), `sur` (leur nombre) et `exclues` (les compétences prises par les autres : deux compétences
  * différentes ; une compétence déjà prise par un choix d'avant ne compte pas) ; « à répartir au choix », une répartition : { source, rang, nom, valeur,
  * repartition: true, parts: [{ competence_id, valeur }], reste, fait } (les points où le joueur veut, leur somme au plus le bonus, dans l'ordre de la
- * fiche). Tant qu'un choix n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti. Un bonus d'artisanat sans compétence d'artisanat
+ * fiche). « De la compétence de l'arme choisie » (décision R119) est un choix d'arme : { source, rang, nom, valeur, arme: true, familles, arme_famille_id,
+ * options, choisi, fait } — la famille d'armes (`arme_famille_id`) parmi celles de la maîtrise au choix de la classe du don (`familles` :
+ * armeAuChoixDeLaClasse), puis la compétence (`options` : celles de la famille ; une seule, déduite) ; une classe sans maîtrise au choix qui se lise
+ * (aucune, plusieurs, ou un « sauf » qui ne nomme aucune famille), un don de race ou une armure : listé dans `nonComptes` (raison 'arme_choisie').
+ * « 5% parmi les autres » (Drakos orange, décision R124) arrive en « X ou Y » : les compétences des autres lignes du tableau (lib/fiche-regles.mjs).
+ * Tant qu'un choix n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti. Un bonus d'artisanat sans compétence d'artisanat
  * (sans métier, ou un métier sans artisanat) ne compte nulle part : listé dans `nonComptes` (raison 'sans_artisanat').
  */
 export function acquisDesDons(regles, fiche) {
-  // l'arme choisie d'un choix (décision R119, personnage_acquis_choix.arme_famille_id, migration 0067) : la page ne la demande pas encore, mais une valeur
-  // posée ailleurs (l'API) reste avec le choix tant que la compétence choisie ne change pas (acquisChoixValables)
+  // l'arme gardée avec un autre choix (personnage_acquis_choix.arme_famille_id, migration 0067 : posée par l'API) : elle le suit tant que la compétence
+  // choisie ne change pas (acquisChoixValables) ; l'arme d'un choix d'arme est, elle, le choix lui-même (plus bas)
   const armeDuChoix = (fait) => (fait?.arme_famille_id ? { arme_famille_id: fait.arme_famille_id } : {});
   const parCompetence = new Map();
   const choix = [];
@@ -399,9 +404,9 @@ export function acquisDesDons(regles, fiche) {
   const race = donsDeRace(regles, fiche);
   const armure = trouver(regles.armures ?? [], fiche.armure_id);
   const sources = [
-    ...donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.type === 'passif').map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis }))),
+    ...donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.type === 'passif').map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis, classe: c.classe }))),
     ...race.dons.map((d) => ({ id: d.id, nom: d.nom ?? d.etiquette ?? 'Don de race', acquis: d.acquis })),
-    ...(race.tableau ? [{ id: `${fiche.race_id}#tableau:${fiche.ethnie_id}`, nom: race.tableau.titre ?? 'Selon l’ethnie', acquis: race.tableau.acquis }] : []),
+    ...(race.tableau ? [{ id: sourceDuTableau(fiche), nom: race.tableau.titre ?? 'Selon l’ethnie', acquis: race.tableau.acquis }] : []),
     ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, element: Boolean(fiche.armure_elementaire_id) }] : []),
   ];
   for (const source of sources) {
@@ -423,6 +428,22 @@ export function acquisDesDons(regles, fiche) {
         // « Les test d'artisanat dépendent du métier » : la compétence d'artisanat du métier (artisanatDe) ; sans elle, rien
         if (sansArtisanat) nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: 'sans_artisanat', texte: b.texte ?? null });
         else artisanat.push({ nom: source.nom, valeur: b.valeur });
+      } else if (b.arme) {
+        // décision R119 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En cas d'arme qui peu tout aussi bien
+        // avoir des armes lourdes et légère, ça reste au choix. » — la famille de la maîtrise au choix de la classe du don, puis sa compétence (R48 ; la
+        // famille Arc : Arc ou Arme légère, R126) ; le choix a son rang dans le texte, qu'il se fasse ou non. La maîtrise dans cette famille n'est pas exigée
+        // sur la fiche : un arbitrage de Claude, en attente de la question Q45
+        rang += 1;
+        const familles = armeAuChoixDeLaClasse(source.classe);
+        if (!familles) {
+          nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: 'arme_choisie', texte: b.texte ?? null });
+          continue;
+        }
+        const note = (fiche.acquis_choix ?? []).find((x) => x.source === source.id && entier(x.rang) === rang && familles.includes(x.arme_famille_id)) ?? null;
+        const options = note ? trouver(regles.familles_armes, note.arme_famille_id)?.competences ?? [] : [];
+        const choisi = options.length === 1 ? options[0] : options.includes(note?.competence_id) ? note.competence_id : null;
+        choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, arme: true, familles, arme_famille_id: note?.arme_famille_id ?? null, options, choisi, fait: Boolean(choisi) });
+        if (choisi) ajouter(choisi, source.nom, b.valeur);
       } else if (b.choix && entier(b.nombre) > 1) {
         // « choisir 2 sur les 3 » (décision R121, Moine Templier : « C'est donc 2 options sur les 4 ») : un choix par compétence, à des rangs qui se suivent,
         // deux compétences différentes (une compétence déjà prise par un choix d'avant n'est pas retenue)
@@ -466,8 +487,9 @@ export function acquisDesDons(regles, fiche) {
 
 /**
  * Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre.
- * L'arme choisie d'un choix (`arme_famille_id`, décision R119) le suit tant que la compétence choisie reste la même ; une répartition n'en a jamais (la base
- * la refuse avec des points : CHECK de personnage_acquis_choix).
+ * Un choix d'arme (décision R119) : sa famille (`arme_famille_id`, une de la maîtrise au choix de la classe) et sa compétence, déduite ou choisie ; une
+ * famille sans compétence encore choisie n'est pas gardée (la base exige la compétence). L'arme gardée avec un autre choix le suit tant que la
+ * compétence choisie reste la même ; une répartition n'en a jamais (la base la refuse avec des points : CHECK de personnage_acquis_choix).
  */
 export function acquisChoixValables(regles, fiche) {
   return acquisDesDons(regles, fiche).choix.flatMap((c) => (c.repartition
@@ -479,6 +501,46 @@ export function acquisChoixValables(regles, fiche) {
 export function acquisApresChoix(fiche, source, rang, competenceId) {
   const autres = (fiche.acquis_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
   return { acquis_choix: competenceId ? [...autres, { source, rang, competence_id: competenceId, valeur: null }] : autres };
+}
+
+/**
+ * Les familles d'armes de la maîtrise au choix d'une classe (décision R119 : « La classe choisi une maîtrise pour une arme ») : celles de sa ligne
+ * `au_choix` de classe_maitrise_arme (sa catégorie, R127, sans son « sauf » : lib/fiche-regles.mjs, une lecture à confirmer, question Q44), quand la
+ * classe en a une seule et qu'elle se lit ; null sinon (aucune, plusieurs : laquelle ? ; un « sauf » qui ne nomme aucune famille).
+ */
+export function armeAuChoixDeLaClasse(classe) {
+  const lignes = (classe?.maitrises ?? []).filter((m) => m.au_choix);
+  return lignes.length === 1 && lignes[0].au_choix.familles?.length ? lignes[0].au_choix.familles : null;
+}
+
+/**
+ * La fiche après le choix de l'arme d'un choix d'arme (`source`, `rang` ; décision R119) : la famille `familleId` (null : le choix retiré) et, quand ses
+ * armes donnent plusieurs compétences, `competenceId` s'il en est une (sinon la compétence reste à choisir, rien d'enregistré) ; une seule : déduite.
+ * La page passe la compétence déjà choisie en changeant d'arme : gardée quand la nouvelle arme l'offre. { acquis_choix }.
+ */
+export function acquisApresChoixDArme(regles, fiche, source, rang, familleId, competenceId = null) {
+  const autres = (fiche.acquis_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
+  if (!familleId) return { acquis_choix: autres };
+  const competences = trouver(regles.familles_armes, familleId)?.competences ?? [];
+  const competence = competences.length === 1 ? competences[0] : competences.includes(competenceId) ? competenceId : null;
+  return { acquis_choix: [...autres, { source, rang, competence_id: competence, valeur: null, arme_famille_id: familleId }] };
+}
+
+/** La source des choix de la ligne de l'ethnie dans le tableau de dons de la race (« Écaille draconique » du Drakos) : celle de personnage_acquis_choix et de personnage_resistance_choix. */
+export const sourceDuTableau = (fiche) => `${fiche.race_id}#tableau:${fiche.ethnie_id}`;
+
+/**
+ * Les résistances au choix de la fiche qui restent valables (décision R124 : une ligne du tableau de la race de la fiche, son ethnie, le même rang, une
+ * de ses options) : celles qu'on enregistre (personnage_resistance_choix) ; un choix devenu sans effet (une autre ethnie, une autre race) part.
+ */
+export function resistanceChoixValables(regles, fiche) {
+  return resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir.filter((c) => c.fait).map((c) => ({ source: c.source, rang: c.rang, etat_id: c.choisi }));
+}
+
+/** La fiche après le choix de l'altération `etatId` (null : retiré) pour la résistance au choix (`source`, `rang`) : { resistance_choix }. */
+export function resistanceApresChoix(fiche, source, rang, etatId) {
+  const autres = (fiche.resistance_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
+  return { resistance_choix: etatId ? [...autres, { source, rang, etat_id: etatId }] : autres };
 }
 
 /** La fiche après la répartition `parts` ([{ competence_id, valeur }], dans l'ordre ; une part sans compétence ou à 0 est retirée) du choix (`source`, `rang`). */
@@ -1206,13 +1268,15 @@ export function quotaDeMaitrise(regles, fiche) {
  * Les crans viennent de la magie innée et de la magie acquise (les listes de leur page, magie_resistance) et de ce que les dons écrivent
  * (lib/resistance-texte.mjs ; race : don unique et don de l'ethnie, ligne de l'ethnie dans le tableau de dons ; classes : dons acquis). Une immunité
  * écrite (« Immunisé contre le poison ») met la cible en immunité quels que soient ses crans ; une résistance au choix n'est pas comptée et `auChoix`
- * nomme les dons qui en laissent une. Les accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
+ * nomme les dons qui en laissent une, sauf « Au choix parmi les autres » (Drakos orange, décision R124) : une altération des autres lignes du tableau,
+ * choisie dans le tiroir (personnage_resistance_choix), comptée une fois choisie ; `aChoisir` : [{ source, rang, nom, crans, options (etat_id),
+ * choisi, fait }]. Les accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
  * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
  * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
  * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
  * ({ id, nom }), null sinon. `options.avecLaPosture` (vrai par défaut, la page) : faux, la posture du moment est ignorée, aucune magie n'est
  * désactivée (l'export en tableur, qui écrit les valeurs de la fiche, pas celles de la posture : docs/character-generator.md, « Export »).
- * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], desactivee }
+ * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], aChoisir, desactivee }
  */
 export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
@@ -1232,9 +1296,17 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
     else c.crans += effet.crans;
     c.origines.push(effet.immunite ? { nom: origine, immunite: true } : { nom: origine, crans: effet.crans });
   };
-  const lire = (resistances, origine) => {
+  const aChoisir = [];
+  const lire = (resistances, origine, source) => {
     for (const e of resistances?.effets ?? []) compter(e, origine);
     if (resistances?.choix) auChoix.push(origine);
+    // « Au choix parmi les autres » (Drakos orange, décision R124 : « Tu peux en avoir un avec +5% Ruse et résisstance Poison ») : l'altération choisie,
+    // une des options (les autres lignes du tableau), reçoit ses crans
+    for (const c of resistances?.au_choix ?? []) {
+      const fait = (fiche.resistance_choix ?? []).find((x) => x.source === source && entier(x.rang) === c.rang && c.options.includes(x.etat_id)) ?? null;
+      if (fait) compter({ type: 'etat', id: fait.etat_id, crans: c.crans }, origine);
+      aChoisir.push({ source, rang: c.rang, nom: origine, crans: c.crans, options: c.options, choisi: fait?.etat_id ?? null, fait: Boolean(fait) });
+    }
   };
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
     // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
@@ -1243,9 +1315,9 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   }
   const race = donsDeRace(regles, fiche);
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id)?.nom ?? trouver(regles.races, fiche.race_id)?.nom;
-  for (const d of race.dons) lire(d.resistances, d.nom ?? ethnie);
-  if (race.tableau) lire(race.tableau.resistances, race.tableau.titre ?? ethnie);
-  for (const c of donsAcquis(regles, fiche)) for (const d of c.dons) lire(d.resistances, `${d.nom} (${c.classe.nom})`);
+  for (const d of race.dons) lire(d.resistances, d.nom ?? ethnie, d.id);
+  if (race.tableau) lire(race.tableau.resistances, race.tableau.titre ?? ethnie, sourceDuTableau(fiche));
+  for (const c of donsAcquis(regles, fiche)) for (const d of c.dons) lire(d.resistances, `${d.nom} (${c.classe.nom})`, d.id);
   // accessoires « Résistance X et Y » : un cran chacune ; maudit, une vulnérabilité (décision R54)
   for (const e of effetsDesAccessoires(regles, fiche)) {
     if (e.cible !== 'resistance' || !e.valeur) continue;
@@ -1261,6 +1333,7 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   return {
     paliers: (regles.resistance_paliers ?? []).map((p) => ({ id: p.id, libelle: p.libelle, effet: p.effet, cibles: rangees.filter((c) => palierDe(c) === p.id) })),
     auChoix,
+    aChoisir,
     desactivee: desactivee ? { id: desactivee.id, nom: desactivee.nom } : null,
   };
 }
@@ -1576,6 +1649,7 @@ export const cleDeChoix = {
   metierObjet: (rang) => `metier_objet:${rang}`,
   accessoire: (emplacement) => `accessoire:${emplacement}`,
   acquis: (source, rang) => `acquis:${source}:${rang}`,
+  resistance: (source, rang) => `resistance:${source}:${rang}`,
 };
 
 /**
@@ -1592,8 +1666,9 @@ export function accessoiresDesSorts(regles, fiche) {
  * Les choix qui restent à faire (demande du propriétaire : les mettre en évidence, le cadre « Choix » en tiroir tant qu'il en reste) : l'ethnie d'une race
  * choisie qui en a, la spécialité d'une
  * classe qui a atteint le niveau de son don de spécialité (le plus bas de ses dons `specialite`, 10), chaque groupe de dons à choisir encore sans choix
- * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), et le +1 d'une magie innée qui laisse
- * la caractéristique au choix. [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page y accroche sa tuile, montrée
+ * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), le +1 d'une magie innée qui laisse
+ * la caractéristique au choix, les choix d'acquis des dons (acquisDesDons) et la résistance au choix d'une ligne du tableau de la race (resistancesDe,
+ * décision R124). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page y accroche sa tuile, montrée
  * dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
@@ -1622,14 +1697,27 @@ export function choixEnAttente(regles, fiche) {
   }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
-  // les bonus d'acquis « X ou Y », « pour les compétences d'arme » (R120), « choisir 2 sur les 3 » (R121) et « à répartir au choix » des dons (décision R104)
+  // les bonus d'acquis « X ou Y », « pour les compétences d'arme » (R120), « choisir 2 sur les 3 » (R121), « de l'arme choisie » (R119), « parmi les autres »
+  // (R124) et « à répartir au choix » des dons (décision R104)
+  const competences = (ids) => ids.map((o) => trouver(regles.competences, o)?.nom ?? o).join(' ou ');
   for (const c of acquisDesDons(regles, fiche).choix) {
     if (c.fait) continue;
+    const famille = c.arme ? trouver(regles.familles_armes, c.arme_famille_id) : null;
     attente.push({
       nature: 'acquis', cle: cleDeChoix.acquis(c.source, c.rang),
-      // « choisir 2 sur les 3 » (décision R121) : chaque choix du groupe, sans les compétences que les autres ont prises
+      // « choisir 2 sur les 3 » (décision R121) : chaque choix du groupe, sans les compétences que les autres ont prises ; « l'arme choisie » (R119) : l'arme
+      // de la maîtrise au choix, puis la compétence quand l'arme en donne plusieurs
       libelle: c.repartition ? `Acquis ${c.nom} : ${c.reste} % à répartir`
-        : `Acquis ${c.nom} : +${c.valeur} % ${c.options.filter((o) => !(c.exclues ?? []).includes(o)).map((o) => trouver(regles.competences, o)?.nom ?? o).join(' ou ')}${c.sur ? ` (choix ${c.numero} sur ${c.sur})` : ''}`,
+        : c.arme ? `Acquis ${c.nom} : +${c.valeur} % ${famille ? `${famille.nom} : ${competences(c.options)}` : `arme de la maîtrise au choix (${c.familles.map((x) => trouver(regles.familles_armes, x)?.nom ?? x).join(' ou ')})`}`
+        : `Acquis ${c.nom} : +${c.valeur} % ${competences(c.options.filter((o) => !(c.exclues ?? []).includes(o)))}${c.sur ? ` (choix ${c.numero} sur ${c.sur})` : ''}`,
+    });
+  }
+  // la résistance « Au choix parmi les autres » de la ligne du tableau de la race (Drakos orange, décision R124)
+  for (const c of resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir) {
+    if (c.fait) continue;
+    attente.push({
+      nature: 'resistance', cle: cleDeChoix.resistance(c.source, c.rang),
+      libelle: `Résistance ${c.nom} : +${c.crans} cran ${c.options.map((o) => trouver(regles.etats ?? [], o)?.nom ?? o).join(' ou ')}`,
     });
   }
   // la magie de la posture Symbiose prise avec deux magies (décision R100)

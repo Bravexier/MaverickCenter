@@ -48,6 +48,7 @@ function commeLaPage(fiche) {
   f.competences = f.competences.filter((c) => c.naturel);
   f.entrainements = M.entrainementsAEnregistrer(f);
   f.acquis_choix = M.acquisChoixValables(regles, f);
+  f.resistance_choix = M.resistanceChoixValables(regles, f);
   f.maitrises_armes = M.maitrisesValables(regles, f);
   f.armes = M.armesValables(regles, f);
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
@@ -284,6 +285,56 @@ function ficheDesArmes() {
 }
 
 /**
+ * Bi-classe Tueur (Flétrisseur) et Mage Vert (Mage émeraude), niveau 10 : « +5% de la compétence de l'arme choisie » et « +5% de la compétence de l'arme de
+ * départ* » (décision R119) — l'arme de la maîtrise au choix de chaque classe, puis sa compétence ; prises dans les règles d'aujourd'hui (le site de dev
+ * modifie les armes et les maîtrises) : la première arme qui laisse la compétence au choix, et sa dernière compétence.
+ */
+const TUEUR = 'capacites/tueur-fletrisseur';
+const MAGE_VERT = 'capacites/mage-vert-mage-emeraude';
+const familleDArmes = (id) => regles.familles_armes.find((x) => x.id === id);
+/** Le choix d'arme fait du don `source` de la fiche : { source, rang, competence_id, valeur, arme_famille_id }. */
+function armeChoisie(f, source) {
+  const c = M.acquisDesDons(regles, f).choix.find((x) => x.source === source && x.arme);
+  assert.ok(c, `${source} : un choix d'arme`);
+  const id = c.familles.find((x) => familleDArmes(x).competences.length > 1) ?? c.familles[0];
+  return { source, rang: c.rang, competence_id: familleDArmes(id).competences.at(-1), valeur: null, arme_famille_id: id };
+}
+function ficheDeLArmeChoisie() {
+  const f = {
+    ...ficheVide('Sylas'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    xp: xpDuNiveau(10), mode_classe: 'bi',
+    classes: [
+      { rang: 1, classe_id: 'classes/tueur', specialite_id: 'classes/tueur#specialite:fletrisseur' },
+      { rang: 2, classe_id: 'classes/mage-vert', specialite_id: 'classes/mage-vert#specialite:mage-emeraude' },
+    ],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+  };
+  f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
+  f.acquis_choix = [armeChoisie(f, TUEUR), armeChoisie(f, MAGE_VERT)];
+  return f;
+}
+
+/**
+ * Drakos orange (Potentiel illimité, l'Archimage imposé : R23), niveau 1 : « 5% parmi les autres » et « Au choix parmi les autres » du tableau « Écaille
+ * draconique » (décision R124 : « Tu peux en avoir un avec +5% Ruse et résisstance Poison ») ; la première option de chacun, prise dans les règles
+ * d'aujourd'hui (le site de dev modifie le tableau).
+ */
+const DRAKOS_ORANGE = 'races/drakos#tableau:races/drakos#ethnie:drakos-orange';
+const ligneDuDrakosOrange = () => regles.races.find((x) => x.id === 'races/drakos').dons_tableau.lignes.find((l) => l.ethnie_id === 'races/drakos#ethnie:drakos-orange');
+function ficheDuDrakosOrange() {
+  const ligne = ligneDuDrakosOrange();
+  const f = {
+    ...ficheVide('Orazh'), race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-orange', magie_innee_id: 'magies/potentiel-illimite',
+    caracteristique_magie_id: 'agilite', xp: xpDuNiveau(1),
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    acquis_choix: [{ source: DRAKOS_ORANGE, rang: 1, competence_id: ligne.acquis.find((b) => b.choix).choix[0], valeur: null }],
+    resistance_choix: [{ source: DRAKOS_ORANGE, rang: 1, etat_id: ligne.resistances.au_choix[0].options[0] }],
+  };
+  f.classes = M.classesSelonLaMagieInnee(regles, f);
+  return f;
+}
+
+/**
  * Mage Rouge, spécialité Rubis, niveau 10, « Charge lente… » choisi : le sort préparé (décision R115) — un sort d'attaque de NPM 1, son jet de magie et
  * la posture du moment de sa préparation (Offensif), alors que la posture cochée est Défensif.
  */
@@ -381,6 +432,47 @@ test('choix d’acquis des compétences d’arme (décisions R120, R121) : une c
   assert.ok(relu.nonRepris.some((x) => x.startsWith('Acquis au choix « Templier (Moine) : Arme Lourde » : déjà choisie pour ce don')), relu.nonRepris.join('\n'));
   assert.deepEqual(relu.fiche.acquis_choix.filter((x) => x.source === 'capacites/moine-templier'), f.acquis_choix.slice(2));
   assert.ok(relu.remarques.includes('Acquis au choix de Templier (Moine) (+5 %) déduit : Arc (l\'acquis du classeur)'), relu.remarques.join('\n'));
+});
+
+test('l’arme choisie (décisions R119, R126) : la compétence et la famille d’armes de chaque choix dans la note (« Acquis au choix »), relues telles quelles, point fixe ; une famille hors de la maîtrise au choix n’est pas reprise', async () => {
+  const f = ficheDeLArmeChoisie();
+  assert.deepEqual(commeLaPage(f).acquis_choix, f.acquis_choix, 'deux choix d’arme faits');
+  const r = await verifier(f, 'arme choisie');
+  assert.deepEqual(r.fiche.acquis_choix, f.acquis_choix);
+  // une ligne par choix : « <don> : <compétence> (<famille d'armes>) »
+  const choix = M.acquisDesDons(regles, f).choix.filter((c) => c.arme);
+  const ligneDe = (c, familleId) => `${c.nom} : ${regles.competences.find((k) => k.id === c.choisi).nom} (${familleDArmes(familleId).nom})`;
+  const lignes = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'acquisChoix').map((l) => l.valeur);
+  assert.deepEqual(lignes, choix.map((c) => ligneDe(c, c.arme_famille_id)));
+  // une famille hors de la maîtrise au choix du Mage Vert (une arme de contact, décision R127) : pas reprise, et l'import le dit
+  const mageVert = choix.find((c) => c.source === MAGE_VERT);
+  const hors = regles.familles_armes.find((x) => x.maitrisable && !mageVert.familles.includes(x.id));
+  assert.ok(hors, 'une famille maîtrisable que le Mage Vert ne choisit pas');
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace(ligneDe(mageVert, mageVert.arme_famille_id), ligneDe(mageVert, hors.id)) };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.ok(relu.nonRepris.includes(`Acquis au choix « ${ligneDe(mageVert, hors.id)} » : pas une option de ce don`), relu.nonRepris.join('\n'));
+  assert.deepEqual(relu.fiche.acquis_choix, f.acquis_choix.filter((x) => x.source !== MAGE_VERT));
+});
+
+test('Drakos orange (décision R124) : la compétence (« Acquis au choix ») et la résistance (« Résistance au choix ») des autres lignes du tableau, relues telles quelles, point fixe ; l’altération d’aucune autre ligne : non reprise', async () => {
+  const f = ficheDuDrakosOrange();
+  assert.deepEqual([commeLaPage(f).acquis_choix, commeLaPage(f).resistance_choix], [f.acquis_choix, f.resistance_choix], 'les deux choix faits');
+  const r = await verifier(f, 'Drakos orange');
+  assert.deepEqual([r.fiche.acquis_choix, r.fiche.resistance_choix], [f.acquis_choix, f.resistance_choix]);
+  const titre = regles.races.find((x) => x.id === 'races/drakos').dons_tableau.titre;
+  const nom = (liste, id) => regles[liste].find((x) => x.id === id).nom;
+  const note = lignesDeLaNote(r.cellules);
+  assert.deepEqual(note.filter((l) => l.nom === 'acquisChoix').map((l) => l.valeur), [`${titre} : ${nom('competences', f.acquis_choix[0].competence_id)}`]);
+  const resistance = `${titre} : ${nom('etats', f.resistance_choix[0].etat_id)}`;
+  assert.deepEqual(note.filter((l) => l.nom === 'resistanceChoix').map((l) => l.valeur), [resistance]);
+  // l'altération d'aucune autre ligne : pas reprise, l'import le dit
+  const horsEtat = regles.etats.find((e) => !ligneDuDrakosOrange().resistances.au_choix[0].options.includes(e.id));
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace(`Résistance au choix : ${resistance}`, `Résistance au choix : ${titre} : ${horsEtat.nom}`) };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.ok(relu.nonRepris.includes(`Résistance au choix « ${titre} : ${horsEtat.nom} » : pas une option de cette ligne`), relu.nonRepris.join('\n'));
+  assert.deepEqual(relu.fiche.resistance_choix, []);
 });
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {

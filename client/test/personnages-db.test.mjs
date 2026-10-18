@@ -20,8 +20,9 @@ db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie',
-  'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
+  'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
@@ -60,7 +61,7 @@ function personnageValide(id, surcharge = {}) {
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20 });
 }
 
-test('les 20 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 21 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -266,6 +267,27 @@ test('entraînement en lignes (décision R104, migration 0062) : une compétence
   db.prepare("DELETE FROM personnage WHERE id = 'entr-1'").run();
   assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
   assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_acquis_choix WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
+});
+
+test('résistance au choix (décision R124, migration 0069 : « Au choix parmi les autres » du Drakos orange) : une altération d’état par choix, source et rang contrôlés, supprimée avec la fiche', () => {
+  personnageValide('res-1');
+  const SOURCE = 'races/drakos#tableau:races/drakos#ethnie:drakos-orange';
+  const POISON = 'guide/liste-des-alterations-d-etat#etat:poison';
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-1', source: SOURCE, rang: 1, etat_id: POISON, ...l });
+  choix({});
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id FROM personnage_resistance_choix WHERE personnage_id = 'res-1'").all().map((r) => ({ ...r })),
+    [{ source: SOURCE, rang: 1, etat_id: POISON }]);
+  // une seule altération par choix (clé primaire : la fiche, la source, le rang) ; un second choix de la source, à son rang
+  assert.throws(() => choix({ etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' }), /UNIQUE|PRIMARY/);
+  choix({ rang: 2, etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' });
+  // une altération inconnue (clé étrangère vers etat), une source vide, un rang à 0 : refusés
+  assert.throws(() => choix({ rang: 3, etat_id: 'guide/liste-des-alterations-d-etat#etat:inconnue' }), /FOREIGN KEY/);
+  assert.throws(() => choix({ rang: 3, source: '' }), /CHECK/);
+  assert.throws(() => choix({ rang: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_resistance_choix', { personnage_id: 'res-inconnu', source: SOURCE, rang: 1, etat_id: POISON }), /FOREIGN KEY/);
+  assert.deepEqual(controle('res-1'), [], 'le choix n’est pas une règle de la vue (la page garde les options)');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-1'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-1'").get().n, 0, 'cascade');
 });
 
 test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau à partir du 2, plus 1 à 8 par dé atteint (niveaux 5, 10, 15, 20) ; règle gains_niveau', () => {

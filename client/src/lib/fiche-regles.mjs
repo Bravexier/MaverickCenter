@@ -12,7 +12,7 @@ import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { effetDePosture } from './posture-texte.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
-import { durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
+import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
 import { couleurDuPoids } from './armures-rendu.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
@@ -102,6 +102,8 @@ function reglesDeLaBase(db) {
   const competences = lignes(db, 'SELECT id, nom, caracteristique_id FROM competence ORDER BY ordre');
   // les bonus d'acquis écrits dans le texte d'un don (décision R104, réponse « Lus dans les dons » : lib/acquis-texte.mjs)
   const lireAcquis = lecteurDAcquis(competences);
+  // « parmi les autres » hors d'un tableau de dons (décision R124 : les autres lignes du tableau) : aucune compétence nommée, rien n'est deviné
+  const horsDuTableau = (acquis) => acquis.map((b) => (b.autres ? { valeur: b.valeur, raison: 'inconnue', texte: b.texte } : b));
   const initiative = lignes(db, 'SELECT agilite, bonus, bonus_brut, note FROM initiative_agilite ORDER BY agilite');
 
   // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
@@ -118,7 +120,7 @@ function reglesDeLaBase(db) {
                    UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`),
   ]);
   /** `resistances` d'un don quand son texte en écrit (ou en laisse au choix) ; rien sinon, pour garder regles.json léger. */
-  const resistancesEcrites = (lecture) => (lecture.effets.length || lecture.choix ? { resistances: lecture } : {});
+  const resistancesEcrites = (lecture) => (lecture.effets.length || lecture.choix || lecture.au_choix?.length ? { resistances: lecture } : {});
 
   // Races : valeurs de départ de l'onglet de la race (décision R13), AP/AM de la race ; classes accessibles (matrice, R8) ; magies innées
   // accessibles (liste de l'onglet quand elle existe, R11, sinon la matrice) ; bornes des caractéristiques ; dons de l'onglet (race_don, un par ethnie
@@ -133,7 +135,7 @@ function reglesDeLaBase(db) {
       // les bonus de sorts que le don écrit (« Les dégâts de sorts, les soins […] gagnent un bonus de +3 » : lib/sort-bonus-texte.mjs, décision R102) ;
       // ses bonus d'acquis (« Magie, Concentration, Survie = 5% d'acquis » : lib/acquis-texte.mjs, décision R104)
       const sorts = bonusDeSortsEcrits(d.texte);
-      const acquis = lireAcquis(d.texte);
+      const acquis = horsDuTableau(lireAcquis(d.texte));
       return {
         id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)),
         ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}),
@@ -145,19 +147,48 @@ function reglesDeLaBase(db) {
     const colonnes = colonnesDuTableau.get(raceId);
     if (!colonnes) return null;
     const cellules = cellulesDuTableau.get(raceId) ?? [];
+    // la ligne de l'ethnie donne ce qu'écrivent ses cellules (« +1 cran de résistance » : Brûlure ; « Résistance à la magie du Sang ») et ses bonus d'acquis
+    // (« Bonus compétence » du Drakos : « 5% Athlétisme » ; décision R104), lus comme ceux d'un don, cellule par cellule
+    const lues = lignes(db, 'SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang', raceId).map((l) => ({
+      ethnie_id: l.ethnie_id,
+      cellules: colonnes.map((c) => ({ colonne: c.rang, libelle: c.libelle, valeur: cellules.find((x) => x.ligne === l.rang && x.colonne === c.rang)?.valeur ?? null }))
+        .filter((c) => c.valeur !== null)
+        .map((c) => ({ ...c, resistances: lireResistances(c.valeur, { colonne: c.libelle }), acquis: lireAcquis(c.valeur) })),
+    }));
+    // « 5% parmi les autres » et « Au choix parmi les autres » (Drakos orange : décision R124, « au choix entre les bonus de compétence listés des autres
+    // possiblité, pareil pour les résistance ») : un choix parmi ce que donnent les AUTRES lignes dans la même colonne, dans l'ordre du tableau, sans
+    // doublon, jamais écrit à la main ; deux options au moins, sinon rien n'est deviné (la compétence reste non comptée, la résistance au choix signalée)
+    const desAutres = (ligne, colonne) => lues.filter((x) => x !== ligne).flatMap((x) => x.cellules.filter((c) => c.colonne === colonne));
+    const competencesDesAutres = (ligne, colonne) => [...new Set(desAutres(ligne, colonne).flatMap((c) => c.acquis.filter((b) => b.competence_id).map((b) => b.competence_id)))];
+    // les résistances : des altérations d'état seulement (personnage_resistance_choix.etat_id), sinon le choix n'est pas proposé
+    const etatsDesAutres = (ligne, colonne) => {
+      const effets = desAutres(ligne, colonne).flatMap((c) => c.resistances.effets);
+      return effets.every((e) => e.type === 'etat' && e.crans > 0) ? [...new Set(effets.map((e) => e.id))] : [];
+    };
     return {
       titre,
-      lignes: lignes(db, 'SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang', raceId).map((l) => {
-        const cellulesDeLaLigne = colonnes.map((c) => ({ libelle: c.libelle, valeur: cellules.find((x) => x.ligne === l.rang && x.colonne === c.rang)?.valeur ?? null }))
-          .filter((c) => c.valeur !== null);
-        // la ligne de l'ethnie donne ce qu'écrivent ses cellules (« +1 cran de résistance » : Brûlure ; « Résistance à la magie du Sang »)
-        const lectures = cellulesDeLaLigne.map((c) => lireResistances(c.valeur, { colonne: c.libelle }));
-        // et ses bonus d'acquis (« Bonus compétence » du Drakos : « 5% Athlétisme » ; décision R104), lus comme ceux d'un don
-        const acquis = cellulesDeLaLigne.flatMap((c) => lireAcquis(c.valeur));
+      lignes: lues.map((l) => {
+        const acquis = l.cellules.flatMap((c) => c.acquis.map((b) => {
+          if (!b.autres) return b;
+          const options = competencesDesAutres(l, c.colonne);
+          return options.length >= 2 ? { valeur: b.valeur, choix: options, nombre: 1 } : { valeur: b.valeur, raison: 'inconnue', texte: b.texte };
+        }));
+        // `au_choix` : les résistances à choisir de la ligne, chacune { rang (1, 2… dans la ligne, celui de personnage_resistance_choix), crans, options }
+        const au_choix = [];
+        let choix = false;
+        for (const c of l.cellules) {
+          if (c.resistances.autres === undefined) {
+            choix ||= c.resistances.choix;
+            continue;
+          }
+          const options = etatsDesAutres(l, c.colonne);
+          if (options.length >= 2) au_choix.push({ rang: au_choix.length + 1, crans: c.resistances.autres, options });
+          else choix = true;
+        }
         return {
           ethnie_id: l.ethnie_id,
-          cellules: cellulesDeLaLigne,
-          ...resistancesEcrites({ effets: lectures.flatMap((r) => r.effets), choix: lectures.some((r) => r.choix) }),
+          cellules: l.cellules.map(({ libelle, valeur }) => ({ libelle, valeur })),
+          ...resistancesEcrites({ effets: l.cellules.flatMap((c) => c.resistances.effets), choix, ...(au_choix.length ? { au_choix } : {}) }),
           ...(acquis.length ? { acquis } : {}),
         };
       }),
@@ -242,13 +273,41 @@ function reglesDeLaBase(db) {
     const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
     return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
   };
+  // Familles d'armes : dé, paliers selon la Force (Pugilat), si une maîtrise peut s'y mettre (décision R45), contact ou distance (arme_famille.categorie,
+  // décision R127 : « Arc / arbalète / arme de jet ou Bombe sont bien les 4 types d'armes à distance »), et les compétences que donnent ses armes (R48 :
+  // arme.competence_brut, lib/arme-champs.mjs#competencesDArme), dans l'ordre de la table competence : la compétence du bonus de « l'arme choisie »
+  // (décision R119 : « C'est cette arme qui détermine le bonus. En cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au
+  // choix » ; Arc : Arc ou Arme légère, R126)
+  const rangDeCompetence = new Map(competences.map((k, i) => [k.id, i]));
+  const ecrituresDesFamilles = parCle(lignes(db, 'SELECT famille_id, competence_brut FROM arme ORDER BY famille_id, ordre'), 'famille_id', (a) => a.competence_brut);
+  const famillesDArmes = lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable, categorie FROM arme_famille ORDER BY ordre')
+    .map((f) => ({
+      id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1, categorie: f.categorie,
+      competences: [...new Set((ecrituresDesFamilles.get(f.id) ?? []).flatMap((e) => competencesDArme(e).map((k) => k.id)))]
+        .sort((a, b) => rangDeCompetence.get(a) - rangDeCompetence.get(b)),
+    }));
+  /**
+   * Les familles d'une maîtrise au choix d'une classe (classe_maitrise_arme forme 'au_choix', décision R119) : les familles maîtrisables (jamais ARME DE
+   * MONSTRES, R45) de sa catégorie (« arme contact au choix », « arme à distance au choix » : R127 ; aucune catégorie écrite : toutes), sans celle de son
+   * « sauf » (« (sauf Dague) »). Le « sauf » est lu par le nom du bandeau d'une famille, chaque nom séparé par « / », au singulier (« Masse » :
+   * MASSE/MARTEAU ; « Épée » : ÉPÉES) : aucune décision ne le dit, c'est une lecture à confirmer (question Q44) ; null quand le « sauf » ne nomme aucune
+   * famille ainsi (« Hast », « Bâton », « Arme jet », Q44 aussi : rien n'est rapproché à la place de la source, la maîtrise ne se lit pas).
+   */
+  const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
+  const famillesAuChoix = (ligne) => {
+    const familles = famillesDArmes.filter((x) => x.maitrisable && (!ligne.categorie || x.categorie === ligne.categorie));
+    if (!ligne.sauf_cle) return familles.map((x) => x.id);
+    const exclues = familles.filter((x) => x.nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle)));
+    return exclues.length ? familles.filter((x) => !exclues.includes(x)).map((x) => x.id) : null;
+  };
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet FROM capacite'), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
-  const maitrises = parCle(lignes(db, 'SELECT classe_id, brut, nombre FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
-    (r) => ({ brut: r.brut, nombre: r.nombre }));
+  // une maîtrise au choix porte ses familles (`au_choix` : familles, null si son « sauf » ne se lit pas ; décision R119)
+  const maitrises = parCle(lignes(db, 'SELECT classe_id, brut, nombre, forme, categorie, sauf_cle FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
+    (r) => ({ brut: r.brut, nombre: r.nombre, ...(r.forme === 'au_choix' ? { au_choix: { familles: famillesAuChoix(r) } } : {}) }));
   const classes = lignes(db, `
     SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
@@ -282,7 +341,7 @@ function reglesDeLaBase(db) {
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
-          ...(() => { const acquis = lireAcquis(d.effet); return acquis.length ? { acquis } : {}; })(),
+          ...(() => { const acquis = horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
         })),
@@ -367,9 +426,9 @@ function reglesDeLaBase(db) {
   const nomDeRessource = (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id;
   const equipement = {
     // dé de la famille, et ses paliers selon la Force quand sa note les écrit (Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force ») ; `maitrisable` :
-    // la famille a sa ligne dans les maîtrises (pas ARME DE MONSTRES, décision R45), toutes nomment les armes de l'équipement
-    familles_armes: lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable FROM arme_famille ORDER BY ordre')
-      .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1 })),
+    // la famille a sa ligne dans les maîtrises (pas ARME DE MONSTRES, décision R45), toutes nomment les armes de l'équipement ; `categorie` (R127) et
+    // `competences` (R48, R119) : plus haut, avant les classes
+    familles_armes: famillesDArmes,
     // le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son type ; NULL pour le Pugilat : selon la Force), son bonus de dégâts (« +N dégâts »)
     // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes. Pour la fiche en tableur : son
     // effet tel qu'écrit dans l'onglet (arme.effet, null pour une arme de monstre) et sa portée, celle de la colonne de la page « Armes » (décision R50 :
@@ -409,7 +468,7 @@ function reglesDeLaBase(db) {
       // les bonus d'acquis qu'écrit son effet (« +25% Stabilité », « +5% Magie ou Concentration » : « Les bonus de race/classe/don/équipement vont dans la
       // case Acquis », guide « Fiche de personnage : Compétences » ; décision R104)
       return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
-        const acquis = lireAcquis(effet);
+        const acquis = horsDuTableau(lireAcquis(effet));
         return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };
       });
     })(),

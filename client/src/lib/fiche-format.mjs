@@ -12,8 +12,9 @@
  */
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme',
-  'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
+  'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'groupe_membre',
 ]);
 
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
@@ -32,6 +33,8 @@ export const PARTIES_DE_FICHE = Object.freeze({
   ceinture: 'personnage_ceinture',
   entrainements: 'personnage_entrainement',
   acquis_choix: 'personnage_acquis_choix',
+  // la résistance au choix d'une ligne du tableau de la race (décision R124, migration 0069 : Drakos orange)
+  resistance_choix: 'personnage_resistance_choix',
 });
 
 /** Tables qui citent une fiche sans en faire partie : le partage d'une fiche de joueur et les inscriptions dans les groupes de jeu. */

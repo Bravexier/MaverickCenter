@@ -47,7 +47,9 @@ test('pas compté : au choix ou aléatoire (signalé), passager, visant un autre
     "Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption.",
     'Réduit de 1 cran une vulnérabilité magique possédée en raison de la magie innée.',
   ]) assert.deepEqual(lire(choix), { effets: [], choix: true }, choix);
-  assert.deepEqual(lire('Au choix parmi les autres', { colonne: '+1 cran de résistance' }), { effets: [], choix: true });
+  // « Au choix parmi les autres » (Drakos orange) : un choix parmi les autres lignes de la colonne, +1 cran (décision R124 : lib/fiche-regles.mjs en tire les options)
+  assert.deepEqual(lire('Au choix parmi les autres', { colonne: '+1 cran de résistance' }), { effets: [], choix: true, autres: 1 });
+  assert.deepEqual(lire('Au choix', { colonne: '+1 cran de résistance' }), { effets: [], choix: true }, 'un autre choix : signalé');
   for (const autre of [
     "Permet de se téléporter dans un feu magique, permet d'être immunisé à la brûlure le temps de la téléportation (1 tour)",
     'Insensible à la douleur, Immunisé aux Peurs pendant 2 tours. Tombe dans le coma une fois terminé.',

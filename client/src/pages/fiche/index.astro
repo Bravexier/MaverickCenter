@@ -286,6 +286,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <h3 id="titre-resistances">Résistances et faiblesses</h3>
             <div class="fiche-etape__corps">
               <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
+              <ul id="resistances-a-choisir" class="acquis-choix" aria-label="Résistance à choisir" hidden></ul>
               <p class="fiche-aide" id="resistances-choix" hidden></p>
             </div>
           </section>

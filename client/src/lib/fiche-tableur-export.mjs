@@ -73,8 +73,11 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   evenement: 'Événement',
   // une ligne de texte libre de l'entraînement (décision R104 : « dons évènementiels ») ; ses compétences sont dans la case L42
   entrainementTexte: 'Entraînement',
-  // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »)
+  // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »),
+  // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) »)
   acquisChoix: 'Acquis au choix',
+  // la résistance au choix d'une ligne du tableau de la race (décision R124) : « <ligne> : <altération> » (« Écaille draconique : Poison »)
+  resistanceChoix: 'Résistance au choix',
   resistancesAuChoix: 'Résistances au choix (non comptées)',
   modeHyperCent: 'Mode Hyper 100 %',
   choixAFaire: 'Choix à faire',
@@ -1168,8 +1171,11 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   for (const l of [...(f.entrainements ?? [])].sort((a, b) => a.rang - b.rang)) if (!l.competence_id && String(l.texte ?? '').trim()) noter(K.entrainementTexte, uneLigne(l.texte));
   for (const c of acquisDesDons(regles, f).choix) {
     const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);
-    if (choisi) noter(K.acquisChoix, `${c.nom} : ${choisi}`);
+    // un choix d'arme (décision R119) : la famille d'armes entre parenthèses, après la compétence (déduite ou choisie)
+    const arme = c.arme && c.choisi ? ` (${nomDe(regles.familles_armes, c.arme_famille_id)})` : '';
+    if (choisi) noter(K.acquisChoix, `${c.nom} : ${choisi}${arme}`);
   }
+  for (const c of resistances.aChoisir) if (c.fait) noter(K.resistanceChoix, `${c.nom} : ${nomDe(regles.etats, c.choisi)}`);
   noter(K.resistancesAuChoix, resistances.auChoix.join(', '));
   if (hyper?.cent.debloque) noter(K.modeHyperCent, MODE_HYPER_CENT_DEBLOQUE);
   noter(K.choixAFaire, choixEnAttente(regles, f).map((c) => c.libelle).join(SEPARATEUR_DE_LISTE));

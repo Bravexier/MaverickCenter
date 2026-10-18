@@ -15,12 +15,13 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
 const lire = lecteurDAcquis(regles.competences);
+/** Les raisons d'un bonus non compté que rend le lecteur ('arme_choisie' : celle du moteur, quand la classe n'a pas de maîtrise au choix lisible, R119). */
 const RAISONS = ['situation', 'arme_choisie', 'mj', 'inconnue'];
 /** Les quatre compétences d'arme, dans l'ordre de la décision R120 (« Arc, Arbalète, Arme légère, Arme lourde »). */
 const ARMES = ['arc', 'arbalete', 'arme-legere', 'arme-lourde'];
 
 test('lecture des dons : une valeur et des compétences nommées comptent ; « X ou Y », un choix ; « à répartir au choix », une répartition ; le reste, sa raison', () => {
-  const ids = (texte) => lire(texte).map((b) => b.competence_id ?? b.choix ?? (b.repartir ? 'repartir' : b.raison));
+  const ids = (texte) => lire(texte).map((b) => b.competence_id ?? b.choix ?? (b.repartir ? 'repartir' : b.arme ? 'arme' : b.raison));
   assert.deepEqual(lire('+7% Magie, +7% Médecine'), [{ valeur: 7, competence_id: 'magie' }, { valeur: 7, competence_id: 'medecine' }]);
   assert.deepEqual(ids('+5% à la Diplomatie, Intimidation, Arme Lourde'), ['diplomatie', 'intimidation', 'arme-lourde'], 'les noms qui suivent sans valeur');
   assert.deepEqual(ids('Magie, Concentration, Survie = 5% d’acquis'), ['magie', 'concentration', 'survie']);
@@ -42,7 +43,8 @@ test('lecture des dons : une valeur et des compétences nommées comptent ; « X
   assert.deepEqual(ids('+10% esquive en l’air'), ['situation']);
   assert.deepEqual(ids('Donne +10% à tous les jets de perception et la vision nocturne aux alliés pendant 3 tours'), ['situation'], 'une action, pas un passif (Lunatique)');
   assert.deepEqual(ids('La cible aura un malus de 10% à son esquive'), ['situation']);
-  assert.deepEqual(ids('+5% de la compétence de l’arme choisie, +5% Vigueur'), ['arme_choisie', 'vigueur']);
+  // « l'arme choisie » : un choix d'arme (décision R119 : la maîtrise au choix de la classe, lib/fiche-moteur.mjs#acquisDesDons)
+  assert.deepEqual(ids('+5% de la compétence de l’arme choisie, +5% Vigueur'), ['arme', 'vigueur']);
   assert.deepEqual(ids('+15% à la falsification de documents'), ['mj'], 'au MJ (décision R123)');
   // ce qui n'est pas un bonus de compétence : rien
   assert.deepEqual(lire('+5% de réussite critique'), []);
@@ -101,7 +103,9 @@ test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la p
         assert.ok(Number.isInteger(b.nombre) && b.nombre >= 1 && b.nombre < b.choix.length, d.id);
       } else if (b.plafond) assert.ok(Number.isInteger(b.plafond) && regles.caracteristiques.some((k) => k.id === b.caracteristique_id), d.id);
       else if (b.jet) assert.ok(regles.caracteristiques.some((k) => k.id === b.jet), d.id);
-      else if (!b.repartir && !b.artisanat) assert.ok(RAISONS.includes(b.raison) && b.texte, `${d.id} : ${JSON.stringify(b)}`);
+      // « l'arme choisie » (R119) : le moteur en fait un choix d'arme ; « parmi les autres » (R124) n'arrive jamais jusqu'aux règles : un choix ou une raison
+      else if (b.arme) assert.ok(d.id.startsWith('capacites/') && b.texte, `${d.id} : ${JSON.stringify(b)}`);
+      else if (!b.repartir && !b.artisanat) assert.ok(RAISONS.includes(b.raison) && b.texte && !b.autres, `${d.id} : ${JSON.stringify(b)}`);
     }
   }
   assert.ok(comptes > 100, `${comptes} bonus d’acquis comptés`);
@@ -224,7 +228,8 @@ test('acquis de la race, de l’armure et du plafond (décision R104) : la ligne
   const vise = ligne.acquis.find((b) => b.competence_id);
   const fd = fiche({ race_id: drakos.id, ethnie_id: ligne.ethnie_id });
   assert.ok(competence(fd, vise.competence_id, regles).donsDetail.some((d) => d.valeur === vise.valeur && d.nom === drakos.dons_tableau.titre), JSON.stringify(vise));
-  // une ligne qui ne nomme pas de compétence (« 5% parmi les autres ») : listée, non comptée
+  // une ligne qui ne nomme pas de compétence : listée, non comptée (« 5% parmi les autres » est, lui, un choix parmi les autres lignes : décision R124,
+  // test/fiche-arme-choisie.test.mjs)
   const autre = drakos.dons_tableau.lignes.find((l) => (l.acquis ?? []).some((b) => b.raison));
   if (autre) assert.ok(M.acquisDesDons(regles, fiche({ race_id: drakos.id, ethnie_id: autre.ethnie_id })).nonComptes.some((x) => x.nom === drakos.dons_tableau.titre));
   // l'armure portée : son effet compte (« Les bonus de race/classe/don/équipement vont dans la case Acquis ») ; un choix « X ou Y » va au tiroir

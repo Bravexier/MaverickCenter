@@ -8,9 +8,12 @@
 //   Nécromancie » (tableau du Mort-Vivant) : +1, −1 ; une cellule sous la colonne « +1 cran de résistance » (tableau du Drakos) : +1 à ce qu'elle nomme ;
 //   « Immunisé contre le poison et la maladie », « Totalement immunisé à l'aveuglement » : immunité (seules les cibles connues comptent : une magie ou
 //   une altération d'état ; « la maladie » n'en est pas une).
-// Pas compté : une résistance au choix ou aléatoire (« une magie au choix », « Au choix parmi les autres », « une vulnérabilité magique », signalée par
-// `choix`), ce qui ne dure qu'un temps (« pendant 2 tours », « le temps de la téléportation ») ou vise un autre que le personnage (« la cible »,
-// « un allié », « un adversaire », « le lanceur » d'un piège), une immunité partielle (« à 95% »). Pur, sans dépendance.
+// « Au choix parmi les autres » sous la colonne « +1 cran de résistance » (tableau du Drakos, ligne du Drakos orange) : un choix (`choix`) parmi les
+// résistances des autres lignes de la colonne (décision R124 : « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les
+// résistance »), `autres` = ses crans ; lib/fiche-regles.mjs en tire les options, que la fiche fait choisir (personnage_resistance_choix).
+// Pas compté : une résistance au choix ou aléatoire (« une magie au choix », « une vulnérabilité magique », signalée par `choix`), ce qui ne dure
+// qu'un temps (« pendant 2 tours », « le temps de la téléportation ») ou vise un autre que le personnage (« la cible », « un allié », « un
+// adversaire », « le lanceur » d'un piège), une immunité partielle (« à 95% »). Pur, sans dépendance.
 
 const plier = (texte) => String(texte ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[’`]/g, "'");
 const echapper = (texte) => texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -72,7 +75,8 @@ export function lecteurDeResistances(cibles) {
 
   /**
    * Ce que donne un texte : `effets` comptés ({ type: 'magie' | 'etat', id, crans } ou { …, immunite: true } ; `magie_innee` et `etat_magie_innee`,
-   * sans id, désignent la magie innée du personnage et l'altération qui lui est liée), et `choix` quand une résistance est laissée au choix.
+   * sans id, désignent la magie innée du personnage et l'altération qui lui est liée), et `choix` quand une résistance est laissée au choix ; `autres`
+   * (une cellule « Au choix parmi les autres », décision R124) : les crans de ce choix, à prendre parmi les autres lignes de la colonne.
    * `colonne` : en-tête de la colonne d'une cellule de tableau de dons ; sous « +1 cran de résistance », la cellule nomme la cible (ou un choix),
    * sous un autre en-tête elle se lit comme un texte.
    */
@@ -80,11 +84,10 @@ export function lecteurDeResistances(cibles) {
     const lecture = { effets: [], choix: false };
     const entete = colonne === undefined ? null : /([+\-−]?)\s*(\d+)\s+crans? de (resistance|vulnerabilite|faiblesse)/.exec(plier(colonne));
     if (entete) {
-      if (AU_CHOIX.test(plier(texte)) || /\bchoix\b/.test(plier(texte))) lecture.choix = true;
-      else {
-        const crans = Number(entete[2]) * (entete[1] && entete[1] !== '+' ? -1 : 1) * (entete[3] === 'resistance' ? 1 : -1);
-        for (const c of nommees(texte)) lecture.effets.push({ ...c, crans });
-      }
+      const crans = Number(entete[2]) * (entete[1] && entete[1] !== '+' ? -1 : 1) * (entete[3] === 'resistance' ? 1 : -1);
+      if (/^au choix parmi les autres\.?$/.test(plier(texte).trim())) Object.assign(lecture, { choix: true, autres: crans });
+      else if (AU_CHOIX.test(plier(texte)) || /\bchoix\b/.test(plier(texte))) lecture.choix = true;
+      else for (const c of nommees(texte)) lecture.effets.push({ ...c, crans });
       return lecture;
     }
     for (const morceau of String(texte ?? '').split(/\n|(?<=[a-zà-ÿ)"»])\.\s+/i)) phrase(morceau, lecture);

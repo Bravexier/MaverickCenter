@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 68;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 69;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1337,7 +1337,8 @@ CREATE TABLE classe_maitrise_arme (
   arme_cle   TEXT    CHECK (arme_cle IS NULL OR (arme_cle NOT GLOB '*[^a-z0-9-]*' AND arme_cle NOT GLOB '*--*' AND arme_cle NOT GLOB '-*' AND arme_cle NOT GLOB '*-')),
                                                                -- normalize(arme) : se joint à arme_type.id quand l'écriture est celle du référentiel (« epee »,
                                                                -- « arc ») ; « Hast » ne se joint pas à « arme-dhast » : rien n'est rapproché à la place de la source
-  categorie  TEXT    CHECK (categorie IN ('contact', 'distance')),   -- forme au_choix : « arme contact au choix », « arme à distance au choix »
+  categorie  TEXT    CHECK (categorie IN ('contact', 'distance')),   -- forme au_choix : « arme contact au choix », « arme à distance au choix » ;
+                                                               -- les familles de chaque catégorie : arme_famille.categorie (décision R127)
   sauf       TEXT,                                             -- forme au_choix : « (sauf épée) » -> « épée » (tel qu'écrit)
   sauf_cle   TEXT    CHECK (sauf_cle IS NULL OR (sauf_cle NOT GLOB '*[^a-z0-9-]*' AND sauf_cle NOT GLOB '*--*' AND sauf_cle NOT GLOB '-*' AND sauf_cle NOT GLOB '*-')),
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
@@ -1497,6 +1498,8 @@ CREATE INDEX ethnie_bonus_vitesse  ON ethnie (bonus_vitesse)  WHERE bonus_vitess
 -- de résistance, -1 = un cran de vulnérabilité : les Mort-Vivant ont +1 à une magie et -1 à la magie opposée).
 -- 78 lignes : 65 ethnies ont au moins une résistance, dont 13 en ont deux (12 Mort-Vivant et Drassah'thac Nord). Drakos Orange (« résistance à l'altération
 -- choisie parmi toutes ») et Anansi d'Arcane (« sur une magie aléatoire ») n'ont rien de codé : pas de ligne, le choix reste dans le descriptif.
+-- La résistance que le joueur d'un Drakos orange choisit (décision R124 : une de celles des autres lignes du tableau « Écaille draconique ») est
+-- gardée dans sa fiche : personnage_resistance_choix (section 13, migration 0069).
 CREATE TABLE ethnie_resistance (
   ethnie_id       TEXT    NOT NULL REFERENCES ethnie(id),
   rang            INTEGER NOT NULL CHECK (rang IN (1, 2)),   -- 1 = colonnes E/F, 2 = colonnes G/H
@@ -2422,6 +2425,9 @@ CREATE TABLE affinite (
 
 -- Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES - D6, … ARME DE MONSTRES). Une arme est listée sous UN
 -- bandeau ; les armes à deux catégories (Crochet grappin, Étendard de guerre…) apparaissent sous deux bandeaux, avec deux lignes distinctes.
+-- Arme de contact ou à distance (décision R127 du propriétaire, migration 0069 : « Arc / arbalète / arme de jet ou Bombe sont bien les 4 types d'armes à
+-- distance. ») : `categorie`, dans le vocabulaire de classe_maitrise_arme.categorie ; ce sont les familles que propose une maîtrise « arme à distance
+-- au choix » ou « arme contact au choix » d'une classe (décision R119 ; la répartition des points de maîtrise, R32, ne la lit pas).
 CREATE TABLE arme_famille (
   id            TEXT    NOT NULL PRIMARY KEY,         -- slug du nom du bandeau : 'epees', 'masse-marteau', 'lance-arme-dhast', 'arme-de-monstres'
   libelle_brut  TEXT    NOT NULL,                     -- bandeau complet tel qu'écrit : « ARME DE JET - D6 [Un matériau permet d'en faire 10 sauf pour la fronde qui elle est unique] »
@@ -2433,8 +2439,14 @@ CREATE TABLE arme_famille (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,  -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1))   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES :
+  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1)),   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES :
                                                     -- des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030)
+  categorie     TEXT    CHECK (categorie IS NULL OR (categorie IN ('contact', 'distance') AND maitrisable = 1))   -- R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les
+                                                    -- 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE
+                                                    -- COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et
+                                                    -- le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK
+                                                    -- garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par
+                                                    -- client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN)
 ) STRICT;
 
 -- Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de dégâts et portée par défaut. C'est le « type » que la
@@ -4067,6 +4079,23 @@ CREATE TABLE personnage_acquis_choix (
 ) STRICT, WITHOUT ROWID;
 
 CREATE UNIQUE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (personnage_id, source, rang) WHERE arme_famille_id IS NOT NULL;   -- une arme par choix
+
+-- Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de
+-- résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ;
+-- les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres »)
+-- est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de
+-- personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ;
+-- pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le
+-- premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que
+-- ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance
+-- par choix (clé primaire).
+CREATE TABLE personnage_resistance_choix (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  source         TEXT    NOT NULL CHECK (length(source) > 0),
+  rang           INTEGER NOT NULL CHECK (rang >= 1),
+  etat_id        TEXT    NOT NULL REFERENCES etat(id),
+  PRIMARY KEY (personnage_id, source, rang)
+) STRICT, WITHOUT ROWID;
 
 -- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
 -- de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ;
