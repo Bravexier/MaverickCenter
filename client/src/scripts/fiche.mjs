@@ -1498,6 +1498,7 @@ const NOMS_DES_CIBLES = {
   sante: 'Santé', chakra: 'Chakra', barriere: 'Barrière', initiative: 'Initiative', vitesse: 'Vitesse', barre4_max: 'Sang ou Âme max', armure_ap: 'AP de base',
   armure_am: 'AM de base', degats_physiques: 'Dégâts des armes', degats_magie: 'Dégâts des sorts d’attaque', portee_distance: 'Portée des armes à distance',
   portee_sorts: 'Portée des sorts', maitrise_arme: 'Point de maîtrise d’arme', mode_hyper_tours: 'Tour de Mode Hyper',
+  cran_des_sorts: 'Cran des dés de dégâts des sorts', de_maximum: 'Dé de dégâts au maximum', des_soins: 'Dés de soin des sorts',
 };
 /** Ce qu'un effet d'accessoire change, en quelques mots (« Initiative +5 », « Acquis Arme lourde +7 », « Résistance Feu +1 »). */
 function texteDEffet(e) {

@@ -3,12 +3,13 @@
 // résistances, Mode Hyper, malédiction (effet contraire), choix en attente, effets « (Action) » et usages comptés rappelés sous les dons de race, et
 // l'enregistrement des choix dans la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
+import { CIBLES } from '../src/lib/accessoire-champs.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
@@ -127,4 +128,17 @@ test('les choix (compétence, famille d’armes) s’enregistrent dans la base s
   const lignes = vivante.prepare('SELECT emplacement, competence_id, arme_famille_id FROM personnage_accessoire WHERE personnage_id = ? ORDER BY emplacement').all(personnage.id).map((l) => ({ ...l }));
   assert.deepEqual(lignes, [{ emplacement: 'chef', competence_id: null, arme_famille_id: 'epees' }, { emplacement: 'collier', competence_id: 'arme-lourde', arme_famille_id: null }]);
   assert.equal(effetsDesAccessoires(regles, f).length, 2);
+});
+
+test('la page dit en mots chaque cible d’un effet d’accessoire, jamais son identifiant (« cran_des_sorts +1 »)', () => {
+  const page = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const bloc = /const NOMS_DES_CIBLES = \{([\s\S]*?)\n\};/.exec(page)?.[1];
+  assert.ok(bloc, 'NOMS_DES_CIBLES introuvable dans src/scripts/fiche.mjs');
+  const nommees = new Set([...bloc.matchAll(/(\w+): '/g)].map((m) => m[1]));
+  // texteDEffet nomme ces quatre-là d'après la base (caractéristique, compétence, famille d'armes, magie ou altération)
+  const parLaBase = new Set(['caracteristique', 'competence', 'degats_famille', 'resistance']);
+  assert.deepEqual(CIBLES.filter((c) => !parLaBase.has(c) && !nommees.has(c)), []);
+  // et chaque cible que les règles portent est de la liste
+  const portees = new Set(regles.accessoires.flatMap((a) => (a.effets ?? []).map((e) => e.cible)));
+  assert.deepEqual([...portees].filter((c) => !CIBLES.includes(c)), []);
 });
