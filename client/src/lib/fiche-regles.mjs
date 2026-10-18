@@ -299,9 +299,11 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      // le second coût (âmes, Sang… : décision R105), sans expression de NM ; absent quand le sort n'en a pas
+      ...(s.cout_secondaire ? { cout_secondaire: s.cout_secondaire } : {}),
       modes: modesDesSorts.get(s.id) ?? [],
       bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
       // un sort d'attaque (sort_type) reçoit les « Dégâts magie +N » d'un accessoire (décision R54)

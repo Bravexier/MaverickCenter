@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { coutEnUneCase, repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = trouverRacine();
@@ -62,8 +63,13 @@ test('base : chaque correction est faite (le texte corrigé est dans la colonne)
   for (const c of corrections) {
     const cle = `${c.table}|${c.id}|${c.col}`;
     if (!lire.has(cle)) {
-      // la cellule telle que les migrations l'ont laissée (avant les modifications du site de dev)
-      const texte = historique.valeurDImport(c.table, (CLE[c.table] ?? ((id) => ({ id })))(c.id), c.col);
+      // la cellule telle que les migrations l'ont laissée (avant les modifications du site de dev) ; la case « Coût » d'un sort est en deux colonnes
+      // depuis la migration 0063 (décision R105), relues ensemble comme le classeur les écrivait (« 5 + 2 âmes ») — sauf un coût que l'historique garde
+      // encore en une case (lot du site de dev noté avant 0063, tel que le journal l'a noté)
+      const cleDeLigne = (CLE[c.table] ?? ((id) => ({ id })))(c.id);
+      const cout = c.table === 'sort' && c.col === 'cout_brut' ? historique.valeurDImport('sort', cleDeLigne, 'cout_brut') : null;
+      const texte = cout === null ? historique.valeurDImport(c.table, cleDeLigne, c.col)
+        : repartirLeCout(cout) ? cout : coutEnUneCase(cout, historique.valeurDImport('sort', cleDeLigne, 'cout_secondaire'));
       assert.ok(texte !== undefined, `${c.table} ${c.id} : ligne absente de la base`);
       lire.set(cle, texte ?? '');
     }
@@ -102,7 +108,7 @@ test('identifiants stables : chaque sort a toujours pour clé normalize(nom), le
 
 test('fautes connues disparues des textes des magies et des sorts (rien n’est revenu)', () => {
   const textes = [
-    ...db.prepare('SELECT effets, remarque, texte_niveau5, portee_brut, dsb_brut, type_brut, zone_brut, cout_brut FROM sort').all().flatMap((r) => Object.values(r)),
+    ...db.prepare('SELECT effets, remarque, texte_niveau5, portee_brut, dsb_brut, type_brut, zone_brut, cout_brut, cout_secondaire FROM sort').all().flatMap((r) => Object.values(r)),
     ...db.prepare('SELECT description, description_physique, explication, banniere, incompatibilite_note FROM magie').all().flatMap((r) => Object.values(r)),
   ].filter(Boolean);
   const fautes = [/Soi même/, /\bEntave\b(?! de)/, /tout les\b/, /dégats/i, /excepetion/i];

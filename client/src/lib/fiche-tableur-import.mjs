@@ -54,6 +54,7 @@ import {
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
   partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, trouver,
 } from './fiche-moteur.mjs';
+import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
 import { recollerLeTexte, sansLaCoupure } from './tableur-mesure.mjs';
 import {
@@ -920,7 +921,11 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     // (leur début, pour une case coupée par la page) ; dans une description écrite entière (ses parties sur des lignes, ou sur une ligne séparées par
     // « · »), chaque ligne du D/S/B et des effets du sort qui y est compte, une seule qui n'y est pas écarte le sort ; coupée, on ne sait pas où : ses
     // parties entières comptent, et le début de la dernière
-    const auNm = (s, ch) => (s[ch] ? valeurAuNm(s[ch], s.bonus ?? [], ch, Math.min(3, Math.max(0, nm))) : '');
+    // la case « Coût » écrit les deux coûts du sort (décision R105 : « 3 + 1 Sang », comme l'export et le classeur)
+    const auNm = (s, ch) => {
+      const v = s[ch] ? valeurAuNm(s[ch], s.bonus ?? [], ch, Math.min(3, Math.max(0, nm))) : '';
+      return ch === 'cout' ? coutEnUneCase(v, s.cout_secondaire ?? null) : v;
+    };
     const score = (s) => {
       if (ligne === null) return 0;
       const n = ['type', 'cout', 'portee', 'zone'].filter((ch) => texte(`${colonnes[ch]}${ligne}`) && ecritComme(texte(`${colonnes[ch]}${ligne}`), auNm(s, ch))).length;

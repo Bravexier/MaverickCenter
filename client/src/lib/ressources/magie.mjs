@@ -96,7 +96,7 @@ export const RESSOURCES = [
       { table: 'sort_bonus_maitrise', parent: { sort_id: 'id' } },
       { table: 'sort_etat', parent: { sort_id: 'id' } },
     ],
-    liste: ['id', 'nom', 'magie_id', 'niveau', 'ordre', 'type_brut', 'cout_brut', 'portee_brut'],
+    liste: ['id', 'nom', 'magie_id', 'niveau', 'ordre', 'type_brut', 'cout_brut', 'cout_secondaire', 'portee_brut'],
     recherche: ['nom'],
     tri: 'magie_id',
   },

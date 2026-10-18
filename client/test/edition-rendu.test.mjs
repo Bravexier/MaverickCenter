@@ -179,7 +179,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }
   }
-  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
+  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-cout-secondaire', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
     'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle',
     'evenement-date', 'evenement-date-courte', 'evenement-portee',
     'protection-prix', 'armure-type', 'armure-solidite', 'armure-resistance', 'armure-faiblesse', 'armure-effet', 'piece-cout',

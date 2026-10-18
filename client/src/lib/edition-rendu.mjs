@@ -186,7 +186,7 @@ export const RENDUS = {
   'metier-carac': (valeur, _ligne, ctx = {}) => htmlDeCaracteristique(valeur, ctx),
   'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(avecSesBalises(valeur, decouperEquipement(valeur, ctx.objets ?? [])), ctx),
   'metier-avantage': (valeur) => (valeur && valeur.trim() !== '…' ? echapperHtml(valeur) : ''),
-  // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément) ; portée, zone, D/S/B
+  // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément), coût secondaire ; portée, zone, D/S/B
   'sort-type': (valeur) => {
     const a = analyserType(valeur);
     const types = a.types.map((t) => `<span class="genre" data-genre="${echapperHtml(t.type)}">${echapperHtml(t.libelle)}</span> `);
@@ -231,6 +231,11 @@ export const RENDUS = {
     const libelle = connu?.nom ?? { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction' }[type] ?? mot;
     const bulle = connu?.definition ? ` title="${echapperHtml(`${libelle} : ${connu.definition}`)}"` : '';
     return `${type ? `<span class="don-type" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
+  },
+  // le coût secondaire (décision R105) : une valeur courte, sans expression de NM (le service les refuse ici)
+  'sort-cout-secondaire': (valeur) => {
+    const v = valeurDeSort(valeur);
+    return v.vide ? VIDE : v.lignes.map((l) => `<div>${segmentsHtml(l)}</div>`).join('');
   },
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),

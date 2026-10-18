@@ -32,7 +32,7 @@ test('modules livrés : l’entrée, le service, son journal, ses métriques (co
     'src/lib/mots-cles-balises.mjs', 'src/lib/mots-cles-db.mjs', 'src/lib/mots-cles.mjs', 'src/lib/notes-de-version-sens.mjs',
     'src/lib/notes-de-version.mjs', 'src/lib/panneaux-regles-db.mjs', 'src/lib/portrait.mjs', 'src/lib/potion-etats.mjs', 'src/lib/race-kinds.mjs', 'src/lib/ressources.mjs', 'src/lib/ressources/artisanat.mjs',
     'src/lib/ressources/bestiaire.mjs', 'src/lib/ressources/creation.mjs', 'src/lib/ressources/equipement.mjs', 'src/lib/ressources/magie.mjs',
-    'src/lib/ressources/regles.mjs', 'src/lib/ressources/univers.mjs', 'src/lib/ressources/wiki.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/tables-de-la-base.mjs', 'src/lib/text.mjs',
+    'src/lib/ressources/regles.mjs', 'src/lib/ressources/univers.mjs', 'src/lib/ressources/wiki.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-cout.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/tables-de-la-base.mjs', 'src/lib/text.mjs',
   ]);
   const faux = join(racine, 'faux-client');
   mkdirSync(join(faux, 'serveur'), { recursive: true });

@@ -11,6 +11,7 @@
 // la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
 import { echellesEcrites, magiesDesCibles as tableDesCibles, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
+import { coutEnUneCase } from './sort-cout.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -343,7 +344,8 @@ export function chargerInvocations(db) {
   const capacites = regrouper(all('SELECT creature_id, npm_min, etiquette, nom, nom_cle, texte FROM creature_capacite ORDER BY creature_id, rang'), 'creature_id');
   const effets = regrouper(all('SELECT creature_id, libelle, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
   const ressources = regrouper(all('SELECT creature_id, libelle, brut FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
-  const couts = new Map(all('SELECT creature_id, cout_brut FROM v_creature_cout_invocation').map((r) => [r.creature_id, r.cout_brut]));
+  // le coût du sort qui l'invoque, ses deux colonnes en une écriture (décision R105 : « 5 + 1 âme » ; lib/sort-cout.mjs#coutEnUneCase)
+  const couts = new Map(all('SELECT creature_id, cout_brut, cout_secondaire FROM v_creature_cout_invocation').map((r) => [r.creature_id, coutEnUneCase(r.cout_brut, r.cout_secondaire)]));
   const memeBloc = regrouper(all('SELECT v.creature_id, c.id, c.nom FROM v_creature_meme_bloc v JOIN creature c ON c.id = v.autre_creature_id'), 'creature_id');
   const defenses = regrouper(
     all(
