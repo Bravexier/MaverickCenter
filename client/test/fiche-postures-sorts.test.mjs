@@ -180,6 +180,11 @@ test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), p
   const n = M.lireDegatsDeSort(auNm(soin).dsb);
   const m = M.sortDuMoment(regles, fiche({ posture_id: POSTURE('focus'), ...ceinture('Bâton magique Lumière, niveau 2') }), soin, auNm(soin));
   assert.equal(m.dsb.texte, M.ecrireDegatsDeSort({ ...n, faces: 8, fixe: n.fixe + 6 }));
+  // Farfadet maritime : « Augmente d'un cran les dés des soins magiques » (les soins seulement)
+  const farfadet = { race_id: 'races/farfadet', ethnie_id: regles.ethnies.find((e) => /farfadet-maritime/.test(e.id)).id };
+  assert.equal(M.sortDuMoment(regles, fiche(farfadet), soin, auNm(soin)).dsb.texte, M.ecrireDegatsDeSort({ ...n, faces: 8 }));
+  const bouleDeFeu = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-feu' && s.dsb === '2d6 dégâts (+1d6/NM)');
+  assert.equal(M.sortDuMoment(regles, fiche(farfadet), bouleDeFeu, auNm(bouleDeFeu)).dsb.texte, '2d6 dégâts', 'pas les dégâts');
   const desEnPlus = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'des_soins'));
   const plusUn = M.sortDuMoment(regles, fiche({ accessoires: [{ emplacement: 'chef', accessoire_effet_id: desEnPlus.id, valeur: null, maudit: 0 }] }), soin, auNm(soin));
   assert.equal(plusUn.dsb.texte, M.ecrireDegatsDeSort({ ...n, nombre: n.nombre + 1 }));
@@ -278,6 +283,7 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'races/elfe-argente#don:barrage-argente': 'degats:2!progression',
     'races/elfe-argente#don:territoire-elfes-argentes': 'degats:2!progression',
     'races/elfe-dore#don:sang-dore': 'degats:3 soin:3',
+    'races/farfadet#don:farfadet-maritime-forets-proches-de-leau': 'cran:1',
     'races/felfe#don:felfe-argente': 'degats:1!progression',
   });
   // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule

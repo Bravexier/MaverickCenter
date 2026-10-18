@@ -251,7 +251,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   tous les sorts du personnage ; deux bâtons au même effet : le plus fort seul (`effetsDesBatons`).
 - **Sorts du moment** (décision R102) : `sortDuMoment` refait le coût (dons « réduits de 4 », Économe, bâton ; jamais moins de 1 ; Corruption :
   « ou 2 × le coût − bâton » en corruption), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
-  (`lireDegatsDeSort` : crans de dé, un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
+  (`lireDegatsDeSort` : crans de dé (Focus, accessoire, « Augmente d'un cran les dés des soins magiques » du Farfadet maritime), un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
   chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
   des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français

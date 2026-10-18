@@ -44,13 +44,13 @@ function visesDe(phrase) {
 
 /**
  * Les bonus de sorts qu'écrit un texte, phrase par phrase (une phrase finit par « . », « ; », une virgule avant « + » ou une ligne) :
- * [{ cible: 'cout' | 'degats' | 'soin' | 'portee', valeur | parNpm | { base, pas, niveaux }, vises, raison? }]. `parNpm` : « réduit d'un montant égal à
+ * [{ cible: 'cout' | 'degats' | 'soin' | 'portee' | 'cran' (les dés montés d'un cran), valeur | parNpm | { base, pas, niveaux }, vises, raison? }]. `parNpm` : « réduit d'un montant égal à
  * son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6 niveaux » (base + pas × ⌊niveau de classe ÷ niveaux⌋).
  * Une valeur de coût est négative (une réduction).
  */
 export function bonusDeSortsEcrits(texte) {
   const t = normaliser(texte);
-  if (!/sort|magie inn[ée]e|d[ée]g[âa]ts magiques/.test(t)) return [];
+  if (!/sort|magie inn[ée]e|d[ée]g[âa]ts magiques|soins magiques/.test(t)) return [];
   const pas = /x\s*=\s*\+?\s*(\d+)\s*(?:d[ée]g[âa]ts?)?\s*\/\s*(\d+)\s*niveaux?/.exec(t);
   // les phrases (« . », « ; », une ligne), puis leurs propositions (une virgule avant « + ») : une proposition sans sorts visés vise ceux de la précédente
   // (« La magie innée inflige +4 dégâts, +4 soins »), jamais ceux d'une autre phrase
@@ -75,6 +75,11 @@ export function bonusDeSortsEcrits(texte) {
       const enPosture = /en posture ([a-zé]+)/.exec(phrase)?.[1] ?? posture;
       bonus.push({ cible, ...valeur, vises, ...(enPosture ? { posture: enPosture } : situation ? { raison: 'situation' } : {}) });
     };
+    // les dés des soins : « Augmente d'un cran les dés des soins magiques (D6 passe à D8 etc...) » (Farfadet maritime), comme la posture Focus
+    if (/augmente d'un cran les d[ée]s des soins magiques/.test(phrase)) {
+      ajouter('cran', { valeur: 1 }, { soin: true });
+      continue;
+    }
     // coût : « Les coûts pour les sortilèges de X, Y et Z sont réduits de 4 » ; « Le coût en chakra d'un sort est réduit d'un montant égal à son niveau de puissance »
     if (/co[ûu]ts?/.test(phrase)) {
       const n = /r[ée]duits? de (\d+)/.exec(phrase);

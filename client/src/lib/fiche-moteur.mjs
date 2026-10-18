@@ -2172,7 +2172,9 @@ export function sortDuMoment(regles, fiche, sort, auNm) {
   if (v) {
     dsb.lu = true;
     const x = { ...v };
-    const crans = (posture?.crans ?? 0) + (v.nature === 'degats' ? somme(accessoire('cran_des_sorts')) : 0);
+    // crans de dé : Focus (dégâts et soins), l'accessoire (dégâts), un don qui l'écrit (« Augmente d'un cran les dés des soins magiques »)
+    const crans = (posture?.crans ?? 0) + (v.nature === 'degats' ? somme(accessoire('cran_des_sorts')) : 0)
+      + somme(ecritsPour('cran').filter(() => v.nature === 'soin'));
     if (x.nombre && crans) {
       const faces = deMonte(x.faces, crans);
       if (faces !== x.faces) dsb.detail.push({ nom: `Dés d${x.faces} → d${faces}`, valeur: 0, crans: true });
