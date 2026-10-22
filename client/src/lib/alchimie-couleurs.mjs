@@ -19,10 +19,14 @@
 //   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur) ; un fond qui n'atteint pas un contraste de 4,5:1 avec lui (seuil
 //      AA du WCAG) est éclairci (texte foncé) ou assombri (texte blanc) jusqu'à l'atteindre (`lisible`).
 // Repère visuel sans valeur de règle du jeu. Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction
-// suivante du site (l'éditeur réécrit les cases de la ligne, pas sa couleur).
-// Sans dépendance (modules purs : attributs-couleurs.mjs, sort-format.mjs, caracteristiques-postures.mjs) ; importé par lib/ceinture-db.mjs et les tests.
+// suivante du site (l'éditeur réécrit les cases de la ligne, pas sa classe).
+// Couleurs sous forme de classes (choix du propriétaire du 2026-10-22, « Règle de calcul ») : la base d'une potion est une classe du site
+// (`base` : { famille, cle }, la classe `.couleur-<famille>-<cle>` de lib/palette-css.mjs) ; la nuance du niveau et le fond lisible se calculent depuis
+// elle, et la page Équipement n'émet la classe d'une combinaison (lib/palette-css.mjs#classeDePotion) que pour les potions qu'elle affiche.
+// Sans dépendance (modules purs : attributs-couleurs.mjs, sort-format.mjs, caracteristiques-postures.mjs) ; importé par lib/ceinture-db.mjs,
+// lib/palette-css.mjs et les tests.
 import { couleurDAttribut } from './attributs-couleurs.mjs';
-import { couleurDeMagieConnue, texteSurCouleur } from './sort-format.mjs';
+import { cleDeMagieConnue, couleurDeMagieConnue, texteSurCouleur } from './sort-format.mjs';
 import { COULEURS_CARACTERISTIQUES } from './caracteristiques-postures.mjs';
 
 /** L'affinité de l'essence de tous les philtres : sans fiole dans le Doc, un philtre prend la couleur de sa caractéristique. */
@@ -49,12 +53,37 @@ export const COULEURS_DES_AFFINITES = Object.freeze({
   universelle: '#efefef', // Fiole multicolore
 });
 
-/** La couleur de base d'une affinité : celle de son attribut, de sa magie ou celle que le site lui donne ; null si le site n'en a pas (Anti, Démon). */
-export function couleurDAffinite(id) {
+/**
+ * La couleur du site que prend une affinité, { famille, cle } (la famille et la clé de sa classe, lib/palette-css.mjs) : son attribut
+ * (`attribut`), sa magie (`magie`, le nom court de la magie) ou la couleur que le site lui ajoute (`affinite`) ; null si le site n'en a pas (Anti,
+ * Démon). Une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie : aucune couleur n'est recopiée.
+ */
+export function baseDAffinite(id) {
   if (!id) return null;
-  if (Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, id)) return couleurDAttribut(ATTRIBUT_DE_L_AFFINITE[id]);
-  return couleurDeMagieConnue(id) ?? COULEURS_DES_AFFINITES[id] ?? null;
+  if (Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, id)) return baseAvecCouleur({ famille: 'attribut', cle: ATTRIBUT_DE_L_AFFINITE[id] });
+  const magie = cleDeMagieConnue(id);
+  if (magie) return baseAvecCouleur({ famille: 'magie', cle: magie });
+  return baseAvecCouleur({ famille: 'affinite', cle: id });
 }
+
+/**
+ * Une base de potion ({ famille, cle }) dont la règle donne bien une couleur, ou null : un attribut, une magie, une affinité ou une caractéristique
+ * sans couleur laisse la ligne neutre (jamais une couleur incalculable).
+ */
+export const baseAvecCouleur = (base) => (couleurDeLaBase(base) ? base : null);
+
+/** La couleur (« #rrggbb ») d'une base de potion ({ famille, cle }), lue dans le module de sa règle ; null si la règle n'en a pas. */
+function couleurDeLaBase(base) {
+  if (!base) return null;
+  if (base.famille === 'attribut') return couleurDAttribut(base.cle);
+  if (base.famille === 'magie') return couleurDeMagieConnue(base.cle);
+  if (base.famille === 'affinite') return Object.hasOwn(COULEURS_DES_AFFINITES, base.cle) ? COULEURS_DES_AFFINITES[base.cle] : null;
+  if (base.famille === 'caracteristique') return Object.hasOwn(COULEURS_CARACTERISTIQUES, base.cle) ? COULEURS_CARACTERISTIQUES[base.cle] : null;
+  return null;
+}
+
+/** La couleur de base d'une affinité : celle de son attribut, de sa magie ou celle que le site lui donne ; null si le site n'en a pas (Anti, Démon). */
+export const couleurDAffinite = (id) => couleurDeLaBase(baseDAffinite(id));
 
 /**
  * La nuance de chaque niveau d'alchimie (`niveau_alchimie.rang` : 1 Novice … 5 Maître), inspirée des gammes du Doc : la part de blanc ou de noir mêlée à
@@ -123,11 +152,15 @@ export function lisible(fond) {
 }
 
 /**
- * La couleur d'une potion, { fond } (« #rrggbb »), ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle que nomment
- * les effets de sa page, qui ne compte que pour un philtre (essence AFFINITE_DES_PHILTRES) ; `niveau`, le rang de son niveau d'alchimie.
+ * La couleur d'une potion, ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle que nomment les effets de sa page, qui
+ * ne compte que pour un philtre (essence AFFINITE_DES_PHILTRES) ; `niveau`, le rang de son niveau d'alchimie. Rend { fond, texte, base, niveau } :
+ * le fond (« #rrggbb », la base nuancée au niveau puis rendue lisible), le texte le plus lisible dessus, la base ({ famille, cle } : la classe du
+ * site d'où la couleur se calcule) et le niveau (null s'il manque) ; la classe de la combinaison : lib/palette-css.mjs#classeDePotion.
  */
 export function couleurDePotion({ essence = null, caracteristique = null, niveau = null } = {}) {
-  const base = couleurDAffinite(essence)
-    ?? (essence === AFFINITE_DES_PHILTRES && caracteristique ? COULEURS_CARACTERISTIQUES[caracteristique] ?? null : null);
-  return base ? { fond: lisible(nuanceDuNiveau(base, niveau)) } : null;
+  const base = baseDAffinite(essence)
+    ?? (essence === AFFINITE_DES_PHILTRES && caracteristique ? baseAvecCouleur({ famille: 'caracteristique', cle: caracteristique }) : null);
+  if (!base) return null;
+  const fond = lisible(nuanceDuNiveau(couleurDeLaBase(base), niveau));
+  return { fond, texte: texteSurCouleur(fond), base, niveau: niveau ?? null };
 }

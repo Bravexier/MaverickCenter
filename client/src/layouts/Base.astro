@@ -7,6 +7,7 @@ import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
+import { cssDeLaPalette } from '../lib/palette-css.mjs';
 
 interface Props {
   title: string;
@@ -50,6 +51,9 @@ const pageMesuree = Astro.url.pathname;
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
     {/* les couleurs des attributs (santé, barrière, chakra, corruption, 4ᵉ barre) : la règle du site, lib/attributs-couleurs.mjs, lue par la fiche et le bestiaire */}
     <style is:inline set:html={cssDesAttributs()}></style>
+    {/* la palette du site en classes (`.couleur-<famille>-<id>` : --couleur, --couleur-texte ; magies, attributs, caractéristiques, affinités), fabriquée
+        depuis les modules des règles : lib/palette-css.mjs (choix du propriétaire du 2026-10-22, « Module JS → classe ») */}
+    <style is:inline set:html={cssDeLaPalette()}></style>
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />

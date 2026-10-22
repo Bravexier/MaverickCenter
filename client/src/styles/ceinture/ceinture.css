@@ -2,7 +2,8 @@
    repliées, ses trois sous-onglets (Consommables, Carquois, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement
    (sans JavaScript, ils se suivent, chacun sous son titre) ; dans Consommables, un onglet par famille (Fioles, Remèdes, Philtres, Huiles, Alchimie
    primitive), un tableau par potion, deux ou trois côte à côte ; le tableau des carquois ; le tableau des bâtons magiques. Aucune couleur écrite ici :
-   les lignes prennent celle de la règle du site (lib/alchimie-couleurs.mjs, sort-format.mjs#couleurDeMagie), posée par leur rendu. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
+   les lignes prennent celle de la règle du site par leur classe (lib/palette-css.mjs : `.couleur-potion-…` pour une potion, émise par
+   CeinturePanneau.astro ; `.couleur-magie-…` pour un bâton, posée sur chaque page par layouts/Base.astro), jamais par un style. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
    en-têtes, lignes sur la couleur de leur source) ; ici, ce qui leur est propre. Les onglets de la page et la pastille d'une gemme :
    styles/equipement/equipement.css. */
 .ceinture {
@@ -87,8 +88,11 @@ html.js .ceinture-famille__titre { position: absolute; width: 1px; height: 1px; 
 html.js .batons .sans-js { display: none; }
 
 .batons-table tbody > tr > * { vertical-align: middle; }
-/* toute la ligne sur la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit */
-.batons-table tr.baton { --ligne-fond: var(--baton-fond); --ligne-texte: var(--baton-texte); }
+/* toute la ligne sur la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit ;
+   la couleur vient de la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs), qui teinte aussi les infobulles de
+   la ligne (--mag, styles/global/infobulles.css) */
+.batons-table tr.baton { --baton-fond: var(--couleur); --baton-texte: var(--couleur-texte); --ligne-fond: var(--baton-fond); --ligne-texte: var(--baton-texte);
+  --mag: var(--baton-fond); }
 /* la magie n'a plus de colonne (demande du propriétaire) : son nom reste dans l'en-tête de la ligne pour les lecteurs d'écran */
 .baton__magie { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .baton__gemme { min-width: 9rem; font-weight: 400; }

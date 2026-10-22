@@ -211,8 +211,11 @@ export const ancreDeTitre = (titre) =>
     .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .replace(/\s/g, '-');
 
-/** Couleurs de magie, pour les pastilles et les titres de magie. */
-const COULEURS = {
+/**
+ * Couleurs de magie, pour les pastilles et les titres de magie. Clé = le nom court normalisé de la magie (text.mjs#normalize : « Espace-Temps » →
+ * « espace-temps ») : l'id de sa classe de couleur sur le site (`.couleur-magie-<clé>`, lib/palette-css.mjs).
+ */
+export const COULEURS_DES_MAGIES = Object.freeze({
   feu: '#ff0000',
   eau: '#0000ff',
   glace: '#00ffff',
@@ -228,13 +231,20 @@ const COULEURS = {
   necromancie: '#274e13',
   'espace-temps': '#ff66cc',
   'potentiel-illimite': '#ff9900',
-};
+});
 
 export const COULEUR_PAR_DEFAUT = '#ad5e29';
-export const couleurDeMagie = (nom) => COULEURS[normalize(nom ?? '')] ?? COULEUR_PAR_DEFAUT;
+
+/** La clé d'une magie connue du site (son nom ou son nom court : « Feu » → « feu »), ou null. */
+export const cleDeMagieConnue = (nom) => {
+  const cle = normalize(nom ?? '');
+  return Object.hasOwn(COULEURS_DES_MAGIES, cle) ? cle : null;
+};
+
+export const couleurDeMagie = (nom) => COULEURS_DES_MAGIES[cleDeMagieConnue(nom)] ?? COULEUR_PAR_DEFAUT;
 
 /** La couleur d'une magie connue du site (son nom ou son nom court : « Feu », « espace-temps »), ou null : sans couleur par défaut. */
-export const couleurDeMagieConnue = (nom) => COULEURS[normalize(nom ?? '')] ?? null;
+export const couleurDeMagieConnue = (nom) => COULEURS_DES_MAGIES[cleDeMagieConnue(nom)] ?? null;
 
 export const texteSurCouleurDeMagie = (nom) => texteSurCouleur(couleurDeMagie(nom));
 

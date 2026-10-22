@@ -13,8 +13,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ANCIENNE_PAGE_DE_LA_CEINTURE, CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
-import { ancreDeBatons, couleursDesBatons } from '../src/lib/batons-rendu.mjs';
-import { couleurDeMagie } from '../src/lib/sort-format.mjs';
+import { ancreDeBatons, classeDesBatons } from '../src/lib/batons-rendu.mjs';
+import { couleurDeMagie, texteSurCouleur } from '../src/lib/sort-format.mjs';
+import { cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { adresseDePage, cheminDePage } from '../src/lib/metiers.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -145,20 +146,23 @@ test('ceinture, bâtons magiques : le panneau de règles en tête, une ligne par
   assert.ok(panneauDesBatons.length > 1000, 'le panneau des bâtons');
   assert.match(panneauDesBatons, /<h3 class="ceinture-panneau__titre" id="titre-batons-magiques">Bâtons magiques<\/h3><details class="preg" id="regles-batons-magiques" data-panneau-regles="batons-magiques">/);
   assert.ok(!panneauDesBatons.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
-  const lignes = [...panneauDesBatons.matchAll(/<tr class="baton ligne-couleur" id="([^"]+)"/g)].map((m) => m[1]);
+  const lignes = [...panneauDesBatons.matchAll(/<tr class="baton ligne-couleur [a-z0-9-]+" id="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(lignes, batons.magies.map((m) => ancreDeBatons(m.magie.id)));
   // demande du propriétaire du 2026-10-16 : plus de colonne Magie ni de colonne par niveau ; le niveau au curseur, l'effet et le prix du niveau choisi
   const entetes = [...panneauDesBatons.slice(panneauDesBatons.indexOf('<thead>'), panneauDesBatons.indexOf('</thead>')).matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes, ['Gemme', 'Bois', 'Niveau', 'Effet', 'Prix']);
   // chaque ligne sur la couleur de sa magie sur le site, comme ses infobulles (demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les
-  // couleurs du site »), au niveau 1
+  // couleurs du site ») : la classe de la magie, posée sur chaque page avec sa valeur (« Module JS → classe »), sans style ; au niveau 1
+  assert.ok(html.includes(`<style>${cssDeLaPalette()}</style>`), 'la palette du site, dans la page');
   for (const m of batons.magies) {
-    const { fond, texte } = couleursDesBatons(m.magie);
-    assert.ok(panneauDesBatons.includes(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`), m.magie.nom);
+    const classe = classeDesBatons(m.magie);
+    assert.ok(panneauDesBatons.includes(`<tr class="baton ligne-couleur ${classe}" id="${ancreDeBatons(m.magie.id)}" data-niveau="1">`), m.magie.nom);
+    assert.ok(cssDeLaPalette().includes(`.${classe}{--couleur:${couleurDeMagie(m.magie.nom)};--couleur-texte:${texteSurCouleur(couleurDeMagie(m.magie.nom))}}`), `${m.magie.nom} : la valeur de sa classe`);
   }
+  assert.ok(!/<tr class="baton[^>]*style=/.test(panneauDesBatons) && !/style="[^"]*(?:--baton-|--mag|--g\b)/.test(panneauDesBatons), 'aucun style de couleur dans les bâtons');
   assert.equal((panneauDesBatons.match(/<input type="range" class="baton-curseur__champ" min="1" max="3"/g) ?? []).length, batons.magies.length, 'un curseur par ligne');
   assert.equal((panneauDesBatons.match(/<span class="bulle bulle--baton" role="tooltip" id="bulle-baton-[a-z-]+-(?:gemme|bois)" hidden>/g) ?? []).length, batons.magies.length * 2, 'une infobulle par gemme et par bois');
-  assert.equal((panneauDesBatons.match(/<a class="acc-gemme" href="\/ressources\/composants\/#composant-gemme-[^"]+" style="--g: #[0-9a-f]{6}; --g-texte: #[0-9a-f]{6}"/g) ?? []).length, batons.magies.length, 'la gemme : la pastille des accessoires');
+  assert.equal((panneauDesBatons.match(/<a class="acc-gemme couleur-magie-[a-z0-9-]+" href="\/ressources\/composants\/#composant-gemme-[^"]+" data-bulle=/g) ?? []).length, batons.magies.length, 'la gemme : la pastille des accessoires, dans la classe de sa magie');
   assert.ok(!panneauDesBatons.includes('baton__qualite'), 'pas de ligne pour la qualité de la gemme');
   assert.ok(panneauDesBatons.includes('<section class="ceinture-panneau batons" id="batons-magiques" aria-labelledby="titre-batons-magiques" data-batons>'), 'la racine du script, le dernier sous-onglet de la ceinture');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
