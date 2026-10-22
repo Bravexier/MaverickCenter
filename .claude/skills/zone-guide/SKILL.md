@@ -80,6 +80,6 @@ user-invocable: false
 
 ## Tests
 
-- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan.
+- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan. `test/guide.test.mjs` épingle aussi le plafond de maîtrise d'arme (4 points, 5 dés, R149) dans « Créer son personnage », « L'équipement », « Aide-mémoire » et « Lexique ».
 - `test/guide-sans-chapitres.test.mjs` (migration 0064), `test/markdown-edition.test.mjs` (aller-retour et `data-lien-ecrit`), `test/serveur-edition-guide.test.mjs`.
 - `test/serveur-edition-annonces.test.mjs`, `test/edition-annonces.test.mjs`, `test/texte-en-place-barres.test.mjs` (une barre d'outils à la fois), `test/tipeee-script.test.mjs` (le script de Tipeee, faux navigateur) ; `test/guide-html.test.mjs` (Bienvenue construite, plus de sources) ; `test/gabarits-sources.test.mjs` (aucun commentaire de gabarit n'annonce de sources sous une page, aucun gabarit ne finit par une ligne vide).

@@ -230,3 +230,16 @@ test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de 
   assert.match(corps('guide/le-mode-hyper'), /75 % de son chakra maximum\*\* ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : \*\*2 points de santé pour 1 point de chakra\*\*/);
   assert.match(corps('guide/la-magie-en-jeu'), /tarif de tout chakra dépensé sans l’avoir/);
 });
+
+test('décision R149 (G40) : les quatre pages du guide écrivent le plafond de maîtrise d’arme, 4 points, donc 5 dés, sans plus de « et ainsi de suite »', () => {
+  // « 4 points au plus par famille, donc 5 dés. Les points de toutes les sources s'additionnent, jusqu'à ce plafond ; au-delà, la fiche le signale,
+  // et les points en trop ne donnent pas de dé » (R149) ; les pages disent « catégorie » pour la famille d'armes (R150). Un invariant du texte courant
+  // (data/rows), pas la valeur d'import : le site de dev a réécrit trois de ces pages depuis l'import, dont le texte n'écrivait pas le plafond.
+  for (const id of ['guide/creer-son-personnage', 'guide/l-equipement', 'guide/aide-memoire', 'guide/lexique']) {
+    const texte = pagesDuGuide.find((p) => p.id === id).body;
+    const desDeMaitrise = texte.split('\n').filter((ligne) => /point de maîtrise/.test(ligne) && /\bdés?\b/.test(ligne));
+    assert.ok(desDeMaitrise.length > 0, `${id} : la phrase des dés de maîtrise`);
+    assert.ok(desDeMaitrise.some((ligne) => /\b4 points\b/.test(ligne) && /\b5 dés\b/.test(ligne) && /plafond/.test(ligne)), `${id} : le plafond, 4 points, 5 dés`);
+    for (const ligne of desDeMaitrise) assert.doesNotMatch(ligne, /ainsi de suite|etc\./, id);
+  }
+});
