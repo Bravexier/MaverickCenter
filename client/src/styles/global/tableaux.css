@@ -10,7 +10,7 @@
    Teinte (`--tab` : chevron ; `--tab-soft` : fond des en-têtes ; `--tab-line` : filet sous le titre et sous l'en-tête) : l'accent du site, sauf
    celle qu'une page pose sur son conteneur (magie, race, métier, bestiaire, guide…). Densité : `.table-donnees--serree` (listes où l'on choisit une
    ligne : matériaux, formes, améliorations, étapes des accessoires ; bestiaire), `.table-donnees--aeree` (armes : « l'affichage est trop serré »). Ligne colorée (`tr.ligne-couleur`, `--ligne-fond`,
-   `--ligne-texte`) : toute la ligne sur la couleur de sa source, un filet de sa teinte entre deux lignes colorées, un voile au survol.
+   `--ligne-texte`) : toute la ligne sur la couleur que lui donne sa page, un filet de sa teinte entre deux lignes colorées, un voile au survol.
    La table, ses cases et la zone qui défile sont sous :where() : la feuille d'une page les précise sans surenchère de sélecteurs, qu'elle soit
    insérée dans la page (?raw, après celle-ci) ou importée (la page d'un monstre).
    Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) suivent le même gabarit (fin du fichier). Hors gabarit : les tableaux de saisie
@@ -59,7 +59,7 @@ details.tableau[open] > .tableau__titre, .tableau:not(details) > .tableau__titre
 :where(.table-donnees--aeree) > thead th { padding: 0.6rem 0.85rem; }
 :where(.table-donnees--aeree) > tbody > tr > * { padding: 0.7rem 0.85rem; }
 
-/* Une ligne sur la couleur de sa source (potions de la ceinture, bâtons magiques, matériaux des armes…) */
+/* Une ligne sur la couleur que lui donne sa page (potions de la ceinture, bâtons magiques, matériaux des armes…) */
 :where(.table-donnees) tr.ligne-couleur > * { background: var(--ligne-fond); color: var(--ligne-texte); }
 :where(.table-donnees) tr.ligne-couleur + tr.ligne-couleur > * { border-top-color: color-mix(in srgb, var(--ligne-texte) 22%, var(--ligne-fond)); }
 :where(.table-donnees) tr.ligne-couleur:hover > * { background-image: linear-gradient(color-mix(in srgb, var(--ligne-texte) 10%, transparent),

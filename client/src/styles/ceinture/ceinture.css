@@ -1,7 +1,8 @@
 /* Chargé uniquement depuis components/ceinture/CeinturePanneau.astro (?raw) : l'onglet « Ceinture » de la page /ressources/equipement/. Ses règles
    repliées, ses trois sous-onglets (Consommables, Carquois, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement
-   (sans JavaScript, ils se suivent, chacun sous son titre) ; les groupes repliables des consommables, un tableau par potion, deux ou trois côte à
-   côte, et le tableau des carquois ; le tableau des bâtons magiques. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
+   (sans JavaScript, ils se suivent, chacun sous son titre) ; dans Consommables, un onglet par famille (Fioles, Remèdes, Philtres, Huiles, Alchimie
+   primitive), un tableau par potion, deux ou trois côte à côte ; le tableau des carquois ; le tableau des bâtons magiques. Aucune couleur écrite ici :
+   les lignes prennent celle de la règle du site (lib/alchimie-couleurs.mjs, sort-format.mjs#couleurDeMagie), posée par leur rendu. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
    en-têtes, lignes sur la couleur de leur source) ; ici, ce qui leur est propre. Les onglets de la page et la pastille d'une gemme :
    styles/equipement/equipement.css. */
 .ceinture {
@@ -47,18 +48,28 @@ html.js .ceinture-panneau:not(.is-active) { display: none; }
 html.js .ceinture-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .ceinture-panneau__titre { margin: 1.2rem 0 0.6rem; font-size: var(--fs-xl); }
 
-/* Sommaire d'un sous-onglet : un lien par tableau */
-.ceinture-sommaire { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.7rem; }
-.ceinture-sommaire a { font-size: var(--fs-sm); padding: 0.1rem 0.65rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface);
-  color: var(--text); text-decoration: none; }
-.ceinture-sommaire a:hover { border-color: var(--ctr); }
-.ceinture-sommaire__compte { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Les onglets des familles de consommables (demande du propriétaire, 2026-10-22) : un troisième niveau, en pastilles, plus discret que les deux autres */
+.ceinture-familles { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.8rem; }
+.ceinture-familles .onglet { display: flex; align-items: baseline; gap: 0.45rem; padding: 0.2rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--text); text-decoration: none; }
+.ceinture-familles .onglet__nom { font-weight: 700; font-size: var(--fs-md); }
+.ceinture-familles .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .ceinture-familles .onglet.is-active { background: var(--ctr-soft); border-color: var(--ctr); box-shadow: inset 0 0 0 1px var(--ctr); }
+html.js .ceinture-familles .onglet:not(.is-active):hover { border-color: var(--ctr); }
+.ceinture-familles .onglet:focus-visible { outline: 2px solid var(--ctr); outline-offset: 2px; }
+@media (max-width: 40rem) {
+  .ceinture-familles .onglet__detail { display: none; }
+}
+html.js .ceinture-famille:not(.is-active) { display: none; }
+/* le titre d'une famille : celui de son onglet ; sans JavaScript, il sépare les familles qui se suivent */
+html.js .ceinture-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ceinture-famille__titre { margin: 1rem 0 0.5rem; font-size: var(--fs-lg); }
 .ceinture-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-md); }
 
-/* Un groupe de consommables (fioles, remèdes…) : repliable, un tableau par potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17 : « Les
+/* Une famille de consommables (fioles, remèdes…) : un tableau par potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17 : « Les
    tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible ») ; au-delà de trois, un tableau serait trop étroit pour
    l'effet, d'où leur largeur minimale */
-.ceint-potions { --tableau-largeur: 30rem; padding: 0.9rem; }
+.ceint-potions { --tableau-largeur: 30rem; }
 .ceint-table--potions .ceint-nom { min-width: 8rem; }
 
 .ceint-table tbody > tr.ceint-ligne:not(.ligne-couleur):hover > * { background: var(--ctr-soft); }
@@ -76,7 +87,7 @@ html.js .ceinture-panneau__titre { position: absolute; width: 1px; height: 1px; 
 html.js .batons .sans-js { display: none; }
 
 .batons-table tbody > tr > * { vertical-align: middle; }
-/* toute la ligne sur la couleur de sa magie (demande du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit */
+/* toute la ligne sur la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit */
 .batons-table tr.baton { --ligne-fond: var(--baton-fond); --ligne-texte: var(--baton-texte); }
 /* la magie n'a plus de colonne (demande du propriétaire) : son nom reste dans l'en-tête de la ligne pour les lecteurs d'écran */
 .baton__magie { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -108,7 +119,7 @@ html.js .batons-table tr.baton:not([data-niveau='3']) .baton-niv[data-niv='3'] {
 .batons-table tr.baton[data-niveau='3'] .bulle__stade[data-niv='3'] { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
 .bulle--baton .bulle__lien { display: block; margin-top: 0.4rem; color: var(--bulle-lisible); font-weight: 700; }
 .bulle--baton .bulle__lien::after { content: ' ›'; content: ' ›' / ''; }
-/* sur une ligne des bâtons, la pastille de la gemme (styles/equipement/equipement.css, dans la couleur de la magie sur le site) peut avoir presque la
-   couleur du fond (celle du classeur : Onyx sur le noir) : un liseré dans la couleur du texte de la ligne la détache ; son contour au focus aussi */
+/* sur une ligne des bâtons, la pastille de la gemme (styles/equipement/equipement.css) a la couleur du fond, celle de la magie : un liseré dans la
+   couleur du texte de la ligne la détache (Onyx sur le noir) ; son contour au focus aussi */
 .batons-table .acc-gemme { box-shadow: 0 0 0 1px color-mix(in srgb, var(--baton-texte) 45%, transparent); }
 .batons-table a.acc-gemme:focus-visible { outline-color: var(--baton-texte); }

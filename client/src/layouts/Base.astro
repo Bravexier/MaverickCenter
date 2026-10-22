@@ -6,6 +6,7 @@ import { NAV, activeGroup, entreesDuMenu, groupIsCurrent } from '../lib/nav.mjs'
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
+import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 
 interface Props {
   title: string;
@@ -47,6 +48,8 @@ const pageMesuree = Astro.url.pathname;
     <meta name="description" content={description} />
     <link rel="icon" type="image/png" sizes="32x32" href={url('favicon.png')} />
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
+    {/* les couleurs des attributs (santé, barrière, chakra, corruption, 4ᵉ barre) : la règle du site, lib/attributs-couleurs.mjs, lue par la fiche et le bestiaire */}
+    <style is:inline set:html={cssDesAttributs()}></style>
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />

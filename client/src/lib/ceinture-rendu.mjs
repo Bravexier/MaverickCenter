@@ -3,17 +3,19 @@
 // 2026-10-17 : « Les tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), et les carquois et sacs du
 // sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche actuel ») : aucune ligne
 // ne porte de texte de recherche.
-// Chaque potion est sur la couleur de son palier dans le Doc « Alchimie » (demande du propriétaire, 2026-10-16 : « récupérer les couleurs utilisé
-// dans les tableaux du GoogleSheet pour les lignes présentes » ; lib/ceinture-couleurs.mjs) : la ligne colorée du gabarit commun des tableaux
-// (`ligne-couleur`, `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte que le Doc pose ou, sinon, le plus lisible sur le fond ;
-// une potion que le Doc ne colore pas reste neutre. Les carquois et sacs n'ont pas de couleur dans le classeur.
+// Chaque potion est sur la couleur que lui donne la règle du site (demandes du propriétaire : le 2026-10-16, « récupérer les couleurs utilisé dans les
+// tableaux du GoogleSheet pour les lignes présentes » ; le 2026-10-22, « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle
+// il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : l'affinité de son
+// essence, ou la caractéristique d'un philtre, nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`,
+// `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion
+// sans couleur (essence Anti) reste neutre. Les carquois et sacs n'ont pas de couleur.
 // Prix et textes : monnaies en icônes (décision R63, lib/monnaies.mjs). Rien n'est calculé : chaque case écrit une valeur de la base, sauf la valeur en
 // Ricken de fer d'un prix, en infobulle (la conversion des monnaies, R61, comme sur la page « Composants »).
 // Mode modification du site de dev (demande du propriétaire, 2026-10-17 : « Les tableaux des consommables devrai pouvoir aussi être modifiées . (sauf
 // pour les champ calculés) ») : les quatre cases saisies d'une potion portent leur `data-ed` — nom et prix (sa ressource), niveau et effet (sa ligne de
 // potion) — et leur rendu nommé (RENDUS_DE_LA_CEINTURE, fusionnés dans lib/edition-rendu.mjs#RENDUS ; le prix : celui de la page « Composants ») : le
 // même HTML sert à la page construite et à l'éditeur commun (src/scripts/edition/editeur.mjs), qui réécrit une case depuis sa ligne de la base. En
-// lecture : la couleur de la ligne (tirée de la source), la valeur en RF d'un prix, le titre et le résumé d'un tableau (ceux de la page de la potion),
+// lecture : la couleur de la ligne (la règle du site), la valeur en RF d'un prix, le titre et le résumé d'un tableau (ceux de la page de la potion),
 // et les carquois et sacs (ils se modifient sur la page « Composants »).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { htmlAvecMonnaies } from './monnaies.mjs';
@@ -30,8 +32,8 @@ const ed = (table, cle, colonne) => e(attributEd(table, cle, colonne));
 export const ancreDObjet = (id) => `objet-${String(id).slice(String(id).indexOf('#') + 1).replace(/[^a-z0-9-]+/gi, '-')}`;
 
 /**
- * Les couleurs d'une ligne colorée (`couleur` : { fond, texte? } de lib/ceinture-couleurs.mjs) : son fond, et le texte que la source pose ou, sinon,
- * le plus lisible sur ce fond ({ fond, texte }) ; null sans couleur. Partagé avec les bâtons magiques (lib/batons-rendu.mjs, qui le pose en `--mag`).
+ * Les couleurs d'une ligne colorée (`couleur` : { fond, texte? }, lib/alchimie-couleurs.mjs#couleurDePotion) : son fond, et le texte donné ou, sinon,
+ * le plus lisible sur ce fond ({ fond, texte }) ; null sans couleur. Partagé avec les bâtons magiques (lib/batons-rendu.mjs).
  */
 export function couleursDeLaLigne(couleur) {
   if (!couleur?.fond) return null;

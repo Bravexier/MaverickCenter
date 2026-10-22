@@ -1,7 +1,7 @@
 ---
 name: zone-ceinture
-description: "Onglet Ceinture de /ressources/equipement/ : vue v_objet_ceinture (R81, R82), sous-onglets Consommables, Carquois, Bâtons magiques, couleurs de la source, édition des potions (potion, potion_etat), prix des bâtons. À charger avant de lire, modifier ou relire ce code."
-paths: ["client/src/lib/ceinture-db.mjs", "client/src/lib/ceinture-rendu.mjs", "client/src/lib/ceinture-couleurs.mjs", "client/src/lib/batons-*.mjs", "client/src/lib/corps-potions.mjs", "client/src/lib/potion-etats.mjs", "client/src/components/ceinture/**", "client/src/scripts/batons.mjs", "client/src/styles/ceinture/**", "client/serveur/edition-consommables.mjs", "client/test/ceinture-*.test.mjs", "client/test/batons-script.test.mjs", "client/test/corps-potions.test.mjs", "client/test/potion-etats.test.mjs", "client/test/serveur-edition-consommables.test.mjs"]
+description: "Onglet Ceinture de /ressources/equipement/ : vue v_objet_ceinture (R81, R82), sous-onglets Consommables (et ses onglets par famille), Carquois, Bâtons magiques, couleurs du site (règle des potions), édition des potions (potion, potion_etat), prix des bâtons. À charger avant de lire, modifier ou relire ce code."
+paths: ["client/src/lib/ceinture-db.mjs", "client/src/lib/ceinture-rendu.mjs", "client/src/lib/alchimie-couleurs.mjs", "client/src/lib/batons-*.mjs", "client/src/lib/corps-potions.mjs", "client/src/lib/potion-etats.mjs", "client/src/components/ceinture/**", "client/src/scripts/batons.mjs", "client/src/styles/ceinture/**", "client/serveur/edition-consommables.mjs", "client/test/ceinture-*.test.mjs", "client/test/alchimie-couleurs.test.mjs", "client/test/batons-script.test.mjs", "client/test/corps-potions.test.mjs", "client/test/potion-etats.test.mjs", "client/test/serveur-edition-consommables.test.mjs"]
 user-invocable: false
 ---
 # Ceinture
@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Lecture : `client/src/lib/ceinture-db.mjs` (`FAMILLES_DE_LA_CEINTURE`), `lib/batons-db.mjs` (`prixDuBaton`).
 - Rendu : `lib/ceinture-rendu.mjs` (`htmlDeLigneDePotion`, `ancreDePotions`, `texteSurCouleur`, `RENDUS_DE_LA_CEINTURE`), `lib/batons-rendu.mjs`.
-- Couleurs de la source : `lib/ceinture-couleurs.mjs` (`COULEURS_DES_BATONS`).
+- Couleurs : `lib/alchimie-couleurs.mjs` (la règle des potions : `couleurDePotion`, `COULEURS_DES_AFFINITES`, `NUANCES_DES_NIVEAUX`), qui lit `lib/attributs-couleurs.mjs`, `sort-format.mjs#couleurDeMagieConnue` et `lib/caracteristiques-postures.mjs` (skill `ui-couleurs`) ; les bâtons, `couleurDeMagie`.
 - Gabarit : `components/ceinture/CeinturePanneau.astro`, `BatonsMagiques.astro` ; CSS `styles/ceinture/ceinture.css`.
 - Curseur des bâtons : `src/scripts/batons.mjs` (sans import).
 - Édition des potions : `serveur/edition-consommables.mjs` (`ressourcesParGenre`), `lib/potion-etats.mjs`, `lib/corps-potions.mjs`.
@@ -25,12 +25,12 @@ user-invocable: false
 - Le bouclier n'en est pas : son emplacement est dans l'armure (R82).
 - La fiche se sert de la vue pour reconnaître bâtons et carquois (maximum, contenance) ; ses 3 emplacements prennent n'importe quel objet du sac (R89).
 - Rendu depuis la base, dans `section.equipement-panneau#ceinture` : règles de la ceinture repliées (section « La ceinture » de `guide/l-equipement`, et en dépliable la section « Ceinture » de la page de référence), puis trois sous-onglets dans l'ordre de `SOUS_ONGLETS_DE_LA_CEINTURE` (groupe `data-onglets="Ceinture"`, panneaux `section.ceinture-panneau`).
-- Consommables (`#ceinture-consommables`) : groupes repliables Fioles, Remèdes, Philtres, Huiles, Alchimie primitive, dans cet ordre (`FAMILLES_DE_LA_CEINTURE`) ; un tableau par page de potion, deux ou trois côte à côte (`.tableaux--cote-a-cote`, skill `ui-tableaux`), titre en lien, ancre `#potions-<page>`.
+- Consommables (`#ceinture-consommables`) : un second niveau d'onglets, un par famille, Fioles, Remèdes, Philtres, Huiles, Alchimie primitive, dans cet ordre (`FAMILLES_DE_LA_CEINTURE` ; groupe `data-onglets="Consommables"`, barre `nav.ceinture-familles`, panneaux `section.ceinture-famille#objets-<famille>`, Fioles ouvert au départ, cachés sous `html.js` seulement) ; dans chacun, un tableau par page de potion, deux ou trois côte à côte (`.tableaux--cote-a-cote`, skill `ui-tableaux`), titre en lien, ancre `#potions-<page>`.
 - Carquois (`#ceinture-carquois`) : carquois et sacs, en lien vers « Composants », où ils se modifient (skill `zone-composants`).
 - Bâtons magiques (`#batons-magiques`, l'ancre de l'ancien onglet) : son panneau de règles (introduction, fabrication en tuile ; skill `zone-equipement`), une ligne par magie, sans colonne Magie ; Gemme (la pastille `.acc-gemme` des accessoires, sans ligne pour sa qualité) et Bois en lien vers « Composants », chacun avec son infobulle (description, prix, le lien) ; Niveau au curseur de 1 à 3 ; Effet et Prix du niveau choisi.
 - Prix d'un bâton = matériaux de la recette (gemme de la qualité du niveau + bois) : la source n'écrit pas de prix du bâton (`prixDuBaton`, null si l'un manque). Aucun coût de fabrication ajouté.
 - Plus de recherche ni de script de la ceinture, sauf le curseur des bâtons.
-- Couleur de chaque ligne = couleur de sa source (`ceinture-couleurs.mjs`, lue par les connecteurs Google : les instantanés n'ont pas la mise en forme) : une potion, la case du nom de son palier dans le Doc « Alchimie » ; un bâton, la case de sa magie dans l'onglet « Bâton magique » ; carquois et sacs sans couleur. Texte posé par la source, sinon le plus lisible (`texteSurCouleur`). Repère visuel sans valeur de règle.
+- Couleur de chaque ligne = une couleur du site, jamais une couleur relevée ligne par ligne ni écrite en dur (aucun hex dans les fichiers de l'onglet : `test/alchimie-couleurs.test.mjs`). Une potion : la règle `couleurDePotion` — l'affinité de l'essence de la première variante de sa recette (attribut → `attributs-couleurs.mjs`, magie → couleur de la magie, autre → `COULEURS_DES_AFFINITES`, ajoutées d'après le Doc « Alchimie » : la fiole de l'affinité au palier Super, niveau Avancé) ; essence Démon (philtres) → la caractéristique que nomment les effets de sa page (« compétences de Force », `caracteristiqueDesCompetences`, nom exact seulement ; l'Ultime la reçoit de sa page) ; Anti → neutre ; puis la nuance du niveau d'alchimie (`NUANCES_DES_NIVEAUX`). Un bâton : la couleur de sa magie sur le site. Carquois et sacs sans couleur. Texte le plus lisible (`texteSurCouleur`), fond éclairci ou assombri jusqu'à un contraste de 4,5:1 (`lisible`, « Privilégé la lisibilité. »). La caractéristique ne compte que pour une page de philtres (`AFFINITE_DES_PHILTRES`) : un effet d'une autre potion qui nommerait « compétences de X » ne la colore pas. Une couleur changée par le niveau d'une potion modifiée sur le site de dev n'apparaît qu'à la construction suivante (l'éditeur réécrit les cases, pas le style de la ligne). Choix du site inspiré des gammes du Doc, qui ne suit pas une règle unique ; repère visuel sans valeur de règle. Une couleur ajoutée ne double jamais une règle qui existe (attribut, magie).
 - Monnaies en icônes (skill `ui-monnaies`).
 - Édition sur le site de dev, consommables seulement, sauf les champs calculés (demande du propriétaire) : d'une potion, le nom et le prix (sa `ressource` ; prix en RF recalculé), le niveau et l'effet (table `potion`), par l'éditeur commun (`data-ed` de `htmlDeLigneDePotion`, rendus `RENDUS_DE_LA_CEINTURE`).
 - L'effet modifié refait `potion_etat` par `lib/potion-etats.mjs` (la règle de l'import, rejouée sur toute la base).
@@ -42,9 +42,10 @@ user-invocable: false
 ## Choix du propriétaire
 - Onglet « Ceinture » dans la page Équipement, des sous-onglets plutôt qu'une recherche, ordre Consommables / Carquois / Bâtons magiques.
 - Tableaux des consommables à deux ou trois côte à côte.
-- Couleurs des lignes reprises des tableaux de la source.
+- Consommables en second niveau d'onglets (2026-10-22 : « Oui »).
+- « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; « Privilégé la lisibilité. » (2026-10-22) : remplace la reprise des couleurs des tableaux de la source (2026-10-16).
 - Bâtons : toute la ligne dans la couleur de la magie, pas de colonne Magie, infobulles vers la gemme et le bois, curseur de niveau, colonne Prix.
 
 ## Tests
-- `client/test/ceinture-db.test.mjs`, `ceinture-couleurs.test.mjs`, `ceinture-html.test.mjs` (site construit), `batons-script.test.mjs`.
+- `client/test/ceinture-db.test.mjs` (essence et couleur de chaque potion), `alchimie-couleurs.test.mjs` (la règle, les nuances, aucune couleur en dur), `ceinture-html.test.mjs` (site construit : onglets des familles, couleurs), `batons-script.test.mjs`.
 - `serveur-edition-consommables.test.mjs` (service, rejeu, API), `corps-potions.test.mjs`, `potion-etats.test.mjs` ; `edition-rendu.test.mjs` compare chaque case modifiable au site construit.

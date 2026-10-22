@@ -705,8 +705,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .gains { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.9rem; margin-top: 0.3rem; }
 .gains__champ { display: inline-flex; align-items: center; gap: 0.3rem; font-size: var(--fs-sm); font-weight: 600; }
 .fiche .gains__champ input { width: 4.4rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
-.fiche .gains__champ--sante input { border-color: #c62828; }
-.fiche .gains__champ--chakra input { border-color: #1e5bb8; }
+.fiche .gains__champ--sante input { border-color: var(--attribut-sante); }
+.fiche .gains__champ--chakra input { border-color: var(--attribut-chakra); }
 .gains__total { color: var(--good); font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
 .gains__total[data-hors] { color: var(--danger); }
 .fiche-defile { overflow-x: auto; }
@@ -774,7 +774,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .score[data-hors] { color: var(--danger); }
 
 /* ----------------------------------------------------------------- attributs et valeurs du moment, fusionnés (demande du propriétaire)
-   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire). Une valeur
+   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire ; les couleurs :
+   les propriétés --attribut-<clé> de lib/attributs-couleurs.mjs, posées par la page, la seule source du site). Une valeur
    du moment : « actuelle / maximum », un curseur entre − et +, qui ouvrent la case du nombre à retirer ou à ajouter. */
 .attributs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
 .attribut {
@@ -814,11 +815,11 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .ajout input { width: 3.6rem; }
 .fiche .ajout button { padding: 0.1rem 0.45rem; font-size: var(--fs-xs); }
 .fiche .ajout .retirer { padding-inline: 0.3rem; }
-.attribut[data-a='sante'] { --a: #c62828; }
-.attribut[data-a='barriere'] { --a: #e0b000; }
-.attribut[data-a='chakra'] { --a: #1e5bb8; }
-.attribut[data-a='corruption'] { --a: #111; }
-.attribut[data-a='barre4'] { --a: #8a1c1c; }
+.attribut[data-a='sante'] { --a: var(--attribut-sante); }
+.attribut[data-a='barriere'] { --a: var(--attribut-barriere); }
+.attribut[data-a='chakra'] { --a: var(--attribut-chakra); }
+.attribut[data-a='corruption'] { --a: var(--attribut-corruption); }
+.attribut[data-a='barre4'] { --a: var(--attribut-barre4); }
 /* santé, barrière, chakra (et 4ᵉ barre) puis la corruption, sur une ligne */
 .attributs-ligne { display: grid; gap: 0.45rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 48rem) {

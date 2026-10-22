@@ -143,12 +143,12 @@ test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la
   assert.match(htmlDuPrixDuBaton(null), /class="vide"/);
 });
 
-test('bâtons : rendu d’une ligne (couleur de la magie dans le classeur, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
+test('bâtons : rendu d’une ligne (couleur de la magie sur le site, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
   const { fond, texte } = couleursDesBatons(m.magie);
   assert.ok(html.startsWith(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`),
-    'la ligne sur la couleur de sa magie (lib/ceinture-couleurs.mjs), au niveau 1 ; ses infobulles dans la couleur de la magie sur le site');
+    'la ligne sur la couleur de sa magie sur le site (comme ses infobulles), au niveau 1');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
   // demande du propriétaire du 2026-10-16 : la gemme est la pastille des accessoires (`.acc-gemme`, dans la couleur de la magie), sans ligne pour sa qualité

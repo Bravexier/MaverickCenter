@@ -6,10 +6,11 @@
 // objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques ;
 // pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
 // Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la
-// section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur de son palier dans le Doc « Alchimie »
-// (lib/ceinture-couleurs.mjs).
-// Sans dépendance (sauf lib/equipement.mjs et lib/ceinture-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
-import { couleurDePotion } from './ceinture-couleurs.mjs';
+// section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
+// (lib/alchimie-couleurs.mjs : l'affinité de son essence, ou la caractéristique d'un philtre, nuancée selon son niveau d'alchimie ; demande du
+// propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
+// Sans dépendance (sauf lib/equipement.mjs et lib/alchimie-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 
 /** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
@@ -72,10 +73,13 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *   regles   : { ceinture, reference } : Markdown de la base (null si la page n'écrit plus la section), rendus par l'onglet ;
  *   sources  : { chapitre, reference } : les pages d'où viennent ces règles, { id, titre } (leur titre se modifie sur le site de dev), ou null ;
  *   tableaux : un par famille de FAMILLES_DE_LA_CEINTURE, { famille, titre, onglet, nombre, ... } avec
- *              - potions et huiles : `pages` : [{ id, titre, resume, existe, potions: [{ id, nom, niveau_id, niveau, niveau_rang, prix_brut, effet, couleur }] }], une
- *                par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut être un lien), ses paliers dans
- *                l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `couleur` : celle du palier dans le Doc
- *                « Alchimie », { fond, texte? } ou null (lib/ceinture-couleurs.mjs) ;
+ *              - potions et huiles : `pages` : [{ id, titre, resume, existe, caracteristique, potions: [{ id, nom, niveau_id, niveau, niveau_rang, prix_brut,
+ *                effet, essence, couleur }] }], une par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut
+ *                être un lien), ses paliers dans l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `essence` :
+ *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : pour une page de philtres
+ *                (essence AFFINITE_DES_PHILTRES), celle que nomment ses effets (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page) ;
+ *                null pour une autre page, ou si ses effets en nomment plusieurs ou aucune ; `couleur` : { fond } ou null
+ *                (lib/alchimie-couleurs.mjs#couleurDePotion) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).
  */
@@ -114,6 +118,14 @@ const cleDeTexte = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic
 function pagesDePotions(db, ids) {
   if (!ids.length) return [];
   const voulues = new Set(ids);
+  // l'essence de chaque potion : celle de la première variante de la recette qui la produit (la première ligne de la table « Recette » du Doc)
+  const essences = new Map();
+  for (const r of lignes(db, `SELECT rp.ressource_id, ri.affinite_id FROM recette_produit rp JOIN recette r ON r.id = rp.recette_id
+    JOIN recette_ingredient ri ON ri.recette_id = r.id AND ri.role = 'essence' WHERE r.genre = 'alchimie'
+    ORDER BY rp.ressource_id, r.variante, r.id, ri.rang, ri.option`)) {
+    if (!essences.has(r.ressource_id)) essences.set(r.ressource_id, r.affinite_id);
+  }
+  const caracteristiques = lignes(db, 'SELECT id, nom FROM caracteristique');
   const potions = lignes(db, `SELECT r.id, r.nom, r.nom_cle, r.prix_brut, r.page_id, r.ordre, p.effet, p.niveau_id, n.nom AS niveau, n.rang AS niveau_rang
     FROM potion p JOIN ressource r ON r.id = p.ressource_id JOIN niveau_alchimie n ON n.id = p.niveau_id`)
     .filter((p) => voulues.has(p.id));
@@ -129,9 +141,17 @@ function pagesDePotions(db, ids) {
       const i = corps.indexOf(`| ${cleDeTexte(p.nom)} |`);
       return i < 0 ? Infinity : i;
     };
+    // la caractéristique d'une page de philtres (toutes ses potions ont l'essence des philtres) : une seule, nommée par leurs effets (« compétences de
+    // Force » ; l'ultime philtre ne la nomme pas dans cette tournure : la page la donne à tous ses paliers) ; null pour une autre page
+    const philtres = liste.every((p) => essences.get(p.id) === AFFINITE_DES_PHILTRES);
+    const nommees = new Set(philtres ? liste.map((p) => caracteristiqueDesCompetences(p.effet, caracteristiques)).filter(Boolean) : []);
+    const caracteristique = nommees.size === 1 ? [...nommees][0] : null;
     const rangees = liste.map((p) => ({ p, place: place(p) }))
       .sort((a, b) => a.place - b.place || a.p.ordre - b.p.ordre || a.p.niveau_rang - b.p.niveau_rang || comparer(a.p.nom_cle, b.p.nom_cle))
-      .map(({ p: { page_id, ordre, nom_cle, ...p } }) => ({ ...p, couleur: couleurDePotion(p.id) }));
-    return { id, titre: page?.titre ?? id, resume: page?.resume ?? null, existe: Boolean(page), potions: rangees };
+      .map(({ p: { page_id, ordre, nom_cle, ...p } }) => {
+        const essence = essences.get(p.id) ?? null;
+        return { ...p, essence, couleur: couleurDePotion({ essence, caracteristique, niveau: p.niveau_rang }) };
+      });
+    return { id, titre: page?.titre ?? id, resume: page?.resume ?? null, existe: Boolean(page), caracteristique, potions: rangees };
   }).sort((a, b) => comparer(a.titre, b.titre));
 }

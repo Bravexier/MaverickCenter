@@ -12,8 +12,8 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // Markdown de la page « Bâton magique » ; en tête, son panneau de règles, replié comme ceux des autres onglets
 // (components/equipement/PanneauDeRegles.astro, migration 0056, id `batons-magiques` : l'introduction de la page, et « Comment fabriquer un bâton
 // magique ? » en tuile). Puis le tableau
-// (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie dans l'onglet « Bâton magique » du
-// classeur (lib/ceinture-couleurs.mjs), sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec
+// (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie sur le site (demande du propriétaire
+// du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »), sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec
 // son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le prix (les matériaux de la recette :
 // lib/batons-db.mjs#prixDuBaton) du niveau choisi. Le tableau suit le gabarit commun (components/Tableau.astro) ; il n'est pas encore modifiable sur
 // le site de dev (le panneau de règles l'est). CSS : styles/ceinture/ceinture.css (la pastille de la gemme et le panneau de règles :

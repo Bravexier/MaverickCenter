@@ -14,7 +14,7 @@ user-invocable: false
 - Créatures au NPM : `lib/creature-npm.mjs`, `components/bestiaire/ValeurParNpm.astro`.
 - Composants : `components/bestiaire/` (`Bestiaire.astro`, `TableauMonstres.astro`, `TableauInvocations.astro`, `CarteInvoquee.astro`, `PageMonstre.astro`, `Filtres.astro`, `BullesDuButin.astro`, `ScriptDuBestiaire.astro`).
 - Pages : `pages/bestiaire/monstres/[...chemin].astro`, portraits `pages/bestiaire/portraits/[empreinte].webp.ts` (`.jpg.ts`, `.png.ts`), publiés par `lib/portraits-publies.mjs`.
-- CSS : `styles/bestiaire/bestiaire.css`, `styles/bestiaire/carte.css` (carte partagée avec les pages de magie), insérés en `?raw`.
+- CSS : `styles/bestiaire/bestiaire.css`, `styles/bestiaire/carte.css` (carte partagée avec les pages de magie), insérés en `?raw` ; les tuiles santé, chakra, barrière lisent les couleurs d'attributs du site (`--attribut-<clé>`, `lib/attributs-couleurs.mjs`, skill `ui-couleurs`).
 - Édition : `serveur/edition-bestiaire.mjs`, extension `src/scripts/edition/bestiaire.mjs`, portrait `src/scripts/portrait.mjs` et `lib/portrait.mjs` (partagés avec la fiche).
 - Extracteur : `tools/bestiaire/extraire.mjs` (`--bilan`, `--sql`), registre `tools/bestiaire/capacites.json`, export `sources/raw/bestiaire-2-0.txt`.
 - Pages des créatures invoquées (une par créature, plus une introduction par onglet) : importeur `tools/sheets/invocations.py` (classeur « Invocation »).

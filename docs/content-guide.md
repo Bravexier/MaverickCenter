@@ -315,8 +315,8 @@ se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_
   leurs liens mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
   `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`), comme celle de l'ancienne page « Objets à la ceinture » (→ `#ceinture`). Les liens écrits à la main
   dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
-- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre son onglet (et son
-  sous-onglet). Chaque onglet garde son script
+- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre tous les niveaux
+  qui le contiennent (son onglet, son sous-onglet, la famille des consommables). Chaque onglet garde son script
   (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
   `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
   l'onglet Armes est affiché.
@@ -561,26 +561,41 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   personnage : Accessoires et Ceinture » (la liste « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
 - puis **trois sous-onglets** (`lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE`, `components/Onglets.astro` ; leur barre est un groupe à elle,
   `data-onglets="Ceinture"`), chacun un panneau `section.ceinture-panneau` dont l'id est l'ancre du sous-onglet :
-  - **Consommables** (`#ceinture-consommables`, ouvert au départ) : les groupes repliables **Fioles**, **Remèdes**, **Philtres**, **Huiles**,
-    **Alchimie primitive**, dans cet ordre (`lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE`), un lien par groupe en tête ; dans chacun, **un tableau par
-    page de potion**, deux ou trois côte à côte selon la largeur, un seul sur un écran étroit (demande du propriétaire, 2026-10-17 : « Les tableaux des
-    fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible » ; grille `.tableaux--cote-a-cote` du gabarit commun, largeur minimale
-    d'un tableau 30rem : au-delà de trois, l'effet n'aurait plus la place) : son titre (la page, en lien, ancre `#potions-<page>` :
-    `lib/ceinture-rendu.mjs#ancreDePotions`), son nombre de paliers, le résumé de la page, puis une potion par ligne (nom, niveau, prix, effet tel
-    qu'écrit), dans l'ordre où la page les écrit ;
+  - **Consommables** (`#ceinture-consommables`, ouvert au départ) : **un second niveau d'onglets, un par famille**, **Fioles**, **Remèdes**,
+    **Philtres**, **Huiles**, **Alchimie primitive**, dans cet ordre (`lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE` ; demande du propriétaire,
+    2026-10-22, à la question « Préférez-vous un second niveau d'onglets (Fioles / Remèdes / Philtres / Huiles / Alchimie primitive) ? » : « Oui » ;
+    groupe `data-onglets="Consommables"`, barre `nav.ceinture-familles`, panneaux `section.ceinture-famille#objets-<famille>`, Fioles ouvert au
+    départ ; un lien vers une potion ouvre son onglet, sa famille et son tableau) ; dans chacun, **un tableau par page de potion**, deux ou trois côte
+    à côte selon la largeur, un seul sur un écran étroit (demande du propriétaire, 2026-10-17 : « Les tableaux des fioles sont trop larrges Mettre de
+    coté 2 ou 3 tableaux serai plus lisible » ; grille `.tableaux--cote-a-cote` du gabarit commun, largeur minimale d'un tableau 30rem : au-delà de
+    trois, l'effet n'aurait plus la place) : son titre (la page, en lien, ancre `#potions-<page>` : `lib/ceinture-rendu.mjs#ancreDePotions`), son
+    nombre de paliers, le résumé de la page, puis une potion par ligne (nom, niveau, prix, effet tel qu'écrit), dans l'ordre où la page les écrit ;
   - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
     description) ;
   - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
     et ce sous-onglet) : son panneau de règles en tête, puis le tableau (« Bâtons magiques » ci-dessous).
 - **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : l'onglet n'a pas de script, sauf le curseur des
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
-- **Couleurs des lignes** (`lib/ceinture-couleurs.mjs`, lues dans les sources originales le 2026-10-16 par les connecteurs Google de la session ; les
-  instantanés de `sources/raw/` ne gardent pas la mise en forme) : chaque potion sur la couleur de son palier dans le Google Doc « Alchimie » (le fond de
-  la case du nom, en tête du tableau du palier), sauf le Remède enragé et l'Huile rage, que le Doc ne colore pas ; les carquois et sacs n'ont pas de
-  couleur dans l'onglet « Équipement inventaire » du classeur ; les bâtons, la case de leur magie dans l'onglet « Bâton magique ». Choix du site, pas de
-  la source : la couleur de la case s'étend à toute la ligne, et le texte est celui que la source pose (blanc) ou, sinon, le plus lisible sur le fond
-  (`texteSurCouleur`) — blanc sur les fonds sombres où la source écrit en noir par défaut (Méga et Ultime fiole rouge, les lignes de bâtons du Sang, du
-  Feu, de la Terre, de l'Ombre…). Une potion créée plus tard, absente du module, resterait neutre. Repère visuel sans valeur de règle.
+- **Couleurs des lignes : les couleurs du site, jamais une couleur relevée ligne par ligne** (demande du propriétaire du 2026-10-22 : « Partout il
+  faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune
+  couleur en dur. » ; « Privilégé la lisibilité. ») :
+  - une **potion** suit une règle du site (`lib/alchimie-couleurs.mjs#couleurDePotion`), un **choix du site inspiré des gammes du Google Doc
+    « Alchimie »** (lu le 2026-10-16 sur l'original : chaque fiole y a sa teinte et ses paliers du clair au foncé ; le Doc ne suit pas une règle
+    unique, ses remèdes, huiles et philtres ont souvent la teinte d'une fiole voisine) : la teinte est celle de l'**affinité de son essence**
+    (`recette_ingredient`, rôle « essence », de la première variante de sa recette) — un attribut prend la couleur de l'attribut sur le site
+    (`lib/attributs-couleurs.mjs` : santé, chakra, barrière, corruption, 4ᵉ barre, la même que la fiche), une magie la couleur de la magie
+    (`sort-format.mjs`), une autre affinité la couleur que le site lui ajoute d'après le Doc (`COULEURS_DES_AFFINITES` : la fiole de l'affinité au palier
+    Super, niveau Avancé) ; un **philtre** (essence Démon, sans fiole dans le Doc) prend la couleur de la caractéristique que nomment les effets de sa
+    page (« compétences de Force » : `caracteristiqueDesCompetences` ; l'Ultime, « +1 Force », la reçoit de sa page ; `lib/caracteristiques-postures.mjs`) ;
+    l'affinité Anti (Remède enragé, Huile rage) n'a pas de couleur : ces lignes restent neutres ; puis la **nuance de son niveau d'alchimie**
+    (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
+    Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction suivante du site (l'éditeur réécrit ses cases,
+    pas la couleur de sa ligne) ;
+  - un **bâton**, la couleur de sa magie sur le site (`couleurDeMagie`), comme ses infobulles ;
+  - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
+  Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`) ; le fond d'une potion qui
+  n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à l'atteindre (`lisible`). Aucun fichier de l'onglet
+  n'écrit de couleur (`test/alchimie-couleurs.test.mjs`). Repère visuel sans valeur de règle.
 
 Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
 « Composants » ; le prix d'un bâton, celui des matériaux de sa recette) ; les prix et les textes montrent leurs monnaies en icônes (R63). Les titres des
@@ -599,7 +614,7 @@ commun (`src/scripts/edition/editeur.mjs` : ses `data-ed`, posés par `lib/ceint
 | Prix | `ressource.prix_brut` | `prix_rf` (`lib/composants-champs.mjs#prixEnRf`, la valeur en RF de l'infobulle) ; le prix du tableau du palier |
 | Effet | `potion.effet` (texte, ses lignes) | les altérations d'état de `potion_etat` (`lib/potion-etats.mjs` : la règle de l'import, « Inflige gel 1 », « Réduit d'un cran la brûlure », « Soigne totalement la peur », rejouée sur toutes les potions par `test/potion-etats.test.mjs`) ; l'effet du tableau du palier (lignes jointes par `<br>`) |
 
-En lecture, parce qu'ils sont calculés ou tirés d'ailleurs : la **couleur** de la ligne (la source, `lib/ceinture-couleurs.mjs`), la **valeur en RF**
+En lecture, parce qu'ils sont calculés ou tirés d'ailleurs : la **couleur** de la ligne (la règle du site, `lib/alchimie-couleurs.mjs`), la **valeur en RF**
 d'un prix (infobulle), le **titre et le résumé d'un groupe** (le titre et la première phrase de la page de la potion), l'ordre des lignes (celui où la
 page les écrit), les **carquois et sacs** (ils se modifient sur la page « Composants ») et les **bâtons** (gemme, bois : « Composants » ; effet : non
 demandé). Ni création ni suppression de potion. Le corps de la page de la potion (« Fiole rouge »…, rendue depuis son Markdown) suit, case par case
@@ -609,8 +624,9 @@ ressource qui n'est pas une potion reste au domaine des composants (`ressourcesP
 rejeu, API), `corps-potions.test.mjs`, `potion-etats.test.mjs`.
 
 Tests : `ceinture-db.test.mjs` (la vue, le chargement, l'ordre des tableaux et des sous-onglets, les sections telles que l'import les écrivait, les cases
-d'une potion et leurs champs), `ceinture-couleurs.test.mjs` (une couleur par potion et par magie des bâtons, le rendu), `ceinture-html.test.mjs` (site
-construit : sous-onglets, tableaux, un tableau par page de potion côte à côte, couleurs, liens, plus de recherche ni de page à part, les champs du mode modification sur les seules cases saisies) ;
+d'une potion et leurs champs, l'essence et la couleur de chaque potion), `alchimie-couleurs.test.mjs` (la règle des couleurs, les nuances, les bâtons,
+aucune couleur en dur), `ceinture-html.test.mjs` (site construit : sous-onglets, onglets des familles, tableaux, un tableau par page de potion côte à
+côte, couleurs, liens, plus de recherche ni de page à part, les champs du mode modification sur les seules cases saisies) ;
 `edition-rendu.test.mjs` réécrit chaque case modifiable depuis sa ligne de la base et la compare au site construit.
 
 ### Bâtons magiques (sous-onglet Bâtons magiques de la ceinture)
@@ -621,10 +637,9 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 
 - En tête, son **panneau de règles** (« Panneaux de règles » plus haut ; id `batons-magiques`, l'ancre du sous-onglet) : l'introduction de la page
   « Bâton magique », puis la fabrication en tuile, replié comme ceux des autres onglets.
-- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie** : depuis la demande du propriétaire du 2026-10-16 (« récupérer les
-  couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes »), celle de la case du nom de la magie dans l'onglet « Bâton magique »
-  du classeur (`lib/ceinture-couleurs.mjs#COULEURS_DES_BATONS`, texte posé par le classeur ou, sinon, le plus lisible : `texteSurCouleur` ; une magie
-  absente de l'onglet garderait `couleurDeMagie`), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
+- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie sur le site** (`couleurDeMagie`, texte le plus lisible :
+  `texteSurCouleur` ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site » — la couleur de l'onglet « Bâton
+  magique » du classeur, relevée le 2026-10-16, n'est plus lue), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
   **Gemme | Bois | Niveau | Effet | Prix**.
 - **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
   magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors

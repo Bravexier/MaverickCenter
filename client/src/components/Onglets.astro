@@ -1,8 +1,8 @@
 ---
 // Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro), les
 // magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, la page Équipement (equipement/EquipementPage.astro), avec les
-// sous-onglets de sa ceinture (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet ; un lien vers un élément d'un sous-onglet ouvre les
-// deux) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
+// sous-onglets de sa ceinture et les familles de ses consommables (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet, sur trois
+// niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
 // (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
 //
 // HTML attendu : un groupe `[data-onglets]` dont les onglets `.onglet` sont des liens vers leur panneau (`href="#id-du-panneau"`), l'onglet ouvert au

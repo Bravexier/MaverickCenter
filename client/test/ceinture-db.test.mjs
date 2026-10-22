@@ -15,12 +15,13 @@ import {
 } from '../src/lib/ceinture-db.mjs';
 import { ancreDObjet, ancreDePotions, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
-import { COULEURS_DES_POTIONS } from '../src/lib/ceinture-couleurs.mjs';
+import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
 const db = ouvrirBase();
 const vue = db.prepare('SELECT famille, ressource_id, baton_id FROM v_objet_ceinture').all().map((l) => ({ ...l }));
 const objets = chargerObjetsDeCeinture(db);
+const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique').all();
 const tableau = (famille) => objets.tableaux.find((t) => t.famille === famille);
 const cle = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 const historique = historiqueSite(db);
@@ -90,8 +91,23 @@ test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la v
     const titres = t.pages.map((p) => p.titre);
     assert.deepEqual(titres, [...titres].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })), `${t.famille} : pages par ordre alphabétique`);
     for (const p of t.pages) assert.ok(p.existe, `${p.id} : la page de la potion existe`);
-    // chaque potion porte la couleur de son palier dans le Doc « Alchimie » (lib/ceinture-couleurs.mjs : test/ceinture-couleurs.test.mjs)
-    for (const x of t.pages.flatMap((p) => p.potions)) assert.equal(x.couleur, COULEURS_DES_POTIONS[x.id] ?? null, x.id);
+    // chaque potion porte la couleur de la règle du site (lib/alchimie-couleurs.mjs : test/alchimie-couleurs.test.mjs) : l'essence de la première
+    // variante de sa recette d'alchimie, la caractéristique de la page (une page de philtres seulement), son niveau
+    for (const p of t.pages) {
+      for (const x of p.potions) {
+        const essence = db.prepare(`SELECT ri.affinite_id FROM recette_produit rp JOIN recette r ON r.id = rp.recette_id
+          JOIN recette_ingredient ri ON ri.recette_id = r.id AND ri.role = 'essence' WHERE rp.ressource_id = ? AND r.genre = 'alchimie'
+          ORDER BY r.variante, r.id, ri.rang, ri.option LIMIT 1`).get(x.id)?.affinite_id ?? null;
+        assert.equal(x.essence, essence, `${x.id} : l'essence de sa recette`);
+        assert.deepEqual(x.couleur, couleurDePotion({ essence, caracteristique: p.caracteristique, niveau: x.niveau_rang }), x.id);
+      }
+      const dePhiltres = p.potions.every((x) => x.essence === AFFINITE_DES_PHILTRES);
+      if (!dePhiltres) assert.equal(p.caracteristique, null, `${p.id} : pas une page de philtres, pas de caractéristique`);
+      else {
+        const nommees = new Set(p.potions.map((x) => caracteristiqueDesCompetences(x.effet, caracteristiques)).filter(Boolean));
+        assert.equal(p.caracteristique, nommees.size === 1 ? [...nommees][0] : null, `${p.id} : la caractéristique que nomment ses effets`);
+      }
+    }
   }
   assert.equal(tableau('contenant').objets.length, tableau('contenant').nombre);
 });
