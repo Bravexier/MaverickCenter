@@ -2196,6 +2196,19 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
 }
 
 /**
+ * Un palier de résistance appliqué à des dégâts (décisions R98, R147) : un multiplicateur inverse d'un entier (1/3, 0,5, 0,25) divise par cet entier,
+ * pour que l'arrondi à l'inférieur tombe sur le quotient exact (le double de 1/3 n'est pas exactement 1/3 : 30 × 0,333… pourrait valoir 9,999… si le
+ * multiplicateur était écrit avec moins de chiffres) ; les autres (0, 2, 3, 4) multiplient.
+ */
+export function appliquerMultiplicateur(valeur, mult) {
+  if (mult > 0 && mult < 1) {
+    const diviseur = Math.round(1 / mult);
+    if (Math.abs(1 / mult - diviseur) < 1e-9) return valeur / diviseur;
+  }
+  return valeur * mult;
+}
+
+/**
  * Les dégâts reçus (décision R98), d'après la formule du guide (« Les dégâts », « Formule des dégâts ») : « Dégâts finaux = [ ( dégâts de l'attaque × 2 si
  * réussite critique − armure de la cible ) ÷ 2 si défense partielle ÷ 2 si un don divise les dégâts ] × résistance ou faiblesse », « On arrondit à
  * l'inférieur ». `entrants` : les dégâts de l'attaque, critique compris (saisis) ; `type` : un type de typesDeDegats ; `partie` : la partie du corps
@@ -2205,7 +2218,8 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
  * un dégât physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital
  * d'AP ») ; réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4) ; seulement
  * la part de l'armure (rien sur une partie cassée). Contre une magie, le palier de résistance du personnage à cette magie multiplie le résultat
- * (resistancesDe : immunité 0, grande résistance ÷ 4… sensibilité × 8). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
+ * (resistancesDe ; décision R147 : immunité 0, grande résistance ÷ 3, résistance ÷ 2, vulnérabilité × 2, grande vulnérabilité × 3, sensibilité × 4 ;
+ * un multiplicateur inverse d'un entier divise : appliquerMultiplicateur). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
  * joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans type connu.
  * { recus, etapes: [{ texte, valeur }], armure, type, partie }
  */
@@ -2258,7 +2272,7 @@ export function degatsRecus(regles, fiche, options = {}) {
     const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
     const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
     if (palier) {
-      reste *= mult;
+      reste = appliquerMultiplicateur(reste, mult);
       etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
     }
   }

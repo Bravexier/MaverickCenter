@@ -159,7 +159,7 @@ export const RESSOURCES = [
     noms: 'Paliers de résistance',
     description:
       'Les six paliers de la fiche auto (immunité, grande résistance, résistance, vulnérabilité, grande vulnérabilité, sensibilité) : les bornes de la ' +
-      'somme des crans de résistance qui y mènent et l’effet sur les dégâts subis (« dégâts subis ÷4 ») ; en lecture seule.',
+      'somme des crans de résistance qui y mènent et l’effet sur les dégâts subis (« dégâts subis ÷3 ») ; en lecture seule.',
     table: 'resistance_palier',
     liste: ['id', 'libelle', 'valeur_min', 'valeur_max', 'multiplicateur', 'effet_brut', 'ordre'],
     recherche: ['libelle'],

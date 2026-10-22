@@ -345,9 +345,14 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   // le Mode Hyper et le Mode Hyper 100 % : la classe de leur mode (famille `mode`)
   assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], [classeDuModeHyper('hyper'), classeDuModeHyper('cent')]);
   assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], ['couleur-mode-hyper', 'couleur-mode-cent']);
-  // décision R70 : ÷2, ÷4, x2, x4, x8, ceux de la fiche auto (le modèle ordinateur écrit ÷3, x3 et x4 : « C'est bien 2 4 8 »)
+  // décision R147 (migration 0072, remplace R70 et ses ÷4, x4, x8 de la fiche auto) : « Grande résistance : divisé par 3 (pas 4) Grande faiblesse :
+  // multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) » ; identifiants, libellés, bornes et ordre inchangés
   assert.deepEqual(regles.resistance_paliers.map((p) => p.effet),
-    ['dégâts subis =0', 'dégâts subis ÷4', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x4', 'dégâts subis x8']);
+    ['dégâts subis =0', 'dégâts subis ÷3', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x3', 'dégâts subis x4']);
+  assert.deepEqual(regles.resistance_paliers.map((p) => [p.id, p.multiplicateur]),
+    [['immunite', 0], ['grande_resistance', 1 / 3], ['resistance', 0.5], ['vulnerabilite', 2], ['grande_vulnerabilite', 3], ['sensibilite', 4]]);
+  assert.deepEqual(regles.resistance_paliers.map((p) => [p.libelle, p.min, p.max]), [['Immunité', 3, null], ['Grande résistance', 2, 2],
+    ['Résistance', 1, 1], ['Vulnérabilité', -1, -1], ['Grande vulnérabilité', -2, -2], ['Sensibilité', null, -3]]);
   assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
   assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
   for (const m of regles.magies) {

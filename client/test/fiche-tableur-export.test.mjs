@@ -547,8 +547,15 @@ test('fiche riche : résistances, posture du moment, Mode Hyper', () => {
   const r = M.resistancesDe(regles, { ...riche, caracteristiques: M.caracteristiquesCompletes(regles, riche) });
   for (const k of CASES_RESISTANCES) {
     const p = r.paliers.find((x) => x.id === k.palier);
-    assert.equal(c[k.libelle], `${p.libelle}\n(${p.effet})`, 'le libellé et l’effet de la base (pas ceux du modèle : question au propriétaire)');
+    assert.equal(c[k.libelle], `${p.libelle}\n(${p.effet})`, 'le libellé et l’effet de la base');
     assert.equal(c[k.cibles], p.cibles.map((x) => x.nom).join(', ') || undefined, k.palier);
+  }
+  // décision R147 : les multiplicateurs de la base sont désormais ceux du modèle ordinateur (« dégâts subits ÷3 », « x3 », « x4 » ; R70 les disait faux)
+  const effets = Object.fromEntries(CASES_RESISTANCES.map((k) => [k.palier, c[k.libelle]]));
+  assert.deepEqual([effets.grande_resistance, effets.grande_vulnerabilite, effets.sensibilite],
+    ['Grande résistance\n(dégâts subis ÷3)', 'Grande vulnérabilité\n(dégâts subis x3)', 'Sensibilité\n(dégâts subis x4)']);
+  for (const [adresse, effet] of [['BA4', '÷3'], ['BA10', 'x3'], ['BA12', 'x4']]) {
+    assert.ok(textesDuModele.get(adresse)?.includes(`(dégâts subits ${effet})`), `${adresse} du modèle : ${textesDuModele.get(adresse)}`);
   }
   assert.ok(r.paliers.some((p) => p.cibles.length), 'au moins une résistance ou faiblesse');
   for (const p of CASES_POSTURES) {

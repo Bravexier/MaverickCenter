@@ -830,13 +830,14 @@ CREATE TABLE regle_magie (
 -- Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier.
 -- V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre
 -- (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2).
+-- Les multiplicateurs sont ceux de la décision R147 (migration 0072, remplace R70) : =0, ÷3, ÷2, x2, x3, x4 ; la fiche auto V15.2.2 écrit ÷4, x4 et x8.
 CREATE TABLE resistance_palier (
   id             TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('immunite', 'grande_resistance', 'resistance', 'vulnerabilite', 'grande_vulnerabilite', 'sensibilite')),
   libelle        TEXT    NOT NULL UNIQUE,                    -- « Grande résistance »
   valeur_min     INTEGER,                                    -- V >= valeur_min ; NULL = pas de borne basse
   valeur_max     INTEGER,                                    -- V <= valeur_max ; NULL = pas de borne haute
-  multiplicateur REAL    NOT NULL CHECK (multiplicateur >= 0),   -- « dégâts subits ÷4 » -> 0.25 ; « =0 » -> 0 ; « x8 » -> 8
-  effet_brut     TEXT    NOT NULL,                           -- « dégâts subits ÷4 »
+  multiplicateur REAL    NOT NULL CHECK (multiplicateur >= 0),   -- « dégâts subis ÷3 » -> 1/3 ; « =0 » -> 0 ; « x4 » -> 4 (R147)
+  effet_brut     TEXT    NOT NULL,                           -- « dégâts subis ÷3 »
   ordre          INTEGER NOT NULL UNIQUE CHECK (ordre >= 1), -- ordre d'affichage de la fiche (immunité en premier)
   origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),
