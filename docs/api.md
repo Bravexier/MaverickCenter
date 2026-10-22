@@ -28,7 +28,7 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   `/api/personnages/`) et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.
-- **Pas de comptes avant la 1.0** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
+- **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
   `Content-Type: application/json` (`415` sinon, `DELETE` compris) et refusent une requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`, `403`) ; corps de 1 Mio au plus (`413`).
 

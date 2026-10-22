@@ -362,7 +362,7 @@ test('GET /api/personnages/<id>/portrait/ : les octets de l’image, son type et
   assert.equal(traiter({ methode: 'GET', chemin: adresse, entetes: {} }, { base: () => null, etat: () => ({}) }).statut, 503);
 });
 
-test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes (avant la 1.0)', () => {
+test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes', () => {
   db.exec("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('alice', 'Alice', '2026-10-10T00:00:00Z')");
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
       alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, portrait)

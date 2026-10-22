@@ -407,7 +407,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   reste alors actif, pour ne rien perdre) ; le classeur téléchargé se **réimporte** pour créer le prétiré (ou, après rechargement, mettre à jour le
   prétiré ouvert). La barre,
   le classeur et Google Sheets : voir « Tableur » ci-dessous.
-- Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
+- La page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
 ### Tableur : export et import (demande du propriétaire, 2026-10-15)
 

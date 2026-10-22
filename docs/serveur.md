@@ -9,7 +9,7 @@ navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/      
                                               └──▶ /api/ ──▶ conteneur « serveur » (Node 22) ──▶ db/vivante.db  (base vivante)
 ```
 
-**Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
+**Pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
 le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
 Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
 propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »).
@@ -434,7 +434,7 @@ une valeur que le site a changée.
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
 
-**Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
+**Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
 
 ## API REST `/api/v1/` et page Debug (site de dev)
@@ -509,11 +509,14 @@ règles changent ; `409` si quelqu'un l'a changé entre-temps).
 demande une confirmation, puis la version en préparation devient **VX+1.0** (`POST /api/mise-a-jour/majeure/`, colonne
 `note_version_brouillon.majeure`, migration `0070-mise-a-jour-majeure` ; la décocher revient à X.Y+1, sans confirmation). Elle ne déclenche rien :
 « Effectuer la mise à jour » reste le seul déclencheur. Elle part avec le lot, comme le champ libre, ne se change plus tant qu'il est figé (`409`),
-reste cochée s'il est annulé, et revient à X.Y+1 quand la livraison du lot vide le brouillon. Pour ce lot, la note de version est la X+1.0 et la
-PR de livraison `dev` → `master` porte `[V: X+1]` dans son titre : `livraison.yml` fait alors la X+1.0.0 ([`flux-git.md`](flux-git.md)).
+reste cochée s'il est annulé, et revient à X.Y+1 quand la livraison du lot vide le brouillon. Une mise à jour sans modification ni texte reste refusée
+(« Rien à livrer »), même case cochée : un passage en version majeure seul demande un texte dans le champ libre (choix du propriétaire du
+2026-10-22). Pour un lot majeur, la note de version est la X+1.0 et la PR de livraison `dev` → `master` porte `[V: X+1]` dans son titre :
+`livraison.yml` fait alors la X+1.0.0 ([`flux-git.md`](flux-git.md)).
 
-**« Effectuer la mise à jour »** (et « Simulation de mise à jour », sur tous les écrans ; pas de protection avant la connexion Discord, décision du propriétaire) : après
-confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
+**« Effectuer la mise à jour »** (et « Simulation de mise à jour », sur tous les écrans ; pas de protection avant la connexion Discord, décision
+du propriétaire, case « Version majeure » comprise, qui peut faire partir une version majeure : risque accepté le 2026-10-22, à revoir avec
+l'authentification Discord) : après confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
 versions et la case « Version majeure » (`majeure`, couverte par l'empreinte) — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
 bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il déclenche le workflow GitHub **`mise-a-jour.yml`** sur `dev`
 (`workflow_dispatch` : lot, empreinte, adresse ; jeton du serveur limité à la permission *Actions*), dont il suit le run (état dans
@@ -845,7 +848,7 @@ passe) :
   période de 7 jours et plus, ou la lecture de l'autre instance, est gardée une minute (une page Debug ouverte, ou des appels répétés, ne refont
   pas le calcul) ; l'export s'arrête aux 100 000 lignes les plus récentes.
 
-**Question de volume pour le propriétaire** (à l'ouverture à tout le Discord, 1.0) : au trafic d'avant la 1.0, quelques dizaines de Mo par an et
+**Question de volume pour le propriétaire** (à l'ouverture à tout le Discord, 1.0) : au trafic actuel, quelques dizaines de Mo par an et
 par instance. À ~20 000 requêtes par jour et 100 pages différentes par heure, ~150 Mo à rétention pleine ; au-delà de ~50 000, la base atteint le
 plafond en quelques mois et ne garde plus de nouvelles pages. Deux leviers, aucun n'est appliqué : (1) ne plus noter l'origine des relèves
 (`/api/maintenance/` et la balise : chaque page vue en fait déjà une), ~30 % de moins ; (2) regrouper `page_heure` et `origine_heure` par jour
@@ -934,7 +937,7 @@ journald).
 | Base vivante | `db/vivante.db` (+ `-wal` pendant une écriture) | ≈ la base des règles (23 Mo) + les fiches (un portrait : 700 000 caractères au plus, ~0,7 Mo) + le journal de l'édition (dev) | Suit les fiches ; refaite quand les règles changent |
 | Archives de la base vivante | `db/archives/` | `ARCHIVES_GARDEES` = 5 copies, ~25 Mo chacune : **≤ ~125 Mo par instance** | Oui (et seulement si la base avait des fiches ou un journal) |
 | Lots figés de la mise à jour | `/srv/maverick-center-test/db/mise-a-jour/` | Un JSON par lancement (journal en attente : quelques Ko, plus ~1 Mio par portrait modifié), 8 au plus par 24 h ; jamais effacés (gardés pour l'enquête) | **Non**, mais lent (~quelques Mo par an) : à purger à la main au-delà d'un an si besoin |
-| Métriques | `/srv/maverick-center/metriques/` | Quelques dizaines de Mo pour les deux fichiers au trafic d'avant la 1.0, puis stable ; plus à l'ouverture au Discord (« Volume estimé des métriques », ci-dessus) ; `volume-hote.json` : ~6 Ko, remplacé toutes les 15 minutes | Oui : rétention, pages du site seulement, refus regroupés et **plafond dur** de 300 Mio par fichier (`PLAFOND_METRIQUES_OCTETS` : au-delà, ou sous 2 Gio libres, collecte restreinte) |
+| Métriques | `/srv/maverick-center/metriques/` | Quelques dizaines de Mo pour les deux fichiers au trafic actuel, puis stable ; plus à l'ouverture au Discord (« Volume estimé des métriques », ci-dessus) ; `volume-hote.json` : ~6 Ko, remplacé toutes les 15 minutes | Oui : rétention, pages du site seulement, refus regroupés et **plafond dur** de 300 Mio par fichier (`PLAFOND_METRIQUES_OCTETS` : au-delà, ou sous 2 Gio libres, collecte restreinte) |
 | Journaux Docker | `/var/lib/docker/containers/*/…-json.log*` | nginx : une ligne (~250 o) par requête HTTP, ~2 Mo par jour et par instance ; service : production presque rien, dev une ligne par appel `/api/` (~0,5 Mo par jour). **Plafond : 4 conteneurs × 5 × 10 Mo = 200 Mo** | Oui depuis cette version (sinon ~1,5 Go par an, sans fin) ; s'applique quand le conteneur est recréé (`docker compose up -d`) |
 | Images Docker | `/var/lib/docker/` | `nginx:1.27-alpine` (~50 Mo) et `node:22-alpine` (~160 Mo), partagées par les deux instances | Oui : jamais retirées automatiquement ; après un `docker compose pull`, l'ancienne image reste : `docker image prune` |
 | Installateurs téléchargés par `mise-a-jour.sh` | `$TMPDIR` (`/tmp/maverick-mise-a-jour.*`), puis extraits dans `<instance>/.installation.<pid>/` | ~20 Mo, puis ~145 Mo extraits, **pendant l'installation seulement** (les deux instances peuvent s'installer dans les mêmes 5 minutes : ~330 Mo de pointe) | Oui : effacés à la fin ; restent seulement après un arrêt brutal (coupure, `kill -9`) : voir les commandes ci-dessous |
