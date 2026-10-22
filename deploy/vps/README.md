@@ -136,47 +136,29 @@ son application sur `dev` et le jeton (écriture par un `git push --dry-run`, le
 Pendant une vraie mise à jour (bouton « Effectuer la mise à jour » du site de dev, pas la simulation), **les deux sites affichent « Maintenance en
 cours »** et chacun rouvre de lui-même dès que sa nouvelle version y tourne ([`docs/serveur.md`](../../docs/serveur.md), « Maintenance pendant une
 mise à jour »). Le service du serveur de test écrit l'annonce dans `/srv/maverick-center/maintenance/`, que les deux instances montent
-(`docker-compose.yml`). À faire une fois, en copiant de nouveau ce dossier sur le serveur (étape 1) :
+(`docker-compose.yml`) : `instances.sh` (étape 4) crée ce dossier et pose `MAVERICK_DOSSIER_MAINTENANCE` dans le `.env` du test.
 
-```
-sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/maintenance, pose MAVERICK_DOSSIER_MAINTENANCE dans le .env du test
-```
-
-puis, dans chaque dossier d'instance, **une fois que son installateur a posé le nouveau `docker-compose.yml`** (le test après la fusion dans `dev`
-qui apporte la maintenance, le normal après la livraison suivante ; l'installateur l'écrit dans `installation.log` : « docker-compose.yml mis à jour
-par cette livraison ») :
-
-```
-cd /srv/maverick-center-test && sudo docker compose up -d
-cd /srv/maverick-center && sudo docker compose up -d
-```
-
-Jusque-là, seul le site de dev se met en maintenance. Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la
-maintenance (les deux sites) »** sur `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
+Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la maintenance (les deux sites) »** sur
+`https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
 
 ## 9. Métriques et espace disque
 
 Le service de chaque instance mesure ses temps de réponse, ses pages et le serveur ([`docs/serveur.md`](../../docs/serveur.md), « Métriques et
 volume » ; la page Debug du site de dev les montre). **Deux jeux de données séparés** (décision du propriétaire) : `prod.db` pour le serveur normal,
 `dev.db` pour le serveur de test, côte à côte dans `/srv/maverick-center/metriques/`, que les deux instances montent ; chacune n'écrit que le sien,
-le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur de test ne les copie ni ne les efface. À faire une fois, en copiant
-de nouveau ce dossier sur le serveur (étape 1) :
-
-```
-sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/metriques, pose MAVERICK_INSTANCE et MAVERICK_DOSSIER_METRIQUES dans les deux .env,
-                                  # installe volume.sh et son minuteur (maverick-volume.timer)
-```
-
-puis, comme pour la maintenance, `sudo docker compose up -d` dans chaque dossier d'instance **une fois que son installateur a posé le nouveau
-`docker-compose.yml`**. Ce même `docker compose up -d` applique la **rotation des journaux des conteneurs** (5 fichiers de 10 Mo au plus par
-conteneur ; avant, `docker logs` grossissait sans fin). La mesure des pages par le navigateur est active sur les deux sites ; pour la couper sur
-une instance : `MAVERICK_METRIQUES_PAGES=0` dans son `.env`, puis `sudo docker compose up -d`.
+le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur de test ne les copie ni ne les efface. `instances.sh` (étape 4)
+crée ce dossier, pose `MAVERICK_INSTANCE` et `MAVERICK_DOSSIER_METRIQUES` dans les deux `.env` et installe `volume.sh` et son minuteur
+(`maverick-volume.timer`). Les journaux des conteneurs tournent : 5 fichiers de 10 Mo au plus par conteneur (`docker-compose.yml`). La mesure des
+pages par le navigateur est active sur les deux sites ; pour la couper sur une instance : `MAVERICK_METRIQUES_PAGES=0` dans son `.env`, puis
+`sudo docker compose up -d`.
 
 **Jauge de l'espace disque** (page Debug du site de dev, demande du propriétaire) : chaque service mesure ce qu'il voit de son conteneur ; le
 reste (l'autre instance, Docker, les journaux, les restes d'installation) est mesuré depuis le serveur par `volume.sh`, que `instances.sh` installe
 dans `/usr/local/lib/maverick-center/` avec le minuteur systemd `maverick-volume.timer` : toutes les 15 minutes, en lecture seule et à basse
 priorité, il écrit `/srv/maverick-center/metriques/volume-hote.json` ([`docs/serveur.md`](../../docs/serveur.md), « Jauge de l'espace disque »).
-Après une copie plus récente de ce dossier, relancer `instances.sh` reprend le script.
+Après une copie plus récente de ce dossier (étape 1), relancer `instances.sh` (sûr à relancer : il garde les mots de passe et repose les réglages des `.env`)
+reprend le script ; un `.env` changé, ou un `docker-compose.yml` qu'une livraison a remplacé (l'installateur l'écrit dans `installation.log` :
+« docker-compose.yml mis à jour par cette livraison »), s'applique par `sudo docker compose up -d` dans le dossier de l'instance.
 
 **Espace libre** : tout ce qui grossit sur le serveur, combien et jusqu'où, est dans [`docs/serveur.md`](../../docs/serveur.md), « Tout ce qui
 grossit sur le serveur ». L'essentiel :

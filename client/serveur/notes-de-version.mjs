@@ -206,7 +206,7 @@ export function estLiberable(l, instant) {
   if (!l) return false;
   if (['envoi', 'manuel', 'erreur', 'echec'].includes(l.etat)) return true;
   // plus longtemps qu'un run ne peut durer : « lancé » / « en cours » sans nouvelles (plus aucun run ne tourne) ; ou un lot dans dev / livré dont la
-  // version n'arrive pas sur ce site (ex. serveur de test resté sur la branche site après la 0.2.0) : le texte se libère
+  // version n'arrive pas sur ce site (ex. serveur de test qui ne reçoit plus les livraisons) : le texte se libère
   return ['lance', 'en_cours', 'fusionne', 'echec_livraison', 'termine'].includes(l.etat) && sansNouvelles(l, instant);
 }
 
@@ -351,10 +351,13 @@ export function actualiserLancement(db, dossier, { reference = null } = {}) {
   const note = aNote ? db.prepare('SELECT version, texte FROM note_version WHERE lot = ? AND exemple = 0').get(l.lot) : null;
   if (!note) return l;
   // la note est dans les règles : le lot est dans dev. Un lancement annulé dont le lot y est entré quand même : le texte du brouillon, déjà publié
-  // dans cette note, ne doit pas repartir dans la suivante (vidé s'il est resté tel quel, la case « Version majeure » avec lui, partie avec le
-  // lot). Seulement à ce passage (« annule » → « fusionne ») : ensuite, le brouillon est celui de la mise à jour suivante (une case cochée sans
-  // texte après la livraison d'une note sans texte ne doit pas s'effacer).
-  if (l.etat === 'annule') db.prepare('DELETE FROM note_version_brouillon WHERE id = 1 AND lot IS NULL AND coalesce(texte, \'\') = coalesce(?, \'\')').run(note.texte);
+  // dans cette note, ne doit pas repartir dans la suivante (vidé s'il est resté tel quel, case « Version majeure » comprise, partie avec le lot).
+  // Seulement à ce passage (« annule » → « fusionne ») : ensuite, le brouillon est celui de la mise à jour suivante (une case cochée sans texte
+  // après la livraison d'une note sans texte ne doit pas s'effacer).
+  if (l.etat === 'annule') {
+    db.prepare(`DELETE FROM note_version_brouillon WHERE id = 1 AND lot IS NULL AND coalesce(texte, '') = coalesce(?, '')
+                AND coalesce(majeure, 0) = ?`).run(note.texte, l.majeure ? 1 : 0);
+  }
   const livree = reference?.version && auMoins(reference.version, note.version);
   if (livree && l.etat !== 'termine') return ecrireLancement(dossier, { ...l, etat: 'termine', version_livree: note.version });
   if (['lance', 'en_cours', 'manuel', 'erreur', 'annule', 'envoi'].includes(l.etat)) return ecrireLancement(dossier, { ...l, etat: 'fusionne', version_livree: note.version });

@@ -1075,7 +1075,8 @@ const MAJEURE_AJOUTEE = 'le titre ou la description porte le marqueur de version
   + '(case « Version majeure » décochée) : une version majeure est le signal du propriétaire, la fusion lui est laissée (à faire à la main, « Create '
   + 'a merge commit »)';
 const MAJEURE_RETIREE = 'le titre ne porte plus le marqueur de version majeure (V: X+1) alors que ce lot est une version majeure (case « Version '
-  + 'majeure » cochée) : la fusion ferait une version mineure ; remettre le marqueur au titre puis relancer le workflow, ou fusionner à la main';
+  + 'majeure » cochée) : la fusion ferait une version mineure, que la note de version du lot contredirait ; remettre le marqueur au titre puis '
+  + 'relancer le workflow, ou fusionner à la main en gardant le marqueur au titre';
 const MAJEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déjà ouverte avec [V: X+1] (#${numero}) alors que ce lot n'est pas une `
   + 'version majeure : une version majeure est le signal du propriétaire, à fusionner (ou fermer) à la main';
 const MINEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déjà ouverte sans [V: X+1] (#${numero}) alors que ce lot est une version `

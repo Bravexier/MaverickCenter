@@ -87,6 +87,14 @@ test('README, site de dev : instances.sh pose ce que l\'étape dit, et le jeton 
   assert.doesNotMatch(lire('README.md'), /[Aa]vant la 0\.2\.0|update-site\.sh/);
 });
 
+test('docs de l\'hébergement : le fonctionnement tel qu\'il est, sans « à partir de / avant / jusqu\'à la X » (demande du propriétaire du 2026-10-22)', () => {
+  const racineDepot = join(vps, '..', '..');
+  for (const f of ['deploy/README.md', 'deploy/installateur/README.md', 'deploy/vps/README.md', 'docs/flux-git.md', 'README.md']) {
+    const texte = readFileSync(join(racineDepot, f), 'utf8');
+    assert.doesNotMatch(texte, /(?:à partir de|avant|jusqu'à|dès)(?: la)? (?:version )?\d+\.\d+(?:\.\d+)?\b/i, f);
+  }
+});
+
 test('.gitattributes : les scripts et deploy/ restent en LF (un clone Windows les envoie tels quels par scp)', () => {
   const attributs = readFileSync(fileURLToPath(new URL('../../.gitattributes', import.meta.url)), 'utf8');
   assert.match(attributs, /^\*\.sh text eol=lf\r?$/m);

@@ -15,10 +15,10 @@ user-invocable: false
 
 ## À lire
 - `deploy/installateur/README.md` (instances, `db/`, mise à jour automatique), `deploy/vps/README.md` (mise en place du VPS), `deploy/README.md` (NAS).
+- `docs/serveur.md`, « Hébergement » (conteneurs, variables d'environnement, surveillance, sortie sur Internet).
 
 ## Choix du propriétaire
-- Les docs de l'hébergement décrivent le fonctionnement tel qu'il est, sans « à partir de la X » ni « avant la X » (demande du 2026-10-22) : ce qui ne sert plus se dit comme tel ou sort de la doc.
-- `docs/serveur.md`, « Hébergement » (conteneurs, variables d'environnement, surveillance, sortie sur Internet).
+- Les docs de l'hébergement décrivent le fonctionnement tel qu'il est, sans « à partir de la X » ni « avant la X » (demande du 2026-10-22) : ce qui ne sert plus se dit comme tel ou sort de la doc. `test/deploy-vps.test.mjs` le garde pour les README de `deploy/`, `docs/flux-git.md` et le README du dépôt.
 
 ## Invariants
 - Les `.sh` et tout `deploy/` restent en LF (`.gitattributes` : `*.sh` et `deploy/**` en `eol=lf`) : ils partent tels quels sur un serveur Linux, même depuis un clone Windows.

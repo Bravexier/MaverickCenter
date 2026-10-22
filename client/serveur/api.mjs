@@ -33,8 +33,11 @@
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
-//   POST /api/mise-a-jour/lancer/       { confirmation, simulation? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202
-//                                       (simulation : true = simulation de mise à jour, le workflow vérifie tout sans rien pousser)
+//   POST /api/mise-a-jour/majeure/      { majeure } → la case « Version majeure » (true : la prochaine mise à jour est la X+1.0) ; rien n'est
+//                                       déclenché ; rend la note en préparation
+//   POST /api/mise-a-jour/lancer/       { confirmation, simulation?, version_cible? } → fige le lot et déclenche le workflow GitHub de mise à jour →
+//                                       202 (simulation : true = simulation de mise à jour, le workflow vérifie tout sans rien pousser ; version_cible :
+//                                       celle que la page a montrée, 409 si ce n'est plus celle qui serait livrée)
 //   POST /api/mise-a-jour/liberer/      { lot } → annule ce lancement s'il n'est pas parti, a échoué avant dev, ou se lance à la main : le brouillon
 //                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
@@ -497,6 +500,11 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     }
     const t0 = performance.now();
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
+    // la version que la page a montrée (et confirmée) doit être celle qui partirait : la case « Version majeure » cochée ou décochée depuis un
+    // autre onglet (ou une nouvelle version de master) ne fait jamais partir une autre version que celle qu'on a vue
+    if (valeur?.version_cible !== undefined && valeur.version_cible !== note.version_cible) {
+      return erreur(409, `La version en préparation est maintenant la V${note.version_cible} (la page montrait la V${valeur.version_cible}) : rechargez la page.`, { version_cible: note.version_cible });
+    }
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
       versionDev, versionCible: note.version_cible, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),

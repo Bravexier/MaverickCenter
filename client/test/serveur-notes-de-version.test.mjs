@@ -164,8 +164,13 @@ test('case « Version majeure » : la version cible passe en X+1.0, rien n’est
   assert.match(journal.at(-1), /prochaine version majeure/);
   // le champ libre enregistré garde la case
   assert.equal(appel('POST', '/api/mise-a-jour/brouillon/', { texte, avant: texte }).corps.brouillon.majeure, true);
+  // un onglet resté sur la V0.2 (case cochée ailleurs) ne fait jamais partir la V1.0 : 409, rien n'est figé
+  const perime = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, version_cible: '0.2' });
+  assert.deepEqual([perime.statut, perime.corps.version_cible], [409, '1.0']);
+  assert.match(perime.corps.erreur, /maintenant la V1\.0 .*la V0\.2/);
+  assert.equal(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, null, 'rien de figé');
   // « Effectuer la mise à jour » : le lot et le lancement portent la case et la version X+1.0 (couvertes par l'empreinte)
-  const l = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }).corps.lancement;
+  const l = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, version_cible: '1.0' }).corps.lancement;
   assert.deepEqual([l.version_cible, l.majeure], ['1.0', true]);
   const lot = JSON.parse(appel('GET', `/api/mise-a-jour/lots/${l.lot}/`).brut);
   assert.deepEqual([lot.version_cible, lot.majeure], ['1.0', true]);

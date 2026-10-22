@@ -92,7 +92,7 @@ jobs:
         run: node tools/flux-git/cli.mjs supprimer-fusionnee --branche "$BRANCHE" --sha "$FUSIONNEE" --pousser
 
   site:
-    name: Site (branche site, plus publiée)
+    name: Site (inactif)
     needs: version
     # always() : publier ce que le bot a préparé même s'il signale ensuite un problème (sorties vides sinon : rien ne part).
     if: always() && needs.version.outputs.site != ''

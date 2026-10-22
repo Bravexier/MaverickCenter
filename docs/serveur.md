@@ -648,7 +648,7 @@ qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de 
 | `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
 | `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
-| `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
+| `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
@@ -693,8 +693,8 @@ réglage, le site de dev se met en maintenance d'après son seul lancement et la
 
 ## Hébergement
 
-Deux conteneurs dans le même `docker-compose.yml` : celui des [installateurs](../deploy/installateur/README.md), qui posent le serveur normal et le
-serveur de test ([`deploy/vps/`](../deploy/vps/README.md)), et celui du paquet du NAS ([`deploy/`](../deploy/README.md)) :
+Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../deploy/installateur/README.md) (serveur normal et serveur de test,
+[`deploy/vps/`](../deploy/vps/README.md)) comme celui du paquet du NAS ([`deploy/`](../deploy/README.md)) :
 
 - **nginx** sert `site/` et transmet `/api/` au service (`deploy/nginx.conf`, le même fichier pour le NAS et les installateurs), derrière le
   même mot de passe. L'adresse du service est résolue à chaque requête : nginx démarre sans lui, et si le service est arrêté, `/api/` répond 502

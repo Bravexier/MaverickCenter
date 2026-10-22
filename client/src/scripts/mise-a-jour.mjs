@@ -160,6 +160,7 @@ async function enregistrerMajeure(majeure) {
     Object.assign(donnees, await appel('POST', 'mise-a-jour/majeure/', { majeure }));
   } catch (e) {
     alert(e.message);
+    if (e.statut === 409) await charger().catch(() => {}); // un lot figé depuis un autre onglet : la page le montre
     return;
   }
   const champ = racine.querySelector('[data-nv-texte]');
@@ -210,9 +211,10 @@ function confirmer({ simulation }) {
   const mot = donnees.confirmation;
   const n = donnees.en_attente ?? 0;
   const modifications = `${n} ligne${n > 1 ? 's' : ''} de la base en attente`;
-  const majeure = donnees.brouillon?.majeure
-    ? `<p><strong>Version majeure</strong> (case cochée) : la livraison dev → master porte <code>[V: X+1]</code>, la production et dev passent en V${echapper(donnees.version_cible)}.0.</p>`
-    : '';
+  const majeure = !donnees.brouillon?.majeure ? ''
+    : simulation
+      ? `<p><strong>Version majeure</strong> (case cochée) : la livraison dev → master porterait <code>[V: X+1]</code>, la production et dev passeraient en V${echapper(donnees.version_cible)}.0.</p>`
+      : `<p><strong>Version majeure</strong> (case cochée) : la livraison dev → master porte <code>[V: X+1]</code>, la production et dev passent en V${echapper(donnees.version_cible)}.0.</p>`;
   const dialogue = document.createElement('dialog');
   dialogue.className = 'nv-dialogue';
   dialogue.innerHTML = simulation
@@ -251,7 +253,8 @@ function confirmer({ simulation }) {
       return;
     }
     try {
-      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation });
+      // la version montrée dans ce dialogue : le service refuse (409) si une autre partirait (case changée depuis un autre onglet)
+      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation, version_cible: donnees.version_cible });
       dialogue.close();
       if (!simulation && (await enMaintenance())) {
         location.replace(`${racine.dataset.maintenance}?retour=${encodeURIComponent(location.pathname)}`);

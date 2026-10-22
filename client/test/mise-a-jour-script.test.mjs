@@ -25,6 +25,11 @@ function fauxService({ lot = null } = {}) {
     const json = (statut, donnees) => new Response(JSON.stringify(donnees), { status: statut, headers: { 'Content-Type': 'application/json' } });
     if (chemin === 'etat/') return json(200, { edition: true });
     if (chemin === 'mise-a-jour/') return json(200, { ...note(), lancement: null, liberable: false, occupe: false, github: { configure: true }, confirmation: 'METTRE A JOUR' });
+    if (chemin === 'maintenance/') return json(200, { active: false });
+    if (chemin === 'mise-a-jour/lancer/' && init.method === 'POST') {
+      if (corps.version_cible !== note().version_cible) return json(409, { erreur: 'La version en préparation a changé : rechargez la page.' });
+      return json(202, { lancement: { lot: 'x', etat: 'envoi', version_cible: corps.version_cible } });
+    }
     if (chemin === 'mise-a-jour/majeure/' && init.method === 'POST') {
       if (lot) return json(409, { erreur: 'Une mise à jour est en cours.' });
       etat.majeure = corps.majeure;
@@ -100,10 +105,13 @@ test('confirmée : la case est enregistrée par le service et la page dit la V X
   assert.equal(p.titre(), 'Mise à jour en préparation : V1.0');
   assert.equal(p.caseMajeure().hasAttribute('checked'), true);
   assert.equal(p.dialogue(), null);
-  // la confirmation de « Effectuer la mise à jour » dit la version majeure
+  // la confirmation de la simulation la dit au conditionnel (rien n'est poussé), celle de « Effectuer la mise à jour » au présent
+  p.zone.querySelector('[data-nv-simuler]').dispatchEvent(new Event('click'));
+  assert.match(p.dialogue().textContent, /Version majeure.*porterait.*\[V: X\+1\].*passeraient en V1\.0\.0/s);
+  p.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
   p.zone.querySelector('[data-nv-lancer]').dispatchEvent(new Event('click'));
   assert.match(p.dialogue().querySelector('h2').textContent, /Effectuer la mise à jour V1\.0/);
-  assert.match(p.dialogue().textContent, /Version majeure.*\[V: X\+1\].*V1\.0\.0/s);
+  assert.match(p.dialogue().textContent, /Version majeure.*porte.*\[V: X\+1\].*passent en V1\.0\.0/s);
   p.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
   // décochée : aucune confirmation
   basculer(p.caseMajeure(), false);
@@ -130,6 +138,28 @@ test('le texte du champ libre en cours de saisie survit au changement de la case
   assert.equal(nouveau.value, 'Brouillon pas encore enregistré');
   assert.equal(p.zone.querySelector('[data-nv-etat-texte]').textContent, 'modifié, non enregistré');
   assert.deepEqual(p.ecritures().map((a) => a.chemin), ['mise-a-jour/majeure/'], 'le texte n’est pas enregistré pour autant');
+});
+
+test('« Effectuer la mise à jour » envoie la version montrée : le service refuse (409) si une autre partirait', async () => {
+  const p = await monter();
+  basculer(p.caseMajeure(), true);
+  p.dialogue().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  await reponses();
+  p.zone.querySelector('[data-nv-lancer]').dispatchEvent(new Event('click'));
+  p.dialogue().querySelector('input').value = 'METTRE A JOUR';
+  p.dialogue().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  await reponses();
+  assert.deepEqual(p.ecritures().at(-1), { methode: 'POST', chemin: 'mise-a-jour/lancer/', corps: { confirmation: 'METTRE A JOUR', simulation: false, version_cible: '1.0' } });
+  // un onglet resté sur la V1.0 alors que la case a été décochée ailleurs : refusé, l'erreur est dite dans le dialogue
+  p.service.majeure = false;
+  p.zone.querySelector('[data-nv-lancer]').dispatchEvent(new Event('click'));
+  assert.match(p.dialogue().querySelector('h2').textContent, /V1\.0/, 'la page montre encore la V1.0');
+  p.dialogue().querySelector('input').value = 'METTRE A JOUR';
+  p.dialogue().querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  await reponses();
+  const erreur = p.dialogue().querySelector('[data-erreur]');
+  assert.equal(erreur.hidden, false);
+  assert.match(erreur.textContent, /rechargez la page/);
 });
 
 test('un lot figé (mise à jour en cours) fige la case', async () => {
