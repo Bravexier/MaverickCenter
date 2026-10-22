@@ -1,6 +1,6 @@
 /* Page du Potentiel Illimité : sorts des autres magies en onglets (components/magie/SortsDuPotentiel.astro, inséré en ?raw sur cette page seulement).
    Les 14 onglets en grille, deux rangées de 7 à la largeur du site, plus de rangées sur un écran étroit (jamais de défilement horizontal), chacun avec
-   la pastille de sa magie ; l'onglet ouvert prend sa couleur. Le panneau est teinté de sa magie (.magie-teinte, base.css) : tableaux comme sur sa page.
+   la pastille de sa magie ; l'onglet ouvert prend sa couleur (la classe de sa magie : --couleur, --couleur-texte, lib/palette-css.mjs). Le panneau est teinté de sa magie (.magie-teinte, base.css) : tableaux comme sur sa page.
    Sans JavaScript (et à l'impression), les magies se suivent, chacune sous son titre. */
 .autres-magies__onglets { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr)); gap: 0.35rem; margin: 0.8rem 0 0; }
 .autre-magie__onglet {
@@ -10,16 +10,16 @@
 }
 .autre-magie__onglet::before {
   content: ''; flex: none; width: 0.75rem; height: 0.75rem; border-radius: 50%;
-  background: var(--couleur-magie); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
+  background: var(--couleur); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
 }
-.autre-magie__onglet:hover { border-color: color-mix(in srgb, var(--couleur-magie) 60%, var(--border)); background: color-mix(in srgb, var(--couleur-magie) 10%, var(--surface)); }
+.autre-magie__onglet:hover { border-color: color-mix(in srgb, var(--couleur) 60%, var(--border)); background: color-mix(in srgb, var(--couleur) 10%, var(--surface)); }
 .autre-magie__onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* onglet ouvert : fond de sa couleur et anneau mêlé au texte, visible même pour une couleur proche du fond (Vide en clair, Corruption en sombre) */
 html.js .autre-magie__onglet.is-active {
-  background: var(--couleur-magie); color: var(--couleur-texte-magie);
-  border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--couleur-magie) 50%, var(--text));
+  background: var(--couleur); color: var(--couleur-texte);
+  border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--couleur) 50%, var(--text));
 }
-html.js .autre-magie__onglet.is-active::before { box-shadow: 0 0 0 2px var(--couleur-texte-magie); }
+html.js .autre-magie__onglet.is-active::before { box-shadow: 0 0 0 2px var(--couleur-texte); }
 
 .autre-magie { margin-top: 1.2rem; scroll-margin-top: 1rem; }
 html.js .autre-magie:not(.is-active) { display: none; }

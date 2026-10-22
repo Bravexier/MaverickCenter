@@ -68,7 +68,7 @@ test('le titre et la note d’un onglet viennent de la base et se modifient (com
 });
 
 test('une ligne par composant, avec son entité ; aucun consommable (potion, livre)', options, () => {
-  const lignes = [...main.matchAll(/<tr class="composant" id="([^"]+)"/g)].map((m) => m[1]);
+  const lignes = [...main.matchAll(/<tr class="composant(?: composant--magie couleur-magie-[a-z0-9-]+)?" id="([^"]+)"/g)].map((m) => m[1]);
   const attendues = [
     ...c.monnaies.map((m) => `monnaie-${m.id}`), ...[...c.materiaux, ...c.gemmes, ...c.bois, ...c.fruits, ...c.ingredients.flatMap((x) => x.ingredients),
       ...c.objets.flatMap((s) => s.objets)].map((r) => ancreDeComposant(r.id)),

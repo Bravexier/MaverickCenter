@@ -35,6 +35,7 @@ user-invocable: false
 - Sur la page : ni écarts avec la fiche V15.2.2, ni sous-races ou valeurs de la fiche, ni sources, ni liste des classes accessibles ; seule la classe raciale d'une race hybride, dans le bandeau.
 - Liste `/races/` dans l'ordre du propriétaire (`ORDRE_DES_RACES`), pures et hybrides côte à côte, une pastille par race comme les classes (`RacesPastilles.astro`, `styles/race/liste.css`), accroche en infobulle, ni magies ni classe raciale.
 - Le site tire des champs structurés les liens et deux tableaux : magies innées en bas de `/races/`, relations sous la carte de `/magies/` (skill `zone-magies`). Magies dans l'ordre du classeur et dans leur couleur, sans défilement horizontal (`styles/magie/tableaux.css`). L'ancienne page `/wiki/races-et-magies/` est supprimée.
+- Couleur d'une magie (pastilles des magies innées d'une race, et leur éditeur `scripts/edition/races.mjs` ; colonnes, en-têtes et pastilles du tableau des magies innées) : la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`, skill `ui-couleurs`), jamais un style ; `styles/race/page.css` (`.race-magie`) lit `--couleur`. La couleur de la race (`--couleur-race`, `RACE_COLORS`) reste en style jusqu'à son lot.
 
 ## Tests
 - `client/test/races-html.test.mjs` : site construit (CI après le build).

@@ -19,7 +19,7 @@ user-invocable: false
 
 - Filtres, puis une liste de 5 colonnes seulement : portrait, nom, race, magies (« Innée, Acquise »), niveau (demande du propriétaire).
 - Triée par chaque colonne sauf le portrait.
-- Toute la ligne est le lien vers la fiche, bordée de la couleur de la magie innée, en dégradé vers l'acquise en bi-magie (`couleursDeBordure`, couleurs posées au build).
+- Toute la ligne est le lien vers la fiche, bordée de la couleur de la magie innée, en dégradé vers l'acquise en bi-magie : la page pose au build les classes de la palette de chaque magie (`data-couleurs` : `[classe, classe de second rang]`, `lib/palette-css.mjs#classesDeDeuxMagies`), le script pose sur la ligne `perso--magie`, la classe de l'innée et la classe de second rang de l'acquise (`classesDeBordure`), jamais une couleur ; `liste.css` en tire `--magie-1`, `--magie-2` (skill `ui-couleurs`). Le module, importé par le navigateur, n'importe pas la palette.
 - Le portrait vient de `GET /api/personnages/<id>/portrait/`.
 - Filtres et tri dans l'adresse.
 - Ni phrase d'introduction ni bouton de création.

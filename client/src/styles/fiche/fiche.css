@@ -89,7 +89,8 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-barre__outils > button, .fiche-barre__outils .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: var(--fs-sm); }
 
 /* cadres des blocs (bordure, bandeau du titre), portrait et niveau : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
-   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la zone (--etape). Seuls les cadres changent :
+   propriétaire ; le script pose sur la fiche la classe de l'innée et la classe de second rang de l'acquise : --couleur, --couleur-2,
+   lib/palette-css.mjs) ; sans magie innée, celle de la zone (--etape). Seuls les cadres changent :
    caractéristiques, attributs, pastilles et curseurs gardent leurs couleurs. --cadre-trait : la couleur mêlée d'un peu de texte, pour qu'un trait
    blanc (Vide) ou noir (Corruption) reste visible. */
 .fiche-etape {
@@ -98,7 +99,11 @@ main:has(> .fiche) { max-width: 100rem; }
   --cadre-trait: color-mix(in srgb, var(--cadre) 80%, var(--text));
   --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
 }
-.fiche[data-magie] .fiche-etape { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
+.fiche[data-magie] .fiche-etape { --cadre: var(--couleur); --cadre-2: var(--couleur-2, var(--couleur)); }
+/* la couleur d'une magie sur un élément de la fiche (pastille, résistance, sort, liste) : la classe de la magie (lib/palette-css.mjs, nom transmis par
+   regles.json) et `teinte-palette`, qui la fait lire dans les variables de la fiche (src/scripts/fiche.mjs#teinteDeMagie) ; jamais une couleur en style */
+.fiche .teinte-palette { --c: var(--couleur); --c-texte: var(--couleur-texte); --texte-sur-c: var(--couleur-texte); }
+.fiche option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
 
 /* ----------------------------------------------------------------- zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la
    situation, IV. paramètres et suivi ; sans cadre ni titre visibles (demande du propriétaire : « retirer les grands cadres ») : les blocs se suivent, la
@@ -874,7 +879,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .posture-carte[aria-pressed='true'] .posture-carte__nom::after { content: ' ✓'; }
 .posture-carte--hyper { --c: #7c3aed; }
 .posture-carte--cent { --c: #c026d3; }
-.posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--m); }
+.posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--couleur); } /* la classe de la magie */
 .posture-carte__race, .posture-carte__suite { list-style: none; margin-left: -0.8rem; }
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
 .posture-carte__effets li.est-avantage { color: var(--good); }
@@ -1129,6 +1134,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .invocation-choix[aria-pressed='true'] { border-color: var(--c1); border-right-color: var(--c2); font-weight: 700;
   background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 50%, var(--surface)), color-mix(in srgb, var(--c2) 50%, var(--surface))); }
 .fiche .invocation-choix:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; }
+/* ses magies : la classe de la première et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxMagies) */
+.fiche .invocation-choix--magie { --c1: var(--couleur); --c2: var(--couleur-2); }
 .invocation-choix__npm { color: var(--muted); }
 .invocations__aide { margin: 0.3rem 0 0; font-size: var(--fs-xs); }
 .invocation-carte { margin-top: 0.35rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }

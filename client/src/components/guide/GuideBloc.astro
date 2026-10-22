@@ -14,7 +14,7 @@ import {
 } from '../../lib/guide-db.mjs';
 import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
-import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 
 // Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
@@ -178,7 +178,7 @@ const moitieDuChakra = (chakra: number) =>
   bloc === 'magies' && (
     <ul class="guide-magies" aria-label="Les 15 magies et leur dieu">
       {magies.map((m) => (
-        <li style={`--couleur-magie: ${couleurDeMagie(m.nom)}`}>
+        <li class={classeDeMagie(m.nom)}>
           <a class="guide-magie" href={pageHref(m.id)}>
             <span class="guide-magie__point" aria-hidden="true" />
             <span class="guide-magie__nom">{m.nom}</span>
@@ -204,7 +204,7 @@ const moitieDuChakra = (chakra: number) =>
         </thead>
         <tbody>
           {magies.map((m) => (
-            <tr style={`--couleur-magie: ${couleurDeMagie(m.nom)}`}>
+            <tr class={classeDeMagie(m.nom)}>
               <th scope="row">
                 <a class="guide-magie guide-magie--ligne" href={pageHref(m.id)}>
                   <span class="guide-magie__point" aria-hidden="true" />

@@ -1,9 +1,11 @@
 /* Chargé uniquement depuis MagiePage.astro pour ne pas alourdir les autres pages du wiki.
-   Couleurs dérivées de la couleur de la magie (--couleur-magie) : pour la page entière (.magie) ou pour le bloc d'une autre magie dans la page
-   (.magie-teinte : onglets du Potentiel Illimité). Une variable déclarée avec var() est calculée là où elle est déclarée : un bloc qui change
-   --couleur-magie doit donc redéclarer celles qui en dépendent. */
+   Couleurs dérivées de la couleur de la magie : la classe de la magie (`.couleur-magie-<id>`, lib/palette-css.mjs : --couleur, --couleur-texte),
+   posée sur la page entière (.magie) ou sur le bloc d'une autre magie dans la page (.magie-teinte : onglets du Potentiel Illimité). Une variable
+   déclarée avec var() est calculée là où elle est déclarée : un bloc d'une autre magie porte sa classe ET l'une de ces deux, qui redéclarent tout.
+   Aucune couleur écrite, hors le noir et le blanc de mélange (exception du propriétaire, skill ui-couleurs). */
 .magie, .magie-teinte {
-  --mag: var(--couleur-magie, #ad5e29);
+  --mag: var(--couleur, var(--accent));
+  --mag-texte: var(--couleur-texte, var(--text));
   --mag-readable: color-mix(in srgb, var(--mag) 40%, #000);
   --mag-soft: color-mix(in srgb, var(--mag) 9%, var(--surface));
   --mag-line: color-mix(in srgb, var(--mag) 35%, var(--border));
@@ -12,8 +14,8 @@
   --tab-soft: var(--mag-soft);
   --tab-line: var(--mag-line);
   --gl: 34%;
-  --hero-1: color-mix(in srgb, var(--mag) 35%, #111);
-  --hero-2: color-mix(in srgb, var(--mag) 45%, #111);
+  --hero-1: color-mix(in srgb, var(--mag) 35%, #000);
+  --hero-2: color-mix(in srgb, var(--mag) 45%, #000);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }

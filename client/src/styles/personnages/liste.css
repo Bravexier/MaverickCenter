@@ -1,7 +1,8 @@
 /* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, puis la liste : un en-tête dont chaque
    colonne, sauf le portrait, se trie (bouton, flèche du sens), et une ligne par personnage (portrait, nom, race, magies, niveau : demande du
    propriétaire), tout entière un lien vers la fiche (le nom n'a pas l'air d'un lien), bordée de la couleur de la magie innée, en dégradé vers l'acquise
-   en bi-magie (--magie-1, --magie-2, posées par src/scripts/personnages.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
+   en bi-magie (--magie-1, --magie-2 de .perso--magie, lues dans les classes de la palette que pose src/scripts/personnages.mjs : la classe de
+   l'innée, --couleur, et la classe de second rang de l'acquise, --couleur-2, lib/palette-css.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
    sans piste qui dépende du contenu) et la même largeur de contenu (marge de l'en-tête = bordure + marge d'une ligne) : leurs colonnes s'alignent.
    Pas de sous-grille : elle reporterait la bordure et la marge de la ligne sur ses colonnes extrêmes (le portrait déborderait de la sienne).
    Couleurs de la partie « Créer son personnage » du guide, comme la fiche. */
@@ -79,6 +80,7 @@
   text-decoration: none;
   transition: box-shadow var(--duree), transform 0.15s;
 }
+.perso--magie { --magie-1: var(--couleur); --magie-2: var(--couleur-2); }
 .perso:hover, .perso:focus-visible {
   color: var(--text);
   text-decoration: none;

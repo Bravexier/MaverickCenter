@@ -14,10 +14,11 @@
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
 .bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
-/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état ; deux magies : moitié-moitié) */
-.bcible--magie { background: var(--c); color: var(--c-texte); border-color: color-mix(in srgb, var(--c) 55%, var(--text)); }
+/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état) : la classe de la magie et la classe de
+   second rang de la seconde, ou de la même (lib/monstre-rendu.mjs, lib/palette-css.mjs#classesDeDeuxMagies : --couleur, --couleur-texte, --couleur-2) */
+.bcible--magie { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--couleur) 55%, var(--text)); }
 /* deux magies liées (« Surcharge magique » : Arcane et Corruption) : la seconde en bande à droite, le texte sur la première */
-.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--c2); }
+.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--couleur-2); }
 /* à l'impression, le fond d'une pastille de magie s'imprime (sinon son texte blanc devient illisible) */
 @media print { .bcible--magie { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 /* une défense écrite par forme ou sur plusieurs lignes (« Guerrier : … », « Absorbe(s) … ») : une ligne chacune */
@@ -29,7 +30,8 @@
 .bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
 .bcat--boss { background: var(--bes); border-color: var(--bes); color: var(--surface); font-weight: 700; }
 .bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
-.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
+/* une magie en pastille : la classe de la magie (lib/palette-css.mjs : --couleur, --couleur-texte) */
+.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); background: var(--couleur); color: var(--couleur-texte); border: 1px solid color-mix(in srgb, var(--couleur) 70%, var(--text)); }
 
 /* La carte */
 .bcarte { padding: 0.9rem 1rem 1.1rem; font-size: var(--fs-lg); }

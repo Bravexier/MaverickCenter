@@ -7,7 +7,7 @@ import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, titreDeCompetence
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { couleurDeMagie } from '../src/lib/sort-format.mjs';
+import { classeDeMagie } from '../src/lib/palette-css.mjs';
 
 const db = ouvrirBase();
 const a = chargerAccessoires(db);
@@ -59,7 +59,8 @@ test('compétence : « Compétence Force » pour « Compétence F » (la caract�
 test('gemmes : une par magie, dans la couleur de sa magie ; les gemmes d’un effet sont celles de la base', () => {
   assert.equal(new Set(a.gemmes.map((g) => g.magie.id)).size, a.gemmes.length);
   for (const g of a.gemmes) {
-    assert.equal(g.couleur, couleurDeMagie(g.magie.nom), g.nom);
+    assert.equal(g.classe, classeDeMagie(g.magie.nom), g.nom);
+    assert.ok(!('couleur' in g) && !('texte' in g), `${g.nom} : la classe de sa magie, jamais une couleur`);
     assert.ok(g.quarts.commune && g.quarts.raffinee && g.quarts.parfaite, g.nom);
   }
   assert.equal(new Set(a.gemmes.map(({ id }) => bulleDeGemme(id))).size, a.gemmes.length, 'identifiants d’infobulle distincts');

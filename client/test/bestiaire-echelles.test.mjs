@@ -515,10 +515,12 @@ test('vulnérabilités et résistances dans la couleur de la magie qui va avec :
     assert.ok(table[normalize(r.nom)].includes(r.magie), r.nom);
   }
   const html = htmlDeRubrique('vulnerabilite', 'Feu, Brûlure, Frappe, Surcharge magique', { magiesDesCibles: table });
-  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie" style="--c:#ff0000;--c2:#ff0000;--c-texte:#171210">Feu<\/span>/);
-  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie" style="--c:#ff0000;[^"]*" title="Magie liée : Feu">Brûlure<\/span>/);
+  // la couleur : la classe de la magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs), jamais un style
+  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie couleur-magie-feu couleur-2-magie-feu">Feu<\/span>/);
+  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie couleur-magie-feu couleur-2-magie-feu" title="Magie liée : Feu">Brûlure<\/span>/);
   assert.match(html, /<span class="bcible bcible--vulnerabilite">Frappe<\/span>/);
-  assert.match(html, /bcible--magie bcible--deux"[^>]*title="Magie liée : Arcane, Corruption">Surcharge magique</);
+  assert.match(html, /bcible--magie bcible--deux couleur-magie-arcane couleur-2-magie-corruption" title="Magie liée : Arcane, Corruption">Surcharge magique</);
+  assert.doesNotMatch(html, /style=/);
   assert.doesNotMatch(htmlDeRubrique('vulnerabilite', 'Feu, Frappe'), /bcible--magie/, 'sans la table : neutre');
   // le mode modification redonne la même pastille
   assert.equal(rendreChamp('monstre-rubrique', 'Feu, Brûlure', { rubrique: 'resistance', monstre_id: 'x' }, { magiesDesCibles: table }), htmlDeRubrique('resistance', 'Feu, Brûlure', { magiesDesCibles: table }));
@@ -545,10 +547,10 @@ test('défense écrite par forme ou sur plusieurs lignes : chaque liste de cible
   const table = magiesDesCiblesDe(db);
   const html = htmlDeRubrique('resistance', 'Guerrier : Eau, Frappe\nMage : Aucune\n\nAbsorbe(s) Dégâts/Effets = 0\nFeu', { magiesDesCibles: table });
   assert.equal(
-    html.replace(/ style="[^"]*"/g, '').replace(/ title="[^"]*"/g, ''),
-    '<span class="bdef-lignes"><span class="bdef-ligne"><span class="bforme">Guerrier :</span> <span class="bcibles"><span class="bcible bcible--resistance bcible--magie">Eau</span>'
+    html.replace(/ title="[^"]*"/g, ''),
+    '<span class="bdef-lignes"><span class="bdef-ligne"><span class="bforme">Guerrier :</span> <span class="bcibles"><span class="bcible bcible--resistance bcible--magie couleur-magie-eau couleur-2-magie-eau">Eau</span>'
       + '<span class="bcible bcible--resistance">Frappe</span></span></span><span class="bdef-ligne texte">Mage : Aucune</span><span class="bdef-ligne bdef-ligne--vide"></span>'
-      + '<span class="bdef-ligne texte">Absorbe(s) Dégâts/Effets = 0</span><span class="bdef-ligne"><span class="bcibles"><span class="bcible bcible--resistance bcible--magie">Feu</span></span></span></span>',
+      + '<span class="bdef-ligne texte">Absorbe(s) Dégâts/Effets = 0</span><span class="bdef-ligne"><span class="bcibles"><span class="bcible bcible--resistance bcible--magie couleur-magie-feu couleur-2-magie-feu">Feu</span></span></span></span>',
   );
   assert.equal(htmlDeRubrique('resistance', 'Varie selon la magie'), '<span class="texte">Varie selon la magie</span>');
   assert.equal(htmlDeRubrique('resistance', 'Selon la forme\nVoir plus bas'), '<span class="texte">Selon la forme\nVoir plus bas</span>', 'aucune liste : tel qu’écrit');

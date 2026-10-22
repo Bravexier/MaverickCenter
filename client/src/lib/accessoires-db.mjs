@@ -6,7 +6,7 @@
 // lib/panneaux-regles-db.mjs).
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerAccessoires` reçoit la base ouverte par lib/donnees.mjs.
 import { normalize } from './text.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie } from './palette-css.mjs';
 
 export const PAGE_DES_ACCESSOIRES = 'ressources/accessoires';
 
@@ -79,8 +79,8 @@ export function chargerAccessoires(db) {
     nom: g.nom,
     description: g.description,
     magie: { id: g.magie_id, nom: g.magie },
-    couleur: couleurDeMagie(g.magie),
-    texte: texteSurCouleur(couleurDeMagie(g.magie)),
+    // sa couleur : la classe de sa magie (lib/palette-css.mjs : --couleur, --couleur-texte), posée sur sa pastille et son infobulle
+    classe: classeDeMagie(g.magie),
     quarts: { commune: g.quart_commune_brut, raffinee: g.quart_raffinee_brut, parfaite: g.quart_parfaite_brut },
     // en RF (1 RO = 100 RF) : le prix d'un effet aux gemmes au choix (lib/accessoires-generateur.mjs#prixDeLAccessoire)
     quartsRf: { commune: g.quart_commune_rf, raffinee: g.quart_raffinee_rf, parfaite: g.quart_parfaite_rf },

@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { classesDeLaPalette } from '../src/lib/palette-css.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { aideDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
@@ -252,6 +253,9 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   assert.ok(regles.classes.every((c) => /^#[0-9a-f]{6}$/i.test(c.couleur) && Number.isInteger(c.groupe.ordre)));
   assert.equal(regles.resistance_paliers.length, 6);
   assert.ok(regles.magies.some((m) => m.resistances.length) && regles.etats.length > 0);
+  // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), que la page porte ; jamais une couleur
+  const palette = classesDeLaPalette();
+  for (const m of regles.magies) assert.ok(palette.has(m.classe) && palette.has(m.classe_2) && !('couleur' in m) && !('texte' in m), m.id);
 });
 
 test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
@@ -262,8 +266,11 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   assert.ok(racine, 'racine de la page et ses données');
   const couleurs = JSON.parse(racine[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&'));
   const regles = JSON.parse(lire('fiche/regles.json'));
-  assert.deepEqual(couleurs, Object.fromEntries(regles.magies.map((m) => [m.id, m.couleur])), 'une couleur par magie de la base, celle des pages de magie (comme la fiche)');
-  assert.ok(Object.values(couleurs).every((c) => /^#[0-9a-f]{6}$/i.test(c)));
+  // les couleurs : les classes de la palette de chaque magie (la classe de la magie, sa classe de second rang : lib/palette-css.mjs), jamais un hex
+  assert.deepEqual(couleurs, Object.fromEntries(regles.magies.map((m) => [m.id, [m.classe, m.classe_2]])), 'les classes de chaque magie de la base, celles de la fiche');
+  const palette = classesDeLaPalette();
+  assert.ok(Object.values(couleurs).flat().every((c) => palette.has(c)), 'des classes de la palette');
+  assert.doesNotMatch(racine[1], /#[0-9a-f]{3,6}\b/i, 'aucune couleur');
   // le titre, puis directement les filtres : plus de phrase d'introduction ni de bouton de création
   assert.match(html, /<h1>Personnages<\/h1>\s*<form class="personnages-filtres" id="filtres" role="search" aria-label="Filtres">/);
   assert.ok(!html.includes('personnages-nouveau') && !html.includes('Nouveau prétiré'), 'plus de bouton « + Nouveau prétiré »');

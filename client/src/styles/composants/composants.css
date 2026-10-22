@@ -78,9 +78,11 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 .comp-teinte { display: inline-block; width: 0.8rem; height: 0.8rem; margin-right: 0.45rem; vertical-align: -0.05rem; border-radius: var(--radius-xxs);
   background: var(--c); border: 1px solid color-mix(in srgb, var(--text) 30%, transparent); }
 .comp-usage { display: inline-block; font-size: var(--fs-xs); padding: 0 0.5rem; border-radius: var(--radius-pill); border: 1px solid var(--cmp-line); background: var(--cmp-soft); }
-/* gemme, bois : la magie liée dans sa couleur, et un filet de cette couleur à gauche de la ligne */
-.comp-magie { display: inline-block; font-size: var(--fs-sm); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--c); color: var(--c-texte); white-space: nowrap; }
-.comp-table tr[style*="--mag"] > :first-child { box-shadow: inset 4px 0 0 var(--mag); }
+/* gemme, bois : la magie liée dans sa couleur, et un filet de cette couleur à gauche de la ligne (la classe de la magie, sur la pastille et sur la
+   ligne : --couleur, --couleur-texte, lib/palette-css.mjs ; --mag teinte aussi les infobulles de la ligne, styles/global/infobulles.css) */
+.comp-magie { display: inline-block; font-size: var(--fs-sm); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--couleur); color: var(--couleur-texte); white-space: nowrap; }
+.comp-table tr.composant--magie { --mag: var(--couleur); }
+.comp-table tr.composant--magie > :first-child { box-shadow: inset 4px 0 0 var(--mag); }
 .comp-categorie { white-space: nowrap; }
 
 /* Mode modification : outils sous chaque tableau, ligne marquée pour suppression, ligne créée ; la note se saisit sur toute la largeur */

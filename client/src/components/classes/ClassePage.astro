@@ -6,7 +6,8 @@ import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import type { ClasseDb } from '../../lib/classes';
 import { idBulle, pageHref } from '../../lib/magies';
 import { classColor } from '../../lib/class-groups.mjs';
-import { couleurDeMagie, texteSurCouleur } from '../../lib/sort-format.mjs';
+import { texteSurCouleur } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
@@ -211,7 +212,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
         <p class="muted">Tableau sans titre sous les dons de l’onglet de la classe : une entrée par magie.</p>
         <div class="annexe-classe">
           {classe.annexe.map((a) => (
-            <article class="annexe-classe__carte" style={a.magie ? `--couleur-magie: ${couleurDeMagie(a.magie.nom)}` : undefined}>
+            <article class={a.magie ? `annexe-classe__carte annexe-classe__carte--magie ${classeDeMagie(a.magie.nom)}` : 'annexe-classe__carte'}>
               <h3>{a.magie ? <a href={pageHref(a.magie.id)}>{a.libelle}</a> : a.libelle}</h3>
               <ul>
                 {a.entrees.map((e) => (

@@ -51,6 +51,7 @@ user-invocable: false
 
 - Les tableaux viennent de la base par une ligne `<!-- guide:<bloc> -->` (`BLOCS`), sur toute page du guide. Jamais recopiés dans le texte ; chaque bloc appelé une fois ; plus de bloc `sommaire` (un marqueur inconnu arrête le rendu).
 - Les personnages fil rouge (`lib/guide-fil-rouge.mjs`) : leurs choix seulement ; les chiffres sont calculés.
+- Blocs `magies` et `magie-bonus` (`GuideBloc.astro`) : la case ou la ligne d'une magie porte la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`, skill `ui-couleurs`), jamais un style ; `.guide-magie` en tire `--c` (`styles/guide/blocs.css`). Caractéristiques, compétences et postures restent en style (`styleDeCouleur`) jusqu'à leur lot.
 
 ## Ajouter une page à la main
 

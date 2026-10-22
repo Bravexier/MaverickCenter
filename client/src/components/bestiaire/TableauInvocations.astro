@@ -15,7 +15,7 @@
 import Filtres from './Filtres.astro';
 import CarteInvoquee from './CarteInvoquee.astro';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
-import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { url } from '../../lib/wiki';
 
 interface Props {
@@ -25,7 +25,8 @@ const { invocations } = Astro.props;
 const { lignes, tableaux, facettes } = invocations;
 const P = 'i-'; // préfixe de l'état dans l'adresse (le tableau des monstres n'en a pas)
 
-const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
+// la pastille d'une magie : la classe de la magie (lib/palette-css.mjs ; styles/bestiaire/carte.css, .bmagie)
+const pastille = (nom: string) => `bmagie ${classeDeMagie(nom)}`;
 const lienDuSort = (i: (typeof tableaux)[number]['invocation']) =>
   i.magieId && i.sortId ? `${url(`${i.magieId}/`)}#sort-${i.sortId.slice(i.sortId.indexOf('#sort:') + 6)}` : null;
 const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
@@ -90,7 +91,7 @@ const npms = (t: (typeof tableaux)[number]) => {
                           {t.duo ? (
                             <span class="bmagies">
                               {l.magies.map((m) => (
-                                <span class="bmagie" style={pastille(m)}>
+                                <span class={pastille(m)}>
                                   {m}
                                 </span>
                               ))}

@@ -26,7 +26,7 @@ user-invocable: false
 - Matériaux : seule source (R62, migration `0041-materiaux-types`, table `materiau`, type Léger / Intermédiaire / Lourd / Autres). Nom, type, prix et effets sur une arme ne se modifient qu'ici ; armes et armures les lisent (skill `zone-armes`, skill `zone-armures`). « Autres » est refusé pour un matériau d'armure.
 - La fabrication d'une matière (table `recette` de genre `materiau`) est en lecture ; elle vient du tableau MATÉRIAUX retiré de la page Équipement.
 - Valeurs des monnaies non modifiables, ni l'abréviation du RF, du RO et de la PP (R61) ; le RF vaut 1 et ne se supprime pas.
-- Gemme et bois : une par magie à l'ajout.
+- Gemme et bois : une par magie à l'ajout. Leur ligne (`composant composant--magie`) et leur pastille (`comp-magie`) portent la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`, skill `ui-couleurs`), jamais un style ; `styles/composants/composants.css` en tire le filet et `--mag` (teinte des infobulles de la ligne). Le même HTML sert au mode modification (`lib/composants-rendu.mjs`).
 - Un composant ne se supprime que si rien d'autre ne le cite (le bouton grisé dit pourquoi).
 - Un objet supprimé reste dans l'inventaire ou la ceinture des fiches sous son nom, avec une note datée (R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`).
 - Ce qui est tiré d'une case est recalculé par le service (prix en RF, ligne du CONVERTISSEUR, type et marque majeur, affinité).

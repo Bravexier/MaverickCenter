@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
+import { MAGIE_PAR_DEFAUT, classeDeMagie, classeDeSecondeMagie, classesDeLaPalette } from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -209,10 +210,18 @@ test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R
   assert.equal(pi.mono_magie, true);
   assert.equal(pi.caracteristique_id, null);
   assert.match(pi.caracteristique_brut, /AU CHOIX/);
-  assert.equal(pi.couleur, '#ff9900');
+  // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), jamais un hex
+  assert.deepEqual([pi.classe, pi.classe_2], ['couleur-magie-potentiel-illimite', 'couleur-2-magie-potentiel-illimite']);
   assert.deepEqual(regles.magies.find((m) => m.id === 'magies/magie-de-la-corruption').ethnies_secondaires.sort(),
     ['races/elfe-noir#ethnie:elfe-noir-charbon', 'races/felfe#ethnie:felfe-noir']);
-  assert.ok(regles.magies.every((m) => /^#[0-9a-f]{6}$/i.test(m.couleur) && m.dieux.length >= 1), 'chaque magie a son dieu inné');
+  assert.ok(regles.magies.every((m) => m.dieux.length >= 1), 'chaque magie a son dieu inné');
+  const palette = classesDeLaPalette();
+  for (const m of regles.magies) {
+    assert.deepEqual([m.classe, m.classe_2], [classeDeMagie(m.nom), classeDeSecondeMagie(m.nom)], m.id);
+    assert.ok(palette.has(m.classe) && palette.has(m.classe_2), `${m.id} : ses classes sont dans la palette`);
+    assert.ok(!('couleur' in m) && !('texte' in m), `${m.id} : aucune couleur transmise`);
+    assert.notEqual(m.classe, `couleur-magie-${MAGIE_PAR_DEFAUT}`, `${m.id} : une magie connue de la palette`);
+  }
 });
 
 test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou l’initiative, artisanat et ses deux caractéristiques, objets de départ par rang', () => {

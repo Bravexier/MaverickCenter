@@ -121,6 +121,19 @@ function attribut(e, nom, valeur) {
 }
 
 /**
+ * La couleur d'une magie : les classes de la palette du site (lib/palette-css.mjs, posées sur chaque page ; regles.json en donne les noms, `classe` et
+ * `classe_2`), jamais une couleur écrite. `teinteDeMagie(m)` : les classes d'un élément sur la couleur de la magie `m` (rien sans magie) ; `teinte-palette` fait
+ * lire à l'élément --couleur et --couleur-texte de sa classe dans les variables de la fiche (--c, --c-texte, --texte-sur-c : styles/fiche/fiche.css).
+ */
+const teinteDeMagie = (m) => (m ? ['teinte-palette', m.classe] : []);
+
+/** Remplace les classes de la palette d'un élément (`couleur-…` et `teinte-palette`) par `classes`, sans toucher aux autres. */
+function poserTeinte(e, classes) {
+  for (const c of [...e.classList]) if ((c.startsWith('couleur-') || c === 'teinte-palette') && !classes.includes(c)) e.classList.remove(c);
+  for (const c of classes) if (!e.classList.contains(c)) e.classList.add(c);
+}
+
+/**
  * Rend le focus après une reconstruction quand `cible`, qui l'avait, ne sert plus (détachée, désactivée ou cachée) : au seul champ de saisie de même
  * sorte (son aria-label sans les numéros) qui montre le même texte (la ligne du sac sur laquelle on venait de cliquer, qu'un objet sorti du sac a fait
  * remonter) ; sinon, si `cible` était dans `bloc`, à `repli`. Jamais à un bouton (le refocaliser referait son action à la touche suivante), jamais à
@@ -185,11 +198,12 @@ const retirer = (cle, critere) => {
  * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
  * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
  */
-function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
+function pastille({ texte, couleur, texteSurCouleur, magie, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
   const bouton = el('button', {
     type: 'button',
-    class: 'pastille',
-    style: `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
+    // une magie : les classes de sa couleur (teinte) ; sinon la couleur reçue
+    class: ['pastille', ...teinteDeMagie(magie)].join(' '),
+    style: magie ? null : `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
     'aria-pressed': 'false',
     onclick: () => {
       if (bouton.hasAttribute('data-verrou')) return;
@@ -233,7 +247,7 @@ function afficherChoix(id, choix, vide = 'À choisir') {
   const faits = choix.filter(Boolean);
   cible.replaceChildren(...(faits.length
     ? faits.map((c) => el('span', {
-      class: 'choix__pastille', style: `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
+      class: ['choix__pastille', ...teinteDeMagie(c.magie)].join(' '), style: c.magie ? null : `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
       dataset: { ...(c.refus ? { refus: '' } : {}), ...(c.verrou ? { verrou: '' } : {}) }, title: c.refus || c.verrou || null,
     }, c.nom, c.verrou ? el('small', { class: 'choix__verrou' }, ' · imposée') : null))
     : [el('span', { class: 'choix__vide' }, vide)]));
@@ -311,7 +325,7 @@ function construireAlignement() {
 // ------------------------------------------------------------------ magies et dieux
 function construireMagies() {
   reconstruire($('magies-innees'), 'fixe', () => regles.magies.map((m) => pastille({
-    texte: m.nom, couleur: m.couleur, texteSurCouleur: m.texte, choisie: () => fiche.magie_innee_id === m.id,
+    texte: m.nom, magie: m, choisie: () => fiche.magie_innee_id === m.id,
     refus: () => (magiesInneesPermises(regles, fiche.race_id).has(m.id) ? null : 'magie que la race ne permet pas'),
     surClic: () => {
       fiche.magie_innee_id = fiche.magie_innee_id === m.id ? null : m.id;
@@ -329,16 +343,16 @@ function construireMagies() {
   $('bloc-carac-magie').toggleAttribute('data-a-choisir', aChoisir('carac_magie'));
   const acquiseChoisie = trouver(regles.magies, fiche.magie_acquise_id);
   afficherChoix('magie-innee', [innee && {
-    nom: innee.nom, couleur: innee.couleur, texte: innee.texte,
+    nom: innee.nom, magie: innee,
     refus: magiesInneesPermises(regles, fiche.race_id).has(innee.id) ? null : 'magie que la race ne permet pas',
   }]);
   afficherChoix('magie-acquise', [acquiseChoisie && {
-    nom: acquiseChoisie.nom, couleur: acquiseChoisie.couleur, texte: acquiseChoisie.texte, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
+    nom: acquiseChoisie.nom, magie: acquiseChoisie, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
   }], 'Aucune');
   reconstruire($('magies-acquises'), 'fixe', () => [
     pastille({ texte: 'Aucune', couleur: '#8a7a66', choisie: () => !fiche.magie_acquise_id, surClic: () => { fiche.magie_acquise_id = null; changer(); } }),
     ...regles.magies.map((m) => pastille({
-      texte: m.nom, couleur: m.couleur, texteSurCouleur: m.texte, choisie: () => fiche.magie_acquise_id === m.id,
+      texte: m.nom, magie: m, choisie: () => fiche.magie_acquise_id === m.id,
       refus: () => refusMagieAcquise(regles, fiche, m.id),
       surClic: () => {
         fiche.magie_acquise_id = fiche.magie_acquise_id === m.id ? null : m.id;
@@ -391,7 +405,7 @@ function construireResistances() {
     el('td', {}, p.cibles.length
       ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
         const magie = c.type === 'magie' ? trouver(regles.magies, c.id) : magieDeLEtat.get(c.id);
-        return el('li', { class: `resistance resistance--${c.type}`, title: detail(c), style: magie && `--c: ${magie.couleur}; --c-texte: ${magie.texte}` }, c.nom);
+        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDeMagie(magie)].join(' '), title: detail(c) }, c.nom);
       }))
       : el('span', { class: 'resistances__vide' }, '—')))));
   // la ligne sous le tableau : les résistances au choix, et la magie que la Symbiose désactive (décision R111 : ses résistances et faiblesses ne
@@ -754,11 +768,11 @@ function construireSorts() {
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
         const optionDeSort = (s) => {
           const m = couleurDe(s);
-          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, style: m ? `background-color: ${m.couleur}; color: ${m.texte}` : null, title: m?.nom }, s.nom);
+          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDeMagie(m).join(' ') || null, title: m?.nom }, s.nom);
         };
         const choisi = couleurDe(l.sort);
         const liste = el('select', {
-          style: choisi ? `--c: ${choisi.couleur}; --texte-sur-c: ${choisi.texte}` : null, dataset: choisi ? { couleur: '' } : {},
+          class: teinteDeMagie(choisi).join(' ') || null, dataset: choisi ? { couleur: '' } : {},
           title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
@@ -968,10 +982,11 @@ function ligneDInvocation(l) {
   };
   const magieDuSort = trouver(regles.magies, sort.magie_id);
   const bouton = (c, choisir) => {
+    // la couleur de ses magies, de la première à la seconde : la classe de la première, la classe de second rang de la seconde (lib/palette-css.mjs)
     const [m1 = magieDuSort, m2 = m1] = c.magies.map((id) => trouver(regles.magies, id)).filter(Boolean);
     return el('button', {
-      type: 'button', class: 'invocation-choix', 'aria-pressed': 'false', title: c.npm === null ? c.bloc : `NPM ${c.npm}`,
-      style: m1 ? `--c1: ${m1.couleur}; --c2: ${m2.couleur}` : null, onclick: choisir,
+      type: 'button', class: ['invocation-choix', ...(m1 ? ['invocation-choix--magie', m1.classe, m2.classe_2] : [])].join(' '), 'aria-pressed': 'false',
+      title: c.npm === null ? c.bloc : `NPM ${c.npm}`, onclick: choisir,
     }, c.nom, c.npm === null ? null : el('span', { class: 'invocation-choix__npm' }, ` NPM ${c.npm}`));
   };
   // choisir une créature : une marionnette règle aussi le « × N » du sort sur son NPM, s'il est à la portée du personnage
@@ -1067,7 +1082,7 @@ function construireSortPrepare() {
     }, el('option', { value: '', class: 'option-vide' }, choix.length ? '— aucun —' : `— aucun sort ${don.types.includes('attaque') ? 'd’attaque ' : ''}de NPM ${don.niveaux.join(' ou ')} dans la fiche —`),
     choix.map((x) => {
       const m = couleurDe(x.sort);
-      return el('option', { value: x.sort.id, style: m ? `background-color: ${m.couleur}; color: ${m.texte}` : null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
+      return el('option', { value: x.sort.id, class: teinteDeMagie(m).join(' ') || null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
     }));
     const jet = el('input', {
       type: 'number', min: String(jetDuSortPrepare(regles).min), max: String(jetDuSortPrepare(regles).max), step: '1', inputmode: 'numeric', class: 'sort-prepare__jet',
@@ -1082,7 +1097,7 @@ function construireSortPrepare() {
       // la couleur de la magie du sort, celle de la posture (comme le tableau des sorts et les cases des postures), posées seulement quand elles changent
       const m = couleurDe(p?.sort);
       attribut(liste, 'data-couleur', Boolean(m));
-      attribut(liste, 'style', m ? `--c: ${m.couleur}; --texte-sur-c: ${m.texte}` : null);
+      poserTeinte(liste, teinteDeMagie(m));
       jet.disabled = !p;
       if (document.activeElement !== jet) poser(jet, p?.jet ?? '');
       const texte = p ? (p.posture?.nom ?? 'aucune') : '—';
@@ -1519,7 +1534,7 @@ function construirePostures() {
     hyper?.debloque ? el('div', { class: 'posture-carte posture-carte--hyper' },
       el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
       el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
-        hyper.magies.map((m) => el('li', { class: 'posture-carte__magie', style: `--m: ${m.magie.couleur}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
+        hyper.magies.map((m) => el('li', { class: `posture-carte__magie ${m.magie.classe}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
         hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
         // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
         hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
@@ -2748,9 +2763,9 @@ function rafraichir() {
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
+  // (la classe de l'innée et la classe de second rang de l'acquise, ou de l'innée : --couleur, --couleur-2, lib/palette-css.mjs)
   racine.toggleAttribute('data-magie', Boolean(innee));
-  racine.style.setProperty('--magie-1', innee?.couleur ?? '');
-  racine.style.setProperty('--magie-2', innee ? (acquise ?? innee).couleur : '');
+  poserTeinte(racine, innee ? [innee.classe, (acquise ?? innee).classe_2] : []);
   const titre = fiche.nom || (id ? 'Prétiré sans nom' : 'Nouveau prétiré');
   $('fiche-titre').textContent = titre;
   document.title = `${titre} — Fiche de personnage — Maverick Center`;

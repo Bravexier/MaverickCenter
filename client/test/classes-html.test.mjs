@@ -148,7 +148,11 @@ test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux opt
   const bulle = /<button type="button" class="objet" data-bulle="([^"]+)" aria-describedby="\1"/.exec(html);
   assert.ok(bulle, 'objet avec infobulle');
   assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`));
-  assert.equal(compte(html, /class="annexe-classe__carte"/g), 14);
+  assert.equal(compte(html, /class="annexe-classe__carte[" ]/g), 14);
+  // une entrée liée à une magie : la classe de la magie (lib/palette-css.mjs), jamais une couleur en style
+  assert.equal(compte(html, /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-[a-z0-9-]+">/g), 14);
+  assert.match(html, /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/);
+  assert.doesNotMatch(html, /<article class="annexe-classe__carte[^>]*style=/);
   assert.match(html, /<h3><a href="[^"]*\/magies\/magie-du-sang\/">SANG<\/a><\/h3>/);
 });
 

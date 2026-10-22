@@ -70,13 +70,12 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
    toucher (components/Infobulles.astro retient le déclencheur le plus proche du pointeur) */
 :is(.arme-fiche__tuile, .pfiche__tuile) .piece { pointer-events: none; }
 
-/* ── La pastille d'une gemme, dans la couleur de sa magie : la même dans les onglets Accessoires (components/accessoires/GemmesDeLEffet.astro, l'encart
-   de src/scripts/accessoires.mjs : `--g`, `--g-texte` en style, jusqu'à leur passage aux classes) et Ceinture, sous-onglet Bâtons magiques
-   (lib/batons-rendu.mjs, demande du propriétaire du 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une
-   pastille »), où elle est un lien vers « Composants » et porte la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte,
-   lib/palette-css.mjs) ── */
-.acc-gemme { --gemme: var(--g, var(--couleur)); display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm);
-  font-weight: 600; line-height: 1.45; background: var(--gemme); color: var(--g-texte, var(--couleur-texte)); border: 1px solid color-mix(in srgb, var(--gemme) 65%, #000);
+/* ── La pastille d'une gemme, dans la couleur de sa magie : la même dans les onglets Accessoires (components/accessoires/GemmesDeLEffet.astro, copiée
+   telle quelle par l'encart de src/scripts/accessoires.mjs) et Ceinture, sous-onglet Bâtons magiques (lib/batons-rendu.mjs, demande du propriétaire du
+   2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille », où elle est un lien vers « Composants ») ; elle
+   porte la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs) ── */
+.acc-gemme { --gemme: var(--couleur); display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm);
+  font-weight: 600; line-height: 1.45; background: var(--gemme); color: var(--couleur-texte); border: 1px solid color-mix(in srgb, var(--gemme) 65%, #000);
   cursor: help; }
 a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
 a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--gemme)); outline-offset: 2px; }

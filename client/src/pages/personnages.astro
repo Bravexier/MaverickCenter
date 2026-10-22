@@ -3,15 +3,16 @@ import Base from '../layouts/Base.astro';
 import listeCss from '../styles/personnages/liste.css?raw';
 import { COLONNES } from '../lib/personnages-liste.mjs';
 import { ouvrirBase } from '../lib/donnees.mjs';
-import { couleurDeMagie } from '../lib/sort-format.mjs';
+import { classesDeDeuxMagies } from '../lib/palette-css.mjs';
 import { url } from '../lib/wiki';
 
 // Recherche des personnages (demande du propriétaire) : tous les prétirés, avec des filtres, en une liste triée par la colonne choisie ; chaque ligne
 // (portrait, nom, race, magies, niveau, rien d'autre) est tout entière le lien vers la fiche, bordée de la couleur de la magie innée, en dégradé vers
 // l'acquise en bi-magie. Les données viennent du service des personnages (GET /api/personnages/, docs/serveur.md) ; les couleurs des magies, de la
-// base au build (celles des pages de magie) ; filtres et tri : lib/personnages-liste.mjs ; le reste : src/scripts/personnages.mjs.
+// base au build : les classes de la palette de chaque magie (celles des pages de magie, lib/palette-css.mjs) ; filtres et tri : lib/personnages-liste.mjs ;
+// le reste : src/scripts/personnages.mjs.
 // CSS : styles/personnages/liste.css, inséré ici (?raw).
-const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM magie ORDER BY ordre').all().map((m) => [m.id, couleurDeMagie(String(m.nom))]));
+const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM magie ORDER BY ordre').all().map((m) => [m.id, classesDeDeuxMagies(String(m.nom))]));
 ---
 
 <Base title="Personnages" description="Rechercher les personnages prétirés : filtres et tri par colonne">
