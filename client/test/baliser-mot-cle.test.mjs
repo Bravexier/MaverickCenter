@@ -3,7 +3,7 @@
 // modifie, jamais un nom ni une rubrique de carte découpée), puis, sur une copie de data/rows et un mot d'essai, le chemin entier : mot-clé créé par le
 // service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), journal rapatrié sans conflit ; puis
 // (2026-10-18 : « Seulement là où il est pertinent ») un second passage qui retire les balises là où le mot n'a plus le sens du mot-clé, et l'entrée de
-// la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140 ; définitions selon R141 à R143).
+// la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140 ; définitions selon R141 à R143 et R146).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -180,12 +180,14 @@ test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures ex
   assert.equal(cr.contextes, undefined);
   assert.equal(baliserLeMot('Si CR : +1d. 2d6 CR (+1d/NM). 2d6 cr. Si CR = ignore 50% de l’AM.', { id: 'cr', libelle: 'CR', ...cr }).texte,
     'Si {{cr|CR}} : +1d. 2d6 {{cr|CR}} (+1d/NM). 2d6 cr. Si {{cr|CR}} = ignore 50% de l’AM.');
-  // R141 : « abomination », seule ; R142 : les mages de la Corruption ne risquent pas la mort, la corruption prend quand même la place du chakra ; R143.
+  // R141 : « abomination », seule ; R146 : seule la Corruption innée ou acquise ne risque pas la mort, pas le Potentiel Illimité ; R142 : la corruption prend quand même la place du chakra ; R143.
   // La définition de l'entrée est la trace de ce que le service a écrit (lot du 2026-10-22) : l'outil ne la pose que sur un mot-clé qu'il crée, et la
   // définition affichée est celle de la base (mot_cle.description), que le site de dev peut modifier ensuite.
   const corruption = mots.find((m) => m.libelle === 'Corruption');
   assert.doesNotMatch(corruption.description, /abomination de corruption|n'y sont pas soumis/);
-  assert.match(corruption.description, /devient une abomination\. Les mages de la Corruption ne risquent pas cette mort/);
+  assert.match(corruption.description, /devient une abomination\. Seuls ceux qui ont la Corruption en magie innée ou acquise ne risquent pas cette mort/);
+  assert.match(corruption.description, /Le Potentiel Illimité, même s'il peut s'en servir, peut en mourir s'il en cumule trop\./);
+  assert.doesNotMatch(corruption.description, /Les mages de la Corruption ne risquent pas/);
   assert.match(corruption.description, /le repos et la méditation ne la font pas baisser/);
 });
 
@@ -202,7 +204,7 @@ test('entrée de la Corruption : l’effet de ses contextes exclus (le sens de l
   // la magie : son nom, ses mages, ses sorts, une liste de magies, l'exception de l'Elfe Noir (R15, R20)
   for (const t of ['L’Arcane et la Corruption ne sont vulnérables à aucune magie.', 'pour les magies de l’Arcane, de la Corruption et du Potentiel Illimité',
     'l’Arcane, la Corruption et le Potentiel Illimité', 'sauf la Corruption de l’Elfe Noir Charbon', 'Ceux qui utilisent la magie de la Corruption',
-    'les mages de la Corruption', 'Connais tous les sorts de corruption.', 'INTELLIGENCE : Arcanique, Glace, Temps/Espace, Corruption', 'Inflige 2d8 dégâts de corruption.']) {
+    'les mages de la Corruption', 'Seuls ceux qui ont la Corruption en magie innée ou acquise', 's’ils ont la Corruption en magie acquise', 'Connais tous les sorts de corruption.', 'INTELLIGENCE : Arcanique, Glace, Temps/Espace, Corruption', 'Inflige 2d8 dégâts de corruption.']) {
     assert.equal(balisees(t, corruption), 0, t);
   }
   // la jauge : comptée, reçue, perdue, dépensée ; « temps » ou « elfe » seuls n'en font pas une liste de magies

@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R145, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R146, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -118,6 +118,7 @@ Questions :
 | Q44 | Les « sauf » d'une maîtrise au choix (`classe_maitrise_arme`) écrits autrement que la famille : « Hast » (Cuirassé, Namazu) = LANCE/ARME D'HAST ? « Bâton » (Moine, Satyre) = BÂTON DE COMBAT ? « Arme jet » (Médusain) = ARME DE JET ? Et « Masse » (Clerc, Flagelleur, Minotaure) = MASSE/MARTEAU, « Épée » = ÉPÉES, comme la fiche le lit déjà ? | **Décidé** (R138) |
 | Q45 | « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus » (R119) : si la famille choisie pour le bonus n'a aucun point de maîtrise sur la fiche, faut-il le signaler (sans bloquer, comme `v_personnage_controle`) ? « +2 points de maîtrise avec l'arme déterminée avant » (Mage saphir, Mage émeraude, Mage jade) désigne-t-il cette même arme ? | **Reporté** : refonte des niveaux de maîtrise, tâche à part (réponse du 2026-10-22) |
 | Q46 | Résistance à une **magie** au choix ou tirée (R137 : Ocultomancien « Résilience », Anansi d'Arcane) : le **Potentiel Illimité** est-il une magie qu'on peut choisir ou tirer ? La fiche ne le propose pas : il n'est pas une forme de magie qu'on subit (« L'une des 14 formes de magie hors PI », R98) et n'a pas d'altération d'état (`etat_magie`) ; ses options sont les 12 autres magies, sans l'Arcane ni la Corruption | **Décidé** (R139) : non, le Potentiel Illimité reste à part (déjà ainsi) |
+| Q47 | Archimage, « **Pacte Noir** » (niveau 15 : « Permet d'utiliser la corruption accumulée pour lancer des sorts de corruption. ») : le don ne dit pas qu'il donne la Corruption en magie acquise. Un Archimage qui a « Pacte Noir » sans avoir la Corruption en magie innée ou acquise échappe-t-il à la mort au maximum de corruption (R146) ? | Les textes suivent R146 à la lettre : seuls ceux qui ont la Corruption en magie innée ou acquise y échappent ; rien n'est dit de « Pacte Noir » |
 
 ## 4. Questions de la relecture du 2026-10-15
 

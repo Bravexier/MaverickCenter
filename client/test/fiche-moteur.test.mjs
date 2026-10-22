@@ -543,9 +543,15 @@ test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0)
   const vocabulaire = chargerVocabulaire(db);
   const corps = (id) => texteSansBalises(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
   assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
-  // décision R142 : la magie de la Corruption ne dispense pas de cette règle ; seule la mort au maximum épargne ses mages (R140)
+  // décision R142 : la magie de la Corruption ne dispense pas de cette règle ; seule la mort au maximum est épargnée, à la Corruption innée ou acquise (R146)
   assert.doesNotMatch(corps('guide/fiche-attributs'), /ne sont pas concernés par cette règle/);
   assert.doesNotMatch(corps('magies/magie-de-la-corruption'), /n'empiète pas dans l'espace du chakra/);
+  // décision R146 : seule la Corruption innée ou acquise échappe à la mort au maximum ; le Potentiel Illimité, même s'il peut s'en servir, peut en mourir
+  for (const id of ['guide/aide-memoire', 'guide/blessures-et-etats', 'guide/creer-son-personnage', 'guide/fiche-attributs', 'guide/la-magie-en-jeu']) {
+    assert.match(corps(id), /ont la Corruption en magie innée ou acquise/i, id);
+    assert.match(corps(id), /le Potentiel Illimité, même s[’']il peut (?:s[’']en servir|l[’']utiliser), peut en mourir s[’']il en cumule trop/i, id);
+    assert.doesNotMatch(corps(id), /(?:mages de la Corruption|utilisent la magie de la corruption) ne (?:risquent|meurent)/i, id);
+  }
   assert.match(corps('guide/creer-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (guide/finaliser-son-personnage, fusionnée)
   // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
   const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
