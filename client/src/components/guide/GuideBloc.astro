@@ -1,7 +1,6 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { pagesDeReference } from '../../lib/guide.mjs';
-import { couleurDeCaracteristique, couleurDePosture, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
 import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
   chargerCompetences,
@@ -14,7 +13,7 @@ import {
 } from '../../lib/guide-db.mjs';
 import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
-import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { classeDeCaracteristique, classeDeMagie, classeDePosture, cssDesFamilles } from '../../lib/palette-css.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 
 // Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
@@ -102,7 +101,7 @@ const moitieDuChakra = (chakra: number) =>
                   <dt>Magie innée</dt>
                   <dd><a href={pageHref(p.magie.id)}>{p.magie.nom}</a></dd>
                   <dt>Bonus de caractéristique</dt>
-                  <dd>+1 en {p.magie.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(p.magie.caracteristique_id))}>{p.magie.caracteristique}</span> : 'au choix ou aléatoire'}</dd>
+                  <dd>+1 en {p.magie.caracteristique_id ? <span class={`guide-carac ${classeDeCaracteristique(p.magie.caracteristique_id)}`}>{p.magie.caracteristique}</span> : 'au choix ou aléatoire'}</dd>
                   <dt>Chakra offert</dt>
                   <dd>{p.magie.chakra}</dd>
                   {p.magie.sante > 0 && (<><dt>Santé offerte</dt><dd>{p.magie.sante}</dd></>)}
@@ -211,7 +210,7 @@ const moitieDuChakra = (chakra: number) =>
                   <span class="guide-magie__nom">{m.nom}</span>
                 </a>
               </th>
-              <td>{m.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(m.caracteristique_id))}>{m.caracteristique}</span> : (m.caracteristique ?? '—')}</td>
+              <td>{m.caracteristique_id ? <span class={`guide-carac ${classeDeCaracteristique(m.caracteristique_id)}`}>{m.caracteristique}</span> : (m.caracteristique ?? '—')}</td>
               <td class="guide-nombre">{m.chakra ?? '—'}</td>
               <td class="guide-nombre">{m.sante ?? '—'}</td>
             </tr>
@@ -248,7 +247,7 @@ const moitieDuChakra = (chakra: number) =>
   bloc === 'competences' && (
     <div class="guide-competences">
       {competences.map((c) => (
-        <section class="guide-competences__groupe" style={styleDeCouleur(couleurDeCaracteristique(c.id))} aria-labelledby={`competences-${c.id}`}>
+        <section class={`guide-competences__groupe ${classeDeCaracteristique(c.id)}`} aria-labelledby={`competences-${c.id}`}>
           <h4 id={`competences-${c.id}`}>
             <span class="guide-carac">{c.nom}</span> <span class="guide-lettre">({c.lettre})</span>
           </h4>
@@ -338,10 +337,12 @@ const moitieDuChakra = (chakra: number) =>
 {
   bloc === 'postures' && (
     <div class="guide-postures">
+      {/* les classes des postures (famille d'une zone : lib/palette-css.mjs#FAMILLES_DES_ZONES), émises par le seul bloc qui les pose */}
+      <style is:inline set:html={cssDesFamilles(['posture'])}></style>
       {postures.map((p) => {
         const id = idBulle('posture');
         return (
-          <section class="guide-posture" style={styleDeCouleur(couleurDePosture(p.id))} aria-labelledby={`${id}-titre`}>
+          <section class={`guide-posture ${classeDePosture(p.id)}`} aria-labelledby={`${id}-titre`}>
             <h3 id={`${id}-titre`}>
               <span class="bulle-zone">
                 <button type="button" class="guide-posture__nom" data-bulle={id} aria-describedby={id} title={p.description}>

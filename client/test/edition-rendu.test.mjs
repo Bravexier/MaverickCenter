@@ -74,13 +74,13 @@ test('métiers : bonus liés en pastilles (R33, R37), texte libre gardé, artisa
   const ctx = { competences, caracteristiques, objets };
   const bonus = RENDUS['metier-bonus']('+1 INI, +2% Athlétisme OU Équilibre, +1 butin pour les ingrédients, +1 Vitesse nage', {}, ctx);
   assert.match(bonus, /^<div class="metier-bonus"><span class="metier-bonus__valeur">\+1<\/span> <span class="metier-cible metier-cible--attribut"[^>]*>Initiative<\/span><\/div>/);
-  assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible" style="--c: #ff6666; [^"]*" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible" style="--c: #99ff66;/);
+  assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible couleur-caracteristique-force" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible couleur-caracteristique-agilite" title/);
   assert.match(bonus, /<div class="metier-bonus metier-bonus--texte" title="[^"]*">\+1 butin pour les ingrédients<\/div>/);
   assert.match(bonus, /<span class="metier-cible metier-cible--attribut" title="Bonus : vitesse de nage \(« Vitesse nage »\)">Vitesse de nage<\/span><\/div>$/, 'vitesse de nage (R37)');
   assert.equal(RENDUS['metier-bonus']('', {}, ctx), '');
   assert.match(RENDUS['metier-artisanat'](null, {}), /class="vide"/);
   assert.equal(RENDUS['metier-artisanat']('Golems <3', {}), 'Golems &lt;3');
-  assert.match(RENDUS['metier-carac']('volonte', {}, ctx), /^<span class="metier-carac" style="--c: #ff99ff; [^"]*" title="10 × Volonté">Volonté<\/span>$/);
+  assert.match(RENDUS['metier-carac']('volonte', {}, ctx), /^<span class="metier-carac couleur-caracteristique-volonte" title="10 × Volonté">Volonté<\/span>$/);
   assert.equal(RENDUS['metier-carac'](null, {}, ctx), '');
   assert.match(RENDUS['metier-equipement']('Rien', {}, ctx), /class="vide"/);
   const equipement = RENDUS['metier-equipement']('Corde, Pelle OU Faux', {}, ctx);

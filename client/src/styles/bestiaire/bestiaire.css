@@ -198,7 +198,6 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .btable { border-collapse: separate; border-spacing: 0; font-size: var(--fs-md); }
 .btable thead th { position: sticky; top: 0; z-index: 3; }
 .btable thead th:first-child { left: 0; z-index: 4; }
-.btable thead th.carac { background: var(--c); color: var(--c-texte); text-align: center; }
 .btri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }
 .btri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
 th[aria-sort="ascending"] .btri::after { content: '↑'; opacity: 1; }

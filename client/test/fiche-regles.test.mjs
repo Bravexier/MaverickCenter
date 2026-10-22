@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
+import { classeDeCaracteristique, classeDePosture } from '../src/lib/palette-css.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { MAGIE_PAR_DEFAUT, classeDeMagie, classeDeSecondeMagie, classesDeLaPalette } from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
@@ -115,9 +115,13 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
   assert.equal(regles.constantes['alignement.ecart_axe'], 5);
 });
 
-test('caractéristiques : l’ordre de la fiche et leur couleur (demande du propriétaire), que leurs compétences reprennent ; texte foncé sur ces couleurs claires', () => {
+test('caractéristiques : l’ordre de la fiche et leur couleur (demande du propriétaire), que leurs compétences reprennent : la classe de la palette, jamais une couleur', () => {
   assert.deepEqual(regles.caracteristiques.map((c) => c.nom), ['Force', 'Volonté', 'Intelligence', 'Perception', 'Social', 'Agilité']);
-  for (const c of regles.caracteristiques) assert.deepEqual([c.couleur, c.texte], [couleurDeCaracteristique(c.id), '#171210'], c.id);
+  for (const c of regles.caracteristiques) {
+    assert.equal(c.classe, classeDeCaracteristique(c.id), c.id);
+    assert.ok(!('couleur' in c) && !('texte' in c), `${c.id} : plus de couleur dans regles.json`);
+  }
+  assert.deepEqual(regles.caracteristique_par_defaut, { classe: 'couleur-caracteristique-par-defaut' }, 'une compétence inconnue');
   assert.ok(regles.competences.every((k) => regles.caracteristiques.some((c) => c.id === k.caracteristique_id)), 'chaque compétence trouve la couleur de sa caractéristique');
 });
 
@@ -240,7 +244,8 @@ test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou
 test('postures (sélecteur de la page, demande du propriétaire) : les six de la base dans leur ordre, leur couleur, leurs effets du tableau de la fiche', () => {
   assert.deepEqual(regles.postures.map((p) => p.id), db.prepare('SELECT id FROM posture ORDER BY ordre').all().map((r) => r.id));
   for (const p of regles.postures) {
-    assert.equal(p.couleur, couleurDePosture(p.id));
+    assert.equal(p.classe, classeDePosture(p.id));
+    assert.ok(!('couleur' in p) && !('texte' in p), `${p.id} : plus de couleur dans regles.json`);
     assert.deepEqual(p.effets, db.prepare("SELECT texte FROM posture_effet WHERE posture_id = ? AND version = 'fiche' ORDER BY rang").all(p.id).map((r) => r.texte));
   }
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage'").get().sql, /posture_id\s+TEXT\s+REFERENCES posture\(id\)/, 'la fiche garde sa posture (migration 0027)');

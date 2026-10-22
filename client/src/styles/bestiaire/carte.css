@@ -110,7 +110,8 @@ html:not(.js) .bcarte__fermer { display: none; }
 /* sans échelle choisie (sans JavaScript, impression) : « · EP n » à la ligne, les tuiles des trois colonnes gardent la même hauteur */
 .bcarte:not([data-ep]) .btrio .bep-ep { display: block; }
 .bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
-.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: var(--radius); background: var(--c); color: var(--c-texte); }
+/* une case par caractéristique, dans sa couleur : la classe de la caractéristique (`.couleur-caracteristique-<id>`, lib/palette-css.mjs) */
+.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: var(--radius); background: var(--couleur); color: var(--couleur-texte); }
 .bcarac__sigle { font-size: var(--fs-xxs); font-weight: 700; }
 .bcarac__val { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Capacités : une tuile chacune, comme les dons de classe (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière

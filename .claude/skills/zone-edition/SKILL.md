@@ -35,7 +35,7 @@ user-invocable: false
 - Une colonne tirée des tables (corps et résumé des pages typées, `donnees` des fiches de dons) est une colonne dérivée (`colonneDerivee`, `serveur/edition.mjs`) : le rejeu la refait (`recalculerLesPages`), elle n'est jamais recopiée du journal.
 - Rien des fiches de personnages ne va au journal : `TABLES_INTERDITES` contient la section 13 (skill `zone-fiches-base`).
 - `Edition.astro` n'est pas dans la version portable (`INLINE_CSS=1`).
-- Un HTML redessiné par l'éditeur pose les couleurs comme la page construite : les classes de la palette (`lib/palette-css.mjs`, que l'éditeur peut importer, hors version portable : `scripts/edition/races.mjs`, `edition-rendu.mjs` par les rendus du bestiaire, des composants et de la ceinture), jamais une couleur de magie en style (skill `ui-couleurs`).
+- Un HTML redessiné par l'éditeur pose les couleurs comme la page construite : les classes de la palette (`lib/palette-css.mjs`, que l'éditeur peut importer, hors version portable : `scripts/edition/races.mjs`, `edition-rendu.mjs` par les rendus du bestiaire, des composants et de la ceinture), jamais une couleur de magie, de caractéristique ou de compétence en style (skill `ui-couleurs` : `metier-cible`, `metier-carac` et la compétence d'une arme portent la classe de leur caractéristique).
 
 ## Rejeu du journal
 - `rejouerLeJournal` (`serveur/edition.mjs`) rejoue le journal par `rejouer` (`serveur/edition-journal.mjs`). Son adaptateur (`adapter`) relit les écritures d'avant certaines migrations : mots-clés et glossaire (skill `zone-mots-cles`), capacités de monstre (skill `zone-bestiaire`), armures et boucliers (skill `zone-armures`), coût secondaire des sorts.

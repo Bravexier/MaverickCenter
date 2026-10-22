@@ -92,12 +92,20 @@ test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans
   const debut = main.indexOf('<div class="armes-filtre js-seul" role="group"');
   assert.ok(debut > 0, 'le filtre');
   const filtre = main.slice(debut, main.indexOf('</div>', debut));
-  const boutons = [...filtre.matchAll(/<button type="button" class="arme-comp armes-filtre__choix" data-competence="([^"]+)" aria-pressed="false" style="--c1: ([^;]+); --c2: [^"]*" title="([^"]+)">([^<]+)<\/button>/g)];
+  // la couleur : la classe de la caractéristique et celle de son second rang (lib/palette-css.mjs), jamais un style
+  const boutons = [...filtre.matchAll(/<button type="button" class="arme-comp armes-filtre__choix (couleur-caracteristique-[\w-]+) couleur-2-caracteristique-[\w-]+" data-competence="([^"]+)" aria-pressed="false" title="([^"]+)">([^<]+)<\/button>/g)]
+    .map(([tout, classe, id, titre, libelle]) => [tout, id, classe, titre, libelle]);
   assert.deepEqual(boutons.map((m) => m[1]), Object.keys(COMPETENCES_D_ARME));
   assert.deepEqual(boutons.map((m) => m[4]), ['Lourde', 'Légère', 'Arc', 'Arbalète']);
   const couleur = Object.fromEntries(boutons.map((m) => [m[4], m[2]]));
   assert.equal(couleur.Arc, couleur.Lourde, 'l’Arc a la couleur de la Force, comme l’Arme Lourde');
   assert.notEqual(couleur['Arbalète'], couleur.Lourde);
+  assert.deepEqual(couleur, { Lourde: 'couleur-caracteristique-force', Légère: 'couleur-caracteristique-agilite', Arc: 'couleur-caracteristique-force', Arbalète: 'couleur-caracteristique-perception' }, 'R48');
+  assert.doesNotMatch(main, /class="arme-comp[^"]*"[^>]*style=/, 'aucune couleur de compétence en style');
+  // une arme de deux compétences : la classe de la première caractéristique et le second rang de la seconde, émis par l'onglet
+  for (const m of main.matchAll(/<span class="arme-comp(?: arme-comp--deux)? (couleur-caracteristique-[\w-]+) (couleur-2-caracteristique-[\w-]+)"/g)) {
+    assert.ok(html.includes(`.${m[2]}{`), `${m[2]} : émise par la page`);
+  }
   assert.match(filtre, /data-armes-filtre-tout hidden>Toutes</);
   assert.ok(!main.includes('Précision'), 'plus de « Précision »');
   // chaque ligne porte ses compétences, toutes parmi celles du filtre (lib/armes-filtres.mjs les lit)

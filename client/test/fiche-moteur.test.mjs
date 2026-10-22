@@ -631,10 +631,12 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   const combinaisons = new Set();
   for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
   assert.deepEqual([...combinaisons].sort(), [...titres].sort());
-  // la pastille : une couleur par alignement possible (demande du propriétaire : celle de son titre dans le guide pour MJ), et le texte lisible dessus
+  // la pastille : une couleur par alignement possible (demande du propriétaire : celle de son titre dans le guide pour MJ), par sa classe de la palette
+  // (lib/palette-css.mjs, qui pose le texte lisible dessus), jamais une couleur ; celle d'un alignement inconnu à part
   assert.deepEqual(Object.keys(regles.alignements).sort(), [...combinaisons].sort());
-  assert.deepEqual(regles.alignements['Loyal Bon'], { couleur: '#45818e', texte: '#171210' });
-  assert.deepEqual(regles.alignements['Chaotique Mauvais'], { couleur: '#cc0000', texte: '#ffffff' });
+  assert.deepEqual(regles.alignements['Loyal Bon'], { classe: 'couleur-alignement-loyal-bon' });
+  assert.deepEqual(regles.alignements['Chaotique Mauvais'], { classe: 'couleur-alignement-chaotique-mauvais' });
+  assert.deepEqual(regles.alignement_par_defaut, { classe: 'couleur-alignement-par-defaut' });
 });
 
 test('dé de la famille d’armes : le Pugilat selon la Force (« D6 1-2 Force, D8 3-4 Force, D10 5 Force »), +1 de la magie innée compris ; les autres leur dé', () => {

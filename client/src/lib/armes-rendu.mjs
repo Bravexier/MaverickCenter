@@ -11,10 +11,9 @@ import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, COMPETENCES_D_ARME, competencesDArme, coutEnRo,
   durabiliteDeLArme, LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
 } from './arme-champs.mjs';
-import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
-import { texteSurCouleur } from './sort-format.mjs';
+import { classesDeDeuxCaracteristiques } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -50,15 +49,17 @@ function deAffiche(ligne, ctx = {}) {
 
 /**
  * Pastille de la compétence (décision R48) : la couleur de la caractéristique de chaque compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité,
- * Arbalète : Perception), en dégradé pour deux ; la compétence et sa caractéristique en infobulle.
+ * Arbalète : Perception), en dégradé pour deux ; la compétence et sa caractéristique en infobulle. La couleur : la classe de la première
+ * caractéristique et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxCaracteristiques ; les seconds rangs sont
+ * émis par components/armes/ArmesPage.astro), jamais un style.
  */
 export function htmlDeCompetence(competenceBrut, ctx = {}) {
   const comps = competencesDArme(competenceBrut);
   if (!comps.length) return competenceBrut ? `<span class="arme-comp arme-comp--texte">${e(competenceBrut)}</span>` : VIDE;
   const carac = new Map((ctx.caracteristiques ?? []).map((c) => [c.id, c.nom]));
-  const [c1, c2 = c1] = comps.map((c) => couleurDeCaracteristique(c.caracteristique_id));
+  const couleurs = classesDeDeuxCaracteristiques(comps[0].caracteristique_id, comps[1]?.caracteristique_id).join(' ');
   const titre = comps.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ');
-  return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''}" data-competences="${comps.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
+  return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''} ${couleurs}" data-competences="${comps.map((c) => c.id).join(' ')}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
 }
 
 /**
@@ -69,8 +70,8 @@ export function htmlDuFiltreDeCompetence(id, ctx = {}) {
   const c = COMPETENCES_D_ARME[id];
   if (!c) return '';
   const carac = new Map((ctx.caracteristiques ?? []).map((x) => [x.id, x.nom])).get(c.caracteristique_id) ?? c.caracteristique_id;
-  const fond = couleurDeCaracteristique(c.caracteristique_id);
-  return `<button type="button" class="arme-comp armes-filtre__choix" data-competence="${e(id)}" aria-pressed="false" style="--c1: ${fond}; --c2: ${fond}; --c-texte: ${texteSurCouleur(fond)}" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
+  const couleurs = classesDeDeuxCaracteristiques(c.caracteristique_id).join(' ');
+  return `<button type="button" class="arme-comp armes-filtre__choix ${couleurs}" data-competence="${e(id)}" aria-pressed="false" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
 }
 
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */

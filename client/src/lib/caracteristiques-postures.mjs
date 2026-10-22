@@ -1,10 +1,11 @@
-// Couleurs des six caractéristiques (et des compétences qui en dépendent) et des six postures (demande du propriétaire). Fonctions pures.
+// Couleurs des six caractéristiques (et des compétences qui en dépendent), des six postures et des neuf alignements (demande du propriétaire). Fonctions
+// pures. La valeur de chaque couleur est ici (la règle) ; une page n'en pose que la classe (lib/palette-css.mjs, familles `caracteristique`, `posture`,
+// `alignement`, plus la classe `par-defaut` de chacune, de valeur COULEUR_NEUTRE : choix du propriétaire du 2026-10-22, « Module JS → classe »).
 //
 // Repère visuel sans valeur de règle, comme la couleur d'une magie (sort-format.mjs#couleurDeMagie) ou d'une catégorie de classe
 // (class-groups.mjs#classColor) : une compétence prend la couleur de sa caractéristique (competence.caracteristique_id). Clés = identifiants
 // de la base : `caracteristique.id`, et la fin de `posture.id` (« guide/postures#posture:offensif » → « offensif »). Toutes ces couleurs sont
-// claires : un texte posé dessus est presque noir (texteSurCouleur), dans les deux thèmes.
-import { texteSurCouleur } from './sort-format.mjs';
+// claires : un texte posé dessus est presque noir (sort-format.mjs#texteSurCouleur, posé par la classe), dans les deux thèmes. Sans import.
 
 export const COULEURS_CARACTERISTIQUES = {
   force: '#ff6666',
@@ -41,17 +42,20 @@ export const COULEURS_ALIGNEMENTS = {
   'Chaotique Mauvais': '#cc0000',
 };
 
-/** Couleur d'une caractéristique ou d'une posture absente des listes (aucune aujourd'hui : test/caracteristiques-postures.test.mjs). */
+/**
+ * Couleur d'une caractéristique, d'une posture ou d'un alignement absent des listes (aucun aujourd'hui : test/caracteristiques-postures.test.mjs) ; sa
+ * classe est `couleur-<famille>-par-defaut` (lib/palette-css.mjs).
+ */
 export const COULEUR_NEUTRE = '#cccccc';
 
 /** Couleur d'une caractéristique, d'après son id (« force ») ; celle d'une compétence est celle de sa caractéristique. */
 export const couleurDeCaracteristique = (id) => COULEURS_CARACTERISTIQUES[id] ?? COULEUR_NEUTRE;
 
+/** La clé d'une posture (« offensif »), d'après son id dans la base (« guide/postures#posture:offensif ») ou sa clé. */
+export const cleDePosture = (id) => String(id).slice(String(id).lastIndexOf(':') + 1);
+
 /** Couleur d'une posture, d'après son id dans la base (« guide/postures#posture:offensif ») ou sa clé (« offensif »). */
-export const couleurDePosture = (id) => COULEURS_POSTURES[String(id).slice(String(id).lastIndexOf(':') + 1)] ?? COULEUR_NEUTRE;
+export const couleurDePosture = (id) => COULEURS_POSTURES[cleDePosture(id)] ?? COULEUR_NEUTRE;
 
 /** Couleur d'un alignement, d'après son nom (« Loyal Bon »). */
 export const couleurDAlignement = (nom) => COULEURS_ALIGNEMENTS[nom] ?? COULEUR_NEUTRE;
-
-/** Variables CSS d'un élément teinté : `--c` (la couleur) et `--c-texte` (le texte lisible dessus). */
-export const styleDeCouleur = (couleur) => `--c: ${couleur}; --c-texte: ${texteSurCouleur(couleur)}`;

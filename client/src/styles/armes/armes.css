@@ -124,9 +124,11 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme-effet { display: block; }
 .arme-effet + .arme-effet { margin-top: 0.2rem; }
 
-/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux */
+/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux ;
+   la classe de la première caractéristique (--couleur, --couleur-texte) et la classe de second rang de la seconde, ou de la même (--couleur-2 :
+   lib/palette-css.mjs, posées par lib/armes-rendu.mjs), jamais un style */
 .arme-comp { display: block; padding: 0.12rem 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
-  background: linear-gradient(90deg, var(--c1), var(--c2)); color: var(--c-texte, #171210); }
+  background: linear-gradient(90deg, var(--couleur), var(--couleur-2, var(--couleur))); color: var(--couleur-texte); }
 .arme-comp--texte { background: none; color: inherit; font-weight: 400; }
 
 /* Types de dégâts */

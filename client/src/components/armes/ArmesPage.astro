@@ -6,6 +6,7 @@ import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../..
 import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { cssDesSecondsRangs } from '../../lib/palette-css.mjs';
 import Tableau from '../Tableau.astro';
 import TableauArmes from './TableauArmes.astro';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
@@ -40,9 +41,13 @@ const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
 // filtre par compétence (demande du propriétaire ; lib/armes-filtres.mjs) : un bouton par compétence d'arme, dans la couleur de sa caractéristique
 // (décision R48), qui sert aussi de légende aux pastilles des tableaux
 const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompetence(id, contexte));
+// le dégradé d'une arme de deux compétences : les classes de second rang des caractéristiques (--couleur-2), émises par le seul onglet qui les pose
+// (lib/palette-css.mjs#cssDesSecondsRangs ; les classes des caractéristiques sont sur chaque page)
+const secondsRangs = cssDesSecondsRangs('caracteristique');
 ---
 
 <style is:inline set:html={armesCss}></style>
+<style is:inline set:html={secondsRangs}></style>
 <script is:inline>
   document.documentElement.classList.add('js');
 </script>

@@ -8,9 +8,8 @@
 // échelle selon les décisions R55 (« +2 tous les 3 EP ») et R59 (« on ne compte pas le EP1 ») ; une capacité « [EPN] » n'est montrée qu'à partir de l'EP N
 // (décision R56) ; le texte qui suit un trait du doc est signalé par un panneau « Attention » (htmlDAttention). Fonctions pures, chaîne HTML en sortie,
 // tout texte échappé.
-import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
-import { classesDeDeuxMagies } from './palette-css.mjs';
+import { classeDeCaracteristique, classesDeDeuxMagies } from './palette-css.mjs';
 import { avecLeursBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 import {
@@ -51,7 +50,7 @@ export const htmlDesCaracteristiques = (valeurs, { ecrites = null, bonus = [] } 
     const valeur = calcule
       ? `<span class="bcarac__val bcalcul" title="${e(`Écrit : ${ecrites[k] ?? '—'}${bonus[k]?.length ? `, ${bonus[k].join(', ')}` : ''}`)}">${valeurs[k] ?? '—'}</span>`
       : `<span class="bcarac__val">${valeurs[k] ?? '—'}</span>`;
-    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span>${valeur}</span>`;
+    return `<span class="bcarac ${classeDeCaracteristique(id)}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span>${valeur}</span>`;
   }).join('')}</span>`;
 
 const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;

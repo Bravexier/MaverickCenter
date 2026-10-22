@@ -1,5 +1,6 @@
-// Couleurs des caractéristiques (et de leurs compétences) et des postures (lib/caracteristiques-postures.mjs), demande du propriétaire :
-// les couleurs telles qu'il les a données, une pour chaque ligne des tables caracteristique et posture de la base.
+// Couleurs des caractéristiques (et de leurs compétences), des postures et des alignements (lib/caracteristiques-postures.mjs), demande du propriétaire :
+// les couleurs telles qu'il les a données, une pour chaque ligne des tables caracteristique et posture de la base. Les pages en posent la classe
+// (lib/palette-css.mjs : test/palette-css.test.mjs), jamais la couleur.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -9,10 +10,11 @@ import {
   COULEURS_POSTURES,
   couleurDAlignement,
   couleurDeCaracteristique,
+  cleDePosture,
   couleurDePosture,
-  styleDeCouleur,
 } from '../src/lib/caracteristiques-postures.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { alignementDe } from '../src/lib/fiche-moteur.mjs';
 import { texteSurCouleur } from '../src/lib/sort-format.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -40,6 +42,8 @@ test('une posture se trouve par son id dans la base ou par sa clé ; l’inconnu
   assert.equal(couleurDePosture('guide/postures#posture:focus'), COULEURS_POSTURES.focus);
   assert.equal(couleurDePosture('vigilance'), COULEURS_POSTURES.vigilance);
   assert.equal(couleurDePosture('guide/postures#posture:inconnue'), COULEUR_NEUTRE);
+  assert.equal(cleDePosture('guide/postures#posture:focus'), 'focus');
+  assert.equal(cleDePosture('focus'), 'focus');
   assert.equal(couleurDeCaracteristique('chance'), COULEUR_NEUTRE);
 });
 
@@ -48,7 +52,6 @@ test('couleurs claires : le texte posé dessus est foncé, dans les deux thèmes
     assert.match(couleur, /^#[0-9a-f]{6}$/);
     assert.equal(texteSurCouleur(couleur), '#171210', couleur);
   }
-  assert.equal(styleDeCouleur('#ff6666'), '--c: #ff6666; --c-texte: #171210');
 });
 
 test('alignements : la couleur de leur titre dans « Les neuf alignements » du guide pour MJ (demande du propriétaire)', () => {
@@ -59,4 +62,12 @@ test('alignements : la couleur de leur titre dans « Les neuf alignements » du 
   });
   assert.equal(couleurDAlignement('Chaotique Mauvais'), '#cc0000');
   assert.equal(couleurDAlignement('Neutre Pur'), COULEUR_NEUTRE);
+  // chaque alignement que la fiche peut calculer (fiche-moteur.mjs#alignementDe : les trois tendances de chaque axe) a sa couleur, et sa classe
+  const regles = { constantes: { 'alignement.ecart_axe': 5 } };
+  const calcules = new Set();
+  for (const loi of [[5, 0], [0, 0], [0, 5]]) for (const bien of [[5, 0], [0, 0], [0, 5]]) {
+    const fiche = { alignement_loyal: loi[0], alignement_chaotique: loi[1], alignement_bon: bien[0], alignement_mauvais: bien[1] };
+    calcules.add(alignementDe(regles, fiche).nom);
+  }
+  assert.deepEqual([...calcules].sort(), Object.keys(COULEURS_ALIGNEMENTS).sort());
 });

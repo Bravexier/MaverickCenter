@@ -38,13 +38,14 @@ th[aria-sort="descending"] .metiers-tri::after { content: '↓'; opacity: 1; col
 .metier__choisir:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: var(--radius-xs); }
 .metier__bonus { min-width: 10rem; }
 /* Bonus (décision R33) : un rang par ligne ; chaque compétence visée (son Acquis) ou l'initiative est une pastille dans la couleur de sa
-   caractéristique (lib/caracteristiques-postures.mjs, --c / --c-texte posés par lib/edition-rendu.mjs) ; un bonus en texte libre reste en italique */
+   caractéristique (sa classe `.couleur-caracteristique-<id>`, lib/palette-css.mjs, posée par lib/edition-rendu.mjs : --couleur, --couleur-texte) ;
+   un bonus en texte libre reste en italique */
 .metier-bonus + .metier-bonus { margin-top: 0.2rem; }
 .metier-bonus__valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
 .metier-bonus__ou, .metier-objets__ou { font-size: var(--fs-xs); color: var(--muted); }
 .metier-bonus--texte { font-style: italic; color: var(--muted); }
 .metier-cible, .metier-carac { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); line-height: 1.5; white-space: nowrap;
-  background: var(--c, var(--met-soft)); color: var(--c-texte, var(--text)); }
+  background: var(--couleur, var(--met-soft)); color: var(--couleur-texte, var(--text)); }
 .metier-cible--attribut { background: var(--met-soft); color: var(--text); border: 1px solid var(--met-line); }
 /* Caractéristiques de l'artisanat (décision R34) : deux pastilles, « + » entre elles ; « — » quand le métier n'en a pas */
 .metier__caracs { white-space: nowrap; }

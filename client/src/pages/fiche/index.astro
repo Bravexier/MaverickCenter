@@ -9,6 +9,7 @@ import { ouvrirBase } from '../../lib/donnees.mjs';
 import { aideDeLEntrainement } from '../../lib/fiche-regles.mjs';
 import { clientGoogle } from '../../lib/google-sheets.mjs';
 import { INFOBULLES_DES_EXPORTS } from '../../lib/fiche-tableur-export.mjs';
+import { classeDAlignement, cssDesFamilles, FAMILLES_DES_ZONES } from '../../lib/palette-css.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
@@ -44,6 +45,8 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
   {/* la connexion à Google (« Exporter ») : la fenêtre de Google reçoit l'origine du site (le reste du site garde Referrer-Policy same-origin) */}
   <meta slot="tete" name="referrer" content="strict-origin-when-cross-origin" />
   <style is:inline set:html={ficheCss}></style>
+  {/* les classes des postures et des alignements (familles d'une zone, lib/palette-css.mjs#FAMILLES_DES_ZONES ; le script les pose d'après regles.json) */}
+  <style is:inline set:html={cssDesFamilles(FAMILLES_DES_ZONES)}></style>
   <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-modele={url('fiche/modele.xlsx')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
       <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
@@ -108,7 +111,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
                 <label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
                 <label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /></label>
               </span>
-              <output class="alignement__resultat" id="alignement-resultat" aria-live="polite">Neutre</output>
+              <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
             </fieldset>
           </div>
 

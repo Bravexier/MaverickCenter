@@ -100,8 +100,9 @@ main:has(> .fiche) { max-width: 100rem; }
   --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
 }
 .fiche[data-magie] .fiche-etape { --cadre: var(--couleur); --cadre-2: var(--couleur-2, var(--couleur)); }
-/* la couleur d'une magie sur un élément de la fiche (pastille, résistance, sort, liste) : la classe de la magie (lib/palette-css.mjs, nom transmis par
-   regles.json) et `teinte-palette`, qui la fait lire dans les variables de la fiche (src/scripts/fiche.mjs#teinteDeMagie) ; jamais une couleur en style */
+/* la couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture ou d'un alignement sur un élément de la fiche (pastille,
+   résistance, sort, liste, carte, tableau des compétences, case de posture, alignement) : sa classe (lib/palette-css.mjs, nom transmis par regles.json)
+   et `teinte-palette`, qui la fait lire dans les variables de la fiche (src/scripts/fiche.mjs#teinteDe) ; jamais une couleur en style */
 .fiche .teinte-palette { --c: var(--couleur); --c-texte: var(--couleur-texte); --texte-sur-c: var(--couleur-texte); }
 .fiche option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
 
@@ -641,7 +642,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   padding: 0.05rem 0.7rem;
   border-radius: var(--radius-pill);
   background: var(--c, var(--etape));
-  color: var(--c-texte, #fff);
+  color: var(--c-texte);
   font-size: var(--fs-md);
   font-weight: 700;
   white-space: nowrap;
@@ -717,8 +718,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .gains__total[data-hors] { color: var(--danger); }
 .fiche-defile { overflow-x: auto; }
 
-/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (--c,
-   --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
+/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (la classe
+   de la caractéristique et teinte-palette, posées par le script : --c, --c-texte ; lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
    bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille ; trop long pour la carte, il se termine par « … » (son nom en infobulle). */
 .caracs { display: grid; gap: 0.35rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .carac {
@@ -740,7 +741,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
   border-radius: var(--radius-pill);
   background: var(--c);
-  color: var(--c-texte, #fff);
+  color: var(--c-texte);
   font-size: var(--fs-xs);
   font-weight: 700;
   text-overflow: ellipsis;
@@ -771,7 +772,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: color-mix(in srgb, var(--c) 7%, var(--surface));
   overflow: hidden;
 }
-.competences__groupe thead th { background: var(--c); color: var(--c-texte, #fff); }
+.competences__groupe thead th { background: var(--c); color: var(--c-texte); }
 .competences__groupe thead th:first-child { font-size: var(--fs-sm); font-weight: 700; }
 .competences__groupe tbody tr:last-child td { border-bottom: 0; }
 .competences .fiche-table td:first-child { width: 30%; }
@@ -848,7 +849,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   cursor: help;
 }
 .fiche .attributs-pastilles strong { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
-/* les six postures (demande du propriétaire) : une case chacune, dans sa couleur, avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
+/* les six postures (demande du propriétaire) : une case chacune, dans sa couleur (la classe de la posture et teinte-palette), avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
    Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs) */
 .postures { display: grid; gap: 0.45rem; align-items: start; }
 .postures__cartes { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); align-items: stretch; }
@@ -885,16 +886,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
 .posture-carte__effets li.est-avantage { color: var(--good); }
 .posture-carte__effets li.est-inconvenient { color: var(--danger); font-weight: 600; }
-.fiche .posture {
-  padding: 0.15rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--c) 70%, var(--text));
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--c) 18%, var(--surface));
-  color: var(--text);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
-.fiche .posture[aria-pressed='true'] { background: var(--c); color: var(--c-texte); box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
