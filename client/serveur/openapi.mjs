@@ -527,10 +527,20 @@ function cheminsDuService() {
           415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop de mesures reçues cette minute.', ref('schemas', 'Erreur')) },
       },
     },
+    '/tipeee/': {
+      get: {
+        operationId: 'tipeee_bienvenue', tags: [SERVICE], summary: 'La partie « Bienvenue » de Tipeee',
+        description: 'Le texte de la page Tipeee de MaverickJDR, de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu’à la fin, en paragraphes de texte seul (jamais de HTML ; dans un paragraphe, « \\n » est un retour à la ligne), que la page Bienvenue met à la place de l’instantané du site s’il diffère (serveur/tipeee.mjs, lib/tipeee.mjs). Le service relit l’API publique de Tipeee (adresse fixe) avec un cache de 6 heures par défaut, une seule requête à la fois, 8 s et 512 Kio au plus ; il garde le dernier texte valide et le rend quand Tipeee ne répond pas ou que le repère manque. { paragraphes, lu_le, origine } : origine « tipeee » = lu il y a moins que la durée du cache (relecture ouverte), « repli » = le dernier texte connu ou l’instantané livré avec le site ; aucun texte connu : paragraphes vide et lu_le null. Sur les deux instances, sans la base.',
+        responses: {
+          200: reponse('Le texte.', { type: 'object', required: ['paragraphes', 'lu_le', 'origine'], properties: { paragraphes: { type: 'array', items: { type: 'string' } }, lu_le: { type: ['string', 'null'] }, origine: { type: 'string', enum: ['tipeee', 'repli'] } } }),
+          503: ref('responses', 'Indisponible'),
+        },
+      },
+    },
     '/classeur/': {
       post: {
         operationId: 'classeur_en_ligne', tags: [SERVICE], summary: 'Feuille Google Sheets partagée par lien (« Importer (en ligne) »)',
-        description: 'Le service télécharge au format .xlsx la feuille d’un lien Google Sheets (https://docs.google.com/spreadsheets/d/…) partagée à « Tous les utilisateurs disposant du lien », et en rend les octets (pas du JSON), que la page /fiche/ importe comme un classeur choisi sur l’ordinateur (serveur/classeur.mjs). Sur les deux instances, sans la base. Seule route qui sort sur Internet à la demande de tout visiteur (en production, la seule sortie du service ; le site de dev joint aussi l’API GitHub pour la page « Mise à jour ») : redirections vers docs.google.com ou *.googleusercontent.com seulement, 16 Mio au plus, 20 s au plus, 2 à la fois et 30 par minute pour tout le service ; ni l’adresse ni l’identifiant de la feuille ne sont notés.',
+        description: 'Le service télécharge au format .xlsx la feuille d’un lien Google Sheets (https://docs.google.com/spreadsheets/d/…) partagée à « Tous les utilisateurs disposant du lien », et en rend les octets (pas du JSON), que la page /fiche/ importe comme un classeur choisi sur l’ordinateur (serveur/classeur.mjs). Sur les deux instances, sans la base. Seule route qui sort sur Internet vers une adresse que donne le visiteur (l’autre sortie de la production est GET /api/tipeee/, à adresse fixe ; le site de dev joint aussi l’API GitHub pour la page « Mise à jour ») : redirections vers docs.google.com ou *.googleusercontent.com seulement, 16 Mio au plus, 20 s au plus, 2 à la fois et 30 par minute pour tout le service ; ni l’adresse ni l’identifiant de la feuille ne sont notés.',
         requestBody: { required: true, ...json({ type: 'object', required: ['url'], properties: { url: { type: 'string' } }, additionalProperties: true }, { example: { url: 'https://docs.google.com/spreadsheets/d/<identifiant>/edit' } }) },
         responses: {
           200: { description: 'Le classeur (.xlsx), son nom dans Content-Disposition.', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },

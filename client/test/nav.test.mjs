@@ -11,7 +11,7 @@ const content = new URL('../src/content/wiki/', import.meta.url);
 test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre (2026-10-18 : six rubriques, rien de caché)', () => {
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
-    'Découvrir : Bienvenue, L’univers, Créer son personnage, Rejoindre une partie, Liens',
+    'Découvrir : Bienvenue, L’univers, Créer son personnage, Rejoindre une partie',
     'Règles : Les bases, Races, Magies, Classes, Équipement, Métiers, Artisanat, Règles avancées, Pièces élémentaires, Livres & Parchemins',
     'Espace joueur : Fiche de personnage, Personnages, Groupes d’aventures (bientôt), Table de jeu (bientôt), Chroniques (bientôt)',
     'Espace MJ : Guide du MJ, Fiches de PNJ et scénarios (bientôt), Groupes de jeu (bientôt)',
@@ -63,7 +63,7 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (D
   assert.equal(activeGroup('/ressources/bouclier/').key, 'regles');
   assert.equal(activeGroup('/regles/avancees/meteo/').key, 'regles');
   assert.equal(activeGroup('/regles/artisanat/').key, 'regles');
-  assert.equal(activeGroup('/decouvrir/liens/').key, 'decouvrir');
+  assert.equal(activeGroup('/decouvrir/l-univers/').key, 'decouvrir');
   assert.equal(activeGroup('/decouvrir/rejoindre-une-partie/').key, 'decouvrir');
   assert.equal(activeGroup('/regles/').key, 'regles', 'le sommaire des Bases');
   assert.equal(activeGroup('/mj/').key, 'mj');

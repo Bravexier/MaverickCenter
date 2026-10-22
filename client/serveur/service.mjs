@@ -35,6 +35,8 @@ import {
 } from './metriques.mjs';
 import { creerMesureSql } from './metriques-sql.mjs';
 import { creerClasseurEnLigne } from './classeur.mjs';
+import { creerTipeee } from './tipeee.mjs';
+import { compterLesConflits } from './edition-conflits.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
@@ -110,6 +112,11 @@ const inode = (chemin) => {
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
  * @param {typeof fetch} [o.fetch] les téléchargements de « Importer (en ligne) » (POST /api/classeur/, serveur/classeur.mjs) : le fetch de Node par
  *   défaut, un faux dans les tests (le réseau de la session ne joint pas Google)
+ * @param {false | { fetch?: typeof fetch, instantane?: string|null, actif?: boolean, cache?: number, reessai?: number, delai?: number,
+ *   octetsMax?: number, horloge?: () => number }} [o.tipeee] la partie « Bienvenue » de Tipeee relue en direct (GET /api/tipeee/, serveur/tipeee.mjs) :
+ *   l'instantané livré avec le site (premier repli ; aucun par défaut), Tipeee joint ou non (MAVERICK_TIPEEE=0 : jamais), la durée du cache
+ *   (MAVERICK_TIPEEE_CACHE_MIN) ; le dernier texte valide est gardé dans `dossier` ; `fetch` : celui de Node par défaut, un faux dans les tests ;
+ *   false : pas de route (503)
  * @param {false | { dossier?: string, instance?: string, brutes?: boolean, pages?: boolean, intervalle?: number, horloge?: () => number,
  *   site?: string|null }} [o.metriques]
  *   la collecte des métriques (serveur/metriques.mjs) ; chaque réglage absent vient de l'environnement : MAVERICK_DOSSIER_METRIQUES (sinon
@@ -119,7 +126,8 @@ const inode = (chemin) => {
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
-  journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch }) {
+  journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
+  tipeee: reglagesTipeee = {} }) {
   const lancementDuService = performance.now();
   const chemin = join(dossier, FICHIER_BASE);
   // la mémoire de la page Debug (site de dev seulement) et la sortie de toujours (console, horodatée ; l'écouteur à sa place dans les tests) ; une
@@ -213,6 +221,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   const github = edition ? creerGithub({ dossier, depot, lireJeton, journal, fetch: fetchMesure }) : null;
   // « Importer (en ligne) » de /fiche/ (POST /api/classeur/) : sur les deux instances ; ses bornes de débit valent pour tout le service
   const classeur = creerClasseurEnLigne({ fetch: fetchDuClasseur, journal, evenement });
+  // la partie « Bienvenue » de Tipeee (GET /api/tipeee/) : sur les deux instances ; son cache et sa requête en cours valent pour tout le service, le
+  // dernier texte valide est gardé à côté de la base vivante
+  const tipeee = reglagesTipeee === false ? null : creerTipeee({ dossier, journal, evenement, ...(reglagesTipeee ?? {}) });
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
 
   function fermer() {
@@ -265,7 +276,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       const db = baseMesuree();
       personnages = db?.prepare("SELECT count(*) AS n FROM personnage WHERE nature = 'pretire'").get().n ?? null;
       if (edition && db) {
-        modifications = Object.fromEntries(['en_attente', 'conflit'].map((e) => [e, db.prepare('SELECT count(*) AS n FROM modification WHERE etat = ?').get(e).n]));
+        // les conflits à résoudre seulement : un lot résolu sur /mise-a-jour/ garde ses lignes « conflit » comme trace (serveur/edition-conflits.mjs)
+        const conflits = compterLesConflits(db);
+        modifications = { en_attente: db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n, conflit: conflits.modifications, lots_en_conflit: conflits.lots };
       }
     } catch {
       // base rouverte entre-temps : les comptes sont facultatifs
@@ -413,7 +426,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     res.once('finish', terminer);
     res.once('close', terminer);
     const envoyer = ({ statut, corps, brut, entetes = {} }) => {
-      // le visiteur est parti pendant une réponse attendue (POST /api/classeur/) : terminer() a déjà noté 499, rien à écrire
+      // le visiteur est parti pendant une réponse attendue (POST /api/classeur/, GET /api/tipeee/) : terminer() a déjà noté 499, rien à écrire
       if (res.destroyed || res.writableEnded) return;
       // un 304 n'a pas de corps : ni Content-Type ni Content-Length (RFC 9110 § 15.4.5 ; un cache recopierait le type sur l'image qu'il garde) ;
       // un 204 (balise des pages vues) non plus
@@ -478,7 +491,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -486,7 +499,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       } catch (e) {
         reponse = echec(e);
       }
-      // une promesse (POST /api/classeur/ : la seule route asynchrone ; la mesure SQL, synchrone, est déjà prise) : la réponse part quand elle arrive
+      // une promesse (POST /api/classeur/, GET /api/tipeee/ : les routes asynchrones ; la mesure SQL, synchrone, est déjà prise) : la réponse part
+      // quand elle arrive
       if (typeof reponse?.then === 'function') {
         reponse.then((r) => r, echec).then(envoyer).catch((e) => journal(`ERREUR ${req.method} ${req.url} : envoi de la réponse : ${e?.message ?? e}`));
         return;

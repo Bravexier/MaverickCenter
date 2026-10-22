@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { construireReference } from '../scripts/db-reference.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { demarrerService } from './service.mjs';
+import { reglagesTipeee } from './tipeee.mjs';
+import { CHEMIN_INSTANTANE } from '../src/lib/tipeee.mjs';
 
 const dossier = process.env.MAVERICK_DB || join(trouverRacine(), 'var', 'serveur');
 // page « Mise à jour » : la base de production (origin/master) construite à côté de la base vivante, si master est connu localement
@@ -28,6 +30,9 @@ const service = await demarrerService({
   // métriques (serveur/metriques.mjs ; réglages de l'environnement, dossier var/serveur/metriques/ par défaut) : la répartition du disque compte le
   // dernier site construit (client/dist/), s'il existe, comme le site publié d'une instance
   metriques: { site: existsSync(new URL('../dist/index.html', import.meta.url)) ? join(trouverRacine(), 'client', 'dist') : null },
+  // la partie « Bienvenue » de Tipeee (GET /api/tipeee/, serveur/tipeee.mjs) : relue comme en production (MAVERICK_TIPEEE=0 : jamais), l'instantané
+  // du dépôt en repli ; le dernier texte lu gardé dans var/serveur/tipeee.json
+  tipeee: reglagesTipeee(process.env, join(trouverRacine(), ...CHEMIN_INSTANTANE.split('/'))),
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

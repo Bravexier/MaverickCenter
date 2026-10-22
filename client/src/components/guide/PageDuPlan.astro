@@ -6,8 +6,9 @@ import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { loadWiki, typeOf, type WikiEntry } from '../../lib/wiki';
 
 // Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
-// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens, sources), quelle que soit sa rubrique. Le plan est contrôlé contre les pages
-// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée par une autre et toujours là).
+// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens ; les sources ne s'affichent que sur /archives/), quelle que soit sa
+// rubrique. Le plan est contrôlé contre les pages chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée
+// par une autre et toujours là).
 // Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs).
 interface Props {
   entry: WikiEntry;

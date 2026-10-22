@@ -7,8 +7,17 @@
 // [V: X+1] pour une version majeure) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
 // La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
 // vers /maintenance/, qui y revient quand la nouvelle version est installée. Ailleurs (production, service absent) : rien ne change.
-// Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
+// Après les listes de modifications, les lignes en conflit (demande du propriétaire du 2026-10-22 : « Après les listes de modifications, montrer les
+// lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les
+// deux. ») : les lots du journal que le rejeu d'une livraison a mis en conflit (GET /api/mise-a-jour/conflits/, serveur/edition-conflits.mjs), chacun
+// avec ses modifications saines et, pour chaque conflit, la version 1 (le site de dev), la version 2 (les règles livrées) et les choix 1, 2, 3 ;
+// « Résoudre ce lot » l'envoie (POST, une fois chaque choix fait) : le service écrit une nouvelle modification du site de dev et marque l'ancien lot
+// résolu. Rendu : lib/conflits-rendu.mjs. La section reste la même d'un rendu de la note à l'autre (le suivi d'un lancement la refait toutes les 15 s) :
+// les choix en cours ne se perdent pas.
+// Ce script n'importe que le rendu commun et celui des conflits (aucun autre script de page ne les importe : la version portable refuse un module
+// partagé).
 import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
+import { corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
 const api = racine?.dataset.api ?? '/api/';
@@ -50,6 +59,8 @@ const SUIVIS = [...EN_COURS, 'echec_livraison'];
 
 let donnees = null;
 let suivi = null;
+/** Les lots en conflit : la section (gardée d'un rendu à l'autre), le dernier diagnostic, les listes des champs « choix », les choix en cours. */
+const conflits = { section: null, reponse: null, listes: null, choisis: new Map(), message: '', erreur: '' };
 
 function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
@@ -83,6 +94,9 @@ function rendre() {
       + `${n.amelioration ? ` · <span class="nv-sens--amelioration">${n.amelioration} amélioration${n.amelioration > 1 ? 's' : ''}</span>` : ''}`
       + `${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}`
     : `La base de production (référence) manque sur ce serveur : la liste ne peut pas être calculée.`;
+  const enConflit = d.en_conflit?.lots ?? 0;
+  const bilanDesConflits = enConflit
+    ? ` · <a href="#nv-conflits">${enConflit} lot${enConflit > 1 ? 's' : ''} en conflit ${enConflit > 1 ? 'ne partent' : 'ne part'} pas avec cette mise à jour</a>` : '';
   const texte = d.brouillon?.texte ?? '';
   const note = !verrouille
     ? `<label for="nv-texte"><strong>Informations supplémentaires</strong> (champ libre, ajouté à la note : paragraphes, listes « - », **gras**, *italique*, liens)</label>
@@ -100,13 +114,152 @@ function rendre() {
         <input type="checkbox" data-nv-majeure ${majeure ? 'checked' : ''} ${verrouille ? 'disabled' : ''}> Version majeure (V${echapper(d.version_majeure)})</label>`
     : '';
   zone.innerHTML = `<div class="nv-dev__titre"><h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>${caseMajeure}</div>
-    <p class="nv-dev__bilan">${bilan}</p>
+    <p class="nv-dev__bilan">${bilan}${bilanDesConflits}</p>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
     ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
+  // après les listes, la section des conflits, la même d'un rendu à l'autre (choix en cours gardés)
+  zone.append(sectionDesConflits());
   zone.hidden = false;
   brancher(zone);
+}
+
+// --- Lignes en conflit ---------------------------------------------------------------------------------------------------------------------------
+
+function sectionDesConflits() {
+  if (conflits.section) return conflits.section;
+  const section = document.createElement('section');
+  section.className = 'nv-conflits';
+  section.id = 'nv-conflits';
+  section.setAttribute('data-nv-conflits', '');
+  section.setAttribute('aria-live', 'polite');
+  section.hidden = true;
+  // délégation : la section est refaite à chaque diagnostic, ses écouteurs restent
+  section.addEventListener('change', (e) => {
+    const radio = e.target?.closest?.('[data-nv-choix]');
+    if (!radio) return;
+    const fieldset = radio.closest('[data-nv-conflit]');
+    const n = Number(radio.getAttribute('value')); // l'attribut du bouton (1, 2, 3)
+    conflits.choisis.set(cleDuChoix(fieldset), { ...(conflits.choisis.get(cleDuChoix(fieldset)) ?? {}), choix: n });
+    const saisie = fieldset.querySelector('[data-nv-saisie]');
+    if (saisie) saisie.hidden = n !== 3;
+    const erreur = fieldset.querySelector('[data-nv-erreur]');
+    if (erreur) erreur.hidden = true;
+  });
+  // la saisie du choix 3 se garde à mesure (un nouveau rendu de la note la remet)
+  const garderLaSaisie = (e) => {
+    const champ = e.target?.closest?.('[data-nv-valeur]');
+    const fieldset = champ?.closest('[data-nv-conflit]');
+    if (!fieldset) return;
+    conflits.choisis.set(cleDuChoix(fieldset), { ...(conflits.choisis.get(cleDuChoix(fieldset)) ?? {}), valeur: champ.value });
+  };
+  section.addEventListener('input', garderLaSaisie);
+  section.addEventListener('change', garderLaSaisie);
+  section.addEventListener('submit', (e) => {
+    const form = e.target?.closest?.('[data-nv-lot]');
+    if (!form) return;
+    e.preventDefault();
+    resoudre(form).catch((err) => montrerMessage(form, err.message, true));
+  });
+  conflits.section = section;
+  return section;
+}
+
+/** Le choix d'un conflit se garde par lot et par conflit (deux lots peuvent avoir un conflit de même id). */
+const cleDuChoix = (fieldset) => `${fieldset.closest('[data-nv-lot]')?.dataset.nvLot ?? ''}\u0000${fieldset.dataset.nvConflit}`;
+
+function montrerMessage(form, texte, erreur = false) {
+  const p = form.querySelector('[data-nv-lot-message]');
+  if (!p) return;
+  p.textContent = texte;
+  p.hidden = !texte;
+  p.classList.toggle('nv-message--erreur', erreur);
+}
+
+/** Pose le diagnostic (`reponse` : { lots, resolus }) et remet les choix en cours ; `message` : ce qu'a dit la dernière résolution. */
+function rendreLesConflits() {
+  const section = sectionDesConflits();
+  const r = conflits.reponse;
+  const html = r ? htmlDesConflits(r, { listes: conflits.listes ?? {} }) : '';
+  const message = conflits.message ? `<p class="nv-message nv-conflits__message" role="status">${echapper(conflits.message)}</p>` : '';
+  const erreur = conflits.erreur ? `<p class="nv-message nv-message--erreur">${echapper(conflits.erreur)}</p>` : '';
+  section.innerHTML = `${message}${erreur}${html}`;
+  section.hidden = !html && !message && !erreur;
+  for (const fieldset of section.querySelectorAll('[data-nv-conflit]')) {
+    const choisi = conflits.choisis.get(cleDuChoix(fieldset));
+    if (!choisi?.choix) continue;
+    const radio = [...fieldset.querySelectorAll('[data-nv-choix]')].find((x) => Number(x.getAttribute('value')) === choisi.choix && !x.hasAttribute('disabled'));
+    if (!radio) continue;
+    radio.checked = true;
+    const saisie = fieldset.querySelector('[data-nv-saisie]');
+    if (saisie) saisie.hidden = choisi.choix !== 3;
+    const valeur = fieldset.querySelector('[data-nv-valeur]');
+    if (valeur && choisi.valeur !== undefined) valeur.value = choisi.valeur;
+  }
+}
+
+/** Lit les lots en conflit (et, si un champ « choix » en a besoin, les listes de l'édition), puis les pose. */
+async function chargerLesConflits() {
+  if (!(donnees?.en_conflit?.lots > 0) && !conflits.message && !conflits.reponse?.resolus?.length) {
+    conflits.reponse = null;
+    rendreLesConflits();
+    return;
+  }
+  const reponse = await appel('GET', 'mise-a-jour/conflits/');
+  conflits.erreur = '';
+  const besoinDesListes = reponse.lots?.some((l) => l.conflits?.some((c) => c.saisie?.type === 'choix' && !c.saisie.choix && c.saisie.liste));
+  if (besoinDesListes && !conflits.listes) conflits.listes = await appel('GET', 'edition/listes/').catch(() => ({}));
+  conflits.reponse = reponse;
+  rendreLesConflits();
+}
+
+/** « Résoudre ce lot » : chaque choix fait (et la saisie du 3 contrôlée), le lot part ; le service écrit une nouvelle modification et le marque résolu. */
+async function resoudre(form) {
+  const lot = conflits.reponse?.lots?.find((l) => l.lot === form.dataset.nvLot);
+  if (!lot) return;
+  const choisis = new Map();
+  for (const fieldset of form.querySelectorAll('[data-nv-conflit]')) {
+    const choisi = conflits.choisis.get(cleDuChoix(fieldset));
+    if (!choisi?.choix) continue;
+    const valeur = fieldset.querySelector('[data-nv-valeur]')?.value;
+    if (choisi.choix === 3) conflits.choisis.set(cleDuChoix(fieldset), { ...choisi, valeur });
+    choisis.set(fieldset.dataset.nvConflit, { choix: choisi.choix, valeur: choisi.choix === 3 ? valeur : undefined });
+  }
+  const { corps, manquants, erreurs } = corpsDeLaResolution(lot, choisis);
+  for (const fieldset of form.querySelectorAll('[data-nv-conflit]')) {
+    const p = fieldset.querySelector('[data-nv-erreur]');
+    const e = erreurs?.get(fieldset.dataset.nvConflit);
+    p.textContent = e ?? '';
+    p.hidden = !e;
+  }
+  if (manquants) return montrerMessage(form, `Choisissez 1, 2 ou 3 pour chaque conflit ; il manque : ${manquants.join(' ; ')}.`, true);
+  if (erreurs) return montrerMessage(form, 'Une valeur saisie est refusée : voyez le message sous le conflit.', true);
+  const bouton = form.querySelector('[type="submit"]');
+  if (bouton) bouton.disabled = true;
+  montrerMessage(form, 'Envoi…');
+  try {
+    const r = await appel('POST', 'mise-a-jour/conflits/', corps);
+    for (const k of [...conflits.choisis.keys()]) if (k.startsWith(`${lot.lot}\u0000`)) conflits.choisis.delete(k);
+    conflits.message = messageDeResolution(r);
+    await charger(); // la note en préparation compte la nouvelle modification ; les conflits sont relus
+  } catch (e) {
+    if (bouton) bouton.disabled = false;
+    // 409 : le diagnostic a changé (règles livrées, autre onglet) : le lot à jour est reposé, les choix qui y valent encore restent
+    if (e.statut === 409 && e.corps?.lot && typeof e.corps.lot === 'object') {
+      conflits.reponse = { ...conflits.reponse, lots: conflits.reponse.lots.map((l) => (l.lot === lot.lot ? e.corps.lot : l)) };
+      rendreLesConflits();
+      const neuf = [...conflits.section.querySelectorAll('[data-nv-lot]')].find((f) => f.dataset.nvLot === lot.lot);
+      if (neuf) montrerMessage(neuf, `${e.message} Les conflits affichés sont à jour.`, true);
+      return;
+    }
+    if (e.statut === 409) {
+      conflits.message = e.message;
+      await charger();
+      return;
+    }
+    montrerMessage(form, e.message, true);
+  }
 }
 
 function brancher(zone) {
@@ -147,6 +300,8 @@ function brancher(zone) {
   zone.querySelector('[data-nv-voir-prod]')?.addEventListener('change', (e) => {
     zone.querySelector('.nv-dev__liste').hidden = e.target.checked;
     zone.querySelector('.nv-dev__note').hidden = e.target.checked;
+    if (e.target.checked) sectionDesConflits().hidden = true;
+    else rendreLesConflits();
     racine.querySelector('[data-nv-production]').scrollIntoView({ behavior: 'smooth' });
   });
 }
@@ -302,6 +457,11 @@ async function charger() {
   donnees = await appel('GET', 'mise-a-jour/');
   rendre();
   if (SUIVIS.includes(donnees.lancement?.etat)) suivre();
+  await chargerLesConflits().catch((e) => {
+    conflits.reponse = null;
+    conflits.erreur = `Les lignes en conflit n’ont pas pu être lues : ${e.message}`;
+    rendreLesConflits();
+  });
 }
 
 async function lancer() {

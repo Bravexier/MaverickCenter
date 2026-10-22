@@ -1,6 +1,6 @@
 // Routes de l'API du service (docs/serveur.md, « API ») : une requête déjà lue (méthode, chemin, en-têtes, corps) → une réponse JSON.
-// Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante (et le téléchargeur de /api/classeur/, la seule route
-// qui rend une promesse) ; les tests appellent `traiter` directement.
+// Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante (et le téléchargeur de /api/classeur/ et le lecteur de
+// /api/tipeee/, les deux routes qui rendent une promesse) ; les tests appellent `traiter` directement.
 //
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
@@ -12,9 +12,13 @@
 //   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
 //   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag)
 //   POST /api/classeur/             { url } → les octets .xlsx d'une feuille Google Sheets partagée par lien (« Importer (en ligne) » de /fiche/ ;
-//                                   serveur/classeur.mjs, la seule route qui sort sur Internet à la demande de tout visiteur ; en production, la seule
-//                                   sortie : le site de dev joint aussi l'API GitHub, routes /api/mise-a-jour/) ; les deux instances, sans la base ; la
-//                                   réponse est une PROMESSE (seule route asynchrone : service.mjs l'attend)
+//                                   serveur/classeur.mjs, la seule route qui sort sur Internet vers une adresse que donne le visiteur ; l'autre sortie
+//                                   de la production est GET /api/tipeee/, à adresse fixe ; le site de dev joint aussi l'API GitHub, routes
+//                                   /api/mise-a-jour/) ; les deux instances, sans la base ; la réponse est une PROMESSE (service.mjs l'attend)
+//   GET  /api/tipeee/               { paragraphes, lu_le, origine } : la partie « Bienvenue » de Tipeee, en texte (page Bienvenue ; serveur/tipeee.mjs,
+//                                   relue par le service avec un cache, une sortie sur Internet à adresse fixe ; origine « tipeee » = lue il y a moins
+//                                   que la durée du cache, « repli » = le dernier texte connu ou l'instantané du site) ; les deux instances, sans la
+//                                   base ; une PROMESSE aussi
 // Édition des règles, sur le site de dev seulement (service lancé avec MAVERICK_EDITION=1 ; ailleurs 403) — serveur/edition.mjs :
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
@@ -42,6 +46,10 @@
 //                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
 //   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
+//   GET  /api/mise-a-jour/conflits/     les lots du journal en conflit à résoudre, chacun avec ses modifications saines et ses conflits (version 1 = le
+//                                       site de dev, version 2 = les règles livrées, choix permis) ; les lots résolus — serveur/edition-conflits.mjs
+//   POST /api/mise-a-jour/conflits/     { lot, empreinte, choix: { "<id>": { choix: 1 | 2 | 3, valeur? } } } → résout le lot : un nouveau lot du journal
+//                                       (choix 1 et 3, modifications saines), l'ancien marqué résolu
 // API REST /api/v1/ et page Debug, sur le site de dev seulement (même garde ; décision du propriétaire du 2026-10-15 : en production, tout /api/v1/
 // répond 403, lectures comprises) :
 //   GET  /api/v1/ , /api/v1/openapi.json, /api/v1/<ressource>/[<cle>/[<enfant>/[<cle>/]]]   le CRUD des éléments du jeu (serveur/ressources.mjs,
@@ -78,6 +86,7 @@
 import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
 import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
+import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaire } from './edition-chronologie.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
@@ -151,7 +160,8 @@ function idDeFiche(brut) {
  * @param {{ base: () => import('node:sqlite').DatabaseSync | null, etat: () => object, journal?: (message: string, options?: object) => void,
  *   journalDuService?: { lire: (filtres: object) => object } }} service
  * @returns {{ statut: number, corps: object, entetes: Record<string, string> } | Promise<object>} la réponse ; une promesse de réponse pour
- *   POST /api/classeur/ seulement (requete.signal : le visiteur est parti ; service.classeur : serveur/classeur.mjs#creerClasseurEnLigne)
+ *   POST /api/classeur/ (requete.signal : le visiteur est parti ; service.classeur : serveur/classeur.mjs#creerClasseurEnLigne) et GET /api/tipeee/
+ *   (service.tipeee : serveur/tipeee.mjs#creerTipeee) seulement
  */
 export function traiter(requete, service) {
   const { methode, entetes = {} } = requete;
@@ -172,6 +182,7 @@ export function traiter(requete, service) {
   if (ressource === 'debug') return traiterDebug(requete, service, brut, reste, permis, params);
   if (ressource === 'metriques') return traiterMetriques(requete, service, brut, reste, permis);
   if (ressource === 'classeur') return traiterClasseur(requete, service, brut, reste, permis);
+  if (ressource === 'tipeee') return traiterTipeee(service, brut, reste, permis);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
   if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
 
@@ -246,7 +257,7 @@ function pieceJointe(brut) {
 /**
  * POST /api/classeur/ { url } (« Importer (en ligne) » de /fiche/) : la feuille Google Sheets d'un lien partagé, au format .xlsx (ses octets, pas du
  * JSON), téléchargée par serveur/classeur.mjs (bornes de taille, de délai et de débit, redirections vérifiées). Sur les deux instances, sans la base
- * (répond pendant qu'elle se refait). Même garde que les écritures (JSON, page de ce site). Rend une PROMESSE (la seule route asynchrone).
+ * (répond pendant qu'elle se refait). Même garde que les écritures (JSON, page de ce site). Rend une PROMESSE (comme GET /api/tipeee/).
  */
 function traiterClasseur(requete, service, brut, reste, permis) {
   if (brut !== undefined || reste.length) return erreur(404, 'Adresse inconnue.');
@@ -262,6 +273,18 @@ function traiterClasseur(requete, service, brut, reste, permis) {
       throw e;
     },
   );
+}
+
+/**
+ * GET /api/tipeee/ : la partie « Bienvenue » de Tipeee en paragraphes de texte (serveur/tipeee.mjs : cache, une requête à la fois, dernier texte
+ * gardé, repli sur l'instantané du site) → { paragraphes, lu_le, origine }. Sur les deux instances, sans la base. Rend une PROMESSE, jamais rejetée.
+ */
+function traiterTipeee(service, brut, reste, permis) {
+  if (brut !== undefined || reste.length) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('GET');
+  if (refus) return refus;
+  if (!service.tipeee) return erreur(503, 'Le texte de Tipeee n’est pas disponible sur ce service.');
+  return service.tipeee.lire().then((r) => json(200, r));
 }
 
 /** Les routes /api/edition/… (site de dev seulement). */
@@ -451,6 +474,28 @@ function adressePublique(service, entetes) {
   return `${local ? String(entetes['x-forwarded-proto'] ?? 'http').split(',')[0].trim() : 'https'}://${hote}`;
 }
 
+/**
+ * GET /api/mise-a-jour/conflits/ : les lots du journal en conflit, chacun avec son diagnostic (serveur/edition-conflits.mjs#conflitsDuJournal) ;
+ * POST { lot, empreinte, choix } : résout un lot (resoudreLeConflit) → { lot, nouveau_lot, modifications, lignes, fiches, resolution }. Site de dev
+ * seulement (garde de traiterMiseAJour). Le nouveau lot est noté au journal du service et compté comme un lot de l'édition (`resout`).
+ */
+function traiterConflits(requete, service, db) {
+  if (requete.methode === 'GET') return json(200, conflitsDuJournal(db));
+  const { valeur, refus } = lireEcriture(requete);
+  if (refus) return refus;
+  return repondre(ErreurEdition, () => {
+    const t0 = performance.now();
+    const r = resoudreLeConflit(db, valeur);
+    const adaptees = r.fiches?.length ? ` ; ${r.fiches.length} fiche(s) de personnage adaptée(s)` : '';
+    service.journal?.(`édition : conflit du lot ${r.lot} résolu${r.nouveau_lot ? ` par le lot ${r.nouveau_lot} (${r.modifications} ligne(s))` : ' sans rien écrire (tout au choix 2)'}${adaptees}`);
+    service.evenement?.('lot_edition', {
+      duree_ms: performance.now() - t0,
+      detail: { lot: r.nouveau_lot, resout: r.lot, modifications: r.modifications, choix: r.resolution.length, fiches_adaptees: r.fiches?.length ?? 0 },
+    });
+    return json(200, r);
+  });
+}
+
 /** Les routes /api/mise-a-jour/… (site de dev seulement). */
 function traiterMiseAJour(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'La page Mise à jour ne se prépare que sur le site de dev.');
@@ -463,11 +508,12 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     const lot = lireLot(service.dossier, reste[0]);
     return lot === null ? erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.') : { statut: 200, corps: null, brut: lot, entetes: {} };
   }
-  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
-  const refus = action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
+  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  const refus = action === 'conflits' ? permis('GET', 'POST') : action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
+  if (action === 'conflits') return traiterConflits(requete, service, db);
   const versionDev = service.etat().version ?? null;
   const github = { configure: Boolean(service.github?.configure()), depot: service.depot ?? null };
   const maintenant = instant();

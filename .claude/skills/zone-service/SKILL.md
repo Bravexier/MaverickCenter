@@ -1,14 +1,14 @@
 ---
 name: zone-service
-description: "Service des personnages client/serveur/ : API /api/ (prétirés, portrait, classeur), base vivante db/vivante.db, surveillance des fichiers, TABLES_FICHES, TABLES_RETIREES, conversions et lignes écartées. À charger avant de lire, modifier ou relire le service, fiche-format.mjs ou leurs tests."
-paths: ["client/serveur/api.mjs", "client/serveur/service.mjs", "client/serveur/index.mjs", "client/serveur/dev.mjs", "client/serveur/base-vivante.mjs", "client/serveur/fiches.mjs", "client/serveur/fiches-retraits.mjs", "client/serveur/classeur.mjs", "client/serveur/livraison.mjs", "client/serveur/partage.mjs", "client/serveur/instant.mjs", "client/src/lib/fiche-format.mjs", "client/test/serveur-api.test.mjs", "client/test/serveur-base-vivante.test.mjs", "client/test/serveur-classeur.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "docs/serveur.md"]
+description: "Service des personnages client/serveur/ : API /api/ (prétirés, portrait, classeur, texte de Tipeee), base vivante db/vivante.db, surveillance des fichiers, TABLES_FICHES, TABLES_RETIREES, conversions et lignes écartées. À charger avant de lire, modifier ou relire le service, fiche-format.mjs ou leurs tests."
+paths: ["client/serveur/api.mjs", "client/serveur/service.mjs", "client/serveur/index.mjs", "client/serveur/dev.mjs", "client/serveur/base-vivante.mjs", "client/serveur/fiches.mjs", "client/serveur/fiches-retraits.mjs", "client/serveur/classeur.mjs", "client/serveur/tipeee.mjs", "client/src/lib/tipeee.mjs", "client/test/serveur-tipeee.test.mjs", "client/test/tipeee.test.mjs", "client/serveur/livraison.mjs", "client/serveur/partage.mjs", "client/serveur/instant.mjs", "client/src/lib/fiche-format.mjs", "client/test/serveur-api.test.mjs", "client/test/serveur-base-vivante.test.mjs", "client/test/serveur-classeur.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "docs/serveur.md"]
 user-invocable: false
 ---
 # Service des personnages (`client/serveur/`)
 
 ## Fichiers
-- `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `classeur.mjs` (`POST /api/classeur/`), `livraison.mjs` (intégration Astro), `dev.mjs` (`npm run serveur`, jamais livré).
-- `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance).
+- `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `classeur.mjs` (`POST /api/classeur/`), `tipeee.mjs` (`GET /api/tipeee/`), `livraison.mjs` (intégration Astro), `dev.mjs` (`npm run serveur`, jamais livré).
+- `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance). `src/lib/tipeee.mjs` : l'extraction du texte de Tipeee (pure).
 - Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance et page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`.
 
 ## À lire
@@ -20,12 +20,13 @@ user-invocable: false
 - À la reconstruction, un don, une spécialité, un sort, un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `serveur/fiches-retraits.mjs`), liste dans `/api/etat`. Toute autre référence rompue : rien ne change et `/api/etat` dit pourquoi.
 - Livré avec le site : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json`.
 - Prétirés seulement, pas de comptes (mot de passe du site).
+- `/api/etat` (site de dev) : `modifications.en_attente`, `modifications.conflit` et `modifications.lots_en_conflit` ne comptent que les lots à résoudre (`edition-conflits.mjs#compterLesConflits`) : un lot résolu garde ses lignes `conflit` comme trace.
 
 ## Invariants
 - Le service n'importe que `node:…` et des chemins relatifs (`modulesDuServeur` de `serveur/livraison.mjs`, testé). `tools/build-artifact.mjs` n'emporte pas `_serveur/`.
 - Une écriture exige `Content-Type: application/json` et refuse un `Sec-Fetch-Site` d'un autre site.
 - Les adresses de l'API finissent par « / » (`/api/personnages/<id>/`) : en développement, Astro (`trailingSlash: 'always'`) refuse les autres avant de les relayer.
-- `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/`, qui rend une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite, le téléchargement vers Google est annulé quand le visiteur part). Une autre route asynchrone suivrait le même chemin.
+- `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/` et `GET /api/tipeee/`, qui rendent une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite, le téléchargement vers Google est annulé quand le visiteur part). Une autre route asynchrone suivrait le même chemin.
 - Surveillance (`service.mjs`) : un changement compte quand il est vu deux fois de suite (`guetteur`). `version.json` changé : le service s'arrête (code 0) et Docker le relance (`restart: unless-stopped`) ; `site/donnees/maverick.db` changé : la base vivante est refaite ; `db/vivante.db` remplacée : elle est rouverte.
 - Une table ajoutée à la section 13 va dans `TABLES_FICHES` (`src/lib/fiche-format.mjs`, réexportée par `base-vivante.mjs`, donc dans `TABLES_VIVANTES` et dans `TABLES_INTERDITES` du journal) et, si elle cite `personnage`, dans `PARTIES_DE_FICHE` ou `HORS_FICHE` (`fiche-format.mjs`). Les tests `serveur-*` le vérifient contre `data/schema.sql`.
 - Une clé étrangère de plus vers `metier`, `specialite`, `capacite`, `sort` ou `arme` va dans `RETRAITS` (`serveur/fiches-retraits.mjs`, testé).
@@ -42,9 +43,16 @@ user-invocable: false
 - Les conversions de 0062 (entraînement, acquis, R104) et 0066 (`nm_cadeau` → `nm_mj`, R118) : `docs/serveur.md`, « La base vivante » et « L'API ».
 
 ## Classeur (`POST /api/classeur/`)
-- `serveur/classeur.mjs`, en production comme en dev : une feuille Google Sheets partagée par lien, téléchargée en .xlsx par le service, à la demande de n'importe quel visiteur. C'est sa seule sortie sur Internet en production (le site de dev joint aussi l'API GitHub pour la page « Mise à jour » : `serveur/notes-de-version.mjs#creerGithub`).
+- `serveur/classeur.mjs`, en production comme en dev : une feuille Google Sheets partagée par lien, téléchargée en .xlsx par le service, à la demande de n'importe quel visiteur. C'est sa seule sortie vers une adresse que donne le visiteur ; en production, l'autre sortie est Tipeee (ci-dessous) ; le site de dev joint aussi l'API GitHub pour la page « Mise à jour » (`serveur/notes-de-version.mjs#creerGithub`).
 - Limites : 16 Mio (`OCTETS_MAX`), 20 s (`DELAI_MS`), 2 à la fois, 30 par minute (`PAR_MINUTE`) ; `fetch` injectable (les tests ne joignent pas Google). Hôtes, redirections, rien de l'adresse noté : `docs/serveur.md`, « Hébergement ».
 
+## Tipeee (`GET /api/tipeee/`)
+- Réponses du propriétaire du 2026-10-22 : le texte de la page Bienvenue reprend « La partie « Bienvenue » » de Tipeee (de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu'à la fin), « En direct par le serveur » (production et dev, avec un cache de quelques heures, le dernier texte gardé si Tipeee ne répond pas).
+- `serveur/tipeee.mjs` (`creerTipeee`, un par service) → `{ paragraphes, lu_le, origine }` (`tipeee` : lu il y a moins que le cache ; `repli` : le dernier texte connu ou l'instantané). Adresse fixe (`lib/tipeee.mjs#URL_API`), sans redirection suivie ; cache 6 h (`MAVERICK_TIPEEE_CACHE_MIN`), nouvel essai 15 min après un échec, une seule requête à la fois, 8 s, 512 Kio ; `MAVERICK_TIPEEE=0` : jamais joint, origine toujours `repli` (même un texte gardé encore dans la durée du cache) ; `fetch` et horloge injectables (`demarrerService({ tipeee })`, jamais le `fetch` du classeur).
+- Texte seul, jamais de HTML de Tipeee servi : `lib/tipeee.mjs#bienvenueDeTipeee` (pur ; repère sans casse ni espaces ; un `<br>` seul = `\n` dans le paragraphe).
+- Dernier texte valide dans `<dossier>/tipeee.json` (format de l'instantané `{ url, lu_le, paragraphes }`, `instantaneValide`), relu au démarrage ; premier repli : l'instantané versionné `sources/tipeee/bienvenue.json` (`CHEMIN_INSTANTANE`), copié dans `_serveur/` par `serveur/livraison.mjs#FICHIERS_JOINTS` ; le plus récent des deux est servi. Échec ou repère absent : « ATTENTION Tipeee : … » au journal, évènement `tipeee` des métriques.
+
 ## Tests
+- `serveur-tipeee` (réponse d'exemple, cache, appels simultanés, injoignable, repère absent, trop grosse, redémarrage, repli, route, livraison de l'instantané) et `tipeee` (extraction pure ; réponse d'exemple réduite dans `test/fixtures/tipeee-projet.json`).
 - `serveur-api` (chaque route, chaque refus, conflit de versions, serveur HTTP réel et surveillance), `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-classeur`, `serveur-livraison` (modules livrés, service livré démarré tel quel), `serveur-fiches-retraits`, `fiche-format-retirees`, `tables-de-la-base`.
 - `test/site-html.test.mjs` contrôle `dist/_serveur/` après le build.

@@ -245,6 +245,8 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   border-radius: var(--radius-md);
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
 }
+/* plusieurs éditeurs en place sur la page (Bienvenue : le texte et l'annonce) : une seule barre se montre (texte-en-place.mjs#choisirLaBarre) */
+.ed-barre-guide[hidden] { display: none; }
 .ed-barre-guide__groupe { display: flex; align-items: center; gap: 0.2rem; }
 .ed-barre-guide__groupe + .ed-barre-guide__groupe { padding-left: 0.6rem; border-left: 1px solid var(--border); }
 @media screen and (min-width: 48rem) {

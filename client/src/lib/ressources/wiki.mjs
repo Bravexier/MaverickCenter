@@ -9,7 +9,7 @@
 // entre les peuples est de type `lore` mais tirée du classeur « Les races », ce n'est pas une page du Codex.
 //
 // Les écritures sont celles que le site de dev sait déjà faire, rien de plus : le titre et le texte des pages du guide et du Codex (TABLES.page), le texte
-// d'une annonce (TABLES.annonce : l'encart « Notre prochaine rencontre IRL » de la page Liens), le vocabulaire des mots-clés (TABLES.mot_cle,
+// d'une annonce (TABLES.annonce : l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue), le vocabulaire des mots-clés (TABLES.mot_cle,
 // ENTITES.mot_cle : serveur/edition-chronologie.mjs, MOT_CLE) et leur fusion (l'opération du lot `fusionner_mots_cles`, ni TABLES ni ENTITES : l'action
 // « fusion » d'un mot-clé). Aucune opération ne pose ni ne retire un mot-clé sur une page, ni ne
 // change ses alias ou ses sources : ces tables sont en lecture seule ici.
@@ -78,7 +78,7 @@ export const RESSOURCES = [
     noms: 'Annonces',
     description:
       'Les annonces que le site place (migration 0068, demande du propriétaire du 2026-10-18) : aujourd’hui l’encart « Notre prochaine rencontre IRL » ' +
-      'de la page Liens (/decouvrir/liens/, ligne « prochaine-rencontre-irl »), dont le titre et le texte d’attente sont fixes ; le texte (Markdown, ' +
+      'sous le texte de Bienvenue (/decouvrir/, ancre #prochaine-rencontre, ligne « prochaine-rencontre-irl »), dont le titre et le texte d’attente sont fixes ; le texte (Markdown, ' +
       'balises du glossaire comprises) se modifie par le service comme celui d’une page du guide : ni HTML brut ni lien non sûr ajouté ; vidé, NULL ' +
       '(« Aucune rencontre annoncée pour le moment. » s’affiche) ; ni création ni suppression.',
     table: 'annonce',

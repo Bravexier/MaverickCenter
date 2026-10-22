@@ -3,8 +3,9 @@ import blocsCss from '../../styles/guide/blocs.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
+import SousBienvenue from './SousBienvenue.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
-import { couleurDeLaPage, estDansDecouvrirOuLesBases, filDAriane, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
+import { couleurDeLaPage, estDansDecouvrirOuLesBases, filDAriane, RUBRIQUES_SOUS_LA_PAGE, SOUS_BIENVENUE } from '../../lib/livres.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
@@ -14,9 +15,10 @@ import { url, type WikiEntry } from '../../lib/wiki';
 // Une page du guide, quelle qu'elle soit (lib/livres.mjs : Découvrir, Les bases, Règles avancées, Guide du MJ) : une page simple, comme une page du wiki
 // (demande du propriétaire du 2026-10-18 : « Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination »). Fil d'Ariane vers sa
 // rubrique ou son sommaire (et son groupe : lib/livres.mjs#filDAriane), titre, texte coupé à ses blocs tirés de la base (GuideBloc : le tableau de la
-// montée de niveau, les postures, les personnages fil rouge…), sous L'univers les rubriques qu'elle présente (RUBRIQUES_SOUS_LA_PAGE), puis mots-clés,
-// rétroliens et, pour une page de référence seulement, sources (PiedDePage). Une page de Découvrir ou des Bases ne cite pas ses sources sous le texte,
-// comme quand elle était une page de livre (`sources:` reste dans le frontmatter ; question au propriétaire : docs/sql/a-valider.md §6). Une page de Découvrir ou des Bases prend la couleur de son groupe (couleurDeLaPage : filet du titre, intertitres,
+// montée de niveau, les postures, les personnages fil rouge…), sous L'univers les rubriques qu'elle présente (RUBRIQUES_SOUS_LA_PAGE), sous Bienvenue
+// les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » (SousBienvenue : lib/livres.mjs#SOUS_BIENVENUE), puis mots-clés et
+// rétroliens (PiedDePage). Aucune page ne cite ses sources sous le texte (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans
+// les archives. ») : `sources:` reste dans le frontmatter, /archives/ le lit. Une page de Découvrir ou des Bases prend la couleur de son groupe (couleurDeLaPage : filet du titre, intertitres,
 // blocs) ; les pages de référence (Règles avancées, Guide du MJ) gardent l'accent du site et leur badge « Guide ». Chaque morceau de texte est
 // modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
 interface Props {
@@ -75,6 +77,7 @@ const css = [blocsCss, magieTooltipsCss].join('\n');
       </nav>
     )
   }
+  {entry.id === SOUS_BIENVENUE.page && <SousBienvenue />}
 </div>
 
-<PiedDePage entry={entry} sources={reference} />
+<PiedDePage entry={entry} />

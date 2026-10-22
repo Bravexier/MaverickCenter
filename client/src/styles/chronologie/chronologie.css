@@ -28,10 +28,6 @@ main:has(> .chrono) { max-width: none; }
   align-items: start;
   padding-right: 3.5rem;
 }
-/* Un glissement horizontal du doigt change d'événement : le navigateur ne doit pas en faire, en plus, un retour dans l'historique (comme le guide). */
-html { overscroll-behavior-x: none; }
-/* La page suit le doigt (décalage borné à 64 px) : sans ce clip, elle élargirait l'écran. */
-main { overflow-x: clip; }
 
 .chrono-invisible {
   position: absolute;
@@ -265,7 +261,8 @@ a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); 
 .chrono-categorie--a-trier { border-style: dashed; background: none; color: var(--muted); font-weight: 400; }
 
 /* Mode modification du site de dev (src/scripts/edition/chronologie.mjs) : les saisies de la date, de l'Impact et du lieu n'apparaissent qu'en mode
-   modification (body.ed-mode) ; le crayon et « Enregistrer » descendent en bas à droite, sous les chevrons qu'ils couvriraient. */
+   modification (body.ed-mode) ; le crayon et « Enregistrer » descendent en bas à droite, sous les chevrons qu'ils couvriraient ; sur téléphone, au-dessus
+   de la barre du bas qui les porte. */
 .chrono-ed { display: none; }
 body.ed-mode .chrono-ed { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0.5rem 0 0.75rem; padding: 0.5rem 0.65rem; border: 1px dashed var(--chrono-line); border-radius: var(--radius); }
 .chrono-ed__champ { display: grid; gap: 0.15rem; min-width: 9rem; }
@@ -416,6 +413,9 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   body:has(.chrono--evenement) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
   /* … et le défilement vers un lien qui prend le focus s'arrête au-dessus d'elle (WCAG 2.4.11) */
   html:has(.chrono--evenement) { scroll-padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  /* le crayon, « Enregistrer » et le compte du journal du site de dev (.ed-cote) se posent au-dessus de la barre : sans le glissement du doigt, son
+     chevron « suivant » est le seul moyen d'avancer, rien ne le couvre (essai réel en 390 px du 2026-10-22) */
+  body:has(.chrono--evenement) .ed-cote { bottom: calc(5rem + env(safe-area-inset-bottom)); }
   .chrono--evenement .frise { display: none; }
   .chrono--evenement .chrono-chevrons {
     top: auto;
@@ -636,6 +636,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   .chrono--evenement .chrono-chevron { width: 2.75rem; height: 2.75rem; }
   .chrono-barre__frise { min-height: 2.75rem; }
   html:has(.chrono--evenement) { scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  body:has(.chrono--evenement) .ed-cote { bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
   html.js .chrono--evenement { min-height: calc(100vh - 3.5rem - var(--frise-haut, 0px)); min-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom) - var(--frise-haut, 0px)); }
   .chrono-barre__texte { grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
 }

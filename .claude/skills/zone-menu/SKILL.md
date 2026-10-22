@@ -19,7 +19,7 @@ user-invocable: false
 
 ## Menu (arborescence du propriétaire)
 
-- Six rubriques, dans l'ordre : Découvrir (la vitrine ; l'accueil l'ouvre : Bienvenue, L'univers, Créer son personnage, Rejoindre une partie, Liens), Règles (en tête, Les bases : le sommaire `/regles/`), Espace joueur, Espace MJ, Codex, Outils.
+- Six rubriques, dans l'ordre : Découvrir (la vitrine ; l'accueil l'ouvre : Bienvenue, L'univers, Créer son personnage, Rejoindre une partie ; plus d'entrée « Liens », réponse du propriétaire du 2026-10-22 : « Plus d'entrée Liens au menu : tout est sur Bienvenue. »), Règles (en tête, Les bases : le sommaire `/regles/`), Espace joueur, Espace MJ, Codex, Outils.
 - Rien n'est caché. À terme, les non-membres ne verront que Découvrir et Règles (`docs/feuille-de-route.md`).
 - Une entrée sans `path` est affichée « bientôt » : la page n'existe pas encore, on n'invente pas de contenu.
 - `autres` = débuts d'adresse des pages de la rubrique hors menu (`ressources/` et `capacites/` ouvrent les Règles).

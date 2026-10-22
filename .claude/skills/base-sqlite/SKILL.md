@@ -41,6 +41,12 @@ user-invocable: false
 - Un changement de structure passe par une migration, jamais par une retouche de `data/rows`.
 - Les 21 tables de la section 13 (fiches de personnages, groupes de jeu) et les 3 de la section 14 (journal de l'édition, brouillon de la note de version)
   restent vides dans `data/rows`. Les vraies fiches vivent dans la base vivante du service (skill `zone-fiches-base`, skill `zone-service`).
+- Journal de l'édition (section 14) : un lot en conflit n'est jamais effacé ni réécrit. Sa résolution (`/mise-a-jour/`, migration 0072) remplit
+  `modification_lot.resolu_le`, `resolution` (les choix, JSON) et `resolu_par` (le nouveau lot normal, jamais lui-même) ; ses lignes restent
+  `conflit`, avec leur `detail` (skill `zone-edition`).
+- Les commentaires de `data/schema.sql` (recopiés dans `docs/sql` par `db:doc`) ne citent que du code qui existe : un fichier `.mjs`, `.astro`,
+  `.css` cité existe, un renvoi `fichier.mjs#Nom` nomme une définition du fichier, et `#Nom.prop` une propriété de l'export d'un module de `lib/`
+  (`db-schema.test.mjs`). Un renommage ou une suppression dans le code corrige le commentaire dans le même lot ; une migration appliquée garde le sien.
 - Identifiants figés : un id ne dérive plus du nom depuis la migration 0006 ; un nom corrigé ou renommé garde son id, une page renommée garde son adresse
   (skill `base-orthographe`).
 - Les lignes typées ne se réimportent pas encore depuis les classeurs : réimporter un classeur modifié demande de porter l'importeur de sa famille. Une mise à

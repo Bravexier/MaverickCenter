@@ -71,6 +71,12 @@
 
 * { box-sizing: border-box; }
 
+/* Glisser le doigt à l'horizontale ne fait jamais revenir le navigateur à la page d'avant, sur tout le site (réponses du propriétaire du 2026-10-22 :
+   « Le slide du doigt devrai faire changer d'onglet », puis « Laisse tomber. Trop de cas spécifiques compliquées. Supprime juste le swipe. ») : aucune
+   page n'a de glissement du doigt (test/defilement.test.mjs). Seul l'axe horizontal : le vertical n'est jamais retenu (skill ui-defilement). Sur iOS,
+   le geste qui part du bord de l'écran est celui du système : aucune règle CSS ne le bloque. */
+html { overscroll-behavior-x: none; }
+
 /* Champ vide d'une page modifiable (mode modification du site de dev, components/edition/Edition.astro) : caché en lecture, quel que soit son affichage */
 [data-ed-cadre][hidden] { display: none !important; }
 

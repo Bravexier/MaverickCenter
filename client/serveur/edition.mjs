@@ -1304,7 +1304,7 @@ function apercuDe(op, corps) {
 }
 
 /**
- * L'annonce d'un encart du site (table annonce, migration 0068 : « Notre prochaine rencontre IRL » de la page Liens) : son texte, Markdown sûr comme celui
+ * L'annonce d'un encart du site (table annonce, migration 0068 : « Notre prochaine rencontre IRL » sous le texte de Bienvenue) : son texte, Markdown sûr comme celui
  * d'une page du guide (ni HTML brut ni lien non sûr ajouté : lib/markdown-sur.mjs ; le texte part tel quel dans la page construite, puis en
  * production) ; vidé, NULL (le texte d'attente s'affiche). Ni création ni suppression : le site place ses annonces.
  */
@@ -1351,7 +1351,7 @@ const DOMAINES = {
   ...CHRONOLOGIE.domaines,
   // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
   ...domainesDesPanneaux({ refus, ErreurEdition, rangLibre }),
-  // l'annonce de l'encart « Notre prochaine rencontre IRL » (page Liens, migration 0068)
+  // l'annonce de l'encart « Notre prochaine rencontre IRL » (sous le texte de Bienvenue, migration 0068)
   annonce: ANNONCE,
 };
 
@@ -1644,6 +1644,38 @@ export function recalculerLesPages(db, modifications) {
 }
 
 /**
+ * L'adaptateur du rejeu (edition-journal.mjs#rejouer : `adapter`) : les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre
+ * communes), 0056 (glossaire) et 0063 (coût secondaire des sorts), et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier
+ * (demande du propriétaire du 2026-10-17 : serveur/edition-armures.mjs#ancienneEcritureDesArmures), lues dans la forme des règles de `db`. Le même pour
+ * l'examen d'un lot en conflit (serveur/edition-conflits.mjs).
+ */
+export function adaptateurDuJournal(db) {
+  const motsCles = ancienneEcritureDesMotsCles(db);
+  const glossaire = ancienneEcritureDuGlossaire(db);
+  const capacites = ancienneEcritureDesCapacites(db);
+  const armures = ancienneEcritureDesArmures(db);
+  const couts = ancienneEcritureDuCout();
+  return (m) => couts(armures(capacites(glossaire(motsCles(m)))));
+}
+
+/**
+ * Ce dont la résolution d'un lot en conflit (serveur/edition-conflits.mjs, /mise-a-jour/) a besoin du service d'édition, sans en ouvrir le reste :
+ * `modifier(ctx, op)` (l'opération « modifier » d'un lot : valeurDuChamp, forme canonique des balises, Markdown sûr, colonnes X_cle et du domaine,
+ * dérivations, notées par ctx.w), `deriver(ctx, table, avant, apres)` (les dérivations du domaine d'une table : lignes de détail, corps de page),
+ * `completerLesMetiers`, `balisesRetireesParLeLot`, `balisesDesColonnesDerivees` (comme rejouerLeJournal) et `refuseeParLaBase` (une contrainte de la
+ * base : 422).
+ */
+export const OUTILS_DE_RESOLUTION = Object.freeze({
+  modifier: (ctx, op) => modifier(ctx, op),
+  deriver: (ctx, table, avant, apres) => DOMAINES[table]?.deriver?.(ctx, avant, apres),
+  aUneDerivation: (table) => typeof DOMAINES[table]?.deriver === 'function',
+  completerLesMetiers: (db, ids) => completerLesMetiers(db, ids),
+  balisesRetireesParLeLot: (db, lot) => balisesRetireesParLeLot(db, lot),
+  balisesDesColonnesDerivees: (db) => balisesDesColonnesDerivees(db),
+  refuseeParLaBase: (e) => refuseeParLaBase(e),
+});
+
+/**
  * Rejoue les modifications en attente du journal (edition-journal.mjs#rejouer, colonnes dérivées : colonneDerivee), puis refait le corps des pages
  * qu'elles touchent (recalculerLesPages), les liens de règle des métiers touchés (completerLesMetiers) et, pour un mot-clé que le journal a supprimé ou
  * fusionné, ses balises dans tous les textes de la base : au moment où sa suppression est rejouée (balisesRetireesParLeLot), et dans les colonnes
@@ -1662,14 +1694,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire) et 0063 (coût secondaire des sorts),
     // et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 :
     // serveur/edition-armures.mjs#ancienneEcritureDesArmures)
-    adapter: () => {
-      const motsCles = ancienneEcritureDesMotsCles(db);
-      const glossaire = ancienneEcritureDuGlossaire(db);
-      const capacites = ancienneEcritureDesCapacites(db);
-      const armures = ancienneEcritureDesArmures(db);
-      const couts = ancienneEcritureDuCout();
-      return (m) => couts(armures(capacites(glossaire(motsCles(m)))));
-    },
+    adapter: () => adaptateurDuJournal(db),
     // les balises d'un mot-clé supprimé ou fusionné, dans les textes que le lot n'a pas réécrits : au moment où il est rejoué, dans son lot
     apresLeLot: (lot) => balisesRetireesParLeLot(db, lot),
   });

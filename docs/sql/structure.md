@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 71 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 72 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -174,7 +174,7 @@ Onglets de la page « Composants » (/ressources/composants/, migration 0057) : 
 
 ### `annonce`
 
-Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » de la page « Liens » (/decouvrir/liens/). Demande du propriétaire du 2026-10-18 : « un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent » ; titre fixe et texte d'attente (« Aucune rencontre annoncée pour le moment. ») écrits par le site (client/src/lib/livres.mjs#LIENS.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (/decouvrir/, components/guide/SousBienvenue.astro ; sur la page Liens jusqu'au 2026-10-22). Demande du propriétaire du 2026-10-18 : « un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent » ; titre fixe et texte d'attente (« Aucune rencontre annoncée pour le moment. ») écrits par le site (client/src/lib/livres.mjs#SOUS_BIENVENUE.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3621,7 +3621,7 @@ Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme po
 
 ### `modification_lot`
 
-Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. Un lot en conflit est résolu sur /mise-a-jour/ : resolu_le, resolu_par, resolution (migration 0072). Ses lignes de `modification` restent 'conflit', avec leur `detail`, comme trace : le lot n'est jamais effacé ; ce qui en est gardé passe par un NOUVEAU lot normal du journal.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3630,10 +3630,13 @@ Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses 
 | `auteur_id` | TEXT | non | → utilisateur.id | NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev |
 | `page_id` | TEXT | non |  | page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère : une page créée par l'édition peut ne pas encore être dans les règles livrées |
 | `resume` | TEXT | oui |  | « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible |
+| `resolu_le` | TEXT | non |  |  |
+| `resolu_par` | TEXT | non | → modification_lot.id |  |
+| `resolution` | TEXT | non |  |  |
 
 ### `modification`
 
-Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows), 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement : elle n'est pas rejouée, `detail` dit pourquoi).
+Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows), 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement : elle n'est pas rejouée, `detail` dit pourquoi). Un lot en conflit le reste en entier jusqu'à sa résolution (modification_lot.resolu_le), qui écrit un nouveau lot ; ses lignes restent alors 'conflit', comme trace.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

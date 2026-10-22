@@ -883,15 +883,16 @@ retravailler pleinement l'organisation des onglets et de la présentation »), n
 pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : les pages `guide/<slug>` (famille `docs`, ids
 inchangés) sont rangées par le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son
 adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de
-navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ; les textes sont ceux de la base, sauf une exception : les deux
-présentations de la page Liens (`LIENS.liens[].presentation`, plus bas), écrites dans le plan, donc ni modifiables sur le site de dev (un commit les
-change) ni cherchées par la recherche.
+navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ; les textes sont ceux de la base, sauf une exception : la
+présentation du lien Discord sous Bienvenue (`SOUS_BIENVENUE.liens[].presentation`, plus bas), écrite dans le plan, donc ni modifiable sur le site de
+dev (un commit la change) ni cherchée par la recherche.
 
 - **Découvrir** (`/decouvrir/`, rubrique Découvrir du menu, faite pour être vue même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu**
   (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/` ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
   sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
   Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page), « Rejoindre une partie » (une page pour les joueurs) —, à
-  `/decouvrir/<slug>/`, puis « Liens » (plus bas). Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
+  `/decouvrir/<slug>/`. Sous le texte de Bienvenue, Discord, Tipeee et l'encart « Notre prochaine rencontre IRL » (plus bas) ; plus de page « Liens ».
+  Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
 - **Les bases** (`/regles/`, rubrique Règles ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
   Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
   propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
@@ -902,11 +903,12 @@ change) ni cherchées par la recherche.
   groupe du sommaire des Bases aussi.
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`) : fil d'Ariane vers sa rubrique
   (Découvrir) ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
-  base, puis mots-clés, rétroliens et, pour une page de référence seulement, sources (`components/PiedDePage.astro`, `sources` faux sur une page de
-  Découvrir ou des Bases, comme quand elles étaient des pages de livre ; `sources:` reste dans le frontmatter ; les montrer attend la réponse du
-  propriétaire, `docs/sql/a-valider.md` §6). Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination, ni
-  numéro de chapitre ; plus de `overscroll-behavior-x` (il ne servait qu'au glissement du doigt). Les pages de référence (Règles avancées, Guide du MJ)
-  gardent le badge « Guide » à côté du titre.
+  base, puis mots-clés et rétroliens (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
+  propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
+  dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
+  ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
+  `styles/global/base.css` ; réponse du 2026-10-22 : « Supprime juste le swipe. ») ; sur iOS, le geste qui part du bord de l'écran est celui du
+  système et aucune règle CSS ne le bloque. Les pages de référence (Règles avancées, Guide du MJ) gardent le badge « Guide » à côté du titre.
 - **Deux autres sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
   pas) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
   d'état, Alignement, Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du
@@ -918,27 +920,38 @@ change) ni cherchées par la recherche.
   Bases), avec leurs liens, ce que `/archives/` ne montre pas.
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
   `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers.
-- **Liens** (`/decouvrir/liens/`, `pages/decouvrir/liens.astro`, `LIENS`) : le fil d'Ariane vers Découvrir, puis le serveur Discord « L'univers de
-  Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun sous son titre (un `h2` qui porte le lien,
-  au niveau de celui de l'encart : la navigation par titres les trouve) et suivi de sa **présentation** (`LIENS.liens[].presentation`, Markdown écrit dans le
-  plan, une seule constante ; vide, rien ne s'affiche ; demande du propriétaire : « Étoffe un peu la présentation pour les liens Discord et Tipeee » ;
-  le Discord d'après le texte d'accueil du propriétaire et `docs/sources.md`, Tipeee d'après sa propre page, lue le 2026-10-18 — `docs/sources.md`,
-  « Tipeee » —, texte à faire valider : `docs/sql/a-valider.md` §6, G36),
-  puis l'encart **« Notre prochaine rencontre IRL »** (`LIENS.rencontre` ; « pour faire la place à une annonce dédiée aux prochaines conventions où
-  Maverick sera présent ») : un titre fixe, l'annonce lue dans la table `annonce` (ligne `prochaine-rencontre-irl`, migration `0068-annonces`,
-  `lib/annonces.mjs`), ou, tant qu'elle est vide (NULL), « Aucune rencontre annoncée pour le moment. ». Sur le site de dev, l'annonce se modifie **en
-  place** en mode modification (`src/scripts/edition/annonces.mjs`, la barre d'outils des panneaux de règles ; vide, la zone s'ouvre vide, le texte
-  d'attente en filigrane ; vidée, elle repart à NULL) ; le service la contrôle comme le texte d'une page (ni HTML brut ni lien non sûr ajouté, balises du
-  glossaire en forme canonique : `serveur/edition.mjs#ANNONCE`), la mise à jour aussi (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`,
-  `texteNonSurApresLeRejeu`), et elle part en production avec la mise à jour (note de version : domaine Guide, groupe Découvrir, « Liens › Notre
-  prochaine rencontre IRL »). Ni création ni suppression d'annonce : le site place les siennes.
+- **Sous le texte de Bienvenue** (`components/guide/SousBienvenue.astro`, `SOUS_BIENVENUE` ; réponses du propriétaire du 2026-10-22, G34 : l'encart et
+  les présentations passent sur Bienvenue, « Bonne idée. », et la page Liens qui les portait est supprimée, « Plus d'entrée Liens au menu : tout est sur
+  Bienvenue. L'ancienne adresse renverrait vers Bienvenue. » : `/decouvrir/liens/` mène à `/decouvrir/` par la page 404, ancre et requête gardées,
+  `ADRESSES_DU_PLAN_PRECEDENT`) : le serveur Discord « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16
+  et 2026-10-18), chacun sous son titre (un `h2` qui porte le lien, au niveau de celui de l'encart : la navigation par titres les trouve ; ancres
+  `#lien-discord`, `#lien-tipeee`, celles de l'ancienne page) et suivi de sa **présentation** :
+  - Discord : `SOUS_BIENVENUE.liens[].presentation`, Markdown écrit dans le plan (demande du propriétaire : « Étoffe un peu la présentation pour les
+    liens Discord et Tipeee »), d'après le texte d'accueil du propriétaire et `docs/sources.md` ;
+  - Tipeee : **la partie « Bienvenue » de la page Tipeee elle-même, reprise telle quelle et en direct** (G36 : « autant en faire un hook pour que ça
+    reprenne directement le texte au cas où il change sur Tipee », « La partie « Bienvenue » », « En direct par le serveur » ; `docs/sources.md`,
+    « Tipeee ») : au build, les paragraphes de l'instantané livré avec le site (`sources/tipeee/bienvenue.json`, `lib/tipeee.mjs`), en texte seul, dans
+    une citation ; puis le script de la page (`src/scripts/tipeee.mjs`) demande au service le texte qu'il relit sur Tipeee (`GET /api/tipeee/`,
+    `docs/serveur.md`, « Tipeee ») et, s'il diffère, remplace les paragraphes (`textContent` seulement : jamais de HTML de Tipeee). Sans service
+    (version portable, service injoignable) ou sans texte valable, l'instantané reste. La reformulation de l'ancienne page Liens a disparu.
+
+  Puis l'encart **« Notre prochaine rencontre IRL »** (`SOUS_BIENVENUE.rencontre`, ancre `#prochaine-rencontre` ; « pour faire la place à une annonce
+  dédiée aux prochaines conventions où Maverick sera présent ») : un titre fixe, l'annonce lue dans la table `annonce` (ligne `prochaine-rencontre-irl`,
+  migration `0068-annonces`, `lib/annonces.mjs`), ou, tant qu'elle est vide (NULL), « Aucune rencontre annoncée pour le moment. ». Sur le site de dev,
+  l'annonce se modifie **en place** en mode modification (`src/scripts/edition/annonces.mjs`, la barre d'outils des panneaux de règles ; vide, la zone
+  s'ouvre vide, le texte d'attente en filigrane ; vidée, elle repart à NULL), à côté du texte de Bienvenue (`edition/guide.mjs`) : une seule barre
+  d'outils se montre, celle de la zone où est le curseur (`texte-en-place.mjs#choisirLaBarre`) ; le service la contrôle comme le texte d'une page (ni
+  HTML brut ni lien non sûr ajouté, balises du glossaire en forme canonique : `serveur/edition.mjs#ANNONCE`), la mise à jour aussi
+  (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`), et elle part en production avec la mise à jour (note de version :
+  domaine Guide, groupe Découvrir, « Bienvenue › Notre prochaine rencontre IRL »). Ni création ni suppression d'annonce : le site place les siennes.
 - **Pages fusionnées** (2026-10-18, `PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes (« Étape 1 : imaginer son
   personnage et choisir sa race » … « Étape 6 : finaliser son personnage ») dans Créer son personnage. Elles ne sont plus dans la base (retirées par
   `db:sync-pages`, famille `docs`) ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses — d'avant l'éclatement (`/guide/<slug>/`) et du plan
   précédent (`/decouvrir/<slug>/`) — mènent à la page qui les absorbe, à l'intertitre où se lit leur contenu (`ANCRES_DES_PAGES_ABSORBEES` :
   `#étape-5--choisir-ses-premiers-sorts`, `#le-jeu-de-rôle-comment-ça-marche-`… ; un intertitre renommé change l'ancre, `test/livres.test.mjs` et
   `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées (`#une-ou-deux-classes--le-biclassage` reste une ancre de Créer son
-  personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ (`ADRESSES_DU_PLAN_PRECEDENT`).
+  personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ et `/decouvrir/liens/` à Bienvenue
+  (`ADRESSES_DU_PLAN_PRECEDENT`).
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
   `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
   contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
@@ -959,7 +972,7 @@ change) ni cherchées par la recherche.
   Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
   le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
 - **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
-  recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et les présentations de la page Liens sont réécrits de zéro à partir
+  recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
   de la base (tables, pages de référence importées des documents), des **originaux** de « Règle du jeu/Guide pour MJ - Maverick » et de « Créer sa
   fiche de personnage » et des décisions R1 à R105 ; quand un original diffère de la base, la page suit la base et les décisions, et l'écart est
   consigné pour le propriétaire (`docs/sql/a-valider.md` §6), jamais appliqué (R83). En réécrivant l'une d'elles : chaque fait vient d'une source

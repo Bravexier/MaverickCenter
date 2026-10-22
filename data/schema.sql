@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 71;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 72;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -245,10 +245,11 @@ CREATE TABLE composant_onglet (
                                                        -- puisse échanger deux ordres dans un même lot (à égalité, l'id départage)
 ) STRICT;
 
--- Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » de la page « Liens » (/decouvrir/liens/).
+-- Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (/decouvrir/,
+-- components/guide/SousBienvenue.astro ; sur la page Liens jusqu'au 2026-10-22).
 -- Demande du propriétaire du 2026-10-18 : « un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines
 -- conventions où Maverick sera présent » ; titre fixe et texte d'attente (« Aucune rencontre annoncée pour le moment. ») écrits par le site
--- (client/src/lib/livres.mjs#LIENS.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance
+-- (client/src/lib/livres.mjs#SOUS_BIENVENUE.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance
 -- (origine, source_ref : feuille de route, retirées à la 1.0).
 CREATE TABLE annonce (
   id    TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'annonce
@@ -4592,19 +4593,30 @@ CREATE VIEW v_personnage_controle AS
 -- ====================================================================================================================
 
 -- Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+-- Un lot en conflit est résolu sur /mise-a-jour/ : resolu_le, resolu_par, resolution (migration 0072). Ses lignes de `modification` restent
+-- 'conflit', avec leur `detail`, comme trace : le lot n'est jamais effacé ; ce qui en est gardé passe par un NOUVEAU lot normal du journal.
 CREATE TABLE modification_lot (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- UUID tiré par le service
   fait_le    TEXT    NOT NULL CHECK (fait_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
   auteur_id  TEXT    REFERENCES utilisateur(id),                     -- NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev
   page_id    TEXT    CHECK (page_id IS NULL OR length(page_id) > 0), -- page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère :
                                                                      -- une page créée par l'édition peut ne pas encore être dans les règles livrées
-  resume     TEXT    NOT NULL CHECK (length(resume) > 0)             -- « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible
+  resume     TEXT    NOT NULL CHECK (length(resume) > 0),            -- « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible
+  resolu_le  TEXT    CHECK (resolu_le IS NULL OR resolu_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+                                                                     -- instant de la résolution du conflit (UTC, à la seconde) ; NULL : pas résolu
+  resolu_par TEXT    REFERENCES modification_lot(id) CHECK (resolu_par IS NULL OR (resolu_le IS NOT NULL AND resolu_par <> id)),
+                                                                     -- le lot normal qui reprend celui-ci ; NULL : pas résolu, ou tous les choix ont
+                                                                     -- abandonné (rien à écrire). Sans index : petite table, lue par id
+  resolution TEXT    CHECK ((resolution IS NULL) = (resolu_le IS NULL) AND (resolution IS NULL OR (json_valid(resolution) AND json_type(resolution) = 'array')))
+                                                                     -- les choix faits : [{"rang": n, "colonne": "corps_md" | null, "choix": 1 | 2 | 3}] ;
+                                                                     -- la valeur saisie au choix 3 est dans le nouveau lot, pas ici
 ) STRICT;
 
 -- Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes
 -- modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows),
 -- 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement :
--- elle n'est pas rejouée, `detail` dit pourquoi).
+-- elle n'est pas rejouée, `detail` dit pourquoi). Un lot en conflit le reste en entier jusqu'à sa résolution (modification_lot.resolu_le), qui
+-- écrit un nouveau lot ; ses lignes restent alors 'conflit', comme trace.
 CREATE TABLE modification (
   lot_id     TEXT    NOT NULL REFERENCES modification_lot(id),
   rang       INTEGER NOT NULL CHECK (rang >= 1),                     -- ordre d'application dans le lot

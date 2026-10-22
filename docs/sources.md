@@ -37,12 +37,27 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 ## Tipeee — « Maverick JDR »
 
 - Page : <https://fr.tipeee.com/maverickjdr> (donnée par le propriétaire avec son plan du 2026-10-16), écrite par le créateur du jeu.
-- Lue le **2026-10-18** par l'API publique `https://api.tipeee.com/v2.0/projects/maverickjdr` (la page est rendue en JavaScript) ; aucun instantané
-  gardé dans `sources/` (la page change : contreparties, montants).
-- Ce qu'en tire le site : la présentation du lien Tipeee de la page Liens (`client/src/lib/livres.mjs#LIENS`) — un « chapeau virtuel » pour soutenir
-  le projet, ce qu'on y découvre (informations inédites, aperçus exclusifs, petites fiches de conseils pour les MJ en herbe), le soutien à plusieurs
-  paliers et le nom inscrit sur le mur des donateurs du Discord et dans les futurs livres. Ni le pseudonyme du créateur ni les montants des paliers ne
-  sont repris. **Texte à faire valider par le propriétaire** (`docs/sql/a-valider.md` §6).
+- Lue par l'API publique `https://api.tipeee.com/v2.0/projects/maverickjdr` (la page est rendue en JavaScript), champ
+  `contentv2.translations.fr.html`.
+- **Ce qu'en tire le site : la partie « Bienvenue », copiée telle quelle** sous le texte de la page Bienvenue (`/decouvrir/`). Réponses du propriétaire
+  du 2026-10-22 : « autant en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », texte repris « La partie
+  « Bienvenue » » (de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu'à la fin : ce qu'on y trouve et le chapeau virtuel), au moment « En direct
+  par le serveur ». Ce choix tranche G36 (`docs/sql/a-valider.md` §6) et remplace la reformulation de l'ancienne page Liens (`lib/livres.mjs#LIENS`).
+  - Le texte est tiré par le module pur `client/src/lib/tipeee.mjs` (`bienvenueDeTipeee`) : du texte seul, en paragraphes, jamais de HTML de Tipeee ;
+    les emojis, des images chez Tipeee, ne sont pas repris. Ni corrigé, ni réécrit. Le reste de la page (présentation, contreparties, montants,
+    donateurs) n'est pas repris.
+  - **En direct par le service** (`client/serveur/tipeee.mjs`, `GET /api/tipeee/`, en production et sur le site de dev) : il relit l'API avec un cache
+    de quelques heures et garde le dernier texte valide ; si Tipeee ne répond pas ou que le repère manque, il sert le dernier texte connu et le note
+    au journal. Détail : `docs/serveur.md`, « Tipeee ».
+  - **Instantané de repli** : `sources/tipeee/bienvenue.json` (`{ url, lu_le, paragraphes }`), versionné et livré avec le site. La page l'affiche au
+    build (et seul, sans service : version portable), puis le remplace par le texte du service s'il diffère ; c'est aussi le premier repli du
+    service. Premier instantané lu le **2026-10-22** : trois paragraphes, de « Bienvenue sur le Tipeee de MaverickJDR ! » à « … tableau des donateurs
+    du serveur Discord officiel. ».
+  - **Son outil** : `node --no-warnings tools/sources/tipeee.mjs` relit l'API, en tire la partie par le même module et réécrit l'instantané si le
+    texte a changé (sinon le fichier et sa date restent) ; une partie introuvable n'écrit rien. `--verifier` contrôle que l'instantané est valide,
+    dans sa forme stable, et que c'est le texte actuel de Tipeee (sortie 1 sinon). `--depuis <reponse.json>` lit une réponse enregistrée, hors ligne.
+    Test : `client/test/sources-tipeee.test.mjs`. L'instantané n'a pas à suivre chaque changement de Tipeee (le service le fait) : le relancer
+    avant une livraison suffit.
 
 ## Google Docs / Sheets
 
