@@ -5,8 +5,8 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, nmDuMjAvecCadeaux, progressionAvecGains,
-  sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, maitrisesAvecChoix,
+  nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -26,12 +26,13 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
- * posture, R115 ; l'arme choisie d'un choix d'acquis, R119, que la page laisse vide) et de la migration 0071 (la magie d'une résistance au choix, R137).
+ * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
+ * plus : la migration 0072 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
- * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 :
- * partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
+ * personnage_maitrise_choix, 0072, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -43,7 +44,6 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   }),
   personnage_arme: Object.freeze({ durabilite: null }),
   personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
-  personnage_acquis_choix: Object.freeze({ arme_famille_id: null }),
   personnage_resistance_choix: Object.freeze({ magie_id: null }),
 });
 
@@ -59,7 +59,8 @@ export const PAGE_D_AVANT = 'La page vient d’une version précédente du site 
   + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra ; '
   + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
   + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule ; '
-  + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort).';
+  + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort ; les maîtrises d’armes se choisissent '
+  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -318,11 +319,15 @@ function verifierForme(db, entree, problemes) {
  * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
- * sur un sort (nmDuMjAvecCadeaux) : refus 409.
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0072 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
+ * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Les choix de maîtrise
+ * eux-mêmes ne sont refusés que par les contraintes de la base : un choix hors de sa source, une limite écrite ou le plafond dépassés sont signalés
+ * par v_personnage_controle (R148 à R150), jamais refusés.
  */
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
   const problemes = [];
-  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)) {
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
+    || maitrisesAvecChoix(recue)) {
     throw new ErreurFiche(409, PAGE_D_AVANT);
   }
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
@@ -330,11 +335,14 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
   // qu'elles n'ont pas changé depuis
   const notes = id === null ? null : db.prepare('SELECT notes FROM personnage WHERE id = ?').get(id)?.notes ?? null;
   const libelle = db.prepare('SELECT libelle FROM accessoire_effet WHERE id = ?');
+  const famille = db.prepare('SELECT nom, de_brut AS de, ordre FROM arme_famille WHERE id = ?');
+  const don = db.prepare('SELECT k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id WHERE k.id = ?');
+  const objet = (l) => (l ? { ...l } : null);
   const entree = sansPartiesRetirees(recue, {
     instant: instant(maintenant), notes,
     noms: {
       armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null,
-      competence: nomDans('competence'),
+      competence: nomDans('competence'), famille: (x) => objet(famille.get(x)), don: (x) => objet(don.get(x)),
     },
   });
   verifierForme(db, entree, problemes);

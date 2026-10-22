@@ -41,6 +41,7 @@ user-invocable: false
 - Vues : `v_personnage_don_acquis` (miroir de `donsAcquis`), `v_personnage_maitrise_part` (parts des sources acquises), `v_personnage_maitrise_arme` (`points` au moins 0, `points_comptes` au plus 4, `des`, constantes `maitrise_arme.*` ; jamais un 4 écrit).
 - Règles de `v_personnage_controle` : `maitrise_a_choisir` (« source = points à choisir » ; l'accessoire : `accessoire:<emplacement>`), `maitrise_hors_choix` et `maitrise_source_perdue` (« source : point = famille »), `maitrise_meme_famille` (limites écrites seulement, R150 : « source : famille = points / limite »), `maitrise_plafond` (R149 : « famille = points / 4 », signalé, jamais refusé), `maitrise_arme_exclue` (R45). Une ligne de choix relève d'une seule règle : exclue, puis source perdue, puis hors choix.
 - L'accessoire « Un point de maîtrise d'arme » : `accessoire_effet_cible.choix = 1`, sa famille dans `personnage_accessoire.arme_famille_id` ; ±1, maudit −1 (R54).
+- Format JSON : clé `maitrise_choix` (`PARTIES_DE_FICHE`) ; `personnage_maitrise_arme` dans `TABLES_RETIREES` (`maitrises_armes`), `personnage_acquis_choix.arme_famille_id` dans `COLONNES_RETIREES`. Les fiches d'avant (base vivante, JSON reçu) : une ligne datée, aucun choix posé (R153 : skill `zone-service`, « Conversions en place »).
 
 ## Visibilité et groupes (demande du propriétaire)
 - Fiche de joueur : visible de lui seul et des administrateurs, ouvrable à des utilisateurs désignés (`personnage_partage`), à tous les MJ ou à tous. Prétiré : à personne, visible par tous.

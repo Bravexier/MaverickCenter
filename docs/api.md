@@ -25,7 +25,8 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   d'un ingrédient d'alchimie, la description d'un produit non monétaire) ou qu'il refuse toujours (le prix de la ressource d'une gemme, qui est dans
   son extension) est **figée** dans le registre (`colonnesFigees`, `ecriture.champsFiges`) : non modifiable au catalogue, `400` avec la raison.
 - **Jamais servi** : les tables des fiches de personnages, des comptes et des groupes (section 13 de `data/schema.sql` : elles passent par
-  `/api/personnages/`) et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
+  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix` et les règles de contrôle sont décrits dans
+  [`serveur.md`](serveur.md), « L'API ») et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
@@ -336,7 +337,9 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 Les tables qui ne sont pas des éléments (tables de détail refaites par le service, vues de recherche, fiches de personnages, journal) sont rangées
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une
-fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource).
+fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource). Ainsi `maitrise_arme_part` et `maitrise_arme_part_famille` (ce que
+donne chaque source de points de maîtrise d'armes, migration 0072) : une source est une ligne de maîtrise d'une classe ou un don, deux parents qu'une
+dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même

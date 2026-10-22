@@ -84,6 +84,14 @@ texte : `entrainementEnLignes`), et l'acquis saisi de `personnage_competence` (a
 calcule). Sur une base d'avant 0062 (reconstruction échouée), une fiche se lit avec des listes `entrainements` et `acquis_choix` vides et s'enregistre
 sans elles (une liste non vide est refusée), l'acquis d'avant à 0. Depuis la migration 0066 (décision R118), les NM du MJ de chaque sort
 (`personnage_sort.nm_cadeau`) deviennent ceux de la fiche, `personnage.nm_mj`, leur somme ; le NM de chaque sort ne change pas, rien n'est noté.
+Depuis la migration 0072 (refonte des maîtrises d'armes, décisions R148 à R153), `personnage_maitrise_arme` (les dés par famille) et l'arme choisie
+d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`, R119, retirée par R152) ne sont plus recopiées : **« Tout remettre à choisir »**
+(R153), aucun choix de maîtrise n'est posé (`personnage_maitrise_choix` reste vide ; les familles imposées par les classes et les dons comptent
+d'emblée), et chaque fiche qui avait des dés ou une arme choisie reçoit **une seule ligne datée** à la fin de ses notes, après celles de R42
+(`maitrisesDAvant` et `ligneDeRetrait` de `fiche-format.mjs`, `noterLesMaitrisesDAvant` de `serveur/base-vivante.mjs`, appelée par la conversion de la
+table et par celle de la colonne, une fois par reconstruction) : « Maîtrises d'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, ARC 2D8 ; arme
+choisie : Flétrisseur (Tueur) ÉPÉES » (familles dans l'ordre des bandeaux, dés écrits comme sur la page ; une partie absente est omise). La fiche est
+marquée modifiée et listée dans `base.retraits` de `/api/etat` ; la compétence d'un choix d'acquis reste (R152).
 Des règles qui ont encore la table alors que le service la sait retirée
 (service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
@@ -127,15 +135,19 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrises_armes`, `armes`,
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrise_choix`, `armes`,
 `armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
 bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
 un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
 `409`) et l'`acquis` d'une compétence n'est plus repris, noté, daté, dans les notes (décision R104 : l'Acquis se calcule) ; des `sorts[].nm_cadeau`
 (avant la migration 0066) donnent leur somme à `nm_mj` (décision R118 : les NM du MJ valent pour toute la fiche ; avec `nm_mj` et un `nm_cadeau`
-positif : `409`, `nmDuMjAvecCadeaux`). Rien de calculé n'y est
-stocké. Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045) ; la durabilité d'une arme est une
+positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0072) et l'`arme_famille_id` d'un choix
+d'acquis sont retirées et notées en une ligne datée (R153, comme la base vivante ; aucun choix posé), et, envoyées avec `maitrise_choix` (une page
+d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. Rien de calculé n'y est
+stocké. Les maîtrises d'armes sont des choix : `maitrise_choix`, une ligne par point à choisir d'une source (`source` : l'id du don, ou
+`<classe>#maitrise-arme:<rang>` pour une ligne de maîtrise de classe ; `rang` : le numéro du point ; `arme_famille_id`), les points et les dés de chaque
+famille se calculent (R148, R149 ; vue `v_personnage_maitrise_arme`). Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045) ; la durabilité d'une arme est une
 colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (une compétence et ses points, ou un texte : `entrainements`, R104).
 
 ```json
@@ -153,7 +165,7 @@ colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (u
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038 ; `entrainement` et `competences[].acquis`, 0062 ; `sorts[].nm_cadeau`,
-  0066 ; convertis plus haut)
+  0066 ; `acquis_choix[].arme_famille_id`, 0072 ; convertis plus haut)
 n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
   migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
@@ -172,11 +184,16 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) ; sur une
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
-  résistance au choix du Drakos orange, liste `resistance_choix`) se lit vide, et une liste non vide pour elle est
+  résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0072, liste `maitrise_choix`, les anciens dés laissés
+  intacts pour la reconstruction suivante) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
+  Pour les maîtrises d'armes (migration 0072) : `maitrise_a_choisir` (un point d'une source acquise sans famille), `maitrise_hors_choix` (une famille
+  que la source ne propose pas), `maitrise_meme_famille` (une limite écrite dépassée, R150), `maitrise_plafond` (plus de 4 points sur une famille,
+  R149), `maitrise_source_perdue` (le choix d'une source qui n'est plus acquise) et `maitrise_arme_exclue` (ARME DE MONSTRES, R45) : signalés, jamais
+  refusés ; seules les contraintes de la base refusent (un rang de point sous 1, une famille inconnue).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe. `POST /api/classeur/`

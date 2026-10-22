@@ -7,7 +7,9 @@
 // envoyée avec les nouvelles clés de l'armure, elle est refusée par le service (armuresAvecArmure). Enfin les matériaux du bouclier
 // (personnage_bouclier_materiau, migration 0060) deviennent sa matière (décision R96 : matiereDuBouclier), et les accessoires perdent Ceinture, Autre, nom
 // et effet hors table (décision R97 : accessoiresGardes), chaque perte notée, datée. Les NM du MJ notés sort par sort (personnage_sort.nm_cadeau,
-// migration 0066) deviennent ceux de la fiche (décision R118 : nmDuMjDesSorts).
+// migration 0066) deviennent ceux de la fiche (décision R118 : nmDuMjDesSorts). Les dés par famille (personnage_maitrise_arme, migration 0072) et l'arme
+// choisie d'un choix d'acquis (R119) sont notés en une ligne datée, aucun choix posé (décision R153 : maitrisesDAvant) ; avec les choix de maîtrise,
+// refusés par le service (maitrisesAvecChoix).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -15,12 +17,20 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import {
   accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
   matiereDuBouclier, nmDuMjAvecCadeaux, nmDuMjDesSorts, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression,
-  lignesDesPiecesRetirees, progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees,
+  lignesDesPiecesRetirees, progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees, desEnNotation, maitrisesDAvant, maitrisesAvecChoix, ligneDeRetrait,
+  ordreDesRetraits, PREFIXE_DES_MAITRISES_D_AVANT,
 } from '../src/lib/fiche-format.mjs';
+import { notationDesDes } from '../src/lib/fiche-moteur.mjs';
 
-test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
-  assert.deepEqual(TABLES_RETIREES, { personnage_progression: 'progression', personnage_armure: 'armures', personnage_bouclier_materiau: 'bouclier_materiaux' });
-  assert.deepEqual(PARTIES_RETIREES, { progression: 'personnage_progression', armures: 'personnage_armure', bouclier_materiaux: 'personnage_bouclier_materiau' });
+test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), maîtrises d’armes (0072), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
+  assert.deepEqual(TABLES_RETIREES, {
+    personnage_progression: 'progression', personnage_armure: 'armures', personnage_bouclier_materiau: 'bouclier_materiaux', personnage_maitrise_arme: 'maitrises_armes',
+  });
+  assert.deepEqual(PARTIES_RETIREES, {
+    progression: 'personnage_progression', armures: 'personnage_armure', bouclier_materiaux: 'personnage_bouclier_materiau', maitrises_armes: 'personnage_maitrise_arme',
+  });
+  assert.equal(PARTIES_DE_FICHE.maitrise_choix, 'personnage_maitrise_choix', 'R148 : une famille par point à choisir');
+  assert.deepEqual(COLONNES_RETIREES.personnage_acquis_choix, ['arme_famille_id'], 'R152');
   assert.deepEqual(COLONNES_RETIREES.personnage_accessoire, ['nom', 'texte'], 'décision R97');
   for (const [table, cle] of Object.entries(TABLES_RETIREES)) {
     assert.ok(!TABLES_FICHES.includes(table), table);
@@ -219,4 +229,76 @@ test('NM du MJ (décision R118, migration 0066) : `nm_cadeau` d’un sort est un
   assert.equal(nmDuMjAvecCadeaux({ sorts }), false, 'sans `nm_mj` : convertie');
   const sans = { nm_mj: 1, sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 1, nm_livre: 0 }] };
   assert.equal(sansPartiesRetirees(sans), sans, 'rien à convertir : la même fiche');
+});
+
+// Décision R153 : les noms, dés et ordre des familles et le don de la base des règles, comme le service (serveur/fiches.mjs, serveur/base-vivante.mjs).
+function nomsDeLaBase() {
+  const db = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  const familles = new Map(db.prepare('SELECT id, nom, de_brut AS de, ordre FROM arme_famille').all().map((f) => [f.id, { nom: f.nom, de: f.de, ordre: f.ordre }]));
+  const dons = new Map(db.prepare('SELECT k.id, k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id').all().map((k) => [k.id, { nom: k.nom, classe: k.classe }]));
+  db.close();
+  return { famille: (id) => familles.get(id) ?? null, don: (id) => dons.get(id) ?? null };
+}
+
+test('desEnNotation : la notation des dés de la page (fiche-moteur#notationDesDes), sur chaque dé de famille de la base', () => {
+  const noms = nomsDeLaBase();
+  for (const id of ['epees', 'pugilat', 'arc', 'arme-de-monstres']) {
+    for (const n of [1, 2, 5]) assert.equal(desEnNotation(noms.famille(id).de, n), notationDesDes(noms.famille(id).de, n), `${id} ${n}`);
+  }
+  assert.equal(desEnNotation('D6/D8/D10', 3), '3D6/3D8/3D10');
+  assert.equal(desEnNotation(null, 1), '1 dé');
+});
+
+test('maitrisesDAvant (R153) : les anciens dés dans l’ordre des familles et l’arme choisie de R119 ; une partie absente omise ; rien sans dés ni arme', () => {
+  const noms = nomsDeLaBase();
+  const d = maitrisesDAvant(
+    [{ arme_famille_id: 'arc', des: 2 }, { arme_famille_id: 'epees', des: 3 }],
+    [{ source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', arme_famille_id: 'epees' }, { source: 'x', rang: 1, competence_id: 'arc' }],
+    noms,
+  );
+  assert.equal(ligneDeRetrait(d, '2026-10-22T09:00:00Z'),
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES', 'le texte du cahier de la refonte');
+  assert.ok(ligneDeRetrait(d, '2026-10-22T09:00:00Z').startsWith(PREFIXE_DES_MAITRISES_D_AVANT));
+  assert.equal(ligneDeRetrait(maitrisesDAvant([{ arme_famille_id: 'pugilat', des: 2 }], [], noms), '2026-10-22T09:00:00Z'),
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : PUGILAT 2D6/2D8/2D10', 'sans arme choisie');
+  assert.equal(ligneDeRetrait(maitrisesDAvant([], [{ source: 'capacites/tueur-fletrisseur', arme_famille_id: 'arbalete' }], noms), '2026-10-22T09:00:00Z'),
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : arme choisie : Flétrisseur (Tueur) ARBALÈTE', 'sans dés');
+  assert.equal(maitrisesDAvant([], [{ source: 's', competence_id: 'arc', arme_famille_id: null }], noms), null, 'ni dés ni arme : pas de ligne');
+  assert.equal(maitrisesDAvant(undefined, undefined), null);
+  // sans les noms (page qui ne les donne pas) : l'id tient lieu de nom
+  assert.equal(ligneDeRetrait(maitrisesDAvant([{ arme_famille_id: 'epees', des: 2 }], []), '2026-10-22T09:00:00Z'), 'Maîtrises d\'armes avant la refonte (2026-10-22) : epees 2 dés');
+  // la dernière ligne d'une fiche, après les retraits de R42
+  assert.ok(ordreDesRetraits(d, { nature: 'acquis', id: 'arc', nom: 'Arc' }) > 0);
+});
+
+test('sansPartiesRetirees (R153, R152) : une fiche d’avant (JSON exporté, page restée ouverte) perd `maitrises_armes` et l’arme choisie, notés en une ligne ; la compétence du choix reste ; avec `maitrise_choix`, jetés sans note', () => {
+  const noms = nomsDeLaBase();
+  const recue = {
+    nom: 'Aldric', notes: 'Mes notes', maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'arc', des: 2 }],
+    acquis_choix: [{ source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'epees' }],
+  };
+  const gele = JSON.stringify(recue);
+  const convertie = sansPartiesRetirees(recue, { instant: '2026-10-22T09:00:00Z', noms });
+  assert.equal(JSON.stringify(recue), gele, 'jamais modifiée en place');
+  assert.ok(!('maitrises_armes' in convertie));
+  assert.ok(!('maitrise_choix' in convertie), 'aucun choix posé');
+  assert.deepEqual(convertie.acquis_choix, [{ source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null }]);
+  assert.equal(convertie.notes, 'Mes notes\nMaîtrises d\'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES');
+  // une liste vide d'une page d'avant : rien à noter
+  assert.deepEqual(sansPartiesRetirees({ nom: 'X', maitrises_armes: [] }, { instant: '2026-10-22T09:00:00Z', noms }), { nom: 'X' });
+  // les notes enregistrées quand l'envoi n'a pas les siennes
+  assert.equal(sansPartiesRetirees({ maitrises_armes: [{ arme_famille_id: 'arc', des: 2 }] }, { instant: '2026-10-22T09:00:00Z', noms, notes: 'Avant' }).notes,
+    'Avant\nMaîtrises d\'armes avant la refonte (2026-10-22) : ARC 2D8');
+  // avec les choix de maîtrise (page d'avant qui a repris une réponse) : jetés sans note (le service refuse avant : maitrisesAvecChoix)
+  const avecChoix = sansPartiesRetirees({ ...recue, maitrise_choix: [] }, { instant: '2026-10-22T09:00:00Z', noms });
+  assert.equal(avecChoix.notes, 'Mes notes');
+  assert.ok(!('maitrises_armes' in avecChoix) && !('arme_famille_id' in avecChoix.acquis_choix[0]));
+});
+
+test('maitrisesAvecChoix : des maîtrises d’avant (dés ou arme choisie) ET `maitrise_choix` ; une liste vide, ou sans `maitrise_choix`, n’en est pas une', () => {
+  assert.equal(maitrisesAvecChoix({ maitrises_armes: [{ arme_famille_id: 'arc', des: 2 }], maitrise_choix: [] }), true);
+  assert.equal(maitrisesAvecChoix({ acquis_choix: [{ source: 's', rang: 1, competence_id: 'arc', arme_famille_id: 'arc' }], maitrise_choix: [] }), true);
+  assert.equal(maitrisesAvecChoix({ maitrises_armes: [], acquis_choix: [{ source: 's', rang: 1, competence_id: 'arc', arme_famille_id: null }], maitrise_choix: [] }), false);
+  assert.equal(maitrisesAvecChoix({ maitrises_armes: [{ arme_famille_id: 'arc', des: 2 }] }), false);
+  assert.equal(maitrisesAvecChoix(null), false);
 });

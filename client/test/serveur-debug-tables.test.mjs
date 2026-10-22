@@ -123,7 +123,8 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   // la section 13 : les tables des fiches (TABLES_FICHES) et les vues qui les lisent
   assert.deepEqual(SECTION_13.filter((n) => !n.startsWith('v_')), [...TABLES_FICHES].sort());
   assert.deepEqual(SECTION_13.filter((n) => n.startsWith('v_')),
-    ['v_groupe_controle', 'v_personnage_controle', 'v_personnage_metier_bonus', 'v_personnage_niveau', 'v_personnage_visible']);
+    ['v_groupe_controle', 'v_personnage_controle', 'v_personnage_don_acquis', 'v_personnage_maitrise_arme', 'v_personnage_maitrise_part', 'v_personnage_metier_bonus',
+      'v_personnage_niveau', 'v_personnage_visible']);
   // une fiche avec portrait (écrite par le service, dans la copie de la base qu'est la base vivante d'essai) et un compte
   const fiche = ok(appel('POST', '/api/personnages/', { corps: { nom: `Fiche du test debug-tables ${process.pid}`, portrait: IMAGES.png } }), 201).personnage.id;
   const compte = `compte-debug-tables-${process.pid}`;
