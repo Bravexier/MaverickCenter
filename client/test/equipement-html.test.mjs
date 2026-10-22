@@ -150,8 +150,8 @@ test('ceinture, bâtons magiques : le panneau de règles en tête, une ligne par
   // demande du propriétaire du 2026-10-16 : plus de colonne Magie ni de colonne par niveau ; le niveau au curseur, l'effet et le prix du niveau choisi
   const entetes = [...panneauDesBatons.slice(panneauDesBatons.indexOf('<thead>'), panneauDesBatons.indexOf('</thead>')).matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes, ['Gemme', 'Bois', 'Niveau', 'Effet', 'Prix']);
-  // chaque ligne sur la couleur de sa magie dans l'onglet « Bâton magique » du classeur (lib/ceinture-couleurs.mjs), au niveau 1 ; ses infobulles dans
-  // la couleur de la magie sur le site
+  // chaque ligne sur la couleur de sa magie sur le site, comme ses infobulles (demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les
+  // couleurs du site »), au niveau 1
   for (const m of batons.magies) {
     const { fond, texte } = couleursDesBatons(m.magie);
     assert.ok(panneauDesBatons.includes(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`), m.magie.nom);
@@ -182,6 +182,7 @@ test('chaque onglet garde son script ; un seul script d’onglets sur la page', 
   // celui des bâtons magiques (src/scripts/batons.mjs), assez court pour qu'Astro l'écrive en ligne, une fois
   assert.equal((html.match(/<script type="module">[^<]*\[data-baton-curseur\]/g) ?? []).length, 1, 'BatonsMagiques');
   assert.equal((html.match(/onglets:brancher/g) ?? []).length, 1, 'components/Onglets.astro, posé une fois');
-  // trois groupes : la barre de la page, les sous-onglets de la ceinture et, dans l'onglet Accessoires, les tableaux d'effets ; chacun est sa barre seule
-  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Ceinture', 'Effets par propriété']);
+  // quatre groupes : la barre de la page, les sous-onglets de la ceinture, les familles des consommables (demande du propriétaire du 2026-10-22) et,
+  // dans l'onglet Accessoires, les tableaux d'effets ; chacun est sa barre seule
+  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Ceinture', 'Consommables', 'Effets par propriété']);
 });

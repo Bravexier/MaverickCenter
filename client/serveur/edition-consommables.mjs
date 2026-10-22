@@ -3,7 +3,7 @@
 // modifiées . (sauf pour les champ calculés) ». Les domaines pour serveur/edition.mjs (DOMAINES) :
 //   - une potion (une ligne d'un tableau) : son nom et son prix (sa ligne de la table ressource, genre 'potion' ; le prix en RF en est recalculé,
 //     lib/composants-champs.mjs#prixEnRf), son niveau d'alchimie et son effet (table potion ; les altérations d'état de l'effet, potion_etat, en sont
-//     refaites : lib/potion-etats.mjs) ; rien d'autre ne se saisit (la couleur de la ligne vient de la source, lib/ceinture-couleurs.mjs ; la valeur en
+//     refaites : lib/potion-etats.mjs) ; rien d'autre ne se saisit (la couleur de la ligne suit la règle du site, lib/alchimie-couleurs.mjs ; la valeur en
 //     RF d'un prix, la page et l'ordre d'une potion sont tirés d'ailleurs) ;
 //   - le corps de la page de la potion (« Fiole rouge »… : son tableau du palier) suit (lib/corps-potions.mjs), ni HTML brut ni lien non sûr ajouté ;
 //   - ni création ni suppression (non demandées ; les fiches de personnage citent les potions dans leur inventaire et leur ceinture).

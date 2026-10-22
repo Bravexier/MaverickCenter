@@ -233,6 +233,9 @@ const COULEURS = {
 export const COULEUR_PAR_DEFAUT = '#ad5e29';
 export const couleurDeMagie = (nom) => COULEURS[normalize(nom ?? '')] ?? COULEUR_PAR_DEFAUT;
 
+/** La couleur d'une magie connue du site (son nom ou son nom court : « Feu », « espace-temps »), ou null : sans couleur par défaut. */
+export const couleurDeMagieConnue = (nom) => COULEURS[normalize(nom ?? '')] ?? null;
+
 export const texteSurCouleurDeMagie = (nom) => texteSurCouleur(couleurDeMagie(nom));
 
 /** Texte lisible sur un fond de cette couleur (« #rrggbb ») : presque noir sur une couleur claire (jaune), blanc sinon. */

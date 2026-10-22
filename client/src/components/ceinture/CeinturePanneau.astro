@@ -22,11 +22,13 @@ import { url } from '../../lib/wiki';
 // v_objet_ceinture, décisions R81 et R82). En tête, les règles de la ceinture, repliées comme celles des autres onglets (section « La ceinture » du
 // chapitre « L'équipement » du guide, et en dépliable le texte de la source : section « Ceinture » de la page de référence, dont la liste est « non
 // exhaustive ») ; puis trois sous-onglets (components/Onglets.astro, posé une fois par la page ; lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE),
-// chacun un panneau `section.ceinture-panneau` : Consommables (les groupes repliables des fioles, remèdes, philtres, huiles et de l'alchimie primitive,
-// dans cet ordre ; dans chacun, un tableau par page de potion, deux ou trois côte à côte selon la largeur (demande du propriétaire, 2026-10-17 : « Les
-// tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), son titre en lien vers la page ; chaque potion sur la
-// couleur de son palier dans le Doc « Alchimie », lib/ceinture-couleurs.mjs), Carquois (les carquois et sacs, liens vers leur ligne de « Composants »,
-// où ils se modifient) et Bâtons magiques
+// chacun un panneau `section.ceinture-panneau` : Consommables (un second niveau d'onglets, un par famille, dans l'ordre Fioles, Remèdes, Philtres,
+// Huiles, Alchimie primitive — demande du propriétaire, 2026-10-22, à la question « Préférez-vous un second niveau d'onglets (Fioles / Remèdes /
+// Philtres / Huiles / Alchimie primitive) ? » : « Oui » ; groupe `data-onglets="Consommables"`, panneaux `section.ceinture-famille#objets-<famille>` ;
+// dans chacun, un tableau par page de potion, deux ou trois côte à côte selon la largeur (demande du propriétaire, 2026-10-17 : « Les tableaux des
+// fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), son titre en lien vers la page ; chaque potion sur la couleur que lui
+// donne la règle du site, lib/alchimie-couleurs.mjs), Carquois (les carquois et sacs, liens vers leur ligne de « Composants », où ils se modifient) et
+// Bâtons magiques
 // (BatonsMagiques.astro, en tête son panneau de règles : components/equipement/PanneauDeRegles.astro). Plus de recherche (demande du propriétaire) :
 // pas de script de l'onglet, sauf le curseur des bâtons (src/scripts/batons.mjs). Sans JavaScript, tout est affiché, chaque sous-onglet sous son
 // titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). En mode modification (site de dev ; demande du
@@ -88,7 +90,7 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
   actif: i === 0,
   detail: o.id === ONGLET_DES_BATONS
     ? `${pluriel(batons.magies.length, 'magie')} · ${pluriel(batons.nombre, 'bâton')}`
-    : `${dans(o.id).length > 1 ? `${dans(o.id).length} tableaux · ` : ''}${pluriel(compte(o.id), 'objet')}`,
+    : `${dans(o.id).length > 1 ? `${dans(o.id).length} familles · ` : ''}${pluriel(compte(o.id), 'objet')}`,
 }));
 ---
 
@@ -144,31 +146,31 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
     sousOnglets.map((o) => {
       if (o.id === ONGLET_DES_BATONS) return <BatonsMagiques batons={batons} regles={reglesBatons} id={o.id} nom={o.nom} actif={o.actif} />;
       const siens = dans(o.id);
+      const familles = siens.filter((t) => t.pages);
       return (
         <section class={`ceinture-panneau${o.actif ? ' is-active' : ''}`} id={o.id} aria-labelledby={`titre-${o.id}`}>
           <h3 class="ceinture-panneau__titre" id={`titre-${o.id}`}>{o.nom}</h3>
-          {siens.length > 1 && (
-            <nav class="ceinture-sommaire" aria-label={`Tableaux : ${o.nom}`}>
-              {siens.map((t) => <a href={`#${t.id}`}>{t.titre} <span class="ceinture-sommaire__compte">{t.nombre}</span></a>)}
-            </nav>
-          )}
-          {siens.some((t) => t.pages) && (
-            <p class="ceinture-aide">
-              Un tableau par potion, ses paliers sur la couleur de leur palier dans le Google Doc « Alchimie » (celles que le Doc ne colore pas restent
-              neutres) ; le titre d’un tableau mène à la page de la potion (description, recette).
-            </p>
-          )}
-          <div class="tableaux">
-            {siens.map((t) =>
-              t.pages ? (
-                <details class="tableau ceint-tableau" id={t.id} open>
-                  <summary class="tableau__titre ceint-tableau__titre">
-                    <span class="tableau__nom ceint-tableau__nom" id={`${t.id}-titre`}>{t.titre}</span>
-                    <span class="tableau__compte ceint-tableau__compte">{pluriel(t.nombre, 'objet')}</span>
-                  </summary>
-                  <div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby={`${t.id}-titre`}>
-                    {t.pages.map((p) => (
-                      <Tableau id={p.id} titre={p.titre} lien={p.lien} compte={pluriel(p.nombre, 'palier')} noteHtml={p.resume} repliable={false} niveau={4} bloc="ceint-groupe" classeTable="ceint-table ceint-table--potions">
+          {familles.length > 0 && (
+            <>
+              <p class="ceinture-aide">
+                Un onglet par famille, un tableau par potion ; chaque palier sur la couleur de sa potion, plus foncée à chaque niveau d’alchimie (celles dont
+                l’essence n’a pas de couleur restent neutres) ; le titre d’un tableau mène à la page de la potion (description, recette).
+              </p>
+              {/* le groupe d'onglets des familles est sa barre seule, comme les deux autres niveaux */}
+              <nav class="ceinture-familles" aria-label={o.nom} data-onglets={o.nom}>
+                {familles.map((t, i) => (
+                  <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${t.id}`} href={`#${t.id}`}>
+                    <span class="onglet__nom">{t.titre}</span>
+                    <span class="onglet__detail">{pluriel(t.pages!.length, 'potion')} · {pluriel(t.nombre, 'palier')}</span>
+                  </a>
+                ))}
+              </nav>
+              {familles.map((t, i) => (
+                <section class={`ceinture-famille${i === 0 ? ' is-active' : ''}`} id={t.id} aria-labelledby={`titre-${t.id}`}>
+                  <h4 class="ceinture-famille__titre" id={`titre-${t.id}`}>{t.titre}</h4>
+                  <div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby={`titre-${t.id}`}>
+                    {t.pages!.map((p) => (
+                      <Tableau id={p.id} titre={p.titre} lien={p.lien} compte={pluriel(p.nombre, 'palier')} noteHtml={p.resume} repliable={false} niveau={5} bloc="ceint-groupe" classeTable="ceint-table ceint-table--potions">
                         <thead>
                           <tr><th scope="col">Nom</th><th scope="col">Niveau</th><th scope="col">Prix</th><th scope="col">Effet</th></tr>
                         </thead>
@@ -176,17 +178,22 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
                       </Tableau>
                     ))}
                   </div>
-                </details>
-              ) : (
+                </section>
+              ))}
+            </>
+          )}
+          {siens.filter((t) => !t.pages).length > 0 && (
+            <div class="tableaux">
+              {siens.filter((t) => !t.pages).map((t) => (
                 <Tableau id={t.id} titre={t.titre} compte={pluriel(t.nombre, 'objet')} noteHtml={t.note} bloc="ceint-tableau" classeTable="ceint-table">
                   <thead>
                     <tr><th scope="col">Nom</th><th scope="col">Prix</th><th scope="col">Description</th></tr>
                   </thead>
                   <tbody set:html={t.corps} />
                 </Tableau>
-              ),
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       );
     })

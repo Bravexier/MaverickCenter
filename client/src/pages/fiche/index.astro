@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Onglets from '../../components/Onglets.astro';
 import ficheCss from '../../styles/fiche/fiche.css?raw';
+import { cssDesAttributs } from '../../lib/attributs-couleurs.mjs';
 import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 import { htmlDePiece } from '../../lib/monnaies.mjs';
@@ -43,7 +44,8 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
 <Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, avec les règles de Maverick">
   {/* la connexion à Google (« Exporter ») : la fenêtre de Google reçoit l'origine du site (le reste du site garde Referrer-Policy same-origin) */}
   <meta slot="tete" name="referrer" content="strict-origin-when-cross-origin" />
-  <style is:inline set:html={ficheCss}></style>
+  {/* les couleurs des attributs (santé, barrière, chakra, corruption, 4ᵉ barre) : la règle du site, lib/attributs-couleurs.mjs */}
+  <style is:inline set:html={`${cssDesAttributs()}\n${ficheCss}`}></style>
   <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-modele={url('fiche/modele.xlsx')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
       <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>

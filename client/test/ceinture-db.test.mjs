@@ -15,7 +15,7 @@ import {
 } from '../src/lib/ceinture-db.mjs';
 import { ancreDObjet, ancreDePotions, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
-import { COULEURS_DES_POTIONS } from '../src/lib/ceinture-couleurs.mjs';
+import { couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
 const db = ouvrirBase();
@@ -90,8 +90,17 @@ test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la v
     const titres = t.pages.map((p) => p.titre);
     assert.deepEqual(titres, [...titres].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })), `${t.famille} : pages par ordre alphabétique`);
     for (const p of t.pages) assert.ok(p.existe, `${p.id} : la page de la potion existe`);
-    // chaque potion porte la couleur de son palier dans le Doc « Alchimie » (lib/ceinture-couleurs.mjs : test/ceinture-couleurs.test.mjs)
-    for (const x of t.pages.flatMap((p) => p.potions)) assert.equal(x.couleur, COULEURS_DES_POTIONS[x.id] ?? null, x.id);
+    // chaque potion porte la couleur de la règle du site (lib/alchimie-couleurs.mjs : test/alchimie-couleurs.test.mjs) : l'essence de la première
+    // variante de sa recette, la caractéristique de la page (les philtres seulement), son niveau
+    for (const p of t.pages) {
+      assert.equal(p.caracteristique !== null, t.famille === 'philtre', `${p.id} : une caractéristique pour un philtre, et pour lui seul`);
+      for (const x of p.potions) {
+        const essence = db.prepare(`SELECT ri.affinite_id FROM recette_produit rp JOIN recette r ON r.id = rp.recette_id
+          JOIN recette_ingredient ri ON ri.recette_id = r.id AND ri.role = 'essence' WHERE rp.ressource_id = ? ORDER BY r.variante, ri.rang, ri.option LIMIT 1`).get(x.id)?.affinite_id ?? null;
+        assert.equal(x.essence, essence, `${x.id} : l'essence de sa recette`);
+        assert.deepEqual(x.couleur, couleurDePotion({ essence, caracteristique: p.caracteristique, niveau: x.niveau_rang }), x.id);
+      }
+    }
   }
   assert.equal(tableau('contenant').objets.length, tableau('contenant').nombre);
 });
