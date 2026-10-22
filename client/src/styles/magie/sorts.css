@@ -2,7 +2,7 @@
 .npm { margin: 1.4rem 0 2rem; scroll-margin-top: 1rem; }
 .sort { scroll-margin-top: 1rem; }
 .npm__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.6rem; font-size: 1.1rem; }
-.npm__badge { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-caps); padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); background: var(--mag); color: var(--couleur-texte-magie, #fff); }
+.npm__badge { font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--ls-caps); padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); background: var(--mag); color: var(--mag-texte); }
 /* texte du titre et pastille « i » de la règle du niveau : un seul bloc, pour que le « i » ne passe jamais seul à la ligne */
 .npm__intitule { display: inline-flex; align-items: center; gap: 0.5rem; }
 .npm__pips { display: inline-flex; gap: 0.2rem; margin-left: auto; }

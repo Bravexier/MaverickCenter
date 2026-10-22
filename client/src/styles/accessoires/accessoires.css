@@ -1,7 +1,8 @@
 /* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : l'onglet Accessoires de la page /ressources/equipement/, générateur d'accessoire. Les tableaux
    des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
    sous les tableaux). Les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau (--niv, posé par le gabarit ou le script),
-   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). Blocs et tableaux : le gabarit commun
+   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (la classe de la magie,
+   `.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs ; sa pastille dans styles/equipement/equipement.css). Blocs et tableaux : le gabarit commun
    (styles/global/tableaux.css : cadre, titre, en-têtes) ; ici, ce qui leur est propre. */
 main:has(.acc) { max-width: 120rem; }
 .acc {
@@ -132,6 +133,8 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 .acc-gemme-choix input:disabled { cursor: not-allowed; }
 .acc-gemmes__ou { font-style: italic; }
 .acc-bulles { display: contents; }
+/* l'infobulle d'une gemme, teintée de sa magie (styles/global/infobulles.css lit --mag) : la classe de la magie (lib/palette-css.mjs : --couleur) */
+.bulle--gemme { --mag: var(--couleur); }
 
 /* L'accessoire créé (rempli par src/scripts/accessoires.mjs) : dans la couleur du niveau de son effet */
 .acc-produit { padding: 0.9rem 1rem 1rem; background: var(--surface); border: 1px solid var(--acc-line); border-radius: var(--radius-lg); font-size: var(--fs-lg); box-shadow: 0 6px 12px -10px rgb(0 0 0 / 0.35); }

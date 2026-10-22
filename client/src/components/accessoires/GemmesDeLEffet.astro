@@ -12,8 +12,8 @@ import { gemmesAuChoix } from '../../lib/accessoires-generateur.mjs';
 interface Gemme {
   id: string;
   nom: string;
-  couleur: string;
-  texte: string;
+  /** la classe de sa magie (lib/palette-css.mjs) */
+  classe: string;
 }
 interface Props {
   rangs: Gemme[][];
@@ -25,15 +25,16 @@ interface Props {
 const { rangs, brut, libelle } = Astro.props;
 const { imposees, auChoix, max } = gemmesAuChoix(rangs.map((r) => r.map((g) => cleDeRessource(g.id))));
 const estAuChoix = (g: Gemme) => auChoix.includes(cleDeRessource(g.id)) && !imposees.includes(cleDeRessource(g.id));
-const styleDeGemme = (g: Gemme) => `--g: ${g.couleur}; --g-texte: ${g.texte}`;
+// la pastille dans la couleur de sa magie : sa classe (lib/palette-css.mjs ; styles/equipement/equipement.css, .acc-gemme), copiée telle quelle par l'encart
+const classeDeGemme = (g: Gemme) => `acc-gemme ${g.classe}`;
 ---
 
 {rangs.length ? rangs.map((rang, i) => (
   <>{i > 0 && <span class="acc-gemmes__plus">+</span>}<span class="acc-gemmes__rang" role={rang.some(estAuChoix) ? 'group' : undefined} aria-label={rang.some(estAuChoix) ? `Gemmes au choix, ${max === 1 ? 'une' : max} en tout` : undefined}>{rang.map((g, j) => (
     <>{j > 0 && <span class={`acc-gemmes__ou${estAuChoix(g) && estAuChoix(rang[j - 1]) ? ' sans-js' : ''}`}>ou</span>}{estAuChoix(g) ? (
-      <span class="acc-gemme-choix"><input type="checkbox" class="js-seul" data-acc-gemme={cleDeRessource(g.id)} aria-label={`${g.nom} : gemme au choix (${libelle})`} /><span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></span>
+      <span class="acc-gemme-choix"><input type="checkbox" class="js-seul" data-acc-gemme={cleDeRessource(g.id)} aria-label={`${g.nom} : gemme au choix (${libelle})`} /><span class={classeDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></span>
     ) : (
-      <span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span>
+      <span class={classeDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span>
     )}</>
   ))}</span></>
 )) : (brut ?? '')}

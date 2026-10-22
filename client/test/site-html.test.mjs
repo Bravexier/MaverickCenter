@@ -13,6 +13,7 @@ import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
+import { classesDeLaPalette } from '../src/lib/palette-css.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -440,4 +441,54 @@ test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », 
   const grise = css.match(/\.site-header--maintenance \.site-nav,html\[data-maintenance\] \.site-nav\{([^}]*)\}/);
   assert.ok(grise && /opacity:/.test(grise[1]) && /pointer-events:none/.test(grise[1]), 'menu grisé, sur la page de maintenance et sur une page qui y part');
   assert.ok(!lire('index.html').includes('href="/maintenance/"'), 'pas dans le menu');
+});
+
+// Les couleurs des magies en classes (lot des magies de la palette, demande du propriétaire du 2026-10-22 : « Aucune couleur en dur. », choix « Module JS
+// → classe » : skill ui-couleurs, lib/palette-css.mjs) : sur toute page construite, aucune couleur de magie en style ; chaque classe de couleur posée
+// existe (la palette de chaque page, ou une combinaison que la page émet).
+/** Les éléments que les pages posent sur la couleur d'une magie (lot des magies de la palette). */
+const ELEMENTS_DES_MAGIES = new Set([
+  'magie', 'magie-teinte', 'autre-magie__onglet', 'creature__bouton', 'magies-orbite__position', 'magies-orbite__noeud', 'magies-orbite__pastille', 'magies-relation',
+  'tableau-magies__col-magie', 'tableau-magies__entete', 'tableau-magies__ligne', 'tableau-magies__point', 'race-magie', 'annexe-classe__carte',
+  'guide-magie', 'guide-magie__point', 'bmagie', 'bcible--magie', 'comp-magie', 'composant--magie', 'acc-gemme', 'bulle--gemme', 'perso',
+]);
+
+test('couleurs des magies : jamais en style sur une page construite, toujours par une classe de la palette qui existe', options, () => {
+  const palette = classesDeLaPalette();
+  const VARIABLES_DES_MAGIES = /style="[^"]*(?:--couleur-magie|--couleur-texte-magie|--mag:|--mag-texte:|--m:|--m-texte:|--g:|--g-texte:|--creature-[12]:|--magie-[12]:)/;
+  const avecMagie = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, VARIABLES_DES_MAGIES, `${rel} : une couleur de magie en style`);
+    // un élément de la palette, ou un élément d'une magie (même sans sa classe : une régression qui remettrait `style="--c: #…"`), n'a aucune couleur
+    // en style
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => c.startsWith('couleur-') || ELEMENTS_DES_MAGIES.has(c))) continue;
+      assert.doesNotMatch(balise, /style="[^"]*(?:#[0-9a-f]{3,6}\b|\b(?:rgba?|hsla?)\()/i, `${rel} : une couleur en style sur un élément d'une magie : ${balise}`);
+    }
+    const classes = new Set([...html.matchAll(/\bclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('couleur-')));
+    for (const c of classes) assert.ok(palette.has(c) || html.includes(`.${c}{`), `${rel} : la classe ${c} n’existe pas`);
+    if ([...classes].some((c) => c.startsWith('couleur-magie-'))) avecMagie.set(rel, html);
+  }
+  // chaque zone du lot pose bien les classes de ses magies
+  const zones = {
+    'magies/index.html': /class="magies-orbite__position [^"]* couleur-magie-feu"[\s\S]*<tr class="tableau-magies__ligne couleur-magie-feu">/,
+    'magies/magie-du-feu/index.html': /<div class="magie couleur-magie-feu">/,
+    'magies/potentiel-illimite/index.html': /class="onglet autre-magie__onglet couleur-magie-feu"/,
+    'magies/magie-de-la-terre/index.html': /class="chip creature__bouton creature__bouton--magie couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"[\s\S]*class="bmagie couleur-magie-terre"/,
+    'races/index.html': /<col class="tableau-magies__col-magie couleur-magie-feu">/,
+    'races/nain/index.html': /<a class="chip race-magie couleur-magie-[\w-]+"/,
+    'classes/mage-bleu/index.html': /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/,
+    'decouvrir/l-univers/index.html': /<li class="couleur-magie-feu">\s*<a class="guide-magie"/,
+    'bestiaire/index.html': /class="bcible bcible--[a-z_]+ bcible--magie(?: bcible--deux)? couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"/,
+    'ressources/composants/index.html': /<tr class="composant composant--magie couleur-magie-[\w-]+"[\s\S]*<span class="comp-magie couleur-magie-[\w-]+">/,
+    'ressources/equipement/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
+  };
+  for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
+  assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
+  // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  assert.ok(regles.magies.every((m) => palette.has(m.classe) && palette.has(m.classe_2)), 'regles.json : des classes de la palette');
 });

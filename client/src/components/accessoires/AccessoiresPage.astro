@@ -254,7 +254,7 @@ const DE_SVG =
 
   <div class="acc-bulles" data-acc-qualites={JSON.stringify(QUALITES_DE_GEMME)}>
     {accessoires.gemmes.map((g) => (
-      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-quarts-rf={JSON.stringify(g.quartsRf)} data-nom={g.nom}
+      <span class={`bulle bulle--gemme ${g.classe}`} role="tooltip" id={bulleDeGemme(g.id)} hidden data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-quarts-rf={JSON.stringify(g.quartsRf)} data-nom={g.nom}
         ><strong class="bulle__titre">{g.nom}</strong
         ><span class="bulle__sous">Magie : {g.magie.nom}</span
         >{g.description && <span class="bulle__texte">{g.description}</span>}<span class="bulle__texte">Quart de gemme : classique <Fragment set:html={htmlAvecMonnaies(g.quarts.commune ?? '')} /> · raffinée <Fragment set:html={htmlAvecMonnaies(g.quarts.raffinee ?? '')} /> · parfaite <Fragment set:html={htmlAvecMonnaies(g.quarts.parfaite ?? '')} /></span></span

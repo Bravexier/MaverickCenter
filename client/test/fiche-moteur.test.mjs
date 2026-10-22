@@ -606,7 +606,8 @@ test('liste d’un emplacement de sort (demande du propriétaire) : un groupe pa
   const feu = sortsParNpm(regles, sortsPossibles(regles, ficheConforme()));
   assert.deepEqual(feu.map((g) => g.npm), [1]);
   assert.ok(feu[0].sorts.length > 0 && feu[0].sorts.every((s) => s.magie_id === 'magies/magie-du-feu'));
-  assert.ok(regles.magies.every((m) => /^#[0-9a-f]{6}$/i.test(m.couleur) && m.texte), 'chaque magie a sa couleur et son texte');
+  // la couleur de chaque magie : les noms de ses classes de la palette (lib/palette-css.mjs), que le script pose
+  assert.ok(regles.magies.every((m) => /^couleur-magie-[a-z0-9-]+$/.test(m.classe) && m.classe_2 === m.classe.replace('couleur-magie-', 'couleur-2-magie-')), 'chaque magie a ses classes');
 });
 
 test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d’écart sur un axe pour une tendance, Neutre en dessous ; les neuf noms du guide', () => {

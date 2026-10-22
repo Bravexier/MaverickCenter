@@ -23,7 +23,8 @@ import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie, classeDeSecondeMagie } from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -254,7 +255,9 @@ function reglesDeLaBase(db) {
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max FROM magie ORDER BY ordre`)
     .map((m) => ({
-      id: m.id, nom: m.nom, couleur: couleurDeMagie(m.nom), texte: texteSurCouleur(couleurDeMagie(m.nom)),
+      // sa couleur : les classes de la palette (lib/palette-css.mjs, posées sur chaque page), jamais un hex : `classe` (--couleur, --couleur-texte) et
+      // `classe_2`, la classe de second rang (--couleur-2 : la magie acquise du dégradé des cadres)
+      id: m.id, nom: m.nom, classe: classeDeMagie(m.nom), classe_2: classeDeSecondeMagie(m.nom),
       caracteristique_id: m.caracteristique_id, caracteristique_brut: m.caracteristique_id ? null : m.caracteristique_brut,
       sante: m.sante_offerte ?? 0, chakra: m.chakra_offert ?? 0, mono_magie: m.mono_magie === 1,
       barre4: m.barre4_ressource ? { ressource: m.barre4_ressource, max: m.barre4_max } : null,

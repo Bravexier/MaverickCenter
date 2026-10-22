@@ -10,6 +10,7 @@ import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { liaisonsEntreMagies, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
@@ -68,7 +69,7 @@ test('carte des magies : compacte, et aucune pastille ne touche une autre', opti
   const hauteurEtroite = Number(indexMagies.match(/\.magies-orbite \{ height: ([\d.]+)rem; aspect-ratio: auto; \}/)?.[1]);
   assert.ok(ratio > 0 && ratio <= 450, `carte du grand écran plus large que haute (1000 / ${ratio})`);
   assert.ok(hauteurEtroite > 0 && hauteurEtroite <= 40, `carte étroite de ${hauteurEtroite}rem`);
-  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
+  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
     const v = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))[1]) / 100;
     return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my') };
   });
@@ -99,9 +100,10 @@ test('carte des magies : compacte, et aucune pastille ne touche une autre', opti
 test('carte des magies : une relation par paire liée dans la base, au survol seulement, et aucun trait sous une autre pastille', options, () => {
   const { magies } = chargerMagies(ouvrirBase());
   const { liaisons, boucles } = liaisonsEntreMagies([...magies.values()]);
-  const traits = [...indexMagies.matchAll(/<g class="magies-relation avec-([\w-]+) avec-([\w-]+)"[^>]*><line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
+  // un trait porte la classe de sa première magie et la classe de second rang de la seconde (lib/palette-css.mjs) : sa couleur, sans couleur écrite
+  const traits = [...indexMagies.matchAll(/<g class="magies-relation avec-([\w-]+) avec-([\w-]+) couleur-magie-\1 couleur-2-magie-\2 seconde-\2"[^>]*><line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
     .map(([, a, b, ...xy]) => ({ a, b, p: xy.slice(0, 2).map(Number), q: xy.slice(2).map(Number) }));
-  const lacets = [...indexMagies.matchAll(/<g class="magies-relation magies-relation--boucle avec-([\w-]+)"[^>]*><path class="magies-relation__boucle" d="M ([^"]+)"/g)]
+  const lacets = [...indexMagies.matchAll(/<g class="magies-relation magies-relation--boucle avec-([\w-]+) couleur-magie-\1"[^>]*><path class="magies-relation__boucle" d="M ([^"]+)"/g)]
     .map(([, k, d]) => {
       const n = d.replace('C', '').trim().split(/\s+/).map(Number);
       const xs = n.filter((_, i) => i % 2 === 0);
@@ -116,13 +118,21 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   const cles = [...indexMagies.matchAll(/data-magie="([\w-]+)" style=/g)].map((m) => m[1]);
   assert.equal(cles.length, 15);
   // survol, ou focus au clavier seulement : avec :focus-within, un clic (qui donne le focus au lien) laissait les relations affichées au retour arrière
-  for (const k of cles) assert.ok(indexMagies.includes(`.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} {`), k);
+  for (const k of cles) {
+    // la couleur de la magie survolée : --couleur (première magie du trait) ou --couleur-2 (la seconde), jamais une couleur écrite
+    const survol = `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible)`;
+    assert.ok(indexMagies.includes(`${survol} .magies-relation.avec-${k} { --c: var(--couleur); --part: `), k);
+    assert.ok(indexMagies.includes(`${survol} .magies-relation.avec-${k} {`) && indexMagies.indexOf(`${survol} .magies-relation.seconde-${k} { --c: var(--couleur-2); }`)
+      > indexMagies.indexOf(`${survol} .magies-relation.avec-${k} {`), `${k} : la règle du second rang après la première`);
+  }
+  const surbrillance = indexMagies.slice(indexMagies.indexOf('.magies-orbite:has('), indexMagies.lastIndexOf('opacity: 1; }'));
+  assert.doesNotMatch(surbrillance, /#[0-9a-f]{3,6}\b/i, 'aucune couleur écrite dans les règles du survol');
   assert.ok(!indexMagies.includes(':focus-within)) .magies-relation'), 'plus de :focus-within pour les relations');
   assert.match(indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)')), /\.magies-orbite__relations, \.magies-legende \{ display: none; \}/);
   // géométrie
   const hauteur = Number(indexMagies.match(/class="magies-orbite__relations" viewBox="0 0 1000 (\d+)"/)?.[1]);
   assert.equal(hauteur, Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]), 'SVG aux proportions de la carte');
-  const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
+  const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
     const v = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)%`))[1]) / 100;
     return [k, { region, x: v('x') * 1000, y: v('y') * hauteur }];
   }));
@@ -284,7 +294,10 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
   const attendu = { 'magie-de-la-necromancie': [28, 28 + ameliorees], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68 + ameliorees] };
   for (const { slug, html } of pages) {
     const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
-    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+" style="--creature-1: (#[0-9a-f]{6}); --creature-2: (#[0-9a-f]{6})">([^<]+)<\/button>/g)];
+    // la couleur : la classe de la première magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs), jamais un style
+    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton creature__bouton--magie couleur-magie-([\w-]+) couleur-2-magie-([\w-]+)" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\3" title="[^"]+">([^<]+)<\/button>/g)]
+      .map(([tout, c1, c2, s, nom]) => [tout, s, c1, c2, nom]);
+    assert.doesNotMatch(html, /class="chip creature__bouton[^"]*"[^>]*style=/, `${slug} : aucun bouton de créature en style`);
     // au toucher, la carte couvre l'écran d'un téléphone : un lien à bulle ne pourrait pas être suivi (le second appui tomberait sur elle)
     assert.doesNotMatch(html, /<a\b[^>]*data-bulle="bulle-creature-/, `${slug} : aucun lien à bulle`);
     assert.equal(boutons.length, declencheurs, `${slug} : déclencheurs (noms des créatures, et « Carte de … » de Manteau noir)`);
@@ -360,9 +373,13 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
   assert.ok(debut > indexMagies.indexOf('class="magies-orbite"'), 'sous la carte des magies');
   const tableau = contenu(indexMagies, debut, 'section');
   assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), ORDRE_DU_CLASSEUR, 'colonnes');
-  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne" style="--couleur-magie: (#[0-9a-f]{6})"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
+  // chaque ligne porte la classe de sa magie (lib/palette-css.mjs), jamais une couleur en style
+  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne (couleur-magie-[\w-]+)"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
   assert.deepEqual(lignes.map((m) => m[2]), ORDRE_DU_CLASSEUR, 'lignes');
-  assert.equal(lignes[6][1], '#ff0000', 'la ligne du Feu est rouge');
+  assert.deepEqual(lignes.map((m) => m[1]), ORDRE_DU_CLASSEUR.map(classeDeMagie), 'chaque ligne : la classe de sa magie');
+  assert.equal(lignes[6][1], 'couleur-magie-feu', 'la ligne du Feu');
+  assert.ok(cssDeLaPalette().includes('.couleur-magie-feu{--couleur:#ff0000;'), 'rouge (sa classe de la palette)');
+  assert.doesNotMatch(tableau, /style=/, 'aucun style');
   assert.ok(!tableau.includes('Potentiel Illimité'), 'ni ligne ni colonne pour le Potentiel Illimité');
   assert.ok(!tableau.includes('Une case « – »'), 'plus d’explication des cases « – »');
   // Résistance = bouclier, vulnérabilité = épée (demande du propriétaire), plus de triangles.
@@ -379,14 +396,14 @@ test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', 
 // Page du Potentiel Illimité (components/magie/SortsDuPotentiel.astro) : il pioche ses sorts dans les autres magies. Une magie par onglet, dans l'ordre
 // du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4 (demande du propriétaire), avec le gabarit de sa page (TableauNpm.astro).
 const ongletsDuPotentiel = () =>
-  [...potentiel.matchAll(/<a class="onglet autre-magie__onglet( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)" style="--couleur-magie: (#[0-9a-f]{6}); --couleur-texte-magie: (#[0-9a-f]{6})">\s*([^<]+?)\s*<\/a>/g)].map(
-    (m) => ({ actif: Boolean(m[1]), cle: m[2], panneau: m[3], couleur: m[4], nom: m[6] }),
+  [...potentiel.matchAll(/<a class="onglet autre-magie__onglet (couleur-magie-[\w-]+)( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)">\s*([^<]+?)\s*<\/a>/g)].map(
+    (m) => ({ actif: Boolean(m[2]), cle: m[3], panneau: m[4], couleur: m[1], nom: m[5] }),
   );
 const panneauxDuPotentiel = () =>
-  [...potentiel.matchAll(/<section class="autre-magie magie-teinte( is-active)?" id="(sorts-[^"]+)"[^>]*style="--couleur-magie: (#[0-9a-f]{6});/g)].map((m) => ({
-    actif: Boolean(m[1]),
-    id: m[2],
-    couleur: m[3],
+  [...potentiel.matchAll(/<section class="autre-magie magie-teinte (couleur-magie-[\w-]+)( is-active)?" id="(sorts-[^"]+)"/g)].map((m) => ({
+    actif: Boolean(m[2]),
+    id: m[3],
+    couleur: m[1],
     html: contenu(potentiel, potentiel.lastIndexOf('<section', m.index + 1), 'section'),
   }));
 /** Lignes de sort d'un morceau de page : [{ id, html }] (le <tbody> entier : ligne et détails). */
@@ -396,7 +413,10 @@ test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du cl
   const onglets = ongletsDuPotentiel();
   assert.deepEqual(onglets.map((o) => o.nom), ORDRE_DU_CLASSEUR);
   assert.deepEqual(onglets.map((o) => o.actif), ORDRE_DU_CLASSEUR.map((_, i) => i === 0), 'seul le premier onglet est ouvert');
-  assert.equal(onglets.find((o) => o.nom === 'Feu').couleur, '#ff0000');
+  // dans la couleur de sa magie : sa classe (lib/palette-css.mjs), sans style
+  assert.deepEqual(onglets.map((o) => o.couleur), ORDRE_DU_CLASSEUR.map(classeDeMagie));
+  assert.equal(onglets.find((o) => o.nom === 'Feu').couleur, 'couleur-magie-feu');
+  assert.doesNotMatch(potentiel, /class="(?:onglet autre-magie__onglet|autre-magie magie-teinte)[^"]*"[^>]*style=/, 'ni onglet ni panneau en style');
   const panneaux = panneauxDuPotentiel();
   assert.deepEqual(panneaux.map((p) => p.id), onglets.map((o) => o.panneau), 'un panneau par onglet, dans le même ordre');
   assert.deepEqual(panneaux.map((p) => p.couleur), onglets.map((o) => o.couleur), 'chaque panneau dans la couleur de sa magie');

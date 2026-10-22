@@ -56,7 +56,9 @@
 .objet--seul { cursor: default; border-style: dashed; background: var(--surface); }
 
 .annexe-classe { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
-.annexe-classe__carte { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--couleur-magie, var(--cla)); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.8rem; }
+.annexe-classe__carte { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--cla); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.8rem; }
+/* une entrée liée à une magie : le filet dans la couleur de la magie (sa classe, lib/palette-css.mjs) */
+.annexe-classe__carte--magie { border-left-color: var(--couleur); }
 .annexe-classe__carte h3 { margin: 0 0 0.3rem; font-size: var(--fs-lg); letter-spacing: var(--ls-caps); }
 .annexe-classe__carte ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
 .annexe-classe__type { display: inline-block; padding: 0 0.45rem; font-size: var(--fs-xxs); border-radius: var(--radius-xs); border: 1px solid var(--cla-line); color: var(--muted); white-space: nowrap; }

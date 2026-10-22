@@ -37,7 +37,8 @@ user-invocable: false
 - « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale ». Le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales » (`CLASS_OVERRIDES`, décision du propriétaire).
 - Chaque colonne a la couleur de sa catégorie ; le résumé de la page est en infobulle (`Infobulles.astro`, skill `ui-infobulles`).
 - « (classe) » est supprimé de partout, base comprise (migration `0009-classes-sans-suffixe`) : une classe raciale porte le nom de sa race (titre « Orios », page `classes/orios`). `tools/sheets/classes.py` n'ajoute plus de suffixe. `[[classes/orios]]` / `[[races/orios]]` lèvent l'ambiguïté d'un lien.
-- Couleur de la page d'après la catégorie de `/classes/` (`classColor`) : rouge mêlée, vert distance, bleu magiques, violet raciales, jaune spéciales. Repère visuel sans valeur de règle.
+- Couleur de la page d'après la catégorie de `/classes/` (`classColor`) : rouge mêlée, vert distance, bleu magiques, violet raciales, jaune spéciales. Repère visuel sans valeur de règle (encore en style, `--couleur-classe`, jusqu'à son lot de la palette : skill `ui-couleurs`).
+- Annexe d'une classe (« Tableau de l'onglet », Mage Bleu) : une entrée liée à une magie porte `annexe-classe__carte--magie` et la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`) ; son filet lit `--couleur` (`styles/classe/page.css`), jamais un style.
 
 ## Voisins
 - Fiche de personnage (choix de classe, dons débloqués, R23, R25) : skill `zone-fiche`. Mode modification des classes, spécialités et dons (D11) : skill `zone-edition`. Lien entre une race hybride et sa classe raciale : skill `zone-races`.

@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -136,6 +137,19 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
   assert.match(colonne('hybrides'), /title="Les semi-renards, une race à la beauté et au narcissisme sans égal"/);
 });
 
+test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style', options, () => {
+  let pastilles = 0;
+  for (const { slug, html } of pages) {
+    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/[^"]+\/">([^<]+)<\/a>/g)];
+    for (const [, classe, nom] of puces) assert.equal(classe, classeDeMagie(nom), `${slug} : ${nom}`);
+    assert.ok(puces.every(([, classe]) => cssDeLaPalette().includes(`.${classe}{`)), `${slug} : des classes de la palette`);
+    assert.doesNotMatch(html, /class="chip race-magie[^"]*"[^>]*style=/, `${slug} : aucune pastille en style`);
+    pastilles += puces.length;
+  }
+  assert.ok(pastilles > 100, `${pastilles} pastilles`);
+  assert.match(page('nain'), /<a class="chip race-magie couleur-magie-feu" href="\/magies\/magie-du-feu\/">Feu<\/a>/);
+});
+
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
 test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
   assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
@@ -145,10 +159,15 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), [
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
-  assert.equal((tableau.match(/<col class="tableau-magies__col-magie" style="--couleur-magie: #[0-9a-f]{6}">/g) ?? []).length, 15, 'colonnes teintées');
+  // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style
+  const colonnes = [...tableau.matchAll(/<col class="tableau-magies__col-magie (couleur-magie-[\w-]+)">/g)].map((m) => m[1]);
+  assert.equal(colonnes.length, 15, 'colonnes teintées');
+  assert.deepEqual([...tableau.matchAll(/<th scope="col" class="tableau-magies__entete (couleur-magie-[\w-]+)">/g)].map((m) => m[1]), colonnes, 'en-têtes');
+  assert.ok(colonnes.every((c) => cssDeLaPalette().includes(`.${c}{`)) && colonnes.includes('couleur-magie-espace-temps'), 'des classes de la palette');
+  assert.doesNotMatch(tableau.slice(0, tableau.indexOf('</table>')), /style=/, 'aucun style dans le tableau');
   const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
-  const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point"/g) ?? []).length;
+  const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point couleur-magie-[\w-]+"/g) ?? []).length;
   assert.equal(pastilles('humain'), 15);
   assert.equal(pastilles('nain'), 5);
   assert.equal(pastilles('drassahthac'), 14);

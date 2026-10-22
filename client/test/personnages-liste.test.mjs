@@ -4,9 +4,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as liste from '../src/lib/personnages-liste.mjs';
+import { readFileSync } from 'node:fs';
+import { classesDeDeuxMagies } from '../src/lib/palette-css.mjs';
 
 const {
-  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, couleursDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, classesDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
 } = liste;
 
 const p = (id, surcharge = {}) => ({
@@ -25,7 +27,8 @@ const PERSONNAGES = [
 ];
 const noms = (personnages) => personnages.map((x) => x.nom);
 // couleurs des pages de magie, comme la page les pose au build (identifiant de magie → couleur)
-const COULEURS = { 'magies/magie-du-feu': '#ff0000', 'magies/magie-de-leau': '#0000ff' };
+// les classes de la palette de chaque magie, posées par la page au build (pages/personnages.astro : lib/palette-css.mjs#classesDeDeuxMagies)
+const COULEURS = { 'magies/magie-du-feu': classesDeDeuxMagies('Feu'), 'magies/magie-de-leau': classesDeDeuxMagies('Eau') };
 
 test('colonnes : exactement portrait, nom, race, magies, niveau (demande du propriétaire), le portrait sans tri ni texte', () => {
   assert.deepEqual(COLONNES.map((c) => c.cle), ['portrait', 'nom', 'race', 'magies', 'niveau']);
@@ -110,21 +113,27 @@ test('choix des filtres : races, magies et classes présentes, sans doublon, par
   assert.deepEqual(choixDeFiltres([]), { races: [], magies: [], classes: [] });
 });
 
-test('bordure d’une ligne : la couleur de la magie innée, en dégradé vers l’acquise en bi-magie', () => {
-  assert.deepEqual(couleursDeBordure(PERSONNAGES[0], COULEURS), { '--magie-1': '#ff0000', '--magie-2': '#ff0000' }, 'innée seule : deux fois sa couleur');
-  assert.deepEqual(couleursDeBordure(PERSONNAGES[1], COULEURS), { '--magie-1': '#0000ff', '--magie-2': '#ff0000' }, 'bi-magie : l’innée (Eau) puis l’acquise (Feu)');
-  assert.deepEqual(couleursDeBordure(p('x', { magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-leau' }), COULEURS),
-    { '--magie-1': '#ff0000', '--magie-2': '#0000ff' }, 'l’ordre suit les magies : innée d’abord');
-  assert.equal(couleursDeBordure(PERSONNAGES[3], COULEURS), null, 'sans magie : bordure neutre');
-  assert.equal(couleursDeBordure(p('x', { magie_innee_id: 'magies/inconnue' }), COULEURS), null, 'magie absente de la table des couleurs : bordure neutre');
-  assert.equal(couleursDeBordure(PERSONNAGES[1], {}), null, 'table des couleurs vide : bordure neutre');
+test('bordure d’une ligne : la couleur de la magie innée, en dégradé vers l’acquise en bi-magie, par les classes de la palette (jamais une couleur)', () => {
+  const [feu, feu2] = classesDeDeuxMagies('Feu');
+  const [eau, eau2] = classesDeDeuxMagies('Eau');
+  assert.deepEqual([feu, feu2, eau, eau2], ['couleur-magie-feu', 'couleur-2-magie-feu', 'couleur-magie-eau', 'couleur-2-magie-eau']);
+  assert.deepEqual(classesDeBordure(PERSONNAGES[0], COULEURS), [feu, feu2], 'innée seule : sa classe et sa classe de second rang');
+  assert.deepEqual(classesDeBordure(PERSONNAGES[1], COULEURS), [eau, feu2], 'bi-magie : l’innée (Eau) puis l’acquise (Feu)');
+  assert.deepEqual(classesDeBordure(p('x', { magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-leau' }), COULEURS),
+    [feu, eau2], 'l’ordre suit les magies : innée d’abord');
+  assert.equal(classesDeBordure(PERSONNAGES[3], COULEURS), null, 'sans magie : bordure neutre');
+  assert.equal(classesDeBordure(p('x', { magie_innee_id: 'magies/inconnue' }), COULEURS), null, 'magie absente de la table des couleurs : bordure neutre');
+  assert.equal(classesDeBordure(PERSONNAGES[1], {}), null, 'table des couleurs vide : bordure neutre');
   // repli défensif (les couleurs viennent de la même base que les fiches) : une magie absente de la table des couleurs est sautée, la couleur connue reste
-  assert.deepEqual(couleursDeBordure(p('x', { magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/inconnue' }), COULEURS),
-    { '--magie-1': '#ff0000', '--magie-2': '#ff0000' }, 'acquise inconnue : l’innée seule');
-  assert.deepEqual(couleursDeBordure(p('x', { magie_innee_id: 'magies/inconnue', magie_acquise_id: 'magies/magie-de-leau' }), COULEURS),
-    { '--magie-1': '#0000ff', '--magie-2': '#0000ff' }, 'innée inconnue : l’acquise seule');
-  assert.deepEqual(couleursDeBordure(p('x', { magie_acquise_id: 'magies/magie-de-leau' }), COULEURS),
-    { '--magie-1': '#0000ff', '--magie-2': '#0000ff' }, 'fiche inachevée sans innée : l’acquise seule');
+  assert.deepEqual(classesDeBordure(p('x', { magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/inconnue' }), COULEURS),
+    [feu, feu2], 'acquise inconnue : l’innée seule');
+  assert.deepEqual(classesDeBordure(p('x', { magie_innee_id: 'magies/inconnue', magie_acquise_id: 'magies/magie-de-leau' }), COULEURS),
+    [eau, eau2], 'innée inconnue : l’acquise seule');
+  assert.deepEqual(classesDeBordure(p('x', { magie_acquise_id: 'magies/magie-de-leau' }), COULEURS), [eau, eau2], 'fiche inachevée sans innée : l’acquise seule');
+  // la feuille de la liste lit les propriétés de ces classes, sans couleur écrite
+  const css = readFileSync(new URL('../src/styles/personnages/liste.css', import.meta.url), 'utf8');
+  assert.match(css, /\n\.perso--magie \{ --magie-1: var\(--couleur\); --magie-2: var\(--couleur-2\); \}\n/);
+  assert.match(readFileSync(new URL('../src/scripts/personnages.mjs', import.meta.url), 'utf8'), /a\.classList\.add\('perso--magie', \.\.\.bordure\)/);
 });
 
 test('les filtres et le tri vivent dans l’adresse : aller-retour, seuls ceux qui diffèrent du défaut ; statut et tri disparus ramenés au défaut', () => {

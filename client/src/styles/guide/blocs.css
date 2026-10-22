@@ -72,7 +72,7 @@
 }
 .guide-magies li { display: grid; justify-items: start; gap: 0.15rem; }
 .guide-magie {
-  --c: var(--couleur-magie, var(--guide));
+  --c: var(--couleur, var(--guide)); /* la classe de la magie (`.couleur-magie-<id>`, lib/palette-css.mjs), posée sur la case ou la ligne */
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;

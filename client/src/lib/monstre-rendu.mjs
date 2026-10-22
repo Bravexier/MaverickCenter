@@ -9,8 +9,8 @@
 // (décision R56) ; le texte qui suit un trait du doc est signalé par un panneau « Attention » (htmlDAttention). Fonctions pures, chaîne HTML en sortie,
 // tout texte échappé.
 import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
+import { classesDeDeuxMagies } from './palette-css.mjs';
 import { avecLeursBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 import {
@@ -121,14 +121,14 @@ function htmlParEchelle(rubrique, texte) {
 /**
  * Une cible de vulnérabilité ou de résistance, dans la couleur de la magie qui va avec (lib/monstre-champs.mjs#magiesDesCibles : la magie elle-même, ou
  * la magie liée de l'altération d'état ; deux magies : la seconde en bande) ; la magie liée d'une altération en infobulle ; sans magie, la pastille neutre.
+ * La couleur : la classe de la première magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxMagies).
  */
 function htmlDeCible(rubrique, cible, magiesDesCibles) {
   const noms = magiesDesCibles[normalize(cible)] ?? [];
   if (!noms.length) return `<span class="bcible bcible--${rubrique}">${e(cible)}</span>`;
-  const [c1, c2 = c1] = noms.map(couleurDeMagie);
-  const style = `--c:${c1};--c2:${c2};--c-texte:${texteSurCouleur(c1)}`;
+  const classes = classesDeDeuxMagies(noms[0], noms[1]).join(' ');
   const titre = normalize(noms[0]) === normalize(cible) ? '' : ` title="${e(`Magie liée : ${noms.join(', ')}`)}"`;
-  return `<span class="bcible bcible--${rubrique} bcible--magie${noms.length > 1 ? ' bcible--deux' : ''}" style="${e(style)}"${titre}>${e(cible)}</span>`;
+  return `<span class="bcible bcible--${rubrique} bcible--magie${noms.length > 1 ? ' bcible--deux' : ''} ${classes}"${titre}>${e(cible)}</span>`;
 }
 
 /**

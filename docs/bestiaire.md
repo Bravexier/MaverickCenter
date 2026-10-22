@@ -204,7 +204,9 @@ communes » ; « Elle change pour tous » ; « corrige les tous et fusionne » ;
 ### Vulnérabilités et résistances
 
 Demande du propriétaire : « rajouter les couleurs des vulnérabilités et résistances selon la couleur de la magie qui va avec ». Chaque cible a la
-couleur de sa magie (`sort-format.mjs#couleurDeMagie`, celle des pastilles de magie du site) : une magie se nomme elle-même (« Feu ») ; une
+couleur de sa magie (la classe de la magie, celle des pastilles de magie du site, et la classe de second rang de la seconde, ou de la même :
+`lib/palette-css.mjs#classesDeDeuxMagies`, jamais un style ; `docs/content-guide.md`, « Couleurs du site : la palette en classes ») : une magie se
+nomme elle-même (« Feu ») ; une
 altération d'état a sa magie liée (table `etat_magie` : « Brûlure » -> Feu, « Poison » -> Nécromancie ; « Surcharge magique », liée à l'Arcane et à
 la Corruption, porte la seconde en bande), écrite en infobulle. Écritures rapprochées : « Temps/Espace » (Espace/Temps), « Pétrification »,
 « Gelé », « Enragée » (les états « Pétrifié », « Gel », « Enragé ») : `lib/monstre-champs.mjs#magiesDesCibles`. Les autres cibles (« Frappe »,

@@ -22,7 +22,7 @@ user-invocable: false
 - Cinq onglets dans l'ordre de `ONGLETS_DE_L_EQUIPEMENT` : Armes, Armures, Boucliers, Ceinture, Accessoires (demandes du propriétaire). `components/Onglets.astro` est posé une fois, par `EquipementPage.astro` (skill `ui-onglets`). Sans JavaScript, les panneaux se suivent.
 - Un onglet = une `section.equipement-panneau` dont l'id est l'ancre de l'onglet (`lib/equipement.mjs`). Un sous-onglet de la ceinture = une `section.ceinture-panneau`, ancre unique sur la page aussi.
 - Un lien vers un élément d'un panneau ouvre son onglet, et son sous-onglet.
-- La pastille d'une gemme (`.acc-gemme`, `styles/equipement/equipement.css`, partagée par les Accessoires et les Bâtons magiques de la ceinture) : sa couleur est `--g` / `--g-texte` posés en style (accessoires, en attendant leur lot), sinon `--couleur` / `--couleur-texte` de la classe de la magie qu'elle porte (bâtons ; skill `ui-couleurs`). Aucune couleur écrite pour elle.
+- La pastille d'une gemme (`.acc-gemme`, `styles/equipement/equipement.css`, partagée par les Accessoires et les Bâtons magiques de la ceinture) : sa couleur est `--couleur` / `--couleur-texte` de la classe de la magie qu'elle porte (accessoires et bâtons ; skill `ui-couleurs`), plus de `--g` en style. Aucune couleur écrite pour elle.
 - Le bloc des armures (`.armures`) se cache entier quand ni Armures ni Boucliers n'est ouvert (`armures.css` : `html.js .armures:not(:has(> .armures-panneau.is-active))`).
 
 ## Pages servies et renvois

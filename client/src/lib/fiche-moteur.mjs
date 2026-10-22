@@ -2355,7 +2355,7 @@ const POTENTIEL_ILLIMITE_INNE = 'magies/potentiel-illimite';
 
 /**
  * Les magies avec lesquelles le personnage peut faire la symbiose : sa magie innée et sa magie acquise (« Quand vous avez 2 magies, 1 de ces magies doit
- * être désactivée temporairement »), sans le Potentiel Illimité (R109 : il n'en choisit aucune). [{ id, nom, couleur, texte }]
+ * être désactivée temporairement »), sans le Potentiel Illimité (R109 : il n'en choisit aucune). Les entrées de `regles.magies` : [{ id, nom, classe, classe_2, … }]
  */
 export function magiesDeLaSymbiose(regles, fiche) {
   return [fiche.magie_innee_id, fiche.magie_acquise_id].filter((id) => id && id !== POTENTIEL_ILLIMITE_INNE)

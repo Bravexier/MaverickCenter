@@ -3,12 +3,12 @@ import tableauxCss from '../../styles/magie/tableaux.css?raw';
 import { accessMatrix } from '../../lib/magie-relations.mjs';
 import { ordreDesMagies } from '../../lib/magies';
 import { groupRaces } from '../../lib/race-kinds.mjs';
-import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { entryHref, type WikiEntry } from '../../lib/wiki';
 
 // Tableau race × magie innée, en bas de /races/ : lignes = races pures puis hybrides, dans l'ordre de la liste (lib/race-kinds.mjs#groupRaces),
 // sans ligne de séparation entre les deux (demande du propriétaire),
-// colonnes = magies dans l'ordre du classeur, teintées de leur couleur (lib/sort-format.mjs#couleurDeMagie) ; une pastille de cette couleur dans
+// colonnes = magies dans l'ordre du classeur, teintées de leur couleur (la classe de la magie, lib/palette-css.mjs) ; une pastille de cette couleur dans
 // chaque case où la race peut avoir la magie. En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
 interface Props {
   entries: WikiEntry[];
@@ -17,7 +17,7 @@ const { entries } = Astro.props;
 const access = accessMatrix(entries, ordreDesMagies());
 const rowOf = new Map(access.races.map((race, i) => [race.id, i]));
 const lignes = groupRaces(entries).flatMap((g) => g.entries.filter((r) => rowOf.has(r.id)));
-const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_court)}`;
+const classe = (m: WikiEntry) => classeDeMagie(m.data.nom_court);
 ---
 
 <style is:inline set:html={tableauxCss}></style>
@@ -27,14 +27,14 @@ const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_
       <table class="tableau-magies__table tableau-magies--innees">
         <colgroup>
           <col class="tableau-magies__col-nom" />
-          {access.magies.map((m) => <col class="tableau-magies__col-magie" style={couleur(m)} />)}
+          {access.magies.map((m) => <col class={`tableau-magies__col-magie ${classe(m)}`} />)}
           <col class="tableau-magies__col-total" />
         </colgroup>
         <thead>
           <tr>
             <th scope="col" class="tableau-magies__coin">Race</th>
             {access.magies.map((m) => (
-              <th scope="col" class="tableau-magies__entete" style={couleur(m)}>
+              <th scope="col" class={`tableau-magies__entete ${classe(m)}`}>
                 <a href={entryHref(m)} title={m.data.title}><span class="tableau-magies__vertical">{m.data.nom_court}</span></a>
               </th>
             ))}
@@ -50,7 +50,7 @@ const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_
                 {cells.map((oui, j) =>
                   oui ? (
                     <td class="tableau-magies__oui" title={`${race.data.title} : ${access.magies[j].data.nom_court}`}>
-                      <span class="tableau-magies__point" style={couleur(access.magies[j])} aria-hidden="true" />
+                      <span class={`tableau-magies__point ${classe(access.magies[j])}`} aria-hidden="true" />
                       <span class="tableau-magies__lecteur">oui</span>
                     </td>
                   ) : (

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { bulleDeGemme, chargerAccessoires, cleDeRessource } from '../src/lib/accessoires-db.mjs';
 import { cleDEffet, COULEURS_DES_NIVEAUX, gemmesAuChoix } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'equipement', 'index.html');
@@ -78,9 +79,17 @@ test('gemmes : une infobulle par gemme, chaque mention dans la couleur de sa mag
     const id = bulleDeGemme(g.id);
     assert.equal((main.match(new RegExp(` id="${id}"`, 'g')) ?? []).length, 1, id);
   }
-  const mentions = [...main.matchAll(/<span class="acc-gemme" style="--g: (#[0-9a-f]{6}); --g-texte: #[0-9a-f]{6}" data-bulle="([^"]+)"/g)];
+  // la pastille et l'infobulle portent la classe de la magie (lib/palette-css.mjs), jamais une couleur en style
+  const mentions = [...main.matchAll(/<span class="acc-gemme (couleur-magie-[a-z0-9-]+)" data-bulle="([^"]+)"/g)];
   assert.ok(mentions.length > 200);
-  for (const [, couleur, bulle] of mentions) assert.equal(a.gemmes.find((g) => bulleDeGemme(g.id) === bulle)?.couleur, couleur, bulle);
+  for (const [, classe, bulle] of mentions) {
+    const g = a.gemmes.find((x) => bulleDeGemme(x.id) === bulle);
+    assert.equal(classeDeMagie(g?.magie.nom), classe, bulle);
+    assert.ok(cssDeLaPalette().includes(`.${classe}{`), `${classe} : une classe de la palette`);
+  }
+  assert.doesNotMatch(main, /class="acc-gemme[^"]*"[^>]*style=/, 'aucune pastille en style');
+  for (const g of a.gemmes) assert.ok(main.includes(`<span class="bulle bulle--gemme ${classeDeMagie(g.magie.nom)}" role="tooltip" id="${bulleDeGemme(g.id)}" hidden`), `infobulle : ${g.nom}`);
+  assert.doesNotMatch(main, /style="[^"]*--(?:g|g-texte|mag):/, 'ni --g ni --mag en style');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });

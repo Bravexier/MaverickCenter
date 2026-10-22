@@ -23,7 +23,7 @@
 .magies-orbite__liens { z-index: -1; }
 
 /* Relations entre magies (grand écran, components/magie/MagiesConstellation.astro, lib/magie-fleches.mjs) : cachées ; survoler une magie (règles :has()
-   écrites par le composant) affiche les siennes, dans sa couleur (--c), assombrie (éclaircie en sombre) pour rester visible. Épée au bout de la magie
+   écrites par le composant) affiche les siennes, dans sa couleur (--c : --couleur ou --couleur-2 des classes du trait, lib/palette-css.mjs), assombrie (éclaircie en sombre) pour rester visible. Épée au bout de la magie
    contre laquelle l'autre est efficace, bouclier au bout de celle qui résiste ; un liseré de la couleur du fond détache les pointes du trait. */
 .magies-orbite__relations { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; overflow: visible; }
 .magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part, 62%), var(--text)); opacity: 0; transition: opacity var(--duree) ease; }

@@ -76,7 +76,7 @@ une race absente de cette liste vient après les autres, par titre. Une pastille
 de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes, sans ligne de séparation entre pures et hybrides) ; sous la carte de `/magies/`, les relations entre
 magies (`TableauRelationsMagies.astro`), sans ligne ni colonne pour le Potentiel Illimité (demande du propriétaire : il « ne sert pas vraiment » ici ; sa page garde
 ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordreDesMagies` de `lib/magies.ts`) et dans leur couleur
-(`couleurDeMagie`) : colonnes teintées et une pastille de la couleur par magie innée, lignes teintées pour les relations. En-têtes verticaux et largeur fixe
+(la classe de la magie, `.couleur-magie-<id>` : « Couleurs du site : la palette en classes ») : colonnes teintées et une pastille de la couleur par magie innée, lignes teintées pour les relations. En-têtes verticaux et largeur fixe
 (`styles/magie/tableaux.css`, inséré en `?raw`) : les deux tableaux tiennent sans barre de défilement horizontale, du téléphone (360 px) à la largeur du site.
 
 
@@ -122,7 +122,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 
 - **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
   dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs#cssDeLaPalette`), qui
-  n'écrit aucune couleur, et posée sur chaque page par `layouts/Base.astro` (environ 2,6 ko, 37 classes, 0,5 ko compressé ; version portable comprise).
+  n'écrit aucune couleur, et posée sur chaque page par `layouts/Base.astro` (environ 3,3 ko : 37 classes et les 16 de second rang des magies ;
+  version portable comprise ; plafond testé : 4 ko).
 - **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
   `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption`, `barre4`),
   `caracteristique` (`lib/caracteristiques-postures.mjs`, ids de la base), `affinite` (les dix affinités d'alchimie sans autre règle,
@@ -138,13 +139,38 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   l'exception est notée dans la règle des couleurs du site. ») : `#000`, `#fff`, `#000000` ou `#ffffff` comme argument d'un `color-mix(…)` (le liseré
   de la pastille d'une gemme, `color-mix(in srgb, var(--gemme) 65%, #000)`). Aucune autre couleur écrite ; `test/palette-css.test.mjs` tolère
   exactement cette exception.
+- **Deux magies sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`, une créature ou
+  une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`) : une classe ne pose qu'une `--couleur`. La première magie
+  est la classe de sa magie (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang** `.couleur-2-magie-<id>`
+  (`classeDeSecondeMagie`), qui ne pose que `--couleur-2`, de la même valeur. Un élément qui peut en avoir deux porte toujours les deux classes, la
+  seconde de la même magie quand il n'en a qu'une (`classesDeDeuxMagies(premiere, seconde)`) : il n'hérite jamais du second rang d'un parent. Sa
+  feuille lit `var(--couleur)` puis `var(--couleur-2)`.
 - **Ajouter une couleur** : l'écrire dans le module de sa règle (ou, sans règle, une couleur ajoutée d'après la source, dans le module de son domaine),
   et, si c'est une famille nouvelle, l'ajouter à `FAMILLES_DE_LA_PALETTE` ; la classe suit au build. Une page pose la classe
   (`classeDeMagie`, `classeDAttribut`, `classeDeCaracteristique`, `classeDAffinite`) et sa feuille lit `var(--couleur)` / `var(--couleur-texte)`.
-- **Où elle sert** : les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas). Les autres composants (magies, accessoires,
-  armes…) posent encore leur couleur en style : ils passeront aux classes lot par lot.
+- **Où elle sert** :
+  - les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas) ;
+  - **toute couleur de magie** (lot des magies) : pages de magie (la page, les onglets du Potentiel Illimité, les créatures invoquées), carte et
+    tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, blocs du guide (les 15 magies,
+    ce que donne chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
+    infobulle, copie de l'encart), lignes de `/personnages/`, fiche de personnage (pastilles, résistances, sorts, créatures, Mode Hyper, cadres).
+  Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
+  style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
+  `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie : skill `zone-fiche`), car un script de page n'importe pas
+  `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
+  classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
+  Les autres couleurs (caractéristiques, postures, alignements, matériaux, résistances, catégories de classe, races, Mode Hyper…) posent encore leur
+  couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des magies (le texte blanc des bannières de
+  magie, de race et de classe ; les teintes des genres de sort, `.genre` de `styles/magie/sorts.css`, et des types de don ; l'ombre des infobulles ;
+  l'impression, qui ne change pas). Dans les pages de magie, les dérivées sombres de la bannière (`--hero-1`, `--hero-2`)
+  mêlent la couleur au noir pur (`#000`, l'exception de mélange), plus au `#111` d'avant.
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
-  aucune couleur écrite, poids borné), `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs`.
+  seconds rangs, feuilles qui lisent les propriétés des classes ; aucune couleur écrite — hex, fonction de couleur au moins un argument écrit, couleur
+  nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit `var(--couleur…)` ou `var(--mag…)`,
+  choisie d'après ce qu'elle lit ; poids borné),
+  `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
+  (sur toute page, aucune couleur de magie en style, et chaque classe `couleur-…` posée existe) et les tests de chaque zone (`magies-html`,
+  `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`).
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
@@ -209,7 +235,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   la carte entière (`components/bestiaire/CarteInvoquee.astro` en mode `bulle` : sans lien ni bouton ni identifiant, CSS commun `styles/bestiaire/carte.css`) s'ouvre à côté du nom (`data-placement="cote"`), sinon dessous ou dessus comme les autres bulles,
   sa hauteur bornée à l'espace qui reste pour ne pas cacher le nom ; plus haute que sa place, elle défile (molette, ou au clavier les flèches, pages, début et fin tant que le nom a le focus) ; un clic dedans ne la ferme pas.
   Au toucher, elle couvre presque l'écran d'un téléphone : un appui dedans la referme (`data-fermer-au-toucher`), et le nom n'est jamais un lien (le second appui tomberait sur la carte). Une carte par créature et par page (dans `.cartes-creatures`, après les tableaux de sorts, avant « Disponibilité par race »), y compris dans les onglets du Potentiel Illimité ;
-  le nom est sur la couleur de sa magie (de la marge du bloc, sinon celle du sort), en dégradé quand il en a deux, sans lien « Bestiaire » à côté (demandes du propriétaire). Sans JavaScript, les panneaux des sorts et la règle du NPM 5 sont affichés, la carte reste cachée et l'attribut `title` du nom en donne les valeurs (santé, chakra, barrière, défense, vitesse, dégâts) ;
+  le nom est sur la couleur de sa magie (de la marge du bloc, sinon celle du sort), en dégradé quand il en a deux (la classe de la première et la classe de second rang de la seconde, `creature__bouton--magie`), sans lien « Bestiaire » à côté (demandes du propriétaire). Sans JavaScript, les panneaux des sorts et la règle du NPM 5 sont affichés, la carte reste cachée et l'attribut `title` du nom en donne les valeurs (santé, chakra, barrière, défense, vitesse, dégâts) ;
   les règles d'invocation et l'annexe restent dans leur `<details>` replié.
   **NPM des cartes** (décision R130) : au-dessus de la liste des créatures d'un sort d'invocation dont une carte change avec le NPM (golems, non-morts), un
   curseur « Cartes au NPM » (caché sans JavaScript) pose `data-npm` sur toutes les cartes de la page qui changent avec lui (une bulle par créature et par
@@ -688,8 +714,8 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 - **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
   magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
   tabulation : le nom l'est déjà). La gemme est **la pastille des accessoires** (`.acc-gemme`, dans la couleur de sa magie, commune aux deux onglets :
-  `styles/equipement/equipement.css`, qui lit `--g` / `--g-texte` posés en style par les accessoires, sinon `--couleur` / `--couleur-texte` de la
-  classe de la magie, que porte la pastille d'un bâton ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
+  `styles/equipement/equipement.css`, qui lit `--couleur` / `--couleur-texte` de la classe de la magie, que porte la pastille, d'un bâton comme d'un
+  accessoire ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
   propriétaire, 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité
   de la gemme ») : la qualité du niveau se lit dans l'infobulle.
 - **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que
@@ -760,7 +786,7 @@ qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur
   lu tel quel (aucune transition à la lecture ; `detruit=1` n'est retenu qu'avec une malédiction choisie, et il implique `maudit`).
 - **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
-  (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
+  (la classe de la magie, sur sa pastille comme sur son infobulle, `bulle--gemme` : `--mag` ; l'encart copie la pastille telle quelle). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
 - Sans JavaScript : tous les tableaux, l'un après l'autre, sans encart, dé, curseur ni case à cocher. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
   chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit), `accessoires-script.test.mjs` (le script dans un faux navigateur : malédiction,
   R94).

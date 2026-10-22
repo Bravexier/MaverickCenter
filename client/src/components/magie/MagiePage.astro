@@ -1,5 +1,6 @@
 ---
-import { couleurDeMagie, nombre, sortsParNpm, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { nombre, sortsParNpm } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import magieBaseCss from '../../styles/magie/base.css?raw';
 import magiePageCss from '../../styles/magie/page.css?raw';
 import magieSortsCss from '../../styles/magie/sorts.css?raw';
@@ -36,8 +37,8 @@ interface Props {
   statusNote?: string;
 }
 const { entry, entries, magie, magies, statusNote } = Astro.props;
-const couleur = couleurDeMagie(magie.nom);
-const couleurTexte = texteSurCouleurDeMagie(magie.nom);
+// la couleur de la page : la classe de sa magie (lib/palette-css.mjs, posée sur chaque page par layouts/Base.astro ; styles/magie/base.css en tire --mag)
+const classeDeLaMagie = classeDeMagie(magie.nom);
 
 // Champs modifiables sur le site de dev (lib/edition-modele.mjs) : chaque élément qui affiche une colonne de la base porte son attribut `data-ed` ;
 // un champ vide est rendu caché (`data-ed-cadre`), pour pouvoir être rempli en mode modification.
@@ -79,7 +80,7 @@ const nav = [
 ---
 
 <style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
-<div class="magie" style={`--couleur-magie: ${couleur}; --couleur-texte-magie: ${couleurTexte}`}>
+<div class={`magie ${classeDeLaMagie}`}>
   <header class="magie-hero">
     <p class="magie-hero__surtitre">Magie</p>
     <h1>{entry.data.title}</h1>

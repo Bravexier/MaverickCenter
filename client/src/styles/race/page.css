@@ -53,8 +53,8 @@
 .race-hyper { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--rac); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.9rem; }
 .race-hyper h3 { margin: 0 0 0.2rem; font-size: var(--fs-xl); color: var(--rac-readable); }
 
-.race-magie { border-color: color-mix(in srgb, var(--couleur-magie, var(--border)) 55%, var(--border)); }
-.race-magie::before { content: ''; display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.4rem; border-radius: 50%; background: var(--couleur-magie, var(--muted)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
+.race-magie { border-color: color-mix(in srgb, var(--couleur, var(--border)) 55%, var(--border)); }
+.race-magie::before { content: ''; display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.4rem; border-radius: 50%; background: var(--couleur, var(--muted)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
 .race-card details { margin-top: 0.7rem; }
 .race-card summary { cursor: pointer; color: var(--muted); }
 

@@ -1,5 +1,6 @@
 /* Créatures invoquées d'un sort : par bloc (combinaison de magies ou palier), leur nom (sa carte du bestiaire en infobulle : components/Infobulles.astro,
-   styles/bestiaire/carte.css), sur la couleur de leur magie (--creature-1, --creature-2 : SortDetail.astro), en dégradé quand elles en ont deux */
+   styles/bestiaire/carte.css), sur la couleur de leur magie, en dégradé quand elles en ont deux : le bouton porte la classe de la première et la classe
+   de second rang de la seconde (SortDetail.astro, lib/palette-css.mjs#classesDeDeuxMagies : --couleur, --couleur-2) ; sans magie, la couleur de la page */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .invoque__bloc { display: block; font-size: var(--fs-xxs); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-caps); }
@@ -12,6 +13,7 @@ button.creature__bouton {
   border-right-color: color-mix(in srgb, var(--creature-2) 55%, var(--border));
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 32%, var(--surface)), color-mix(in srgb, var(--creature-2) 32%, var(--surface)));
 }
+button.creature__bouton--magie { --creature-1: var(--couleur); --creature-2: var(--couleur-2); }
 button.creature__bouton:hover, button.creature__bouton[data-ouverte] {
   border-color: var(--creature-1); border-right-color: var(--creature-2);
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 50%, var(--surface)), color-mix(in srgb, var(--creature-2) 50%, var(--surface)));

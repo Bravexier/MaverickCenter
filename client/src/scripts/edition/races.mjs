@@ -7,7 +7,8 @@
 // a été construite avant une modification.
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { nomCourtDePeuple, relationsDeRace, tonalite } from '../../lib/race-relations.mjs';
-import { couleurDeMagie } from '../../lib/sort-format.mjs';
+// la couleur d'une magie : sa classe (lib/palette-css.mjs, déjà dans l'éditeur par lib/edition-rendu.mjs ; hors version portable)
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 
 const TABLES_SUIVIES = new Set(['race_magie', 'race_magie_onglet', 'relation_peuple', 'peuple']);
 const sectionMagies = () => document.querySelector('[data-ed-magies-innees]');
@@ -32,7 +33,7 @@ function htmlMagies(ed, ids) {
   const avec = magies.filter((m) => ids.includes(m.id));
   const sans = magies.filter((m) => !ids.includes(m.id));
   const puce = (m, couleur) =>
-    `<li data-magie="${echapperHtml(m.id)}"><a class="chip${couleur ? ' race-magie' : ''}" href="${echapperHtml(lien(ed, m.id))}"${couleur ? ` style="--couleur-magie: ${couleurDeMagie(m.nom)}"` : ''}>${echapperHtml(m.nom)}</a></li>`;
+    `<li data-magie="${echapperHtml(m.id)}"><a class="chip${couleur ? ` race-magie ${classeDeMagie(m.nom)}` : ''}" href="${echapperHtml(lien(ed, m.id))}">${echapperHtml(m.nom)}</a></li>`;
   return `<h2 id="magies-innees-titre">Magies innées <span class="count">${avec.length} sur ${magies.length}</span></h2>
     ${avec.length ? `<ul class="chips race-magies">${avec.map((m) => puce(m, true)).join('')}</ul>` : '<p class="muted">Aucune magie innée.</p>'}
     ${sans.length ? `<details><summary>Magies innées non disponibles (${sans.length})</summary><ul class="chips">${sans.map((m) => puce(m, false)).join('')}</ul></details>` : ''}
@@ -47,7 +48,7 @@ function editeurMagies(ed) {
     : 'Matrice « Accessibilité Magie » de la fiche (décision R8).';
   section.innerHTML = `<h2 id="magies-innees-titre">Magies innées</h2><p class="muted ed-aide">${echapperHtml(source)}</p>
     <ul class="chips ed-magies">${(ed.listes.magies ?? [])
-      .map((m) => `<li><label class="chip race-magie" style="--couleur-magie: ${couleurDeMagie(m.nom)}"><input type="checkbox" value="${echapperHtml(m.id)}"${cochees.has(m.id) ? ' checked' : ''}> ${echapperHtml(m.nom)}</label></li>`)
+      .map((m) => `<li><label class="chip race-magie ${classeDeMagie(m.nom)}"><input type="checkbox" value="${echapperHtml(m.id)}"${cochees.has(m.id) ? ' checked' : ''}> ${echapperHtml(m.nom)}</label></li>`)
       .join('')}</ul>`;
   if (section.dataset.edBranche) return;
   section.dataset.edBranche = '1';

@@ -1,7 +1,7 @@
 ---
 import { bulleDeCreature, carteDeCreature, pageHref, sortAncre, titreDeCreature, type Magies, type SortDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
-import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { classesDeDeuxMagies } from '../../lib/palette-css.mjs';
 import { NPMS, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
 import Texte from './Texte.astro';
 
@@ -35,11 +35,10 @@ const bulle = (id: string) => {
   const carte = carteDeCreature(id);
   return carte ? { 'data-bulle': bulleDeCreature(id), 'aria-describedby': bulleDeCreature(id), title: titreDeCreature(carte) } : {};
 };
-// couleur du nom d'une créature : sa magie, ou ses deux magies de gauche à droite (styles/magie/creatures.css)
-const couleurs = (magiesDeLaCreature: string[]) => {
-  const [premiere, seconde = premiere] = magiesDeLaCreature.map(couleurDeMagie);
-  return premiere ? `--creature-1: ${premiere}; --creature-2: ${seconde}` : undefined;
-};
+// le bouton d'une créature, dans la couleur de sa magie, ou de ses deux magies de gauche à droite (styles/magie/creatures.css) : la classe de la
+// première et la classe de second rang de la seconde (lib/palette-css.mjs#classesDeDeuxMagies) ; sans magie, celle de la page
+const classeDuBouton = (magiesDeLaCreature: string[]) =>
+  ['chip creature__bouton', ...(magiesDeLaCreature.length ? ['creature__bouton--magie', ...classesDeDeuxMagies(magiesDeLaCreature[0], magiesDeLaCreature[1])] : [])].join(' ');
 // le curseur du NPM, pour une invocation dont au moins une carte change avec lui
 const changeAvecLeNpm = (creatures: { id: string }[]) => creatures.some((c) => {
   const carte = carteDeCreature(c.id);
@@ -113,7 +112,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
                   .filter((c) => c.bloc === bloc)
                   .map((c) => (
                     <span class="creature">
-                      <button type="button" class="chip creature__bouton" {...bulle(c.id)} style={couleurs(c.magies)}>{c.nom}</button>
+                      <button type="button" class={classeDuBouton(c.magies)} {...bulle(c.id)}>{c.nom}</button>
                     </span>
                   ))}
               </span>
@@ -131,7 +130,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         <p>
           Carte de{' '}
           <span class="creature">
-            {carteDeCreature(e.id) ? <button type="button" class="chip creature__bouton" {...bulle(e.id)} style={couleurs(e.magies)}>{e.nom}</button> : e.nom}
+            {carteDeCreature(e.id) ? <button type="button" class={classeDuBouton(e.magies)} {...bulle(e.id)}>{e.nom}</button> : e.nom}
           </span>
         </p>
         <Texte blocs={e.blocs} />
@@ -152,7 +151,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
                 <tr>
                   <th scope="row">
                     {a.creature ? (
-                      <span class="creature"><button type="button" class="chip creature__bouton" {...bulle(a.creature.id)} style={couleurs(a.creature.magies)}>{a.nom}</button></span>
+                      <span class="creature"><button type="button" class={classeDuBouton(a.creature.magies)} {...bulle(a.creature.id)}>{a.nom}</button></span>
                     ) : (
                       a.nom
                     )}

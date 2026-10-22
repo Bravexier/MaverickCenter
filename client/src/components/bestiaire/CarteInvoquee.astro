@@ -14,7 +14,7 @@
 import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
 import { coutAuNpm, creatureAuNpm, NPMS, parNpm, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
 import ValeurParNpm from './ValeurParNpm.astro';
-import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { url } from '../../lib/wiki';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 
@@ -27,7 +27,8 @@ const { ligne: l, bulle } = Astro.props;
 const Enveloppe = bulle ? 'div' : Fragment;
 const enveloppe = bulle ? { class: 'bulle bulle--carte', role: 'tooltip', id: bulle, 'data-placement': 'cote', 'data-fermer-au-toucher': true, hidden: true } : {};
 const id = `carte-${l.ancre}`;
-const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
+// la pastille d'une magie : la classe de la magie (lib/palette-css.mjs ; styles/bestiaire/carte.css, .bmagie)
+const pastille = (nom: string) => `bmagie ${classeDeMagie(nom)}`;
 const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocation.magieId}/`)}#sort-${l.invocation.sortId.slice(l.invocation.sortId.indexOf('#sort:') + 6)}` : null;
 // les valeurs à chaque NPM, pour une carte qui change avec lui (sinon null : la valeur telle qu'écrite)
 const variable = varieAvecLeNpm(l.donneesNpm);
@@ -52,7 +53,7 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
       <p class="bcarte__badges">
         {
           l.magies.map((m) => (
-            <span class="bmagie" style={pastille(m)}>
+            <span class={pastille(m)}>
               {m}
             </span>
           ))

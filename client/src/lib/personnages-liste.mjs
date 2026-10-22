@@ -76,14 +76,15 @@ export function choixDeFiltres(personnages) {
 }
 
 /**
- * Les couleurs de la bordure d'un personnage (demande du propriétaire) : celle de sa magie innée, en dégradé vers celle de son acquise en bi-magie
- * (`couleurs` : identifiant de magie → couleur des pages de magie, lib/sort-format.mjs#couleurDeMagie, posées par la page au build). Rend les
- * variables CSS `--magie-1` et `--magie-2` (la même couleur deux fois pour une seule magie), ou null sans magie connue (bordure neutre).
+ * Les couleurs de la bordure d'un personnage (demande du propriétaire) : celle de sa magie innée, en dégradé vers celle de son acquise en bi-magie.
+ * `couleurs` : identifiant de magie → ses deux classes de la palette, [classe de la magie, classe de second rang] (lib/palette-css.mjs#classesDeDeuxMagies,
+ * posées par la page au build : ce module, importé par le navigateur, n'importe pas la palette). Rend les deux classes de la ligne, la classe de la
+ * première magie et la classe de second rang de la seconde (de la première pour une seule magie), ou null sans magie connue (bordure neutre).
  */
-export function couleursDeBordure(p, couleurs) {
+export function classesDeBordure(p, couleurs) {
   const [premiere, seconde] = [p.magie_innee_id, p.magie_acquise_id].map((id) => (id ? couleurs[id] : undefined)).filter(Boolean);
   if (!premiere) return null;
-  return { '--magie-1': premiere, '--magie-2': seconde ?? premiere };
+  return [premiere[0], (seconde ?? premiere)[1]];
 }
 
 /**

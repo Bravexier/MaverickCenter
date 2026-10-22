@@ -1,6 +1,6 @@
 ---
 import potentielCss from '../../styles/magie/potentiel.css?raw';
-import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { pageHref, type Magies, type MagieDb, type SortDb } from '../../lib/magies';
 import type { WikiEntry } from '../../lib/wiki';
 import Onglets from '../Onglets.astro';
@@ -19,7 +19,8 @@ interface Props {
 const { autres, magies, entries } = Astro.props;
 const total = autres.reduce((n, a) => n + a.total, 0);
 const titreDe = (m: MagieDb) => entries.find((e) => e.id === m.id)?.data.title ?? m.nom;
-const couleurs = (m: MagieDb) => `--couleur-magie: ${couleurDeMagie(m.nom)}; --couleur-texte-magie: ${texteSurCouleurDeMagie(m.nom)}`;
+// la couleur d'un onglet et de son panneau : la classe de sa magie (lib/palette-css.mjs ; styles/magie/potentiel.css, base.css)
+const classe = (m: MagieDb) => classeDeMagie(m.nom);
 ---
 
 <Onglets />
@@ -31,7 +32,7 @@ const couleurs = (m: MagieDb) => `--couleur-magie: ${couleurDeMagie(m.nom)}; --c
     <div class="autres-magies__onglets">
       {
         autres.map(({ magie }, i) => (
-          <a class={`onglet autre-magie__onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${magie.cle}`} href={`#sorts-${magie.cle}`} style={couleurs(magie)}>
+          <a class={`onglet autre-magie__onglet ${classe(magie)}${i === 0 ? ' is-active' : ''}`} id={`onglet-${magie.cle}`} href={`#sorts-${magie.cle}`}>
             {magie.nom}
           </a>
         ))
@@ -40,10 +41,9 @@ const couleurs = (m: MagieDb) => `--couleur-magie: ${couleurDeMagie(m.nom)}; --c
     {
       autres.map(({ magie, groupes, total }, i) => (
         <section
-          class={`autre-magie magie-teinte${i === 0 ? ' is-active' : ''}`}
+          class={`autre-magie magie-teinte ${classe(magie)}${i === 0 ? ' is-active' : ''}`}
           id={`sorts-${magie.cle}`}
           aria-labelledby={`sorts-${magie.cle}-titre`}
-          style={couleurs(magie)}
         >
           <h3 class="autre-magie__titre" id={`sorts-${magie.cle}-titre`}>
             <a href={pageHref(magie.id)}>{titreDe(magie)}</a> <span class="count">{total}</span>
