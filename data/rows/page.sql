@@ -5992,7 +5992,7 @@ Le détail : [[guide/la-magie-en-jeu|La magie en jeu]].
 
 - **Le coma** : à 0 de santé ou moins. Jets de *Survie* : un seul réussi stabilise, trois ratés et c’est la mort. Au négatif maximal (l’opposé de la santé maximum), un seul jet ; à deux fois ce négatif, la mort sur le coup.
 - **Les altérations d’état** : celles du début du tour frappent avant que l’on agisse. *Vigueur* aide contre les altérations physiques, *Fermeté* contre les attaques de l’esprit.
-- **La {{corruption|corruption}}** : son maximum est celui du {{chakra|chakra}}, et chaque point prend la place d’un point de {{chakra|chakra}}. À son maximum, il reste deux semaines dans le jeu pour en retirer un point, sinon c’est la mort. Les mages de la Corruption n’y sont pas soumis.
+- **La {{corruption|corruption}}** : son maximum est celui du {{chakra|chakra}}, et chaque point prend la place d’un point de {{chakra|chakra}}. À son maximum, il reste deux semaines dans le jeu pour en retirer un point, sinon c’est la mort ; les mages de la Corruption ne risquent pas cette mort. Ni le repos ni la méditation ne la font baisser.
 - **Le don de base** : une action, trois fois par jour, avec un jet de *Calme* sous le stress. *Méditation* rend 3d6 + 6 de {{chakra|chakra}}, *Repos* 2d4 + 4 de santé et de {{chakra|chakra}} ; tous deux rendent davantage plus tard (voir le tableau de [[guide/la-montee-de-niveau|La montée de niveau]]).
 - **En Mode Hyper**, le {{chakra|chakra}} ne se récupère pas : ni fiole bleue, ni méditation, ni repos.
 
@@ -6362,12 +6362,13 @@ Les maladies (le botulisme bleu, la fièvre des marais, le tétanos…) se contr
 
 ## La corruption
 
-La {{corruption|corruption}} est un poison pour le lobe de {{chakra|chakra}}, un organe situé dans le cerveau. Son maximum est celui du {{chakra|chakra}}, et elle augmente avec lui.
+La {{corruption|corruption}} est un poison pour le lobe de chakra, un organe situé dans le cerveau. Son maximum est celui du {{chakra|chakra}}, et elle augmente avec lui.
 
 - Chaque point de {{corruption|corruption}} **prend la place d’un point de {{chakra|chakra}}** : avec 25 de {{chakra|chakra}} maximum et 2 points de {{corruption|corruption}}, le personnage ne remonte pas au-delà de 23 sur 25.
-- Si la {{corruption|corruption}} atteint son maximum, le personnage a **deux semaines** dans le jeu pour en retirer au moins un point. Sinon, il meurt et se transforme en abomination de corruption.
+- Si la {{corruption|corruption}} atteint son maximum, le personnage a **deux semaines** dans le jeu pour en retirer au moins un point. Sinon, il meurt et se transforme en abomination.
 - Les **fioles noires** de l’alchimie soignent la {{corruption|corruption}} (aux mages de la Corruption, elles en donnent).
-- Les mages de la Corruption ne sont pas concernés : pour eux, c’est une réserve qu’ils remplissent en lançant leurs sorts (voir [[guide/la-magie-en-jeu|La magie en jeu]]).
+- Le repos et la méditation n’ont aucun effet sur la {{corruption|corruption}}.
+- Les mages de la Corruption ne risquent pas cette mort : pour eux, c’est une réserve qu’ils remplissent en lançant leurs sorts (voir [[guide/la-magie-en-jeu|La magie en jeu]]). Mais elle prend aussi la place de leur {{chakra|chakra}} : c’est en gros la même réserve, remplie avec autre chose.
 
 ## Récupérer
 
@@ -6640,7 +6641,7 @@ Les attributs se calculent à partir de la race, de la ou des classes et des mag
 - **Santé** (les points de vie) : celle de la race, de la ou des classes et des magies qui en offrent. À 0 ou moins, le personnage tombe dans le coma et doit faire des jets de survie : un seul réussi le stabilise, trois ratés et il meurt.
 - **{{chakra}}** (les points de magie, que dépensent les sorts) : celui de la race, de la ou des classes et des magies. À court de {{chakra|chakra}}, on peut quand même en dépenser : chaque point qui manque coûte 2 points de santé.
 - **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, plus les bonus de la race et de la classe. Le mythril la traverse, et le maverium la brise à son contact.
-- **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. La {{corruption|corruption}} est un poison du {{chakra|chakra}} : chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}}. Si elle atteint son maximum, le personnage a deux semaines, dans le jeu, pour en retirer au moins un point ; sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la Corruption ne sont pas concernés.
+- **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. La {{corruption|corruption}} est un poison du {{chakra|chakra}} : chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}}. Si elle atteint son maximum, le personnage a deux semaines, dans le jeu, pour en retirer au moins un point ; sinon il meurt et devient une abomination. Ceux qui utilisent la magie de la Corruption ne risquent pas cette mort, mais la {{corruption|corruption}} prend aussi la place de leur {{chakra|chakra}}.
 - **Âme** ou **Sang**, la « 4ᵉ barre » : seulement pour la Nécromancie et la magie du Sang. C’est une réserve de 10 points que demandent certains sorts, et qui se recharge de 1 point par tour en combat.
 - **Vitesse** : celle de la race, sur terre et à la nage, en cases par tour. Une armure de la catégorie « Lourd » retire 1 point de vitesse et rend la vitesse de nage nulle (0).
 - **Armure de base** : l’armure physique (AP) et l’armure magique (AM) que le personnage a sans rien porter. Certaines races en donnent, et chaque classe magique donne 4 AM.
@@ -6854,13 +6855,13 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 La consommation de {{chakra|chakra}} est indiquée sur les sorts mais il y a des cas particuliers : L’Échec critique avec un sort consomme le double du coût, l’échec au jet pour utiliser un sort fait consommer la moitié du coût de base.
 
-**{{corruption}}** : Cet attribut un peu particulier possède le même taux que le {{chakra}} et évolue en même temps que ce dernier. La {{corruption|corruption}} est un poison pour le lobe de chakra (un organe situé dans le cerveau).
+**{{corruption}}** : Cet attribut un peu particulier a le même maximum que le {{chakra}} et évolue en même temps que ce dernier. La {{corruption|corruption}} est un poison pour le lobe de chakra (un organe situé dans le cerveau).
 
-Chaque point de {{corruption|corruption}} va empêcher l’utilisation du {{chakra|chakra}}, comme une substance parasite qui va prendre la place du {{chakra|chakra}}. Si la {{corruption|corruption}} atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de {{corruption|corruption}} sinon il va mourir et se transformer en abomination de corruption.
+Chaque point de {{corruption|corruption}} va empêcher l’utilisation du {{chakra|chakra}}, comme une substance parasite qui va prendre la place du {{chakra|chakra}}. Si la {{corruption|corruption}} atteint le seuil maximum, votre personnage a 2 semaines dans le jeu pour retirer au moins 1 point de {{corruption|corruption}} sinon il va mourir et se transformer en abomination.
 
 Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais vous avez 2 points de {{corruption|corruption}}, vous ne pourrez pas monter au-delà de 23/25 car la {{corruption|corruption}} prend la place.
 
-***PS : Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle.***
+***PS : Ceux qui utilisent la magie de la corruption ne meurent pas au seuil maximum, mais la corruption prend aussi la place de leur chakra.***
 
 **{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2 = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})
 
@@ -7522,9 +7523,9 @@ La Nécromancie et la magie du Sang ont une réserve à elles, la **quatrième b
 
 ### La corruption
 
-Pour la plupart des personnages, la {{corruption|corruption}} est un poison : chaque point prend la place d’un point de {{chakra|chakra}} (voir [[guide/blessures-et-etats|Blessures et états]]).
+Pour la plupart des personnages, la {{corruption|corruption}} est un poison mortel ; pour tous, chaque point prend la place d’un point de {{chakra|chakra}} (voir [[guide/blessures-et-etats|Blessures et états]]).
 
-Les mages de la Corruption s’en servent au contraire comme d’une seconde réserve. À chaque sort, son coût en {{chakra|chakra}} passe dans leur {{corruption|corruption}} : un sort qui coûte 4 leur donne 4 de {{corruption|corruption}}. Ils peuvent ensuite puiser dans cette réserve pour lancer les mêmes sorts avec des effets en plus, en payant le double du coût en {{corruption|corruption}} (8 pour un sort à 4). Les effets marqués « Si {{cr}} » sont ceux d’un sort lancé ainsi, en utilisant la {{corruption|corruption}}. L’inverse ne marche pas : la {{corruption|corruption}} ne redonne jamais de {{chakra|chakra}}, et pour eux elle ne prend pas sa place.
+Les mages de la Corruption s’en servent au contraire comme d’une réserve. À chaque sort, son coût en {{chakra|chakra}} passe dans leur {{corruption|corruption}} : un sort qui coûte 4 leur donne 4 de {{corruption|corruption}}. Ils peuvent ensuite puiser dans cette réserve pour lancer les mêmes sorts avec des effets en plus, en payant le double du coût en {{corruption|corruption}} (8 pour un sort à 4). Les effets marqués « Si {{cr}} » sont ceux d’un sort lancé ainsi, en utilisant la {{corruption|corruption}}. Ailleurs, dans les dégâts, soins ou {{barriere|barrière}} d’un sort (D/S/B) ou dans ses effets, « N {{cr}} » fait monter la {{corruption|corruption}} de la cible, sauf le sort de soin Retrait, qui en retire ; dans un coût, c’est la {{corruption|corruption}} à dépenser. L’inverse ne marche pas : la {{corruption|corruption}} ne redonne jamais de {{chakra|chakra}}. Et, comme pour tous, chaque point de {{corruption|corruption}} empêche de récupérer un point de {{chakra|chakra}} : c’est en gros la même réserve, remplie avec autre chose ; seule la mort au maximum leur est épargnée.
 
 ## Les sorts IC
 
@@ -13062,7 +13063,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ***Compétence.*** Spécialisation ou savoir-faire lié à une caractéristique. Utilisée pour les jets de dés
 
-***{{corruption}}**.* Énergie parasite qui envahi le lobe à chakra, peut entraîner la mort si surdose.
+***{{corruption}}**.* Énergie parasite qui envahit le lobe à chakra, peut entraîner la mort si surdose.
 
 ***Coût**.* Ressource nécessaire pour utiliser un sort ({{chakra|chakra}}, âme, etc…)
 
@@ -18759,9 +18760,9 @@ Les utilisateurs de la corruption sont marqués surtout au niveau des cheveux et
 
 L''utilisateur de la corruption est un combattant qui fait énormément de dégâts et utilise énormément d''entrave. Il utilise le {{chakra|Chakra}} et la {{corruption|Corruption}} comme un système de vases communicants.
 
-Chaque sort demande du {{chakra|chakra}}, à chaque utilisation d''un sort, le coût en {{chakra|chakra}} se transfère dans la {{corruption|corruption}} (si un sort coûte 4, vous obtenez 4 {{corruption|corruption}}), il est possible d''utiliser cette réserve de {{corruption|corruption}} pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en {{corruption|corruption}} (si le sort coûte 4, il vous faut 8 {{corruption|corruption}}). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de {{corruption|corruption}} (qui est la transformation en abomination solvité, donc une mort du personnage) mais prudence, car quand on est gavé de {{corruption|corruption}} cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
+Chaque sort demande du {{chakra|chakra}}, à chaque utilisation d''un sort, le coût en {{chakra|chakra}} se transfère dans la {{corruption|corruption}} (si un sort coûte 4, vous obtenez 4 {{corruption|corruption}}), il est possible d''utiliser cette réserve de {{corruption|corruption}} pour lancer les mêmes sorts mais avec des effets supplémentaires mais il faut consommer le double du coût en {{corruption|corruption}} (si le sort coûte 4, il vous faut 8 {{corruption|corruption}}). Bien entendu ceux qui sont de la corruption sont totalement immunisés à l''effet négatif du trop-plein de {{corruption|corruption}} (qui est la transformation en abomination, donc une mort du personnage) mais prudence, car quand on est gavé de {{corruption|corruption}} cela se voit physiquement sur le personnage et la corruption reste une magie mal vue.
 
-Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corruption}}, l''inverse ne se fait pas. Et la {{corruption|corruption}} n''empiète pas dans l''espace du {{chakra|chakra}}.
+Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corruption}}, l''inverse ne se fait pas. Et, comme pour tous, chaque point de {{corruption|corruption}} empêche de récupérer un point de {{chakra|chakra}} : c''est en gros la même réserve, remplie avec autre chose.
 
 ## Données
 
@@ -18795,7 +18796,7 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corrupti
 | 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{cr\|CR}} : Inflige 3 {{corruption\|corruption}}. |
 | 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
 | 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
-| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 cr (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
+| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 {{cr\|CR}} (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
 | 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{cr\|CR}} : Bonus de +5 dégâts en plus. |
 | 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de {{corruption\|corruption}}. |
 | 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{cr\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
