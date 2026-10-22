@@ -1421,7 +1421,7 @@ export function attributsDe(regles, fiche) {
  * corruption (guide « Fiche de personnage : Attributs » : « Vous avez par exemple 25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas
  * monter au-delà de 23/25 car la corruption prend la place »), pour tous, magie de la Corruption innée ou acquise comprise (décision R142 : « le maximum
  * de corruption comme pour tous les autre resent la même valeur que le maximum de chakra et chaque point de corruption empêche de récupérer un point de
- * chakra » ; la mort au maximum leur reste épargnée, R140).
+ * chakra » ; la mort au maximum n'est épargnée qu'à la Corruption innée ou acquise, pas au Potentiel Illimité, R146).
  * La santé s'arrête à 0 : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma » (guide « Blessures et états »).
  * `hors` : la valeur enregistrée dépasse le maximum (le curseur, lui, s'arrête au maximum).
  */

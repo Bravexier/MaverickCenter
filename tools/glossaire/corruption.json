@@ -81,7 +81,7 @@
   {
     "libelle": "Corruption",
     "motif": "corruptions?",
-    "description": "Poison du chakra : chaque point de corruption prend la place d'un point de chakra, jusqu'au maximum du chakra ; le repos et la méditation ne la font pas baisser. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination. Les mages de la Corruption ne risquent pas cette mort : pour eux, c'est la réserve où passe le chakra de leurs sorts.",
+    "description": "Poison du chakra : chaque point de corruption prend la place d'un point de chakra, jusqu'au maximum du chakra ; le repos et la méditation ne la font pas baisser. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination. Seuls ceux qui ont la Corruption en magie innée ou acquise ne risquent pas cette mort : pour eux, c'est la réserve où passe le chakra de leurs sorts. Le Potentiel Illimité, même s'il peut s'en servir, peut en mourir s'il en cumule trop.",
     "horsDe": ["page:lore/", "evenement_extrait.texte", "race_onglet.histoire"],
     "sauf": ["page:lore/glossaire"],
     "exclus": {
@@ -113,6 +113,7 @@
         "(?:magies?|mages?|sorts?|utilisateurs?|adeptes?|ceux|celles?)\\s+(?:qui\\s+(?:ne\\s+)?sont\\s+(?:pas\\s+)?)?(?:de\\s+la|de|d[’'])\\s*corruption",
         "magies?\\s+corruption",
         "avoir\\s+la\\s+corruption\\s+en\\s+innée",
+        "corruption\\s+en\\s+magie\\s+(?:innée|acquise)",
         "corruption\\s+(?:ne\\s+se\\s+mélange|offre\\s+une|érode|reste\\s+une\\s+magie|fait\\s+exception)",
         "(?:vulnérabilité|résistance)\\s*:\\s*corruption",
         "pouvoir\\s+de\\s+la\\s+corruption",

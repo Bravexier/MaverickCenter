@@ -1107,7 +1107,7 @@ balise retirée sans être reposée et chaque balise nouvelle (`changements`, av
 exclusion ou un contexte qui ne se lit dans aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun ; les écritures exclues du Codex,
 gardées de la première entrée, le sont tant que le Codex n'est pas balisé). Le texte affiché ne change pas ; une colonne que le service tire d'un texte
 réécrit peut, elle, changer si l'import l'avait écrite autrement (le contexte du bonus de maîtrise de « Fouet ténébreux », visible sur `/donnees/`). La
-**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143) et **CR** (« Si CR » : si
+**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143 et R146) et **CR** (« Si CR » : si
 le sort est lancé en utilisant la corruption, décision R103 ; dans le coût, la corruption à dépenser ; dans les dégâts, soins ou barrière ou les effets, la corruption que reçoit la cible, le sort de soin Retrait en retire, R140 ; « CR » balisé partout où il s'écrit, jamais « cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
 homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/docs/codex.py`, `tools/sheets/magies.py` et `invocations.py`) : ni un
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
