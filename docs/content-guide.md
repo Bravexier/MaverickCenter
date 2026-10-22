@@ -128,7 +128,7 @@ et Sang parce que le trait Feu–Eau passerait sinon sous eux. Pour déplacer un
 pas un classement de règle. `test/magies-html.test.mjs` vérifie aussi qu'aucune pastille n'en touche une autre, du téléphone (320 px) au grand écran, et qu'il n'y a plus d'infobulle ;
 `test/magie-fleches.test.mjs` teste les relations et leur géométrie.
 
-Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`) affiche les lignes
+Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/magie/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
@@ -189,7 +189,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`) ;
   seule exception, la carte d'une créature invoquée (`<div class="bulle bulle--carte">`), posée hors de tout paragraphe, après les tableaux de sorts.
   Avec JavaScript, **jamais l'infobulle du navigateur** (demande du propriétaire) : tout attribut `title` du site, écrit dans la page ou posé par un script, est
-  aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir `CLAUDE.md`, « Infobulles »).
+  aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir le skill `ui-infobulles`).
 - **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
   section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
   `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande
@@ -204,7 +204,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   **sans le Potentiel Illimité**, cité dans aucun bloc (il est incompatible avec toutes) ; une magie **mono-magie** (`magie.mono_magie` : Potentiel Illimité, Corruption) affiche à la place
   « Mono-magie uniquement », puis « Excepté pour » et les ethnies de `magie_ethnie_secondaire` (Elfe Noir Charbon, Felfe Noir pour la Corruption) ; décision R15, `lib/magie-non-compatible.mjs`.
   La phrase libre `magie.incompatibilite_note` (celle de la Corruption) reste dans la base comme trace.
-- Le CSS de ces pages est dans `client/src/styles/magie.css`, injecté par `MagiePage.astro` seulement : le mettre dans `global.css` alourdirait les 1 500 autres pages (et chacune des pages de la version portable).
+- Le CSS de ces pages est dans `client/src/styles/magie/` (`base.css`, `page.css`, `sorts.css`…), injecté par `MagiePage.astro` seulement (`?raw`) : le mettre dans `global.css` alourdirait les 1 500 autres pages (et chacune des pages de la version portable).
 
 ## Pages de race : un gabarit commun, alimenté par la base
 
@@ -957,7 +957,7 @@ quand un voisin change : le `rang` d'un don reçu sans choix est sa place de hau
 spécialité. La même règle des choix décide de la nature : une option fait d'un don reçu d'office un choix ; le dernier don d'un choix hors spécialité
 redevient reçu sans choix ; dans une spécialité, il reste un choix sans alternative (la page le montre seul, la fiche ne le propose pas).
 
-**Bonus d'armure magique (+4 AM)** (`lib/classe-bonus.mjs`) : toute classe magique l'a (Sommaire : « Octroie 4 AM de base par classe
+**Bonus d'armure magique (+4 AM)** (`lib/classe-magique.mjs`) : toute classe magique l'a (Sommaire : « Octroie 4 AM de base par classe
 magique »). Pour une classe raciale, c'est sa 2ᵉ spécialité, le pendant lanceur de sort : la capacité de spécialisation de niveau 10 y dit
 « considérer comme classe magique ». Le site lit cette phrase dans la fiche de la capacité, il ne devine pas la spécialité. L'Archimage est
 une classe magique : la fiche V15.2.2 (BDD!H40, I40, BB2) le range parmi elles pour ce bonus et le propriétaire du projet le confirme ; le Sommaire le classe « spéciale » parce que

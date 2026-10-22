@@ -1,0 +1,50 @@
+---
+name: zone-service
+description: "Service des personnages client/serveur/ : API /api/ (prétirés, portrait, classeur), base vivante db/vivante.db, surveillance des fichiers, TABLES_FICHES, TABLES_RETIREES, conversions et lignes écartées. À charger avant de lire, modifier ou relire le service, fiche-format.mjs ou leurs tests."
+paths: ["client/serveur/api.mjs", "client/serveur/service.mjs", "client/serveur/index.mjs", "client/serveur/dev.mjs", "client/serveur/base-vivante.mjs", "client/serveur/fiches.mjs", "client/serveur/fiches-retraits.mjs", "client/serveur/classeur.mjs", "client/serveur/livraison.mjs", "client/serveur/partage.mjs", "client/serveur/instant.mjs", "client/src/lib/fiche-format.mjs", "client/test/serveur-api.test.mjs", "client/test/serveur-base-vivante.test.mjs", "client/test/serveur-classeur.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "docs/serveur.md"]
+user-invocable: false
+---
+# Service des personnages (`client/serveur/`)
+
+## Fichiers
+- `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `classeur.mjs` (`POST /api/classeur/`), `livraison.mjs` (intégration Astro), `dev.mjs` (`npm run serveur`, jamais livré).
+- `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance).
+- Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance et page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`.
+
+## À lire
+- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, retour sous 0045 / 0055, sauvegarde), « L'API » (routes, format JSON d'une fiche, création, modification, refus, repli sur une base d'avant), « Hébergement » (classeur, surveillance), « Développement » (tests).
+
+## Ce que fait le service
+- Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Il répond sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent, ne bloquent jamais).
+- Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + lignes de la section 13, refaite quand les règles changent (fiches reprises ; archives dans `db/archives/`).
+- À la reconstruction, un don, une spécialité, un sort, un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `serveur/fiches-retraits.mjs`), liste dans `/api/etat`. Toute autre référence rompue : rien ne change et `/api/etat` dit pourquoi.
+- Livré avec le site : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json`.
+- Avant la 1.0 : prétirés seulement, pas de comptes (mot de passe du site).
+
+## Invariants
+- Le service n'importe que `node:…` et des chemins relatifs (`modulesDuServeur` de `serveur/livraison.mjs`, testé). `tools/build-artifact.mjs` n'emporte pas `_serveur/`.
+- Une écriture exige `Content-Type: application/json` et refuse un `Sec-Fetch-Site` d'un autre site.
+- Les adresses de l'API finissent par « / » (`/api/personnages/<id>/`) : en développement, Astro (`trailingSlash: 'always'`) refuse les autres avant de les relayer.
+- `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/`, qui rend une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite, le téléchargement vers Google est annulé quand le visiteur part). Une autre route asynchrone suivrait le même chemin.
+- Surveillance (`service.mjs`) : un changement compte quand il est vu deux fois de suite (`guetteur`). `version.json` changé : le service s'arrête (code 0) et Docker le relance (`restart: unless-stopped`) ; `site/donnees/maverick.db` changé : la base vivante est refaite ; `db/vivante.db` remplacée : elle est rouverte.
+- Une table ajoutée à la section 13 va dans `TABLES_FICHES` (`src/lib/fiche-format.mjs`, réexportée par `base-vivante.mjs`, donc dans `TABLES_VIVANTES` et dans `TABLES_INTERDITES` du journal) et, si elle cite `personnage`, dans `PARTIES_DE_FICHE` ou `HORS_FICHE` (`fiche-format.mjs`). Les tests `serveur-*` le vérifient contre `data/schema.sql`.
+- Une clé étrangère de plus vers `metier`, `specialite`, `capacite`, `sort` ou `arme` va dans `RETRAITS` (`serveur/fiches-retraits.mjs`, testé).
+- Une table retirée de la section 13 va dans `TABLES_RETIREES` (`fiche-format.mjs`) avec sa conversion (`CONVERSIONS` de `serveur/base-vivante.mjs`). Sinon la reconstruction perdrait ses lignes sans erreur : la boucle de copie ne parcourt que `TABLES_VIVANTES`.
+- Des lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées : `LIGNES_ECARTEES` de `base-vivante.mjs` (un prédicat SQL valable sur l'ancienne et la nouvelle forme de la table, et ce qu'on note).
+- Une colonne retirée de la section 13 va dans `COLONNES_RETIREES` (`fiche-format.mjs` : la base vivante la perd sans bloquer, une fiche qui la porte encore se lit sans elle) ; si elle porte une donnée à reprendre, aussi sa conversion dans `COLONNES_CONVERTIES` (`serveur/base-vivante.mjs`, quand l'ancienne base a la colonne).
+- Les retraits et conversions ne passent jamais par le journal de l'édition : SQL direct (skill `zone-fiches-base`).
+
+## Conversions en place
+- `personnage_progression` (migration 0045) devient la somme `gains_sante` / `gains_chakra` ; une `progression` reçue par le service ou la page est convertie (`sansPartiesRetirees`).
+- `personnage_armure` (migration 0055, R95) devient l'armure de `personnage` : la première pièce dans l'ordre des emplacements (`armureDesArmures`). La pièce gardée qui devient l'armure complète et chaque autre pièce sont des retraits (`retraitsDeLArmure`), notés et listés dans `/api/etat` avec ceux de R42 (`noterLesRetraits`). De même pour une liste `armures` reçue (`lignesDesPiecesRetirees`, ajoutées aux notes enregistrées si l'envoi n'a pas les siennes) ; une liste reçue avec les nouvelles clés est refusée (`armuresAvecArmure`, 409).
+- `personnage_bouclier_materiau` (migration 0060, R96) devient la matière du bouclier (`personnage.bouclier_materiau_id`, le matériau du premier rang : `matiereDuBouclier`), chaque autre matériau noté (`retraitsDuBouclier`) ; une liste `bouclier_materiaux` reçue avec les nouvelles clés : 409 (`bouclierAvecMatiere`).
+- `personnage_accessoire` (0060, R97) : la Ceinture, « Autre » et l'effet hors table seul écartés ; un nom ou un effet hors table perdus (`COLONNES_RETIREES`) notés ; la même règle pour une fiche reçue (`accessoiresGardes`).
+- Les conversions de 0062 (entraînement, acquis, R104) et 0066 (`nm_cadeau` → `nm_mj`, R118) : `docs/serveur.md`, « La base vivante » et « L'API ».
+
+## Classeur (`POST /api/classeur/`)
+- `serveur/classeur.mjs`, en production comme en dev : une feuille Google Sheets partagée par lien, téléchargée en .xlsx par le service, à la demande de n'importe quel visiteur. C'est sa seule sortie sur Internet en production (le site de dev joint aussi l'API GitHub pour la page « Mise à jour » : `serveur/notes-de-version.mjs#creerGithub`).
+- Limites : 16 Mio (`OCTETS_MAX`), 20 s (`DELAI_MS`), 2 à la fois, 30 par minute (`PAR_MINUTE`) ; `fetch` injectable (les tests ne joignent pas Google). Hôtes, redirections, rien de l'adresse noté : `docs/serveur.md`, « Hébergement ».
+
+## Tests
+- `serveur-api` (chaque route, chaque refus, conflit de versions, serveur HTTP réel et surveillance), `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-classeur`, `serveur-livraison` (modules livrés, service livré démarré tel quel), `serveur-fiches-retraits`, `fiche-format-retirees`, `tables-de-la-base`.
+- `test/site-html.test.mjs` contrôle `dist/_serveur/` après le build.

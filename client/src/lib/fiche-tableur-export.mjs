@@ -33,7 +33,7 @@
 // retirées), ce que disent les `avertissements` (texteDeLaNote).
 // Pur et sans DOM : seuls src/scripts/fiche.mjs (qui y ajoute le portrait, lib/tableur-ecriture.mjs écrit le classeur) et l'import (ses lecteurs)
 // l'importent. Il n'importe que des
-// modules que seule la page /fiche/ utilise (CLAUDE.md, « Pièges connus » : la version portable refuse un module partagé entre deux scripts de page) ;
+// modules que seule la page /fiche/ utilise (skill site-version-portable : la version portable refuse un module partagé entre deux scripts de page) ;
 // pas lib/text.mjs (partagé par la recherche) : cle() de lib/fiche-tableur-cases.mjs.
 import { RAISONS } from './degats-texte.mjs';
 import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';

@@ -45,7 +45,7 @@
 //     matériaux du bouclier numérotés, ceinture à son emplacement.
 // N'importe que lib/fiche-moteur.mjs, lib/fiche-format.mjs, lib/sort-maitrise.mjs et les modules du tableur (lib/fiche-tableur-cases.mjs,
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
-// CLAUDE.md « Pièges connus » ; jamais lib/text.mjs, partagé par la recherche).
+// skill site-version-portable ; jamais lib/text.mjs, partagé par la recherche).
 
 import { ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
 import {

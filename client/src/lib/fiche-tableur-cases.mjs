@@ -5,7 +5,7 @@
 //   - AUTO : la « Fiche personnage Maverick Auto V15.2.2 » (Google Sheets, docs/fiche-auto.md), relue seulement : les fiches des joueurs.
 // Le côté gauche (identité, classes, attributs, caractéristiques, compétences, dons) est le même dans les deux ; le côté droit (armes, armure,
 // accessoires, inventaire, sorts) diffère. Adresses relevées sur le modèle (tools/fiche/modele.py) et sur deux fiches auto du propriétaire.
-// Sans dépendance (n'importe rien : lib/text.mjs est partagé par d'autres scripts de page, CLAUDE.md « Pièges connus »).
+// Sans dépendance (n'importe rien : lib/text.mjs est partagé par d'autres scripts de page, skill site-version-portable).
 
 /** Clé de comparaison d'un nom écrit dans une case : celle de lib/text.mjs#normalize, la ligature œ décomposée (« Cœur » = « Coeur »). */
 export function cle(texte) {

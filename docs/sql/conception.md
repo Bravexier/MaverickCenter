@@ -282,7 +282,7 @@ Un fichier inutilisable (corrompu, autre version, absent) laisse **l'ancienne ba
 - `client/src/lib/db.mjs` : `openDb()` (lecture seule, `query_only`), chemin par `MAVERICK_DB` (défaut `var/maverick.db`), `pagesForIndex(db)` (entrées `{id, type, slug, title, aliases}` de l'index des liens). Aucune dépendance Astro ni navigateur.
 - `client/src/loaders/wiki-db.mjs` : chargeur `{name, load({store, parseData, renderMarkdown, generateDigest})}` : pour chaque page, `data` = `{title, aliases, tags, summary?, ...page.donnees, sources, status}`, `body = corps_md`, `rendered = renderMarkdown(corps_md)`, `digest` ; `store.clear()` d'abord.
   `content.config.ts` : `loader: wikiDb()` à la place de `glob(...)` ; le schéma `zod` ne change pas.
-- `astro.config.mjs` : l'index des `[[liens]]` vient de `pagesForIndex(openDb())` au lieu de `scanContent`. **Le piège « Astro 7 + plugin remark `unified()` » de CLAUDE.md reste valable** (rien ne change côté rendu).
+- `astro.config.mjs` : l'index des `[[liens]]` vient de `pagesForIndex(openDb())` au lieu de `scanContent`. **Le piège « Astro 7 + plugin remark `unified()` » (skill `site-wiki-liens`) reste valable** (rien ne change côté rendu).
 - `client/src/lib/wiki.ts` (graphe : liens sortants, rétroliens, mots-clés) lit toujours la collection : inchangé, donc le site est identique. Lire `lien_page` (dérivée) est une optimisation ultérieure.
 - `npm run build` = `npm run db:build && astro build`. Le dev (`npm run dev`) relit la base au démarrage : relancer `db:build` puis `dev` après un import.
 

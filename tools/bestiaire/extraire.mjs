@@ -64,7 +64,7 @@ const VARIABLE = /^Ses stats varient selon son échelle de puissance\.?\s*$/;
 const TITRE_DE_BLOC = (l) => /\p{Lu}.*\p{Lu}.*\p{Lu}/u.test(l) && !/\p{Ll}/u.test(l) && !CARTE.test(l) && !/^TACTIQUE COMBAT/.test(l);
 
 /**
- * Corrections déjà décidées pour toute la base (une graphie corrigée l'est partout où elle est écrite : CLAUDE.md, « Orthographe ») et que le doc écrit
+ * Corrections déjà décidées pour toute la base (une graphie corrigée l'est partout où elle est écrite : skill base-orthographe) et que le doc écrit
  * encore à l'ancienne : [motif, remplacement, origine]. Rien d'autre n'est corrigé ; sources/raw garde le texte du doc. Les quatre dernières, du butin
  * (décision R57 : « Corrige et rapproche les. Les fautes de frappe ça arrive. »), sont écrites une seule fois dans le doc.
  */
