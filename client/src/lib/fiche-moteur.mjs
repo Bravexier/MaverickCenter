@@ -1414,16 +1414,14 @@ export function attributsDe(regles, fiche) {
   };
 }
 
-/** Qui utilise la magie de la Corruption n'a pas son chakra réduit par elle (guide « Fiche de personnage : Attributs », ci-dessous). */
-const MAGIE_DE_LA_CORRUPTION = 'magies/magie-de-la-corruption';
-
 /**
  * Valeurs du moment (étape « En jeu », curseurs : demande du propriétaire), de 0 à leur maximum ; une valeur absente (NULL) est au maximum
  * (data/schema.sql, « État en jeu »), sauf la corruption, à 0 (un personnage n'en a pas tant qu'il n'en a pas reçu). Maximums : santé, barrière et
  * 4ᵉ barre des attributs ; corruption = chakra (guide « Étape 6 : finaliser son personnage » : « son maximum est celui du chakra ») ; chakra actuel = chakra −
  * corruption (guide « Fiche de personnage : Attributs » : « Vous avez par exemple 25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas
- * monter au-delà de 23/25 car la corruption prend la place »), sauf pour qui utilise la magie de la Corruption (même page : « Ceux qui utilisent la
- * magie de la corruption ne sont pas concernés par cette règle » ; sa page : « la corruption n'empiète pas dans l'espace du chakra »).
+ * monter au-delà de 23/25 car la corruption prend la place »), pour tous, magie de la Corruption innée ou acquise comprise (décision R142 : « le maximum
+ * de corruption comme pour tous les autre resent la même valeur que le maximum de chakra et chaque point de corruption empêche de récupérer un point de
+ * chakra » ; la mort au maximum leur reste épargnée, R140).
  * La santé s'arrête à 0 : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma » (guide « Blessures et états »).
  * `hors` : la valeur enregistrée dépasse le maximum (le curseur, lui, s'arrête au maximum).
  */
@@ -1434,8 +1432,7 @@ export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, f
     return { champ, nom, min: 0, max, valeur: enregistree === null ? vide : Math.min(max, Math.max(0, enregistree)), hors: enregistree !== null && (enregistree > max || enregistree < 0) };
   };
   const corruption = jauge('corruption', 'Corruption', attributs.corruptionMax, 0);
-  const exempte = [fiche.magie_innee_id, fiche.magie_acquise_id].includes(MAGIE_DE_LA_CORRUPTION);
-  const reduction = exempte ? 0 : corruption.valeur;
+  const reduction = corruption.valeur;
   return [
     jauge('sante_actuelle', 'Santé actuelle', attributs.sante),
     { ...jauge('chakra_actuel', 'Chakra actuel', Math.max(0, attributs.chakra - reduction)), chakra: attributs.chakra, reduction },

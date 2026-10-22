@@ -538,13 +538,14 @@ test('saisie d’un curseur au clic droit (demande du propriétaire) : ramenée 
   assert.equal(borner('abc', 0, 4), null);
 });
 
-test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0) ; la corruption prend la place du chakra, sauf magie de la Corruption', () => {
+test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0) ; la corruption prend la place du chakra, pour tous (R142)', () => {
   // les phrases du guide que valeursDuMoment applique, telles que la page les affiche (sans les balises du glossaire)
   const vocabulaire = chargerVocabulaire(db);
   const corps = (id) => texteSansBalises(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
   assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
-  assert.match(corps('guide/fiche-attributs'), /Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle/);
-  assert.match(corps('magies/magie-de-la-corruption'), /la corruption n'empiète pas dans l'espace du chakra/);
+  // décision R142 : la magie de la Corruption ne dispense pas de cette règle ; seule la mort au maximum épargne ses mages (R140)
+  assert.doesNotMatch(corps('guide/fiche-attributs'), /ne sont pas concernés par cette règle/);
+  assert.doesNotMatch(corps('magies/magie-de-la-corruption'), /n'empiète pas dans l'espace du chakra/);
   assert.match(corps('guide/creer-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (guide/finaliser-son-personnage, fusionnée)
   // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
   const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
@@ -556,8 +557,8 @@ test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0)
   assert.deepEqual([corrompu.chakra_actuel.max, corrompu.chakra_actuel.valeur, corrompu.chakra_actuel.reduction], [35, 35, 15]);
   assert.equal(par({ corruption: 15, chakra_actuel: 20 }).chakra_actuel.valeur, 20);
   assert.equal(par({ corruption: 15, chakra_actuel: 40 }).chakra_actuel.hors, true, '40 enregistré, 35 au plus');
-  assert.equal(par({ corruption: 15, magie_innee_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 50, 'magie de la Corruption innée');
-  assert.equal(par({ corruption: 15, magie_acquise_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 50, 'ou acquise');
+  assert.equal(par({ corruption: 15, magie_innee_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 35, 'magie de la Corruption innée : la même règle (R142)');
+  assert.equal(par({ corruption: 15, magie_acquise_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 35, 'ou acquise');
   assert.equal(par({ corruption: 80 }).chakra_actuel.max, 0, 'jamais en dessous de 0');
   // la corruption qui monte prend la place du chakra actuel ; celle qui baisse ne le rend pas ; les autres curseurs n'écrivent qu'eux, bornés
   const fiche = { ...ficheConforme(), sante_actuelle: 3 };

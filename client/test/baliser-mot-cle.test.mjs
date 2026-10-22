@@ -3,7 +3,7 @@
 // modifie, jamais un nom ni une rubrique de carte découpée), puis, sur une copie de data/rows et un mot d'essai, le chemin entier : mot-clé créé par le
 // service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), journal rapatrié sans conflit ; puis
 // (2026-10-18 : « Seulement là où il est pertinent ») un second passage qui retire les balises là où le mot n'a plus le sens du mot-clé, et l'entrée de
-// la Corruption (tools/glossaire/corruption.json : « CR », décision R103).
+// la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140 ; définitions selon R141 à R143).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -150,7 +150,7 @@ test('une écriture exclue ou un contexte qui cite un mot précédent de l’ent
   ], { rows: ROWS }), /cite « Initiative d’essai ter »/);
 });
 
-test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures exclues comprises), « CR » écrit avec sa casse et après « Si » (R103), contextes et textes valides', () => {
+test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures exclues comprises), « CR » écrit avec sa casse (R103, R140), contextes et textes valides', () => {
   const mots = JSON.parse(readFileSync(new URL('../../tools/glossaire/corruption.json', import.meta.url), 'utf8'));
   const pages = ouvrirBase({ sansExemples: false }).prepare('SELECT id FROM page').all().map((p) => p.id);
   const precedent = JSON.parse(readFileSync(new URL('../../tools/glossaire/chakra-barriere.json', import.meta.url), 'utf8'));
@@ -172,9 +172,47 @@ test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures ex
   }
   const cr = mots.find((m) => m.libelle === 'CR');
   assert.equal(cr.casse, true);
+  // R103 (« Si CR ») et R140 (dans le coût, la corruption à dépenser ; dans le D/S/B ou les effets, celle que reçoit la cible, Retrait en retire)
   assert.match(cr.description, /si le sort est lancé en utilisant la corruption/);
-  // « Si CR » seulement : ni « cr », ni un « CR » d'un autre sens (« 50% CR max » de la colonne Coût, que la réponse n'explique pas)
-  const contextes = Object.entries(cr.contextes).flatMap(([raison, l]) => l.map((motif) => ({ motif, raison })));
-  assert.equal(baliserLeMot('Si CR : +1d. 2d6 cr. 50% CR max. Si CR = ignore 50% de l’AM.', { id: 'cr', libelle: 'CR', ...cr, contextes }).texte,
-    'Si {{cr|CR}} : +1d. 2d6 cr. 50% CR max. Si {{cr|CR}} = ignore 50% de l’AM.');
+  assert.match(cr.description, /fait monter la corruption de la cible \(le sort de soin Retrait en retire\)/);
+  assert.match(cr.description, /dans le coût, c'est la corruption à dépenser/);
+  // « CR » partout où il s'écrit (R140), jamais « cr » (un autre mot)
+  assert.equal(cr.contextes, undefined);
+  assert.equal(baliserLeMot('Si CR : +1d. 2d6 CR (+1d/NM). 2d6 cr. Si CR = ignore 50% de l’AM.', { id: 'cr', libelle: 'CR', ...cr }).texte,
+    'Si {{cr|CR}} : +1d. 2d6 {{cr|CR}} (+1d/NM). 2d6 cr. Si {{cr|CR}} = ignore 50% de l’AM.');
+  // R141 : « abomination », seule ; R142 : les mages de la Corruption ne risquent pas la mort, la corruption prend quand même la place du chakra ; R143.
+  // La définition de l'entrée est la trace de ce que le service a écrit (lot du 2026-10-22) : l'outil ne la pose que sur un mot-clé qu'il crée, et la
+  // définition affichée est celle de la base (mot_cle.description), que le site de dev peut modifier ensuite.
+  const corruption = mots.find((m) => m.libelle === 'Corruption');
+  assert.doesNotMatch(corruption.description, /abomination de corruption|n'y sont pas soumis/);
+  assert.match(corruption.description, /devient une abomination\. Les mages de la Corruption ne risquent pas cette mort/);
+  assert.match(corruption.description, /le repos et la méditation ne la font pas baisser/);
+});
+
+test('entrée de la Corruption : l’effet de ses contextes exclus (le sens de la définition balisé, la magie et le chakra du monde laissés)', () => {
+  const mots = JSON.parse(readFileSync(new URL('../../tools/glossaire/corruption.json', import.meta.url), 'utf8'));
+  const mot = (libelle) => {
+    const m = mots.find((x) => x.libelle === libelle);
+    const contextes = Object.entries(m.contextes ?? {}).flatMap(([raison, l]) => l.map((motif) => ({ motif, raison })));
+    const exclus = Array.isArray(m.exclus) ? m.exclus : Object.values(m.exclus ?? {}).flat();
+    return { id: libelle.toLowerCase(), libelle, ...m, contextes, exclus };
+  };
+  const balisees = (texte, m) => baliserLeMot(texte, m).balisees.length;
+  const corruption = mot('Corruption');
+  // la magie : son nom, ses mages, ses sorts, une liste de magies, l'exception de l'Elfe Noir (R15, R20)
+  for (const t of ['L’Arcane et la Corruption ne sont vulnérables à aucune magie.', 'pour les magies de l’Arcane, de la Corruption et du Potentiel Illimité',
+    'l’Arcane, la Corruption et le Potentiel Illimité', 'sauf la Corruption de l’Elfe Noir Charbon', 'Ceux qui utilisent la magie de la Corruption',
+    'les mages de la Corruption', 'Connais tous les sorts de corruption.', 'INTELLIGENCE : Arcanique, Glace, Temps/Espace, Corruption', 'Inflige 2d8 dégâts de corruption.']) {
+    assert.equal(balisees(t, corruption), 0, t);
+  }
+  // la jauge : comptée, reçue, perdue, dépensée ; « temps » ou « elfe » seuls n'en font pas une liste de magies
+  for (const t of ['avec 2 points de corruption', 'Inflige 3 corruption.', 'Au fil du temps, la corruption monte.', 'Avec le temps et la corruption accumulée',
+    'La corruption de l’elfe monte de 2.', 'le coût en corruption des sorts']) {
+    assert.equal(balisees(t, corruption), 1, t);
+  }
+  const chakra = mot('Chakra');
+  for (const t of ['les lieux où le chakra est si présent', 'Les zones où le chakra est tellement présent', 'la Déesse primordiale du chakra', 'un poison pour le lobe de chakra']) {
+    assert.equal(balisees(t, chakra), 0, t);
+  }
+  for (const t of ['les ressources de chakra du lanceur', 'Coûte 4 chakra.', 'récupérer la totalité de son chakra']) assert.equal(balisees(t, chakra), 1, t);
 });
