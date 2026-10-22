@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 69 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 70 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3657,6 +3657,7 @@ La note de version en préparation sur le site de dev (page /mise-a-jour/ : le c
 | `texte` | TEXT | non |  | Markdown ; NULL : rien d'écrit |
 | `modifie_le` | TEXT | non |  |  |
 | `lot` | TEXT | non |  |  |
+| `majeure` | INTEGER | non |  | la case « Version majeure » (migration 0070) : 1 = cochée, la prochaine mise à jour est la X+1.0 (PR de livraison avec [V: X+1]) ; NULL = décochée ; part avec le lot |
 
 ## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev
 

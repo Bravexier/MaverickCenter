@@ -77,8 +77,8 @@ import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaire } from './edition-chronologie.mjs';
 import {
-  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot, lireReference,
-  noteEnPreparation, occupe,
+  actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
+  lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
@@ -460,7 +460,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     const lot = lireLot(service.dossier, reste[0]);
     return lot === null ? erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.') : { statut: 200, corps: null, brut: lot, entetes: {} };
   }
-  if (reste.length || ![undefined, 'brouillon', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
   const refus = action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
@@ -482,6 +482,12 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   if (illisible) return illisible;
   try {
     if (action === 'brouillon') return json(200, { brouillon: enregistrerBrouillon(db, valeur ?? {}, { instant: maintenant }) });
+    if (action === 'majeure') {
+      // la case « Version majeure » : rien n'est déclenché, seule la note en préparation change de version cible (rendue entière pour la page)
+      const brouillon = enregistrerMajeure(db, valeur ?? {});
+      service.journal?.(`mise à jour : prochaine version ${brouillon.majeure ? 'majeure' : 'mineure'}`);
+      return json(200, noteEnPreparation(db, { reference: service.reference, versionDev }));
+    }
     if (action === 'liberer') {
       // `lot` : le lancement que la page affiche (un onglet périmé n'annule pas le suivant) ; le run éventuel est annulé sur GitHub
       const lancement = libererLot(db, service.dossier, { instant: maintenant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });

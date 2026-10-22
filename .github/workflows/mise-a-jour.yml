@@ -20,8 +20,9 @@ run-name: "Mise à jour des règles — lot ${{ inputs.lot }}${{ inputs.essai &&
 #       « Fusion dans dev » : commit posé sur origin/dev à jour (tel quel, ou rebase textuel si dev a bougé : un conflit = la même ligne de
 #         data/rows changée des deux côtés, échec net, rien n'est poussé), poussée, PR vers dev, checks client, character-service et
 #         regles-de-branches VERTS, fusion par commit de fusion (si dev bouge pendant l'attente : PR fermée et commit rejoué, jusqu'à 3 essais) ;
-#       « Livraison vers master » : commit de version que livraison.yml pousse sur dev pour cette PR, puis PR de livraison dev → master (jamais
-#         [V: X+1]), checks verts, fusion par commit de fusion : livraison.yml fait la version X.Y.0, les étiquettes et la publication.
+#       « Livraison vers master » : commit de version que livraison.yml pousse sur dev pour cette PR, puis PR de livraison dev → master (son
+#         titre porte [V: X+1] seulement si le lot le demande : case « Version majeure » de la page), checks verts, fusion par commit de fusion :
+#         livraison.yml fait la version X.Y.0 (X+1.0.0 avec [V: X+1]), les étiquettes et la publication.
 #     Simulation : les deux étapes vérifient sans effet de bord (artefact, liste blanche, application à blanc sur dev, git push --dry-run
 #     authentifié par le jeton, lectures de l'API) ; ni poussée, ni PR.
 # Relancer le run (Re-run) avec le même lot reprend là où il s'est arrêté (lot déjà dans dev : directement la livraison ; déjà livré : rien).

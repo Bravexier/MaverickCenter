@@ -158,7 +158,7 @@ export function planifier({ type, versionMaster, versionDev, majeure = false }) 
     return { master: null, dev: { version: dev, synchroniser: false }, livrer: livrer(null, dev) };
   }
   if (type === 'hotfix') {
-    // Le hotfix change le contenu de master (pas sa version) : un nouvel installateur de production à partir de la 1.0.
+    // Le hotfix change le contenu de master (pas sa version) : un nouvel installateur de production (livrableDe).
     const dev = incrementer(versionDev, 'patch');
     return { master: null, dev: { version: dev, synchroniser: true }, livrer: livrer(versionMaster, dev) };
   }

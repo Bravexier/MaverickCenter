@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installateur du site Maverick Center, étiquette @@TAG@@ (version @@VERSION@@, commit @@SHA@@), mode @@MODE@@.
 # FABRIQUÉ par deploy/installateur/fabriquer.mjs à partir de deploy/installateur/installateur.sh : ne pas l'éditer, il est régénéré à chaque livraison.
-# Hébergement à partir de la 1.0 (serveur normal et serveur de test, voir docs/flux-git.md) ; le NAS d'avant la 1.0 a sa propre installation (deploy/).
+# Hébergement : serveur normal et serveur de test (docs/flux-git.md) ; le paquet du NAS a sa propre installation (deploy/README.md).
 # Le site (déjà construit) est dans ce fichier même, sous la ligne __ARCHIVE__ : rien n'est téléchargé, aucun jeton n'est nécessaire.
 #
 # Usage : sh <ce-fichier> [--dossier <dossier>] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]

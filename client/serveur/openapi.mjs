@@ -452,6 +452,7 @@ function cheminsDuService() {
     '/edition/journal/': lectureDuService('edition_journal', 'Journal des modifications en attente', `Le journal à rapatrier dans data/rows (npm run db:appliquer-edition), en pièce jointe.${SITE_DE_DEV}`),
     '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement.${SITE_DE_DEV}`),
     '/mise-a-jour/brouillon/': ecritureDuService('mise_a_jour_brouillon', 'Enregistrer le brouillon', `{ texte, avant } → enregistre le champ libre des admins.${SITE_DE_DEV}`, { texte: '…', avant: '' }, { 409: ref('responses', 'Conflit') }),
+    '/mise-a-jour/majeure/': ecritureDuService('mise_a_jour_majeure', 'Version majeure ou non', `{ majeure } → la case « Version majeure » : la prochaine mise à jour sera la X+1.0 (true) ou la X.Y+1 (false) ; rien n’est déclenché ; rend la note en préparation.${SITE_DE_DEV}`, { majeure: true }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/lancer/': ecritureDuService('mise_a_jour_lancer', 'Lancer une mise à jour (ou une simulation)',
       `{ confirmation, simulation? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202. ATTENTION : sans « simulation: true », une vraie mise à jour (livraison en production).${SITE_DE_DEV}`,
       { confirmation: '<la phrase de confirmation que donne GET /api/mise-a-jour/>', simulation: true }, { 202: reponse('Lancé.', objet), 409: ref('responses', 'Conflit') }),

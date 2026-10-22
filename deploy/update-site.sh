@@ -1,7 +1,7 @@
 #!/bin/sh
-# Installe la branche « site » du dépôt GitHub privé dans un dossier et la tient à jour : le NAS, ou le serveur de test d'un VPS avant
-# la 0.2.0 (deploy/vps/README.md). Rien de propre au NAS, d'où son nom (ancien nom : update-nas.sh).
-# Cette branche est reconstruite depuis dev par .github/workflows/livraison.yml (job « Site ») après chaque fusion, jusqu'à la 0.2.0.
+# Installe la branche « site » du dépôt GitHub dans un dossier et la tient à jour (le paquet du NAS, deploy/README.md). Rien de propre au
+# NAS, d'où son nom (ancien nom : update-nas.sh). La livraison (.github/workflows/livraison.yml) ne reconstruit plus cette branche : elle publie
+# des installateurs (deploy/installateur/) ; le script installe donc la dernière version que la branche porte.
 #
 # L'hôte ne fait que des connexions SORTANTES : aucun port à ouvrir.
 # Prérequis : sh, curl, tar (rsync est utilisé s'il est présent). Pas de Node, pas de Docker requis pour ce script.

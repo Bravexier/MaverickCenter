@@ -6,8 +6,9 @@
 //      page, d'un bloc de description de la chronologie, d'un bloc d'un panneau de règles ou d'une annonce, dans le lot ou après le rejeu (lib/markdown-sur.mjs ;
 //      ici TEXTES_EN_MARKDOWN, texteNonSurApresLeRejeu, que db:appliquer-edition emploie aussi après son rejeu) ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
-//   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
-//      ipsum) sont retirées, le journal du lot passe dans historique_modification, les tables du journal sont vidées ;
+//   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, X+1.0 pour un lot `majeure` — la case « Version
+//      majeure » de la page —, champ libre du lot), les notes d'exemple (lorem ipsum) sont retirées, le journal du lot passe dans
+//      historique_modification, les tables du journal sont vidées ;
 //   4. data/rows est réécrit par l'exporteur des importeurs (tools/db/exporter.py) — dans une copie d'abord : seuls les fichiers des tables que
 //      le journal a touchées et ceux des notes de version peuvent changer (demande du propriétaire : aucune autre table), sinon rien n'est écrit.
 // Rend (et écrit dans --resume) : { version, depuis, lignes, bilan, fichiers, markdown, conflits }.
@@ -46,6 +47,7 @@ export function verifierLot(lot) {
   if (!/^[0-9a-f-]{36}$/.test(String(lot.id))) throw new ErreurMiseAJour(2, 'lot : identifiant invalide');
   if (lot.journal?.format !== 'maverick-edition/1' || !Array.isArray(lot.journal.lots)) throw new ErreurMiseAJour(2, 'lot : journal illisible');
   if (lot.texte !== null && lot.texte !== undefined && typeof lot.texte !== 'string') throw new ErreurMiseAJour(2, 'lot : texte invalide');
+  if (lot.majeure !== undefined && typeof lot.majeure !== 'boolean') throw new ErreurMiseAJour(2, 'lot : « majeure » doit valoir true ou false');
   // l'édition ne touche que les règles : ni les fiches de personnages (section 13, leur propre API), ni le journal, ni les notes de version
   const interdites = new Set([...TABLES_FICHES, ...TABLES_INTERDITES]);
   const touchees = [...new Set(lot.journal.lots.flatMap((l) => (l.modifications ?? []).map((m) => m.table)))];
@@ -191,7 +193,8 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
     const chemin = join(tmp, 'dev.db');
     const construction = spawnSync(process.execPath, ['--no-warnings', join(CLIENT, 'scripts', 'db-build.mjs'), '--out', chemin, '--rows', rows], { encoding: 'utf8' });
     if (construction.status !== 0) throw new Error(`data/rows ne se reconstruit pas : ${construction.stderr || construction.stdout}`);
-    const version = versionDeLivraison(versionDev, ref.version);
+    // un lot d'avant la case « Version majeure » n'a pas `majeure` : une version mineure
+    const version = versionDeLivraison(versionDev, ref.version, { majeure: lot.majeure === true });
     const depuis = ref.version ? versionCourte(ref.version) : null;
     const db = new DatabaseSync(chemin);
     let lignes;
