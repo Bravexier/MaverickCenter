@@ -16,6 +16,7 @@ Source des couleurs (réponse du propriétaire du 2026-10-22) : « La classe CSS
 - Familles (`FAMILLES_DE_LA_PALETTE`) : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES`, id = nom court normalisé : `feu`, `espace-temps` ; plus `par-defaut` = `COULEUR_PAR_DEFAUT`), `attribut`, `caracteristique`, `affinite` (les dix `COULEURS_DES_AFFINITES`, source : Doc « Alchimie »). Id = la clé du module passée par `text.mjs#normalize` (`chakra+sante` → `chakra-sante`), stable quand le nom affiché change.
 - Noms : `classeDeCouleur(famille, cle)`, `classeDeMagie(nom)`, `classeDAttribut(cle)`, `classeDeCaracteristique(id)`, `classeDAffinite(id)` (via `alchimie-couleurs.mjs#baseDAffinite`).
 - Couleurs calculées : `couleurDePotion` rend `{ fond, texte, base: { famille, cle }, niveau }` ; `classeDePotion` → `couleur-potion-<famille>-<id>-n<rang>` (`--ligne-fond`, `--ligne-texte`) ; `cssDesPotions(couleurs)` n'émet que les combinaisons demandées (la page qui les affiche : skill `zone-ceinture`).
+- Exception (réponse du propriétaire du 2026-10-22, « Non, exception (Recommandé) » : « Le noir et le blanc purs servant à assombrir ou éclaircir restent écrits ; l'exception est notée dans la règle des couleurs du site. ») : `#000`, `#fff`, `#000000`, `#ffffff` comme argument d'un `color-mix(…)` (liseré de `.acc-gemme`, `equipement.css`). Rien d'autre ; un test qui contrôle les hex tolère exactement cela (`test/palette-css.test.mjs#couleursEcrites`).
 - Ajouter une couleur : l'écrire dans le module de sa règle (une famille nouvelle : l'ajouter à `FAMILLES_DE_LA_PALETTE`) ; la page pose la classe, sa feuille lit `var(--couleur)`.
 - Ne pas importer `palette-css.mjs` dans un script de page (`src/scripts/`) : il tire tous les modules des règles. `ceinture-rendu.mjs` l'importe, et passe dans l'éditeur du site de dev (`edition-rendu.mjs`), hors version portable.
 
@@ -43,6 +44,8 @@ Source des couleurs (réponse du propriétaire du 2026-10-22) : « La classe CSS
 - Un id inconnu reçoit `COULEUR_NEUTRE`.
 - Attributs : une seule source (`attributs-couleurs.mjs`) ; `fiche.css` et `bestiaire/carte.css` lisent `var(--attribut-<clé>)` et n'écrivent aucune de ces couleurs.
 - Lisibilité d'une ligne colorée : texte de `texteSurCouleur`, contraste d'au moins 4,5:1 (`lib/alchimie-couleurs.mjs#lisible`, pour les potions ; chaque classe de la palette l'atteint déjà : testé).
+- Une feuille lit les propriétés qu'émet la palette (`--couleur`, `--couleur-texte`, et `--ligne-fond` / `--ligne-texte` des combinaisons) : `ceinture.css` (`.batons-table tr.baton`), `equipement.css` (`.acc-gemme`) et `tableaux.css` (`tr.ligne-couleur`), épinglés par `test/palette-css.test.mjs` ; un renommage se fait des deux côtés.
+- Une base de potion sans couleur dans sa règle n'est pas une base (`baseAvecCouleur`) : la ligne reste neutre.
 - Palette : la valeur de chaque classe est celle de sa règle ; aucune classe ne recopie une autre règle ; une page ne pose que la classe, jamais un style de couleur (là où son lot est fait).
 
 ## Tests

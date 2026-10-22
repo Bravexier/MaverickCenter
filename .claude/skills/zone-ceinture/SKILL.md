@@ -35,7 +35,7 @@ user-invocable: false
   - potion : `couleurDePotion` → `{ fond, texte, base: { famille, cle }, niveau }` ; la ligne porte `ligne-couleur couleur-potion-<famille>-<id>-n<rang>` (`classeDePotion`, `n0` sans niveau), qui pose `--ligne-fond` / `--ligne-texte` ;
   - `CeinturePanneau.astro` émet ces combinaisons (`cssDesPotions`) dans un `<style is:inline>` après `ceinture.css` (?raw), seulement celles de ses lignes ;
   - bâton : la ligne et la pastille `.acc-gemme` portent `couleur-magie-<id>` (posée sur chaque page par `Base.astro`) ; `ceinture.css` en tire `--baton-fond`, `--baton-texte`, `--ligne-fond`, `--ligne-texte` et `--mag` (teinte des infobulles de la ligne) ;
-  - `palette-css.mjs` n'est importé par aucun script de page (`ceinture-rendu.mjs` l'importe ; il passe dans l'éditeur du site de dev par `edition-rendu.mjs`).
+  - `palette-css.mjs` n'est importé directement par aucun script de page ; `ceinture-rendu.mjs` l'importe, et passe dans l'éditeur du site de dev (`src/scripts/edition/editeur.mjs` → `lib/edition-rendu.mjs` → `ceinture-rendu.mjs` → `palette-css.mjs`, en code mort, hors version portable).
 - Monnaies en icônes (skill `ui-monnaies`).
 - Édition sur le site de dev, consommables seulement, sauf les champs calculés (demande du propriétaire) : d'une potion, le nom et le prix (sa `ressource` ; prix en RF recalculé), le niveau et l'effet (table `potion`), par l'éditeur commun (`data-ed` de `htmlDeLigneDePotion`, rendus `RENDUS_DE_LA_CEINTURE`).
 - L'effet modifié refait `potion_etat` par `lib/potion-etats.mjs` (la règle de l'import, rejouée sur toute la base).

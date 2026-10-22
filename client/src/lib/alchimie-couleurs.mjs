@@ -60,19 +60,25 @@ export const COULEURS_DES_AFFINITES = Object.freeze({
  */
 export function baseDAffinite(id) {
   if (!id) return null;
-  if (Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, id)) return { famille: 'attribut', cle: ATTRIBUT_DE_L_AFFINITE[id] };
+  if (Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, id)) return baseAvecCouleur({ famille: 'attribut', cle: ATTRIBUT_DE_L_AFFINITE[id] });
   const magie = cleDeMagieConnue(id);
-  if (magie) return { famille: 'magie', cle: magie };
-  return Object.hasOwn(COULEURS_DES_AFFINITES, id) ? { famille: 'affinite', cle: id } : null;
+  if (magie) return baseAvecCouleur({ famille: 'magie', cle: magie });
+  return baseAvecCouleur({ famille: 'affinite', cle: id });
 }
+
+/**
+ * Une base de potion ({ famille, cle }) dont la règle donne bien une couleur, ou null : un attribut, une magie, une affinité ou une caractéristique
+ * sans couleur laisse la ligne neutre (jamais une couleur incalculable).
+ */
+export const baseAvecCouleur = (base) => (couleurDeLaBase(base) ? base : null);
 
 /** La couleur (« #rrggbb ») d'une base de potion ({ famille, cle }), lue dans le module de sa règle ; null si la règle n'en a pas. */
 function couleurDeLaBase(base) {
   if (!base) return null;
   if (base.famille === 'attribut') return couleurDAttribut(base.cle);
   if (base.famille === 'magie') return couleurDeMagieConnue(base.cle);
-  if (base.famille === 'affinite') return COULEURS_DES_AFFINITES[base.cle] ?? null;
-  if (base.famille === 'caracteristique') return COULEURS_CARACTERISTIQUES[base.cle] ?? null;
+  if (base.famille === 'affinite') return Object.hasOwn(COULEURS_DES_AFFINITES, base.cle) ? COULEURS_DES_AFFINITES[base.cle] : null;
+  if (base.famille === 'caracteristique') return Object.hasOwn(COULEURS_CARACTERISTIQUES, base.cle) ? COULEURS_CARACTERISTIQUES[base.cle] : null;
   return null;
 }
 
@@ -153,8 +159,7 @@ export function lisible(fond) {
  */
 export function couleurDePotion({ essence = null, caracteristique = null, niveau = null } = {}) {
   const base = baseDAffinite(essence)
-    ?? (essence === AFFINITE_DES_PHILTRES && caracteristique && Object.hasOwn(COULEURS_CARACTERISTIQUES, caracteristique)
-      ? { famille: 'caracteristique', cle: caracteristique } : null);
+    ?? (essence === AFFINITE_DES_PHILTRES && caracteristique ? baseAvecCouleur({ famille: 'caracteristique', cle: caracteristique }) : null);
   if (!base) return null;
   const fond = lisible(nuanceDuNiveau(couleurDeLaBase(base), niveau));
   return { fond, texte: texteSurCouleur(fond), base, niveau: niveau ?? null };

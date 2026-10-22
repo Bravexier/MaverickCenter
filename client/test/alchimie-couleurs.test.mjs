@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, baseDAffinite, caracteristiqueDesCompetences,
+  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, baseAvecCouleur, baseDAffinite, caracteristiqueDesCompetences,
   contraste, couleurDAffinite, couleurDePotion, lisible, nuanceDuNiveau,
 } from '../src/lib/alchimie-couleurs.mjs';
 import { COULEURS_DES_ATTRIBUTS, cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
@@ -39,6 +39,17 @@ test('une affinité prend la couleur du site : son attribut, sa magie, ou la cou
   assert.deepEqual(baseDAffinite('feu'), { famille: 'magie', cle: 'feu' });
   assert.deepEqual(baseDAffinite('coma'), { famille: 'affinite', cle: 'coma' });
   assert.equal(baseDAffinite('anti'), null);
+  // une base sans couleur dans sa règle n'est pas une base : la ligne reste neutre, jamais une couleur incalculable (« #NaN »)
+  for (const attribut of Object.values(ATTRIBUT_DE_L_AFFINITE)) assert.ok(COULEURS_DES_ATTRIBUTS[attribut], `${attribut} : un attribut qui a sa couleur`);
+  assert.equal(baseAvecCouleur({ famille: 'attribut', cle: 'inconnu' }), null, 'un attribut sans couleur');
+  assert.equal(baseAvecCouleur({ famille: 'magie', cle: 'inconnue' }), null);
+  assert.equal(baseAvecCouleur({ famille: 'affinite', cle: 'anti' }), null);
+  assert.equal(baseAvecCouleur({ famille: 'caracteristique', cle: 'constructor' }), null, 'pas une clé héritée');
+  assert.equal(baseAvecCouleur({ famille: 'inconnue', cle: 'feu' }), null);
+  assert.equal(baseAvecCouleur(null), null);
+  assert.deepEqual(baseAvecCouleur({ famille: 'attribut', cle: 'sante' }), { famille: 'attribut', cle: 'sante' });
+  for (const essence of ['inconnue', 'constructor', 'toString', 'anti', 'demon']) assert.equal(couleurDePotion({ essence, niveau: 2 }), null, essence);
+  assert.equal(couleurDePotion({ essence: AFFINITE_DES_PHILTRES, caracteristique: 'constructor', niveau: 2 }), null);
   assert.equal(couleurDAffinite('anti'), null);
   assert.equal(couleurDAffinite('demon'), null);
   assert.equal(couleurDAffinite(null), null);

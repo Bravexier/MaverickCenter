@@ -117,8 +117,76 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   assert.match(lire('src/layouts/Base.astro'), /<style is:inline set:html=\{cssDeLaPalette\(\)\}><\/style>/);
   // le poids ajouté à chaque page : environ 2,6 ko aujourd'hui (37 classes) ; au-delà de 4 ko, revoir la manière de l'émettre
   assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+});
+
+const construit = existsSync(new URL('../dist/index.html', import.meta.url));
+test('la palette dans les pages construites', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
   for (const page of ['index.html', 'ressources/equipement/index.html', 'fiche/index.html']) {
     const construite = new URL(`../dist/${page}`, import.meta.url);
-    if (existsSync(construite)) assert.ok(readFileSync(construite, 'utf8').includes(`<style>${cssDeLaPalette()}</style>`), `dans la page construite : ${page}`);
+    assert.ok(existsSync(construite), `page construite : ${page}`);
+    assert.ok(readFileSync(construite, 'utf8').includes(`<style>${cssDeLaPalette()}</style>`), `dans la page construite : ${page}`);
+  }
+});
+
+/** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */
+const regleDe = (css, selecteur) => {
+  const debut = css.indexOf(`\n${selecteur} {`);
+  assert.ok(debut >= 0, `règle absente : ${selecteur}`);
+  return css.slice(css.indexOf('{', debut) + 1, css.indexOf('}', debut)).replace(/\s+/g, ' ');
+};
+
+/**
+ * Les couleurs écrites d'un texte CSS, hors la seule exception admise (réponse du propriétaire du 2026-10-22, « Non, exception (Recommandé) » : « Le noir
+ * et le blanc purs servant à assombrir ou éclaircir restent écrits ») : `#000`, `#fff`, `#000000`, `#ffffff` comme argument d'un `color-mix(…)`.
+ */
+const couleursEcrites = (css) => {
+  let reste = '';
+  let i = 0;
+  for (let m = css.indexOf('color-mix(', i); m >= 0; m = css.indexOf('color-mix(', i)) {
+    let profondeur = 0;
+    let fin = m + 'color-mix'.length;
+    for (; fin < css.length; fin++) {
+      if (css[fin] === '(') profondeur++;
+      else if (css[fin] === ')' && --profondeur === 0) break;
+    }
+    reste += css.slice(i, m) + css.slice(m, fin + 1).replace(/(?<=[\s,(])#(?:000|fff|000000|ffffff)(?![0-9a-f])/gi, '');
+    i = fin + 1;
+  }
+  return (reste + css.slice(i)).match(HEX) ?? [];
+};
+
+test('l’exception des couleurs écrites : le noir ou le blanc purs de mélange d’un color-mix, rien d’autre', () => {
+  assert.deepEqual(couleursEcrites('a { border: 1px solid color-mix(in srgb, var(--x) 65%, #000); b: color-mix(in srgb, #FFFFFF 20%, var(--y)); }'), []);
+  assert.deepEqual(couleursEcrites('a { color: #000; }'), ['#000'], 'hors d’un color-mix');
+  assert.deepEqual(couleursEcrites('a { b: color-mix(in srgb, var(--x) 65%, #111); }'), ['#111'], 'pas un noir pur');
+  assert.deepEqual(couleursEcrites('a { b: color-mix(in srgb, var(--x) 65%, #0000ff); }'), ['#0000ff'], 'pas un noir de six chiffres suivi d’autres');
+  assert.deepEqual(couleursEcrites('a { b: color-mix(in srgb, color-mix(in srgb, #fff 5%, var(--x)) 65%, #c62828); }'), ['#c62828'], 'mélange imbriqué');
+});
+
+test('les feuilles lisent les propriétés que posent les classes : bâtons (ceinture.css), pastille de la gemme (equipement.css), ligne colorée (tableaux.css)', () => {
+  // les noms des propriétés, lus dans les feuilles fabriquées : un renommage dans palette-css.mjs doit se voir ici
+  const [palette] = regles(cssDeLaPalette()).values();
+  assert.deepEqual(Object.keys(palette), ['--couleur', '--couleur-texte']);
+  const [fond, texte] = Object.keys(palette);
+  const [potion] = regles(cssDesPotions([couleurDePotion({ essence: 'sante', niveau: 2 })])).values();
+  assert.deepEqual(Object.keys(potion), ['--ligne-fond', '--ligne-texte']);
+  const [ligneFond, ligneTexte] = Object.keys(potion);
+  // une ligne de bâtons : la classe de la magie → ses variables, la ligne colorée du gabarit et la teinte des infobulles (--mag)
+  const ceinture = lire('src/styles/ceinture/ceinture.css');
+  assert.equal(regleDe(ceinture, '.batons-table tr.baton'),
+    ` --baton-fond: var(${fond}); --baton-texte: var(${texte}); ${ligneFond}: var(--baton-fond); ${ligneTexte}: var(--baton-texte); --mag: var(--baton-fond); `);
+  assert.match(lire('src/components/ceinture/BatonsMagiques.astro'), /classeTable="batons-table"/, 'le tableau des bâtons porte la classe que lit la règle');
+  // la pastille de la gemme : `--g` posé par les accessoires, sinon la classe de la magie (bâtons)
+  const equipement = lire('src/styles/equipement/equipement.css');
+  const pastille = regleDe(equipement, '.acc-gemme');
+  assert.ok(pastille.includes(`--gemme: var(--g, var(${fond}));`), pastille);
+  assert.ok(pastille.includes('background: var(--gemme);'), pastille);
+  assert.ok(pastille.includes(`color: var(--g-texte, var(${texte}));`), pastille);
+  assert.deepEqual(couleursEcrites(pastille), [], 'la pastille n’écrit que le noir de mélange de son liseré');
+  // la ligne colorée du gabarit commun lit les propriétés des combinaisons
+  assert.match(lire('src/styles/global/tableaux.css'), new RegExp(`:where\\(\\.table-donnees\\) tr\\.ligne-couleur > \\* \\{ background: var\\(${ligneFond}\\); color: var\\(${ligneTexte}\\); \\}`));
+  // les fichiers de l'onglet Ceinture n'écrivent aucune couleur, hors l'exception du mélange
+  for (const f of ['src/styles/ceinture/ceinture.css', 'src/components/ceinture/CeinturePanneau.astro', 'src/components/ceinture/BatonsMagiques.astro']) {
+    assert.deepEqual(couleursEcrites(lire(f)), [], f);
   }
 });

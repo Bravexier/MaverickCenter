@@ -129,10 +129,15 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES`, d'après le Doc « Alchimie » ; `chakra+sante` → `couleur-affinite-chakra-sante`). L'id est la clé du
   module de la règle passée par `normalize` : il ne change pas quand le nom affiché change.
 - **Choix du propriétaire** (2026-10-22, questions de cadrage) : « Module JS → classe » (la valeur reste dans le module de sa règle, une page ne pose
-  que la classe) ; « Thème reste, Debug à part » (les variables du thème de `styles/global/base.css` restent la règle du thème ; la page Debug et
-  l'impression ne changent pas) ; « Règle de calcul » (une couleur calculée part d'une classe du site, la nuance se calcule depuis elle, avec une classe
+  que la classe) ; « Thème reste, Debug à part » (« Les variables du thème restent la règle du thème, toute copie ailleurs passe par elles ; la page
+  Debug et l'impression ne changent pas. » : celles de `styles/global/base.css`) ; « Règle de calcul » (une couleur calculée part d'une classe du site, la nuance se calcule depuis elle, avec une classe
   par combinaison là seulement où une page en a besoin) ; « Garder séparées » (chaque couleur garde son nom et sa classe, même à valeur égale). Une
   affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie : rien n'est recopié.
+- **Exception : le noir et le blanc de mélange** (réponse du propriétaire du 2026-10-22 à « Ce noir ou ce blanc de mélange compte-t-il comme une
+  « couleur en dur » ? » : « Non, exception (Recommandé) » ; option : « Le noir et le blanc purs servant à assombrir ou éclaircir restent écrits ;
+  l'exception est notée dans la règle des couleurs du site. ») : `#000`, `#fff`, `#000000` ou `#ffffff` comme argument d'un `color-mix(…)` (le liseré
+  de la pastille d'une gemme, `color-mix(in srgb, var(--gemme) 65%, #000)`). Aucune autre couleur écrite ; `test/palette-css.test.mjs` tolère
+  exactement cette exception.
 - **Ajouter une couleur** : l'écrire dans le module de sa règle (ou, sans règle, une couleur ajoutée d'après la source, dans le module de son domaine),
   et, si c'est une famille nouvelle, l'ajouter à `FAMILLES_DE_LA_PALETTE` ; la classe suit au build. Une page pose la classe
   (`classeDeMagie`, `classeDAttribut`, `classeDeCaracteristique`, `classeDAffinite`) et sa feuille lit `var(--couleur)` / `var(--couleur-texte)`.
@@ -624,7 +629,8 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
   Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`) ; le fond d'une potion qui
   n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à l'atteindre (`lisible`). Aucun fichier de l'onglet
-  n'écrit de couleur (`test/alchimie-couleurs.test.mjs`). Repère visuel sans valeur de règle.
+  n'écrit de couleur, hors le noir ou le blanc purs de mélange d'un `color-mix` (exception du propriétaire : le liseré de la pastille d'une gemme,
+  `styles/equipement/equipement.css` ; `test/alchimie-couleurs.test.mjs`, `test/palette-css.test.mjs`). Repère visuel sans valeur de règle.
   **En classes, jamais en style** (« Couleurs du site : la palette en classes » plus haut ; choix du propriétaire du 2026-10-22, « Module JS → classe »
   et « Règle de calcul ») : `couleurDePotion` rend `{ fond, texte, base, niveau }`, la **base** (`{ famille, cle }`) étant la classe du site d'où la
   couleur se calcule (`couleur-attribut-sante`, `couleur-magie-feu`, `couleur-affinite-coma`, `couleur-caracteristique-force`) ; la ligne porte la
