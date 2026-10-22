@@ -681,7 +681,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .sort-remarque { flex: none; color: #c99a06; font-size: var(--fs-lg); line-height: 1; cursor: help; }
 .sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
 /* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
-.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; } /* la classe de la magie du sort (teinte-palette) */
 .fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
 .fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
@@ -699,7 +699,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
 .sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
 .fiche .sort-prepare__jet { width: 5.5rem; }
-.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+/* la magie du sort (teinte-palette) ; la posture, sa couleur et son texte en style jusqu'à leur lot */
+.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
 .sort-prepare option { background-color: var(--surface); color: var(--text); font-weight: normal; }
 .sort-prepare__posture { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-xxs); }
 /* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */

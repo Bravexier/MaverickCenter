@@ -274,9 +274,11 @@ abandonne.
   pastilles et curseurs gardent leurs couleurs. Les couleurs des magies sont des classes de la palette du site, jamais un style (`docs/content-guide.md`,
   « Couleurs du site : la palette en classes ») : `regles.json` donne de chaque magie `classe` (`couleur-magie-<id>`) et `classe_2` (sa classe de second
   rang, `couleur-2-magie-<id>`), sans couleur ; le script pose sur la fiche la classe de l'innée et la classe de second rang de l'acquise (de l'innée
-  sans acquise), que `fiche.css` lit en `--couleur` et `--couleur-2` pour les cadres ; une pastille, une résistance, un sort, une créature ou un effet
-  du Mode Hyper sur la couleur d'une magie porte sa classe et `teinte-palette` (`teinteDeMagie`), qui la fait lire dans `--c`, `--c-texte`,
-  `--texte-sur-c`.
+  sans acquise), que `fiche.css` lit en `--couleur` et `--couleur-2` pour les cadres ; une pastille, une résistance ou un sort (liste et options) sur
+  la couleur d'une magie porte sa classe et `teinte-palette` (`teinteDeMagie`), qui la fait lire dans `--c`, `--c-texte`, `--texte-sur-c` ; une
+  créature à invoquer, sur la couleur de ses magies (celles de la créature, sinon celle du sort), porte `invocation-choix--magie`, la classe de la
+  première et la classe de second rang de la seconde (`--c1`, `--c2`) ; un effet du Mode Hyper propre à une magie porte la classe de cette magie, que
+  son filet lit (`--couleur`).
 - **Niveau** : la **jauge d'XP** (`progressionXp`) ouvre le bloc de progression : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau
   suit (rappelé dans la barre d'enregistrement).
 

@@ -160,10 +160,14 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
   Les autres couleurs (caractéristiques, postures, alignements, matériaux, résistances, catégories de classe, races, Mode Hyper…) posent encore leur
-  couleur en style : elles passeront aux classes lot par lot. Dans les pages de magie, les dérivées sombres de la bannière (`--hero-1`, `--hero-2`)
+  couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des magies (le texte blanc des bannières de
+  magie, de race et de classe ; les teintes des genres de sort, `.genre` de `styles/magie/sorts.css`, et des types de don ; l'ombre des infobulles ;
+  l'impression, qui ne change pas). Dans les pages de magie, les dérivées sombres de la bannière (`--hero-1`, `--hero-2`)
   mêlent la couleur au noir pur (`#000`, l'exception de mélange), plus au `#111` d'avant.
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
-  seconds rangs, feuilles qui lisent les propriétés des classes, aucune couleur écrite dans les fichiers des lots faits, poids borné),
+  seconds rangs, feuilles qui lisent les propriétés des classes ; aucune couleur écrite — hex, fonction de couleur au moins un argument écrit, couleur
+  nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit `var(--couleur…)` ou `var(--mag…)`,
+  choisie d'après ce qu'elle lit ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
   (sur toute page, aucune couleur de magie en style, et chaque classe `couleur-…` posée existe) et les tests de chaque zone (`magies-html`,
   `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`).

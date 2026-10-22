@@ -446,6 +446,13 @@ test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », 
 // Les couleurs des magies en classes (lot des magies de la palette, demande du propriétaire du 2026-10-22 : « Aucune couleur en dur. », choix « Module JS
 // → classe » : skill ui-couleurs, lib/palette-css.mjs) : sur toute page construite, aucune couleur de magie en style ; chaque classe de couleur posée
 // existe (la palette de chaque page, ou une combinaison que la page émet).
+/** Les éléments que les pages posent sur la couleur d'une magie (lot des magies de la palette). */
+const ELEMENTS_DES_MAGIES = new Set([
+  'magie', 'magie-teinte', 'autre-magie__onglet', 'creature__bouton', 'magies-orbite__position', 'magies-orbite__noeud', 'magies-orbite__pastille', 'magies-relation',
+  'tableau-magies__col-magie', 'tableau-magies__entete', 'tableau-magies__ligne', 'tableau-magies__point', 'race-magie', 'annexe-classe__carte',
+  'guide-magie', 'guide-magie__point', 'bmagie', 'bcible--magie', 'comp-magie', 'composant--magie', 'acc-gemme', 'bulle--gemme', 'perso',
+]);
+
 test('couleurs des magies : jamais en style sur une page construite, toujours par une classe de la palette qui existe', options, () => {
   const palette = classesDeLaPalette();
   const VARIABLES_DES_MAGIES = /style="[^"]*(?:--couleur-magie|--couleur-texte-magie|--mag:|--mag-texte:|--m:|--m-texte:|--g:|--g-texte:|--creature-[12]:|--magie-[12]:)/;
@@ -454,8 +461,12 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
     const rel = relative(dist, fichier);
     const html = readFileSync(fichier, 'utf8');
     assert.doesNotMatch(html, VARIABLES_DES_MAGIES, `${rel} : une couleur de magie en style`);
-    for (const [balise] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="[^"]*\bcouleur-[^"]*"[^>]*>/g)) {
-      assert.doesNotMatch(balise, /style="[^"]*#[0-9a-f]{3,6}\b/i, `${rel} : une couleur en style sur un élément de la palette : ${balise}`);
+    // un élément de la palette, ou un élément d'une magie (même sans sa classe : une régression qui remettrait `style="--c: #…"`), n'a aucune couleur
+    // en style
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => c.startsWith('couleur-') || ELEMENTS_DES_MAGIES.has(c))) continue;
+      assert.doesNotMatch(balise, /style="[^"]*(?:#[0-9a-f]{3,6}\b|\b(?:rgba?|hsla?)\()/i, `${rel} : une couleur en style sur un élément d'une magie : ${balise}`);
     }
     const classes = new Set([...html.matchAll(/\bclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('couleur-')));
     for (const c of classes) assert.ok(palette.has(c) || html.includes(`.${c}{`), `${rel} : la classe ${c} n’existe pas`);
