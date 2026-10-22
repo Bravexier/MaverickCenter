@@ -1,5 +1,5 @@
 // Fiches de personnages dans la base vivante, au format de src/lib/fiche-format.mjs (docs/serveur.md, « Une fiche en JSON »).
-// Avant la 1.0, il n'y a pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
+// Pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
 // (v_personnage_visible) ; une fiche de joueur n'est ni listée ni lisible ici. Ce que la base contrôle (types, bornes, références aux règles) refuse
 // l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).

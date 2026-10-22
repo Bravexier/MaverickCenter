@@ -151,7 +151,7 @@ export const SUIVIS = ['lance', 'en_cours', 'fusionne', 'echec', 'echec_livraiso
 const OCCUPANTS = ['envoi', 'lance', 'en_cours', 'fusionne', 'echec_livraison'];
 /** États dont le lot n'est plus servi au workflow. */
 const LOT_RETIRE = ['annule', 'simulation_reussie', 'simulation_echouee'];
-/** Délai minimal entre deux lancements, et au plus tant de lancements par 24 h (le bouton n'a pas d'authentification avant la 1.0). */
+/** Délai minimal entre deux lancements, et au plus tant de lancements par 24 h (le bouton n'a pas d'authentification). */
 const DELAI_ENTRE_LANCEMENTS = 2 * 60_000;
 export const LANCEMENTS_PAR_JOUR = 8;
 /** Appels à GitHub : jamais sans délai (un réseau pendu ne doit pas bloquer le suivi). */
@@ -258,7 +258,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   if (lireBrouillon(db).lot) {
     throw new ErreurNotes(409, 'Un lot est déjà figé : annulez ce lancement, ou attendez que la version livrée arrive sur ce site.', { lancement: precedent });
   }
-  // fréquence (pas d'authentification avant la 1.0 : les minutes GitHub Actions et les livraisons ne s'enchaînent pas sans limite)
+  // fréquence (pas d'authentification : les minutes GitHub Actions et les livraisons ne s'enchaînent pas sans limite)
   const maintenant = Date.parse(instant);
   const recents = [...(precedent?.lancements_recents ?? []), ...(precedent?.lance_le ? [precedent.lance_le] : [])]
     .filter((t, i, tous) => tous.indexOf(t) === i && maintenant - Date.parse(t) < 24 * 3_600_000).sort();

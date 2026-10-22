@@ -19,7 +19,7 @@ user-invocable: false
 - Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + lignes de la section 13, refaite quand les règles changent (fiches reprises ; archives dans `db/archives/`).
 - À la reconstruction, un don, une spécialité, un sort, un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `serveur/fiches-retraits.mjs`), liste dans `/api/etat`. Toute autre référence rompue : rien ne change et `/api/etat` dit pourquoi.
 - Livré avec le site : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json`.
-- Avant la 1.0 : prétirés seulement, pas de comptes (mot de passe du site).
+- Prétirés seulement, pas de comptes (mot de passe du site).
 
 ## Invariants
 - Le service n'importe que `node:…` et des chemins relatifs (`modulesDuServeur` de `serveur/livraison.mjs`, testé). `tools/build-artifact.mjs` n'emporte pas `_serveur/`.

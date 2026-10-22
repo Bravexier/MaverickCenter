@@ -72,7 +72,7 @@
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
-// Avant la 1.0, pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
+// Pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
 import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
