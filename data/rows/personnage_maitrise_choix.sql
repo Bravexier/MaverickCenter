@@ -1,0 +1,1 @@
+-- data/rows/personnage_maitrise_choix.sql : export déterministe, une instruction par ligne, triée par (personnage_id, source, rang). NE PAS ÉDITER À LA MAIN.

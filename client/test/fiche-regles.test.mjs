@@ -93,8 +93,9 @@ test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 d
   // citée dans le texte du guide tel que l'import l'a écrit (le site de dev peut le réécrire depuis)
   assert.ok(historique.valeurDImport('page', { id: guide.page_id }, 'corps_md').includes(guide.texte), guide.texte);
   assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
-  assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get().sql, /CHECK \(des BETWEEN 1 AND 5\)/,
-    'la base garde des dés, de 1 à 5');
+  // depuis la migration 0072 (R148, R149), la base calcule les dés de chaque famille de ces deux constantes (v_personnage_maitrise_arme), sans les stocker
+  const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_maitrise_arme'").get().sql;
+  for (const id of ['maitrise_arme.des_max', 'maitrise_arme.des_sans_maitrise']) assert.ok(vue.includes(`'${id}'`), `la vue lit ${id}`);
 });
 
 test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_maitrise_arme), les points des dons, le dé du Pugilat selon la Force ; seuil d’alignement', () => {

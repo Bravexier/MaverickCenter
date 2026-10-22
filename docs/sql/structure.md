@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 75 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 74 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -14,7 +14,7 @@
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
-- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
+- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
 - [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite_commune`, `monstre_capacite`, `monstre_capacite_valeur`, `monstre_defense`
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -615,7 +615,7 @@ Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle sp�
 
 ### `resistance_palier`
 
-Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2). Les multiplicateurs sont ceux de la décision R155 (migration 0074, remplace R70) : =0, ÷3, ÷2, x2, x3, x4 ; la fiche auto V15.2.2 écrit ÷4, x4 et x8.
+Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -623,8 +623,8 @@ Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (s
 | `libelle` | TEXT | oui | unique | « Grande résistance » |
 | `valeur_min` | INTEGER | non |  | V >= valeur_min ; NULL = pas de borne basse |
 | `valeur_max` | INTEGER | non |  | V <= valeur_max ; NULL = pas de borne haute |
-| `multiplicateur` | REAL | oui |  | « dégâts subis ÷3 » -> 1/3 ; « =0 » -> 0 ; « x4 » -> 4 (R155) |
-| `effet_brut` | TEXT | oui |  | « dégâts subis ÷3 » |
+| `multiplicateur` | REAL | oui |  | « dégâts subits ÷4 » -> 0.25 ; « =0 » -> 0 ; « x8 » -> 8 |
+| `effet_brut` | TEXT | oui |  | « dégâts subits ÷4 » |
 | `ordre` | INTEGER | oui | unique | ordre d'affichage de la fiche (immunité en premier) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
@@ -1003,6 +1003,41 @@ MAÎTRISES DE DÉPART : cellules « Maîtrise Arme » (A7:F9) et « Maîtrise Ar
 | `sauf_cle` | TEXT | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Classe Maverick V7 › Guerrier › A7:F9 » |
+
+### `maitrise_arme_part`
+
+SOURCES DE MAÎTRISE D'ARME (décisions R148 à R151, migration 0073) : ce que donne chaque ligne de classe_maitrise_arme et chaque don (capacite.effet), en parts, telles que les lit client/src/lib/maitrise-arme.mjs (lireLigneDeClasse, lireDon), que test/maitrise-arme-sources.test.mjs rejoue sur toute la base (un changement du lecteur ou d'un texte demande de réécrire ces lignes). Rien n'est déduit : seul ce que le texte écrit compte, jamais le nom du don ni celui de la classe ; une source qui ne donne aucun point de maîtrise d'arme n'a pas de ligne. Une fiche enregistre le choix d'une famille par point à choisir (personnage_maitrise_choix, sous l'identifiant `source_id`) ; les points de chaque famille se calculent (v_personnage_maitrise_arme). Tables de règles tirées des textes, sans provenance (`origine`, `source_ref` : retirées à la 1.0) ; une source supprimée emporte ses parts. genre 'imposee' : `points` sur une famille fixe (`arme_famille_id`), sans choix (« 1 maîtrise Épée », « +2 points de maîtrise Arcs » ; R151 : chaque nom d'une ligne nommée désigne sa famille, comme les « sauf » de R138) ; genre 'choix' : `points` choix d'un point, chacun parmi les options de la part (maitrise_arme_part_famille) ; au plus `limite_famille` points de la part sur une même famille quand la source l'écrit (Maître d'arme 2, Combattant libre 3, lignes Bimane, Frappeur, Mercenaire 1 ; « catégorie » = famille, la limite ne compte que les points de cette source : R150) ; NULL = rien d'écrit, répartition libre (R150) ; genre 'suit' : `points` (signés : le −1 de l'Épéiste) sur la famille choisie pour la ligne `au_choix` de la classe du don (« avec l'arme déterminée avant », « de l'autre arme choisie » : R151), sans choix. `rang` est le rang de la part dans le texte de sa source (1 = la première) ; une source a au plus une part 'choix' (test/maitrise-arme.test.mjs).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `source_id` | TEXT | oui | PK 1 | capacite.id pour un don ; '<classe_id>#maitrise-arme:<rang de la ligne>' pour une ligne de classe (lib/maitrise-arme.mjs#idDeSourceDeClasse) : l'identifiant que la fiche enregistre |
+| `rang` | INTEGER | oui | PK 2 | rang de la part dans le texte de la source |
+| `capacite_id` | TEXT | non | → capacite.id | la source est un don ; NULL pour une ligne de classe |
+| `classe_id` | TEXT | non | → classe_maitrise_arme.classe_id | la source est une ligne de classe_maitrise_arme (classe_id, classe_rang) ; NULL pour un don |
+| `classe_rang` | INTEGER | non | → classe_maitrise_arme.rang |  |
+| `genre` | TEXT | oui |  |  |
+| `points` | INTEGER | oui |  | points de la part, signés (le −1 de l'Épéiste, R151) ; toujours > 0 pour une part à choisir |
+| `arme_famille_id` | TEXT | non | → arme_famille.id | la famille imposée ('imposee' seulement ; jamais ARME DE MONSTRES, R45 : test) |
+| `limite_famille` | INTEGER | non |  | 'choix' : au plus N points de la part sur une même famille, quand la source l'écrit (R150) |
+
+### `maitrise_arme_part_famille`
+
+Les familles proposées à chaque point d'une part 'choix' (R148 à R151), explicites : la catégorie de la ligne (« contact », « à distance » ; « corps à corps » = contact : R127, R151), la liste qu'elle écrit (« entre Masse, Pugilat, Bâton combat »), sans son « sauf » (R138), ou toutes les familles maîtrisables ; jamais ARME DE MONSTRES (R45 : test). Une famille hors de cette liste est signalée (règle maitrise_hors_choix de v_personnage_controle).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `source_id` | TEXT | oui | PK 1, → maitrise_arme_part.source_id |  |
+| `rang` | INTEGER | oui | PK 2, → maitrise_arme_part.rang |  |
+| `arme_famille_id` | TEXT | oui | PK 3, → arme_famille.id |  |
+
+### `capacite_nm_gagne`
+
+NM de sorts gagnés qu'écrit un don (décision R154, migration 0073) : le N de « Gagne N niveaux de maîtrise (NM) » (lib/maitrise-arme.mjs#nmGagnesDuDon, rejoué sur toute la base par test/maitrise-arme-sources.test.mjs ; l'Ocultomancien « Maîtrise », 4, seul à l'écrire). Un don acquis (v_personnage_don_acquis) les ajoute aux NM gagnés par les niveaux : règle sorts_nm_total de v_personnage_controle (sort_nm_max ne les lit pas).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `capacite_id` | TEXT | oui | PK, → capacite.id |  |
+| `nm` | INTEGER | oui |  |  |
 
 ### `classe_annexe`
 
@@ -1696,14 +1731,14 @@ MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Cat�
 
 ### `monstre_rubrique`
 
-Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur). 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
+Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
 | `rang` | INTEGER | oui | PK 2 |  |
 | `rubrique` | TEXT | oui |  |  |
-| `titre` | TEXT | non |  | « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷3 » |
+| `titre` | TEXT | non |  | « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 » |
 | `texte` | TEXT | oui |  | paragraphes séparés par une ligne vide ; '' = rubrique vide |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
@@ -1778,7 +1813,7 @@ Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas l
 
 ### `monstre_defense`
 
-Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible. 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
+Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1864,7 +1899,7 @@ Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES 
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
-| `maitrisable` | INTEGER | oui |  | 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES : des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030) |
+| `maitrisable` | INTEGER | oui |  | 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_choix) ; 0 = ARME DE MONSTRES : des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030) |
 | `categorie` | TEXT | non |  | R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN) |
 
 ### `arme_type`
@@ -2541,7 +2576,7 @@ Gemmes d'un effet d'accessoire (« Grenat + Malachite » : 2 rangs ; « Grenat/M
 
 ### `accessoire_effet_cible`
 
-Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » : comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base). Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 : Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe. cible : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme), armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran), cran_des_sorts (le dé des sorts d'un cran), de_maximum (un dé de dégâts au maximum), des_soins (un dé de plus aux soins) : décision R102, migration 0061 valeur : NULL = la valeur tirée de l'accessoire (compétence) choix : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
+Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » : comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base). Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 : Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe. cible : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme), armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes choisie), portee_distance, portee_sorts, maitrise_arme (points, sur une famille choisie : R151, migration 0073), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran), cran_des_sorts (le dé des sorts d'un cran), de_maximum (un dé de dégâts au maximum), des_soins (un dé de plus aux soins) : décision R102, migration 0061 valeur : NULL = la valeur tirée de l'accessoire (compétence) choix : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id ; .arme_famille_id pour degats_famille et, depuis la migration 0073, maitrise_arme : « Un point de maîtrise d'arme », dont la famille se choisit, R151)
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3398,7 +3433,7 @@ Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond se
 
 ### `personnage_acquis_choix`
 
-Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le texte d'un don devient un choix du tiroir) : pour un don débloqué de la fiche (capacite.id ou race_don.id, `source` : pas de clé étrangère, un don disparu laisse un choix sans effet, que la page retire) et le rang de ce choix dans son texte (lib/acquis-texte.mjs, 1 = le premier), la compétence retenue (`valeur` NULL : le bonus du don), ou, pour « 10% de compétence en acquis à répartir au choix », chaque compétence et ses points (`valeur`, leur somme au plus le bonus : la page le garde). « +N% de la compétence de l'arme choisie » (décision R119, migration 0067 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. » ; Tueur Flétrisseur et Sicaire, Mage Bleu Mage saphir, Mage Vert Mage émeraude et Mage jade, Barde Ménestrel) : la ligne du choix garde aussi la famille d'armes de la maîtrise au choix de la classe (`arme_famille_id`, classe_maitrise_arme forme 'au_choix') ; `competence_id` est la compétence qui reçoit le bonus : celle de l'arme (R48 : arme.competence_brut), au choix quand l'arme peut être lourde ou légère (R119). Le choix d'une arme est celui d'un don, comme « X ou Y » : une ligne (pas de répartition, `valeur` NULL), une seule par choix (index personnage_acquis_choix_arme). NULL pour tout autre choix.
+Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le texte d'un don devient un choix du tiroir) : pour un don débloqué de la fiche (capacite.id ou race_don.id, `source` : pas de clé étrangère, un don disparu laisse un choix sans effet, que la page retire) et le rang de ce choix dans son texte (lib/acquis-texte.mjs, 1 = le premier), la compétence retenue (`valeur` NULL : le bonus du don), ou, pour « 10% de compétence en acquis à répartir au choix », chaque compétence et ses points (`valeur`, leur somme au plus le bonus : la page le garde). « +N% de la compétence de l'arme choisie » (décision R119 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. » ; Tueur Flétrisseur et Sicaire, Mage Bleu Mage saphir, Mage Vert Mage émeraude et Mage jade, Barde Ménestrel) : l'arme du bonus est la famille choisie pour la ligne `au_choix` de la classe du don (personnage_maitrise_choix, décision R152 : « Un seul choix », migration 0073, qui retire la colonne arme_famille_id posée par 0067 : elle doublait ce choix) ; `competence_id` est la compétence qui reçoit le bonus, celle de l'arme (R48 : arme.competence_brut), au choix quand l'arme peut être lourde ou légère (R119, R126). Le choix d'une compétence est celui d'un don, comme « X ou Y » : une ligne, `valeur` NULL.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3407,7 +3442,6 @@ Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le tex
 | `rang` | INTEGER | oui | PK 3 |  |
 | `competence_id` | TEXT | oui | PK 4, → competence.id |  |
 | `valeur` | INTEGER | non |  |  |
-| `arme_famille_id` | TEXT | non | → arme_famille.id | l'arme choisie (R119, migration 0067) |
 
 ### `personnage_resistance_choix`
 
@@ -3455,15 +3489,16 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `prepare_jet` | INTEGER | non |  | jet de magie (D100) |
 | `prepare_posture_id` | TEXT | non | → posture.id | posture du moment de la préparation |
 
-### `personnage_maitrise_arme`
+### `personnage_maitrise_choix`
 
-« Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016) ; jamais sur ARME DE MONSTRES (arme_famille.maitrisable = 0, décision R45 : règle 'maitrise_arme_exclue' de v_personnage_controle).
+« Maîtrise d'armes » (AA2:AV7 de la fiche auto : des dés saisis par famille, jusqu'à la migration 0073, table personnage_maitrise_arme) : depuis la décision R148 (« la valeur ne sera plus des sliders mais une valeur calculée », migration 0073), plus rien ne se saisit par famille. Les points de chaque famille sont la somme de ses sources (lignes des classes prises, dons acquis, accessoire « Un point de maîtrise d'arme » : R32, R54, R148), au moins 0, au plus 4 comptés (R149 : 5 dés ; au-delà, signalé), calculés par v_personnage_maitrise_arme et par la page, jamais stockés. La fiche garde seulement le choix d'une famille pour chaque point à choisir : une ligne par point d'une part 'choix' (maitrise_arme_part) d'une source acquise — la source (`source` : maitrise_arme_part.source_id, l'id du don ou '<classe_id>#maitrise-arme:<rang>' ; pas de clé étrangère, comme personnage_acquis_choix.source : une source disparue ou perdue laisse un choix sans effet, signalé par maitrise_source_perdue), le numéro du point dans cette part (`rang`, de 1 à ses points ; une source a au plus une part à choisir) et la famille choisie, parmi les options de la part (maitrise_arme_part_famille ; R150 : la même famille peut revenir, sauf limite écrite ; jamais ARME DE MONSTRES, R45). La famille choisie pour la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire garde la sienne dans personnage_accessoire.arme_famille_id. Les fiches d'avant 0073 : tout est à rechoisir, l'ancien tableau noté dans les notes (R153 : base vivante).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
-| `arme_famille_id` | TEXT | oui | PK 2, → arme_famille.id |  |
-| `des` | INTEGER | oui |  |  |
+| `source` | TEXT | oui | PK 2 | maitrise_arme_part.source_id (sans clé étrangère) |
+| `rang` | INTEGER | oui | PK 3 | le numéro du point dans la part à choisir de la source (de 1 à ses points) |
+| `arme_famille_id` | TEXT | oui | → arme_famille.id | la famille choisie pour ce point |
 
 ### `personnage_arme`
 
@@ -3503,7 +3538,7 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `valeur` | INTEGER | non |  | valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette |
 | `maudit` | INTEGER | oui |  |  |
 | `competence_id` | TEXT | non | → competence.id | effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037) |
-| `arme_famille_id` | TEXT | non | → arme_famille.id | effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037) |
+| `arme_famille_id` | TEXT | non | → arme_famille.id | effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037) ; effet « Un point de maîtrise d'arme » : la famille du point (R151, migration 0073 ; « ne peut changer une fois décidé » n'est qu'un rappel), +1, −1 maudit (R54) : v_personnage_maitrise_arme |
 
 ### `personnage_inventaire`
 
@@ -3579,6 +3614,52 @@ Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang li
 | `attribut` | TEXT | non |  |  |
 | `valeur` | INTEGER | non |  |  |
 
+### `v_personnage_don_acquis`
+
+*vue*
+
+Dons acquis d'une fiche (décision R32, migration 0073) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi (personnage_capacite). Sert aux sources de maîtrise d'arme (R148) et aux NM gagnés des dons (R154).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `classe_rang` | INTEGER | non |  |  |
+| `classe_id` | TEXT | non |  |  |
+| `capacite_id` | TEXT | non |  |  |
+
+### `v_personnage_maitrise_part`
+
+*vue*
+
+Sources de maîtrise d'arme acquises par une fiche (décisions R32, R148) : les parts (maitrise_arme_part) des lignes de classe_maitrise_arme des classes prises, dès le niveau de classe 1, et des dons acquis (v_personnage_don_acquis). `classe_id` : la classe de la source (celle du don pour un don) ; `classe_rang` : son rang sur la fiche (1 ou 2). Une ligne par part ; ce que chaque part donne, avec les choix de la fiche : v_personnage_maitrise_arme.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `source_id` | TEXT | non |  |  |
+| `rang` | INTEGER | non |  |  |
+| `classe_rang` | INTEGER | non |  |  |
+| `classe_id` | TEXT | non |  |  |
+| `capacite_id` | TEXT | non |  |  |
+| `genre` | TEXT | non |  |  |
+| `points` | INTEGER | non |  |  |
+| `arme_famille_id` | TEXT | non |  |  |
+| `limite_famille` | INTEGER | non |  |  |
+
+### `v_personnage_maitrise_arme`
+
+*vue*
+
+Points de maîtrise d'arme d'une fiche, par famille (décisions R148, R149, R151, R54, migration 0073) : le pendant SQL du calcul de la page /fiche/. Une ligne par famille qui reçoit au moins une source : * les parts imposées des sources acquises (v_personnage_maitrise_part) ; * chaque point choisi (personnage_maitrise_choix) d'une part à choisir acquise, de rang au plus ses points, sur une de ses options (maitrise_arme_part_famille) ; un choix hors de la liste ou d'une source perdue ne compte pas (règles maitrise_hors_choix, maitrise_source_perdue) ; * les parts qui suivent (« avec l'arme déterminée avant », le −1 de l'Épéiste : R151) : leurs points sur la famille choisie pour le point 1 de la ligne `au_choix` de la classe du don ; rien tant qu'elle n'est pas choisie ; * l'accessoire « Un point de maîtrise d'arme » (accessoire_effet_cible 'maitrise_arme') : sa valeur sur sa famille (personnage_accessoire.arme_famille_id), de signe contraire s'il est maudit (R54) ; jamais ARME DE MONSTRES (R45). `points` : leur somme, au moins 0 (« sans descendre sous 0 », R151), sans plafond ; `points_comptes` : au plus le plafond (maitrise_arme.des_max − maitrise_arme.des_sans_maitrise = 4 points, R149 ; au-delà, règle maitrise_plafond de v_personnage_controle) ; `des` : maitrise_arme.des_sans_maitrise + points_comptes (5 dés au plus). Une limite écrite dépassée (maitrise_meme_famille, R150) ne retire aucun point : la vue compte, le contrôle signale.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `arme_famille_id` | TEXT | non |  |  |
+| `points` | — | non |  |  |
+| `points_comptes` | — | non |  |  |
+| `des` | — | non |  |  |
+
 ### `v_personnage_visible`
 
 *vue*
@@ -3609,7 +3690,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, et les maîtrises d'armes de R148 à R151, R154) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

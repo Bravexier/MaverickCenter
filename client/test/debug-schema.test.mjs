@@ -32,7 +32,7 @@ const plan = mettreEnPage(structure);
 const tablesSeules = structure.tables.filter((t) => t.genre !== 'vue');
 const proche = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
 
-test('structure (au build) : 18 sections, 195 tables (dont les 2 dérivées), 35 vues, sans FTS5 ; colonnes, types, clés et descriptions de la base', () => {
+test('structure (au build) : 18 sections, 198 tables (dont les 2 dérivées), 38 vues, sans FTS5 ; colonnes, types, clés et descriptions de la base', () => {
   assert.equal(structure.sections.length, 18);
   assert.deepEqual(structure.sections.map((s) => s.numero), ['0', '1', '2', '3', '4', '5', '5 bis', '6', '7', '8', '8 bis', '9', '10', '11', '12', '13', '14', '15']);
   assert.equal(structure.sections.find((s) => s.numero === '3').titre, 'MAGIES ET SORTS (famille « magies »)');
@@ -58,8 +58,8 @@ test('structure (au build) : 18 sections, 195 tables (dont les 2 dérivées), 35
     15: 'NOTES DE VERSION : ce que chaque version a changé dans les règles, et l\'historique des modifications faites sur le site de dev',
   });
   for (const s of structure.sections) assert.doesNotMatch(s.titre, /\s(le|la|les|de|des|du|sur|et|à|au|aux)$/, `${s.numero} : un titre coupé au milieu d’une phrase`);
-  assert.equal(tablesSeules.length, 195);
-  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 35);
+  assert.equal(tablesSeules.length, 198);
+  assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 38);
   assert.deepEqual(structure.tables.filter((t) => t.genre === 'derivee').map((t) => t.nom).sort(), [...TABLES_DERIVEES].sort(), 'les mêmes dérivées que le service');
   assert.ok(!structure.tables.some((t) => /_fts(_|$)/.test(t.nom)), 'ni tables FTS5 ni leurs tables de shadow');
   assert.equal(new Set(structure.tables.map((t) => t.nom)).size, structure.tables.length);
@@ -100,7 +100,7 @@ test('structure : chaque clé étrangère de la base (PRAGMA foreign_key_list), 
       }
     }
   }
-  assert.equal(total, 415);
+  assert.equal(total, 420);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').reduce((n, t) => n + t.cles_etrangeres.length, 0), 0, 'une vue n’a pas de clé étrangère');
   const cellule = structure.tables.find((t) => t.nom === 'race_don_tableau_cellule');
   const multiples = cellule.cles_etrangeres.filter((c) => c.colonnes.length > 1).map((c) => [c.colonnes, c.table, c.vers]);
@@ -226,7 +226,7 @@ test('empiler (ligne d’horizon) : dans l’ordre, au plus haut puis au plus à
 
 test('liens : un et un seul par clé étrangère du schéma, du bord de la table source (ligne de la colonne) au bord de la table visée, flèche à l’arrivée', () => {
   const attendus = tablesSeules.flatMap((t) => t.cles_etrangeres.map((c, i) => `${t.nom}#${i}`));
-  assert.equal(plan.liens.length, 415);
+  assert.equal(plan.liens.length, 420);
   assert.deepEqual(plan.liens.map((l) => l.id), attendus);
   assert.equal(new Set(plan.liens.map((l) => l.id)).size, plan.liens.length);
   const boiteDe = new Map(plan.boites.map((b) => [b.nom, b]));
@@ -444,7 +444,7 @@ test('clavier et recherche : table voisine dans chaque direction ; recherche exa
 test('rendu : une boîte HTML focalisable et étiquetée par table, une ligne par colonne, un chemin SVG par lien ; tout échappé ; jamais d’infobulle native', () => {
   const html = htmlDuSchema(structure, plan);
   assert.equal((html.match(/<div class="schema-table /g) ?? []).length, structure.tables.length);
-  assert.equal((html.match(/ data-lien="/g) ?? []).length, 415);
+  assert.equal((html.match(/ data-lien="/g) ?? []).length, 420);
   assert.equal((html.match(/<div class="schema-col[ "]/g) ?? []).length, structure.tables.reduce((n, t) => n + t.colonnes.length, 0));
   assert.equal((html.match(/ tabindex="-1" role="button" aria-haspopup="dialog"/g) ?? []).length, structure.tables.length);
   assert.ok(html.includes('aria-label="table sort, '), 'étiquette');
@@ -526,7 +526,7 @@ test('textes : nombres, lignes, étiquettes, infobulles (section et description 
   assert.deepEqual(clesASuivre(cellule, 'race_id').map((c) => c.table), ['race_don_tableau_ligne', 'race_don_tableau_colonne']);
   assert.equal(htmlDesCles([{ table: 'a"<', libelle: 'x <b>' }]),
     '<li role="none"><button type="button" role="menuitem" tabindex="-1" class="schema-cles__cle" data-cle-vers="a&quot;&lt;">x &lt;b&gt;</button></li>');
-  assert.equal(resumeDuSchema(structure), '195 tables, 35 vues, 415 clés étrangères');
+  assert.equal(resumeDuSchema(structure), '198 tables, 38 vues, 420 clés étrangères');
 });
 
 test('fenêtre du contenu : adresse (nom encodé, pages de 100, tri), en-têtes triables, valeurs telles que le service les rend, messages d’erreur', () => {
