@@ -8,6 +8,7 @@ import { ONGLET_DES_BATONS } from '../../lib/ceinture-db.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../../lib/equipement.mjs';
 import Tableau from '../Tableau.astro';
 import { ancreDePotions, htmlDeLigneDeContenant, htmlDeLigneDePotion } from '../../lib/ceinture-rendu.mjs';
+import { cssDesPotions } from '../../lib/palette-css.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { placeDansLeGuide } from '../../lib/livres.mjs';
@@ -34,7 +35,10 @@ import { url } from '../../lib/wiki';
 // titre. Les titres des pages citées sont lus dans la base (ils se modifient sur le site de dev). En mode modification (site de dev ; demande du
 // propriétaire, 2026-10-17), les cases saisies des potions — nom, niveau, prix, effet — se modifient par l'éditeur commun (leurs `data-ed` :
 // lib/ceinture-rendu.mjs, service serveur/edition-consommables.mjs) ; le reste de l'onglet est en lecture. Les tableaux suivent le gabarit commun du
-// site (components/Tableau.astro, styles/global/tableaux.css) ; CSS de l'onglet : styles/ceinture/ceinture.css (?raw, inséré ici seulement).
+// site (components/Tableau.astro, styles/global/tableaux.css) ; CSS de l'onglet : styles/ceinture/ceinture.css (?raw, inséré ici seulement), suivi
+// des classes des combinaisons de ses potions (base et niveau : lib/palette-css.mjs#cssDesPotions ; choix du propriétaire du 2026-10-22, « Règle de
+// calcul ») : seules celles de ses lignes. Une ligne garde sa classe sur le site de dev (l'éditeur réécrit ses cases, pas la ligne) : elle existe
+// toujours dans cette feuille.
 type Objets = ReturnType<typeof chargerObjetsDeCeinture>;
 interface Props {
   objets: Objets;
@@ -83,6 +87,8 @@ const tableaux: TableauDeLOnglet[] = objets.tableaux.map((t) => {
     corps: (t.objets ?? []).map((r) => htmlDeLigneDeContenant(r, composants)).join(''),
   };
 });
+// les classes des combinaisons (base et niveau) des potions affichées, et elles seules
+const cssDesCouleurs = cssDesPotions(objets.tableaux.flatMap((t) => ('pages' in t && t.pages ? t.pages : [])).flatMap((p) => p.potions.map((x) => x.couleur)));
 const dans = (onglet: string) => tableaux.filter((t) => t.onglet === onglet);
 const compte = (onglet: string) => dans(onglet).reduce((n, t) => n + t.nombre, 0);
 const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
@@ -95,6 +101,7 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
 ---
 
 <style is:inline set:html={ceintureCss}></style>
+<style is:inline set:html={cssDesCouleurs}></style>
 <section class="equipement-panneau ceinture" id="ceinture" aria-labelledby="titre-ceinture">
   <h2 class="equipement-panneau__titre" id="titre-ceinture">Ceinture</h2>
   <p class="ceinture__chapo">

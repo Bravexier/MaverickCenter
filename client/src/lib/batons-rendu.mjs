@@ -3,19 +3,20 @@
 // couleur de la magie concernée. La colonne magie elle même n'est pas utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du
 // bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du
 // niveau. Rajouter une colonne pour le prix. »
-// Une ligne par magie, sur la couleur de sa magie sur le site (sort-format.mjs#couleurDeMagie ; demande du propriétaire du 2026-10-22 : « Partout il
-// faut utiliser Que les couleurs du site. […] Aucune couleur en dur » : plus la couleur de la case du classeur), le texte le plus lisible sur ce fond
-// (« Privilégé la lisibilité. ») : Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à
+// Une ligne par magie, sur la couleur de sa magie sur le site (demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du
+// site. […] Aucune couleur en dur » : plus la couleur de la case du classeur), le texte le plus lisible sur ce fond (« Privilégé la lisibilité. ») :
+// la ligne et la pastille de sa gemme ne portent que la classe de la magie (lib/palette-css.mjs#classeDeMagie, `--couleur` et `--couleur-texte`,
+// choix du propriétaire du 2026-10-22 « Module JS → classe »), jamais une couleur ni un style. Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à
 // leur ligne de la page « Composants » et ont chacun leur infobulle (description, prix, le même lien) ; la gemme est la pastille des accessoires
-// (`.acc-gemme`, dans la couleur de sa magie sur le site, styles/equipement/equipement.css), sans ligne pour sa qualité (demande du propriétaire du
+// (`.acc-gemme`, dans la couleur de sa magie sur le site : la classe de la magie, styles/equipement/equipement.css), sans ligne pour sa qualité (demande du propriétaire du
 // 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité de la
 // gemme » ; la qualité du niveau reste en avant dans l'infobulle). L'effet (le bonus tel qu'écrit) et le prix (lib/batons-db.mjs#prixDuBaton) sont
 // écrits pour chaque niveau (`data-niv`), le CSS n'affiche que ceux du niveau de la ligne (`data-niveau`, que le curseur change : src/scripts/batons.mjs) ;
 // sans JavaScript, tout est affiché, chaque niveau sous son nom. Rien d'autre n'est calculé. Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { ancreDeComposant } from './composants-rendu.mjs';
-import { couleursDeLaLigne, htmlDeLignes, htmlDePrix } from './ceinture-rendu.mjs';
+import { htmlDeLignes, htmlDePrix } from './ceinture-rendu.mjs';
 import { htmlDeMontant, MONNAIES_DU_JEU } from './monnaies.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie } from './palette-css.mjs';
 import { prixDuBaton, QUALITES_DE_GEMME } from './batons-db.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -58,8 +59,7 @@ function htmlDeGemme(m, niveaux, adresseDesComposants) {
   if (!g) return VIDE;
   const lien = `${adresseDesComposants}#${ancreDeComposant(g.id)}`;
   const bulle = bulleDeBatons(m.magie.id, 'gemme');
-  const fond = couleurDeMagie(m.magie.nom);
-  const pastille = `<a class="acc-gemme" href="${e(lien)}" style="--g: ${fond}; --g-texte: ${texteSurCouleur(fond)}" data-bulle="${e(bulle)}" aria-describedby="${e(bulle)}">${e(g.nom)}</a>`;
+  const pastille = `<a class="acc-gemme ${e(classeDesBatons(m.magie))}" href="${e(lien)}" data-bulle="${e(bulle)}" aria-describedby="${e(bulle)}">${e(g.nom)}</a>`;
   const stades = niveaux
     .filter((n) => m.qualites?.[n.niveau])
     .map((n) => `<span class="bulle__stade" data-niv="${n.niveau}"><span class="bulle__stade-nom">${e(QUALITES_DE_GEMME[m.qualites[n.niveau]].replace(/^Gemme /, ''))}</span><span>${htmlDePrix(g.prix?.[m.qualites[n.niveau]]?.brut)}</span></span>`)
@@ -88,20 +88,17 @@ function htmlDuNiveau(m, niveaux) {
     + `<span class="sans-js">${min === max ? min : `${min} à ${max}`}</span>`;
 }
 
-/** Les couleurs de la ligne des bâtons d'une magie, { fond, texte } : la couleur de la magie sur le site et le texte le plus lisible sur elle. */
-export function couleursDesBatons(magie) {
-  return couleursDeLaLigne({ fond: couleurDeMagie(magie.nom) });
-}
+/** La classe de couleur de la ligne des bâtons d'une magie (et de la pastille de sa gemme) : celle de la magie sur le site (lib/palette-css.mjs). */
+export const classeDesBatons = (magie) => classeDeMagie(magie.nom);
 
 /**
- * Les bâtons d'une magie (`m` : une entrée de `chargerBatons(db).magies`), sur la couleur de la magie (couleursDesBatons : `--baton-fond`,
- * `--baton-texte`) : Gemme (en-tête de la ligne, le nom de la magie pour les lecteurs d'écran) | Bois | Niveau (le curseur) | Effet | Prix, l'effet et
- * le prix de chaque niveau (`niveaux` : [{ niveau }]) ; la ligne s'ouvre au premier niveau (`data-niveau`). `--mag`, la même couleur, est la teinte
- * des infobulles de la ligne (styles/global/infobulles.css).
+ * Les bâtons d'une magie (`m` : une entrée de `chargerBatons(db).magies`), sur la couleur de la magie (sa classe, classeDesBatons ; styles/ceinture/
+ * ceinture.css en tire `--baton-fond`, `--baton-texte`, la ligne colorée et `--mag`, la teinte des infobulles de la ligne : styles/global/infobulles.css) :
+ * Gemme (en-tête de la ligne, le nom de la magie pour les lecteurs d'écran) | Bois | Niveau (le curseur) | Effet | Prix, l'effet et le prix de chaque
+ * niveau (`niveaux` : [{ niveau }]) ; la ligne s'ouvre au premier niveau (`data-niveau`).
  */
 export function htmlDeLigneDeBatons(m, niveaux, adresseDesComposants) {
-  const { fond, texte } = couleursDesBatons(m.magie);
-  return `<tr class="baton ligne-couleur" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}" style="--baton-fond: ${e(fond)}; --baton-texte: ${e(texte)}; --mag: ${e(fond)}">`
+  return `<tr class="baton ligne-couleur ${e(classeDesBatons(m.magie))}" id="${e(ancreDeBatons(m.magie.id))}" data-niveau="${niveaux[0]?.niveau ?? 1}">`
     + `<th scope="row" class="baton__gemme"><span class="baton__magie">${e(m.magie.nom)} : </span>${htmlDeGemme(m, niveaux, adresseDesComposants)}</th>`
     + `<td class="baton__bois">${htmlDeBois(m, adresseDesComposants)}</td>`
     + `<td class="baton__niveau">${htmlDuNiveau(m, niveaux)}</td>`

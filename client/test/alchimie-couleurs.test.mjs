@@ -8,14 +8,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, caracteristiqueDesCompetences,
+  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, baseDAffinite, caracteristiqueDesCompetences,
   contraste, couleurDAffinite, couleurDePotion, lisible, nuanceDuNiveau,
 } from '../src/lib/alchimie-couleurs.mjs';
 import { COULEURS_DES_ATTRIBUTS, cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { COULEURS_CARACTERISTIQUES } from '../src/lib/caracteristiques-postures.mjs';
 import { COULEUR_PAR_DEFAUT, couleurDeMagie, couleurDeMagieConnue, texteSurCouleur } from '../src/lib/sort-format.mjs';
-import { couleursDesBatons } from '../src/lib/batons-rendu.mjs';
-import { couleursDeLaLigne, htmlDeLigneDePotion } from '../src/lib/ceinture-rendu.mjs';
+import { classeDesBatons } from '../src/lib/batons-rendu.mjs';
+import { htmlDeLigneDePotion } from '../src/lib/ceinture-rendu.mjs';
+import { FAMILLES_DE_LA_PALETTE, classeDeCouleur, classeDeMagie, classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
 import { chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -32,6 +33,12 @@ test('une affinité prend la couleur du site : son attribut, sa magie, ou la cou
     assert.equal(couleurDAffinite(magie), couleurDeMagieConnue(magie), magie);
   }
   for (const [affinite, couleur] of Object.entries(COULEURS_DES_AFFINITES)) assert.equal(couleurDAffinite(affinite), couleur, affinite);
+  // la base d'une affinité : la classe de son attribut, de sa magie, ou la sienne (aucune recopie : « Garder séparées » ne veut pas dire recopier)
+  assert.deepEqual(baseDAffinite('sante'), { famille: 'attribut', cle: 'sante' });
+  assert.deepEqual(baseDAffinite('4eme-barre'), { famille: 'attribut', cle: 'barre4' });
+  assert.deepEqual(baseDAffinite('feu'), { famille: 'magie', cle: 'feu' });
+  assert.deepEqual(baseDAffinite('coma'), { famille: 'affinite', cle: 'coma' });
+  assert.equal(baseDAffinite('anti'), null);
   assert.equal(couleurDAffinite('anti'), null);
   assert.equal(couleurDAffinite('demon'), null);
   assert.equal(couleurDAffinite(null), null);
@@ -74,20 +81,35 @@ test('la caractéristique dont un effet augmente les compétences : son nom exac
 });
 
 test('la couleur d’une potion : l’affinité de son essence, sinon la caractéristique (philtres seulement), au niveau de son palier ; neutre sinon', () => {
-  assert.deepEqual(couleurDePotion({ essence: 'sante', niveau: 1 }), { fond: lisible(nuanceDuNiveau(COULEURS_DES_ATTRIBUTS.sante, 1)) });
-  assert.deepEqual(couleurDePotion({ essence: 'coma', niveau: 4 }), { fond: lisible(nuanceDuNiveau(COULEURS_DES_AFFINITES.coma, 4)) });
-  assert.deepEqual(couleurDePotion({ essence: AFFINITE_DES_PHILTRES, caracteristique: 'force', niveau: 5 }), { fond: lisible(nuanceDuNiveau(COULEURS_CARACTERISTIQUES.force, 5)) });
-  assert.deepEqual(couleurDePotion({ essence: 'sante', caracteristique: 'force', niveau: 3 }), { fond: COULEURS_DES_ATTRIBUTS.sante }, 'l’essence d’abord');
+  const attendue = (couleur, base, niveau) => {
+    const fond = lisible(nuanceDuNiveau(couleur, niveau));
+    return { fond, texte: texteSurCouleur(fond), base, niveau };
+  };
+  assert.deepEqual(couleurDePotion({ essence: 'sante', niveau: 1 }), attendue(COULEURS_DES_ATTRIBUTS.sante, { famille: 'attribut', cle: 'sante' }, 1));
+  assert.deepEqual(couleurDePotion({ essence: 'coma', niveau: 4 }), attendue(COULEURS_DES_AFFINITES.coma, { famille: 'affinite', cle: 'coma' }, 4));
+  assert.deepEqual(couleurDePotion({ essence: AFFINITE_DES_PHILTRES, caracteristique: 'force', niveau: 5 }),
+    attendue(COULEURS_CARACTERISTIQUES.force, { famille: 'caracteristique', cle: 'force' }, 5));
+  assert.deepEqual(couleurDePotion({ essence: 'sante', caracteristique: 'force', niveau: 3 }),
+    { fond: COULEURS_DES_ATTRIBUTS.sante, texte: texteSurCouleur(COULEURS_DES_ATTRIBUTS.sante), base: { famille: 'attribut', cle: 'sante' }, niveau: 3 }, 'l’essence d’abord');
+  assert.equal(couleurDePotion({ essence: 'feu' }).niveau, null, 'sans niveau : la base, niveau null');
   assert.equal(couleurDePotion({ essence: 'anti', niveau: 2 }), null);
   assert.equal(couleurDePotion({ essence: 'anti', caracteristique: 'volonte', niveau: 2 }), null, 'la caractéristique ne compte que pour un philtre');
   assert.equal(couleurDePotion({ essence: null, caracteristique: 'force', niveau: 2 }), null, 'sans recette : neutre');
   assert.equal(couleurDePotion({ essence: AFFINITE_DES_PHILTRES, caracteristique: 'inconnue', niveau: 2 }), null);
   assert.equal(couleurDePotion(), null);
-  // le texte : le plus lisible sur le fond (« Privilégé la lisibilité. »)
+  // la base est une classe du site, de la famille de sa règle, avec la même couleur (la nuance se calcule depuis elle)
+  for (const [essence, caracteristique] of [['sante'], ['feu'], ['coma'], ['chakra+sante'], [AFFINITE_DES_PHILTRES, 'agilite']]) {
+    const { base } = couleurDePotion({ essence, caracteristique, niveau: 3 });
+    assert.ok(classeDeCouleur(base.famille, base.cle), `${essence} : une classe de la palette`);
+    assert.equal(FAMILLES_DE_LA_PALETTE[base.famille][base.cle], couleurDAffinite(essence) ?? COULEURS_CARACTERISTIQUES[caracteristique], essence);
+  }
+  // la ligne ne porte que la classe de sa combinaison, jamais de style ni de couleur (le texte le plus lisible est dans la classe : « Privilégé la lisibilité. »)
   const p = { id: 'ressources/x#potion:y', nom: 'Y', niveau_id: 'novice', niveau: 'Novice', prix_brut: '2 RO', effet: 'Z', couleur: couleurDePotion({ essence: 'chakra', niveau: 5 }) };
-  const c = couleursDeLaLigne(p.couleur);
-  assert.equal(c.texte, texteSurCouleur(c.fond));
-  assert.ok(htmlDeLigneDePotion(p).includes(`style="--ligne-fond: ${c.fond}; --ligne-texte: ${c.texte}"`));
+  assert.equal(p.couleur.texte, texteSurCouleur(p.couleur.fond));
+  const html = htmlDeLigneDePotion(p);
+  assert.ok(html.startsWith('<tr class="ceint-ligne ligne-couleur couleur-potion-attribut-chakra-n5" id="objet-potion-y">'), html.slice(0, 120));
+  assert.ok(!/style=|(?<!&)#[0-9a-f]{3,6}\b/i.test(html), 'ni style ni couleur dans la ligne (une entité « &#8239; » n’en est pas une)');
+  assert.ok(htmlDeLigneDePotion({ ...p, couleur: null }).startsWith('<tr class="ceint-ligne" id="objet-potion-y">'), 'neutre : sans classe de couleur');
 });
 
 test('lisibilité : chaque ligne de potion et de bâton atteint un contraste de 4,5:1 avec son texte ; un fond trop pâle ou trop terne est corrigé', () => {
@@ -103,11 +125,12 @@ test('lisibilité : chaque ligne de potion et de bâton atteint un contraste de 
   const lignes = chargerObjetsDeCeinture(db).tableaux.flatMap((t) => (t.pages ?? []).flatMap((p) => p.potions)).filter((x) => x.couleur);
   assert.ok(lignes.length > 150, 'les potions colorées');
   for (const x of lignes) {
-    const { fond, texte } = couleursDeLaLigne(x.couleur);
+    const { fond, texte } = x.couleur;
     assert.ok(contraste(fond, texte) >= CONTRASTE_MINIMAL, `${x.nom} : ${fond} / ${texte} = ${contraste(fond, texte).toFixed(2)}`);
   }
+  const palette = new Map(couleursDeLaPalette().map((c) => [c.classe, c]));
   for (const m of chargerBatons(db).magies) {
-    const { fond, texte } = couleursDesBatons(m.magie);
+    const { fond, texte } = palette.get(classeDesBatons(m.magie));
     assert.ok(contraste(fond, texte) >= CONTRASTE_MINIMAL, `bâton ${m.magie.nom} : ${fond} / ${texte}`);
   }
 });
@@ -138,17 +161,21 @@ test('des potions de la base : l’essence de leur recette et la couleur qui en 
   assert.deepEqual([...new Set(page.potions.filter((x) => x.niveau_rang < 5).map(aLImport))], ['force'], 'les autres paliers nomment la Force');
 });
 
-test('les bâtons : la couleur de leur magie sur le site, et le texte le plus lisible', () => {
+test('les bâtons : la classe de leur magie sur le site (sa couleur et le texte le plus lisible)', () => {
+  const palette = new Map(couleursDeLaPalette().map((c) => [c.classe, c]));
   for (const nom of ['Sang', 'Feu', 'Eau', 'Corruption']) {
-    assert.deepEqual(couleursDesBatons({ id: 'magies/x', nom }), { fond: couleurDeMagie(nom), texte: texteSurCouleur(couleurDeMagie(nom)) });
+    assert.equal(classeDesBatons({ id: 'magies/x', nom }), classeDeMagie(nom));
+    const { fond, texte } = palette.get(classeDesBatons({ id: 'magies/x', nom }));
+    assert.deepEqual({ fond, texte }, { fond: couleurDeMagie(nom), texte: texteSurCouleur(couleurDeMagie(nom)) }, nom);
   }
   // chaque magie des bâtons est connue du site (aucune ne tombe sur la couleur par défaut)
-  for (const m of chargerBatons(db).magies) assert.notEqual(couleursDesBatons(m.magie).fond, COULEUR_PAR_DEFAUT, m.magie.nom);
+  for (const m of chargerBatons(db).magies) assert.notEqual(palette.get(classeDesBatons(m.magie)).fond, COULEUR_PAR_DEFAUT, m.magie.nom);
+  assert.equal(classeDePotion(null), null);
 });
 
 test('aucune couleur en dur : ni dans l’onglet Ceinture, ni dans la règle des potions au-delà des couleurs ajoutées, ni pour les attributs (fiche, bestiaire)', () => {
   for (const f of ['src/styles/ceinture/ceinture.css', 'src/lib/ceinture-rendu.mjs', 'src/lib/ceinture-db.mjs', 'src/lib/batons-rendu.mjs',
-    'src/components/ceinture/CeinturePanneau.astro', 'src/components/ceinture/BatonsMagiques.astro']) {
+    'src/components/ceinture/CeinturePanneau.astro', 'src/components/ceinture/BatonsMagiques.astro', 'src/lib/palette-css.mjs']) {
     assert.deepEqual(lire(f).match(HEX) ?? [], [], f);
   }
   assert.ok(!existsSync(new URL('../src/lib/ceinture-couleurs.mjs', import.meta.url)), 'plus de couleurs relevées ligne par ligne');

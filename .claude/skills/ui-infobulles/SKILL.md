@@ -10,7 +10,7 @@ Toutes les infobulles sont habillées comme le reste du site (demande du propri�
 
 ## Fichiers
 - `client/src/components/Infobulles.astro` : script en ligne, posé une fois par page par `client/src/layouts/Base.astro`.
-- `client/src/styles/global/infobulles.css` : fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales, pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent.
+- `client/src/styles/global/infobulles.css` : fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales, pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent. `--mag` peut venir d'une feuille plutôt que d'un style (lignes des bâtons : `ceinture.css` le tire de la classe `couleur-magie-<id>`) : le script lit la valeur calculée (`getComputedStyle`), une bulle riche en hérite.
 
 ## À lire
 - `docs/content-guide.md`, puce « Infobulles » de « Pages de magie » (survol, focus clavier, toucher, position fixe bornée à l'écran, bulle faite de `<span>` seulement).

@@ -78,7 +78,7 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *                être un lien), ses paliers dans l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `essence` :
  *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : pour une page de philtres
  *                (essence AFFINITE_DES_PHILTRES), celle que nomment ses effets (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page) ;
- *                null pour une autre page, ou si ses effets en nomment plusieurs ou aucune ; `couleur` : { fond } ou null
+ *                null pour une autre page, ou si ses effets en nomment plusieurs ou aucune ; `couleur` : { fond, texte, base, niveau } ou null
  *                (lib/alchimie-couleurs.mjs#couleurDePotion) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).

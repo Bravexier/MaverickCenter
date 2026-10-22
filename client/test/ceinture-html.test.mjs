@@ -12,8 +12,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
-import { ancreDObjet, ancreDePotions, couleursDeLaLigne } from '../src/lib/ceinture-rendu.mjs';
-import { couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
+import { ancreDObjet, ancreDePotions } from '../src/lib/ceinture-rendu.mjs';
+import { CONTRASTE_MINIMAL, contraste, couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
+import { classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -165,18 +166,47 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
   }
 });
 
+/** Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>. */
+const reglesDeLaPage = () => new Map([...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
+  .map(([, classe, corps]) => [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
+
 test('chaque potion sur la couleur de la règle du site (son essence, ou la caractéristique d’un philtre, au niveau de son palier) ; les carquois et sacs sans couleur', options, () => {
+  const regles = reglesDeLaPage();
   for (const x of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) for (const p of x.potions) {
-    const c = couleursDeLaLigne(couleurDePotion({ essence: p.essence, caracteristique: x.caracteristique, niveau: p.niveau_rang }));
+    const c = couleurDePotion({ essence: p.essence, caracteristique: x.caracteristique, niveau: p.niveau_rang });
+    // la ligne ne porte que la classe de sa combinaison (base et niveau : « Règle de calcul »), dont la page émet la valeur calculée par la règle
     const debut = c
-      ? `<tr class="ceint-ligne ligne-couleur" id="${ancreDObjet(p.id)}" style="--ligne-fond: ${c.fond}; --ligne-texte: ${c.texte}">`
+      ? `<tr class="ceint-ligne ligne-couleur ${classeDePotion(c)}" id="${ancreDObjet(p.id)}">`
       : `<tr class="ceint-ligne" id="${ancreDObjet(p.id)}">`;
     assert.ok(onglet.includes(debut), p.id);
+    if (c) {
+      assert.deepEqual(regles.get(classeDePotion(c)), { '--ligne-fond': c.fond, '--ligne-texte': c.texte }, `${p.id} : la classe ${classeDePotion(c)}`);
+      assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, p.id);
+    }
   }
   // seules les potions d'essence Anti (sans couleur dans le Doc ni sur le site) restent neutres
   const neutres = objets.tableaux.flatMap((t) => t.pages ?? []).flatMap((x) => x.potions).filter((p) => !p.couleur);
   assert.deepEqual([...new Set(neutres.map((p) => p.essence))], ['anti']);
   assert.ok(!panneau('ceinture-carquois').includes('ligne-couleur'), 'le classeur ne colore pas les carquois');
+});
+
+test('aucune couleur en dur dans l’onglet : ni hex ni style de couleur ; chaque classe « couleur-… » posée existe dans une feuille de la page, avec la valeur de sa règle', options, () => {
+  // demande du propriétaire du 2026-10-22 : « Aucune couleur en dur. » ; « Module JS → classe » : une page ne pose plus que la classe
+  const lignes = [...onglet.matchAll(/<tr\b[^>]*>/g)].map((m) => m[0]);
+  assert.ok(lignes.length > 150);
+  for (const l of lignes) assert.ok(!/\bstyle=/.test(l), `une ligne sans style : ${l}`);
+  assert.deepEqual(onglet.match(/style="[^"]*(?:--ligne-|--baton-|--mag|--g\b|--g-texte|#[0-9a-f]{3,6})[^"]*"/gi) ?? [], [], 'aucun style de couleur dans l’onglet');
+  const regles = reglesDeLaPage();
+  const palette = new Map(couleursDeLaPalette().map((c) => [c.classe, c]));
+  const posees = new Set([...onglet.matchAll(/class="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('couleur-')));
+  assert.ok(posees.size > 20, `${posees.size} classes de couleur`);
+  for (const c of posees) {
+    assert.ok(regles.has(c), `classe absente des feuilles de la page : ${c}`);
+    if (palette.has(c)) assert.deepEqual(regles.get(c), { '--couleur': palette.get(c).fond, '--couleur-texte': palette.get(c).texte }, c);
+  }
+  // la page n'émet que les combinaisons de potions qu'elle affiche
+  const emises = [...regles.keys()].filter((c) => c.startsWith('couleur-potion-'));
+  assert.deepEqual(emises.filter((c) => !posees.has(c)), [], 'une combinaison émise mais pas affichée');
 });
 
 test('les liens mènent à des pages construites et à des ancres qui existent (potions, Composants, Équipement, guide)', options, () => {

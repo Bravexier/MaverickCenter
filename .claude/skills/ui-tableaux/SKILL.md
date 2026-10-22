@@ -20,7 +20,7 @@ Tous les tableaux de règles suivent un seul gabarit (demande du propriétaire :
 - Cadre `.tableau` : titre repliable (`<summary>`) ou `<hN>`, `.tableau__nom`, `.tableau__compte`, `.tableau__note`.
 - Zone qui défile : `.tableau__defile`, ou le cadre lui-même `.tableau--defile`.
 - Table `.table-donnees` : en-têtes en petites capitales sur fond teinté, filets entre lignes ; densités `--serree` et `--aeree`.
-- Ligne colorée : `tr.ligne-couleur` avec `--ligne-fond`, `--ligne-texte`.
+- Ligne colorée : `tr.ligne-couleur` avec `--ligne-fond`, `--ligne-texte`, posés par une classe de la palette (potions de la ceinture : `couleur-potion-…` ; bâtons : la feuille de la page les tire de `couleur-magie-…` ; skill `ui-couleurs`), ou encore en style là où le lot n'est pas fait (matériaux des armes).
 - Plusieurs tableaux : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur minimale `--tableau-largeur` le permet : 26rem par défaut, 30rem pour les potions de la ceinture, soit 2 ou 3).
 - Teinte : `--tab`, `--tab-soft`, `--tab-line`, posée par la page sur son conteneur ; sinon l'accent du site.
 - `bloc` du composant : les classes de la page (`armes-famille`, `armes-famille__compte`…) posées à côté de celles du gabarit ; scripts, tests et feuille de page s'y accrochent.

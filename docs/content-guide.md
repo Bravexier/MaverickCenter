@@ -91,7 +91,9 @@ tableaux de règles suivent le même gabarit, écrit à un seul endroit (`styles
 - **la table** (`.table-donnees`) : en-têtes en petites capitales sur un fond teinté, un filet entre deux lignes, cases alignées en haut à gauche ;
   deux densités (`.table-donnees--serree` : tableaux où l'on choisit une ligne — matériaux, formes, améliorations, étapes des accessoires — et
   bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) prend toute la couleur de sa source (potions, bâtons
-  magiques, matériaux des armes), un filet de sa teinte, un voile au survol ;
+  magiques, matériaux des armes), un filet de sa teinte, un voile au survol ; ces deux variables viennent d'une classe de la palette du site (les
+  potions et les bâtons de la ceinture : « Couleurs du site : la palette en classes » ci-dessous) ou, en attendant leur lot, du style de la ligne
+  (matériaux des armes) ;
 - **plusieurs tableaux** : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur en tient : la largeur
   minimale d'un tableau, `--tableau-largeur`, 26rem par défaut, en fixe le nombre ; 30rem pour les potions de la ceinture, deux ou trois dans la page
   de 120rem) ; un tableau dans un groupe de tableaux a un nom plus petit que celui du groupe ;
@@ -111,6 +113,33 @@ part deux grilles dont les colonnes portent le sens : les matrices des magies de
 par magie) et le butin d'une carte de monstre (une colonne par échelle) ; et les tableaux de saisie de la fiche de personnage, de la page Debug et de
 l'onglet DB. `test/tableaux.test.mjs` garde la règle : la présentation des en-têtes n'est écrite qu'une fois, et chaque tableau des
 pages de règles construites suit le gabarit, dans sa zone qui défile.
+
+## Couleurs du site : la palette en classes
+
+Demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur
+au site en se basant sur celle du classeur. Aucune couleur en dur. » ; « Privilégé la lisibilité. » ; et, pour la source des couleurs : « La classe CSS du
+site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas, créer une classe CSS avec la couleur du classeur. »
+
+- **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
+  dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs#cssDeLaPalette`), qui
+  n'écrit aucune couleur, et posée sur chaque page par `layouts/Base.astro` (environ 2,6 ko, 37 classes, 0,5 ko compressé ; version portable comprise).
+- **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
+  `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption`, `barre4`),
+  `caracteristique` (`lib/caracteristiques-postures.mjs`, ids de la base), `affinite` (les dix affinités d'alchimie sans autre règle,
+  `lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES`, d'après le Doc « Alchimie » ; `chakra+sante` → `couleur-affinite-chakra-sante`). L'id est la clé du
+  module de la règle passée par `normalize` : il ne change pas quand le nom affiché change.
+- **Choix du propriétaire** (2026-10-22, questions de cadrage) : « Module JS → classe » (la valeur reste dans le module de sa règle, une page ne pose
+  que la classe) ; « Thème reste, Debug à part » (les variables du thème de `styles/global/base.css` restent la règle du thème ; la page Debug et
+  l'impression ne changent pas) ; « Règle de calcul » (une couleur calculée part d'une classe du site, la nuance se calcule depuis elle, avec une classe
+  par combinaison là seulement où une page en a besoin) ; « Garder séparées » (chaque couleur garde son nom et sa classe, même à valeur égale). Une
+  affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie : rien n'est recopié.
+- **Ajouter une couleur** : l'écrire dans le module de sa règle (ou, sans règle, une couleur ajoutée d'après la source, dans le module de son domaine),
+  et, si c'est une famille nouvelle, l'ajouter à `FAMILLES_DE_LA_PALETTE` ; la classe suit au build. Une page pose la classe
+  (`classeDeMagie`, `classeDAttribut`, `classeDeCaracteristique`, `classeDAffinite`) et sa feuille lit `var(--couleur)` / `var(--couleur-texte)`.
+- **Où elle sert** : les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas). Les autres composants (magies, accessoires,
+  armes…) posent encore leur couleur en style : ils passeront aux classes lot par lot.
+- Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
+  aucune couleur écrite, poids borné), `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs`.
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
@@ -590,12 +619,21 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     l'affinité Anti (Remède enragé, Huile rage) n'a pas de couleur : ces lignes restent neutres ; puis la **nuance de son niveau d'alchimie**
     (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
     Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction suivante du site (l'éditeur réécrit ses cases,
-    pas la couleur de sa ligne) ;
-  - un **bâton**, la couleur de sa magie sur le site (`couleurDeMagie`), comme ses infobulles ;
+    pas la classe de sa ligne, qui existe donc toujours dans la page) ;
+  - un **bâton**, la couleur de sa magie sur le site (la classe `.couleur-magie-<id>`), comme ses infobulles ;
   - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
   Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`) ; le fond d'une potion qui
   n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à l'atteindre (`lisible`). Aucun fichier de l'onglet
   n'écrit de couleur (`test/alchimie-couleurs.test.mjs`). Repère visuel sans valeur de règle.
+  **En classes, jamais en style** (« Couleurs du site : la palette en classes » plus haut ; choix du propriétaire du 2026-10-22, « Module JS → classe »
+  et « Règle de calcul ») : `couleurDePotion` rend `{ fond, texte, base, niveau }`, la **base** (`{ famille, cle }`) étant la classe du site d'où la
+  couleur se calcule (`couleur-attribut-sante`, `couleur-magie-feu`, `couleur-affinite-coma`, `couleur-caracteristique-force`) ; la ligne porte la
+  classe de sa **combinaison** (`lib/palette-css.mjs#classeDePotion` : `couleur-potion-<famille>-<id>-n<rang>`, `n0` sans niveau), qui pose
+  `--ligne-fond` et `--ligne-texte`, et `components/ceinture/CeinturePanneau.astro` n'émet (`cssDesPotions`, `<style is:inline>` après la feuille de
+  l'onglet) que les combinaisons de ses lignes. Le service n'écrit jamais la ligne : une potion modifiée sur le site de dev garde la classe construite.
+  Un bâton porte la classe de sa magie, sur la ligne et sur la pastille de sa gemme ; `styles/ceinture/ceinture.css` en tire `--baton-fond`,
+  `--baton-texte`, la ligne colorée et `--mag` (la teinte des infobulles de la ligne). Aucun hex ni style de couleur dans l'onglet construit
+  (`test/ceinture-html.test.mjs`), et chaque classe `couleur-…` posée existe dans une feuille de la page.
 
 Rien n'est calculé : chaque case écrit une valeur de la base (seule la valeur en Ricken de fer d'un prix, en infobulle, est une conversion, comme sur
 « Composants » ; le prix d'un bâton, celui des matériaux de sa recette) ; les prix et les textes montrent leurs monnaies en icônes (R63). Les titres des
@@ -637,14 +675,15 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 
 - En tête, son **panneau de règles** (« Panneaux de règles » plus haut ; id `batons-magiques`, l'ancre du sous-onglet) : l'introduction de la page
   « Bâton magique », puis la fabrication en tuile, replié comme ceux des autres onglets.
-- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie sur le site** (`couleurDeMagie`, texte le plus lisible :
-  `texteSurCouleur` ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site » — la couleur de l'onglet « Bâton
+- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie sur le site** (sa classe `.couleur-magie-<id>`,
+  `lib/palette-css.mjs#classeDeMagie` : `--couleur`, et le texte le plus lisible, `--couleur-texte` ; ni style ni couleur dans la ligne ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site » — la couleur de l'onglet « Bâton
   magique » du classeur, relevée le 2026-10-16, n'est plus lue), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
   **Gemme | Bois | Niveau | Effet | Prix**.
 - **Gemme** et **Bois** : le nom, en lien vers sa ligne de la page « Composants », avec son **infobulle** (`data-bulle`, `components/Infobulles.astro`) : sa
   magie, sa description, son prix (la gemme entière aux trois qualités, celle du niveau de la ligne en avant) et un lien « Voir dans Composants » (hors
   tabulation : le nom l'est déjà). La gemme est **la pastille des accessoires** (`.acc-gemme`, dans la couleur de sa magie, commune aux deux onglets :
-  `styles/equipement/equipement.css` ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
+  `styles/equipement/equipement.css`, qui lit `--g` / `--g-texte` posés en style par les accessoires, sinon `--couleur` / `--couleur-texte` de la
+  classe de la magie, que porte la pastille d'un bâton ; ici un lien, avec un liseré qui la détache du fond de même couleur), **sans ligne pour sa qualité** (demande du
   propriétaire, 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité
   de la gemme ») : la qualité du niveau se lit dans l'infobulle.
 - **Niveau** : un curseur de 1 à 3 par ligne (`src/scripts/batons.mjs`, sans import) ; il pose `data-niveau` sur la ligne, et le CSS n'affiche que

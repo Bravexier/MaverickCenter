@@ -8,7 +8,9 @@
 // il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : l'affinité de son
 // essence, ou la caractéristique d'un philtre, nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`,
 // `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion
-// sans couleur (essence Anti) reste neutre. Les carquois et sacs n'ont pas de couleur.
+// sans couleur (essence Anti) reste neutre. Les carquois et sacs n'ont pas de couleur. La ligne ne porte qu'une classe, jamais de couleur ni de style
+// (choix du propriétaire du 2026-10-22, « Module JS → classe » et « Règle de calcul ») : celle de sa combinaison (base et niveau,
+// lib/palette-css.mjs#classeDePotion), que components/ceinture/CeinturePanneau.astro émet pour les lignes qu'il affiche.
 // Prix et textes : monnaies en icônes (décision R63, lib/monnaies.mjs). Rien n'est calculé : chaque case écrit une valeur de la base, sauf la valeur en
 // Ricken de fer d'un prix, en infobulle (la conversion des monnaies, R61, comme sur la page « Composants »).
 // Mode modification du site de dev (demande du propriétaire, 2026-10-17 : « Les tableaux des consommables devrai pouvoir aussi être modifiées . (sauf
@@ -21,7 +23,7 @@
 import { htmlAvecMonnaies } from './monnaies.mjs';
 import { RENDUS_DES_COMPOSANTS, ancreDeComposant } from './composants-rendu.mjs';
 import { attributEd } from './edition-modele.mjs';
-import { texteSurCouleur } from './sort-format.mjs';
+import { classeDePotion } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -30,15 +32,6 @@ const ed = (table, cle, colonne) => e(attributEd(table, cle, colonne));
 
 /** Ancre d'un objet de l'onglet : « objet-potion-petite-fiole-rouge » pour « ressources/fiole-rouge#potion:petite-fiole-rouge ». */
 export const ancreDObjet = (id) => `objet-${String(id).slice(String(id).indexOf('#') + 1).replace(/[^a-z0-9-]+/gi, '-')}`;
-
-/**
- * Les couleurs d'une ligne colorée (`couleur` : { fond, texte? }, lib/alchimie-couleurs.mjs#couleurDePotion) : son fond, et le texte donné ou, sinon,
- * le plus lisible sur ce fond ({ fond, texte }) ; null sans couleur. Partagé avec les bâtons magiques (lib/batons-rendu.mjs).
- */
-export function couleursDeLaLigne(couleur) {
-  if (!couleur?.fond) return null;
-  return { fond: couleur.fond, texte: couleur.texte ?? texteSurCouleur(couleur.fond) };
-}
 
 /**
  * Un texte de plusieurs lignes (effet d'une potion ; bonus d'un bâton, sous-onglet « Bâtons magiques » : lib/batons-rendu.mjs) : une ligne par
@@ -65,16 +58,15 @@ export const RENDUS_DE_LA_CEINTURE = {
 };
 
 /**
- * Une potion : Nom | Niveau | Prix | Effet, sur la couleur de son palier (ou neutre) ; chaque case saisie avec son `data-ed` (nom et prix : la ressource,
- * niveau et effet : la ligne de potion) et son rendu.
+ * Une potion : Nom | Niveau | Prix | Effet, sur la couleur de son palier (la classe de sa combinaison, lib/palette-css.mjs#classeDePotion ; ou neutre) ;
+ * chaque case saisie avec son `data-ed` (nom et prix : la ressource, niveau et effet : la ligne de potion) et son rendu.
  */
 export function htmlDeLigneDePotion(p) {
-  const c = couleursDeLaLigne(p.couleur);
-  const style = c ? ` style="--ligne-fond: ${e(c.fond)}; --ligne-texte: ${e(c.texte)}"` : '';
+  const classe = classeDePotion(p.couleur);
   const ressource = { id: p.id };
   const potion = { ressource_id: p.id };
   const niveaux = { niveauxDAlchimie: [{ valeur: p.niveau_id, libelle: p.niveau }] };
-  return `<tr class="ceint-ligne${c ? ' ligne-couleur' : ''}" id="${e(ancreDObjet(p.id))}"${style}>`
+  return `<tr class="ceint-ligne${classe ? ` ligne-couleur ${e(classe)}` : ''}" id="${e(ancreDObjet(p.id))}">`
     + `<th scope="row" class="ceint-nom" data-ed="${ed('ressource', ressource, 'nom')}">${e(p.nom)}</th>`
     + `<td class="ceint-niveau" data-ed="${ed('potion', potion, 'niveau_id')}" data-ed-rendu="potion-niveau">${RENDUS_DE_LA_CEINTURE['potion-niveau'](p.niveau_id, p, niveaux)}</td>`
     + `<td class="ceint-prix" data-ed="${ed('ressource', ressource, 'prix_brut')}" data-ed-rendu="composant-prix">${htmlDePrix(p.prix_brut)}</td>`

@@ -14,9 +14,9 @@ import {
 import { adresseDePage, cheminDePage, pageSansAdresse } from '../src/lib/metiers.mjs';
 import { NAV, PAGES_RENOMMEES, adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME } from '../src/lib/batons-db.mjs';
-import { ancreDeBatons, bulleDeBatons, couleursDesBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
+import { ancreDeBatons, bulleDeBatons, classeDesBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
+import { classeDeMagie } from '../src/lib/palette-css.mjs';
 import { htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
-import { couleurDeMagie } from '../src/lib/sort-format.mjs';
 import { FAMILLE_DES_BATONS, sectionDuCorps } from '../src/lib/ceinture-db.mjs';
 import { ordonnerBlocs } from '../src/lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -146,13 +146,14 @@ test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la
 test('bâtons : rendu d’une ligne (couleur de la magie sur le site, sans colonne Magie ; la gemme en pastille comme les accessoires et le bois, en lien vers « Composants » avec leur infobulle ; curseur ; effet et prix de chaque niveau)', () => {
   const m = batons.magies[0];
   const html = htmlDeLigneDeBatons(m, batons.niveaux, '/ressources/composants/');
-  const { fond, texte } = couleursDesBatons(m.magie);
-  assert.ok(html.startsWith(`<tr class="baton ligne-couleur" id="${ancreDeBatons(m.magie.id)}" data-niveau="1" style="--baton-fond: ${fond}; --baton-texte: ${texte}; --mag: ${couleurDeMagie(m.magie.nom)}">`),
-    'la ligne sur la couleur de sa magie sur le site (comme ses infobulles), au niveau 1');
+  assert.equal(classeDesBatons(m.magie), classeDeMagie(m.magie.nom));
+  assert.ok(html.startsWith(`<tr class="baton ligne-couleur ${classeDeMagie(m.magie.nom)}" id="${ancreDeBatons(m.magie.id)}" data-niveau="1">`),
+    'la ligne sur la couleur de sa magie sur le site (sa classe, qui teinte aussi ses infobulles), au niveau 1');
+  assert.ok(!/style=|(?<!&)#[0-9a-f]{6}\b/i.test(html), 'ni style ni couleur dans la ligne');
   assert.equal((html.match(/<t[hd][ >]/g) ?? []).length, 5, 'Gemme, Bois, Niveau, Effet, Prix');
   assert.ok(html.includes(`<th scope="row" class="baton__gemme"><span class="baton__magie">${m.magie.nom} : </span>`), 'la magie, pour les lecteurs d’écran seulement');
   // demande du propriétaire du 2026-10-16 : la gemme est la pastille des accessoires (`.acc-gemme`, dans la couleur de la magie), sans ligne pour sa qualité
-  const pastille = `class="acc-gemme" href="(/ressources/composants/#composant-gemme-[^"]+)" style="--g: ${couleurDeMagie(m.magie.nom)}; --g-texte: #[0-9a-f]{6}"`;
+  const pastille = `class="acc-gemme ${classeDeMagie(m.magie.nom)}" href="(/ressources/composants/#composant-gemme-[^"]+)"`;
   for (const [quoi, c, debutDuLien] of [['gemme', m.gemme, pastille], ['bois', m.bois, 'class="baton__nom" href="(/ressources/composants/#composant-bois-[^"]+)"']]) {
     const bulle = bulleDeBatons(m.magie.id, quoi);
     const lien = new RegExp(`<a ${debutDuLien} data-bulle="${bulle}" aria-describedby="${bulle}">${c.nom}</a>`);

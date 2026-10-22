@@ -37,7 +37,7 @@ user-invocable: false
 - Un tableau par étape ; l'étape 3, un tableau par propriété, chacun dans son onglet (`components/Onglets.astro`, skill `ui-onglets`).
 - Compétence en une ligne par compétence (« Compétence Force »), bonus d'acquis au curseur, au dé ou saisi.
 - Chaque tableau des étapes a une case au dé qui tire une ligne.
-- Lignes d'effet, montures et encart dans la couleur de leur niveau (`COULEURS_DES_NIVEAUX`, celles de l'onglet) ; gemmes dans la couleur de leur magie, avec une infobulle ; pas de tableau des gemmes. La pastille `.acc-gemme` est partagée avec le sous-onglet Bâtons magiques (skill `zone-ceinture`).
+- Lignes d'effet, montures et encart dans la couleur de leur niveau (`COULEURS_DES_NIVEAUX`, celles de l'onglet) ; gemmes dans la couleur de leur magie, avec une infobulle ; pas de tableau des gemmes. La pastille `.acc-gemme` est partagée avec le sous-onglet Bâtons magiques (skill `zone-ceinture`) : ici, sa couleur reste en style (`--g`, `--g-texte` de `GemmesDeLEffet.astro`, copiés par l'encart) jusqu'au lot des accessoires de la palette en classes (skill `ui-couleurs`) ; `equipement.css` lit `--g` d'abord, sinon la classe `couleur-magie-<id>` (bâtons).
 
 ## Tests
 - `client/test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes, prix écrits recomposés), `accessoires-html.test.mjs` (site construit), `accessoires-script.test.mjs` (faux navigateur : malédiction, R94).
