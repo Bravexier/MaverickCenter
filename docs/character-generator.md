@@ -55,9 +55,9 @@ abandonne.
   trois boutons** (réponse « Boutons seulement » ; `actionsDeLEmplacement` dit lesquels se montrent) : **« Utiliser »** retire 1 sans toucher au sac
   (`utiliserLObjet` ; masqué pour un bâton ; le dernier exemplaire libère l'emplacement, un carquois reste à 0 et le bouton disparaît :
   `minimumDeLEmplacement`, migration `0052-ceinture-carquois-vide`) ; **« Remplir »** remonte au maximum avec ce que le sac a (`remplirLEmplacement` ;
-  masqué au maximum, grisé quand le sac n'en a plus ; un carquois gagne 1 projectile sans rien sortir du sac) ; **« Ranger »** remet l'objet au sac
+  masqué au maximum, grisé quand le sac n'en a plus, et il prend ce qu'il y a quand le sac en a moins que le manque : décision R131 ; un carquois gagne 1 projectile sans rien sortir du sac) ; **« Ranger »** remet l'objet au sac
   (`rangerLEmplacement`, un objet du MJ comme les autres, un carquois sans ses projectiles) ; un nom effacé ne vide pas l'emplacement (le champ reprend
-  son objet). « Remplir » grisé l'est par `aria-disabled` : il garde le focus et son infobulle dit pourquoi. **En posture Symbiose** (décision R112 : « on
+  son objet ; décision R131 : « seul « Ranger » le vide »). « Remplir » grisé l'est par `aria-disabled` : il garde le focus et son infobulle dit pourquoi. **En posture Symbiose** (décision R112 : « on
   ne peut que lancer des sorts »), **« Utiliser » est grisé** de même (`actionsDeLEmplacement`, `refus` : « Posture Symbiose : on ne peut que lancer des
   sorts » ; `utiliserLObjet` ne fait rien), **sauf pour un parchemin** (`estUnParchemin` : un objet du catalogue de genre « parchemin », la page « Livre /
   Parchemin », par l'identifiant de la ligne ou, à défaut, par son nom exact ; le « Parchemin vierge » de l'équipement d'inventaire, un matériel, n'en est

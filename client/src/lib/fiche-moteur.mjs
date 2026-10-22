@@ -799,7 +799,7 @@ export function rangerLEmplacement(regles, fiche, rang) {
  * portait est d'abord rangé (rangerLEmplacement) ; puis un bâton magique sort du sac, seul ; un carquois ou un sac de projectiles aussi, et il arrive
  * plein, à sa contenance (réponse du propriétaire : « Plein ») ; un autre objet, autant d'exemplaires que le sac en a, jusqu'au maximum de
  * l'emplacement (3, 4 avec « Organisé »). null quand le sac n'a pas cet objet, même une fois l'emplacement rangé (réponse du propriétaire : « Sac
- * seulement » : un objet du MJ s'ajoute d'abord à l'inventaire), et pour un nom vide (on vide un emplacement par « Ranger ») : rien ne change.
+ * seulement » : un objet du MJ s'ajoute d'abord à l'inventaire), et pour un nom vide (décision R131 : « seul « Ranger » le vide ») : rien ne change.
  * L'objet est celui de la ligne du sac (son identifiant : un carquois renommé depuis reste un carquois).
  */
 export function mettreALaCeinture(regles, fiche, rang, nom) {
@@ -839,7 +839,7 @@ export function estUnParchemin(regles, ligne) {
  * s'il ne l'est pas — une posture qui interdit les objets (la ligne « Impossible d'utiliser les armes ou objets » de la Symbiose, `armesInutilisables`
  * de postureDuMoment ; décision R112 : « on ne peut que lancer des sorts »), sauf pour un parchemin (estUnParchemin) ; remplir : « Remplir » s'affiche
  * (« Masqué si quantité maximale atteinte » ; un geste de rangement, permis en Symbiose comme « Ranger ») ; duSac : ce que « Remplir » sortirait du sac
- * (null pour un carquois ou un sac de projectiles, qui n'en sort rien ; 0 quand le sac n'en a plus).
+ * (null pour un carquois ou un sac de projectiles, qui n'en sort rien ; 0 quand le sac n'en a plus : le bouton reste, grisé, décision R131).
  */
 export function actionsDeLEmplacement(regles, fiche, rang) {
   const x = ligneDeCeinture(fiche, rang);
@@ -877,7 +877,7 @@ export function utiliserLObjet(regles, fiche, rang) {
 
 /**
  * « Remplir » (décision R89 : « remet les charges au maximum en en retirant autant de l'inventaire ») : l'emplacement remonte vers son maximum avec ce
- * que le sac a de cet objet (tout ce qu'il a, s'il en a moins) ; un carquois ou un sac de projectiles gagne 1 projectile, sans rien sortir du sac
+ * que le sac a de cet objet (tout ce qu'il a, s'il en a moins : décision R131) ; un carquois ou un sac de projectiles gagne 1 projectile, sans rien sortir du sac
  * (« Le bouton "remplir" ne fait qu'incrémenter de 1 »). Rien quand le bouton est masqué (au maximum).
  */
 export function remplirLEmplacement(regles, fiche, rang) {
