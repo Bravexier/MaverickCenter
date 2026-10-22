@@ -191,7 +191,7 @@ test('disposition inconnue : une Error qui nomme les deux modèles', () => {
 });
 
 // ------------------------------------------------------------------ les deux fiches auto du propriétaire
-// Les fiches sont figées, les règles changent (le site de dev en est la source : CLAUDE.md, « Conventions de travail ») : seul ce qui vient du classeur
+// Les fiches sont figées, les règles changent (le site de dev en est la source : CLAUDE.md, « Invariants transverses ») : seul ce qui vient du classeur
 // (nom, XP, bourse, noms écrits…) est attendu tel quel ; ce qui dépend des règles est retrouvé ici comme l'import le fait (par la clé du nom, sinon par le
 // dernier segment de l'identifiant), et contrôlé par des invariants (un nom introuvable part dans nonRepris, l'acquis du joueur est l'acquis écrit moins
 // les bonus de la base, chaque déduction a sa remarque).

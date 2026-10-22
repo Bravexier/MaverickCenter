@@ -1,7 +1,7 @@
 // Analyseur et écrivain XML minimal, sans dépendance : les parties XML du .xlsx et du .ods de la fiche de personnage en tableur (demande du
 // propriétaire, 2026-10-15). DOMParser n'existe pas dans Node 22 et src/lib doit rester testable sous Node : d'où cet analyseur.
 // Module de format, sans rapport avec le jeu ; réservé à src/scripts/fiche.mjs (et aux modules du tableur, aux tests) : un module importé par deux
-// scripts de page casse la version portable (CLAUDE.md, « Pièges connus »).
+// scripts de page casse la version portable (skill site-version-portable).
 //
 // Un élément est `{ nom, attrs, enfants }` : nom avec son préfixe tel qu'écrit (« x:c », « table:table-cell »), attributs dans l'ordre du
 // document, enfants = éléments et textes (deux textes ne se suivent jamais : ils sont réunis). Les espaces ne sont jamais retirés (xml:space) :

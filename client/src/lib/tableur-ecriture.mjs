@@ -2,7 +2,7 @@
 // personnage doit pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet et réexportée sous le même modèle. Le portrait
 // peut remplacer l'icône du logo en haut à gauche. Inutile de mettre les formules dans le fichier généré, seul le résultat. »). Module de format,
 // qui ne sait rien du jeu : lib/fiche-tableur-export.mjs dit quoi écrire où. Réservé à src/scripts/fiche.mjs (et aux modules du tableur, aux
-// tests) : un module importé par deux scripts de page casse la version portable (CLAUDE.md, « Pièges connus ») ; n'importe que lib/zip.mjs,
+// tests) : un module importé par deux scripts de page casse la version portable (skill site-version-portable) ; n'importe que lib/zip.mjs,
 // lib/xml-mini.mjs et lib/fiche-tableur-cases.mjs.
 //
 //   ecrireXlsx(modele, { cellules, remplis, alignements, image, descriptionImage, titre, date }) → Promise<Uint8Array> (le .xlsx rempli)

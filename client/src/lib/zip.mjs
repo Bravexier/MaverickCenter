@@ -1,7 +1,7 @@
 // Lecture et écriture d'archives ZIP, sans dépendance : le .xlsx et le .ods de la fiche de personnage en tableur (demande du propriétaire,
 // 2026-10-15 : « La fiche de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet »).
 // Module de format, sans rapport avec le jeu ; réservé à src/scripts/fiche.mjs (et aux modules du tableur, aux tests) : un module importé par deux
-// scripts de page casse la version portable (CLAUDE.md, « Pièges connus »).
+// scripts de page casse la version portable (skill site-version-portable).
 //
 // Décisions (relevées sur les fichiers de LibreOffice, Excel et Google Sheets) :
 //   - le répertoire central fait foi pour les tailles et le CRC : LibreOffice écrit des data descriptors (bit 3) et laisse l'en-tête local à 0 ;

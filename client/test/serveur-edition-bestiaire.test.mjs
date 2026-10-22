@@ -130,7 +130,7 @@ test('groupe d’espèces modifié (décision R64, « Ottar ») : nom et sa clé
   assert.ok(groupe, 'un groupe (Ottar)');
   const membres = tous('SELECT id FROM monstre_espece WHERE groupe_id = ? ORDER BY ordre', groupe.id).map((x) => x.id);
   assert.ok(membres.length > 1);
-  // un nom absent de la base (CLAUDE.md : un test du service prend des noms absents)
+  // un nom absent de la base (skill tests-conventions : un test du service prend des noms absents)
   let nom = `${groupe.nom} essai`;
   for (let n = 2; un('SELECT 1 FROM monstre_groupe WHERE nom_cle = ?', normalize(nom)); n += 1) nom = `${groupe.nom} essai ${n}`;
   const r = enregistrer({ op: 'modifier', table: 'monstre_groupe', cle: { id: groupe.id }, valeurs: { nom, description: 'Texte\n\nsur deux paragraphes.' } });

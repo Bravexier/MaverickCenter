@@ -1,7 +1,7 @@
 // Lecture d'un classeur (.xlsx, .ods ou .csv) en grille : la fiche de personnage en tableur (demande du propriétaire, 2026-10-15 : « La fiche
 // de personnage doit pouvoir être importée et exportée à tout moment depuis un Excel ou Google Sheet »). Module de format, qui ne sait rien du
 // jeu : lib/fiche-tableur-import.mjs lit la grille rendue ici. Réservé à src/scripts/fiche.mjs (et aux modules du tableur, aux tests) : un module
-// importé par deux scripts de page casse la version portable (CLAUDE.md, « Pièges connus ») ; n'importe que lib/zip.mjs, lib/xml-mini.mjs et
+// importé par deux scripts de page casse la version portable (skill site-version-portable) ; n'importe que lib/zip.mjs, lib/xml-mini.mjs et
 // lib/fiche-tableur-cases.mjs.
 //
 //   lireClasseur(octets, { nom }) → { format: 'xlsx' | 'ods' | 'csv', feuilles: [noms], feuille(nom?), trouver(test) }

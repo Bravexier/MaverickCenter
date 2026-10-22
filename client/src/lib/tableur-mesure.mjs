@@ -4,7 +4,7 @@
 // fini par « … » ; seule la part du texte que l'import relit (`lu` : des données du personnage, pas un texte de règles que le site refait) a une suite,
 // reportée dans la case NOTE, que l'import (lib/fiche-tableur-import.mjs) recolle au début.
 // Module de format, qui ne sait rien du jeu ; sans dépendance. Réservé à src/scripts/fiche.mjs (et aux modules du tableur, aux tests) : un module
-// importé par deux scripts de page casse la version portable (CLAUDE.md, « Pièges connus »).
+// importé par deux scripts de page casse la version portable (skill site-version-portable).
 // Décisions :
 //   - la zone d'une case (lib/tableur-ecriture.mjs#zonesDuClasseur) : sa largeur et sa hauteur en points (la fusion entière), le nom, la taille et la
 //     graisse de sa police, le retour à la ligne, la réduction au besoin (shrinkToFit : le tableur rapetisse le texte, qui tient donc toujours) ;

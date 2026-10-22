@@ -5,7 +5,7 @@
 //     version et l'historique des modifications du site (section 15 : TABLES_DES_NOTES) — jamais modifiées par l'édition
 //     (serveur/edition-journal.mjs#TABLES_INTERDITES) ;
 //   - dérivées (TABLES_DERIVEES : section 11, `-- @derivee`, hors tables de recherche plein texte) : recalculées par le build depuis les autres ;
-//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (CLAUDE.md, « Orthographe »).
+//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (skill base-orthographe).
 // Aucune n'est lue comme un texte de règles par les balises du glossaire des mots-clés (lib/mots-cles-db.mjs#textesDeLaBase : ni contrôlée par
 // db:check, ni réécrite au rejeu du journal).
 // Sans dépendance (sauf lib/fiche-format.mjs, pur).
