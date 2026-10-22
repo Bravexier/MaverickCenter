@@ -35,7 +35,7 @@
         "faits?\\s+en\\s+chakra",
         "(?:saturée?s?|imprégnée?s?|gorgée?s?|conducteur|attire)\\s+(?:en|de|le)\\s+chakra",
         "(?:au\\s+contact|libérer)\\s+du\\s+chakra",
-        "zones\\s+où\\s+le\\s+chakra",
+        "(?:zones|lieux)\\s+où\\s+le\\s+chakra",
         "le\\s+chakra\\s+bouillonne",
         "son\\s+chakra\\s+alimente",
         "contient\\s+du\\s+chakra",
@@ -81,7 +81,7 @@
   {
     "libelle": "Corruption",
     "motif": "corruptions?",
-    "description": "Poison du chakra : chaque point de corruption prend la place d'un point de chakra, jusqu'au maximum du chakra. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination de corruption. Les mages de la Corruption n'y sont pas soumis : pour eux, c'est la réserve où passe le chakra de leurs sorts.",
+    "description": "Poison du chakra : chaque point de corruption prend la place d'un point de chakra, jusqu'au maximum du chakra ; le repos et la méditation ne la font pas baisser. Au maximum, le personnage a deux semaines pour en retirer un point, sinon il meurt et devient une abomination. Les mages de la Corruption ne risquent pas cette mort : pour eux, c'est la réserve où passe le chakra de leurs sorts.",
     "horsDe": ["page:lore/", "evenement_extrait.texte", "race_onglet.histoire"],
     "sauf": ["page:lore/glossaire"],
     "exclus": {
@@ -115,10 +115,11 @@
         "avoir\\s+la\\s+corruption\\s+en\\s+innée",
         "corruption\\s+(?:ne\\s+se\\s+mélange|offre\\s+une|érode|reste\\s+une\\s+magie|fait\\s+exception)",
         "(?:vulnérabilité|résistance)\\s*:\\s*corruption",
-        "pouvoir\\s+de\\s+la\\s+corruption"
+        "pouvoir\\s+de\\s+la\\s+corruption",
+        "corruption\\s+de\\s+l[’']elfe\\s+noir"
       ],
       "une liste de magies": [
-        "(?:arcan\\p{L}*|espace|temps)(?:(?:\\s*(?:,|/|<br>)\\s*)+|\\s+et\\s+(?:de\\s+la\\s+)?)corruption"
+        "(?:arcan\\p{L}*|espace\\s*/\\s*temps|temps\\s*/\\s*espace)(?:(?:\\s*(?:,|/|<br>)\\s*)+(?:(?:de\\s+)?la\\s+)?|\\s+et\\s+(?:de\\s+)?(?:la\\s+)?)corruption"
       ],
       "l’élément Corruption (dégâts, pièces élémentaires) ou le nom d’une magie dans un tableau": [
         "[ée]l[ée]ment\\s+corruption",
@@ -127,9 +128,6 @@
         "^\\s*corruption\\s*=",
         "^\\s*corruption\\s*$",
         "^\\|\\s*corruption\\s*\\|"
-      ],
-      "une créature (abomination de corruption)": [
-        "abomination\\s+de\\s+corruption"
       ]
     }
   },
@@ -137,11 +135,6 @@
     "libelle": "CR",
     "motif": "CR",
     "casse": true,
-    "description": "« Si CR » : si le sort est lancé en utilisant la corruption.",
-    "contextes": {
-      "un « CR » qui ne suit pas « Si » (la réponse du propriétaire ne dit pas son sens)": [
-        "(?<!si\\s)CR"
-      ]
-    }
+    "description": "La corruption, dans les tableaux de sorts. « Si CR » : si le sort est lancé en utilisant la corruption. Dans les dégâts, soins ou barrière (D/S/B) ou les effets, « N CR » fait monter la corruption de la cible (le sort de soin Retrait en retire) ; dans le coût, c'est la corruption à dépenser."
   }
 ]

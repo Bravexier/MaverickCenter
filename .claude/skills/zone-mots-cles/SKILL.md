@@ -68,7 +68,7 @@ user-invocable: false
 - Un homonyme n'est jamais posé par un import (`tools/db/homonymes.py#MAGIES_HOMONYMES` : la magie « corruption » d'un temple du Codex, d'une page de magie, d'une créature invoquée).
 
 ## Baliser un mot dans tous les textes
-- Chakra et Barrière, puis seulement là où il est pertinent : Corruption et « CR » (R103) (demandes du propriétaire). Entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`.
+- Chakra et Barrière, puis seulement là où il est pertinent : Corruption et « CR » (R103, R140 : « CR » balisé partout où il s'écrit) (demandes du propriétaire). Entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`.
 - `client/scripts/baliser-mot-cle.mjs` passe par le service du site de dev ; le journal est rapatrié (`historique_modification` : l'import reste lisible).
 - Les balises déjà posées du mot sont relues, celles posées à la main comprises : retirées puis reposées (`sansLesBalisesDuMot`). Un second passage avec d'autres exclusions retire celles qui ne sont plus pertinentes. Le rapport liste chaque balise retirée ou nouvelle, et ce que l'entrée écrit pour rien.
 - Jamais balisé : un nom de la base, une écriture ou un contexte exclu de l'entrée (nom propre du Codex, autre sens du mot : l'énergie du monde, la magie de la Corruption, son élément), un texte hors du balisage (`horsDe` : le récit du Codex et de la chronologie, sauf le glossaire du Codex et, au cas par cas, une page qui écrit la règle : `sauf`), un code, un lien, une adresse, un titre de section, un intitulé en gras seul sur sa ligne, une rubrique de carte découpée.

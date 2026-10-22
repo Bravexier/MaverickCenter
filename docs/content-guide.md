@@ -1097,7 +1097,7 @@ pour Chakra et Barrière. Seulement là où il est pertinent ») : le mot n'est 
 Barrière et dit où le mot n'est pas balisé : `exclus` (des écritures, rangées par raison), `contextes` (des expressions régulières, rangées par raison,
 jamais commencées au milieu d'un mot : « Déesse du chakra », le chakra pur, ambiant, ce qui en est fait — projectiles, cornes, ailes —, le lobe à chakra,
 le chakra d'un récit — effondrement, puissance, maîtrise — ; la magie de la Corruption, ses mages et ses sorts, une liste de magies, l'élément Corruption
-— dégâts, pièces élémentaires —, l'abomination de corruption ; un « CR » qui ne suit pas « Si »), `horsDe` et `sauf` (les textes qu'il ne balise pas :
+— dégâts, pièces élémentaires —, la Corruption de l'Elfe Noir Charbon), `horsDe` et `sauf` (les textes qu'il ne balise pas :
 le récit du Codex et de la chronologie, et pour la Corruption l'histoire des races ; le glossaire du Codex l'est, et une page du Codex qui écrit la
 règle aussi, ses passages de récit exclus : le Tome Universel de Mirada, « sans coût en chakra », la barrière de Londolor). Une écriture exclue ou un
 contexte ne cite pas un mot qui le précède dans l'entrée (il y est déjà balisé : refusé). Les balises du mot-clé déjà posées autour du mot sont relues,
@@ -1107,8 +1107,8 @@ balise retirée sans être reposée et chaque balise nouvelle (`changements`, av
 exclusion ou un contexte qui ne se lit dans aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun ; les écritures exclues du Codex,
 gardées de la première entrée, le sont tant que le Codex n'est pas balisé). Le texte affiché ne change pas ; une colonne que le service tire d'un texte
 réécrit peut, elle, changer si l'import l'avait écrite autrement (le contexte du bonus de maîtrise de « Fouet ténébreux », visible sur `/donnees/`). La
-**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 » et l'explication de sa magie) et **CR** (« Si CR » : si
-le sort est lancé en utilisant la corruption, décision R103 ; ni « 50% CR max » ni « 2d6 cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
+**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143) et **CR** (« Si CR » : si
+le sort est lancé en utilisant la corruption, décision R103 ; dans le coût, la corruption à dépenser ; dans les dégâts, soins ou barrière ou les effets, la corruption que reçoit la cible, le sort de soin Retrait en retire, R140 ; « CR » balisé partout où il s'écrit, jamais « cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
 homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/docs/codex.py`, `tools/sheets/magies.py` et `invocations.py`) : ni un
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
 jauge ; un homonyme n'est jamais lié implicitement).
