@@ -7,7 +7,7 @@
 // tableaux du GoogleSheet pour les lignes présentes » ; le 2026-10-22, « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle
 // il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : l'affinité de son
 // essence, ou la caractéristique d'un philtre, nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`,
-// `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité ») ; une potion
+// `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion
 // sans couleur (essence Anti) reste neutre. Les carquois et sacs n'ont pas de couleur.
 // Prix et textes : monnaies en icônes (décision R63, lib/monnaies.mjs). Rien n'est calculé : chaque case écrit une valeur de la base, sauf la valeur en
 // Ricken de fer d'un prix, en infobulle (la conversion des monnaies, R61, comme sur la page « Composants »).

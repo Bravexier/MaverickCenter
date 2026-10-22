@@ -5,7 +5,7 @@
 // niveau. Rajouter une colonne pour le prix. »
 // Une ligne par magie, sur la couleur de sa magie sur le site (sort-format.mjs#couleurDeMagie ; demande du propriétaire du 2026-10-22 : « Partout il
 // faut utiliser Que les couleurs du site. […] Aucune couleur en dur » : plus la couleur de la case du classeur), le texte le plus lisible sur ce fond
-// (« Privilégé la lisibilité ») : Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à
+// (« Privilégé la lisibilité. ») : Gemme | Bois | Niveau | Effet | Prix. La gemme et le bois mènent à
 // leur ligne de la page « Composants » et ont chacun leur infobulle (description, prix, le même lien) ; la gemme est la pastille des accessoires
 // (`.acc-gemme`, dans la couleur de sa magie sur le site, styles/equipement/equipement.css), sans ligne pour sa qualité (demande du propriétaire du
 // 2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille. Et pas de 2em ligne pour la qualité de la

@@ -1,6 +1,6 @@
 ---
 name: ui-couleurs
-description: "Couleurs des caractéristiques (et de leurs compétences), des postures et des alignements (lib/caracteristiques-postures.mjs, posées en --c / --c-texte dans le guide et la fiche) et des attributs (lib/attributs-couleurs.mjs, --attribut-<clé>) ; principe « aucune couleur en dur ». À charger avant de lire, modifier ou relire ces couleurs ou un rendu qui les pose."
+description: "Couleurs des caractéristiques (et de leurs compétences), des postures et des alignements (lib/caracteristiques-postures.mjs, posées en --c / --c-texte dans le guide et la fiche) et des attributs (lib/attributs-couleurs.mjs, --attribut-<clé>) ; principe « Aucune couleur en dur. ». À charger avant de lire, modifier ou relire ces couleurs ou un rendu qui les pose."
 paths: ["client/src/lib/caracteristiques-postures.mjs", "client/src/lib/attributs-couleurs.mjs", "client/test/caracteristiques-postures.test.mjs", "client/test/alchimie-couleurs.test.mjs"]
 user-invocable: false
 ---
@@ -8,7 +8,7 @@ user-invocable: false
 
 Les caractéristiques, leurs compétences et les postures ont chacune leur couleur (demande du propriétaire), les attributs aussi (santé rouge, barrière jaune, chakra bleu, corruption noire).
 
-Principe (demande du propriétaire du 2026-10-22) : « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; pour le texte, « Privilégé la lisibilité » (`sort-format.mjs#texteSurCouleur`). Une couleur se lit dans le module de sa règle, jamais recopiée dans un CSS ou un rendu ; une couleur ajoutée ne double pas une règle qui existe.
+Principe (demande du propriétaire du 2026-10-22) : « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; pour le texte, « Privilégé la lisibilité. » (`sort-format.mjs#texteSurCouleur`). Une couleur se lit dans le module de sa règle, jamais recopiée dans un CSS ou un rendu ; une couleur ajoutée ne double pas une règle qui existe.
 
 ## Fichiers
 - `client/src/lib/caracteristiques-postures.mjs` : `COULEURS_CARACTERISTIQUES`, `COULEURS_POSTURES`, `COULEURS_ALIGNEMENTS`, `COULEUR_NEUTRE`, `couleurDeCaracteristique`, `couleurDePosture`, `couleurDAlignement`, `styleDeCouleur`. Les clés sont les ids de la base.

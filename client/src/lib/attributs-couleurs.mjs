@@ -1,6 +1,6 @@
-// Couleurs des attributs (demande du propriétaire, fiche de personnage : « santé rouge, barrière jaune, chakra bleu, corruption noire ») : la règle du
-// site pour la santé, la barrière, le chakra, la corruption et la 4ᵉ barre (le Sang ou l'Âme d'une magie). Une seule source (demande du propriétaire du
-// 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. […] Aucune couleur en dur ») : la fiche les pose en propriétés CSS
+// Couleurs des attributs de la fiche de personnage (demande du propriétaire : santé rouge, barrière jaune, chakra bleu, corruption noire ; la 4ᵉ barre,
+// le Sang ou l'Âme d'une magie, en rouge foncé : choix du site) : la règle du site pour ces cinq attributs. Une seule source (demande du propriétaire du
+// 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. […] Aucune couleur en dur. ») : la fiche les pose en propriétés CSS
 // (`--attribut-<clé>`, cssDesAttributs, src/pages/fiche/index.astro ; styles/fiche/fiche.css les lit), l'onglet Ceinture de la page Équipement en tire
 // la couleur des potions dont l'essence est un attribut (lib/alchimie-couleurs.mjs). Repère visuel sans valeur de règle.
 // Sans dépendance : importé au build seulement (pages, modules de rendu, tests).

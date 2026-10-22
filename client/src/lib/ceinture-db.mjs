@@ -76,8 +76,9 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *              - potions et huiles : `pages` : [{ id, titre, resume, existe, caracteristique, potions: [{ id, nom, niveau_id, niveau, niveau_rang, prix_brut,
  *                effet, essence, couleur }] }], une par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut
  *                être un lien), ses paliers dans l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `essence` :
- *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : celle dont les
- *                potions de la page augmentent les compétences (les philtres ; null sinon, ou si elles en nomment plusieurs) ; `couleur` : { fond } ou null
+ *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : celle que nomment les
+ *                effets de la page (« compétences de Force » : les philtres, dont l'Ultime, « +1 Force », la reçoit de sa page ; null sinon, ou si elles en
+ *                nomment plusieurs) ; `couleur` : { fond } ou null
  *                (lib/alchimie-couleurs.mjs#couleurDePotion) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).

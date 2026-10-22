@@ -1,6 +1,6 @@
 // Couleurs du site pour les potions et les attributs (lib/alchimie-couleurs.mjs, lib/attributs-couleurs.mjs ; demande du propriétaire du 2026-10-22 :
 // « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du
-// classeur. Aucune couleur en dur. » et, pour le texte, « Privilégé la lisibilité ») : la couleur d'une potion est une règle (l'affinité de son essence,
+// classeur. Aucune couleur en dur. » et, pour le texte, « Privilégé la lisibilité. ») : la couleur d'une potion est une règle (l'affinité de son essence,
 // ou la caractéristique d'un philtre, nuancée selon son niveau d'alchimie), jamais une couleur relevée ligne par ligne ; les attributs ont une seule
 // source, que la fiche lit ; l'onglet Ceinture n'écrit aucune couleur en dur.
 import assert from 'node:assert/strict';
@@ -74,7 +74,7 @@ test('la couleur d’une potion : l’affinité de son essence, sinon la caract�
   assert.equal(couleurDePotion({ essence: 'anti', niveau: 2 }), null);
   assert.equal(couleurDePotion({ essence: 'demon', caracteristique: 'inconnue', niveau: 2 }), null);
   assert.equal(couleurDePotion(), null);
-  // le texte : le plus lisible sur le fond (« Privilégé la lisibilité »)
+  // le texte : le plus lisible sur le fond (« Privilégé la lisibilité. »)
   const p = { id: 'ressources/x#potion:y', nom: 'Y', niveau_id: 'novice', niveau: 'Novice', prix_brut: '2 RO', effet: 'Z', couleur: couleurDePotion({ essence: 'chakra', niveau: 5 }) };
   const c = couleursDeLaLigne(p.couleur);
   assert.equal(c.texte, texteSurCouleur(c.fond));

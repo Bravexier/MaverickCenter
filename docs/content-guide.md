@@ -578,16 +578,18 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
 - **Couleurs des lignes : les couleurs du site, jamais une couleur relevée ligne par ligne** (demande du propriétaire du 2026-10-22 : « Partout il
   faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune
-  couleur en dur. » ; « Privilégé la lisibilité ») :
-  - une **potion** suit une règle du site (`lib/alchimie-couleurs.mjs#couleurDePotion`), tirée de la façon dont le Google Doc « Alchimie » colore ses
-    tableaux (lu le 2026-10-16 sur l'original) : la teinte est celle de l'**affinité de son essence** (`recette_ingredient`, rôle « essence », de la
-    première variante de sa recette) — un attribut prend la couleur de l'attribut sur le site (`lib/attributs-couleurs.mjs` : santé, chakra, barrière,
-    corruption, 4ᵉ barre, la même que la fiche), une magie la couleur de la magie (`sort-format.mjs`), une autre affinité la couleur que le site lui
-    ajoute d'après le Doc (`COULEURS_DES_AFFINITES` : la fiole de l'affinité au niveau Avancé) ; un **philtre** (essence Démon, sans couleur dans le Doc)
-    prend la couleur de la caractéristique dont il augmente les compétences (son effet la nomme, « compétences de Force » : `caracteristiqueDesCompetences`,
-    `lib/caracteristiques-postures.mjs`) ; l'affinité Anti (Remède enragé, Huile rage) n'a pas de couleur : ces lignes restent neutres ; puis la
-    **nuance de son niveau d'alchimie** (`NUANCES_DES_NIVEAUX` : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et
-    Maître, comme les gammes du Doc). Une potion créée sur le site de dev suit la même règle (sa recette, son niveau) ;
+  couleur en dur. » ; « Privilégé la lisibilité. ») :
+  - une **potion** suit une règle du site (`lib/alchimie-couleurs.mjs#couleurDePotion`), un **choix du site inspiré des gammes du Google Doc
+    « Alchimie »** (lu le 2026-10-16 sur l'original : chaque fiole y a sa teinte et ses paliers du clair au foncé ; le Doc ne suit pas une règle
+    unique, ses remèdes, huiles et philtres ont souvent la teinte d'une fiole voisine) : la teinte est celle de l'**affinité de son essence**
+    (`recette_ingredient`, rôle « essence », de la première variante de sa recette) — un attribut prend la couleur de l'attribut sur le site
+    (`lib/attributs-couleurs.mjs` : santé, chakra, barrière, corruption, 4ᵉ barre, la même que la fiche), une magie la couleur de la magie
+    (`sort-format.mjs`), une autre affinité la couleur que le site lui ajoute d'après le Doc (`COULEURS_DES_AFFINITES` : la fiole de l'affinité au palier
+    Super, niveau Avancé) ; un **philtre** (essence Démon, sans fiole dans le Doc) prend la couleur de la caractéristique que nomment les effets de sa
+    page (« compétences de Force » : `caracteristiqueDesCompetences` ; l'Ultime, « +1 Force », la reçoit de sa page ; `lib/caracteristiques-postures.mjs`) ;
+    l'affinité Anti (Remède enragé, Huile rage) n'a pas de couleur : ces lignes restent neutres ; puis la **nuance de son niveau d'alchimie**
+    (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
+    Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle ;
   - un **bâton**, la couleur de sa magie sur le site (`couleurDeMagie`), comme ses infobulles ;
   - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
   Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`). Aucun fichier de l'onglet

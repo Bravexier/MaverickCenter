@@ -1,22 +1,23 @@
 // Couleur d'une potion (sous-onglet Consommables de l'onglet « Ceinture » de la page /ressources/equipement/) : une RÈGLE du site, jamais une couleur
 // relevée ligne par ligne (demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il
-// ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; puis, pour le texte : « Privilégé la lisibilité »).
+// ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; puis, pour le texte : « Privilégé la lisibilité. »).
 //
-// La règle, tirée de la façon dont le Google Doc « Alchimie » colore ses tableaux (lu le 2026-10-16 sur l'original) : chaque famille de potion a une
-// teinte, celle de l'AFFINITÉ DE SON ESSENCE (le Doc colore chaque affinité dans ses tableaux d'ingrédients, et la fiole d'une affinité dans sa teinte),
-// et chaque palier la décline du clair au foncé selon son NIVEAU D'ALCHIMIE (Novice le plus clair, Maître le plus foncé). Ici :
+// La règle est un CHOIX DU SITE, inspiré des gammes du Google Doc « Alchimie » (lu le 2026-10-16 sur l'original : chaque fiole y a sa teinte, ses
+// paliers du clair au foncé ; le Doc ne suit pas une règle unique, voir docs/content-guide.md, « Ceinture ») : une teinte par AFFINITÉ DE L'ESSENCE de la
+// potion, déclinée selon son NIVEAU D'ALCHIMIE. Ici :
 //   1. la base est la couleur de l'affinité de l'essence de la potion (`recette_ingredient`, rôle « essence », de la première variante de sa recette) :
 //      - un attribut a la couleur du site (lib/attributs-couleurs.mjs : santé, chakra, barrière, corruption, 4ᵉ barre) ;
 //      - une magie, la couleur de la magie sur le site (sort-format.mjs) ;
-//      - une autre affinité, la couleur que le site lui donne (COULEURS_DES_AFFINITES), ajoutée d'après le Doc : la teinte de la fiole de cette affinité
-//        au niveau Avancé (le milieu de sa gamme) ;
-//      - l'affinité Démon, essence de tous les philtres, n'a pas de couleur dans le Doc : un philtre prend la couleur de la caractéristique dont il augmente
-//        les compétences (son effet la nomme : « compétences de Force » ; lib/caracteristiques-postures.mjs), comme le Doc, qui les colore ainsi ;
+//      - une autre affinité, la couleur que le site lui ajoute (COULEURS_DES_AFFINITES), d'après le Doc : la teinte de la fiole de cette affinité au
+//        palier Super (niveau Avancé, le milieu de sa gamme) ;
+//      - l'affinité Démon, essence de tous les philtres, n'a pas de fiole dans le Doc : un philtre prend la couleur de la caractéristique que nomment les
+//        effets de sa page (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page : lib/ceinture-db.mjs ;
+//        lib/caracteristiques-postures.mjs) ;
 //      - l'affinité Anti (Huile rage, Remède enragé) n'a pas de couleur dans le Doc : la ligne reste neutre ;
 //   2. la nuance du niveau est calculée depuis la base (NUANCES_DES_NIVEAUX : mêlée de blanc pour Novice et Apprenti, la base à Avancé, mêlée de noir pour
-//      Expert et Maître) ;
+//      Expert et Maître ; parts choisies par le site) ;
 //   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur).
-// Repère visuel sans valeur de règle du jeu. Une potion créée sur le site de dev suit la même règle (sa recette, son niveau).
+// Repère visuel sans valeur de règle du jeu. Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle.
 // Sans dépendance (modules purs : attributs-couleurs.mjs, sort-format.mjs, caracteristiques-postures.mjs) ; importé par lib/ceinture-db.mjs et les tests.
 import { couleurDAttribut } from './attributs-couleurs.mjs';
 import { couleurDeMagieConnue } from './sort-format.mjs';
@@ -27,7 +28,8 @@ export const ATTRIBUT_DE_L_AFFINITE = Object.freeze({ sante: 'sante', chakra: 'c
 
 /**
  * Les couleurs que le site ajoute pour les affinités qui n'avaient pas de règle (ni attribut ni magie), d'après le Doc « Alchimie » : la teinte de la
- * fiole de chaque affinité au niveau Avancé. L'Universelle (Fiole multicolore, Panacée) suit la Fiole multicolore, que le Doc décline en gris.
+ * fiole de chaque affinité au palier Super (niveau Avancé). L'Universelle suit la Fiole multicolore, que le Doc décline en gris (sa Panacée, elle, est
+ * orange dans le Doc).
  */
 export const COULEURS_DES_AFFINITES = Object.freeze({
   'chakra+sante': '#8e7cc3', // Fiole mauve
@@ -50,8 +52,8 @@ export function couleurDAffinite(id) {
 }
 
 /**
- * La nuance de chaque niveau d'alchimie (`niveau_alchimie.rang` : 1 Novice … 5 Maître), comme les gammes du Doc : la part de blanc ou de noir mêlée à la
- * base. Avancé (3) est la base elle-même.
+ * La nuance de chaque niveau d'alchimie (`niveau_alchimie.rang` : 1 Novice … 5 Maître), inspirée des gammes du Doc : la part de blanc ou de noir mêlée à
+ * la base (valeurs choisies par le site). Avancé (3) est la base elle-même.
  */
 export const NUANCES_DES_NIVEAUX = Object.freeze({
   1: Object.freeze({ vers: 'blanc', part: 0.7 }),
@@ -87,7 +89,7 @@ export function caracteristiqueDesCompetences(effet, caracteristiques) {
 
 /**
  * La couleur d'une potion, { fond } (« #rrggbb »), ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle dont elle
- * augmente les compétences (pour une essence sans couleur : les philtres) ; `niveau`, le rang de son niveau d'alchimie.
+ * augmente les compétences (pour une essence sans couleur : les philtres, celle que nomment les effets de leur page) ; `niveau`, le rang de son niveau d'alchimie.
  */
 export function couleurDePotion({ essence = null, caracteristique = null, niveau = null } = {}) {
   const base = couleurDAffinite(essence) ?? (caracteristique ? COULEURS_CARACTERISTIQUES[caracteristique] ?? null : null);
