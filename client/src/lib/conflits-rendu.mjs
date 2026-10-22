@@ -2,11 +2,12 @@
 // modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à
 // la main ce qui remplace les deux. »). Le service examine chaque lot en conflit (GET /api/mise-a-jour/conflits/, serveur/edition-conflits.mjs) ; ce
 // module en fait le HTML et le corps de la résolution (POST), le script de la page (src/scripts/mise-a-jour.mjs) le pose et l'envoie.
-//   - un lot : sa date, son résumé, la raison du rejeu ; ses modifications saines (elles repartent telles quelles dans le nouveau lot) ; puis chaque
-//     conflit : la version 1 (ce que le site de dev avait écrit) et la version 2 (ce que disent les règles livrées, ou « ligne supprimée ») côte à
-//     côte, en texte (un long texte se lit en entier, ses retours à la ligne gardés), leurs différences mot à mot quand ce sont deux textes
-//     (lib/notes-de-version-rendu.mjs#diffMots), et le choix 1, 2 ou 3 ; un choix impossible est grisé, avec sa raison ; le 3 ouvre une saisie qui
-//     suit le type de la colonne (le champ de lib/edition-modele.mjs#TABLES que le service rend : `saisie`) ;
+//   - un lot : sa date, son résumé, la raison du rejeu (`detail_lisible` du service, lue comme la légende de ses conflits ; jamais `detail`, la
+//     trace des lignes du lot, avec son id, sa clé JSON et ses noms de colonnes) ; ses modifications saines (elles repartent telles quelles dans
+//     le nouveau lot) ; puis chaque conflit : la version 1 (ce que le site de dev avait écrit) et la version 2 (ce que disent les règles livrées,
+//     ou « ligne supprimée ») côte à côte, en texte (un long texte se lit en entier, ses retours à la ligne gardés), leurs différences
+//     mot à mot quand ce sont deux textes (lib/notes-de-version-rendu.mjs#diffMots), et le choix 1, 2 ou 3 ; un choix impossible est grisé, avec
+//     sa raison ; le 3 ouvre une saisie qui suit le type de la colonne (le champ de lib/edition-modele.mjs#TABLES que le service rend : `saisie`) ;
 //   - l'aperçu HTML d'une page modifiée (`apercu`) n'est pas montré : le Markdown de la version 1 se lit tel quel, et aucun HTML reçu n'est posé ;
 //   - le corps de la résolution : { lot, empreinte, choix: { "<id>": { choix, valeur? } } } ; la saisie du 3 passe d'abord les contrôles simples de
 //     l'éditeur (valeur obligatoire, nombre, bornes : erreurDeSaisie, comme lib/edition-modele.mjs#valeurDuChamp), le service refait tous les siens.
@@ -179,7 +180,7 @@ export function htmlDuLot(lot, { listes = {}, debut = 0 } = {}) {
   const n = lot.conflits?.length ?? 0;
   return `<form class="nv-conflit-lot" data-nv-lot="${echapper(lot.lot)}" data-nv-empreinte="${echapper(lot.empreinte)}">
     <h4 class="nv-conflit-lot__titre">Lot du ${echapper(instantLisible(lot.fait_le))} : ${echapper(lot.resume ?? lot.lot)}</h4>
-    ${lot.detail ? `<p class="nv-conflit-lot__detail">Au rejeu : ${echapper(lot.detail)}</p>` : ''}
+    ${lot.detail_lisible ? `<p class="nv-conflit-lot__detail">Au rejeu : ${echapper(lot.detail_lisible)}</p>` : ''}
     ${saines}
     <p>${n} conflit${n > 1 ? 's' : ''} : choisissez pour chacun. Le lot reste en attente, entier, tant qu’un choix manque ; une fois résolu, ses modifications saines et vos choix 1 et 3 forment une nouvelle modification du site de dev (elle partira avec la prochaine mise à jour) ; le choix 2 laisse la règle livrée.</p>
     ${(lot.conflits ?? []).map((c, i) => htmlDuConflit(c, debut + i, { listes })).join('')}

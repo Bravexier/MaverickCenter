@@ -13,7 +13,7 @@ import { after, before, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
-import { compterLesConflits, conflitsDuJournal, examinerLeLot, libelleDeLigne, lotsEnConflit, resoudreLeConflit } from '../serveur/edition-conflits.mjs';
+import { compterLesConflits, conflitsDuJournal, detailLisible, examinerLeLot, libelleDeLigne, lotsEnConflit, resoudreLeConflit } from '../serveur/edition-conflits.mjs';
 import { journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { routeNormalisee } from '../serveur/metriques.mjs';
 import { CONFIRMATION, enregistrerMajeure, figerLot, lireLot, noteEnPreparation } from '../serveur/notes-de-version.mjs';
@@ -175,6 +175,33 @@ test('libellé d’une ligne : son nom ou son titre, sinon l’id de sa clé (li
   assert.equal(libelleDeLigne('page', null, { id: 'guide/le-jeu-de-role' }), 'Page guide/le-jeu-de-role');
   assert.equal(libelleDeLigne('page', { titre: '' }, { id: 'guide/le-jeu-de-role' }), 'Page guide/le-jeu-de-role');
   assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: 'metiers/forgeron', rang: 1, option: 2 }), 'metier_bonus {"metier_id":"metiers/forgeron","rang":1,"option":2}');
+});
+
+test('la raison du rejeu d’un lot, lisible (detail_lisible) : la ligne dite comme la légende de son conflit, la colonne par son libellé, sans JSON ni id du lot ; detail reste la trace', () => {
+  const { db } = copie();
+  const lisible = (id) => diagnostic(db, id).detail_lisible;
+  const legende = (id, table) => diagnostic(db, id).conflits.find((c) => c.table === table).libelle;
+  assert.equal(lisible(S.bonus), 'Métier « Forgeron » : les règles ont changé « Bonus » autrement');
+  assert.equal(lisible(S.bonus), `${legende(S.bonus, 'metier')} : les règles ont changé « Bonus » autrement`);
+  assert.equal(lisible(S.magie), `${legende(S.magie, 'page')} : les règles ont changé « Texte » autrement`);
+  assert.equal(lisible(S.hyper), `Page ${HYPER} : la ligne n’existe plus dans les règles`);
+  assert.equal(lisible(S.alias), 'alias : clé étrangère rompue vers Page', 'une table sans libellé dans le modèle : son nom');
+  assert.ok(lisible(S.ancien).startsWith(`${legende(S.ancien, 'monstre_capacite')} : noté avant la migration 0044`));
+  for (const l of conflitsDuJournal(db).lots) {
+    assert.doesNotMatch(l.detail_lisible, /^lot |\{"id"|corps_md|bonus_brut/, l.lot);
+    assert.match(l.detail, new RegExp(`^lot ${l.lot} : `), 'detail : la trace telle quelle');
+  }
+  // la colonne detail de la base n'a pas changé (trace)
+  assert.match(lire(db, 'SELECT detail FROM modification WHERE lot_id = ?', S.bonus).detail, /^lot \S+ : metier \{"id":"metiers\/forgeron"\} : les règles ont changé bonus_brut autrement$/);
+  // les formes du rejeu (edition-journal.mjs#rejouerUneFois)
+  assert.equal(detailLisible(null), null);
+  assert.equal(detailLisible('lot x : après le lot : balise inconnue'), 'après le lot : balise inconnue');
+  assert.equal(detailLisible('lot x : metier {"id":"metiers/forgeron"} : écriture refusée : NOT NULL'), 'Métier metiers/forgeron : écriture refusée : NOT NULL', 'sans légende : l’id de la clé');
+  assert.equal(detailLisible('lot x : metier {"id":"a} : b"} : les règles ont changé nom, hors_modele autrement'), 'Métier a} : b : les règles ont changé « Nom », hors_modele autrement',
+    'une clé qui contient « } : », une colonne sans libellé gardée par son nom');
+  assert.equal(detailLisible('lot x : metier {"id":"metiers/forgeron"} : la ligne existe déjà', [{ table: 'metier', cle: { id: 'metiers/forgeron' }, libelle: 'Métier « Forgeron »' }]),
+    'Métier « Forgeron » : la ligne existe déjà');
+  assert.equal(detailLisible('une forme inconnue'), 'une forme inconnue');
 });
 
 test('un lot à deux opérations dont une seule en conflit : la saine est dite telle quelle, et réécrite avec le choix de l’autre', () => {

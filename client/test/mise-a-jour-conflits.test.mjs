@@ -1,8 +1,9 @@
 // Les lignes en conflit sur la page « Mise à jour » du site de dev (src/scripts/mise-a-jour.mjs, rendu lib/conflits-rendu.mjs ; demande du propriétaire
 // du 2026-10-22 : « Après les listes de modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le
 // choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. »), le script exécuté dans un faux navigateur contre un faux service : la section
-// après les listes, le choix d'un conflit (le 3 ouvre sa saisie), l'envoi refusé tant qu'un choix manque, le corps envoyé, le message après l'envoi, un
-// diagnostic changé entre-temps (409 : le lot à jour reposé), un nouveau rendu de la note qui garde les choix en cours, et rien sans lot en conflit.
+// après les listes (la raison du rejeu de chaque lot en texte lisible), le choix d'un conflit (le 3 ouvre sa saisie), l'envoi refusé tant qu'un
+// choix manque, le corps envoyé, le message après l'envoi, un diagnostic changé entre-temps (409 : le lot à jour reposé), un nouveau rendu de la
+// note qui garde les choix en cours, et rien sans lot en conflit.
 // Le diagnostic : test/fixtures/conflits-diagnostic.json (test/conflits-rendu.test.mjs).
 //   node --test test/mise-a-jour-conflits.test.mjs
 import assert from 'node:assert/strict';
@@ -80,6 +81,9 @@ test('après les listes de la note en préparation, la section des lignes en con
   assert.match(dev.querySelector('.nv-dev__bilan').textContent, /6 lots en conflit ne partent pas avec cette mise à jour/);
   assert.equal(s.querySelectorAll('[data-nv-lot]').length, 6);
   assert.deepEqual(page.envois.map(([c]) => c), ['GET etat/', 'GET mise-a-jour/', 'GET mise-a-jour/conflits/']);
+  // la raison du rejeu : le texte lisible du service (comme la légende), jamais la trace (id du lot, clé JSON, nom de colonne)
+  assert.equal(page.lot(FORGERON.lot).querySelector('.nv-conflit-lot__detail').textContent, 'Au rejeu : Métier « Forgeron » : les règles ont changé « Bonus » autrement');
+  for (const l of DIAG.lots) assert.doesNotMatch(page.lot(l.lot).querySelector('.nv-conflit-lot__detail').textContent, /^Au rejeu : lot |bonus_brut|corps_md/, l.lot);
 });
 
 test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis part avec la valeur saisie ; le message dit ce qui est fait', async () => {

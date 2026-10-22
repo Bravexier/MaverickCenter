@@ -42,7 +42,7 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | Méthode | Adresse | Rôle |
 | --- | --- | --- |
 | `GET` | `/api/v1/` | Le catalogue : les modules et, pour chaque ressource, ses capacités, ses colonnes (type, clé, obligatoire, `modifiable` d'après `TABLES`), ses champs de création (`ENTITES`, avec les valeurs des listes lues dans la base), ses sous-ressources, ses tables dérivées et son nombre de lignes |
-| `GET` | `/api/v1/openapi.json` | La description OpenAPI 3.1 de tout le service : `/api/v1/` et les routes d'avant (`/api/etat/`, prétirés, édition, mise à jour, journal), avec une ligne réelle en exemple par ressource |
+| `GET` | `/api/v1/openapi.json` | La description OpenAPI 3.1 de tout le service : `/api/v1/` et les routes d'avant (`/api/etat/`, prétirés, classeur, Tipeee, édition, mise à jour et ses lots en conflit, journal), avec une ligne réelle en exemple par ressource |
 | `GET` | `/api/v1/<ressource>/` | Une liste paginée (paramètres ci-dessous) |
 | `POST` | `/api/v1/<ressource>/` | Crée un élément → `201`, `Location`, `ETag` et le détail de l'élément créé |
 | `GET` | `/api/v1/<ressource>/<clé>/` | Le détail d'un élément, `ETag` ; `304` sur `If-None-Match` ; `404` si la ligne n'existe pas ou sort de la ressource |
@@ -585,7 +585,7 @@ production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUE
 ## Tests
 
 `ressources-registre` (chaque table rangée une fois, registre cohérent, `RESSOURCES_MODULE=<module>` pour un seul module), `serveur-api-v1` (fermeture
-en production, catalogue, description OpenAPI et ses exemples envoyés tels quels par un client, `test/aide-openapi.mjs`, listes, conditions, détail et ETag, sous-ressources, `405`, écritures par le journal,
+en production, catalogue, description OpenAPI (chaque route de l'en-tête de `serveur/api.mjs` y est, avec sa méthode) et ses exemples envoyés tels quels par un client, `test/aide-openapi.mjs`, listes, conditions, détail et ETag, sous-ressources, `405`, écritures par le journal,
 `If-Match`, R42, images, `/api/debug/journal/`, serveur HTTP réel), `api-doc` (le tableau des ressources de ce document), `journal-du-service`,
 `debug-page`, `nav` ; `serveur-metriques` (routes normalisées, collecte, agrégats, quantiles, rétention, lectures, deux instances),
 `serveur-metriques-bornes` (quantiles au-delà de la dernière classe, migration du schéma 4, croissance logique et projections, échantillons d'une

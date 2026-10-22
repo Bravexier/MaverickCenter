@@ -231,6 +231,47 @@ export function libelleDeLigne(table, ligne, cle) {
   const sansNom = (typeof id === 'string' && id) || typeof id === 'number' ? String(id) : JSON.stringify(cle);
   return `${TABLES[table]?.libelle ?? table} ${typeof nom === 'string' && nom ? `« ${nom} »` : sansNom}`;
 }
+/** Une clé en JSON, ses colonnes triées (deux écritures de la même clé se comparent). */
+const cleCanonique = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle ?? {}).sort(([a], [b]) => a.localeCompare(b))));
+/** Le libellé d'une colonne (celui du champ de TABLES) entre guillemets, ou son nom quand le modèle n'en a pas. */
+const colonneLisible = (table, c) => {
+  const libelle = TABLES[table]?.colonnes[c]?.libelle;
+  return libelle ? `« ${libelle} »` : c;
+};
+/** La raison d'un conflit, ses noms de colonnes dits par leur libellé (« les règles ont changé « Bonus » autrement »). */
+const raisonLisible = (table, raison) => raison.replace(/^les règles ont changé (.+) autrement$/,
+  (_t, colonnes) => `les règles ont changé ${colonnes.split(', ').map((c) => colonneLisible(table, c)).join(', ')} autrement`);
+
+/**
+ * La raison du rejeu d'un lot (`detail` de ses lignes, une trace écrite par edition-journal.mjs#rejouerUneFois : « lot <id> : <table> <clé JSON> :
+ * <raison> », « lot <id> : <table> : clé étrangère rompue vers <table> », « lot <id> : après le lot : … ») telle que la page la lit : sans l'id du
+ * lot, la ligne dite par la légende de son conflit (ou de sa modification saine) quand le lot en a une de même table et même clé, sinon par
+ * libelleDeLigne (l'id de la clé), les colonnes et les tables par leur libellé (TABLES) quand le modèle en a un. `libelles` : [{ table, cle,
+ * libelle }] (les conflits puis les saines du diagnostic). Une forme inconnue est rendue telle quelle, sans l'id du lot. Rien n'est écrit en base :
+ * la colonne `detail` reste la trace.
+ */
+export function detailLisible(detail, libelles = []) {
+  if (typeof detail !== 'string' || !detail) return null;
+  const texte = detail.replace(/^lot \S+ : /, '');
+  const rompue = texte.match(/^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/);
+  if (rompue) return `${TABLES[rompue[1]]?.libelle ?? rompue[1]} : clé étrangère rompue vers ${TABLES[rompue[2]]?.libelle ?? rompue[2]}`;
+  const table = texte.match(/^([a-z_][a-z0-9_]*) \{/)?.[1];
+  if (!table) return texte;
+  // la clé JSON finit au premier « } : » après lequel le JSON se lit (une valeur de clé pourrait contenir « } : »)
+  for (let i = texte.indexOf('} : '); i !== -1; i = texte.indexOf('} : ', i + 1)) {
+    let cle;
+    try {
+      cle = JSON.parse(texte.slice(table.length + 1, i + 1));
+    } catch {
+      continue;
+    }
+    if (cle === null || typeof cle !== 'object' || Array.isArray(cle)) break;
+    const connue = libelles.find((l) => l.table === table && cleCanonique(l.cle) === cleCanonique(cle));
+    return `${connue?.libelle ?? libelleDeLigne(table, null, cle)} : ${raisonLisible(table, texte.slice(i + 4))}`;
+  }
+  return texte;
+}
+
 /** Le champ de TABLES, tel que la page le saisit (type, libellé, requis, min, max, choix ou liste de GET /api/edition/listes/, vide). */
 const saisieDe = (champ) => JSON.parse(JSON.stringify(champ));
 
@@ -379,7 +420,10 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
     lot: lot.id, saines: saines.map((s) => [s.rang, s.issue, s.colonnes ?? null]), conflits: conflits.map((c) => [c.id, c.genre, c.version_1, c.version_2, c.choix_possibles]),
   })).digest('hex').slice(0, 32);
   return {
-    public: { lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: lot.resume, detail: lignes[0]?.detail ?? null, empreinte, saines, conflits },
+    public: {
+      lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: lot.resume, detail: lignes[0]?.detail ?? null,
+      detail_lisible: detailLisible(lignes[0]?.detail ?? null, [...conflits, ...saines]), empreinte, saines, conflits,
+    },
     interne: { idsDuParcours, abandons: sortants },
   };
 }

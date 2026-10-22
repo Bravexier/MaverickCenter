@@ -163,10 +163,14 @@ test('description OpenAPI 3.1 : chaque ressource a ses chemins, chaque méthode 
     }
   }
   for (const c of ['/etat/', '/maintenance/', '/maintenance/lever/', '/personnages/', '/personnages/{id}/', '/personnages/{id}/portrait/', '/edition/', '/edition/en-attente/',
-    '/edition/journal/', '/mise-a-jour/', '/mise-a-jour/lots/{lot}/', '/debug/journal/', '/metriques/page/', '/classeur/', '/v1/', '/v1/openapi.json']) {
+    '/edition/journal/', '/mise-a-jour/', '/mise-a-jour/lots/{lot}/', '/mise-a-jour/conflits/', '/debug/journal/', '/metriques/page/', '/classeur/', '/tipeee/', '/v1/',
+    '/v1/openapi.json']) {
     assert.ok(spec.paths[c], c);
     assert.equal(spec.paths[c][Object.keys(spec.paths[c]).find((m) => m !== 'parameters')].tags[0], 'Service', c);
   }
+  // les lots en conflit : la lecture (GET) et la résolution (POST) ; le texte de Tipeee en lecture seule
+  assert.deepEqual(methodes('/mise-a-jour/conflits/'), ['get', 'post']);
+  assert.deepEqual(methodes('/tipeee/'), ['get']);
   // l'exemple d'une clé est une ligne qui existe (valeurs brutes jointes par « , »), posé sur le GET et le PATCH seulement ; l'exemple d'une
   // modification ne change rien
   const p = spec.paths['/v1/metiers/{cle}/'];
@@ -180,6 +184,16 @@ test('description OpenAPI 3.1 : chaque ressource a ses chemins, chaque méthode 
   const creer = spec.paths['/v1/metiers/'].post.requestBody.content['application/json'];
   assert.deepEqual(creer.schema.required, ['nom']);
   assert.ok(creer.example.nom);
+});
+
+test('description : chaque route que liste l’en-tête de serveur/api.mjs (méthode et adresse) y est décrite, avec cette méthode', () => {
+  const spec = ok(appel('GET', '/api/v1/openapi.json'));
+  const forme = (c) => c.replace(/<[^>]+>|\{[^}]+\}/g, '{}');
+  const decrits = new Map(Object.entries(spec.paths).map(([c, item]) => [forme(c), new Set(Object.keys(item).filter((m) => m !== 'parameters'))]));
+  const entete = readFileSync(new URL('../serveur/api.mjs', import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//')).join('\n');
+  const routes = [...entete.matchAll(/^\/\/\s+(GET|POST|PUT|PATCH|DELETE)\s+\/api(\/\S*?\/)(?=[\s,]|$)/gm)].map(([, m, c]) => [m.toLowerCase(), forme(c)]);
+  assert.ok(routes.length >= 40, `${routes.length} routes lues dans l’en-tête`);
+  for (const [m, c] of routes) assert.ok(decrits.get(c)?.has(m), `${m.toUpperCase()} /api${c} : absente de la description OpenAPI`);
 });
 
 test('les exemples de la description servent tels quels (un client qui les enverrait sans rien changer : test/aide-openapi.mjs) : chaque lecture répond 200, chaque modification d’exemple ne change rien', () => {

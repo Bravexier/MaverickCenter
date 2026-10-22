@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  corpsDeLaResolution, erreurDeSaisie, htmlDesConflits, htmlDuConflit, libelleDuChoix, messageDeResolution, optionsDeLaSaisie, raisonDuChoix,
+  corpsDeLaResolution, erreurDeSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, libelleDuChoix, messageDeResolution, optionsDeLaSaisie, raisonDuChoix,
   texteDeLaVersion, texteDeValeur,
 } from '../src/lib/conflits-rendu.mjs';
 
@@ -137,6 +137,27 @@ test('la section : après les listes, chaque lot avec ses modifications saines, 
   assert.match(resolus, /<p>Aucun lot en conflit à résoudre\.<\/p><details class="nv-conflits__resolus"><summary>Lots en conflit déjà résolus \(2\)<\/summary>/);
   assert.match(texte(resolus), /par une nouvelle modification \(lot L9\)/);
   assert.match(texte(resolus), /sans rien écrire \(tout au choix 2 : les règles livrées restent\)/);
+});
+
+test('la raison du rejeu d’un lot se lit comme la légende de ses conflits : ni l’id du lot, ni clé JSON, ni nom de colonne', () => {
+  const auRejeu = (lot) => texte(htmlDuLot(lot)).match(/Au rejeu : (.*)/)?.[1];
+  assert.equal(auRejeu(FORGERON), 'Métier « Forgeron » : les règles ont changé « Bonus » autrement');
+  assert.ok(auRejeu(FORGERON).startsWith(FORGERON.conflits[0].libelle), 'la ligne nommée comme la légende de son conflit');
+  assert.ok(auRejeu(FORGERON).includes(`« ${FORGERON.conflits[0].colonne_libelle} »`), 'la colonne par son libellé');
+  assert.equal(auRejeu(MAGIE), 'Page « La magie en jeu » : les règles ont changé « Texte » autrement');
+  assert.equal(auRejeu(ALIAS), 'alias : clé étrangère rompue vers Page');
+  for (const lot of DIAG.lots) {
+    const t = auRejeu(lot);
+    assert.equal(t, lot.detail_lisible, lot.lot);
+    assert.notEqual(t, lot.detail, `${lot.lot} : jamais la trace telle quelle`);
+    assert.ok(!t.includes(lot.lot) && !t.startsWith('lot '), `${lot.lot} : sans l’id du lot`);
+    assert.doesNotMatch(t, /\b(corps_md|bonus_brut)\b/, `${lot.lot} : sans nom de colonne technique`);
+    // une clé JSON n'apparaît que si la légende de son conflit la montre déjà (même nom que la légende)
+    const horsLegendes = lot.conflits.reduce((r, c) => r.replaceAll(c.libelle, ''), t);
+    assert.doesNotMatch(horsLegendes, /\{"/, `${lot.lot} : sans JSON hors légende`);
+  }
+  // sans texte lisible, la trace n'est pas montrée à sa place
+  assert.doesNotMatch(htmlDuLot({ ...FORGERON, detail_lisible: null }), /Au rejeu|nv-conflit-lot__detail/);
 });
 
 test('le corps de la résolution : un choix par conflit, la saisie du 3 contrôlée comme l’éditeur', () => {

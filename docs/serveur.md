@@ -673,7 +673,11 @@ règles d'aujourd'hui, même après une livraison.
   (Markdown sûr, bloc inconnu, balise d'un mot-clé disparu, titre déjà pris), le choix 1 disparaît et `refus_1` dit pourquoi ; une colonne saine
   que l'éditeur refuse devient un conflit (2 ou 3). Une ligne de détail (bonus d'un métier…) n'est jamais un conflit à elle : elle suit sa source.
   Le `libelle` d'une ligne est la table et son nom, son titre ou son libellé, sinon l'id de sa clé (une page supprimée : « Page guide/… »), sinon sa
-  clé composée en entier (`edition-conflits.mjs#libelleDeLigne`). Une empreinte (`empreinte`) couvre le diagnostic.
+  clé composée en entier (`edition-conflits.mjs#libelleDeLigne`). La raison du rejeu (`detail`, la trace notée sur les lignes du lot : « lot <id> :
+  <table> <clé JSON> : <raison> ») est rendue telle quelle, et aussi lisible (`detail_lisible`, `edition-conflits.mjs#detailLisible`) : sans l'id du
+  lot, la ligne dite par la légende de son conflit (ou de sa modification saine) de même table et même clé, sinon par `libelleDeLigne`, les colonnes
+  et les tables par leur libellé de `TABLES` quand le modèle en a un (« Métier « Forgeron » : les règles ont changé « Bonus » autrement ») ; la
+  colonne `detail` de la base ne change pas. Une empreinte (`empreinte`) couvre le diagnostic.
 - **La résolution** (`POST /api/mise-a-jour/conflits/` `{ lot, empreinte, choix }`, protections d'écriture habituelles) : chaque conflit doit
   avoir son choix (1, 2, ou 3 avec sa `valeur`), sinon `400` ; `404` lot inconnu ou sans conflit ; `409` déjà résolu, empreinte changée, ou une
   modification qui ne passe plus avec ces choix (`lot` : le diagnostic à jour) ; `422` contrainte de la base. Une seule transaction
@@ -701,7 +705,7 @@ règles d'aujourd'hui, même après une livraison.
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
-| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, detail, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, raison, version_1, version_2, avant, apercu, choix_possibles, refus_1?, refus_2?, saisie }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
+| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, raison, version_1, version_2, avant, apercu, choix_possibles, refus_1?, refus_2?, saisie }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
 | `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour), `422` |
 
 **Mise en place** (une fois) : le secret `MISE_A_JOUR_TOKEN` du dépôt (jeton fine-grained d'un administrateur, ce dépôt seulement : *Contents*,

@@ -6,6 +6,7 @@
    "page_id": "guide/le-mode-hyper",
    "resume": "Alias d’essai",
    "detail": "lot 2026-10-21T08:00:00.000Z-000000-essai-alias : alias : clé étrangère rompue vers page",
+   "detail_lisible": "alias : clé étrangère rompue vers Page",
    "empreinte": "bdab0693f2f98522d4a5a529a33f5d6b",
    "saines": [],
    "conflits": [
@@ -51,6 +52,7 @@
    "page_id": "bestiaire/",
    "resume": "avant 0044",
    "detail": "lot 2026-10-21T08:00:01.000Z-000000-essai-ancien : monstre_capacite {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+   "detail_lisible": "Capacité de la carte {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
    "empreinte": "1379935af82da42ec06453f34959a284",
    "saines": [],
    "conflits": [
@@ -102,6 +104,7 @@
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
    "detail": "lot 2026-10-22T20:52:05.004Z-000000-ad679d27-83a6-456a-b5b8-57364f6f3c75 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
    "empreinte": "6bda9c25731fbfddabaab245114ba087",
    "saines": [
     {
@@ -173,6 +176,7 @@
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper et le Mode Super : Texte",
    "detail": "lot 2026-10-22T20:52:05.052Z-000000-6cf613b2-bcff-40e2-8388-5ca98513d6f1 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
    "empreinte": "f9cd0eddc492684a390eb6fb92cb7259",
    "saines": [],
    "conflits": [
@@ -216,6 +220,7 @@
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner et exercer un métier : Texte",
    "detail": "lot 2026-10-22T20:52:05.057Z-000000-2353b9d6-58f0-4da7-b31f-e30513dde380 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail_lisible": "Page « S’entraîner et exercer un métier » : les règles ont changé « Texte » autrement",
    "empreinte": "4767a40f8dca1b8932768adf769a557c",
    "saines": [],
    "conflits": [
@@ -267,6 +272,7 @@
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
    "detail": "lot 2026-10-22T20:52:05.062Z-000000-401d12f4-cc5c-4c5d-baf9-d08d94769822 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
    "empreinte": "295b9b9135b626d2dca750dcedb96270",
    "saines": [
     {
