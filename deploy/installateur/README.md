@@ -1,9 +1,9 @@
-# Installateurs : serveur normal et serveur de test (à partir de la 0.2.0)
+# Installateurs : serveur normal et serveur de test
 
-À partir de la 0.2.0 (`PREMIERE_VERSION_HEBERGEE`, décision du propriétaire ; la 1.0 est ensuite l'ouverture à tout le Discord), la solution est hébergée hors du NAS et installée par des
-**installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le dossier d'une instance, sans téléchargement ni
-jeton. Ils sont publiés en *release* GitHub (privée comme le dépôt) par `.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md).
-Avant la 0.2.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
+La solution est hébergée et installée par des **installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le
+dossier d'une instance, sans téléchargement ni jeton. Ils sont publiés en *release* GitHub (publique comme le dépôt) par
+`.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md). Le serveur des deux instances se met en place pas à pas avec
+[`../vps/README.md`](../vps/README.md) ; le paquet du NAS a sa propre installation ([`../README.md`](../README.md)).
 
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
@@ -121,4 +121,3 @@ Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rie
 
 Les installateurs sont fabriqués et exécutés par `client/test/installateur.test.mjs` (installation, mise à jour, copie d'une vraie base SQLite en cours
 d'écriture, refus) et `mise-a-jour.sh` est testé contre un faux GitHub (`client/test/mise-a-jour.test.mjs`), avec et sans `rsync` et `sqlite3`.
-L'hébergement de la 1.0 n'existe pas encore : son premier lancement sera le vrai test de `docker-compose.yml` et de nginx.

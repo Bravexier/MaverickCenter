@@ -5,8 +5,9 @@ dans sa base, `db/` (mode client / serveur : [`docs/serveur.md`](../docs/serveur
 Ce dossier contient tout pour les faire tourner dans Docker (Synology *Container Manager*, QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte
 Docker) : deux conteneurs, `maverick-center` (nginx) et `maverick-center-serveur` (le service).
 
-> Ce paquet est l'installation du NAS, jusqu'à la 1.0. À partir de la 1.0, la solution sera hébergée et installée par les
-> installateurs autonomes de [`installateur/`](installateur/README.md) (serveur normal et serveur de test).
+> Ce paquet installe le site à la main, avec le zip que fabrique `./deploy/build.sh`. Le site en ligne, lui (serveur normal
+> `maverick-jdr.com` et serveur de test `dev.maverick-jdr.com`), est posé par les installateurs autonomes de [`installateur/`](installateur/README.md)
+> sur le serveur décrit dans [`vps/`](vps/README.md), et s'y met à jour seul après chaque fusion.
 
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
@@ -26,21 +27,8 @@ Sur Synology : *Container Manager → Projet → Créer*, choisissez le dossier 
 Le dossier `db/` (créé au premier lancement) contient la base vivante du service : **les fiches enregistrées**. C'est la seule donnée qui ne se
 reconstruit pas : sauvegardez-le (par exemple avec *Hyper Backup*), de préférence conteneur `maverick-center-serveur` arrêté. Le service y range
 aussi ses métriques (`db/metriques/prod.db` : temps de réponse, pages, serveur ; [`docs/serveur.md`](../docs/serveur.md), « Métriques et
-volume »), qui se perdent sans dommage. Les journaux des conteneurs tournent (5 fichiers de 10 Mo au plus par conteneur) une fois le
-`docker-compose.yml` de cette version en place et le projet relancé (`docker compose up -d`).
-
-## Passage au mode client / serveur (une seule fois, NAS installé avant ce changement)
-
-`update-site.sh` (`update-nas.sh` sur un NAS installé avant son changement de nom) ne met à jour que `site/` : il apporte le code du service, mais pas la nouvelle configuration. Une fois :
-
-1. Remplacez `docker-compose.yml` et `nginx.conf` dans le dossier du projet par ceux du dépôt (dossier `deploy/` sur GitHub : ouvrir le fichier,
-   *Download raw file*, puis le déposer avec *File Station* à la place de l'ancien). Gardez `.htpasswd`, `.github-token` et `site/`.
-2. Relancez le projet : `docker compose up -d` (Synology : *Container Manager → Projet → maverick-center → Action → Compiler*). Le conteneur
-   `maverick-center-serveur` apparaît ; il attend que `site/_serveur/` existe (prochaine mise à jour du site) puis crée `db/vivante.db`.
-3. Vérifiez : `http://IP-DU-NAS:8080/api/etat/` doit afficher l'état du service (`"disponible":true`).
-
-Ensuite, plus rien à faire à la main : le service se relance seul quand une mise à jour du site apporte une nouvelle version de son code, et
-refait sa base quand les règles changent, sans perdre les fiches (voir `docs/serveur.md`).
+volume »), qui se perdent sans dommage. Les journaux des conteneurs tournent (5 fichiers de 10 Mo au plus par conteneur). Vérifier le service :
+`http://IP-DU-NAS:8080/api/etat/` affiche son état (`"disponible":true`).
 
 ## Sans Docker
 
@@ -59,59 +47,28 @@ un **Cloudflare Tunnel**, ou le **proxy inversé du NAS avec HTTPS** (certificat
 Si le site doit répondre sur une adresse du type `https://nas.exemple/maverick/`, reconstruisez-le avec
 `SITE_BASE=/maverick/ ./deploy/build.sh` et faites pointer le proxy inversé vers le conteneur.
 
-## Mise à jour automatique après chaque PR fusionnée
+## Mise à jour
 
-```
-PR fusionnée dans dev ──▶ GitHub Actions : tests + construction ──▶ branche « site » (privée)
-                                                                         ▲
-                              NAS : update-site.sh (toutes les 5 min) ───┘  connexions sortantes uniquement
-```
+Le paquet ne se met pas à jour seul : après chaque fusion, la livraison (`.github/workflows/livraison.yml`, [`docs/flux-git.md`](../docs/flux-git.md))
+publie des installateurs, et ne reconstruit plus la branche `site`. Pour mettre le NAS à jour, construire un nouveau zip (`./deploy/build.sh`) et
+remplacer `site/` dans le dossier du projet ; si `docker-compose.yml` ou `nginx.conf` ont changé, les remplacer aussi, puis `docker compose up -d`.
+Le service se relance seul sur la nouvelle version de son code et refait sa base sans perdre les fiches.
 
-Aucun port à ouvrir : c'est le NAS qui interroge GitHub. Le workflow (`.github/workflows/livraison.yml`, job « Site », jusqu'à la 1.0 :
-voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
+`update-site.sh` (`update-nas.sh` sur un NAS installé avant son changement de nom), posé dans le zip, installe la branche `site` dans `site/` et peut
+tourner toutes les 5 minutes (connexions sortantes seulement, jeton GitHub en lecture dans `.github-token`) : comme cette branche n'avance plus, il
+garde le NAS sur la dernière version qu'elle porte. Ce qu'il fait :
 
-> **Ancien nom : `update-nas.sh`.** Le script n'a rien de propre au NAS (il installe la branche `site` dans un dossier) : il s'appelle
-> `update-site.sh` et sert aussi au serveur de test du VPS avant la 0.2.0 ([`vps/README.md`](vps/README.md)). **Un NAS déjà installé garde sa
-> copie `update-nas.sh` : rien à changer**, ni le script, ni la tâche planifiée, ni `update-nas.env`. Si vous remplacez un jour le script par le
-> nouveau, il lit encore `update-nas.env` tant que `update-site.env` n'existe pas.
-
-### Mise en place (une seule fois)
-
-1. **Créer un jeton GitHub** : *Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*.
-   Propriétaire : votre compte ; *Repository access* : **Only select repositories → MaverickCenter** ;
-   *Permissions → Repository permissions → Contents : Read-only*. Durée : 90 jours (à renouveler).
-2. **Le déposer sur le NAS**, dans le dossier du projet (celui qui contient `docker-compose.yml`), lisible par `root` uniquement :
-   ```bash
-   printf '%s' 'COLLEZ_LE_JETON_ICI' > .github-token && chmod 600 .github-token
-   ```
-   Ne le collez jamais dans une conversation, un fichier du dépôt ou un journal.
-3. **Premier essai à la main** : `sh update-site.sh`. Il télécharge la version publiée et remplace le contenu de `site/`
-   (journal dans `update.log`). Avant la première fusion, l'erreur « branche pas encore créée » est normale.
-4. **Planifier toutes les 5 minutes** :
-   - Synology : *Panneau de configuration → Planificateur de tâches → Créer → Tâche planifiée → Script défini par l'utilisateur*,
-     utilisateur `root`, toutes les 5 minutes, commande `sh /volume1/docker/maverick-center/update-site.sh` (adaptez le chemin) ;
-   - autre NAS ou Linux : `crontab -e` puis `*/5 * * * * sh /chemin/vers/update-site.sh`.
-
-### Ce que fait le script
-
-- Compare la version installée (`.installed-sha`) à la dernière de la branche « site » ; s'il n'y a rien de neuf, il s'arrête.
-- Télécharge exactement cette version, refuse une archive vide ou incomplète (pas de `index.html`, moins de 20 pages)
-  et ne touche alors **pas** au site en place.
-- Remplace le contenu de `site/` (avec `rsync` s'il existe, sinon par copie), sans redémarrer nginx.
-- Un jeton expiré ou un problème réseau n'abîme rien : le site reste tel quel et `update.log` indique l'erreur.
-- `sh update-site.sh --force` réinstalle même si la version est déjà à jour. Les réglages (`REPO`, `BRANCH`, `SITE_DIR`…)
-  se placent dans un fichier facultatif `update-site.env` à côté du script (à défaut, l'ancien `update-nas.env` est lu).
-
-### Entretien
-
-- Le jeton expire : en créer un nouveau et remplacer le contenu de `.github-token`. Le journal le signale
-  (« impossible de lire la dernière version… »).
-- Pour construire une version à la main (sans GitHub) : `./deploy/build.sh` produit un nouveau zip complet.
+- compare la version installée (`.installed-sha`) à la dernière de la branche `site` ; s'il n'y a rien de neuf, il s'arrête ;
+- télécharge exactement cette version, refuse une archive vide ou incomplète (pas de `index.html`, moins de 20 pages) et ne touche alors **pas**
+  au site en place ;
+- remplace le contenu de `site/` (avec `rsync` s'il existe, sinon par copie), sans redémarrer nginx ;
+- un jeton expiré ou un problème réseau n'abîme rien : le site reste tel quel et `update.log` indique l'erreur ;
+- `sh update-site.sh --force` réinstalle même si la version est déjà à jour ; les réglages (`REPO`, `BRANCH`, `SITE_DIR`…) se placent dans un
+  fichier facultatif `update-site.env` à côté du script (à défaut, l'ancien `update-nas.env` est lu).
 
 ## Ce qui a été vérifié
 
 Le site statique est construit et testé (tests unitaires, contrôle navigateur). Le script `update-site.sh` est testé contre un
 faux serveur GitHub (`client/test/update-site.test.mjs`), le service par `client/test/serveur-*.test.mjs`. `docker-compose.yml` et `nginx.conf` ont été
 lancés avec Docker dans l'environnement de développement (le 2026-10-10 : mot de passe, pages, `/api/`, `/_serveur/` refusé, relance du service sur une
-nouvelle version, base refaite quand les règles changent, site servi service arrêté). Le contact avec le vrai GitHub depuis un NAS n'a pas pu l'être :
-le premier lancement sur le NAS reste le vrai test.
+nouvelle version, base refaite quand les règles changent, site servi service arrêté).

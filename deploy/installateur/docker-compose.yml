@@ -1,4 +1,4 @@
-# Instance posée par un installateur (à partir de la 1.0). Lancement : docker compose up -d   puis   http://<hôte>:8080 (serveur normal) ou :8081 (test)
+# Instance posée par un installateur (serveur normal ou serveur de test). Lancement : docker compose up -d   puis   http://<hôte>:8080 (serveur normal) ou :8081 (test)
 # Prérequis : créer .htpasswd (voir README.md), sinon nginx refuse de démarrer.
 # Port et nom du conteneur : fichier .env de l'instance (posé par l'installateur : 8080 / maverick-center en production,
 # 8081 / maverick-center-test en test). Changez-les dans .env plutôt qu'ici.

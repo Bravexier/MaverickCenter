@@ -5,12 +5,10 @@ name: Version et livraison
 #   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]
 #   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1
 # Chaque nouvelle version est étiquetée sur le commit qui la porte : VX.Y.Z sur dev, VX.Y sur master (tools/flux-git/regles.mjs).
-# Puis la publication, selon la version (la 1.0 est le signal du propriétaire : elle apporte la connexion Discord) :
-#   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit avec
-#                      sa propre installation, deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
-#   à partir de 1.0    job « Installateur » : la solution est hébergée ; un script autonome par fusion (deploy/installateur/), publié en
-#                      « release » — serveur normal (VX.Y, l'étiquette de version de master, puis VX.Y-hotfix.N) depuis master,
-#                      test (VX.Y.Z, l'étiquette de version de dev) depuis dev.
+# Puis la publication (tools/flux-git/regles.mjs#livrableDe) : job « Installateur », un script autonome par fusion (deploy/installateur/), publié
+# en « release » — serveur normal (VX.Y, l'étiquette de version de master, puis VX.Y-hotfix.N) depuis master, test (VX.Y.Z, l'étiquette de version
+# de dev) depuis dev. Le job « Site » (le site unique sur la branche « site », que suit le paquet du NAS avec deploy/update-site.sh) ne tourne
+# plus : livrableDe ne le choisit pour aucune des versions de dev et de master.
 # Enfin (job « Supprimer la branche fusionnée »), la feature/<nom> ou la hotfix/<nom> fusionnée est supprimée sur GitHub, jamais dev.
 # Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
@@ -20,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       branche:
-        description: Branche à republier (dev = site avant la 1.0 / test ensuite ; master = production, à partir de la 1.0)
+        description: Branche à republier (dev = serveur de test ; master = production)
         type: choice
         options: [dev, master]
         default: dev
@@ -94,7 +92,7 @@ jobs:
         run: node tools/flux-git/cli.mjs supprimer-fusionnee --branche "$BRANCHE" --sha "$FUSIONNEE" --pousser
 
   site:
-    name: Site (avant la 1.0)
+    name: Site (inactif)
     needs: version
     # always() : publier ce que le bot a préparé même s'il signale ensuite un problème (sorties vides sinon : rien ne part).
     if: always() && needs.version.outputs.site != ''

@@ -1,8 +1,8 @@
 # Mode client / serveur : le service des personnages
 
-Préparé avant la 1.0 (demande du propriétaire) : le site reste un ensemble de pages statiques pour **lire** les règles et le lore, et un petit
-**service** enregistre ce qu'on y **écrit** — pour commencer, les fiches de personnages prétirés. C'est la fondation du serveur de la 1.0
-(connexion Discord, fiches de joueur, édition des règles : [`feuille-de-route.md`](feuille-de-route.md)) ; rien n'y est propre au NAS.
+Demande du propriétaire : le site reste un ensemble de pages statiques pour **lire** les règles et le lore, et un petit **service** enregistre
+ce qu'on y **écrit** : les fiches de personnages prétirés et, sur le site de dev, l'édition des règles. La connexion Discord et les fiches de
+joueur viendront s'y ajouter ([`feuille-de-route.md`](feuille-de-route.md)) ; rien n'y est propre à l'hôte qui le fait tourner.
 
 ```
 navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/            pages, scripts, base des règles (donnees/maverick.db)
@@ -36,7 +36,7 @@ propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auron
 Le service n'utilise que Node (≥ 22.13, `node:sqlite`) et ses propres modules : **aucun paquet npm** (`modulesDuServeur` refuse un import qui n'est
 ni `node:…` ni relatif). Il est livré **avec le site** : `dist/_serveur/` contient ses modules, sous les mêmes chemins que dans `client/`
 (`serveur/…`, `src/lib/…`), et `version.json` (version du site, empreinte du code). Le site et son service arrivent donc toujours ensemble sur le
-serveur, par la branche `site` (NAS) ou par les installateurs. nginx refuse l'adresse `/_serveur/` ; la version portable (`tools/build-artifact.mjs`)
+serveur, par les installateurs (ou le zip du paquet du NAS, `deploy/build.sh`). nginx refuse l'adresse `/_serveur/` ; la version portable (`tools/build-artifact.mjs`)
 ne l'emporte pas.
 
 ## La base vivante (`db/`)
@@ -505,9 +505,16 @@ une ligne (« 116 pages du Codex », « 144 espèces », « 315 monstres », « 
 paragraphes, listes, gras, italique, liens web) s'enregistre dans `note_version_brouillon` (section 14 : il suit la base vivante quand les
 règles changent ; `409` si quelqu'un l'a changé entre-temps).
 
+**La case « Version majeure »** (demande du propriétaire du 2026-10-22), à côté du titre « Mise à jour en préparation : VX.Y+1 » : la cocher
+demande une confirmation, puis la version en préparation devient **VX+1.0** (`POST /api/mise-a-jour/majeure/`, colonne
+`note_version_brouillon.majeure`, migration `0070-mise-a-jour-majeure` ; la décocher revient à X.Y+1, sans confirmation). Elle ne déclenche rien :
+« Effectuer la mise à jour » reste le seul déclencheur. Elle part avec le lot, comme le champ libre, ne se change plus tant qu'il est figé (`409`),
+reste cochée s'il est annulé, et revient à X.Y+1 quand la livraison du lot vide le brouillon. Pour ce lot, la note de version est la X+1.0 et la
+PR de livraison `dev` → `master` porte `[V: X+1]` dans son titre : `livraison.yml` fait alors la X+1.0.0 ([`flux-git.md`](flux-git.md)).
+
 **« Effectuer la mise à jour »** (et « Simulation de mise à jour », sur tous les écrans ; pas de protection avant la connexion Discord, décision du propriétaire) : après
 confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
-versions — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
+versions et la case « Version majeure » (`majeure`, couverte par l'empreinte) — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
 bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il déclenche le workflow GitHub **`mise-a-jour.yml`** sur `dev`
 (`workflow_dispatch` : lot, empreinte, adresse ; jeton du serveur limité à la permission *Actions*), dont il suit le run (état dans
 `db/mise-a-jour/etat.json`, gardé si le service redémarre). Sans jeton, la page donne les trois valeurs pour lancer le workflow à la main.
@@ -521,7 +528,7 @@ test, installateur, version portable) ; le job `livrer` vérifie sans effet de b
 `dev` à jour et le jeton (`git push --dry-run` authentifié : l'écriture sur *Contents* ; lecture des PR). **Rien n'est poussé** : ni PR, ni
 fusion, ni livraison. Ce qu'une simulation ne peut pas vérifier sans effet de bord : les droits *Pull requests* et *Workflows* en écriture du
 jeton (le résumé du run le dit). À la fin (réussie ou non), le lot est libéré et le texte redevient modifiable (`simulation_reussie` /
-`simulation_echouee`). À faire avant la première vraie mise à jour, qui fera la livraison 0.2.0.
+`simulation_echouee`).
 
 Le workflow (`client/scripts/mise-a-jour-github.mjs`, une phase par invocation : `--phase preparer | dev | master`) a deux jobs, aux noms fixes :
 
@@ -530,7 +537,8 @@ Le workflow (`client/scripts/mise-a-jour-github.mjs`, une phase par invocation :
    `dev` sans être sur `master`** (commit « Lot : … » d'un autre lot, ou code 7 de `mise-a-jour-regles.mjs` : sa note de la même version X.Y serait
    remplacée ; relancer le run de cette mise à jour-là, qui reprend à la livraison, ou livrer `dev` → `master` à la main) ; part de `dev` et y
    applique le lot (`client/scripts/mise-a-jour-regles.mjs`) : base reconstruite depuis `data/rows`, journal rejoué (**un conflit arrête tout**),
-   note de version écrite (version X.Y de la prochaine livraison, d'après la même règle que le bot ; les notes d'exemple retirées), journal versé
+   note de version écrite (version X.Y de la prochaine livraison, d'après la même règle que le bot, X+1.0 pour un lot `majeure` ; les notes
+   d'exemple retirées), journal versé
    dans `historique_modification`, puis `data/rows` réécrit par l'exporteur — dans une copie d'abord : **seuls les fichiers des tables que le
    journal a touchées et ceux des notes de version peuvent changer** (demande du propriétaire), sinon rien n'est écrit ; puis `db:build`,
    `db:check` et tout le job `client` de la CI, sans qu'aucun fichier ne change ; enfin un commit local, publié dans l'artefact `preparation`
@@ -547,9 +555,11 @@ Le workflow (`client/scripts/mise-a-jour-github.mjs`, une phase par invocation :
      de fusion ; si `dev` bouge pendant l'attente, PR fermée et commit rejoué sur le nouveau `dev` (3 essais). Un lot déjà dans `dev` (relance)
      termine l'étape sans rien refaire ;
    - **« Livraison vers master »** (elle repart du lot trouvé dans `dev`) : le commit de version du bot attendu, puis la PR de **livraison `dev`
-     → `master`**, attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs.
+     → `master`**, attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs. Pour un lot
+     `majeure` (case « Version majeure »), son titre porte `[V: X+1]` et `livraison.yml` fait la X+1.0.0 ; la livraison s'arrête si la PR porte
+     le marqueur sans que le lot le demande, ou l'a perdu alors qu'il le demande (ouverte avant, titre changé pendant l'attente).
 
-Le corps des deux PR est la note de version, jamais `[V: X+1]`, références GitHub (`#n`, `GH-n`, `propriétaire/dépôt#n`, adresses
+Le corps des deux PR est la note de version, jamais `[V: X+1]` (le marqueur n'est que dans le titre de la livraison d'un lot `majeure`), références GitHub (`#n`, `GH-n`, `propriétaire/dépôt#n`, adresses
 …/issues/n et …/pull/n) et `@mentions` neutralisées par une espace sans chasse : une PR ouverte et fusionnée au nom du propriétaire ne ferme
 aucun ticket et ne notifie personne. Relancer le run (*Re-run*) reprend où il s'est arrêté : un lot déjà dans `dev` passe directement à la
 livraison, un lot déjà livré ne fait rien.
@@ -635,9 +645,10 @@ qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de 
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible`, `en_attente`, `lignes`, `bilan`, `brouillon`, `lancement`, `github`, `confirmation` |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
-| `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
+| `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
+| `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
@@ -678,13 +689,12 @@ maintenance a un bouton **« Lever la maintenance (les deux sites) »** (`POST /
 **Mise en place** (une fois) : `docker-compose.yml` monte le dossier hôte `${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}` sur `/maintenance` ; sur
 le VPS, `deploy/vps/instances.sh` crée `/srv/maverick-center/maintenance` et pose `MAVERICK_DOSSIER_MAINTENANCE=/srv/maverick-center/maintenance`
 dans le `.env` du serveur de test ; puis `docker compose up -d` dans les deux dossiers ([`deploy/vps/README.md`](../deploy/vps/README.md)). Sans ce
-réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais. La production ne connaît la maintenance qu'à partir
-de la version qui apporte ce code sur master.
+réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais.
 
 ## Hébergement
 
-Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/README.md) ; à partir de la 1.0 : les
-[installateurs](../deploy/installateur/README.md)) :
+Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../deploy/installateur/README.md) (serveur normal et serveur de test,
+[`deploy/vps/`](../deploy/vps/README.md)) comme celui du paquet du NAS ([`deploy/`](../deploy/README.md)) :
 
 - **nginx** sert `site/` et transmet `/api/` au service (`deploy/nginx.conf`, le même fichier pour le NAS et les installateurs), derrière le
   même mot de passe. L'adresse du service est résolue à chaque requête : nginx démarre sans lui, et si le service est arrêté, `/api/` répond 502

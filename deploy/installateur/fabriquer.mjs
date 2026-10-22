@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Fabrique l'installateur autonome d'une version du site (à partir de la 1.0) : installateur.sh (paramètres remplis) suivi de l'archive
+// Fabrique l'installateur autonome d'une version du site : installateur.sh (paramètres remplis) suivi de l'archive
 // tar.gz du site construit et des fichiers d'hébergement. Un seul fichier à copier sur le serveur, aucun téléchargement à l'installation.
 //
 // Usage : node deploy/installateur/fabriquer.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>

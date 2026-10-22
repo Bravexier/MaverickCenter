@@ -353,6 +353,6 @@ export const HORS_RESSOURCE = {
   modification_lot: `Un enregistrement fait depuis une page du site de dev (lot atomique) : ${JOURNAL}.`,
   modification: `Une ligne de table touchée par un lot, avec ses valeurs avant et après et son état (en attente, intégrée, conflit) : ${JOURNAL}.`,
   note_version_brouillon:
-    'Note de version en préparation (champ libre des admins sur /mise-a-jour/, une seule ligne, section 14) : servie et écrite par /api/mise-a-jour/ ' +
+    'Note de version en préparation (champ libre des admins et case « Version majeure » sur /mise-a-jour/, une seule ligne, section 14) : servie et écrite par /api/mise-a-jour/ ' +
     '(serveur/notes-de-version.mjs), vide dans data/rows, dans TABLES_INTERDITES du journal.',
 };

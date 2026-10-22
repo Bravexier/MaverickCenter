@@ -62,6 +62,10 @@
 .nv-dev { margin: 0 0 2.5rem; padding: 1rem 1.2rem; border: 2px dashed var(--accent); border-radius: var(--radius); }
 .nv-dev[hidden] { display: none; }
 .nv-dev h2 { margin-top: 0; }
+.nv-dev__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1.2rem; }
+.nv-dev__titre h2 { margin-bottom: 0.2rem; }
+.nv-majeure { display: inline-flex; align-items: center; gap: 0.4rem; font-size: var(--fs-lg); cursor: pointer; }
+.nv-majeure:has(input:disabled) { opacity: 0.6; cursor: not-allowed; }
 .nv-dev__bilan { margin: 0.3rem 0 1rem; }
 .nv-dev__note textarea { width: 100%; min-height: 9rem; font: inherit; padding: 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); }
 .nv-dev__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.5rem 0 1rem; }

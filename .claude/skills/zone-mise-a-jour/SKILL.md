@@ -22,6 +22,7 @@ user-invocable: false
 ## Choix du propriétaire
 - En production (et partout sans service) : la note de version de la dernière livraison (tables `note_version`, `note_version_ligne`, section 15) puis l'historique.
 - Sur le site de dev, en plus : la note en préparation (la base de master construite au build, `donnees/reference.db`, comparée à la base vivante : `comparerBases`), le champ libre (`note_version_brouillon`, section 14), les boutons « Simulation de mise à jour » (rien n'est poussé) et « Effectuer la mise à jour » (lot figé → workflow `mise-a-jour.yml` → lot rejoué sur `data/rows` sans toucher d'autres tables, PR vers dev fusionnée si verte, puis livraison dev → master).
+- La case « Version majeure » à côté du titre « Mise à jour en préparation : VX.Y+1 » (demande du 2026-10-22) : cochée après confirmation (décochée sans), la version en préparation devient VX+1.0 ; elle ne déclenche rien, « Effectuer la mise à jour » reste le seul déclencheur. Colonne `note_version_brouillon.majeure` (migration `0070` : 1 cochée, NULL décochée), `POST /api/mise-a-jour/majeure/`, `enregistrerMajeure` ; figée avec le lot (`409`), gardée s'il est annulé, décochée quand la livraison vide le brouillon. `actualiserLancement` ne vide le brouillon qu'au passage d'un lancement annulé dont le lot est entré dans dev quand même, jamais ensuite (le brouillon est alors celui de la mise à jour suivante).
 - La production est la base de master (décision du propriétaire).
 - Pas de protection du bouton avant la connexion Discord (décision du propriétaire).
 - La note de la V0.2 ne liste rien ; son texte dit « Import initial depuis les sources historiques » (migration `0028`, `historique_modification` gardé).
@@ -37,7 +38,8 @@ user-invocable: false
 - Une table nouvelle dans `TABLES` n'est listée qu'avec sa définition (`DEFINITIONS`, `TABLES_LUES`).
 - `detail` : une ligne qui n'existe qu'avec une autre (rubrique, butin) n'est listée que pour un champ modifié. `resume` : un contenu absent de la production est dit en une ligne.
 - `scripts/mise-a-jour-regles.mjs` refuse d'écrire un fichier de `data/rows` hors des tables du journal et de la note (`TABLES_DE_LA_NOTE`). Un fichier de `data/rows` qui n'est pas tel que l'exporteur l'écrit bloque donc une mise à jour.
-- La première vraie mise à jour fait la livraison 0.2.0 et retire les notes `exemple = 1` (lorem ipsum, migration `0023`).
+- Une vraie mise à jour retire les notes `exemple = 1` qui resteraient (lorem ipsum, migration `0023`).
+- `[V: X+1]` n'est jamais repris d'un texte (corps des PR, commentaires : `neutraliserMarqueur`) ; il n'est posé que dans le titre de la PR de livraison d'un lot `majeure` (`titreLivraison`), et la livraison s'arrête si une PR de livraison le porte sans que le lot le demande, ou l'inverse (`desaccordMajeure`, `MAJEURE_AJOUTEE`, `MAJEURE_RETIREE`). La note du lot est alors la X+1.0 (`versionDeLivraison(…, { majeure })`, même règle que `planifier`).
 - Le job `preparer` lance `npm test` après avoir écrit la note du lot dans `data/rows` (pas encore sur master). Le job CI `simulation-de-mise-a-jour` applique de même un lot synthétique (`scripts/mise-a-jour-simulation.mjs` : le service fait de vraies modifications et fige le lot) puis les mêmes contrôles (`CONTROLES`, épinglés par `test/mise-a-jour-simulation.test.mjs`).
 - Un test qui lit `data/rows` tient avec une note en attente : copie sans elle (`test/aide-mise-a-jour.mjs#copieSansNoteEnAttente`), version libre (`versionLibre`), balayages qui sautent la section 15 (`TABLES_DES_NOTES`). Détail : skill `tests-conventions` et `docs/serveur.md`.
 - Seul le lot du lancement actuel est servi au workflow (`lireLot`, sinon `410`) ; un suivi revenu en retard n'écrase jamais un état plus récent (`modifierLancement`).
@@ -48,5 +50,5 @@ user-invocable: false
 - Le script de chaque page (`Base.astro`, demande `/api/maintenance/`) est en ligne (aucun module partagé), absent de la version portable et de `/maintenance/`. `lib/maintenance-retour.mjs` ne ramène qu'à une page de ce site.
 
 ## Tests
-- `notes-de-version`, `notes-de-version-sens`, `serveur-notes-de-version`, `serveur-mise-a-jour-etats`, `mise-a-jour`, `mise-a-jour-regles`, `mise-a-jour-github`, `mise-a-jour-simulation`, `serveur-maintenance`.
+- `notes-de-version`, `notes-de-version-sens`, `serveur-notes-de-version`, `serveur-mise-a-jour-etats`, `mise-a-jour`, `mise-a-jour-regles`, `mise-a-jour-github`, `mise-a-jour-simulation`, `serveur-maintenance`, `mise-a-jour-script` (le script de la page dans un faux navigateur : la case « Version majeure »).
 - `test/site-html.test.mjs` exécute le script de maintenance de chaque page dans un faux navigateur et compare la page `/mise-a-jour/` construite aux notes de la base.

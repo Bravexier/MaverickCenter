@@ -73,6 +73,7 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
     '/api/edition/lignes/': '/api/edition/lignes/',
     '/api/mise-a-jour/lots/0f0e2c1a-1111-2222-3333-444455556666/': '/api/mise-a-jour/lots/{lot}/',
     '/api/mise-a-jour/lancer/': '/api/mise-a-jour/lancer/',
+    '/api/mise-a-jour/majeure/': '/api/mise-a-jour/majeure/',
     '/api/maintenance/lever/': '/api/maintenance/lever/',
     '/api/debug/journal/?depuis=3': '/api/debug/journal/',
     '/api/debug/metriques/?periode=7j': '/api/debug/metriques/',

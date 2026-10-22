@@ -1,9 +1,9 @@
 #!/bin/sh
-# Mise à jour automatique d'une instance posée par un installateur (à partir de la 1.0, voir docs/flux-git.md et README.md à côté).
+# Mise à jour automatique d'une instance posée par un installateur (docs/flux-git.md et README.md à côté).
 # Chaque fusion dans master publie un installateur du serveur normal (VX.Y, puis VX.Y-hotfix.N), chaque fusion dans dev un
 # installateur du serveur de test (VX.Y.Z, la version de dev). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
 # VERSION) et l'exécute s'il n'est pas déjà installé ; le serveur de test reprend alors une copie fraîche de la base du serveur normal.
-# (Le NAS d'avant la 1.0 a sa propre mise à jour : deploy/update-site.sh, qui suit la branche « site ».)
+# (Le paquet du NAS a la sienne : deploy/update-site.sh, qui suit la branche « site », que la livraison ne reconstruit plus.)
 #
 # Connexions SORTANTES uniquement : aucun port à ouvrir.
 # Prérequis : sh, curl, tar, gzip. Pas de Node, pas de Docker requis pour ce script.

@@ -1,7 +1,7 @@
 // Page « Mise à jour » côté service (site de dev seulement, comme l'édition : MAVERICK_EDITION=1 ; docs/serveur.md, « Mise à jour ») :
 //   - la liste en préparation : les modifications des règles entre la base de PRODUCTION (référence : la base de master, livrée avec le site dans
 //     site/donnees/reference.db) et la base de DEV (base vivante : règles de dev + modifications du site), calculée par lib/notes-de-version.mjs ;
-//   - le brouillon de la note de version (champ libre des admins, table note_version_brouillon) ;
+//   - le brouillon de la note de version (champ libre des admins et case « Version majeure », table note_version_brouillon) ;
 //   - « Effectuer la mise à jour » : le service FIGE un lot (journal des modifications en attente + champ libre), le range dans db/mise-a-jour/
 //     avec son empreinte, puis déclenche le workflow GitHub .github/workflows/mise-a-jour.yml (workflow_dispatch : lot, empreinte, adresse du lot),
 //     qui télécharge le lot, l'applique à data/rows, écrit la note de version, ouvre et fusionne la PR vers dev puis livre dev → master.
@@ -68,10 +68,10 @@ function tablesDeReference(chemin) {
   }
 }
 
-/** Le brouillon de la note (champ libre) : { texte, modifie_le, lot }. */
+/** Le brouillon de la note (champ libre et case « Version majeure ») : { texte, modifie_le, lot, majeure }. */
 function lireBrouillon(db) {
-  const b = db.prepare('SELECT texte, modifie_le, lot FROM note_version_brouillon WHERE id = 1').get();
-  return { texte: b?.texte ?? null, modifie_le: b?.modifie_le ?? null, lot: b?.lot ?? null };
+  const b = db.prepare('SELECT texte, modifie_le, lot, majeure FROM note_version_brouillon WHERE id = 1').get();
+  return { texte: b?.texte ?? null, modifie_le: b?.modifie_le ?? null, lot: b?.lot ?? null, majeure: b?.majeure === 1 };
 }
 
 /** Enregistre le champ libre ; `avant` (le texte lu par la page) : refus 409 si quelqu'un l'a changé entre-temps. */
@@ -90,16 +90,36 @@ export function enregistrerBrouillon(db, { texte, avant }, { instant }) {
 }
 
 /**
- * La note en préparation : référence (production), versions, lignes calculées et leur bilan, brouillon.
+ * La case « Version majeure » de la note en préparation (demande du propriétaire du 2026-10-22) : cochée, la prochaine mise à jour est la X+1.0, et
+ * sa PR de livraison dev → master porte [V: X+1]. Elle ne déclenche rien (seul « Effectuer la mise à jour » livre) ; elle part avec le lot, comme
+ * le champ libre, ne se change plus tant qu'il est figé, et se décoche quand la livraison de ce lot vide le brouillon (1 : cochée, NULL : décochée).
+ */
+export function enregistrerMajeure(db, { majeure } = {}) {
+  if (typeof majeure !== 'boolean') throw new ErreurNotes(400, 'Valeur attendue pour « majeure » : true ou false.');
+  if (lireBrouillon(db).lot) {
+    throw new ErreurNotes(409, 'Une mise à jour est en cours : la version qu’elle livre ne se change plus jusqu’à la prochaine version du site.');
+  }
+  db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot, majeure) VALUES (1, NULL, NULL, NULL, ?)
+              ON CONFLICT (id) DO UPDATE SET majeure = excluded.majeure`).run(majeure ? 1 : null);
+  return lireBrouillon(db);
+}
+
+/**
+ * La note en préparation : référence (production), versions (la cible selon la case « Version majeure », et les deux possibles), lignes calculées
+ * et leur bilan, brouillon.
  * @param {import('node:sqlite').DatabaseSync} db base vivante
  */
 export function noteEnPreparation(db, { reference, versionDev }) {
   const ref = lireReference(reference);
-  const versionCible = versionDeLivraison(versionDev, ref.version);
   const brouillon = lireBrouillon(db);
+  const versionMineure = versionDeLivraison(versionDev, ref.version);
+  const versionMajeure = versionDeLivraison(versionDev, ref.version, { majeure: true });
   // modifications du site en attente : ce que le lot emporterait
   const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
-  const commun = { reference: ref, version_dev: versionDev, version_cible: versionCible, en_attente: enAttente, brouillon };
+  const commun = {
+    reference: ref, version_dev: versionDev, version_cible: brouillon.majeure ? versionMajeure : versionMineure, version_mineure: versionMineure,
+    version_majeure: versionMajeure, en_attente: enAttente, brouillon,
+  };
   if (!ref.disponible) return { ...commun, lignes: null, bilan: null };
   const lignes = comparerBases(tablesDeReference(ref.chemin), lireTables(db));
   return { ...commun, lignes, bilan: bilan(lignes) };
@@ -186,7 +206,7 @@ export function estLiberable(l, instant) {
   if (!l) return false;
   if (['envoi', 'manuel', 'erreur', 'echec'].includes(l.etat)) return true;
   // plus longtemps qu'un run ne peut durer : « lancé » / « en cours » sans nouvelles (plus aucun run ne tourne) ; ou un lot dans dev / livré dont la
-  // version n'arrive pas sur ce site (ex. serveur de test resté sur la branche site après la 0.2.0) : le texte se libère
+  // version n'arrive pas sur ce site (ex. serveur de test qui ne reçoit plus les livraisons) : le texte se libère
   return ['lance', 'en_cours', 'fusionne', 'echec_livraison', 'termine'].includes(l.etat) && sansNouvelles(l, instant);
 }
 
@@ -217,10 +237,12 @@ export function lireLot(dossier, id) {
 }
 
 /**
- * Fige le lot de la mise à jour : journal en attente (sans l'aperçu HTML des pages du guide, inutile à data/rows), champ libre, versions, et s'il
- * s'agit d'une simulation (couvert par l'empreinte : le workflow refuse un lot lancé dans l'autre mode) ; le range dans db/mise-a-jour/<id>.json,
- * marque le brouillon (il ne se modifie plus) et note l'état « envoi » (ou « manuel »). Rend l'état du lancement.
- * `aLivrer` : nombre de lignes de la note calculée (null si inconnu) — une vraie mise à jour sans rien à livrer est refusée.
+ * Fige le lot de la mise à jour : journal en attente (sans l'aperçu HTML des pages du guide, inutile à data/rows), champ libre, versions, s'il
+ * s'agit d'une simulation (couvert par l'empreinte : le workflow refuse un lot lancé dans l'autre mode) et la case « Version majeure » du brouillon
+ * (`majeure`, couverte aussi : le workflow en tire la version de la note et le [V: X+1] de la PR de livraison) ; le range dans
+ * db/mise-a-jour/<id>.json, marque le brouillon (il ne se modifie plus) et note l'état « envoi » (ou « manuel »). Rend l'état du lancement.
+ * `versionCible` : celle de noteEnPreparation (elle suit la case). `aLivrer` : nombre de lignes de la note calculée (null si inconnu) — une vraie
+ * mise à jour sans rien à livrer est refusée.
  */
 export function figerLot(db, dossier, { versionDev, versionCible, instant, confirmation, adresse, etat = 'envoi', simulation = false, aLivrer = null,
   limites = { delai: DELAI_ENTRE_LANCEMENTS, parJour: LANCEMENTS_PAR_JOUR } }) {
@@ -257,7 +279,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   const brouillon = lireBrouillon(db);
   const lot = {
     format: 'maverick-mise-a-jour/1', id, cree_le: instant, version_dev: versionDev, version_cible: versionCible, simulation: Boolean(simulation),
-    texte: brouillon.texte, journal,
+    majeure: brouillon.majeure, texte: brouillon.texte, journal,
   };
   const texte = `${JSON.stringify(lot)}\n`;
   mkdirSync(dossierLots(dossier), { recursive: true });
@@ -265,7 +287,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
               ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
   return ecrireLancement(dossier, {
-    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible,
+    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible, majeure: brouillon.majeure,
     modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
     etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
   });
@@ -328,9 +350,14 @@ export function actualiserLancement(db, dossier, { reference = null } = {}) {
   const aNote = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'note_version'").get();
   const note = aNote ? db.prepare('SELECT version, texte FROM note_version WHERE lot = ? AND exemple = 0').get(l.lot) : null;
   if (!note) return l;
-  // la note est dans les règles : le lot est dans dev. Le texte du brouillon, déjà publié dans cette note, ne doit pas repartir dans la suivante
-  // (cas d'un lancement annulé dont le lot est entré dans dev quand même) : vidé s'il est resté tel quel.
-  db.prepare('DELETE FROM note_version_brouillon WHERE id = 1 AND lot IS NULL AND coalesce(texte, \'\') = coalesce(?, \'\')').run(note.texte);
+  // la note est dans les règles : le lot est dans dev. Un lancement annulé dont le lot y est entré quand même : le texte du brouillon, déjà publié
+  // dans cette note, ne doit pas repartir dans la suivante (vidé s'il est resté tel quel, case « Version majeure » comprise, partie avec le lot).
+  // Seulement à ce passage (« annule » → « fusionne ») : ensuite, le brouillon est celui de la mise à jour suivante (une case cochée sans texte
+  // après la livraison d'une note sans texte ne doit pas s'effacer).
+  if (l.etat === 'annule') {
+    db.prepare(`DELETE FROM note_version_brouillon WHERE id = 1 AND lot IS NULL AND coalesce(texte, '') = coalesce(?, '')
+                AND coalesce(majeure, 0) = ?`).run(note.texte, l.majeure ? 1 : 0);
+  }
   const livree = reference?.version && auMoins(reference.version, note.version);
   if (livree && l.etat !== 'termine') return ecrireLancement(dossier, { ...l, etat: 'termine', version_livree: note.version });
   if (['lance', 'en_cours', 'manuel', 'erreur', 'annule', 'envoi'].includes(l.etat)) return ecrireLancement(dossier, { ...l, etat: 'fusionne', version_livree: note.version });

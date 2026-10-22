@@ -55,7 +55,7 @@ un hotfix → `master` reste `0.2.0`, `dev` reçoit le correctif et passe en `0.
 **Chaque nouvelle version est étiquetée** (tag Git, demande du propriétaire : retrouver une version sans passer par le numéro de commit). Le bot pose
 l'étiquette sur le commit qui porte la version, dans la même poussée que lui : **`VX.Y.Z` sur `dev`** (`V0.1.75`), **`VX.Y` sur `master`**
 (`V0.2` : `master` ne change de version qu'à une livraison, toujours en `X.Y.0`). Un hotfix ne change pas la version de `master`, donc pas
-d'étiquette de version sur `master` (seulement celle de son installateur à partir de la 0.2.0, ci-dessous) ; `dev`, elle, reçoit la sienne.
+d'étiquette de version sur `master` (seulement celle de son installateur, ci-dessous) ; `dev`, elle, reçoit la sienne.
 Après une livraison où `dev` rejoint `master` en avance rapide, le même commit porte `VX.Y` et `VX.Y.0`. Une étiquette déjà posée ailleurs (à la main)
 n'est jamais déplacée : le bot le signale dans son résumé et continue. Retrouver une version : `git fetch --tags origin`, puis
 `git switch --detach V0.1.75`, `git log V0.2..V0.2.3`, ou la page *Tags* de GitHub. Toutes les étiquettes commencent par un **`V` majuscule**,
@@ -64,7 +64,7 @@ Les versions d'avant cette règle n'ont pas d'étiquette : leurs commits « chor
 
 Après une livraison, `dev` rejoint `master` (avance rapide, ou fusion si `dev` a bougé entre-temps). Après un hotfix, `master` est refusionnée dans `dev`.
 Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lignes), le bot ne touche pas `dev` et le signale (son passage finit en
-rouge, l'installateur de production du hotfix est quand même publié à partir de la 0.2.0) ; la refusion se fait alors par une `feature/<nom>` créée
+rouge, l'installateur de production du hotfix est quand même publié) ; la refusion se fait alors par une `feature/<nom>` créée
 depuis `dev`, dans laquelle on fusionne `master` et résout les conflits, puis une PR vers `dev`. Seuls les conflits sur la ligne de version se
 résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que le bot n'a pas de `BOT_TOKEN` avec la permission *Workflows*.
 
@@ -85,29 +85,13 @@ Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (i
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
 une branche, *Actions → Version et livraison → Run workflow*.
 
-## Ce qui est publié : le site unique, puis deux serveurs dès la 0.2.0
+## Ce qui est publié : serveur normal et serveur de test, un script d'installation par fusion
 
-**La première version hébergée est la 0.2.0** (`PREMIERE_VERSION_HEBERGEE` dans `tools/flux-git/regles.mjs`, décision du propriétaire du 2026-10-10) :
-le duo serveur normal / serveur de test est mis à l'essai en 0.Y, avec le serveur de [`deploy/vps/`](../deploy/vps/README.md), avant la connexion
-par Discord. Le bot choisit seul d'après la version (`livrableDe`) ; la première livraison `dev` → `master` (0.1.x → 0.2.0) produit les deux premiers
-installateurs. **La 1.0 reste le signal du propriétaire** : l'ouverture à tout le Discord (et non plus aux seuls MJ et administrateurs), avec la
-connexion par Discord (identification et utilisateurs, voir [`feuille-de-route.md`](feuille-de-route.md)) ; on y passe par une livraison `dev` →
-`master` portant `[V: X+1]`, à la demande du propriétaire.
-
-### Avant la 0.2.0 (versions 0.1.x) : le fonctionnement d'avant, un seul site
-
-Pas de serveur normal ni de serveur de test. Après chaque fusion qui change `dev` (une feature, la refusion après une livraison ou un hotfix),
-le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit avec sa propre
-installation, comme aujourd'hui (`deploy/`, `update-site.sh` toutes les 5 minutes ; un NAS déjà installé garde sa copie, nommée `update-nas.sh`). Les versions
-suivent les règles ci-dessus ; une livraison `dev` → `master` ne fait que les versions (et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
-Le serveur de test du VPS (`dev.maverick-jdr.com`) suit la même branche avec le même script en attendant la 0.2.0 :
-[`deploy/vps/README.md`](../deploy/vps/README.md), « Avant la 0.2.0 ».
-
-### À partir de la 0.2.0 : serveur normal et serveur de test, un script d'installation par fusion
-
-La solution est alors hébergée (le NAS est temporaire ; le serveur : [`deploy/vps/`](../deploy/vps/README.md)). Après chaque fusion, le job
+La solution est hébergée sur le serveur de [`deploy/vps/`](../deploy/vps/README.md) (le NAS est temporaire). Après chaque fusion, le job
 `Installateur` construit le site et publie un **installateur** (`deploy/installateur/`) : un script `.sh` autonome qui contient le site et l'installe
-sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (publique comme lui depuis le 2026-10-14). La branche `site` n'est plus mise à jour.
+sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (publique comme lui depuis le 2026-10-14). Le bot choisit
+seul ce qu'il publie (`livrableDe`, `tools/flux-git/regles.mjs`) ; le job `Site`, qui publiait le site unique sur la branche **`site`** que suit le
+paquet du NAS (`deploy/README.md`, `update-site.sh`), ne tourne plus : cette branche n'avance plus.
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |
@@ -122,21 +106,20 @@ serveur à cette forme. Seule la toute première livraison de test s'est appelé
 - **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de dev » sur chaque page — il renvoie à la page « Mise à jour », qui
   liste les modifications en cours —, `[TEST]` dans le titre de l'onglet).
   À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
-  production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit). Rien de ce qui est fait en
-  test ne revient en production.
+  production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit), sauf avec
+  `MAVERICK_BASE_TEST=conservee` (le réglage du VPS : copie à la première installation seulement). Rien de ce qui est fait en test ne revient en
+  production par la base : les modifications des règles y vont par la page « Mise à jour ».
 - **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
 La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
-quitter le serveur. La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés dès avant la 1.0, puis les
-utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite
-depuis `data/rows` à chaque version.
+quitter le serveur. La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés, puis, avec la
+connexion Discord, les utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite depuis `data/rows` à chaque version.
+La mise à jour automatique de chaque instance est `mise-a-jour.sh`. Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md).
+Republier une branche sans changer sa version : *Actions → Version et livraison → Run workflow* (une étiquette `…-rebuild.N`).
 
-**Le premier jour hébergé (0.2.0)** : sur l'hôte, lancer l'installateur `V0.2` (serveur normal), puis `V0.2.0-test` (serveur de test, qui copie sa base) ;
-la mise à jour automatique de chaque instance est `mise-a-jour.sh`. Le NAS n'est pas touché (sa branche `site` cesse simplement d'avancer).
-Un serveur de test posé par `V0.2.0-test` ne cherche que des étiquettes « -test » : il faut y lancer **une fois à la main** l'installateur de
-test suivant (`VX.Y.Z`), qui apporte le `mise-a-jour.sh` d'aujourd'hui ; les mises à jour redeviennent ensuite automatiques.
-Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). Republier une branche sans changer sa version :
-*Actions → Version et livraison → Run workflow* (le site avant la 0.2.0, une étiquette `…-rebuild.N` ensuite).
+**La 1.0 reste le signal du propriétaire** : l'ouverture à tout le Discord (et non plus aux seuls MJ et administrateurs), avec la connexion par
+Discord (identification et utilisateurs, voir [`feuille-de-route.md`](feuille-de-route.md)) ; on y passe par une livraison `dev` → `master`
+portant `[V: X+1]`, à la demande du propriétaire : à la main, ou par la case « Version majeure » de la page « Mise à jour » du site de dev (plus bas).
 
 ## Au quotidien
 
@@ -171,14 +154,16 @@ protégée ni la branche par défaut).
 `feature/mise-a-jour-regles-<date>` partie de `dev` avec les modifications du site et la note de version (préparée et contrôlée par le job
 `preparer`, sans aucun secret), sa PR vers `dev` fusionnée par commit de fusion quand la CI est verte (job `livrer`, étape « Fusion dans dev » ; si
 `dev` a bougé, le commit est rejoué sur le nouveau `dev` par un rebase textuel — un conflit arrête tout —, jamais fusionné avec lui), puis la PR de
-livraison `dev` → `master`, fusionnée de même (étape « Livraison vers master » ; jamais `[V: X+1]`). Les bots font ensuite leur travail habituel
+livraison `dev` → `master`, fusionnée de même (étape « Livraison vers master » ; son titre porte `[V: X+1]` seulement si la case « Version
+majeure » de la page était cochée quand le lot a été figé : la livraison fait alors la `X+1.0.0`). Les bots font ensuite leur travail habituel
 (versions, étiquettes, installateurs). Une seule mise à jour à la fois attend sa livraison : tant que celle d'un autre lot est dans `dev` sans être
 sur `master`, le workflow refuse d'en commencer une autre.
 
 ## Mise en place (une seule fois, par le propriétaire)
 
 Déjà fait : `master` et `dev` existent (en `0.1.25`), `dev` est la branche par défaut, `main` et les anciennes branches de travail sont
-supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera supprimée par le premier balayage. Garder `site` : le NAS la suit jusqu'à la 1.0.
+supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera supprimée par le premier balayage. Garder `site` : le paquet du NAS la suit
+(elle n'avance plus).
 
 1. **Dans chaque clone existant** : `git fetch --prune origin` une fois (voir « Au quotidien »).
 2. **Jeton du bot** (seulement quand les règles de l'étape 3 sont réellement appliquées) : le bot pousse directement les incréments de version sur
@@ -186,8 +171,8 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
    (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt, permissions *Contents : Read and write* **et** *Workflows : Read and
    write* (sans elle, une refusion qui touche `.github/workflows/` est refusée), et l'enregistrer comme secret **`BOT_TOKEN`** (*Settings → Secrets and
    variables → Actions*). Les poussées du bot se font alors au nom du propriétaire du jeton, qui doit être administrateur du dépôt (exemption des
-   règles). **S'il a une date d'expiration**, la noter et le renouveler avant (un jeton expiré arrête versions et publications, le NAS cesse d'être mis à
-   jour) ; supprimer le secret fait revenir au jeton par défaut.
+   règles). **S'il a une date d'expiration**, la noter et le renouveler avant (un jeton expiré arrête versions et publications, les serveurs cessent
+   d'être mis à jour) ; supprimer le secret fait revenir au jeton par défaut.
 3. **Règles GitHub** : *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, une fois pour chaque fichier de `.github/rulesets/` :
    `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture, fusion par commit de fusion ; exemption :
    administrateurs, pour le bot) et `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, plus `site` pour le bot, sans exemption).
@@ -198,14 +183,15 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
    workflows restent alors la seule protection : suppression des branches non conformes (à la création et au balayage), check rouge sur une PR
    non conforme, ni version ni publication pour une fusion hors règles ; ils n'empêchent ni une fusion ni une poussée directe. Dans ce cas, **ne
    pas créer `BOT_TOKEN`** : le jeton par défaut des workflows suffit tant que les branches ne sont pas protégées.
-4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). Dès la 0.2.0, voir « Le premier jour hébergé » ci-dessus.
+4. **Serveur** : le serveur normal et le serveur de test, posés par leurs installateurs, pas à pas dans [`deploy/vps/README.md`](../deploy/vps/README.md).
 5. **Mises à jour depuis le site de dev** : secret **`MISE_A_JOUR_TOKEN`** (jeton *fine-grained* d'un administrateur, ce dépôt seulement,
    *Contents*, *Pull requests* et *Workflows* en lecture et écriture) ; le jeton par défaut ne suffit pas, car une PR qu'il ouvre ne lance pas la
    CI et une fusion qu'il fait ne lance pas `livraison.yml`. Seul le job `livrer` du workflow le reçoit, et n'y tournent ni npm ni dépendance
    (le job `preparer`, qui lance `npm ci` et les tests, n'a aucun secret). Le serveur de test a son propre jeton, permission *Actions* seulement
    ([`deploy/vps/README.md`](../deploy/vps/README.md), « Page Mise à jour »). Comme pour `BOT_TOKEN` : s'il a une date d'expiration, le renouveler avant ; sans date, le révoquer et le refaire au moindre doute (*Developer settings → Fine-grained tokens → Revoke*).
 6. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
-   `Version` (commit « chore: version v0.1.26 … » sur `dev`), `Site (avant la 1.0)` (branche `site` republiée) et `Supprimer la branche fusionnée`.
+   `Version` (commit « chore: version vX.Y.Z … » sur `dev`), `Installateur` (la *release* `VX.Y.Z` du serveur de test) et `Supprimer la branche
+   fusionnée`.
 
 ## Sessions Claude Code
 

@@ -46,16 +46,15 @@ quand les règles changent. Voir [docs/serveur.md](docs/serveur.md).
 ## Branches, versions et livraisons
 
 `master` est la production, `dev` l'intégration ; on ne crée que des `feature/<nom>` (depuis `dev`) et des `hotfix/<nom>` (depuis `master`).
-Après chaque fusion, un bot tient la version (`X.Y.Z`). Avant la 1.0, le site unique est reconstruit depuis `dev` (branche `site`) ;
-à partir de la 1.0 (connexion Discord), chaque fusion produit un script d'installation : **serveur de test** pour `dev` (il copie la base du
-serveur normal à l'installation), **serveur normal** pour `master`. Voir [docs/flux-git.md](docs/flux-git.md).
+Après chaque fusion, un bot tient la version (`X.Y.Z`), et chaque fusion produit un script d'installation : **serveur de test** pour `dev` (il copie
+la base du serveur normal à l'installation), **serveur normal** pour `master`. Voir [docs/flux-git.md](docs/flux-git.md).
 
-## Héberger le site (NAS, Docker)
+## Héberger le site (serveur, Docker)
 
-`./deploy/build.sh` construit le site à montrer et produit `deploy/maverick-center-nas.zip` : site + `docker-compose.yml` (nginx et le service des
-personnages) + configuration nginx protégée par mot de passe. Après chaque fusion dans `dev`, GitHub republie le site sur la branche `site` et le NAS la récupère
-automatiquement (`deploy/update-site.sh`). Voir [deploy/README.md](deploy/README.md). À partir de la 1.0, la solution est hébergée et installée par des
-installateurs autonomes : [deploy/installateur/README.md](deploy/installateur/README.md).
+Le site en ligne (serveur normal `maverick-jdr.com`, serveur de test `dev.maverick-jdr.com`) est posé par des installateurs autonomes, un par fusion,
+qui se mettent à jour seuls : [deploy/installateur/README.md](deploy/installateur/README.md), et le serveur pas à pas : [deploy/vps/README.md](deploy/vps/README.md).
+Pour une installation à la main (un NAS), `./deploy/build.sh` produit `deploy/maverick-center-nas.zip` : site + `docker-compose.yml` (nginx et le service
+des personnages) + configuration nginx protégée par mot de passe ; voir [deploy/README.md](deploy/README.md).
 
 Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/build-artifact.mjs --out <dossier>` produit la version portable
 (liens relatifs, sans fichier JS/CSS externe) et les listes de fichiers à publier.

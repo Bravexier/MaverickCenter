@@ -257,7 +257,7 @@ export const ROUTE_INCONNUE = '/api/{inconnue}';
 export const METHODES = Object.freeze(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 const ACTIONS_EDITION = new Set(['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement']);
-const ACTIONS_MISE_A_JOUR = new Set(['brouillon', 'lancer', 'liberer', 'lancement']);
+const ACTIONS_MISE_A_JOUR = new Set(['brouillon', 'majeure', 'lancer', 'liberer', 'lancement']);
 const V1 = new Map(RESSOURCES.map((r) => [r.cle, { enfants: new Set((r.enfants ?? []).map((e) => e.cle)), actions: new Set((r.actions ?? []).map((a) => a.cle)) }]));
 
 /** La méthode HTTP gardée : l'une de METHODES, sinon « AUTRE ». */

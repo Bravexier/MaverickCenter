@@ -63,10 +63,13 @@ function baseDe(rows) {
   };
 }
 
-test('verifierLot : format, identifiant, journal, texte', () => {
+test('verifierLot : format, identifiant, journal, texte, case « Version majeure »', () => {
   assert.doesNotThrow(() => verifierLot(lot()));
+  assert.doesNotThrow(() => verifierLot({ ...lot(), majeure: true }));
+  assert.doesNotThrow(() => verifierLot({ ...lot(), majeure: false }));
   const touche = (table) => ({ journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, table, cle: {}, operation: 'modifier', avant: {}, apres: {} }] }] } });
-  for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, touche('personnage'), touche('utilisateur_role'),
+  for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, { majeure: 'oui' }, { majeure: 1 },
+    touche('personnage'), touche('utilisateur_role'),
     touche('note_version'), touche('modification')]) {
     assert.throws(() => verifierLot({ ...lot(), ...casse }), (e) => e instanceof ErreurMiseAJour && e.code === 2, JSON.stringify(casse));
   }
@@ -105,6 +108,17 @@ test('le lot appliqué : la note écrite, le journal historisé, seuls les fichi
   assert.equal(encore.version, ATTENDUE);
   assert.match(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /Texte corrigé\./);
   assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /gagne/);
+});
+
+test('un lot « majeure » (case « Version majeure » de la page) : la note est la version X+1.0', () => {
+  const rows = copie('rows-majeure');
+  const majeure = versionDeLivraison(VERSION_DEV, VERSION_HEAD, { majeure: true });
+  assert.match(majeure, /^\d+\.0$/);
+  assert.equal(Number(majeure.split('.')[0]), Math.max(...[VERSION_DEV, VERSION_HEAD].map((v) => Number(String(v).split('.')[0]))) + 1);
+  const res = appliquerMiseAJour({ ...lot('Ouverture.'), majeure: true, version_cible: majeure }, { rows, reference: 'HEAD', date: '2026-10-22', versionDev: VERSION_DEV });
+  assert.equal(res.version, majeure);
+  assert.ok(res.markdown.startsWith(`## Version ${majeure}`), res.markdown.slice(0, 80));
+  assert.deepEqual(baseDe(rows)(`SELECT version, texte FROM note_version WHERE lot = '${lot().id}'`), [{ version: majeure, texte: 'Ouverture.' }]);
 });
 
 test('conflit avec dev : rien n’est écrit (code 3)', () => {

@@ -215,6 +215,19 @@ test('lancement annulé dont le lot entre quand même dans dev : « fusionne »,
   db.close();
 });
 
+test('case « Version majeure » cochée pour la mise à jour suivante, après la livraison d’une note sans texte : elle reste cochée à chaque visite', () => {
+  const { db, dossier } = nouvelle();
+  const l = figer(db, dossier); // brouillon sans texte : la note livrée n'en aura pas
+  noteArrivee(db, l.lot, null);
+  db.exec('DELETE FROM note_version_brouillon'); // la base vivante refaite par la nouvelle version (viderBrouillonLivre)
+  assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'fusionne');
+  // la mise à jour suivante se prépare : case cochée, sans texte
+  db.prepare('INSERT INTO note_version_brouillon (id, majeure) VALUES (1, 1)').run();
+  for (let i = 0; i < 2; i += 1) actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }); // chaque visite de la page
+  assert.deepEqual({ ...db.prepare('SELECT texte, lot, majeure FROM note_version_brouillon').get() }, { texte: null, lot: null, majeure: 1 });
+  db.close();
+});
+
 test('après une livraison, le journal livré est intégré : aller-retour, saisies successives, création puis suppression — rien en attente ni en conflit', () => {
   // la base vivante du site de dev : des modifications par l'API
   const dossier = join(racine, 'db-livraison');

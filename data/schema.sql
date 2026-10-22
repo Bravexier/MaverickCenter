@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 69;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 70;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4626,7 +4626,9 @@ CREATE TABLE note_version_brouillon (
   id          INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
   texte       TEXT,                                                  -- Markdown ; NULL : rien d'écrit
   modifie_le  TEXT    CHECK (modifie_le IS NULL OR modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
-  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0)
+  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0),
+  majeure     INTEGER CHECK (majeure IS NULL OR majeure = 1)         -- la case « Version majeure » (migration 0070) : 1 = cochée, la prochaine mise à jour
+                                                                     -- est la X+1.0 (PR de livraison avec [V: X+1]) ; NULL = décochée ; part avec le lot
 ) STRICT;
 
 -- ====================================================================================================================

@@ -68,25 +68,31 @@ test('README : le pare-feu de l\'hébergeur doit laisser passer 80 et 443 (sinon
   assert.match(lire('README.md'), /Timeout during connect \(likely firewall problem\)/, 'le symptôme vu dans le journal de Caddy est cité');
 });
 
-test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « site », avec des fichiers qui existent', () => {
-  const deploy = join(vps, '..');
-  const section = lire('README.md').split(/^## /m).find((s) => s.startsWith('Avant la 0.2.0'));
-  assert.ok(section, 'section « Avant la 0.2.0 » du README');
-  // Les fichiers copiés dans l'instance portent ce nom dans deploy/ : un renommage doit suivre ici.
-  const copies = section.match(/sudo cp (.+) \.\r?\n/)[1].split(' ').map((f) => f.replace('~/deploy/', ''));
-  assert.deepEqual(copies, ['installateur/docker-compose.yml', 'nginx.conf', 'update-site.sh']);
-  for (const f of copies) assert.ok(existsSync(join(deploy, f)), `deploy/${f} existe`);
-  // « mode=test » : ce que l'installateur lit pour reconnaître une instance de test (sinon il la prendrait pour une production).
-  assert.match(section, /echo "mode=test" \| sudo tee VERSION/);
-  assert.match(installateur, /sed -n 's\/\^mode=\/\/p' "\$1\/VERSION"/);
-  assert.match(section, /\*\/2 \* \* \* \* sh \/srv\/maverick-center-test\/update-site\.sh/);
-  assert.match(section, /grep -v maverick-center-test\/update-site\.sh/, 'cron posé sans doublon');
+test('README, site de dev : instances.sh pose ce que l\'étape dit, et le jeton de la page Mise à jour se colle sans s\'afficher', () => {
+  const section = lire('README.md').split(/^## /m).find((s) => s.startsWith('7. Site de dev'));
+  assert.ok(section, 'étape « 7. Site de dev : mode modification et page Mise à jour » du README');
+  assert.match(section, /Page Mise à jour/i, 'le titre que citent docs/flux-git.md et instances.sh (« Page Mise à jour »)');
+  // ce que l'étape dit d'instances.sh est ce qu'il fait (le .env du test est épinglé plus bas, en l'exécutant)
+  for (const reglage of ['MAVERICK_EDITION', 'MAVERICK_ADRESSE_PUBLIQUE']) {
+    assert.match(section, new RegExp(reglage));
+    assert.match(lire('instances.sh'), new RegExp(`poser "\\$TEST/\\.env" ${reglage} `), `instances.sh pose ${reglage} dans le .env du test`);
+  }
+  assert.match(section, /MISE_A_JOUR_TOKEN/);
   // Forme lancée telle quelle sous cmd.exe et PowerShell : ni « $ », ni « % », ni guillemet double à l'intérieur.
-  const jeton = section.match(/^\s*(ssh -t .*\.github-token.*)$/m)[1];
-  assert.match(jeton, /^ssh -t -i \S+ ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > \S+\.github-token; stty echo; chmod 600 /, 'le jeton se colle sans s\'afficher, jamais en argument');
+  const jeton = section.match(/^\s*(ssh -t .*github-actions-token.*)$/m)[1];
+  assert.match(jeton, /^ssh -t -i \S+ ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > \/srv\/maverick-center-test\/secrets\/github-actions-token; stty echo; chmod 600 /,
+    'le jeton se colle sans s\'afficher, jamais en argument, dans le dossier secrets/ que monte le service');
   assert.doesNotMatch(jeton.slice(jeton.indexOf('"') + 1, jeton.lastIndexOf('"')), /[$%"]/);
-  assert.match(section, /bandeau « Serveur de dev »/);
-  assert.match(section, /répond 502/);
+  // le README décrit le fonctionnement tel qu'il est : plus de procédure « avant la 0.2.0 » (branche site)
+  assert.doesNotMatch(lire('README.md'), /[Aa]vant la 0\.2\.0|update-site\.sh/);
+});
+
+test('docs de l\'hébergement : le fonctionnement tel qu\'il est, sans « à partir de / avant / jusqu\'à la X » (demande du propriétaire du 2026-10-22)', () => {
+  const racineDepot = join(vps, '..', '..');
+  for (const f of ['deploy/README.md', 'deploy/installateur/README.md', 'deploy/vps/README.md', 'docs/flux-git.md', 'README.md']) {
+    const texte = readFileSync(join(racineDepot, f), 'utf8');
+    assert.doesNotMatch(texte, /(?:à partir de|avant|jusqu'à|dès)(?: la)? (?:version )?\d+\.\d+(?:\.\d+)?\b/i, f);
+  }
 });
 
 test('.gitattributes : les scripts et deploy/ restent en LF (un clone Windows les envoie tels quels par scp)', () => {

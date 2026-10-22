@@ -1,8 +1,10 @@
 // Page « Mise à jour » (pages/mise-a-jour.astro) sur le site de dev : si le service répond `edition: true` (MAVERICK_EDITION=1), la note EN
 // PRÉPARATION s'affiche au-dessus de la note de production — les modifications des règles de la production (master) à la base dev, calculées par
-// le service (GET /api/mise-a-jour/), le champ libre des admins et, sur tous les écrans (comme le mode modification), le bouton
-// « Effectuer la mise à jour » : après confirmation, le service fige le lot et déclenche le workflow GitHub (rebase sur dev, PR, fusion
-// automatique si tout est vert, puis livraison dev → master) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
+// le service (GET /api/mise-a-jour/), le champ libre des admins, la case « Version majeure » à côté du titre (demande du propriétaire du
+// 2026-10-22 : cochée après confirmation, la version en préparation passe de X.Y+1 à X+1.0 ; elle ne déclenche rien) et, sur tous les écrans
+// (comme le mode modification), le bouton « Effectuer la mise à jour », seul déclencheur : après confirmation, le service fige le lot (case
+// comprise) et déclenche le workflow GitHub (rebase sur dev, PR, fusion automatique si tout est vert, puis livraison dev → master, avec
+// [V: X+1] pour une version majeure) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
 // La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
 // vers /maintenance/, qui y revient quand la nouvelle version est installée. Ailleurs (production, service absent) : rien ne change.
 // Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
@@ -91,7 +93,13 @@ function rendre() {
   const bouton = `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
        <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
        <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`;
-  zone.innerHTML = `<h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>
+  // la case « Version majeure » : figée avec le lot, comme le texte
+  const majeure = Boolean(d.brouillon?.majeure);
+  const caseMajeure = d.version_majeure
+    ? `<label class="nv-majeure" title="Cochée, la prochaine mise à jour est la V${echapper(d.version_majeure)} au lieu de la V${echapper(d.version_mineure ?? '?')}. Elle ne lance rien : seul « Effectuer la mise à jour » livre.${verrouille ? ' Figée avec le lot en cours.' : ''}">
+        <input type="checkbox" data-nv-majeure ${majeure ? 'checked' : ''} ${verrouille ? 'disabled' : ''}> Version majeure (V${echapper(d.version_majeure)})</label>`
+    : '';
+  zone.innerHTML = `<div class="nv-dev__titre"><h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>${caseMajeure}</div>
     <p class="nv-dev__bilan">${bilan}</p>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
@@ -119,6 +127,12 @@ function brancher(zone) {
       etatTexte.textContent = e.message;
     }
   });
+  zone.querySelector('[data-nv-majeure]')?.addEventListener('change', (e) => {
+    const coche = e.currentTarget.checked;
+    e.currentTarget.checked = !coche; // la case ne change qu'une fois le service d'accord
+    if (coche) confirmerMajeure();
+    else enregistrerMajeure(false);
+  });
   zone.querySelector('[data-nv-lancer]')?.addEventListener('click', () => confirmer({ simulation: false }));
   zone.querySelector('[data-nv-simuler]')?.addEventListener('click', () => confirmer({ simulation: true }));
   zone.querySelector('[data-nv-liberer]')?.addEventListener('click', async (e) => {
@@ -138,6 +152,56 @@ function brancher(zone) {
 }
 
 /**
+ * Enregistre la case « Version majeure » (POST /api/mise-a-jour/majeure/ : le service rend la note en préparation, à sa nouvelle version cible),
+ * puis refait la partie du site de dev en gardant le texte en cours de saisie, pas encore enregistré.
+ */
+async function enregistrerMajeure(majeure) {
+  try {
+    Object.assign(donnees, await appel('POST', 'mise-a-jour/majeure/', { majeure }));
+  } catch (e) {
+    alert(e.message);
+    if (e.statut === 409) await charger().catch(() => {}); // un lot figé depuis un autre onglet : la page le montre
+    return;
+  }
+  const champ = racine.querySelector('[data-nv-texte]');
+  const saisie = champ ? { valeur: champ.value, etat: racine.querySelector('[data-nv-etat-texte]')?.textContent ?? '' } : null;
+  rendre();
+  const nouveau = racine.querySelector('[data-nv-texte]');
+  if (saisie && nouveau && saisie.valeur !== nouveau.value) {
+    nouveau.value = saisie.valeur;
+    nouveau.dispatchEvent(new Event('input')); // aperçu refait, « modifié, non enregistré »
+  } else if (saisie?.etat) {
+    const etat = racine.querySelector('[data-nv-etat-texte]');
+    if (etat) etat.textContent = saisie.etat;
+  }
+}
+
+/** Confirmation de la case « Version majeure » (demande du propriétaire) : ce qu'elle change, et qu'elle ne lance rien. */
+function confirmerMajeure() {
+  const dialogue = document.createElement('dialog');
+  dialogue.className = 'nv-dialogue';
+  dialogue.innerHTML = `<form method="dialog">
+    <h2>Version majeure V${echapper(donnees.version_majeure)}</h2>
+    <p>La prochaine mise à jour sera la <strong>V${echapper(donnees.version_majeure)}</strong> au lieu de la V${echapper(donnees.version_mineure ?? '?')} :
+    sa livraison dev → master portera le marqueur de version majeure <code>[V: X+1]</code>, et la production comme dev passeront en
+    V${echapper(donnees.version_majeure)}.0.</p>
+    <p>Cocher la case <strong>ne lance rien</strong> : la mise à jour ne part qu’avec « Effectuer la mise à jour », et la case se décoche tant
+    qu’elle n’est pas partie.</p>
+    <p class="nv-message nv-message--erreur" data-erreur hidden></p>
+    <div class="nv-dev__actions"><button type="button" value="annuler">Annuler</button><button type="submit" class="nv-principal">Passer en version majeure</button></div>
+  </form>`;
+  racine.append(dialogue);
+  dialogue.querySelector('[value="annuler"]').addEventListener('click', () => dialogue.close());
+  dialogue.addEventListener('close', () => dialogue.remove());
+  dialogue.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    dialogue.close();
+    await enregistrerMajeure(true);
+  });
+  dialogue.showModal();
+}
+
+/**
  * Confirmation. La vraie mise à jour : ce qu'elle fait, et le mot à taper. La simulation (rien n'est poussé) : une confirmation simple, le service
  * recevant le même mot (il le demande à tout lancement).
  */
@@ -147,6 +211,10 @@ function confirmer({ simulation }) {
   const mot = donnees.confirmation;
   const n = donnees.en_attente ?? 0;
   const modifications = `${n} ligne${n > 1 ? 's' : ''} de la base en attente`;
+  const majeure = !donnees.brouillon?.majeure ? ''
+    : simulation
+      ? `<p><strong>Version majeure</strong> (case cochée) : la livraison dev → master porterait <code>[V: X+1]</code>, la production et dev passeraient en V${echapper(donnees.version_cible)}.0.</p>`
+      : `<p><strong>Version majeure</strong> (case cochée) : la livraison dev → master porte <code>[V: X+1]</code>, la production et dev passent en V${echapper(donnees.version_cible)}.0.</p>`;
   const dialogue = document.createElement('dialog');
   dialogue.className = 'nv-dialogue';
   dialogue.innerHTML = simulation
@@ -156,6 +224,7 @@ function confirmer({ simulation }) {
     contrôle des tables, <code>db:check</code>, tous les tests, la construction du site (et sa version de test, l’installateur, la version
     portable), puis un essai de poussée avec le jeton du dépôt. Il s’arrête là : <strong>rien n’est poussé</strong>, ni PR, ni fusion, ni livraison.
     Seuls les droits d’ouvrir et de fusionner une PR ne peuvent pas être essayés sans effet.</p>
+    ${majeure}
     <p class="nv-message nv-message--erreur" data-erreur hidden></p>
     <div class="nv-dev__actions"><button type="button" value="annuler">Annuler</button><button type="submit" class="nv-principal">Lancer la simulation</button></div>
   </form>`
@@ -163,6 +232,7 @@ function confirmer({ simulation }) {
     <h2>Effectuer la mise à jour V${echapper(donnees.version_cible)}</h2>
     <p>Les modifications du site de dev (${modifications}) et la note de version partent sur GitHub : une branche à jour de dev, une PR qui
     apporte la base modifiée, fusionnée automatiquement si les tests passent et qu’il n’y a aucun conflit, puis la <strong>livraison dev → master</strong> (production).</p>
+    ${majeure}
     <p>Pendant ce temps, <strong>les deux sites (production et dev) affichent « Maintenance en cours »</strong> ; chacun rouvre de lui-même dès que la
     nouvelle version y est installée (ou si la mise à jour s’arrête avant).</p>
     <p>Pour confirmer, tapez <strong>${echapper(mot)}</strong> :</p>
@@ -183,7 +253,8 @@ function confirmer({ simulation }) {
       return;
     }
     try {
-      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation });
+      // la version montrée dans ce dialogue : le service refuse (409) si une autre partirait (case changée depuis un autre onglet)
+      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation, version_cible: donnees.version_cible });
       dialogue.close();
       if (!simulation && (await enMaintenance())) {
         location.replace(`${racine.dataset.maintenance}?retour=${encodeURIComponent(location.pathname)}`);

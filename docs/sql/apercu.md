@@ -369,7 +369,7 @@
 | --- | --- | --- |
 | `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume |
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
-| `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot? |
+| `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot?, majeure? |
 
 ## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev
 
