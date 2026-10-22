@@ -471,8 +471,33 @@ test('Drakos orange (décision R124) : la compétence (« Acquis au choix ») et
   const cellules = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace(`Résistance au choix : ${resistance}`, `Résistance au choix : ${titre} : ${horsEtat.nom}`) };
   const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
   const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
-  assert.ok(relu.nonRepris.includes(`Résistance au choix « ${titre} : ${horsEtat.nom} » : pas une option de cette ligne`), relu.nonRepris.join('\n'));
+  assert.ok(relu.nonRepris.includes(`Résistance au choix « ${titre} : ${horsEtat.nom} » : pas une option de ce choix`), relu.nonRepris.join('\n'));
   assert.deepEqual(relu.fiche.resistance_choix, []);
+});
+
+test('résistances à une magie (décision R137) : l’Anansi d’Arcane (une magie tirée) et « Résilience » (une magie au choix) dans la note (« Résistance au choix »), relues telles quelles, point fixe ; l’Arcane : non reprise', async () => {
+  const ARCANE = 'magies/magie-de-larcane';
+  const f = {
+    ...ficheVide('Tisseuse'), race_id: 'races/anansi', ethnie_id: 'races/anansi#ethnie:anansi-darcane', magie_innee_id: ARCANE, xp: xpDuNiveau(5),
+    classes: [{ rang: 1, classe_id: 'classes/ocultomancien', specialite_id: 'classes/ocultomancien#specialite:specialiste' }],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    resistance_choix: [
+      { source: 'races/anansi#don:arcane-en-innee', rang: 1, magie_id: 'magies/magie-du-feu' },
+      { source: 'capacites/ocultomancien-resilience', rang: 1, magie_id: 'magies/magie-de-la-glace' },
+    ],
+  };
+  f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options.find((o) => o.id === 'capacites/ocultomancien-resilience')?.id ?? g.options[0].id })));
+  assert.deepEqual(commeLaPage(f).resistance_choix, f.resistance_choix, 'les deux choix faits');
+  const r = await verifier(f, 'résistances à une magie');
+  assert.deepEqual(r.fiche.resistance_choix, f.resistance_choix);
+  const note = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'resistanceChoix').map((l) => l.valeur);
+  assert.deepEqual(note, ['Anansi d\'Arcane : Feu', 'Résilience (Ocultomancien) : Glace']);
+  // l'Arcane (exclue par le don) : pas reprise, l'import le dit
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace('Résistance au choix : Résilience (Ocultomancien) : Glace', 'Résistance au choix : Résilience (Ocultomancien) : Arcane') };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.ok(relu.nonRepris.includes('Résistance au choix « Résilience (Ocultomancien) : Arcane » : pas une option de ce choix'), relu.nonRepris.join('\n'));
+  assert.deepEqual(relu.fiche.resistance_choix, f.resistance_choix.slice(0, 1));
 });
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {

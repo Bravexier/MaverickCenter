@@ -1175,7 +1175,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const arme = c.arme && c.choisi ? ` (${nomDe(regles.familles_armes, c.arme_famille_id)})` : '';
     if (choisi) noter(K.acquisChoix, `${c.nom} : ${choisi}${arme}`);
   }
-  for (const c of resistances.aChoisir) if (c.fait) noter(K.resistanceChoix, `${c.nom} : ${nomDe(regles.etats, c.choisi)}`);
+  // une altération d'état (R124) ou une magie (R137 : Ocultomancien « Résilience », Anansi d'Arcane), par son nom
+  for (const c of resistances.aChoisir) if (c.fait) noter(K.resistanceChoix, `${c.nom} : ${nomDe(c.magie ? regles.magies : regles.etats, c.choisi)}`);
   noter(K.resistancesAuChoix, resistances.auChoix.join(', '));
   if (hyper?.cent.debloque) noter(K.modeHyperCent, MODE_HYPER_CENT_DEBLOQUE);
   noter(K.choixAFaire, choixEnAttente(regles, f).map((c) => c.libelle).join(SEPARATEUR_DE_LISTE));

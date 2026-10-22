@@ -4,6 +4,8 @@
 //     (R48 : celles des armes de la famille ; Arc : Arc ou Arme légère, R126) ;
 //   - R124 : le Drakos orange, « 5% parmi les autres » et « Au choix parmi les autres » : une compétence et une altération d'état des autres lignes du
 //     tableau « Écaille draconique », deux choix indépendants (personnage_acquis_choix, personnage_resistance_choix) ;
+//   - R137 (2026-10-22) : une magie au choix (Ocultomancien « Résilience ») ou tirée (Anansi d'Arcane, avec son altération d'état), sauf l'Arcane et la
+//     Corruption, choisie comme la résistance du Drakos orange (personnage_resistance_choix.magie_id, migration 0071) ;
 //   - R125 : le plafond d'acquis du Social d'un Mort-vivant avec « Trompe-mort » ;
 //   - R128 : un bonus qui ne joue que dans un cas particulier est mentionné (« Bonus d'acquis non comptés », raison « situation »), jamais compté.
 // Le site de dev modifie les armes (leur compétence), les classes (leurs maîtrises), les dons et le tableau des races : ce qu'écrivent ces tables est
@@ -16,7 +18,7 @@ import { competencesDArme } from '../src/lib/arme-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { FAMILLES_DES_SAUF, chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -48,16 +50,20 @@ const monoClasse = (classeId, specialiteId, niveau = 10, surcharge = {}) => fich
 });
 const competence = (f, id, r = regles) => M.competencesDe(r, f).find((k) => k.id === id);
 
+/** Les « sauf » écrits autrement que leur bandeau et leur famille (décision R138 : « Oui c'est les familles »), recopiés de la décision. */
+const SAUF_DE_R138 = { hast: 'lance-arme-dhast', baton: 'baton-de-combat', 'arme-jet': 'arme-de-jet', masse: 'masse-marteau' };
+
 /**
- * La règle des familles d'une maîtrise au choix (décisions R119, R127), écrite ici pour juger celle de lib/fiche-regles.mjs : les familles maîtrisables de
- * sa catégorie, sans celle que son « sauf » nomme par un nom de son bandeau, au singulier (lecture à confirmer : question Q44) ; null quand le « sauf » ne
- * nomme aucune famille.
+ * La règle des familles d'une maîtrise au choix (décisions R119, R127, R138), écrite ici pour juger celle de lib/fiche-regles.mjs : les familles
+ * maîtrisables de sa catégorie, sans celle de son « sauf » — la famille qu'il nomme par un nom de son bandeau, tel quel ou au singulier (« Épée » :
+ * ÉPÉES), ou celle que R138 lui rattache (« Hast », « Bâton », « Arme jet », « Masse ») ; null quand le « sauf » ne nomme aucune famille.
  */
 function famillesSelonLaRegle(ligne) {
   const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
   const familles = MAITRISABLES.filter((id) => !ligne.categorie || famille(id).categorie === ligne.categorie);
   if (!ligne.sauf_cle) return familles;
-  const exclues = familles.filter((id) => famille(id).nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle)));
+  const rattachee = SAUF_DE_R138[ligne.sauf_cle];
+  const exclues = familles.filter((id) => (rattachee ? id === rattachee : famille(id).nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle))));
   return exclues.length ? familles.filter((id) => !exclues.includes(id)) : null;
 }
 
@@ -94,7 +100,10 @@ test('décisions R48, R119, R126 : les compétences d’une famille sont celles 
   }
 });
 
-test('décisions R119, R127 : les familles d’une maîtrise au choix — sa catégorie, sans son « sauf », jamais ARME DE MONSTRES ; un « sauf » qui ne nomme aucune famille ne se lit pas', () => {
+test('décisions R119, R127, R138 : les familles d’une maîtrise au choix — sa catégorie, sans son « sauf » (« Hast », « Bâton », « Arme jet », « Masse », « Épée » : leurs familles), jamais ARME DE MONSTRES', () => {
+  // R138 : le rattachement de lib/fiche-regles.mjs est celui de la décision, vers des familles maîtrisables
+  assert.deepEqual({ ...FAMILLES_DES_SAUF }, SAUF_DE_R138);
+  for (const id of Object.values(SAUF_DE_R138)) assert.ok(MAITRISABLES.includes(id), id);
   // les classes d'aujourd'hui : chaque maîtrise au choix porte les familles de la règle
   const lignes = db.prepare("SELECT classe_id, brut, categorie, sauf_cle FROM classe_maitrise_arme WHERE forme = 'au_choix' ORDER BY classe_id, rang").all();
   for (const l of lignes) {
@@ -112,12 +121,18 @@ test('décisions R119, R127 : les familles d’une maîtrise au choix — sa cat
   assert.deepEqual(deLaClasse('classes/barde').map((l) => [l.brut, l.categorie, l.sauf]), [['1 maîtrise arme à distance au choix', 'distance', null]]);
   assert.deepEqual(famillesSelonLaRegle(deLaClasse('classes/tueur')[0]), MAITRISABLES);
   assert.deepEqual(famillesSelonLaRegle(deLaClasse('classes/mage-vert')[0]), A_DISTANCE, 'R127 : les quatre à distance');
-  // un « sauf » lu par le nom d'un bandeau (lecture à confirmer : Q44) : le Guerrier (« (sauf épée) »), l'Anansi (« (sauf Dague) »), le Clerc (« (sauf Masse) »)
-  assert.ok(!famillesSelonLaRegle(deLaClasse('classes/guerrier')[0]).includes('epees'));
-  assert.ok(!famillesSelonLaRegle(deLaClasse('classes/anansi')[0]).includes('dagues'));
-  assert.ok(!famillesSelonLaRegle(deLaClasse('classes/clerc')[0]).includes('masse-marteau'));
-  // « Hast », « Bâton », « Arme jet » : aucun bandeau ne s'écrit ainsi (« LANCE/ARME D'HAST », « BÂTON DE COMBAT », « ARME DE JET ») : rien n'est rapproché
-  for (const id of ['classes/cuirasse', 'classes/moine', 'classes/medusain']) assert.equal(famillesSelonLaRegle(deLaClasse(id)[0]), null, id);
+  // un « sauf » qui nomme sa famille par son bandeau, au singulier (R138 : « Épée » est ÉPÉES) : le Guerrier (« (sauf épée) »), l'Anansi (« (sauf Dague) ») ;
+  // écrit autrement, la famille de R138 : le Clerc (« (sauf Masse) »), le Cuirassé (« (sauf Hast) »), le Moine (« (sauf Bâton) »), le Médusain
+  // (« (sauf Arme jet) ») ; chaque fois une seule famille de moins que sa catégorie
+  for (const [classe, exclue] of [['classes/guerrier', 'epees'], ['classes/anansi', 'dagues'], ['classes/clerc', 'masse-marteau'], ['classes/cuirasse', 'lance-arme-dhast'],
+    ['classes/moine', 'baton-de-combat'], ['classes/medusain', 'arme-de-jet']]) {
+    const ligne = deLaClasse(classe)[0];
+    const familles = famillesSelonLaRegle(ligne);
+    assert.ok(familles && !familles.includes(exclue), `${classe} : ${ligne.brut}`);
+    assert.equal(familles.length, famillesSelonLaRegle({ ...ligne, sauf_cle: null }).length - 1, classe);
+  }
+  // R138 : tous les « sauf » de l'import nomment une famille
+  for (const l of dImport.filter((x) => x.sauf_cle)) assert.notEqual(famillesSelonLaRegle(l), null, `${l.classe_id} : ${l.brut}`);
   // aucune, plusieurs maîtrises au choix, ou un « sauf » illisible : pas de choix d'arme
   assert.equal(M.armeAuChoixDeLaClasse({ maitrises: [{ brut: '1 maîtrise Épée', nombre: 1 }] }), null);
   assert.equal(M.armeAuChoixDeLaClasse({ maitrises: [{ au_choix: { familles: ['arc'] } }, { au_choix: { familles: ['arc'] } }] }), null);
@@ -398,6 +413,60 @@ test('décision R124 : deux choix indépendants (« Tu peux en avoir un avec +5%
   assert.deepEqual(M.resistanceApresChoix(g, SOURCE_ORANGE, 1, null), { resistance_choix: [] });
 });
 
+// ------------------------------------------------------------------ R137 : une magie au choix ou tirée
+
+test('décision R137 : Ocultomancien « Résilience » (une magie au choix) et Anansi d’Arcane (une magie tirée et son altération d’état), sans l’Arcane ni la Corruption — des choix du tiroir, comptés une fois faits', () => {
+  const RESILIENCE = 'capacites/ocultomancien-resilience';
+  const ANANSI = 'races/anansi#don:arcane-en-innee';
+  const FEU = 'magies/magie-du-feu';
+  const GLACE = 'magies/magie-de-la-glace';
+  const ARCANE = 'magies/magie-de-larcane';
+  // à l'import, les deux textes de la décision (le site de dev modifie les dons et l'onglet des races)
+  assert.equal(historique.lignesDImport('capacite').find((d) => d.id === RESILIENCE).effet,
+    'Augmente de 1 cran la résistance à une magie au choix, à l’exception de l’arcane et de la corruption.');
+  assert.match(historique.lignesDImport('race_don').find((d) => d.id === ANANSI).texte, /^- 1 cran de résistance sur une magie aléatoire \(sauf arcane et corruption\) et son altération d'état\.$/m);
+  // les règles : les quatorze magies qu'on subit (hors Potentiel Illimité, décision R98), sans l'Arcane ni la Corruption
+  const options = regles.magies.map((m) => m.id).filter((id) => !['magies/potentiel-illimite', ARCANE, 'magies/magie-de-la-corruption'].includes(id));
+  assert.equal(options.length, 12);
+  const resilience = regles.classes.find((c) => c.id === 'classes/ocultomancien').dons.find((d) => d.id === RESILIENCE);
+  const anansi = regles.races.find((r) => r.id === 'races/anansi').dons.find((d) => d.id === ANANSI);
+  assert.deepEqual(resilience.resistances, { effets: [], choix: false, au_choix: [{ rang: 1, crans: 1, magie: true, options }] });
+  assert.deepEqual(anansi.resistances, { effets: [], choix: false, au_choix: [{ rang: 1, crans: 1, magie: true, options, alteration: true }] });
+
+  // Anansi d'Arcane, Arcane inné, Ocultomancien Spécialiste de niveau 10, « Résilience » choisie
+  const f = fiche({
+    race_id: 'races/anansi', ethnie_id: 'races/anansi#ethnie:anansi-darcane', magie_innee_id: ARCANE, xp: xpDuNiveau(5),
+    classes: [{ rang: 1, classe_id: 'classes/ocultomancien', specialite_id: 'classes/ocultomancien#specialite:specialiste' }],
+    capacites: [{ capacite_id: RESILIENCE }],
+  });
+  const r = M.resistancesDe(regles, f);
+  assert.deepEqual([r.auChoix, r.aChoisir.map((c) => [c.source, c.rang, c.nom, c.crans, c.magie, c.alteration, c.options, c.fait])], [[], [
+    [ANANSI, 1, 'Anansi d\'Arcane', 1, true, true, options, false], [RESILIENCE, 1, 'Résilience (Ocultomancien)', 1, true, false, options, false],
+  ]], 'plus « laissées au choix » : deux choix à faire');
+  const attente = M.choixEnAttente(regles, f).filter((c) => c.nature === 'resistance');
+  assert.deepEqual(attente.map((c) => c.cle), [M.cleDeChoix.resistance(ANANSI, 1), M.cleDeChoix.resistance(RESILIENCE, 1)]);
+  assert.equal(attente[0].libelle, `Résistance Anansi d'Arcane : +1 cran à une magie (${options.map((id) => nomDe('magies', id)).join(' ou ')}) et son altération d’état`);
+  // les deux choix : la Glace (Résilience), le Feu et sa Brûlure (Anansi)
+  const g = { ...f, ...M.resistanceApresChoix(f, RESILIENCE, 1, GLACE, true) };
+  const h = { ...g, ...M.resistanceApresChoix(g, ANANSI, 1, FEU, true) };
+  assert.deepEqual(M.resistanceChoixValables(regles, h), [{ source: ANANSI, rang: 1, magie_id: FEU }, { source: RESILIENCE, rang: 1, magie_id: GLACE }]);
+  const cibles = M.resistancesDe(regles, h).paliers.flatMap((p) => p.cibles);
+  const origine = (id, nom) => cibles.find((c) => c.id === id)?.origines.find((o) => o.nom === nom) ?? null;
+  assert.deepEqual(origine(GLACE, 'Résilience (Ocultomancien)'), { nom: 'Résilience (Ocultomancien)', crans: 1 });
+  assert.deepEqual(origine(FEU, 'Anansi d\'Arcane'), { nom: 'Anansi d\'Arcane', crans: 1 });
+  const brulure = regles.magies.find((m) => m.id === FEU).etat_id;
+  assert.deepEqual(origine(brulure, 'Anansi d\'Arcane'), { nom: 'Anansi d\'Arcane', crans: 1 }, 'l’altération de la magie tirée (etat_magie)');
+  assert.equal(origine(regles.magies.find((m) => m.id === GLACE).etat_id, 'Résilience (Ocultomancien)'), null, 'Résilience : la magie seule');
+  assert.deepEqual(M.choixEnAttente(regles, h).filter((c) => c.nature === 'resistance'), []);
+  // l'Arcane, une altération à la place d'une magie : ni comptés ni gardés
+  const hors = { ...f, resistance_choix: [{ source: RESILIENCE, rang: 1, magie_id: ARCANE }, { source: ANANSI, rang: 1, etat_id: brulure }] };
+  assert.deepEqual(M.resistanceChoixValables(regles, hors), []);
+  // sans le don (« Accalmie » choisie à sa place), ou une autre ethnie : le choix part
+  assert.deepEqual(M.resistanceChoixValables(regles, { ...h, capacites: [{ capacite_id: 'capacites/ocultomancien-accalmie' }] }), [{ source: ANANSI, rang: 1, magie_id: FEU }]);
+  assert.deepEqual(M.resistanceChoixValables(regles, { ...h, ethnie_id: 'races/anansi#ethnie:anansi-de-necromancie' }), [{ source: RESILIENCE, rang: 1, magie_id: GLACE }]);
+  assert.deepEqual(M.resistanceApresChoix(h, RESILIENCE, 1, null), { resistance_choix: [{ source: ANANSI, rang: 1, magie_id: FEU }] });
+});
+
 // ------------------------------------------------------------------ R125 : Trompe-mort
 
 test('décision R125 : Mort-vivant avec « Trompe-mort » — le Social verrouillé à 1 donne un plafond d’acquis de 25 dans ses cinq compétences, 30 avec le Feu ou l’Eau inné', () => {
@@ -486,7 +555,9 @@ test('la page (src/scripts/fiche.mjs, lue comme un texte) : l’arme puis sa com
   assert.match(acquis, /Une arme choisie sans sa compétence n’est pas enregistrée\./);
   const resistances = script.slice(script.indexOf('function construireResistances()'), script.indexOf('// ------------------------------------------------------------------ classes'));
   assert.match(resistances, /cleDeChoix\.resistance\(c\.source, c\.rang\)/);
-  assert.match(resistances, /resistanceApresChoix\(fiche, c\.source, c\.rang, ev\.target\.value \|\| null\)/);
+  // une altération d'état (R124) ou une magie (R137), parmi ses options
+  assert.match(resistances, /resistanceApresChoix\(fiche, c\.source, c\.rang, ev\.target\.value \|\| null, c\.magie\)/);
+  assert.match(resistances, /trouver\(c\.magie \? regles\.magies : regles\.etats, o\)/);
   assert.match(script, /f\.resistance_choix = resistanceChoixValables\(regles, f\);/);
   const page = readFileSync(new URL('../src/pages/fiche/index.astro', import.meta.url), 'utf8');
   assert.match(page, /<ul id="resistances-a-choisir" class="acquis-choix" aria-label="Résistance à choisir" hidden><\/ul>/);

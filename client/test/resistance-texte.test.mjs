@@ -41,10 +41,19 @@ test('immunités écrites : seules les cibles connues (« la maladie » n’est 
   assert.deepEqual(lire('Totalement immunisé à l’aveuglement.'), { effets: [{ type: 'etat', id: etat('aveuglement'), immunite: true }], choix: false });
 });
 
+test('décision R137 : une magie au choix (Ocultomancien « Résilience ») ou tirée (Anansi d’Arcane, avec son altération d’état), sauf l’Arcane et la Corruption : un choix de la fiche', () => {
+  const sauf = ['magies/magie-de-larcane', 'magies/magie-de-la-corruption'];
+  assert.deepEqual(lire("- 1 cran de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état."),
+    { effets: [], choix: false, magies_au_choix: [{ crans: 1, sauf, alteration: true, aleatoire: true }] });
+  assert.deepEqual(lire('Augmente de 1 cran la résistance à une magie au choix, à l’exception de l’arcane et de la corruption.'),
+    { effets: [], choix: false, magies_au_choix: [{ crans: 1, sauf, alteration: false, aleatoire: false }] });
+  // sans exception écrite, rien n'est exclu ; sur un autre (« un adversaire ») : rien
+  assert.deepEqual(lire('Augmente de 2 crans la résistance à une magie au choix.'), { effets: [], choix: false, magies_au_choix: [{ crans: 2, sauf: [], alteration: false, aleatoire: false }] });
+  assert.deepEqual(lire('Inflige 1 cran de faiblesse à une magie au choix sur un adversaire au corps à corps pendant 3 tours'), rien);
+});
+
 test('pas compté : au choix ou aléatoire (signalé), passager, visant un autre, partiel ; ni ce qui ne parle pas de résistance', () => {
   for (const choix of [
-    "- 1 cran de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état.",
-    "Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption.",
     'Réduit de 1 cran une vulnérabilité magique possédée en raison de la magie innée.',
   ]) assert.deepEqual(lire(choix), { effets: [], choix: true }, choix);
   // « Au choix parmi les autres » (Drakos orange) : un choix parmi les autres lignes de la colonne, +1 cran (décision R124 : lib/fiche-regles.mjs en tire les options)
@@ -81,6 +90,7 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
   const noms = db.prepare('SELECT nom FROM magie UNION SELECT nom FROM etat').all().map((r) => plier(r.nom));
   let comptes = 0;
   let auChoix = 0;
+  const magiesAuChoix = [];
   for (const d of textesDesDons()) {
     const lecture = lire(d.texte, d.colonne === undefined ? {} : { colonne: d.colonne });
     for (const e of lecture.effets) {
@@ -90,14 +100,17 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
     }
     comptes += lecture.effets.length ? 1 : 0;
     auChoix += lecture.choix ? 1 : 0;
+    if (lecture.magies_au_choix) magiesAuChoix.push(d.id);
     const t = plier(d.texte);
     const parle = /\bcrans? de (?:resistance|vulnerabilite)|\bimmunise|^- (?:resistance|vulnerabilite) a la magie/m.test(t) || /cran de resistance/.test(plier(d.colonne));
     // non lu : passager, pour un autre, partiel… ou une immunité qui ne nomme ni magie ni altération (« immunise aux attaques discrètes »)
-    if (parle && !lecture.effets.length && !lecture.choix && !/pendant|le temps|cible|allie|adversaire|lanceur|piege|\d+\s*%/.test(t)) {
+    if (parle && !lecture.effets.length && !lecture.choix && !lecture.magies_au_choix && !/pendant|le temps|cible|allie|adversaire|lanceur|piege|\d+\s*%/.test(t)) {
       assert.ok(/immunise/.test(t) && !noms.some((n) => new RegExp(`(?:^|[^a-z])${n}s?(?![a-z])`).test(t)), `${d.id} : « ${d.texte} » n’est pas lu`);
     }
   }
   assert.ok(comptes > 0 && auChoix > 0);
+  // une magie au choix ou tirée (décision R137) : les deux dons de la décision, aucun autre
+  assert.deepEqual(magiesAuChoix.sort(), ['capacites/ocultomancien-resilience', 'races/anansi#don:arcane-en-innee']);
 });
 
 test('import : chaque ethnie a, d’après son onglet, les crans que la fiche auto lui donne (ethnie_resistance), plus l’altération de sa magie quand l’onglet l’écrit', () => {
@@ -124,11 +137,11 @@ test('import : chaque ethnie a, d’après son onglet, les crans que la fiche au
       const cible = x.type === 'magie_innee' ? e.magie_id : x.type === 'etat_magie_innee' ? etatDeMagie.get(e.magie_id) : x.id;
       return { type, cible, valeur: x.crans, alteration: x.type === 'etat_magie_innee' };
     });
-    if (lectures.some((l) => l.choix)) avecChoix += 1;
+    if (lectures.some((l) => l.choix || l.magies_au_choix)) avecChoix += 1;
     const attendu = (deLaFiche.get(e.id) ?? []).sort();
     assert.deepEqual(lues.filter((x) => !x.alteration).map((x) => `${x.type}:${x.cible}:${x.valeur}`).sort(), attendu, e.id);
     // « … et son altération d'état » : la fiche donne le cran à la magie seule (l'altération suit sa magie dans le tableau de la fiche)
     for (const x of lues.filter((y) => y.alteration)) assert.ok(attendu.includes(`magie:${e.magie_id}:${x.valeur}`), `${e.id} : l’altération de sa magie`);
   }
-  assert.equal(avecChoix, 2, 'Drakos Orange (« Au choix parmi les autres ») et Anansi d’Arcane (« sur une magie aléatoire »)');
+  assert.equal(avecChoix, 2, 'Drakos Orange (« Au choix parmi les autres ») et Anansi d’Arcane (« sur une magie aléatoire », décision R137)');
 });

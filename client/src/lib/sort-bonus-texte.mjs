@@ -4,9 +4,9 @@
 // chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. » ; décision R102). Comme lib/degats-texte.mjs
 // pour les armes : seul ce qu'une phrase dit sans ambiguïté est compté — une valeur ET les sorts qu'elle vise (tous, les sorts d'attaque, de soin, la magie
 // innée, des magies nommées, les sorts d'une étiquette : « les sorts "grenades" », décision R114 ; le sort préparé ou les autres : « Les sorts offensifs
-// (non) préparés », décision R115) ; une phrase liée à une autre situation (« chargés », « en cas de », « des alliés », « la météo »…) est rendue avec sa
-// raison, jamais comptée ; une phrase sur autre chose (maîtrise, compétence…) n'est pas rendue. Le don qui permet de préparer un sort (décision R115) se
-// lit aussi ici (preparationEcrite).
+// (non) préparés », décision R115, « les sorts d'attaque chargés », décision R133) ; une phrase liée à une autre situation (« en cas de », « des alliés »,
+// « la météo »…) est rendue avec sa raison, jamais comptée ; une phrase sur autre chose (maîtrise, compétence…) n'est pas rendue, sauf le NM donné au sort
+// préparé (décision R134, cible `nm`). Le don qui permet de préparer un sort (décision R115) se lit aussi ici (preparationEcrite).
 // Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/fiche-postures-sorts.test.mjs, test/fiche-grenades-et-sort-prepare.test.mjs).
 
 /** Les magies et les mots qui les nomment dans « les sortilèges de Glace, Ombre et Foudre », « les sorts d'Arcane » (identifiants de la table magie). */
@@ -28,9 +28,21 @@ export const ETIQUETTES_DES_SORTS = Object.freeze([['sort-grenade', /\bsorts? (?
 /**
  * « Les sorts offensifs préparés » (« Charge lente… » du Mage Rouge) et « Les sorts offensifs non préparés » (« … ou rapide ») : le sort préparé de la
  * fiche, ou tous les autres (décision R115 : « les sorts non préparés sont tous les autres pour le calcul de +5 »). « Offensif » se lit « d'attaque »
- * (sort_type `attaque`), comme le sort que « Préparation » et « Chargement » permettent de préparer (« un sort d'attaque lvl1 ou lvl2 »).
+ * (sort_type `attaque`, décision R132 : « Q32 : Oui »), comme le sort que « Préparation » et « Chargement » permettent de préparer (« un sort d'attaque
+ * lvl1 ou lvl2 »).
  */
 const SORTS_PREPARES = /\bsorts? offensifs? (non )?pr[ée]par[ée]s?\b/;
+/**
+ * « Augmente la portée des sorts d'attaque chargés de +2 » (« Soralongé » du Mage Vert) : le sort chargé est le sort préparé (décision R133, « Q33 : Oui »),
+ * le sort que « Chargement » permet d'influer.
+ */
+const SORTS_CHARGES = /\bsorts? d'attaque charg[ée]s?(?![a-zà-ÿ])/;
+/**
+ * « Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM. » (« À l'aise » du Mage Vert, dans sa version de la décision R134) : les NM
+ * donnés au sort préparé ([, « un » ou un nombre]) et leur plafond ([, le plafond]).
+ */
+const NM_DU_SORT_PREPARE = /\bdonne (un|\d+) nm suppl[ée]mentaires? au sort pr[ée]par[ée](?![a-zà-ÿ])/;
+const PLAFOND_DES_NM = /\bne peu[tx] pas d[ée]passer (\d+) ?nm\b/;
 
 /** Ce qui rend une phrase dépendante d'une situation (jamais comptée). */
 const SITUATION = new RegExp([
@@ -55,11 +67,12 @@ const TYPES = ['placement', 'entrave', 'invocation', 'amplification', 'protectio
  * Les sorts que vise une phrase : { tous } | { attaque, prepare? } | { soin, sauf_soi_meme? } | { innee } | { magies, types? } | { types } |
  * { mots_cles } ; null si elle n'en dit rien. `types` : « Les sorts de placement du Vent » (les sorts de ce type, de cette magie) ; `mots_cles` : les sorts
  * qui portent l'une de ces étiquettes (ETIQUETTES_DES_SORTS, décision R114) ; `prepare` : vrai pour le sort préparé, faux pour tous les autres (décision
- * R115, SORTS_PREPARES).
+ * R115, SORTS_PREPARES ; « chargés », décision R133, SORTS_CHARGES).
  */
 function visesDe(phrase) {
   const preparation = SORTS_PREPARES.exec(phrase);
   if (preparation) return { attaque: true, prepare: !preparation[1] };
+  if (SORTS_CHARGES.test(phrase)) return { attaque: true, prepare: true };
   const etiquettes = ETIQUETTES_DES_SORTS.filter(([, re]) => re.test(phrase)).map(([id]) => id);
   if (etiquettes.length) return { mots_cles: etiquettes };
   if (/magie inn[ée]e/.test(phrase)) return { innee: true };
@@ -78,8 +91,8 @@ function visesDe(phrase) {
 
 /**
  * Les bonus de sorts qu'écrit un texte, phrase par phrase (une phrase finit par « . », « ; », une virgule avant « + » ou une ligne) :
- * [{ cible: 'cout' | 'degats' | 'soin' | 'portee' | 'cran' (les dés montés d'un cran), valeur | parNpm | { base, pas, niveaux, niveauGlobal? }, vises,
- * raison? }]. `parNpm` : « réduit d'un montant égal à son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6
+ * [{ cible: 'cout' | 'degats' | 'soin' | 'portee' | 'cran' (les dés montés d'un cran) | 'nm' (des NM en plus, au plus `max` : décision R134), valeur |
+ * parNpm | { base, pas, niveaux, niveauGlobal? }, vises, raison?, max? }]. `parNpm` : « réduit d'un montant égal à son niveau de puissance » (Économe) ; { base, pas, niveaux } : « 3+x dégâts […] x = +2 dégâts/6
  * niveaux » (base + pas × ⌊niveau de classe ÷ niveaux⌋), et « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux » (décision R110 :
  * base + pas × ⌊niveau ÷ niveaux⌋, arrondi à l'inférieur ; `niveauGlobal` quand le texte écrit « niveaux globaux » ; lib/fiche-moteur.mjs prend le
  * niveau global pour un don de race ou d'ethnie). Une autre phrase « qui augmente de +N tous les M niveaux » est rendue avec la raison `progression`
@@ -101,12 +114,20 @@ export function bonusDeSortsEcrits(texte) {
       });
     });
   const bonus = [];
+  // « Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM. » (décision R134) : +1 NM au sort préparé, au plus 3 ; le plafond est
+  // une autre phrase du même texte
+  const nm = NM_DU_SORT_PREPARE.exec(t);
+  if (nm) {
+    const plafond = PLAFOND_DES_NM.exec(t);
+    bonus.push({ cible: 'nm', valeur: nm[1] === 'un' ? 1 : Number(nm[1]), vises: { tous: true, prepare: true }, ...(plafond ? { max: Number(plafond[1]) } : {}) });
+  }
   const posture = /^\(posture ([a-zé]+)\)/.exec(t)?.[1] ?? null;
   for (const { phrase, vises: visesDeLaProposition } of propositions) {
     // la formule « x = +2 dégâts/6 niveaux » se lit avec « 3+x dégâts » ; une phrase sur les armes n'est pas un bonus de sort
     if (/^x\s*=/.test(phrase) || /\barmes?\b/.test(phrase)) continue;
-    // « préparés » d'une phrase sur le sort préparé (décision R115) n'est plus une situation : la fiche sait quel sort est préparé
-    const situation = SITUATION.test(phrase.replace(SORTS_PREPARES, ' ')) || posture !== null;
+    // « préparés » d'une phrase sur le sort préparé (décision R115), « chargés » (décision R133) ne sont plus une situation : la fiche sait quel sort est
+    // préparé
+    const situation = SITUATION.test(phrase.replace(SORTS_PREPARES, ' ').replace(SORTS_CHARGES, ' ')) || posture !== null;
     const ajouter = (cible, valeur, vises) => {
       if (!vises) return;
       // « +3 dégâts magiques en posture focus » : la posture du moment (décision R100) ; une autre situation n'est jamais comptée

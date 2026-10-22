@@ -644,7 +644,7 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066 et 0067 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067 et 0071 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
@@ -656,6 +656,7 @@ test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066 et 0067
     personnage_arme: { durabilite: null },
     personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },
     personnage_acquis_choix: { arme_famille_id: null },
+    personnage_resistance_choix: { magie_id: null },
   });
   for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
     const colonnes = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.dflt_value]));
@@ -982,7 +983,8 @@ test('résistance au choix (décision R124, migration 0069) : enregistrée et re
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Écaille orange'), resistance_choix: [choix] });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
-  assert.deepEqual(p.resistance_choix, [choix]);
+  // (la magie d'une résistance au choix, migration 0071 : vide pour une altération)
+  assert.deepEqual(p.resistance_choix, [{ ...choix, magie_id: null }]);
   assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
   for (const [liste, motif] of [
     [[{ ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:inconnue' }], /^resistance_choix : « etat_id » = « guide\/liste-des-alterations-d-etat#etat:inconnue » n’existe pas dans les règles/],
@@ -998,7 +1000,27 @@ test('résistance au choix (décision R124, migration 0069) : enregistrée et re
   // un envoi sans la liste ne la touche pas
   const m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, nom: 'Écaille orange (bis)' });
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
-  assert.deepEqual(m.corps.personnage.resistance_choix, [choix]);
+  assert.deepEqual(m.corps.personnage.resistance_choix, [{ ...choix, magie_id: null }]);
+});
+
+test('résistance à une magie au choix (décision R137, migration 0071) : la magie enregistrée et relue ; une magie inconnue, ni magie ni altération, ou les deux : refusées, rien n’est écrit', () => {
+  const choix = { source: 'capacites/ocultomancien-resilience', rang: 1, magie_id: 'magies/magie-de-la-glace' };
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Résiliente'), resistance_choix: [choix] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.resistance_choix, [{ ...choix, etat_id: null }]);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  for (const [liste, motif] of [
+    [[{ ...choix, magie_id: 'magies/inconnue' }], /^resistance_choix : « magie_id » = « magies\/inconnue » n’existe pas dans les règles/],
+    [[{ source: choix.source, rang: 1 }], /^resistance_choix\[0\] : /],
+    [[{ ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' }], /^resistance_choix\[0\] : /],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, resistance_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
 });
 
 test('ordre de lecture des listes : un ordre total — le rang, puis le reste de la clé (choix d’acquis : source, compétence ; résistance au choix : source) ; une fiche relue garde sa version, quel que soit l’ordre d’envoi', () => {
@@ -1057,6 +1079,33 @@ test('repli sur une base vivante d’avant la migration 0069 (sa reconstruction 
     const liste = [{ source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' }];
     assert.throws(() => enregistrerFiche(base, { version: lue.version, resistance_choix: liste }, { id: lue.id }), (e) => {
       assert.deepEqual([e.statut, e.details.problemes], [400, ['resistance_choix : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0071 (sa reconstruction a échoué) : sans la magie d’une résistance au choix, une altération s’enregistre ; une magie est refusée, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0071') });
+  const ancienne = new DatabaseSync(avant);
+  // la table d'avant 0071 : une altération par choix, NOT NULL, sans magie
+  ancienne.exec(`DROP TABLE personnage_resistance_choix;
+    CREATE TABLE personnage_resistance_choix (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, source TEXT NOT NULL CHECK (length(source) > 0),
+      rang INTEGER NOT NULL CHECK (rang >= 1), etat_id TEXT NOT NULL REFERENCES etat(id), PRIMARY KEY (personnage_id, source, rang)
+    ) STRICT, WITHOUT ROWID;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const choix = { source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' };
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0071'), resistance_choix: [{ ...choix, magie_id: null }] });
+    assert.deepEqual(cree.personnage.resistance_choix, [choix], 'la colonne absente : ni écrite ni rendue');
+    const lue = lireFiche(base, cree.personnage.id);
+    const magie = [{ source: 'capacites/ocultomancien-resilience', rang: 1, magie_id: 'magies/magie-de-la-glace' }];
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, resistance_choix: magie }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['resistance_choix[0] : champ inconnu « magie_id »']]);
       return true;
     });
     assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');

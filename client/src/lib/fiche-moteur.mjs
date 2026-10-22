@@ -505,7 +505,7 @@ export function acquisApresChoix(fiche, source, rang, competenceId) {
 
 /**
  * Les familles d'armes de la maîtrise au choix d'une classe (décision R119 : « La classe choisi une maîtrise pour une arme ») : celles de sa ligne
- * `au_choix` de classe_maitrise_arme (sa catégorie, R127, sans son « sauf » : lib/fiche-regles.mjs, une lecture à confirmer, question Q44), quand la
+ * `au_choix` de classe_maitrise_arme (sa catégorie, R127, sans la famille de son « sauf », R138 : lib/fiche-regles.mjs#famillesAuChoix), quand la
  * classe en a une seule et qu'elle se lit ; null sinon (aucune, plusieurs : laquelle ? ; un « sauf » qui ne nomme aucune famille).
  */
 export function armeAuChoixDeLaClasse(classe) {
@@ -531,16 +531,22 @@ export const sourceDuTableau = (fiche) => `${fiche.race_id}#tableau:${fiche.ethn
 
 /**
  * Les résistances au choix de la fiche qui restent valables (décision R124 : une ligne du tableau de la race de la fiche, son ethnie, le même rang, une
- * de ses options) : celles qu'on enregistre (personnage_resistance_choix) ; un choix devenu sans effet (une autre ethnie, une autre race) part.
+ * de ses options ; décision R137 : un don débloqué qui laisse une magie au choix, une de ses options) : celles qu'on enregistre
+ * (personnage_resistance_choix : `etat_id`, ou `magie_id` pour une magie) ; un choix devenu sans effet (une autre ethnie, une autre race, un don qui
+ * n'est plus débloqué) part.
  */
 export function resistanceChoixValables(regles, fiche) {
-  return resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir.filter((c) => c.fait).map((c) => ({ source: c.source, rang: c.rang, etat_id: c.choisi }));
+  return resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir.filter((c) => c.fait)
+    .map((c) => ({ source: c.source, rang: c.rang, [c.magie ? 'magie_id' : 'etat_id']: c.choisi }));
 }
 
-/** La fiche après le choix de l'altération `etatId` (null : retiré) pour la résistance au choix (`source`, `rang`) : { resistance_choix }. */
-export function resistanceApresChoix(fiche, source, rang, etatId) {
+/**
+ * La fiche après le choix `id` (null : retiré) pour la résistance au choix (`source`, `rang`) : une altération d'état (R124), ou une magie quand `magie`
+ * est vrai (R137). { resistance_choix }.
+ */
+export function resistanceApresChoix(fiche, source, rang, id, magie = false) {
   const autres = (fiche.resistance_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
-  return { resistance_choix: etatId ? [...autres, { source, rang, etat_id: etatId }] : autres };
+  return { resistance_choix: id ? [...autres, { source, rang, [magie ? 'magie_id' : 'etat_id']: id }] : autres };
 }
 
 /** La fiche après la répartition `parts` ([{ competence_id, valeur }], dans l'ordre ; une part sans compétence ou à 0 est retirée) du choix (`source`, `rang`). */
@@ -1269,8 +1275,10 @@ export function quotaDeMaitrise(regles, fiche) {
  * (lib/resistance-texte.mjs ; race : don unique et don de l'ethnie, ligne de l'ethnie dans le tableau de dons ; classes : dons acquis). Une immunité
  * écrite (« Immunisé contre le poison ») met la cible en immunité quels que soient ses crans ; une résistance au choix n'est pas comptée et `auChoix`
  * nomme les dons qui en laissent une, sauf « Au choix parmi les autres » (Drakos orange, décision R124) : une altération des autres lignes du tableau,
- * choisie dans le tiroir (personnage_resistance_choix), comptée une fois choisie ; `aChoisir` : [{ source, rang, nom, crans, options (etat_id),
- * choisi, fait }]. Les accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
+ * choisie dans le tiroir (personnage_resistance_choix), comptée une fois choisie ; et sauf une magie au choix ou tirée (décision R137 : Ocultomancien
+ * « Résilience », Anansi d'Arcane, sans l'Arcane ni la Corruption), la magie choisie de même, avec l'altération d'état de cette magie quand le don
+ * l'écrit ; `aChoisir` : [{ source, rang, nom, crans, options (etat_id, ou magie_id quand `magie`), magie, alteration, choisi, fait }]. Les
+ * accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
  * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
  * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
  * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
@@ -1301,11 +1309,20 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
     for (const e of resistances?.effets ?? []) compter(e, origine);
     if (resistances?.choix) auChoix.push(origine);
     // « Au choix parmi les autres » (Drakos orange, décision R124 : « Tu peux en avoir un avec +5% Ruse et résisstance Poison ») : l'altération choisie,
-    // une des options (les autres lignes du tableau), reçoit ses crans
+    // une des options (les autres lignes du tableau), reçoit ses crans ; une magie au choix ou tirée (décision R137 : Ocultomancien « Résilience »,
+    // Anansi d'Arcane), la magie choisie, et l'altération d'état de cette magie quand le don l'écrit (`alteration` : etat_magie)
     for (const c of resistances?.au_choix ?? []) {
-      const fait = (fiche.resistance_choix ?? []).find((x) => x.source === source && entier(x.rang) === c.rang && c.options.includes(x.etat_id)) ?? null;
-      if (fait) compter({ type: 'etat', id: fait.etat_id, crans: c.crans }, origine);
-      aChoisir.push({ source, rang: c.rang, nom: origine, crans: c.crans, options: c.options, choisi: fait?.etat_id ?? null, fait: Boolean(fait) });
+      const choisiDe = (x) => (c.magie ? x.magie_id : x.etat_id);
+      const fait = (fiche.resistance_choix ?? []).find((x) => x.source === source && entier(x.rang) === c.rang && c.options.includes(choisiDe(x))) ?? null;
+      if (fait && c.magie) {
+        compter({ type: 'magie', id: fait.magie_id, crans: c.crans }, origine);
+        const etat = c.alteration ? trouver(regles.magies, fait.magie_id)?.etat_id : null;
+        if (etat) compter({ type: 'etat', id: etat, crans: c.crans }, origine);
+      } else if (fait) compter({ type: 'etat', id: fait.etat_id, crans: c.crans }, origine);
+      aChoisir.push({
+        source, rang: c.rang, nom: origine, crans: c.crans, options: c.options, magie: Boolean(c.magie), alteration: Boolean(c.alteration),
+        choisi: fait ? choisiDe(fait) : null, fait: Boolean(fait),
+      });
     }
   };
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
@@ -1517,6 +1534,29 @@ export function nmDuSort(ligne) {
   return { total, livre, comptes: Math.max(0, total - livre) };
 }
 
+/**
+ * Le NM d'un sort de la fiche à son moment, celui auquel ses valeurs se lisent (décision R134) : celui de sa ligne (nmDuSort), plus les NM que les dons
+ * débloqués donnent au sort préparé (« À l'aise » du Mage Vert : « Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM. », lu dans son
+ * texte par lib/sort-bonus-texte.mjs, cible `nm`, jamais par le nom du don), sans dépasser leur plafond ni celui d'un sort (constante sort.nm_max).
+ * Ces NM ne s'enregistrent pas et ne comptent pas dans le décompte (maitriseDesSorts). `contexte` : contexteDesSorts. { total, base (le NM de la
+ * ligne), detail: [{ nom, valeur }] }.
+ */
+export function nmDuMoment(regles, fiche, ligne, contexte = contexteDesSorts(regles, fiche)) {
+  const base = nmDuSort(ligne).total;
+  const sort = trouver(regles.sorts, ligne?.sort_id);
+  const detail = [];
+  let total = base;
+  if (sort && contexte.prepare?.sort_id === sort.id) {
+    for (const b of contexte.ecrits.filter((x) => x.cible === 'nm' && !x.raison && viseLeSort(x.vises, sort, fiche, null, true))) {
+      const plafond = Math.min(b.max ?? Infinity, constante(regles, 'sort.nm_max'));
+      const apres = Math.max(total, Math.min(plafond, total + b.valeur));
+      if (apres > total) detail.push({ nom: b.nom, valeur: apres - total });
+      total = apres;
+    }
+  }
+  return { total, base, detail };
+}
+
 /** Bornes du curseur de NM d'un sort (décision R118) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort. */
 export function bornesDuNm(regles, ligne) {
   return { min: nmDuSort(ligne).livre ? 1 : 0, max: constante(regles, 'sort.nm_max') };
@@ -1667,9 +1707,9 @@ export function accessoiresDesSorts(regles, fiche) {
  * choisie qui en a, la spécialité d'une
  * classe qui a atteint le niveau de son don de spécialité (le plus bas de ses dons `specialite`, 10), chaque groupe de dons à choisir encore sans choix
  * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), le +1 d'une magie innée qui laisse
- * la caractéristique au choix, les choix d'acquis des dons (acquisDesDons) et la résistance au choix d'une ligne du tableau de la race (resistancesDe,
- * décision R124). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page y accroche sa tuile, montrée
- * dans l'infobulle de l'élément du tiroir : demande du propriétaire).
+ * la caractéristique au choix, les choix d'acquis des dons (acquisDesDons) et les résistances au choix (resistancesDe : d'une ligne du tableau de la
+ * race, décision R124 ; à une magie, décision R137). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
+ * y accroche sa tuile, montrée dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
   const attente = [];
@@ -1712,12 +1752,14 @@ export function choixEnAttente(regles, fiche) {
         : `Acquis ${c.nom} : +${c.valeur} % ${competences(c.options.filter((o) => !(c.exclues ?? []).includes(o)))}${c.sur ? ` (choix ${c.numero} sur ${c.sur})` : ''}`,
     });
   }
-  // la résistance « Au choix parmi les autres » de la ligne du tableau de la race (Drakos orange, décision R124)
+  // la résistance « Au choix parmi les autres » de la ligne du tableau de la race (Drakos orange, décision R124), une magie au choix ou tirée d'un don
+  // (décision R137 : Ocultomancien « Résilience », Anansi d'Arcane)
   for (const c of resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir) {
     if (c.fait) continue;
+    const noms = c.options.map((o) => trouver((c.magie ? regles.magies : regles.etats) ?? [], o)?.nom ?? o).join(' ou ');
     attente.push({
       nature: 'resistance', cle: cleDeChoix.resistance(c.source, c.rang),
-      libelle: `Résistance ${c.nom} : +${c.crans} cran ${c.options.map((o) => trouver(regles.etats ?? [], o)?.nom ?? o).join(' ou ')}`,
+      libelle: `Résistance ${c.nom} : +${c.crans} cran ${c.magie ? `à une magie (${noms})${c.alteration ? ' et son altération d’état' : ''}` : noms}`,
     });
   }
   // la magie de la posture Symbiose prise avec deux magies (décision R100)
@@ -2506,25 +2548,35 @@ function sortsDuDon(regles, fiche, don) {
 }
 
 /**
- * Les sorts que la liste du sort préparé propose (donDePreparation : un sort d'attaque, sort_type, du NPM 1 ou 2), dans l'ordre du tableau des sorts :
- * [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don. Pas ceux de la magie que la Symbiose du moment désactive (décisions R100, R111 : on ne
- * prépare pas un sort qu'on ne peut pas lancer), sauf le sort déjà préparé : préparé avant, il garde la posture de sa préparation (décision R115).
+ * Vrai si le sort préparé `sort` est perdu par la posture du moment (décision R135, question Q41 : « Si le sort préparé est d'une magie différente de la
+ * posture symbiose, il est perdu ») : la fiche est en Symbiose avec une magie (postureDuMoment, `symbiose.magie`), autre que celle du sort. Pas tant que
+ * la magie de la Symbiose reste à choisir, ni avec le Potentiel Illimité inné, dont la Symbiose n'a pas de magie (décision R109).
  */
-export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fiche)) {
-  const inactive = postureDuMoment(regles, fiche)?.symbiose?.inactive?.id ?? null;
-  return sortsDuDon(regles, fiche, don).filter((x) => x.sort.magie_id !== inactive || entier(x.ligne?.prepare) === 1);
+function perduEnSymbiose(regles, fiche, sort) {
+  const magie = postureDuMoment(regles, fiche)?.symbiose?.magie ?? null;
+  return Boolean(magie && sort && sort.magie_id !== magie.id);
 }
 
 /**
- * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, ou quand le sort marqué
- * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer) ; la posture cochée depuis n'y change rien. { index, ligne, sort, jet (1 à 100, ou null
- * tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
+ * Les sorts que la liste du sort préparé propose (donDePreparation : un sort d'attaque, sort_type, du NPM 1 ou 2), dans l'ordre du tableau des sorts :
+ * [{ index (dans fiche.sorts), ligne, sort }] ; vide sans le don. En Symbiose, pas ceux d'une autre magie que celle de la posture : préparés, ils
+ * seraient perdus (décision R135 ; la magie que la Symbiose désactive en est une, décisions R100, R111).
+ */
+export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fiche)) {
+  return sortsDuDon(regles, fiche, don).filter((x) => !perduEnSymbiose(regles, fiche, x.sort));
+}
+
+/**
+ * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, quand le sort marqué
+ * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer), ou quand la fiche est en Symbiose avec une
+ * autre magie que la sienne (décision R135 : il est perdu, sortsApresLaSymbiose) ; une autre posture cochée depuis n'y change rien. { index, ligne, sort,
+ * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
  */
 export function sortPrepare(regles, fiche) {
   const don = donDePreparation(regles, fiche);
   const index = (fiche.sorts ?? []).findIndex((l) => entier(l?.prepare) === 1);
   const choisi = index < 0 ? null : sortsDuDon(regles, fiche, don).find((x) => x.index === index);
-  if (!choisi) return null;
+  if (!choisi || perduEnSymbiose(regles, fiche, choisi.sort)) return null;
   const jet = choisi.ligne.prepare_jet;
   return {
     ...choisi, dons: don.dons,
@@ -2557,6 +2609,18 @@ export function sortsApresChoixDEmplacement(fiche, index, sortId) {
 export function sortsApresPreparation(regles, fiche, sortId) {
   const posture = trouver(regles.postures ?? [], fiche.posture_id)?.id ?? null;
   return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture } : nonPrepare(l)));
+}
+
+/**
+ * Les sorts de la fiche après un changement de posture ou de magie de la Symbiose (décision R135 : « Si le sort préparé est d'une magie différente de la
+ * posture symbiose, il est perdu ») : en Symbiose avec une autre magie que celle du sort préparé, la préparation est lâchée (marque, jet et posture remis
+ * à zéro, comme « Lâcher le sort ») et ne revient pas quand la posture change de nouveau ; sinon la liste telle quelle (le même tableau).
+ */
+export function sortsApresLaSymbiose(regles, fiche) {
+  const sorts = fiche.sorts ?? [];
+  const marque = sorts.find((l) => entier(l?.prepare) === 1);
+  if (!marque || !perduEnSymbiose(regles, fiche, trouver(regles.sorts, marque.sort_id))) return sorts;
+  return sorts.map(nonPrepare);
 }
 
 /**

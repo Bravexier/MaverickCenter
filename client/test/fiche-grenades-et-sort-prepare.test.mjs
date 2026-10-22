@@ -1,14 +1,19 @@
 // Les sorts grenades (décision R114) et le sort préparé (décision R115) sur la fiche de personnage. R114 : « Pardon ?!? » du Grenadier (« Les bombes et
 // les sorts "grenades" font +11 dégâts ») vise les sorts étiquetés « Sort grenade » (sort_mot_cle, migration 0067), jamais un sort par son nom, et les
 // armes de la famille BOMBES. R115 : « Préparation » (Mage Rouge) et « Chargement » (Mage Vert) font choisir un sort préparé, d'attaque, de NPM 1 ou 2 ;
-// il se calcule à la posture du moment de sa préparation ; « Charge lente… » lui ajoute +5, « … ou rapide » +5 aux autres sorts offensifs. Les lecteurs
-// de textes (lib/sort-bonus-texte.mjs) sont rejoués sur toute la base.
+// il se calcule à la posture du moment de sa préparation ; « Charge lente… » lui ajoute +5, « … ou rapide » +5 aux autres sorts offensifs (« offensif » :
+// d'attaque, R132). Décisions du 2026-10-22 : « Soralongé » (Mage Vert) donne +2 de portée au sort préparé (R133) ; « À l'aise », dans sa nouvelle
+// version (migration 0071), +1 NM au sort préparé, au plus 3 (R134) ; en Symbiose d'une autre magie, le sort préparé est perdu (R135) ; un seul sort
+// préparé, pour tout type d'attaque (R136). Les lecteurs de textes (lib/sort-bonus-texte.mjs) sont rejoués sur toute la base.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { bonusDeSortsEcrits, ETIQUETTES_DES_SORTS, preparationEcrite } from '../src/lib/sort-bonus-texte.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
@@ -171,21 +176,46 @@ test('R115 : le don débloqué propose les sorts de la fiche qu’il autorise ; 
   assert.ok(M.donDePreparation(regles, { ...f, classes: [{ rang: 1, classe_id: 'classes/mage-vert', specialite_id: null }] }));
 });
 
-test('R115 : la liste du sort préparé n’a pas les sorts de la magie que la Symbiose du moment désactive, sauf le sort déjà préparé (préparé avant, il le reste)', () => {
+test('R135 : en Symbiose d’une autre magie que la sienne, le sort préparé est perdu — la préparation est lâchée et ne revient pas ; la liste ne propose que les sorts de la magie de la Symbiose', () => {
   const GLACE = 'magies/magie-de-la-glace';
   const glace = regles.sorts.find((s) => s.magie_id === GLACE && s.niveau === 1 && s.types.includes('attaque')).id;
-  const bi = mage(3, [ATTAQUE_1, glace], { magie_acquise_id: GLACE, posture_id: POSTURE('symbiose'), symbiose_magie_id: GLACE });
-  assert.equal(M.postureDuMoment(regles, bi).symbiose.inactive.id, 'magies/magie-du-feu');
-  assert.deepEqual(M.sortsAPreparer(regles, bi).map((x) => x.sort.id), [glace], 'la Boule de feu (Feu désactivé) n’est pas proposée');
-  // préparée en Neutre, puis la Symbiose de la Glace : la Boule de feu reste préparée, proposée (la liste la montre) et calculée en Neutre
-  const neutre = { ...bi, posture_id: POSTURE('neutre') };
-  const prepare = { ...bi, sorts: M.sortsApresPreparation(regles, neutre, ATTAQUE_1) };
-  assert.deepEqual(M.sortsAPreparer(regles, prepare).map((x) => x.sort.id), [ATTAQUE_1, glace]);
-  assert.deepEqual([M.sortPrepare(regles, prepare).sort.id, M.sortPrepare(regles, prepare).posture.id], [ATTAQUE_1, POSTURE('neutre')]);
-  assert.ok(M.sortsAEnregistrer(regles, prepare).some((s) => s.sort_id === ATTAQUE_1 && s.prepare === 1), 'gardée à l’enregistrement');
+  const neutre = mage(3, [ATTAQUE_1, glace], { magie_acquise_id: GLACE, posture_id: POSTURE('neutre') });
+  // préparée en Neutre : la Boule de feu (Feu)
+  const prepare = { ...neutre, sorts: M.sortsApresLeJet(regles, { ...neutre, sorts: M.sortsApresPreparation(regles, neutre, ATTAQUE_1) }, '61') };
+  assert.equal(M.sortPrepare(regles, prepare).sort.id, ATTAQUE_1);
+  assert.equal(M.sortsApresLaSymbiose(regles, prepare), prepare.sorts, 'hors de la Symbiose : rien ne change (le même tableau)');
+  // la Symbiose du Feu, sa magie : gardé, calculé à la posture de sa préparation
+  const enFeu = { ...prepare, posture_id: POSTURE('symbiose'), symbiose_magie_id: 'magies/magie-du-feu' };
+  assert.equal(M.sortsApresLaSymbiose(regles, enFeu), enFeu.sorts);
+  assert.deepEqual([M.sortPrepare(regles, enFeu).sort.id, M.sortPrepare(regles, enFeu).jet, M.sortPrepare(regles, enFeu).posture.id], [ATTAQUE_1, 61, POSTURE('neutre')]);
+  // la magie de la Symbiose encore à choisir (deux magies) : rien n'est perdu tant qu'elle ne l'est pas
+  const aChoisir = { ...prepare, posture_id: POSTURE('symbiose'), symbiose_magie_id: null };
+  assert.equal(M.postureDuMoment(regles, aChoisir).symbiose.aChoisir, true);
+  assert.equal(M.sortsApresLaSymbiose(regles, aChoisir), aChoisir.sorts);
+  // la Symbiose de la Glace : « Si le sort préparé est d'une magie différente de la posture symbiose, il est perdu »
+  const enGlace = { ...prepare, posture_id: POSTURE('symbiose'), symbiose_magie_id: GLACE };
+  assert.equal(M.postureDuMoment(regles, enGlace).symbiose.inactive.id, 'magies/magie-du-feu');
+  assert.equal(M.sortPrepare(regles, enGlace), null, 'plus compté');
+  assert.equal(M.contexteDesSorts(regles, enGlace).prepare, null);
   const boule = sortDe(ATTAQUE_1);
-  const m = M.sortDuMoment(regles, prepare, boule, auNm(boule));
-  assert.deepEqual([m.prepare, m.posture.id, m.inactif], [true, POSTURE('neutre'), null]);
+  assert.deepEqual([M.sortDuMoment(regles, enGlace, boule, auNm(boule)).prepare, M.sortDuMoment(regles, enGlace, boule, auNm(boule)).inactif], [false, 'Feu']);
+  const perdu = M.sortsApresLaSymbiose(regles, enGlace);
+  assert.deepEqual(perdu.map((x) => [x.sort_id, x.prepare, x.prepare_jet, x.prepare_posture_id]), [[ATTAQUE_1, 0, null, null], [glace, 0, null, null]], 'lâché');
+  assert.ok(M.sortsAEnregistrer(regles, enGlace).every((x) => x.prepare === 0), 'il part à l’enregistrement');
+  // de retour en Neutre, il ne revient pas
+  assert.equal(M.sortPrepare(regles, { ...enGlace, sorts: perdu, posture_id: POSTURE('neutre') }), null);
+  // la liste, en Symbiose de la Glace : les sorts de la Glace seulement ; en Symbiose du Feu, ceux du Feu
+  assert.deepEqual(M.sortsAPreparer(regles, enGlace).map((x) => x.sort.id), [glace]);
+  assert.deepEqual(M.sortsAPreparer(regles, enFeu).map((x) => x.sort.id), [ATTAQUE_1]);
+  assert.deepEqual(M.sortsAPreparer(regles, aChoisir).map((x) => x.sort.id), [ATTAQUE_1, glace]);
+  // le Potentiel Illimité inné : sa Symbiose n'a pas de magie (décision R109), rien n'est perdu
+  const pi = { ...prepare, magie_innee_id: 'magies/potentiel-illimite', magie_acquise_id: null, posture_id: POSTURE('symbiose'), symbiose_magie_id: null };
+  assert.equal(M.postureDuMoment(regles, pi).symbiose.potentielIllimite, true);
+  assert.equal(M.sortsApresLaSymbiose(regles, pi), pi.sorts);
+  // la page lâche la préparation à chaque rafraîchissement (src/scripts/fiche.mjs, lu comme un texte)
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const rafraichir = script.slice(script.indexOf('function rafraichir()'), script.indexOf('calcul = {', script.indexOf('function rafraichir()')));
+  assert.match(rafraichir, /fiche\.sorts = sortsApresLaSymbiose\(regles, fiche\);/);
 });
 
 test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM, sans livre ni la préparation de l’ancien ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
@@ -250,18 +280,17 @@ test('R115 : le sort préparé se calcule à la posture du moment de sa prépara
   assert.deepEqual([t.prepare, t.posture.id, t.dsb.diviseur], [false, POSTURE('defensif'), 2]);
 });
 
-test('R115 : « Charge lente… » (+5 au sort préparé offensif) et « … ou rapide » (+5 aux sorts offensifs non préparés), Mage Rouge Rubis niveau 10 ; plus « selon la situation »', () => {
+test('R115, R132 : « Charge lente… » (+5 au sort préparé offensif) et « … ou rapide » (+5 aux sorts offensifs non préparés), Mage Rouge Rubis niveau 10 ; « offensif » : d’attaque ; plus « selon la situation »', () => {
   const lente = don('classes/mage-rouge', 'capacites/mage-rouge-charge-lente');
   const rapide = don('classes/mage-rouge', 'capacites/mage-rouge-ou-rapide');
   assert.deepEqual([lente.nom, lente.effet, lente.niveau, lente.specialite_id], ['Charge lente…', 'Les sorts offensifs préparés infligent +5 dégâts.', 10, 'classes/mage-rouge#specialite:mage-rubis']);
   assert.deepEqual([rapide.nom, rapide.effet, rapide.niveau, rapide.specialite_id], ['… ou rapide', 'Les sorts offensifs non préparés infligent +5 dégâts.', 10, 'classes/mage-rouge#specialite:mage-rubis']);
   assert.deepEqual(lente.sorts, [{ cible: 'degats', valeur: 5, vises: { attaque: true, prepare: true } }]);
   assert.deepEqual(rapide.sorts, [{ cible: 'degats', valeur: 5, vises: { attaque: true, prepare: false } }]);
-  // aucun autre texte de la base ne vise le sort préparé ou les autres
+  // aucun autre texte de la base ne vise le sort préparé ou les autres, sauf ceux du Mage Vert que les décisions R133 et R134 y rattachent
   const textes = [...lignes('SELECT id, effet AS texte FROM capacite WHERE effet IS NOT NULL'), ...lignes('SELECT id, texte FROM race_don')];
-  assert.deepEqual(textes.filter((t) => bonusDeSortsEcrits(t.texte).some((b) => 'prepare' in b.vises)).map((t) => t.id), ['capacites/mage-rouge-charge-lente', 'capacites/mage-rouge-ou-rapide']);
-  // « Soralongé » (Mage Vert : « Augmente la portée des sorts d'attaque chargés de +2 ») reste selon la situation : la décision ne le nomme pas (question Q33)
-  assert.deepEqual(don('classes/mage-vert', 'capacites/mage-vert-soralonge').sorts, [{ cible: 'portee', valeur: 2, vises: { attaque: true }, raison: 'situation' }]);
+  assert.deepEqual(textes.filter((t) => bonusDeSortsEcrits(t.texte).some((b) => 'prepare' in b.vises)).map((t) => t.id).sort(),
+    ['capacites/mage-rouge-charge-lente', 'capacites/mage-rouge-ou-rapide', 'capacites/mage-vert-a-laise', 'capacites/mage-vert-soralonge']);
 
   const nomDe = (d) => `${d.nom} (Mage Rouge)`;
   const avecDon = (d) => {
@@ -287,4 +316,87 @@ test('R115 : « Charge lente… » (+5 au sort préparé offensif) et « … ou 
   assert.deepEqual([bonus(lache(fr), ATTAQUE_1).compte, bonus(lache(fl), ATTAQUE_1).compte], [[5], []]);
   // avant le niveau de classe 10 (niveau global 4 : niveau de classe 8), le don n'est pas débloqué
   assert.deepEqual(bonus({ ...fl, xp: xpDuNiveau(4) }, ATTAQUE_1).compte, []);
+});
+
+// ------------------------------------------------------------------ R133 à R136 (décisions du 2026-10-22)
+
+/** Mage Vert, spécialité Mage jade, au niveau global `niveau` (5 : classe de niveau 10), « Chargement » débloqué dès le niveau 1. */
+const mageVert = (niveau, sorts, x = {}) => mage(niveau, sorts, { classes: [{ rang: 1, classe_id: 'classes/mage-vert', specialite_id: 'classes/mage-vert#specialite:mage-jade' }], ...x });
+
+test('R133 : « Soralongé » (Mage Vert, niveau de classe 5) donne +2 de portée au sort préparé, le sort chargé ; ni aux autres sorts, ni sans sort préparé, ni avant son niveau', () => {
+  const sora = don('classes/mage-vert', 'capacites/mage-vert-soralonge');
+  assert.deepEqual([sora.niveau, sora.nature, sora.type], [5, 'classe', 'passif']);
+  // (le site de dev modifie les dons : le texte de l'import, et sa lecture)
+  const ecrit = historiqueSite(db).lignesDImport('capacite').find((d) => d.id === sora.id).effet;
+  assert.equal(ecrit, "Augmente la portée des sorts d'attaque chargés de +2");
+  assert.deepEqual(bonusDeSortsEcrits(ecrit), [{ cible: 'portee', valeur: 2, vises: { attaque: true, prepare: true } }]);
+  assert.deepEqual(sora.sorts, bonusDeSortsEcrits(sora.effet));
+  const f = mageVert(3, [ATTAQUE_1, ATTAQUE_2]);
+  const prepare = { ...f, sorts: M.sortsApresPreparation(regles, f, ATTAQUE_1) };
+  const portee = (fiche, id) => {
+    const m = M.sortDuMoment(regles, fiche, sortDe(id), auNm(sortDe(id)));
+    return [m.portee.texte, m.portee.detail, m.nonComptes.filter((x) => x.cible === 'portee')];
+  };
+  const boule = auNm(sortDe(ATTAQUE_1)).portee;
+  assert.match(boule, /^\d+$/);
+  assert.deepEqual(portee(prepare, ATTAQUE_1), [String(Number(boule) + 2), [{ nom: 'Soralongé (Mage Vert)', valeur: 2 }], []]);
+  assert.deepEqual(portee(prepare, ATTAQUE_2), [auNm(sortDe(ATTAQUE_2)).portee, [], []], 'un autre sort');
+  assert.deepEqual(portee(f, ATTAQUE_1), [boule, [], []], 'sans sort préparé');
+  // niveau global 2 : classe de niveau 4, « Chargement » débloqué, « Soralongé » pas encore
+  const avant = { ...prepare, xp: xpDuNiveau(2) };
+  assert.ok(M.sortPrepare(regles, avant));
+  assert.deepEqual(portee(avant, ATTAQUE_1), [boule, [], []]);
+});
+
+test('R134 : « À l’aise » (Mage Vert, Mage jade, niveau de classe 10), nouvelle version (migration 0071) : +1 NM au sort préparé, au plus 3, lu dans son texte ; hors du décompte', () => {
+  const aise = don('classes/mage-vert', 'capacites/mage-vert-a-laise');
+  const texte = 'Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM.';
+  assert.deepEqual([aise.niveau, aise.nature, aise.type, aise.specialite_id], [10, 'choix', 'passif', 'classes/mage-vert#specialite:mage-jade']);
+  // la migration 0071 : le texte de la décision (avant toute modification du site de dev) ; la fiche du don suit l'effet, comme le service la refait
+  assert.equal(historiqueSite(db).lignesDImport('capacite').find((d) => d.id === aise.id).effet, texte);
+  const effet = lignes('SELECT effet, remarque FROM capacite WHERE id = ?', aise.id)[0];
+  assert.deepEqual(lignes('SELECT resume, corps_md FROM page WHERE id = ?', aise.id), [{ resume: resumeDeDon(effet), corps_md: corpsDeDon(effet) }]);
+  assert.deepEqual(bonusDeSortsEcrits(texte), [{ cible: 'nm', valeur: 1, vises: { tous: true, prepare: true }, max: 3 }]);
+  assert.deepEqual(aise.sorts ?? [], bonusDeSortsEcrits(aise.effet));
+  assert.deepEqual(bonusDeSortsEcrits('Le sort influé aura toujours au minimum un Niveau de Maîtrise.'), [], 'l’ancien texte n’est pas lu');
+
+  // la fiche : +1 NM au sort préparé, sans dépasser 3 ; le décompte ne compte que les NM de la ligne
+  const r = { ...regles, classes: regles.classes.map((c) => (c.id !== 'classes/mage-vert' ? c : { ...c, dons: c.dons.map((d) => (d.id === aise.id ? { ...d, effet: texte, sorts: bonusDeSortsEcrits(texte) } : d)) })) };
+  const f = mageVert(5, [ATTAQUE_1, ATTAQUE_2], { capacites: [{ capacite_id: aise.id }] });
+  const avecNm = (nm) => ({ ...f, sorts: M.sortsApresPreparation(r, f, ATTAQUE_1).map((x, i) => (i === 0 ? { ...x, niveau_maitrise: nm } : x)) });
+  for (const [nm, total] of [[0, 1], [1, 2], [2, 3], [3, 3]]) {
+    const g = avecNm(nm);
+    const lu = M.nmDuMoment(r, g, g.sorts[0]);
+    assert.deepEqual([lu.base, lu.total, lu.detail], [nm, total, total > nm ? [{ nom: 'À l\'aise (Mage Vert)', valeur: 1 }] : []], `${nm} NM`);
+    assert.equal(M.maitriseDesSorts(r, g).total, nm, 'le décompte');
+  }
+  const g = avecNm(0);
+  assert.deepEqual(M.nmDuMoment(r, g, g.sorts[1]), { total: 0, base: 0, detail: [] }, 'un autre sort');
+  assert.deepEqual(M.nmDuMoment(r, f, f.sorts[0]), { total: 0, base: 0, detail: [] }, 'sans sort préparé');
+  assert.equal(M.nmDuMoment(r, { ...g, capacites: [{ capacite_id: 'capacites/mage-vert-vieille-branche' }] }, g.sorts[0]).total, 0, 'l’autre don du choix');
+  assert.equal(M.nmDuMoment(r, { ...g, xp: xpDuNiveau(4) }, g.sorts[0]).total, 0, 'avant le niveau de classe 10');
+  // lu dans le texte, jamais par le nom du don
+  const avecTexte = (t) => ({ ...r, classes: r.classes.map((c) => (c.id !== 'classes/mage-vert' ? c : { ...c, dons: c.dons.map((d) => (d.id === aise.id ? { ...d, effet: t, sorts: bonusDeSortsEcrits(t) } : d)) })) });
+  assert.equal(M.nmDuMoment(avecTexte('Le sort influé aura toujours au minimum un Niveau de Maîtrise.'), g, g.sorts[0]).total, 0);
+  assert.equal(M.nmDuMoment(avecTexte('Donne 2 NM supplémentaires au sort préparé.'), g, g.sorts[0]).total, 2);
+  // ses valeurs se lisent à ce NM (Boule de feu : 2d6 à 0 NM, 3d6 à 1 NM) ; la page lit nmDuMoment (src/scripts/fiche.mjs, lu comme un texte)
+  const boule = sortDe(ATTAQUE_1);
+  assert.notEqual(valeurAuNm(boule.dsb, boule.bonus, 'dsb', M.nmDuMoment(r, g, g.sorts[0]).total), valeurAuNm(boule.dsb, boule.bonus, 'dsb', 0));
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  assert.match(script, /const nmLu = fiche\.sorts\[l\.index\] \? nmDuMoment\(regles, fiche, fiche\.sorts\[l\.index\], calcul\.contexteSorts\)/);
+  assert.match(script, /valeurAuNm\(brut, l\.sort\.bonus \?\? \[\], champ, nmLu\.total\)/);
+});
+
+test('R136 : un seul sort préparé à la fois, même bi-classé Mage Rouge et Mage Vert (« Préparation » et « Chargement ») ; le bloc le dit, pour tout type d’attaque', () => {
+  const bi = mage(10, [ATTAQUE_1, ATTAQUE_2], {
+    mode_classe: 'bi', classes: [{ rang: 1, classe_id: 'classes/mage-rouge', specialite_id: null }, { rang: 2, classe_id: 'classes/mage-vert', specialite_id: null }],
+  });
+  assert.deepEqual(M.donDePreparation(regles, bi).dons.map((x) => x.don.id).sort(), ['capacites/mage-rouge-preparation', 'capacites/mage-vert-chargement']);
+  const premier = M.sortsApresPreparation(regles, bi, ATTAQUE_1);
+  assert.deepEqual(M.sortsApresPreparation(regles, { ...bi, sorts: premier }, ATTAQUE_2).map((x) => x.prepare), [0, 1], 'préparer un second sort lâche le premier');
+  // la base : un sort préparé par fiche (index unique de personnage_sort, migration 0067)
+  assert.ok(lignes("SELECT sql FROM sqlite_master WHERE name = 'personnage_sort_prepare'")[0].sql.includes('WHERE prepare = 1'));
+  // le bloc « Sort préparé » (src/scripts/fiche.mjs, lu comme un texte)
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  assert.match(script, /Un seul sort préparé à la fois, utilisable pour n’importe quel type `\s*\+ 'd’attaque, de contact ou à distance/);
 });

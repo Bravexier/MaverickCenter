@@ -33,7 +33,8 @@ export const PARTIES_DE_FICHE = Object.freeze({
   ceinture: 'personnage_ceinture',
   entrainements: 'personnage_entrainement',
   acquis_choix: 'personnage_acquis_choix',
-  // la résistance au choix d'une ligne du tableau de la race (décision R124, migration 0069 : Drakos orange)
+  // la résistance au choix d'une ligne du tableau de la race (décision R124, migration 0069 : Drakos orange), ou à une magie au choix ou tirée d'un don
+  // (décision R137, migration 0071 : Ocultomancien « Résilience », Anansi d'Arcane)
   resistance_choix: 'personnage_resistance_choix',
 });
 

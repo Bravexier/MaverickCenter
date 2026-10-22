@@ -290,6 +290,22 @@ test('résistance au choix (décision R124, migration 0069 : « Au choix parmi l
   assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-1'").get().n, 0, 'cascade');
 });
 
+test('résistance à une magie au choix (décision R137, migration 0071 : Ocultomancien « Résilience », Anansi d’Arcane) : une altération OU une magie par choix, jamais les deux ni aucune', () => {
+  personnageValide('res-2');
+  const RESILIENCE = 'capacites/ocultomancien-resilience';
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-2', source: RESILIENCE, rang: 1, ...l });
+  choix({ magie_id: 'magies/magie-de-la-glace' });
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id, magie_id FROM personnage_resistance_choix WHERE personnage_id = 'res-2'").all().map((r) => ({ ...r })),
+    [{ source: RESILIENCE, rang: 1, etat_id: null, magie_id: 'magies/magie-de-la-glace' }]);
+  // une magie inconnue (clé étrangère vers magie), ni l'une ni l'autre, les deux : refusés
+  assert.throws(() => choix({ rang: 2, magie_id: 'magies/inconnue' }), /FOREIGN KEY/);
+  assert.throws(() => choix({ rang: 2 }), /CHECK/);
+  assert.throws(() => choix({ rang: 2, magie_id: 'magies/magie-du-feu', etat_id: 'guide/liste-des-alterations-d-etat#etat:brulure' }), /CHECK/);
+  assert.deepEqual(controle('res-2'), [], 'le choix n’est pas une règle de la vue');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-2'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-2'").get().n, 0, 'cascade');
+});
+
 test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau à partir du 2, plus 1 à 8 par dé atteint (niveaux 5, 10, 15, 20) ; règle gains_niveau', () => {
   const gains = (id) => controle(id).filter((c) => c.regle === 'gains_niveau').map((c) => c.detail);
   const poser = (id, sante, chakra) => db.prepare('UPDATE personnage SET gains_sante = ?, gains_chakra = ? WHERE id = ?').run(sante, chakra, id);

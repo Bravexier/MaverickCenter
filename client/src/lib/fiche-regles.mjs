@@ -57,6 +57,14 @@ function entreesDesPages(db) {
 }
 
 /** Constantes de la fiche (table regle_constante) utilisées par le moteur, sous leur identifiant. */
+/**
+ * Les « sauf » d'une maîtrise au choix (classe_maitrise_arme.sauf_cle) écrits autrement que le bandeau de leur famille, et la famille (arme_famille.id)
+ * qu'ils désignent : décision R138 (question Q44, « Oui c'est les familles ») — « Hast » : LANCE/ARME D'HAST, « Bâton » : BÂTON DE COMBAT, « Arme jet » :
+ * ARME DE JET, « Masse » : MASSE/MARTEAU. Les autres « sauf » (« Dague », « Épée », « Arc »…) nomment leur famille par son bandeau, tel quel ou au
+ * singulier, ce que R138 confirme (« Épée » : ÉPÉES) : lib/fiche-regles.mjs#famillesAuChoix les lit ainsi.
+ */
+export const FAMILLES_DES_SAUF = Object.freeze({ hast: 'lance-arme-dhast', baton: 'baton-de-combat', 'arme-jet': 'arme-de-jet', masse: 'masse-marteau' });
+
 const CONSTANTES = [
   'caracteristique.base_min', 'caracteristique.base_max', 'caracteristique.bonus_magie_innee', 'competence.base_par_point_caracteristique',
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
@@ -121,6 +129,19 @@ function reglesDeLaBase(db) {
   ]);
   /** `resistances` d'un don quand son texte en écrit (ou en laisse au choix) ; rien sinon, pour garder regles.json léger. */
   const resistancesEcrites = (lecture) => (lecture.effets.length || lecture.choix || lecture.au_choix?.length ? { resistances: lecture } : {});
+  // Une magie au choix ou tirée (décision R137, « Q43: Oui » : Ocultomancien « Résilience », Anansi d'Arcane ; lib/resistance-texte.mjs, `magies_au_choix`) :
+  // un choix de la fiche (`au_choix`, { rang, crans, magie: true, options (ids de magie), alteration? }), comme celui du Drakos orange (R124). Les options :
+  // les magies de la base, dans leur ordre, sans celles que le don exclut (l'Arcane et la Corruption) ni le Potentiel Illimité, qui n'est pas une forme de
+  // magie qu'on subit (décision R98 : « L'une des 14 formes de magie hors PI ») ; `alteration` : le cran va aussi à l'altération d'état de la magie
+  // choisie (etat_magie, `magies[].etat_id`), que la fiche lit.
+  const magiesSubies = lignes(db, "SELECT id FROM magie WHERE id <> 'magies/potentiel-illimite' ORDER BY ordre").map((m) => m.id);
+  const resistancesDuTexte = (texte) => {
+    const { magies_au_choix: magiesAuChoix = [], ...lecture } = lireResistances(texte);
+    const au_choix = magiesAuChoix.map((c, i) => ({
+      rang: i + 1, crans: c.crans, magie: true, options: magiesSubies.filter((id) => !c.sauf.includes(id)), ...(c.alteration ? { alteration: true } : {}),
+    }));
+    return au_choix.length ? { ...lecture, au_choix } : lecture;
+  };
 
   // Races : valeurs de départ de l'onglet de la race (décision R13), AP/AM de la race ; classes accessibles (matrice, R8) ; magies innées
   // accessibles (liste de l'onglet quand elle existe, R11, sinon la matrice) ; bornes des caractéristiques ; dons de l'onglet (race_don, un par ethnie
@@ -137,7 +158,7 @@ function reglesDeLaBase(db) {
       const sorts = bonusDeSortsEcrits(d.texte);
       const acquis = horsDuTableau(lireAcquis(d.texte));
       return {
-        id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)),
+        id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(resistancesDuTexte(d.texte)),
         ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}),
       };
     });
@@ -289,15 +310,20 @@ function reglesDeLaBase(db) {
   /**
    * Les familles d'une maîtrise au choix d'une classe (classe_maitrise_arme forme 'au_choix', décision R119) : les familles maîtrisables (jamais ARME DE
    * MONSTRES, R45) de sa catégorie (« arme contact au choix », « arme à distance au choix » : R127 ; aucune catégorie écrite : toutes), sans celle de son
-   * « sauf » (« (sauf Dague) »). Le « sauf » est lu par le nom du bandeau d'une famille, chaque nom séparé par « / », au singulier (« Masse » :
-   * MASSE/MARTEAU ; « Épée » : ÉPÉES) : aucune décision ne le dit, c'est une lecture à confirmer (question Q44) ; null quand le « sauf » ne nomme aucune
-   * famille ainsi (« Hast », « Bâton », « Arme jet », Q44 aussi : rien n'est rapproché à la place de la source, la maîtrise ne se lit pas).
+   * « sauf » (« (sauf Dague) »). Le « sauf » est la famille que nomme le bandeau, chaque nom séparé par « / », tel quel ou au singulier (« Dague » :
+   * DAGUES ; « Épée » : ÉPÉES), ou celle que la décision R138 lui rattache quand il s'écrit autrement (FAMILLES_DES_SAUF : « Hast », « Bâton »,
+   * « Arme jet », « Masse ») ; null quand le « sauf » ne nomme aucune famille (rien n'est rapproché à la place de la source, la maîtrise ne se lit pas).
    */
   const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
+  for (const id of Object.values(FAMILLES_DES_SAUF)) {
+    if (!famillesDArmes.some((f) => f.id === id && f.maitrisable)) throw new Error(`FAMILLES_DES_SAUF : la famille « ${id} » n'est pas une famille maîtrisable de la base`);
+  }
   const famillesAuChoix = (ligne) => {
     const familles = famillesDArmes.filter((x) => x.maitrisable && (!ligne.categorie || x.categorie === ligne.categorie));
     if (!ligne.sauf_cle) return familles.map((x) => x.id);
-    const exclues = familles.filter((x) => x.nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle)));
+    const rattachee = FAMILLES_DES_SAUF[ligne.sauf_cle];
+    const exclues = familles.filter((x) => (rattachee ? x.id === rattachee
+      : x.nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle))));
     return exclues.length ? familles.filter((x) => !exclues.includes(x)).map((x) => x.id) : null;
   };
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
@@ -336,7 +362,7 @@ function reglesDeLaBase(db) {
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
-          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)), ...degatsEcrits(d),
+          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(resistancesDuTexte(d.effet)), ...degatsEcrits(d),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),

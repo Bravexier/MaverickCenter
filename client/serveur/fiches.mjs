@@ -26,8 +26,8 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
- * posture, R115 ; l'arme choisie d'un choix d'acquis, R119, que la page laisse vide). Quand le
- * service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
+ * posture, R115 ; l'arme choisie d'un choix d'acquis, R119, que la page laisse vide) et de la migration 0071 (la magie d'une résistance au choix, R137).
+ * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 :
@@ -44,6 +44,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage_arme: Object.freeze({ durabilite: null }),
   personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
   personnage_acquis_choix: Object.freeze({ arme_famille_id: null }),
+  personnage_resistance_choix: Object.freeze({ magie_id: null }),
 });
 
 /** Vrai si `valeur`, reçue pour la colonne `colonne` de `table` que la base vivante n'a pas, ne porte rien (DEPART_DES_COLONNES_AJOUTEES). */

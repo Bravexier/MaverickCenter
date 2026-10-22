@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 70 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 71 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3411,14 +3411,15 @@ Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le tex
 
 ### `personnage_resistance_choix`
 
-Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ; les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres ») est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ; pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance par choix (clé primaire).
+Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ; les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres ») est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ; pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance par choix (clé primaire). Résistance à une magie au choix (décision R137, migration 0071 : « Q43: Oui ») : Ocultomancien « Résilience » (« Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption », source = l'identifiant du don, capacite.id) et Anansi d'Arcane (« 1 cran de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état », source = race_don.id) : la magie choisie ou tirée (`magie_id`), dont l'altération d'état (etat_magie) se lit dans les règles quand le don l'écrit, jamais gardée ici. Une ligne retient une altération (`etat_id`) ou une magie (`magie_id`), jamais les deux ni aucune.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `source` | TEXT | oui | PK 2 |  |
 | `rang` | INTEGER | oui | PK 3 |  |
-| `etat_id` | TEXT | oui | → etat.id |  |
+| `etat_id` | TEXT | non | → etat.id | l'altération d'état retenue (R124) ; NULL pour une magie |
+| `magie_id` | TEXT | non | → magie.id | la magie choisie ou tirée (R137, migration 0071) ; NULL pour une altération |
 
 ### `personnage_metier_bonus`
 
