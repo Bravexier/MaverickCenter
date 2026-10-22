@@ -18,6 +18,7 @@ import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne } from '../src/
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { jsonOuNull } from './partage.mjs';
+import { corpsOuRefus } from './edition-corps.mjs';
 
 /** Le coût et l'effet écrits d'une amélioration : les cases d'une amélioration d'arme ou d'armure, refaits pour une amélioration de bouclier. */
 export const TEXTES_D_AMELIORATION = ['cout_brut', 'effet_brut'];
@@ -33,13 +34,7 @@ export function suivreLeCorpsDesArmures(ctx, table, avant, apres, ErreurEdition)
   const id = pageDeLaLigne(table, apres ?? avant);
   const page = id && lireLigne(ctx.db, 'page', { id });
   if (!page) return;
-  let corps;
-  try {
-    corps = corpsDesArmuresApres(page.corps_md, table, avant, apres);
-  } catch (e) {
-    if (e instanceof ErreurCorpsArmures) throw new ErreurEdition(500, `Page ${id} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-    throw e;
-  }
+  const corps = corpsOuRefus(ErreurEdition, ErreurCorpsArmures, id, () => corpsDesArmuresApres(page.corps_md, table, avant, apres));
   if (corps !== page.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
 }
 

@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Page : `src/scripts/edition.mjs`, extensions `src/scripts/edition/` (une par domaine : `classes.mjs`, `annonces.mjs`, `texte-en-place.mjs`, `mots-cles-vivants.mjs`…), `components/edition/Edition.astro`, `styles/edition/`.
 - Modèle et rendus : `lib/edition-modele.mjs` (`TABLES`, `CHAMPS_DE_TEXTE`, `typeDeTexte`, `attributEd`, `ligneSansImage`), `lib/edition-rendu.mjs` (`RENDUS`), `lib/markdown-edition.mjs` (HTML → Markdown), `lib/markdown-couleurs.mjs`, `lib/markdown-sur.mjs`, `lib/tables-de-la-base.mjs`.
-- Service : `serveur/edition.mjs` (un lot d'un bloc, tout ce qui dépend d'un champ recalculé), `serveur/edition-journal.mjs` (section 14, rejoué quand les règles changent), extensions `serveur/edition-<domaine>.mjs`.
+- Service : `serveur/edition.mjs` (un lot d'un bloc, tout ce qui dépend d'un champ recalculé), `serveur/edition-journal.mjs` (section 14, rejoué quand les règles changent), extensions `serveur/edition-<domaine>.mjs` (le refus commun d'un corps de page illisible : `serveur/edition-corps.mjs`).
 - Dons et spécialités (D11) : `lib/dons-edition.mjs`, extension `edition/classes.mjs`, rendu pur `lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`.
 - Ce que chaque domaine modifie et recalcule : le skill de sa zone. Balises du glossaire : skill `zone-mots-cles`. Rapatrier un journal : skill `rapatrier-l-edition`. Mise à jour et rejeu par GitHub : skill `zone-mise-a-jour`. `/api/v1/` (écrit par ce service) : skill `zone-api-rest`. Le service en général : skill `zone-service`.
 
