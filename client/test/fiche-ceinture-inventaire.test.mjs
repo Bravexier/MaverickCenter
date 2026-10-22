@@ -196,7 +196,7 @@ test('ceinture : un objet assigné quitte le sac, 3 au plus ou tous s’il y en 
   assert.deepEqual(r.inventaire, []);
 });
 
-test('ceinture : un nom que le sac n’a pas est refusé, rien ne change (« Sac seulement ») ; un nom vide aussi (on vide un emplacement par « Ranger »)', () => {
+test('ceinture : un nom que le sac n’a pas est refusé, rien ne change (« Sac seulement ») ; un nom vide aussi (R131 : « seul « Ranger » le vide »)', () => {
   const fiole = nomDe(potion.ressource_id);
   const f = fiche({ inventaire: sac([materiel.nom, 1]), ceinture: [{ rang: 1, nom: fiole, quantite: 2, ressource_id: potion.ressource_id }] });
   assert.equal(mettreALaCeinture(regles, f, 1, 'Dague du MJ'), null);
@@ -288,7 +288,7 @@ test('ceinture : au-delà du maximum (une fiche importée), « Utiliser » retir
   assert.deepEqual(comptes(apres(f, rangerLEmplacement(regles, f, 1)), fiole), [11, 0], 'rangé : tout retourne au sac');
 });
 
-test('ceinture : « Remplir » prend ce que le sac a, même moins que le maximum ; rien quand il n’en a plus', () => {
+test('ceinture : « Remplir » prend ce que le sac a, même moins que le maximum ; rien quand il n’en a plus, le bouton grisé (R131)', () => {
   const fiole = nomDe(potion.ressource_id);
   let f = fiche({ inventaire: sac([materiel.nom, 1], [fiole, 1]), ceinture: [{ rang: 1, nom: fiole, quantite: 1, ressource_id: potion.ressource_id }] });
   assert.equal(actionsDeLEmplacement(regles, f, 1).duSac, 1);
