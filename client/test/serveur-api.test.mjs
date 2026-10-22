@@ -1050,7 +1050,9 @@ test('ordre de lecture des listes : un ordre total — le rang, puis le reste de
       { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-lourde', valeur: null, arme_famille_id: 'epees' },
     ];
     const resistance_choix = [{ source: 'z-source', rang: 1, etat_id: GEL }, { source: 'a-source', rang: 2, etat_id: POISON }, { source: 'a-source', rang: 1, etat_id: POISON }];
-    const cree = enregistrerFiche(base, { ...ficheConforme('Ordre'), acquis_choix, resistance_choix });
+    // une horloge fixe : un second enregistrement une seconde plus tard changerait `modifie_le`, donc la version, quel que soit l'ordre des listes
+    const maintenant = new Date('2026-01-01T12:00:00Z');
+    const cree = enregistrerFiche(base, { ...ficheConforme('Ordre'), acquis_choix, resistance_choix }, { maintenant });
     const lue = lireFiche(base, cree.personnage.id);
     assert.deepEqual(lue.acquis_choix.map((x) => [x.rang, x.source, x.competence_id]), [
       [1, 'capacites/tueur-fletrisseur', 'arme-lourde'], [1, 'races/humain#don:humain-central', 'arc'], [1, 'races/humain#don:humain-central', 'calme'],
@@ -1058,7 +1060,7 @@ test('ordre de lecture des listes : un ordre total — le rang, puis le reste de
     ]);
     assert.deepEqual(lue.resistance_choix.map((x) => [x.rang, x.source]), [[1, 'a-source'], [1, 'z-source'], [2, 'a-source']]);
     // les mêmes lignes envoyées dans un autre ordre : la même fiche, la même version
-    const autre = enregistrerFiche(base, { version: lue.version, acquis_choix: [...acquis_choix].reverse(), resistance_choix: [...resistance_choix].reverse() }, { id: lue.id });
+    const autre = enregistrerFiche(base, { version: lue.version, acquis_choix: [...acquis_choix].reverse(), resistance_choix: [...resistance_choix].reverse() }, { id: lue.id, maintenant });
     assert.deepEqual([autre.personnage.acquis_choix, autre.personnage.resistance_choix], [lue.acquis_choix, lue.resistance_choix]);
     assert.equal(lireFiche(base, lue.id).version, lue.version);
   } finally {
