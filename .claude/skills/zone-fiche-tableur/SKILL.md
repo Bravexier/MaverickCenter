@@ -46,7 +46,7 @@ user-invocable: false
 - Ce que la fiche calcule n'est pas relu (sauf pour retrouver un choix que le classeur n'écrit pas, dit en remarque). AK15/AX15 de la fiche auto sont un calcul, jamais relues. L'AP et l'AM de la grille de l'armure et du bouclier sont calculés, non relus (R108).
 
 ## Cases relues à connaître
-- L42, entraînement (R104) : ses compétences « Nom points » jointes par « | », relues par `bonusDEntrainement` ; ses textes et les choix d'acquis des dons sont les lignes « Entraînement » et « Acquis au choix » de la note, la famille d'armes entre parenthèses (R119) ; la ligne « Résistance au choix » (R124).
+- L42, entraînement (R104) : ses compétences « Nom points » jointes par « | », relues par `bonusDEntrainement` ; ses textes et les choix d'acquis des dons sont les lignes « Entraînement » et « Acquis au choix » de la note, la famille d'armes entre parenthèses (R119) ; la ligne « Résistance au choix » (R124 ; une magie au choix ou tirée d'un don, « Anansi d'Arcane : Feu », R137).
 - AK17/AX17 : solidité d'une arme « N / M » (R74).
 - Note « Sort préparé : … (jet N, posture X) » (R115 : `texteDuSortPrepare`, `lireSortPrepare`).
 - AQ21 : une ligne d'armure (R95) ; d'un classeur d'avant, une ligne par pièce, la première gardée. AD22 toujours relue. AI24:AN24 : solidité « N / M » de chaque partie de l'armure.

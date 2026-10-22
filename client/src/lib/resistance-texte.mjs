@@ -11,7 +11,12 @@
 // « Au choix parmi les autres » sous la colonne « +1 cran de résistance » (tableau du Drakos, ligne du Drakos orange) : un choix (`choix`) parmi les
 // résistances des autres lignes de la colonne (décision R124 : « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les
 // résistance »), `autres` = ses crans ; lib/fiche-regles.mjs en tire les options, que la fiche fait choisir (personnage_resistance_choix).
-// Pas compté : une résistance au choix ou aléatoire (« une magie au choix », « une vulnérabilité magique », signalée par `choix`), ce qui ne dure
+// « Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption » (Ocultomancien, « Résilience ») et « 1 cran
+// de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état » (Anansi d'Arcane) : une magie choisie ou tirée
+// (`magies_au_choix` : ses crans, les magies que la phrase exclut, et `alteration` quand elle donne aussi le cran à l'altération d'état de cette magie),
+// que la fiche fait choisir comme celle du Drakos orange (décision R137, « Q43: Oui » ; personnage_resistance_choix.magie_id) ; lib/fiche-regles.mjs en
+// tire les options.
+// Pas compté : une autre résistance au choix ou aléatoire (« une vulnérabilité magique », signalée par `choix`), ce qui ne dure
 // qu'un temps (« pendant 2 tours », « le temps de la téléportation ») ou vise un autre que le personnage (« la cible », « un allié », « un
 // adversaire », « le lanceur » d'un piège), une immunité partielle (« à 95% »). Pur, sans dépendance.
 
@@ -24,6 +29,12 @@ const PARLE_DE_RESISTANCE = /\bcrans?\b.*\b(?:resistance|vulnerabilite|faiblesse
 const PASSAGER_OU_AUTRUI = /\b(?:pendant|le temps|cible|allie|adversaire|ennemi|lanceur|piege)\b|\b\d+\s+tours?\b|\d+\s*%/;
 /** Une résistance que le joueur choisit (ou que le hasard donne) : pas comptée, signalée. */
 const AU_CHOIX = /\bau choix\b|\baleatoire\b|\bune (?:magie|vulnerabilite|alteration|resistance)\b/;
+/**
+ * Un cran à une magie choisie ou tirée, sauf celles que la phrase nomme (décision R137) : « augmente de 1 cran la resistance a une magie au choix, a
+ * l'exception de l'arcane et de la corruption », « - 1 cran de resistance sur une magie aleatoire (sauf arcane et corruption) et son alteration d'etat »
+ * (textes pliés) ; [, crans, « au choix » | « aleatoire », la suite].
+ */
+const MAGIE_AU_CHOIX = /^-?\s*(?:augmente de )?(\d+) crans? (?:de |la )resistance (?:a|sur) une magie (au choix|aleatoire)\b(.*)$/;
 
 /**
  * Lecteur des résistances écrites dans un texte, pour un jeu de cibles connues.
@@ -50,6 +61,17 @@ export function lecteurDeResistances(cibles) {
   const phrase = (texte, lecture) => {
     const t = plier(texte).trim();
     if (!PARLE_DE_RESISTANCE.test(t) || PASSAGER_OU_AUTRUI.test(t)) return;
+    // une magie au choix ou tirée, sauf celles que la phrase exclut (« à l'exception de… », « (sauf …) ») : un choix de la fiche (décision R137)
+    const magie = MAGIE_AU_CHOIX.exec(t);
+    if (magie) {
+      const [, crans, mode, suite] = magie;
+      const sauf = /(?:\bsauf\b|a l'exception d)([^)]*)/.exec(suite);
+      (lecture.magies_au_choix ??= []).push({
+        crans: Number(crans), sauf: sauf ? nommees(sauf[1]).filter((c) => c.type === 'magie').map((c) => c.id) : [],
+        alteration: /\bet son alteration d'etat\b/.test(suite), aleatoire: mode === 'aleatoire',
+      });
+      return;
+    }
     if (AU_CHOIX.test(t)) {
       lecture.choix = true;
       return;
@@ -76,7 +98,8 @@ export function lecteurDeResistances(cibles) {
   /**
    * Ce que donne un texte : `effets` comptés ({ type: 'magie' | 'etat', id, crans } ou { …, immunite: true } ; `magie_innee` et `etat_magie_innee`,
    * sans id, désignent la magie innée du personnage et l'altération qui lui est liée), et `choix` quand une résistance est laissée au choix ; `autres`
-   * (une cellule « Au choix parmi les autres », décision R124) : les crans de ce choix, à prendre parmi les autres lignes de la colonne.
+   * (une cellule « Au choix parmi les autres », décision R124) : les crans de ce choix, à prendre parmi les autres lignes de la colonne ;
+   * `magies_au_choix` (une magie au choix ou aléatoire, décision R137) : [{ crans, sauf (ids des magies exclues), alteration, aleatoire }], absent sinon.
    * `colonne` : en-tête de la colonne d'une cellule de tableau de dons ; sous « +1 cran de résistance », la cellule nomme la cible (ou un choix),
    * sous un autre en-tête elle se lit comme un texte.
    */

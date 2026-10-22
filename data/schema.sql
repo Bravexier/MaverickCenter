@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 70;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 71;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4089,12 +4089,19 @@ CREATE UNIQUE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (per
 -- premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que
 -- ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance
 -- par choix (clé primaire).
+-- Résistance à une magie au choix (décision R137, migration 0071 : « Q43: Oui ») : Ocultomancien « Résilience » (« Augmente de 1 cran la résistance à
+-- une magie au choix, à l'exception de l'arcane et de la corruption », source = l'identifiant du don, capacite.id) et Anansi d'Arcane (« 1 cran de
+-- résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état », source = race_don.id) : la magie choisie ou tirée
+-- (`magie_id`), dont l'altération d'état (etat_magie) se lit dans les règles quand le don l'écrit, jamais gardée ici. Une ligne retient une altération
+-- (`etat_id`) ou une magie (`magie_id`), jamais les deux ni aucune.
 CREATE TABLE personnage_resistance_choix (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   source         TEXT    NOT NULL CHECK (length(source) > 0),
   rang           INTEGER NOT NULL CHECK (rang >= 1),
-  etat_id        TEXT    NOT NULL REFERENCES etat(id),
-  PRIMARY KEY (personnage_id, source, rang)
+  etat_id        TEXT    REFERENCES etat(id),    -- l'altération d'état retenue (R124) ; NULL pour une magie
+  magie_id       TEXT    REFERENCES magie(id),   -- la magie choisie ou tirée (R137, migration 0071) ; NULL pour une altération
+  PRIMARY KEY (personnage_id, source, rang),
+  CHECK ((etat_id IS NULL) <> (magie_id IS NULL))
 ) STRICT, WITHOUT ROWID;
 
 -- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier

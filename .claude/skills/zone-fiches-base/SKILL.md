@@ -1,13 +1,13 @@
 ---
 name: zone-fiches-base
 description: "Section 13 de data/schema.sql : tables des fiches de personnages (personnage, personnage_*), utilisateurs, groupes, vues v_personnage_*, v_groupe_controle ; rien de calculé stocké, visibilité, retraits R42. À charger avant de lire, modifier ou relire ces tables, leurs migrations ou leurs tests."
-paths: ["data/migrations/0011-personnages.sql", "data/migrations/0031-fiche-zones.sql", "data/migrations/0038-personnage-sans-statut.sql", "data/migrations/0045-gains-entrainement-durabilite.sql", "data/migrations/0055-armure-une-armure-six-parties.sql", "data/migrations/0060-fiche-bouclier-accessoires.sql", "data/migrations/0062-fiche-entrainement-acquis.sql", "data/migrations/0066-nm-mj-fiche.sql", "data/migrations/0067-grenades-sort-prepare-arme-choisie.sql", "data/migrations/0069-armes-a-distance-resistance-du-drakos-orange.sql", "client/serveur/fiches-retraits.mjs", "client/test/personnages-db.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "client/test/fiche-format-retirees.test.mjs", "docs/character-generator.md"]
+paths: ["data/migrations/0011-personnages.sql", "data/migrations/0031-fiche-zones.sql", "data/migrations/0038-personnage-sans-statut.sql", "data/migrations/0045-gains-entrainement-durabilite.sql", "data/migrations/0055-armure-une-armure-six-parties.sql", "data/migrations/0060-fiche-bouclier-accessoires.sql", "data/migrations/0062-fiche-entrainement-acquis.sql", "data/migrations/0066-nm-mj-fiche.sql", "data/migrations/0067-grenades-sort-prepare-arme-choisie.sql", "data/migrations/0069-armes-a-distance-resistance-du-drakos-orange.sql", "data/migrations/0071-sort-prepare-resistances-a-une-magie.sql", "client/serveur/fiches-retraits.mjs", "client/test/personnages-db.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "client/test/fiche-format-retirees.test.mjs", "docs/character-generator.md"]
 user-invocable: false
 ---
 # Fiches de personnages dans la base (section 13)
 
 ## Fichiers
-- Tables et vues : section 13 de `data/schema.sql` (migration `0011-personnages`, puis 0031, 0038, 0045, 0055, 0060, 0062, 0066, 0067, 0069).
+- Tables et vues : section 13 de `data/schema.sql` (migration `0011-personnages`, puis 0031, 0038, 0045, 0055, 0060, 0062, 0066, 0067, 0069, 0071).
 - Retraits R42 : `client/serveur/fiches-retraits.mjs` (`RETRAITS`) ; texte de la ligne : `client/src/lib/fiche-format.mjs#ligneDeRetrait`.
 - Format JSON d'une fiche, `TABLES_FICHES`, `PARTIES_DE_FICHE`, `HORS_FICHE`, `TABLES_RETIREES`, `COLONNES_RETIREES` : `client/src/lib/fiche-format.mjs` (le service et la base vivante : skill `zone-service`).
 - Calculs de la fiche à partir de ces choix : skill `zone-fiche`. Écrire une migration : skill `ecrire-une-migration`.
@@ -32,7 +32,7 @@ user-invocable: false
 - `personnage_arme.durabilite` (R74 : NULL = à son maximum, 0 = cassée).
 - Armure dans `personnage` (`armure_id`, `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id`) et `personnage_armure_partie` (R95 : la solidité du moment d'une partie abîmée ; sans ligne, à son maximum).
 - Sort préparé dans `personnage_sort` (`prepare`, `prepare_jet`, `prepare_posture_id`), un seul par fiche (R115, migration 0067).
-- Résistance au choix d'une ligne de tableau de race : `personnage_resistance_choix` (R124, migration 0069).
+- Résistance au choix : `personnage_resistance_choix`, une altération d'une ligne de tableau de race (R124, migration 0069) ou une magie au choix ou tirée d'un don (`magie_id`, R137, migration 0071 ; l'une ou l'autre).
 - NM du MJ pour toute la fiche : `personnage.nm_mj` (R118, migration 0066).
 
 ## Visibilité et groupes (demande du propriétaire)

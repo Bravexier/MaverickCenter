@@ -338,7 +338,7 @@ export const HORS_RESSOURCE = {
   personnage_competence: `Points de compétences d’une fiche, le naturel (partie de la fiche ; l’acquis se calcule, R104) : ${FICHES}.`,
   personnage_entrainement: `Lignes de l’entraînement d’une fiche, une compétence et ses points ou un texte libre (partie de la fiche, R104) : ${FICHES}.`,
   personnage_acquis_choix: `Choix d’acquis des dons d’une fiche, « X ou Y », « à répartir au choix » ou l’arme choisie (partie de la fiche, R104, R119) : ${FICHES}.`,
-  personnage_resistance_choix: `Résistance au choix d’une ligne du tableau de la race d’une fiche, « Au choix parmi les autres » du Drakos orange (partie de la fiche, R124) : ${FICHES}.`,
+  personnage_resistance_choix: `Résistance au choix d’une fiche : d’une ligne du tableau de la race, « Au choix parmi les autres » du Drakos orange (R124), ou à une magie au choix ou tirée d’un don, Ocultomancien « Résilience », Anansi d’Arcane (R137) (partie de la fiche) : ${FICHES}.`,
   personnage_metier_bonus: `Choix d’un rang de bonus de métier à plusieurs compétences (partie de la fiche) : ${FICHES}.`,
   personnage_capacite: `Dons à choix d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,

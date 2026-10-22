@@ -34,7 +34,7 @@ import {
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
-  sortsApresChoixDEmplacement, sortsApresPreparation,
+  sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
@@ -358,9 +358,10 @@ function construireMagies() {
 /**
  * Résistances et faiblesses (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse » de la fiche auto) : les six paliers, chacun avec
  * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), le détail des crans en infobulle (resistancesDe) ;
- * sous le tableau, la résistance à choisir de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124 : une liste
- * des altérations des autres lignes, personnage_resistance_choix ; surlignée et dans le tiroir des choix tant qu'elle n'est pas faite), puis les dons qui
- * laissent une résistance au choix (pas comptée).
+ * sous le tableau, les résistances à choisir — de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124 : une
+ * liste des altérations des autres lignes), d'un don qui laisse une magie au choix ou tirée (décision R137 : Ocultomancien « Résilience », Anansi
+ * d'Arcane : une liste des magies) ; personnage_resistance_choix ; surlignées et dans le tiroir des choix tant qu'elles ne sont pas faites —, puis les
+ * dons qui laissent une autre résistance au choix (pas comptée).
  */
 function construireResistances() {
   const { paliers, auChoix, aChoisir: resistancesAChoisir, desactivee } = resistancesDe(regles, fiche);
@@ -368,11 +369,13 @@ function construireResistances() {
   blocDuChoix.hidden = !resistancesAChoisir.length;
   reconstruire(blocDuChoix, JSON.stringify(resistancesAChoisir.map((c) => [c.source, c.rang, c.options])), () => resistancesAChoisir.map((c) => {
     const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.resistance(c.source, c.rang) } });
+    // une altération d'état (Drakos orange, R124) ou une magie, choisie ou tirée, et son altération quand le don l'écrit (R137)
+    const quoi = `+${c.crans} cran de résistance${c.magie ? ` à une magie${c.alteration ? ' et à son altération d’état' : ''}` : ''}`;
     const liste = el('select', {
-      'aria-label': `${c.nom} : +${c.crans} cran de résistance à choisir`,
-      onchange: (ev) => { Object.assign(fiche, resistanceApresChoix(fiche, c.source, c.rang, ev.target.value || null)); changer(); },
-    }, option('', 'Choisir…'), c.options.map((o) => option(o, trouver(regles.etats, o)?.nom ?? o)));
-    li.append(el('span', {}, `${c.nom} : +${c.crans} cran de résistance`), liste);
+      'aria-label': `${c.nom} : ${quoi} à choisir`,
+      onchange: (ev) => { Object.assign(fiche, resistanceApresChoix(fiche, c.source, c.rang, ev.target.value || null, c.magie)); changer(); },
+    }, option('', 'Choisir…'), c.options.map((o) => option(o, trouver(c.magie ? regles.magies : regles.etats, o)?.nom ?? o)));
+    li.append(el('span', {}, `${c.nom} : ${quoi}`), liste);
     synchro(() => {
       const fait = resistancesDe(regles, fiche).aChoisir.find((x) => x.source === c.source && x.rang === c.rang);
       poser(liste, fait?.choisi ?? '');
@@ -816,7 +819,9 @@ function construireSorts() {
           el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
           const nm = nmDuSort(fiche.sorts[l.index]);
-          const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
+          // le NM auquel les valeurs se lisent : celui du curseur, plus ceux que les dons donnent au sort préparé (« À l'aise », décision R134 ; au plus 3)
+          const nmLu = fiche.sorts[l.index] ? nmDuMoment(regles, fiche, fiche.sorts[l.index], calcul.contexteSorts) : { total: nm.total, detail: [] };
+          const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nmLu.total) ?? '' : '');
           // le sort à son moment (décision R102) : coût réduit (dons, bâton ; jamais moins de 1), portée et dégâts ou soins avec les bonus des dons, des
           // accessoires, du bâton, de l'armure élémentaire et de la posture ; chaque valeur changée en gras, son détail en infobulle
           const m = l.sort ? sortDuMoment(regles, fiche, l.sort, {
@@ -859,9 +864,9 @@ function construireSorts() {
           poserValeur(portee, m?.portee.texte ?? '', m && m.portee.detail.length,
             m && detail(`Portée écrite : ${auNm(l.sort.portee, 'portee')}`, m.portee.detail, nonComptes('portee')), m && (m.portee.detail.length || nonComptes('portee').length));
           zone.textContent = auNm(l.sort?.zone, 'zone');
-          modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nm.total) : []).map((m) => el('span', {
+          modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nmLu.total) : []).map((m) => el('span', {
             class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
-            title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
+            title: m.atteint ? null : `Pas encore : ${nmLu.total} NM sur ce sort`,
           }, m.texte)));
           const autres = nonComptes('dsb');
           const texteDsb = m ? `${m.dsb.texte}${m.dsb.diviseur > 1 ? ` ÷ ${m.dsb.diviseur}` : ''}` : '';
@@ -893,8 +898,10 @@ function construireSorts() {
           infobulle(curseur, [
             `${nm.total} NM sur ce sort${nm.livre ? `, dont 1 de livre : ${nm.comptes} compté${nm.comptes > 1 ? 's' : ''} dans le décompte` : ''} ; ${calcul.nm.plafond} au plus`,
             ...(tropCompte ? [`Au plus ${calcul.nm.maxParSort} NM de niveau sur un sort (niveau − 1)${calcul.nm.mj ? `, plus les ${calcul.nm.mj} du MJ` : ''}`] : []),
+            // les NM que les dons donnent au sort préparé (décision R134) : ses valeurs se lisent à ce NM, sans rien compter dans le décompte
+            ...nmLu.detail.map((d) => `Sort préparé : ${signe(d.valeur)} NM (${d.nom}), ses valeurs se lisent à ${nmLu.total} NM ; hors du décompte`),
           ].join('\n'));
-          total.textContent = String(nm.total);
+          total.textContent = nmLu.total > nm.total ? `${nm.total}+${nmLu.total - nm.total}` : String(nm.total);
           total.toggleAttribute('data-hors', nm.total > calcul.nm.plafond);
         });
         return [
@@ -1031,7 +1038,8 @@ function ligneDInvocation(l) {
 /**
  * Le sort préparé (décision R115, présentation validée par le propriétaire le 2026-10-18 : « un bloc « Sort préparé » avec « Préparation » ou « Chargement »,
  * un seul sort d'attaque de niveau 1 ou 2, le jet de magie (le D100), la posture du moment enregistrée, « Lâcher le sort » ») : caché sans l'un de ces dons
- * (donDePreparation) ; la liste ne propose que les sorts de la fiche que le don autorise (sortsAPreparer). Choisir un sort le prépare à la posture cochée à
+ * (donDePreparation) ; l'aide dit qu'il n'y en a qu'un, pour tout type d'attaque (décision R136), perdu en Symbiose d'une autre magie (R135 :
+ * sortsApresLaSymbiose, à chaque rafraîchissement) ; la liste ne propose que les sorts de la fiche que le don autorise (sortsAPreparer). Choisir un sort le prépare à la posture cochée à
  * cet instant, qu'on voit à côté ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
  * dans le tableau des sorts, se calculent à la posture enregistrée (sortDuMoment).
  */
@@ -1044,7 +1052,10 @@ function construireSortPrepare() {
   }
   const noms = don.dons.map((x) => `« ${x.don.nom} » (${x.classe.nom})`).join(' et ');
   const aide = $('sort-prepare-aide');
-  const texteAide = `${noms} : ${don.dons.map((x) => x.don.effet).join(' ')}`;
+  // un seul sort préparé à la fois, pour n'importe quel type d'attaque (décision R136 : « Un seul sort préparé à la fois. Il comptera juste pour n'importe
+  // quel type d'attaque »), même avec les deux dons ; perdu en Symbiose avec une autre magie que la sienne (décision R135)
+  const texteAide = `${noms} : ${don.dons.map((x) => x.don.effet).join(' ')} Un seul sort préparé à la fois, utilisable pour n’importe quel type `
+    + 'd’attaque, de contact ou à distance ; en posture Symbiose avec une autre magie que la sienne, il est perdu.';
   if (aide.textContent !== texteAide) aide.textContent = texteAide;
   const choix = sortsAPreparer(regles, fiche, don);
   const cle = JSON.stringify([choix.map((x) => x.sort.id), don.dons.map((x) => x.don.id)]);
@@ -2717,6 +2728,8 @@ function rafraichir() {
   // la magie de la Symbiose (décision R100) : une magie du personnage, jamais le Potentiel Illimité ; une autre (magies changées) est oubliée
   if (fiche.symbiose_magie_id && (fiche.symbiose_magie_id === 'magies/potentiel-illimite'
     || ![fiche.magie_innee_id, fiche.magie_acquise_id].includes(fiche.symbiose_magie_id))) fiche.symbiose_magie_id = null;
+  // le sort préparé est perdu en Symbiose avec une autre magie que la sienne (décision R135) : sa préparation est lâchée, et ne revient pas
+  fiche.sorts = sortsApresLaSymbiose(regles, fiche);
   calcul = {
     niveau: niveauGlobal(regles, fiche.xp),
     classes: classesDe(regles, fiche),

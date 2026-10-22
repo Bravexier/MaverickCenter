@@ -835,8 +835,9 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   f.acquis_choix = acquisChoixValables(regles, f);
   if (f.acquis_choix.length < relus) perdu('Acquis au choix : des points répartis au-delà du bonus de leur don, retirés');
 
-  // ---- la résistance au choix de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124), lignes « Résistance au
-  // choix » de la note : « <ligne> : <altération> », une des options de la ligne de la race et de l'ethnie de la fiche
+  // ---- les résistances au choix, lignes « Résistance au choix » de la note : de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos
+  // orange, décision R124), « <ligne> : <altération> », une des options de la ligne de la race et de l'ethnie de la fiche ; d'un don qui laisse une magie
+  // au choix ou tirée (décision R137 : Ocultomancien « Résilience », Anansi d'Arcane), « <don> : <magie> », une de ses options
   f.resistance_choix = [];
   const resistancesAChoisir = resistancesDe(regles, f, { avecLaPosture: false }).aChoisir;
   for (const ligne of notee('resistanceChoix')) {
@@ -845,12 +846,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const quoi = `Résistance au choix « ${ligne} »`;
     const libres = resistancesAChoisir.filter((c) => cle(c.nom) === cle(nom) && !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
     const etat = (regles.etats ?? []).find((e) => cle(e.nom) === cle(valeur));
-    const choix = libres.find((c) => etat && c.options.includes(etat.id)) ?? null;
+    const magie = (regles.magies ?? []).find((m) => cle(m.nom) === cle(valeur));
+    const choix = libres.find((c) => (c.magie ? magie && c.options.includes(magie.id) : etat && c.options.includes(etat.id))) ?? null;
     if (!choix) {
-      perdu(`${quoi} : ${libres.length ? 'pas une option de cette ligne' : 'aucune résistance au choix de ce nom pour la race et l’ethnie de la fiche'}`);
+      perdu(`${quoi} : ${libres.length ? 'pas une option de ce choix' : 'aucune résistance au choix de ce nom pour la race, l’ethnie et les dons de la fiche'}`);
       continue;
     }
-    f.resistance_choix.push({ source: choix.source, rang: choix.rang, etat_id: etat.id });
+    f.resistance_choix.push(choix.magie ? { source: choix.source, rang: choix.rang, magie_id: magie.id } : { source: choix.source, rang: choix.rang, etat_id: etat.id });
   }
   f.resistance_choix = resistanceChoixValables(regles, f);
 

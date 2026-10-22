@@ -161,8 +161,13 @@ abandonne.
   du guide ; l'Arcane et la Corruption se résistent l'une à l'autre, décision R90), et ceux que les dons écrivent
   (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
   « Résistance à la magie du Sang », colonne « +1 cran de résistance » du Drakos —, dons de classe débloqués — « Augmente d'un cran la résistance à la magie
-  innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une résistance
-  au choix ou aléatoire (Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Le Drakos orange (« Au choix parmi les
+  innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une autre
+  résistance au choix (« Réduit de 1 cran une vulnérabilité magique… ») n'est pas comptée et la fiche le signale sous le tableau. Une **magie au choix ou
+  tirée** (décision R137 : Ocultomancien « Résilience », « une magie au choix, à l'exception de l'arcane et de la corruption » ; Anansi d'Arcane, « une magie
+  aléatoire (sauf arcane et corruption) et son altération d'état ») est un choix du tiroir : une liste des magies sous le tableau, les 12 sans l'Arcane, la
+  Corruption ni le Potentiel Illimité (`lib/resistance-texte.mjs`, `magies_au_choix` ; `lib/fiche-regles.mjs`, `resistances.au_choix` avec `magie` ; le
+  Potentiel Illimité, qui n'est pas une forme de magie qu'on subit, R98 : lecture de Claude, question Q46) ; la magie retenue gagne +1 cran et, pour
+  l'Anansi, son altération d'état aussi (`etat_magie`) ; table `personnage_resistance_choix`, colonne `magie_id` (migration 0071). Le Drakos orange (« Au choix parmi les
   autres », décision R124) **choisit** son cran : une liste sous le tableau (surlignée, et dans le tiroir des choix tant qu'elle n'est pas faite) propose les
   altérations des autres lignes du tableau « Écaille draconique », lues au build (`lib/fiche-regles.mjs`, `resistances.au_choix` de la ligne : Saignement à
   Peur, 13, jamais écrites à la main), et le cran choisi compte (`resistancesDe`, `aChoisir`, `resistanceApresChoix` ; table `personnage_resistance_choix`,
@@ -196,10 +201,10 @@ abandonne.
   s'enregistre pas (une aide le dit sous les listes ; une autre arme garde la compétence choisie quand elle l'offre aussi). La fiche n'exige pas que la
   maîtrise soit posée dans cette famille : R119 dit « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus », mais ne
   dit pas ce qu'il advient d'un choix d'arme sans la maîtrise sur la fiche ; ne pas l'exiger est un **arbitrage de Claude, en attente de la question
-  Q45**. Le « sauf » d'une maîtrise au choix est lu par le nom du bandeau d'une famille, chaque nom séparé par « / », au singulier (« Masse » :
-  MASSE/MARTEAU ; « Épée » : ÉPÉES ; `lib/fiche-regles.mjs#famillesAuChoix`) : une **lecture à confirmer (question Q44)**, comme les « sauf » qu'elle ne
-  lit pas. Une classe sans maîtrise au choix lisible (aucune, plusieurs, ou un « sauf » qui ne nomme aucune famille par son bandeau : « Hast »,
-  « Bâton », « Arme jet », Q44) laisse le bonus non compté
+  Q45**. Le « sauf » d'une maîtrise au choix est la famille que nomme le bandeau, chaque nom séparé par « / », tel quel ou au singulier (« Épée » :
+  ÉPÉES, « Dague » : DAGUES), ou celle que la décision R138 lui rattache quand il s'écrit autrement (« Hast » : LANCE/ARME D'HAST, « Bâton » : BÂTON DE
+  COMBAT, « Arme jet » : ARME DE JET, « Masse » : MASSE/MARTEAU ; `lib/fiche-regles.mjs#FAMILLES_DES_SAUF`, `famillesAuChoix`). Une classe sans maîtrise
+  au choix lisible (aucune, plusieurs, ou un « sauf » qui ne nommerait aucune famille) laisse le bonus non compté
   (raison « arme choisie »). « 5% parmi les autres » du Drakos orange (décision R124) est un « X ou Y » parmi les compétences des autres lignes du
   tableau « Écaille draconique » (Athlétisme à Sabotage, 14, lues au build), +5, indépendant du choix de sa résistance. Un bonus que la phrase lie à une
   situation, ou dont le don pose la condition dans une autre phrase (« Doit être dans l'eau. » du Namazu, « Roi des Eaux » ; « (Rage) » en tête : décision
@@ -231,17 +236,22 @@ abandonne.
   même temps que l'attaque de contact le tour suivant. ») ou « Chargement » du Mage Vert (« Permet d'influer un sort d'attaque lvl1 ou 2 dans la main et
   de l'utiliser en même temps que l'attaque de distance le tour suivant. »), débloqués au niveau de classe 1 (`donDePreparation` ; le texte lu au build par
   `lib/sort-bonus-texte.mjs#preparationEcrite` : un sort d'attaque, `sort_type` `attaque`, de NPM 1 ou 2, `regles.classes[].dons[].preparation`). La liste
-  ne propose que les sorts de la fiche qu'il autorise, sans ceux de la magie que la Symbiose du moment désactive (R100, R111), sauf le sort déjà préparé
-  (`sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
+  ne propose que les sorts de la fiche qu'il autorise, en Symbiose ceux de sa magie seulement (R135 : un sort d'une autre magie y serait perdu ;
+  `sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
   côté, sur sa couleur ; aucune si rien n'est coché : `sortsApresPreparation`), un seul par fiche ; le **jet de magie** (D100, de 1 à 100, facultatif :
   « si réussi ») se note ensuite (`sortsApresLeJet` ; les bornes du D100, valeurs de la décision, dans `regles.sort_prepare`) ; « **Lâcher le sort** » remet tout à zéro. Dans le tableau, le sort préparé porte la marque
   « préparé » et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
   maximals, même si l'attaque physique a lieu en posture défensive » : `contexteDesSorts`, `prepare`) ; les autres sorts suivent la posture cochée.
   Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067) ; une préparation que le don ne permet plus (classe changée,
   sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui
-  donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **Limite** : la magie de la Symbiose n'est pas enregistrée avec la préparation
-  (aucune colonne) ; un sort préparé en Symbiose se calcule avec la magie de Symbiose **actuelle** de la fiche (`personnage.symbiose_magie_id`), pas
-  celle du moment de sa préparation (question au propriétaire).
+  donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **En Symbiose avec une autre magie que la sienne, le sort préparé est perdu**
+  (décision R135 : « Si le sort préparé est d'une magie différente de la posture symbiose, il est perdu ») : la page lâche sa préparation à chaque
+  rafraîchissement (`sortsApresLaSymbiose`), elle ne revient pas en quittant la Symbiose ; rien n'est perdu tant que la magie de la Symbiose reste à
+  choisir, ni avec le Potentiel Illimité inné (sa Symbiose n'a pas de magie, R109). **Un seul sort préparé à la fois**, même bi-classé Mage Rouge et
+  Mage Vert, utilisable pour n'importe quel type d'attaque, de contact ou à distance (décision R136) : l'aide du bloc le dit. Le sort préparé se lit à
+  son **NM du moment** (`nmDuMoment`) : celui du curseur, plus les NM que lui donnent les dons débloqués, lus dans leur texte (« À l'aise » du Mage Vert,
+  nouvelle version de la décision R134 : « Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM. », migration 0071) ; la case NM
+  l'écrit « 1+1 », l'infobulle dit d'où vient le NM ajouté, qui ne compte pas dans le décompte ni ne s'enregistre.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
@@ -370,12 +380,12 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts préparés**
   (décision R115) : « Charge lente… » (Mage Rouge, spécialité Rubis, niveau de classe 10 : « Les sorts offensifs préparés infligent +5 dégâts. »)
   ajoute +5 au sort préparé, « … ou rapide » (« Les sorts offensifs non préparés infligent +5 dégâts. ») +5 à tous les autres sorts offensifs, lus
-  « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer ; une lecture, à confirmer : question Q32) ; sans sort
-  préparé, « … ou rapide » vaut pour tous les sorts d'attaque. Le Mage Vert n'a pas d'équivalent écrit de ces deux dons ; ses dons qui parlent du sort chargé ou
-  influé — « Soralongé » (« Augmente la portée des sorts d'attaque chargés de +2 », question Q33), « À l'aise » (« Le sort influé aura toujours au minimum
-  un Niveau de Maîtrise. », question Q34), « Point Faible », « Visée Laser », « ... Enchanté ! » —, comme « Instant Sort » du Mage Rouge (« Préparer un
-  sort de niveau 1 et 2 dans la main devient un IC. »), ne sont pas comptés (la décision ne les nomme pas ; « Soralongé » : « selon la situation » dans
-  l'infobulle de la portée). Une
+  « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer ; décision R132) ; sans sort
+  préparé, « … ou rapide » vaut pour tous les sorts d'attaque. Le Mage Vert n'a pas d'équivalent écrit de ces deux dons. « Soralongé » (« Augmente la
+  portée des sorts d'attaque chargés de +2 ») donne +2 de portée au sort préparé, le sort chargé (décision R133 : `SORTS_CHARGES`) ; « À l'aise » lui
+  donne un NM (décision R134, ci-dessus). Ses autres dons qui parlent du sort influé — « Point Faible », « Visée Laser », « ... Enchanté ! » —, comme
+  « Instant Sort » du Mage Rouge (« Préparer un sort de niveau 1 et 2 dans la main devient un IC. »), ne sont pas comptés (aucune décision ne les
+  nomme). Une
   **progression par niveau** (décision R110 : arrondi à l'inférieur) : « +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux »
   (Elfe argenté ; « +1 … +1 » du Felfe argenté) vaut 2 + 2 × ⌊niveau global ÷ 5⌋ (+2, +4 au niveau 5, +6 au niveau 10… +10 au niveau 20 ; le niveau
   global pour un don de race ou d'ethnie) ; « 3+x […] x = +2 dégâts/6 niveaux » (Mage « Puissance ») vaut 3 + 2 × ⌊niveau de classe ÷ 6⌋.
@@ -470,9 +480,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
   une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition ; les deux choix du Templier, R121, deux lignes dans
   l'ordre, une compétence répétée n'est pas reprise ; un choix d'arme, R119, la famille entre parenthèses : « Flétrisseur (Tueur) : Arme Légère
-  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes), et chaque résistance au choix d'une
-  ligne du tableau de la race une ligne « Résistance au choix : <ligne> : <altération> » (« Écaille draconique : Poison », R124, relue si l'altération est
-  une option de la ligne de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
+  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes), et chaque résistance au choix une
+  ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
+  don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; relue si c'est une option du choix
+  de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
   atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
@@ -682,7 +693,7 @@ pas, et la note datée est le seul signal.
 | `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
 | `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
 | `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don (pour la ligne de l'ethnie du tableau de la race, `<race>#tableau:<ethnie>` : « 5% parmi les autres » du Drakos orange, R124), `rang` = le rang du choix dans son texte ; pour « de la compétence de l'arme choisie » (décision R119, migration 0067), la famille d'armes de la maîtrise au choix de la classe (`arme_famille_id`) et la compétence qui reçoit le bonus ; posée avec un autre choix (l'API), l'arme est gardée tant que la compétence du choix ne change pas (`acquisChoixValables`) ; la fiche en tableur l'écrit entre parenthèses dans sa ligne « Acquis au choix » |
-| `personnage_resistance_choix` | La résistance au choix d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069) : `source` (celle du choix d'acquis de la ligne), `rang` (1 = le premier) et l'altération d'état retenue (`etat_id`), +1 cran ; une option des autres lignes du tableau (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
+| `personnage_resistance_choix` | Une résistance au choix : d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069), ou d'un don qui laisse une magie au choix ou tirée (Ocultomancien « Résilience », Anansi d'Arcane : décision R137, migration 0071) : `source` (celle du choix d'acquis de la ligne, ou l'identifiant du don), `rang` (1 = le premier) et l'altération d'état (`etat_id`) ou la magie (`magie_id`) retenue, l'une ou l'autre, +1 cran (l'altération de la magie de l'Anansi se lit dans `etat_magie`) ; une de ses options (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie ou d'un don qui n'est plus débloqué part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
