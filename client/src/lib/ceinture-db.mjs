@@ -10,7 +10,7 @@
 // (lib/alchimie-couleurs.mjs : l'affinité de son essence, ou la caractéristique d'un philtre, nuancée selon son niveau d'alchimie ; demande du
 // propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
 // Sans dépendance (sauf lib/equipement.mjs et lib/alchimie-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
-import { caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
+import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 
 /** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
@@ -76,9 +76,9 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *              - potions et huiles : `pages` : [{ id, titre, resume, existe, caracteristique, potions: [{ id, nom, niveau_id, niveau, niveau_rang, prix_brut,
  *                effet, essence, couleur }] }], une par page de potion (ordre alphabétique du titre ; `existe` : la page est dans la base, son titre peut
  *                être un lien), ses paliers dans l'ordre où la page écrit leurs noms, puis leur rang (ressource.ordre) et leur niveau ; `essence` :
- *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : celle que nomment les
- *                effets de la page (« compétences de Force » : les philtres, dont l'Ultime, « +1 Force », la reçoit de sa page ; null sinon, ou si elles en
- *                nomment plusieurs) ; `couleur` : { fond } ou null
+ *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : pour une page de philtres
+ *                (essence AFFINITE_DES_PHILTRES), celle que nomment ses effets (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page) ;
+ *                null pour une autre page, ou si ses effets en nomment plusieurs ou aucune ; `couleur` : { fond } ou null
  *                (lib/alchimie-couleurs.mjs#couleurDePotion) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).
@@ -122,7 +122,7 @@ function pagesDePotions(db, ids) {
   const essences = new Map();
   for (const r of lignes(db, `SELECT rp.ressource_id, ri.affinite_id FROM recette_produit rp JOIN recette r ON r.id = rp.recette_id
     JOIN recette_ingredient ri ON ri.recette_id = r.id AND ri.role = 'essence' WHERE r.genre = 'alchimie'
-    ORDER BY rp.ressource_id, r.variante, ri.rang, ri.option`)) {
+    ORDER BY rp.ressource_id, r.variante, r.id, ri.rang, ri.option`)) {
     if (!essences.has(r.ressource_id)) essences.set(r.ressource_id, r.affinite_id);
   }
   const caracteristiques = lignes(db, 'SELECT id, nom FROM caracteristique');
@@ -141,9 +141,10 @@ function pagesDePotions(db, ids) {
       const i = corps.indexOf(`| ${cleDeTexte(p.nom)} |`);
       return i < 0 ? Infinity : i;
     };
-    // la caractéristique dont les potions de la page augmentent les compétences : une seule, nommée par leurs effets (l'ultime philtre ne la nomme pas
-    // dans cette tournure : la page la donne à tous ses paliers)
-    const nommees = new Set(liste.map((p) => caracteristiqueDesCompetences(p.effet, caracteristiques)).filter(Boolean));
+    // la caractéristique d'une page de philtres (toutes ses potions ont l'essence des philtres) : une seule, nommée par leurs effets (« compétences de
+    // Force » ; l'ultime philtre ne la nomme pas dans cette tournure : la page la donne à tous ses paliers) ; null pour une autre page
+    const philtres = liste.every((p) => essences.get(p.id) === AFFINITE_DES_PHILTRES);
+    const nommees = new Set(philtres ? liste.map((p) => caracteristiqueDesCompetences(p.effet, caracteristiques)).filter(Boolean) : []);
     const caracteristique = nommees.size === 1 ? [...nommees][0] : null;
     const rangees = liste.map((p) => ({ p, place: place(p) }))
       .sort((a, b) => a.place - b.place || a.p.ordre - b.p.ordre || a.p.niveau_rang - b.p.niveau_rang || comparer(a.p.nom_cle, b.p.nom_cle))

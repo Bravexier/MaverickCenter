@@ -115,7 +115,7 @@ test('consommables : un tableau par page de potion, deux ou trois côte à côte
   for (const t of objets.tableaux.filter((x) => x.pages)) {
     const groupe = famille(`objets-${t.famille}`);
     assert.ok(groupe.length > 0, `${t.famille} : son onglet`);
-    assert.ok(groupe.includes(`<div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby="titre-objets-${t.famille}">`), `${t.famille} : côte à côte`);
+    assert.ok(groupe.includes('<div class="tableaux tableaux--cote-a-cote ceint-potions">'), `${t.famille} : côte à côte (la section porte le nom de la famille)`);
     const cadres = [...groupe.matchAll(/<section class="tableau ceint-groupe" id="([^"]+)" aria-labelledby="([^"]+)">/g)];
     assert.deepEqual(cadres.map((m) => m[1]), t.pages.map((x) => ancreDePotions(x.id)), `${t.famille} : un tableau par page, dans l’ordre`);
     for (const [, id, titre] of cadres) assert.equal(titre, `${id}-titre`);
@@ -142,11 +142,11 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
   ];
   assert.deepEqual(lignes, attendues);
   assert.equal(new Set(lignes).size, lignes.length, 'ancres uniques');
-  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+  const pluriel = (n, mot, x = 's') => `${n} ${mot}${n > 1 ? x : ''}`;
   for (const t of objets.tableaux) {
     if (t.pages) {
-      // une famille de consommables : le détail de son onglet (ses potions, ses paliers)
-      assert.match(onglet, new RegExp(`id="onglet-objets-${t.famille}" href="#objets-${t.famille}">\\s*<span class="onglet__nom">${t.titre}</span>\\s*<span class="onglet__detail">${pluriel(t.pages.length, 'potion')} · ${pluriel(t.nombre, 'palier')}</span>`), t.famille);
+      // une famille de consommables : le détail de son onglet (ses tableaux, ses objets)
+      assert.match(onglet, new RegExp(`id="onglet-objets-${t.famille}" href="#objets-${t.famille}">\\s*<span class="onglet__nom">${t.titre}</span>\\s*<span class="onglet__detail">${pluriel(t.pages.length, 'tableau', 'x')} · ${pluriel(t.nombre, 'objet')}</span>`), t.famille);
       continue;
     }
     // le compte du tableau, dans son <summary> (pas celui d'un tableau suivant)

@@ -93,9 +93,10 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bstat { display: grid; justify-items: center; padding: 0.35rem 0.3rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); }
 .bstat__nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .bstat__val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
-.bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
-.bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
+/* les couleurs des attributs du site (lib/attributs-couleurs.mjs, posées par layouts/Base.astro) */
+.bstat--sante { border-color: color-mix(in srgb, var(--attribut-sante) 45%, var(--border)); }
+.bstat--chakra { border-color: color-mix(in srgb, var(--attribut-chakra) 45%, var(--border)); }
+.bstat--barriere { border-color: color-mix(in srgb, var(--attribut-barriere) 55%, var(--border)); }
 /* santé, chakra, barrière écrites à part (cartes à plusieurs échelles) : une colonne chacune, comme la ligne de tuiles d'une carte à une seule échelle ;
    le titre de chaque rubrique est celui de sa tuile (montré en mode modification, au-dessus de sa saisie) */
 .btrio__cases { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; align-items: start; }

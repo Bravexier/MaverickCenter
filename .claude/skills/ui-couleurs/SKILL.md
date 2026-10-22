@@ -13,7 +13,7 @@ Principe (demande du propriétaire du 2026-10-22) : « Partout il faut utiliser 
 ## Fichiers
 - `client/src/lib/caracteristiques-postures.mjs` : `COULEURS_CARACTERISTIQUES`, `COULEURS_POSTURES`, `COULEURS_ALIGNEMENTS`, `COULEUR_NEUTRE`, `couleurDeCaracteristique`, `couleurDePosture`, `couleurDAlignement`, `styleDeCouleur`. Les clés sont les ids de la base.
 - Lu aussi par `lib/fiche-regles.mjs`, `components/guide/GuideBloc.astro`, `lib/armes-rendu.mjs`, `lib/edition-rendu.mjs`, `lib/monstre-rendu.mjs`, `lib/alchimie-couleurs.mjs` (philtres).
-- `client/src/lib/attributs-couleurs.mjs` : `COULEURS_DES_ATTRIBUTS` (clés de la fiche : `sante`, `barriere`, `chakra`, `corruption`, `barre4`), `couleurDAttribut`, `cssDesAttributs` (les propriétés `--attribut-<clé>` sur `:root`, posées par `pages/fiche/index.astro` devant `styles/fiche/fiche.css`, qui ne les écrit plus). Lu aussi par `lib/alchimie-couleurs.mjs` (potions dont l'essence est un attribut ; skill `zone-ceinture`).
+- `client/src/lib/attributs-couleurs.mjs` : `COULEURS_DES_ATTRIBUTS` (clés de la fiche : `sante`, `barriere`, `chakra`, `corruption`, `barre4`), `couleurDAttribut`, `cssDesAttributs` (les propriétés `--attribut-<clé>` sur `:root`, posées sur chaque page par `layouts/Base.astro`), lues par `styles/fiche/fiche.css` et `styles/bestiaire/carte.css` (santé, chakra, barrière des cartes), qui ne les écrivent plus. Lu aussi par `lib/alchimie-couleurs.mjs` (potions dont l'essence est un attribut ; skill `zone-ceinture`).
 
 ## À lire
 - `docs/content-guide.md`, « Les pages du guide » (puce « Les blocs tirés de la base » : les valeurs de chaque couleur).
@@ -24,8 +24,9 @@ Principe (demande du propriétaire du 2026-10-22) : « Partout il faut utiliser 
 - Une compétence a la couleur de sa caractéristique.
 - La fiche les reçoit par `regles.json` (`fiche-regles.mjs` : `couleur` et `texte` de chaque caractéristique) ; son script (`src/scripts/fiche.mjs`) n'importe pas le module.
 - Un id inconnu reçoit `COULEUR_NEUTRE`.
-- Attributs : une seule source (`attributs-couleurs.mjs`) ; `fiche.css` lit `var(--attribut-<clé>)` et n'écrit aucune de ces couleurs.
+- Attributs : une seule source (`attributs-couleurs.mjs`) ; `fiche.css` et `bestiaire/carte.css` lisent `var(--attribut-<clé>)` et n'écrivent aucune de ces couleurs.
+- Lisibilité d'une ligne colorée : texte de `texteSurCouleur`, contraste d'au moins 4,5:1 (`lib/alchimie-couleurs.mjs#lisible`, pour les potions ; les couleurs des magies l'atteignent déjà).
 
 ## Tests
 - `client/test/caracteristiques-postures.test.mjs` : couleurs demandées, une par ligne de la base, ni plus ni moins ; posture par id ou par clé ; texte foncé dans les deux thèmes ; alignements.
-- `client/test/alchimie-couleurs.test.mjs` : les attributs posés par la fiche (et dans la fiche construite), `fiche.css` sans leurs couleurs.
+- `client/test/alchimie-couleurs.test.mjs` : les attributs posés par `Base.astro` (et dans les pages construites de la fiche et du bestiaire), `fiche.css` et `carte.css` sans leurs couleurs ; contraste de chaque ligne de potion et de bâton.

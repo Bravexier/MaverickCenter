@@ -16,12 +16,17 @@
 //      - l'affinité Anti (Huile rage, Remède enragé) n'a pas de couleur dans le Doc : la ligne reste neutre ;
 //   2. la nuance du niveau est calculée depuis la base (NUANCES_DES_NIVEAUX : mêlée de blanc pour Novice et Apprenti, la base à Avancé, mêlée de noir pour
 //      Expert et Maître ; parts choisies par le site) ;
-//   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur).
-// Repère visuel sans valeur de règle du jeu. Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle.
+//   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur) ; un fond qui n'atteint pas un contraste de 4,5:1 avec lui (seuil
+//      AA du WCAG) est éclairci (texte foncé) ou assombri (texte blanc) jusqu'à l'atteindre (`lisible`).
+// Repère visuel sans valeur de règle du jeu. Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction
+// suivante du site (l'éditeur réécrit les cases de la ligne, pas sa couleur).
 // Sans dépendance (modules purs : attributs-couleurs.mjs, sort-format.mjs, caracteristiques-postures.mjs) ; importé par lib/ceinture-db.mjs et les tests.
 import { couleurDAttribut } from './attributs-couleurs.mjs';
-import { couleurDeMagieConnue } from './sort-format.mjs';
+import { couleurDeMagieConnue, texteSurCouleur } from './sort-format.mjs';
 import { COULEURS_CARACTERISTIQUES } from './caracteristiques-postures.mjs';
+
+/** L'affinité de l'essence de tous les philtres : sans fiole dans le Doc, un philtre prend la couleur de sa caractéristique. */
+export const AFFINITE_DES_PHILTRES = 'demon';
 
 /** L'attribut de la fiche (lib/attributs-couleurs.mjs) que désigne une affinité d'alchimie (`affinite.id`). */
 export const ATTRIBUT_DE_L_AFFINITE = Object.freeze({ sante: 'sante', chakra: 'chakra', barriere: 'barriere', corruption: 'corruption', '4eme-barre': 'barre4' });
@@ -87,11 +92,42 @@ export function caracteristiqueDesCompetences(effet, caracteristiques) {
   return caracteristiques.find((c) => cle(c.nom) === m[1])?.id ?? null;
 }
 
+/** Le contraste minimal entre le texte et le fond d'une ligne (seuil AA du WCAG pour un texte courant) : « Privilégé la lisibilité. » */
+export const CONTRASTE_MINIMAL = 4.5;
+
+const luminance = (hex) => {
+  const [r, g, b] = canaux(hex).map((c) => c / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/** Le contraste entre deux couleurs (« #rrggbb »), de 1 à 21 (formule du WCAG). */
+export function contraste(a, b) {
+  const [x, y] = [luminance(a), luminance(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
 /**
- * La couleur d'une potion, { fond } (« #rrggbb »), ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle dont elle
- * augmente les compétences (pour une essence sans couleur : les philtres, celle que nomment les effets de leur page) ; `niveau`, le rang de son niveau d'alchimie.
+ * Un fond lisible : le fond lui-même si son texte (texteSurCouleur) l'atteint déjà au contraste minimal, sinon éclairci (texte foncé) ou assombri (texte
+ * blanc) par pas de 5 % jusqu'à l'atteindre ; le texte reste celui du fond de départ.
+ */
+export function lisible(fond) {
+  const texte = texteSurCouleur(fond);
+  const vers = luminance(texte) > luminance(fond) ? CIBLES.noir : CIBLES.blanc;
+  let rgb = canaux(fond);
+  let resultat = fond;
+  for (let i = 0; i < 20 && contraste(resultat, texte) < CONTRASTE_MINIMAL; i++) {
+    rgb = rgb.map((c, k) => c * 0.95 + vers[k] * 0.05);
+    resultat = versHex(rgb);
+  }
+  return resultat;
+}
+
+/**
+ * La couleur d'une potion, { fond } (« #rrggbb »), ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle que nomment
+ * les effets de sa page, qui ne compte que pour un philtre (essence AFFINITE_DES_PHILTRES) ; `niveau`, le rang de son niveau d'alchimie.
  */
 export function couleurDePotion({ essence = null, caracteristique = null, niveau = null } = {}) {
-  const base = couleurDAffinite(essence) ?? (caracteristique ? COULEURS_CARACTERISTIQUES[caracteristique] ?? null : null);
-  return base ? { fond: nuanceDuNiveau(base, niveau) } : null;
+  const base = couleurDAffinite(essence)
+    ?? (essence === AFFINITE_DES_PHILTRES && caracteristique ? COULEURS_CARACTERISTIQUES[caracteristique] ?? null : null);
+  return base ? { fond: lisible(nuanceDuNiveau(base, niveau)) } : null;
 }

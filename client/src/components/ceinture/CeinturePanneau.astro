@@ -161,14 +161,14 @@ const sousOnglets = SOUS_ONGLETS_DE_LA_CEINTURE.map((o, i) => ({
                 {familles.map((t, i) => (
                   <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${t.id}`} href={`#${t.id}`}>
                     <span class="onglet__nom">{t.titre}</span>
-                    <span class="onglet__detail">{pluriel(t.pages!.length, 'potion')} · {pluriel(t.nombre, 'palier')}</span>
+                    <span class="onglet__detail">{pluriel(t.pages!.length, 'tableau', 'x')} · {pluriel(t.nombre, 'objet')}</span>
                   </a>
                 ))}
               </nav>
               {familles.map((t, i) => (
                 <section class={`ceinture-famille${i === 0 ? ' is-active' : ''}`} id={t.id} aria-labelledby={`titre-${t.id}`}>
                   <h4 class="ceinture-famille__titre" id={`titre-${t.id}`}>{t.titre}</h4>
-                  <div class="tableaux tableaux--cote-a-cote ceint-potions" role="group" aria-labelledby={`titre-${t.id}`}>
+                  <div class="tableaux tableaux--cote-a-cote ceint-potions">
                     {t.pages!.map((p) => (
                       <Tableau id={p.id} titre={p.titre} lien={p.lien} compte={pluriel(p.nombre, 'palier')} noteHtml={p.resume} repliable={false} niveau={5} bloc="ceint-groupe" classeTable="ceint-table ceint-table--potions">
                         <thead>
