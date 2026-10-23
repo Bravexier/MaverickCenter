@@ -1684,9 +1684,11 @@ function construireChoixSpecialites() {
 /**
  * Tant qu'il reste des choix à faire (choixEnAttente), le panneau « Choix » de la zone IV sort en tiroir en bas de l'écran, par-dessus la fiche, avec la
  * liste de ce qui manque ; il ne se range que quand la zone IV est à l'écran (son onglet « Choix » compte alors ce qui manque). « Réduire » le replie sur sa
- * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV et ouvre l'onglet. Réduit, son corps est en `display: none` (fiche.css) : le
- * focus clavier n'y entre pas. Au clavier, on passe par « Déplier », « Aller aux choix » ou la bulle d'un choix du tiroir, qui montre sa tuile au focus
- * (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle au clavier) ; le focus déjà dans le corps le garde ouvert.
+ * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV, ouvre l'onglet et lui donne le focus (allerAuxChoix). Réduit, son corps est en
+ * `display: none` (fiche.css) : le focus clavier n'y entre pas ; le focus déjà dans le corps le garde ouvert. Au clavier, on passe par « Déplier »,
+ * « Aller aux choix » ou la bulle d'un choix du tiroir (bulleDeChoix) : le focus sur le choix montre sa tuile, Entrée met le focus dans la bulle (sauf
+ * l'ethnie, un bouton qui ouvre son menu, sans bulle). Un choix gardé d'un calcul à l'autre garde son élément (le déclencheur de sa bulle ouverte),
+ * seul son texte suit.
  */
 let zoneParametresVisible = false;
 let tiroirReduit = false;
@@ -1699,19 +1701,25 @@ function construireChoixEnAttente() {
   compte.title = attente.length ? `${attente.length} choix à faire` : '';
   $('choix-tete').hidden = attente.length === 0;
   $('choix-titre').textContent = attente.length > 1 ? `${attente.length} choix à faire` : 'Un choix à faire';
-  // au survol (ou au focus) d'un choix, sa tuile dans une infobulle (demande du propriétaire ; bulleDeChoix)
-  reconstruire($('choix-attente'), JSON.stringify(attente), () => attente.map((c) => {
-    const tuile = () => tuileDeChoix(c.cle);
-    const remplir = () => remplirBulleDeChoix(c.cle);
-    return el('li', {
-      dataset: { nature: c.nature, ...(tuile() ? { bulle: bulleDeChoix().id } : {}) }, tabindex: c.nature === 'ethnie' ? null : '0',
-      onpointerover: remplir, onpointerdown: remplir, onfocusin: remplir,
-    }, c.nature === 'ethnie'
-      ? el('button', { type: 'button', class: 'tiroir__lien', 'aria-label': `${c.libelle} : ouvrir le menu de l’ethnie`, onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }, c.libelle)
-      : c.libelle);
-  }));
+  const liste = $('choix-attente');
+  const avant = [...liste.children].map((li) => li.dataset.choix);
+  // le focus dans la bulle, mis là au clavier : où il va une fois le choix recalculé (suivreLeChoixAuClavier)
   const bulle = document.getElementById('bulle-choix');
-  if (bulle && !bulle.hidden) remplirBulleDeChoix(bulle.dataset.cle);
+  const auClavier = bulleAuClavier && bulle && !bulle.hidden && bulle.contains(document.activeElement) ? bulle.dataset.choix : null;
+  const champ = auClavier ? [...bulle.querySelectorAll(CHAMPS_DE_TUILE)].indexOf(document.activeElement) : -1;
+  // au survol (ou au focus) d'un choix, sa tuile dans une infobulle (demande du propriétaire ; bulleDeChoix)
+  const elements = new Map([...liste.children].map((li) => [li.dataset.choix, li]));
+  const voulus = identitesDesChoix(attente).map((choix, i) => {
+    const li = elements.get(choix) ?? elementDeChoix(attente[i], choix);
+    mettreAJourLeChoix(li, attente[i]);
+    return li;
+  });
+  if (voulus.length !== liste.children.length || voulus.some((li, i) => liste.children[i] !== li)) liste.replaceChildren(...voulus);
+  if (bulle && !bulle.hidden) {
+    // au clavier, la bulle suit son choix (les points d'une même maîtrise, l'un après l'autre) ; à la souris, elle garde sa tuile
+    const li = auClavier ? voulus.find((x) => x.dataset.choix === auClavier) : null;
+    remplirBulleDeChoix(li?.dataset.cle ?? bulle.dataset.cle, li?.textContent ?? attente.find((c) => c.cle === bulle.dataset.cle)?.libelle, li?.dataset.choix);
+  }
   const tiroir = attente.length > 0 && !zoneParametresVisible;
   panneau.classList.toggle('est-tiroir', tiroir);
   panneau.toggleAttribute('data-reduit', tiroir && tiroirReduit);
@@ -1719,22 +1727,184 @@ function construireChoixEnAttente() {
   $('choix-reduire').hidden = !tiroir;
   $('choix-reduire').textContent = tiroirReduit ? 'Déplier' : 'Réduire';
   $('choix-reduire').setAttribute('aria-expanded', String(!tiroirReduit));
+  if (auClavier) suivreLeChoixAuClavier(auClavier, champ, avant, voulus.map((li) => li.dataset.choix));
+}
+
+/**
+ * L'identité de chaque choix du tiroir, d'un calcul à l'autre : sa nature et sa clé ; pour une maîtrise, sa source seulement (ses points à choisir, l'un
+ * après l'autre, sont un même choix en plusieurs parts : « Maîtrise à choisir : <source> (N points) ») ; numérotée quand elle revient (deux lignes d'une
+ * même source).
+ */
+function identitesDesChoix(attente) {
+  const vues = new Map();
+  return attente.map((c) => {
+    const base = `${c.nature}|${c.nature === 'maitrise' ? c.cle.slice(0, c.cle.lastIndexOf(':')) : c.cle}`;
+    vues.set(base, (vues.get(base) ?? 0) + 1);
+    return `${base}|${vues.get(base)}`;
+  });
+}
+
+/**
+ * Un choix du tiroir, un `li` et son bouton (qui porte le focus et, sa tuile dans la page, la bulle : `data-bulle` et les rôles ARIA, qu'un `listitem`
+ * ne prend pas) : l'ethnie, un bouton qui ouvre son menu, sans bulle ; les autres, un bouton qui montre sa tuile en bulle, où Entrée met le focus.
+ */
+function elementDeChoix(c, choix) {
+  if (c.nature === 'ethnie') {
+    return el('li', { dataset: { nature: c.nature, choix } },
+      el('button', { type: 'button', class: 'tiroir__lien', onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }));
+  }
+  const bouton = el('button', { type: 'button', class: 'tiroir__choix' });
+  const remplir = () => bouton.dataset.bulle && remplirBulleDeChoix(bouton.closest('li').dataset.cle, bouton.textContent, bouton.closest('li').dataset.choix);
+  for (const type of ['pointerover', 'pointerdown', 'focusin']) bouton.addEventListener(type, remplir);
+  bouton.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || !bouton.dataset.bulle) return;
+    ev.preventDefault();   // pas de clic : seule la bulle s'ouvre
+    remplir();
+    // la bulle fermée (Échap, ou le focus donné à la souris) : rouverte comme au focus du clavier (components/Infobulles.astro)
+    if (!bouton.hasAttribute('data-ouverte')) bouton.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    const premier = bouton.hasAttribute('data-ouverte') ? arretsDeLaBulle(bulleDeChoix())[0] : null;
+    if (!premier) return;
+    bulleAuClavier = true;
+    premier.focus({ preventScroll: true });
+  });
+  return el('li', { dataset: { nature: c.nature, choix } }, bouton);
+}
+
+/** Le bouton d'un choix du tiroir (celui qui reçoit le focus). */
+const boutonDuChoix = (li) => li?.querySelector('button') ?? null;
+
+/** Le texte d'un choix du tiroir, la clé de sa tuile, et sa bulle (`data-bulle`, rôles ARIA) quand sa tuile est dans la page. */
+function mettreAJourLeChoix(li, c) {
+  li.dataset.cle = c.cle;
+  if (c.nature === 'ethnie') {
+    const bouton = li.firstElementChild;
+    if (bouton.textContent !== c.libelle) bouton.textContent = c.libelle;
+    bouton.setAttribute('aria-label', `${c.libelle} : ouvrir le menu de l’ethnie`);
+    return;
+  }
+  const bouton = boutonDuChoix(li);
+  if (bouton.textContent !== c.libelle) bouton.textContent = c.libelle;
+  const avecBulle = Boolean(tuileDeChoix(c.cle));
+  if (avecBulle === Boolean(bouton.dataset.bulle)) return;
+  if (avecBulle) {
+    bouton.dataset.bulle = bulleDeChoix().id;
+    bouton.setAttribute('aria-haspopup', 'dialog');
+    bouton.setAttribute('aria-controls', bouton.dataset.bulle);
+    bouton.setAttribute('aria-expanded', 'false');   // tenu ensuite par components/Infobulles.astro
+  } else {
+    delete bouton.dataset.bulle;
+    for (const a of ['aria-haspopup', 'aria-controls', 'aria-expanded']) bouton.removeAttribute(a);
+  }
+}
+
+/**
+ * Le choix que le focus rejoint quand le choix `choix`, fait depuis sa bulle au clavier, quitte le tiroir (demande du propriétaire : « Le focus va au
+ * choix suivant du tiroir ») : dans `apres` (les identités du tiroir recalculé), le premier choix qui n'était pas avant lui dans `avant` (celui qui
+ * prend sa place : un choix suivant, ou un choix nouveau à sa place, comme les dons d'une spécialité choisie) ; sinon le dernier (il était le dernier) ;
+ * null quand il n'en reste plus.
+ */
+function choixSuivant(choix, avant, apres) {
+  if (!apres.length) return null;
+  const precedents = new Set(avant.slice(0, Math.max(avant.indexOf(choix), 0)));
+  return apres.find((k) => !precedents.has(k)) ?? apres[apres.length - 1];
+}
+
+/**
+ * Après un changement fait depuis la bulle d'un choix, le focus y étant venu au clavier (demandes du propriétaire) : un choix qui reste (en plusieurs
+ * parts) garde le focus dans sa bulle, sur le même champ ou celui de même rang (`champ`) ; un choix terminé quitte le tiroir et le focus va au choix
+ * suivant (choixSuivant) ; s'il n'en reste plus, le tiroir disparaît et le focus va sur la tuile de la page où le choix vient d'être fait (son champ de
+ * même rang), dans son onglet ouvert.
+ */
+function suivreLeChoixAuClavier(choix, champ, avant, apres) {
+  const bulle = bulleDeChoix();
+  if (apres.includes(choix)) {
+    if (!bulle.contains(document.activeElement)) (bulle.querySelectorAll(CHAMPS_DE_TUILE)[champ] ?? arretsDeLaBulle(bulle)[0])?.focus({ preventScroll: true });
+    return;
+  }
+  const suivant = choixSuivant(choix, avant, apres);
+  const li = suivant ? [...$('choix-attente').children].find((x) => x.dataset.choix === suivant) : null;
+  if (li) return boutonDuChoix(li)?.focus({ preventScroll: true });
+  const tuile = tuileDeChoix(bulle.dataset.cle);
+  if (!tuile) return;
+  tuile.closest('[id]')?.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true }));
+  const champs = [...tuile.querySelectorAll(CHAMPS_DE_TUILE)];
+  (champs[champ] ?? champs[0])?.focus();
 }
 
 /**
  * L'infobulle d'un choix du tiroir (demande du propriétaire : « la tuile correspondant au choix qui apparaît dans la tooltip au survol ») : une copie de
- * la tuile du choix (`data-choix-cle` = la clé de choixEnAttente : pastilles de l'ethnie ou de la spécialité, groupe de dons, choix du métier, +1 de la
- * magie innée), dans une bulle riche de components/Infobulles.astro, remplie juste avant qu'elle s'ouvre. Ses boutons, cases et listes renvoient leur clic
- * ou leur valeur à la tuile de la page : le choix se fait aussi depuis la bulle, à la souris (au clavier, elle se ferme quand le focus quitte le choix du
- * tiroir). Une seule bulle, posée dans la zone IV hors du tiroir (son `transform` fausserait la position fixe).
+ * la tuile du choix (`data-choix-cle` = la clé de choixEnAttente : pastilles de la spécialité, groupe de dons, choix du métier, +1 de la magie innée,
+ * maîtrise, acquis, accessoire, résistance, symbiose), dans une bulle à champs de components/Infobulles.astro (`data-bulle-champs`, `role="dialog"`
+ * nommé par le choix), remplie juste avant qu'elle s'ouvre. Ses boutons, cases et listes renvoient leur clic ou leur valeur à la tuile de la page : le
+ * choix se fait aussi depuis la bulle. À la souris et au toucher, comme les autres bulles. Au clavier (demandes du propriétaire) : le focus sur le choix
+ * montre la bulle, Entrée y met le focus (sur son premier champ) ; Tab passe d'un choix à l'autre sans entrer dans les bulles. Dans la bulle, Échap la
+ * ferme et rend le focus au choix (Infobulles.astro) ; Tab après le dernier champ la ferme et va au choix suivant, Maj+Tab avant le premier revient au
+ * choix ; un choix terminé : suivreLeChoixAuClavier ; une liste ou un groupe de dons parcouru aux flèches : regleDuParcours. Une seule bulle, posée dans la zone IV hors du tiroir (son `transform` fausserait la position fixe).
  */
 const tuileDeChoix = (cle) => (cle ? [...racine.querySelectorAll('[data-choix-cle]')].find((t) => t.dataset.choixCle === cle && !t.closest('#bulle-choix')) ?? null : null);
 const CHAMPS_DE_TUILE = 'button, input, select';
+/** Le focus est dans la bulle des choix parce qu'Entrée l'y a mis (pas la souris) : les règles du clavier jouent. */
+let bulleAuClavier = false;
+/** Ce qui se parcourt dans la bulle et dont la valeur attend sa validation (regleDuParcours) : une liste, un champ nombre, ou « radio:<nom> ». */
+let parcoursEnAttente = null;
+/** Ce qui se parcourt aux flèches dans la bulle : une liste ou un champ nombre (l'élément), un groupe de boutons radio (« radio:<nom> »). */
+const parcoursDe = (x) => (x instanceof HTMLSelectElement || (x instanceof HTMLInputElement && x.type === 'number') ? x
+  : x instanceof HTMLInputElement && x.type === 'radio' && x.name ? `radio:${x.name}` : null);
+const genreDuParcours = (p) => (typeof p === 'string' ? 'radios' : p instanceof HTMLSelectElement ? 'liste' : 'nombre');
+
+/** Les arrêts de Tab de la bulle, dans l'ordre : ses champs affichés, un seul par groupe de boutons radio (le coché, sinon le premier). */
+function arretsDeLaBulle(bulle) {
+  const champs = [...bulle.querySelectorAll(CHAMPS_DE_TUILE)].filter((c) => !c.disabled && c.getClientRects().length > 0);
+  const radio = (c) => c instanceof HTMLInputElement && c.type === 'radio' && c.name;
+  return champs.filter((c) => {
+    if (!radio(c)) return true;
+    const groupe = champs.filter((x) => radio(x) && x.name === c.name);
+    return c === (groupe.find((x) => x.checked) ?? groupe[0]);
+  });
+}
+
+/**
+ * Deux réponses du propriétaire sur la règle du parcours, qui se changent ici seulement : Maj+Tab « Prend la valeur. Comme Tab. » ; un clic ailleurs :
+ * « Non, annulée. Comme vous l'avez écrit, seuls Entrée, Espace (pour les dons) et Tab prennent la valeur. »
+ */
+const PARCOURS = { majTabValide: true, ailleursAnnule: true };
+
+/**
+ * Ce qui se parcourt aux flèches dans la bulle d'un choix (demandes du propriétaire) : une liste (`select`, genre 'liste' : « Dans la bulle, la valeur
+ * parcourue aux flèches n'est prise qu'à Entrée ou quand on quitte la liste par Tab, et Échap l'annule. »), un groupe de boutons radio (genre 'radios',
+ * les dons : « Comme la liste. Dans la bulle, les flèches parcourent les dons sans les prendre. Le don est pris à Entrée ou Espace, ou quand on quitte le
+ * groupe par Tab, et Échap annule. ») et un champ nombre (genre 'nombre', les points d'une répartition : « Dans la bulle, les flèches et les chiffres tapés
+ * ne sont pris qu'à Entrée, ou quand on quitte le champ par Tab. Échap annule. »). Ce qu'un évènement fait de la valeur parcourue,
+ * `enAttente` quand elle attend :
+ *   - `change` (une liste) ou `clic` (un bouton radio) juste après une touche de parcours (flèches, début, fin, pages, une lettre) : elle attend ; sinon
+ *     (la souris, une valeur prise dans la liste ouverte) : elle se relaie aussitôt ; un champ nombre (`saisie` à chaque frappe ou flèche, `change`) :
+ *     elle attend toujours ;
+ *   - une touche : Entrée, Tab (Maj+Tab : PARCOURS.majTabValide) la relaient ; Espace aussi pour un groupe de boutons radio ;
+ *   - `quitte` : vers le choix du tiroir (Échap, qui ferme la bulle et lui rend le focus), elle est annulée ; ailleurs (un clic), annulée aussi
+ *     (PARCOURS.ailleursAnnule), sinon relayée. Annulée, la bulle reprend l'état de la tuile de la page.
+ * Seulement au clavier (`auClavier` : on est entré dans la bulle par Entrée sur le choix, bulleAuClavier) : les questions du propriétaire étaient posées
+ * « au clavier », et « la souris ne change pas » ; entré à la souris, un champ de la bulle se relaie à son `change`, un bouton radio à son clic.
+ * Rend 'relayer', 'attendre', 'annuler' ou null (rien). La tuile de la page, les autres cases et les boutons de la bulle n'en changent pas.
+ */
+function regleDuParcours(evenement, enAttente, genre, auClavier = true) {
+  if (evenement.type === 'saisie') return auClavier && genre === 'nombre' ? 'attendre' : null;
+  if (evenement.type === 'change' || evenement.type === 'clic') return auClavier && (genre === 'nombre' || evenement.apresUneTouche) ? 'attendre' : 'relayer';
+  if (evenement.type === 'touche') {
+    if (!enAttente) return null;
+    if (evenement.touche === 'Tab') return !evenement.maj || PARCOURS.majTabValide ? 'relayer' : null;
+    return evenement.touche === 'Enter' || (genre === 'radios' && evenement.touche === ' ') ? 'relayer' : null;
+  }
+  if (evenement.type === 'quitte') {
+    if (!enAttente) return null;
+    return evenement.vers === 'choix' || PARCOURS.ailleursAnnule ? 'annuler' : 'relayer';
+  }
+  return null;
+}
 
 function bulleDeChoix() {
   let bulle = document.getElementById('bulle-choix');
   if (bulle) return bulle;
-  bulle = el('span', { class: 'bulle bulle--tuile', role: 'tooltip', id: 'bulle-choix', hidden: true });
+  bulle = el('span', { class: 'bulle bulle--tuile', role: 'dialog', id: 'bulle-choix', hidden: true, 'data-bulle-champs': '' });
   const original = (champ) => {
     const copie = bulle.querySelector('[data-copie]');
     const tuile = tuileDeChoix(bulle.dataset.cle);
@@ -1744,31 +1914,135 @@ function bulleDeChoix() {
   };
   // une saisie (un nombre, un texte) se relaie à son changement, comme une liste ; un bouton ou une case, à son clic
   const saisie = (x) => x instanceof HTMLSelectElement || (x instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(x.type));
+  const relayer = (champ) => {
+    const cible = original(champ);
+    if (!cible) return;
+    cible.value = champ.value;
+    cible.dispatchEvent(new Event('input', { bubbles: true }));
+    cible.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const groupe = (p) => [...bulle.querySelectorAll('input[type="radio"]')].filter((r) => `radio:${r.name}` === p);
+  // un rond pris au clavier : coché sur la page par son `change` (un clic de script passerait par le document, où Infobulles.astro fermerait la bulle
+  // avant le recalcul de la fiche)
+  const valider = (p) => {
+    if (genreDuParcours(p) !== 'radios') return relayer(p);
+    const cible = original(groupe(p).find((r) => r.checked));
+    if (!cible || cible.checked) return;
+    cible.checked = true;
+    cible.dispatchEvent(new Event('input', { bubbles: true }));
+    cible.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const annuler = (p) => {
+    if (genreDuParcours(p) !== 'radios') p.value = original(p)?.value ?? p.value;
+    else for (const r of groupe(p)) r.checked = Boolean(original(r)?.checked);
+  };
+  let toucheSur = null;   // ce qui vient de recevoir une touche de parcours (le `change` ou le clic qui suit en est le parcours)
+  const TOUCHES_HORS_PARCOURS = ['Enter', 'Tab', 'Escape', ' ', 'Shift', 'Control', 'Alt', 'Meta', 'AltGraph'];
   bulle.addEventListener('click', (ev) => {
     const champ = ev.target instanceof Element ? ev.target.closest('button, input') : null;
     if (saisie(champ)) return;
+    const p = parcoursDe(champ);
+    if (p && regleDuParcours({ type: 'clic', apresUneTouche: p === toucheSur }, false, genreDuParcours(p), bulleAuClavier) === 'attendre') {
+      parcoursEnAttente = p;   // le bouton reste coché dans la bulle, rien n'est relayé
+      return;
+    }
     const cible = champ && original(champ);
     if (!cible) return;
     ev.preventDefault();
-    cible.click();
+    // au clavier, ni ce clic ni celui de la tuile ne remontent au document : Infobulles.astro y fermerait la bulle (le choix reste ouvert) ou celle du
+    // choix suivant (le champ cliqué, retiré de la bulle refaite, n'y est plus) ; à la souris, le clic de toujours
+    if (!bulleAuClavier) return cible.click();
+    ev.stopPropagation();
+    cible.dispatchEvent(new MouseEvent('click', { bubbles: false, cancelable: true }));
+  });
+  // un champ nombre revenu à la valeur de la page n'attend rien
+  const inchange = (p) => genreDuParcours(p) === 'nombre' && p.value === original(p)?.value;
+  bulle.addEventListener('input', (ev) => {
+    const p = parcoursDe(ev.target);
+    if (p && inchange(p)) parcoursEnAttente = null;
+    else if (p && regleDuParcours({ type: 'saisie' }, false, genreDuParcours(p), bulleAuClavier) === 'attendre') parcoursEnAttente = p;
   });
   bulle.addEventListener('change', (ev) => {
-    const cible = saisie(ev.target) ? original(ev.target) : null;
-    if (!cible) return;
-    cible.value = ev.target.value;
-    cible.dispatchEvent(new Event('input', { bubbles: true }));
-    cible.dispatchEvent(new Event('change', { bubbles: true }));
+    if (!saisie(ev.target)) return;
+    const p = parcoursDe(ev.target);
+    if (p && inchange(p)) return;
+    if (p && regleDuParcours({ type: 'change', apresUneTouche: p === toucheSur }, false, genreDuParcours(p), bulleAuClavier) === 'attendre') parcoursEnAttente = p;
+    else relayer(ev.target);
+  });
+  bulle.addEventListener('keydown', (ev) => {
+    const p = parcoursDe(ev.target);
+    if (p && !TOUCHES_HORS_PARCOURS.includes(ev.key)) {
+      toucheSur = p;
+      setTimeout(() => { toucheSur = null; });
+    }
+    if (p && p === parcoursEnAttente && regleDuParcours({ type: 'touche', touche: ev.key, maj: ev.shiftKey }, true, genreDuParcours(p)) === 'relayer') {
+      parcoursEnAttente = null;
+      valider(p);
+      if (ev.key !== 'Tab') ev.preventDefault();   // Espace ne clique pas une seconde fois
+      // le choix terminé : le focus est déjà au choix suivant (suivreLeChoixAuClavier), Tab n'y ajoute rien
+      else if (!bulle.contains(document.activeElement)) return ev.preventDefault();
+    }
+    // au clavier : Tab après le dernier arrêt part du choix (le Tab du navigateur va au suivant), Maj+Tab avant le premier y revient
+    if (ev.key !== 'Tab' || !bulleAuClavier || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    const ici = document.activeElement;
+    const li = boutonDuChoix([...$('choix-attente').children].find((x) => x.dataset.choix === bulle.dataset.choix && x.dataset.nature !== 'ethnie'));
+    const arrets = arretsDeLaBulle(bulle);
+    const i = arrets.findIndex((a) => a === ici || (a.type === 'radio' && a.name && a.name === ici.name));
+    if (!li || i < 0 || i !== (ev.shiftKey ? 0 : arrets.length - 1)) return;
+    li.focus({ preventScroll: true });
+    if (ev.shiftKey) ev.preventDefault();
+  });
+  bulle.addEventListener('pointerdown', () => { bulleAuClavier = false; });
+  bulle.addEventListener('focusout', (ev) => {
+    const p = parcoursDe(ev.target);
+    if (p && p === parcoursEnAttente && parcoursDe(ev.relatedTarget) !== p) {
+      const vers = ev.relatedTarget instanceof Element && ev.relatedTarget.closest('#choix-attente') ? 'choix' : 'ailleurs';
+      const quoi = regleDuParcours({ type: 'quitte', vers }, true, genreDuParcours(p));
+      parcoursEnAttente = null;
+      if (quoi === 'annuler') annuler(p);
+      else if (quoi === 'relayer') valider(p);
+    }
+    // jugé après coup, comme Infobulles.astro : un champ retiré quand la bulle est refaite perd le focus, que suivreLeChoixAuClavier lui rend
+    setTimeout(() => { if (!bulle.contains(document.activeElement)) bulleAuClavier = false; });
   });
   ($('etape-choix').closest('.fiche-zone') ?? racine).append(bulle);   // les couleurs de la zone IV, hors du tiroir
   return bulle;
 }
 
-/** Remplit la bulle avec la copie de la tuile du choix `cle`, dans un conteneur comme le sien (ses styles), sans identifiant ni nom de groupe partagés. */
-function remplirBulleDeChoix(cle) {
+/**
+ * Met `actuel` à l'image de `voulu` en gardant ses nœuds tant que leur balise est la même (attributs et textes recopiés ; le champ qui a le focus le
+ * garde), sinon le remplace. Rend le nœud mis en place.
+ */
+function morpher(actuel, voulu) {
+  if (actuel.nodeType !== voulu.nodeType || (actuel.nodeType === 1 && actuel.tagName !== voulu.tagName) || (actuel.nodeType !== 1 && actuel.nodeType !== 3)) {
+    actuel.replaceWith(voulu);
+    return voulu;
+  }
+  if (actuel.nodeType === 3) {
+    if (actuel.nodeValue !== voulu.nodeValue) actuel.nodeValue = voulu.nodeValue;
+    return actuel;
+  }
+  for (const a of [...actuel.attributes]) if (!voulu.hasAttribute(a.name)) actuel.removeAttribute(a.name);
+  for (const a of [...voulu.attributes]) if (actuel.getAttribute(a.name) !== a.value) actuel.setAttribute(a.name, a.value);
+  const anciens = [...actuel.childNodes];
+  const nouveaux = [...voulu.childNodes];
+  nouveaux.forEach((n, i) => (i < anciens.length ? morpher(anciens[i], n) : actuel.append(n)));
+  for (const n of anciens.slice(nouveaux.length)) n.remove();
+  return actuel;
+}
+
+/**
+ * Remplit la bulle avec la copie de la tuile `cle` du choix `choix` (son identité, nommée `libelle`), dans un conteneur comme le sien (ses styles), sans identifiant ni nom de
+ * groupe partagés. La bulle du même choix est mise à jour en place (morpher) : le champ qui a le focus le garde.
+ */
+function remplirBulleDeChoix(cle, libelle, choix) {
   const tuile = tuileDeChoix(cle);
   const bulle = bulleDeChoix();
   if (!tuile) return;
+  const memeChoix = bulle.dataset.cle === cle && bulle.childNodes.length === 1;
   bulle.dataset.cle = cle;
+  if (choix) bulle.dataset.choix = choix;
+  if (libelle) bulle.setAttribute('aria-label', libelle);
   const copie = tuile.cloneNode(true);
   copie.removeAttribute('data-choix-cle');
   copie.hidden = false;
@@ -1776,18 +2050,35 @@ function remplirBulleDeChoix(cle) {
   for (const n of [copie, ...copie.querySelectorAll('[id]')]) n.removeAttribute('id');
   for (const n of copie.querySelectorAll('input[name]')) n.name = `bulle-${n.name}`;
   for (const n of [copie, ...copie.querySelectorAll('[data-champ]')]) n.removeAttribute('data-champ');   // la tuile de la page reste le seul champ de la fiche
-  // l'état coché ou choisi d'un champ n'est pas toujours un attribut : on le recopie
-  const sources = tuile.querySelectorAll(CHAMPS_DE_TUILE);
-  copie.querySelectorAll(CHAMPS_DE_TUILE).forEach((n, i) => {
-    if (n instanceof HTMLInputElement) n.checked = sources[i].checked;
-    if (n instanceof HTMLSelectElement) n.value = sources[i].value;
-  });
   const parent = tuile.parentElement;
   const enveloppe = parent && parent.matches('ul, ol') ? parent.cloneNode(false) : null;
   enveloppe?.removeAttribute('id');
   enveloppe?.removeAttribute('aria-label');
   if (enveloppe) enveloppe.append(copie);
-  bulle.replaceChildren(enveloppe ?? copie);
+  if (memeChoix) morpher(bulle.firstChild, enveloppe ?? copie);
+  else bulle.replaceChildren(enveloppe ?? copie);
+  // l'état coché ou choisi d'un champ n'est pas toujours un attribut : on le recopie, sauf dans le champ qui a le focus (comme la tuile de la page : la
+  // frappe en cours reste) et dans ce qui attend sa validation (regleDuParcours)
+  const sources = tuile.querySelectorAll(CHAMPS_DE_TUILE);
+  bulle.querySelectorAll(CHAMPS_DE_TUILE).forEach((n, i) => {
+    if (n === document.activeElement || (parcoursEnAttente && parcoursDe(n) === parcoursEnAttente)) return;
+    if (n instanceof HTMLInputElement && sources[i] instanceof HTMLInputElement) {
+      n.checked = sources[i].checked;
+      if (n.value !== sources[i].value) n.value = sources[i].value;
+    }
+    if (n instanceof HTMLSelectElement && sources[i]) n.value = sources[i].value;
+  });
+}
+
+/**
+ * « Aller aux choix » : ouvre l'onglet « Choix » de la zone IV, y met le focus (le tiroir rangé, ce bouton passe en `hidden` et le focus serait perdu)
+ * sans faire défiler, puis descend à la zone IV (sans animation sous `prefers-reduced-motion`).
+ */
+function allerAuxChoix() {
+  const onglet = $('onglet-choix');
+  onglet.click();
+  onglet.focus({ preventScroll: true });
+  $('zone-parametres').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 /** Ouvre un menu déroulant de la fiche (la spécialité d'une classe, depuis le tiroir des choix) et l'amène à l'écran. */
@@ -3630,10 +3921,7 @@ async function demarrer() {
     zoneParametresVisible = entree.isIntersecting;
     construireChoixEnAttente();
   }, { rootMargin: '0px 0px -15% 0px' }).observe(racine.querySelector('.parametres'));
-  $('choix-aller').addEventListener('click', () => {
-    $('onglet-choix').click();
-    $('zone-parametres').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  });
+  $('choix-aller').addEventListener('click', allerAuxChoix);
   $('choix-reduire').addEventListener('click', () => {
     tiroirReduit = !tiroirReduit;
     construireChoixEnAttente();
