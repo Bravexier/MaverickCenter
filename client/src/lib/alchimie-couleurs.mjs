@@ -21,7 +21,9 @@
 //      - l'affinité Anti n'a pas de couleur dans le Doc : la ligne reste neutre (ses deux pages, Huile rage et Remède enragé, ont depuis le 2026-10-23
 //        la couleur que le propriétaire leur a choisie, le Vide : étape 0) ;
 //   2. la nuance du niveau est calculée depuis la base (NUANCES_DES_NIVEAUX : mêlée de blanc pour Novice et Apprenti, la base à Avancé, mêlée de noir pour
-//      Expert et Maître ; parts choisies par le site) ;
+//      Expert et Maître ; parts choisies par le site) ; une base blanche, que le blanc n'éclaircit pas (la magie du Vide), suit
+//      NUANCES_D_UNE_BASE_BLANCHE : blanche jusqu'à Apprenti, puis un cran plus sombre à chaque palier (réponse du propriétaire du 2026-10-23 :
+//      « Dégradé visible » ; teintes validées par le propriétaire le 2026-10-23 : « Oui, les garder ») ;
 //   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur) ; un fond qui n'atteint pas un contraste de 4,5:1 avec lui (seuil
 //      AA du WCAG) est éclairci (texte foncé) ou assombri (texte blanc) jusqu'à l'atteindre (`lisible`).
 // Repère visuel sans valeur de règle du jeu. Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction
@@ -141,13 +143,35 @@ export const NUANCES_DES_NIVEAUX = Object.freeze({
   5: Object.freeze({ vers: 'noir', part: 0.4 }),
 });
 
+/**
+ * La nuance de chaque niveau pour une base blanche (le blanc pur : la magie du Vide, couleur du Remède enragé et de l'Huile rage). Mêlé de blanc, le
+ * blanc reste blanc : avec NUANCES_DES_NIVEAUX, Novice, Apprenti et Avancé seraient tous trois blancs. Le propriétaire, à la question « Faut-il un
+ * palier visible entre Apprenti et Avancé ? », a répondu « Dégradé visible » (2026-10-23), sans préciser de teinte : Novice et Apprenti restent
+ * blancs (rien n'est plus clair), puis chaque palier s'assombrit d'un cran : Avancé gris très clair (10 % de noir), Expert et Maître comme toute
+ * base (20 % et 40 % de noir : gris clair, gris). Teintes validées par le propriétaire le 2026-10-23 : à la question qui les lui présentait (le
+ * dégradé du Vide sur le Remède enragé et l'Huile rage : Apprenti blanc, Avancé gris très clair, Expert gris clair, Maître gris, texte foncé et
+ * lisible ; « Ces teintes vous conviennent ? »), il a répondu « Oui, les garder ». Toute autre base suit
+ * NUANCES_DES_NIVEAUX, inchangée.
+ */
+export const NUANCES_D_UNE_BASE_BLANCHE = Object.freeze({
+  1: null,
+  2: null,
+  3: Object.freeze({ vers: 'noir', part: 0.1 }),
+  4: NUANCES_DES_NIVEAUX[4],
+  5: NUANCES_DES_NIVEAUX[5],
+});
+
 const CIBLES = { blanc: [255, 255, 255], noir: [0, 0, 0] };
 const canaux = (hex) => String(hex).slice(1).match(/.{2}/g).map((c) => parseInt(c, 16));
 const versHex = (rgb) => `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+const estBlanche = (hex) => canaux(hex).every((c) => c === 255);
 
-/** La nuance d'une couleur (« #rrggbb ») au niveau `rang` : la base mêlée de blanc ou de noir (NUANCES_DES_NIVEAUX) ; la base pour un rang inconnu. */
+/**
+ * La nuance d'une couleur (« #rrggbb ») au niveau `rang` : la base mêlée de blanc ou de noir (NUANCES_DES_NIVEAUX, ou NUANCES_D_UNE_BASE_BLANCHE pour
+ * le blanc pur) ; la base pour un rang inconnu.
+ */
 export function nuanceDuNiveau(base, rang) {
-  const n = NUANCES_DES_NIVEAUX[rang];
+  const n = (estBlanche(base) ? NUANCES_D_UNE_BASE_BLANCHE : NUANCES_DES_NIVEAUX)[rang];
   if (!n) return base;
   const cible = CIBLES[n.vers];
   return versHex(canaux(base).map((c, i) => c * (1 - n.part) + cible[i] * n.part));

@@ -13,7 +13,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
 import { ancreDObjet, ancreDePotions } from '../src/lib/ceinture-rendu.mjs';
-import { CONTRASTE_MINIMAL, contraste, couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
+import { CONTRASTE_MINIMAL, contraste, couleurDePotion, lisible, nuanceDuNiveau } from '../src/lib/alchimie-couleurs.mjs';
 import { classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
@@ -224,6 +224,75 @@ test('aucune couleur en dur dans l’onglet : ni hex ni style de couleur ; chaqu
   // la page n'émet que les combinaisons de potions qu'elle affiche
   const emises = [...regles.keys()].filter((c) => c.startsWith('couleur-potion-'));
   assert.deepEqual(emises.filter((c) => !posees.has(c)), [], 'une combinaison émise mais pas affichée');
+});
+
+/** La base de déploiement (SITE_BASE, « / » par défaut), terminée par « / » : retirée d'un href pour retrouver le fichier dans dist/. */
+const BASE = `${(process.env.SITE_BASE ?? '/').replace(/\/+$/, '')}/`;
+const fichierDeDist = (href) => join(dist, href.startsWith(BASE) ? href.slice(BASE.length) : href.replace(/^\/+/, ''));
+/** Toutes les feuilles de la page : ses balises <style> et ses feuilles liées. */
+const feuillesDeLaPage = () => [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1])
+  .concat([...html.matchAll(/<link\b[^>]*>/g)].map((m) => m[0]).filter((l) => /rel="stylesheet"/.test(l))
+    .map((l) => /href="([^"]*)"/.exec(l)[1]).map((h) => {
+      assert.ok(existsSync(fichierDeDist(h)), `feuille absente de dist/ : ${h}`);
+      return readFileSync(fichierDeDist(h), 'utf8');
+    }));
+/** Les règles ({ selecteur, corps }) qui ne valent qu'en thème sombre : dans un `@media (prefers-color-scheme: dark)`, ou sous `[data-theme="dark"]`. */
+const reglesDuThemeSombre = (css) => {
+  const sombres = [];
+  for (const m of css.matchAll(/@media[^{]*prefers-color-scheme:\s*dark[^{]*\{/g)) {
+    let i = m.index + m[0].length;
+    const debut = i;
+    for (let profondeur = 1; profondeur && i < css.length; i++) profondeur += css[i] === '{' ? 1 : css[i] === '}' ? -1 : 0;
+    sombres.push(...[...css.slice(debut, i - 1).matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, c]) => ({ selecteur: s.trim(), corps: c })));
+  }
+  for (const [, s, c] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) if (/\[data-theme=["']?dark/.test(s)) sombres.push({ selecteur: s.trim(), corps: c });
+  return sombres;
+};
+/** Les déclarations d'un corps de règle : Map(propriété → valeur). */
+const declarations = (corps) => new Map(corps.split(';').map((d) => d.split(':')).filter((d) => d.length > 1)
+  .map(([p, ...v]) => [p.trim(), v.join(':').trim()]));
+
+test('les cartes en Vide (Huile rage, Remède enragé) : lignes du dégradé du blanc avec un texte foncé, en thème sombre comme en clair', options, () => {
+  // demande du propriétaire du 2026-10-23, après « Le remède enragé est de la couleur du Vide » et « L'huile rage devrai être couleur du Vide » :
+  // « Dans le screen que je t'ai envoyé les lignes ne sont pas affiché blanches. (du moins pas dans le monde sombre) » ; puis, à « Faut-il un palier
+  // visible entre Apprenti et Avancé ? » : « Dégradé visible » (lib/alchimie-couleurs.mjs#NUANCES_D_UNE_BASE_BLANCHE)
+  const regles = reglesDeLaPage();
+  const vide = couleursDeLaPalette().find((c) => c.classe === 'couleur-magie-vide') ?? assert.fail('classe couleur-magie-vide absente de la palette');
+  for (const page of ['ressources/huile-rage', 'ressources/remede-enrage']) {
+    const x = objets.tableaux.flatMap((t) => t.pages ?? []).find((y) => y.id === page) ?? assert.fail(`page absente : ${page}`);
+    assert.ok(x.potions.length >= 3, page);
+    const fonds = [];
+    for (const p of x.potions) {
+      const c = couleurDePotion({ page, niveau: p.niveau_rang });
+      const classe = `couleur-potion-magie-vide-n${p.niveau_rang}`;
+      assert.equal(classeDePotion(c), classe, p.id);
+      assert.ok(onglet.includes(`<tr class="ceint-ligne ligne-couleur ${classe}" id="${ancreDObjet(p.id)}">`), `${p.id} : ligne sans la classe du Vide`);
+      // la teinte de son palier : le blanc du Vide nuancé par la règle des nuances (tirée du module), rendu lisible
+      assert.equal(c.fond, lisible(nuanceDuNiveau(vide.fond, p.niveau_rang)), `${p.id} : la nuance de son palier`);
+      assert.deepEqual(regles.get(classe), { '--ligne-fond': c.fond, '--ligne-texte': c.texte }, `${p.id} : la valeur de ${classe}`);
+      assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL && contraste(c.texte, '#ffffff') > contraste(c.texte, '#000000'), `${p.id} : texte foncé lisible`);
+      fonds.push(c.fond);
+    }
+    assert.equal(new Set(fonds).size, fonds.length, `${page} : chaque palier a sa teinte (${fonds.join(', ')})`);
+  }
+  // le thème sombre ne touche ni à la ligne colorée ni à ses couleurs, ni au fond ou au texte des cases d'un tableau : la ligne garde en sombre le fond
+  // et le texte de sa classe
+  const css = feuillesDeLaPage().join('\n');
+  const ligne = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel]) => /tr\.ligne-couleur\s*>\s*\*\s*$/.test(sel.trim()))
+    .map(([, , corps]) => declarations(corps)).find((d) => d.has('background'));
+  assert.ok(ligne, 'la règle de la ligne colorée (tableaux.css)');
+  assert.equal(ligne.get('background'), 'var(--ligne-fond)');
+  assert.equal(ligne.get('color'), 'var(--ligne-texte)');
+  const sombres = reglesDuThemeSombre(css);
+  assert.ok(sombres.length > 0, 'les règles du thème sombre sont lues');
+  const touche = /ligne-couleur|--ligne-(?:fond|texte)|couleur-potion-|couleur-magie-|--couleur(?:-texte)?\s*:|ceint-|ceinture/;
+  assert.deepEqual(sombres.filter((r) => touche.test(r.selecteur) || touche.test(r.corps)).map((r) => `${r.selecteur}{${r.corps}}`), [],
+    'une règle du thème sombre change la couleur des lignes');
+  // une règle sombre générique sur les cases (td, th, tr, tbody, table, « > * », .table-donnees, .tableau) qui en poserait le fond ou le texte
+  const caseDeTableau = /(?:^|[\s>+~,(])(?:td|th|tr|tbody|thead|table)(?=$|[\s>+~,.:#[)])|>\s*\*|\.table-donnees(?![\w-])|\.tableau(?![\w-])/;
+  const couleurPosee = (corps) => [...declarations(corps).keys()].some((p) => ['background', 'background-color', 'color'].includes(p));
+  assert.deepEqual(sombres.filter((r) => caseDeTableau.test(r.selecteur) && couleurPosee(r.corps)).map((r) => `${r.selecteur}{${r.corps}}`), [],
+    'une règle du thème sombre pose le fond ou le texte des cases d’un tableau');
 });
 
 test('les liens mènent à des pages construites et à des ancres qui existent (potions, Composants, Équipement, guide)', options, () => {

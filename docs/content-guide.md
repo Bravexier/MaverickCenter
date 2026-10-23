@@ -780,7 +780,9 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     couleur du Vide » ; « L'huile séraphine couleur feu » ; puis, à la question « L'Huile hémophile (inflige saignement, rouge-orangé #cc4125)
     passe-t-elle en Sang comme le Remède saignement ? » : « Huile hémophile → Sang » ; soit : Remède enragé et Huile rage en Vide, Remède saignement et
     Huile hémophile en Sang, Remède brûlure et Huile séraphine en Feu ; une carte non citée suit la règle, rien n'en est déduit pour les autres) ; puis la **nuance de son niveau d'alchimie**
-    (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
+    (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître ;
+    une base blanche, le Vide, que le blanc n'éclaircit pas, suit `NUANCES_D_UNE_BASE_BLANCHE` : blanche jusqu'à Apprenti, puis gris très clair, gris clair
+    et gris, réponse du propriétaire du 2026-10-23 : « Dégradé visible » ; teintes validées par le propriétaire le 2026-10-23 : « Oui, les garder »).
     Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction suivante du site (l'éditeur réécrit ses cases,
     pas la classe de sa ligne, qui existe donc toujours dans la page) ;
   - un **bâton**, la couleur de sa magie sur le site (la classe `.couleur-magie-<id>`), comme ses infobulles ;
