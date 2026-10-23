@@ -18,8 +18,10 @@ restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie 
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
-2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) **et maîtrises
-   d'armes** et la **ceinture** ; les sorts, à côté les **dons débloqués** (et l'**entraînement**).
+2. **À portée de main** : les attributs et valeurs du moment ; les **armes** (avec leur **solidité**) **et maîtrises d'armes**, sur toute la largeur de
+   la zone sur grand écran, les cartes des sources à gauche et le tableau des familles à droite (choix du propriétaire du 2026-10-23, « Pleine
+   largeur ») ; caractéristiques et compétences, à côté la **ceinture** ; les sorts, à côté les **dons débloqués** (et l'**entraînement**). Plus étroit,
+   les blocs se suivent : attributs, caractéristiques et compétences, armes et maîtrises, ceinture, sorts, dons.
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure (avec la **défense** totale et les **dégâts reçus**, R98),
    les accessoires et, juste en dessous, l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté l'initiative et les vitesses,
    les résistances et faiblesses, le bouclier.

@@ -119,13 +119,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-zone__grille { display: grid; gap: 0.75rem; align-items: start; }
 .zp-colonne { display: grid; gap: 0.75rem; align-content: start; }
 
-/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté les armes, les maîtrises et la ceinture ; les
-   sorts, à côté les dons débloqués */
+/* II. à portée de main : les attributs sur toute la largeur ; les armes et maîtrises sur toute la largeur aussi, cartes des sources à gauche et tableau
+   des familles à droite (choix du propriétaire du 2026-10-23, « Pleine largeur ») ; caractéristiques et compétences, à côté la ceinture, toujours sous
+   les armes ; les sorts, à côté les dons débloqués. Plus étroit, la colonne des armes et de la ceinture (.zp-colonne) passe sous les compétences. */
 @media (min-width: 64rem) {
-  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car col' 'sor don'; }
+  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'arm arm' 'car cei' 'sor don'; }
   .zp-attributs { grid-area: attr; }
   .zp-caracs { grid-area: car; }
-  .zp-colonne { grid-area: col; }
+  .zp-colonne { display: contents; }
+  .zp-armes { grid-area: arm; }
+  .zp-ceinture { grid-area: cei; }
   .zp-sorts { grid-area: sor; }
   .zp-dons { grid-area: don; }
   /* III. selon la situation : les postures (et le Mode Hyper) sur toute la largeur ; armure et accessoires, à côté initiative, résistances et bouclier */

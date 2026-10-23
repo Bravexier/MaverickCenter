@@ -65,6 +65,22 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   assert.ok(!/class="num"/.test(fiche), 'aucun numéro de bloc');
 });
 
+test('/fiche/, zone II sur grand écran : « Armes et maîtrises » sur toute la largeur, la ceinture sous elles, à côté des compétences (choix du propriétaire du 2026-10-23, « Pleine largeur »)', options, () => {
+  const html = lire('fiche/index.html');
+  const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
+  // la colonne des armes et de la ceinture reste dans la page (elle se suit ainsi sur écran moyen et téléphone) ; chaque bloc a son aire
+  assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape zp-armes" id="etape-armes"[^]*?<section class="fiche-etape zp-ceinture" id="etape-ceinture"/);
+  const grand = html.match(/@media \(min-width:\s*64rem\)\s*\{([^]*?)\.zone-situation/)?.[1] ?? '';
+  const aires = [...(grand.match(/\.zone-portee\s*\{[^}]*grid-template-areas:\s*([^;}]+)/)?.[1] ?? '').matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
+  assert.deepEqual(aires, ['attr attr', 'arm arm', 'car cei', 'sor don'], 'les armes sur les deux colonnes, sous les attributs ; la ceinture à côté des compétences');
+  assert.match(grand, /\.zp-colonne\s*\{\s*display:\s*contents/, 'la colonne s’efface sur grand écran');
+  assert.match(grand, /\.zp-armes\s*\{\s*grid-area:\s*arm\b/);
+  assert.match(grand, /\.zp-ceinture\s*\{\s*grid-area:\s*cei\b/);
+  // le tableau des familles à côté des cartes dès que le bloc a la place, dessous sinon (sans défilement horizontal de la page)
+  assert.match(html, /\.maitrises\s*\{\s*container-type:\s*inline-size/);
+  assert.match(html, /@container \(min-width:\s*44rem\)\s*\{\s*\.maitrises__grille\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1\.1fr\) minmax\(0,\s*1fr\)/);
+});
+
 test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options, () => {
   const html = lire('fiche/index.html');
   const bloc = (id) => {

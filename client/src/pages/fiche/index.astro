@@ -170,8 +170,10 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           </div>
         </section>
 
+        {/* les armes et maîtrises, puis la ceinture ; sur grand écran, la colonne s'efface (display: contents) : les armes et maîtrises prennent toute la
+            largeur de la zone, au-dessus des compétences, et la ceinture va à côté des compétences (choix du propriétaire du 2026-10-23, « Pleine largeur ») */}
         <div class="zp-colonne">
-          <section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">
+          <section class="fiche-etape zp-armes" id="etape-armes" aria-labelledby="titre-armes">
             <h3 id="titre-armes">Armes et maîtrises</h3>
             <div class="fiche-etape__corps">
               <div id="armes" class="equipement equipement--armes"></div>
@@ -196,7 +198,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet
               du sac, qui le quitte, et se règle par « Utiliser », « Remplir » et « Ranger » (décision R89) ; l'aide est refaite par le script d'après les règles,
               un nom refusé (absent du sac) dit pourquoi dans #ceinture-refus */}
-          <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
+          <section class="fiche-etape zp-ceinture" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
               <div>
