@@ -204,6 +204,8 @@ export const RESSOURCES = [
       'place sur l’onglet (ligne, rang, nature), qui ne se modifie pas ; un don créé se place à la fin de son niveau ou en option d’un choix (niveaux 1, 5, 10, ' +
       '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42).',
     table: 'capacite',
+    // les NM de sorts gagnés que le texte du don écrit (« Gagne 4 niveaux de maîtrise (NM). », décision R154), lus par lib/maitrise-arme.mjs
+    derivees: [{ table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }],
     liste: ['id', 'nom', 'classe_id', 'specialite_id', 'niveau', 'nature', 'type_brut'],
     recherche: ['nom'],
     tri: 'classe_id',
@@ -243,5 +245,13 @@ export const RESSOURCES = [
   },
 ];
 
+const PARTS_DE_MAITRISE = 'découpée par le lecteur lib/maitrise-arme.mjs dans le texte des lignes de maîtrise d’armes des classes (classe_maitrise_arme, ' +
+  'dérivée de la ressource classes) et des dons (capacite, ressource dons-de-classe) : une source est l’une ou l’autre, deux parents qu’une dérivée ne ' +
+  'sait pas porter ; refaite par le service d’édition, jamais écrite par l’API (décisions R148 à R151, migration 0076) ; lue par les vues ' +
+  'v_personnage_maitrise_part et v_personnage_maitrise_arme, lisible dans l’onglet DB (/donnees/)';
+
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
-export const HORS_RESSOURCE = {};
+export const HORS_RESSOURCE = {
+  maitrise_arme_part: `Ce que donne chaque source de points de maîtrise d’armes (une part imposée, à choisir ou qui suit la maîtrise au choix de la classe) : ${PARTS_DE_MAITRISE}.`,
+  maitrise_arme_part_famille: `Les familles d’armes proposées par chaque part à choisir d’une source de maîtrise d’armes : ${PARTS_DE_MAITRISE}.`,
+};

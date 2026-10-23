@@ -25,7 +25,8 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   d'un ingrédient d'alchimie, la description d'un produit non monétaire) ou qu'il refuse toujours (le prix de la ressource d'une gemme, qui est dans
   son extension) est **figée** dans le registre (`colonnesFigees`, `ecriture.champsFiges`) : non modifiable au catalogue, `400` avec la raison.
 - **Jamais servi** : les tables des fiches de personnages, des comptes et des groupes (section 13 de `data/schema.sql` : elles passent par
-  `/api/personnages/`) et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
+  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix` et les règles de contrôle sont décrits dans
+  [`serveur.md`](serveur.md), « L'API ») et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
@@ -152,7 +153,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire |
@@ -336,7 +337,11 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 Les tables qui ne sont pas des éléments (tables de détail refaites par le service, vues de recherche, fiches de personnages, journal) sont rangées
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une
-fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource).
+fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource). Ainsi `maitrise_arme_part` et `maitrise_arme_part_famille` (ce que
+donne chaque source de points de maîtrise d'armes, migration 0076) : une source est une ligne de maîtrise d'une classe ou un don, deux parents qu'une
+dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`. Toutes trois sont
+refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
+jamais écrites directement.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même

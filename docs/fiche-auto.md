@@ -87,7 +87,8 @@ est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/
 
 - **Repris** : identité, race, ethnie (parmi celles de la race), magies, dieu choisi (« Démon d'Eau Noire » mène à Eaunoire, R21 : la migration
   0012 a changé le nom, pas l'identifiant `demon-deau-noire` ; depuis la migration 0006, un nom corrigé garde son identifiant), alignement (L5:O5), bourse, XP, classes et spécialités, caractéristiques et croix (cases à cocher), naturel des
-  compétences, maîtrises (« Nd » en AI et AN), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
+  compétences (les maîtrises, « Nd » en AI et AN, ne le sont pas : la fiche les calcule depuis ses choix, R148 ; s'ils dépassent ce calcul, ils sont
+  notés, « Maîtrises d'armes avant la refonte : « ÉPÉES 3D10, … » », sans choix posé, R153), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
   composition manque, R49), armure (AD21, AT20, AS21, AX21), bouclier et ses trois matériaux, accessoires (propriété, effet, valeur — « 18% » ou
   0,18 : 18 —, malédiction), ceinture (AQ29, AQ32, AQ35, et leur quantité en AX), inventaire, sorts et NM, dons à choix, métier, événements
   (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes, et l'**entraînement** (L42, lu

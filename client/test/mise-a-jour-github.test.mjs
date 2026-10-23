@@ -19,8 +19,9 @@ import {
   changementsNonIndexes, chercherLotDejaFusionne, corpsDePR, creerBundle, enteteAuthentification, enveloppeGit, environnementGit, etatDesChecks,
   fichiersModifies, fusionDansDev, gitLocal, horodatage, horsListe, importerCommit, lireDiffTree, lirePhase, lireStatut, livraisonVersMaster,
   lotsEnAttente, messageAttendu, messageDeFin, neutraliserMarqueur, neutraliserReferences, noteDuCorps, nomDeBranche, pourCommandeDeWorkflow,
-  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
+  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
 } from '../scripts/mise-a-jour-github.mjs';
+import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mise-a-jour-github.mjs', import.meta.url));
@@ -1048,6 +1049,12 @@ describe('fonctions pures', () => {
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
+    // les sources de maîtrise d'arme d'une classe ou d'un don touchés, refaites par le lecteur après le lot (sourcesRefaitesParLeLot : un lot noté avant
+    // la migration 0076 ne les écrit pas ; décisions R148 à R151, R154), la même liste que le service
+    assert.deepEqual(TABLES_DES_SOURCES_DE_MAITRISE, TABLES_DES_SOURCES);
+    assert.deepEqual(tablesDuLot(lot({ table: 'capacite', operation: 'modifier', avant: { effet: 'a' }, apres: { effet: 'b' } })), ['capacite', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'classe_maitrise_arme', operation: 'supprimer', avant: { classe_id: 'c', rang: 2 }, apres: null })), ['capacite_nm_gagne', 'classe_maitrise_arme', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'metier', operation: 'modifier', avant: { nom: 'a' }, apres: { nom: 'b' } })), ['metier']);
     // D3 : un mot-clé supprimé (ou fusionné) quitte aussi les balises des textes que le journal n'a pas (balisesRetireesParLeLot,
     // balisesDesColonnesDerivees) : les tables dont data/rows a une balise, lues seulement pour un tel lot
     let lues = 0;

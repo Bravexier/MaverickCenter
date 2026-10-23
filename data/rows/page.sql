@@ -6000,7 +6000,7 @@ Le détail : [[guide/blessures-et-etats|Blessures et états]].
 
 ## L’équipement
 
-- **Les armes** : deux équipées au plus. Sans maîtrise de sa catégorie, une arme lance 1 dé de dégâts, et chaque point de maîtrise en ajoute un. Le dé est celui de l’arme ; le bonus additionne celui de l’arme, de son matériau et de son amélioration.
+- **Les armes** : deux équipées au plus. Sans maîtrise de sa catégorie, une arme lance 1 dé de dégâts, et chaque point de maîtrise en ajoute un, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé. Le dé est celui de l’arme ; le bonus additionne celui de l’arme, de son matériau et de son amélioration.
 - **La {{solidite|solidité}}** : à 0, l’objet est cassé. Une arme cassée est inutilisable jusqu’à sa réparation (un kit de réparation d’arme lui rend un cran) ; un bouclier cassé ne compte plus ses AP ni son AM. Une armure a une solidité par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une : une partie cassée ne compte plus l’AP ni l’AM de l’armure et se répare à part, avec un métier adapté et le matériau ; un kit de réparation d’armure, sans matériau, rend un cran à toute l’armure. Cassée, une armure à cran uni ne donne plus aucun de ses effets, bonus comme malus ; le poids d’une armure lourde, lui, demeure.
 - **L’AP et l’AM** : la base (race, ethnie, 4 AM par classe magique, l’Archimage comprise, et 4 AM pour la seconde spécialité d’une classe raciale ou du Flagelleur), les accessoires, l’armure portée et son amélioration ; la posture défensive en ajoute. Une armure de la catégorie *Lourd* retire 1 point de vitesse et rend la vitesse de nage nulle.
 - **Le bouclier** : une forme et une matière ; ses AP et son AM ne comptent que sur une parade partielle faite avec lui, et son poids demande une Force minimum.
@@ -6600,7 +6600,7 @@ Pour lancer ses sorts, on se sert de la compétence *Magie* (Intelligence) ; les
 
 ### Les maîtrises d’armes
 
-Plus le personnage maîtrise une catégorie d’arme, plus il fait de dégâts avec elle : sans maîtrise, l’arme lance 1 dé ; avec 1 point de maîtrise, 2 dés, et ainsi de suite. Chaque catégorie a son dé, que suivent la plupart de ses armes (dagues D6, épées D10, arcs D8, arbalètes D12) ; certaines armes écrivent le leur : l’épée courte lance des D8 (voir les [armes](/ressources/equipement/#armes)). Les maîtrises de départ sont celles de la classe : notez celles qu’elle nomme, choisissez celles qui sont « au choix ». Certains dons en ajoutent plus tard.
+Plus le personnage maîtrise une catégorie d’arme, plus il fait de dégâts avec elle : sans maîtrise, l’arme lance 1 dé ; avec 1 point de maîtrise, 2 dés, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé. Chaque catégorie a son dé, que suivent la plupart de ses armes (dagues D6, épées D10, arcs D8, arbalètes D12) ; certaines armes écrivent le leur : l’épée courte lance des D8 (voir les [armes](/ressources/equipement/#armes)). Les maîtrises de départ sont celles de la classe : notez celles qu’elle nomme, choisissez celles qui sont « au choix ». Certains dons en ajoutent plus tard.
 
 > **Sur votre fiche** : la valeur de chaque caractéristique ; les points naturels des compétences ; les maîtrises d’armes.
 
@@ -7332,7 +7332,7 @@ Sur la page des [armes](/ressources/equipement/#armes), les armes écrites en bl
 
 ### Les dégâts d’une arme
 
-- **Le nombre de dés** vient de la maîtrise que le personnage a de la catégorie de l’arme : 1 dé sans maîtrise, 1 de plus par point de maîtrise. Les armes de monstres, réservées aux monstres, ne se maîtrisent pas.
+- **Le nombre de dés** vient de la maîtrise que le personnage a de la catégorie de l’arme : 1 dé sans maîtrise, 1 de plus par point de maîtrise, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé. Les armes de monstres, réservées aux monstres, ne se maîtrisent pas.
 - **Le dé** est celui de l’arme, le plus souvent celui de sa catégorie : D6 pour les dagues, D10 pour les épées, D8 pour les arcs, D12 pour les arbalètes… Au pugilat, il dépend de la Force : D6 avec 1 ou 2, D8 avec 3 ou 4, D10 avec 5.
 - **Le bonus** additionne celui de l’arme, celui de son matériau (le fer, par défaut) et celui de son amélioration.
 
@@ -8347,7 +8347,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 - **Magie acquise** : une seconde magie, facultative. Toutes les magies ne se mélangent pas, et avec deux magies, les sorts de niveau 5 restent fermés ([[guide/creer-son-personnage|Créer son personnage]]).
 - **Magie innée** : la magie de naissance, héritée de l’un des parents, sauf si un dieu intervient ; tout le monde en a une. Elle donne +1 dans une caractéristique et relie le personnage à son dieu inné ([[guide/l-univers|L’univers]]).
-- **Maîtrise d’arme** : le savoir-faire avec une catégorie d’arme. Sans maîtrise, l’arme lance 1 dé de dégâts ; chaque point de maîtrise en ajoute un ([[guide/l-equipement|L’équipement]]).
+- **Maîtrise d’arme** : le savoir-faire avec une catégorie d’arme. Sans maîtrise, l’arme lance 1 dé de dégâts ; chaque point de maîtrise en ajoute un, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé ([[guide/l-equipement|L’équipement]]).
 - **Métier** : un savoir-faire choisi à la création ou plus tard dans l’aventure. Il donne des bonus d’acquis ou d’attribut, des objets de départ et, pour certains, l’artisanat ([les métiers](/metiers/)).
 - **MJ** (maître du jeu) : celui qui raconte l’histoire, joue les PNJ et les monstres, et juge de ce qui est possible, improbable ou impossible ([[guide/un-maitre-du-jeu|Un maître du Jeu]]).
 - **Mode Hyper** : l’état de surpuissance qui s’ouvre au niveau 2 : pour quelques tours, une fois par semaine, la magie du personnage ne fait plus qu’un avec lui. Le Mode Hyper 100 %, plus puissant encore, s’ouvre au niveau 10 ([[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]).

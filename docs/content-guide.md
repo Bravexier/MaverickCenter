@@ -1071,8 +1071,9 @@ dev (un commit la change) ni cherchée par la recherche.
   « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Créer son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
   l'onglet Boucliers de « L'équipement » (`test/equipement-html.test.mjs`), le titre « Bienvenue dans Maverick » et son alias « Guide du joueur »
   (`test/serveur-edition-guide.test.mjs`), les intertitres « Le jeu de rôle, comment ça marche ? » de Bienvenue et « Étape 1 : … » à « Étape 6 : … » de
-  « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`) : les
-  garder en modifiant ces pages.
+  « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), le
+  plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond ») dans la phrase des dés de maîtrise de « Créer son personnage », « L'équipement »,
+  « Aide-mémoire » et « Lexique », sans « et ainsi de suite » (R149, G40, `test/guide.test.mjs`) : les garder en modifiant ces pages.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.

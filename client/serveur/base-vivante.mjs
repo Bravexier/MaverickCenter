@@ -10,7 +10,8 @@
 // pourquoi. Une table que les règles retirent de la section 13 (TABLES_RETIREES de src/lib/fiche-format.mjs) n'est plus recopiée : ses lignes sont
 // converties (CONVERSIONS : personnage_progression, migration 0045, devient la somme des gains de niveau, personnage.gains_sante et gains_chakra,
 // décision R73 ; personnage_armure, migration 0055, devient l'armure de la fiche, la pièce devenue l'armure complète et chaque autre pièce notées
-// dans la fiche, décision R95 ; personnage_bouclier_materiau, migration 0060, devient la matière du bouclier, chaque autre matériau noté, décision R96),
+// dans la fiche, décision R95 ; personnage_bouclier_materiau, migration 0060, devient la matière du bouclier, chaque autre matériau noté, décision R96 ;
+// personnage_maitrise_arme, migration 0076, ses dés notés avec l'arme choisie de R119 en une ligne datée, aucun choix posé, décision R153),
 // et les lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées (LIGNES_ECARTEES : un accessoire de la Ceinture ou
 // d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; jamais
 // perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
@@ -21,8 +22,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  accessoiresGardes, acquisRetires, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, matiereDuBouclier, retraitsDeLArmure,
-  retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
+  accessoiresGardes, acquisRetires, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, maitrisesDAvant, matiereDuBouclier,
+  retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
@@ -48,8 +49,9 @@ export const TABLES_VIVANTES = Object.freeze([...TABLES_FICHES, ...TABLES_EDITIO
  * complète d'abord (décision R95 ; la même que la migration 0055 et que armureDesArmures) ; une pièce gardée qui devient l'armure complète, et chaque
  * autre pièce qui ne porte pas la même armure (ou pas la même amélioration, le même élément), un retrait rangé dans `retraits` (retraitsDeLArmure,
  * noms lus dans les nouvelles règles) : noterLesRetraits en écrit la ligne datée dans les notes, marque la fiche modifiée et la liste dans /api/etat,
- * avec ceux de la décision R42. Une conversion est une instruction SQL, ou une fonction (db, { retraits }) quand elle retire quelque chose. Une table
- * retirée sans conversion bloque la reconstruction (ses lignes seraient perdues).
+ * avec ceux de la décision R42. personnage_maitrise_arme (les dés par famille) : décision R153, noterLesMaitrisesDAvant. Une conversion est une
+ * instruction SQL, ou une fonction (db, { retraits }) quand elle retire quelque chose. Une table retirée sans conversion bloque la reconstruction (ses
+ * lignes seraient perdues).
  */
 export const CONVERSIONS = Object.freeze({
   personnage_progression: `UPDATE main.personnage SET
@@ -97,7 +99,54 @@ export const CONVERSIONS = Object.freeze({
     }
     ajouterLesRetraits(db, retraits, notes);
   },
+  // les maîtrises d'armes (décisions R148, R153) : aucun choix posé, les anciens dés et l'arme choisie notés
+  personnage_maitrise_arme: (db, { retraits }) => noterLesMaitrisesDAvant(db, retraits),
 });
+
+/** Les accumulateurs de retraits dont les maîtrises d'avant sont déjà notées (une seule ligne par fiche : noterLesMaitrisesDAvant). */
+const MAITRISES_NOTEES = new WeakSet();
+
+/**
+ * Décision R153 (« Tout remettre à choisir », avec « une note datée de l'ancien tableau ») : range dans `retraits`, pour chaque fiche de `ancienne`, un
+ * descripteur « maitrises_armes » (maitrisesDAvant de src/lib/fiche-format.mjs) avec ses anciens dés par famille (personnage_maitrise_arme) et l'arme
+ * choisie de ses choix d'acquis (personnage_acquis_choix.arme_famille_id, décision R119, retirée par R152) ; noterLesRetraits en écrit la ligne datée à
+ * la fin des notes. Aucun choix de maîtrise n'est posé (personnage_maitrise_choix reste vide) ; les lignes des choix d'acquis sont recopiées sans la
+ * colonne, leur compétence gardée (R152). Appelée par la conversion de la table et par celle de la colonne : une base d'avant la migration 0067 n'a que
+ * la table, et une fiche peut n'avoir qu'une arme choisie ; une seule ligne par fiche (une seule fois par accumulateur). Noms, dés et ordre des familles
+ * lus dans les nouvelles règles, sinon dans l'ancienne base.
+ */
+function noterLesMaitrisesDAvant(db, retraits) {
+  if (MAITRISES_NOTEES.has(retraits)) return;
+  MAITRISES_NOTEES.add(retraits);
+  const parFiche = new Map();
+  const de = (id) => {
+    if (!parFiche.has(id)) parFiche.set(id, { maitrises: [], armes: [] });
+    return parFiche.get(id);
+  };
+  if (colonnes(db, 'ancienne', 'personnage_maitrise_arme').length) {
+    for (const l of db.prepare('SELECT personnage_id, arme_famille_id, des FROM ancienne.personnage_maitrise_arme ORDER BY personnage_id, arme_famille_id').all()) {
+      de(l.personnage_id).maitrises.push({ arme_famille_id: l.arme_famille_id, des: l.des });
+    }
+  }
+  if (colonnes(db, 'ancienne', 'personnage_acquis_choix').includes('arme_famille_id')) {
+    for (const l of db.prepare(`SELECT personnage_id, source, arme_famille_id FROM ancienne.personnage_acquis_choix WHERE arme_famille_id IS NOT NULL
+      ORDER BY personnage_id, source, rang, competence_id`).all()) {
+      de(l.personnage_id).armes.push({ source: l.source, arme_famille_id: l.arme_famille_id });
+    }
+  }
+  if (!parFiche.size) return;
+  const familles = ['main', 'ancienne'].map((b) => db.prepare(`SELECT nom, de_brut AS de, ordre FROM ${b}.arme_famille WHERE id = ?`));
+  const dons = ['main', 'ancienne'].map((b) => db.prepare(`SELECT k.nom, c.nom AS classe FROM ${b}.capacite k LEFT JOIN ${b}.classe c ON c.id = k.classe_id WHERE k.id = ?`));
+  const premier = (requetes) => (id) => {
+    for (const r of requetes) {
+      const l = r.get(id);
+      if (l) return { ...l };
+    }
+    return null;
+  };
+  const noms = { famille: premier(familles), don: premier(dons) };
+  ajouterLesRetraits(db, retraits, [...parFiche].map(([id, x]) => [id, [maitrisesDAvant(x.maitrises, x.armes, noms)].filter(Boolean)]));
+}
 
 /**
  * Lignes qu'une table de la section 13 garde mais que ses nouvelles règles refusent, par table : { ou (prédicat SQL des lignes à NE PAS recopier, valable
@@ -146,7 +195,9 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * (db, { retraits }) lue dans `ancienne`, faite après la copie des fiches. Décision R104 (migration 0062) : `personnage.entrainement`, le texte libre de
  * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
  * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
- * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas.
+ * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décisions R152 et R153
+ * (migration 0076) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
+ * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste.
  */
 export const COLONNES_CONVERTIES = Object.freeze({
   personnage: Object.freeze({
@@ -176,6 +227,9 @@ export const COLONNES_CONVERTIES = Object.freeze({
         ecrire.run(l.nm, l.personnage_id);
       }
     },
+  }),
+  personnage_acquis_choix: Object.freeze({
+    arme_famille_id: (db, { retraits }) => noterLesMaitrisesDAvant(db, retraits),
   }),
 });
 

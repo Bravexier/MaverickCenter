@@ -13,7 +13,8 @@
 // (décision R74, durabiliteDArme ; rien pour une arme de monstre, sans solidité), relue ; la case « Entraînement » (L42) : les compétences de
 // l'entraînement, « Magie 2 | Concentration 10 » (décision R104 ; ses textes libres dans la note), relue. La portée d'une
 // arme est celle de la page « Armes » (décision R50 : la portée écrite, 1 par défaut ; regles.armes[].portee). Ce qui n'a pas de case (bi-classe,
-// gains de niveau — deux totaux, décision R73 : « santé X, chakra Y » —, NM offerts, accessoires de ceinture, débordements des listes…) va dans la case
+// gains de niveau — deux totaux, décision R73 : « santé X, chakra Y » —, NM offerts, choix de maîtrise d'arme — décision R148, les dés de la grille
+// étant calculés —, accessoires de ceinture, débordements des listes…) va dans la case
 // NOTE, sous MARQUEUR_DES_NOTES, en lignes « Clé : valeur » que l'import relit (lib/fiche-tableur-import.mjs) : leur mise en forme et leur lecture sont
 // ici (CLES_DE_LA_NOTE, texteDesGains / lireGains…), comme celles des cases que l'import relit (objets, accessoires, armure, effet d'une arme, choix du
 // métier) : un seul jeu de lecteurs, l'aller et le retour ne divergent pas.
@@ -40,8 +41,8 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
-  trouver, valeursDuMoment,
+  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
+  sourcesDeMaitrise, trouver, valeursDuMoment,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -73,8 +74,13 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   evenement: 'Événement',
   // une ligne de texte libre de l'entraînement (décision R104 : « dons évènementiels ») ; ses compétences sont dans la case L42
   entrainementTexte: 'Entraînement',
+  // les familles choisies pour les points à choisir d'une source de maîtrise d'arme (décision R148 : la ligne d'une classe, un don ; l'accessoire garde
+  // la sienne dans sa case) : « <source> : <famille>, <famille>, ? » (texteDesChoixDeMaitrise, lireChoixDeMaitrise) ; avant les acquis au choix, dont
+  // l'arme choisie suit la maîtrise au choix de la classe (R152)
+  maitriseChoix: 'Maîtrise d\'arme au choix',
   // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »),
-  // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) »)
+  // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) » ; la famille est celle
+  // de la maîtrise au choix de la classe du don, calculée, décision R152 : l'import ne la relit pas)
   acquisChoix: 'Acquis au choix',
   // la résistance au choix d'une ligne du tableau de la race (décision R124) : « <ligne> : <altération> » (« Écaille draconique : Poison »)
   resistanceChoix: 'Résistance au choix',
@@ -393,6 +399,39 @@ export function lireSortPrepare(texte) {
     if (lisible) return lu;
   }
   return { nom: brut, jet: null, posture: null };
+}
+
+/** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
+export const POINT_A_CHOISIR = '?';
+/** Entre les familles des points d'une source, dans la ligne « Maîtrise d'arme au choix » (aucun bandeau de famille n'écrit de virgule). */
+export const SEPARATEUR_DES_POINTS = ', ';
+
+/**
+ * Les choix d'une source de maîtrise d'arme (lib/fiche-moteur.mjs#sourcesDeMaitrise, décision R148), dans la note : « <titre> : <famille>, <famille>,
+ * ? » — le titre de la source tel que la page l'écrit (« Guerrier (maîtrise 2) », « Maître d'arme (Guerrier) »), puis le bandeau de la famille de chaque
+ * point de sa part à choisir dans l'ordre des points (le rang de maitrise_choix), POINT_A_CHOISIR pour un point sans famille, jusqu'au dernier point
+ * choisi. '' quand aucun point n'est choisi (rien à noter) ; jamais pour l'accessoire, dont la famille est dans sa case (« → ÉPÉES »).
+ */
+export function texteDesChoixDeMaitrise(regles, source) {
+  if (source.type === 'accessoire') return '';
+  const points = source.parts.filter((p) => p.genre === 'choix').flatMap((p) => p.choisis);
+  const dernier = points.findLastIndex((c) => c.famille);
+  if (dernier < 0) return '';
+  const familles = points.slice(0, dernier + 1).map((c) => (c.famille ? nomDe(regles.familles_armes, c.famille) : POINT_A_CHOISIR));
+  return `${source.titre}${SEPARATEUR_DE_CLE}${familles.join(SEPARATEUR_DES_POINTS)}`;
+}
+
+/**
+ * { titre, familles } d'un texte de texteDesChoixDeMaitrise : le titre (coupé au dernier « : ») et le nom écrit de chaque point dans l'ordre (null pour
+ * POINT_A_CHOISIR) ; null sans « : » ni famille.
+ */
+export function lireChoixDeMaitrise(texte) {
+  const t = String(texte ?? '').trim();
+  const i = t.lastIndexOf(SEPARATEUR_DE_CLE.trim());
+  if (i <= 0) return null;
+  const familles = t.slice(i + 1).split(SEPARATEUR_DES_POINTS.trim()).map((x) => x.trim());
+  if (!familles.some((x) => x && x !== POINT_A_CHOISIR)) return null;
+  return { titre: t.slice(0, i).trim(), familles: familles.map((x) => (x && x !== POINT_A_CHOISIR ? x : null)) };
 }
 
 /** Un sort au-delà des 20 lignes : « Boule de feu (NM 2) ». */
@@ -825,12 +864,14 @@ export function lireChoixDuMetier(texte) {
 
 // ------------------------------------------------------------------ la fiche entière
 
-/** La fiche telle que la page la calcule : listes présentes, six caractéristiques (caracteristiquesCompletes, comme rafraichir()), maîtrises valables. */
+/**
+ * La fiche telle que la page la calcule : listes présentes, six caractéristiques (caracteristiquesCompletes, comme rafraichir()). Les maîtrises d'armes
+ * se calculent depuis les choix (décision R148 : maitrisesParFamille, sourcesDeMaitrise) : rien à normaliser.
+ */
 function normaliser(regles, fiche) {
   const f = { ...fiche };
   for (const cle_ of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(f[cle_])) f[cle_] = [];
   f.caracteristiques = caracteristiquesCompletes(regles, f);
-  f.maitrises_armes = maitrisesValables(regles, f);
   return f;
 }
 
@@ -953,11 +994,13 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(k.total, c.score === null ? 'N/A' : c.score);
   }
 
-  // maîtrises : le 2e dé, le 3e… remplis (les « 2d », « 3d » du modèle restent écrits)
+  // maîtrises : les dés calculés (décisions R148, R149 : maitrisesParFamille, 5 dés au plus), le 2e dé, le 3e… remplis (les « 2d », « 3d » du modèle
+  // restent écrits) ; l'import ne les relit pas, il les compare au calcul
+  const maitrises = maitrisesParFamille(regles, f);
   for (const m of MAITRISES) {
-    const l = f.maitrises_armes.find((x) => x.arme_famille_id === m.famille);
+    const l = maitrises.find((x) => x.famille === m.famille);
     if (!l) continue;
-    for (const adresse of casesDesDes(m).slice(0, Math.max(0, entier(l.des) - 1))) remplis[adresse] = REMPLISSAGE_DE_ATTEINT;
+    for (const adresse of casesDesDes(m).slice(0, Math.max(0, l.des - 1))) remplis[adresse] = REMPLISSAGE_DE_ATTEINT;
   }
 
   // armes
@@ -1169,10 +1212,16 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   noter(K.inventaire, inventaireEnSuite.join(SEPARATEUR_DE_LISTE));
   for (const ligne of evenements.slice(PLACES_EVENEMENTS)) noter(K.evenement, ligne);
   for (const l of [...(f.entrainements ?? [])].sort((a, b) => a.rang - b.rang)) if (!l.competence_id && String(l.texte ?? '').trim()) noter(K.entrainementTexte, uneLigne(l.texte));
+  // les choix de maîtrise (décision R148), source par source dans l'ordre de la page, avant les acquis au choix
+  for (const source of sourcesDeMaitrise(regles, f)) {
+    const t = texteDesChoixDeMaitrise(regles, source);
+    if (t) noter(K.maitriseChoix, t);
+  }
   // ceux d'une armure cassée compris (décisions R157, R158) : gardés comme à l'enregistrement (acquisChoixGardes)
   for (const c of acquisChoixGardes(regles, f)) {
     const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);
-    // un choix d'arme (décision R119) : la famille d'armes entre parenthèses, après la compétence (déduite ou choisie)
+    // un choix d'arme (décision R119) : la famille d'armes entre parenthèses, après la compétence (déduite ou choisie) ; celle de la maîtrise au choix de
+    // la classe du don, calculée (décision R152)
     const arme = c.arme && c.choisi ? ` (${nomDe(regles.familles_armes, c.arme_famille_id)})` : '';
     if (choisi) noter(K.acquisChoix, `${c.nom} : ${choisi}${arme}`);
   }

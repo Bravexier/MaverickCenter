@@ -21,13 +21,29 @@ db.exec('PRAGMA foreign_keys = ON');
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
-  'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
   'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
 const regles = (id) => [...new Set(controle(id).map((r) => r.regle))].sort();
 const niveau = (id) => ({ ...db.prepare('SELECT niveau_global, niveau_classe_1, niveau_classe_2 FROM v_personnage_niveau WHERE personnage_id = ?').get(id) });
+
+// Maîtrises d'armes (décisions R148 à R151, migration 0076) : points calculés par famille, règles de la vue, l'accessoire « Un point de maîtrise d'arme »
+const maitrises = (id) => Object.fromEntries(db.prepare('SELECT arme_famille_id, points FROM v_personnage_maitrise_arme WHERE personnage_id = ? ORDER BY arme_famille_id')
+  .all(id).map((r) => [r.arme_famille_id, r.points]));
+const REGLES_DE_MAITRISE = ['maitrise_a_choisir', 'maitrise_arme_exclue', 'maitrise_hors_choix', 'maitrise_meme_famille', 'maitrise_plafond', 'maitrise_source_perdue'];
+const controleMaitrise = (id) => controle(id).filter((c) => REGLES_DE_MAITRISE.includes(c.regle));
+const POINT_DE_MAITRISE = db.prepare("SELECT effet_id FROM accessoire_effet_cible WHERE cible = 'maitrise_arme'").get().effet_id;
+/** Après un changement de classe : retire les choix de maîtrise de la fiche et pose une famille (ses options dans l'ordre) sur chaque point à choisir des
+ * lignes de classe acquises (R148), pour que la fiche reste conforme sur ce point. */
+function maitrisesDeClasseChoisies(id) {
+  db.prepare('DELETE FROM personnage_maitrise_choix WHERE personnage_id = ?').run(id);
+  for (const a of db.prepare("SELECT source_id, rang, points FROM v_personnage_maitrise_part WHERE personnage_id = ? AND genre = 'choix' AND capacite_id IS NULL").all(id)) {
+    const options = db.prepare('SELECT arme_famille_id AS id FROM maitrise_arme_part_famille WHERE source_id = ? AND rang = ? ORDER BY arme_famille_id').all(a.source_id, a.rang);
+    for (let r = 1; r <= a.points; r += 1) inserer('personnage_maitrise_choix', { personnage_id: id, source: a.source_id, rang: r, arme_famille_id: options[(r - 1) % options.length].id });
+  }
+}
 
 function inserer(table, ligne) {
   const cols = Object.keys(ligne);
@@ -46,7 +62,8 @@ for (const [i, [id, roles]] of Object.entries(UTILISATEURS).entries()) {
 const voit = (utilisateur, personnage) => db.prepare('SELECT motif FROM v_personnage_visible WHERE utilisateur_id = ? AND personnage_id = ? ORDER BY motif').all(utilisateur, personnage).map((r) => r.motif);
 const spectateurs = (personnage) => [...new Set(db.prepare('SELECT utilisateur_id FROM v_personnage_visible WHERE personnage_id = ?').all(personnage).map((r) => r.utilisateur_id))].sort();
 
-/** Personnage de niveau 1 conforme : Humain central, Guerrier, Feu inné ; 14 points de caractéristiques, 100 points de compétences (5 × 20). */
+/** Personnage de niveau 1 conforme : Humain central, Guerrier, Feu inné ; 14 points de caractéristiques, 100 points de compétences (5 × 20) ; la maîtrise
+ * au choix du Guerrier (« 1 maîtrise dans une arme contact au choix (sauf épée) ») sur HACHE (R148). */
 function personnageValide(id, surcharge = {}) {
   inserer('personnage', {
     id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee',
@@ -59,6 +76,7 @@ function personnageValide(id, surcharge = {}) {
   const bases = { force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 };
   for (const [c, base] of Object.entries(bases)) inserer('personnage_caracteristique', { personnage_id: id, caracteristique_id: c, base, croix: 0 });
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20 });
+  inserer('personnage_maitrise_choix', { personnage_id: id, source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' });
 }
 
 test('les 21 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
@@ -129,6 +147,8 @@ test('migration 0038 : plus de statut, toute fiche est contrôlée, même inache
   // chaque ligne tient à ce qui manque : la classe 1 choisie, la sienne disparaît, les autres restent
   inserer('personnage_classe', { personnage_id: 'inachevee', rang: 1, classe_id: 'classes/guerrier' });
   assert.deepEqual(details('classe_1_manquante'), []);
+  assert.deepEqual(details('maitrise_a_choisir'), ['classes/guerrier#maitrise-arme:2 = 1'], 'la maîtrise au choix de la classe (R148)');
+  maitrisesDeClasseChoisies('inachevee');
   assert.deepEqual(regles('inachevee'), ['caracteristique_manquante', 'classe_2_manquante', 'competences_total', 'gains_niveau', 'metier_bonus_manquant']);
 });
 
@@ -182,11 +202,13 @@ test('race, ethnie, magies : classe et magie innée hors matrice, ethnie d’une
   assert.deepEqual(regles('race-5'), ['caracteristique_magie', 'classe_imposee'], 'Potentiel Illimité : le point de caractéristique est à choisir, l’Archimage imposée (R23)');
   db.prepare("UPDATE personnage SET caracteristique_magie_id = 'force' WHERE id = 'race-5'").run();
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'race-5'").run();
+  maitrisesDeClasseChoisies('race-5');
   assert.deepEqual(regles('race-5'), []);
 
   const classeInterdite = db.prepare("SELECT classe_id FROM race_classe WHERE race_id = 'races/humain' AND accessible = 0 LIMIT 1").get();
   personnageValide('race-6');
   db.prepare('UPDATE personnage_classe SET classe_id = ? WHERE personnage_id = ?').run(classeInterdite.classe_id, 'race-6');
+  maitrisesDeClasseChoisies('race-6');
   assert.deepEqual(regles('race-6'), ['classe_inaccessible']);
 });
 
@@ -558,8 +580,9 @@ test('contraintes : magie acquise ≠ magie innée, valeurs bornées, suppressio
   assert.throws(() => personnageValide('ko-3', { modifie_le: '2026-10-08T12:00:00Z' }), /CHECK/, 'modifié avant d’être créé');
   assert.throws(() => personnageValide('ko-4', { cree_le: '9 octobre 2026', modifie_le: '9 octobre 2026' }), /CHECK/);
   personnageValide('cascade');
-  assert.throws(() => inserer('personnage_maitrise_arme', { personnage_id: 'cascade', arme_famille_id: 'epees', des: 6 }), /CHECK/);
-  inserer('personnage_maitrise_arme', { personnage_id: 'cascade', arme_famille_id: 'epees', des: 2 });
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'cascade', source: 'classes/guerrier#maitrise-arme:2', rang: 0, arme_famille_id: 'epees' }), /CHECK/);
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'cascade', source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'dagues' }), /UNIQUE|PRIMARY/,
+    'une famille par point');
   inserer('personnage_inventaire', { personnage_id: 'cascade', rang: 1, nom: 'Corde (5m)', quantite: 1 });
   db.prepare("DELETE FROM personnage WHERE id = 'cascade'").run();
   for (const t of TABLES.filter((t) => t.startsWith('personnage_'))) {
@@ -634,9 +657,11 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
   // Sans le Potentiel Illimité, pas d'Archimage, ni en classe 1 ni en classe 2
   personnageValide('r23-feu');
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-feu'").run();
+  maitrisesDeClasseChoisies('r23-feu');
   assert.deepEqual(controle('r23-feu'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
   personnageValide('r23-feu-bi', { mode_classe: 'bi' });
   inserer('personnage_classe', { personnage_id: 'r23-feu-bi', rang: 2, classe_id: 'classes/archimage' });
+  maitrisesDeClasseChoisies('r23-feu-bi');
   assert.deepEqual(controle('r23-feu-bi'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
 
   // Avec lui, l'Archimage en classe 1 ; la seconde classe reste libre
@@ -644,13 +669,16 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
   personnageValide('r23-pi', pi);
   assert.deepEqual(controle('r23-pi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }]);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-pi'").run();
+  maitrisesDeClasseChoisies('r23-pi');
   assert.deepEqual(controle('r23-pi'), []);
   personnageValide('r23-pi-bi', { ...pi, mode_classe: 'bi' });
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/archimage' });
+  maitrisesDeClasseChoisies('r23-pi-bi');
   assert.deepEqual(controle('r23-pi-bi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }], 'Archimage en classe 2 : la classe 1 doit l’être');
   db.prepare("DELETE FROM personnage_classe WHERE personnage_id = 'r23-pi-bi'").run();
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 1, classe_id: 'classes/archimage' });
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/guerrier' });
+  maitrisesDeClasseChoisies('r23-pi-bi');
   assert.deepEqual(controle('r23-pi-bi'), []);
 
   // Fiche sans classe : la classe 1 manque (contrôle de toute fiche, migration 0038), mais rien n'est imposé tant qu'aucune classe 1 n'est choisie
@@ -669,11 +697,14 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   personnageValide('r25-pi', pi);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r25-pi'").run();
   inserer('personnage_classe', { personnage_id: 'r25-pi', rang: 2, classe_id: 'classes/mage-bleu' });
+  maitrisesDeClasseChoisies('r25-pi');
   assert.deepEqual(controle('r25-pi'), [{ regle: 'classe_exclue', detail: 'classes/mage-bleu' }]);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage' WHERE personnage_id = 'r25-pi' AND rang = 2").run();
+  maitrisesDeClasseChoisies('r25-pi');
   assert.deepEqual(controle('r25-pi'), [], 'toute autre seconde classe');
   personnageValide('r25-feu');
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage-bleu' WHERE personnage_id = 'r25-feu'").run();
+  maitrisesDeClasseChoisies('r25-feu');
   assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
 });
 
@@ -694,14 +725,232 @@ test('décision R45 : pas de maîtrise d’arme sur ARME DE MONSTRES (des armes 
   assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 0').all().map((r) => r.id), ['arme-de-monstres']);
   assert.match(db.prepare("SELECT libelle_brut FROM arme_famille WHERE id = 'arme-de-monstres'").get().libelle_brut, /^ARME DE MONSTRES/);
   assert.ok(db.prepare("SELECT count(*) AS n FROM arme WHERE famille_id = 'arme-de-monstres'").get().n > 0, 'ses armes restent dans la base');
+  // migration 0076 : la règle lit les choix de famille (personnage_maitrise_choix) et l'accessoire ; un choix exclu ne ressort pas aussi hors de la liste
   personnageValide('r45-monstres');
-  inserer('personnage_maitrise_arme', { personnage_id: 'r45-monstres', arme_famille_id: 'arme-de-monstres', des: 2 });
-  assert.deepEqual(controle('r45-monstres'), [{ regle: 'maitrise_arme_exclue', detail: 'arme-de-monstres' }]);
-  personnageValide('r45-epees');
-  for (const f of db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 1').all()) {
-    inserer('personnage_maitrise_arme', { personnage_id: 'r45-epees', arme_famille_id: f.id, des: 2 });
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'arme-de-monstres' WHERE personnage_id = 'r45-monstres'").run();
+  inserer('personnage_accessoire', { personnage_id: 'r45-monstres', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arme-de-monstres' });
+  assert.deepEqual(controle('r45-monstres'), [
+    { regle: 'maitrise_arme_exclue', detail: 'accessoire:chef : 1 = arme-de-monstres' },
+    { regle: 'maitrise_arme_exclue', detail: 'classes/guerrier#maitrise-arme:2 : 1 = arme-de-monstres' },
+  ]);
+  assert.deepEqual(maitrises('r45-monstres'), { epees: 1 }, 'ni le choix ni l’accessoire ne comptent');
+  // chacune des autres familles de contact (les options du Guerrier, sauf ÉPÉES) : aucune règle
+  for (const f of db.prepare("SELECT id FROM arme_famille WHERE maitrisable = 1 AND categorie = 'contact' AND id <> 'epees'").all()) {
+    personnageValide(`r45-${f.id}`);
+    db.prepare('UPDATE personnage_maitrise_choix SET arme_famille_id = ? WHERE personnage_id = ?').run(f.id, `r45-${f.id}`);
+    assert.deepEqual(controle(`r45-${f.id}`), [], f.id);
   }
-  assert.deepEqual(controle('r45-epees'), [], 'une maîtrise sur chacune des autres familles');
+});
+
+// ——— Maîtrises d'armes (décisions R148 à R154, migration 0076-refonte-maitrises-armes) ———
+
+/** Une fiche d'un Humain central de Feu inné, ses classes [classe, spécialité ?] (niveau 10 en bi-classe par défaut : les deux classes au niveau 10). */
+function ficheDeClasses(id, classes, { mode = 'bi', xp = 11450 } = {}) {
+  inserer('personnage', {
+    id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee', nom: id, race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
+    magie_innee_id: 'magies/magie-du-feu', mode_classe: mode, xp, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+    bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT,
+  });
+  classes.forEach(([classe, specialite], i) => inserer('personnage_classe', {
+    personnage_id: id, rang: i + 1, classe_id: `classes/${classe}`, specialite_id: specialite ? `classes/${classe}#specialite:${specialite}` : null,
+  }));
+}
+const ligneDeClasse = (classe, rang) => `classes/${classe}#maitrise-arme:${rang}`;
+/** Les choix de famille d'une source, point par point (rang 1, 2…). */
+const choisir = (id, source, familles) => familles.forEach((f, i) => inserer('personnage_maitrise_choix', { personnage_id: id, source, rang: i + 1, arme_famille_id: f }));
+
+test('v_personnage_don_acquis (miroir de donsAcquis) : la classe prise au niveau atteint, la spécialité de la fiche, les dons à choix choisis ; rien d’une classe sans niveau', () => {
+  ficheDeClasses('acquis-1', [['guerrier', 'maitre-darme']], { mode: 'mono' });   // niveau 10 en mono-classe : Guerrier au niveau de classe 20, pas de 2e classe
+  const dons = (id) => db.prepare('SELECT classe_rang, classe_id, capacite_id FROM v_personnage_don_acquis WHERE personnage_id = ? ORDER BY capacite_id').all(id).map((r) => ({ ...r }));
+  const attendus = db.prepare(`SELECT id FROM capacite WHERE classe_id = 'classes/guerrier' AND niveau <= 20 AND nature <> 'choix'
+    AND (specialite_id IS NULL OR specialite_id = 'classes/guerrier#specialite:maitre-darme') ORDER BY id`).all().map((r) => r.id);
+  assert.deepEqual(dons('acquis-1').map((d) => d.capacite_id), attendus);
+  assert.ok(attendus.includes('capacites/guerrier-maitre-darme') && !attendus.includes('capacites/guerrier-epeiste'), 'la spécialité de la fiche, pas l’autre');
+  const aChoix = db.prepare("SELECT id FROM capacite WHERE classe_id = 'classes/guerrier' AND nature = 'choix' AND specialite_id = 'classes/guerrier#specialite:maitre-darme' ORDER BY id LIMIT 1").get();
+  if (aChoix) {
+    inserer('personnage_capacite', { personnage_id: 'acquis-1', capacite_id: aChoix.id });
+    assert.ok(dons('acquis-1').some((d) => d.capacite_id === aChoix.id), 'un don à choix choisi');
+  }
+  assert.ok(dons('acquis-1').every((d) => d.classe_rang === 1 && d.classe_id === 'classes/guerrier'));
+  // mono-classe au niveau 5 : Guerrier au niveau 10, la 2e classe sans niveau (R2) ne donne rien
+  ficheDeClasses('acquis-2', [['guerrier', 'maitre-darme'], ['lancier', 'myrmidon']], { mode: 'mono', xp: 1650 });
+  assert.ok(dons('acquis-2').length > 0 && dons('acquis-2').every((d) => d.classe_id === 'classes/guerrier'));
+});
+
+test('R148 : une fiche sans choix n’a de points que sur ses familles imposées ; chaque point à choisir manque ; un choix compte une fois posé', () => {
+  ficheDeClasses('r148', [['guerrier']]);
+  assert.deepEqual(maitrises('r148'), { epees: 1 }, '« 1 maîtrise Épée »');
+  assert.deepEqual(controleMaitrise('r148'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('guerrier', 2)} = 1` }]);
+  choisir('r148', ligneDeClasse('guerrier', 2), ['hache']);
+  assert.deepEqual(maitrises('r148'), { epees: 1, hache: 1 });
+  assert.deepEqual(controleMaitrise('r148'), []);
+  // dés : 1 + les points (constantes maitrise_arme.des_sans_maitrise, maitrise_arme.des_max)
+  assert.deepEqual({ ...db.prepare("SELECT points, points_comptes, des FROM v_personnage_maitrise_arme WHERE personnage_id = 'r148' AND arme_famille_id = 'hache'").get() },
+    { points: 1, points_comptes: 1, des: 2 });
+  // une part de plusieurs points : un choix par point ; « N » = les points qui restent à choisir
+  ficheDeClasses('r148-merc', [['mercenaire']]);
+  choisir('r148-merc', ligneDeClasse('mercenaire', 1), ['arc']);
+  assert.deepEqual(controleMaitrise('r148-merc'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('mercenaire', 1)} = 2` }]);
+  // l'accessoire « Un point de maîtrise d'arme » sans famille (R151)
+  inserer('personnage_accessoire', { personnage_id: 'r148-merc', emplacement: 'collier', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0 });
+  assert.ok(controleMaitrise('r148-merc').some((c) => c.regle === 'maitrise_a_choisir' && c.detail === 'accessoire:collier = 1'));
+});
+
+test('R148 : un choix d’une source perdue (spécialité changée, niveau baissé) ou d’un point que la source n’a pas est signalé et ne compte plus', () => {
+  ficheDeClasses('perdue', [['guerrier', 'maitre-darme']]);
+  choisir('perdue', ligneDeClasse('guerrier', 2), ['hache']);
+  choisir('perdue', 'capacites/guerrier-maitre-darme', ['epees', 'epees', 'dagues', 'arc', 'arc']);
+  assert.deepEqual(controleMaitrise('perdue'), []);
+  assert.deepEqual(maitrises('perdue'), { arc: 2, dagues: 1, epees: 3, hache: 1 });
+  // spécialité changée : les cinq choix du Maître d'arme ne valent plus
+  db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/guerrier#specialite:epeiste' WHERE personnage_id = 'perdue'").run();
+  const perdus = ['1 = epees', '2 = epees', '3 = dagues', '4 = arc', '5 = arc'].map((x) => ({ regle: 'maitrise_source_perdue', detail: `capacites/guerrier-maitre-darme : ${x}` }));
+  assert.deepEqual(controleMaitrise('perdue'), perdus);
+  assert.equal(maitrises('perdue').arc, undefined, 'ses points ne comptent plus');
+  // niveau baissé : niveau 5, Guerrier au niveau de classe 5, sous la spécialité
+  db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/guerrier#specialite:maitre-darme' WHERE personnage_id = 'perdue'").run();
+  db.prepare("UPDATE personnage SET xp = 1650 WHERE id = 'perdue'").run();
+  assert.deepEqual(controleMaitrise('perdue'), perdus);
+  // un point que la part n'a pas (la maîtrise au choix du Guerrier n'en a qu'un)
+  inserer('personnage_maitrise_choix', { personnage_id: 'perdue', source: ligneDeClasse('guerrier', 2), rang: 2, arme_famille_id: 'pugilat' });
+  assert.ok(controleMaitrise('perdue').some((c) => c.regle === 'maitrise_source_perdue' && c.detail === `${ligneDeClasse('guerrier', 2)} : 2 = pugilat`));
+  assert.equal(maitrises('perdue').pugilat, undefined);
+});
+
+test('R149 : les sources s’additionnent jusqu’à 4 points (5 dés) ; au-delà, maitrise_plafond, sans rien refuser ; l’accessoire maudit retire un point (R54)', () => {
+  // Lancier (« 1 maîtrise Arme de jet ») + Lanceur (« 1 maîtrise Arme de jet ») Fantassin (« +2 points de maîtrise Arme de jet ») = 4 points
+  ficheDeClasses('r149', [['lancier'], ['lanceur', 'fantassin']]);
+  choisir('r149', ligneDeClasse('lanceur', 2), ['epees']);
+  choisir('r149', 'capacites/lanceur-fantassin', ['hache']);
+  assert.equal(maitrises('r149')['arme-de-jet'], 4);
+  assert.deepEqual(controleMaitrise('r149'), []);
+  // avec l'accessoire sur ARME DE JET : 5 points, 1 au-delà du plafond, toujours 5 dés
+  inserer('personnage_accessoire', { personnage_id: 'r149', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arme-de-jet' });
+  assert.deepEqual({ ...db.prepare("SELECT points, points_comptes, des FROM v_personnage_maitrise_arme WHERE personnage_id = 'r149' AND arme_famille_id = 'arme-de-jet'").get() },
+    { points: 5, points_comptes: 4, des: 5 });
+  assert.deepEqual(controleMaitrise('r149'), [{ regle: 'maitrise_plafond', detail: 'arme-de-jet = 5 / 4' }]);
+  // maudit : l'effet contraire (R54)
+  db.prepare("UPDATE personnage_accessoire SET maudit = 1 WHERE personnage_id = 'r149'").run();
+  assert.equal(maitrises('r149')['arme-de-jet'], 3);
+  assert.deepEqual(controleMaitrise('r149'), []);
+  // le plafond vient des constantes, pas d'un 4 écrit dans la vue
+  assert.deepEqual(db.prepare("SELECT id, valeur FROM regle_constante WHERE id LIKE 'maitrise_arme.%' ORDER BY id").all().map((r) => [r.id, r.valeur]),
+    [['maitrise_arme.des_max', 5], ['maitrise_arme.des_sans_maitrise', 1]]);
+  // R150 : les 5 points du Chasseur de primes sur ÉPÉES, admis ; seul le plafond est signalé
+  ficheDeClasses('r149-chasseur', [['mercenaire', 'chasseur-de-primes']]);
+  choisir('r149-chasseur', ligneDeClasse('mercenaire', 1), ['arc', 'dagues', 'hache']);
+  choisir('r149-chasseur', 'capacites/mercenaire-chasseur-de-primes', ['epees', 'epees', 'epees', 'epees', 'epees']);
+  assert.deepEqual(controleMaitrise('r149-chasseur'), [{ regle: 'maitrise_plafond', detail: 'epees = 5 / 4' }]);
+});
+
+test('R150 : répartition libre sauf limite écrite (Maître d’arme 2, Combattant libre 3, lignes Mercenaire et Bimane 1), qui ne compte que les points de sa source', () => {
+  // « 2 points de maîtrise à répartir » (Myrmidon) : les deux sur une même famille
+  ficheDeClasses('r150-libre', [['lancier', 'myrmidon']]);
+  choisir('r150-libre', 'capacites/lancier-myrmidon', ['hache', 'hache']);
+  assert.deepEqual(controleMaitrise('r150-libre'), []);
+  assert.equal(maitrises('r150-libre').hache, 2);
+  // Maître d'arme : 2 sur une famille admis, 3 signalés ; ÉPÉES de la classe (« 1 maîtrise Épée ») ne compte pas dans sa limite
+  ficheDeClasses('r150-maitre', [['guerrier', 'maitre-darme']]);
+  choisir('r150-maitre', ligneDeClasse('guerrier', 2), ['hache']);
+  choisir('r150-maitre', 'capacites/guerrier-maitre-darme', ['epees', 'epees', 'hache', 'hache', 'arc']);
+  assert.deepEqual(controleMaitrise('r150-maitre'), []);
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'epees' WHERE personnage_id = 'r150-maitre' AND source = 'capacites/guerrier-maitre-darme' AND rang = 5").run();
+  assert.deepEqual(controleMaitrise('r150-maitre'), [{ regle: 'maitrise_meme_famille', detail: 'capacites/guerrier-maitre-darme : epees = 3 / 2' }]);
+  // Combattant libre : 3 admis, 4 signalés
+  ficheDeClasses('r150-libre-3', [['mercenaire', 'combattant-libre']]);
+  choisir('r150-libre-3', ligneDeClasse('mercenaire', 1), ['arc', 'dagues', 'hache']);
+  choisir('r150-libre-3', 'capacites/mercenaire-combattant-libre', ['pugilat', 'pugilat', 'pugilat', 'arc', 'bombes']);
+  assert.deepEqual(controleMaitrise('r150-libre-3'), []);
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'pugilat' WHERE personnage_id = 'r150-libre-3' AND source = 'capacites/mercenaire-combattant-libre' AND rang = 4").run();
+  assert.deepEqual(controleMaitrise('r150-libre-3'), [{ regle: 'maitrise_meme_famille', detail: 'capacites/mercenaire-combattant-libre : pugilat = 4 / 3' }]);
+  // deux points de Mercenaire ou de Bimane sur une famille : signalés
+  ficheDeClasses('r150-merc', [['mercenaire'], ['bimane']]);
+  choisir('r150-merc', ligneDeClasse('mercenaire', 1), ['arc', 'arc', 'hache']);
+  choisir('r150-merc', ligneDeClasse('bimane', 1), ['dagues', 'dagues']);
+  assert.deepEqual(controleMaitrise('r150-merc'), [
+    { regle: 'maitrise_meme_famille', detail: `${ligneDeClasse('bimane', 1)} : dagues = 2 / 1` },
+    { regle: 'maitrise_meme_famille', detail: `${ligneDeClasse('mercenaire', 1)} : arc = 2 / 1` },
+  ]);
+});
+
+test('R151 : « l’arme déterminée avant » suit la maîtrise au choix de la classe ; Épéiste −1 sans descendre sous 0 ; Ménestrel parmi les familles à distance', () => {
+  // Mage Grenat avec la maîtrise au choix du Mage Rouge sur HACHE : HACHE = 1 + 2 ; rien tant qu'elle n'est pas choisie
+  ficheDeClasses('r151-grenat', [['mage-rouge', 'mage-grenat']]);
+  assert.deepEqual(maitrises('r151-grenat'), {});
+  assert.deepEqual(controleMaitrise('r151-grenat'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('mage-rouge', 1)} = 1` }]);
+  choisir('r151-grenat', ligneDeClasse('mage-rouge', 1), ['hache']);
+  assert.deepEqual(maitrises('r151-grenat'), { hache: 3 });
+  assert.deepEqual(controleMaitrise('r151-grenat'), []);
+  // Épéiste (+2 ÉPÉES, +1 DAGUES, −1 sur la maîtrise au choix du Guerrier) avec DAGUES au choix : DAGUES = 1, ÉPÉES = 1 + 2
+  ficheDeClasses('r151-epeiste', [['guerrier', 'epeiste']]);
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3 }, 'sans maîtrise au choix, le retrait attend');
+  choisir('r151-epeiste', ligneDeClasse('guerrier', 2), ['dagues']);
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3 });
+  // sur HACHE : 1 − 1 = 0, jamais moins
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'hache' WHERE personnage_id = 'r151-epeiste'").run();
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3, hache: 0 });
+  inserer('personnage_accessoire', { personnage_id: 'r151-epeiste', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 1, arme_famille_id: 'hache' });
+  assert.equal(maitrises('r151-epeiste').hache, 0, 'au moins 0');
+  assert.deepEqual(controleMaitrise('r151-epeiste'), []);
+  // Ménestrel : les quatre familles à distance, indépendamment de la maîtrise du Barde
+  ficheDeClasses('r151-menestrel', [['barde', 'menestrel']]);
+  choisir('r151-menestrel', ligneDeClasse('barde', 1), ['arc']);
+  choisir('r151-menestrel', 'capacites/barde-menestrel', ['epees']);
+  assert.deepEqual(controleMaitrise('r151-menestrel'), [{ regle: 'maitrise_hors_choix', detail: 'capacites/barde-menestrel : 1 = epees' }]);
+  assert.deepEqual(maitrises('r151-menestrel'), { arc: 1, dagues: 1 }, 'un choix hors de la liste ne compte pas');
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'arc' WHERE personnage_id = 'r151-menestrel' AND source = 'capacites/barde-menestrel'").run();
+  assert.deepEqual(controleMaitrise('r151-menestrel'), []);
+  assert.deepEqual(maitrises('r151-menestrel'), { arc: 2, dagues: 1 });
+});
+
+test('R154 : les NM gagnés d’un don acquis (Ocultomancien « Maîtrise », niveau de classe 20) s’ajoutent à sorts_nm_total ; sort_nm_max ne les lit pas', () => {
+  assert.deepEqual(db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]), [['capacites/ocultomancien-maitrise', 4]],
+    'aucun autre don n’a de NM gagnés');
+  const sorts = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' ORDER BY id").all().map((r) => r.id);
+  const cumul = (niveau) => db.prepare('SELECT niveaux_maitrise_cumul AS n FROM v_niveau WHERE niveau = ?').get(niveau).n;
+  /** Une fiche bi-classe au niveau global `niveau` (ses deux classes à ce niveau), Ocultomancien en classe 1, et `total` NM répartis, 3 au plus par sort. */
+  const fiche = (id, niveau, total) => {
+    ficheDeClasses(id, [['ocultomancien'], ['guerrier']], { xp: db.prepare('SELECT xp_min FROM niveau_global WHERE niveau = ?').get(niveau).xp_min });
+    for (let reste = total, i = 0; reste > 0; reste -= 3, i += 1) {
+      inserer('personnage_sort', { personnage_id: id, sort_id: sorts[i], rang: i + 1, niveau_maitrise: Math.min(3, reste) });
+    }
+    return controle(id).filter((c) => c.regle === 'sorts_nm_total' || c.regle === 'sort_nm_max');
+  };
+  // niveau de classe 19 : le don n'est pas acquis, la limite est celle des niveaux
+  assert.deepEqual(fiche('r154-19-ok', 19, cumul(19)), []);
+  assert.deepEqual(fiche('r154-19-ko', 19, cumul(19) + 1), [{ regle: 'sorts_nm_total', detail: `${cumul(19) + 1} / ${cumul(19)}` }]);
+  // niveau de classe 20 : 4 NM gagnés de plus que les niveaux, montrés dans le détail
+  assert.deepEqual(fiche('r154-20-ok', 20, cumul(20) + 4), []);
+  assert.deepEqual(fiche('r154-20-ko', 20, cumul(20) + 5), [{ regle: 'sorts_nm_total', detail: `${cumul(20) + 5} / ${cumul(20)} + 4 des dons` }]);
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'r154-20-ko'").run();
+  assert.deepEqual(controle('r154-20-ko').filter((c) => c.regle === 'sorts_nm_total'), []);
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'r154-20-ko'").run();
+  // sort_nm_max (niveau global − 1, plus les NM du MJ) ne lit ni capacite_nm_gagne ni les dons acquis
+  const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const bloc = vue.slice(vue.indexOf("'sort_nm_max'"), vue.indexOf("'sorts_nm_total'")).replace(/--[^\n]*/g, '');   // sa requête, sans les commentaires
+  assert.ok(bloc.length > 0 && !/capacite_nm_gagne|v_personnage_don_acquis/.test(bloc));
+});
+
+test('migration 0076 : les sources de maîtrise en tables, un choix par point, plus de dés saisis par famille ni d’arme dans les choix d’acquis (R148, R152)', () => {
+  const colonnes = (t) => db.prepare('SELECT name FROM pragma_table_info(?) ORDER BY cid').all(t).map((r) => r.name);
+  assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get(), undefined, 'personnage_maitrise_arme retirée');
+  assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_acquis_choix_arme'").get(), undefined, 'son index retiré');
+  assert.deepEqual(colonnes('personnage_acquis_choix'), ['personnage_id', 'source', 'rang', 'competence_id', 'valeur'], 'R152 : plus d’arme_famille_id');
+  assert.deepEqual(colonnes('personnage_maitrise_choix'), ['personnage_id', 'source', 'rang', 'arme_famille_id']);
+  assert.deepEqual(colonnes('maitrise_arme_part'), ['source_id', 'rang', 'capacite_id', 'classe_id', 'classe_rang', 'genre', 'points', 'arme_famille_id', 'limite_famille']);
+  assert.deepEqual(colonnes('maitrise_arme_part_famille'), ['source_id', 'rang', 'arme_famille_id']);
+  assert.deepEqual(colonnes('capacite_nm_gagne'), ['capacite_id', 'nm']);
+  for (const v of ['v_personnage_don_acquis', 'v_personnage_maitrise_part', 'v_personnage_maitrise_arme']) assert.ok(db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get('view', v), v);
+  // R151 : la famille du point de l'accessoire se choisit
+  assert.deepEqual(db.prepare("SELECT cible, valeur, choix FROM accessoire_effet_cible WHERE cible = 'maitrise_arme'").all().map((r) => ({ ...r })), [{ cible: 'maitrise_arme', valeur: 1, choix: 1 }]);
+  // les clés : une source est un don ou une ligne de classe, son identifiant suit (lib/maitrise-arme.mjs#idDeSourceDeClasse)
+  const part = { rang: 1, genre: 'imposee', points: 1, arme_famille_id: 'epees', limite_famille: null };
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'classes/guerrier#maitrise-arme:9', classe_id: 'classes/guerrier', classe_rang: 1 }), /CHECK/);
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'x', capacite_id: 'capacites/guerrier-epeiste' }), /CHECK/);
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'capacites/guerrier-epeiste', rang: 9, capacite_id: 'capacites/guerrier-epeiste', genre: 'choix' }), /CHECK/,
+    'une part à choisir n’a pas de famille imposée');
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'capacites/guerrier-epeiste', rang: 9, capacite_id: 'capacites/guerrier-epeiste', points: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'conforme', source: 'x', rang: 1, arme_famille_id: 'inconnue' }), /FOREIGN KEY/);
 });
 
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {

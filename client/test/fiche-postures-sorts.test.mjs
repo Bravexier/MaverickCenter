@@ -577,21 +577,24 @@ test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), p
   assert.deepEqual(necro.rappels, [{ nom: 'Bâton magique Nécromancie, niveau 1', texte: 'Invocation +5 santé' }]);
 });
 
-test('degatsDArmeDuMoment (R100, R102) : Offensif « 6 D6+4 devient alors 40 », un dé au maximum, Défensif ÷ 2, Symbiose inutilisable', () => {
+test('degatsDArmeDuMoment (R100, R102) : Offensif « 6 D6+4 devient alors 40 » (chaque dé au maximum), un dé au maximum, Défensif ÷ 2, Symbiose inutilisable', () => {
   const arme = regles.armes.find((a) => a.de === 'D6' && !a.bonus_degats && regles.familles_armes.find((f) => f.id === a.famille_id)?.maitrisable !== false);
-  const f = (x = {}) => fiche({ armes: [{ rang: 1, arme_id: arme.id, materiau_id: null }], maitrises_armes: [{ arme_famille_id: arme.famille_id, des: 6 }], ...x });
+  // 4 points de maîtrise sur sa famille, donc 5 dés (R149 : 5 au plus ; l'exemple de la règle en a 6) : quatre accessoires « Un point de maîtrise d'arme »
+  const effet = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'maitrise_arme')).id;
+  const maitrise = ['collier', 'bracelet-1', 'bracelet-2', 'bague-1'].map((emplacement) => ({ emplacement, accessoire_effet_id: effet, valeur: null, maudit: 0, arme_famille_id: arme.famille_id }));
+  const f = (x = {}) => fiche({ armes: [{ rang: 1, arme_id: arme.id, materiau_id: null }], ...x, accessoires: [...maitrise, ...(x.accessoires ?? [])] });
   const base = M.degatsDArme(regles, f(), 1);
-  assert.equal(base.notation, '6D6');
+  assert.equal(base.notation, '5D6');
   const offensif = M.degatsDArmeDuMoment(regles, f({ posture_id: POSTURE('offensif') }), 1);
-  assert.equal(offensif.texte, String(36 + base.total));
+  assert.equal(offensif.texte, String(30 + base.total));
   const physiques = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'degats_physiques' && e.valeur === 4))
     ?? regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'degats_physiques'));
   const plus = physiques.effets[0].valeur;
   const avec = (x = {}) => f({ ...x, accessoires: [{ emplacement: 'chef', accessoire_effet_id: physiques.id, valeur: null, maudit: 0 }] });
-  assert.equal(M.degatsDArmeDuMoment(regles, avec({ posture_id: POSTURE('offensif') }), 1).texte, String(36 + base.total + plus), '6D6+N au maximum');
+  assert.equal(M.degatsDArmeDuMoment(regles, avec({ posture_id: POSTURE('offensif') }), 1).texte, String(30 + base.total + plus), '5D6+N au maximum');
   const max = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'de_maximum'));
   const deMax = M.degatsDArmeDuMoment(regles, f({ accessoires: [{ emplacement: 'chef', accessoire_effet_id: max.id, valeur: null, maudit: 0 }] }), 1);
-  assert.equal(deMax.texte, `5D6+${6 + base.total}`);
+  assert.equal(deMax.texte, `4D6+${6 + base.total}`);
   assert.equal(M.degatsDArmeDuMoment(regles, f({ posture_id: POSTURE('defensif') }), 1).diviseur, 2);
   assert.equal(M.degatsDArmeDuMoment(regles, f({ posture_id: POSTURE('symbiose') }), 1).inutilisable, 'Symbiose');
   assert.equal(M.degatsDArmeDuMoment(regles, f(), 1).texte, base.texte, 'sans posture ni accessoire : les dégâts de la fiche');

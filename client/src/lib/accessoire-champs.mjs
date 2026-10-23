@@ -10,7 +10,8 @@
 //   - Attributs : « +N Santé / Barrière / Chakra / Initiative / Vitesse » (colonnes bonus_valeur, bonus_cible) ; « Augmente le maximum de sang ou d'âme de
 //     N » : la 4ᵉ barre ;
 //   - « Dégâts physiques +N » (toutes les armes) et « Dégâts magie +N » (les sorts d'attaque, R54) ; « +N dégâts avec une catégorie d'arme » : une famille
-//     d'armes choisie dans la fiche (`choix`) ; « Augmente la portée des armes à distance / des sorts de +N » ; « Un point de maîtrise d'arme » ;
+//     d'armes choisie dans la fiche (`choix`) ; « Augmente la portée des armes à distance / des sorts de +N » ; « Un point de maîtrise d'arme » : sur
+//     une famille choisie dans la fiche (`choix` ; décision R151, migration 0076 : « (ne peut changer une fois décidé) » n'est qu'un rappel) ;
 //     « +N tour de Mode Hyper » ; « Les AM / AP de base augmentent de N » ;
 //   - « Résistance X et Y » : un cran de résistance à chaque magie ou altération d'état nommée ;
 //   - « Augmente le dé de dégâts des sorts » (un cran, comme la posture Focus), « Permet à un dé de dégâts d'être maximum » (réponse du propriétaire
@@ -37,7 +38,7 @@ const MOTIFS = [
   [/^\+(\d+) degats avec une categorie d'arme\b/, (m) => [{ cible: 'degats_famille', valeur: Number(m[1]), choix: 1 }]],
   [/^augmente la portee des armes a distance de \+(\d+)$/, (m) => [{ cible: 'portee_distance', valeur: Number(m[1]) }]],
   [/^augmente la portee des sorts de \+(\d+)$/, (m) => [{ cible: 'portee_sorts', valeur: Number(m[1]) }]],
-  [/^un point de maitrise d'arme\b/, () => [{ cible: 'maitrise_arme', valeur: 1 }]],
+  [/^un point de maitrise d'arme\b/, () => [{ cible: 'maitrise_arme', valeur: 1, choix: 1 }]],
   [/^\+(\d+) tours? de mode hyper\b/, (m) => [{ cible: 'mode_hyper_tours', valeur: Number(m[1]) }]],
   [/^les (am|ap) de base augmentent de (\d+)$/, (m) => [{ cible: `armure_${m[1]}`, valeur: Number(m[2]) }]],
   [/^augmente le maximum de sang ou d'ame de (\d+)$/, (m) => [{ cible: 'barre4_max', valeur: Number(m[1]) }]],

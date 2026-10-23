@@ -378,18 +378,18 @@ export function entrainementsAEnregistrer(fiche) {
  * des rangs qui se suivent, chacun avec `numero` (1, 2…), `sur` (leur nombre) et `exclues` (les compétences prises par les autres : deux compétences
  * différentes ; une compétence déjà prise par un choix d'avant ne compte pas) ; « à répartir au choix », une répartition : { source, rang, nom, valeur,
  * repartition: true, parts: [{ competence_id, valeur }], reste, fait } (les points où le joueur veut, leur somme au plus le bonus, dans l'ordre de la
- * fiche). « De la compétence de l'arme choisie » (décision R119) est un choix d'arme : { source, rang, nom, valeur, arme: true, familles, arme_famille_id,
- * options, choisi, fait } — la famille d'armes (`arme_famille_id`) parmi celles de la maîtrise au choix de la classe du don (`familles` :
- * armeAuChoixDeLaClasse), puis la compétence (`options` : celles de la famille ; une seule, déduite) ; une classe sans maîtrise au choix qui se lise
- * (aucune, plusieurs, ou un « sauf » qui ne nomme aucune famille), un don de race ou une armure : listé dans `nonComptes` (raison 'arme_choisie').
+ * fiche). « De la compétence de l'arme choisie » (décisions R119, R152) est un choix d'arme : { source, rang, nom, valeur, arme: true, familles,
+ * maitrise, classe, arme_famille_id, options, deduite, choisi, fait } — l'arme est la famille choisie pour la maîtrise au choix de la classe du don
+ * (`arme_famille_id` : son point 1 dans maitrise_choix, familleDeLaMaitriseAuChoix ; `maitrise` : la source de cette ligne, `classe` : le nom de la
+ * classe ; `familles` : ses options, armeAuChoixDeLaClasse), jamais choisie ici ; tant qu'elle n'est pas posée, le bonus attend (`arme_famille_id` null,
+ * `options` vide) ; puis la compétence (`options` : celles de la famille ; une seule : déduite, `deduite`, rien d'enregistré) ; une classe sans maîtrise
+ * au choix qui se lise (aucune, plusieurs, ou un « sauf » qui ne nomme aucune famille), un don de race ou une armure : listé dans `nonComptes` (raison
+ * 'arme_choisie').
  * « 5% parmi les autres » (Drakos orange, décision R124) arrive en « X ou Y » : les compétences des autres lignes du tableau (lib/fiche-regles.mjs).
  * Tant qu'un choix n'est pas fait, il ne compte pas ; une répartition compte ce qui est réparti. Un bonus d'artisanat sans compétence d'artisanat
  * (sans métier, ou un métier sans artisanat) ne compte nulle part : listé dans `nonComptes` (raison 'sans_artisanat').
  */
 export function acquisDesDons(regles, fiche) {
-  // l'arme gardée avec un autre choix (personnage_acquis_choix.arme_famille_id, migration 0067 : posée par l'API) : elle le suit tant que la compétence
-  // choisie ne change pas (acquisChoixValables) ; l'arme d'un choix d'arme est, elle, le choix lui-même (plus bas)
-  const armeDuChoix = (fait) => (fait?.arme_famille_id ? { arme_famille_id: fait.arme_famille_id } : {});
   const parCompetence = new Map();
   const choix = [];
   const nonComptes = [];
@@ -434,19 +434,25 @@ export function acquisDesDons(regles, fiche) {
         else artisanat.push({ nom: source.nom, valeur: b.valeur });
       } else if (b.arme) {
         // décision R119 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En cas d'arme qui peu tout aussi bien
-        // avoir des armes lourdes et légère, ça reste au choix. » — la famille de la maîtrise au choix de la classe du don, puis sa compétence (R48 ; la
-        // famille Arc : Arc ou Arme légère, R126) ; le choix a son rang dans le texte, qu'il se fasse ou non. La maîtrise dans cette famille n'est pas exigée
-        // sur la fiche : un arbitrage de Claude, en attente de la question Q45
+        // avoir des armes lourdes et légère, ça reste au choix. » ; décision R152 (« Un seul choix ») : l'arme est la famille choisie pour la maîtrise au
+        // choix de la classe du don (son point 1 dans maitrise_choix), sans autre choix de famille ; puis sa compétence (R48 ; la famille Arc : Arc ou Arme
+        // légère, R126), déduite quand la famille n'en a qu'une, au choix sinon (gardée d'une famille à l'autre quand la nouvelle l'offre). Tant que la
+        // maîtrise au choix n'est pas posée, le bonus attend. Le choix a son rang dans le texte, qu'il se fasse ou non.
         rang += 1;
+        const ligne = ligneAuChoixDeLaClasse(source.classe);
         const familles = armeAuChoixDeLaClasse(source.classe);
         if (!familles) {
           nonComptes.push({ nom: source.nom, valeur: b.valeur, raison: 'arme_choisie', texte: b.texte ?? null });
           continue;
         }
-        const note = (fiche.acquis_choix ?? []).find((x) => x.source === source.id && entier(x.rang) === rang && familles.includes(x.arme_famille_id)) ?? null;
-        const options = note ? trouver(regles.familles_armes, note.arme_famille_id)?.competences ?? [] : [];
-        const choisi = options.length === 1 ? options[0] : options.includes(note?.competence_id) ? note.competence_id : null;
-        choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, arme: true, familles, arme_famille_id: note?.arme_famille_id ?? null, options, choisi, fait: Boolean(choisi) });
+        const familleId = familleDeLaMaitriseAuChoix(fiche, ligne);
+        const options = familleId ? trouver(regles.familles_armes, familleId)?.competences ?? [] : [];
+        const note = (fiche.acquis_choix ?? []).find((x) => x.source === source.id && entier(x.rang) === rang && options.includes(x.competence_id)) ?? null;
+        const choisi = options.length === 1 ? options[0] : note?.competence_id ?? null;
+        choix.push({
+          source: source.id, rang, nom: source.nom, valeur: b.valeur, arme: true, familles, maitrise: ligne.source, classe: source.classe.nom,
+          arme_famille_id: familleId, options, deduite: options.length === 1, choisi, fait: Boolean(choisi),
+        });
         if (choisi) ajouter(choisi, source.nom, b.valeur);
       } else if (b.choix && entier(b.nombre) > 1) {
         // « choisir 2 sur les 3 » (décision R121, Moine Templier : « C'est donc 2 options sur les 4 ») : un choix par compétence, à des rangs qui se suivent,
@@ -456,10 +462,7 @@ export function acquisDesDons(regles, fiche) {
           rang += 1;
           const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
           const fait = notes.find((x) => b.choix.includes(x.competence_id) && !groupe.some((c) => c.choisi === x.competence_id));
-          const c = {
-            source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), numero, sur: entier(b.nombre),
-            ...armeDuChoix(fait),
-          };
+          const c = { source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), numero, sur: entier(b.nombre) };
           groupe.push(c);
           if (fait) ajouter(fait.competence_id, source.nom, b.valeur);
         }
@@ -469,7 +472,7 @@ export function acquisDesDons(regles, fiche) {
         const notes = (fiche.acquis_choix ?? []).filter((x) => x.source === source.id && entier(x.rang) === rang);
         if (b.choix) {
           const fait = notes.find((x) => b.choix.includes(x.competence_id));
-          choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait), ...armeDuChoix(fait) });
+          choix.push({ source: source.id, rang, nom: source.nom, valeur: b.valeur, options: b.choix, choisi: fait?.competence_id ?? null, fait: Boolean(fait) });
           if (fait) ajouter(fait.competence_id, source.nom, b.valeur);
         } else {
           let reste = b.valeur;
@@ -499,15 +502,15 @@ export function acquisChoixGardes(regles, fiche) {
 
 /**
  * Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre.
- * Un choix d'arme (décision R119) : sa famille (`arme_famille_id`, une de la maîtrise au choix de la classe) et sa compétence, déduite ou choisie ; une
- * famille sans compétence encore choisie n'est pas gardée (la base exige la compétence). L'arme gardée avec un autre choix le suit tant que la
- * compétence choisie reste la même ; une répartition n'en a jamais (la base la refuse avec des points : CHECK de personnage_acquis_choix).
+ * Un choix d'arme (décisions R119, R152) : sa compétence quand la famille de la maîtrise au choix en offre plusieurs et qu'elle est choisie ; déduite (une
+ * seule compétence), rien ne s'enregistre ; la famille n'est jamais enregistrée ici (personnage_acquis_choix n'a plus arme_famille_id, migration 0076 :
+ * elle est le choix de maîtrise, maitrise_choix).
  * Les choix d'une armure cassée (décisions R157, R158) sont gardés : acquisChoixGardes.
  */
 export function acquisChoixValables(regles, fiche) {
   return acquisChoixGardes(regles, fiche).flatMap((c) => (c.repartition
     ? c.parts.map((x) => ({ source: c.source, rang: c.rang, competence_id: x.competence_id, valeur: x.valeur }))
-    : c.choisi ? [{ source: c.source, rang: c.rang, competence_id: c.choisi, valeur: null, ...(c.arme_famille_id ? { arme_famille_id: c.arme_famille_id } : {}) }] : []));
+    : c.choisi && !c.deduite ? [{ source: c.source, rang: c.rang, competence_id: c.choisi, valeur: null }] : []));
 }
 
 /** La fiche après le choix de `competenceId` (null : retiré) pour le choix d'acquis (`source`, `rang`) : { acquis_choix }. */
@@ -517,26 +520,31 @@ export function acquisApresChoix(fiche, source, rang, competenceId) {
 }
 
 /**
- * Les familles d'armes de la maîtrise au choix d'une classe (décision R119 : « La classe choisi une maîtrise pour une arme ») : celles de sa ligne
- * `au_choix` de classe_maitrise_arme (sa catégorie, R127, sans la famille de son « sauf », R138 : lib/fiche-regles.mjs#famillesAuChoix), quand la
- * classe en a une seule et qu'elle se lit ; null sinon (aucune, plusieurs : laquelle ? ; un « sauf » qui ne nomme aucune famille).
+ * La ligne `au_choix` de classe_maitrise_arme d'une classe (regles.classes[].maitrises[], avec sa source et ses parts) quand la classe en a une seule ;
+ * null sinon (aucune, plusieurs : laquelle ?). C'est la ligne que suivent « l'arme choisie » (R119, R152) et « l'arme déterminée avant » (R151).
  */
-export function armeAuChoixDeLaClasse(classe) {
+export function ligneAuChoixDeLaClasse(classe) {
   const lignes = (classe?.maitrises ?? []).filter((m) => m.au_choix);
-  return lignes.length === 1 && lignes[0].au_choix.familles?.length ? lignes[0].au_choix.familles : null;
+  return lignes.length === 1 ? lignes[0] : null;
 }
 
 /**
- * La fiche après le choix de l'arme d'un choix d'arme (`source`, `rang` ; décision R119) : la famille `familleId` (null : le choix retiré) et, quand ses
- * armes donnent plusieurs compétences, `competenceId` s'il en est une (sinon la compétence reste à choisir, rien d'enregistré) ; une seule : déduite.
- * La page passe la compétence déjà choisie en changeant d'arme : gardée quand la nouvelle arme l'offre. { acquis_choix }.
+ * Les familles d'armes de la maîtrise au choix d'une classe (décision R119 : « La classe choisi une maîtrise pour une arme ») : celles de sa ligne
+ * `au_choix` de classe_maitrise_arme (sa catégorie, R127, sans la famille de son « sauf », R138 : lib/maitrise-arme.mjs#famillesAuChoix), quand la
+ * classe en a une seule et qu'elle se lit ; null sinon (aucune, plusieurs : laquelle ? ; un « sauf » qui ne nomme aucune famille).
  */
-export function acquisApresChoixDArme(regles, fiche, source, rang, familleId, competenceId = null) {
-  const autres = (fiche.acquis_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
-  if (!familleId) return { acquis_choix: autres };
-  const competences = trouver(regles.familles_armes, familleId)?.competences ?? [];
-  const competence = competences.length === 1 ? competences[0] : competences.includes(competenceId) ? competenceId : null;
-  return { acquis_choix: [...autres, { source, rang, competence_id: competence, valeur: null, arme_famille_id: familleId }] };
+export function armeAuChoixDeLaClasse(classe) {
+  return ligneAuChoixDeLaClasse(classe)?.au_choix.familles?.length ? ligneAuChoixDeLaClasse(classe).au_choix.familles : null;
+}
+
+/**
+ * La famille choisie pour une ligne `au_choix` de classe (décisions R151, R152) : le point 1 de sa part à choisir dans maitrise_choix, quand c'est une
+ * de ses options (un choix hors de la liste ne compte pas, comme dans v_personnage_maitrise_arme) ; null sinon, ou sans ligne.
+ */
+export function familleDeLaMaitriseAuChoix(fiche, ligne) {
+  const part = (ligne?.parts ?? []).find((p) => p.genre === 'choix');
+  if (!part) return null;
+  return (fiche.maitrise_choix ?? []).find((x) => x.source === ligne.source && entier(x.rang) === 1 && part.options.includes(x.arme_famille_id))?.arme_famille_id ?? null;
 }
 
 /** La source des choix de la ligne de l'ethnie dans le tableau de dons de la race (« Écaille draconique » du Drakos) : celle de personnage_acquis_choix et de personnage_resistance_choix. */
@@ -1039,7 +1047,8 @@ export function classesDe(regles, fiche) {
  * Ce que les accessoires portés changent sur la fiche (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; table
  * accessoire_effet_cible, décision R54) : une ligne par valeur de l'effet, signée — un accessoire maudit a l'effet contraire (page « Accessoires » :
  * « l'effet sera le contraire de ce qui est indiqué à la base (exemple : +1 force devient -1 force) ») —, avec sa cible exacte. Un effet à choix
- * (« Compétence X » : une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » : une famille d'armes à maîtrise) prend celle de la
+ * (« Compétence X » : une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme », « Un point de maîtrise d'arme » : une famille
+ * d'armes à maîtrise) prend celle de la
  * fiche (personnage_accessoire.competence_id, .arme_famille_id) ; sans choix valable, `aChoisir` et rien ne compte. La valeur d'une compétence est celle
  * tirée (personnage_accessoire.valeur) ; sans elle, `valeur` null et rien ne compte.
  * [{ emplacement, nom, effet, cible, cible_id, valeur, aChoisir }]
@@ -1056,7 +1065,9 @@ export function effetsDesAccessoires(regles, fiche) {
         const k = regles.competences.find((x) => x.id === a.competence_id);
         aChoisir = !k || k.caracteristique_id !== c.cible_id;
         cibleId = aChoisir ? null : k.id;
-      } else if (c.cible === 'degats_famille') {
+      } else if (c.cible === 'degats_famille' || c.cible === 'maitrise_arme') {
+        // « +5 dégâts avec une catégorie d'arme », « Un point de maîtrise d'arme » (sa famille se choisit : R151 ; « (ne peut changer une fois décidé) »
+        // n'est qu'un rappel) : une famille maîtrisable, jamais ARME DE MONSTRES (R45)
         const f = trouver(regles.familles_armes, a.arme_famille_id);
         aChoisir = !f || f.maitrisable === false;
         cibleId = aChoisir ? null : f.id;
@@ -1174,13 +1185,14 @@ export function actionsDesAccessoires(regles, fiche) {
 }
 
 /**
- * Maîtrise d'une famille d'armes : la base garde le nombre de dés de dégâts (personnage_maitrise_arme.des, liste « 1d » à « 5d » de la fiche
- * auto V15.2.2) ; sans maîtrise, 1 dé, et chaque point de maîtrise en ajoute un (guide « Maîtrise d'arme ») : 4 points au plus, donc 5 dés.
+ * Maîtrise d'une famille d'armes : sans maîtrise, 1 dé, et chaque point de maîtrise en ajoute un (guide « Maîtrise d'arme ») ; 4 points comptés au plus,
+ * donc 5 dés (décision R149 ; liste « 1d » à « 5d » de la fiche auto V15.2.2) : les constantes maitrise_arme.des_sans_maitrise et maitrise_arme.des_max.
+ * Les dés d'une famille se calculent depuis ses sources (maitrisesParFamille) ; le tableur lit ceux d'un classeur pour les comparer au calcul.
  */
 export function maitriseDArme(regles) {
   const sans = constante(regles, 'maitrise_arme.des_sans_maitrise');
   const max = constante(regles, 'maitrise_arme.des_max');
-  return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans, desDe: (points) => sans + points, pointsDe: (des) => Math.max(0, des - sans) };
+  return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans };
 }
 
 /**
@@ -1189,12 +1201,6 @@ export function maitriseDArme(regles) {
  */
 export function famillesMaitrisables(regles) {
   return regles.familles_armes.filter((f) => f.maitrisable);
-}
-
-/** Les maîtrises de la fiche sur une famille qui en a (famillesMaitrisables) : une maîtrise sur ARME DE MONSTRES n'est ni montrée, ni comptée, ni enregistrée. */
-export function maitrisesValables(regles, fiche) {
-  const familles = new Set(famillesMaitrisables(regles).map((f) => f.id));
-  return (fiche.maitrises_armes ?? []).filter((l) => familles.has(l.arme_famille_id));
 }
 
 /**
@@ -1256,26 +1262,254 @@ export function donsDeRace(regles, fiche) {
   };
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Maîtrises d'armes (décisions R148 à R152, R54, R45 ; migration 0076) : les points de chaque famille se calculent depuis leurs sources — les lignes de
+// classe_maitrise_arme des classes prises, les dons acquis, l'accessoire « Un point de maîtrise d'arme » — et les choix de la fiche (`maitrise_choix` :
+// la famille de chaque point à choisir) ; rien de calculé n'est enregistré. Les parts de chaque source viennent de la base au build (regles.json :
+// `classes[].maitrises[].parts`, `classes[].dons[].maitrise.parts`). Pendant SQL : v_personnage_maitrise_part, v_personnage_maitrise_arme et les règles
+// maitrise_* de v_personnage_controle (test/fiche-maitrises.test.mjs les compare).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
 /**
- * Quota de maîtrise d'arme (décision R32 : « le cota max de maîtrise (déterminé par les classes et leurs dons choisis) ») : les maîtrises de chaque classe
- * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (donsAcquis ; texte du don :
- * « +2 points de maîtrise à répartir »). `utilises` : les points de maîtrise répartis sur la fiche (maitriseDArme ; maitrisesValables : jamais ceux d'ARME DE
- * MONSTRES, décision R45). { total, utilises, sources: [{ nom, points }] }.
+ * Les points d'une part à choisir (genre 'choix') d'après les choix de sa source (`notes`) : un par point, du rang 1 à `nombre`, chacun avec la première
+ * famille notée à ce rang qui est une option de la part — un choix hors de la liste (ARME DE MONSTRES comprise, R45) ou d'un rang que la part n'a pas
+ * n'est pas gardé (comme R119). Au-delà de la limite écrite de la part (R150 : Maître d'arme 2, Combattant libre 3, lignes Bimane, Frappeur et
+ * Mercenaire 1 ; seuls les points de cette part comptent), le point est refusé (`refus`) : il compte quand même, comme dans v_personnage_maitrise_arme,
+ * et la base le signale (maitrise_meme_famille). `options` de chaque point : celles de la part, sans une famille qui a atteint la limite sur les autres
+ * points admis (R150 : elle sort des autres sélecteurs) ; sans limite, la même famille peut revenir. `valeur` : les points que donne ce point.
  */
-export function quotaDeMaitrise(regles, fiche) {
+function pointsAChoisir(part, notes, nombre, valeur) {
+  const limite = part.limite ?? null;
+  const admis = new Map();
+  const choisis = [];
+  for (let rang = 1; rang <= nombre; rang += 1) {
+    const famille = notes.find((x) => entier(x.rang) === rang && part.options.includes(x.arme_famille_id))?.arme_famille_id ?? null;
+    const n = famille ? admis.get(famille) ?? 0 : 0;
+    const refus = Boolean(famille) && limite !== null && n >= limite;
+    if (famille && !refus) admis.set(famille, n + 1);
+    choisis.push({ rang, famille, refus, valeur });
+  }
+  return choisis.map((c) => ({
+    ...c,
+    options: limite === null ? part.options : part.options.filter((f) => (admis.get(f) ?? 0) - (c.famille === f && !c.refus ? 1 : 0) < limite),
+  }));
+}
+
+/**
+ * Les sources de maîtrise d'arme de la fiche (décisions R148, R32), dans l'ordre de la fiche : pour chaque classe prise (dès le niveau de classe 1), ses
+ * lignes de classe_maitrise_arme puis ses dons acquis qui en donnent (donsAcquis : classe, spécialité jusqu'au niveau atteint, dons à choix choisis) ;
+ * puis les accessoires « Un point de maîtrise d'arme » (R54 : maudit, −1). Pas de points du MJ (R148). Chaque source :
+ * { source, type: 'classe' | 'don' | 'accessoire', titre, texte (tel qu'écrit), classe: { id, nom, rang } (classe et don), ligne (rang de la ligne dans la
+ * classe), niveau et nature (don), emplacement et maudit (accessoire), parts, aChoisir (points sans famille), etat }. Une part : celle des règles
+ * ({ rang, genre, points signés, famille, options, limite }) avec, pour une part 'choix', `choisis` : [{ rang (le numéro du point, celui de
+ * maitrise_choix), famille (null : à choisir), refus, valeur, options }] (pointsAChoisir ; l'accessoire : un seul point, sa famille dans
+ * accessoires[].arme_famille_id, de valeur signée), et pour une part 'suit' (« avec l'arme déterminée avant », le −1 de l'Épéiste : R151), `suit` :
+ * { source, titre, classe, famille } — la ligne `au_choix` de la classe du don et la famille choisie pour son point 1 (null : en attente).
+ * `etat` (la carte de la source) : 'refus' (une limite écrite dépassée), 'a_choisir' (un point sans famille), 'attente' (une part qui suit une famille
+ * pas encore choisie), 'complete'.
+ */
+export function sourcesDeMaitrise(regles, fiche) {
+  const notes = fiche.maitrise_choix ?? [];
   const sources = [];
   for (const c of donsAcquis(regles, fiche)) {
-    const deLaClasse = (c.classe.maitrises ?? []).reduce((s, m) => s + m.nombre, 0);
-    if (deLaClasse) sources.push({ nom: c.classe.nom, points: deLaClasse });
-    for (const d of c.dons) if (d.points_maitrise) sources.push({ nom: d.nom, points: d.points_maitrise });
+    const classe = { id: c.classe.id, nom: c.classe.nom, rang: c.rang };
+    (c.classe.maitrises ?? []).forEach((m, i) => {
+      if (m.parts?.length) sources.push({ source: m.source, type: 'classe', titre: `${c.classe.nom} (maîtrise ${i + 1})`, texte: m.brut, classe, ligne: i + 1, parts: m.parts });
+    });
+    for (const d of c.dons) {
+      if (d.maitrise?.parts?.length) sources.push({ source: d.id, type: 'don', titre: `${d.nom} (${c.classe.nom})`, texte: d.effet, classe, niveau: d.niveau, nature: d.nature, parts: d.maitrise.parts });
+    }
   }
-  // accessoire « Un point de maîtrise d'arme » (décision R54)
-  for (const e of effetsDesAccessoires(regles, fiche)) if (e.cible === 'maitrise_arme' && e.valeur) sources.push({ nom: e.nom, points: e.valeur });
+  const rendues = sources.map((s) => ({
+    ...s,
+    parts: s.parts.map((p) => (p.genre === 'choix' ? { ...p, choisis: pointsAChoisir(p, notes.filter((x) => x.source === s.source), p.points, 1) } : { ...p })),
+  }));
+  // R151 : « l'arme déterminée avant », « l'autre arme choisie » — la ligne `au_choix` de la classe du don (une seule : le build l'assure)
+  for (const s of rendues) {
+    for (const p of s.parts.filter((x) => x.genre === 'suit')) {
+      const ligne = ligneAuChoixDeLaClasse(trouver(regles.classes, s.classe.id));
+      p.suit = { source: ligne?.source ?? null, titre: rendues.find((x) => x.source === ligne?.source)?.titre ?? null, classe: s.classe.nom, famille: familleDeLaMaitriseAuChoix(fiche, ligne) };
+    }
+  }
+  // l'accessoire « Un point de maîtrise d'arme » (R54, R151) : un point sur une famille au choix parmi les maîtrisables
+  const maitrisables = famillesMaitrisables(regles).map((f) => f.id);
+  for (const e of effetsDesAccessoires(regles, fiche)) {
+    if (e.cible !== 'maitrise_arme' || !e.valeur) continue;
+    const choisi = { rang: 1, famille: e.aChoisir ? null : e.cible_id, refus: false, valeur: e.valeur, options: maitrisables };
+    rendues.push({
+      source: cleDeChoix.accessoire(e.emplacement), type: 'accessoire', titre: e.nom, texte: e.effet.libelle ?? null, emplacement: e.emplacement, maudit: e.valeur < 0,
+      parts: [{ rang: 1, genre: 'choix', points: e.valeur, famille: null, options: maitrisables, limite: null, choisis: [choisi] }],
+    });
+  }
+  for (const s of rendues) {
+    const points = s.parts.flatMap((p) => p.choisis ?? []);
+    s.aChoisir = points.filter((c) => !c.famille).length;
+    s.etat = points.some((c) => c.refus) ? 'refus' : s.aChoisir ? 'a_choisir' : s.parts.some((p) => p.genre === 'suit' && !p.suit.famille) ? 'attente' : 'complete';
+  }
+  return rendues;
+}
+
+/**
+ * Les points de maîtrise de chaque famille maîtrisable (décisions R149, R151, R45 ; les 11 familles, dans leur ordre, jamais ARME DE MONSTRES) : la
+ * somme de ce que lui donnent les sources (parts imposées, points choisis, parts qui suivent une famille choisie, accessoire), au moins 0 (« sans
+ * descendre sous 0 », R151) ; 4 points comptés au plus (`comptes`, plafond maitrise_arme.des_max − maitrise_arme.des_sans_maitrise, R149), `excedent`
+ * signalé sans rien refuser ; `des` : 1 + les points comptés ; le dé de la famille, selon la Force pour le Pugilat (deDeLaFamille : `de`, `force`), et sa
+ * notation (« 3D10 »). `detail` : d'où viennent ses points, une ligne par source et par genre de part ({ source, titre, genre, points }).
+ * [{ famille, nom, points, comptes, excedent, des, de, force, notation, detail }].
+ */
+export function maitrisesParFamille(regles, fiche, sources = sourcesDeMaitrise(regles, fiche)) {
+  const apports = [];
+  for (const s of sources) {
+    for (const p of s.parts) {
+      if (p.genre === 'imposee') apports.push({ famille: p.famille, points: p.points, s, genre: p.genre });
+      else if (p.genre === 'suit') { if (p.suit.famille) apports.push({ famille: p.suit.famille, points: p.points, s, genre: p.genre }); }
+      else for (const c of p.choisis) if (c.famille) apports.push({ famille: c.famille, points: c.valeur, s, genre: p.genre });
+    }
+  }
   const m = maitriseDArme(regles);
+  return famillesMaitrisables(regles).map((f) => {
+    const detail = [];
+    for (const a of apports.filter((x) => x.famille === f.id)) {
+      const ligne = detail.find((d) => d.source === a.s.source && d.genre === a.genre);
+      if (ligne) ligne.points += a.points;
+      else detail.push({ source: a.s.source, titre: a.s.titre, genre: a.genre, points: a.points });
+    }
+    const points = Math.max(0, detail.reduce((t, d) => t + d.points, 0));
+    const comptes = Math.min(points, m.pointsMax);
+    const des = m.desSansMaitrise + comptes;
+    const { de, force } = deDeLaFamille(regles, fiche, f);
+    return { famille: f.id, nom: f.nom, points, comptes, excedent: points - comptes, des, de, force, notation: notationDesDes(de, des), detail };
+  });
+}
+
+/**
+ * Le compteur du bloc Maîtrises (« N points · M à choisir », décision R148, au lieu du quota de R32) : `points`, la somme signée des points de toutes les
+ * sources (le −1 de l'Épéiste et d'un accessoire maudit compris) ; `aChoisir`, ceux qui n'ont pas encore de famille (un point à choisir, une part qui
+ * suit une famille pas encore choisie) ; `refus`, les points au-delà d'une limite écrite (R150). { points, aChoisir, refus }.
+ */
+export function compteurDeMaitrise(regles, fiche, sources = sourcesDeMaitrise(regles, fiche)) {
+  let points = 0;
+  let aChoisir = 0;
+  let refus = 0;
+  for (const s of sources) {
+    for (const p of s.parts) {
+      if (p.genre === 'choix') {
+        for (const c of p.choisis) {
+          points += c.valeur;
+          if (!c.famille) aChoisir += Math.abs(c.valeur);
+          if (c.refus) refus += 1;
+        }
+      } else {
+        points += p.points;
+        if (p.genre === 'suit' && !p.suit.famille) aChoisir += Math.abs(p.points);
+      }
+    }
+  }
+  return { points, aChoisir, refus };
+}
+
+/**
+ * Les choix de maîtrise de la fiche qui restent valables, ceux qu'on enregistre (personnage_maitrise_choix, décision R148) : un point d'une part à choisir
+ * d'une source acquise, de rang au plus ses points, sur une de ses options ; un point au-delà d'une limite écrite reste (la base le signale, R150). Un choix
+ * d'une source qui n'est plus acquise (classe changée, spécialité perdue, niveau baissé, don retiré) ou hors de la liste part, comme acquisChoixValables.
+ * L'accessoire garde sa famille dans accessoires[].arme_famille_id. [{ source, rang, arme_famille_id }].
+ */
+export function maitriseChoixValables(regles, fiche) {
+  return sourcesDeMaitrise(regles, fiche).filter((s) => s.type !== 'accessoire').flatMap((s) => s.parts.filter((p) => p.genre === 'choix')
+    .flatMap((p) => p.choisis.filter((c) => c.famille).map((c) => ({ source: s.source, rang: c.rang, arme_famille_id: c.famille }))));
+}
+
+/** La fiche après le choix de la famille `familleId` (null : retirée) pour le point `rang` de la source `source` (décision R148). { maitrise_choix }. */
+export function maitriseApresChoix(fiche, source, rang, familleId) {
+  const autres = (fiche.maitrise_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
+  return { maitrise_choix: familleId ? [...autres, { source, rang, arme_famille_id: familleId }] : autres };
+}
+
+// Ce que montre le bloc Maîtrises de la page /fiche/ (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : une
+// carte par source, le tableau calculé des familles à côté, le compteur dans le coin) : des textes tirés des calculs ci-dessus, sans rien recalculer.
+
+/** Des points signés comme sur la maquette du bloc Maîtrises : « +2 », « −1 » (le signe moins typographique), « 0 ». */
+export const pointsSignes = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
+const pluriel = (n, mot) => `${n} ${mot}${Math.abs(n) > 1 ? 's' : ''}`;
+/**
+ * « du Mage Bleu », « de l’Archimage » : la classe dont une part suit la maîtrise au choix (R151 : les classes des parts `suit` sont le Guerrier et les
+ * Mages Rouge, Bleu et Vert, toutes au masculin).
+ */
+const duNomDeClasse = (nom) => (/^[aeiouyhàâäéèêëîïôöûüœ]/i.test(nom) ? `de l’${nom}` : `du ${nom}`);
+const NATURES_DE_DON = { specialite: 'Spécialité', choix: 'Don à choix', classe: 'Don de classe' };
+const ETATS_DE_SOURCE = { complete: () => 'complète', a_choisir: (s) => `${s.aChoisir} à choisir`, attente: () => 'en attente d’un choix', refus: () => 'limite dépassée' };
+
+/**
+ * La carte d'une source de maîtrise d'arme (sourcesDeMaitrise) : son sous-titre (la classe et sa ligne ; la nature du don et son niveau de classe ;
+ * l'accessoire, maudit ou non), son état en mots (l'état ne tient jamais à la seule couleur) et une ligne par part imposée ou qui suit, et par point d'une
+ * part à choisir. { sousTitre, etat: { cle, libelle }, lignes } ; une ligne :
+ *   { genre: 'imposee', points, famille (le nom), marque: 'imposée' } ;
+ *   { genre: 'suit', points, famille (le nom, null tant que la maîtrise au choix n'est pas posée), retrait (des points en moins : l'Épéiste), marque
+ *     (« suit : maîtrise au choix du Mage Bleu », « retrait · suit : … »), attente (texte, ou null) } (R151) ;
+ *   { genre: 'choix', points, rang (le numéro du point), famille (id ou null), options [{ id, nom }] (celles du point, R150 : sans une famille à la limite
+ *     écrite ; plus la famille choisie quand elle y est refusée, pour qu'elle reste à l'écran), refus, message (la limite dépassée, ou null), etiquette
+ *     (« Famille », « Point 2 »), cle (la tuile du tiroir, cleDeChoix.maitrise ; null pour l'accessoire, dont la tuile est sous les accessoires) }.
+ */
+export function carteDeMaitrise(regles, s) {
+  const nom = (id) => trouver(regles.familles_armes, id)?.nom ?? id;
+  const ordre = new Map(regles.familles_armes.map((f, i) => [f.id, i]));
+  const sousTitre = s.type === 'classe' ? `Classe ${s.classe.rang} · ligne de maîtrise ${s.ligne}`
+    : s.type === 'don' ? `${NATURES_DE_DON[s.nature] ?? 'Don'} · niveau de classe ${s.niveau}`
+    : s.maudit ? 'Accessoire maudit : l’effet contraire' : 'Accessoire';
+  const choix = s.parts.filter((p) => p.genre === 'choix');
+  const seul = choix.length === 1 && choix[0].choisis.length === 1;
+  const lignes = s.parts.flatMap((p) => {
+    if (p.genre === 'imposee') return [{ genre: 'imposee', points: pointsSignes(p.points), famille: nom(p.famille), marque: 'imposée' }];
+    if (p.genre === 'suit') {
+      const de = duNomDeClasse(p.suit.classe);
+      return [{
+        genre: 'suit', points: pointsSignes(p.points), famille: p.suit.famille ? nom(p.suit.famille) : null, retrait: p.points < 0,
+        marque: `${p.points < 0 ? 'retrait · ' : ''}suit : maîtrise au choix ${de}`,
+        attente: p.suit.famille ? null : `Se pose dès que la maîtrise au choix ${de} est choisie.`,
+      }];
+    }
+    return p.choisis.map((c) => {
+      const options = c.famille && !c.options.includes(c.famille) ? [...c.options, c.famille].sort((a, b) => (ordre.get(a) ?? 99) - (ordre.get(b) ?? 99)) : c.options;
+      const memes = p.choisis.filter((x) => x.famille && x.famille === c.famille).length;
+      return {
+        genre: 'choix', points: pointsSignes(c.valeur), rang: c.rang, famille: c.famille, options: options.map((id) => ({ id, nom: nom(id) })), refus: c.refus,
+        message: c.refus ? `Pas plus de ${pluriel(p.limite, 'point')} dans la même famille : ${nom(c.famille)} en reçoit ${memes} de cette source.` : null,
+        etiquette: seul ? 'Famille' : `Point ${c.rang}`,
+        cle: s.type === 'accessoire' ? null : cleDeChoix.maitrise(s.source, c.rang),
+      };
+    });
+  });
+  return { sousTitre, etat: { cle: s.etat, libelle: (ETATS_DE_SOURCE[s.etat] ?? (() => s.etat))(s) }, lignes };
+}
+
+/**
+ * Une ligne du tableau des familles du bloc Maîtrises (maitrisesParFamille) : d'où viennent ses points, en mots (« Guerrier (maîtrise 1) +1 »,
+ * « Mage saphir (Mage Bleu) +2 (suit un choix) »), et ses alertes : les points au-delà du plafond (R149, « 5 points : 1 au-delà du plafond, non compté »,
+ * ton 'trop') ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
+ */
+export function ligneDeMaitrise(m) {
+  const detail = m.detail.map((d) => `${d.titre} ${pointsSignes(d.points)}${d.genre === 'suit' ? ' (suit un choix)' : ''}`);
+  const alertes = [];
+  if (m.excedent) alertes.push({ ton: 'trop', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
+  const brut = m.detail.reduce((t, d) => t + d.points, 0);
+  if (brut < 0) alertes.push({ ton: 'info', texte: `${pointsSignes(brut)} en tout : ramené à 0, une famille ne descend jamais sous 0` });
+  return { detail, alertes };
+}
+
+/**
+ * Le compteur du coin du bloc Maîtrises (compteurDeMaitrise, décision R148 : « N points · M à choisir », au lieu de « répartis / quota ») : son texte, son
+ * état ('ok', 'manque' quand il reste des points à choisir, 'trop' quand une limite écrite est dépassée, R150 ; null sans aucune source) et son infobulle,
+ * les points de chaque source. { texte, etat, infobulle }.
+ */
+export function presentationDuCompteurDeMaitrise(compteur, sources) {
+  const total = (s) => s.parts.reduce((t, p) => t + (p.genre === 'choix' ? p.choisis.reduce((u, c) => u + c.valeur, 0) : p.points), 0);
+  const refus = compteur.refus ? ` ; ${pluriel(compteur.refus, 'point')} au-delà d’une limite écrite` : '';
   return {
-    total: sources.reduce((s, x) => s + x.points, 0),
-    utilises: maitrisesValables(regles, fiche).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
-    sources,
+    texte: `${pluriel(compteur.points, 'point')} · ${compteur.aChoisir} à choisir`,
+    etat: !sources.length ? null : compteur.refus ? 'trop' : compteur.aChoisir ? 'manque' : 'ok',
+    infobulle: sources.length
+      ? `Points de maîtrise des classes, des dons et des accessoires : ${sources.map((s) => `${s.titre} ${pointsSignes(total(s))}`).join(' · ')}${refus}`
+      : 'Pas encore de maîtrise : choisissez une classe (ses lignes de maîtrise et celles de ses dons)',
   };
 }
 
@@ -1513,16 +1747,20 @@ export function sortsPossibles(regles, fiche) {
 /**
  * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page : R118)
  * compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `nm_livre`, noté dans l'entraînement) en fait partie sans compter dans le
- * décompte. Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés par les niveaux
- * (`disponibles`, v_niveau.niveaux_maitrise_cumul) plus ceux du MJ (`mj`, personnage.nm_mj : « Les NM du MJ […] vaudront donc pour toute la fiche »,
- * R118). Sur un sort, au plus `plafond` NM (3, toutes origines comprises), et au plus `maxCompteParSort` comptés : ses NM de niveau au plus `maxParSort`
+ * décompte. Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés (`disponibles`) plus
+ * ceux du MJ (`mj`, personnage.nm_mj : « Les NM du MJ […] vaudront donc pour toute la fiche », R118). Les NM gagnés : ceux des niveaux (`niveaux`,
+ * v_niveau.niveaux_maitrise_cumul) et ceux qu'écrivent les dons acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », Ocultomancien
+ * « Maîtrise » ; `nm_gagnes` des règles, capacite_nm_gagne ; `dons` : [{ nom, nm }], pour l'infobulle du décompte), comme la règle sorts_nm_total de
+ * v_personnage_controle ; ce ne sont pas des NM du MJ. Sur un sort, au plus `plafond` NM (3, toutes origines comprises), et au plus `maxCompteParSort` comptés : ses NM de niveau au plus `maxParSort`
  * (niveau global − 1, BDD!BB6), plus les NM du MJ (règles sort_nm_max et sorts_nm_total de v_personnage_controle).
  */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
   const sorts = (fiche.sorts ?? []).map(nmDuSort);
   const maxParSort = Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global'));
-  const disponibles = ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul;
+  const niveaux = ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul;
+  const dons = donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.nm_gagnes).map((d) => ({ nom: `${d.nom} (${c.classe.nom})`, nm: d.nm_gagnes })));
+  const disponibles = niveaux + dons.reduce((s, d) => s + d.nm, 0);
   const mj = entier(fiche.nm_mj);
   return {
     plafond: constante(regles, 'sort.nm_max'),
@@ -1531,6 +1769,8 @@ export function maitriseDesSorts(regles, fiche) {
     total: sorts.reduce((s, x) => s + x.total, 0),
     livres: sorts.reduce((s, x) => s + x.livre, 0),
     comptes: sorts.reduce((s, x) => s + x.comptes, 0),
+    niveaux,
+    dons,
     disponibles,
     mj,
     limite: disponibles + mj,
@@ -1699,6 +1939,7 @@ export const cleDeChoix = {
   metierObjet: (rang) => `metier_objet:${rang}`,
   accessoire: (emplacement) => `accessoire:${emplacement}`,
   acquis: (source, rang) => `acquis:${source}:${rang}`,
+  maitrise: (source, rang) => `maitrise:${source}:${rang}`,
   resistance: (source, rang) => `resistance:${source}:${rang}`,
 };
 
@@ -1717,8 +1958,10 @@ export function accessoiresDesSorts(regles, fiche) {
  * choisie qui en a, la spécialité d'une
  * classe qui a atteint le niveau de son don de spécialité (le plus bas de ses dons `specialite`, 10), chaque groupe de dons à choisir encore sans choix
  * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), le +1 d'une magie innée qui laisse
- * la caractéristique au choix, les choix d'acquis des dons (acquisDesDons) et les résistances au choix (resistancesDe : d'une ligne du tableau de la
- * race, décision R124 ; à une magie, décision R137). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
+ * la caractéristique au choix, les points de maîtrise d'arme sans famille et les parts qui suivent une famille pas encore choisie (sourcesDeMaitrise,
+ * décisions R148, R151 : nature `maitrise`, sur le premier point à choisir de la source, ou sur la maîtrise au choix suivie ; l'accessoire sans famille
+ * reste de nature `accessoire`), les choix d'acquis des dons (acquisDesDons ; « l'arme choisie » attend la maîtrise au choix de sa classe, R152) et les
+ * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
  * y accroche sa tuile, montrée dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
@@ -1745,6 +1988,20 @@ export function choixEnAttente(regles, fiche) {
     const quoi = e.cible === 'competence' ? 'compétence' : 'famille d’armes';
     attente.push({ nature: 'accessoire', cle: cleDeChoix.accessoire(e.emplacement), libelle: `Accessoire ${e.nom} : ${quoi} à choisir` });
   }
+  // les maîtrises d'armes (décisions R148, R151) : les points sans famille de chaque source (« Maîtrise à choisir : <source> (N point(s)) »), et ce qui
+  // suit une maîtrise au choix pas encore posée (« … −1 suit la maîtrise au choix du Guerrier, pas encore choisie », signe et article comme la carte :
+  // pointsSignes, duNomDeClasse) ; l'accessoire : plus haut
+  for (const s of sourcesDeMaitrise(regles, fiche)) {
+    if (s.type === 'accessoire') continue;
+    const vide = s.parts.flatMap((p) => p.choisis ?? []).find((c) => !c.famille);
+    if (vide) attente.push({ nature: 'maitrise', cle: cleDeChoix.maitrise(s.source, vide.rang), libelle: `Maîtrise à choisir : ${s.titre} (${s.aChoisir} point${s.aChoisir > 1 ? 's' : ''})` });
+    for (const p of s.parts.filter((x) => x.genre === 'suit' && !x.suit.famille)) {
+      attente.push({
+        nature: 'maitrise', cle: p.suit.source ? cleDeChoix.maitrise(p.suit.source, 1) : cleDeChoix.maitrise(s.source, p.rang),
+        libelle: `Maîtrise ${s.titre} : ${pointsSignes(p.points)} suit la maîtrise au choix ${duNomDeClasse(p.suit.classe)}, pas encore choisie`,
+      });
+    }
+  }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
   // les bonus d'acquis « X ou Y », « pour les compétences d'arme » (R120), « choisir 2 sur les 3 » (R121), « de l'arme choisie » (R119), « parmi les autres »
@@ -1755,10 +2012,10 @@ export function choixEnAttente(regles, fiche) {
     const famille = c.arme ? trouver(regles.familles_armes, c.arme_famille_id) : null;
     attente.push({
       nature: 'acquis', cle: cleDeChoix.acquis(c.source, c.rang),
-      // « choisir 2 sur les 3 » (décision R121) : chaque choix du groupe, sans les compétences que les autres ont prises ; « l'arme choisie » (R119) : l'arme
-      // de la maîtrise au choix, puis la compétence quand l'arme en donne plusieurs
+      // « choisir 2 sur les 3 » (décision R121) : chaque choix du groupe, sans les compétences que les autres ont prises ; « l'arme choisie » (R119, R152) :
+      // la compétence quand la famille de la maîtrise au choix en donne plusieurs ; sans cette maîtrise, le bonus l'attend
       libelle: c.repartition ? `Acquis ${c.nom} : ${c.reste} % à répartir`
-        : c.arme ? `Acquis ${c.nom} : +${c.valeur} % ${famille ? `${famille.nom} : ${competences(c.options)}` : `arme de la maîtrise au choix (${c.familles.map((x) => trouver(regles.familles_armes, x)?.nom ?? x).join(' ou ')})`}`
+        : c.arme ? `Acquis ${c.nom} : +${c.valeur} % ${famille ? `${famille.nom} : ${competences(c.options)}` : `— choisissez d’abord la maîtrise au choix de ${c.classe}`}`
         : `Acquis ${c.nom} : +${c.valeur} % ${competences(c.options.filter((o) => !(c.exclues ?? []).includes(o)))}${c.sur ? ` (choix ${c.numero} sur ${c.sur})` : ''}`,
     });
   }
@@ -2305,7 +2562,7 @@ export function degatsRecus(regles, fiche, options = {}) {
 
 /**
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
- * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
+ * classes ») : autant de dés que la maîtrise de sa famille en donne (maitrisesParFamille), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
  * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —
  * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base ; avec un
  * élément, ceux de la composition et de l'amélioration sont remplacés : décision R99, rendus dans `nonComptes`, raison 'element') — et ceux des
@@ -2321,9 +2578,9 @@ export function degatsDArme(regles, fiche, rang) {
   const arme = trouver(regles.armes, ligne?.arme_id);
   if (!arme) return null;
   const famille = trouver(regles.familles_armes, arme.famille_id);
-  // une famille sans maîtrise (ARME DE MONSTRES, décision R45) garde le dé seul, même si une ancienne fiche en a posé une
-  const maitrise = famille?.maitrisable === false ? null : (fiche.maitrises_armes ?? []).find((x) => x.arme_famille_id === arme.famille_id);
-  const nombre = maitrise ? entier(maitrise.des) : maitriseDArme(regles).desSansMaitrise;
+  // les dés calculés de sa famille (maitrisesParFamille, décisions R148, R149 : 5 au plus) ; une famille sans maîtrise (ARME DE MONSTRES, décision R45)
+  // garde le dé seul
+  const nombre = maitrisesParFamille(regles, fiche).find((m) => m.famille === arme.famille_id)?.des ?? maitriseDArme(regles).desSansMaitrise;
   const de = arme.de ?? deDeLaFamille(regles, fiche, famille).de;
   const bonus = [];
   const ajouter = (nom, valeur) => { if (valeur) bonus.push({ nom, valeur }); };

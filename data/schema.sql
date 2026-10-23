@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 75;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 76;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1350,6 +1350,70 @@ CREATE TABLE classe_maitrise_arme (
 
 CREATE INDEX classe_maitrise_arme_arme ON classe_maitrise_arme (arme_cle) WHERE arme_cle IS NOT NULL;
 
+-- SOURCES DE MAÎTRISE D'ARME (décisions R148 à R151, migration 0076) : ce que donne chaque ligne de classe_maitrise_arme et chaque don (capacite.effet),
+-- en parts, telles que les lit client/src/lib/maitrise-arme.mjs (lireLigneDeClasse, lireDon), que test/maitrise-arme-sources.test.mjs rejoue sur toute la
+-- base (un changement du lecteur ou d'un texte demande de réécrire ces lignes). Rien n'est déduit : seul ce que le texte écrit compte, jamais le nom du
+-- don ni celui de la classe ; une source qui ne donne aucun point de maîtrise d'arme n'a pas de ligne. Une fiche enregistre le choix d'une famille par
+-- point à choisir (personnage_maitrise_choix, sous l'identifiant `source_id`) ; les points de chaque famille se calculent (v_personnage_maitrise_arme).
+-- Tables de règles tirées des textes, sans provenance (`origine`, `source_ref` : retirées à la 1.0) ; une source supprimée emporte ses parts.
+--   genre 'imposee' : `points` sur une famille fixe (`arme_famille_id`), sans choix (« 1 maîtrise Épée », « +2 points de maîtrise Arcs » ; R151 : chaque
+--                     nom d'une ligne nommée désigne sa famille, comme les « sauf » de R138) ;
+--   genre 'choix'   : `points` choix d'un point, chacun parmi les options de la part (maitrise_arme_part_famille) ; au plus `limite_famille` points de
+--                     la part sur une même famille quand la source l'écrit (Maître d'arme 2, Combattant libre 3, lignes Bimane, Frappeur, Mercenaire 1 ;
+--                     « catégorie » = famille, la limite ne compte que les points de cette source : R150) ; NULL = rien d'écrit, répartition libre (R150) ;
+--   genre 'suit'    : `points` (signés : le −1 de l'Épéiste) sur la famille choisie pour la ligne `au_choix` de la classe du don (« avec l'arme
+--                     déterminée avant », « de l'autre arme choisie » : R151), sans choix.
+-- `rang` est le rang de la part dans le texte de sa source (1 = la première) ; une source a au plus une part 'choix' (test/maitrise-arme.test.mjs).
+CREATE TABLE maitrise_arme_part (
+  source_id       TEXT    NOT NULL CHECK (length(source_id) > 0),   -- capacite.id pour un don ; '<classe_id>#maitrise-arme:<rang de la ligne>' pour une ligne de
+                                                                    -- classe (lib/maitrise-arme.mjs#idDeSourceDeClasse) : l'identifiant que la fiche enregistre
+  rang            INTEGER NOT NULL CHECK (rang >= 1),               -- rang de la part dans le texte de la source
+  capacite_id     TEXT    REFERENCES capacite(id) ON DELETE CASCADE,   -- la source est un don ; NULL pour une ligne de classe
+  classe_id       TEXT,                                             -- la source est une ligne de classe_maitrise_arme (classe_id, classe_rang) ; NULL pour un don
+  classe_rang     INTEGER,
+  genre           TEXT    NOT NULL CHECK (genre IN ('imposee', 'choix', 'suit')),
+  points          INTEGER NOT NULL CHECK (points <> 0),             -- points de la part, signés (le −1 de l'Épéiste, R151) ; toujours > 0 pour une part à choisir
+  arme_famille_id TEXT    REFERENCES arme_famille(id),              -- la famille imposée ('imposee' seulement ; jamais ARME DE MONSTRES, R45 : test)
+  limite_famille  INTEGER CHECK (limite_famille >= 1),              -- 'choix' : au plus N points de la part sur une même famille, quand la source l'écrit (R150)
+  PRIMARY KEY (source_id, rang),
+  FOREIGN KEY (classe_id, classe_rang) REFERENCES classe_maitrise_arme (classe_id, rang) ON DELETE CASCADE,
+  CHECK ((capacite_id IS NULL) <> (classe_id IS NULL)),             -- un don ou une ligne de classe, jamais les deux ni aucun
+  CHECK ((classe_id IS NULL) = (classe_rang IS NULL)),
+  CHECK (capacite_id IS NULL OR source_id = capacite_id),
+  CHECK (classe_id IS NULL OR source_id = classe_id || '#maitrise-arme:' || classe_rang),
+  CHECK ((genre = 'imposee') = (arme_famille_id IS NOT NULL)),
+  CHECK (genre = 'choix' OR limite_famille IS NULL),
+  CHECK (genre <> 'choix' OR points > 0),
+  CHECK (genre <> 'suit' OR capacite_id IS NOT NULL)                -- seul un don suit la maîtrise au choix de sa classe
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX maitrise_arme_part_capacite ON maitrise_arme_part (capacite_id) WHERE capacite_id IS NOT NULL;   -- « les parts d'un don » (dons acquis)
+
+CREATE INDEX maitrise_arme_part_classe ON maitrise_arme_part (classe_id, classe_rang) WHERE classe_id IS NOT NULL;   -- « les parts des lignes d'une classe »
+
+CREATE INDEX maitrise_arme_part_arme_famille ON maitrise_arme_part (arme_famille_id) WHERE arme_famille_id IS NOT NULL;
+
+-- Les familles proposées à chaque point d'une part 'choix' (R148 à R151), explicites : la catégorie de la ligne (« contact », « à distance » ; « corps à
+-- corps » = contact : R127, R151), la liste qu'elle écrit (« entre Masse, Pugilat, Bâton combat »), sans son « sauf » (R138), ou toutes les familles
+-- maîtrisables ; jamais ARME DE MONSTRES (R45 : test). Une famille hors de cette liste est signalée (règle maitrise_hors_choix de v_personnage_controle).
+CREATE TABLE maitrise_arme_part_famille (
+  source_id       TEXT    NOT NULL,
+  rang            INTEGER NOT NULL,
+  arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
+  PRIMARY KEY (source_id, rang, arme_famille_id),
+  FOREIGN KEY (source_id, rang) REFERENCES maitrise_arme_part (source_id, rang) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX maitrise_arme_part_famille_arme ON maitrise_arme_part_famille (arme_famille_id);
+
+-- NM de sorts gagnés qu'écrit un don (décision R154, migration 0076) : le N de « Gagne N niveaux de maîtrise (NM) » (lib/maitrise-arme.mjs#nmGagnesDuDon,
+-- rejoué sur toute la base par test/maitrise-arme-sources.test.mjs ; l'Ocultomancien « Maîtrise », 4, seul à l'écrire). Un don acquis
+-- (v_personnage_don_acquis) les ajoute aux NM gagnés par les niveaux : règle sorts_nm_total de v_personnage_controle (sort_nm_max ne les lit pas).
+CREATE TABLE capacite_nm_gagne (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
+  nm           INTEGER NOT NULL CHECK (nm >= 1)
+) STRICT, WITHOUT ROWID;
+
 -- TABLEAU LIBRE D'UN ONGLET
 -- Tableau sans titre sous les aptitudes de Mage Bleu (A58:AR127, 14 lignes de 5 rangées : libellé en A, texte en G). Chaque libellé est un
 -- nom de magie en majuscules (SANG, ESPACE/TEMPS, NÉCROMANCIE…) et chaque texte une ou plusieurs lignes « (Passif) Nom. Effet. ».
@@ -2436,7 +2500,7 @@ CREATE TABLE arme_famille (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,  -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1)),   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES :
+  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1)),   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_choix) ; 0 = ARME DE MONSTRES :
                                                     -- des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030)
   categorie     TEXT    CHECK (categorie IS NULL OR (categorie IN ('contact', 'distance') AND maitrisable = 1))   -- R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les
                                                     -- 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE
@@ -3191,10 +3255,12 @@ CREATE INDEX accessoire_effet_gemme_gemme ON accessoire_effet_gemme (gemme_id);
 -- Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe.
 --   cible       : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme),
 --                 armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes
---                 choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran),
+--                 choisie), portee_distance, portee_sorts, maitrise_arme (points, sur une famille choisie : R151, migration 0076), mode_hyper_tours,
+--                 resistance (cible_id = une magie ou une altération d'état : un cran),
 --                 cran_des_sorts (le dé des sorts d'un cran), de_maximum (un dé de dégâts au maximum), des_soins (un dé de plus aux soins) : décision R102, migration 0061
 --   valeur      : NULL = la valeur tirée de l'accessoire (compétence)
---   choix       : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
+--   choix       : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id ; .arme_famille_id pour degats_famille et, depuis la
+--                 migration 0076, maitrise_arme : « Un point de maîtrise d'arme », dont la famille se choisit, R151)
 CREATE TABLE accessoire_effet_cible (
   effet_id     TEXT    NOT NULL REFERENCES accessoire_effet(id),
   rang         INTEGER NOT NULL CHECK (rang >= 1),
@@ -4057,23 +4123,20 @@ CREATE UNIQUE INDEX personnage_entrainement_competence ON personnage_entrainemen
 -- (capacite.id ou race_don.id, `source` : pas de clé étrangère, un don disparu laisse un choix sans effet, que la page retire) et le rang de ce choix
 -- dans son texte (lib/acquis-texte.mjs, 1 = le premier), la compétence retenue (`valeur` NULL : le bonus du don), ou, pour « 10% de compétence en
 -- acquis à répartir au choix », chaque compétence et ses points (`valeur`, leur somme au plus le bonus : la page le garde).
--- « +N% de la compétence de l'arme choisie » (décision R119, migration 0067 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui
--- détermine le bonus. En cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. » ; Tueur Flétrisseur et Sicaire,
--- Mage Bleu Mage saphir, Mage Vert Mage émeraude et Mage jade, Barde Ménestrel) : la ligne du choix garde aussi la famille d'armes de la maîtrise au
--- choix de la classe (`arme_famille_id`, classe_maitrise_arme forme 'au_choix') ; `competence_id` est la compétence qui reçoit le bonus : celle de
--- l'arme (R48 : arme.competence_brut), au choix quand l'arme peut être lourde ou légère (R119). Le choix d'une arme est celui d'un don, comme « X ou
--- Y » : une ligne (pas de répartition, `valeur` NULL), une seule par choix (index personnage_acquis_choix_arme). NULL pour tout autre choix.
+-- « +N% de la compétence de l'arme choisie » (décision R119 : « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus. En
+-- cas d'arme qui peu tout aussi bien avoir des armes lourdes et légère, ça reste au choix. » ; Tueur Flétrisseur et Sicaire, Mage Bleu Mage saphir, Mage
+-- Vert Mage émeraude et Mage jade, Barde Ménestrel) : l'arme du bonus est la famille choisie pour la ligne `au_choix` de la classe du don
+-- (personnage_maitrise_choix, décision R152 : « Un seul choix », migration 0076, qui retire la colonne arme_famille_id posée par 0067 : elle doublait ce
+-- choix) ; `competence_id` est la compétence qui reçoit le bonus, celle de l'arme (R48 : arme.competence_brut), au choix quand l'arme peut être lourde
+-- ou légère (R119, R126). Le choix d'une compétence est celui d'un don, comme « X ou Y » : une ligne, `valeur` NULL.
 CREATE TABLE personnage_acquis_choix (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   source          TEXT    NOT NULL CHECK (length(source) > 0),
   rang            INTEGER NOT NULL CHECK (rang >= 1),
   competence_id   TEXT    NOT NULL REFERENCES competence(id),
   valeur          INTEGER CHECK (valeur >= 1),
-  arme_famille_id TEXT    REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL),   -- l'arme choisie (R119, migration 0067)
   PRIMARY KEY (personnage_id, source, rang, competence_id)
 ) STRICT, WITHOUT ROWID;
-
-CREATE UNIQUE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (personnage_id, source, rang) WHERE arme_famille_id IS NOT NULL;   -- une arme par choix
 
 -- Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de
 -- résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ;
@@ -4149,14 +4212,23 @@ CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
 
 CREATE UNIQUE INDEX personnage_sort_prepare ON personnage_sort (personnage_id) WHERE prepare = 1;   -- un seul sort préparé par fiche (R115)
 
--- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise
--- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016) ; jamais sur
--- ARME DE MONSTRES (arme_famille.maitrisable = 0, décision R45 : règle 'maitrise_arme_exclue' de v_personnage_controle).
-CREATE TABLE personnage_maitrise_arme (
+-- « Maîtrise d'armes » (AA2:AV7 de la fiche auto : des dés saisis par famille, jusqu'à la migration 0076, table personnage_maitrise_arme) : depuis la
+-- décision R148 (« la valeur ne sera plus des sliders mais une valeur calculée », migration 0076), plus rien ne se saisit par famille. Les points de
+-- chaque famille sont la somme de ses sources (lignes des classes prises, dons acquis, accessoire « Un point de maîtrise d'arme » : R32, R54, R148),
+-- au moins 0, au plus 4 comptés (R149 : 5 dés ; au-delà, signalé), calculés par v_personnage_maitrise_arme et par la page, jamais stockés. La fiche
+-- garde seulement le choix d'une famille pour chaque point à choisir : une ligne par point d'une part 'choix' (maitrise_arme_part) d'une source acquise —
+-- la source (`source` : maitrise_arme_part.source_id, l'id du don ou '<classe_id>#maitrise-arme:<rang>' ; pas de clé étrangère, comme
+-- personnage_acquis_choix.source : une source disparue ou perdue laisse un choix sans effet, signalé par maitrise_source_perdue), le numéro du point dans
+-- cette part (`rang`, de 1 à ses points ; une source a au plus une part à choisir) et la famille choisie, parmi les options de la part
+-- (maitrise_arme_part_famille ; R150 : la même famille peut revenir, sauf limite écrite ; jamais ARME DE MONSTRES, R45). La famille choisie pour la ligne
+-- `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire garde la sienne
+-- dans personnage_accessoire.arme_famille_id. Les fiches d'avant 0076 : tout est à rechoisir, l'ancien tableau noté dans les notes (R153 : base vivante).
+CREATE TABLE personnage_maitrise_choix (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
-  arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
-  des             INTEGER NOT NULL CHECK (des BETWEEN 1 AND 5),
-  PRIMARY KEY (personnage_id, arme_famille_id)
+  source          TEXT    NOT NULL CHECK (length(source) > 0),   -- maitrise_arme_part.source_id (sans clé étrangère)
+  rang            INTEGER NOT NULL CHECK (rang >= 1),            -- le numéro du point dans la part à choisir de la source (de 1 à ses points)
+  arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),  -- la famille choisie pour ce point
+  PRIMARY KEY (personnage_id, source, rang)
 ) STRICT, WITHOUT ROWID;
 
 -- « ARMES » (AA9:AY18) : deux emplacements, chacun une arme du catalogue, sa composition (matériau), ses améliorations et son élément.
@@ -4199,7 +4271,9 @@ CREATE TABLE personnage_accessoire (
   valeur              INTEGER,                        -- valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette
   maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
   competence_id       TEXT    REFERENCES competence(id),     -- effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037)
-  arme_famille_id     TEXT    REFERENCES arme_famille(id),   -- effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037)
+  arme_famille_id     TEXT    REFERENCES arme_famille(id),   -- effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037) ; effet « Un point
+                                                             -- de maîtrise d'arme » : la famille du point (R151, migration 0076 ; « ne peut changer une fois
+                                                             -- décidé » n'est qu'un rappel), +1, −1 maudit (R54) : v_personnage_maitrise_arme
   PRIMARY KEY (personnage_id, emplacement)
 ) STRICT, WITHOUT ROWID;
 
@@ -4271,6 +4345,88 @@ CREATE VIEW v_personnage_metier_bonus AS
     AND ((SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
          OR EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang AND c.competence_id = b.competence_id));
 
+-- Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux
+-- (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe
+-- atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi
+-- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148) et aux NM gagnés des dons (R154).
+CREATE VIEW v_personnage_don_acquis AS
+  SELECT pc.personnage_id, pc.rang AS classe_rang, pc.classe_id, c.id AS capacite_id
+  FROM personnage_classe pc
+  JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
+  JOIN capacite c ON c.classe_id = pc.classe_id
+  WHERE CASE pc.rang WHEN 1 THEN n.niveau_classe_1 ELSE n.niveau_classe_2 END >= 1
+    AND c.niveau <= CASE pc.rang WHEN 1 THEN n.niveau_classe_1 ELSE n.niveau_classe_2 END
+    AND (c.specialite_id IS NULL OR c.specialite_id = pc.specialite_id)
+    AND (c.nature <> 'choix' OR EXISTS (SELECT 1 FROM personnage_capacite k WHERE k.personnage_id = pc.personnage_id AND k.capacite_id = c.id));
+
+-- Sources de maîtrise d'arme acquises par une fiche (décisions R32, R148) : les parts (maitrise_arme_part) des lignes de classe_maitrise_arme des classes
+-- prises, dès le niveau de classe 1, et des dons acquis (v_personnage_don_acquis). `classe_id` : la classe de la source (celle du don pour un don) ;
+-- `classe_rang` : son rang sur la fiche (1 ou 2). Une ligne par part ; ce que chaque part donne, avec les choix de la fiche : v_personnage_maitrise_arme.
+CREATE VIEW v_personnage_maitrise_part AS
+  SELECT pc.personnage_id, m.source_id, m.rang, pc.rang AS classe_rang, pc.classe_id, m.capacite_id, m.genre, m.points, m.arme_famille_id, m.limite_famille
+  FROM personnage_classe pc
+  JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
+  JOIN maitrise_arme_part m ON m.classe_id = pc.classe_id
+  WHERE CASE pc.rang WHEN 1 THEN n.niveau_classe_1 ELSE n.niveau_classe_2 END >= 1
+  UNION ALL
+  SELECT d.personnage_id, m.source_id, m.rang, d.classe_rang, d.classe_id, m.capacite_id, m.genre, m.points, m.arme_famille_id, m.limite_famille
+  FROM v_personnage_don_acquis d
+  JOIN maitrise_arme_part m ON m.capacite_id = d.capacite_id;
+
+-- Points de maîtrise d'arme d'une fiche, par famille (décisions R148, R149, R151, R54, migration 0076) : le pendant SQL du calcul de la page /fiche/.
+-- Une ligne par famille qui reçoit au moins une source :
+--   * les parts imposées des sources acquises (v_personnage_maitrise_part) ;
+--   * chaque point choisi (personnage_maitrise_choix) d'une part à choisir acquise, de rang au plus ses points, sur une de ses options
+--     (maitrise_arme_part_famille) ; un choix hors de la liste ou d'une source perdue ne compte pas (règles maitrise_hors_choix, maitrise_source_perdue) ;
+--   * les parts qui suivent (« avec l'arme déterminée avant », le −1 de l'Épéiste : R151) : leurs points sur la famille choisie pour le point 1 de la ligne
+--     `au_choix` de la classe du don ; rien tant qu'elle n'est pas choisie ;
+--   * l'accessoire « Un point de maîtrise d'arme » (accessoire_effet_cible 'maitrise_arme') : sa valeur sur sa famille (personnage_accessoire.arme_famille_id),
+--     de signe contraire s'il est maudit (R54) ; jamais ARME DE MONSTRES (R45).
+-- `points` : leur somme, au moins 0 (« sans descendre sous 0 », R151), sans plafond ; `points_comptes` : au plus le plafond (maitrise_arme.des_max −
+-- maitrise_arme.des_sans_maitrise = 4 points, R149 ; au-delà, règle maitrise_plafond de v_personnage_controle) ; `des` : maitrise_arme.des_sans_maitrise +
+-- points_comptes (5 dés au plus). Une limite écrite dépassée (maitrise_meme_famille, R150) ne retire aucun point : la vue compte, le contrôle signale.
+CREATE VIEW v_personnage_maitrise_arme AS
+  WITH choisis AS (
+    SELECT a.personnage_id, a.source_id, ch.rang, ch.arme_famille_id
+    FROM v_personnage_maitrise_part a
+    JOIN personnage_maitrise_choix ch ON ch.personnage_id = a.personnage_id AND ch.source = a.source_id AND ch.rang <= a.points
+    JOIN maitrise_arme_part_famille o ON o.source_id = a.source_id AND o.rang = a.rang AND o.arme_famille_id = ch.arme_famille_id
+    WHERE a.genre = 'choix'
+  ),
+  apports AS (
+    SELECT a.personnage_id, a.arme_famille_id, a.points
+    FROM v_personnage_maitrise_part a
+    WHERE a.genre = 'imposee'
+    UNION ALL
+    SELECT c.personnage_id, c.arme_famille_id, 1
+    FROM choisis c
+    UNION ALL
+    SELECT a.personnage_id, c.arme_famille_id, a.points
+    FROM v_personnage_maitrise_part a
+    JOIN classe_maitrise_arme l ON l.classe_id = a.classe_id AND l.forme = 'au_choix'
+    JOIN choisis c ON c.personnage_id = a.personnage_id AND c.source_id = l.classe_id || '#maitrise-arme:' || l.rang AND c.rang = 1
+    WHERE a.genre = 'suit'
+    UNION ALL
+    SELECT pa.personnage_id, pa.arme_famille_id, CASE WHEN pa.maudit = 1 THEN -e.valeur ELSE e.valeur END
+    FROM personnage_accessoire pa
+    JOIN accessoire_effet_cible e ON e.effet_id = pa.accessoire_effet_id AND e.cible = 'maitrise_arme'
+    JOIN arme_famille f ON f.id = pa.arme_famille_id AND f.maitrisable = 1
+  ),
+  sommes AS (
+    SELECT personnage_id, arme_famille_id, CASE WHEN SUM(points) > 0 THEN SUM(points) ELSE 0 END AS points
+    FROM apports
+    GROUP BY personnage_id, arme_famille_id
+  ),
+  bornes AS (
+    SELECT (SELECT r.valeur FROM regle_constante r WHERE r.id = 'maitrise_arme.des_sans_maitrise') AS sans,
+           (SELECT r.valeur FROM regle_constante r WHERE r.id = 'maitrise_arme.des_max')
+             - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'maitrise_arme.des_sans_maitrise') AS plafond
+  )
+  SELECT s.personnage_id, s.arme_famille_id, s.points,
+         CASE WHEN s.points > b.plafond THEN b.plafond ELSE s.points END AS points_comptes,
+         b.sans + CASE WHEN s.points > b.plafond THEN b.plafond ELSE s.points END AS des
+  FROM sommes s CROSS JOIN bornes b;
+
 -- Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne.
 -- Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle
 -- 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
@@ -4301,7 +4457,8 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
+-- R100, R104, R118, et les maîtrises d'armes de R148 à R151, R154) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4508,10 +4665,17 @@ CREATE VIEW v_personnage_controle AS
   JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
   WHERE ps.niveau_maitrise - ps.nm_livre > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global') + p.nm_mj
   UNION ALL
+  -- NM gagnés : ceux des niveaux (v_niveau.niveaux_maitrise_cumul), plus ceux qu'écrit un don acquis (« Gagne 4 niveaux de maîtrise (NM). » de
+  -- l'Ocultomancien : capacite_nm_gagne, v_personnage_don_acquis ; décision R154, migration 0076), plus ceux du MJ ; sort_nm_max ne les lit pas.
+  -- Détail : « comptés / des niveaux », puis « + N des dons » et « + N du MJ » quand il y en a
   SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / '
-         || v.niveaux_maitrise_cumul || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END
+         || v.niveaux_maitrise_cumul || CASE WHEN d.nm > 0 THEN ' + ' || d.nm || ' des dons' ELSE '' END
+         || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END
   FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global JOIN personnage p ON p.id = n.personnage_id
-  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul + p.nm_mj
+  JOIN (SELECT q.id AS personnage_id, COALESCE((SELECT SUM(g.nm) FROM v_personnage_don_acquis a JOIN capacite_nm_gagne g ON g.capacite_id = a.capacite_id
+                                                WHERE a.personnage_id = q.id), 0) AS nm
+        FROM personnage q) d ON d.personnage_id = n.personnage_id
+  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul + d.nm + p.nm_mj
   UNION ALL
   -- Bouclier (décision R96) : une forme et une matière ; la matière, l'amélioration ou la solidité n'existent qu'avec la forme, et la forme attend sa matière
   SELECT p.id, 'bouclier_manquant', COALESCE(p.bouclier_materiau_id, p.bouclier_amelioration_id, CAST(p.bouclier_solidite AS TEXT))
@@ -4534,10 +4698,65 @@ CREATE VIEW v_personnage_controle AS
   WHERE p.symbiose_magie_id IS NOT NULL
     AND (p.symbiose_magie_id = 'magies/potentiel-illimite' OR p.symbiose_magie_id NOT IN (coalesce(p.magie_innee_id, ''), coalesce(p.magie_acquise_id, '')))
   UNION ALL
-  -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
-  SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id
-  FROM personnage_maitrise_arme pm JOIN arme_famille f ON f.id = pm.arme_famille_id
+  -- Maîtrises d'armes (décisions R148 à R151, migration 0076) : chaque point à choisir d'une source acquise (v_personnage_maitrise_part) a sa famille
+  -- (personnage_maitrise_choix), parmi les options de sa part ; une ligne de choix relève d'une seule de ces règles : sur une famille sans maîtrise,
+  -- maitrise_arme_exclue (ARME DE MONSTRES, R45) ; sinon, d'une source qui n'est plus acquise ou d'un point qu'elle n'a pas, maitrise_source_perdue ;
+  -- sinon, hors des options, maitrise_hors_choix. Détail d'une ligne de choix : « source : point = famille ».
+  -- Point sans famille (R148) : détail « source = nombre de points à choisir » ; l'accessoire « Un point de maîtrise d'arme » sans famille (R151),
+  -- « accessoire:<emplacement> = 1 »
+  SELECT a.personnage_id, 'maitrise_a_choisir', a.source_id || ' = ' || (a.points - (SELECT count(*) FROM personnage_maitrise_choix ch
+                                                 WHERE ch.personnage_id = a.personnage_id AND ch.source = a.source_id AND ch.rang <= a.points))
+  FROM v_personnage_maitrise_part a
+  WHERE a.genre = 'choix'
+    AND (SELECT count(*) FROM personnage_maitrise_choix ch WHERE ch.personnage_id = a.personnage_id AND ch.source = a.source_id AND ch.rang <= a.points) < a.points
+  UNION ALL
+  SELECT pa.personnage_id, 'maitrise_a_choisir', 'accessoire:' || pa.emplacement || ' = ' || e.valeur
+  FROM personnage_accessoire pa JOIN accessoire_effet_cible e ON e.effet_id = pa.accessoire_effet_id AND e.cible = 'maitrise_arme'
+  WHERE pa.arme_famille_id IS NULL
+  UNION ALL
+  -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45),
+  -- ni par un choix ni par l'accessoire (« accessoire:<emplacement> : 1 = famille »)
+  SELECT ch.personnage_id, 'maitrise_arme_exclue', ch.source || ' : ' || ch.rang || ' = ' || ch.arme_famille_id
+  FROM personnage_maitrise_choix ch JOIN arme_famille f ON f.id = ch.arme_famille_id
   WHERE f.maitrisable = 0
+  UNION ALL
+  SELECT pa.personnage_id, 'maitrise_arme_exclue', 'accessoire:' || pa.emplacement || ' : 1 = ' || pa.arme_famille_id
+  FROM personnage_accessoire pa
+  JOIN accessoire_effet_cible e ON e.effet_id = pa.accessoire_effet_id AND e.cible = 'maitrise_arme'
+  JOIN arme_famille f ON f.id = pa.arme_famille_id
+  WHERE f.maitrisable = 0
+  UNION ALL
+  -- Choix d'une source perdue (classe changée, spécialité perdue, niveau baissé, don à choix retiré) ou d'un point que sa part n'a pas : la page retire
+  -- ces choix (comme acquisChoixValables), la base les signale
+  SELECT ch.personnage_id, 'maitrise_source_perdue', ch.source || ' : ' || ch.rang || ' = ' || ch.arme_famille_id
+  FROM personnage_maitrise_choix ch JOIN arme_famille f ON f.id = ch.arme_famille_id
+  WHERE f.maitrisable = 1
+    AND NOT EXISTS (SELECT 1 FROM v_personnage_maitrise_part a WHERE a.personnage_id = ch.personnage_id AND a.source_id = ch.source AND a.genre = 'choix'
+                      AND ch.rang <= a.points)
+  UNION ALL
+  -- Famille qui n'est pas une option de la part (Ménestrel : les quatre familles à distance, R151 ; « sauf », R138 ; catégorie, R127)
+  SELECT ch.personnage_id, 'maitrise_hors_choix', ch.source || ' : ' || ch.rang || ' = ' || ch.arme_famille_id
+  FROM personnage_maitrise_choix ch
+  JOIN arme_famille f ON f.id = ch.arme_famille_id
+  JOIN v_personnage_maitrise_part a ON a.personnage_id = ch.personnage_id AND a.source_id = ch.source AND a.genre = 'choix' AND ch.rang <= a.points
+  WHERE f.maitrisable = 1
+    AND NOT EXISTS (SELECT 1 FROM maitrise_arme_part_famille o WHERE o.source_id = a.source_id AND o.rang = a.rang AND o.arme_famille_id = ch.arme_famille_id)
+  UNION ALL
+  -- Limite écrite par famille (R150 : Maître d'arme 2, Combattant libre 3, lignes Bimane, Frappeur, Mercenaire 1 ; « catégorie » = famille, seuls les
+  -- points de cette source comptent) ; sans limite écrite, la même famille peut revenir. Détail : « source : famille = points / limite »
+  SELECT a.personnage_id, 'maitrise_meme_famille', a.source_id || ' : ' || ch.arme_famille_id || ' = ' || COUNT(*) || ' / ' || a.limite_famille
+  FROM v_personnage_maitrise_part a
+  JOIN personnage_maitrise_choix ch ON ch.personnage_id = a.personnage_id AND ch.source = a.source_id AND ch.rang <= a.points
+  JOIN maitrise_arme_part_famille o ON o.source_id = a.source_id AND o.rang = a.rang AND o.arme_famille_id = ch.arme_famille_id
+  WHERE a.genre = 'choix' AND a.limite_famille IS NOT NULL
+  GROUP BY a.personnage_id, a.source_id, a.limite_famille, ch.arme_famille_id
+  HAVING COUNT(*) > a.limite_famille
+  UNION ALL
+  -- Plafond (R149) : 4 points au plus par famille (maitrise_arme.des_max − maitrise_arme.des_sans_maitrise), les sources additionnées ; au-delà, signalé
+  -- sans rien refuser, les points en trop ne donnent pas de dé. Détail : « famille = points / plafond »
+  SELECT m.personnage_id, 'maitrise_plafond', m.arme_famille_id || ' = ' || m.points || ' / ' || m.points_comptes
+  FROM v_personnage_maitrise_arme m
+  WHERE m.points > m.points_comptes
   UNION ALL
   -- Équipement : chaque amélioration vise le bon genre d'objet
   SELECT pa.personnage_id, 'amelioration_cible', pa.rang || ' : ' || ae.id

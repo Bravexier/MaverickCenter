@@ -6,7 +6,7 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 195 tables STRICT, FTS5, 35 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+- `data/schema.sql` : la structure. 198 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
   0 familles d'import ; 1 pages, liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;

@@ -957,6 +957,108 @@ test('migration 0066 : une base vivante d’avant est reprise ; les NM du MJ de 
   assert.equal(valeur(chemin, "SELECT nm_mj FROM personnage WHERE id = 'p1'").nm_mj, 3);
 });
 
+/**
+ * La base vivante comme avant la migration 0076 : les dés par famille (personnage_maitrise_arme) et l'arme choisie d'un choix d'acquis
+ * (personnage_acquis_choix.arme_famille_id, R119), sans personnage_maitrise_choix ni les vues qui la lisent (les vues d'avant n'importent pas ici : la
+ * reconstruction ne lit que les tables de l'ancienne base).
+ */
+function enBaseDAvant0076(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    db.exec(`DROP VIEW v_personnage_controle; DROP VIEW v_personnage_maitrise_arme; DROP VIEW v_personnage_maitrise_part;
+      DROP TABLE personnage_maitrise_choix;
+      CREATE TABLE personnage_maitrise_arme (
+        personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
+        des             INTEGER NOT NULL CHECK (des BETWEEN 1 AND 5),
+        PRIMARY KEY (personnage_id, arme_famille_id)
+      ) STRICT, WITHOUT ROWID;
+      CREATE TABLE personnage_acquis_choix_avant (
+        personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        source          TEXT    NOT NULL CHECK (length(source) > 0),
+        rang            INTEGER NOT NULL CHECK (rang >= 1),
+        competence_id   TEXT    NOT NULL REFERENCES competence(id),
+        valeur          INTEGER CHECK (valeur >= 1),
+        arme_famille_id TEXT    REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL),
+        PRIMARY KEY (personnage_id, source, rang, competence_id)
+      ) STRICT, WITHOUT ROWID;
+      INSERT INTO personnage_acquis_choix_avant (personnage_id, source, rang, competence_id, valeur) SELECT personnage_id, source, rang, competence_id, valeur FROM personnage_acquis_choix;
+      DROP TABLE personnage_acquis_choix;
+      ALTER TABLE personnage_acquis_choix_avant RENAME TO personnage_acquis_choix;
+      CREATE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (arme_famille_id);`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0076 : une base vivante d’avant est reprise ; les anciens dés et l’arme choisie notés en une ligne datée, aucun choix posé, la compétence du choix d’acquis gardée (R153, R152)', () => {
+  assert.equal(TABLES_RETIREES.personnage_maitrise_arme, 'maitrises_armes');
+  assert.deepEqual(COLONNES_RETIREES.personnage_acquis_choix, ['arme_famille_id']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0076(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    UPDATE personnage_classe SET classe_id = 'classes/tueur', specialite_id = 'classes/tueur#specialite:fletrisseur' WHERE personnage_id = 'p1';
+    UPDATE personnage SET notes = 'Mes notes' WHERE id = 'p1';
+    INSERT INTO personnage_maitrise_arme (personnage_id, arme_famille_id, des) VALUES ('p1', 'arc', 2), ('p1', 'epees', 3), ('p1', 'pugilat', 2);
+    INSERT INTO personnage_acquis_choix (personnage_id, source, rang, competence_id, valeur, arme_famille_id)
+      VALUES ('p1', 'capacites/tueur-fletrisseur', 1, 'arme-legere', NULL, 'epees');`);
+  ecrire.close();
+
+  // les règles changent (une livraison) : la base est refaite, rien ne bloque
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0076)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-22T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(aLaTable(chemin, 'personnage_maitrise_arme'), false, 'la table n’est plus dans la base vivante');
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_acquis_choix') WHERE name = 'arme_famille_id'").n, 0, 'ni la colonne');
+  const ligne = 'Maîtrises d\'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, PUGILAT 2D6/2D8/2D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES';
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.notes, `Mes notes\n${ligne}`, 'une ligne datée à la fin des notes, les familles dans l’ordre des bandeaux');
+    assert.equal(p1.modifie_le, '2026-10-22T09:00:00Z');
+    assert.deepEqual(p1.maitrise_choix, [], 'aucun choix posé (R153)');
+    assert.ok(!('maitrises_armes' in p1));
+    assert.deepEqual(p1.acquis_choix, [{ source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null }], 'la compétence du choix reste (R152)');
+    // les familles imposées comptent d'emblée, les choix restent à faire : la base le signale (maitrise_a_choisir)
+    assert.ok(db.prepare("SELECT 1 FROM v_personnage_controle WHERE personnage_id = 'p1' AND regle = 'maitrise_a_choisir' AND detail = 'classes/tueur#maitrise-arme:1 = 1'").get());
+    const p2 = db.prepare("SELECT notes, modifie_le FROM personnage WHERE id = 'p2'").get();
+    assert.deepEqual({ ...p2 }, { notes: null, modifie_le: INSTANT }, 'une fiche sans maîtrise : pas de ligne');
+  } finally {
+    db.close();
+  }
+  assert.deepEqual(r.fiches, [{ fiche: 'Aldric', retraits: [
+    'les maîtrises d’armes d’avant la refonte (ÉPÉES 3D10, PUGILAT 2D6/2D8/2D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES)',
+  ] }], 'listée dans /api/etat avec les retraits');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_maitrise_arme').n, 3, 'l’archive garde les anciens dés');
+  // une reconstruction suivante ne note rien de plus
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes, `Mes notes\n${ligne}`);
+});
+
+test('migration 0076 : une base d’avant sans dés, dont une fiche n’a qu’une arme choisie (R119) : la ligne la note seule, une seule fois (R153)', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0076(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    INSERT INTO personnage_acquis_choix (personnage_id, source, rang, competence_id, valeur, arme_famille_id)
+      VALUES ('p1', 'capacites/tueur-fletrisseur', 1, 'arme-legere', NULL, 'epees'), ('p2', 'capacites/tueur-fletrisseur', 1, 'arbalete', NULL, 'arbalete');`);
+  ecrire.close();
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0076)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-22T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes,
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : arme choisie : Flétrisseur (Tueur) ÉPÉES');
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p2'").notes,
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : arme choisie : Flétrisseur (Tueur) ARBALÈTE');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_acquis_choix').n, 2, 'les choix d’acquis recopiés');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_maitrise_choix').n, 0);
+});
+
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {
   const dossier = nouveau('db');
   preparerBaseVivante({ regles: REGLES, dossier });

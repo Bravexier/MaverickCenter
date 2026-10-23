@@ -1,1 +1,0 @@
--- data/rows/personnage_maitrise_arme.sql : export déterministe, une instruction par ligne, triée par (personnage_id, arme_famille_id). NE PAS ÉDITER À LA MAIN.
