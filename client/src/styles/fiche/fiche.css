@@ -128,19 +128,16 @@ main:has(> .fiche) { max-width: 100rem; }
 }
 .fiche-zone__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fiche-zone__grille { display: grid; gap: 0.75rem; align-items: start; }
-.zp-colonne { display: grid; gap: 0.75rem; align-content: start; }
+.zp-colonne { display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
 
-/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté la ceinture ; puis les armes et maîtrises sur
-   toute la largeur, cartes des sources à gauche et tableau des familles à droite (choix du propriétaire du 2026-10-23, « Caractéristiques d'abord ») ;
-   les sorts, à côté les dons débloqués. La colonne des armes et de la ceinture (.zp-colonne) s'efface pour que chacune ait son aire ; l'ordre du DOM
-   reste celui des écrans plus étroits (armes, puis ceinture), où la colonne passe sous les compétences. */
+/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté la colonne des armes et, dessous, de la ceinture
+   (choix du propriétaire du 2026-10-23 : « Garder l'armes visibles à coté des caractéristiques comme avant » ; les maîtrises d'armes sont dans le
+   panneau « Choix » de la zone IV) ; les sorts, à côté les dons débloqués. Plus étroit, la colonne passe sous les compétences. */
 @media (min-width: 64rem) {
-  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car cei' 'arm arm' 'sor don'; }
+  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car col' 'sor don'; }
   .zp-attributs { grid-area: attr; }
   .zp-caracs { grid-area: car; }
-  .zp-colonne { display: contents; }
-  .zp-armes { grid-area: arm; }
-  .zp-ceinture { grid-area: cei; }
+  .zp-colonne { grid-area: col; }
   .zp-sorts { grid-area: sor; }
   .zp-dons { grid-area: don; }
   /* III. selon la situation : les postures (et le Mode Hyper) sur toute la largeur ; armure et accessoires, à côté initiative, résistances et bouclier */
@@ -311,6 +308,8 @@ html:not(.js) .parametres { gap: 0.75rem; }
   .parametres__deux--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 .bourse { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* les maîtrises d'armes dans le panneau « Choix » (demande du propriétaire du 2026-10-23) : une rangée sur toute la largeur, sous les deux piles */
+.choix-maitrises { grid-column: 1 / -1; min-width: 0; }
 
 /* ----------------------------------------------------------------- un choix qui reste à faire (choixEnAttente) : son champ surligné (demande du
    propriétaire : « mettre en surbrillance le champ à saisir ») — menu de la spécialité ou de l'ethnie, groupe de dons, bonus ou objet du métier, +1 de la
@@ -645,8 +644,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
 .des { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources ») : une carte par source, et à côté le
-   tableau calculé des familles quand le bloc a la place (sinon dessous) ; un point à choisir surligné (--a-choisir), une limite dépassée en rouge, l'état
+/* maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources »), dans le panneau « Choix » (et son
+   tiroir) : une carte par source, et à côté le tableau calculé des familles quand le bloc a la place (sinon dessous, @container) ; un point à choisir surligné (--a-choisir), une limite dépassée en rouge, l'état
    de chaque carte écrit en toutes lettres (jamais la seule couleur) */
 .maitrises { container-type: inline-size; }
 .maitrises__grille { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }

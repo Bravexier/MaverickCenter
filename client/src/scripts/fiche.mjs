@@ -43,7 +43,7 @@ import {
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
-  carteDeMaitrise, compteurDeMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  carteDeMaitrise, compteurDeMaitrise, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
@@ -698,14 +698,15 @@ function construireMetier() {
 
 // ------------------------------------------------------------------ maîtrises d'armes
 /**
- * Maîtrises d'armes, dans leur bloc (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le
- * bloc Maîtrises, une carte par source, à côté du tableau calculé par famille »). Une carte par source (lignes des classes prises, dons acquis, accessoire
+ * Maîtrises d'armes, dans leur bloc du panneau « Choix » de la zone IV, donc aussi dans son tiroir (demande du propriétaire du 2026-10-23) ; décision
+ * R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le bloc Maîtrises, une carte par source, à
+ * côté du tableau calculé par famille ». Une carte par source (lignes des classes prises, dons acquis, accessoire
  * « Un point de maîtrise d'arme » : sourcesDeMaitrise) : son titre, son texte tel qu'écrit, la famille imposée, la famille suivie ou retirée (R151), un
  * sélecteur par point à choisir (maitriseApresChoix ; une famille à la limite écrite de la source n'y est plus proposée, R150 ; l'accessoire : sa famille,
  * la même que sous les accessoires) et son état, en mots (carteDeMaitrise). À côté, le tableau calculé des familles maîtrisables (maitrisesParFamille :
  * points, dés, d'où ils viennent ; l'excédent au-delà du plafond signalé sur sa ligne, R149 ; jamais ARME DE MONSTRES, R45 ; le Pugilat au dé de la Force,
  * deDeLaFamille) : rien ne s'y saisit. Dans le coin, « N points · M à choisir » (compteurDeMaitrise). Pas de points du MJ (R148) ; rien de calculé
- * n'est enregistré. Un point à choisir est surligné et passe dans le tiroir des choix (nature `maitrise`, sa tuile par `data-choix-cle`).
+ * n'est enregistré. Un point à choisir est surligné et passe dans la liste du tiroir (nature `maitrise`, sa tuile par `data-choix-cle`).
  */
 function construireMaitrises() {
   const { sources } = calcul.maitrises;
@@ -2486,25 +2487,37 @@ function construireEquipement() {
       else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
-    const familles = new Map(regles.familles_armes.map((f) => [f.id, f]));
     const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null, title: trouver(regles.magies, a.magie_id)?.nom ?? null }, a.nom);
-    // les groupes du catalogue, dans son ordre ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
-    const groupes = new Map();
-    for (const a of regles.armes) {
-      if (!groupes.has(a.famille_id)) groupes.set(a.famille_id, []);
-      groupes.get(a.famille_id).push(option(a.id, a.nom));
-    }
+    // les groupes du catalogue, la maîtrise la plus haute d'abord (groupesDArmesParMaitrise, demande du propriétaire du 2026-10-23 : puis par ordre
+    // alphabétique à maîtrise égale ; « Autres » à la fin) ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
+    const groupesDuCatalogue = () => groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => g.famille);
+    const parFamille = new Map(groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => [g.famille, el('optgroup', { label: g.nom }, g.armes.map((a) => option(a.id, a.nom)))]));
     for (const a of armesProposees) {
       const f = regles.familles_armes.find((x) => x.type_elementaire_id === a.type_id);
       if (!f) continue;
-      if (!groupes.has(f.id)) groupes.set(f.id, []);
-      groupes.get(f.id).push(optionDElement(a));
+      if (!parFamille.has(f.id)) parFamille.set(f.id, el('optgroup', { label: f.nom }));
+      parFamille.get(f.id).append(optionDElement(a));
     }
     const hors = horsDeRang(rang);
-    const choixDArme = selecteur(() => l()?.arme_id ?? l()?.arme_elementaire_id, [
-      ...[...groupes].map(([f, options]) => el('optgroup', { label: familles.get(f)?.nom ?? 'Autres' }, options)),
-      hors ? el('optgroup', { label: 'Hors des magies du personnage' }, optionDElement(hors)) : null,
-    ].filter(Boolean), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` });
+    const horsGroupe = hors ? el('optgroup', { label: 'Hors des magies du personnage' }, optionDElement(hors)) : null;
+    const ordreDesGroupes = () => {
+      const base = groupesDuCatalogue();
+      return [...base, ...[...parFamille.keys()].filter((k) => !base.includes(k))];
+    };
+    const choixDArme = selecteur(() => l()?.arme_id ?? l()?.arme_elementaire_id,
+      [...ordreDesGroupes().map((k) => parFamille.get(k)), horsGroupe].filter(Boolean), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` });
+    // l'ordre suit la fiche en direct (un choix de maîtrise, une classe, un don, un accessoire) : les groupes, construits une fois, sont seulement déplacés
+    // quand l'ordre change (`dataset.cle`), et l'arme choisie le reste
+    choixDArme.dataset.cle = JSON.stringify(ordreDesGroupes());
+    synchro(() => {
+      const ordre = ordreDesGroupes();
+      const cle = JSON.stringify(ordre);
+      if (choixDArme.dataset.cle === cle) return;
+      choixDArme.dataset.cle = cle;
+      const valeur = choixDArme.value;
+      choixDArme.append(...[...ordre.map((k) => parFamille.get(k)), horsGroupe].filter(Boolean));
+      choixDArme.value = valeur;
+    });
     const effet = el('input', { 'aria-label': `Arme ${rang} : effet en plus`, oninput: (ev) => { const x = l(); if (x) { x.effet_en_plus = ev.target.value || null; changer(); } } });
     const details = [];
     const champ = (texte, select) => {
