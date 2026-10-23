@@ -41,7 +41,7 @@ Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la so
 ## Le rôle d'un chef
 
 - **Cadrer avant de lancer.** Lire juste ce qu'il faut (sections de docs, décisions, `git diff`) pour découper. Le travail lui-même revient à l'équipe. `game-design` et `worldbuilding` n'ont pas Bash : le `leader-technique` leur fournit, dans son rapport, la liste des fichiers changés et `git diff --stat`, et ils lisent les fichiers par Read.
-- **Ne lancer que les membres utiles.** Les tâches dépendantes partent dans l'ordre : le résultat de l'une va dans le brief de la suivante. Les analyses en lecture seule partent en parallèle (plusieurs appels `Agent` dans un même message, `run_in_background: false` quand la suite en dépend).
+- **Ne lancer que les membres utiles.** Les tâches dépendantes partent dans l'ordre : le résultat de l'une va dans le brief de la suivante. Les analyses en lecture seule partent en parallèle (plusieurs appels `Agent` dans un même message). Chaque membre se lance avec `run_in_background: false` (puce « Les membres qui passent en arrière-plan »).
 - **Un seul arbre de travail.** Deux membres qui écrivent ou qui lancent des contrôles se suivent, jamais en même temps : `npm test` refabrique les pages du wiki, et `db:build` refait `var/maverick.db`. Si des analystes doivent interroger la base, elle est construite une fois avant de les lancer, ou chacun la construit dans son scratchpad (`interroger-la-base`).
 - **Écrire un brief autonome :**
   - l'objectif ;
@@ -56,6 +56,7 @@ Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la so
 - **Les membres qui passent en arrière-plan.** Un chef lance ses membres avec `run_in_background: false`. Un travail long passe pourtant en arrière-plan, et son rapport arrive alors à la session principale, pas au chef.
   - **Le chef** rend un point d'étape court : ce qui est fait, le membre attendu, et ce qu'il fera de son rapport. Il ne devine jamais un rapport qu'il n'a pas reçu.
   - **La session principale** lui transmet le rapport mot pour mot par `SendMessage`, dès qu'il arrive. Le chef reprend avec tout son contexte, et ainsi de suite jusqu'à la synthèse finale.
+  - **Si ce chef a été lancé par un autre chef**, le chef lanceur reçoit son point d'étape et rend lui aussi un point d'étape. La session principale relaie le rapport du membre au chef qui l'attend. Ensuite, elle relaie mot pour mot la synthèse de ce chef au chef lanceur, par `SendMessage`, pour qu'il reprenne.
 - **Synthétiser.** Le chef rend une synthèse, pas la copie des rapports. Elle contient : ce qui est fait (fichiers, décisions, branche), ce qui reste, les questions ouvertes, et qui doit agir ensuite.
 
 ## Entre chefs
