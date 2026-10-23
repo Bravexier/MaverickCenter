@@ -107,8 +107,8 @@ export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'class
 export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids']);
 
 /**
- * Les familles dont la couleur ne porte jamais de texte : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le bleu des armes
- * de départ : une nuance sur la surface et un filet, styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
+ * Les familles sur la couleur desquelles aucun texte n'est posé en fond : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le
+ * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
  * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte).
  */
 export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme']);

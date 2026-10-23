@@ -34,8 +34,8 @@ export const COULEUR_SANS_TYPE = '#eeeeee';
 
 /**
  * Couleur des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » (panneau de règles de l'onglet Armes : la phrase et
- * les lignes de ces armes sont en bleu dans le classeur). Elle ne porte jamais de texte : les lignes, le filtre, la légende et la phrase en tirent une
- * nuance sur la surface et un filet (styles/armes/armes.css, `--depart`).
+ * les lignes de ces armes sont en bleu dans le classeur). Aucun texte n'est posé sur ce bleu en fond : les lignes, le filtre, la légende et la phrase en
+ * tirent une nuance sur la surface et un filet, et la phrase la couleur de son texte, mêlée au texte du site (styles/armes/armes.css, `--depart`).
  */
 export const COULEURS_DES_ARMES = {
   depart: '#3c78d8',

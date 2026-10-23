@@ -124,9 +124,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 - **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
   dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs`), qui n'écrit aucune
   couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
-  toutes sauf Loyal Bon, Loyal Neutre et le Titane, à peine éclaircis, testé). Une famille dont la couleur ne porte jamais de texte
-  (`FAMILLES_SANS_TEXTE` : `palier`, le trait de 3 px d'une ligne de résistance de la fiche ; `arme`, le bleu des armes de départ, une nuance et un
-  filet) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  toutes sauf Loyal Bon, Loyal Neutre et le Titane, à peine éclaircis, testé). Une famille sur la couleur de laquelle aucun texte n'est posé en fond
+  (`FAMILLES_SANS_TEXTE` : `palier`, le trait de 3 px d'une ligne de résistance de la fiche ; `arme`, le bleu des armes de départ, une nuance, un
+  filet et, mêlé au texte du site, la couleur de la phrase des règles) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
   d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
   texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
   texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
@@ -165,7 +165,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `CLASSE_DES_ARMES_DE_DEPART`), `armure` (`COULEURS_DES_TYPES`, le type d'une armure ou d'une matière : `Léger` → `couleur-armure-leger` ;
   `par-defaut` = `COULEUR_SANS_TYPE`, le gris `#eeeeee` d'un type sans couleur dans la source : `classeDuTypeDArmure`) et `poids`
   (`COULEURS_DES_POIDS`, `bouclier_poids.id`, R92 : `couleur-poids-tres-lourd` ; `par-defaut` = `COULEUR_SANS_TYPE` : `classeDuPoids`). Le texte
-  d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur, noir partout : blanc sur Bronze et Maverium, où le noir
+  d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
   n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
   `couleurDeCaracteristique`) : un neutre a sa classe, jamais un hex de repli. L'id est la clé du module de la règle passée par

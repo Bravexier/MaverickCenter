@@ -20,6 +20,9 @@ main:has(.armes) { max-width: 120rem; }
   --depart-fond-fort: color-mix(in srgb, var(--depart) 26%, var(--surface));
   margin: 0 0 2rem;
 }
+/* la classe du bleu posée sur `.armes` ne s'hérite pas : `--depart` est résolu ici ; sous lui, un élément n'a de --couleur que par sa propre classe
+   (une pastille de compétence, une gemme, un matériau), jamais celle des armes de départ (spécificité nulle : une classe de la palette l'emporte) */
+:where(.armes) > * { --couleur: initial; --couleur-texte: initial; }
 .armes .js-seul { display: none; }
 html.js .armes .js-seul { display: revert; }
 html:not(.js) .armes :is(.js-seul-ligne, .arme-fiche) { display: none; }

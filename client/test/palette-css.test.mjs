@@ -25,7 +25,7 @@ import { COULEUR_PAR_DEFAUT, COULEURS_DES_MAGIES, couleurDeMagie, couleurDeMagie
 import { CLASS_COLORS, CLASS_GROUPS, classColor } from '../src/lib/class-groups.mjs';
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-couleurs.mjs';
-import { COULEURS_DES_MATERIAUX, cleDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
+import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
@@ -69,11 +69,18 @@ test('quinze familles, chacune lue dans le module de sa règle : magies, attribu
   assert.deepEqual(Object.keys(COULEURS_CARACTERISTIQUES).sort(), db.prepare('SELECT id FROM caracteristique').all().map((c) => c.id).sort());
   assert.deepEqual(Object.keys(COULEURS_POSTURES).sort(), db.prepare('SELECT id FROM posture').all().map((p) => p.id.split(':').at(-1)).sort());
   assert.deepEqual(Object.keys(COULEURS_DES_PALIERS), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((p) => p.id));
-  // les poids des boucliers : un par ligne de bouclier_poids ; les matériaux : un par matériau d'arme (test/materiaux-couleurs.test.mjs) ; les types : ceux
-  // des matières d'armure, hors « Autres » (sans couleur dans la source)
+  // les poids des boucliers : un par ligne de bouclier_poids (les matériaux : test/materiaux-couleurs.test.mjs). Les types : une couleur par type que le
+  // schéma admet (le CHECK de materiau.type), hors « Autres », sans couleur dans la source ; tout type présent dans la base en est un (invariant : le site
+  // de dev peut changer le type d'un matériau)
   assert.deepEqual(Object.keys(COULEURS_DES_POIDS), db.prepare('SELECT id FROM bouclier_poids ORDER BY ordre').all().map((p) => p.id));
-  assert.deepEqual(Object.keys(COULEURS_DES_MATERIAUX).sort(), db.prepare('SELECT ressource_id FROM materiau_arme').all().map((m) => cleDeMateriau(m.ressource_id)).sort());
-  assert.deepEqual(db.prepare("SELECT DISTINCT type FROM materiau WHERE type <> 'Autres' ORDER BY type").all().map((m) => m.type).sort(), Object.keys(COULEURS_DES_TYPES).sort());
+  const check = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8').match(/CREATE TABLE materiau \([^]*?\btype\s+TEXT\s+NOT NULL CHECK \(type IN \(([^)]*)\)\)/);
+  assert.ok(check, 'le CHECK de materiau.type dans data/schema.sql');
+  const typesDuSchema = [...check[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.ok(typesDuSchema.includes('Autres'), typesDuSchema.join());
+  assert.deepEqual(Object.keys(COULEURS_DES_TYPES).sort(), typesDuSchema.filter((t) => t !== 'Autres').sort());
+  for (const { type } of db.prepare('SELECT DISTINCT type FROM materiau').all()) {
+    assert.ok(Object.hasOwn(COULEURS_DES_TYPES, type) || type === 'Autres', `type de la base : ${type}`);
+  }
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
@@ -761,6 +768,13 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   dans('src/styles/armes/armes.css', '.materiau', `--ligne-fond: var(${fond}); --ligne-texte: var(${texte});`);
   dans('src/styles/armes/armes.css', '.arme-fiche__materiau', `background: var(${fond}); color: var(${texte});`);
   dans('src/styles/armes/armes.css', '.armes', `--depart: var(${fond});`);
+  // le bleu des armes de départ (famille sans texte : FAMILLES_SANS_TEXTE) : aucune règle qui le lit ne pose le texte de sa classe, et la classe posée sur
+  // `.armes` ne s'hérite pas sous lui (un élément n'a de --couleur que par sa propre classe)
+  const armesCss = lire('src/styles/armes/armes.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const lisentLeBleu = [...armesCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel, corps]) => /var\(--depart/.test(corps) || sel.trim() === '.armes');
+  assert.ok(lisentLeBleu.length >= 6, `${lisentLeBleu.length} règles lisent le bleu`);
+  for (const [, sel, corps] of lisentLeBleu) assert.doesNotMatch(corps, /var\(--couleur-texte/, `${sel.trim()} : pas de texte sur le bleu des armes de départ`);
+  assert.ok(armesCss.includes(':where(.armes) > * { --couleur: initial; --couleur-texte: initial; }'), 'la classe de `.armes` ne s’hérite pas');
   // les onglets Armures et Boucliers : la case d'une matière, les pastilles de type, de matériau et de poids, le filet d'un poids
   dans('src/styles/armures/armures.css', '.pmat__nom', [`background: var(${fond}, var(--surface)) !important;`, `color: var(${texte});`]);
   dans('src/styles/armures/armures.css', '.pmat__choisir', `color: var(${texte});`);
