@@ -36,17 +36,22 @@ const PARDON = { nom: 'Pardon ?!? (Grenadier)', valeur: 11 };
 
 // ------------------------------------------------------------------ R114 : les sorts grenades
 
-test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_mot_cle), emportés dans regles.json ; le mot-clé est protégé ; aucun autre sort n’a d’étiquette', () => {
+test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_mot_cle), emportés dans regles.json ; le mot-clé est protégé ; aucun autre sort n’a cette étiquette', () => {
   const etiquetes = lignes("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade' ORDER BY sort_id").map((l) => l.sort_id);
   assert.equal(etiquetes.length, 14);
   assert.equal(new Set(etiquetes.map((id) => sortDe(id).magie_id)).size, 14, 'un dans chaque magie');
   assert.ok(etiquetes.every((id) => /^Grenade /i.test(sortDe(id).nom)), 'les sorts « Grenade… » de la décision');
-  assert.deepEqual(regles.sorts.filter((s) => s.mots_cles).map((s) => s.id).sort(), etiquetes);
+  // les sorts « Fer… » portent une autre étiquette, « Sort fer » (décision R164, migration 0079 : test/sorts-fer.test.mjs)
+  assert.deepEqual(regles.sorts.filter((s) => s.mots_cles?.includes('sort-grenade')).map((s) => s.id).sort(), etiquetes);
   for (const id of etiquetes) assert.deepEqual(sortDe(id).mots_cles, ['sort-grenade'], id);
-  // l'id lu par la fiche (lib/sort-bonus-texte.mjs) est celui d'un mot-clé protégé de la base (lib/mots-cles.mjs, qui ne l'importe pas)
+  assert.deepEqual(regles.sorts.filter((s) => s.mots_cles && !s.mots_cles.includes('sort-grenade')).map((s) => s.mots_cles), Array(13).fill(['sort-fer']));
+  // chaque id lu par la fiche (lib/sort-bonus-texte.mjs) est celui d'un mot-clé protégé de la base (lib/mots-cles.mjs, qui ne l'importe pas) : « Sort
+  // grenade » (R114), puis « Sort fer » (décision R164 : test/fiche-sorts-fer.test.mjs), et aucun autre
+  const LIBELLES = { 'sort-grenade': 'Sort grenade', 'sort-fer': 'Sort fer' };
+  assert.deepEqual(ETIQUETTES_DES_SORTS.map(([id]) => id), Object.keys(LIBELLES));
   for (const [id] of ETIQUETTES_DES_SORTS) {
     assert.ok(MOTS_CLES_PROTEGES.has(id), `${id} : protégé`);
-    assert.deepEqual(lignes('SELECT id, libelle, libelle_cle FROM mot_cle WHERE id = ?', id), [{ id, libelle: 'Sort grenade', libelle_cle: id }]);
+    assert.deepEqual(lignes('SELECT id, libelle, libelle_cle FROM mot_cle WHERE id = ?', id), [{ id, libelle: LIBELLES[id], libelle_cle: id }]);
   }
 });
 
@@ -59,7 +64,8 @@ test('R114 : « Pardon ?!? » se lit sur les sorts étiquetés (plus « selon la
   // la famille des bombes : celle de la base, sous ce nom
   assert.deepEqual(lignes("SELECT id, nom FROM arme_famille WHERE id = 'bombes'"), [{ id: 'bombes', nom: 'BOMBES' }]);
   const textes = [...lignes('SELECT id, effet AS texte FROM capacite WHERE effet IS NOT NULL'), ...lignes('SELECT id, texte FROM race_don')];
-  const nomment = textes.filter((t) => bonusDeSortsEcrits(t.texte).some((b) => b.vises.mots_cles)).map((t) => t.id);
+  // (« ... Brutale » vise une autre étiquette, les sorts fer : décision R164, test/fiche-sorts-fer.test.mjs)
+  const nomment = textes.filter((t) => bonusDeSortsEcrits(t.texte).some((b) => b.vises.mots_cles?.includes('sort-grenade'))).map((t) => t.id);
   assert.deepEqual(nomment, ['capacites/grenadier-pardon']);
   assert.deepEqual(bonusDeSortsEcrits('Les sorts « grenades » font +3 dégâts.'), [{ cible: 'degats', valeur: 3, vises: { mots_cles: ['sort-grenade'] } }]);
 });

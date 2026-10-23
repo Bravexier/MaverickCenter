@@ -272,7 +272,8 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
   const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 
   /**
-   * Refus pour un mot-clé qui étiquette un sort (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » sur les sorts grenades) : une étiquette
+   * Refus pour un mot-clé qui étiquette un sort (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » sur les sorts grenades ; migration 0079 :
+   * décision R164, « Sort fer » sur les 13 sorts « Fer… ») : une étiquette
    * est une règle posée par décision, que le site ne pose ni ne retire ; la base, elle, refuserait la suppression par sa clé étrangère (sans cascade),
    * sans message lisible. Supprimer le mot-clé, ou le fusionner dans un sens ou l'autre (l'un part, l'autre reçoit ses pages et ses balises), changerait
    * ce que l'étiquette veut dire : 409, avec les sorts. Une base vivante d'avant la migration 0067 (le service y retombe si sa reconstruction échoue)

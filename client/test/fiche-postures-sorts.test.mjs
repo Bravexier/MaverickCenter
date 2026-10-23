@@ -646,6 +646,8 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'capacites/mage-soigneur': 'portee:2',
     // « À l'aise », nouvelle version (décision R134, migration 0071) : +1 NM au sort préparé ; « Soralongé » : le sort préparé (décision R133)
     'capacites/mage-vert-a-laise': 'nm:1',
+    // « ... Brutale » : « Les enchantements d'armes », les sorts fer, +2 en posture Focus (décision R164 : test/fiche-sorts-fer.test.mjs)
+    'capacites/mage-vert-brutale': 'degats:2@focus',
     'capacites/mage-vert-mage-emeraude': 'degats:3@focus',
     'capacites/mage-vert-soralonge': 'portee:2',
     'capacites/namazu-eau-pure': 'cout:-4',

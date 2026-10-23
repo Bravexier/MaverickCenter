@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 78;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 79;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -767,11 +767,12 @@ CREATE INDEX sort_etat_etat ON sort_etat (etat_id, relation);
 -- redéfinir ce qu'est un sort "grenade" autrement que pas juste son nom (un tag en base par exemple, qu'on pourrait utiliser pour d'autres choses ») :
 -- le site reconnaît un sort à son étiquette, jamais à son nom (les +11 dégâts de « Pardon ?!? » du Grenadier vont aux sorts étiquetés « Sort
 -- grenade »). 0067 pose « Sort grenade » (id `sort-grenade`) sur les 14 sorts « Grenade… », un dans chaque magie (réponse du propriétaire à la
--- question Q20, 1) ; une autre étiquette viendra d'une autre décision. Pas d'ordre (un sort se lit avec ses étiquettes dans l'ordre de leur libellé)
+-- question Q20, 1) ; 0079 pose « Sort fer » (id `sort-fer`, décision R164 : les +2 dégâts de « ... Brutale » en posture Focus vont aux sorts
+-- étiquetés) sur les 13 sorts « Fer… », un par magie sauf l'Arcane et le Potentiel Illimité. Pas d'ordre (un sort se lit avec ses étiquettes dans l'ordre de leur libellé)
 -- ni de provenance (origine, source_ref : une décision du propriétaire, pas une cellule ; feuille de route). Une étiquette est une règle posée par
 -- décision : pas de cascade vers mot_cle (à la différence de page_tag), la clé étrangère refuse de supprimer un mot-clé qui étiquette encore un sort ;
--- le site refuse aussi de le supprimer ou de le fusionner (409 : client/serveur/edition-chronologie.mjs#verifierSansSort) et protège « Sort grenade »,
--- dont il se sert (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
+-- le site refuse aussi de le supprimer ou de le fusionner (409 : client/serveur/edition-chronologie.mjs#verifierSansSort) et protège « Sort grenade »
+-- et « Sort fer » (décision R164), dont il se sert (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
 CREATE TABLE sort_mot_cle (
   sort_id     TEXT NOT NULL REFERENCES sort(id),
   mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id),

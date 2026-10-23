@@ -426,7 +426,7 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
-  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
+  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » ; migration 0079 : décision R164, « Sort fer »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
   // "grenades" » visent les sorts qui la portent, jamais un sort par son nom (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
   const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
     ORDER BY e.sort_id, m.libelle_cle, e.mot_cle_id`), 'sort_id', (e) => e.mot_cle_id);

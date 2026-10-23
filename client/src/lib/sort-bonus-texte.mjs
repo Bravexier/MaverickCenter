@@ -3,11 +3,12 @@
 // port d'un objet comme un bâton d'arcane ou le fait d'avoir les talents de la classe Occultomancien. Il faudrait également avoir le calcul des dégâts de
 // chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. » ; décision R102). Comme lib/degats-texte.mjs
 // pour les armes : seul ce qu'une phrase dit sans ambiguïté est compté — une valeur ET les sorts qu'elle vise (tous, les sorts d'attaque, de soin, la magie
-// innée, des magies nommées, les sorts d'une étiquette : « les sorts "grenades" », décision R114 ; le sort préparé ou les autres : « Les sorts offensifs
+// innée, des magies nommées, les sorts d'une étiquette : « les sorts "grenades" », décision R114, « Les enchantements d'armes », décision R164 ; le sort préparé ou les autres : « Les sorts offensifs
 // (non) préparés », décision R115, « les sorts d'attaque chargés », décision R133) ; une phrase liée à une autre situation (« en cas de », « des alliés »,
 // « la météo »…) est rendue avec sa raison, jamais comptée ; une phrase sur autre chose (maîtrise, compétence…) n'est pas rendue, sauf le NM donné au sort
 // préparé (décision R134, cible `nm`). Le don qui permet de préparer un sort (décision R115) se lit aussi ici (preparationEcrite).
-// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/fiche-postures-sorts.test.mjs, test/fiche-grenades-et-sort-prepare.test.mjs).
+// Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toute la base (test/fiche-postures-sorts.test.mjs, test/fiche-grenades-et-sort-prepare.test.mjs,
+// test/fiche-sorts-fer.test.mjs).
 
 /** Les magies et les mots qui les nomment dans « les sortilèges de Glace, Ombre et Foudre », « les sorts d'Arcane » (identifiants de la table magie). */
 const MAGIES = [
@@ -22,8 +23,23 @@ const MAGIES = [
  * par « un tag en base ») : [id du mot-clé, ce qui les nomme dans un texte]. « Les bombes et les sorts "grenades" font +11 dégâts » (Grenadier, « Pardon
  * ?!? ») vise les sorts qui portent le mot-clé `sort-grenade` (regles.sorts[].mots_cles, lib/fiche-regles.mjs), jamais un sort par son nom. Le mot-clé est
  * protégé (lib/mots-cles.mjs#MOTS_CLES_PROTEGES, qui n'importe pas ce module : test/fiche-grenades-et-sort-prepare.test.mjs compare les deux).
+ * De même `sort-fer` (migration 0079, décision R164 : « ... Brutale » du Mage Vert, « (Posture Focus) Les enchantements d'armes sont augmentés de +2 »,
+ * avec la note « Les sorts "fer" » ; « +2 dégâts en Focus ») : « les enchantements d'armes » (au pluriel, l'écriture de Brutale seule : un « enchantement
+ * d'arme » n'est pas lu) sont les sorts qui portent l'étiquette, comme les écritures que la décision leur donne, « les sorts "fer" » et « les sorts de Fer
+ * Élémentaire » (« Jongleur Magique » du Lanceur) ; jamais un sort par son nom.
  */
-export const ETIQUETTES_DES_SORTS = Object.freeze([['sort-grenade', /\bsorts? (?:"|«\s?)?grenades?(?:"|\s?»)?/]]);
+export const ETIQUETTES_DES_SORTS = Object.freeze([
+  ['sort-grenade', /\bsorts? (?:"|«\s?)?grenades?(?:"|\s?»)?/],
+  ['sort-fer', /\benchantements d'armes\b|\bsorts? (?:"|«\s?|“)?fer(?:"|\s?»|”)?(?![a-zà-ÿ])|\bsorts? de fer [ée]l[ée]mentaires?\b/],
+]);
+/** Un texte sans ce qui y nomme une étiquette (« les enchantements d'armes » ne font pas d'une phrase une phrase sur les armes : décision R164). */
+const sansEtiquettes = (phrase) => ETIQUETTES_DES_SORTS.reduce((p, [, re]) => p.replace(new RegExp(re.source, 'g'), ' '), phrase);
+/**
+ * « Les enchantements d'armes sont augmentés de +2 » (« ... Brutale ») : +N aux dégâts des sorts fer (décision R164 : « +2 dégâts en Focus ») ; lu
+ * seulement dans une phrase qui vise l'étiquette `sort-fer`, la seule dont une décision lit ainsi l'augmentation (« Les sorts grenades sont augmentés de
+ * +2 » ne donne rien).
+ */
+const ETIQUETTE_AUGMENTEE = /\bsont augment[ée]s de \+(\d+)\s*\.?$/;
 
 /**
  * « Les sorts offensifs préparés » (« Charge lente… » du Mage Rouge) et « Les sorts offensifs non préparés » (« … ou rapide ») : le sort préparé de la
@@ -100,7 +116,7 @@ function visesDe(phrase) {
  */
 export function bonusDeSortsEcrits(texte) {
   const t = normaliser(texte);
-  if (!/sort|magie inn[ée]e|d[ée]g[âa]ts magiques|soins magiques/.test(t)) return [];
+  if (!/sort|magie inn[ée]e|d[ée]g[âa]ts magiques|soins magiques/.test(t) && !ETIQUETTES_DES_SORTS.some(([, re]) => re.test(t))) return [];
   const pas = /x\s*=\s*\+?\s*(\d+)\s*(?:d[ée]g[âa]ts?)?\s*\/\s*(\d+)\s*niveaux?/.exec(t);
   // les phrases (« . », « ; », une ligne), puis leurs propositions (une virgule avant « + ») : une proposition sans sorts visés vise ceux de la précédente
   // (« La magie innée inflige +4 dégâts, +4 soins »), jamais ceux d'une autre phrase
@@ -123,8 +139,9 @@ export function bonusDeSortsEcrits(texte) {
   }
   const posture = /^\(posture ([a-zé]+)\)/.exec(t)?.[1] ?? null;
   for (const { phrase, vises: visesDeLaProposition } of propositions) {
-    // la formule « x = +2 dégâts/6 niveaux » se lit avec « 3+x dégâts » ; une phrase sur les armes n'est pas un bonus de sort
-    if (/^x\s*=/.test(phrase) || /\barmes?\b/.test(phrase)) continue;
+    // la formule « x = +2 dégâts/6 niveaux » se lit avec « 3+x dégâts » ; une phrase sur les armes n'est pas un bonus de sort (« les enchantements
+    // d'armes », une étiquette de sorts, ne la rendent pas telle : décision R164)
+    if (/^x\s*=/.test(phrase) || /\barmes?\b/.test(sansEtiquettes(phrase))) continue;
     // « préparés » d'une phrase sur le sort préparé (décision R115), « chargés » (décision R133) ne sont plus une situation : la fiche sait quel sort est
     // préparé
     const situation = SITUATION.test(phrase.replace(SORTS_PREPARES, ' ').replace(SORTS_CHARGES, ' ')) || posture !== null;
@@ -169,6 +186,12 @@ export function bonusDeSortsEcrits(texte) {
     if (/qui augmente de \+?\d+ tous les \d+ niveaux/.test(phrase)) {
       const n = /\+(\d+)\s*(?:aux? |de )?(d[ée]g[âa]ts?|soins?)?/.exec(phrase);
       if (n && vises) bonus.push({ cible: /soin/.test(n[2] ?? '') ? 'soin' : 'degats', valeur: Number(n[1]), vises, raison: 'progression' });
+      continue;
+    }
+    // « Les enchantements d'armes sont augmentés de +2 » : les dégâts des sorts fer, et de cette étiquette seule (décision R164)
+    const augmentee = visesDeLaProposition?.mots_cles?.includes('sort-fer') ? ETIQUETTE_AUGMENTEE.exec(phrase) : null;
+    if (augmentee) {
+      ajouter('degats', { valeur: Number(augmentee[1]) }, { mots_cles: ['sort-fer'] });
       continue;
     }
     const formule = /(\d+)\s*\+\s*x\s+(?:de\s+)?d[ée]g[âa]ts?/.exec(phrase);

@@ -92,7 +92,8 @@ Fiche de tour!L12) n'a pas de ligne dans `note_cellule` ; 58 cellules de règles
 ## Écarts voulus déclarés (d3)
 
 Inscrits dans le registre du classeur avec leur raison : « Eaunoire » (R21, migration 0012 : Les races, Fiche auto), Lamia et Corruption (R22, migration
-0013), six notes corrigées par `0003-orthographe-magies.sql` hors de son registre (`voulus`) ; cinq commentaires écartés (`commentaires`) ; le tableau des
+0013), six notes corrigées par `0003-orthographe-magies.sql` hors de son registre (`voulus`), les effets réécrits des 13 sorts « Fer » (R164,
+`voulus` de Magie V8) ; cinq commentaires écartés (`commentaires`) ; le tableau des
 améliorations cadavériques d'« Invocation », copie de celui de Magie V8 (`copies`) ; « Elfe Noir Salé » retiré de la liste des ethnies de la Corruption
 (R15, Fiche auto!U5) ; les règles de la fiche auto (R87), dont sa matrice des résistances entre magies (R90), et l'onglet « Statistiques » (R86).
 

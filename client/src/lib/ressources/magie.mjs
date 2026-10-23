@@ -100,8 +100,10 @@ export const RESSOURCES = [
         tri: 'mot_cle_id',
         lectureSeule: true,
         description:
-          'Les mots-clés du glossaire posés sur le sort en étiquette (décision R114, migration 0067 : « Sort grenade » sur les 14 sorts « Grenade… ») : ' +
-          'le site reconnaît un sort à son étiquette, jamais à son nom (les +11 dégâts de « Pardon ?!? » du Grenadier) ; une étiquette est une règle ' +
+          'Les mots-clés du glossaire posés sur le sort en étiquette (décision R114, migration 0067 : « Sort grenade » sur les 14 sorts « Grenade… » ; ' +
+          'décision R164, migration 0079 : « Sort fer » sur les 13 sorts « Fer… ») : ' +
+          'le site reconnaît un sort à son étiquette, jamais à son nom (les +11 dégâts de « Pardon ?!? » du Grenadier, les +2 dégâts de « ... Brutale » ' +
+          'du Mage Vert) ; une étiquette est une règle ' +
           'posée par décision : en lecture seule, et un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne (409).',
       },
     ],

@@ -10,7 +10,8 @@ import { TAG_RACE_HYBRIDE } from './race-kinds.mjs';
 import { normalize } from './text.mjs';
 
 /**
- * Les mots-clés dont le site se sert pour ranger les pages (une règle les lit par leur écriture) ou reconnaître un sort (« Sort grenade », décision R114) :
+ * Les mots-clés dont le site se sert pour ranger les pages (une règle les lit par leur écriture) ou reconnaître un sort (« Sort grenade », décision R114 ;
+ * « Sort fer », décision R164) :
  * ni renommés, ni supprimés, ni fusionnés depuis le site, sinon une page change de place ou un calcul de la fiche change sans que personne l'ait voulu. Clé = libelle_cle (normalize), valeur = la raison (« il … »), affichée en mode modification.
  */
 export const MOTS_CLES_PROTEGES = new Map([
@@ -23,10 +24,12 @@ export const MOTS_CLES_PROTEGES = new Map([
   [normalize('race'), 'est posé sur chaque page de race'],
   [normalize('métier'), 'est posé sur chaque métier'],
   [normalize('codex'), 'est posé par l’import du Codex sur chacune de ses pages (tools/docs/codex.py)'],
-  // une étiquette de sort (sort_mot_cle, migration 0067) que la fiche lit par son id, `sort-grenade` (décision R114 : « Pardon ?!? » du Grenadier,
-  // lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS, que ce module n'importe pas : le service n'en a pas besoin ; test/fiche-grenades-et-sort-prepare.test.mjs les
-  // compare) ; tout mot-clé qui étiquette un sort, protégé ou non, ne se supprime ni ne se fusionne (serveur/edition-chronologie.mjs)
+  // les étiquettes de sort (sort_mot_cle, migrations 0067 et 0079) que la fiche lit par leur id, `sort-grenade` (décision R114 : « Pardon ?!? » du Grenadier)
+  // et `sort-fer` (décision R164 : « ... Brutale » du Mage Vert) — lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS, que ce module n'importe pas : le service
+  // n'en a pas besoin ; test/fiche-grenades-et-sort-prepare.test.mjs les compare ; tout mot-clé qui étiquette un sort, protégé ou non, ne se supprime ni ne
+  // se fusionne (serveur/edition-chronologie.mjs)
   [normalize('Sort grenade'), 'étiquette les sorts grenades, que la fiche de personnage reconnaît par lui (décision R114 : les +11 dégâts de « Pardon ?!? » du Grenadier)'],
+  [normalize('Sort fer'), 'étiquette les sorts fer, que la fiche de personnage reconnaît par lui (décision R164 : les +2 dégâts de « ... Brutale » du Mage Vert, en posture Focus)'],
 ]);
 
 /** La raison pour laquelle un mot-clé ne se renomme, ne se supprime ni ne se fusionne pas depuis le site (null : il le peut). */
