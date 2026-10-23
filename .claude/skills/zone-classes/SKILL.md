@@ -7,7 +7,7 @@ user-invocable: false
 # Classes et dons de classe
 
 ## Fichiers
-- Liste `/classes/` : `client/src/lib/class-groups.mjs` (`CLASS_GROUPS`, `CLASS_OVERRIDES`, `classColor`), `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
+- Liste `/classes/` : `client/src/lib/class-groups.mjs` (`CLASS_GROUPS`, `CLASS_OVERRIDES`, `CLASS_COLORS`, `groupeDeCouleur`, `classColor`), `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
 - Page d'une classe : `lib/classes-db.mjs` (lecture des tables), `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`), CSS `client/src/styles/classe/` inséré par `ClassePage.astro` (`?raw`).
 - Disposition des dons : `lib/classe-dons.mjs#plateauDeDons` ; rendu pur partagé avec le mode modification : `lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`.
 - Dons (type `capacites`) : `lib/capacites.mjs` (`choix_exclusif_avec`, `checkSelection`), `lib/dons-edition.mjs` (`donneesDeDon`, D11).
@@ -37,13 +37,13 @@ user-invocable: false
 - « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale ». Le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales » (`CLASS_OVERRIDES`, décision du propriétaire).
 - Chaque colonne a la couleur de sa catégorie ; le résumé de la page est en infobulle (`Infobulles.astro`, skill `ui-infobulles`).
 - « (classe) » est supprimé de partout, base comprise (migration `0009-classes-sans-suffixe`) : une classe raciale porte le nom de sa race (titre « Orios », page `classes/orios`). `tools/sheets/classes.py` n'ajoute plus de suffixe. `[[classes/orios]]` / `[[races/orios]]` lèvent l'ambiguïté d'un lien.
-- Couleur de la page d'après la catégorie de `/classes/` (`classColor`) : rouge mêlée, vert distance, bleu magiques, violet raciales, jaune spéciales. Repère visuel sans valeur de règle (encore en style, `--couleur-classe`, jusqu'à son lot de la palette : skill `ui-couleurs`).
+- Couleur de la page d'après la catégorie de `/classes/` (`classColor`) : rouge mêlée, vert distance, bleu magiques, violet raciales, jaune spéciales. Repère visuel sans valeur de règle. La valeur reste dans `CLASS_COLORS` ; la colonne de `/classes/`, la page d'une classe, la fiche et la page d'une classe créée posent la classe de la catégorie (`couleur-classe-<clé>`, `palette-css.mjs#classeDeCategorie`, `classeDUneClasse` par `groupeDeCouleur` ; famille d'une zone `classe`, émise par `ClassesPastilles.astro` et `ClassePage.astro`), que `styles/classe/base.css` et `liste.css` lisent en `--cla` (`var(--couleur)`) et `--cla-texte` (`var(--couleur-texte)`), jamais un style (skill `ui-couleurs`). Le texte blanc de la bannière et des onglets de spécialité est le jeton `--texte-sur-fonce`, le noir de ses dérivées `--fond-banniere` (`styles/global/base.css`).
 - Annexe d'une classe (« Tableau de l'onglet », Mage Bleu) : une entrée liée à une magie porte `annexe-classe__carte--magie` et la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`) ; son filet lit `--couleur` (`styles/classe/page.css`), jamais un style.
 
 ## Voisins
 - Fiche de personnage (choix de classe, dons débloqués, R23, R25) : skill `zone-fiche`. Mode modification des classes, spécialités et dons (D11) : skill `zone-edition`. Lien entre une race hybride et sa classe raciale : skill `zone-races`.
 
 ## Tests
-- `client/test/classes-html.test.mjs` : site construit (pastilles, couleurs, infobulles ; CI après le build).
+- `client/test/classes-html.test.mjs` : site construit (pastilles, classes des catégories et leur feuille, infobulles ; CI après le build).
 - `class-groups.test.mjs`, `classes-dons.test.mjs`, `classe-dons-rendu.test.mjs`, `classe-magique.test.mjs`, `classe-champs.test.mjs`, `classes-notes.test.mjs`, `classes-sans-suffixe.test.mjs`.
 - `capacites-content.test.mjs` (règle des choix rejouée sur les pages de l'import), `capacites.test.mjs`, `dons-edition.test.mjs`, `corps-classes.test.mjs`, `serveur-edition-classes.test.mjs`, `serveur-edition-rejeu-capacites.test.mjs`.

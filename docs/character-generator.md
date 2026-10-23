@@ -30,7 +30,7 @@ restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie 
 La page prend plus de largeur que les autres (100rem au plus) ; sur un écran étroit, les blocs passent l'un sous l'autre. Le panneau d'un menu déroulant
 s'étend sur toute sa rangée de menus. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
-**pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
+**pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/` (leurs classes de la palette, ci-dessous), celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
 referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
 naturel des compétences un curseur (jusqu'au maximum du niveau ; l'**acquis** n'est plus un curseur : le nombre calculé, son détail en infobulle, décision
 R104). Un **clic droit**
@@ -128,7 +128,8 @@ abandonne.
 - **Postures et Mode Hyper** : une **case par posture**, ses effets toujours lisibles, **avantages en vert, inconvénients en rouge** (décision R47,
   `posture_effet.inconvenient`), sur deux lignes : Offensif, Neutre, Défensif, puis Focus, Vigilance, Symbiose (`regles.ordre_postures`) ; un clic choisit la
   posture du moment. À droite, une fois débloqués (`modeHyperDe` : niveaux 2 et 10, page « Liste des effets mode hyper »), les cases du **Mode Hyper** (effets
-  de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**, pour lecture.
+  de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**, pour lecture,
+  chacune dans la classe de son mode (`mode_hyper.classe`, `mode_hyper.cent.classe` de `regles.json` : famille `mode` de la palette).
 - **Méditation ou Repos** : le don de base de la race s'affiche sous son nom (`donDeBase`), en tête des dons raciaux.
 - **Compétences** : six blocs sur deux colonnes remplies de haut en bas, comme la fiche auto : Force, Volonté, Intelligence ; Perception, Social, Agilité.
 - **Métier** (décisions R33 à R40) : dans l'onglet « Choix », ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
@@ -155,7 +156,8 @@ abandonne.
   migration `0027-posture-du-moment`).
 - **Résistances et faiblesses**, dans la zone 3 (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse (Magie et Altération
   d'état) » de la fiche auto, `Personnage!BA2:BI12`) : les six paliers (`resistance_palier` : immunité, grande résistance, résistance, vulnérabilité, grande
-  vulnérabilité, sensibilité, avec leur effet sur les dégâts), chacun avec ses magies, dans leur couleur, puis ses altérations d'état, cerclées de la couleur
+  vulnérabilité, sensibilité, avec leur effet sur les dégâts ; le trait de chaque ligne dans la couleur de son palier : le champ `classe` de chaque
+  palier de `regles.json`, posée par le script sur la ligne), chacun avec ses magies, dans leur couleur, puis ses altérations d'état, cerclées de la couleur
   de leur magie ; le détail des crans en infobulle (`resistancesDe`). Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
   deux résistances font une grande résistance) : ceux des listes de la magie innée et de la magie acquise (`magie_resistance`, les listes des pages de magie et
   du guide ; l'Arcane et la Corruption se résistent l'une à l'autre, décision R90), et ceux que les dons écrivent
@@ -287,8 +289,19 @@ Une fiche enregistrée se **supprime** (bouton « Supprimer », après confirmat
 jamais la couleur (`classe` de chaque caractéristique, de chaque posture et de chaque alignement, `caracteristique_par_defaut` et `alignement_par_defaut`
 pour un id inconnu ; `docs/content-guide.md`, « Couleurs du site : la palette en classes »). Le script la pose avec `teinte-palette` (`teinteDe`) sur la
 carte de la caractéristique, le tableau de ses compétences, une compétence au choix d'un métier, une caractéristique d'une créature invoquée, la case
-d'une posture, la posture du sort préparé et l'alignement (`poserTeinte`) ; les classes des postures et des alignements sont émises par la page
-(`pages/fiche/index.astro`), celles des caractéristiques sont sur chaque page. Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
+d'une posture, la posture du sort préparé et l'alignement (`poserTeinte`). De même, les races, ethnies, classes et spécialités : `regles.json` donne
+`classe` de chaque race (la classe de sa nature, `couleur-race-pure` ou `couleur-race-hybride`, celle de `/races/`) et de chaque classe (celle de sa
+catégorie de `/classes/`, `couleur-classe-<clé>`), `race_par_nature` (la couleur d'un groupe de races, même vide) et `neutre`
+(`couleur-neutre-par-defaut`, la valeur `COULEUR_NEUTRE` : la magie acquise « Aucune », un objet de départ au choix, une ethnie sans race choisie ;
+réponse du propriétaire à « Sur la fiche, trois pastilles sans couleur propre étaient en brun-gris (#8a7a66) avec un texte blanc, peu lisible (4,15:1) :
+la magie acquise « Aucune », un objet de départ au choix et une ethnie sans race. Quelle couleur prennent-elles ? » : « Gris neutre du site
+(Recommandé) » ; option : « Le gris neutre déjà utilisé ailleurs sur le site (#cccccc), texte foncé : lisible, sans ajouter une couleur. ») ;
+une ethnie, une spécialité et les dons d'une classe prennent la classe de leur race ou de leur classe. Pastilles, groupes et choix faits portent
+`teinte-palette` et la classe, jamais un style ni un repli écrit ; le texte d'une pastille pleine est celui de sa classe (`--texte-sur-c`). Les classes
+des postures, alignements, catégories de classe, races, paliers, du Mode Hyper et le neutre sont émises par la page (`pages/fiche/index.astro`,
+`cssDesFamilles(FAMILLES_DES_ZONES)`), celles des caractéristiques sont sur chaque page. Les couleurs d'interface de la fiche (l'action principale,
+un choix à faire, l'étoile d'une remarque, le texte blanc des boutons pleins) sont des jetons du thème (`styles/global/base.css` : `--vert-action`,
+`--a-choisir`, `--a-choisir-plein`, `--etoile`, `--texte-sur-fonce`). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
 et quitter le Potentiel Illimité la retire (décision R23) ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle, comme un don qu'aucun choix des règles ne range (supprimé ou devenu reçu d'office sur le site de dev, D11) ; un don, une spécialité, un sort, un métier ou une arme que les règles suppriment est retiré de la fiche par le service, avec sa note datée (R42, R52, ci-dessous « Quand les règles changent »). Tout ce que la base
 garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).

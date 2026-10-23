@@ -5,8 +5,7 @@ import raceRelationsCss from '../../styles/race/relations.css?raw';
 import { pageHref } from '../../lib/magies';
 import type { RaceDb, Races } from '../../lib/races';
 import { relationsDeRace } from '../../lib/race-relations.mjs';
-import { RACE_COLORS } from '../../lib/race-kinds.mjs';
-import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { classeDeMagie, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 import Texte from '../magie/Texte.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
@@ -28,6 +27,8 @@ interface Props {
 }
 const { entry, entries, race, races, statusNote } = Astro.props;
 const hybride = race.hybride;
+// la couleur de la race, sur toute la page : la classe de sa nature (lib/palette-css.mjs, famille `race`, une famille d'une zone que la page émet),
+// jamais un style
 const pageDe = (id: string) => entries.find((e) => e.id === id);
 const pageClasseRaciale = race.classeRaciale ? pageDe(race.classeRaciale.id) : undefined;
 const pageModeHyper = pageDe('guide/liste-des-effets-mode-hyper');
@@ -54,7 +55,8 @@ const nav = [
 ---
 
 <style is:inline set:html={raceCss}></style>
-<div class={`race race--${hybride ? 'hybride' : 'pure'}`} style={`--couleur-race: ${RACE_COLORS[hybride ? 'hybride' : 'pure']}`}>
+<style is:inline set:html={cssDesFamilles(['race'])}></style>
+<div class={`race race--${hybride ? 'hybride' : 'pure'} ${classeDeRace(hybride ? 'hybride' : 'pure')}`}>
   <header class="race-hero">
     <p class="race-hero__surtitre">{hybride ? 'Race hybride' : 'Race pure'}</p>
     <h1>{entry.data.title}</h1>

@@ -59,9 +59,11 @@ test('groupRaces : une race absente de l’ordre du propriétaire vient après l
   assert.deepEqual(ids(groups[0].entries), ['races/humain', 'races/lamia', 'races/ecureuil', 'races/zébu']);
 });
 
-test('groupRaces : chaque groupe porte sa couleur (celle du bandeau des pages de race)', () => {
+test('groupRaces : chaque groupe porte sa nature, dont la page pose la classe de couleur (celle du bandeau des pages de race)', () => {
   const groups = groupRaces([humain, orios, ...CLASSES]);
-  assert.deepEqual(groups.map((g) => [g.key, g.couleur]), [['pures', RACE_COLORS.pure], ['hybrides', RACE_COLORS.hybride]]);
+  assert.deepEqual(groups.map((g) => [g.key, g.nature]), [['pures', 'pure'], ['hybrides', 'hybride']]);
+  assert.ok(groups.every((g) => !('couleur' in g)), 'plus de couleur : la classe de la nature (lib/palette-css.mjs#classeDeRace)');
+  assert.deepEqual(Object.keys(RACE_COLORS), ['pure', 'hybride'], 'une couleur par nature (raceKind)');
   assert.notEqual(RACE_COLORS.pure, RACE_COLORS.hybride);
 });
 

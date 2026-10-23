@@ -8,10 +8,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDAttribut,
-  classeDeCaracteristique, classeDeCouleur, classeDeMagie, classeDePosture, classeDePotion, classeDeSecondeCaracteristique, classeDeSecondeMagie,
-  classesDeDeuxCaracteristiques, classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesFamilles, cssDesPotions,
-  cssDesSecondsRangs, idDeCouleur, secondsRangs, secondsRangsDesMagies,
+  CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement,
+  classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
+  classeDePotion, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
+  classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
+  secondsRangs, secondsRangsDesMagies,
 } from '../src/lib/palette-css.mjs';
 import {
   AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, contraste, couleurDePotion, lisible,
@@ -20,6 +21,9 @@ import {
 import { COULEURS_DES_ATTRIBUTS } from '../src/lib/attributs-couleurs.mjs';
 import { COULEUR_NEUTRE, COULEURS_ALIGNEMENTS, COULEURS_CARACTERISTIQUES, COULEURS_POSTURES } from '../src/lib/caracteristiques-postures.mjs';
 import { COULEUR_PAR_DEFAUT, COULEURS_DES_MAGIES, couleurDeMagie, couleurDeMagieConnue, texteSurCouleur } from '../src/lib/sort-format.mjs';
+import { CLASS_COLORS, CLASS_GROUPS, classColor } from '../src/lib/class-groups.mjs';
+import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-couleurs.mjs';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
 const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
@@ -27,8 +31,8 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('six familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements (et la couleur par défaut de quatre d’entre elles)', () => {
-  assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement']);
+test('onze familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre (et la couleur par défaut de quatre d’entre elles)', () => {
+  assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -38,14 +42,25 @@ test('six familles, chacune lue dans le module de sa règle : magies, attributs,
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.caracteristique, { ...COULEURS_CARACTERISTIQUES, [PAR_DEFAUT]: COULEUR_NEUTRE });
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.posture, { ...COULEURS_POSTURES, [PAR_DEFAUT]: COULEUR_NEUTRE });
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.alignement, { ...COULEURS_ALIGNEMENTS, [PAR_DEFAUT]: COULEUR_NEUTRE });
-  // les caractéristiques et les postures : une par ligne de la base (leurs ids sont ceux des classes)
+  // lot des catégories de classe, des races et du reste de la fiche : la couleur reste dans le module de sa règle (class-groups.mjs, race-kinds.mjs,
+  // fiche-couleurs.mjs) ; le neutre ne double aucune valeur : la seule classe `par-defaut`, de valeur COULEUR_NEUTRE
+  assert.equal(FAMILLES_DE_LA_PALETTE.classe, CLASS_COLORS);
+  assert.equal(FAMILLES_DE_LA_PALETTE.race, RACE_COLORS);
+  assert.equal(FAMILLES_DE_LA_PALETTE.palier, COULEURS_DES_PALIERS);
+  assert.equal(FAMILLES_DE_LA_PALETTE.mode, COULEURS_DU_MODE_HYPER);
+  assert.deepEqual(FAMILLES_DE_LA_PALETTE.neutre, { [PAR_DEFAUT]: COULEUR_NEUTRE });
+  assert.deepEqual(Object.keys(CLASS_COLORS), CLASS_GROUPS.map((g) => g.key), 'une couleur par catégorie de /classes/');
+  assert.deepEqual(Object.keys(RACE_COLORS), ['pure', 'hybride'], 'une couleur par nature de race (race-kinds.mjs#raceKind)');
+  assert.deepEqual(Object.keys(COULEURS_DU_MODE_HYPER), ['hyper', 'cent'], 'le Mode Hyper et le Mode Hyper 100 %');
+  // les caractéristiques, les postures et les paliers de résistance : une par ligne de la base (leurs ids sont ceux des classes)
   const db = ouvrirBase();
   assert.deepEqual(Object.keys(COULEURS_CARACTERISTIQUES).sort(), db.prepare('SELECT id FROM caracteristique').all().map((c) => c.id).sort());
   assert.deepEqual(Object.keys(COULEURS_POSTURES).sort(), db.prepare('SELECT id FROM posture').all().map((p) => p.id.split(':').at(-1)).sort());
+  assert.deepEqual(Object.keys(COULEURS_DES_PALIERS), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((p) => p.id));
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
-  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement']);
+  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre']);
 });
 
 test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du module normalisée, unique, sans caractère à échapper en CSS', () => {
@@ -70,10 +85,27 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   assert.equal(idDeCouleur('barriere+chakra'), 'barriere-chakra');
   assert.equal(classeDAttribut('inconnu'), null);
   assert.equal(classeDeCouleur('inconnue', 'feu'), null);
+  // lot des catégories de classe, des races et du reste de la fiche
+  assert.equal(classeDeCategorie('melee'), 'couleur-classe-melee');
+  assert.equal(classeDeCategorie('non-classees'), null, 'pas une catégorie de couleur : une section des Spéciales');
+  assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-melee');
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-speciales', 'exception du Parleur');
+  assert.equal(classeDUneClasse({ id: 'classes/x', data: { tags: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
+  for (const tags of [['càc'], ['distance'], ['magique'], ['hybride animal'], ['hybride'], []]) {
+    const entree = { id: 'classes/x', data: { tags } };
+    assert.equal(FAMILLES_DE_LA_PALETTE.classe[classeDUneClasse(entree).slice('couleur-classe-'.length)], classColor(entree), tags.join());
+  }
+  assert.equal(classeDeRace('pure'), 'couleur-race-pure');
+  assert.equal(classeDeRace('hybride'), 'couleur-race-hybride');
+  assert.equal(classeDeRace('autre'), null);
+  assert.equal(classeDePalier('grande_resistance'), 'couleur-palier-grande-resistance');
+  assert.equal(classeDePalier('inconnu'), null);
+  assert.deepEqual([classeDuModeHyper('hyper'), classeDuModeHyper('cent')], ['couleur-mode-hyper', 'couleur-mode-cent']);
+  assert.equal(CLASSE_NEUTRE, `couleur-neutre-${PAR_DEFAUT}`);
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -99,7 +131,10 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
     [['#4e8794', '#171210'], ['#467fda', '#171210']], 'les fonds de l’option choisie, texte foncé');
   assert.deepEqual([COULEURS_ALIGNEMENTS['Loyal Bon'], COULEURS_ALIGNEMENTS['Loyal Neutre']], ['#45818e', '#3c78d8'], 'les couleurs de référence restent dans le code');
   const eclaircies = couleursDeLaPalette().filter((c) => c.fond !== FAMILLES_DE_LA_PALETTE[c.famille][c.cle]).map((c) => c.classe);
-  assert.deepEqual(eclaircies, ['couleur-alignement-loyal-bon', 'couleur-alignement-loyal-neutre']);
+  // … et, par la même règle (chaque classe atteint 4,5:1), la grande vulnérabilité (#e53935, le trait de son palier sur la fiche : 4,4:1 au mieux),
+  // à peine éclaircie ; la couleur de référence reste dans lib/fiche-couleurs.mjs
+  assert.deepEqual(eclaircies, ['couleur-alignement-loyal-bon', 'couleur-alignement-loyal-neutre', 'couleur-palier-grande-vulnerabilite']);
+  assert.equal(COULEURS_DES_PALIERS.grande_vulnerabilite, '#e53935', 'la couleur de référence');
   for (const { famille, cle, classe, fond, texte } of couleursDeLaPalette()) {
     assert.equal(fond, lisible(FAMILLES_DE_LA_PALETTE[famille][cle]), classe);
     assert.equal(texte, texteSurCouleur(fond), classe);
@@ -172,6 +207,20 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   assert.match(lire('src/components/guide/GuideBloc.astro'), /bloc === 'postures' && \(\s*<div class="guide-postures">[^]*?<style is:inline set:html=\{cssDesFamilles\(\['posture'\]\)\}><\/style>/);
   assert.match(lire('src/pages/fiche/index.astro'), /<style is:inline set:html=\{cssDesFamilles\(FAMILLES_DES_ZONES\)\}><\/style>/);
   assert.match(lire('src/components/armes/ArmesPage.astro'), /const secondsRangs = cssDesSecondsRangs\('caracteristique'\);[^]*<style is:inline set:html=\{secondsRangs\}><\/style>/);
+  // les catégories de classe (/classes/, les pages de classe) et les races (/races/, les pages de race) ; la fiche les émet avec les autres familles
+  // d'une zone (paliers, Mode Hyper, neutre compris) ; le mode modification avec la page d'une race ou d'une classe créée (la page 404 n'en a pas)
+  for (const f of ['src/components/classes/ClassesPastilles.astro', 'src/components/classes/ClassePage.astro']) {
+    assert.match(lire(f), /<style is:inline set:html=\{cssDesFamilles\(\['classe'\]\)\}><\/style>/, f);
+  }
+  for (const f of ['src/components/race/RacesPastilles.astro', 'src/components/race/RacePage.astro']) {
+    assert.match(lire(f), /<style is:inline set:html=\{cssDesFamilles\(\['race'\]\)\}><\/style>/, f);
+  }
+  const nouvelles = lire('src/scripts/edition/nouvelles.mjs');
+  assert.ok(nouvelles.includes("css: [raceBaseCss, racePageCss, raceRelationsCss, cssDesFamilles(['race'])].join('\\n'),"), 'la page d’une race créée');
+  assert.ok(nouvelles.includes("css: [classeBaseCss, classePageCss, cssDesFamilles(['classe'])].join('\\n'),"), 'la page d’une classe créée');
+  for (const famille of ['classe', 'race', 'palier', 'mode', 'neutre']) assert.ok(FAMILLES_DES_ZONES.includes(famille), `${famille} : une famille d’une zone`);
+  // le poids de ce que la fiche émet (toutes les familles d'une zone) reste petit
+  assert.ok(cssDesFamilles(FAMILLES_DES_ZONES).length < 3000, `${cssDesFamilles(FAMILLES_DES_ZONES).length} octets`);
 });
 
 const construit = existsSync(new URL('../dist/index.html', import.meta.url));
@@ -189,6 +238,10 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   assert.ok(page('regles/les-postures/index.html').includes(`<style>${cssDesFamilles(['posture'])}</style>`), 'postures : la page du guide');
   assert.ok(page('ressources/equipement/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : l’onglet Armes');
   for (const rel of ['index.html', 'ressources/equipement/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
+  // les catégories de classe et les races : sur leurs listes et leurs pages, et seulement là (et la fiche)
+  for (const rel of ['classes/index.html', 'classes/guerrier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['classe'])}</style>`), `classes : ${rel}`);
+  for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
+  for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
 });
 
 /** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */
@@ -458,35 +511,50 @@ const FICHIERS_DU_LOT_DES_CARACTERISTIQUES = [
   'src/lib/armes-rendu.mjs', 'src/lib/edition-rendu.mjs', 'src/components/armes/ArmesPage.astro', 'src/components/metier/MetiersTableau.astro',
   'src/pages/fiche/index.astro', 'src/styles/metier/tableau.css',
 ];
+/**
+ * Les fichiers propres au lot des catégories de classe, des races et du reste de la fiche (paliers de résistance, Mode Hyper, couleurs d'interface,
+ * neutres), hors ceux des lots d'avant : contrôlés en entier. Les modules des règles (class-groups.mjs, race-kinds.mjs, fiche-couleurs.mjs) écrivent
+ * leurs couleurs ; les feuilles des pages de classe et de race (page.css, dons.css, race/base.css, relations.css) gardent celles de lots à venir
+ * (impression, types de don, voiles des bannières, échelle des relations) et ne sont contrôlées que dans leurs règles de ce lot.
+ */
+const FICHIERS_DU_LOT_DES_CLASSES_ET_RACES = [
+  'src/components/classes/ClassesPastilles.astro', 'src/components/race/RacesPastilles.astro', 'src/scripts/edition/nouvelles.mjs', 'src/scripts/fiche.mjs',
+  'src/styles/classe/base.css', 'src/styles/classe/liste.css', 'src/styles/race/liste.css', 'src/styles/fiche/fiche.css',
+];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
 const FEUILLES_DES_VARIABLES_DE_LA_PALETTE = new Set(['src/styles/fiche/fiche.css', 'src/styles/guide/blocs.css']);
+/** Les variables que les feuilles des classes et des races tirent de la classe de leur catégorie ou de leur nature (`--cla: var(--couleur…)`, `--rac`…). */
+const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
 /**
  * Les règles des lots faits des feuilles du site, choisies d'après ce qu'elles lisent : la couleur d'une classe de la palette (`var(--couleur…)`), la
- * teinte d'une magie (`var(--mag…)`) et, dans les feuilles de FEUILLES_DES_VARIABLES_DE_LA_PALETTE, les variables qui en sont tirées (`var(--c)`,
- * `var(--c1)`, `var(--c2)`, `var(--c-texte)`, `var(--texte-sur-c)` : caractéristiques, compétences, postures, alignements, magies de la fiche et du guide) ; [{ fichier, selecteur,
- * corps }], commentaires retirés.
+ * teinte d'une magie (`var(--mag…)`) ; dans les feuilles de FEUILLES_DES_VARIABLES_DE_LA_PALETTE, les variables qui en sont tirées (`var(--c)`,
+ * `var(--c1)`, `var(--c2)`, `var(--c-texte)`, `var(--texte-sur-c)` : caractéristiques, compétences, postures, alignements, magies, races, classes,
+ * Mode Hyper de la fiche et du guide) ; et, dans les feuilles des classes et des races, celles de leur catégorie ou de leur nature (`var(--cla…)`,
+ * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; [{ fichier, selecteur, corps }], commentaires retirés.
  */
 const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
   .flatMap((n) => [...lire(`src/styles/${n}`).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
-      || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps)))
+      || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
+      || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps)))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
  * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
- * contrôlé). L'ombre de l'infobulle partagée (une couleur du thème : skill ui-infobulles) ; le texte blanc par défaut des pastilles de la fiche
- * (`--texte-sur-c, #fff`), qui ne sert plus qu'aux races, ethnies, classes et objets de départ (leur lot reste à faire) : une magie ou une compétence pose
- * le sien par sa classe.
+ * contrôlé). L'ombre de l'infobulle partagée (une couleur du thème : skill ui-infobulles) ; l'échelle des relations entre les peuples de la page d'une
+ * race (`--regard-evitee`, la seule qui écrit sa teinte : un lot à venir). Les pastilles de la fiche n'en ont plus : toutes posent leur classe (races,
+ * ethnies, classes, objets de départ et magie acquise « Aucune » compris).
  */
 const HORS_DU_LOT = new Map([
   ['src/styles/global/infobulles.css .bulle', '--bulle-ombre: rgb(42 33 24 / 0.36);'],
-  ['src/styles/fiche/fiche.css .choix__pastille', 'color: var(--texte-sur-c, #fff);'],
-  ["src/styles/fiche/fiche.css .pastille[aria-pressed='true']", 'color: var(--texte-sur-c, #fff);'],
+  ['src/styles/race/base.css .race', '--regard-evitee: color-mix(in srgb, #c27a12 70%, var(--surface));'],
 ]);
 
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
-  for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES]) assert.deepEqual(couleursDuFichier(f), [], f);
+  for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES]) {
+    assert.deepEqual(couleursDuFichier(f), [], f);
+  }
   const regles = reglesQuiLisentLaPalette();
-  assert.ok(regles.length > 90, `${regles.length} règles des lots faits`);
+  assert.ok(regles.length > 140, `${regles.length} règles des lots faits`);
   for (const attendue of ['src/styles/fiche/fiche.css .fiche[data-magie] .fiche-etape', 'src/styles/personnages/liste.css .perso--magie',
     'src/styles/classe/page.css .annexe-classe__carte--magie', 'src/styles/equipement/equipement.css .acc-gemme', 'src/styles/magie/sorts.css .npm__badge',
     // les règles des magies qui ne lisent que les variables de leur feuille (`--c` de la fiche, sur la couleur d'un sort)
@@ -498,7 +566,14 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/fiche/fiche.css .invocation-carte__carac', 'src/styles/fiche/fiche.css .fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur]',
     'src/styles/guide/blocs.css .guide-carac', 'src/styles/guide/blocs.css .guide-competences__groupe', 'src/styles/guide/blocs.css .guide-posture',
     'src/styles/guide/blocs.css .guide-posture__nom', 'src/styles/bestiaire/carte.css .bcarac', 'src/styles/armes/armes.css .arme-comp',
-    'src/styles/metier/tableau.css .metier-cible, .metier-carac']) {
+    'src/styles/metier/tableau.css .metier-cible, .metier-carac',
+    // lot des catégories de classe, des races et du reste de la fiche
+    'src/styles/classe/base.css .classe', 'src/styles/classe/liste.css .classes-groupe', 'src/styles/classe/dons.css .don__niveau',
+    'src/styles/classe/dons.css .onglet', 'src/styles/classe/page.css .classe-hero', 'src/styles/classe/page.css .classe-specialite h3',
+    'src/styles/race/base.css .race', 'src/styles/race/liste.css .races-groupe', 'src/styles/race/page.css .race-hero', 'src/styles/race/page.css .race-don',
+    'src/styles/race/relations.css .regards__bloc h4', "src/styles/fiche/fiche.css .resistances__table tr[class*='couleur-palier-']",
+    'src/styles/fiche/fiche.css .choix__pastille', "src/styles/fiche/fiche.css .pastille[aria-pressed='true']", 'src/styles/fiche/fiche.css .groupe-pastilles > h4',
+    'src/styles/fiche/fiche.css .dons-classe > h4']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   for (const [h, declaration] of HORS_DU_LOT) {
@@ -532,4 +607,72 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   ]) assert.ok(fiche.includes(attendu), attendu);
   // les modules lus par le navigateur n'importent pas la palette (elle tire tous les modules des règles : skill site-version-portable)
   for (const f of ['src/scripts/fiche.mjs', 'src/scripts/personnages.mjs', 'src/lib/personnages-liste.mjs']) assert.doesNotMatch(lire(f), /^import [^;]*palette-css\.mjs';$/m, f);
+});
+
+// Lot des catégories de classe, des races et du reste de la fiche (2026-10-23, même demande et mêmes choix de cadrage) : la couleur d'une catégorie de
+// classe, d'une race, d'un palier de résistance, du Mode Hyper et ce que la fiche montre sans couleur de règle passent par leur classe de la palette.
+
+test('les feuilles des classes, des races et du reste de la fiche lisent les propriétés que posent les classes ; les couleurs d’interface viennent du thème', () => {
+  const { fond, texte } = proprietes();
+  const dans = (fichier, selecteur, attendu) => {
+    const regle = regleDe(lire(fichier), selecteur);
+    for (const a of [attendu].flat()) assert.ok(regle.includes(a), `${fichier}, ${selecteur} : « ${a} » dans « ${regle} »`);
+  };
+  // la page d'une classe, /classes/ : --cla (et son texte) tiré de la classe de la catégorie ; la page d'une race, /races/ : --rac, de sa nature
+  dans('src/styles/classe/base.css', '.classe', [`--cla: var(${fond}, var(--muted));`, `--cla-texte: var(${texte}, var(--texte-sur-fonce));`,
+    '--hero-1: color-mix(in srgb, var(--cla) 35%, var(--fond-banniere));']);
+  dans('src/styles/classe/liste.css', '.classes-groupe', `--cla: var(${fond}, var(--muted));`);
+  dans('src/styles/race/base.css', '.race', [`--rac: var(${fond}, var(--muted));`, '--hero-1: color-mix(in srgb, var(--rac) 45%, var(--fond-banniere));']);
+  dans('src/styles/race/liste.css', '.races-groupe', `--rac: var(${fond}, var(--muted));`);
+  // les bannières des magies retrouvent le noir #111 d'avant le lot 2, par le même jeton
+  dans('src/styles/magie/base.css', '.magie, .magie-teinte', ['--hero-1: color-mix(in srgb, var(--mag) 35%, var(--fond-banniere));',
+    '--hero-2: color-mix(in srgb, var(--mag) 45%, var(--fond-banniere));']);
+  for (const [f, s] of [['src/styles/classe/page.css', '.classe-hero'], ['src/styles/race/page.css', '.race-hero'], ['src/styles/magie/page.css', '.magie-hero']]) {
+    dans(f, s, 'color: var(--texte-sur-fonce);');
+  }
+  // la fiche : le trait d'un palier (seulement sur une ligne qui porte sa classe : la fiche porte celle de sa magie innée), le texte des pastilles pleines
+  dans('src/styles/fiche/fiche.css', ".resistances__table tr[class*='couleur-palier-']", `--r: var(${fond});`);
+  dans('src/styles/fiche/fiche.css', ".pastille[aria-pressed='true']", 'color: var(--texte-sur-c, var(--texte-sur-fonce));');
+  dans('src/styles/fiche/fiche.css', '.choix__pastille', 'color: var(--texte-sur-c, var(--texte-sur-fonce));');
+  const fiche = lire('src/styles/fiche/fiche.css');
+  assert.doesNotMatch(fiche, /\.posture-carte--(?:hyper|cent) \{ --c:/, 'le Mode Hyper : sa classe, plus de --c écrit');
+  assert.doesNotMatch(fiche, /tr\[data-palier='[a-z_]+'\] \{ --r:/, 'les paliers : leur classe, plus de --r écrit');
+  // les couleurs d'interface sans règle : des jetons du thème, avec leur valeur d'avant (styles/global/base.css ; « Thème reste, Debug à part »)
+  const theme = lire('src/styles/global/base.css');
+  const jeton = (nom) => theme.match(new RegExp(`\\n {2}${nom}: (#[0-9a-f]{3,6});`))?.[1];
+  assert.deepEqual(['--texte-sur-fonce', '--fond-banniere', '--vert-action', '--a-choisir', '--a-choisir-plein', '--etoile'].map(jeton),
+    ['#fff', '#111', '#2e7d4f', '#b45309', '#b45309', '#c99a06']);
+  assert.equal((theme.match(/\n {2,4}--a-choisir: #f0a14a;/g) ?? []).length, 2, '--a-choisir du thème sombre (préférence du système et choix du site)');
+  assert.doesNotMatch(fiche, /--a-choisir:|--vert: #/, 'la fiche ne les écrit plus');
+  for (const [selecteur, attendu] of [['.sort-remarque', 'color: var(--etoile);'], ['.objet__etoile', 'color: var(--etoile);'],
+    ['.onglet__compte--attente', 'background: var(--a-choisir-plein);'], ['.ceinture__numero', 'color: var(--texte-sur-fonce);'],
+    [".budget[data-etat='manque']", 'color: var(--a-choisir);']]) dans('src/styles/fiche/fiche.css', selecteur, attendu);
+});
+
+test('les classes de ce lot posées par les pages, l’éditeur et la fiche : des noms de la palette, jamais une couleur ni un repli écrit', () => {
+  // les gabarits : la classe sur l'élément, plus de --couleur-classe, --couleur-texte-classe ni --couleur-race en style
+  for (const f of ['src/components/classes/ClassesPastilles.astro', 'src/components/classes/ClassePage.astro', 'src/components/race/RacesPastilles.astro',
+    'src/components/race/RacePage.astro', 'src/scripts/edition/nouvelles.mjs']) {
+    assert.doesNotMatch(lire(f), /--couleur-(?:classe|texte-classe|race)|style=\{?`?["']?--c/, f);
+  }
+  assert.match(lire('src/components/classes/ClassesPastilles.astro'), /<section class=\{`classes-groupe \$\{classeDeCategorie\(group\.key\)\}`\} id=\{group\.key\}>/);
+  assert.match(lire('src/components/classes/ClassePage.astro'), /const couleur = classeDUneClasse\(entry\);[^]*<div class=\{`classe \$\{couleur\}`\}/);
+  assert.match(lire('src/components/race/RacesPastilles.astro'), /<section class=\{`races-groupe \$\{classeDeRace\(group\.nature\)\}`\} id=\{group\.key\}>/);
+  assert.match(lire('src/components/race/RacePage.astro'), /<div class=\{`race race--\$\{hybride \? 'hybride' : 'pure'\} \$\{classeDeRace\(hybride \? 'hybride' : 'pure'\)\}`\}>/);
+  const nouvelles = lire('src/scripts/edition/nouvelles.mjs');
+  assert.ok(nouvelles.includes(`<div class="race race--\${hybride ? 'hybride' : 'pure'} \${classeDeRace(hybride ? 'hybride' : 'pure')}">`), 'race créée');
+  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { tags } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
+  // le script de la fiche : chaque pastille, groupe et choix fait pose une classe (teinteDe), jamais `--c` en style ni une couleur reçue ou écrite
+  const fiche = lire('src/scripts/fiche.mjs');
+  assert.doesNotMatch(fiche, /style: `--c|--texte-sur-c: \$\{|\bcouleur: (?:'#|r\.couleur|race|k\.couleur|c\.classe)|\.couleur \?\?|#6b5a45|#8a7a66/, 'aucune couleur de race, de classe ni de neutre');
+  assert.doesNotMatch(fiche, /\b(?:r|race|k|g|c\.classe|d\.classe)\??\.couleur\b/, 'aucune couleur de race ni de classe lue');
+  for (const attendu of [
+    "groupe(titre, regles.race_par_nature[nature], races.map((r) => pastille({", "texte: r.nom, teinte: r,", "teinte: race ?? regles.neutre,",
+    "pastille({ texte: 'Aucune', teinte: regles.neutre,", "texte: o.texte, teinte: regles.neutre,", "groupes.map((g) => groupe(g.label, g, g.classes.map((k) => pastille({",
+    "class: ['dons-classe', ...teinteDe(c.classe)].join(' ')", "class: trouver(regles.resistance_paliers, p.id)?.classe ?? null, dataset: { palier: p.id }",
+    "...teinteDe(regles.mode_hyper)]", "...teinteDe(regles.mode_hyper.cent)]",
+  ]) assert.ok(fiche.includes(attendu), attendu);
+  assert.match(fiche, /function groupe\(titre, teinte, elements\) \{\n {2}return el\('div', \{ class: \['groupe-pastilles', \.\.\.teinteDe\(teinte\)\]\.join\(' '\) \},\n {4}el\('h4', \{\}, el\('span', \{ class: 'pastille__point', 'aria-hidden': 'true' \}\), titre\),/);
+  // les modules lus par le navigateur n'importent pas les modules de ces règles (les noms arrivent par regles.json)
+  assert.doesNotMatch(fiche, /^import [^;]*(?:class-groups|race-kinds|fiche-couleurs)\.mjs';$/m);
 });
