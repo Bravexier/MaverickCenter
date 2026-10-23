@@ -20,7 +20,7 @@ Trois choses seulement attendent le propriétaire :
    - le journal du job rouge et l'état du même check sur le dernier commit de `dev` (outils GitHub) ;
    - le texte exact des commentaires.
 4. **Après la correction poussée**, relire l'état et recommencer jusqu'à la fusion. Le nombre de tours n'est pas limité : un constat qui revient à chaque push appelle la correction de sa cause.
-5. **Pour un conflit que GitHub n'annonce pas** (la base a bougé), rebaser de toute façon avant chaque correction : `resoudre-un-conflit`.
+5. **Pour un conflit que GitHub n'annonce pas** (la base a bougé), rebaser avant la correction, mais seulement au tour de la PR : `resoudre-un-conflit`.
 
 ## Ce qui se corrige, et qui le fait
 
@@ -30,7 +30,7 @@ Seule la session principale a les outils GitHub. Elle seule commente, répond à
 | --- | --- | --- |
 | **CI rouge** | `tech-qualite` diagnostique (`diagnostiquer-la-ci`). L'auteur de la zone corrige, `tech-qualite` relit la correction en court, puis `tech-publication` rebase et pousse. | Fournit le journal et l'état du check sur `dev`. |
 | **CI rouge venue de la base** (le même check est rouge sur `dev`) | Si un correctif existe (PR ouverte, revert), l'auteur de la zone le reporte dans la branche, puis `tech-publication` pousse. | Si aucun correctif n'existe : un seul commentaire sur la PR, qui dit le check, la raison et le correctif proposé. Une seule relance du job au plus, dans les cas de `diagnostiquer-la-ci`. |
-| **Conflit avec la base** | `tech-publication` rebase et résout (`resoudre-un-conflit`). Un conflit de données ou de sens va aussitôt à son auteur. On relance les contrôles touchés, puis on pousse. | — |
+| **Conflit avec la base** | Vérifier d'abord l'ordre de passage (`publier-une-branche`, « L'ordre de passage ») : si ce n'est pas le tour de la PR, ne pas rebaser. À son tour, `tech-publication` rebase et résout (`resoudre-un-conflit`). Un conflit de données ou de sens va aussitôt à son auteur. On relance les contrôles touchés, puis on pousse. | — |
 | **Revue : petite demande** (renommage, test ajouté, correction locale) | Faite et poussée. | Répond au fil en une ligne, avec le commit, et le résout. |
 | **Revue : demande lourde ou de conception** | Rien n'est poussé ; le `leader-technique` rédige sa proposition. | Remonte la proposition au propriétaire. |
 | **Constat d'un robot de revue** | Vérifié : un chemin réel mène-t-il à l'erreur ? Si oui, corrigé et poussé. Un constat marqué facultatif ne déclenche pas un push à lui seul. | Sinon, répond sur le fil avec la raison. |
@@ -40,5 +40,5 @@ Seule la session principale a les outils GitHub. Elle seule commente, répond à
 - **Jamais** de test sauté, désactivé ou mis en quarantaine, de commit vide, ni de PR refermée puis rouverte pour relancer la CI.
 - **Jamais** de fusion de la base dans la branche : on rebase. Le push après un rebase utilise `--force-with-lease --force-if-includes` (`resoudre-un-conflit`).
 - **Le fond.** Une correction qui change une règle ou le lore passe par le contrôle du fond (`circuit-des-demandes`).
-- **Avant chaque push,** les contrôles que la correction touche (`controles-avant-rendu`) sont verts en local : un push qui rougit la CI coûte un tour.
+- **Avant chaque push,** les tests pertinents pour la correction (`npm run test:cible`, `choisir-les-tests`) sont verts en local : un push qui rougit la CI coûte un tour.
 - **Ce qui ne se corrige pas depuis la PR** (panne de la base sans correctif, accès manquant) se dit une fois, sur la PR, par la session principale. La PR reste suivie jusqu'à sa fusion ou sa fermeture.

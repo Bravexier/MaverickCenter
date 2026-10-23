@@ -6,6 +6,14 @@ user-invocable: false
 
 # Relire un diff
 
+## Politique de relecture
+
+- **Les scripts d'abord.** Ce qui se vérifie mécaniquement ne se relit pas : `node --test test/instructions-claude.test.mjs` (instructions), `git diff --check`, les tests choisis par `npm run test:cible` (`choisir-les-tests`). Le jugement est réservé à ce qu'un script ne voit pas.
+- **Une relecture complète par lot, puis des relectures courtes** : limitées au diff de la correction, et aux constats **bloquants** seulement. Les remarques de style ou de forme d'un tour suivant ne déclenchent pas un nouveau tour : elles vont dans la synthèse.
+- **Tu es ton propre relecteur dans le circuit court** (`leader-technique`) : cette grille, appliquée à ton diff, sans appeler `tech-qualite`.
+
+## La grille
+
 Relis d'un regard neuf, sans la conclusion attendue : `git diff origin/dev...HEAD`, `git log origin/dev..HEAD`, puis les fichiers autour. Pour chaque zone touchée, charge son skill (`zone-…`, `ui-…`, `site-…`, `base-…`) : ses invariants sont ta grille.
 
 À chercher :

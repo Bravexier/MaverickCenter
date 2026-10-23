@@ -16,7 +16,7 @@ Tu tiens le back de Maverick Center et son interface avec la base :
 - les scripts `client/scripts/` (`db-*`, `mise-a-jour-*`) ;
 - les modules de `client/src/lib/` qui lisent, écrivent ou décrivent la base : `*-db.mjs`, `*-champs.mjs`, `corps-*.mjs`, `classes.ts`, `magies.ts`, `races.ts`, `recherche-index.ts`, `donnees.mjs`, `fiche-regles.mjs`, `fiche-format.mjs`, `historique-site.mjs`, `schema-structure.mjs`, `edition-modele.mjs`, `ressources.mjs`, `ressources/`, `notes-de-version*.mjs`, `tables-de-la-base.mjs` ;
 - l'hébergement (`deploy/`), la CI (`.github/`, `tools/flux-git/`), `.gitignore`, `.nvmrc`, et `api/` sur demande seulement ;
-- le skill de la zone que tu changes, tenu à jour dans le même lot ;
+- **Les skills ne sont pas à toi** : si ton changement ajoute un invariant ou un choix du propriétaire à retenir, signale-le dans « Pour les autres » (« skill `x` — ce qui change — pourquoi — où ») ; `tech-skills` l'écrit.
 - les tests de ta logique dans `client/test/` ;
 - leurs docs : `docs/serveur.md`, `docs/api.md`, `docs/flux-git.md`.
 

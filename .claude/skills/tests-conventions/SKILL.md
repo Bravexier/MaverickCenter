@@ -6,7 +6,7 @@ user-invocable: false
 
 # Conventions des tests
 
-- **Un test par logique.** Toute logique de règle ou de lien nouvelle a son test dans `client/test/` (`node:test`, `npm test`). Une décision appliquée est épinglée par un test qui cite son numéro (`R41`).
+- **Un test par logique.** Toute logique de règle ou de lien nouvelle a son test dans `client/test/` (`node:test`). Ce qui se lance après, c'est la sélection pertinente, pas la suite entière : skill `choisir-les-tests`. Une décision appliquée est épinglée par un test qui cite son numéro (`R41`).
 - **Le site de dev est la source de ce qu'il modifie** (décision du propriétaire).
   - Un test qui épingle une valeur de l'import (effectif, texte cité, liste du classeur) la lit par `client/src/lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`, `effectifDImport`, table `historique_modification`).
   - L'état courant, lui, se contrôle par des invariants de cohérence, jamais par la valeur figée de l'import.

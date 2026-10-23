@@ -15,7 +15,7 @@ user-invocable: false
 
 ## À lire
 - `docs/content-guide.md`, « Équipement (`/ressources/equipement/`) » et « Panneaux de règles (en tête des onglets et du sous-onglet Bâtons magiques) ».
-- `docs/serveur.md`, « Édition », ligne « Panneaux de règles » ; notes de version des panneaux : `docs/serveur.md` (domaine « Équipement », `comparerOrdreDesBlocs`).
+- `docs/serveur.md`, « Édition des règles (site de dev) », ligne « Panneaux de règles » ; notes de version des panneaux : `docs/serveur.md` (domaine « Équipement », `comparerOrdreDesBlocs`).
 
 ## Page et onglets
 - Une page sans page du wiki, rendue depuis la base. Une seule entrée du menu, « Équipement » (rubrique Règles).

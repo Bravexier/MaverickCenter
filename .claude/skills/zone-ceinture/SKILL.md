@@ -1,7 +1,7 @@
 ---
 name: zone-ceinture
 description: "Onglet Ceinture de /ressources/equipement/ : vue v_objet_ceinture (R81, R82), sous-onglets Consommables (et ses onglets par famille), Carquois, Bâtons magiques, couleurs du site (règle des potions), édition des potions (potion, potion_etat), prix des bâtons. À charger avant de lire, modifier ou relire ce code."
-paths: ["client/src/lib/ceinture-db.mjs", "client/src/lib/ceinture-rendu.mjs", "client/src/lib/alchimie-couleurs.mjs", "client/src/lib/palette-css.mjs", "client/src/lib/batons-*.mjs", "client/src/lib/corps-potions.mjs", "client/src/lib/potion-etats.mjs", "client/src/components/ceinture/**", "client/src/scripts/batons.mjs", "client/src/styles/ceinture/**", "client/serveur/edition-consommables.mjs", "client/test/ceinture-*.test.mjs", "client/test/alchimie-couleurs.test.mjs", "client/test/batons-script.test.mjs", "client/test/corps-potions.test.mjs", "client/test/potion-etats.test.mjs", "client/test/serveur-edition-consommables.test.mjs"]
+paths: ["client/src/lib/ceinture-db.mjs", "client/src/lib/ceinture-rendu.mjs", "client/src/lib/alchimie-couleurs.mjs", "client/src/lib/batons-*.mjs", "client/src/lib/corps-potions.mjs", "client/src/lib/potion-etats.mjs", "client/src/components/ceinture/**", "client/src/scripts/batons.mjs", "client/src/styles/ceinture/**", "client/serveur/edition-consommables.mjs", "client/test/ceinture-*.test.mjs", "client/test/alchimie-couleurs.test.mjs", "client/test/batons-script.test.mjs", "client/test/corps-potions.test.mjs", "client/test/potion-etats.test.mjs", "client/test/serveur-edition-consommables.test.mjs"]
 user-invocable: false
 ---
 # Ceinture

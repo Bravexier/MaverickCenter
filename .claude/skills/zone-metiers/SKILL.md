@@ -35,7 +35,7 @@ user-invocable: false
 - Un rang à plusieurs compétences se choisit dans la fiche (`personnage_metier_bonus`, `v_personnage_metier_bonus`).
 - L'artisanat = un texte + 2 caractéristiques (R34), 10 × chacune (constante `metier.artisanat_par_point_caracteristique`).
 - L'équipement = des objets de départ (`metier_objet_depart`) ajoutés à l'inventaire (R35 ; options d'un choix données en entier, R40).
-- Effets sur la fiche (Acquis, plafond R41, croix R39, `artisanatDe`, `bonusDuMetier`) : skill `zone-fiche`.
+- Effets sur la fiche (Acquis, plafond R41, croix R39, `artisanatDe`, `bonusDuMetier`) : skill `zone-fiche-acquis`.
 
 ## Tests
 - `client/test/metiers-html.test.mjs` : aucun lien du site construit ne mène à une page de métier (CI après le build).

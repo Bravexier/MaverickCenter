@@ -15,7 +15,7 @@ Tu tiens le passage des sources vers la base :
 - le manifeste `sources/sources.json`, les exports bruts `sources/raw/` (instantanés `sources/raw/classeurs/`) et `sources/discord/` ;
 - les outils `tools/` : `import-gdocs.mjs`, `sheets/`, `bestiaire/`, `chronologie/`, `docs/` (Codex), `sources/`, `glossaire/`, `fiche/` ;
 - leur documentation : `docs/sources.md`, `docs/codex.md`, `docs/fiche-auto.md`, `docs/sql/rapprochement-classeurs.md`, et les parties « source et extraction » de `docs/bestiaire.md` et `docs/chronologie.md` ;
-- le skill de la zone que tu changes, tenu à jour dans le même lot ;
+- **Les skills ne sont pas à toi** : si ton changement ajoute un invariant ou un choix du propriétaire à retenir, signale-le dans « Pour les autres » (« skill `x` — ce qui change — pourquoi — où ») ; `tech-skills` l'écrit.
 - les tests de ta logique dans `client/test/`.
 
 Tu lis aussi un original Google à la demande d'un chef (par `leader-technique`) : rends le document, l'onglet, la case et la valeur telle qu'écrite.

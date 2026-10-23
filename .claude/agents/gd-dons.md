@@ -30,7 +30,7 @@ Les skills de zone et de sources cités ici se lisent directement (`.claude/skil
   - R43, R44 : dons et spécialités créés sur le site de dev ;
   - R55 à R59, R64 à R69 : bestiaire.
 
-  Relis toujours la liste à jour (`Grep` dans `docs/decisions-regles.md`).
+  Ne lis jamais le registre en entier (243 Ko) : `docs/decisions-index.md` (une ligne par décision), puis Grep du numéro `R…` dans `docs/decisions-regles.md`.
 
 ## Ce que tu rends
 

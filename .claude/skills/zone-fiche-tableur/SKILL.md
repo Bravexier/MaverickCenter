@@ -1,7 +1,7 @@
 ---
 name: zone-fiche-tableur
 description: "Fiche en tableur de /fiche/ : Télécharger (.xlsx), Exporter (Google Sheets), Importer (PC) et (en ligne), modèle V15.2.2 ordinateur et fiche auto, case NOTE, lecture .xlsx/.ods/.csv. À charger avant de lire, modifier ou relire ce code ou ses tests."
-paths: ["client/src/lib/fiche-tableur-*.mjs", "client/src/lib/tableur-*.mjs", "client/src/lib/zip.mjs", "client/src/lib/xml-mini.mjs", "client/src/lib/fiche-modele.mjs", "client/src/lib/google-sheets.mjs", "client/src/modeles/fiche-personnage/**", "client/src/pages/fiche/modele.xlsx.ts", "tools/fiche/modele.py", "client/test/fiche-tableur-*.test.mjs", "client/test/tableur-*.test.mjs", "client/test/google-sheets.test.mjs", "client/test/zip.test.mjs", "client/test/xml-mini.test.mjs", "docs/fiche-auto.md"]
+paths: ["client/src/lib/fiche-tableur-*.mjs", "client/src/lib/tableur-*.mjs", "client/src/lib/zip.mjs", "client/src/lib/xml-mini.mjs", "client/src/lib/fiche-modele.mjs", "client/src/lib/google-sheets.mjs", "client/src/modeles/fiche-personnage/**", "client/src/pages/fiche/modele.xlsx.ts", "tools/fiche/modele.py", "client/test/fiche-tableur-*.test.mjs", "client/test/fiche-modele.test.mjs", "client/test/tableur-*.test.mjs", "client/test/google-sheets.test.mjs", "client/test/zip.test.mjs", "client/test/xml-mini.test.mjs", "docs/fiche-auto.md"]
 user-invocable: false
 ---
 # Fiche en tableur

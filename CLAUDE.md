@@ -19,7 +19,7 @@ Les règles et le lore viennent du Discord « L'univers de Maverick » et de Goo
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` (R1 et suivantes, liste à jour) recense les choix du propriétaire : quand les sources se contredisent ou se taisent, ou quand il change une règle. Le code et les tests citent leur numéro (`R41`).
+`docs/decisions-regles.md` (R1 et suivantes, liste à jour) recense les choix du propriétaire : quand les sources se contredisent ou se taisent, ou quand il change une règle. Le code et les tests citent leur numéro (`R41`). Le registre est lourd : on le lit par `docs/decisions-index.md` (une ligne par décision), puis par un `Grep` sur le numéro, jamais en entier.
 - Les suivre, et ne jamais en déduire d'autres.
 - Une nouvelle décision s'ajoute au registre, pas ici (skill `consigner-une-decision`).
 
@@ -46,7 +46,8 @@ La session principale ne délègue qu'à **trois chefs**. Chacun dirige son équ
 - Une question que seul le propriétaire tranche remonte jusqu'à la session principale, qui la lui pose.
 
 Le protocole complet (briefs, rapports, relances, profondeur des sous-agents, circuit d'une règle, publication) est dans le skill `circuit-des-demandes`.
-Les instructions générales (`CLAUDE.md`, agents, skills de procédure, `docs/equipe.md`) sont tenues par la session principale, à la demande du propriétaire. Un skill de zone est tenu à jour par l'auteur de chaque changement de sa zone, et `tech-qualite` relit les deux.
+Les instructions générales (`CLAUDE.md`, fiches d'agents, `docs/equipe.md`) sont tenues par la session principale, à la demande du propriétaire. **Les skills ne sont modifiés que par `tech-skills`** : l'auteur d'un changement signale ce qui doit y entrer dans son rapport, `leader-technique` remet les demandes du lot à `tech-skills` (budget de taille et décision d'éclater : skills `tenir-un-skill`, `eclater-un-skill`). `tech-qualite` relit les deux.
+Un petit lot ou un correctif suit le **circuit court** : `leader-technique` le fait lui-même et ne délègue que sur une difficulté imprévue.
 
 ## Vision à long terme
 
@@ -108,7 +109,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   - `src/lib/*.mjs` reste sans dépendance navigateur ni Astro.
   - Le code qui touche au DOM va dans `src/scripts/`.
   - Deux scripts de page n'importent jamais le même module.
-- **Tests.** Toute logique de règle ou de lien nouvelle a son test dans `client/test/` (skill `tests-conventions`). Jamais un test sauté pour obtenir du vert.
+- **Tests.** Toute logique de règle ou de lien nouvelle a son test dans `client/test/` (skill `tests-conventions`). On ne lance que les tests pertinents (`npm run test:cible`, skill `choisir-les-tests`) ; la CI lance la suite entière. Jamais un test sauté pour obtenir du vert.
 
 ## Git
 
@@ -117,6 +118,7 @@ Règles du propriétaire. Détail dans `docs/flux-git.md` et le skill `publier-u
   - On ne crée que `feature/<nom>` depuis `origin/dev`, ou `hotfix/<nom>` depuis `origin/master`, et seulement à la demande du propriétaire pour un hotfix.
   - `<nom>` dit le changement. Une branche au nom aléatoire se renomme avant le premier push.
 - **Après le dernier commit, et avant chaque push.** `git fetch --prune origin`, `git rebase` sur la base si elle a bougé, conflits résolus aussitôt (skill `resoudre-un-conflit`), puis push et PR. Jamais de fusion de la base dans la branche, sauf la refusion de `master` dans `dev` (`docs/flux-git.md`).
+- **L'ordre de passage.** Plusieurs sessions livrent en même temps et `dev` avance à chaque fusion. Pour éviter une suite de rebases, les PR dont les fichiers se recoupent passent dans l'ordre de leur numéro, sauf demande urgente et explicite du propriétaire. La session principale annonce l'ordre sur chaque PR concernée ; chacune ne rebase qu'à son tour, une seule fois (skill `publier-une-branche`).
 - **La version.** Ne jamais modifier celle de `client/package.json` : le bot la tient.
 - **Les PR.** Une PR ouverte se corrige automatiquement (CI rouge, conflit, revue) jusqu'à sa fusion (skill `corriger-une-pr`). Celles vers `dev` se fusionnent sans attendre le propriétaire dès que la CI est verte, par « Create a merge commit ».
 - **Ce qui attend le propriétaire.** `dev` → `master` et tout hotfix : seulement à sa demande. Jamais `[V: X+1]` de soi-même.

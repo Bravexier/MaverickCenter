@@ -15,7 +15,7 @@ user-invocable: false
   - Ils se lisent par les connecteurs Google de la session (`tech-sources`).
   - Depuis une session cloud, Discord et `docs.google.com` sont bloqués par la politique réseau, et aucun connecteur Discord n'existe.
   - Ne jamais utiliser un jeton Discord personnel.
-- **Les décisions du propriétaire** sont dans `docs/decisions-regles.md` (R1 et suivantes). Elles priment sur les sources qu'elles tranchent.
+- **Les décisions du propriétaire** sont dans `docs/decisions-regles.md` (R1 et suivantes). Elles priment sur les sources qu'elles tranchent. Ce registre fait 243 Ko : ne le lis jamais en entier. Lis `docs/decisions-index.md` (une ligne par décision), puis cherche le numéro ou un mot-clé avec Grep dans le registre.
 
 ## Juger une affirmation
 

@@ -9,7 +9,7 @@ user-invocable: false
 Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `character-service`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Les règles de branches sont dans `docs/flux-git.md`.
 
 1. **Le journal.** La session principale fournit, par les outils GitHub, le journal du job et l'état du même check sur le dernier commit de `dev`. Garder l'erreur exacte, le test et le fichier.
-2. **Reproduire en local** sur la tête de la branche, avec la même commande que le job (`npm test`, `npm run build` puis les tests `*-html`, `db:check`…).
+2. **Reproduire en local** sur la tête de la branche, en commençant par le **seul fichier de test en échec** (`node --test test/<fichier>`), avec la même commande que le job pour le reste (`npm run build` puis les tests `*-html`, `db:check`…). Puis la sélection pertinente (`npm run test:cible`) une fois la correction faite, pas la suite entière.
 3. **Est-ce la PR ?**
    - Le même check est-il rouge sur `origin/dev` ? Si oui, l'échec vient de la base. Le dire avec la preuve. S'il existe un correctif (une PR ouverte, un revert), le reporter dans la branche ; il deviendra sans effet une fois la base corrigée.
    - Sinon, l'échec est à la PR : trouver la cause racine dans le diff.
