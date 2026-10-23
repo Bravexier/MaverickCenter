@@ -246,7 +246,8 @@ abandonne.
     largeur : `@container`) : famille, points, dés (`notationDesDes`, 5 dés au plus) et d'où viennent les points (« Mage Bleu (maîtrise 1) +1 · Mage saphir
     (Mage Bleu) +2 (suit un choix) ») ; les points au-delà du plafond sont signalés sur la ligne (« 5 points : 1 au-delà du plafond, non compté », R149),
     un total des sources sous 0 aussi (« ramené à 0 », R151). Pas de ligne pour « ARME DE MONSTRES », des armes exclusives aux monstres (décision R45,
-    `arme_famille.maitrisable`, `famillesMaitrisables`). Le **Pugilat** montre le seul dé de la Force du personnage, +1 de la magie innée compris
+    `arme_famille.maitrisable`, `famillesMaitrisables`) ; une famille créée sur le site de dev a sa ligne, et entre dans les sélecteurs de sa catégorie
+    et dans celui de l'accessoire (décision R159 ; le classeur exporté garde sa grille de 11 familles : `docs/serveur.md`, « Édition »). Le **Pugilat** montre le seul dé de la Force du personnage, +1 de la magie innée compris
     (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par `lib/maitrise-arme.mjs#desSelonLaForce`), en infobulle.
     La légende dit la règle depuis les constantes (`maitrise_arme.*`).
   - **Dans le coin du bloc**, « N points · M à choisir » (`compteurDeMaitrise`, `presentationDuCompteurDeMaitrise` : la somme signée des sources, et les

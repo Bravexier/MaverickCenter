@@ -553,8 +553,9 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   de l'onglet. Un onglet par famille : son nom, la pastille de son dé, son nombre d'armes ; le premier de chaque menu ouvert au départ, un seul ouvert
   par menu (`components/Onglets.astro`, motif « tabs » : flèches, Début, Fin). Le panneau d'une famille garde l'id `famille-<id>` : un lien ou une
   adresse `#famille-…` (celui de la Ceinture vers les bombes, une adresse partagée) ouvre l'onglet Armes de la page, puis l'onglet de la famille ;
-  **l'onglet choisi n'est pas écrit dans l'adresse** (`data-onglets-sans-adresse`, aucun paramètre pour lui) : un onglet de famille s'ouvre par une
-  adresse ou un lien de la page vers sa famille (`#famille-…`) ou vers une de ses armes (`#arme-…`), par `?arme=`, ou en ouvrant une arme. Sur un écran
+  **l'onglet choisi est écrit dans l'adresse** (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme
+  choisie : « #famille-epees ») : recharger la page ou partager l'adresse rouvre la famille ; `#boucliers` reste l'onglet Boucliers ; aucun paramètre
+  pour l'onglet. Un onglet de famille s'ouvre aussi par un lien de la page vers une de ses armes (`#arme-…`), par `?arme=`, ou en ouvrant une arme. Sur un écran
   étroit, la barre passe à la ligne et n'y garde que le nom et le dé. Plus de « Tout déplier » ni de « Tout replier ». Sans JavaScript, les tableaux
   se suivent, chacun sous son titre (nom, dé, compte), les onglets ne sont que des liens.
 - **Un tableau par famille** (bandeau de l'onglet : Épées, Dagues…), le panneau de son onglet, qui ne se replie plus ; sans les armes de monstres
@@ -571,8 +572,8 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
 - **Filtre par compétence** (« filtrer les armes par compétence arc / arbalète / légère et lourde ») : quatre boutons à bascule, Lourde, Légère, Arc,
   Arbalète, dans leur couleur (ils servent aussi de légende) ; une arme reste si l'UNE de ses compétences est choisie (« Arc / Arme Légère » sous Arc comme
   sous Légère), « Toutes » efface le choix ; l'onglet d'une famille sans arme affichée se cache, un menu dont aucune famille n'a d'arme affichée aussi,
-  et si l'onglet ouvert d'un menu n'en a plus, le premier qui en a s'ouvre (`lib/armes-filtres.mjs#ongletARouvrir`, sans toucher à l'adresse ni faire
-  défiler) ; le compte de tout l'onglet dit « N armes sur M » dès que le filtre est actif, ceux des tableaux et des onglets seulement quand des armes
+  et si l'onglet ouvert d'un menu n'en a plus, le premier qui en a s'ouvre (`lib/armes-filtres.mjs#ongletARouvrir`, sans faire défiler ; l'adresse
+  suit quand elle désignait l'onglet fermé : `ancreApresLeFiltre`) ; sans filtre, rien ne se cache (une famille sans arme garde son onglet) ; le compte de tout l'onglet dit « N armes sur M » dès que le filtre est actif, ceux des tableaux et des onglets seulement quand des armes
   sont cachées (sinon le total) ; une arme ouverte qui disparaît se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
   l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
@@ -600,20 +601,29 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
   avec `competence=…` et `depart=1` du filtre ; le matériau et l'amélioration y restent sans arme).
   Sans JavaScript, tous les tableaux s'affichent, l'un après l'autre, sans fiche.
-- **Mode modification** (site de dev) : rien ne se sélectionne et **tous les tableaux sont visibles** (demande antérieure du propriétaire, qui tient
-  avec les menus : « Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux
-  sont visibles ») : les barres d'onglets se cachent, chaque famille s'affiche à la suite sous son titre (nom, dé, compte), comme sans JavaScript, sous
-  le titre de son menu (« Armes de mêlée », « Armes à distance ») ; pas de filtre ; les matériaux et les améliorations s'ouvrent. Une arme créée
-  s'ajoute à la fin du tableau de sa famille et la page défile jusqu'à elle (l'onglet de sa famille s'ouvre aussi). En sortant, les onglets reviennent,
-  un panneau ouvert par menu ; cinq colonnes de plus (Description, Coût, Effet, Arme de
+- **Mode modification** (site de dev) : rien ne se sélectionne ; **les onglets restent affichés** (demande du propriétaire, 2026-10-23 : « Je veux les
+  onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est pas possible de
+  "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, le titre de la famille ouverte
+  (nom, dé, compte) au-dessus de son tableau ; pas de filtre ; les matériaux et les améliorations s'ouvrent. Une arme créée s'ajoute à la fin du
+  tableau de sa famille, dont l'onglet s'ouvre, et la page défile jusqu'à elle. Cinq colonnes de plus (Description, Coût, Effet, Arme de
   départ, Remarque : saisie, l'étoile apparaît ; vidée, elle part, R91) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
   boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
+- **Familles d'armes** (décision R159 ; demande du propriétaire, 2026-10-23 : « la possibilité de changer le nom et leur dés, ou même de créer un nouvel
+  onglet donc un nouveau tableau si besoin ») : en mode modification, le nom et le dé d'une famille se modifient dans le titre de son tableau, l'en-tête
+  de sa colonne de coût dans cette colonne (un des trois de la base : « Coût », « Coût en plus/moins », « Coût en plus/moins (unité) ») ; le dé est
+  obligatoire, « D10 » ou « D6/D8/D10 » (« d6 / d8 » s'enregistre « D6/D8 ») ; l'onglet suit. **« + Nouvelle famille »**, sous la barre de chaque
+  menu, crée une famille de ce menu (sa catégorie, mêlée ou distance, ne change plus ensuite) : nom, dé, en-tête de coût ; un refus du service (nom
+  déjà pris, maîtrise qui se lirait autrement…) s'affiche tel quel. Son onglet et son tableau vide apparaissent aussitôt, ouverts (les modèles
+  `<template data-armes-modele>` de la page, `lib/armes-rendu.mjs#htmlDeFamilleDepuisModele`), et on peut y créer une arme ; une famille créée depuis la
+  construction du site apparaît au chargement du site de dev. Pas de suppression ; ARME DE MONSTRES reste hors de la page (R45). Les points de
+  maîtrise et le classeur : `docs/serveur.md`, « Édition », et `docs/character-generator.md`.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
-  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs` (filtre, comptes, onglet à rouvrir), `armes-menus.test.mjs` (les deux menus, R127), `armes-script.test.mjs`
-  (le script dans un faux navigateur : onglets et menus cachés, onglet rouvert, arme ouverte), `onglets-script.test.mjs` (le script des onglets construit :
-  groupe sans adresse, onglet caché sauté, `detail.dans`), `armes-edition.test.mjs` (l'extension du mode modification dans un faux navigateur : comptes
-  du tableau et de l'onglet après un ajout et une suppression, `onglets:ouvrir` à la création), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit : les deux menus et
-  leurs onglets, filtre, seconde ligne des effets, panneau, règles mises en forme).
+  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs` (filtre, comptes, onglet à rouvrir, ancre qui suit le filtre), `armes-menus.test.mjs` (les deux menus, R127), `armes-script.test.mjs`
+  (le script dans un faux navigateur : onglets et menus cachés, onglet rouvert, arme ouverte, adresse qui suit, famille sans arme), `onglets-script.test.mjs` (le script des onglets construit :
+  `#famille-…` écrit au choix, chargement par `#famille-…` puis `#boucliers`, option sans adresse, onglet caché sauté, `detail.dans`, re-branchement),
+  `armes-edition.test.mjs` (l'extension du mode modification dans un faux navigateur : comptes du tableau et de l'onglet après un ajout et une
+  suppression, `onglets:ouvrir` à la création, « + Nouvelle famille » et la surcouche des familles créées), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit : les deux menus et
+  leurs onglets, filtre, seconde ligne des effets, panneau, règles mises en forme, champs d'une famille, modèles d'une famille créée).
 
 
 ## Armures et boucliers (onglets Armures et Boucliers de `/ressources/equipement/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier

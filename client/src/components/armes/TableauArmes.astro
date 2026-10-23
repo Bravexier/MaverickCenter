@@ -1,15 +1,22 @@
 ---
 import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
 import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import Tableau from '../Tableau.astro';
 
 // Le tableau d'UNE famille d'armes (bandeau de l'onglet « Armes »), panneau de son onglet dans le menu de sa catégorie (ArmesPage.astro : deux menus
 // à onglets, mêlée et distance ; demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. […] Le fonctionnement interne des
 // tableaux reste inchangé ») : il ne se replie plus (`repliable={false}` ; avant, « chaque tableau peut être réduit si besoin »), garde l'id
-// `famille-<id>` (lien de la Ceinture `#famille-bombes`, src/scripts/edition/armes.mjs, adresses partagées) et les classes `armes-famille*` ; ouvert
-// au départ (`actif`), il porte `is-active` comme son onglet. Sur le gabarit commun des tableaux (components/Tableau.astro), aéré (« l'affichage est
-// trop serré ») : son titre (nom, dé, compte), que l'onglet répète, ne se voit que sans JavaScript et en mode modification, où toutes les familles se
-// suivent (styles/armes/armes.css).
+// `famille-<id>` (lien de la Ceinture `#famille-bombes`, src/scripts/edition/armes.mjs, l'ancre que l'adresse retient quand on choisit son onglet :
+// demande du propriétaire, 2026-10-23, « On peut retenir l'onglet ouvert #epee par exemple ») et les classes `armes-famille*` ; ouvert au départ
+// (`actif`), il porte `is-active` comme son onglet. Sur le gabarit commun des tableaux (components/Tableau.astro), aéré (« l'affichage est trop
+// serré ») : son titre (nom, dé, compte), que l'onglet répète, ne se voit que sans JavaScript et en mode modification, où il porte les champs de la
+// famille (styles/armes/armes.css).
+// La famille se modifie ici, dans l'en-tête du tableau, jamais dans l'onglet (décision R159, 2026-10-23 : « la possibilité de changer le nom et leur
+// dés, ou même de créer un nouvel onglet donc un nouveau tableau si besoin ») : son nom (le nom du titre, `data-ed`), son dé (la pastille du titre,
+// toujours écrite, cachée si elle est vide hors du mode modification : `data-ed-cadre`) et l'en-tête de sa colonne de coût (en mode modification) ;
+// l'onglet suit (OngletDeFamille.astro, `data-ed-lecture`). Rendu aussi pour la famille fictive du modèle d'une famille créée
+// (lib/armes-rendu.mjs#MODELE_DE_FAMILLE : un `<template>` d'ArmesPage.astro, que src/scripts/edition/armes.mjs remplit).
 // Nom (la description en infobulle : « La description prend trop de place dans le tableau. Mets-la en tooltip »), Compétence (pastille dans la couleur
 // de sa caractéristique : Force pour l'Arme Lourde et l'Arc, Agilité pour l'Arme Légère, Perception pour l'Arbalète, dégradé pour deux ; décision R48),
 // Type, Dégâts, Type de dégâts, Portée (1 par défaut, décision R50), Solidité (le mot-clé du glossaire, migration 0058), Origine ; les effets supplémentaires sur une seconde ligne, sous l'arme
@@ -22,7 +29,7 @@ import Tableau from '../Tableau.astro';
 // les colonnes tirées viennent), Arme de départ, Remarque (l'étoile ★ à côté du nom ; vidée, l'étoile part).
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
-  famille: Armes['familles'][number];
+  famille: Omit<Armes['familles'][number], 'categorie' | 'armes'> & { armes: readonly Armes['familles'][number]['armes'][number][] };
   contexte: ReturnType<typeof contexteDesArmes>;
   /** l'onglet ouvert au départ dans son menu */
   actif?: boolean;
@@ -30,6 +37,7 @@ interface Props {
 const { famille, contexte, actif = false } = Astro.props;
 const id = `famille-${famille.id}`;
 const unite = famille.cout_libelle.includes('(unité)');
+const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, colonne);
 ---
 
 <Tableau
@@ -43,8 +51,9 @@ const unite = famille.cout_libelle.includes('(unité)');
   class={actif ? 'is-active' : undefined}
   classeTable="armes-table table-donnees--aeree"
   attributs={{ 'data-note': famille.note_brut ?? '', 'data-unite': unite ? '1' : undefined }}
+  attributsNom={{ 'data-ed': ed('nom') }}
 >
-  {famille.de_brut && <span slot="outils" class="armes-famille__de" title="Dé de la famille, sauf indication contraire">{famille.de_brut}</span>}
+  <span slot="outils" class="armes-famille__de" title="Dé de la famille, sauf indication contraire" data-ed={ed('de_brut')} data-ed-cadre hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
   <thead>
     <tr>
       <th scope="col">Nom</th>
@@ -56,7 +65,7 @@ const unite = famille.cout_libelle.includes('(unité)');
       <th scope="col">{'{{solidite}}'}</th>
       <th scope="col">Origine</th>
       <th scope="col" class="ed-seul">Description</th>
-      <th scope="col" class="ed-seul">{famille.cout_libelle}</th>
+      <th scope="col" class="ed-seul"><span data-ed={ed('cout_libelle')}>{famille.cout_libelle}</span></th>
       <th scope="col" class="ed-seul">Effet (texte de l’onglet)</th>
       <th scope="col" class="ed-seul">Arme de départ</th>
       <th scope="col" class="ed-seul">Remarque</th>

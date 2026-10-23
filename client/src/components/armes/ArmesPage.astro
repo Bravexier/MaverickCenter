@@ -4,11 +4,12 @@ import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
 import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
-import { htmlDuFiltreDeCompetence, menusDesArmes } from '../../lib/armes-rendu.mjs';
+import { htmlDuFiltreDeCompetence, menusDesArmes, MODELE_DE_FAMILLE } from '../../lib/armes-rendu.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles, cssDesSecondsRangs } from '../../lib/palette-css.mjs';
 import Tableau from '../Tableau.astro';
 import TableauArmes from './TableauArmes.astro';
+import OngletDeFamille from './OngletDeFamille.astro';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
 import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
@@ -23,18 +24,25 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») :
 // « Armes de mêlée » (familles de catégorie `contact`) et « Armes à distance » (`distance`), groupées ici par `familles[].categorie` (décision R127,
 // lib/armes-rendu.mjs#menusDesArmes), dans l'ordre de l'onglet ; chaque menu, un bloc `section.armes-bloc` (son titre, sa barre `nav.armes-onglets
-// [data-onglets]`, puis ses panneaux) : un onglet par famille (nom, pastille du dé, nombre d'armes) vers le tableau de la famille (TableauArmes.astro,
-// id `famille-<id>`), un seul ouvert par menu (components/Onglets.astro, posé une fois par la page ; l'onglet choisi n'est pas écrit dans l'adresse :
-// `data-onglets-sans-adresse`) ; à côté, toujours affiché et de la
+// [data-onglets]`, puis ses panneaux) : un onglet par famille (OngletDeFamille.astro : nom, pastille du dé, nombre d'armes) vers le tableau de la
+// famille (TableauArmes.astro, id `famille-<id>`), un seul ouvert par menu (components/Onglets.astro, posé une fois par la page). L'onglet choisi est
+// écrit dans l'adresse, `#famille-<id>` (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme choisie :
+// « #famille-epees ») : recharger la page ou partager l'adresse rouvre l'onglet Armes puis la famille ; `#boucliers` reste l'onglet Boucliers ; quand le
+// filtre ferme l'onglet ouvert, l'adresse suit celui qui s'ouvre (src/scripts/armes.mjs, lib/armes-filtres.mjs#ancreApresLeFiltre). À côté, toujours
+// affiché et de la
 // largeur de celui des armures (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour
 // l'armure, et avec la même largeur »), le panneau de l'arme : sa fiche (vide tant qu'aucune arme n'est choisie ; un seul cadre, réduit à trois tuiles,
 // le détail de leur calcul dans leur infobulle, puis effets, description et origine) et, dessous, les matériaux (chaque ligne dans la couleur du
 // matériau, ses effets sur une ligne) et les améliorations côte à côte : choisir un matériau et une amélioration ajuste les dégâts, la solidité, les
 // effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (ni fiche ni filtre) : les
 // tableaux se suivent, chacun sous son titre, les onglets ne sont que des liens.
-// Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles (demande antérieure du propriétaire, qui
-// tient avec les menus : « […] mais tous les tableaux sont visibles ») : les barres d'onglets se cachent, chaque famille s'affiche sous son titre, sous
-// le titre de son menu (styles/armes/armes.css), et chaque tableau a ses champs modifiables (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici qu'en lecture. CSS : styles/armes/armes.css (?raw, inséré ici seulement).
+// Mode modification du site de dev : pas de sélection, la fiche est cachée ; les onglets restent affichés (demande du propriétaire, 2026-10-23 : « Je
+// veux les onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « tous les tableaux sont visibles ») ; chaque tableau a ses
+// champs modifiables (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici
+// qu'en lecture. Une famille se renomme, change de dé et d'en-tête de coût dans l'en-tête de son tableau, et se crée par « + Nouvelle famille » sous la
+// barre de son menu, qui fixe sa catégorie (décision R159) : son onglet et son tableau sont les deux `<template data-armes-modele>` de la fin, rendus pour
+// une famille fictive (lib/armes-rendu.mjs#MODELE_DE_FAMILLE), que l'extension remplit (le même HTML que celui de la page : test/armes-html.test.mjs).
+// CSS : styles/armes/armes.css (?raw, inséré ici seulement).
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
@@ -47,7 +55,6 @@ const edM = (id: string, colonne: string) => attributEd('materiau_arme', { resso
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
 const menus = menusDesArmes(armes.familles);
-const nArmes = (n: number) => `${n} arme${n > 1 ? 's' : ''}`;
 // filtre par compétence (demande du propriétaire ; lib/armes-filtres.mjs) : un bouton par compétence d'arme, dans la couleur de sa caractéristique
 // (décision R48), qui sert aussi de légende aux pastilles des tableaux
 const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompetence(id, contexte));
@@ -58,6 +65,10 @@ const secondsRangs = cssDesSecondsRangs('caracteristique');
 // `.armes`) : les classes de la palette (familles `materiau` et `arme`, valeurs dans lib/materiaux-couleurs.mjs et lib/equipement-couleurs.mjs),
 // émises par cet onglet, jamais un style
 const couleurs = cssDesFamilles(['materiau', 'arme']);
+// les modèles d'une famille créée (décision R159) ne servent qu'au mode modification : posés là où la page peut charger l'éditeur, comme
+// components/edition/Edition.astro (layouts/Base.astro) — jamais dans la version portable (tools/build-artifact.mjs, INLINE_CSS=1 : pas de service) ;
+// le build de production les garde, comme l'éditeur, que le service n'ouvre qu'avec MAVERICK_EDITION=1
+const avecModeles = process.env.INLINE_CSS !== '1';
 ---
 
 <style is:inline set:html={armesCss}></style>
@@ -94,14 +105,8 @@ const couleurs = cssDesFamilles(['materiau', 'arme']);
           <section class="armes-bloc" id={`armes-${m.categorie}`} aria-labelledby={`armes-${m.categorie}-titre`} data-armes-bloc={m.categorie}>
             <h3 class="armes-bloc__titre" id={`armes-${m.categorie}-titre`}>{m.titre}</h3>
             {/* le groupe d'onglets du menu est sa barre seule (components/Onglets.astro prend tous les `.onglet` d'un groupe) */}
-            <nav class="armes-onglets" aria-label={m.titre} data-onglets={m.titre} data-onglets-sans-adresse>
-              {m.familles.map((f, i) => (
-                <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-famille-${f.id}`} href={`#famille-${f.id}`}>
-                  <span class="onglet__nom">{f.nom}</span>
-                  {f.de_brut && <span class="onglet__de armes-onglets__de" title="Dé de la famille, sauf indication contraire">{f.de_brut}</span>}
-                  <span class="onglet__detail" data-armes-onglet-compte>{nArmes(f.armes.length)}</span>
-                </a>
-              ))}
+            <nav class="armes-onglets" aria-label={m.titre} data-onglets={m.titre}>
+              {m.familles.map((f, i) => <OngletDeFamille famille={f} actif={i === 0} />)}
             </nav>
             {m.familles.map((f, i) => <TableauArmes famille={f} {contexte} actif={i === 0} />)}
           </section>
@@ -159,6 +164,9 @@ const couleurs = cssDesFamilles(['materiau', 'arme']);
   </div>
   {/* les infobulles des tuiles de la fiche (le détail des dégâts, de la solidité et du coût), écrites par le script hors du panneau de côté, qui défile */}
   <div class="armes-bulles" data-armes-bulles></div>
+  {/* les modèles de l'onglet et du tableau d'une famille créée en mode modification (décision R159 ; src/scripts/edition/armes.mjs) */}
+  {avecModeles && <template data-armes-modele="onglet"><OngletDeFamille famille={MODELE_DE_FAMILLE} /></template>}
+  {avecModeles && <template data-armes-modele="famille"><TableauArmes famille={MODELE_DE_FAMILLE} {contexte} /></template>}
 </div>
 </section>
 

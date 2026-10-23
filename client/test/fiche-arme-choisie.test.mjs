@@ -71,11 +71,17 @@ function famillesSelonLaRegle(ligne) {
 // ------------------------------------------------------------------ R127 : la catégorie des familles d'armes
 
 test('décision R127 (migration 0069) : Arc, Arbalète, Arme de jet et Bombes à distance, les autres familles maîtrisables au contact, ARME DE MONSTRES sans catégorie', () => {
-  // (arme_famille ne se modifie pas sur le site de dev)
+  // le site de dev renomme une famille et en crée (décision R159), jamais sa catégorie : les familles de l'import gardent celle de R127 (lues dans leur état
+  // d'import et dans l'état courant) ; une famille créée en a une, posée à sa création, et elle est maîtrisable
   assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE (categorie IS NULL) <> (maitrisable = 0)').all(), [], 'une catégorie pour chaque famille maîtrisable, aucune pour les autres');
-  assert.deepEqual(db.prepare("SELECT id FROM arme_famille WHERE categorie = 'distance' ORDER BY id").all().map((r) => r.id), ['arbalete', 'arc', 'arme-de-jet', 'bombes']);
-  assert.deepEqual(db.prepare("SELECT id FROM arme_famille WHERE categorie = 'contact' ORDER BY id").all().map((r) => r.id),
-    ['baton-de-combat', 'dagues', 'epees', 'hache', 'lance-arme-dhast', 'masse-marteau', 'pugilat']);
+  const dImport = historique.lignesDImport('arme_famille');
+  const deCategorie = (lignes, c) => lignes.filter((f) => f.categorie === c).map((f) => f.id).sort();
+  assert.deepEqual(deCategorie(dImport, 'distance'), ['arbalete', 'arc', 'arme-de-jet', 'bombes']);
+  assert.deepEqual(deCategorie(dImport, 'contact'), ['baton-de-combat', 'dagues', 'epees', 'hache', 'lance-arme-dhast', 'masse-marteau', 'pugilat']);
+  for (const f of dImport) assert.equal(db.prepare('SELECT categorie FROM arme_famille WHERE id = ?').get(f.id)?.categorie ?? null, f.categorie, `${f.id} : sa catégorie ne change pas`);
+  for (const f of db.prepare('SELECT id, categorie, maitrisable FROM arme_famille').all()) {
+    if (!dImport.some((x) => x.id === f.id)) assert.ok(historique.creee('arme_famille', { id: f.id }) && f.categorie && f.maitrisable === 1, `${f.id} : créée sur le site, classée, maîtrisable`);
+  }
   // le vocabulaire est celui des maîtrises au choix des classes (classe_maitrise_arme.categorie, à l'import)
   const ecrites = [...new Set(historique.lignesDImport('classe_maitrise_arme').map((l) => l.categorie).filter(Boolean))].sort();
   assert.deepEqual(ecrites, ['contact', 'distance']);

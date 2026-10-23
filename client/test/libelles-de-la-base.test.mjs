@@ -76,10 +76,12 @@ test('le périmètre : les tables du modèle, des créations, et celles que l’
     'armure_degats', 'materiau_armure', 'amelioration_total', 'affinite', 'bois', 'potion_etat', 'creature_effet', 'monstre_caracteristique',
     'monstre_attaque', 'monstre_defense', 'monstre_espece_lieu', 'classe_annexe',
     // les sources de maîtrise d'arme (migration 0076), refaites par le lecteur et notées au journal (serveur/edition-maitrises.mjs#partsAEcrire)
-    'maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']) {
+    'maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne',
+    // une famille d'armes renommée ou créée (décision R159 : serveur/edition-armes.mjs)
+    'arme_famille']) {
     assert.ok(ECRITES.includes(t), `${t} : écrite par l’édition`);
   }
-  for (const t of ['arme_famille', 'arme_type', 'categorie_classe', 'niveau_alchimie', 'ethnie', 'invocation', 'sort_mot_cle']) {
+  for (const t of ['arme_type', 'categorie_classe', 'niveau_alchimie', 'ethnie', 'invocation', 'sort_mot_cle']) {
     assert.ok(!ECRITES.includes(t), `${t} : seulement lue (ou une valeur), jamais écrite par l’édition`);
   }
   for (const t of TABLES_HORS_REGLES) assert.ok(!ECRITES.includes(t), `${t} : jamais modifiée par l’édition`);

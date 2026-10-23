@@ -10,7 +10,8 @@
 //                      (une image : { empreinte } ou null, comparée même si `valeurs` ne la contient pas)
 //                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES ; une valeur « @i » d'un
-//                      don (specialite_id, avec) désigne la ligne créée par l'opération i du même lot (ctx.crees)
+//                      don (specialite_id, avec) ou d'une arme (famille_id : une famille d'armes créée, R159) désigne la ligne créée par l'opération i du
+//                      même lot (ctx.crees)
 //   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don, arme ; retiré
 //                      des fiches de personnage qui l'ont, avec une note datée (décision R42 : serveur/fiches-retraits.mjs, réponse `fiches`) ; espèce,
 //                      monstre ; événement, bloc de description, mot-clé (retiré de tout ce qui le porte : serveur/edition-chronologie.mjs) ;
@@ -1032,7 +1033,9 @@ function reference(ctx, valeur, entite) {
   if (!texte.startsWith('@')) return texte;
   const i = Number(texte.slice(1));
   const cree = Number.isInteger(i) ? ctx.crees.find((c) => c.operation === i && c.entite === entite) : null;
-  const quoi = { specialite: 'une spécialité créée', capacite: 'un don créé', monstre_capacite_commune: 'une capacité de monstre créée' }[entite] ?? 'une ligne créée';
+  const quoi = {
+    specialite: 'une spécialité créée', capacite: 'un don créé', monstre_capacite_commune: 'une capacité de monstre créée', arme_famille: 'une famille d’armes créée',
+  }[entite] ?? 'une ligne créée';
   if (!cree) throw refus(`« ${texte} » ne désigne pas ${quoi} plus haut dans ce lot.`);
   return cree.id;
 }
@@ -1384,7 +1387,7 @@ const ANNONCE = {
 const CHRONOLOGIE = domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant, tableExiste });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
-const ARMES = domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye });
+const ARMES = domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, reference });
 const ARMURES = domainesDesArmures({ refus, ErreurEdition, synchroniser });
 
 /** La page des composants (serveur/edition-composants.mjs) et les consommables de l'onglet Ceinture (potions : serveur/edition-consommables.mjs). */
@@ -1608,7 +1611,10 @@ export function recalculerLesPages(db, modifications) {
     try {
       const contexteArmes = contexteDuCorpsDesArmes(db);
       const rang = (t) => TABLES_DE_LA_PAGE_DES_ARMES.indexOf(t);
-      for (const l of [...armes].sort((a, b) => rang(a.table) - rang(b.table))) {
+      // une famille créée (sa section, à la fin du corps) avant une famille renommée (qui refait la liste des armes de départ, laquelle cite les sections
+      // de toutes les familles qui en ont : décision R159)
+      const creee = (l) => (l.inseree && !l.avant ? 0 : 1);
+      for (const l of [...armes].sort((a, b) => rang(a.table) - rang(b.table) || (a.table === 'arme_famille' ? creee(a) - creee(b) : 0))) {
         // une arme créée par le journal n'est pas dans le corps des règles : elle s'y ajoute (avant = null) ; créée puis supprimée : rien à faire
         const avant = l.inseree && !l.avant ? null : l.avant;
         if (avant || l.apres) corps = corpsDesArmesApres(corps, l.table, avant, l.apres, contexteArmes);
@@ -2289,8 +2295,9 @@ export function listes(db) {
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,
     // la page des armures : les poids de boucliers (choix « Poids » d'un bouclier, rendu « bouclier-poids » : décision R92)
     poidsDeBouclier: poidsDeBouclier(db),
-    // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45)
-    famillesDArmes: db.prepare('SELECT id AS valeur, nom AS libelle FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre').all(),
+    // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45), celles créées sur le site comprises
+    // (R159), avec leur catégorie (la barre mêlée ou distance de leur onglet : R127)
+    famillesDArmes: db.prepare('SELECT id AS valeur, nom AS libelle, categorie FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre').all(),
     // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
     magiesSansGemme: magiesSansGemme(db),
     magiesSansBois: magiesSansBois(db),

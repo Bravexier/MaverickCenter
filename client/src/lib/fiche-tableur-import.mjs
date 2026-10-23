@@ -384,6 +384,12 @@ function retrouver(liste, texte, { nom = (x) => x.nom, autres = (x) => [segment(
   return parNom.length ? parNom : liste.filter((x) => autres(x).some((a) => a === k));
 }
 
+/**
+ * La famille d'armes qu'écrit un classeur, parmi `familles` : par son nom, sinon par son nom de lecture (décision R159, migration 0077 : une fiche
+ * exportée avant que le site de dev renomme la famille écrit son nom d'alors) ; null sinon.
+ */
+const familleEcrite = (familles, nom) => familles.find((x) => cle(x.nom) === cle(nom)) ?? familles.find((x) => x.nom_lecture && cle(x.nom_lecture) === cle(nom)) ?? null;
+
 /** Les écritures d'une magie : son nom court, l'identifiant, et l'identifiant sans « magie-du- », « magie-de-la- »… (« Magie de la Nécromancie »). */
 const ecrituresDeMagie = (m) => [segment(m.id), segment(m.id).replace(/^magie-(?:du-|de-la-|des-|de-l|de-)/, '')];
 
@@ -609,7 +615,9 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       if (k) ligne.competence_id = k.id;
     } else if (effet.effets.some((c) => c.cible === 'degats_famille' || c.cible === 'maitrise_arme')) {
       // « +5 dégâts avec une catégorie d'arme », « Un point de maîtrise d'arme » (décisions R54, R151 : sa famille se choisit, jamais ARME DE MONSTRES)
-      const fam = unSeul(retrouver(famillesMaitrisables(regles), choix), quoi, choix, { ou: 'parmi les familles d’armes' });
+      // la famille par son nom, sinon son nom de lecture (décision R159) ou l'identifiant
+      const fam = unSeul(retrouver(famillesMaitrisables(regles), choix, { autres: (x) => [segment(x.id), cle(x.nom_lecture ?? '')].filter(Boolean) }), quoi, choix,
+        { ou: 'parmi les familles d’armes' });
       if (fam) ligne.arme_famille_id = fam.id;
     } else perdu(`${quoi} : « ${choix} » sans choix à faire pour cet effet`);
   };
@@ -798,7 +806,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const part = source.parts.find((p) => p.genre === 'choix');
     lu.familles.forEach((nom, i) => {
       if (nom === null) return;
-      const famille = regles.familles_armes.find((x) => cle(x.nom) === cle(nom));
+      const famille = familleEcrite(regles.familles_armes, nom);
       if (!famille) perdu(`${quoi} : « ${nom} » introuvable parmi les familles d’armes`);
       else if (!part || i >= part.points) perdu(`${quoi} : ${source.titre} n’a pas de point ${i + 1} à choisir`);
       else if (!part.options.includes(famille.id)) perdu(`${quoi} : ${famille.nom} n’est pas proposée par ${source.titre}`);
@@ -835,10 +843,14 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const armesEnAttente = [];
   const choixDesDons = acquisDesDons(regles, f).choix;
   const competenceNommee = (nom) => regles.competences.find((k) => cle(k.nom) === cle(nom)) ?? null;
-  /** « Arme Légère (DAGUES) » d'un choix d'arme : { competence_id, arme_famille_id } quand la famille est une des siennes et la compétence une de ses armes. */
+  /**
+   * « Arme Légère (DAGUES) » d'un choix d'arme : { competence_id, arme_famille_id } quand la famille est une des siennes et la compétence une de ses armes.
+   * La famille est tout ce qui suit la première parenthèse (le nom d'une famille créée sur le site de dev peut en écrire : R159), lue par son nom ou son nom
+   * de lecture.
+   */
   const armeNommee = (choix, valeur) => {
-    const m = /^(.*\S)\s+\(([^()]+)\)$/.exec(valeur);
-    const famille = m && regles.familles_armes.find((x) => cle(x.nom) === cle(m[2]) && choix.familles.includes(x.id));
+    const m = /^(.*?\S)\s+\((.+)\)$/.exec(valeur);
+    const famille = m && familleEcrite(regles.familles_armes.filter((x) => choix.familles.includes(x.id)), m[2]);
     const k = famille && competenceNommee(m[1]);
     return k && famille.competences.includes(k.id) ? { competence_id: k.id, arme_famille_id: famille.id } : null;
   };

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 76 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 77 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -1901,6 +1901,7 @@ Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES 
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `maitrisable` | INTEGER | oui |  | 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_choix) ; 0 = ARME DE MONSTRES : des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030) |
 | `categorie` | TEXT | non |  | R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN) |
+| `nom_lecture` | TEXT | non |  | R159 (migration 0077) : nom de lecture, figé ; le `nom` du bandeau à l'import (les 12 familles), ou à la création sur le site de dev (une famille créée reçoit son nom de création), jamais modifié ensuite, même quand le site renomme la famille ; client/src/lib/maitrise-arme.mjs le lit en plus de `nom` pour que les « sauf » et les lignes nommées (« 1 maîtrise Épée », « (sauf épée) » : R138, R151) désignent toujours la même famille ; jamais NULL ni vide : garde de 0077 et client/test/db-arme-famille-nom-lecture.test.mjs (pas de NOT NULL sans DEFAULT par ADD COLUMN) |
 
 ### `arme_type`
 

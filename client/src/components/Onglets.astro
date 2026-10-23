@@ -10,10 +10,14 @@
 // posés ici : sans JavaScript, les onglets sont de simples liens et les panneaux se suivent ; le CSS de la page ne cache un panneau fermé que sous
 // `html.js`, classe posée ici avant l'affichage (pas de saut de mise en page au chargement).
 // Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet. Choisir un onglet
-// (clic, clavier) écrit son ancre dans l'adresse, sauf dans un groupe `data-onglets-sans-adresse` (les menus des familles d'armes : l'adresse ne garde
-// que l'état de l'onglet Armes, src/scripts/armes.mjs). Les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le filtre vide).
+// (clic, clavier) écrit son ancre dans l'adresse (les menus des familles d'armes aussi, `#famille-<id>` : demande du propriétaire, 2026-10-23, « On peut
+// retenir l'onglet ouvert #epee par exemple »), sauf dans un groupe `data-onglets-sans-adresse` : l'option reste, sans usage aujourd'hui, pour des
+// onglets dont l'ancre ne doit pas remplacer celle de l'adresse. Les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le
+// filtre vide).
 // Des onglets dessinés après le chargement (mode modification du site de dev, D11 : src/scripts/edition/classes.mjs) se branchent par l'évènement
-// « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts. Un script de page
+// « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts. Le branchement est
+// ré-entrant : un groupe déjà branché qui reçoit de nouveaux onglets (une famille d'armes créée en mode modification : src/scripts/edition/armes.mjs)
+// les prend, sans écouter deux fois ceux qu'il avait, et garde l'onglet ouvert. Un script de page
 // ouvre l'onglet d'un panneau (ou d'un élément qu'il contient) par l'évènement « onglets:ouvrir » envoyé sur cet élément (src/scripts/accessoires.mjs :
 // la propriété choisie), sans toucher à l'adresse ni faire défiler la page ; avec `detail.dans` (un élément), seuls les groupes dont les panneaux sont
 // dans cet élément s'ouvrent, pas ceux qui le contiennent (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans ouvrir l'onglet Armes de la
@@ -25,55 +29,77 @@
 </script>
 
 <script>
-  const groupes: { panneaux: HTMLElement[]; activer: (i: number) => void }[] = [];
+  interface Groupe {
+    onglets: HTMLAnchorElement[];
+    panneaux: HTMLElement[];
+    activer: (i: number) => void;
+  }
+  const groupes: Groupe[] = [];
+  /** L'état de chaque groupe branché (un nouveau branchement le met à jour), et les onglets déjà écoutés. */
+  const etats = new WeakMap<HTMLElement, Groupe>();
+  const ecoutes = new WeakSet<HTMLAnchorElement>();
 
+  /** Branche un groupe, ou le rebranche avec ses onglets du moment (ré-entrant : des onglets ajoutés depuis sont pris, l'onglet ouvert reste). */
   function brancher(groupe: HTMLElement) {
-    if (groupe.dataset.ongletsBranches) return;
     const onglets = [...groupe.querySelectorAll<HTMLAnchorElement>('.onglet')];
     const panneaux = onglets.map((o) => document.getElementById(decodeURIComponent(o.hash.slice(1))));
     if (onglets.length === 0 || panneaux.some((p) => !p)) return;
-    groupe.dataset.ongletsBranches = '1';
-    const sures = panneaux as HTMLElement[];
+    let g = etats.get(groupe);
+    if (!g) {
+      const nouveau: Groupe = {
+        onglets: [],
+        panneaux: [],
+        activer: (i: number) =>
+          nouveau.onglets.forEach((o, k) => {
+            const actif = k === i;
+            o.classList.toggle('is-active', actif);
+            o.setAttribute('aria-selected', String(actif));
+            o.tabIndex = actif ? 0 : -1;
+            nouveau.panneaux[k].classList.toggle('is-active', actif);
+          }),
+      };
+      g = nouveau;
+      etats.set(groupe, g);
+      groupes.push(g);
+    }
+    const etat = g;
+    etat.onglets = onglets;
+    etat.panneaux = panneaux as HTMLElement[];
     const liste = onglets[0].parentElement;
     liste?.setAttribute('role', 'tablist');
     if (groupe.dataset.onglets) liste?.setAttribute('aria-label', groupe.dataset.onglets);
     onglets.forEach((o, i) => {
       o.setAttribute('role', 'tab');
-      o.setAttribute('aria-controls', sures[i].id);
-      sures[i].setAttribute('role', 'tabpanel');
-      sures[i].setAttribute('aria-labelledby', o.id);
+      o.setAttribute('aria-controls', etat.panneaux[i].id);
+      etat.panneaux[i].setAttribute('role', 'tabpanel');
+      etat.panneaux[i].setAttribute('aria-labelledby', o.id);
     });
-    const activer = (i: number) =>
-      onglets.forEach((o, k) => {
-        const actif = k === i;
-        o.classList.toggle('is-active', actif);
-        o.setAttribute('aria-selected', String(actif));
-        o.tabIndex = actif ? 0 : -1;
-        sures[k].classList.toggle('is-active', actif);
-      });
-    activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
-    const ecrireLAdresse = !groupe.hasAttribute('data-onglets-sans-adresse');
-    onglets.forEach((o, i) => {
+    etat.activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
+    // lu à chaque choix : l'attribut peut être posé ou retiré après le branchement
+    const ecrireLAdresse = () => !groupe.hasAttribute('data-onglets-sans-adresse');
+    for (const o of onglets) {
+      if (ecoutes.has(o)) continue;
+      ecoutes.add(o);
       o.addEventListener('click', (e) => {
         e.preventDefault();
-        activer(i);
-        if (ecrireLAdresse) history.replaceState(null, '', o.hash);
+        etat.activer(etat.onglets.indexOf(o));
+        if (ecrireLAdresse()) history.replaceState(null, '', o.hash);
       });
       o.addEventListener('keydown', (e) => {
         // les onglets affichés (un onglet `hidden` est sauté), dans l'ordre
-        const affiches = onglets.flatMap((x, k) => (x.hidden ? [] : [k]));
-        const j = affiches.indexOf(i);
+        const tous = etat.onglets;
+        const affiches = tous.flatMap((x, k) => (x.hidden ? [] : [k]));
+        const j = affiches.indexOf(tous.indexOf(o));
         const n = affiches.length;
         if (j < 0) return;
         const cible = { ArrowRight: affiches[(j + 1) % n], ArrowLeft: affiches[(j - 1 + n) % n], Home: affiches[0], End: affiches[n - 1] }[e.key];
         if (cible === undefined) return;
         e.preventDefault();
-        activer(cible);
-        onglets[cible].focus();
-        if (ecrireLAdresse) history.replaceState(null, '', onglets[cible].hash);
+        etat.activer(cible);
+        tous[cible].focus();
+        if (ecrireLAdresse()) history.replaceState(null, '', tous[cible].hash);
       });
-    });
-    groupes.push({ panneaux: sures, activer });
+    }
   }
   for (const groupe of document.querySelectorAll<HTMLElement>('[data-onglets]')) brancher(groupe);
   document.addEventListener('onglets:brancher', (e) => {

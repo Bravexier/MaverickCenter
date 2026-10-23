@@ -306,9 +306,11 @@ function reglesDeLaBase(db) {
   // choix » ; Arc : Arc ou Arme légère, R126)
   const rangDeCompetence = new Map(competences.map((k, i) => [k.id, i]));
   const ecrituresDesFamilles = parCle(lignes(db, 'SELECT famille_id, competence_brut FROM arme ORDER BY famille_id, ordre'), 'famille_id', (a) => a.competence_brut);
-  const famillesDArmes = lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable, categorie FROM arme_famille ORDER BY ordre')
+  // `nom_lecture` : le nom figé sous lequel la famille se lit aussi (décision R159, migration 0077) — par famillesAuChoix (les « sauf », R138) et par
+  // l'import du classeur (une fiche exportée avant un renommage écrit l'ancien nom)
+  const famillesDArmes = lignes(db, 'SELECT id, nom, nom_lecture, de_brut, note_brut, maitrisable, categorie FROM arme_famille ORDER BY ordre')
     .map((f) => ({
-      id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1, categorie: f.categorie,
+      id: f.id, nom: f.nom, nom_lecture: f.nom_lecture, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1, categorie: f.categorie,
       competences: [...new Set((ecrituresDesFamilles.get(f.id) ?? []).flatMap((e) => competencesDArme(e).map((k) => k.id)))]
         .sort((a, b) => rangDeCompetence.get(a) - rangDeCompetence.get(b)),
     }));

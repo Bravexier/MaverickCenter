@@ -146,8 +146,9 @@ test('R154 : les NM de sorts gagnés qu’écrit un don, « Gagne N niveaux de m
 });
 
 // toute la base
-const famillesDe = (lignes) => [...lignes].sort((a, b) => a.ordre - b.ordre).map(({ id, nom, maitrisable, categorie }) => ({ id, nom, maitrisable, categorie }));
-const famillesActuelles = famillesDe(db.prepare('SELECT id, nom, maitrisable, categorie, ordre FROM arme_famille').all());
+// le nom de lecture (décision R159, migration 0077) : une famille renommée sur le site de dev se lit aussi sous son nom d'import
+const famillesDe = (lignes) => [...lignes].sort((a, b) => a.ordre - b.ordre).map(({ id, nom, nom_lecture, maitrisable, categorie }) => ({ id, nom, nom_lecture, maitrisable, categorie }));
+const famillesActuelles = famillesDe(db.prepare('SELECT id, nom, nom_lecture, maitrisable, categorie, ordre FROM arme_famille').all());
 const MAITRISABLES = new Set(famillesActuelles.filter((f) => f.maitrisable).map((f) => f.id));
 const parId = (lignes) => [...lignes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 /**

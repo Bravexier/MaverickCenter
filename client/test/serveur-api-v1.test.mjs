@@ -880,3 +880,19 @@ test('DELETE d’un métier ou d’une arme qui a des écarts entre sources : se
   const notees = lignes("SELECT DISTINCT table_nom FROM modification WHERE table_nom IN ('ecart_source', 'note_cellule') AND operation = 'supprimer'").map((l) => l.table_nom);
   assert.ok(notees.includes('ecart_source'), 'les retraits de traces sont dans le journal (ils voyagent jusqu’à data/rows)');
 });
+
+test('R159 : /api/v1/familles-d-armes/ — une famille se crée (catégorie fixée) et se renomme par le service d’édition ; ARME DE MONSTRES est figée (R45), un nom pris refusé (409)', () => {
+  const nom = nomLibre(`Fléaux d’API ${process.pid}`, 'arme_famille');
+  const cree = ok(appel('POST', '/api/v1/familles-d-armes/', { nom, de_brut: 'D8', categorie: 'contact', cout_libelle: 'Coût' }), 201);
+  const id = cree.element?.id ?? cree.id;
+  assert.ok(id, JSON.stringify(cree).slice(0, 300));
+  assert.deepEqual(['nom', 'nom_lecture', 'categorie', 'maitrisable'].map((c) => ligne('SELECT * FROM arme_famille WHERE id = ?', id)[c]), [nom, nom, 'contact', 1]);
+  ok(appel('PATCH', `/api/v1/familles-d-armes/${seg(id)}/`, { nom: `${nom} renommée`, de_brut: 'D10' }));
+  assert.deepEqual(['nom', 'nom_lecture', 'libelle_brut'].map((c) => ligne('SELECT * FROM arme_famille WHERE id = ?', id)[c]), [`${nom} renommée`, nom, `${nom} renommée - D10`]);
+  assert.equal(appel('PATCH', `/api/v1/familles-d-armes/${seg(id)}/`, { categorie: 'distance' }).statut, 400, 'la catégorie ne change pas');
+  assert.equal(appel('PATCH', `/api/v1/familles-d-armes/${seg(id)}/`, { nom: 'Dague' }).statut, 409);
+  const monstres = appel('PATCH', '/api/v1/familles-d-armes/arme-de-monstres/', { nom: 'X' });
+  assert.ok([400, 409].includes(monstres.statut), JSON.stringify(monstres.corps));
+  assert.equal(ligne("SELECT nom FROM arme_famille WHERE id = 'arme-de-monstres'").nom, 'ARME DE MONSTRES');
+  assert.equal(appel('DELETE', `/api/v1/familles-d-armes/${seg(id)}/`, {}).statut, 405, 'aucune famille ne se supprime');
+});

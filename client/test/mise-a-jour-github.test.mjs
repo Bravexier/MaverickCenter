@@ -1054,6 +1054,9 @@ describe('fonctions pures', () => {
     assert.deepEqual(TABLES_DES_SOURCES_DE_MAITRISE, TABLES_DES_SOURCES);
     assert.deepEqual(tablesDuLot(lot({ table: 'capacite', operation: 'modifier', avant: { effet: 'a' }, apres: { effet: 'b' } })), ['capacite', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
     assert.deepEqual(tablesDuLot(lot({ table: 'classe_maitrise_arme', operation: 'supprimer', avant: { classe_id: 'c', rang: 2 }, apres: null })), ['capacite_nm_gagne', 'classe_maitrise_arme', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    // une famille d'armes créée ou renommée (décision R159) : le lecteur relit toutes les sources avec les familles
+    assert.deepEqual(tablesDuLot(lot({ table: 'arme_famille', operation: 'inserer', avant: null, apres: { id: 'fouets', nom: 'FOUETS' } })),
+      ['arme_famille', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
     assert.deepEqual(tablesDuLot(lot({ table: 'metier', operation: 'modifier', avant: { nom: 'a' }, apres: { nom: 'b' } })), ['metier']);
     // D3 : un mot-clé supprimé (ou fusionné) quitte aussi les balises des textes que le journal n'a pas (balisesRetireesParLeLot,
     // balisesDesColonnesDerivees) : les tables dont data/rows a une balise, lues seulement pour un tel lot
