@@ -54,7 +54,8 @@ test('l’import (migration 0056) : les huit blocs des armes dans l’ordre, en 
   assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [
     [0, null], [1, null], [1, null], [1, null], [0, null], [1, 'Dague'], [1, 'Arme de jet'], [1, 'Comment déterminer le prix de votre arme ?'],
   ]);
-  assert.deepEqual(blocs.slice(1, 4).map((b) => b.texte), ['{{recharge-longue:}}', '{{recharge-tres-longue:}}', '{{mordhau:}}'], 'les définitions vivent dans le glossaire');
+  // la valeur d'import vient du site de dev, qu'un build intermédiaire a pu réécrire en {{mot}} : la tuile qui n'est qu'une balise se lit sous ses deux formes
+  assert.deepEqual(blocs.slice(1, 4).map((b) => b.texte.replace(/^\{\{([a-z0-9-]+)\}\}$/, '{{$1:}}')), ['{{recharge-longue:}}', '{{recharge-tres-longue:}}', '{{mordhau:}}'], 'les définitions vivent dans le glossaire');
   assert.match(blocs[4].texte, /^\*\*Les armes en bleu sont les armes possibles en arme de départ\.\*\*/);
 });
 
@@ -63,7 +64,7 @@ test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel 
   const blocs = historique.lignesDImport('panneau_regles_bloc');
   assert.ok(blocs.length >= panneaux.length);
   for (const b of blocs) {
-    if (/^\{\{[a-z0-9-]+:\}\}$/.test(b.texte)) continue;
+    if (/^\{\{[a-z0-9-]+:?\}\}$/.test(b.texte)) continue; // une tuile de balise seule ({{mot:}}, ou {{mot}} si le dev l'a réécrite)
     const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
     // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit
     assert.ok(historique.valeurDImport('page', { id: page }, 'corps_md').includes(texteSansBalises(b.texte)), `${b.panneau_id} ${b.rang} : copié de ${page}`);
