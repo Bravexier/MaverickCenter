@@ -30,7 +30,8 @@
 // retiré quand la bulle est refaite, auquel la page rend le focus, ne la ferme pas), et quand le pointeur la quitte si ce focus est celui du clavier
 // (la dernière interaction est une touche, pas un appui : la souris seule la ferme comme avant) ; Échap, le focus dans la bulle, la ferme et rend le
 // focus au déclencheur, sans la rouvrir ; son déclencheur porte `aria-expanded`, tenu ici ; un bouton qui la déclenche ne la bascule pas au second
-// appui ni ne l'ouvre au clic, comme un déclencheur qui n'est pas un bouton. Entrer dans la bulle et en sortir (Entrée, Tab) est
+// appui ni ne l'ouvre au clic, comme un déclencheur qui n'est pas un bouton ; tant que le focus du clavier y est, aucune autre bulle ne la remplace
+// (le survol d'un autre déclencheur, un `title`). Entrer dans la bulle et en sortir (Entrée, Tab) est
 // l'affaire du script de la page. Toutes les autres bulles n'en changent pas.
 // Teinte : celle de la page (--mag : magie, classe, race, partie du guide), lue sur le déclencheur pour la bulle partagée ; sinon l'accent du site.
 // Sans JavaScript : les bulles riches restent cachées et l'attribut `title` (texte simple) joue le rôle d'infobulle native.
@@ -101,6 +102,10 @@
       }
       return null;
     }
+    /** La bulle ouverte est une bulle à champs où se trouve le focus du clavier (la dernière interaction est une touche) : elle reste. */
+    var retenue = function () {
+      return ouverte !== null && clavier && ouverte.bulle.hasAttribute(CHAMPS) && ouverte.bulle.contains(document.activeElement);
+    };
     /** Le déclencheur `c` ouvre une bulle à champs. */
     var aDesChamps = function (c) {
       var b = document.getElementById(c.getAttribute('data-bulle') || '');
@@ -184,6 +189,7 @@
       clearTimeout(delai);
       enAttente = null;
       if (ouverte && ouverte.cible === cible) return;
+      if (retenue()) return; // le focus du clavier dans une bulle à champs : aucune autre bulle ne la remplace (le survol, un `title`)
       var estSimple = !cible.hasAttribute('data-bulle');
       var bulle, titre = null;
       if (estSimple) {

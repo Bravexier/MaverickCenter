@@ -7,7 +7,7 @@
 // La bulle d'un choix du tiroir au clavier (demandes du propriétaire, consignées dans le skill zone-fiche) : le choix que le focus rejoint quand un
 // choix fait depuis sa bulle quitte le tiroir (choixSuivant), l'identité d'un choix d'un calcul à l'autre (identitesDesChoix : les points d'une même
 // maîtrise sont un même choix en plusieurs parts), la règle de ce qui se parcourt aux flèches dans la bulle, une liste, un groupe de dons ou un champ nombre (regleDuParcours) et la mise à jour en place de
-// la bulle (morpher : le champ qui a le focus le garde). Le comportement générique de la bulle à champs (focusout, Échap) : test/infobulles.test.mjs.
+// la bulle (morpher : le champ qui a le focus le garde) ; le focus quand le tiroir se range au défilement (focusApresRangement). Le comportement générique de la bulle à champs (focusout, Échap) : test/infobulles.test.mjs.
 //   node --test test/fiche-tiroir-clavier.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -144,6 +144,35 @@ test('entré dans la bulle à la souris (pas par Entrée) : un champ se relaie �
   }
   assert.equal(regleDuParcours({ type: 'clic', apresUneTouche: true }, false, 'radios', false), 'relayer', 'un rond : son clic');
   assert.equal(regleDuParcours({ type: 'saisie' }, false, 'nombre', true), 'attendre', 'au clavier, le nombre attend');
+});
+
+test('le tiroir se range au défilement, le focus dedans : il va sur l’onglet « Choix » ; jamais ailleurs ni sans raison (arbitrage, carte blanche du propriétaire)', () => {
+  const { focusApresRangement } = fonctions(['focusApresRangement']);
+  const cas = (x) => focusApresRangement({ focusDansLeTiroir: true, range: true, parLeDefilement: true, visible: false, ...x });
+  assert.equal(cas({}), 'onglet', 'le choix, « Réduire », « Aller aux choix » ou la bulle : caché par le rangement');
+  assert.equal(cas({ visible: true }), null, 'le panneau « Choix » ouvert : le choix reste à l’écran, le focus aussi');
+  assert.equal(cas({ focusDansLeTiroir: false }), null, 'le focus ailleurs : jamais volé');
+  assert.equal(cas({ range: false }), null, 'le tiroir toujours là');
+  assert.equal(cas({ parLeDefilement: false }), null, 'plus de choix : le tiroir disparaît (suivreLeChoixAuClavier, ou la souris comme avant)');
+});
+
+test('l’IntersectionObserver de la zone IV : la dernière entrée du lot fait foi (« hors écran » puis « à l’écran » : à l’écran)', () => {
+  const { zoneAEcran } = fonctions(['zoneAEcran']);
+  assert.equal(zoneAEcran([{ isIntersecting: false }, { isIntersecting: true }]), true, 'deux changements rapprochés, dans un même lot');
+  assert.equal(zoneAEcran([{ isIntersecting: true }, { isIntersecting: false }]), false);
+  assert.equal(zoneAEcran([{ isIntersecting: true }]), true);
+  assert.match(script, /new IntersectionObserver\(\(entrees\) => \{\n {4}zoneParametresVisible = zoneAEcran\(entrees\);/, 'le rappel de la page lit zoneAEcran');
+});
+
+test('un appui sur un autre choix pendant que la bulle est retenue : la bulle de ce choix s’ouvre (le survol rejoué) ; sinon, rien de plus', () => {
+  class PointerEvent { constructor(type, o) { Object.assign(this, { type }, o); } }
+  const { appuiSurUnAutreChoix } = fonctions(['appuiSurUnAutreChoix'], { PointerEvent });
+  const envoyes = [];
+  const bouton = { dispatchEvent: (e) => envoyes.push(e) };
+  appuiSurUnAutreChoix(bouton, { pointerType: 'mouse', clientX: 12, clientY: 34 }, false);
+  assert.equal(envoyes.length, 0, 'la souris seule : le survol a déjà ouvert la bulle');
+  appuiSurUnAutreChoix(bouton, { pointerType: 'mouse', clientX: 12, clientY: 34 }, true);
+  assert.deepEqual(envoyes.map((e) => [e.type, e.bubbles, e.pointerType, e.clientX, e.clientY]), [['pointerover', true, 'mouse', 12, 34]]);
 });
 
 test('la bulle du même choix, mise à jour en place : le champ qui a le focus garde son élément, attributs et textes suivent', () => {
