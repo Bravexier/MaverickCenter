@@ -722,11 +722,14 @@ règles d'aujourd'hui, même après une livraison.
   normalisée (le rejeu la compare aussi : « les règles ont changé nom, nom_cle autrement », « UNIQUE constraint failed: metier.nom_cle ») la dit
   par sa colonne source (`colonneSource` : « les règles ont changé « Nom » autrement »), la provenance jamais (« cette ligne » si rien ne reste).
   Le `libelle` d'une ligne est la table (son nom) et son nom, son titre ou son libellé, sinon l'id de sa clé (une
-  page supprimée : « Page guide/… »), sinon ce que sa clé composée désigne : la ligne citée par sa clé étrangère, par son nom lu dans la base si
-  elle existe encore (entre parenthèses avec sa table pour une table hors du modèle), sinon par l'id de sa clé, puis ses autres colonnes, un rang dit
+  page supprimée : « Page guide/… »), sinon ce que sa clé composée désigne : la ligne citée par sa clé étrangère, sans parenthèses ni nom de sa
+  table (demande du propriétaire du 2026-10-23 : « Bonus du métier « Forgeron » »), par son nom lu dans la base entre guillemets si elle existe
+  encore, sinon par son identifiant lisible (l'id de sa clé, ou ce que sa clé composée désigne à son tour), puis ses autres colonnes, un rang dit
   « n° N », une autre colonne par son nom dans le cours de la phrase (« Capacité de la carte « Amblypyge de brai », n° 1 », « Bonus du métier
-  (Métier « Forgeron »), n° 1, option 2 », « Autre nom de la page (Page guide/le-mode-hyper), ordre 900 » ;
-  `edition-conflits.mjs#libelleDeLigne`) ; jamais de JSON. La raison d'un conflit est rendue telle quelle (`raison`, une trace) et lisible
+  « Forgeron », n° 1, option 2 », « Autre nom de la page guide/le-mode-hyper, ordre 900 », « Valeur d’une capacité « Amblypyge de brai », n° 1,
+  numéro de l’emplacement 2 ») ; une clé qui cite plusieurs lignes les distingue par le nom de leur colonne, après un deux-points (« Relation
+  entre deux peuples : Peuple qui voit « Drakos », Peuple vu « Fenrir Urbain » ») ; `edition-conflits.mjs#libelleDeLigne`. Jamais de JSON. Les
+  raisons, la ligne « Au rejeu » et les saines reprennent cette légende. La raison d'un conflit est rendue telle quelle (`raison`, une trace) et lisible
   (`raison_lisible`, `edition-conflits.mjs#raisonLisible`) : colonnes et tables par leur nom (« les règles ont changé « Texte » autrement »), une
   clé étrangère rompue par la ligne citée (« Autre nom de la page : clé étrangère rompue vers Page guide/le-mode-hyper »), un refus de la base sans nom qualifié ni
   expression SQL (« valeur déjà utilisée ailleurs (Sort : « Nom ») ») ; une forme inconnue (le texte d'un adaptateur) telle quelle. Une saine

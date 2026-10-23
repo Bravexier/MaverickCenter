@@ -203,14 +203,28 @@ test('libellé d’une ligne : son nom ou son titre, sinon l’id de sa clé (li
   const carte = lire(db, 'SELECT m.id, m.nom FROM monstre_capacite c JOIN monstre m ON m.id = c.monstre_id ORDER BY c.monstre_id, c.rang LIMIT 1');
   assert.equal(libelleDeLigne('monstre_capacite', null, { monstre_id: carte.id, rang: 1 }, db), `Capacité de la carte « ${carte.nom} », n° 1`);
   assert.equal(libelleDeLigne('monstre_capacite', null, { monstre_id: 'monstres/absente-essai#carte:absente', rang: 2 }, db),
-    'Capacité de la carte (Monstre monstres/absente-essai#carte:absente), n° 2', 'la carte citée n’existe plus : son id');
+    'Capacité de la carte monstres/absente-essai#carte:absente, n° 2', 'la carte citée n’existe plus : son id, sans parenthèses ni nom de table');
   const forgeron = lire(db, 'SELECT nom FROM metier WHERE id = ?', FORGERON).nom;
-  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: FORGERON, rang: 1, option: 2 }, db), `Bonus du métier (Métier « ${forgeron} »), n° 1, option 2`,
-    'une table hors du modèle : son vrai nom (demande du propriétaire du 2026-10-23), la ligne citée entre parenthèses');
-  assert.equal(libelleDeLigne('alias', null, { page_id: HYPER, ordre: 900 }, db), `Autre nom de la page (Page ${HYPER}), ordre 900`, 'la page citée, supprimée par les règles : son id');
+  // demande du propriétaire du 2026-10-23 (« Forme des noms des tables d'appoint : « Bonus du métier « Forgeron » » ») : la ligne citée par son nom
+  // entre guillemets, sans parenthèses ni nom de sa table
+  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: FORGERON, rang: 1, option: 2 }, db), `Bonus du métier « ${forgeron} », n° 1, option 2`,
+    'une table hors du modèle : son vrai nom (demande du propriétaire du 2026-10-23), la ligne citée par son nom, sans parenthèses');
+  assert.equal(libelleDeLigne('alias', null, { page_id: HYPER, ordre: 900 }, db), `Autre nom de la page ${HYPER}, ordre 900`,
+    'la page citée, supprimée par les règles : son id, sans parenthèses ni nom de table');
+  // plusieurs lignes citées (une relation entre deux peuples) : chacune par le nom de sa colonne, toujours sans parenthèses
+  const relation = lire(db, `SELECT r.ligne_peuple_id AS voit, r.colonne_peuple_id AS vu, a.nom AS a, b.nom AS b FROM relation_peuple r
+    JOIN peuple a ON a.id = r.ligne_peuple_id JOIN peuple b ON b.id = r.colonne_peuple_id WHERE r.ligne_peuple_id <> r.colonne_peuple_id
+    ORDER BY r.ligne_peuple_id, r.colonne_peuple_id LIMIT 1`);
+  assert.equal(libelleDeLigne('relation_peuple', null, { ligne_peuple_id: relation.voit, colonne_peuple_id: relation.vu }, db),
+    `Relation entre deux peuples : Peuple qui voit « ${relation.a} », Peuple vu « ${relation.b} »`);
+  assert.equal(libelleDeLigne('relation_peuple', null, { ligne_peuple_id: relation.voit, colonne_peuple_id: 'peuples/absent-essai' }, db),
+    `Relation entre deux peuples : Peuple qui voit « ${relation.a} », Peuple vu peuples/absent-essai`, 'le peuple cité n’existe plus : son id');
   // une clé étrangère composée (monstre_capacite_valeur → monstre_capacite) : la ligne citée dite à son tour
   assert.equal(libelleDeLigne('monstre_capacite_valeur', null, { monstre_id: carte.id, rang: 1, numero: 2 }, db),
-    `Valeur d’une capacité (Capacité de la carte « ${carte.nom} », n° 1), numéro de l’emplacement 2`);
+    `Valeur d’une capacité « ${carte.nom} », n° 1, numéro de l’emplacement 2`);
+  for (const l of conflitsDuJournal(db).lots) for (const x of [...l.conflits, ...l.saines]) {
+    assert.doesNotMatch(x.libelle.replace(/« [^«»]* »/g, '« »'), /[()]/, `${l.lot} : ${x.libelle} : sans parenthèses hors des noms cités`);
+  }
   for (const l of conflitsDuJournal(db).lots) for (const x of [...l.conflits, ...l.saines]) assert.doesNotMatch(x.libelle, /[{}]|"/, `${l.lot} : ${x.libelle}`);
 });
 
@@ -523,7 +537,7 @@ test('les noms du diagnostic : chaque table et chaque colonne par son vrai nom, 
     for (const t of textes) assert.deepEqual([...techniques(t), ...tablesDans(t)], [], `${l.lot} : « ${t} »`);
     for (const x of [...l.saines, ...l.conflits]) assert.ok(x.libelle.startsWith(nomDeTable(x.table)), `${l.lot} : « ${x.libelle} » commence par le nom de sa table`);
   }
-  assert.ok(lots.some((l) => l.saines.some((s) => s.libelle.startsWith('Bonus du métier ('))), 'metier_bonus : « Bonus du métier »');
+  assert.ok(lots.some((l) => l.saines.some((s) => s.libelle.startsWith('Bonus du métier « '))), 'metier_bonus : « Bonus du métier »');
 });
 
 // Les deux cas les plus probables d'une section sous des noms techniques (relecture du 2026-10-23) : une suppression faite sur le site de dev, puis une
