@@ -680,3 +680,39 @@ test('couleurs des niveaux des accessoires : jamais en style sur une page constr
     assert.ok(!('style' in n), 'plus de style dans data-niveaux');
   }
 });
+
+// Lot de la chronologie (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'événement en style (ni
+// `--c`, `--c-avant`, `--c-apres` dans un style des pages de la chronologie, ni `--couleur-evenement`, nulle part) ; chaque classe `couleur-evenement-…` posée existe dans la feuille
+// des couleurs des événements de la page (`<style data-couleurs-chronologie>`), émise par les pages de la chronologie seules.
+/** Les éléments que la chronologie pose sur la couleur d'un événement. */
+const ELEMENTS_DE_LA_CHRONOLOGIE = new Set(['chrono', 'frise__evenement', 'frise__barre', 'frise__morceau']);
+const CLASSE_DE_LA_CHRONOLOGIE = /^couleur-evenement-/;
+
+test('couleurs des événements de la chronologie : jamais en style sur une page construite, toujours par une classe de la feuille de la page', options, () => {
+  const avecFeuille = [];
+  let posees = 0;
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier).split('\\').join('/');
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, /--couleur-evenement/, `${rel} : --couleur-evenement`);
+    // (l'accueil pose encore un `--c` en style : une autre zone, pas encore passée aux classes)
+    if (rel.startsWith('chronologie/')) assert.doesNotMatch(html, /style="[^"]*--c(?:-avant|-apres)?:/, `${rel} : une couleur de la frise en style`);
+    const feuilles = [...html.matchAll(/<style data-couleurs-chronologie>([^<]*)<\/style>/g)].map((m) => m[1]);
+    assert.ok(feuilles.length <= 1, `${rel} : une seule feuille des couleurs des événements`);
+    if (feuilles.length) avecFeuille.push(rel);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DE_LA_CHRONOLOGIE.test(c) || ELEMENTS_DE_LA_CHRONOLOGIE.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément de la chronologie : ${balise.slice(0, 160)}`);
+      for (const c of jetons.filter((x) => CLASSE_DE_LA_CHRONOLOGIE.test(x))) {
+        posees += 1;
+        assert.ok(feuilles[0]?.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans la feuille des couleurs des événements de la page`);
+      }
+    }
+  }
+  // la feuille : /chronologie/ et la page de chaque événement, et seulement elles
+  const pagesDeLaChronologie = walk(join(dist, 'chronologie')).filter((f) => f.endsWith('index.html')).map((f) => relative(dist, f).split('\\').join('/')).sort();
+  assert.ok(pagesDeLaChronologie.length > 50, `${pagesDeLaChronologie.length} pages de la chronologie`);
+  assert.deepEqual(avecFeuille.sort(), pagesDeLaChronologie);
+  assert.ok(posees > pagesDeLaChronologie.length * 100, `${posees} classes posées`);
+});

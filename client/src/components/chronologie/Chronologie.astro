@@ -1,6 +1,8 @@
 ---
 import chronologieCss from '../../styles/chronologie/chronologie.css?raw';
-import { adresseDEvenement, couleursDesEvenements, libelleDeDate, voisins } from '../../lib/chronologie.mjs';
+import { adresseDEvenement, libelleDeDate, voisins } from '../../lib/chronologie.mjs';
+import { couleursDesEvenements } from '../../lib/chronologie-couleurs.mjs';
+import { classeDEvenement, cssDesEvenements } from '../../lib/palette-css.mjs';
 import { url } from '../../lib/wiki';
 import ChronologieEvenement from './ChronologieEvenement.astro';
 import Frise from './Frise.astro';
@@ -14,7 +16,10 @@ import Frise from './Frise.astro';
 // tiroir ») : /chronologie/ est la frise ; sur la page d'un événement, la frise réduite à sa barre et à ses points reste collée à gauche, un appui
 // l'ouvre en grand par-dessus la page (le tiroir), et une barre en bas de l'écran porte les chevrons et, entre eux, la date et le titre de
 // l'événement (qui ouvre aussi le tiroir ; sans JavaScript, un lien vers sa ligne de /chronologie/). Couleur de la page : celle de l'événement affiché ; sur
-// /chronologie/, celle du premier (une teinte foncée qui porte un texte blanc, dans les deux thèmes : l'accent du site s'éclaircit en sombre).
+// /chronologie/, celle du premier (une teinte foncée qui porte un texte blanc, dans les deux thèmes : l'accent du site s'éclaircit en sombre). Les
+// couleurs sont les classes de la palette (lib/palette-css.mjs#classeDEvenement, skill ui-couleurs) : `.chrono` porte celle de l'événement affiché,
+// chaque ligne de la frise la sienne ; leur feuille (cssDesEvenements, la règle de lib/chronologie-couleurs.mjs) n'est émise qu'ici, dans un <style>
+// à part (`data-couleurs-chronologie`), que l'éditeur du site de dev réécrit d'après la base vivante. Aucune couleur en style.
 interface Props {
   /** Les événements dans l'ordre de lecture (lib/chronologie-db.mjs#chargerChronologie). */
   evenements: any[];
@@ -34,17 +39,14 @@ const progression = evenement ? `${((position / evenements.length) * 100).toFixe
 ---
 
 <style is:inline set:html={chronologieCss}></style>
+<style is:inline data-couleurs-chronologie set:html={cssDesEvenements(couleurs)}></style>
 {/* La mini-frise et le tiroir (téléphone) ne s'affichent qu'avec JavaScript (`html.js`, posée avant la frise : pas de saut au premier affichage) ;
      sans lui, la page d'un événement garde la barre du bas, dont le bouton du milieu mène à la frise de /chronologie/. */}
 <script is:inline>
   document.documentElement.classList.add('js');
 </script>
-<div
-  class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil']}
-  data-chrono
-  style={(evenement ?? suivant) ? `--couleur-evenement: ${couleurs.get((evenement ?? suivant).id)}` : undefined}
->
-  <Frise evenements={evenements} couleurs={couleurs} courant={evenement?.id ?? null} />
+<div class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil', (evenement ?? suivant) && classeDEvenement((evenement ?? suivant).id)]} data-chrono>
+  <Frise evenements={evenements} courant={evenement?.id ?? null} />
   {
     evenement && (
       <button type="button" class="frise-ouvrir" aria-controls="frise" aria-expanded="false" data-frise-ouvrir>

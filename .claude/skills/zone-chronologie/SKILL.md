@@ -7,7 +7,8 @@ user-invocable: false
 # Chronologie
 
 ## Fichiers
-- Logique pure : `client/src/lib/chronologie.mjs` (`ordonner`, `couleursDesEvenements`, `surlignerLaDate`, `SANS_CATEGORIE`).
+- Logique pure : `client/src/lib/chronologie.mjs` (`ordonner`, `surlignerLaDate`, `SANS_CATEGORIE` ; aucune couleur).
+- Couleurs : `lib/chronologie-couleurs.mjs` (la règle du site, `couleursDesEvenements`, `contraste`, `COULEUR_INCONNUE`, `COULEUR_AUJOURDHUI`, sans import), posées par les classes de la palette `couleur-evenement-<id>` (`lib/palette-css.mjs#classeDEvenement`, `cssDesEvenements` : skill `ui-couleurs`).
 - Chargeur et choix du filtre : `lib/chronologie-db.mjs`. Rendu d'un événement (build et éditeur) : `lib/chronologie-rendu.mjs`.
 - Composants : `components/chronologie/Chronologie.astro` (mise en page, chevrons, clavier, mini-frise et tiroir), `Frise.astro` (frise, filtre et son script), `ChronologieEvenement.astro`.
 - Pages : `pages/chronologie/index.astro`, `[slug].astro`. CSS : `styles/chronologie/chronologie.css` (inséré en `?raw`).
@@ -42,9 +43,9 @@ user-invocable: false
 - Le titre d'un événement de la liste « Les Impacts mineur et majeur » est sa ligne telle quelle. Un autre titre n'ajoute aucun nom ni fait à ses extraits.
 - `data-a-trier` est posé sur le choix du filtre et sur les pastilles ; l'extension le relit.
 - Le filtre (`[data-frise-choix]`, script en ligne de `Frise.astro`) cache les lignes des autres catégories (`data-categories`), refait les couleurs voisines et ajoute `?filtre=` aux liens. `Chronologie.astro` refait chevrons et « Commencer » d'après les lignes visibles (évènement `chronologie:frise-filtree`).
-- En mode modification, `edition/chronologie.mjs` refait frise et événement d'après la base vivante (`GET /api/edition/chronologie/`, `POST /api/edition/evenement/`). Un événement créé depuis le build s'affiche sur `/chronologie/?evenement=<id>`.
+- En mode modification, `edition/chronologie.mjs` refait frise et événement d'après la base vivante (`GET /api/edition/chronologie/`, `POST /api/edition/evenement/`). Un événement créé depuis le build s'affiche sur `/chronologie/?evenement=<id>`. Couleurs (choix technique du leader-technique, 2026-10-23) : après une création ou une suppression, toutes les teintes se recalculent d'après la base vivante, et la page d'un événement qui existe toujours prend la teinte recalculée de sa ligne (avant ce lot, elle gardait celle du build) : la page affichée suit la base vivante, source du site de dev ; seule la page construite d'un événement supprimé depuis garde sa dernière règle.
 - La frise (`Frise.astro`, `[data-frise]`) défile seule à hauteur d'écran. Son script, en ligne juste après elle, la remet où on l'a laissée (`sessionStorage`) avant le premier affichage.
-- Chaque ligne porte sa couleur et celles de ses voisines (`--c`, `--c-avant`, `--c-apres` : `couleursDesEvenements`) ; chaque morceau de barre fait son dégradé.
+- Couleurs (lot 7 de la palette, skill `ui-couleurs` : « Aucune couleur en dur. ») : aucune en style. `Chronologie.astro` émet la feuille des classes des événements (`cssDesEvenements(couleursDesEvenements(evenements))`, un `<style is:inline data-couleurs-chronologie>` à part, sur les pages de la chronologie seules) et pose sur `.chrono` la classe de l'événement affiché (sur `/chronologie/`, du premier) : `--chrono` et le texte sur ses aplats, `--chrono-sur`, en sont tirés (`var(--accent)` et `var(--texte-sur-fonce)` sans classe). Chaque ligne porte la classe de son événement (`--c`), sa barre (`.frise__barre`) celle de l'événement visible précédent (`--c-avant`) et le morceau de barre qu'elle contient (`.frise__morceau`, qui peint le dégradé dans son `::before`) celle du suivant (`--c-apres`) ; aucune au bord (la couleur de la ligne). Le script du filtre les repose entre les lignes visibles par `classList` ; l'éditeur réécrit la feuille d'après la base vivante puis pose les classes, comme au build. Pointillés de « Date inconnue » : un masque en `currentColor` (le texte opaque de la ligne). Ombres et voile du tiroir : jetons du thème (`--ombre-evenement`, `--ombre-barre-du-bas`, `--ombre-poignee`, `--ombre-tiroir`, `--voile-tiroir`).
 - D'une page de la chronologie à l'autre, transition entre documents (`@view-transition`), dans `chronologie.css` seulement.
 - Les scripts sont en ligne. `Chronologie.astro` : ← → (propres à la chronologie : les pages du guide n'en ont pas, skill `zone-guide`), mini-frise et tiroir du téléphone.
 - Plus de glissement du doigt (réponses du propriétaire du 2026-10-22 : « Le slide du doigt devrai faire changer d'onglet », puis « Laisse tomber. Trop de cas spécifiques compliquées. Supprime juste le swipe. ») : sur écran tactile, les chevrons. Le retour arrière au glissement horizontal est empêché pour tout le site par la feuille globale (skill `ui-defilement`), plus par `chronologie.css`.
@@ -54,6 +55,9 @@ user-invocable: false
 - Les descriptions peuvent citer des mots-clés (balises du glossaire, forme canonique d'un texte mis en forme) ; le récit de la chronologie est hors de l'outil qui balise un mot dans tous les textes (`horsDe`) : skill `zone-mots-cles`.
 
 ## Tests
-- `client/test/chronologie.test.mjs` (logique, base, registre comparé à l'import).
-- `chronologie-html.test.mjs` (site construit, CI après le build).
-- `chronologie-filtre.test.mjs` (scripts du filtre et des chevrons, faux navigateur), `chronologie-rendu.test.mjs`, `serveur-edition-chronologie.test.mjs` (le service).
+- `client/test/chronologie.test.mjs` (logique, règle des couleurs, base, registre comparé à l'import).
+- `chronologie-html.test.mjs` (site construit, CI après le build : classes de chaque ligne, de sa barre, de son morceau et de `.chrono`, feuille des couleurs émise une fois).
+- `chronologie-filtre.test.mjs` (scripts du filtre et des chevrons, faux navigateur : les classes voisines reposées après un filtre).
+- `chronologie-editeur.test.mjs` (l'éditeur en faux navigateur : `refaireLaFrise`, `ecrireLesCouleurs`, `poserCouleur` ; feuille réécrite, classes de la ligne créée et de ses voisines, rien aux bords, règle de l'événement affiché supprimé gardée).
+- `palette-css.test.mjs` et `site-html.test.mjs` (lot 7 : aucune couleur écrite dans les fichiers de la zone, lisibilité dans les deux thèmes, jetons, aucune couleur en style).
+- `chronologie-rendu.test.mjs`, `serveur-edition-chronologie.test.mjs` (le service).

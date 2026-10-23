@@ -13,8 +13,8 @@ import {
   MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDeMateriau, classeDuPoids, classeDuTypeDArmure,
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePotion, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
-  classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
-  secondsRangs, secondsRangsDesMagies,
+  classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
+  secondsRangs, secondsRangsDesMagies, classeDEvenement,
 } from '../src/lib/palette-css.mjs';
 import {
   AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, contraste, couleurDePotion, lisible,
@@ -29,6 +29,8 @@ import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-c
 import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
+import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
+import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
 const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
@@ -609,6 +611,15 @@ const FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES = [
  * (lib/accessoires-couleurs.mjs) écrit ses couleurs, comme les autres modules des couleurs.
  */
 const FICHIERS_DU_LOT_DES_ACCESSOIRES = ['src/lib/accessoires-generateur.mjs', 'src/scripts/accessoires.mjs', 'src/styles/accessoires/accessoires.css'];
+/**
+ * Les fichiers du lot de la chronologie (la frise, la page d'un événement, son éditeur du site de dev) : contrôlés en entier. Le module de la règle
+ * (lib/chronologie-couleurs.mjs) écrit ses couleurs, comme les autres modules des couleurs.
+ */
+const FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE = [
+  'src/styles/chronologie/chronologie.css', 'src/components/chronologie/Frise.astro', 'src/components/chronologie/Chronologie.astro',
+  'src/components/chronologie/ChronologieEvenement.astro', 'src/pages/chronologie/index.astro', 'src/pages/chronologie/[slug].astro',
+  'src/lib/chronologie.mjs', 'src/lib/chronologie-rendu.mjs', 'src/lib/chronologie-db.mjs', 'src/scripts/edition/chronologie.mjs',
+];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
 const FEUILLES_DES_VARIABLES_DE_LA_PALETTE = new Set(['src/styles/fiche/fiche.css', 'src/styles/guide/blocs.css']);
 /** Les variables que les feuilles des classes et des races tirent de la classe de leur catégorie ou de leur nature (`--cla: var(--couleur…)`, `--rac`…). */
@@ -621,7 +632,8 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; et partout, celles qui lisent un jeton de ce lot posé sur une bannière ou un aplat foncé
  * (`var(--texte-sur-fonce)`, `var(--fond-banniere)` : un `color: #fff` remis là se verrait), le bleu des armes de départ tiré de sa classe
  * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--degats-…)`, `var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
- * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) ;
+ * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) et de la chronologie (`var(--ombre-evenement)`,
+ * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) ;
  * [{ fichier, selecteur, corps }], commentaires retirés.
  */
 const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
@@ -632,7 +644,7 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
-      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart)[,)]/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
  * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
@@ -647,7 +659,7 @@ const HORS_DU_LOT = new Map([
 
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
-    ...FICHIERS_DU_LOT_DES_ACCESSOIRES]) {
+    ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE]) {
     assert.deepEqual(couleursDuFichier(f), [], f);
   }
   const regles = reglesQuiLisentLaPalette();
@@ -686,7 +698,12 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/accessoires/accessoires.css .acc-ligne--malediction > *', 'src/styles/accessoires/accessoires.css .acc-produit.est-maudit',
     'src/styles/accessoires/accessoires.css .acc-produit.est-detruit .acc-produit__titre', 'src/styles/accessoires/accessoires.css .acc-produit__sur strong',
     "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong",
-    "src/styles/accessoires/accessoires.css .acc tr.acc-ligne--malediction[data-choix]:not([class*='couleur-niveau-']).est-choisi > *"]) {
+    "src/styles/accessoires/accessoires.css .acc tr.acc-ligne--malediction[data-choix]:not([class*='couleur-niveau-']).est-choisi > *",
+    // lot de la chronologie
+    "src/styles/chronologie/chronologie.css .chrono", "src/styles/chronologie/chronologie.css .chrono[class*='couleur-evenement-']",
+    "src/styles/chronologie/chronologie.css .frise__evenement[class*='couleur-evenement-']", "src/styles/chronologie/chronologie.css .frise__barre[class*='couleur-evenement-']",
+    "src/styles/chronologie/chronologie.css .frise__morceau[class*='couleur-evenement-']", 'src/styles/chronologie/chronologie.css .chrono-page',
+    "src/styles/chronologie/chronologie.css html.js .frise-voile:not([hidden])"]) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   for (const [h, declaration] of HORS_DU_LOT) {
@@ -1018,4 +1035,194 @@ test('les classes des niveaux posées par le gabarit et reprises par le script d
   // le module de la règle n'importe rien (la palette l'importe) ; le générateur, que le script importe, ne porte plus aucune couleur
   assert.doesNotMatch(lire('src/lib/accessoires-couleurs.mjs'), /^import /m);
   assert.doesNotMatch(lire('src/lib/accessoires-generateur.mjs'), /COULEURS_DES_NIVEAUX =|styleDeNiveau/);
+});
+
+// Lot de la chronologie (2026-10-23, même demande et mêmes choix de cadrage) : la teinte de chaque événement (la règle du site,
+// lib/chronologie-couleurs.mjs#couleursDesEvenements : aucune source ne donne de couleur à un événement) passe par sa classe `couleur-evenement-<id>`,
+// une combinaison calculée d'après la liste des événements (comme les potions : « Règle de calcul »), émise par la page de la chronologie seule.
+
+/** Les événements de la base, dans l'ordre de lecture (exemples compris : le site de dev les montre). */
+const evenementsDeLaBase = () => chargerChronologie(ouvrirBase({ sansExemples: false }));
+
+test('les couleurs des événements de la chronologie : une classe par événement, sa valeur celle de la règle du site, texte blanc ; une feuille à part', () => {
+  assert.equal(classeDEvenement('flammes-bleues'), 'couleur-evenement-flammes-bleues');
+  assert.equal(classeDEvenement('Âge de fer'), 'couleur-evenement-age-de-fer', 'l’id normalisé (idDeCouleur)');
+  const evenements = evenementsDeLaBase();
+  assert.ok(evenements.length >= 70, `${evenements.length} événements`);
+  const couleurs = couleursDesEvenements(evenements);
+  const feuille = regles(cssDesEvenements(couleurs));
+  // une règle par événement, dans l'ordre de lecture, aux noms uniques et sans caractère à échapper ; la valeur de la règle, jamais corrigée
+  assert.deepEqual([...feuille.keys()], evenements.map((e) => classeDEvenement(e.id)));
+  for (const e of evenements) {
+    assert.match(classeDEvenement(e.id), /^couleur-evenement-[a-z0-9]+(?:-[a-z0-9]+)*$/, e.id);
+    assert.deepEqual(feuille.get(classeDEvenement(e.id)), { '--couleur': couleurs.get(e.id), '--couleur-texte': '#ffffff' }, `${e.id} : la règle, texte blanc`);
+  }
+  // le blanc de la règle du site (texteSurCouleur : la luminance reste sous son seuil, de justesse : les teintes visent 4,6:1 avec le blanc)
+  for (const c of couleurs.values()) assert.equal(texteSurCouleur(c), '#ffffff', c);
+  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'inconnue').id), COULEUR_INCONNUE);
+  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'aujourdhui').id), COULEUR_AUJOURDHUI);
+  assert.equal(cssDesEvenements(new Map()), '');
+  assert.equal(cssDesEvenements(null), '');
+  // pas une famille fixe : ni dans FAMILLES_DE_LA_PALETTE, ni sur chaque page (Base.astro), dont le plafond de 4 ko tient
+  assert.ok(!('evenement' in FAMILLES_DE_LA_PALETTE));
+  assert.ok(!cssDeLaPalette().includes('couleur-evenement-'), 'pas dans la feuille de chaque page');
+  assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+  assert.doesNotMatch(lire('src/layouts/Base.astro'), /cssDesEvenements|chronologie-couleurs/);
+  // la palette n'importe pas la règle (elle reçoit ses couleurs) ; la règle n'importe rien ; chronologie.mjs n'écrit plus aucune couleur
+  assert.doesNotMatch(lire('src/lib/palette-css.mjs'), /^import [^;]*chronologie/m);
+  assert.doesNotMatch(lire('src/lib/chronologie-couleurs.mjs'), /^import /m);
+  assert.doesNotMatch(lire('src/lib/chronologie.mjs'), /couleursDesEvenements|contraste|hexDeTsl|COULEUR_|TEINTE_/);
+  // l'émission : le composant de la chronologie seul, dans un <style> à part ; l'éditeur du site de dev la réécrit (aucun autre fichier du site)
+  const chronologie = lire('src/components/chronologie/Chronologie.astro');
+  assert.ok(chronologie.includes('<style is:inline data-couleurs-chronologie set:html={cssDesEvenements(couleurs)}></style>'));
+  assert.ok(chronologie.includes("const couleurs = couleursDesEvenements(evenements);"));
+  const emetteurs = readdirSync(new URL('../src/', import.meta.url), { recursive: true }).filter((n) => /\.(?:astro|mjs|ts)$/.test(n))
+    .filter((n) => /cssDesEvenements\(/.test(lire(`src/${n}`))).map((n) => n.split('\\').join('/')).sort();
+  assert.deepEqual(emetteurs, ['components/chronologie/Chronologie.astro', 'scripts/edition/chronologie.mjs']);
+});
+
+test('les feuilles de la chronologie lisent les propriétés que posent les classes des événements, sur l’élément qui les porte ; les ombres et le voile viennent du thème', () => {
+  const { fond, texte } = proprietes();
+  const fichier = 'src/styles/chronologie/chronologie.css';
+  const css = lire(fichier);
+  const sansCommentaires = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const dans = (selecteur, attendu) => {
+    const regle = regleDe(css, selecteur);
+    for (const a of [attendu].flat()) assert.ok(regle.includes(a), `${selecteur} : « ${a} » dans « ${regle} »`);
+    return regle;
+  };
+  const EVENEMENT = "[class*='couleur-evenement-']";
+  // la page : --chrono et le texte posé dessus (--chrono-sur), tirés de la classe de l'événement affiché ; sans classe, l'accent et le texte sur aplat foncé
+  dans('.chrono', ['--chrono: var(--accent);', '--chrono-sur: var(--texte-sur-fonce);']);
+  dans(`.chrono${EVENEMENT}`, `--chrono: var(${fond}); --chrono-sur: var(${texte});`);
+  // la frise : la ligne (--c), sa barre (le précédent, --c-avant) et le morceau de barre (le suivant, --c-apres), chacun sur l'élément qui porte la classe
+  dans(`.frise__evenement${EVENEMENT}`, `--c: var(${fond});`);
+  dans(`.frise__barre${EVENEMENT}`, `--c-avant: var(${fond});`);
+  dans(`.frise__morceau${EVENEMENT}`, `--c-apres: var(${fond});`);
+  dans('.frise__barre', '--trait-avant: color-mix(in srgb, var(--c-avant, var(--c)), #fff var(--vif));');
+  dans('.frise__morceau', '--trait-apres: color-mix(in srgb, var(--c-apres, var(--c)), #fff var(--vif));');
+  dans('.frise__morceau::before', ['var(--trait-avant)', 'var(--trait) var(--y)', 'var(--trait-apres)']);
+  const lisentLaCouleur = [...sansCommentaires.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , corps]) => /var\(--couleur/.test(corps));
+  assert.deepEqual(lisentLaCouleur.map(([, sel]) => sel.trim()),
+    [`.chrono${EVENEMENT}`, `.frise__evenement${EVENEMENT}`, `.frise__barre${EVENEMENT}`, `.frise__morceau${EVENEMENT}`], 'la couleur lue sur l’élément qui porte la classe, rien d’autre');
+  // le texte posé sur la couleur de l'événement : celui de la classe (--chrono-sur), plus aucun #fff
+  for (const sel of ['.chrono-portee--majeur', 'a.chrono-chevron:not([aria-disabled=\'true\']):hover,\na.chrono-chevron:not([aria-disabled=\'true\']):focus-visible']) {
+    assert.ok(regleDe(css, sel).includes('color: var(--chrono-sur);'), sel);
+  }
+  dans('.chrono-commencer', ['background: var(--chrono);', 'color: var(--chrono-sur);']);
+  assert.ok(css.includes(".chrono--evenement a.chrono-chevron:not([aria-disabled='true']):active { border-color: var(--chrono); background: var(--chrono); color: var(--chrono-sur); }"));
+  assert.doesNotMatch(css, /--couleur-evenement|color: #fff/, 'plus de --couleur-evenement ni de texte blanc écrit');
+  // les pointillés de « Date inconnue » : un masque (il ne lit que l'opacité), la partie pleine en currentColor, la couleur opaque du texte de la ligne
+  dans('.frise__evenement--inconnue .frise__morceau::before', ['mask: repeating-linear-gradient(to bottom, currentColor 0 0.4rem, transparent 0.4rem 0.7rem);']);
+  dans('.frise__lien', 'color: var(--text);');
+  const theme = lire('src/styles/global/base.css');
+  const textes = [...theme.matchAll(/\n {2,4}--text: ([^;]+);/g)].map((m) => m[1]);
+  assert.ok(textes.length >= 3 && textes.every((t) => /^#[0-9a-f]{6}$/.test(t)), `--text opaque dans chaque bloc du thème : ${textes}`);
+  // les ombres et le voile : des jetons du thème, avec la valeur que la feuille écrivait (« Thème reste, Debug à part ») ; la même dans les deux thèmes
+  const jeton = (nom) => theme.match(new RegExp(`\\n {2}${nom}: ([^;]+);`))?.[1];
+  assert.deepEqual(['--ombre-evenement', '--ombre-barre-du-bas', '--ombre-poignee', '--ombre-tiroir', '--voile-tiroir'].map(jeton),
+    ['0 10px 30px rgb(0 0 0 / 0.05)', '0 -4px 18px rgb(0 0 0 / 0.08)', '0 1px 4px rgb(0 0 0 / 0.12)', '10px 0 34px rgb(0 0 0 / 0.28)', 'rgb(24 18 12 / 0.48)']);
+  for (const nom of ['--ombre-evenement', '--ombre-barre-du-bas', '--ombre-poignee', '--ombre-tiroir', '--voile-tiroir']) {
+    assert.equal((theme.match(new RegExp(`${nom}:`, 'g')) ?? []).length, 1, `${nom} : une seule valeur`);
+  }
+  dans('.chrono-page', 'box-shadow: 0 1px 0 var(--border), var(--ombre-evenement);');
+  assert.ok(css.includes('    box-shadow: var(--ombre-barre-du-bas);') && css.includes('    box-shadow: var(--ombre-poignee);') && css.includes('    box-shadow: var(--ombre-tiroir);'));
+  assert.ok(css.includes('background: var(--voile-tiroir);'));
+  assert.deepEqual(couleursDuFichier(fichier), [], 'la feuille n’écrit plus que le noir et le blanc de mélange');
+});
+
+/** Les valeurs d'un bloc du thème (`:root…` de styles/global/base.css). */
+const blocsDuTheme = () => [...lire('src/styles/global/base.css').matchAll(/(:root[^{]*)\{([^{}]*)\}/g)]
+  .map(([, sel, corps]) => ({ sel: sel.trim(), valeur: (nom) => corps.match(new RegExp(`\\n\\s*${nom}: ([^;]+);`))?.[1] }));
+
+test('lisibilité de la chronologie dans les deux thèmes, pour chaque événement de la base : le blanc sur sa couleur, le texte coloré sur la page et dans la frise (4,5:1)', () => {
+  const css = lire('src/styles/chronologie/chronologie.css');
+  // les parts des mélanges, lues dans la feuille (un réglage changé se mesure ici)
+  const part = (re) => {
+    const m = css.match(re);
+    assert.ok(m, `dans la feuille : ${re}`);
+    return Number(m[1]) / 100;
+  };
+  const p = {
+    texteClair: part(/\n {2}--chrono-texte: color-mix\(in srgb, var\(--chrono\) (\d+)%, #000\);/),
+    texteSombre: part(/:root\[data-theme="dark"\] \.chrono \{ --chrono-texte: color-mix\(in srgb, var\(--chrono\) (\d+)%, #fff\); \}/),
+    soft: part(/--chrono-soft: color-mix\(in srgb, var\(--chrono\) (\d+)%, var\(--surface\)\);/),
+    pastille: part(/\.chrono-categorie:hover, \.chrono-categorie:focus-visible \{ border-color: var\(--chrono\); background: color-mix\(in srgb, var\(--chrono\) (\d+)%, var\(--surface\)\); \}/),
+    commencer: part(/\.chrono-commencer:hover, \.chrono-commencer:focus-visible \{ background: color-mix\(in srgb, var\(--chrono\) (\d+)%, #000\); \}/),
+    ligneClair: part(/\n {2}--texte: color-mix\(in srgb, var\(--c, var\(--muted\)\) (\d+)%, #000\);/),
+    ligneSombre: part(/:root\[data-theme="dark"\] \.frise__evenement \{ --vif: \d+%; --texte: color-mix\(in srgb, var\(--c\) (\d+)%, #fff\); \}/),
+    vif: part(/:root\[data-theme="dark"\] \.frise__evenement \{ --vif: (\d+)%;/),
+    courante: part(/\n {2}background: color-mix\(in srgb, var\(--trait\) (\d+)%, var\(--surface\)\);\n {2}box-shadow: inset -4px/),
+    survol: part(/\.frise__lien:hover \{ background: color-mix\(in srgb, var\(--trait\) (\d+)%, transparent\); \}/),
+  };
+  // les mêmes réglages dans les deux blocs du thème sombre (préférence du système et choix du site)
+  assert.ok(css.includes(`:root:not([data-theme="light"]) .chrono { --chrono-texte: color-mix(in srgb, var(--chrono) ${p.texteSombre * 100}%, #fff); }`));
+  assert.ok(css.includes(`:root:not([data-theme="light"]) .frise__evenement { --vif: ${p.vif * 100}%; --texte: color-mix(in srgb, var(--c) ${p.ligneSombre * 100}%, #fff); }`));
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  assert.deepEqual(sombres.map((b) => b.sel), [':root:not([data-theme="light"])', ':root[data-theme="dark"]']);
+  const blanc = '#ffffff';
+  const noir = '#000000';
+  const mesures = [];
+  const lisible = (texte, fond, quoi) => {
+    const r = contraste(texte, fond);
+    mesures.push([quoi, r]);
+    assert.ok(r >= CONTRASTE_MINIMAL, `${quoi} : ${texte} sur ${fond} = ${r.toFixed(2)}:1`);
+  };
+  const couleurs = couleursDesEvenements(evenementsDeLaBase());
+  for (const [id, c] of couleurs) {
+    // le texte de la classe (--couleur-texte : le blanc) sur l'aplat de l'événement, et sur l'aplat assombri au survol de « Commencer »
+    lisible(blanc, c, `${id} : blanc sur la couleur`);
+    lisible(blanc, surFond(c, noir, p.commencer), `${id} : blanc sur la couleur assombrie`);
+    // thème clair : le texte coloré de la page (date, pastille mineure, catégories, légende, chevrons) et celui d'une ligne de la frise
+    {
+      const [bg, surface] = [clair.valeur('--bg'), clair.valeur('--surface')];
+      const texte = surFond(c, noir, p.texteClair);
+      lisible(texte, surface, `${id}, clair : texte coloré sur la surface`);
+      lisible(texte, surFond(c, surface, p.soft), `${id}, clair : texte coloré sur la teinte douce`);
+      lisible(texte, surFond(c, surface, p.pastille), `${id}, clair : texte coloré sur la pastille survolée`);
+      const ligne = surFond(c, noir, p.ligneClair);
+      lisible(ligne, bg, `${id}, clair : texte d’une ligne sur le fond`);
+      lisible(ligne, surFond(c, surface, p.courante), `${id}, clair : texte de la ligne courante`);
+      lisible(ligne, surFond(c, bg, p.survol), `${id}, clair : texte d’une ligne survolée`);
+    }
+    // thème sombre (les deux blocs) : le texte éclairci, sur les fonds sombres ; le trait de la ligne éclairci (--vif)
+    for (const b of sombres) {
+      const [bg, surface] = [b.valeur('--bg'), b.valeur('--surface')];
+      const texte = surFond(c, blanc, p.texteSombre);
+      lisible(texte, surface, `${id}, ${b.sel} : texte coloré sur la surface`);
+      lisible(texte, surFond(c, surface, p.soft), `${id}, ${b.sel} : texte coloré sur la teinte douce`);
+      lisible(texte, surFond(c, surface, p.pastille), `${id}, ${b.sel} : texte coloré sur la pastille survolée`);
+      const ligne = surFond(c, blanc, p.ligneSombre);
+      const trait = surFond(c, blanc, 1 - p.vif);
+      lisible(ligne, bg, `${id}, ${b.sel} : texte d’une ligne sur le fond`);
+      lisible(ligne, surFond(trait, surface, p.courante), `${id}, ${b.sel} : texte de la ligne courante`);
+      lisible(ligne, surFond(trait, bg, p.survol), `${id}, ${b.sel} : texte d’une ligne survolée`);
+    }
+  }
+  assert.ok(mesures.length >= couleurs.size * 20, `${mesures.length} mesures`);
+  // le plus juste : le blanc sur la couleur (les teintes visent 4,6:1)
+  const [quoi, minimum] = mesures.reduce((m, x) => (x[1] < m[1] ? x : m));
+  assert.match(quoi, /blanc sur la couleur$/, `le plus juste : ${quoi} (${minimum.toFixed(2)}:1)`);
+});
+
+test('les classes des événements posées par la frise, la page et l’éditeur du site de dev : des noms de la palette, jamais une couleur ni un style', () => {
+  // les gabarits : la classe sur `.chrono`, sur chaque ligne, sur sa barre (le précédent) et son morceau (le suivant) ; aucun style de couleur
+  const chronologie = lire('src/components/chronologie/Chronologie.astro');
+  assert.ok(chronologie.includes("<div class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil', (evenement ?? suivant) && classeDEvenement((evenement ?? suivant).id)]} data-chrono>"));
+  const frise = lire('src/components/chronologie/Frise.astro');
+  for (const attendu of ['class={`frise__evenement frise__evenement--${e.epoque} ${classeDEvenement(e.id)}`}', "<span class:list={['frise__barre', voisine(i, -1)]}>",
+    "<span class:list={['frise__morceau', voisine(i, 1)]} />"]) assert.ok(frise.includes(attendu), attendu);
+  for (const [f, source] of [['Chronologie.astro', chronologie], ['Frise.astro', frise]]) {
+    assert.doesNotMatch(source, /--couleur-evenement|--c(?:-avant|-apres)?:|getPropertyValue\('--c|style=\{(?!`--progression)/, f);
+  }
+  // l'éditeur : la feuille réécrite et les classes de la frise sont exécutées en faux navigateur (test/chronologie-editeur.test.mjs) ; ici, ce qu'il
+  // ne fait pas tourner (la page d'un événement créé, /chronologie/?evenement=, prend sa classe) et l'absence de tout style de couleur
+  const editeur = lire('src/scripts/edition/chronologie.mjs');
+  assert.ok(editeur.includes("poserCouleur(document.querySelector('[data-chrono]'), classeDEvenement(id));"), '.chrono de l’événement créé');
+  assert.doesNotMatch(editeur, /style\.setProperty\('--(?:c|c-avant|c-apres|couleur-evenement)'|--couleur-evenement|couleurs\.get\(/);
+  assert.doesNotMatch(editeur, /setProperty\(/, 'aucune variable posée en style');
+  // le script de la frise (en ligne) n'importe rien : il reprend les classes des lignes (scripts du navigateur : jamais la palette ni la règle)
+  assert.doesNotMatch(frise, /<script[^>]*>[\s\S]*?(?:import|palette-css|chronologie-couleurs)[\s\S]*?<\/script>/);
 });

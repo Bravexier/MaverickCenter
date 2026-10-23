@@ -16,7 +16,7 @@ import { url } from '../../lib/wiki';
 // Sur le site de dev (mode modification : src/scripts/edition/chronologie.mjs), date, titre, Impact et lieu sont des champs `data-ed` (lib/edition-modele.mjs ;
 // leurs saisies `.chrono-ed` n'apparaissent qu'en mode modification) ; catégories et blocs (`data-chrono-categories`, `data-chrono-bloc`) sont repris par
 // l'extension.
-// Couleur de la page : celle de l'événement sur la frise (--couleur-evenement, posée par Chronologie.astro).
+// Couleur de la page : celle de l'événement sur la frise (la classe couleur-evenement-<id> posée sur `.chrono` par Chronologie.astro).
 interface Props {
   evenement: any;
   /** Sa place dans l'ordre de lecture (1 à N) et le nombre d'événements (« événement N sur M »). */
