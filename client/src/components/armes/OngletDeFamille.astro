@@ -1,5 +1,6 @@
 ---
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { infobulleDuDeDeFamille } from '../../lib/armes-de-famille.mjs';
 import type { chargerArmes } from '../../lib/armes-db.mjs';
 
 // L'onglet d'UNE famille d'armes dans la barre de son menu (ArmesPage.astro ; components/Onglets.astro) : un lien vers le tableau de la famille
@@ -8,9 +9,11 @@ import type { chargerArmes } from '../../lib/armes-db.mjs';
 // Le nom et le dé suivent ceux du tableau en mode modification (`data-ed-lecture`, comme les onglets de la page Composants) : ils se modifient dans
 // l'en-tête du tableau, jamais dans l'onglet (décision R159). Rendu aussi pour la famille fictive du modèle d'une famille créée
 // (lib/armes-rendu.mjs#MODELE_DE_FAMILLE), d'où ce composant à part.
+// L'infobulle du dé : les paliers selon la Force quand la note de la famille en écrit (PUGILAT), lus dans la base (lib/armes-de-famille.mjs#infobulleDuDeDeFamille ;
+// demande du propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) ») ; sinon « Dé de la famille, sauf indication contraire ».
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
-  famille: Pick<Armes['familles'][number], 'id' | 'nom' | 'de_brut'> & { armes: readonly unknown[] };
+  famille: Pick<Armes['familles'][number], 'id' | 'nom' | 'de_brut' | 'note_brut'> & { armes: readonly unknown[] };
   /** l'onglet ouvert au départ dans son menu */
   actif?: boolean;
 }
@@ -21,6 +24,6 @@ const n = famille.armes.length;
 
 <a class={`onglet${actif ? ' is-active' : ''}`} id={`onglet-famille-${famille.id}`} href={`#famille-${famille.id}`}>
   <span class="onglet__nom" data-ed-lecture={ed('nom')}>{famille.nom}</span>
-  <span class="onglet__de armes-onglets__de" title="Dé de la famille, sauf indication contraire" data-ed-lecture={ed('de_brut')} hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
+  <span class="onglet__de armes-onglets__de" title={infobulleDuDeDeFamille(famille.note_brut)} data-ed-lecture={ed('de_brut')} hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
   <span class="onglet__detail" data-armes-onglet-compte>{`${n} arme${n > 1 ? 's' : ''}`}</span>
 </a>

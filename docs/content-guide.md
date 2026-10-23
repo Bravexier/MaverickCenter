@@ -566,7 +566,11 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   de mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») : **« Armes de mêlée »** (les familles de
   catégorie `contact`) et **« Armes à distance »** (`distance` : Arc, Arbalète, Arme de jet et Bombes, décision R127), groupées par `familles[].categorie`
   de `lib/armes-db.mjs#chargerArmes` (`lib/armes-rendu.mjs#menusDesArmes` ; une famille sans catégorie connue arrête le build), chaque menu dans l'ordre
-  de l'onglet. Un onglet par famille : son nom, la pastille de son dé, son nombre d'armes ; le premier de chaque menu ouvert au départ, un seul ouvert
+  de l'onglet. Un onglet par famille : son nom, la pastille de son dé, son nombre d'armes ; la pastille du dé (dans l'onglet et dans le titre du
+  tableau) a pour infobulle « Dé de la famille, sauf indication contraire », ou les paliers selon la Force quand la note de la famille en écrit
+  (PUGILAT : « Dé selon la Force : D6 1-2 Force, D8 3-4 Force, D10 5 Force », lus dans la note par `lib/armes-de-famille.mjs` ; demande du
+  propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) » ; la note reste écrite sous le titre du tableau, et ces paliers
+  ne se modifient pas sur le site) ; le premier de chaque menu ouvert au départ, un seul ouvert
   par menu (`components/Onglets.astro`, motif « tabs » : flèches, Début, Fin). Le panneau d'une famille garde l'id `famille-<id>` : un lien ou une
   adresse `#famille-…` (celui de la Ceinture vers les bombes, une adresse partagée) ouvre l'onglet Armes de la page, puis l'onglet de la famille ;
   **l'onglet choisi est écrit dans l'adresse** (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme

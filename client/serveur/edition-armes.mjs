@@ -10,6 +10,7 @@
 import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
+import { texteDesDesSelonLaForce } from '../src/lib/armes-de-famille.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../src/lib/armure-champs.mjs';
 import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, libelleDeFamille, PAGE_DES_ARMES, PAGES_DES_MATERIAUX,
@@ -217,11 +218,11 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
       if (!avant.maitrisable) throw refus(`${avant.nom} : les armes de monstres ne se modifient pas ici (décision R45).`);
       const de = 'de_brut' in valeurs ? deDeFamille(ligne.de_brut, avant.nom) : ligne.de_brut;
       // un dé qui dépend de la Force (le Pugilat : paliers écrits dans la note, que la fiche lit : lib/fiche-regles.mjs, desSelonLaForce) ne se change
-      // pas ici : la page afficherait le nouveau dé, la fiche resterait sur les paliers (limite technique, pas une règle ; arbitrage du leader technique, R159)
+      // pas ici : la page afficherait le nouveau dé, la fiche resterait sur les paliers (limite technique, pas une règle ; arbitrage du leader technique, R159).
+      // Les paliers sont cités comme dans l'infobulle du dé de la page (lib/armes-de-famille.mjs#texteDesDesSelonLaForce).
       const paliers = desSelonLaForce(avant.note_brut);
       if (de !== avant.de_brut && paliers) {
-        const texte = paliers.map((p) => `${p.de} ${p.min === p.max ? p.min : `${p.min}-${p.max}`} Force`).join(', ');
-        throw refus(`${avant.nom} : le dé de cette famille dépend de la Force (${texte}) : il ne se change pas sur le site.`);
+        throw refus(`${avant.nom} : le dé de cette famille dépend de la Force (${texteDesDesSelonLaForce(paliers)}) : il ne se change pas sur le site.`);
       }
       if (ligne.nom !== avant.nom) {
         verifierLeNom(db, ligne.nom, avant.id);
