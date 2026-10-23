@@ -25,7 +25,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
   metier_bonus: 'personnage_metier_bonus',
   capacites: 'personnage_capacite',
   sorts: 'personnage_sort',
-  // une famille d'armes par point de maîtrise à choisir d'une source (décisions R148 à R153, migration 0072) : les points et les dés se calculent
+  // une famille d'armes par point de maîtrise à choisir d'une source (décisions R148 à R153, migration 0073) : les points et les dés se calculent
   maitrise_choix: 'personnage_maitrise_choix',
   armes: 'personnage_arme',
   armure_parties: 'personnage_armure_partie',
@@ -57,7 +57,7 @@ export const CHAMP_VERSION = 'version';
  * compétence : l'Acquis se calcule, les points saisis sont notés, datés, dans la fiche (acquisRetires). `nm_cadeau` d'un sort (les NM du MJ, sort par
  * sort : décision R26) : les NM du MJ sont ceux de la fiche, personnage.nm_mj, la somme de ses nm_cadeau (décision R118, migration 0066 : nmDuMjDesSorts) ;
  * le NM de chaque sort ne change pas. `arme_famille_id` d'un choix d'acquis (l'arme choisie du bonus « de l'arme choisie », décision R119) : l'arme du
- * bonus est la famille de la maîtrise au choix de la classe (décision R152, migration 0072) ; l'ancienne est notée, datée, avec les anciens dés
+ * bonus est la famille de la maîtrise au choix de la classe (décision R152, migration 0073) ; l'ancienne est notée, datée, avec les anciens dés
  * (décision R153 : maitrisesDAvant) ; la compétence du choix reste.
  */
 export const COLONNES_RETIREES = Object.freeze({
@@ -116,7 +116,7 @@ export function acquisRetires(competences, noms = {}) {
  * `personnage_bouclier_materiau` (jusqu'à trois matériaux et leurs quantités) : le bouclier est une forme et une matière (décision R96, migration 0060 :
  * personnage.bouclier_materiau_id), le matériau du premier rang (matiereDuBouclier) ; chaque autre matériau est noté, daté, dans la fiche.
  * `personnage_maitrise_arme` (les dés par famille d'armes) : plus rien ne se saisit par famille, une famille se choisit par point de chaque source
- * (décision R148, migration 0072 : personnage_maitrise_choix) ; les anciens dés, et l'arme choisie de R119, sont notés en une ligne datée, aucun choix
+ * (décision R148, migration 0073 : personnage_maitrise_choix) ; les anciens dés, et l'arme choisie de R119, sont notés en une ligne datée, aucun choix
  * n'est posé (décision R153 : maitrisesDAvant, ligneDeRetrait).
  */
 export const TABLES_RETIREES = Object.freeze({
@@ -312,7 +312,7 @@ export function desEnNotation(de, nombre) {
 }
 
 /**
- * Ce que la refonte des maîtrises d'armes (décisions R148 à R153, migration 0072) retire d'une fiche d'avant : ses dés par famille (lignes de l'ancienne
+ * Ce que la refonte des maîtrises d'armes (décisions R148 à R153, migration 0073) retire d'une fiche d'avant : ses dés par famille (lignes de l'ancienne
  * personnage_maitrise_arme : arme_famille_id, des) et l'arme choisie du bonus « de l'arme choisie » de ses choix d'acquis (personnage_acquis_choix
  * .arme_famille_id, décision R119 : désormais la famille de la maîtrise au choix de la classe, R152). Décision R153 : « Tout remettre à choisir », avec
  * « une note datée de l'ancien tableau » ; aucun choix n'est posé. Un descripteur de retrait de nature « maitrises_armes » (une ligne par fiche :
@@ -344,7 +344,7 @@ export function maitrisesDAvant(maitrises, acquisChoix = [], noms = {}) {
 }
 
 /**
- * Vrai si la fiche reçue porte à la fois des maîtrises d'avant la migration 0072 (une liste `maitrises_armes` non vide, ou l'arme choisie d'un choix
+ * Vrai si la fiche reçue porte à la fois des maîtrises d'avant la migration 0073 (une liste `maitrises_armes` non vide, ou l'arme choisie d'un choix
  * d'acquis) et les choix de maîtrise (`maitrise_choix`, décision R148) : comme armuresAvecArmure, l'envoi d'une page d'avant restée ouverte, qui a
  * repris les nouvelles clés d'une réponse du service ; le service refuse (409) plutôt que de noter une seconde fois les anciennes maîtrises.
  */
@@ -367,7 +367,7 @@ export function maitrisesAvecChoix(fiche) {
  * (retraitsDuBouclier) ; et des accessoires qui portent encore un nom, un effet hors table, ou un emplacement retiré (Ceinture, Autre) sont convertis
  * (accessoiresGardes), ce qu'ils perdent noté. Des sorts qui portent encore leurs NM du MJ (`nm_cadeau`, avant la migration 0066) les perdent : leur
  * somme devient les NM du MJ de la fiche (nmDuMjDesSorts, décision R118) quand elle n'a pas `nm_mj` (avec, positifs : refusés par le service,
- * nmDuMjAvecCadeaux, et jetés par la page). Des maîtrises d'avant la migration 0072 (une liste `maitrises_armes`, l'arme choisie `arme_famille_id`
+ * nmDuMjAvecCadeaux, et jetés par la page). Des maîtrises d'avant la migration 0073 (une liste `maitrises_armes`, l'arme choisie `arme_famille_id`
  * d'un choix d'acquis) sont retirées, notées en une ligne datée quand la fiche n'a pas `maitrise_choix` (maitrisesDAvant, décision R153 ; aucun choix
  * n'est posé ; la compétence d'un choix d'acquis reste) ; avec `maitrise_choix` : refusées par le service (maitrisesAvecChoix) et jetées par la page.
  * Une fiche sans rien à convertir est rendue telle quelle (le même objet) ; jamais modifiée en place.

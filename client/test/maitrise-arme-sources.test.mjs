@@ -1,4 +1,4 @@
-// Les sources de maîtrise d'arme en tables (migration 0072-refonte-maitrises-armes, décisions R148 à R151, R154) : le lecteur de lib/maitrise-arme.mjs
+// Les sources de maîtrise d'arme en tables (migration 0073-refonte-maitrises-armes, décisions R148 à R151, R154) : le lecteur de lib/maitrise-arme.mjs
 // (lireLigneDeClasse, lireDon, nmGagnesDuDon), rejoué sur toute la base, redonne exactement les lignes de maitrise_arme_part,
 // maitrise_arme_part_famille et capacite_nm_gagne (comme test/accessoire-champs.test.mjs pour accessoire_effet_cible) : un changement du lecteur ou d'un
 // texte demande de réécrire ces lignes. Les règles que la base en tire sur les fiches : test/personnages-db.test.mjs.

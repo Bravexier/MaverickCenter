@@ -7,7 +7,7 @@
 // envoyée avec les nouvelles clés de l'armure, elle est refusée par le service (armuresAvecArmure). Enfin les matériaux du bouclier
 // (personnage_bouclier_materiau, migration 0060) deviennent sa matière (décision R96 : matiereDuBouclier), et les accessoires perdent Ceinture, Autre, nom
 // et effet hors table (décision R97 : accessoiresGardes), chaque perte notée, datée. Les NM du MJ notés sort par sort (personnage_sort.nm_cadeau,
-// migration 0066) deviennent ceux de la fiche (décision R118 : nmDuMjDesSorts). Les dés par famille (personnage_maitrise_arme, migration 0072) et l'arme
+// migration 0066) deviennent ceux de la fiche (décision R118 : nmDuMjDesSorts). Les dés par famille (personnage_maitrise_arme, migration 0073) et l'arme
 // choisie d'un choix d'acquis (R119) sont notés en une ligne datée, aucun choix posé (décision R153 : maitrisesDAvant) ; avec les choix de maîtrise,
 // refusés par le service (maitrisesAvecChoix).
 import assert from 'node:assert/strict';
@@ -22,7 +22,7 @@ import {
 } from '../src/lib/fiche-format.mjs';
 import { notationDesDes } from '../src/lib/fiche-moteur.mjs';
 
-test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), maîtrises d’armes (0072), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
+test('tables retirées : progression (migration 0045), armures (0055), matériaux du bouclier (0060), maîtrises d’armes (0073), ni table des fiches ni partie ; PARTIES_RETIREES en est l’inverse', () => {
   assert.deepEqual(TABLES_RETIREES, {
     personnage_progression: 'progression', personnage_armure: 'armures', personnage_bouclier_materiau: 'bouclier_materiaux', personnage_maitrise_arme: 'maitrises_armes',
   });

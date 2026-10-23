@@ -1050,7 +1050,7 @@ describe('fonctions pures', () => {
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
     // les sources de maîtrise d'arme d'une classe ou d'un don touchés, refaites par le lecteur après le lot (sourcesRefaitesParLeLot : un lot noté avant
-    // la migration 0072 ne les écrit pas ; décisions R148 à R151, R154), la même liste que le service
+    // la migration 0073 ne les écrit pas ; décisions R148 à R151, R154), la même liste que le service
     assert.deepEqual(TABLES_DES_SOURCES_DE_MAITRISE, TABLES_DES_SOURCES);
     assert.deepEqual(tablesDuLot(lot({ table: 'capacite', operation: 'modifier', avant: { effet: 'a' }, apres: { effet: 'b' } })), ['capacite', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
     assert.deepEqual(tablesDuLot(lot({ table: 'classe_maitrise_arme', operation: 'supprimer', avant: { classe_id: 'c', rang: 2 }, apres: null })), ['capacite_nm_gagne', 'classe_maitrise_arme', 'maitrise_arme_part', 'maitrise_arme_part_famille']);

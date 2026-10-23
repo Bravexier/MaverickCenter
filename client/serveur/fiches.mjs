@@ -27,12 +27,12 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
  * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
- * plus : la migration 0072 l'a retirée (R152, COLONNES_RETIREES).
+ * plus : la migration 0073 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
- * personnage_maitrise_choix, 0072, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_maitrise_choix, 0073, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -319,7 +319,7 @@ function verifierForme(db, entree, problemes) {
  * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
- * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0072 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0073 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
  * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Les choix de maîtrise
  * eux-mêmes ne sont refusés que par les contraintes de la base : un choix hors de sa source, une limite écrite ou le plafond dépassés sont signalés
  * par v_personnage_controle (R148 à R150), jamais refusés.

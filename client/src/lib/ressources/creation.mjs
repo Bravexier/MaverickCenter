@@ -247,7 +247,7 @@ export const RESSOURCES = [
 
 const PARTS_DE_MAITRISE = 'découpée par le lecteur lib/maitrise-arme.mjs dans le texte des lignes de maîtrise d’armes des classes (classe_maitrise_arme, ' +
   'dérivée de la ressource classes) et des dons (capacite, ressource dons-de-classe) : une source est l’une ou l’autre, deux parents qu’une dérivée ne ' +
-  'sait pas porter ; refaite par le service d’édition, jamais écrite par l’API (décisions R148 à R151, migration 0072) ; lue par les vues ' +
+  'sait pas porter ; refaite par le service d’édition, jamais écrite par l’API (décisions R148 à R151, migration 0073) ; lue par les vues ' +
   'v_personnage_maitrise_part et v_personnage_maitrise_arme, lisible dans l’onglet DB (/donnees/)';
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
