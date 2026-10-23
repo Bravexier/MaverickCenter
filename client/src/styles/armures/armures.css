@@ -3,7 +3,9 @@
    elle, et une matière) puis la liste classique (les boucliers : un seul tableau replié, triable), et à côté, dans un panneau qui suit le défilement,
    la fiche de l'armure ou du bouclier choisi (sur un écran étroit, il passe par-dessus la page), avec la pièce et l'amélioration pour une armure. Les
    cases « Matière » dans la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet), le poids d'un bouclier dans la
-   couleur de sa case (vert, jaune, orange, rouge : classeur original). Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre,
+   couleur de sa case (vert, jaune, orange, rouge : classeur original) : chaque case porte la classe de sa couleur (lib/palette-css.mjs, familles
+   `armure` et `poids`, émises par ArmuresPage.astro), dont elle lit --couleur et --couleur-texte ; aucune couleur écrite ici (« Aucune couleur en
+   dur. »), l'AP, l'AM et les types de dégâts sont des jetons du thème (styles/global/base.css). Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre,
    titre repliable, en-têtes ; les tableaux où l'on choisit une matière, serrés) ; ici, ce qui leur est propre. Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le
    contenu à la suite, la liste des poids comprise. */
 main:has(.armures) { max-width: 120rem; }
@@ -53,7 +55,7 @@ html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
    sa Force minimum en infobulle ; elle reste sans JavaScript (pas de fiche) et en mode modification (nom et Force se modifient) */
 html.js .armures-poids { display: none; }
 html.js body.ed-mode .armures-poids { display: block; }
-.poids__nom { box-shadow: inset 4px 0 0 var(--t); }
+.poids__nom { box-shadow: inset 4px 0 0 var(--couleur); }
 .armures-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armures-cote__fermer:hover { border-color: var(--pro); }
 
@@ -90,27 +92,27 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 /* les cases d'une amélioration de bouclier (coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17) */
 .pamelioration__materiaux, .pamelioration__ap, .pamelioration__cran { white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet) */
-.pmat__nom { background: var(--t, var(--surface)) !important; color: #171210; min-width: 6.5rem; }
-.pmat__choisir { display: block; color: #171210; }
-.pmat__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, #171210 45%, transparent); text-underline-offset: 3px; }
+/* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet ; la classe de son type) */
+.pmat__nom { background: var(--couleur, var(--surface)) !important; color: var(--couleur-texte); min-width: 6.5rem; }
+.pmat__choisir { display: block; color: var(--couleur-texte); }
+.pmat__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--couleur-texte) 45%, transparent); text-underline-offset: 3px; }
 .pmat.est-choisie > :not(.pmat__nom) { background: color-mix(in srgb, var(--pro) 16%, var(--surface)); }
 .pmat.est-choisie > .pmat__nom { box-shadow: inset 0 0 0 3px var(--pro), inset 0 0 0 5px var(--surface); }
 .pmat.est-choisie .pmat__choisir::after { content: ' ✓'; }
 
 /* Pastilles : type, matériau, poids d'un bouclier (couleur de sa case : décision R92, « Requiert N Force minimum » en infobulle), défense (AP / AM),
    résistances et faiblesses */
-.ptype, .pmat-pastille, .ppoids { display: inline-block; padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--t); color: #171210; font-size: var(--fs-sm); font-weight: 600;
-  border: 1px solid color-mix(in srgb, #171210 14%, transparent); white-space: nowrap; }
-.ppoids:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; text-decoration: underline dotted color-mix(in srgb, #171210 45%, transparent); text-underline-offset: 3px; }
+.ptype, .pmat-pastille, .ppoids { display: inline-block; padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--couleur); color: var(--couleur-texte); font-size: var(--fs-sm); font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--couleur-texte) 14%, transparent); white-space: nowrap; }
+.ppoids:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; text-decoration: underline dotted color-mix(in srgb, var(--couleur-texte) 45%, transparent); text-underline-offset: 3px; }
 .pmat-plus { margin: 0 0.25rem; color: var(--muted); }
 .armure__materiaux { white-space: nowrap; }
 .pdef { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
 .pdef__ap, .pdef__am { display: inline-block; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.pdef__ap { background: color-mix(in srgb, #7d6608 16%, var(--surface)); border: 1px solid color-mix(in srgb, #7d6608 40%, var(--border)); }
-.pdef__am { background: color-mix(in srgb, #2471a3 14%, var(--surface)); border: 1px solid color-mix(in srgb, #2471a3 40%, var(--border)); }
+.pdef__ap { background: color-mix(in srgb, var(--defense-ap) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-ap) 40%, var(--border)); }
+.pdef__am { background: color-mix(in srgb, var(--defense-am) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-am) 40%, var(--border)); }
 .pdef__aucune { color: var(--muted); }
-.pdgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
+.pdgt--frappe { border-color: color-mix(in srgb, var(--degats-frappe) 45%, var(--border)); }
 .psol__uni { font-size: var(--fs-xs); color: var(--muted); cursor: help; }
 
 /* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son

@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { classeDeCaracteristique, classeDePosture } from '../src/lib/palette-css.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import {
-  CLASSE_NEUTRE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, classeDUneClasse, classeDeCategorie, classeDeMagie, classeDePalier, classeDeRace, classeDeSecondeMagie,
+  CLASSE_NEUTRE, FAMILLES_DE_LA_FICHE, MAGIE_PAR_DEFAUT, classeDUneClasse, classeDeCategorie, classeDeMagie, classeDePalier, classeDeRace, classeDeSecondeMagie,
   classeDuModeHyper, classesDeLaPalette, cssDesFamilles,
 } from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
@@ -150,8 +150,8 @@ test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la 
   assert.deepEqual(regles.race_par_nature, { pure: { classe: 'couleur-race-pure' }, hybride: { classe: 'couleur-race-hybride' } });
   assert.deepEqual(regles.neutre, { classe: CLASSE_NEUTRE });
   assert.equal(CLASSE_NEUTRE, 'couleur-neutre-par-defaut');
-  // des classes de la feuille de la fiche (les familles d'une zone, que pages/fiche/index.astro émet)
-  const feuille = cssDesFamilles(FAMILLES_DES_ZONES);
+  // des classes de la feuille de la fiche (les familles d'une zone qu'elle pose, FAMILLES_DE_LA_FICHE, que pages/fiche/index.astro émet)
+  const feuille = cssDesFamilles(FAMILLES_DE_LA_FICHE);
   for (const c of [...regles.races, ...Object.values(regles.race_par_nature), regles.neutre].map((x) => x.classe)) assert.ok(feuille.includes(`.${c}{`), c);
 });
 
@@ -163,7 +163,7 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   assert.deepEqual([...new Set([...regles.classes].sort((a, b) => a.groupe.ordre - b.groupe.ordre).map((c) => c.groupe.label))], ['Physiques Mêlée', 'Physiques Distance', 'Magiques', 'Raciales', 'Spéciales']);
   assert.deepEqual([...new Set(regles.classes.map((c) => c.groupe.key))].sort(), Object.keys(CLASS_COLORS).sort(), 'les cinq colonnes de /classes/');
   for (const c of regles.classes) assert.equal(c.classe, classeDeCategorie(c.groupe.key), c.id);
-  const feuille = cssDesFamilles(FAMILLES_DES_ZONES);
+  const feuille = cssDesFamilles(FAMILLES_DE_LA_FICHE);
   for (const c of regles.classes) assert.ok(feuille.includes(`.${c.classe}{`), `${c.id} : dans la feuille de la fiche`);
   // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, une classe sans catégorie reconnue sous « Spéciales »)
   assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['càc'] } }), 'couleur-classe-speciales');
@@ -340,7 +340,7 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   // la couleur de chaque palier : la classe de son palier (lib/palette-css.mjs, famille `palier`, dans la feuille de la fiche), jamais un hex
   for (const p of regles.resistance_paliers) {
     assert.equal(p.classe, classeDePalier(p.id), p.id);
-    assert.ok(p.classe && cssDesFamilles(FAMILLES_DES_ZONES).includes(`.${p.classe}{`), p.id);
+    assert.ok(p.classe && cssDesFamilles(FAMILLES_DE_LA_FICHE).includes(`.${p.classe}{`), p.id);
   }
   // le Mode Hyper et le Mode Hyper 100 % : la classe de leur mode (famille `mode`)
   assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], [classeDuModeHyper('hyper'), classeDuModeHyper('cent')]);

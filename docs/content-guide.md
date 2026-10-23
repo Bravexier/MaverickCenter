@@ -124,19 +124,23 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 - **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
   dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs`), qui n'écrit aucune
   couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
-  toutes sauf Loyal Bon et Loyal Neutre, à peine éclaircis, testé). Une famille dont la couleur ne porte jamais de texte (`FAMILLES_SANS_TEXTE` :
-  `palier`, le trait de 3 px d'une ligne de résistance de la fiche) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande
-  vulnérabilité garde `#e53935`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  toutes sauf Loyal Bon, Loyal Neutre et le Titane, à peine éclaircis, testé). Une famille sur la couleur de laquelle aucun texte n'est posé en fond
+  (`FAMILLES_SANS_TEXTE` : `palier`, le trait de 3 px d'une ligne de résistance de la fiche ; `arme`, le bleu des armes de départ, une nuance, un
+  filet et, mêlé au texte du site, la couleur de la phrase des règles) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
   d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
   texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
   texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
-  `lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS`.
+  `lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS`. Le Titane (`#3c78d8`, la même couleur que Loyal Neutre) prend la même correction
+  (`#467fda`) depuis que son texte suit la règle du site (le texte foncé, 4,3:1 sur la couleur du classeur) et non plus le noir du classeur ; sa
+  couleur de référence reste dans `lib/materiaux-couleurs.mjs`.
 - **Où la feuille est émise** : les familles que beaucoup de pages posent (`FAMILLES_DE_CHAQUE_PAGE` : magies, attributs, caractéristiques,
   affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
   rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
-  (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre) et les seconds rangs des
-  caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`, `cssDesSecondsRangs` : le bloc `postures` du guide,
-  `pages/fiche/index.astro` (toutes les familles d'une zone), l'onglet Armes, `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
+  (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
+  types d'armure, poids des boucliers) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
+  `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
+  armes de départ ni les types d'armure), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
+  `poids`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
   `RacesPastilles.astro` et `RacePage.astro` (`race`), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`). Chaque classe
   posée existe dans une feuille de sa page (testé sur le site construit).
@@ -155,6 +159,14 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   Réponse du propriétaire à « Sur la fiche, trois pastilles sans couleur propre étaient en brun-gris (#8a7a66) avec un texte blanc, peu lisible
   (4,15:1) : la magie acquise « Aucune », un objet de départ au choix et une ethnie sans race. Quelle couleur prennent-elles ? » : « Gris neutre du
   site (Recommandé) » ; option : « Le gris neutre déjà utilisé ailleurs sur le site (#cccccc), texte foncé : lisible, sans ajouter une couleur. »
+  Puis `materiau` (`lib/materiaux-couleurs.mjs#COULEURS_DES_MATERIAUX`, relevées dans l'onglet « Armes » du classeur ; la fin de `ressource.id` :
+  `couleur-materiau-fer-noir` ; `par-defaut` = `COULEUR_NEUTRE` pour un matériau sans couleur, ceux des armures seulement ou un matériau ajouté :
+  `classeDeMateriau`), `arme` (`lib/equipement-couleurs.mjs#COULEURS_DES_ARMES` : `couleur-arme-depart`, le bleu des armes de départ du classeur,
+  `CLASSE_DES_ARMES_DE_DEPART`), `armure` (`COULEURS_DES_TYPES`, le type d'une armure ou d'une matière : `Léger` → `couleur-armure-leger` ;
+  `par-defaut` = `COULEUR_SANS_TYPE`, le gris `#eeeeee` d'un type sans couleur dans la source : `classeDuTypeDArmure`) et `poids`
+  (`COULEURS_DES_POIDS`, `bouclier_poids.id`, R92 : `couleur-poids-tres-lourd` ; `par-defaut` = `COULEUR_SANS_TYPE` : `classeDuPoids`). Le texte
+  d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
+  n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
   `couleurDeCaracteristique`) : un neutre a sa classe, jamais un hex de repli. L'id est la clé du module de la règle passée par
   `normalize` : il ne change pas quand le nom affiché change.
@@ -173,7 +185,11 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   magies, des onglets de spécialité, des boutons et pastilles pleins de la fiche), `--fond-banniere` (`#111`, le noir où se fond la couleur des
   bannières des classes, des races et des magies), `--vert-action` (`#2e7d4f`, l'action principale de la fiche, que sa feuille lit en `--vert`), `--a-choisir`
   (`#b45309`, `#f0a14a` en sombre : un choix qui reste à faire), `--a-choisir-plein` (`#b45309` dans les deux thèmes : le compte des choix en attente ;
-  le budget en manque lit `--a-choisir`, lisible en sombre) et `--etoile` (`#c99a06`, l'étoile d'une remarque de sort ou d'arme).
+  le budget en manque lit `--a-choisir`, lisible en sombre) et `--etoile` (`#c99a06`, l'étoile d'une remarque de sort ou d'arme) ; puis (lot des
+  matériaux, des armes et des armures) `--degats-taille` (`#c0392b`), `--degats-estoc` (`#2471a3`), `--degats-frappe` (`#7d6608`), le liseré des
+  pastilles des types de dégâts des armes et des armures, `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
+  `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; l'onglet Équipement n'écrit
+  plus ses `--degats-taille` et `--degats-estoc`.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -197,15 +213,19 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   - **les catégories de classe, les races et le reste de la fiche** (lot 4) : colonnes de `/classes/` et pages de classe (`--cla` de
     `styles/classe/`), groupes de `/races/` et pages de race (`--rac` de `styles/race/`), pages d'une race ou d'une classe créée sur le site de dev,
     fiche de personnage (pastilles et groupes des races, ethnies, classes et spécialités, choix faits, dons d'une classe, magie acquise « Aucune » et
-    objets de départ (neutre), trait des paliers de résistance, cases du Mode Hyper).
+    objets de départ (neutre), trait des paliers de résistance, cases du Mode Hyper) ;
+  - **les matériaux, les armes de départ, les types d'armure et les poids des boucliers** (lot 5) : lignes des matériaux de l'onglet Armes et pastille
+    du matériau dans la fiche de l'arme, lignes, filtre, légende et phrase des armes de départ (`--depart` de `styles/armes/armes.css`, tiré de la
+    classe posée sur `.armes`), cases des matières, pastilles des types et des matériaux, légende et titres des listes des onglets Armures et Boucliers,
+    pastille et liste des poids, tuile du poids de la fiche de personnage, pastille d'un matériau de la page Composants ; les scripts des onglets
+    reprennent la classe de la ligne affichée (`classList`) dans la fiche qu'ils écrivent, `regles.json` donne `classe` de chaque poids.
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Les autres couleurs (matériaux, poids et types d'armure, parties du guide, niveaux des accessoires, chronologie, livres, archives, mise à jour…)
-  posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
+  Les autres couleurs (parties du guide, niveaux des accessoires, chronologie, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
   voiles blancs translucides des bannières, `rgba(255, 255, 255, …)` de `classe/page.css`, `classe/dons.css`, `race/page.css`, `magie/page.css` ;
   l'échelle des relations entre les peuples, `--regard-evitee` de `race/base.css` ; les teintes des genres de sort, `.genre` de
   `styles/magie/sorts.css`, et des types de don, `.don-type` de `classe/dons.css` ; l'ombre des infobulles). La page Debug et l'impression ne
@@ -216,13 +236,15 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   moins un argument écrit, couleur nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit
   `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
   `--texte-sur-c`), ou, dans `styles/classe/` et `styles/race/`, celles de la catégorie ou de la nature (`--cla…`, `--rac…`, `--hero-1`, `--hero-2`),
-  choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et `--regard-evitee` de la page d'une race) ; le script de la fiche ne
+  ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
+  `--defense-ap`, `--defense-am`, `--ombre-fiche`), choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et `--regard-evitee` de la page d'une race) ; le script de la fiche ne
   lit ni ne pose aucune de ces couleurs ; jetons du thème ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
-  (sur toute page, aucune couleur de magie, de caractéristique, de posture, d'alignement, de catégorie de classe, de race, de palier, du Mode Hyper ni
-  neutre en style, et chaque classe `couleur-…` posée existe) et les
+  (sur toute page, aucune couleur de magie, de caractéristique, de posture, d'alignement, de catégorie de classe, de race, de palier, du Mode Hyper,
+  neutre, de matériau, des armes de départ, de type d'armure ni de poids en style, et chaque classe `couleur-…` posée existe) et les
   tests de chaque zone (`magies-html`, `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`, `guide-html`, `armes-html`,
-  `metiers-html`, `edition-rendu`, `fiche-regles`, `caracteristiques-postures`).
+  `armures-html`, `equipement-html`, `metiers-html`, `edition-rendu`, `fiche-regles`, `caracteristiques-postures`, `materiaux-couleurs`,
+  `boucliers-poids`).
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
@@ -497,7 +519,7 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
 
 - **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction portait la mise en forme de la cellule A1 de l'onglet (lue dans le
   classeur, perdue à l'import), que les blocs du panneau gardent — « Les armes en bleu… » en gras (et en bleu sur la page, le bleu des armes de départ :
-  `lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras italique ; Recharge longue, Recharge très longue et Mordhau, Dague,
+  `lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart` ; ce bleu, `--depart`, est la classe `couleur-arme-depart` posée sur `.armes`), ***CAS PARTICULIERS :*** en gras italique ; Recharge longue, Recharge très longue et Mordhau, Dague,
   Arme de jet et le prix sont des tuiles (migration 0056) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
 
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45), aéré (« l'affichage est trop
@@ -529,7 +551,9 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
   supplémentaires, celui du matériau en vert), la description et l'origine (« Origine X » ou « Facture X », le mot de la source) (« On en garderai que l'effet la description et l'origine »). Plus de
   « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
-  **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`), prix en RO seulement, effets sur une seule ligne : le bonus
+  **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`, posée par sa classe `couleur-materiau-<id>`, que le script
+  reprend sur la pastille du matériau dans la fiche, jamais un style : « Couleurs du site : la palette en classes » ; le texte suit la règle du site),
+  prix en RO seulement, effets sur une seule ligne : le bonus
   aux dégâts sans le mot « Dégâts » (gardé pour les lecteurs d'écran), puis les autres effets, séparés par « | » (« +7 | dégâts doublés contre la
   barrière »), lignes basses — et les **améliorations** (+1 à +10, sans ligne TOTAL : « La ligne "total" des amélioration est inutile », de même pour
   les armures et les boucliers). Le matériau et l'amélioration choisis restent marqués sans arme choisie.
@@ -565,7 +589,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque onglet y renvoie
   (`/ressources/composants/#materiaux`), et la description d'une matière reste l'infobulle de son nom dans les tableaux à choisir.
 - **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
-  jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `COULEURS_DES_TYPES` ; description en infobulle ; défense, solidité, prix, et
+  jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `lib/equipement-couleurs.mjs#COULEURS_DES_TYPES`, posés par la classe
+  `couleur-armure-<type>` de la palette, jamais un style ; description en infobulle ; défense, solidité, prix, et
   « Prix ×6 », le prix pour une armure : les 6 unités du matériau qu'elle demande, décision R93 ; demande du propriétaire, 2026-10-16). Un
   matériau dans chacun donne l'armure de la grille (dans un ordre ou dans l'autre ; chaque paire de matières a son armure, testé). Dessous, la **liste**
   des armures : **les armures particulières en premier** (Nom, Type, AP, AM, Solidité « uni », Effet, Prix ; demande du propriétaire, 2026-10-16 : « tu
@@ -595,8 +620,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   décroissant, puis rend l'ordre de l'onglet ; une valeur absente — prix « ???? », AP ou AM non écrit, bouclier sans poids — va à la fin ; rien dans
   l'adresse ; la part pure dans `lib/armures-tri.mjs`, testée, appliquée par `src/scripts/armures.mjs` ; un poids de bouclier réécrit sur le site de dev
   refait les pastilles des boucliers). Le **poids** de chaque bouclier est **la couleur de fond de sa case dans l'onglet** du classeur original (décision
-  R92 : vert Léger, jaune Moyen, orange Lourd, rouge Très lourd, `bouclier.poids_id`, migration `0054-poids-des-boucliers`, `COULEURS_DES_POIDS`) : une
-  pastille dans cette couleur, dans la liste avec « Requiert N Force minimum » en infobulle, et dans la fiche une cinquième tuile « Poids » dont
+  R92 : vert Léger, jaune Moyen, orange Lourd, rouge Très lourd, `bouclier.poids_id`, migration `0054-poids-des-boucliers`, `lib/equipement-couleurs.mjs#COULEURS_DES_POIDS`,
+  posés par la classe `couleur-poids-<id>`, que le script reprend dans la fiche) : une pastille dans cette couleur, dans la liste avec « Requiert N Force minimum » en infobulle, et dans la fiche une cinquième tuile « Poids » dont
   l'infobulle le dit ; la liste des poids n'est plus affichée (« Pas besoin de tableau pour l'expliquer ») : elle reste dans la page pour le mode
   modification et sans JavaScript. À côté, la fiche (réduite comme celle de l'armure : les tuiles AP, AM, solidité, poids, coût, dont l'infobulle donne
   le détail du calcul, la note R78 / R76 dans celle de la solidité). La page compose un bouclier d'une seule matière ; les règles de l'onglet
@@ -860,7 +885,7 @@ Artisanat ok ») :
   sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
   supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
 - **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
-  l'onglet « Armes »), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
+  l'onglet « Armes » : sa pastille porte la classe `couleur-materiau-<id>`, `par-defaut` sans couleur, que la page émet, `cssDesFamilles(['materiau'])`), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
   arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). La **fabrication** d'une matière (sa recette,
   « 10 minerais de fer + 1 charbon + Bas Fourneau » : table `recette` de genre `materiau`, en lecture) est la colonne du tableau MATÉRIAUX des onglets
   « Armures » et « Bouclier », qui a quitté la page « Équipement » (demande du propriétaire, 2026-10-16) ; l'Os, de la page des armes, n'en a pas ; la

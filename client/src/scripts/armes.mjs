@@ -101,13 +101,16 @@ if (racine) {
     };
   }
 
-  /** Le matériau tel qu'affiché : { nom, style, bonus_degats, cran_solidite, prix_ro, secondaires: [textes] }. */
+  /**
+   * Le matériau tel qu'affiché : { nom, couleur, bonus_degats, cran_solidite, prix_ro, secondaires: [textes] } ; `couleur` : la classe de sa couleur,
+   * celle que porte sa ligne (`couleur-materiau-<id>` : lib/palette-css.mjs, émise par la page), reprise par sa pastille dans la fiche, jamais un style.
+   */
   function lireMateriau(ligne) {
     if (!ligne) return null;
     const effet = ligne.querySelector('.materiau-effet')?.dataset ?? {};
     return {
       nom: ligne.querySelector('.materiau__choisir')?.textContent.trim() ?? '',
-      style: ligne.getAttribute('style') ?? '',
+      couleur: [...ligne.classList].filter((c) => c.startsWith('couleur-')).join(' '),
       bonus_degats: entier(effet.bonus),
       cran_solidite: entier(effet.cran),
       prix_ro: entier(ligne.querySelector('.materiau-prix')?.dataset.ro),
@@ -130,7 +133,7 @@ if (racine) {
     const m = lireMateriau(materiau);
     const f = forgerArme({ de: a.de, bonus_degats: a.bonus, durabilite: a.durabilite, cout_ro: a.cout }, m, ameliorations(), niveau);
     const titreNiveau = niveau ? `Amélioration +${niveau}` : 'Sans amélioration';
-    const mat = m ? `<span class="arme-fiche__materiau" style="${e(m.style)}">${e(m.nom)}</span>` : '';
+    const mat = m ? `<span class="arme-fiche__materiau ${e(m.couleur)}">${e(m.nom)}</span>` : '';
     // le détail de chaque tuile, dans son infobulle (une bulle riche ; styles communs `.eq-bulle` : styles/equipement/equipement.css)
     const ligne = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
     const bulle = (id, titre, lignes, note = '') =>

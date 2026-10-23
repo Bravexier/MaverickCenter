@@ -9,6 +9,7 @@ import { url } from '../../lib/wiki';
 import {
   htmlDeLigneDeBois, htmlDeLigneDeGemme, htmlDeLigneDeMateriau, htmlDeLigneDeMonnaie, htmlDeLigneDIngredient, htmlDeLigneDObjet,
 } from '../../lib/composants-rendu.mjs';
+import { cssDesFamilles } from '../../lib/palette-css.mjs';
 
 // Page /ressources/composants/ (demande du propriétaire, 2026-10-14 : « un onglet "Composants". Il comprendra les tableaux des gemmes, des matériaux, la
 // monnaie, et l'ensemble des tables de l'onglet "équipement inventaire" » ; « Il faut aussi y mettre la table des fruits. Ainsi que tout ce qui n'est pas
@@ -78,9 +79,14 @@ const tableaux = composants.onglets.map((o) => {
 });
 const nombre = tableaux.reduce((n, t) => n + t.lignes.length, 0);
 const ed = (id: string, colonne: string) => attributEd('composant_onglet', { id }, colonne);
+// la couleur de chaque matériau (sa pastille) : la classe de la palette (famille `materiau`, lib/palette-css.mjs), émise par cette page, pour les lignes
+// construites comme pour celles que le mode modification ajoute (`par-defaut` pour un matériau sans couleur) ; les gemmes et les bois portent la classe
+// de leur magie, posée sur chaque page
+const couleurs = cssDesFamilles(['materiau']);
 ---
 
 <style is:inline set:html={composantsCss}></style>
+<style is:inline set:html={couleurs}></style>
 {/* Onglets pose aussi `html.js` avant l'affichage (un panneau fermé n'est caché que sous html.js) */}
 <Onglets />
 <div class="composants" data-composants>

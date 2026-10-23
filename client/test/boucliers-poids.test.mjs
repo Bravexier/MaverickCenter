@@ -2,13 +2,15 @@
 // concerne le poids base toi sur la couleur du tableau d'orignie et affiche le dans le résultat final », sic) : la couleur de fond de sa case dans l'onglet
 // « Bouclier » du classeur ORIGINAL (vert Léger, jaune Moyen, orange Lourd, rouge Très lourd : les couleurs de la liste des poids), consignée case par
 // case dans le registre de la migration (data/migrations/0054-poids-des-boucliers.json). La base dans son état d'import (lib/historique-site.mjs :
-// le site de dev peut changer le poids d'un bouclier depuis) doit être exactement le registre ; les couleurs du site (lib/armures-rendu.mjs) sont
-// celles de la légende ; la pastille d'un poids dit « Requiert N Force minimum ».
+// le site de dev peut changer le poids d'un bouclier depuis) doit être exactement le registre ; les couleurs du site (lib/equipement-couleurs.mjs) sont
+// celles de la légende, posées par la classe du poids (lib/palette-css.mjs, famille `poids`) ; la pastille d'un poids dit « Requiert N Force minimum ».
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { chargerArmures, poidsDeBouclier } from '../src/lib/armures-db.mjs';
-import { COULEURS_DES_POIDS, couleurDuPoids, htmlDuPoids, RENDUS_DES_ARMURES } from '../src/lib/armures-rendu.mjs';
+import { htmlDuPoids, RENDUS_DES_ARMURES } from '../src/lib/armures-rendu.mjs';
+import { COULEUR_SANS_TYPE, COULEURS_DES_POIDS } from '../src/lib/equipement-couleurs.mjs';
+import { classeDuPoids, FAMILLES_DE_LA_PALETTE, PAR_DEFAUT } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 
@@ -50,18 +52,21 @@ test('état courant : tout bouclier a un poids de la liste (invariant), la page 
   const ids = new Set(armures.poids.map((p) => p.id));
   for (const b of armures.boucliers) assert.ok(ids.has(b.poids_id), `${b.id} : poids ${b.poids_id}`);
   assert.deepEqual(COULEURS_DES_POIDS, Object.fromEntries(registre.legende.map((l) => [l.poids_id, l.couleur])));
-  assert.equal(couleurDuPoids('plume'), '#eeeeee', 'un poids sans couleur connue : le gris neutre');
+  // chaque poids de la base a sa classe, de la couleur de sa légende ; un poids sans couleur connue : la classe par défaut (le gris sans type)
+  for (const p of armures.poids) assert.equal(classeDuPoids(p.id), `couleur-poids-${p.id}`, p.id);
+  assert.equal(classeDuPoids('plume'), `couleur-poids-${PAR_DEFAUT}`);
+  assert.equal(FAMILLES_DE_LA_PALETTE.poids[PAR_DEFAUT], COULEUR_SANS_TYPE);
 });
 
-test('la pastille d’un poids : sa couleur, sa Force minimum en data-force et « Requiert N Force minimum » en infobulle ; rien sans poids', () => {
-  assert.equal(htmlDuPoids({ id: 'lourd', nom: 'Lourd', force_min: 3 }), '<span class="ppoids" style="--t: #f6b26b" data-poids="lourd" data-force="3" title="Requiert 3 Force minimum">Lourd</span>');
-  assert.equal(htmlDuPoids({ id: 'x', nom: 'A <b>', force_min: null }), '<span class="ppoids" style="--t: #eeeeee" data-poids="x">A &lt;b&gt;</span>');
+test('la pastille d’un poids : la classe de sa couleur (jamais un style), sa Force minimum en data-force et « Requiert N Force minimum » en infobulle ; rien sans poids', () => {
+  assert.equal(htmlDuPoids({ id: 'lourd', nom: 'Lourd', force_min: 3 }), '<span class="ppoids couleur-poids-lourd" data-poids="lourd" data-force="3" title="Requiert 3 Force minimum">Lourd</span>');
+  assert.equal(htmlDuPoids({ id: 'x', nom: 'A <b>', force_min: null }), '<span class="ppoids couleur-poids-par-defaut" data-poids="x">A &lt;b&gt;</span>');
   assert.match(htmlDuPoids(null), /class="vide"/);
   const ctx = { poidsDeBouclier: poidsDeBouclier(db) };
   assert.equal(RENDUS_DES_ARMURES['bouclier-poids']('moyen', {}, ctx), htmlDuPoids(ctx.poidsDeBouclier[1]));
   assert.match(RENDUS_DES_ARMURES['bouclier-poids'](null, {}, ctx), /class="vide"/);
   // un identifiant que la liste n'a pas (liste absente) : affiché tel quel, sans Force
-  assert.equal(RENDUS_DES_ARMURES['bouclier-poids']('moyen', {}, {}), '<span class="ppoids" style="--t: #ffd966" data-poids="moyen">moyen</span>');
+  assert.equal(RENDUS_DES_ARMURES['bouclier-poids']('moyen', {}, {}), '<span class="ppoids couleur-poids-moyen" data-poids="moyen">moyen</span>');
 });
 
 test('AP et AM séparés (« Sépare donc les AP des AM ») : chaque rendu lit sa colonne (ap, am : deux valeurs de la base, 2026-10-17) et porte sa valeur', () => {

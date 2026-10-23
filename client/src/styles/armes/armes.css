@@ -13,12 +13,16 @@ main:has(.armes) { max-width: 120rem; }
   --tab: var(--arm);
   --tab-soft: var(--arm-soft);
   --tab-line: var(--arm-line);
-  /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » */
-  --depart: #3c78d8;
+  /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » ; le bleu est la classe des armes de départ
+     (`couleur-arme-depart`, lib/palette-css.mjs, posée sur cet élément par ArmesPage.astro), jamais écrit ici */
+  --depart: var(--couleur);
   --depart-fond: color-mix(in srgb, var(--depart) 16%, var(--surface));
   --depart-fond-fort: color-mix(in srgb, var(--depart) 26%, var(--surface));
   margin: 0 0 2rem;
 }
+/* la classe du bleu posée sur `.armes` ne s'hérite pas : `--depart` est résolu ici ; sous lui, un élément n'a de --couleur que par sa propre classe
+   (une pastille de compétence, une gemme, un matériau), jamais celle des armes de départ (spécificité nulle : une classe de la palette l'emporte) */
+:where(.armes) > * { --couleur: initial; --couleur-texte: initial; }
 .armes .js-seul { display: none; }
 html.js .armes .js-seul { display: revert; }
 html:not(.js) .armes :is(.js-seul-ligne, .arme-fiche) { display: none; }
@@ -132,15 +136,16 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme-comp--texte { background: none; color: inherit; font-weight: 400; }
 
 /* Types de dégâts */
-.arme-dgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
+.arme-dgt--frappe { border-color: color-mix(in srgb, var(--degats-frappe) 45%, var(--border)); }
 
 /* Les tableaux du panneau (matériaux, améliorations) : des lignes basses, serrées (« réduire la hauteur des lignes des matériaux ») */
 .armes-cote .armes-table tbody > tr > * { vertical-align: middle; }
 /* Matériaux : toute la ligne dans la couleur du matériau (comme l'onglet du classeur), ses effets sur une seule ligne, séparés par « | », le bonus aux
    dégâts sans le mot « Dégâts » (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau et les effets
    devraient être sur la même ligne. (exemple : +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière.) ») ; la ligne choisie : un double
-   filet (accent puis fond) tout autour, et une coche après son nom */
-.materiau { --ligne-fond: var(--mat); --ligne-texte: var(--mat-texte); }
+   filet (accent puis fond) tout autour, et une coche après son nom ; la couleur est la classe du matériau (`couleur-materiau-<id>`,
+   lib/palette-css.mjs, valeur dans lib/materiaux-couleurs.mjs), posée sur la ligne et, par le script de la page, sur sa pastille dans la fiche */
+.materiau { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
 .materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .materiau-effet { display: inline; }
@@ -168,7 +173,7 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme-fiche__sous-titre { color: var(--muted); margin-right: 0.2rem; }
 .arme-fiche__identite .arme-comp { display: inline-block; }
 .arme-fiche__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: var(--fs-xs); border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
-.arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--mat); color: var(--mat-texte); border: 1px solid var(--border); font-weight: 600; }
+.arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--couleur); color: var(--couleur-texte); border: 1px solid var(--border); font-weight: 600; }
 .arme-fiche__niveau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--arm-line); font-weight: 600; }
 .arme-fiche__ou { color: var(--muted); }
 /* les tuiles : leur détail est leur infobulle (components/Infobulles.astro), d'où le curseur d'aide et le soulignement au survol */

@@ -122,8 +122,8 @@ function attribut(e, nom, valeur) {
 
 /**
  * La couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture, d'un alignement, d'une race, d'une classe, d'un palier de
- * résistance ou du Mode Hyper : les classes de la palette du site (lib/palette-css.mjs ; regles.json en donne les noms : `classe` et `classe_2` de
- * chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe, palier et mode, `race_par_nature`, et `neutre` pour ce qui n'a
+ * résistance, du Mode Hyper ou du poids d'un bouclier : les classes de la palette du site (lib/palette-css.mjs ; regles.json en donne les noms : `classe`
+ * et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe, palier, mode et poids, `race_par_nature`, et `neutre` pour ce qui n'a
  * pas de couleur de règle), jamais une couleur écrite. `teinteDe(x)` : les classes d'un élément sur la couleur de `x` (rien sans `x`) ; `teinte-palette` fait lire à
  * l'élément --couleur et --couleur-texte de sa classe dans les variables de la fiche (--c, --c-texte, --texte-sur-c : styles/fiche/fiche.css).
  */
@@ -2185,11 +2185,11 @@ function construireEquipement() {
         ecrire(tuileAm, String(casse ? 0 : b.am));
         infobulle(tuileAm.li, casse ? [...pourquoi, `Réparé : ${b.am} AM`].join('\n') : 'Comptés en parade partielle');
         tuilePoids.li.hidden = !b.poids;
+        // la couleur du poids (R92) : sa classe (regles.json : `classe` de chaque poids, famille `poids` de la feuille de la page), jamais un style
+        poserTeinte(tuilePoids.li, teinteDe(b.poids));
         if (b.poids) {
           ecrire(tuilePoids, b.poids.nom);
           infobulle(tuilePoids.li, `Requiert ${b.poids.force_min} Force minimum${b.forceManquante ? ` : Force ${b.force}, trop lourd` : ''}`);
-          tuilePoids.li.style.setProperty('--c', b.poids.couleur);
-          tuilePoids.li.style.setProperty('--texte-sur-c', b.poids.texte);
           tuilePoids.li.dataset.poids = '';
           tuilePoids.li.toggleAttribute('data-trop', b.forceManquante);
         }

@@ -58,7 +58,9 @@ if (racine) {
   const bullesDe = (quoi) => racine.querySelector(`[data-armures-bulles="${quoi}"]`);
   /** Le panneau de côté remonte à la fiche quand on choisit une autre armure (ou un autre bouclier) : il garde sinon son défilement. */
   const remonter = (vue) => vue?.querySelector('.armures-cote')?.scrollTo({ top: 0 });
-  const pastille = (m) => (m ? `<span class="pmat-pastille" style="${e(m.style)}">${e(m.nom)}</span>` : '');
+  /** Les classes de couleur d'un élément affiché (`couleur-armure-<type>`, `couleur-poids-<id>` : lib/palette-css.mjs, émises par la page), jamais un style. */
+  const couleurDe = (el) => [...(el?.classList ?? [])].filter((c) => c.startsWith('couleur-')).join(' ');
+  const pastille = (m) => (m ? `<span class="pmat-pastille ${e(m.couleur)}">${e(m.nom)}</span>` : '');
 
   /**
    * Les améliorations d'une cible telles qu'affichées : [{ niveau, cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }]. Chaque valeur est l'attribut
@@ -80,7 +82,7 @@ if (racine) {
     return {
       cle: ligne.dataset.materiau,
       nom: bouton?.textContent.trim() ?? '',
-      style: ligne.querySelector('.pmat__nom')?.getAttribute('style') ?? '',
+      couleur: couleurDe(ligne.querySelector('.pmat__nom')),
       prix_ro: nombreOuNul(ligne.querySelector('.materiau-prix')?.dataset.ro),
       solidite: entier(ligne.querySelector('.psol')?.dataset.solidite),
     };
@@ -91,7 +93,7 @@ if (racine) {
   /** Le prix écrit d'une cellule rendue : { ro (null si ce n'est pas un nombre), texte }. */
   const prixDe = (cellule) => ({ ro: nombreOuNul(cellule?.querySelector('.pprix')?.dataset.ro), texte: cellule?.querySelector('.pprix')?.textContent.trim() ?? '' });
   /**
-   * Le poids d'un bouclier tel qu'affiché dans sa ligne (pastille .ppoids : lib/armures-rendu.mjs#htmlDuPoids) : { id, nom, style, force, infobulle } ;
+   * Le poids d'un bouclier tel qu'affiché dans sa ligne (pastille .ppoids : lib/armures-rendu.mjs#htmlDuPoids) : { id, nom, couleur, force, infobulle } ;
    * null sans poids. L'infobulle (« Requiert N Force minimum ») se lit dans `data-infobulle`, où components/Infobulles.astro a déplacé le `title`.
    */
   function lirePoids(ligne) {
@@ -100,7 +102,7 @@ if (racine) {
     return {
       id: p.dataset.poids ?? '',
       nom: p.textContent.trim(),
-      style: p.getAttribute('style') ?? '',
+      couleur: couleurDe(p),
       force: nombreOuNul(p.dataset.force),
       infobulle: p.getAttribute('data-infobulle') ?? p.getAttribute('title') ?? '',
     };
@@ -342,7 +344,7 @@ if (racine) {
         ${tuile('bouclier-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
         ${tuile('bouclier-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
         ${tuile('bouclier-bulle-solidite', 'Solidité', String(f.solidite.total), 'de la matière')}
-        ${tuile('bouclier-bulle-poids', 'Poids', poids ? `<span class="ppoids" style="${e(poids.style)}" data-poids="${e(poids.id)}">${e(poids.nom)}</span>` : '<span class="vide" aria-label="aucun">—</span>')}
+        ${tuile('bouclier-bulle-poids', 'Poids', poids ? `<span class="ppoids ${e(poids.couleur)}" data-poids="${e(poids.id)}">${e(poids.nom)}</span>` : '<span class="vide" aria-label="aucun">—</span>')}
         ${tuile('bouclier-bulle-cout', 'Coût', c.ro_total === null ? (c.ro_materiaux_fournis === null ? e(prix.texte || '—') : ro(c.ro_materiaux_fournis)) : ro(c.ro_total), c.materiaux ? 'matériaux achetés' : '')}
       </div>`;
     B.fiche.setAttribute('aria-labelledby', 'bouclier-fiche-titre');

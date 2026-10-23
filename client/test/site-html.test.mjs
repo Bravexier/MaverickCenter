@@ -602,3 +602,44 @@ test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper 
   for (const c of classes) assert.ok(CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) && fiche.includes(`.${c}{`), `${c} : dans la feuille de la fiche`);
   assert.ok([...regles.races, ...regles.classes].every((x) => !('couleur' in x) && !('texte' in x)), 'regles.json : aucune couleur de race ni de classe');
 });
+
+// Lot des matériaux, des armes de départ, des types d'armure et des poids des boucliers (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur
+// toute page construite, aucune de ces couleurs en style ; chaque classe posée existe dans une feuille de la page (familles d'une zone, émises par les
+// onglets Armes, Armures et Boucliers, la page Composants et la fiche).
+/** Les éléments que les pages posent sur la couleur d'un matériau, des armes de départ, d'un type d'armure ou d'un poids de bouclier. */
+const ELEMENTS_DU_LOT_DES_ARMES_ET_ARMURES = new Set(['materiau', 'arme-fiche__materiau', 'armes', 'pmat__nom', 'ptype', 'pmat-pastille', 'ppoids', 'poids', 'comp-teinte']);
+const CLASSE_DU_LOT_DES_ARMES_ET_ARMURES = /^couleur-(?:materiau|arme|armure|poids)-/;
+
+test('couleurs des matériaux, des armes de départ, des types d’armure et des poids des boucliers : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--mat:|--mat-texte:|--t:|--depart:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_ARMES_ET_ARMURES.test(c) || ELEMENTS_DU_LOT_DES_ARMES_ET_ARMURES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_ARMES_ET_ARMURES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+  }
+  // chaque zone du lot pose bien ses classes : la page Équipement (matériaux, armes de départ, types, poids), la page Composants (matériaux)
+  const equipement = parPage.get('ressources/equipement/index.html') ?? new Set();
+  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane', 'couleur-armure-leger', 'couleur-armure-intermediaire',
+    'couleur-armure-lourd', 'couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(equipement.has(c), `l’équipement : ${c}`);
+  const composants = parPage.get('ressources/composants/index.html') ?? new Set();
+  assert.ok(composants.has('couleur-materiau-fer') && composants.has('couleur-materiau-par-defaut'), 'les composants : un matériau d’arme et un d’armure');
+  assert.ok(![...parPage.keys()].some((rel) => !['ressources/equipement/index.html', 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
+  // la fiche pose la classe du poids au navigateur, d'après regles.json : dans la feuille de la fiche, sans couleur
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const fiche = lire('fiche/index.html');
+  assert.ok(regles.poids_bouclier.length >= 4);
+  for (const p of regles.poids_bouclier) {
+    assert.ok(/^couleur-poids-/.test(p.classe) && fiche.includes(`.${p.classe}{`), `${p.classe} : dans la feuille de la fiche`);
+    assert.ok(!('couleur' in p) && !('texte' in p), `regles.json : aucune couleur de poids (${p.id})`);
+  }
+});

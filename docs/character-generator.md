@@ -302,9 +302,10 @@ réponse du propriétaire à « Sur la fiche, trois pastilles sans couleur propr
 la magie acquise « Aucune », un objet de départ au choix et une ethnie sans race. Quelle couleur prennent-elles ? » : « Gris neutre du site
 (Recommandé) » ; option : « Le gris neutre déjà utilisé ailleurs sur le site (#cccccc), texte foncé : lisible, sans ajouter une couleur. ») ;
 une ethnie, une spécialité et les dons d'une classe prennent la classe de leur race ou de leur classe. Pastilles, groupes et choix faits portent
-`teinte-palette` et la classe, jamais un style ni un repli écrit ; le texte d'une pastille pleine est celui de sa classe (`--texte-sur-c`). Les classes
-des postures, alignements, catégories de classe, races, paliers, du Mode Hyper et le neutre sont émises par la page (`pages/fiche/index.astro`,
-`cssDesFamilles(FAMILLES_DES_ZONES)`), celles des caractéristiques sont sur chaque page. Les couleurs d'interface de la fiche (l'action principale,
+`teinte-palette` et la classe, jamais un style ni un repli écrit ; le texte d'une pastille pleine est celui de sa classe (`--texte-sur-c`). De même, le
+poids d'un bouclier (R92) : `regles.json` donne `classe` de chaque poids (`poids_bouclier[].classe`, `couleur-poids-<id>`, sans couleur ni texte), que le
+script pose avec `teinte-palette` sur la tuile du poids. Les classes des postures, alignements, catégories de classe, races, paliers, du Mode Hyper, le
+neutre et les poids des boucliers sont émises par la page (`pages/fiche/index.astro`, `cssDesFamilles(FAMILLES_DE_LA_FICHE)`), celles des caractéristiques sont sur chaque page. Les couleurs d'interface de la fiche (l'action principale,
 un choix à faire, l'étoile d'une remarque, le texte blanc des boutons pleins) sont des jetons du thème (`styles/global/base.css` : `--vert-action`,
 `--a-choisir`, `--a-choisir-plein`, `--etoile`, `--texte-sur-fonce`). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
@@ -347,7 +348,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   Un choix qui manque est dans le tiroir (`choixEnAttente`, nature `accessoire`). Les effets « (Action) » et à usage compté (`accessoire_effet.usage`)
   sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
 - **Bouclier** (décision R96 : « Forme + matière », comme l'onglet Boucliers) : la forme, la matière et l'amélioration (+1 à +5) ; le bouclier de la liste
-  donne l'AP et l'AM (plus l'AP du niveau d'amélioration, R76) et le poids (R92 : tuile dans la couleur de l'onglet, en rouge quand la Force est sous son
+  donne l'AP et l'AM (plus l'AP du niveau d'amélioration, R76) et le poids (R92 : tuile dans la couleur de l'onglet, la classe de son poids, en rouge quand la Force est sous son
   minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
   au maximum (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la
   liste) ; **un bouclier cassé** (solidité 0) : ses AP et AM ne comptent plus, même en parade partielle au bouclier (décision R108 : « Bouclier à 0 : ses

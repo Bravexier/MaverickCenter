@@ -1,14 +1,14 @@
 ---
 name: zone-armures
 description: "Onglets Armures et Boucliers de /ressources/equipement/ : grille de matériaux, armure complète (R93), prix calculé, AP/AM saisis, boucliers forme + matière (R78), poids (R92), améliorations (R76, R77), tri, édition sur le site de dev. À charger avant de lire, modifier ou relire ce code."
-paths: ["client/src/lib/armures-db.mjs", "client/src/lib/armure-champs.mjs", "client/src/lib/armure-forge.mjs", "client/src/lib/armures-rendu.mjs", "client/src/lib/armures-tri.mjs", "client/src/lib/corps-armures.mjs", "client/src/components/armures/**", "client/src/scripts/armures.mjs", "client/src/styles/armures/**", "client/serveur/edition-armures.mjs", "client/src/scripts/edition/armures.mjs", "client/test/armure*.test.mjs", "client/test/corps-armures.test.mjs", "client/test/serveur-edition-armures.test.mjs", "client/test/boucliers-poids.test.mjs", "data/migrations/0046-armures-boucliers*", "data/migrations/0054-poids-des-boucliers*", "data/migrations/0055-armure-une-armure-six-parties*"]
+paths: ["client/src/lib/armures-db.mjs", "client/src/lib/armure-champs.mjs", "client/src/lib/armure-forge.mjs", "client/src/lib/armures-rendu.mjs", "client/src/lib/armures-tri.mjs", "client/src/lib/equipement-couleurs.mjs", "client/src/lib/corps-armures.mjs", "client/src/components/armures/**", "client/src/scripts/armures.mjs", "client/src/styles/armures/**", "client/serveur/edition-armures.mjs", "client/src/scripts/edition/armures.mjs", "client/test/armure*.test.mjs", "client/test/corps-armures.test.mjs", "client/test/serveur-edition-armures.test.mjs", "client/test/boucliers-poids.test.mjs", "data/migrations/0046-armures-boucliers*", "data/migrations/0054-poids-des-boucliers*", "data/migrations/0055-armure-une-armure-six-parties*"]
 user-invocable: false
 ---
 # Armures et boucliers
 
 ## Fichiers
 - Lecture : `lib/armures-db.mjs` (`chargerArmures`, `prix_calcule`, `ecartsDeLaSource`) ; découpages : `lib/armure-champs.mjs` (`defenseEcrite`, `defenseExacte`, `textesDeBouclierEcrits`, `ameliorationDeBouclierExacte`) ; calcul : `lib/armure-forge.mjs` (`prixDeLArmure`) ; tri : `lib/armures-tri.mjs`.
-- Rendu : `components/armures/ArmuresPage.astro`, `lib/armures-rendu.mjs` (`COULEURS_DES_TYPES`, `COULEURS_DES_POIDS`), CSS `styles/armures/armures.css`. Script de page : `src/scripts/armures.mjs`.
+- Rendu : `components/armures/ArmuresPage.astro`, `lib/armures-rendu.mjs`, CSS `styles/armures/armures.css`. Couleurs des types et des poids : `lib/equipement-couleurs.mjs` (`COULEURS_DES_TYPES`, `COULEURS_DES_POIDS`, `COULEUR_SANS_TYPE`), posées par leurs classes (skill `ui-couleurs`). Script de page : `src/scripts/armures.mjs`.
 - Corps Markdown des pages « Armures » et « Bouclier » : `lib/corps-armures.mjs`.
 - Site de dev : service `serveur/edition-armures.mjs`, extension `src/scripts/edition/armures.mjs`.
 - Page et onglets, panneaux de règles : skill `zone-equipement`.
@@ -20,7 +20,8 @@ user-invocable: false
 ## Invariants
 - Rendue depuis les tables (`armure`, `materiau_armure`, `armure_emplacement`, `bouclier_classe`, `materiau_bouclier`, `bouclier`, `bouclier_poids`, `amelioration_equipement`), jamais depuis les Markdown des pages « Armures » et « Bouclier ». Leurs règles sont le panneau de règles de chaque onglet.
 - Les pages « Armures » et « Bouclier » ne sont plus construites (`lib/metiers.mjs#pageSansAdresse`) : leurs liens et leur adresse (page 404) mènent à leur onglet.
-- Le script de page n'importe que `lib/armure-forge.mjs` et `lib/armures-tri.mjs`.
+- Le script de page n'importe que `lib/armure-forge.mjs` et `lib/armures-tri.mjs`. Il reprend la classe de couleur de la case ou de la pastille affichée (`couleurDe` : `classList`) dans la fiche qu'il écrit, jamais un style.
+- Couleurs (lot 5 de la palette) : la case d'une matière, les pastilles de type, de matériau et de poids, la légende, le titre d'une liste par type et une ligne de la liste des poids portent la classe de leur type ou de leur poids (`palette-css.mjs#classeDuTypeDArmure`, `classeDuPoids` : `couleur-armure-<type>`, `couleur-poids-<id>`, `par-defaut` sans couleur), jamais `--t` en style ; `ArmuresPage.astro` émet `cssDesFamilles(['armure', 'poids'])`, pour la page construite comme pour les cases que le mode modification redessine. `armures.css` lit `--couleur`, `--couleur-texte` ; AP, AM et frappe lisent les jetons du thème `--defense-ap`, `--defense-am`, `--degats-frappe`.
 - Le corps Markdown des deux pages suit les tables (`corps-armures.mjs`) ; il ne sert qu'à la recherche et aux `[[liens]]`.
 - Une armure ne se fabrique plus pièce par pièce, seulement complète (R93) : plus de tableau FABRICATION ; les paragraphes sur la création par pièces sont retirés des règles (R95, migration `0055`), donc du panneau de règles. Un ancien `piece=…` de l'adresse est ignoré.
 - Prix d'une armure de la grille calculé partout (R93, `armure-forge.mjs#prixDeLArmure`) : fabrication de l'armure complète (10 RO, ligne « Armure Complète » de FABRICATION, écrite dans la phrase du prix) + 6 unités de chaque matériau au prix de Composants (R62), matériaux achetés ou fournis. `prix_calcule` au build, refait par le script quand un prix change. Le prix écrit de la grille n'est plus lu ni modifiable. Une armure particulière garde son prix écrit.
@@ -34,7 +35,7 @@ user-invocable: false
 - Au bout du défilement du panneau de la fiche, la molette passe à la page (skill `ui-defilement`).
 
 ## Choix du propriétaire
-- Armures : deux tableaux des matières de la grille (« Premier matériau », « Second matériau »), case Matière dans la couleur de son type (`COULEURS_DES_TYPES`), « Prix ×6 » = prix pour une armure (6 unités), refait par le script quand un prix change. Un matériau dans chacun donne l'armure de la grille.
+- Armures : deux tableaux des matières de la grille (« Premier matériau », « Second matériau »), case Matière dans la couleur de son type (`COULEURS_DES_TYPES`, sa classe), « Prix ×6 » = prix pour une armure (6 unités), refait par le script quand un prix change. Un matériau dans chacun donne l'armure de la grille.
 - Fiche de l'armure à côté, réduite comme celle des armes : quatre tuiles AP, AM, solidité, coût, dont l'infobulle donne le détail du calcul (`[data-armures-bulles]`) ; puis résistance et faiblesse, ou effet. La fiche du bouclier de même, avec une tuile Poids. La case Coût d'une fiche grandit plutôt que de déborder.
 - Amélioration de l'armure : niveau N, armure entière (R77). Armures particulières en premier dans la liste, prix entier, améliorables (R80). Puis par type, AP et AM en deux colonnes.
 - Prix de la grille, des boucliers et des formes en RO (R79), décomposés en monnaies ; « ???? » et un prix vide restent tels qu'écrits.
@@ -47,4 +48,4 @@ user-invocable: false
 - La fiche de personnage porte une armure complète et ses parties (R95) : skill `zone-fiche`.
 
 ## Tests
-- `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (R75 à R80, R93), `corps-armures.test.mjs`, `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (R92), `armures-tri.test.mjs`, `armures-html.test.mjs` (site construit).
+- `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (R75 à R80, R93), `corps-armures.test.mjs`, `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (R92 ; classe de chaque poids), `armures-tri.test.mjs`, `armures-html.test.mjs` (site construit).

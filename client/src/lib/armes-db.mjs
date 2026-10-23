@@ -2,9 +2,8 @@
 // tables de la base, jamais depuis son Markdown (qui ne sert plus qu'à la recherche et aux [[liens]] : lib/corps-armes.mjs). Un tableau par famille
 // d'armes (bandeau de l'onglet), sans les armes de monstres (« Ne pas tenir compte des armes de monstres » : la famille sans maîtrise, décision
 // R45) ; à côté, la fiche de l'arme choisie, les matériaux et les améliorations.
-// Sans dépendance (sauf lib/corps-armes.mjs et lib/materiaux-couleurs.mjs, purs) : `chargerArmes` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/corps-armes.mjs, pur) : `chargerArmes` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMES } from './corps-armes.mjs';
-import { couleurDeMateriau } from './materiaux-couleurs.mjs';
 
 export { PAGE_DES_ARMES };
 
@@ -32,7 +31,7 @@ export function contexteDesArmes(db) {
 /**
  * Les données de la page :
  *   familles      : les bandeaux (ordre de l'onglet) qui ont des armes à maîtrise, chacun { id, nom, de_brut, note_brut, cout_libelle, armes: [lignes arme] } ;
- *   materiaux     : [{ ligne (materiau_arme), nom, prix (celui de la ressource : R62), couleur: { fond, texte }, defaut (le fer) }] dans l'ordre de l'onglet ;
+ *   materiaux     : [{ ligne (materiau_arme), nom, prix (celui de la ressource : R62), defaut (le fer) }] dans l'ordre de l'onglet ;
  *   ameliorations : les lignes amelioration_equipement de cible « arme », par niveau ;
  *   page          : { titre, resume, corps_md } de la page « Armes ».
  */
@@ -44,7 +43,7 @@ export function chargerArmes(db) {
   // le fer : le matériau par défaut (décision R49 : « son matériau (par défaut le fer) »)
   // le prix : celui de la ressource (décision R62 : la page « Composants » est la seule source des matériaux)
   const materiaux = lignes(db, 'SELECT m.*, r.nom, r.nom_cle, r.prix_brut AS prix_ressource FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre')
-    .map(({ nom, nom_cle, prix_ressource, ...ligne }) => ({ ligne, nom, prix: prix_ressource ?? ligne.prix_brut, couleur: couleurDeMateriau(ligne.ressource_id), defaut: nom_cle === 'fer' }));
+    .map(({ nom, nom_cle, prix_ressource, ...ligne }) => ({ ligne, nom, prix: prix_ressource ?? ligne.prix_brut, defaut: nom_cle === 'fer' }));
   const ameliorations = lignes(db, "SELECT * FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau");
   const page = db.prepare('SELECT titre, resume, corps_md FROM page WHERE id = ?').get(PAGE_DES_ARMES) ?? null;
   return { familles, materiaux, ameliorations, page: page ? { ...page } : null };

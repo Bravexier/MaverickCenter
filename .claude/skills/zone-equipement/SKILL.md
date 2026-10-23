@@ -23,6 +23,7 @@ user-invocable: false
 - Un onglet = une `section.equipement-panneau` dont l'id est l'ancre de l'onglet (`lib/equipement.mjs`). Un sous-onglet de la ceinture = une `section.ceinture-panneau`, ancre unique sur la page aussi.
 - Un lien vers un élément d'un panneau ouvre son onglet, et son sous-onglet.
 - La pastille d'une gemme (`.acc-gemme`, `styles/equipement/equipement.css`, partagée par les Accessoires et les Bâtons magiques de la ceinture) : sa couleur est `--couleur` / `--couleur-texte` de la classe de la magie qu'elle porte (accessoires et bâtons ; skill `ui-couleurs`), plus de `--g` en style. Aucune couleur écrite pour elle.
+- Couleurs d'interface communes (`equipement.css`) : le liseré des types de dégâts (`--degats-taille`, `--degats-estoc`) et l'ombre des fiches (`--ombre-fiche`) sont des jetons du thème (`styles/global/base.css`) ; la feuille n'écrit plus aucune couleur, hors le noir de mélange de `.acc-gemme` (`test/palette-css.test.mjs`). L'onglet Armes est `<div class="armes couleur-arme-depart">` (le bleu des armes de départ : skill `zone-armes`).
 - Le bloc des armures (`.armures`) se cache entier quand ni Armures ni Boucliers n'est ouvert (`armures.css` : `html.js .armures:not(:has(> .armures-panneau.is-active))`).
 
 ## Pages servies et renvois

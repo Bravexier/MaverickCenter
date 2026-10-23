@@ -11,6 +11,7 @@ import { chargerComposants } from '../src/lib/composants-db.mjs';
 import { ancreDeComposant } from '../src/lib/composants-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
+import { classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'composants', 'index.html');
@@ -121,4 +122,12 @@ test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des on
   // la description (« les grands textes ») y est déjà : celle de la ressource, la même que l'ancien tableau des armures
   const mythril = c.materiaux.find((m) => m.nom_cle === 'mythril');
   assert.ok(mythril?.description && t.includes(echapper(mythril.description).replace(/\n/g, '<br>')), 'la description du Mythril');
+  // la couleur de chaque matériau (celle de l'onglet « Armes ») : sa pastille porte la classe du matériau (lib/palette-css.mjs, famille `materiau` ;
+  // `par-defaut` pour un matériau sans couleur), jamais un style ; la page émet la feuille de la famille
+  for (const m of c.materiaux) {
+    const debut = t.indexOf(`id="${ancreDeComposant(m.id)}"`);
+    assert.ok(t.slice(debut, t.indexOf('</tr>', debut)).includes(`<span class="comp-teinte ${classeDeMateriau(m.id)}" aria-hidden="true"></span>`), `${m.nom} : sa pastille`);
+  }
+  assert.doesNotMatch(t, /class="comp-teinte[^"]*"[^>]*style=/, 'aucune couleur de matériau en style');
+  assert.ok(html.includes(`<style>${cssDesFamilles(['materiau'])}</style>`), 'la feuille des matériaux');
 });
