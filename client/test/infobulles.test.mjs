@@ -420,6 +420,40 @@ test('une bulle à champs (`data-bulle-champs` : la bulle d’un choix du tiroir
   assert.equal(n.document.activeElement, choix);
 });
 
+test('le focus du clavier dans une bulle à champs : le survol d’un autre déclencheur ne la remplace pas ; après un appui, ou sans l’attribut, comme avant', () => {
+  const page = (champs) => (Element, body) => {
+    body.appendChild(new Element('button', { 'data-bulle': 'b' }));
+    const bulle = body.appendChild(new Element('span', { class: 'bulle', id: 'b', ...(champs ? { 'data-bulle-champs': '' } : {}) }));
+    bulle.hidden = true;
+    bulle.appendChild(new Element('select'));
+    body.appendChild(new Element('button', { 'data-bulle': 'autre' }));
+    const autre = body.appendChild(new Element('span', { class: 'bulle', id: 'autre' }));
+    autre.hidden = true;
+    body.appendChild(new Element('span', { title: 'Un texte' }));
+  };
+  for (const champs of [true, false]) {
+    const n = navigateur(page(champs));
+    const [choix, bulle, voisin, bulleVoisine, texte] = n.body.enfants;
+    choix.focusVisible = true;
+    n.emettre('keydown', { key: 'Enter' });
+    choix.focus();
+    bulle.enfants[0].focus();
+    assert.ok(!bulle.hidden);
+    n.emettre('pointerover', { target: voisin });
+    assert.equal(bulleVoisine.hidden, champs, champs ? 'le survol d’un autre choix n’ouvre pas sa bulle' : 'sans l’attribut : le survol ouvre l’autre bulle, comme avant');
+    assert.equal(bulle.hidden, !champs);
+    if (!champs) continue;
+    n.emettre('pointerover', { target: texte });
+    n.avancer();
+    assert.equal(n.bulle, null, 'ni la bulle d’un `title`');
+    assert.ok(!bulle.hidden);
+    // un appui du pointeur : la souris reprend la main, le survol ouvre l'autre bulle
+    n.emettre('pointerdown', { target: n.body });
+    n.emettre('pointerover', { target: voisin });
+    assert.ok(!bulleVoisine.hidden, 'après un appui, le survol comme avant');
+  }
+});
+
 test('un bouton qui déclenche une bulle à champs : au toucher, pas de bascule au second appui ; à la souris, pas d’ouverture au clic ; un autre bouton garde les deux', () => {
   const page = (champs) => (Element, body) => {
     body.appendChild(new Element('button', { 'data-bulle': 'b' }));

@@ -1688,9 +1688,17 @@ function construireChoixSpecialites() {
  * `display: none` (fiche.css) : le focus clavier n'y entre pas ; le focus déjà dans le corps le garde ouvert. Au clavier, on passe par « Déplier »,
  * « Aller aux choix » ou la bulle d'un choix du tiroir (bulleDeChoix) : le focus sur le choix montre sa tuile, Entrée met le focus dans la bulle (sauf
  * l'ethnie, un bouton qui ouvre son menu, sans bulle). Un choix gardé d'un calcul à l'autre garde son élément (le déclencheur de sa bulle ouverte),
- * seul son texte suit.
+ * seul son texte suit. Le tiroir rangé au défilement alors que le focus y est : le focus va sur l'onglet « Choix » (focusApresRangement).
  */
 let zoneParametresVisible = false;
+/**
+ * La zone IV est-elle à l'écran, d'après un lot d'entrées de l'IntersectionObserver ? La dernière fait foi : deux changements rapprochés (un Tab qui fait
+ * remonter puis redescendre la page en quelques millisecondes) arrivent dans un même lot, du plus ancien au plus récent ; lire la première laissait le
+ * tiroir sorti sur une zone IV à l'écran (arbitrage, carte blanche du propriétaire).
+ */
+function zoneAEcran(entrees) {
+  return entrees[entrees.length - 1].isIntersecting;
+}
 let tiroirReduit = false;
 function construireChoixEnAttente() {
   const attente = calcul?.attente ?? choixEnAttente(regles, fiche);
@@ -1707,6 +1715,11 @@ function construireChoixEnAttente() {
   const bulle = document.getElementById('bulle-choix');
   const auClavier = bulleAuClavier && bulle && !bulle.hidden && bulle.contains(document.activeElement) ? bulle.dataset.choix : null;
   const champ = auClavier ? [...bulle.querySelectorAll(CHAMPS_DE_TUILE)].indexOf(document.activeElement) : -1;
+  // le focus dans le tiroir (un choix, « Réduire », « Aller aux choix ») ou dans la bulle d'un choix, avant que le tiroir ne se range (focusApresRangement)
+  const focusAvant = document.activeElement;
+  const etaitTiroir = panneau.classList.contains('est-tiroir');
+  const focusDansLaBulle = Boolean(bulle && !bulle.hidden && bulle.contains(focusAvant));
+  const focusDansLeTiroir = etaitTiroir && (panneau.contains(focusAvant) || focusDansLaBulle);
   // au survol (ou au focus) d'un choix, sa tuile dans une infobulle (demande du propriétaire ; bulleDeChoix)
   const elements = new Map([...liste.children].map((li) => [li.dataset.choix, li]));
   const voulus = identitesDesChoix(attente).map((choix, i) => {
@@ -1727,7 +1740,27 @@ function construireChoixEnAttente() {
   $('choix-reduire').hidden = !tiroir;
   $('choix-reduire').textContent = tiroirReduit ? 'Déplier' : 'Réduire';
   $('choix-reduire').setAttribute('aria-expanded', String(!tiroirReduit));
+  if (focusDansLeTiroir) {
+    // ce qui tient le focus : le choix d'une bulle (qui se ferme quand il disparaît), sinon l'élément du tiroir lui-même
+    const tenu = focusDansLaBulle ? boutonDuChoix(voulus.find((x) => x.dataset.choix === bulle.dataset.choix)) : focusAvant;
+    const visible = Boolean(tenu?.isConnected && tenu.getClientRects().length > 0);
+    if (focusApresRangement({ focusDansLeTiroir, range: !tiroir, parLeDefilement: attente.length > 0 && zoneParametresVisible, visible }) === 'onglet') {
+      $('onglet-choix').focus({ preventScroll: true });
+      return;
+    }
+  }
   if (auClavier) suivreLeChoixAuClavier(auClavier, champ, avant, voulus.map((li) => li.dataset.choix));
+}
+
+/**
+ * Le tiroir se range au défilement (la zone IV à l'écran) alors que le focus y est (un choix, « Réduire », « Aller aux choix », un champ de la bulle d'un
+ * choix) : le focus tomberait sur la page. Arbitrage (carte blanche du propriétaire) : il va sur l'onglet « Choix » (`#onglet-choix`, sans défilement ni
+ * changement de l'onglet actif), sauf si ce qui le tient reste à l'écran (le panneau « Choix » ouvert : le choix y est encore). Jamais quand il n'était
+ * pas dans le tiroir, ni quand le tiroir disparaît parce qu'il n'y a plus de choix (suivreLeChoixAuClavier, ou la souris : comme avant). Rend 'onglet'
+ * ou null.
+ */
+function focusApresRangement({ focusDansLeTiroir, range, parLeDefilement, visible }) {
+  return focusDansLeTiroir && range && parLeDefilement && !visible ? 'onglet' : null;
 }
 
 /**
@@ -1755,7 +1788,14 @@ function elementDeChoix(c, choix) {
   }
   const bouton = el('button', { type: 'button', class: 'tiroir__choix' });
   const remplir = () => bouton.dataset.bulle && remplirBulleDeChoix(bouton.closest('li').dataset.cle, bouton.textContent, bouton.closest('li').dataset.choix);
-  for (const type of ['pointerover', 'pointerdown', 'focusin']) bouton.addEventListener(type, remplir);
+  // le survol ne remplace pas la bulle où l'on est entré au clavier (arbitrage, carte blanche du propriétaire ; Infobulles.astro ne l'ouvre pas non plus)
+  bouton.addEventListener('pointerover', () => { if (!bulleRetenue(bouton)) remplir(); });
+  bouton.addEventListener('pointerdown', (ev) => {
+    const retenue = bulleRetenue(bouton);
+    remplir();
+    appuiSurUnAutreChoix(bouton, ev, retenue);
+  });
+  bouton.addEventListener('focusin', remplir);
   bouton.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Enter' || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || !bouton.dataset.bulle) return;
     ev.preventDefault();   // pas de clic : seule la bulle s'ouvre
@@ -1768,6 +1808,25 @@ function elementDeChoix(c, choix) {
     premier.focus({ preventScroll: true });
   });
   return el('li', { dataset: { nature: c.nature, choix } }, bouton);
+}
+
+/**
+ * Le survol du bouton d'un choix laisse la bulle telle quelle : on est entré au clavier dans la bulle d'un autre choix et le focus y est encore
+ * (bulleAuClavier). Sorti de la bulle (Échap, Tab, focus parti, appui du pointeur dans la bulle), le survol la remplit de nouveau.
+ */
+function bulleRetenue(bouton) {
+  const bulle = document.getElementById('bulle-choix');
+  return Boolean(bulleAuClavier && bulle && !bulle.hidden && bulle.contains(document.activeElement) && bulle.dataset.choix !== bouton.closest('li')?.dataset.choix);
+}
+
+/**
+ * Un appui sur le bouton d'un autre choix alors que la bulle était retenue (bulleRetenue) : la retenue prend fin (Infobulles.astro : un appui du
+ * pointeur), et la bulle de ce choix s'ouvre, comme à son survol sans focus du clavier dans une bulle (arbitrage, carte blanche du propriétaire). Elle
+ * vient d'être remplie ; Infobulles.astro l'ouvre au survol, que l'on rejoue ici.
+ */
+function appuiSurUnAutreChoix(bouton, ev, retenue) {
+  if (!retenue) return;
+  bouton.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: ev.pointerType, clientX: ev.clientX, clientY: ev.clientY }));
 }
 
 /** Le bouton d'un choix du tiroir (celui qui reçoit le focus). */
@@ -3916,9 +3975,9 @@ async function demarrer() {
     fiche.mode_classe = ev.target.checked ? 'bi' : 'mono';
     changer();
   });
-  // le tiroir des choix : il se range quand la zone IV est à l'écran ; « Aller aux choix » y descend et ouvre l'onglet « Choix »
-  new IntersectionObserver(([entree]) => {
-    zoneParametresVisible = entree.isIntersecting;
+  // le tiroir des choix : il se range quand la zone IV est à l'écran (zoneAEcran) ; « Aller aux choix » y descend et ouvre l'onglet « Choix »
+  new IntersectionObserver((entrees) => {
+    zoneParametresVisible = zoneAEcran(entrees);
     construireChoixEnAttente();
   }, { rootMargin: '0px 0px -15% 0px' }).observe(racine.querySelector('.parametres'));
   $('choix-aller').addEventListener('click', allerAuxChoix);

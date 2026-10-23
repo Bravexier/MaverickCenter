@@ -100,7 +100,9 @@ abandonne.
   au clavier, par Entrée : entré à la souris, un champ de la bulle prend sa valeur à son changement, comme avant (« la souris ne change pas »). Les mêmes
   champs sur la page, et la souris dans la bulle (un clic, une valeur prise dans la liste ouverte), prennent la valeur aussitôt ; au toucher, le second
   appui sur un choix laisse sa bulle ouverte. Le focus du clavier dans la bulle la garde ouverte quand le pointeur
-  passe dessus puis repart. L'ethnie est un bouton qui ouvre son menu, sans bulle. Le focus déjà dans
+  passe dessus puis repart, et le survol d'un autre choix n'ouvre pas sa bulle à la place (la souris seule, comme avant). Quand le tiroir se range au
+  défilement alors que le focus y est (un choix, « Réduire », « Aller aux choix », la bulle), le focus va sur l'onglet « Choix », sans défiler ni changer
+  d'onglet, sauf quand le panneau « Choix » est ouvert : le focus reste sur le choix. L'ethnie est un bouton qui ouvre son menu, sans bulle. Le focus déjà dans
   le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
   choix »).
 - **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
