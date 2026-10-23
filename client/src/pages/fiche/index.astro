@@ -2,14 +2,13 @@
 import Base from '../../layouts/Base.astro';
 import Onglets from '../../components/Onglets.astro';
 import ficheCss from '../../styles/fiche/fiche.css?raw';
-import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 import { htmlDePiece } from '../../lib/monnaies.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { aideDeLEntrainement } from '../../lib/fiche-regles.mjs';
 import { clientGoogle } from '../../lib/google-sheets.mjs';
 import { INFOBULLES_DES_EXPORTS } from '../../lib/fiche-tableur-export.mjs';
-import { classeDAlignement, cssDesFamilles, FAMILLES_DE_LA_FICHE } from '../../lib/palette-css.mjs';
+import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE } from '../../lib/palette-css.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
@@ -26,14 +25,15 @@ import { classeDAlignement, cssDesFamilles, FAMILLES_DE_LA_FICHE } from '../../l
 // lequel le bouton reste grisé), Importer (PC) (un .xlsx), Importer (en ligne) (le lien d'une feuille Google Sheets partagée par lien, dialogue
 // « import-en-ligne », lue par le service : POST /api/classeur/), Supprimer ; plus de JSON ni d'impression (Ctrl+P reste possible). Le dialogue
 // « import-cible » demande où va une fiche importée quand un prétiré est ouvert.
-const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
+// chaque zone dans la couleur d'une partie du guide (lib/livres.mjs#PARTIES) : la classe de la partie (`.couleur-partie-<id>`, émise avec les familles
+// de la fiche), dont styles/fiche/fiche.css tire --etape ; jamais un style
 const ZONES = [
   { id: 'identite', numero: 'I', titre: 'Identité', court: 'Identité', partie: 'creer' },
   { id: 'portee', numero: 'II', titre: 'À portée de main', court: 'À portée', partie: 'jouer' },
   { id: 'situation', numero: 'III', titre: 'Selon la situation', court: 'Situation', partie: 'decouvrir' },
   { id: 'parametres', numero: 'IV', titre: 'Paramètres et suivi', court: 'Paramètres', partie: 'progresser' },
 ];
-const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)!.partie]}`;
+const classeDeZone = (id: string) => classeDePartie(ZONES.find((z) => z.id === id)!.partie);
 // l'aide du champ « Entraînement » (décision R71) : le paragraphe du guide qui en dit les limites, tel que la base l'écrit (null s'il n'y est plus)
 const entrainement = aideDeLEntrainement(ouvrirBase());
 // « Exporter » (Google Sheets) : l'identifiant client OAuth du build ; vide (absent ou mal formé), le bouton reste grisé
@@ -46,7 +46,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
   <meta slot="tete" name="referrer" content="strict-origin-when-cross-origin" />
   <style is:inline set:html={ficheCss}></style>
   {/* les classes des familles d'une zone que la fiche pose : postures, alignements, races, classes, paliers, Mode Hyper, neutre, poids des boucliers
-      (lib/palette-css.mjs#FAMILLES_DE_LA_FICHE ; le script les pose d'après regles.json) */}
+      (lib/palette-css.mjs#FAMILLES_DE_LA_FICHE ; le script les pose d'après regles.json), parties du guide (les quatre zones, posées par la page) */}
   <style is:inline set:html={cssDesFamilles(FAMILLES_DE_LA_FICHE)}></style>
   <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-modele={url('fiche/modele.xlsx')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
@@ -77,7 +77,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     <noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript>
 
     {/* ===================================================================== I. Identité */}
-    <section class="fiche-zone fiche-zone--identite" id="zone-identite" style={style('identite')} aria-labelledby="titre-zone-identite">
+    <section class:list={['fiche-zone fiche-zone--identite', classeDeZone('identite')]} id="zone-identite" aria-labelledby="titre-zone-identite">
       <h2 class="fiche-zone__titre" id="titre-zone-identite"><span class="fiche-zone__numero" aria-hidden="true">I</span>Identité</h2>
       <div class="fiche-etape identite" id="etape-identite">
         {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
@@ -146,7 +146,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     </section>
 
     {/* ===================================================================== II. À portée de main */}
-    <section class="fiche-zone" id="zone-portee" style={style('portee')} aria-labelledby="titre-zone-portee">
+    <section class:list={['fiche-zone', classeDeZone('portee')]} id="zone-portee" aria-labelledby="titre-zone-portee">
       <h2 class="fiche-zone__titre" id="titre-zone-portee"><span class="fiche-zone__numero" aria-hidden="true">II</span>À portée de main</h2>
       <div class="fiche-zone__grille zone-portee">
         <section class="fiche-etape zp-attributs" id="etape-attributs" aria-labelledby="titre-attributs">
@@ -249,7 +249,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     </section>
 
     {/* ===================================================================== III. Selon la situation */}
-    <section class="fiche-zone" id="zone-situation" style={style('situation')} aria-labelledby="titre-zone-situation">
+    <section class:list={['fiche-zone', classeDeZone('situation')]} id="zone-situation" aria-labelledby="titre-zone-situation">
       <h2 class="fiche-zone__titre" id="titre-zone-situation"><span class="fiche-zone__numero" aria-hidden="true">III</span>Selon la situation</h2>
       <div class="fiche-zone__grille zone-situation">
         {/* les six postures, chacune dans sa case avec ses effets (demande du propriétaire), sur deux lignes : Offensif, Neutre, Défensif, puis Focus,
@@ -319,7 +319,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     </section>
 
     {/* ===================================================================== IV. Paramètres et suivi, en onglets */}
-    <section class="fiche-zone" id="zone-parametres" style={style('parametres')} aria-labelledby="titre-zone-parametres">
+    <section class:list={['fiche-zone', classeDeZone('parametres')]} id="zone-parametres" aria-labelledby="titre-zone-parametres">
       <h2 class="fiche-zone__titre" id="titre-zone-parametres"><span class="fiche-zone__numero" aria-hidden="true">IV</span>Paramètres et suivi</h2>
       <Onglets />
       <div class="parametres" data-onglets="Paramètres et suivi">

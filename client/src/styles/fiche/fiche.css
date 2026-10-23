@@ -1,8 +1,9 @@
 /* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
    Quatre zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la situation, IV. paramètres et suivi (en onglets), chacune
-   teintée de sa couleur (--etape : une partie du guide, lib/guide.mjs#PARTIES) ; dans une zone, des blocs dont le cadre prend la couleur de la magie
-   innée, en dégradé vers l'acquise (demande du propriétaire) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule
-   bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
+   teintée de sa couleur (--etape : une partie du guide, la classe de sa partie `.couleur-partie-…` posée sur la zone,
+   lib/palette-css.mjs#classeDePartie) ; dans une zone, des blocs dont le cadre prend la couleur de la magie innée, en dégradé vers l'acquise
+   (demande du propriétaire) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule bordée et teintée de la couleur,
+   point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
    Compacte (demande du propriétaire : « c'est TROP GROS ») : texte et marges réduits, choix dans des menus déroulants, curseurs. */
 /* les zones ont besoin de place : la fiche prend plus que la largeur des autres pages */
 main:has(> .fiche) { max-width: 100rem; }
@@ -12,6 +13,10 @@ main:has(> .fiche) { max-width: 100rem; }
   /* couleurs d'interface du thème (styles/global/base.css) : l'action principale ; --a-choisir (un choix qui reste à faire : champ surligné, tiroir des
      choix) y est aussi, avec sa valeur du thème sombre */
   --vert: var(--vert-action);
+  /* la couleur de la magie innée (sa classe, posée sur la fiche par le script), lue ici, avant les zones : les enfants d'une zone la retrouvent (zones,
+     plus bas) */
+  --couleur-de-la-fiche: var(--couleur);
+  --couleur-texte-de-la-fiche: var(--couleur-texte);
   display: grid;
   gap: 0.75rem;
   font-size: var(--fs-lg);
@@ -106,7 +111,13 @@ main:has(> .fiche) { max-width: 100rem; }
 
 /* ----------------------------------------------------------------- zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la
    situation, IV. paramètres et suivi ; sans cadre ni titre visibles (demande du propriétaire : « retirer les grands cadres ») : les blocs se suivent, la
-   couleur de la zone (--etape) reste celle de leurs accents. position : le panneau d'un menu déroulant s'étend sur sa rangée de menus. */
+   couleur de la zone (--etape) reste celle de leurs accents. position : le panneau d'un menu déroulant s'étend sur sa rangée de menus.
+   --etape : tirée de la classe de la partie de la zone (`.couleur-partie-…`, posée par pages/fiche/index.astro), lue sur la zone seule. La classe
+   pose aussi --couleur et --couleur-texte, que la fiche lit déjà pour la magie innée (sa classe est sur .fiche : cadres des blocs, et tout élément sans
+   classe propre) : les enfants de la zone retrouvent celles de la fiche (--couleur-de-la-fiche, --couleur-texte-de-la-fiche, calculées sur .fiche ;
+   sans magie innée, aucune, comme avant). Une classe propre (teinte-palette, magie, palier…), d'un poids plus fort que :where(), l'emporte toujours. */
+.fiche-zone[class*='couleur-partie-'] { --etape: var(--couleur); }
+:where(.fiche-zone[class*='couleur-partie-']) > * { --couleur: var(--couleur-de-la-fiche); --couleur-texte: var(--couleur-texte-de-la-fiche); }
 .fiche-zone {
   --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
   --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
@@ -745,7 +756,15 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: var(--fs-xs); }
 /* le sort préparé (décision R115) : sa marque dans le tableau des sorts (la posture de sa préparation en infobulle), puis son bloc sous le tableau — le
    sort, sur la couleur de sa magie, le jet de magie (D100), la posture de la préparation sur sa couleur, « Lâcher le sort » */
-.sort-prepare__marque { flex: none; padding: 0 0.3rem; border: 1px solid var(--etape); border-radius: var(--radius-xxs); color: var(--etape); font-size: var(--fs-xs); font-weight: 600; cursor: help; }
+/* la marque « préparé » : dans la couleur de la zone ; en thème sombre, cette couleur éclaircie par le calcul, comme les intertitres colorés du guide (la
+   couleur de la zone II, #b03030, n'atteignait que 2,7:1 sur le fond sombre ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
+   recommandée appliquée, au nom de sa règle « Privilégé la lisibilité », « Plus clair en sombre » : skill zone-fiche) ; le texte seul : la bordure, qui
+   ne porte pas de texte, garde la couleur de la zone */
+.sort-prepare__marque { --marque: var(--etape); flex: none; padding: 0 0.3rem; border: 1px solid var(--etape); border-radius: var(--radius-xxs); color: var(--marque); font-size: var(--fs-xs); font-weight: 600; cursor: help; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sort-prepare__marque { --marque: color-mix(in srgb, var(--etape) 45%, #fff); }
+}
+:root[data-theme='dark'] .sort-prepare__marque { --marque: color-mix(in srgb, var(--etape) 45%, #fff); }
 .sort-prepare__marque[hidden] { display: none; }
 .sort-prepare { margin-top: 0.6rem; }
 .sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }

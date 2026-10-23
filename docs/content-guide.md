@@ -137,11 +137,12 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
   rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
-  types d'armure, poids des boucliers, niveaux des accessoires) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
+  types d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
   armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
   `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
-  `RacesPastilles.astro` et `RacePage.astro` (`race`), et le mode modification avec la page d'une race ou d'une classe créée,
+  `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir ou des Bases), `pages/index.astro` (l'accueil) et
+  `Sommaire.astro` (le sommaire des Bases, seul à poser une partie) (`partie` ; la fiche l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
   des événements de la chronologie (`cssDesEvenements`, ci-dessous). Chaque classe posée existe dans une feuille de sa page (testé sur le site construit).
 - **Les couleurs des événements de la chronologie** (lot 7) : une couleur calculée, pas une famille fixe (elle dépend de la liste des événements). La
@@ -152,6 +153,45 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   data-couleurs-chronologie>` à part, sur les pages de la chronologie seules ; la page (`.chrono`) porte la classe de l'événement affiché, chaque ligne de
   la frise la sienne, sa barre celle de l'événement visible précédent et le morceau de barre qu'elle contient celle du suivant (le dégradé) ; le script
   du filtre les repose entre les lignes visibles, et l'éditeur du site de dev réécrit la feuille d'après la base vivante avant de poser les classes.
+- **Les couleurs des parties du guide** (lot 8) : famille `partie` (`lib/parties-couleurs.mjs#COULEURS_DES_PARTIES`, clé = l'id de la partie de
+  `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une page
+  sans partie, des Règles avancées ou du Guide du MJ, n'a pas de classe et garde l'accent du site). Les valeurs d'avant, inchangées par la règle de
+  lisibilité (texte blanc, de 5,05:1 à 6,84:1). Le plan n'écrit plus aucune couleur (il entre dans la chaîne de l'édition du navigateur) : un groupe porte
+  l'id de sa partie (`partie`), `partieDeLaPage` remplace `couleurDeLaPage`. La classe est posée sur la page du guide (`.guide-reference`, d'où
+  `blocs.css` tire `--guide` et le texte de ses aplats, `--guide-sur`), sur une carte « Par où commencer ? » (`--c`), sur un groupe du sommaire des
+  Bases (`--sommaire-couleur`) et sur chacune des quatre zones de la fiche (`--etape`) ; jamais un style. La classe pose aussi `--couleur` et
+  `--couleur-texte` sur toute la zone : les enfants directs de la page du guide les remettent à leur valeur initiale, ceux d'une zone de la fiche à celle
+  de la fiche (la magie innée, lue sur `.fiche` : `--couleur-de-la-fiche`), sous `:where()` (sans poids : une classe propre l'emporte) ; les cadres de la
+  fiche gardent la magie innée, un bloc du guide sans classe propre son repli (comparé dans Chromium au rendu d'avant le lot : aucune différence hors
+  des trois corrections de contraste ci-dessous, qui changent le texte coloré des pages à partie en thème clair, plus foncé, et le texte de la marque
+  « préparé » de la fiche en thème sombre, plus clair (sa bordure inchangée)).
+  Trois contrastes corrigés :
+  - le nom d'un personnage fil rouge, en thème clair : question « Sur la page « Créer son personnage », en thème clair, le nom de chaque personnage fil
+    rouge est écrit dans le vert de la partie (#2e7d4f) sur la carte teintée de ce vert (#e6eee4) : 4,24:1, sous le contraste minimal de lisibilité
+    (4,5:1). Les autres parties l'atteignent (4,6:1 à 5,6:1). Que faire ? » ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
+    recommandée appliquée, au nom de sa règle « Privilégé la lisibilité » : « Vert assombri » : « Sur ces cartes, la couleur de la partie est
+    assombrie par le calcul, mêlée de 10 % de noir (environ #297147, 5,0:1). Aucune couleur n'est ajoutée, et le thème sombre ne change pas. »
+    (`.guide-fil-rouge__nom` lit `--guide-texte`, assombri en clair pour toute partie par le choix suivant : le même rendu) ;
+  - la marque « préparé » d'un sort de la fiche, en thème sombre : question « Sur la fiche, en thème sombre, la marque « préparé » d'un sort (tableau
+    des sorts) est écrite dans la couleur de la zone II, le rouge #b03030, sur le fond sombre (#211b15) : 2,7:1, sous le contraste minimal de
+    lisibilité (4,5:1). En thème clair, elle est lisible (6,2:1). Que faire ? » ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
+    recommandée appliquée, au nom de sa règle « Privilégé la lisibilité » : « Plus clair en sombre » : « En thème sombre seulement, la couleur de la
+    zone est éclaircie par le calcul, comme les intertitres colorés du guide (45 % de la couleur, le reste en blanc, environ #dba2a2, 7,9:1). Aucune
+    couleur n'est ajoutée, et le thème clair ne change pas. » (`.sort-prepare__marque` : `--marque`, dans les deux blocs du thème sombre, pour le texte
+    seul ; la bordure, sans texte, garde la couleur de la zone).
+  - le texte coloré des pages du guide, en thème clair (choix du propriétaire) : question « Sur la page « Créer son personnage », en thème clair, les
+    intertitres sont écrits dans le vert de la partie (#2e7d4f) sur le fond de la page (#f6f1e7) : 4,48:1, juste sous le contraste minimal de
+    lisibilité (4,5:1). Les autres parties l'atteignent (4,9:1 à 6,1:1). Que faire ? » ; réponse du propriétaire du 2026-10-23 : « Comme les cartes du
+    fil rouge (Recommandé) » ; option : « En thème clair, le texte coloré des pages du guide est assombri par le calcul, mêlé de 10 % de noir (environ
+    #297147 pour Créer, 5,3:1), comme le nom des personnages fil rouge. Aucune couleur n'est ajoutée, et le thème sombre ne change pas. Vaut pour
+    toutes les parties et tout le texte coloré de la page (intertitres, en-têtes du tableau des niveaux, termes des définitions) : les autres parties
+    foncent un peu. » (`blocs.css` :
+    `--guide-texte: color-mix(in srgb, var(--guide) 90%, #000)` sur `.guide-reference[class*='couleur-partie-']`, que lisent les intertitres, les
+    en-têtes du tableau des niveaux, les termes des définitions, les liens des rubriques et le nom d'un personnage fil rouge, sans règle à part ; une
+    page sans partie, des Règles avancées ou du Guide du MJ, garde l'accent du site ; le thème sombre ne change pas ; de 4,99:1 à 7,74:1).
+  Tous les autres textes posés sur ou dans la couleur
+  d'une partie atteignent 4,5:1 dans les deux thèmes (le plus juste : l'onglet actif de la zone IV en sombre, 4,52:1 ; testé, parts lues dans les
+  feuilles).
 - **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
   `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption` ; la 4ᵉ barre de la fiche prend la classe de sa magie, Sang
   ou Nécromancie, depuis le 2026-10-23),
@@ -177,7 +217,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`, les cases « Niveau 1 » à « Niveau 5 » du tableau Monture de l'onglet « Accessoires » du
   classeur : `couleur-niveau-1` à `couleur-niveau-5`, `classeDeNiveau` ; pas de `par-defaut` : un niveau absent, « Niveau ? » ou ligne vide, n'a pas de
   couleur ; des fonds clairs inchangés par la règle de lisibilité, texte foncé ; les niveaux 1, 2 et 4 ont la valeur des types d'armure Léger,
-  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille). Le texte
+  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille), puis `partie` (les parties du guide, ci-dessus). Le texte
   d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
   n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
@@ -1064,10 +1104,11 @@ dev (un commit la change) ni cherchée par la recherche.
   Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
   propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
   remplacement attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
-- **Les couleurs** des groupes sont celles des anciennes parties (`PARTIES` : Découvrir #2a6f97, Créer son personnage #2e7d4f, Jouer #b03030 — aussi
-  « Rejoindre une partie » —, Progresser #6a4a9c, Pour aller plus loin #5a6470), qui restent celles des quatre zones de la fiche : une page de Découvrir
-  ou des Bases a le filet de son titre, ses intertitres et ses blocs dans la couleur de son groupe (`couleurDeLaPage`), une carte de l'accueil et un
-  groupe du sommaire des Bases aussi.
+- **Les couleurs** des groupes sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir #2a6f97,
+  Créer son personnage #2e7d4f, Jouer #b03030 — aussi « Rejoindre une partie » —, Progresser #6a4a9c, Pour aller plus loin #5a6470, valeurs dans
+  `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir ou des Bases a le filet de son titre, ses
+  intertitres et ses blocs dans la couleur de son groupe (`partieDeLaPage`, la classe de sa partie `.couleur-partie-<id>` : « Couleurs du site : la
+  palette en classes »), une carte de l'accueil et un groupe du sommaire des Bases aussi.
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`) : fil d'Ariane vers sa rubrique
   (Découvrir) ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
   base, puis mots-clés et rétroliens (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du

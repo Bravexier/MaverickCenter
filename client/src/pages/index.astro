@@ -3,22 +3,25 @@ import Base from '../layouts/Base.astro';
 import Carrousel from '../components/galerie/Carrousel.astro';
 import accueilCss from '../styles/accueil/accueil.css?raw';
 import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
-import { couleurDeLaPage, DECOUVRIR, PAR_OU_COMMENCER, verifierLePlan } from '../lib/livres.mjs';
+import { DECOUVRIR, PAR_OU_COMMENCER, partieDeLaPage, verifierLePlan } from '../lib/livres.mjs';
+import { classeDePartie, cssDesParties } from '../lib/palette-css.mjs';
 import { entryHref, loadWiki, url } from '../lib/wiki';
 
 // Accueil (demande du propriétaire ; rubrique Découvrir du menu) : un texte de bienvenue et le défilement des images de la galerie
 // (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (guide/bienvenue, servie à /decouvrir/).
 // Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes, les quatre pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
-// de chaque page tels que la base les écrit, dans la couleur de son groupe. La phrase « Première visite ? » et son bouton ne disent que la navigation.
+// de chaque page tels que la base les écrit, dans la couleur de son groupe (la classe de sa partie, lib/palette-css.mjs#classeDePartie, dont la page
+// émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
 const { entries } = await loadWiki();
 const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
 const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
-  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', couleur: couleurDeLaPage(e.id),
+  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', classe: classeDePartie(partieDeLaPage(e.id)),
 }));
 ---
 
 <Base title="Accueil">
   <style is:inline set:html={accueilCss}></style>
+  <style is:inline set:html={cssDesParties()}></style>
   <div class="accueil">
     <section class="accueil__texte" aria-labelledby="titre-accueil">
       <h1 id="titre-accueil">Bienvenue sur Maverick Center</h1>
@@ -42,7 +45,7 @@ const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
     <ul class="accueil-debut__cartes">
       {
         cartes.map((c) => (
-          <li class="accueil-debut__carte" style={`--c: ${c.couleur}`}>
+          <li class:list={['accueil-debut__carte', c.classe]}>
             <a class="accueil-debut__lien" href={c.href}>{c.titre}</a>
             {c.resume && <p class="accueil-debut__resume" set:html={htmlAvecMonnaies(c.resume)} />}
           </li>

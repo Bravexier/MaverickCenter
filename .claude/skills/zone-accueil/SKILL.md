@@ -19,11 +19,12 @@ user-invocable: false
 ## Accueil et galeries
 
 - Accueil : texte de bienvenue, puis défilement des images de la galerie (flèches, points, pause, défilement automatique à partir de deux images ; sans JavaScript, la piste défile au doigt).
-- Puis « Par où commencer ? » : quatre cartes, les quatre pages de Découvrir (`lib/livres.mjs#PAR_OU_COMMENCER`), avec le titre et le résumé de la page. La phrase « Première visite ? » et le bouton « Découvrir Maverick » ne disent que la navigation.
+- Puis « Par où commencer ? » : quatre cartes, les quatre pages de Découvrir (`lib/livres.mjs#PAR_OU_COMMENCER`), avec le titre et le résumé de la page. Chaque carte dans la couleur de son groupe : la classe de sa partie (`.couleur-partie-<id>`, `palette-css.mjs#classeDePartie` d'après `livres.mjs#partieDeLaPage` ; la page émet `cssDesParties()`), dont `styles/accueil/accueil.css` tire `--c` sur la carte ; jamais un style (skill `ui-couleurs`, lot 8). La phrase « Première visite ? » et le bouton « Découvrir Maverick » ne disent que la navigation.
 - `/galeries/` : toutes les images.
 - Une image = un fichier dans `public/` + une entrée de `GALERIE` (`lib/galerie.mjs`). En construction : le logo seul (`galerieEnConstruction`).
 
 ## Tests
 
 - `test/galerie.test.mjs`.
-- `test/site-html.test.mjs` : accueil et galeries (site construit, CI après le build).
+- `test/site-html.test.mjs` : accueil et galeries (site construit, CI après le build ; la classe de la partie de chaque carte).
+- `test/palette-css.test.mjs` : la feuille des parties émise par l'accueil, `--c` lu sur la carte, lisibilité du titre et du résumé sur la teinte d'une carte dans les deux thèmes.

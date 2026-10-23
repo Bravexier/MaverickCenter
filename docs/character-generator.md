@@ -13,7 +13,8 @@ L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nou
 ## La page `/fiche/`
 
 La fiche est rangée en **quatre zones** (demande du propriétaire, maquette validée le 2026-10-11), sans cadre, titre ni pastille visibles (les titres
-restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie du guide pour ses accents, et chaque bloc le cadre aux couleurs des magies :
+restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie du guide pour ses accents (la classe de sa partie, `.couleur-partie-<id>`,
+posée par la page : `docs/content-guide.md`, « Couleurs du site : la palette en classes »), et chaque bloc le cadre aux couleurs des magies :
 
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
@@ -305,7 +306,7 @@ abandonne.
   `sortsAPreparer`) ; en choisir un le **prépare à la posture cochée à cet instant** (affichée à
   côté, sur sa couleur ; aucune si rien n'est coché : `sortsApresPreparation`), un seul par fiche ; le **jet de magie** (D100, de 1 à 100, facultatif :
   « si réussi ») se note ensuite (`sortsApresLeJet` ; les bornes du D100, valeurs de la décision, dans `regles.sort_prepare`) ; « **Lâcher le sort** » remet tout à zéro. Dans le tableau, le sort préparé porte la marque
-  « préparé » et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
+  « préparé » (dans la couleur de la zone, éclaircie en thème sombre : `docs/content-guide.md`, « Couleurs du site : la palette en classes ») et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
   maximals, même si l'attaque physique a lieu en posture défensive » : `contexteDesSorts`, `prepare`) ; les autres sorts suivent la posture cochée.
   Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067) ; une préparation que le don ne permet plus (classe changée,
   sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui

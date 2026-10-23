@@ -2,13 +2,11 @@
 // Ici, ce que leur rendu partage : une page peut appeler un bloc tiré de la base (tableau de la montée de niveau, postures…) par une ligne seule
 // `<!-- guide:<bloc> -->` : invisible dans le Markdown, il est remplacé au rendu par le composant du bloc (components/guide/GuideBloc.astro, appelé par
 // PageDuGuide.astro).
-// Sans dépendance (sauf lib/livres.mjs, pur lui aussi) : importé par lib/guide-rendu.ts, lib/recherche-index.ts, les composants du guide, la fiche
-// (couleurs des zones), le service (serveur/edition.mjs) et les tests.
+// Sans dépendance (sauf lib/livres.mjs, pur lui aussi) : importé par lib/guide-rendu.ts, lib/recherche-index.ts, les composants du guide, le service
+// (serveur/edition.mjs) et les tests. Les couleurs des parties (groupes de Découvrir et des Bases, zones de la fiche) ne sont pas ici : leurs classes
+// (lib/palette-css.mjs#classeDePartie, valeurs dans lib/parties-couleurs.mjs).
 
 import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';
-
-/** Les couleurs des groupes de Découvrir et des Bases, aussi celles des quatre zones de la fiche (pages/fiche/index.astro) : lib/livres.mjs#PARTIES. */
-export { PARTIES } from './livres.mjs';
 
 /**
  * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »

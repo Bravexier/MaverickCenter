@@ -23,6 +23,9 @@
 @media (max-width: 32rem) {
   .accueil-debut__cartes { grid-template-columns: minmax(0, 1fr); }
 }
+/* une carte dans la couleur de son groupe : --c tiré de la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie), posée sur
+   la carte ; jamais un style */
+.accueil-debut__carte[class*='couleur-partie-'] { --c: var(--couleur); }
 .accueil-debut__carte {
   position: relative;
   display: grid;

@@ -5,7 +5,8 @@ import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
 import SousBienvenue from './SousBienvenue.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
-import { couleurDeLaPage, estDansDecouvrirOuLesBases, filDAriane, RUBRIQUES_SOUS_LA_PAGE, SOUS_BIENVENUE } from '../../lib/livres.mjs';
+import { estDansDecouvrirOuLesBases, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE, SOUS_BIENVENUE } from '../../lib/livres.mjs';
+import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
@@ -18,9 +19,10 @@ import { url, type WikiEntry } from '../../lib/wiki';
 // montée de niveau, les postures, les personnages fil rouge…), sous L'univers les rubriques qu'elle présente (RUBRIQUES_SOUS_LA_PAGE), sous Bienvenue
 // les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » (SousBienvenue : lib/livres.mjs#SOUS_BIENVENUE), puis mots-clés et
 // rétroliens (PiedDePage). Aucune page ne cite ses sources sous le texte (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans
-// les archives. ») : `sources:` reste dans le frontmatter, /archives/ le lit. Une page de Découvrir ou des Bases prend la couleur de son groupe (couleurDeLaPage : filet du titre, intertitres,
-// blocs) ; les pages de référence (Règles avancées, Guide du MJ) gardent l'accent du site et leur badge « Guide ». Chaque morceau de texte est
-// modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
+// les archives. ») : `sources:` reste dans le frontmatter, /archives/ le lit. Une page de Découvrir ou des Bases prend la couleur de son groupe, la
+// classe de sa partie (partieDeLaPage, classeDePartie : `.couleur-partie-<id>`, lib/palette-css.mjs, dont la page émet la feuille ; filet du titre,
+// intertitres, blocs) ; les pages de référence (Règles avancées, Guide du MJ) gardent l'accent du site et leur badge « Guide ». Chaque morceau de texte
+// est modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
 interface Props {
   entry: WikiEntry;
   entries: WikiEntry[];
@@ -29,7 +31,7 @@ interface Props {
 const { entry, entries, modifiable } = Astro.props;
 const fil = filDAriane(entry.id);
 const ici = cheminDePage(entry.id);
-const couleur = couleurDeLaPage(entry.id);
+const couleur = classeDePartie(partieDeLaPage(entry.id));
 const reference = !estDansDecouvrirOuLesBases(entry.id);
 const morceaux = await Promise.all(
   morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
@@ -41,7 +43,9 @@ const css = [blocsCss, magieTooltipsCss].join('\n');
 ---
 
 <style is:inline set:html={css}></style>
-<div class:list={['guide-reference', { 'guide-reference--couleur': couleur }]} style={couleur ? `--couleur-partie: ${couleur}` : undefined}>
+{/* la feuille des parties du guide (une famille d'une zone de la palette) : seulement sur une page qui en pose la classe */}
+{couleur && <style is:inline set:html={cssDesParties()}></style>}
+<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>
   <p class="muted guide-fil">
     <a href={url()}>Accueil</a>{
       fil.map((m) => (
