@@ -9,11 +9,12 @@ import { test } from 'node:test';
 import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, couleurDeLaPage, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
+  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
   filDAriane, groupeDeLaPage, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, SOUS_BIENVENUE,
-  PARTIES, pagesDeLaRubrique, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
+  PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
 } from '../src/lib/livres.mjs';
-import { PARTIES as PARTIES_DU_GUIDE } from '../src/lib/guide.mjs';
+import * as Guide from '../src/lib/guide.mjs';
+import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
 import { cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
 import { adresseComplete, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { TYPE_KEYS, TYPES } from '../src/lib/types.mjs';
@@ -24,36 +25,41 @@ const db = ouvrirBase({ sansExemples: false });
 const pagesDuGuide = db.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
   .map((p) => ({ id: p.id, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
 const ids = pagesDuGuide.map((p) => p.id);
-const groupes = (rubrique) => rubrique.groupes.map((g) => [g.id, g.titre, g.couleur, g.pages]);
-const couleur = (id) => PARTIES.find((p) => p.id === id).couleur;
+const groupes = (rubrique) => rubrique.groupes.map((g) => [g.id, g.titre, g.partie, g.pages]);
 
-test('le plan : Découvrir, une page par entrée du menu (2 + 1 + 1), et Les bases (8 + 2 + 2), chaque groupe dans la couleur de son ancienne partie', () => {
+test('le plan : Découvrir, une page par entrée du menu (2 + 1 + 1), et Les bases (8 + 2 + 2), chaque groupe dans la couleur de son ancienne partie (son id ; aucune couleur écrite dans le plan)', () => {
   assert.deepEqual(RUBRIQUES_DU_GUIDE.map((r) => [r.id, r.titre, r.chemin, r.accueil]), [
     ['decouvrir', 'Découvrir', 'decouvrir/', 'guide/bienvenue'], ['bases', 'Les bases', 'regles/', null],
   ]);
   assert.deepEqual(groupes(DECOUVRIR), [
-    ['decouvrir', 'Découvrir', couleur('decouvrir'), ['guide/bienvenue', 'guide/l-univers']],
-    ['creer', 'Créer son personnage', couleur('creer'), ['guide/creer-son-personnage']],
-    ['rejoindre', 'Rejoindre une partie', couleur('jouer'), ['guide/rejoindre-une-partie']],
+    ['decouvrir', 'Découvrir', 'decouvrir', ['guide/bienvenue', 'guide/l-univers']],
+    ['creer', 'Créer son personnage', 'creer', ['guide/creer-son-personnage']],
+    ['rejoindre', 'Rejoindre une partie', 'jouer', ['guide/rejoindre-une-partie']],
   ]);
   assert.deepEqual(groupes(LES_BASES), [
-    ['jouer', 'Jouer', couleur('jouer'), [
+    ['jouer', 'Jouer', 'jouer', [
       'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
       'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
     ]],
-    ['progresser', 'Progresser', couleur('progresser'), ['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']],
-    ['plus-loin', 'Pour aller plus loin', couleur('plus-loin'), ['guide/aide-memoire', 'guide/lexique']],
+    ['progresser', 'Progresser', 'progresser', ['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']],
+    ['plus-loin', 'Pour aller plus loin', 'plus-loin', ['guide/aide-memoire', 'guide/lexique']],
   ]);
   assert.deepEqual(pagesDeLaRubrique(LES_BASES).map((p) => p.ordre), Array.from({ length: 12 }, (_, i) => i), 'une place 0…M − 1 dans chaque rubrique');
   assert.deepEqual(GUIDE_DU_MJ.pages, ['guide/un-maitre-du-jeu', 'guide/guide-pour-mj-maverick', 'guide/campagne-ou-scenario-one-shot'],
     '« « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ');
-  // les couleurs des anciennes parties, toujours celles des quatre zones de la fiche (guide.mjs les réexporte)
-  assert.deepEqual(PARTIES.map((p) => [p.id, p.couleur]), [['decouvrir', '#2a6f97'], ['creer', '#2e7d4f'], ['jouer', '#b03030'], ['progresser', '#6a4a9c'], ['plus-loin', '#5a6470']]);
-  assert.equal(PARTIES_DU_GUIDE, PARTIES);
+  // les anciennes parties : leurs ids et leurs titres ; leurs couleurs (toujours celles des quatre zones de la fiche) sont dans leur module, une par
+  // partie, posées par leur classe (lib/palette-css.mjs#classeDePartie : test/palette-css.test.mjs) ; le plan, que reçoit le navigateur, n'en a aucune
+  assert.deepEqual(PARTIES.map((p) => [p.id, p.titre]), [['decouvrir', 'Découvrir'], ['creer', 'Créer son personnage'], ['jouer', 'Jouer'], ['progresser', 'Progresser'],
+    ['plus-loin', 'Pour aller plus loin']]);
+  assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id));
+  assert.ok(PARTIES.every((p) => !('couleur' in p)) && RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => !('couleur' in g) && PARTIES.some((p) => p.id === g.partie))));
+  assert.doesNotMatch(readFileSync(new URL('../src/lib/livres.mjs', import.meta.url), 'utf8'), /#[0-9a-f]{3,6}\b/i, 'aucune couleur écrite dans le plan');
+  assert.ok(!('PARTIES' in Guide) && !('couleurDeLaPage' in Livres), 'ni réexportation des parties par guide.mjs, ni couleurDeLaPage');
   assert.equal(ACCUEIL_DU_GUIDE, 'decouvrir/');
-  assert.equal(couleurDeLaPage('guide/creer-son-personnage'), couleur('creer'));
-  assert.equal(couleurDeLaPage('guide/les-degats'), couleur('jouer'));
-  assert.equal(couleurDeLaPage('guide/meteo'), null, 'une page de référence : l’accent du site');
+  assert.equal(partieDeLaPage('guide/creer-son-personnage'), 'creer');
+  assert.equal(partieDeLaPage('guide/rejoindre-une-partie'), 'jouer');
+  assert.equal(partieDeLaPage('guide/les-degats'), 'jouer');
+  assert.equal(partieDeLaPage('guide/meteo'), null, 'une page de référence : l’accent du site');
 });
 
 test('les pages fusionnées (2026-10-18) : Le jeu de rôle dans Bienvenue, les six étapes dans Créer son personnage ; plus dans la base, ni dans le plan', () => {
@@ -139,9 +145,9 @@ test('le plan est contrôlé au build : une page absente, une page d’exemple, 
   assert.ok(RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => g.pages.length > 0)));
 });
 
-test('le sommaire des Bases : ses trois groupes, dans l’ordre du plan, chacun sa couleur', () => {
+test('le sommaire des Bases : ses trois groupes, dans l’ordre du plan, chacun sa partie (sa couleur)', () => {
   const g = groupesDesBases(pagesDuGuide);
-  assert.deepEqual(g.map((x) => [x.id, x.titre, x.couleur, x.pages.map((p) => p.id)]), groupes(LES_BASES));
+  assert.deepEqual(g.map((x) => [x.id, x.titre, x.partie, x.pages.map((p) => p.id)]), groupes(LES_BASES));
   assert.deepEqual(groupesDesBases(pagesDuGuide.filter((p) => !p.id.startsWith('guide/l'))).map((x) => x.id), ['jouer', 'progresser', 'plus-loin'], 'une page absente est sautée');
 });
 

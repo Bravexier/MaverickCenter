@@ -27,8 +27,11 @@ const BLOC = /<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g;
 test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les données à lire (règles, service) et le script', options, () => {
   const html = lire('fiche/index.html');
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-modele="\/fiche\/modele\.xlsx" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
-  const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
+  // la couleur de chaque zone : la classe de sa partie (lib/palette-css.mjs#classeDePartie), dans la feuille de la page, jamais un style (ni --etape)
+  const zones = [...html.matchAll(/<section class="fiche-zone(?: fiche-zone--identite)? (couleur-partie-[a-z-]+)" id="zone-([a-z]+)" aria-labelledby/g)].map((m) => [m[2], m[1]]);
+  assert.deepEqual(zones, [['identite', 'couleur-partie-creer'], ['portee', 'couleur-partie-jouer'], ['situation', 'couleur-partie-decouvrir'], ['parametres', 'couleur-partie-progresser']]);
+  for (const [, classe] of zones) assert.ok(html.includes(`.${classe}{`), `${classe} : dans une feuille de la page`);
+  assert.doesNotMatch(html, /style="[^"]*--etape/, 'plus de --etape en style');
   for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements', 'gains_sante', 'gains_chakra']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }

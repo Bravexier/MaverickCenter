@@ -39,17 +39,22 @@
 //     poids d'un bouclier et sa tuile dans la fiche de personnage ;
 //   - niveau : lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX (le niveau d'un effet ou d'une monture de l'onglet Accessoires, 1 à 5), sans
 //     `par-defaut` : un niveau absent (« Niveau ? », ligne vide) ne porte aucune classe ; les pastilles des niveaux, les lignes d'effet et de monture,
-//     l'encart de l'accessoire créé.
+//     l'encart de l'accessoire créé ;
+//   - partie : lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (l'id d'une partie de l'ancien guide, lib/livres.mjs#PARTIES : decouvrir, creer, jouer,
+//     progresser, plus-loin), sans `par-defaut` : une page sans partie (Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du site ;
+//     les pages de Découvrir et des Bases, leurs cartes « Par où commencer ? » de l'accueil, les groupes du sommaire des Bases, les quatre zones de la
+//     fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
 // affiché change.
 //
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
 // caractéristiques, affinités) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
-// d'armure, poids des boucliers, niveaux des accessoires) et les seconds rangs des caractéristiques ne le sont que par le composant des pages qui les
-// posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets Armures et
-// Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, et le mode modification qui
-// dessine une race ou une classe créée), comme les combinaisons des potions (cssDesPotions).
+// d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
+// pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
+// Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
+// qui dessine une race ou une classe créée, une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases), comme les combinaisons des potions
+// (cssDesPotions).
 //
 // Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
 // deux magies, arme de deux compétences) : la première est la classe de sa couleur (`--couleur`, `--couleur-texte`), la seconde sa classe de second
@@ -76,6 +81,7 @@ import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from './fiche-couleurs.m
 import { COULEURS_DES_MATERIAUX, cleDeMateriau } from './materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
+import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -101,6 +107,7 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   armure: Object.freeze({ ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   poids: Object.freeze({ ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   niveau: COULEURS_DES_NIVEAUX,
+  partie: COULEURS_DES_PARTIES,
 });
 
 /** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
@@ -109,12 +116,16 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
- * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires).
+ * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
+ * Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche).
  */
-export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau']);
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
 
-/** Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni les niveaux des accessoires). */
-export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids']);
+/**
+ * Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni
+ * les niveaux des accessoires) ; plus les parties du guide (la couleur de ses quatre zones).
+ */
+export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
 
 /**
  * Les familles sur la couleur desquelles aucun texte n'est posé en fond : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le
@@ -213,6 +224,16 @@ export const classeDuPoids = (id) => classeOuParDefaut('poids', id);
 /** La classe du niveau d'un effet ou d'une monture de l'onglet Accessoires (1 → « couleur-niveau-1 ») ; null pour un niveau absent ou inconnu (aucune couleur). */
 export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(niveau ?? ''));
 
+/** Le nom de la famille des parties du guide dans la palette (FAMILLES_DE_LA_PALETTE). */
+export const FAMILLE_DES_PARTIES = 'partie';
+
+/**
+ * La classe d'une partie de l'ancien guide (lib/livres.mjs#PARTIES : « creer » → « couleur-partie-creer ») : celle d'une page de Découvrir ou des Bases
+ * (lib/livres.mjs#partieDeLaPage), d'un groupe du sommaire des Bases, d'une zone de la fiche ; null pour une partie absente ou inconnue (aucune couleur :
+ * l'accent du site).
+ */
+export const classeDePartie = (id) => classeDeCouleur(FAMILLE_DES_PARTIES, id ?? '');
+
 /** La classe neutre (COULEUR_NEUTRE) : ce que la fiche montre sans couleur de règle (magie acquise « Aucune », objet de départ, ethnie sans race). */
 export const CLASSE_NEUTRE = classeDeCouleur('neutre', PAR_DEFAUT);
 
@@ -255,6 +276,12 @@ export const cssDesSecondsRangs = (famille) => secondsRangs(famille).map((c) => 
  * magies. Les familles d'une zone (FAMILLES_DES_ZONES) et les seconds rangs des caractéristiques n'y sont pas.
  */
 export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cssDesSecondsRangs('magie');
+
+/**
+ * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases
+ * (la fiche l'émet avec ses autres familles, FAMILLES_DE_LA_FICHE).
+ */
+export const cssDesParties = () => cssDesFamilles([FAMILLE_DES_PARTIES]);
 
 /** Les classes que la palette pose sur chaque page (familles de chaque page et seconds rangs des magies). */
 export const classesDeLaPalette = () =>

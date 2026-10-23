@@ -13,8 +13,9 @@
 //     /mj/<slug>/. Toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ est une page des Règles avancées (groupe
 //     « Autres pages de référence » si aucun groupe ne la nomme) : une page ajoutée plus tard a toujours une adresse.
 //   - « Artisanat » (/regles/artisanat/) est un sommaire de pages d'autres types.
-// Chaque groupe de Découvrir et des Bases a la couleur d'une ancienne partie du guide (PARTIES) : elle colore ses pages (filet du titre, blocs), ses
-// cartes « Par où commencer ? » et son groupe dans le sommaire des Bases.
+// Chaque groupe de Découvrir et des Bases porte l'id d'une ancienne partie du guide (PARTIES, `partie`) : la couleur de cette partie (sa classe de la
+// palette, `.couleur-partie-<id>` : lib/palette-css.mjs#classeDePartie, valeur dans lib/parties-couleurs.mjs) colore ses pages (filet du titre, blocs),
+// ses cartes « Par où commencer ? » et son groupe dans le sommaire des Bases. Aucune couleur n'est écrite ici (le navigateur reçoit ce plan).
 // Pages fusionnées (2026-10-18) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes de la création dans Créer son personnage
 // (PAGES_ABSORBEES) ; elles ne sont plus dans la base, leurs adresses mènent à la page qui les absorbe (page 404 : lib/metiers.mjs#renvoisDuGuide).
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
@@ -28,45 +29,50 @@
 // lib/fiche-regles.mjs, les composants et les tests.
 
 /**
- * Les couleurs des groupes de Découvrir et des Bases (celles des parties de l'ancien guide), assez foncées pour un texte blanc dessus. Elles sont aussi
- * celles des quatre zones de la fiche (pages/fiche/index.astro, par lib/guide.mjs#PARTIES).
+ * Les parties de l'ancien guide, dont les groupes de Découvrir et des Bases prennent la couleur (`partie` d'un groupe : l'id d'une partie). Leurs
+ * couleurs sont dans lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (même clé), posées par leur classe (lib/palette-css.mjs#classeDePartie) ; elles sont
+ * aussi celles des quatre zones de la fiche (pages/fiche/index.astro).
  */
 export const PARTIES = Object.freeze([
-  Object.freeze({ id: 'decouvrir', titre: 'Découvrir', couleur: '#2a6f97' }),
-  Object.freeze({ id: 'creer', titre: 'Créer son personnage', couleur: '#2e7d4f' }),
-  Object.freeze({ id: 'jouer', titre: 'Jouer', couleur: '#b03030' }),
-  Object.freeze({ id: 'progresser', titre: 'Progresser', couleur: '#6a4a9c' }),
-  Object.freeze({ id: 'plus-loin', titre: 'Pour aller plus loin', couleur: '#5a6470' }),
+  Object.freeze({ id: 'decouvrir', titre: 'Découvrir' }),
+  Object.freeze({ id: 'creer', titre: 'Créer son personnage' }),
+  Object.freeze({ id: 'jouer', titre: 'Jouer' }),
+  Object.freeze({ id: 'progresser', titre: 'Progresser' }),
+  Object.freeze({ id: 'plus-loin', titre: 'Pour aller plus loin' }),
 ]);
-const couleur = (id) => PARTIES.find((p) => p.id === id).couleur;
+/** L'id d'une partie, vérifié (une partie que PARTIES ne nomme pas arrête le chargement du plan). */
+const partie = (id) => {
+  if (!PARTIES.some((p) => p.id === id)) throw new Error(`lib/livres.mjs : partie inconnue « ${id} »`);
+  return id;
+};
 
 const gele = (o) => Object.freeze(o);
 
 /**
  * Découvrir : quatre pages, une par entrée du menu, dans l'ordre du menu ; `accueil` est servie à l'adresse de la rubrique (/decouvrir/), les autres à
- * /decouvrir/<slug>/. Les groupes ne donnent que la couleur de leurs pages (Découvrir n'a pas de sommaire).
+ * /decouvrir/<slug>/. Les groupes ne donnent que la partie (la couleur) de leurs pages (Découvrir n'a pas de sommaire).
  */
 export const DECOUVRIR = gele({
   id: 'decouvrir', titre: 'Découvrir', chemin: 'decouvrir/', accueil: 'guide/bienvenue', groupes: Object.freeze([
-    gele({ id: 'decouvrir', titre: 'Découvrir', couleur: couleur('decouvrir'), pages: Object.freeze(['guide/bienvenue', 'guide/l-univers']) }),
-    gele({ id: 'creer', titre: 'Créer son personnage', couleur: couleur('creer'), pages: Object.freeze(['guide/creer-son-personnage']) }),
-    gele({ id: 'rejoindre', titre: 'Rejoindre une partie', couleur: couleur('jouer'), pages: Object.freeze(['guide/rejoindre-une-partie']) }),
+    gele({ id: 'decouvrir', titre: 'Découvrir', partie: partie('decouvrir'), pages: Object.freeze(['guide/bienvenue', 'guide/l-univers']) }),
+    gele({ id: 'creer', titre: 'Créer son personnage', partie: partie('creer'), pages: Object.freeze(['guide/creer-son-personnage']) }),
+    gele({ id: 'rejoindre', titre: 'Rejoindre une partie', partie: partie('jouer'), pages: Object.freeze(['guide/rejoindre-une-partie']) }),
   ]),
 });
 
 /**
- * Les bases : un sommaire à /regles/ (pages/regles/index.astro), en trois groupes (chacun son ancre `id` et sa couleur) ; chaque page à /regles/<slug>/.
+ * Les bases : un sommaire à /regles/ (pages/regles/index.astro), en trois groupes (chacun son ancre `id` et sa partie, la couleur) ; chaque page à /regles/<slug>/.
  */
 export const LES_BASES = gele({
   id: 'bases', titre: 'Les bases', chemin: 'regles/', accueil: null, groupes: Object.freeze([
     gele({
-      id: 'jouer', titre: 'Jouer', couleur: couleur('jouer'), pages: Object.freeze([
+      id: 'jouer', titre: 'Jouer', partie: partie('jouer'), pages: Object.freeze([
         'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
         'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
       ]),
     }),
-    gele({ id: 'progresser', titre: 'Progresser', couleur: couleur('progresser'), pages: Object.freeze(['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']) }),
-    gele({ id: 'plus-loin', titre: 'Pour aller plus loin', couleur: couleur('plus-loin'), pages: Object.freeze(['guide/aide-memoire', 'guide/lexique']) }),
+    gele({ id: 'progresser', titre: 'Progresser', partie: partie('progresser'), pages: Object.freeze(['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']) }),
+    gele({ id: 'plus-loin', titre: 'Pour aller plus loin', partie: partie('plus-loin'), pages: Object.freeze(['guide/aide-memoire', 'guide/lexique']) }),
   ]),
 });
 
@@ -237,8 +243,8 @@ export const estDansDecouvrirOuLesBases = (id) => PLACES.has(id);
 /** Vrai si la page est dans le Guide du MJ. */
 export const estDuGuideDuMj = (id) => GUIDE_DU_MJ.pages.includes(id);
 
-/** La couleur d'une page de Découvrir ou des Bases (celle de son groupe), ou null. */
-export const couleurDeLaPage = (id) => PLACES.get(id)?.groupe.couleur ?? null;
+/** La partie d'une page de Découvrir ou des Bases (celle de son groupe : l'id de sa couleur, lib/palette-css.mjs#classeDePartie), ou null. */
+export const partieDeLaPage = (id) => PLACES.get(id)?.groupe.partie ?? null;
 
 /**
  * L'adresse d'une page `guide/<slug>`, relative à la racine du site : Bienvenue à /decouvrir/, une autre page de Découvrir à `decouvrir/<slug>/`, une page
@@ -266,13 +272,13 @@ export function placeDansLeGuide(id) {
 const parTitre = (a, b) => String(a.data?.title ?? a.id).localeCompare(String(b.data?.title ?? b.id), 'fr');
 
 /**
- * Les groupes des Bases remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, couleur, pages }] (`pages` :
+ * Les groupes des Bases remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, partie, pages }] (`pages` :
  * les éléments de `entries`, dans l'ordre du plan), un groupe vide omis. Une page nommée et absente de `entries` est sautée (verifierLePlan la signale).
  */
 export function groupesDesBases(entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
   return LES_BASES.groupes
-    .map((g) => ({ id: g.id, titre: g.titre, couleur: g.couleur, pages: g.pages.map((id) => parId.get(id)).filter(Boolean) }))
+    .map((g) => ({ id: g.id, titre: g.titre, partie: g.partie, pages: g.pages.map((id) => parId.get(id)).filter(Boolean) }))
     .filter((g) => g.pages.length);
 }
 

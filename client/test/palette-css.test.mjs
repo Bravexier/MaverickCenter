@@ -12,7 +12,7 @@ import {
   CLASSE_DES_ARMES_DE_DEPART, CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_FICHE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES,
   MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDeMateriau, classeDuPoids, classeDuTypeDArmure,
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
-  classeDeNiveau, classeDePotion, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
+  classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
   secondsRangs, secondsRangsDesMagies, classeDEvenement,
 } from '../src/lib/palette-css.mjs';
@@ -29,6 +29,8 @@ import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-c
 import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
+import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
+import { PARTIES, partieDeLaPage, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
 import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 
@@ -38,9 +40,9 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('seize familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires (et la couleur par défaut de sept d’entre elles)', () => {
+test('dix-sept familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide (et la couleur par défaut de sept d’entre elles)', () => {
   assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre',
-    'materiau', 'arme', 'armure', 'poids', 'niveau']);
+    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -69,6 +71,13 @@ test('seize familles, chacune lue dans le module de sa règle : magies, attribut
   assert.equal(FAMILLES_DE_LA_PALETTE.niveau, COULEURS_DES_NIVEAUX);
   assert.deepEqual(Object.keys(COULEURS_DES_NIVEAUX), ['1', '2', '3', '4', '5'], 'les cinq niveaux d’un accessoire');
   assert.ok(!Object.hasOwn(COULEURS_DES_NIVEAUX, PAR_DEFAUT));
+  // lot des parties du guide : les couleurs des parties de l'ancien guide restent dans leur module (plus dans le plan, lib/livres.mjs, que le navigateur
+  // reçoit), une par partie du plan, même clé ; pas de `par-defaut` (une page sans partie ne porte aucune classe : l'accent du site)
+  assert.equal(FAMILLES_DE_LA_PALETTE.partie, COULEURS_DES_PARTIES);
+  assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id), 'une couleur par partie du plan');
+  assert.deepEqual(COULEURS_DES_PARTIES, { decouvrir: '#2a6f97', creer: '#2e7d4f', jouer: '#b03030', progresser: '#6a4a9c', 'plus-loin': '#5a6470' }, 'les valeurs d’avant le lot');
+  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie))), 'chaque groupe du plan, la partie d’une couleur');
+  assert.ok(!Object.hasOwn(COULEURS_DES_PARTIES, PAR_DEFAUT));
   assert.deepEqual(Object.keys(COULEURS_DES_TYPES), ['Léger', 'Intermédiaire', 'Lourd'], 'les trois types de la légende de la grille');
   assert.deepEqual(Object.keys(CLASS_COLORS), CLASS_GROUPS.map((g) => g.key), 'une couleur par catégorie de /classes/');
   assert.deepEqual(Object.keys(RACE_COLORS), ['pure', 'hybride'], 'une couleur par nature de race (race-kinds.mjs#raceKind)');
@@ -93,9 +102,10 @@ test('seize familles, chacune lue dans le module de sa règle : magies, attribut
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
-  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau']);
-  // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier
-  assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids']);
+  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
+  // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
+  // quatre zones)
+  assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
   assert.ok(FAMILLES_DE_LA_FICHE.every((f) => FAMILLES_DES_ZONES.includes(f)));
 });
 
@@ -149,10 +159,16 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des accessoires : un niveau absent ou inconnu n'a pas de classe (pas de `par-defaut`), comme il n'avait pas de couleur
   assert.deepEqual([1, '5', null, undefined, 6].map(classeDeNiveau), ['couleur-niveau-1', 'couleur-niveau-5', null, null, null]);
   assert.notEqual(classeDeNiveau(1), classeDuTypeDArmure('Léger'), 'la même valeur, deux classes');
+  // lot des parties du guide : la classe d'une partie (une page de Découvrir ou des Bases, un groupe du sommaire, une zone de la fiche) ; une page sans
+  // partie (Règles avancées, Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
+  assert.deepEqual(['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin', null, undefined, 'inconnue'].map(classeDePartie),
+    ['couleur-partie-decouvrir', 'couleur-partie-creer', 'couleur-partie-jouer', 'couleur-partie-progresser', 'couleur-partie-plus-loin', null, null, null]);
+  assert.equal(classeDePartie(partieDeLaPage('guide/rejoindre-une-partie')), 'couleur-partie-jouer');
+  assert.equal(classeDePartie(partieDeLaPage('guide/meteo')), null, 'une page de référence');
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -202,6 +218,13 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
   assert.deepEqual(feuille.get(classeDePosture('focus')), { '--couleur': COULEURS_POSTURES.focus, '--couleur-texte': texteSurCouleur(COULEURS_POSTURES.focus) });
   assert.deepEqual(feuille.get(classeDAlignement('Neutre Mauvais')), { '--couleur': '#783f04', '--couleur-texte': texteSurCouleur('#783f04') }, 'foncé : texte clair');
   assert.notEqual(texteSurCouleur('#783f04'), texteSurCouleur(COULEURS_CARACTERISTIQUES.force), 'le texte suit la couleur (lisibilité)');
+  // lot des parties du guide : un texte est posé sur ces couleurs (le blanc des aplats du guide et de la fiche), la famille n'est donc pas sans texte ;
+  // les cinq l'atteignent déjà (de 5,05:1 à 6,84:1 avec le blanc) : inchangées, texte blanc, le rendu d'avant
+  assert.ok(!FAMILLES_SANS_TEXTE.includes('partie'));
+  for (const c of couleursDeLaPalette(['partie'])) {
+    assert.deepEqual([c.fond, c.texte], [COULEURS_DES_PARTIES[c.cle], '#ffffff'], c.classe);
+    assert.ok(contraste(c.fond, c.texte) >= 5, `${c.classe} : ${contraste(c.fond, c.texte).toFixed(2)}:1`);
+  }
 });
 
 test('l’émission : la feuille de chaque page (familles de chaque page, seconds rangs des magies) ; celle d’une zone, ses familles seules', () => {
@@ -284,6 +307,16 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   // les niveaux des accessoires : l'onglet Accessoires seul
   assert.match(lire('src/components/accessoires/AccessoiresPage.astro'), /const couleurs = cssDesFamilles\(\['niveau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   assert.doesNotMatch(lire('src/layouts/Base.astro'), /'niveau'/, 'pas sur chaque page');
+  // les parties du guide : une page de Découvrir ou des Bases (seulement si elle en pose une), le sommaire (seulement si un groupe en pose une : celui des
+  // Bases), l'accueil (ses cartes) et la fiche (ses zones, avec ses autres familles d'une zone) ; jamais sur chaque page
+  assert.equal(cssDesParties(), cssDesFamilles(['partie']));
+  assert.match(lire('src/components/guide/PageDuGuide.astro'), /\{couleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
+  assert.match(lire('src/components/guide/Sommaire.astro'), /const enCouleur = groupes\.some\(\(g\) => g\.classe\);[^]*\{enCouleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
+  assert.match(lire('src/pages/index.astro'), /<style is:inline set:html=\{cssDesParties\(\)\}><\/style>/);
+  assert.ok(FAMILLES_DE_LA_FICHE.includes('partie') && FAMILLES_DES_ZONES.includes('partie') && !FAMILLES_DE_CHAQUE_PAGE.includes('partie'));
+  assert.doesNotMatch(lire('src/layouts/Base.astro'), /'partie'/, 'pas sur chaque page');
+  assert.ok(!cssDeLaPalette().includes('.couleur-partie-'), 'ni dans la feuille de chaque page (plafond de 4 ko)');
+  for (const f of ['src/components/guide/PageDuGuide.astro', 'src/components/guide/Sommaire.astro', 'src/pages/index.astro']) assert.doesNotMatch(lire(f), /cssDesFamilles/, f);
   // le poids de ce que la fiche émet (les familles d'une zone qu'elle pose) reste petit
   assert.ok(cssDesFamilles(FAMILLES_DE_LA_FICHE).length < 3000, `${cssDesFamilles(FAMILLES_DE_LA_FICHE).length} octets`);
 });
@@ -316,6 +349,12 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   // les niveaux des accessoires : l'onglet Accessoires de l'équipement, et seulement là
   assert.ok(equipement.includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : l’onglet Accessoires');
   for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
+  // les parties du guide : l'accueil, le sommaire des Bases, une page de Découvrir ou des Bases (la fiche : avec ses familles, ci-dessus) ; ni une page de
+  // référence du guide, ni une autre page
+  for (const rel of ['index.html', 'regles/index.html', 'decouvrir/index.html', 'regles/les-postures/index.html']) {
+    assert.ok(page(rel).includes(`<style>${cssDesFamilles(['partie'])}</style>`), `les parties : ${rel}`);
+  }
+  for (const rel of ['magies/index.html', 'ressources/equipement/index.html', 'regles/avancees/index.html', 'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
 });
 
 /** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */
@@ -620,6 +659,16 @@ const FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE = [
   'src/components/chronologie/ChronologieEvenement.astro', 'src/pages/chronologie/index.astro', 'src/pages/chronologie/[slug].astro',
   'src/lib/chronologie.mjs', 'src/lib/chronologie-rendu.mjs', 'src/lib/chronologie-db.mjs', 'src/scripts/edition/chronologie.mjs',
 ];
+/**
+ * Les fichiers du lot des parties du guide (les pages de Découvrir et des Bases, l'accueil, le sommaire des Bases ; la fiche et sa feuille sont déjà en
+ * entier dans les lots d'avant) : contrôlés en entier. Le module de la règle (lib/parties-couleurs.mjs) écrit ses couleurs, comme les autres modules des
+ * couleurs ; de styles/global/wiki.css, seules les règles du sommaire (`var(--couleur)`, `var(--sommaire-couleur)`) sont de ce lot, ses cases
+ * `{couleur:x}` restent à un lot à venir.
+ */
+const FICHIERS_DU_LOT_DES_PARTIES = [
+  'src/lib/livres.mjs', 'src/lib/guide.mjs', 'src/components/guide/PageDuGuide.astro', 'src/components/guide/Sommaire.astro', 'src/pages/index.astro',
+  'src/pages/regles/index.astro', 'src/styles/accueil/accueil.css', 'src/styles/guide/blocs.css',
+];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
 const FEUILLES_DES_VARIABLES_DE_LA_PALETTE = new Set(['src/styles/fiche/fiche.css', 'src/styles/guide/blocs.css']);
 /** Les variables que les feuilles des classes et des races tirent de la classe de leur catégorie ou de leur nature (`--cla: var(--couleur…)`, `--rac`…). */
@@ -633,7 +682,8 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * (`var(--texte-sur-fonce)`, `var(--fond-banniere)` : un `color: #fff` remis là se verrait), le bleu des armes de départ tiré de sa classe
  * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--degats-…)`, `var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
  * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) et de la chronologie (`var(--ombre-evenement)`,
- * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) ;
+ * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) et des parties du guide (`var(--sommaire-couleur)`,
+ * `var(--guide…)`, `var(--etape…)`) ;
  * [{ fichier, selecteur, corps }], commentaires retirés.
  */
 const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
@@ -644,7 +694,7 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
-      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir)[,)]/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
  * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
@@ -659,7 +709,7 @@ const HORS_DU_LOT = new Map([
 
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
-    ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE]) {
+    ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE, ...FICHIERS_DU_LOT_DES_PARTIES]) {
     assert.deepEqual(couleursDuFichier(f), [], f);
   }
   const regles = reglesQuiLisentLaPalette();
@@ -703,7 +753,11 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     "src/styles/chronologie/chronologie.css .chrono", "src/styles/chronologie/chronologie.css .chrono[class*='couleur-evenement-']",
     "src/styles/chronologie/chronologie.css .frise__evenement[class*='couleur-evenement-']", "src/styles/chronologie/chronologie.css .frise__barre[class*='couleur-evenement-']",
     "src/styles/chronologie/chronologie.css .frise__morceau[class*='couleur-evenement-']", 'src/styles/chronologie/chronologie.css .chrono-page',
-    "src/styles/chronologie/chronologie.css html.js .frise-voile:not([hidden])"]) {
+    "src/styles/chronologie/chronologie.css html.js .frise-voile:not([hidden])",
+    // lot des parties du guide
+    "src/styles/global/wiki.css .sommaire[class*='couleur-partie-']", 'src/styles/global/wiki.css .sommaire--couleur > h2',
+    "src/styles/guide/blocs.css .guide-reference[class*='couleur-partie-']", 'src/styles/guide/blocs.css .guide-rubriques__lien:hover, .guide-rubriques__lien:focus-visible',
+    "src/styles/fiche/fiche.css .fiche-zone[class*='couleur-partie-']", 'src/styles/fiche/fiche.css .sort-prepare__marque']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   for (const [h, declaration] of HORS_DU_LOT) {
@@ -1225,4 +1279,182 @@ test('les classes des événements posées par la frise, la page et l’éditeur
   assert.doesNotMatch(editeur, /setProperty\(/, 'aucune variable posée en style');
   // le script de la frise (en ligne) n'importe rien : il reprend les classes des lignes (scripts du navigateur : jamais la palette ni la règle)
   assert.doesNotMatch(frise, /<script[^>]*>[\s\S]*?(?:import|palette-css|chronologie-couleurs)[\s\S]*?<\/script>/);
+});
+
+// Lot des parties du guide (2026-10-23, même demande et mêmes choix de cadrage) : la couleur d'une partie de l'ancien guide passe par la classe de la
+// palette (`couleur-partie-<id>`, famille `partie`, lib/parties-couleurs.mjs#COULEURS_DES_PARTIES) : une page de Découvrir ou des Bases, les cartes de
+// l'accueil, les groupes du sommaire des Bases, les quatre zones de la fiche ; plus aucune couleur dans le plan (lib/livres.mjs).
+
+const PARTIE = "[class*='couleur-partie-']";
+
+test('les feuilles des parties du guide lisent les propriétés que pose la classe, sur l’élément qui la porte ; ses enfants ne l’héritent pas', () => {
+  const { fond, texte } = proprietes();
+  const dans = (fichier, selecteur, attendu) => {
+    const regle = regleDe(lire(fichier), selecteur);
+    for (const a of [attendu].flat()) assert.ok(regle.includes(a), `${fichier}, ${selecteur} : « ${a} » dans « ${regle} »`);
+    return regle;
+  };
+  /** Les sélecteurs des règles d'une feuille qui lisent la couleur d'une classe (`var(--couleur…)`), commentaires retirés. */
+  const lecteurs = (fichier) => [...lire(fichier).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, , corps]) => /var\(--couleur(?:-texte|-2)?[,)]/.test(corps)).map(([, sel]) => sel.trim().replace(/\s+/g, ' '));
+  // le guide : --guide et le texte de ses aplats (--guide-sur) tirés de la classe de la partie posée sur la page ; sans elle, l'accent et le texte sur
+  // aplat foncé (le blanc d'avant, plus écrit) ; les enfants de la page retrouvent la valeur initiale de --couleur et --couleur-texte (celle d'avant la
+  // classe : un bloc sans classe propre garde son repli), sous :where() (aucun poids : la classe propre d'un bloc l'emporte)
+  const blocs = 'src/styles/guide/blocs.css';
+  dans(blocs, '.guide-reference', ['--guide: var(--accent);', '--guide-sur: var(--texte-sur-fonce);']);
+  dans(blocs, `.guide-reference${PARTIE}`, `--guide: var(${fond}); --guide-sur: var(${texte});`);
+  dans(blocs, `:where(.guide-reference${PARTIE}) > *`, `${fond}: initial; ${texte}: initial;`);
+  dans(blocs, '.guide-rubriques__lien:hover,\n.guide-rubriques__lien:focus-visible', 'background: var(--guide); color: var(--guide-sur);');
+  assert.doesNotMatch(lire(blocs), /--couleur-partie|color: #fff/, 'plus de --couleur-partie ni de blanc écrit');
+  // la seule règle du guide qui lit la couleur sans classe propre est celle de la page ; les blocs ne la lisent que sur l'élément qui porte leur classe
+  // (magie, caractéristique, posture) ou leur repli
+  assert.deepEqual(lecteurs(blocs), [`.guide-reference${PARTIE}`, '.guide-magie', '.guide-carac', '.guide-competences__groupe', '.guide-posture']);
+  for (const [sel, repli] of [['.guide-magie', `--c: var(${fond}, var(--guide));`], ['.guide-competences__groupe', `--c: var(${fond}, var(--guide));`],
+    ['.guide-posture', [`--c: var(${fond}, var(--guide));`, `--c-texte: var(${texte}, var(--text));`]]]) dans(blocs, sel, repli);
+  // l'accueil et le sommaire : la couleur lue sur la carte ou le groupe qui porte la classe, rien d'autre
+  const accueil = 'src/styles/accueil/accueil.css';
+  dans(accueil, `.accueil-debut__carte${PARTIE}`, `--c: var(${fond});`);
+  assert.deepEqual(lecteurs(accueil), [`.accueil-debut__carte${PARTIE}`]);
+  const wiki = 'src/styles/global/wiki.css';
+  dans(wiki, `.sommaire${PARTIE}`, `--sommaire-couleur: var(${fond});`);
+  dans(wiki, '.sommaire--couleur > h2', 'border-left: 4px solid var(--sommaire-couleur);');
+  assert.deepEqual(lecteurs(wiki), [`.sommaire${PARTIE}`]);
+  // la fiche : --etape tirée de la classe de la partie de la zone, sur la zone ; la magie innée (sa classe est sur .fiche, posée par le script) est lue sur
+  // .fiche elle-même, avant les zones, et les enfants d'une zone la retrouvent : les cadres (`.fiche[data-magie] .fiche-etape`) et tout élément sans classe
+  // propre gardent la magie innée, jamais la couleur de la zone
+  const fiche = 'src/styles/fiche/fiche.css';
+  dans(fiche, '.fiche', `--couleur-de-la-fiche: var(${fond}); --couleur-texte-de-la-fiche: var(${texte});`);
+  dans(fiche, `.fiche-zone${PARTIE}`, `--etape: var(${fond});`);
+  dans(fiche, `:where(.fiche-zone${PARTIE}) > *`, `${fond}: var(--couleur-de-la-fiche); ${texte}: var(--couleur-texte-de-la-fiche);`);
+  dans(fiche, '.fiche[data-magie] .fiche-etape', `--cadre: var(${fond}); --cadre-2: var(--couleur-2, var(${fond}));`);
+  assert.ok(lire('src/scripts/fiche.mjs').includes("const racine = document.getElementById('fiche');"), 'la classe de la magie innée est posée sur #fiche (.fiche)');
+  assert.match(lire('src/pages/fiche/index.astro'), /<div class="fiche" id="fiche"/);
+  // la classe de la partie ne pose que --couleur et --couleur-texte (rien d'autre à rendre aux enfants), et les deux règles qui les rendent sont sans
+  // poids (:where), sur les enfants directs seuls (leurs descendants en héritent)
+  assert.deepEqual(Object.keys(regles(cssDesFamilles(['partie'])).get('couleur-partie-creer')), [fond, texte]);
+  assert.ok(!/--couleur-2/.test(cssDesFamilles(['partie'])));
+  // dans la fiche, en dehors de ces règles, toute règle qui lit la couleur d'une classe est sur un élément qui porte sa classe (teinte-palette, magie,
+  // palier, créature à deux magies) ou sur les cadres (la magie innée de .fiche)
+  assert.deepEqual(lecteurs(fiche), ['.fiche', '.fiche[data-magie] .fiche-etape', '.fiche .teinte-palette', `.fiche-zone${PARTIE}`,
+    ".attribut[data-a='barre4'][class*='couleur-magie-']", '.posture-carte__magie', ".resistances__table tr[class*='couleur-palier-']", '.fiche .invocation-choix--magie']);
+  assert.deepEqual(lecteurs(blocs).filter((s) => s.includes('couleur-partie')), [`.guide-reference${PARTIE}`], 'le guide : la page seule');
+  // les gabarits posent les classes, jamais un style : ni --couleur-partie, ni --sommaire-couleur, ni --c des cartes, ni --etape
+  const page = lire('src/components/guide/PageDuGuide.astro');
+  assert.ok(page.includes('const couleur = classeDePartie(partieDeLaPage(entry.id));'));
+  assert.ok(page.includes("<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>"));
+  const sommaire = lire('src/components/guide/Sommaire.astro');
+  assert.ok(sommaire.includes("class:list={['sommaire', g.classe && ['sommaire--couleur', g.classe]]}"));
+  assert.ok(lire('src/pages/regles/index.astro').includes('classe: classeDePartie(g.partie),'));
+  const accueilPage = lire('src/pages/index.astro');
+  assert.ok(accueilPage.includes("classe: classeDePartie(partieDeLaPage(e.id)),") && accueilPage.includes("<li class:list={['accueil-debut__carte', c.classe]}>"));
+  const fichePage = lire('src/pages/fiche/index.astro');
+  assert.ok(fichePage.includes('const classeDeZone = (id: string) => classeDePartie(ZONES.find((z) => z.id === id)!.partie);'));
+  assert.equal(fichePage.match(/<section class:list=\{\['fiche-zone(?: fiche-zone--identite)?', classeDeZone\('[a-z]+'\)\]\}/g)?.length, 4, 'les quatre zones');
+  for (const [f, source] of [['PageDuGuide.astro', page], ['Sommaire.astro', sommaire], ['index.astro', accueilPage], ['fiche/index.astro', fichePage]]) {
+    assert.doesNotMatch(source, /--couleur-partie|--sommaire-couleur|--etape:|style=\{`--c:/, f);
+  }
+  // ni la palette ni le module des couleurs dans un script de page ; le plan (dans la chaîne de l'édition du navigateur) n'importe rien
+  for (const f of readdirSync(new URL('../src/scripts/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.mjs'))) {
+    assert.doesNotMatch(lire(`src/scripts/${f}`), /parties-couleurs\.mjs/, f);
+  }
+  for (const f of ['src/lib/livres.mjs', 'src/lib/parties-couleurs.mjs']) assert.doesNotMatch(lire(f), /^import /m, f);
+});
+
+test('lisibilité des parties du guide dans les deux thèmes : le blanc sur leur couleur, le texte coloré du guide, de la fiche et de l’accueil (4,5:1)', () => {
+  const part = (fichier, re) => {
+    const m = lire(fichier).match(re);
+    assert.ok(m, `${fichier} : ${re}`);
+    return Number(m[1]) / 100;
+  };
+  const [blocs, tooltips, fiche, accueil] = ['src/styles/guide/blocs.css', 'src/styles/magie/tooltips.css', 'src/styles/fiche/fiche.css', 'src/styles/accueil/accueil.css'];
+  const p = {
+    guideTexteSombre: part(blocs, /:root\[data-theme="dark"\] \.guide-reference \{ --guide-texte: color-mix\(in srgb, var\(--guide\) (\d+)%, #fff\); \}/),
+    soft: part(blocs, /--guide-soft: color-mix\(in srgb, var\(--guide\) (\d+)%, var\(--surface\)\);/),
+    guideTexteClair: part(blocs, /\.guide-reference\[class\*='couleur-partie-'\] \{[^}]*--guide-texte: color-mix\(in srgb, var\(--guide\) (\d+)%, #000\); \}/),
+    info: part(tooltips, /\.info \{ --info: color-mix\(in srgb, var\(--mag\) (\d+)%, var\(--text\)\);/),
+    doux: part(fiche, /\.fiche-zone \{\n {2}--etape-doux: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--surface\)\);/),
+    sousTitre: part(fiche, /\.fiche-sous-titre \{[^}]*color: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--text\)\); \}/),
+    resume: part(fiche, /\.fiche-resume strong \{ color: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--text\)\); \}/),
+    ongletActif: part(fiche, /\.parametres \.onglet\.is-active \{[^}]*color: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--text\)\); \}/),
+    ongletSurvol: part(fiche, /\.parametres \.onglet:hover \{ background: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--surface\)\); \}/),
+    marqueSombre: part(fiche, /:root\[data-theme='dark'\] \.sort-prepare__marque \{ --marque: color-mix\(in srgb, var\(--etape\) (\d+)%, #fff\); \}/),
+    carte: part(accueil, /background: color-mix\(in srgb, var\(--c\) (\d+)%, var\(--surface\)\);/),
+  };
+  // les mêmes réglages dans les deux blocs du thème sombre (préférence du système et choix du site)
+  assert.ok(lire(blocs).includes(`:root:not([data-theme="light"]) .guide-reference { --guide-texte: color-mix(in srgb, var(--guide) ${p.guideTexteSombre * 100}%, #fff); }`));
+  assert.ok(lire(fiche).includes(`:root:not([data-theme='light']) .sort-prepare__marque { --marque: color-mix(in srgb, var(--etape) ${p.marqueSombre * 100}%, #fff); }`));
+  // le texte coloré d'une page qui a une partie, en thème clair : la couleur de la partie mêlée de 10 % de noir (réponse du propriétaire du 2026-10-23 :
+  // « Comme les cartes du fil rouge (Recommandé) ») ; le nom d'un personnage fil rouge le lit (sa correction, sans préférence du propriétaire, était déjà
+  // ce calcul) ; une page sans partie garde l'accent du site, inchangé ; en sombre, les deux blocs du thème (d'un poids plus fort) gardent l'éclairci
+  assert.equal(p.guideTexteClair, 0.9);
+  assert.ok(regleDe(lire(blocs), '.guide-reference').includes('--guide-texte: var(--guide);'), 'sans partie : l’accent du site');
+  assert.ok(regleDe(lire(blocs), '.guide-fil-rouge__nom').includes('color: var(--guide-texte);'));
+  assert.doesNotMatch(lire(blocs), /\.guide-fil-rouge__nom \{ color:/, 'plus de règle à part pour le thème sombre');
+  assert.ok(lire(blocs).indexOf(`.guide-reference${PARTIE} {`) < lire(blocs).indexOf(':root[data-theme="dark"] .guide-reference {'));
+  const marque = regleDe(lire(fiche), '.sort-prepare__marque');
+  assert.ok(marque.includes('--marque: var(--etape);') && marque.includes('color: var(--marque);'), 'le texte : en clair, la couleur de la zone');
+  assert.ok(marque.includes('border: 1px solid var(--etape);'), 'la bordure (sans texte) garde la couleur de la zone, dans les deux thèmes');
+  assert.equal((lire(fiche).match(/var\(--marque\)/g) ?? []).length, 1, '--marque ne sert qu’au texte');
+  const blocsTheme = blocsDuTheme();
+  const clair = blocsTheme.find((b) => b.sel === ':root');
+  const sombres = blocsTheme.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  assert.deepEqual(sombres.map((b) => b.sel), [':root:not([data-theme="light"])', ':root[data-theme="dark"]']);
+  const [blanc, noir] = ['#ffffff', '#000000'];
+  // les parties de chaque zone de la fiche (pages/fiche/index.astro) ; la zone II (les sorts : la marque « préparé ») et la zone IV (ses onglets)
+  const zones = Object.fromEntries([...lire('src/pages/fiche/index.astro').matchAll(/\{ id: '([a-z]+)', numero: '[IV]+', [^}]*partie: '([a-z-]+)' \}/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(zones, { identite: 'creer', portee: 'jouer', situation: 'decouvrir', parametres: 'progresser' });
+  // les rubriques sous une page (la pastille d'un lien, texte coloré sur la teinte douce) : la partie des pages qui en ont
+  const partiesDesRubriques = new Set(Object.keys(RUBRIQUES_SOUS_LA_PAGE).map(partieDeLaPage));
+  assert.deepEqual([...partiesDesRubriques], ['decouvrir']);
+  const mesures = [];
+  const lisible = (texte, fond, quoi) => {
+    const r = contraste(texte, fond);
+    mesures.push([quoi, r]);
+    assert.ok(r >= CONTRASTE_MINIMAL, `${quoi} : ${texte} sur ${fond} = ${r.toFixed(2)}:1`);
+  };
+  for (const c of couleursDeLaPalette(['partie'])) {
+    const P = c.fond;
+    // le texte de la classe (le blanc) sur l'aplat : pastille d'une rubrique au focus, dés d'un objet et numéros de la ceinture de la fiche
+    lisible(c.texte, P, `${c.cle} : texte de la classe sur la couleur`);
+    for (const [nom, b] of [['clair', clair], ...sombres.map((x) => [x.sel, x])]) {
+      const sombre = b !== clair;
+      const [bg, surface, text, muted] = ['--bg', '--surface', '--text', '--muted'].map((v) => b.valeur(v));
+      const q = (quoi) => `${c.cle}, ${sombre ? 'sombre' : 'clair'} : ${quoi}`;
+      // le guide : --guide-texte (intertitres, définitions, numéros de la montée de niveau) sur le fond de la page et sur la surface des tableaux ; sur
+      // la teinte douce (la pastille d'une rubrique) ; le nom d'un personnage fil rouge sur sa carte ; l'icône d'une infobulle ; le texte et le texte adouci
+      // (en-têtes des tableaux) sur la teinte douce
+      const guideTexte = sombre ? surFond(P, blanc, p.guideTexteSombre) : surFond(P, noir, p.guideTexteClair);
+      const soft = surFond(P, surface, p.soft);
+      lisible(guideTexte, bg, q('texte coloré sur le fond'));
+      lisible(guideTexte, surface, q('texte coloré sur la surface'));
+      lisible(guideTexte, soft, q('texte coloré sur la teinte douce (rubriques, nom d’un personnage fil rouge)'));
+      lisible(surFond(P, text, p.info), soft, q('icône d’une infobulle sur la teinte douce'));
+      lisible(text, soft, q('texte sur la teinte douce'));
+      lisible(muted, soft, q('texte adouci sur la teinte douce (en-têtes des tableaux)'));
+      // l'accueil : le titre et le résumé d'une carte sur sa teinte
+      lisible(text, surFond(P, surface, p.carte), q('titre d’une carte de l’accueil'));
+      lisible(muted, surFond(P, surface, p.carte), q('résumé d’une carte de l’accueil'));
+      // la fiche (les parties de ses zones) : sous-titres et mots en gras d'un résumé, sur la surface et la teinte douce de la zone ; texte sur la teinte
+      // douce ; la marque « préparé » (sur la surface d'un bloc) ; les onglets de la zone IV (l'actif, et le texte d'un onglet survolé)
+      if (!Object.values(zones).includes(c.cle)) continue;
+      const doux = surFond(P, surface, p.doux);
+      lisible(surFond(P, text, p.sousTitre), surface, q('sous-titre de la fiche sur la surface'));
+      lisible(surFond(P, text, p.sousTitre), doux, q('sous-titre de la fiche sur la teinte de la zone'));
+      lisible(surFond(P, text, p.resume), doux, q('mot en gras d’un résumé de la fiche'));
+      lisible(text, doux, q('texte sur la teinte de la zone'));
+      lisible(sombre ? surFond(P, blanc, p.marqueSombre) : P, surface, q('marque « préparé » d’un sort'));
+      if (c.cle === zones.parametres) {
+        lisible(surFond(P, text, p.ongletActif), surface, q('onglet actif de la zone IV'));
+        lisible(text, surFond(P, surface, p.ongletSurvol), q('onglet survolé de la zone IV'));
+      }
+    }
+  }
+  assert.ok(mesures.length >= 100, `${mesures.length} mesures`);
+  const [quoi, minimum] = mesures.reduce((m, x) => (x[1] < m[1] ? x : m));
+  assert.ok(minimum >= CONTRASTE_MINIMAL, `le plus juste : ${quoi} (${minimum.toFixed(2)}:1)`);
+  // les corrections appliquées (le fil rouge et la marque : sans préférence du propriétaire, options recommandées appliquées au nom de sa règle
+  // « Privilégé la lisibilité » ; le texte coloré du guide : son choix, « Comme les cartes du fil rouge (Recommandé) ») : sans elles, illisibles
+  assert.ok(contraste(COULEURS_DES_PARTIES.creer, surFond(COULEURS_DES_PARTIES.creer, clair.valeur('--surface'), p.soft)) < CONTRASTE_MINIMAL, 'le vert de la partie, non assombri, sur la carte');
+  assert.ok(contraste(COULEURS_DES_PARTIES.creer, clair.valeur('--bg')) < CONTRASTE_MINIMAL, 'le vert de la partie, non assombri, sur le fond de la page');
+  assert.ok(contraste(COULEURS_DES_PARTIES.jouer, sombres[0].valeur('--surface')) < CONTRASTE_MINIMAL, 'le rouge de la zone II, non éclairci');
 });

@@ -11,9 +11,9 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
-import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER } from '../src/lib/livres.mjs';
+import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER, partieDeLaPage } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { classesDeLaPalette } from '../src/lib/palette-css.mjs';
+import { classeDePartie, classesDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -113,14 +113,18 @@ test('accueil : texte de bienvenue et défilement des images de la galerie (en c
   assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie\.<\/p>/);
   assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Découvrir Maverick<\/a>/);
   assert.doesNotMatch(main, /Lire le guide|pas à pas/);
-  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse
+  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
+  // de son groupe (la classe de sa partie, jamais un style)
   assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
-  const cartes = [...main.matchAll(/<li class="accueil-debut__carte" style="--c: #[0-9a-f]{6}"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)];
+  const cartes = [...main.matchAll(/<li class="accueil-debut__carte (couleur-partie-[a-z-]+)"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)]
+    .map(([, classe, href, titre, resume]) => Object.assign([undefined, href, titre, resume], { classe }));
   const base = ouvrirBase();
   const pages = PAR_OU_COMMENCER.map((id) => base.prepare('SELECT id, titre, resume FROM page WHERE id = ?').get(id));
   assert.deepEqual(cartes.map((m) => m[1]), pages.map((p) => `/${cheminDePage(p.id)}`));
   assert.deepEqual(cartes.map((m) => m[2].replace(/&#39;/g, "'")), pages.map((p) => p.titre));
   assert.ok(cartes.every((m, i) => Boolean(m[3]) === Boolean(pages[i].resume)), 'un résumé quand la page en a un');
+  assert.deepEqual(cartes.map((m) => m.classe), PAR_OU_COMMENCER.map((id) => classeDePartie(partieDeLaPage(id))), 'la classe de la partie de chaque page');
+  assert.doesNotMatch(main, /accueil-debut__carte[^>]*style=/, 'aucune couleur de carte en style');
   assert.match(main, /<section class="carrousel" aria-roledescription="carrousel" aria-label="Galerie"/);
   assert.match(main, /<a href="\/galeries\/#image-logo"><img src="\/logo\.webp" alt="Logo de Maverick[^"]*" width="319" height="320"/, 'l’image mène à sa place sur /galeries/');
   assert.match(main, /class="carrousel__badge">En construction</);
@@ -695,8 +699,8 @@ test('couleurs des événements de la chronologie : jamais en style sur une page
     const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     assert.doesNotMatch(html, /--couleur-evenement/, `${rel} : --couleur-evenement`);
-    // (l'accueil pose encore un `--c` en style : une autre zone, pas encore passée aux classes)
-    if (rel.startsWith('chronologie/')) assert.doesNotMatch(html, /style="[^"]*--c(?:-avant|-apres)?:/, `${rel} : une couleur de la frise en style`);
+    // (depuis le lot des parties du guide, l'accueil ne pose plus de `--c` en style : le contrôle vaut pour toute page)
+    assert.doesNotMatch(html, /style="[^"]*--c(?:-avant|-apres)?:/, `${rel} : une couleur en style (--c)`);
     const feuilles = [...html.matchAll(/<style data-couleurs-chronologie>([^<]*)<\/style>/g)].map((m) => m[1]);
     assert.ok(feuilles.length <= 1, `${rel} : une seule feuille des couleurs des événements`);
     if (feuilles.length) avecFeuille.push(rel);
@@ -715,4 +719,47 @@ test('couleurs des événements de la chronologie : jamais en style sur une page
   assert.ok(pagesDeLaChronologie.length > 50, `${pagesDeLaChronologie.length} pages de la chronologie`);
   assert.deepEqual(avecFeuille.sort(), pagesDeLaChronologie);
   assert.ok(posees > pagesDeLaChronologie.length * 100, `${posees} classes posées`);
+});
+
+// Lot des parties du guide (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'une partie en style
+// (ni `--couleur-partie`, ni `--sommaire-couleur`, ni `--etape`, ni le `--c` des cartes de l'accueil) ; chaque classe `couleur-partie-…` posée existe dans
+// une feuille de la page (famille d'une zone : une page de Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche, et seulement elles).
+/** Les éléments que les pages posent sur la couleur d'une partie. */
+const ELEMENTS_DES_PARTIES = new Set(['guide-reference', 'sommaire', 'accueil-debut__carte', 'fiche-zone']);
+const CLASSE_DES_PARTIES = /^couleur-partie-/;
+
+test('couleurs des parties du guide : jamais en style sur une page construite, toujours par une classe d’une feuille de la page', options, () => {
+  const parPage = new Map();
+  const feuille = cssDesFamilles(['partie']);
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier).split('\\').join('/');
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, /--couleur-partie|--sommaire-couleur|style="[^"]*--etape/, `${rel} : une couleur de partie en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DES_PARTIES.test(c) || ELEMENTS_DES_PARTIES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
+      for (const c of jetons.filter((x) => CLASSE_DES_PARTIES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+    if (/\.couleur-partie-[a-z-]+\{/.test(html)) {
+      assert.ok(parPage.has(rel), `${rel} : la feuille des parties sans aucune classe posée`);
+      // (la fiche l'émet avec ses autres familles d'une zone, FAMILLES_DE_LA_FICHE : test/palette-css.test.mjs)
+      if (rel !== 'fiche/index.html') assert.equal(html.split(`<style>${feuille}</style>`).length - 1, 1, `${rel} : la feuille des parties, une fois`);
+      assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
+    }
+  }
+  // les pages qui les posent : les seize de Découvrir et des Bases, l'accueil, le sommaire des Bases, la fiche ; aucune autre
+  const attendues = { 'index.html': ['decouvrir', 'creer', 'jouer'], 'regles/index.html': ['jouer', 'progresser', 'plus-loin'],
+    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/creer-son-personnage/index.html': ['creer'],
+    'regles/les-degats/index.html': ['jouer'], 'regles/la-montee-de-niveau/index.html': ['progresser'], 'regles/lexique/index.html': ['plus-loin'] };
+  for (const [rel, parties] of Object.entries(attendues)) {
+    assert.deepEqual([...(parPage.get(rel) ?? [])].sort(), [...new Set(parties)].map((p) => `couleur-partie-${p}`).sort(), rel);
+  }
+  const autres = [...parPage.keys()].filter((rel) => !(rel in attendues));
+  assert.ok(autres.every((rel) => /^(?:decouvrir|regles)\/[a-z-]+\/index\.html$/.test(rel) && !rel.startsWith('regles/avancees/')), `ailleurs : ${autres}`);
+  assert.equal(parPage.size, 3 + 16, `l’accueil, le sommaire des Bases, la fiche et les ${parPage.size - 3} pages de Découvrir et des Bases`);
+  assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
 });

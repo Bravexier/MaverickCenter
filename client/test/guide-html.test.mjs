@@ -16,10 +16,10 @@ import { chargerAnnonce } from '../src/lib/annonces.mjs';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
-import { cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
-  ARTISANAT, couleurDeLaPage, DECOUVRIR, estDansDecouvrirOuLesBases, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
-  PAGES_ABSORBEES, pagesDeLaRubrique, SOUS_BIENVENUE,
+  ARTISANAT, DECOUVRIR, estDansDecouvrirOuLesBases, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
+  PAGES_ABSORBEES, pagesDeLaRubrique, partieDeLaPage, SOUS_BIENVENUE,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { CHEMIN_INSTANTANE, URL_PAGE } from '../src/lib/tipeee.mjs';
@@ -85,9 +85,17 @@ test('le fil d’Ariane : Découvrir pour ses pages, Les bases et le groupe, Rè
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
   for (const p of pagesConstruites) {
     const { main } = lire(cheminDePage(p.id));
-    const couleur = couleurDeLaPage(p.id);
-    if (couleur) assert.match(main, new RegExp(`<div class="guide-reference guide-reference--couleur" style="--couleur-partie: ${couleur}">`), p.id);
-    else assert.match(main, /<div class="guide-reference">/, p.id);
+    // la couleur du groupe : la classe de sa partie (lib/palette-css.mjs#classeDePartie), jamais un style ; la page en émet la feuille, une fois
+    const classe = classeDePartie(partieDeLaPage(p.id));
+    const feuille = `<style>${cssDesFamilles(['partie'])}</style>`;
+    if (classe) {
+      assert.ok(main.includes(`<div class="guide-reference guide-reference--couleur ${classe}">`), p.id);
+      assert.equal(main.split(feuille).length - 1, 1, `${p.id} : la feuille des parties, une fois`);
+    } else {
+      assert.match(main, /<div class="guide-reference">/, p.id);
+      assert.doesNotMatch(main, /\.couleur-partie-[a-z-]+\{/, `${p.id} : une page de référence, sans la feuille des parties`);
+    }
+    assert.doesNotMatch(main, /--couleur-partie/, p.id);
     // le badge « Guide » sur les pages de référence seulement (comme avant)
     assert.equal(/<span class="badge">Guide<\/span><\/h1>/.test(main.replace(/\s+<\/h1>/, '</h1>')), !estDansDecouvrirOuLesBases(p.id), `${p.id} : badge`);
   }
@@ -99,8 +107,10 @@ test('/regles/ : le sommaire des Bases, trois groupes dans leur couleur, chaque 
   const { main } = lire('regles');
   assert.match(main, /<h1>Les bases<\/h1>/);
   const groupes = groupesDesBases(pagesConstruites);
-  assert.deepEqual([...main.matchAll(/<section class="sommaire sommaire--couleur" id="([^"]+)" style="--sommaire-couleur: (#[0-9a-f]{6})"[^>]*><h2 id="[^"]+">([^<]+)<\/h2>/g)].map((m) => [m[1], m[2], m[3]]),
-    LES_BASES.groupes.map((g) => [g.id, g.couleur, g.titre]));
+  assert.deepEqual([...main.matchAll(/<section class="sommaire sommaire--couleur (couleur-partie-[a-z-]+)" id="([^"]+)"[^>]*><h2 id="[^"]+">([^<]+)<\/h2>/g)].map((m) => [m[2], m[1], m[3]]),
+    LES_BASES.groupes.map((g) => [g.id, classeDePartie(g.partie), g.titre]));
+  assert.equal(main.split(`<style>${cssDesFamilles(['partie'])}</style>`).length - 1, 1, 'la feuille des parties, une fois');
+  assert.doesNotMatch(main, /--sommaire-couleur|<section class="sommaire[^>]*style=/, 'la couleur d’un groupe : sa classe, jamais un style');
   const lignes = [...main.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a>(?:<div class="muted">([\s\S]*?)<\/div>)?<\/li>/g)];
   assert.deepEqual(lignes.map((m) => m[1]), groupes.flatMap((g) => g.pages.map((p) => `/${cheminDePage(p.id)}`)));
   assert.equal(lignes.length, 12);
