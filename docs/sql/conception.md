@@ -121,7 +121,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 
 | Décision | Pourquoi |
 | --- | --- |
-| **Une seule `page_entite`**, avec `origine` et un index sur `entite_id` (les analystes l'avaient chacun redéfinie) | Une requête dit à quelle page appartient n'importe quelle entité (`GET /entites/{id}`) |
+| **Une seule `page_entite`**, avec `origine` et la clé primaire `(entite_table, entite_id)` (les analystes l'avaient chacun redéfinie ; l'index sur `entite_id` seul, qu'aucun plan ne choisissait, est retiré par la migration 0072) | La page d'une entité se lit par la clé primaire (entite_table, entite_id) ; GET /entites/{id} (§7, jamais réalisé) parcourrait la table, et le filtre `entite_id=` seul de `GET /donnees/page_entite` y serait refusé (colonne sans index) |
 | **Une seule `entite_fts`** remplace `sort_fts`, `capacite_fts`, `ethnie_fts`, `creature_fts`, `equipement_fts`, `regle_fts` | Un seul `MATCH` pour toute la base ; plus de six index à tenir à jour |
 | **Une seule `note_cellule`** (+ `repond_a` pour les fils) remplace `sort_commentaire`, `creature_note`, `equipement.note_cellule` et la colonne `capacite.note_cellule` | Notes d'une entité en une requête ; l'importeur des commentaires `.xlsx` n'écrit qu'un endroit |
 | **Une seule `ecart_source`** remplace `ecart_source` (fiche) et `anomalie_source` (équipement) ; `id` = clé naturelle en clair (CHECK) | Les écarts entre sources s'interrogent partout pareil |
