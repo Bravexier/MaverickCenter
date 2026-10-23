@@ -94,7 +94,9 @@ const nouveau = {
   case: 'zorglubcase',
   donElfe: { nom: 'Sang zorglubnom', texte: 'Don racial zorglubdonracial.' },
   hyperElfe: { nom: 'Condamné zorglubhypernom', effet: 'Effet zorglubhyperrace du peuple.' },
-  guerrier: { sante_depart: avant.guerrier.sante_depart + 1, maitrise_arme: '- 1 maîtrise zorglubarme\n- 1 maîtrise Hache', description: 'Le Guerrier zorglubclasse frappe fort. Il ne recule jamais.' },
+  // (une maîtrise au choix gardée : l'Épéiste la suit, décision R151 ; sans elle, le service refuse le lot)
+  guerrier: { sante_depart: avant.guerrier.sante_depart + 1, maitrise_arme: '- 1 maîtrise zorglubarme\n- 1 maîtrise Hache\n- 1 maîtrise arme contact au choix (sauf Hache)',
+    description: 'Le Guerrier zorglubclasse frappe fort. Il ne recule jamais.' },
   maitre: 'MAÎTRE ZORGLUB',
   brave: { effet: 'Totalement zorglubeffet immunisé.', remarque: 'Remarque zorglubremarque ajoutée.' },
   herboristeLong: 'Premier zorglubpara un.\n\nSecond zorglubpara deux.',

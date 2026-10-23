@@ -339,7 +339,9 @@ Les tables qui ne sont pas des éléments (tables de détail refaites par le ser
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une
 fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource). Ainsi `maitrise_arme_part` et `maitrise_arme_part_famille` (ce que
 donne chaque source de points de maîtrise d'armes, migration 0072) : une source est une ligne de maîtrise d'une classe ou un don, deux parents qu'une
-dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`.
+dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`. Toutes trois sont
+refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
+jamais écrites directement.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même

@@ -315,6 +315,12 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
   spécialités, dons à choix groupés comme sur la page de chaque classe, maîtrises d'armes des classes et points de maîtrise de leurs dons, sorts, tables
   de niveau, constantes, catalogues d'équipement et paliers du dé selon la Force, paliers de résistance, altérations d'état, résistances de chaque magie),
+  dont les **sources de maîtrise d'arme** (décisions R148 à R151) lues dans leurs tables (`maitrise_arme_part`, `maitrise_arme_part_famille`) : chaque
+  ligne typée de `classes[].maitrises[]` reçoit sa `source` (`<classe>#maitrise-arme:<rang>`, l'identifiant que la fiche enregistre) et ses `parts`,
+  chaque don qui en a, `maitrise: { parts }` ; une part est `{ rang, genre: 'imposee' | 'choix' | 'suit', points (signés), famille (imposée, sinon
+  null), options (familles d'une part à choisir, dans l'ordre d'`arme_famille`), limite (par famille, R150 ; null) }` ; un don de `capacite_nm_gagne`
+  reçoit `nm_gagnes` (R154). Une famille non maîtrisable (R45) ou un don qui suit la maîtrise au choix d'une classe qui n'en a pas exactement une
+  (R151) arrête le build. `au_choix.familles` et `points_maitrise` restent tant que la page les lit ;
   rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
   le rejoue sur toute la base) et par `lib/resistance-texte.mjs` (crans et immunités d'un don ; `test/resistance-texte.test.mjs` le rejoue sur toute la base et
   vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`). Les balises du

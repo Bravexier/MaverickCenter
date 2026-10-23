@@ -104,7 +104,8 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
     parClasse.set(r.classe_id, [...(parClasse.get(r.classe_id) ?? []), { brut: r.brut, nombre: r.nombre }]);
   }
   // (les familles d'une maîtrise au choix, `au_choix` : décisions R119, R127, test/fiche-arme-choisie.test.mjs)
-  for (const c of regles.classes) assert.deepEqual(c.maitrises.map(({ au_choix: _a, ...m }) => m), parClasse.get(c.id) ?? [], c.id);
+  // (leur source et leurs parts, `source` et `parts` : décisions R148 à R151, test suivant)
+  for (const c of regles.classes) assert.deepEqual(c.maitrises.map(({ au_choix: _a, source: _s, parts: _p, ...m }) => m), parClasse.get(c.id) ?? [], c.id);
   const capacites = new Map(db.prepare('SELECT id, classe_id, effet FROM capacite').all().map((r) => [r.id, r]));
   assert.equal(regles.classes.reduce((n, c) => n + c.dons.length, 0), capacites.size, 'chaque don, une fois');
   for (const c of regles.classes) {
@@ -117,6 +118,80 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
   const notes = new Map(db.prepare('SELECT id, note_brut FROM arme_famille').all().map((r) => [r.id, r.note_brut]));
   for (const f of regles.familles_armes) assert.deepEqual(f.de_selon_force, desSelonLaForce(notes.get(f.id)), `${f.id} : les paliers de sa note`);
   assert.equal(regles.constantes['alignement.ecart_axe'], 5);
+});
+
+test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de chaque ligne de classe et de chaque don, lues dans leurs tables ; les NM gagnés ; l’accessoire au choix', () => {
+  const classe = (id) => regles.classes.find((c) => c.id === id);
+  const don = (id) => regles.classes.flatMap((c) => c.dons).find((d) => d.id === id);
+  const part = (rang, genre, points, { famille = null, options = [], limite = null } = {}) => ({ rang, genre, points, famille, options, limite });
+  const contact = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id);
+  const distance = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'distance').map((f) => f.id);
+  // les lignes du Guerrier (« 1 maîtrise Épée », « 1 maîtrise dans une arme contact au choix (sauf épée) ») : leur source est l'identifiant que la fiche
+  // enregistre (personnage_maitrise_choix.source), les options d'une maîtrise au choix sont ses familles (`au_choix`, R119, R138), dans l'ordre d'arme_famille
+  // (lues dans la base de l'état courant : le site de dev peut modifier ces lignes ; à l'import, ce sont celles-ci)
+  const guerrier = classe('classes/guerrier').maitrises;
+  if (guerrier.map((m) => m.brut).join('|') === '1 maîtrise Épée|1 maîtrise dans une arme contact au choix  (sauf épée)') {
+    assert.deepEqual(guerrier.map((m) => ({ source: m.source, parts: m.parts })), [
+      { source: 'classes/guerrier#maitrise-arme:1', parts: [part(1, 'imposee', 1, { famille: 'epees' })] },
+      { source: 'classes/guerrier#maitrise-arme:2', parts: [part(1, 'choix', 1, { options: contact.filter((id) => id !== 'epees') })] },
+    ]);
+  }
+  for (const c of regles.classes) {
+    for (const m of c.maitrises) {
+      assert.match(m.source, new RegExp(`^${c.id}#maitrise-arme:\\d+$`), m.source);
+      if (m.au_choix) assert.deepEqual(m.parts.map((p) => p.options), [m.au_choix.familles], `${m.source} : les familles de la maîtrise au choix`);
+    }
+  }
+  // l'Épéiste (R151) : +2 ÉPÉES et +1 DAGUES imposés, −1 sur la famille de la maîtrise au choix du Guerrier ; ses points en total (R32) restent
+  const epeiste = don('capacites/guerrier-epeiste');
+  if (epeiste) {
+    assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
+    assert.equal(epeiste.points_maitrise, 2);
+  }
+  // le Ménestrel : un point parmi les 4 familles à distance seulement (R151, R127)
+  const menestrel = don('capacites/barde-menestrel');
+  if (menestrel) assert.deepEqual(menestrel.maitrise, { parts: [part(1, 'choix', 1, { options: distance })] });
+  assert.equal(distance.length, 4);
+  // chaque don a les parts de maitrise_arme_part, et seulement eux ; jamais ARME DE MONSTRES (R45)
+  const sources = new Set(db.prepare('SELECT DISTINCT capacite_id FROM maitrise_arme_part WHERE capacite_id IS NOT NULL').all().map((r) => r.capacite_id));
+  const dons = regles.classes.flatMap((c) => c.dons);
+  assert.deepEqual(new Set(dons.filter((d) => d.maitrise).map((d) => d.id)), sources);
+  for (const p of [...dons.flatMap((d) => d.maitrise?.parts ?? []), ...regles.classes.flatMap((c) => c.maitrises.flatMap((m) => m.parts))]) {
+    assert.ok(![p.famille, ...p.options].includes('arme-de-monstres'), 'R45');
+    assert.equal(p.options.length > 0, p.genre === 'choix');
+  }
+  // R154 : 4 NM gagnés pour la « Maîtrise » de l'Ocultomancien (« Gagne 4 niveaux de maîtrise (NM). »), et aucun autre don n'en a
+  const nm = dons.filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]);
+  assert.deepEqual(nm, db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]));
+  if (don('capacites/ocultomancien-maitrise')?.effet === 'Gagne 4 niveaux de maîtrise (NM).') assert.deepEqual(nm, [['capacites/ocultomancien-maitrise', 4]]);
+  // l'accessoire « Un point de maîtrise d'arme » : un choix (accessoire_effet_cible.choix, migration 0072), sa famille dans personnage_accessoire
+  const accessoire = regles.accessoires.flatMap((a) => a.effets).filter((e) => e.cible === 'maitrise_arme');
+  assert.deepEqual(accessoire, [{ cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: true }]);
+});
+
+test('sources de maîtrise d’arme incohérentes : le build s’arrête (une famille non maîtrisable, R45 ; un don qui suit une classe sans exactement une maîtrise au choix, R151)', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'maverick-fiche-regles-maitrises-'));
+  try {
+    const copie = (sql, ...parametres) => {
+      const chemin = join(dossier, `${Math.random().toString(36).slice(2)}.db`);
+      cpSync(cheminBase({ sansExemples: false }), chemin);
+      const b = new DatabaseSync(chemin);
+      b.exec('PRAGMA foreign_keys = ON');
+      b.prepare(sql).run(...parametres);
+      return b;
+    };
+    const monstres = copie(`INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id)
+      SELECT source_id, rang, 'arme-de-monstres' FROM maitrise_arme_part WHERE genre = 'choix' LIMIT 1`);
+    assert.throws(() => chargerReglesDeFiche(monstres), /n'est pas maîtrisable \(R45\)/);
+    monstres.close();
+    const suit = db.prepare("SELECT k.classe_id FROM maitrise_arme_part m JOIN capacite k ON k.id = m.capacite_id WHERE m.genre = 'suit' LIMIT 1").get();
+    const sansChoix = copie(`UPDATE classe_maitrise_arme SET forme = 'nommee', arme = 'Épée', arme_cle = 'epee', categorie = NULL, sauf = NULL, sauf_cle = NULL
+      WHERE classe_id = ? AND forme = 'au_choix'`, suit.classe_id);
+    assert.throws(() => chargerReglesDeFiche(sansChoix), /suit la maîtrise au choix de .*une seule attendue, R151/);
+    sansChoix.close();
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
 });
 
 test('caractéristiques : l’ordre de la fiche et leur couleur (demande du propriétaire), que leurs compétences reprennent : la classe de la palette, jamais une couleur', () => {

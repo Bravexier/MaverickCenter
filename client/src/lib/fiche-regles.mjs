@@ -19,7 +19,7 @@ import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
-import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
+import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import {
@@ -289,9 +289,10 @@ function reglesDeLaBase(db) {
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
   // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
-  // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme) ; ses
-  // dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs),
-  // pour le quota de maîtrise de la fiche (décision R32).
+  // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme, avec
+  // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de
+  // maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs), pour le quota de maîtrise de la fiche (décision R32), ses parts de maîtrise
+  // (`maitrise`) et ses NM de sorts gagnés (`nm_gagnes`, R154).
   // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
@@ -322,9 +323,39 @@ function reglesDeLaBase(db) {
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet FROM capacite'), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
-  // une maîtrise au choix porte ses familles (`au_choix` : familles, null si son « sauf » ne se lit pas ; décision R119)
-  const maitrises = parCle(lignes(db, 'SELECT classe_id, brut, nombre, forme, categorie, sauf_cle FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
-    (r) => ({ brut: r.brut, nombre: r.nombre, ...(r.forme === 'au_choix' ? { au_choix: { familles: famillesAuChoix(r, famillesDArmes) } } : {}) }));
+  // Les sources de maîtrise d'arme (décisions R148 à R151), lues dans leurs tables de règles (maitrise_arme_part, maitrise_arme_part_famille : écrites par
+  // lib/maitrise-arme.mjs, rejouées par test/maitrise-arme-sources.test.mjs ; rien n'est relu des textes ici) : les parts de chaque source, dans l'ordre
+  // de son texte, { rang, genre ('imposee' | 'choix' | 'suit'), points (signés : le −1 de l'Épéiste), famille (la famille imposée, sinon null), options
+  // (les familles d'une part à choisir, dans l'ordre d'arme_famille ; [] sinon), limite (points de la part au plus sur une même famille, R150 ; null) }.
+  const optionsDesParts = parCle(lignes(db, `SELECT o.source_id, o.rang, o.arme_famille_id FROM maitrise_arme_part_famille o JOIN arme_famille f ON f.id = o.arme_famille_id
+                                             ORDER BY o.source_id, o.rang, f.ordre`), 'source_id');
+  const partsDesSources = parCle(lignes(db, 'SELECT source_id, rang, capacite_id, genre, points, arme_famille_id, limite_famille FROM maitrise_arme_part ORDER BY source_id, rang'),
+    'source_id', (p) => ({
+      rang: p.rang, genre: p.genre, points: p.points, famille: p.arme_famille_id,
+      options: (optionsDesParts.get(p.source_id) ?? []).filter((o) => o.rang === p.rang).map((o) => o.arme_famille_id), limite: p.limite_famille,
+    }));
+  // une incohérence des tables arrête le build (comme FAMILLES_DES_SAUF) : une famille imposée ou proposée qui n'est pas maîtrisable (jamais ARME DE
+  // MONSTRES, R45) ; un don qui suit la maîtrise au choix de sa classe (R151) quand sa classe n'a pas exactement une ligne `au_choix`
+  const maitrisables = new Set(famillesDArmes.filter((f) => f.maitrisable).map((f) => f.id));
+  for (const [source, parts] of partsDesSources) {
+    for (const p of parts) {
+      const nonMaitrisable = [p.famille, ...p.options].find((id) => id !== null && !maitrisables.has(id));
+      if (nonMaitrisable) throw new Error(`maitrise_arme_part : ${source}, part ${p.rang} : la famille « ${nonMaitrisable} » n'est pas maîtrisable (R45)`);
+    }
+  }
+  const lignesAuChoix = new Map(lignes(db, "SELECT classe_id, count(*) AS n FROM classe_maitrise_arme WHERE forme = 'au_choix' GROUP BY classe_id").map((r) => [r.classe_id, r.n]));
+  for (const p of lignes(db, "SELECT m.source_id, k.classe_id FROM maitrise_arme_part m JOIN capacite k ON k.id = m.capacite_id WHERE m.genre = 'suit'")) {
+    const n = lignesAuChoix.get(p.classe_id) ?? 0;
+    if (n !== 1) throw new Error(`maitrise_arme_part : ${p.source_id} suit la maîtrise au choix de ${p.classe_id}, qui en a ${n} (une seule attendue, R151)`);
+  }
+  const nmGagnes = new Map(lignes(db, 'SELECT capacite_id, nm FROM capacite_nm_gagne').map((r) => [r.capacite_id, r.nm]));
+  // une maîtrise au choix porte ses familles (`au_choix` : familles, null si son « sauf » ne se lit pas ; décision R119) ; chaque ligne, sa source
+  // (`source` : lib/maitrise-arme.mjs#idDeSourceDeClasse, l'identifiant que la fiche enregistre dans personnage_maitrise_choix) et ses parts
+  const maitrises = parCle(lignes(db, 'SELECT classe_id, rang, brut, nombre, forme, categorie, sauf_cle FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
+    (r) => ({
+      brut: r.brut, nombre: r.nombre, ...(r.forme === 'au_choix' ? { au_choix: { familles: famillesAuChoix(r, famillesDArmes) } } : {}),
+      source: idDeSourceDeClasse(r.classe_id, r.rang), parts: partsDesSources.get(idDeSourceDeClasse(r.classe_id, r.rang)) ?? [],
+    }));
   const classes = lignes(db, `
     SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
@@ -355,6 +386,9 @@ function reglesDeLaBase(db) {
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
           points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(resistancesDuTexte(d.effet)), ...degatsEcrits(d),
+          // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
+          ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
+          ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
