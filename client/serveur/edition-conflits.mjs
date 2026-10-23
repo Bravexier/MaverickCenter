@@ -292,13 +292,26 @@ const dansLaPhrase = (nom) => (/^\p{Lu}\p{Ll}/u.test(nom) ? `${nom[0].toLowerCas
 const colonneDeCle = (table, c, v) => (c === 'rang' ? `n° ${v}` : `${dansLaPhrase(libelleDeColonne(table, c))} ${v === null || v === undefined ? 'vide' : String(v)}`);
 
 /**
- * Une clé composée sans `id`, dite par ce qu'elle désigne : la ligne qu'elle cite par une clé étrangère (son nom si elle existe encore — « « Amblypyge
- * de brai » », précédé de sa table entre parenthèses pour une table hors du modèle —, sinon son propre libellé, l'id de sa clé), puis ses autres
- * colonnes (« n° 1 », « option 2 ») ; sans `db`, ses colonnes seules. Jamais un nom inventé.
+ * Une ligne citée par une clé étrangère, sans le nom de sa table : son nom entre guillemets si elle existe encore (« « Forgeron » »), sinon son
+ * identifiant lisible (l'id de sa clé, « guide/le-mode-hyper » ; une clé composée, par ce qu'elle désigne à son tour : « « Amblypyge de brai », n° 1 »).
+ */
+function ligneCitee(parent, ligne, cle, db, profondeur) {
+  const nom = nomDe(ligne);
+  if (nom) return `« ${nom} »`;
+  const id = cle?.id;
+  if ((typeof id === 'string' && id) || typeof id === 'number') return String(id);
+  return cleLisible(parent, cle, db, profondeur).texte || tableLisible(parent);
+}
+
+/**
+ * Une clé composée sans `id`, dite par ce qu'elle désigne (demande du propriétaire du 2026-10-23 : « Bonus du métier « Forgeron » », sans parenthèses
+ * ni nom de la table citée) : la ligne qu'elle cite par une clé étrangère (ligneCitee), puis ses autres colonnes (« n° 1 », « option 2 ») ; une clé qui
+ * cite plusieurs lignes (une relation entre deux peuples) les distingue par le nom de leur colonne (« Peuple qui voit « Drakos », Peuple vu
+ * « Fenrir Urbain » » : `plusieurs`) ; sans `db`, ses colonnes seules. Jamais un nom inventé. { texte, plusieurs }.
  */
 function cleLisible(table, cle, db, profondeur) {
   const colonnes = Object.keys(cle ?? {});
-  const parties = [];
+  const citees = [];
   const couvertes = new Set();
   for (const lien of db && profondeur < 2 ? liensDeLaCle(db, table, cle) : []) {
     if (lien.colonnes.every((c) => couvertes.has(c))) continue;
@@ -309,27 +322,33 @@ function cleLisible(table, cle, db, profondeur) {
     } catch {
       ligne = null;
     }
-    const nom = nomDe(ligne);
-    const texte = nom && TABLES[table] ? `« ${nom} »` : `(${libelleDeLigne(lien.parent, ligne, lien.cle, db, profondeur + 1)})`;
-    parties.push({ place: Math.min(...lien.colonnes.map((c) => colonnes.indexOf(c))), texte });
+    citees.push({ lien, texte: ligneCitee(lien.parent, ligne, lien.cle, db, profondeur + 1) });
   }
+  const plusieurs = citees.length > 1;
+  const parties = citees.map(({ lien, texte }) => ({
+    place: Math.min(...lien.colonnes.map((c) => colonnes.indexOf(c))),
+    texte: plusieurs ? `${lien.colonnes.map((c) => libelleDeColonne(table, c)).join(', ')} ${texte}` : texte,
+  }));
   for (const c of colonnes) if (!couvertes.has(c)) parties.push({ place: colonnes.indexOf(c), texte: colonneDeCle(table, c, cle[c]) });
-  return parties.sort((a, b) => a.place - b.place).map((p) => p.texte).join(', ');
+  return { texte: parties.sort((a, b) => a.place - b.place).map((p) => p.texte).join(', '), plusieurs };
 }
 
 /**
  * Le libellé d'une ligne pour la page : la table et le nom (ou titre, libellé) de la ligne ; une ligne qui n'en a plus (une page supprimée, dont seule
  * la version du site de dev reste) est dite par l'id de sa clé (« Page guide/le-jeu-de-role ») ; une clé composée sans `id`, par ce qu'elle désigne
- * (cleLisible, avec `db` : « Capacité de la carte « Amblypyge de brai », n° 1 », « Bonus du métier (Métier « Forgeron »), n° 1, option 2 »). Jamais
- * de JSON. La table par son nom (lib/libelles-de-la-base.mjs : le libellé de TABLES, sinon celui du registre).
+ * (cleLisible, avec `db` : « Capacité de la carte « Amblypyge de brai », n° 1 », « Bonus du métier « Forgeron », n° 1, option 2 », la ligne citée
+ * supprimée par son id : « Autre nom de la page guide/le-mode-hyper, ordre 900 », plusieurs lignes citées : « Relation entre deux peuples : Peuple
+ * qui voit « Drakos », Peuple vu « Fenrir Urbain » »). Jamais de JSON. La table par son nom (lib/libelles-de-la-base.mjs : le libellé de TABLES,
+ * sinon celui du registre).
  */
 export function libelleDeLigne(table, ligne, cle, db = null, profondeur = 0) {
   const nom = nomDe(ligne);
   if (nom) return `${tableLisible(table)} « ${nom} »`;
   const id = cle?.id;
   if ((typeof id === 'string' && id) || typeof id === 'number') return `${tableLisible(table)} ${id}`;
-  const reste = cleLisible(table, cle, db, profondeur);
-  return reste ? `${tableLisible(table)} ${reste}` : tableLisible(table);
+  const { texte, plusieurs } = cleLisible(table, cle, db, profondeur);
+  if (!texte) return tableLisible(table);
+  return `${tableLisible(table)}${plusieurs ? ' :' : ''} ${texte}`;
 }
 /** Une clé en JSON, ses colonnes triées (deux écritures de la même clé se comparent). */
 const cleCanonique = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle ?? {}).sort(([a], [b]) => a.localeCompare(b))));

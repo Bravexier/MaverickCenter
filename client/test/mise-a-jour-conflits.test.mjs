@@ -123,7 +123,7 @@ test('un vrai nom partout dans la section posée (demande du 2026-10-23) : ni no
   assert.ok(NOMS_DU_SCHEMA.has('metier_bonus') && NOMS_DU_SCHEMA.has('page_id'), 'les noms cherchés');
   assert.deepEqual(nomsDuSchemaDans(s.textContent), [], 'toute la section, le contenu des versions compris');
   assert.doesNotMatch(s.textContent, /\balias\b|metier_bonus|\{"|":/);
-  assert.match(s.textContent, /Bonus du métier \(Métier « Forgeron »\), n° 1, option 2/);
+  assert.match(s.textContent, /Bonus du métier « Forgeron », n° 1, option 2/);
   // la rupture « enfant » par le nom de la table qui cite, le renommage des deux bords sans sa clé normalisée (relecture du 2026-10-23)
   assert.match(s.textContent, /Étiquette du sort : clé étrangère rompue vers Mot-clé/);
   assert.match(s.textContent, /Au rejeu : Métier « Acrobate des règles \(essai des conflits\) » : les règles ont changé « Nom » autrement/);

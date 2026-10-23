@@ -241,8 +241,9 @@ test('un vrai nom partout (demande du 2026-10-23) : aucun nom de table ni de col
   assert.deepEqual(nomsDuSchemaDans(texte(html)), []);
   assert.doesNotMatch(texte(html), /\{"|"\}|":/);
   assert.doesNotMatch(texte(html), /\balias\b|metier_bonus/);
-  assert.match(texte(html), /Bonus du métier \(Métier « Forgeron »\), n° 1, option 2/);
-  assert.match(texte(html), /Autre nom de la page \(Page guide\/le-mode-hyper\), ordre 900/);
+  assert.match(texte(html), /Bonus du métier « Forgeron », n° 1, option 2/);
+  assert.match(texte(html), /Autre nom de la page guide\/le-mode-hyper, ordre 900/);
+  assert.doesNotMatch(texte(html), /\((?:Métier|Page) /, 'la ligne citée sans parenthèses ni nom de sa table (demande du propriétaire du 2026-10-23)');
   // les textes du service hors du contenu des versions : aucune table du schéma, même d'un seul mot (la liste exacte)
   for (const l of DIAG.lots) {
     const textes = [l.detail_lisible, ...l.saines.flatMap((x) => [x.libelle, ...(x.colonnes_libelles ?? [])]),
