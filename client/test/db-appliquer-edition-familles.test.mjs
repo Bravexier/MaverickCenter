@@ -4,11 +4,10 @@
 // le lecteur les lit (la famille dans les maîtrises au choix de sa catégorie) ; une seconde fois, rien ne change. Les noms d'essai sont absents de la base.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
@@ -17,11 +16,11 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { ligneDArme, PAGE_DES_ARMES, titreDeSectionDeFamille } from '../src/lib/corps-armes.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { sourcesJustes } from './aide-maitrise-arme.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-rapatriement-familles-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('rapatriement-familles');
 const rows = join(tmp, 'data', 'rows');
 cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
 const lire = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));

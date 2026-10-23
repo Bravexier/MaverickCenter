@@ -7,14 +7,13 @@
 //     son choix reste dans la note et l'import le relit ; l'import reconnaît une famille par son nom ou son nom de lecture (une fiche exportée avant un
 //     renommage).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -24,8 +23,7 @@ import { ficheDuClasseur, lireLaNote } from '../src/lib/fiche-tableur-import.mjs
 import { ecrireXlsx } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-familles-fiche-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('familles-fiche');
 const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
 after(() => db.close());
 const PID = process.pid;
