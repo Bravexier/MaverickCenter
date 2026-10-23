@@ -28,7 +28,11 @@ export const COULEURS_POSTURES = {
 /**
  * Couleurs des neuf alignements (demande du propriétaire) : celles de leur titre dans « Les neuf alignements » du Google Doc « Règle du jeu/Guide pour
  * MJ - Maverick » (couleur du texte des titres, lue le 2026-10-14). Clé = le nom que donne fiche-moteur.mjs#alignementDe. Couleurs foncées ou vives :
- * le texte posé dessus est choisi par texteSurCouleur.
+ * le texte posé dessus est choisi par texteSurCouleur. Ce sont les couleurs de référence : la classe de deux d'entre elles a un fond à peine éclairci
+ * (lib/palette-css.mjs#fondDeClasse ; réponse du propriétaire du 2026-10-23 à « Deux couleurs d'alignement du guide pour MJ, Loyal Bon (#45818e) et
+ * Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le texte foncé ni avec le blanc (4,2:1 au mieux). Que
+ * faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda), texte foncé : lisible ; les couleurs de référence du
+ * guide restent dans le code. »).
  */
 export const COULEURS_ALIGNEMENTS = {
   'Loyal Bon': '#45818e',
@@ -47,6 +51,10 @@ export const COULEURS_ALIGNEMENTS = {
  * classe est `couleur-<famille>-par-defaut` (lib/palette-css.mjs).
  */
 export const COULEUR_NEUTRE = '#cccccc';
+
+// La règle d'un id : sa couleur, ou COULEUR_NEUTRE s'il est inconnu. Aucune page ne pose ces couleurs (elles posent la classe : lib/palette-css.mjs,
+// dont classeDeCaracteristique, classeDePosture et classeDAlignement suivent la même règle, l'inconnu ayant la classe `par-defaut`) ; ces fonctions
+// sont la référence que les tests comparent (test/caracteristiques-postures.test.mjs, test/palette-css.test.mjs).
 
 /** Couleur d'une caractéristique, d'après son id (« force ») ; celle d'une compétence est celle de sa caractéristique. */
 export const couleurDeCaracteristique = (id) => COULEURS_CARACTERISTIQUES[id] ?? COULEUR_NEUTRE;

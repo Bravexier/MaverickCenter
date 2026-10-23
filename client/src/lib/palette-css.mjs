@@ -70,9 +70,10 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
 export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement']);
 
 /**
- * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible, « Privilégé la lisibilité. ») : inchangée quand son texte
- * (texteSurCouleur) l'atteint déjà au contraste de 4,5:1, soit toutes sauf deux alignements (Loyal Bon, Loyal Neutre), à peine éclaircis
- * (test/palette-css.test.mjs).
+ * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) : inchangée quand son texte (texteSurCouleur) l'atteint
+ * déjà au contraste de 4,5:1, soit toutes sauf deux alignements, Loyal Bon et Loyal Neutre, à peine éclaircis (test/palette-css.test.mjs). Pour ces
+ * deux-là, réponse du propriétaire du 2026-10-23 : « Éclaircir (Recommandé) » (la question et l'option, qui écrivent les couleurs, sont citées telles
+ * quelles à lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS, où leur couleur de référence reste).
  */
 const fondDeClasse = (couleur) => lisible(couleur);
 

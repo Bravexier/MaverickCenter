@@ -15,6 +15,7 @@ import {
 } from '../src/lib/caracteristiques-postures.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { alignementDe } from '../src/lib/fiche-moteur.mjs';
+import { classeDAlignement } from '../src/lib/palette-css.mjs';
 import { texteSurCouleur } from '../src/lib/sort-format.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -70,4 +71,5 @@ test('alignements : la couleur de leur titre dans « Les neuf alignements » du 
     calcules.add(alignementDe(regles, fiche).nom);
   }
   assert.deepEqual([...calcules].sort(), Object.keys(COULEURS_ALIGNEMENTS).sort());
+  for (const nom of calcules) assert.notEqual(classeDAlignement(nom), classeDAlignement(null), `${nom} : sa classe, pas celle d’un alignement inconnu`);
 });

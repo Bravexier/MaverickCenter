@@ -90,8 +90,14 @@ test('pas de recopie : une affinité qui est un attribut ou une magie garde la c
 test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son texte le plus lisible dessus atteint un contraste de 4,5:1', () => {
   const feuille = regles(cssDesFamilles(Object.keys(FAMILLES_DE_LA_PALETTE)));
   assert.equal(feuille.size, couleursDeLaPalette().length, 'une règle par classe, toutes familles');
-  // « Privilégé la lisibilité. » : la couleur de la règle, inchangée quand son texte atteint déjà 4,5:1 ; seuls Loyal Bon et Loyal Neutre (couleurs du
-  // guide pour MJ trop moyennes pour un texte foncé comme pour un blanc) sont à peine éclaircis par la règle de lisibilité (alchimie-couleurs.mjs#lisible)
+  // la couleur de la règle, inchangée quand son texte atteint déjà 4,5:1 ; seuls Loyal Bon et Loyal Neutre (couleurs du guide pour MJ trop moyennes
+  // pour un texte foncé comme pour un blanc) sont à peine éclaircis par la règle de lisibilité (alchimie-couleurs.mjs#lisible) : réponse du propriétaire
+  // du 2026-10-23 à « Deux couleurs d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste
+  // minimal de lisibilité (4,5:1), ni avec le texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option :
+  // « Fond à peine éclairci (#4e8794 et #467fda), texte foncé : lisible ; les couleurs de référence du guide restent dans le code. »
+  assert.deepEqual(['Loyal Bon', 'Loyal Neutre'].map((a) => couleursDeLaPalette(['alignement']).find((c) => c.cle === a)).map((c) => [c.fond, c.texte]),
+    [['#4e8794', '#171210'], ['#467fda', '#171210']], 'les fonds de l’option choisie, texte foncé');
+  assert.deepEqual([COULEURS_ALIGNEMENTS['Loyal Bon'], COULEURS_ALIGNEMENTS['Loyal Neutre']], ['#45818e', '#3c78d8'], 'les couleurs de référence restent dans le code');
   const eclaircies = couleursDeLaPalette().filter((c) => c.fond !== FAMILLES_DE_LA_PALETTE[c.famille][c.cle]).map((c) => c.classe);
   assert.deepEqual(eclaircies, ['couleur-alignement-loyal-bon', 'couleur-alignement-loyal-neutre']);
   for (const { famille, cle, classe, fond, texte } of couleursDeLaPalette()) {
@@ -422,6 +428,11 @@ test('les classes du lot posées par les rendus et la fiche : des noms de la pal
   const ctx = { caracteristiques: [{ id: 'force', nom: 'Force' }, { id: 'agilite', nom: 'Agilité' }, { id: 'perception', nom: 'Perception' }] };
   // les armes (R48) : la compétence, ses deux classes ; le bouton du filtre de même
   assert.match(htmlDeCompetence('Arme Légère', ctx), /^<span class="arme-comp couleur-caracteristique-agilite couleur-2-caracteristique-agilite" data-competences="arme-legere" title="[^"]+">Légère<\/span>$/);
+  // deux compétences (les écritures réelles de l'onglet, arme-champs.mjs#COMPETENCES_PAR_ECRITURE) : la classe de la première caractéristique, le second
+  // rang de la seconde, distinct (dégradé Force - Agilité)
+  for (const ecriture of ['Arme Lourde/Légère', 'Arc / Arme Légère']) {
+    assert.match(htmlDeCompetence(ecriture, ctx), /^<span class="arme-comp arme-comp--deux couleur-caracteristique-force couleur-2-caracteristique-agilite" data-competences="(?:arme-lourde|arc) arme-legere" title="[^"]+ et Arme Légère \(Agilité\)">/, ecriture);
+  }
   assert.match(htmlDuFiltreDeCompetence('arbalete', ctx), /^<button type="button" class="arme-comp armes-filtre__choix couleur-caracteristique-perception couleur-2-caracteristique-perception" data-competence="arbalete"/);
   // le bestiaire : une case par caractéristique, F.P.V.S.I.A., chacune de sa classe
   assert.deepEqual([...htmlDesCaracteristiques([1, 2, 3, 4, 5, 6]).matchAll(/<span class="bcarac ([\w-]+)"/g)].map((m) => m[1]),
@@ -461,11 +472,16 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps)))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
- * Hors des lots faits : des règles choisies qui ne sont pas une couleur de ces lots. L'ombre de l'infobulle partagée (une couleur du thème : skill
- * ui-infobulles) ; le texte blanc par défaut des pastilles de la fiche (`--texte-sur-c, #fff`), qui ne sert plus qu'aux races, ethnies, classes et
- * objets de départ (leur lot reste à faire) : une magie ou une compétence pose le sien par sa classe.
+ * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
+ * contrôlé). L'ombre de l'infobulle partagée (une couleur du thème : skill ui-infobulles) ; le texte blanc par défaut des pastilles de la fiche
+ * (`--texte-sur-c, #fff`), qui ne sert plus qu'aux races, ethnies, classes et objets de départ (leur lot reste à faire) : une magie ou une compétence pose
+ * le sien par sa classe.
  */
-const HORS_DU_LOT = new Set(['src/styles/global/infobulles.css .bulle', 'src/styles/fiche/fiche.css .choix__pastille', "src/styles/fiche/fiche.css .pastille[aria-pressed='true']"]);
+const HORS_DU_LOT = new Map([
+  ['src/styles/global/infobulles.css .bulle', '--bulle-ombre: rgb(42 33 24 / 0.36);'],
+  ['src/styles/fiche/fiche.css .choix__pastille', 'color: var(--texte-sur-c, #fff);'],
+  ["src/styles/fiche/fiche.css .pastille[aria-pressed='true']", 'color: var(--texte-sur-c, #fff);'],
+]);
 
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES]) assert.deepEqual(couleursDuFichier(f), [], f);
@@ -485,9 +501,13 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/metier/tableau.css .metier-cible, .metier-carac']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
-  for (const h of HORS_DU_LOT) assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === h), `hors du lot, mais choisie : ${h}`);
+  for (const [h, declaration] of HORS_DU_LOT) {
+    const regle = regles.find((r) => `${r.fichier} ${r.selecteur}` === h);
+    assert.ok(regle?.corps.includes(declaration), `hors du lot, mais choisie : ${h} (« ${declaration} »)`);
+  }
   for (const { fichier, selecteur, corps } of regles) {
-    if (!HORS_DU_LOT.has(`${fichier} ${selecteur}`)) assert.deepEqual(couleursEcrites(corps, { nommees: true }), [], `${fichier}, ${selecteur}`);
+    const horsDuLot = HORS_DU_LOT.get(`${fichier} ${selecteur}`);
+    assert.deepEqual(couleursEcrites(horsDuLot ? corps.replace(horsDuLot, '') : corps, { nommees: true }), [], `${fichier}, ${selecteur}`);
   }
   // le script de la fiche : la couleur d'une magie par ses classes (regles.json : `classe`, `classe_2`), jamais sa couleur ni une variable posée
   const fiche = lire('src/scripts/fiche.mjs');
@@ -497,6 +517,12 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   // … et celle d'une caractéristique (et de ses compétences), d'une posture ou d'un alignement : sa classe (regles.json : `classe`), posée avec
   // teinte-palette (teinteDe) ; aucune couleur lue, aucune variable posée, plus de repli écrit pour une compétence inconnue
   assert.doesNotMatch(fiche, /\b(?:carac|posture|p\.posture|teinte|alignement)\??\.(?:couleur|texte)\b/, 'aucune couleur de caractéristique, de posture ou d’alignement lue');
+  // `k` est aussi une classe (sa couleur reste lue jusqu'à son lot) : dans construireCaracteristiques et le tableau des compétences, où `k` est la
+  // caractéristique, aucune couleur
+  const caracs = fiche.slice(fiche.indexOf("reconstruire($('caracs')"), fiche.indexOf("reconstruire($('competences')"));
+  const competences = fiche.slice(fiche.indexOf("reconstruire($('competences')"), fiche.indexOf("el('tbody'", fiche.indexOf("reconstruire($('competences')")));
+  assert.ok(caracs.length > 100 && competences.length > 50, 'les deux blocs trouvés');
+  for (const bloc of [caracs, competences]) assert.doesNotMatch(bloc, /\bk\??\.(?:couleur|texte)\b|--c(?:-texte)?:/, 'aucune couleur de la caractéristique `k`');
   assert.doesNotMatch(fiche, /--c-texte: \$\{|setProperty\('--c-texte'|--texte-sur-c: \$\{p/, 'aucune variable de ces couleurs posée');
   for (const attendu of [
     "el('div', { class: ['carac', ...teinteDe(k)].join(' ') }", "el('div', { class: ['competences__groupe', ...teinteDe(k)].join(' ') }",
