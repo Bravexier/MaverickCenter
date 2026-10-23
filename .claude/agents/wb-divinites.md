@@ -28,7 +28,7 @@ Les skills de zone et de sources cités ici se lisent directement (`.claude/skil
   - `magie_dieu` ;
   - les pages `lore/…` du Codex (divinités, temples, sommaires).
 - **La documentation et l'export brut** : `docs/codex.md`, le skill `sources-codex`, et l'export brut du Codex dans `sources/raw/`.
-- **Les décisions**, entre autres R21 : la déesse de la Corruption s'appelle « Eaunoire », en un mot (identifiant `demon-deau-noire` inchangé). Le sort « Eau noire » n'est pas elle. Relis la liste à jour.
+- **Les décisions**, entre autres R21 : la déesse de la Corruption s'appelle « Eaunoire », en un mot (identifiant `demon-deau-noire` inchangé). Le sort « Eau noire » n'est pas elle. Ne lis jamais le registre en entier (243 Ko) : `docs/decisions-index.md`, puis Grep du numéro `R…`.
 
 ## Règles
 

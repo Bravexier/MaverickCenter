@@ -79,9 +79,21 @@ sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev`
 **Juste après le dernier commit, et avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire ; skill
 `resoudre-un-conflit`) : `git fetch --prune origin` ; si `origin/dev` (ou `origin/master` pour un hotfix) a bougé depuis le départ de la branche
 (`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle, résoudre les conflits aussitôt, relancer les contrôles que le rebase
-touche, puis pousser (`git push --force-with-lease --force-if-includes` si la branche était déjà poussée). Même sans conflit : la PR est ainsi
+touche (`npm run test:cible -- --apres-rebase` dans `client/` : les seuls tests du recouvrement, fichiers que la base a changés et que le lot touche
+aussi, plus `--fichiers` pour un conflit résolu à la main ; recouvrement vide, seulement l'absence de marqueurs de conflit ; skill
+`choisir-les-tests`), puis pousser (`git push --force-with-lease --force-if-includes` si la branche était déjà poussée). Même sans conflit : la PR est ainsi
 toujours testée sur la base du moment. Une PR ouverte se corrige ensuite automatiquement jusqu'à sa fusion (CI rouge, conflit, revue ; skill
 `corriger-une-pr`).
+
+**Ordre de passage** (skill `publier-une-branche`, « L'ordre de passage ») : parmi les PR ouvertes vers `dev` dont les fichiers se recoupent, le
+numéro croissant ; une PR sans recouvrement n'attend personne. Seule exception : une demande explicite et urgente du propriétaire fait passer une PR
+en tête. La session principale impose l'ordre par un commentaire sur chaque PR concernée. À son tour, chaque PR fait un seul rebase sur `dev` à jour,
+puis `npm run test:cible -- --apres-rebase`, le push, la CI et la fusion ; pas de rebase « pour suivre `dev` » pendant l'attente.
+
+**L'état de la branche en une commande** (lecture seule, après `git fetch --prune origin`) : `node tools/flux-git/etat-branche.mjs [--base <réf>] [--json]`
+dit l'avance et le retard sur la base, les commits de `origin/<branche>` absents en local, si un rebase est nécessaire ou interdit (branche de
+refusion), chaque conflit en cours classé selon la table du skill `resoudre-un-conflit` (règles : `tools/flux-git/etat-regles.mjs`), les migrations
+dont la base a pris le numéro, et le recouvrement (celui de `npm run test:cible -- --apres-rebase`).
 
 Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier

@@ -13,7 +13,7 @@ La session principale ne lance que les trois chefs (`docs/equipe.md`) et leur tr
 | --- | --- |
 | Règle ou mécanisme du jeu à créer, changer, vérifier, expliquer (sorts, dons, races, objets, combat, fiche) | `game-design` |
 | Lore : histoire, chronologie, nations, factions, dieux, temples, légendes, cohérence du monde | `worldbuilding` |
-| Le site : affichage, bug, base, import, outils, tests, CI, publication | `leader-technique` |
+| Le site : affichage, bug, base, import, outils, tests, CI, publication | `leader-technique` (**circuit court** si c'est un petit lot : il fait tout lui-même, voir sa fiche) |
 | Événement d'une PR (CI rouge, revue, conflit) | `leader-technique` |
 
 Une demande mixte est pilotée par le chef du domaine d'origine, qui sollicite les autres. Une simple question dont la réponse est dans le contexte ou dans un fichier connu n'a pas besoin d'un chef.
@@ -45,7 +45,7 @@ Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la so
 - **Un seul arbre de travail.** Deux membres qui écrivent ou qui lancent des contrôles se suivent, jamais en même temps : `npm test` refabrique les pages du wiki, et `db:build` refait `var/maverick.db`. Si des analystes doivent interroger la base, elle est construite une fois avant de les lancer, ou chacun la construit dans son scratchpad (`interroger-la-base`).
 - **Écrire un brief autonome :**
   - l'objectif ;
-  - le périmètre (fichiers, tables, pages) ;
+  - le périmètre (fichiers, tables, pages), avec les sections ou plages à lire pour un gros document : `decisions-regles.md` (243 Ko), `content-guide.md` (195 Ko), `serveur.md` (167 Ko) et `character-generator.md` (124 Ko) ne se lisent jamais en entier. On repère les titres par `grep -n '^## '`, puis on lit par plage ; pour les décisions, `docs/decisions-index.md`, puis le numéro par Grep ;
   - ce qui est déjà établi ;
   - le livrable attendu ;
   - les contraintes : décisions R…, choix du propriétaire, skill de zone à charger. Le skill d'une zone n'est proposé qu'après la lecture d'un fichier de la zone : le brief donne donc son chemin (`.claude/skills/<nom>/SKILL.md`), que le membre lit au besoin.
@@ -81,12 +81,15 @@ Tout fichier modifié du dépôt se publie, y compris les registres qu'écrivent
 
 **Le travail commence sur sa branche.** Avant le premier fichier écrit d'un lot, `tech-publication` crée la `feature/<nom>` depuis `origin/dev` à jour : `db:migrate` part du schéma du dernier commit, et le numéro d'une migration se lit dans l'arbre.
 
-**Les skills de zone suivent leur zone.** L'auteur d'un changement met à jour, dans le même lot, le skill de la zone qu'il touche (`zone-…`, `ui-…`, `site-…`, `base-…`, `sources-…`) : un choix du propriétaire ajouté ou changé, un invariant nouveau. `tech-qualite` relit ce skill avec le reste.
+**Les skills n'ont qu'un seul rédacteur : `tech-skills`** (demande du propriétaire), zones et procédures comprises. Un auteur qui ajoute ou change un invariant ou un choix du propriétaire le signale dans son rapport (« skill `x` — ce qui change — pourquoi — où »). Le `leader-technique` réunit ces demandes et les envoie en un seul appel en fin de lot ; `tech-skills` décide aussi s'il faut condenser ou éclater un skill (`eclater-un-skill`). `tech-qualite` relit son diff.
 
-**Les instructions générales** (`CLAUDE.md`, `.claude/agents/`, les skills de procédure, `docs/equipe.md`) sont tenues par la session principale, à la demande du propriétaire. `tech-qualite` les relit, `tech-publication` les publie.
+**Les instructions générales** (`CLAUDE.md`, `.claude/agents/`, `docs/equipe.md` hors section « Les skills ») sont tenues par la session principale, à la demande du propriétaire. `tech-qualite` les relit, `tech-publication` les publie.
 
 ## Économie
 
 - Un rapport tient en quelques dizaines de lignes : des chemins et des lignes, pas de fichiers recopiés.
-- Une seule relecture par `tech-qualite`, à la fin d'un lot (plus une relecture courte de toute correction faite ensuite) ; une seule vérification de conformité par le chef qui a commandé.
+- Une seule relecture complète par `tech-qualite`, à la fin d'un lot, puis des relectures courtes (diff de la correction, constats bloquants seulement : `revue-de-diff`) ; une seule vérification de conformité par le chef qui a commandé.
+- Seulement les tests pertinents (`choisir-les-tests`) ; ce qui se vérifie par un script ne se confie pas à un agent.
+- Un petit lot ne passe pas par les membres : circuit court du `leader-technique`.
+- La synthèse d'un chef finit par une ligne de suivi : circuit (court ou complet), membres lancés, relances, membres passés en arrière-plan. C'est avec elle que se mesure le coût.
 - Un chef ne refait pas le travail d'un membre. En cas de doute sur un rapport, il relance ce membre avec le point précis.

@@ -19,7 +19,7 @@ Règles du propriétaire, en détail dans `docs/flux-git.md` (code : `tools/flux
 - **La version.** Ne jamais modifier celle de `client/package.json` : le bot la tient après chaque fusion.
 - **Juste après le dernier commit, et avant chaque push**, même sans conflit. La base est `origin/dev`, ou `origin/master` pour un hotfix.
   1. `git fetch --prune origin`, puis reprendre les commits que la branche distante aurait reçus (`resoudre-un-conflit`, étape 1) ;
-  2. si la base a bougé (`git merge-base --is-ancestor <base> HEAD` échoue), `git rebase <base>`. La branche de refusion de `master` dans `dev` ne se rebase jamais (`docs/flux-git.md`) ;
+  2. si la base a bougé (`git merge-base --is-ancestor <base> HEAD` échoue), et seulement à son tour (« L'ordre de passage »), `git rebase <base>`. La branche de refusion de `master` dans `dev` ne se rebase jamais (`docs/flux-git.md`) ;
   3. résoudre les conflits aussitôt : mécaniques par `tech-publication`, données, schéma et sens par leur auteur (`resoudre-un-conflit`) ;
   4. après un rebase, signaler au chef les contrôles que les changements reçus touchent : il les fait relancer (`controles-avant-rendu`) avant le push ;
   5. pousser.
@@ -27,6 +27,16 @@ Règles du propriétaire, en détail dans `docs/flux-git.md` (code : `tools/flux
   **Jamais de fusion de la base dans la branche.** La seule exception est la refusion de `master` dans `dev`, décrite dans `docs/flux-git.md`.
 - **Le push.** `git push -u origin <branche>`, ou `git push --force-with-lease --force-if-includes` après un rebase d'une branche déjà poussée. En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
 - **Le rapport** donne : la branche, le commit, le résumé du diff (`git diff --stat <base>...HEAD`), et s'il y a eu un rebase, les contrôles à relancer.
+
+## L'ordre de passage
+
+Règle du propriétaire (`CLAUDE.md`, « Git ») : éviter une suite de rebases quand `dev` avance sous plusieurs sessions.
+- **L'ordre** : parmi les PR ouvertes vers `dev` dont les fichiers se recoupent, numéro croissant. Une PR sans recouvrement n'attend personne : elle est fusionnée dès que sa CI est verte.
+- **Exception** : demande explicite et urgente du propriétaire → cette PR passe en tête, les autres s'alignent derrière elle sans changer leur ordre entre elles.
+- **Qui impose** : la session principale (seule à avoir les outils GitHub). Elle liste les PR ouvertes vers dev et leurs fichiers, calcule les recouvrements, et pose UN commentaire par PR concernée : l'ordre complet, et « ne rebase ni ne pousse avant la fusion de #N ; ensuite un seul rebase sur dev à jour ». Elle n'en repose un que si l'ordre change. Les autres sessions le reçoivent par leur abonnement à leur PR.
+- **Chaque PR, à son tour** : un seul rebase sur l'état actuel de dev, `test:cible -- --apres-rebase`, push, CI, fusion par la session principale, qui prévient la suivante (commentaire « à toi »).
+- **Pas de rebase « pour suivre dev » pendant l'attente.** Si la PR en tête est bloquée (CI rouge qu'elle corrige, ou plus de réponse), la session principale le dit au propriétaire plutôt que de réordonner seule.
+- **Commentaires GitHub** : footer d'attribution habituel.
 
 ## La PR (session principale)
 

@@ -42,7 +42,7 @@ Les skills de zone et de sources cités ici se lisent directement (`.claude/skil
   - R98, R108 : défense et casse ;
   - R113.
 
-  Relis toujours la liste à jour.
+  Ne lis jamais le registre en entier (243 Ko) : `docs/decisions-index.md` (une ligne par décision), puis Grep du numéro `R…` dans `docs/decisions-regles.md`.
 
 ## Ce que tu rends
 

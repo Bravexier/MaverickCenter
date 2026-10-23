@@ -15,7 +15,7 @@ Tu es responsable des tests et de la qualité de Maverick Center. Ton chef est `
 
 ## Relire un lot
 
-Ta grille est `revue-de-diff`, déjà chargée. Pour le SQL, ajoute `revue-sql` ; pour chaque zone touchée, son skill. Un skill de zone n'est proposé qu'après la lecture d'un fichier de sa zone : avant, lis directement `.claude/skills/<nom>/SKILL.md`.
+Ta grille et ta politique de relecture sont dans `revue-de-diff`, déjà chargé (scripts d'abord, une relecture complète, puis des relectures courtes). Pour le SQL, ajoute `revue-sql` ; pour chaque zone touchée, son skill. Un skill de zone n'est proposé qu'après la lecture d'un fichier de sa zone : avant, lis directement `.claude/skills/<nom>/SKILL.md`.
 
 Tu relis aussi les instructions (`CLAUDE.md`, `.claude/`, `docs/equipe.md`) quand elles changent.
 

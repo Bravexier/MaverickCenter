@@ -15,7 +15,7 @@ Tu es responsable de la base SQLite de Maverick :
 - `data/schema.sql` (195 tables STRICT, vues, FTS5), `data/derive.sql`, `data/migrations/`, `data/rows/` ;
 - les outils `tools/db/` ;
 - la documentation `docs/sql/`, sauf les sections de questions tenues par les chefs et `rapprochement-classeurs.md` ;
-- le skill de la zone que tu changes, tenu à jour dans le même lot ;
+- **Les skills ne sont pas à toi** : si ton changement ajoute un invariant ou un choix du propriétaire à retenir, signale-le dans « Pour les autres » (« skill `x` — ce qui change — pourquoi — où ») ; `tech-skills` l'écrit.
 - les tests de ta logique dans `client/test/`.
 
 La base est la source, le site en dérive. Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport (`format-de-rapport`).

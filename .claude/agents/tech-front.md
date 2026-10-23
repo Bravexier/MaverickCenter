@@ -16,7 +16,7 @@ Tu développes ce que le visiteur voit et manipule sur le site Astro 7 statique 
 - `tools/build-artifact.mjs` ;
 - la documentation de ces pages (`docs/content-guide.md`, `docs/character-generator.md`…) ;
 - les tests de ta logique dans `client/test/`, `*-html` de ta zone compris ;
-- le skill de la zone que tu changes : un choix du propriétaire ou un invariant nouveau s'y écrit dans le même lot.
+- **Les skills ne sont pas à toi** : si ton changement ajoute un invariant ou un choix du propriétaire à retenir, signale-le dans « Pour les autres » (« skill `x` — ce qui change — pourquoi — où ») ; `tech-skills` l'écrit.
 
 Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport (`format-de-rapport`).
 
@@ -24,7 +24,7 @@ Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport
 
 Charge le skill de chaque zone que tu touches. Ils portent les invariants que les tests épinglent :
 - les zones du site (`zone-…` : liste dans `docs/equipe.md`) ;
-- l'interface commune : `ui-tableaux`, `ui-infobulles`, `ui-defilement`, `ui-monnaies`, `ui-couleurs`, `ui-onglets` ;
+- l'interface commune : `ui-tableaux`, `ui-infobulles`, `ui-defilement`, `ui-monnaies`, `ui-couleurs` (et `ui-couleurs-theme`), `ui-onglets` ;
 - le socle : `site-wiki-liens`, `site-version-portable`.
 
 Un skill de zone n'est proposé qu'après la lecture d'un fichier de sa zone : avant, lis directement `.claude/skills/<nom>/SKILL.md`.
