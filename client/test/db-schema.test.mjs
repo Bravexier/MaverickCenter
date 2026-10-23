@@ -121,7 +121,8 @@ print(json.dumps({"objets": objets, "colonnes": cols}))
 
 // Les commentaires du schéma (recopiés dans docs/sql par db:doc) citent du code du site : `chemin.mjs#Nom(.propriété)`, un fichier .mjs, .astro, .css
 // (les outils Python cités, tools/…/*.py, ne sont pas contrôlés ici : tools/db/classes_maitrise.py, cité par les maîtrises de départ depuis le premier schéma, n'a jamais existé).
-// Un renvoi périmé (la page Liens supprimée, livres.mjs#LIENS.rencontre devenu SOUS_BIENVENUE.rencontre) passerait db:doc --check : la doc suit le schéma.
+// Un renvoi périmé (la page Liens supprimée, livres.mjs#LIENS.rencontre devenu SOUS_BIENVENUE.rencontre, puis LIENS_ET_RENCONTRE.rencontre) passerait
+// db:doc --check : la doc suit le schéma.
 test('les commentaires du schéma ne citent que du code qui existe : fichiers, noms et propriétés (`fichier.mjs#Nom.prop`)', async () => {
   const commentaires = schema.split('\n').map((l) => (l.includes('--') ? l.slice(l.indexOf('--') + 2) : '')).join('\n');
   const trouver = (chemin) => ['', 'client/', 'client/src/', 'client/src/lib/'].map((b) => join(racine, b, chemin)).find((f) => existsSync(f));

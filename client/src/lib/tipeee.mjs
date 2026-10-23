@@ -1,4 +1,4 @@
-// La partie « Bienvenue » de la page Tipeee de MaverickJDR, reprise telle quelle sur la page Bienvenue du site (réponses du propriétaire du
+// La partie « Bienvenue » de la page Tipeee de MaverickJDR, reprise telle quelle sur l'accueil du site (réponses du propriétaire du
 // 2026-10-22 : « autant en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee » ; texte repris : « La partie
 // « Bienvenue » », de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu'à la fin ; « En direct par le serveur »).
 //

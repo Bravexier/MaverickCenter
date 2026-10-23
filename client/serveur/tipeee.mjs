@@ -1,6 +1,6 @@
 // Le texte de la partie « Bienvenue » de Tipeee, relu en direct par le service (réponse du propriétaire du 2026-10-22 : « En direct par le serveur » —
 // « Le serveur de production relit Tipeee lui-même, avec un cache de quelques heures, et garde le dernier texte si Tipeee ne répond pas ») :
-// GET /api/tipeee/ (serveur/api.mjs) → { paragraphes, lu_le, origine }, que la page Bienvenue met à la place de l'instantané du build s'il diffère.
+// GET /api/tipeee/ (serveur/api.mjs) → { paragraphes, lu_le, origine }, que l'accueil met à la place de l'instantané du build s'il diffère.
 //
 // C'est une sortie du service sur Internet, sur les deux instances (docs/serveur.md, « Hébergement ») ; d'où ses bornes :
 //   - une adresse fixe (lib/tipeee.mjs#URL_API) : rien de la requête du visiteur n'entre dans l'appel ; GET sans cookie, sans redirection suivie ;

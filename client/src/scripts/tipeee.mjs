@@ -1,9 +1,9 @@
-// La partie « Bienvenue » de Tipeee sous le texte de Bienvenue (components/guide/SousBienvenue.astro ; réponses du propriétaire du 2026-10-22 : « autant
-// en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », « En direct par le serveur ») : la page construite montre
-// l'instantané livré avec le site ; ce script demande au service le texte qu'il a relu sur Tipeee (GET /api/tipeee/ : { paragraphes, lu_le, origine },
-// serveur/tipeee.mjs) et, s'il diffère, remplace les paragraphes de la citation `[data-tipeee]`, en TEXTE seulement (textContent : rien de Tipeee n'est
-// jamais lu comme du HTML). Une réponse vide, mal formée ou hors des bornes du module pur (PARAGRAPHES_MAX, CARACTERES_MAX), une erreur, un service
-// absent : l'instantané reste. Absent de la version portable (pas de service).
+// La partie « Bienvenue » de Tipeee sur l'accueil (components/accueil/LiensEtRencontre.astro ; avant le 2026-10-23, sous le texte de Bienvenue ;
+// réponses du propriétaire du 2026-10-22 : « autant en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », « En
+// direct par le serveur ») : la page construite montre l'instantané livré avec le site ; ce script demande au service le texte qu'il a relu sur
+// Tipeee (GET /api/tipeee/ : { paragraphes, lu_le, origine }, serveur/tipeee.mjs) et, s'il diffère, remplace les paragraphes de la citation
+// `[data-tipeee]`, en TEXTE seulement (textContent : rien de Tipeee n'est jamais lu comme du HTML). Une réponse vide, mal formée ou hors des bornes
+// du module pur (PARAGRAPHES_MAX, CARACTERES_MAX), une erreur, un service absent : l'instantané reste. Absent de la version portable (pas de service).
 // Seul script de page à importer lib/tipeee.mjs (skill site-version-portable). Exécuté dans un faux navigateur par test/tipeee-script.test.mjs.
 import { CARACTERES_MAX, memesParagraphes, PARAGRAPHES_MAX } from '../lib/tipeee.mjs';
 

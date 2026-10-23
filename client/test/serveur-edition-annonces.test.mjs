@@ -1,8 +1,8 @@
-// L'annonce de l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (table annonce, migration 0068 ; demande du propriétaire du 2026-10-18 : titre
+// L'annonce de l'encart « Notre prochaine rencontre IRL » sur l'accueil (table annonce, migration 0068 ; demande du propriétaire du 2026-10-18 : titre
 // fixe, « annonce modifiable sur le site de dev (mode modification), partie en production avec la mise à jour », « Aucune rencontre annoncée pour le
 // moment. » quand elle est vide) : le modèle de l'édition, le service (serveur/edition.mjs#ANNONCE : Markdown sûr, balises du glossaire en forme canonique,
 // vidée = NULL, 409 si elle a changé), le rejeu du journal, puis le rapatriement et la mise à jour sur data/rows (la note de version la range sous
-// « Guide › Découvrir » ; un lot qui y ajoute du HTML brut est refusé). Chaque essai écrit dans sa propre copie de la base vivante et lit l'état avant
+// « Guide › Découvrir », « Accueil › Notre prochaine rencontre IRL » ; un lot qui y ajoute du HTML brut est refusé). Chaque essai écrit dans sa propre copie de la base vivante et lit l'état avant
 // d'écrire (le site de dev a pu écrire une annonce).
 //   node --test test/serveur-edition-annonces.test.mjs
 import assert from 'node:assert/strict';
@@ -24,14 +24,14 @@ import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../src/l
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
-import { SOUS_BIENVENUE } from '../src/lib/livres.mjs';
+import { LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const ID = SOUS_BIENVENUE.rencontre.annonce;
+const ID = LIENS_ET_RENCONTRE.rencontre.annonce;
 
 const racine = dossierTemporaire('edition-annonces');
 let compteur = 0;
@@ -40,7 +40,7 @@ function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
-  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: SOUS_BIENVENUE.page, operations });
+  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: LIENS_ET_RENCONTRE.page, operations });
   appel.db = db;
   const lire = () => chargerAnnonce(db, ID);
   const modifier = (valeurs, avant) => enregistrer([{ op: 'modifier', table: 'annonce', cle: { id: ID }, valeurs, ...(avant ? { avant } : {}) }]);
@@ -62,7 +62,7 @@ test('le modèle et la base : une annonce par encart placé par le site, son tex
   assert.ok(chargerAnnonce(db, ID));
   assert.equal(chargerAnnonce(db, 'inconnue'), null);
   // le contenu de la zone : le texte rendu, sinon le texte d'attente (échappé)
-  assert.equal(contenuDeLAnnonce(null, '', SOUS_BIENVENUE.rencontre.vide), '<p class="annonce__vide">Aucune rencontre annoncée pour le moment.</p>');
+  assert.equal(contenuDeLAnnonce(null, '', LIENS_ET_RENCONTRE.rencontre.vide), '<p class="annonce__vide">Aucune rencontre annoncée pour le moment.</p>');
   assert.equal(contenuDeLAnnonce('Un **texte**', '<p>Un <strong>texte</strong></p>', 'x'), '<p>Un <strong>texte</strong></p>');
   assert.equal(contenuDeLAnnonce(null, '', '<b>'), '<p class="annonce__vide">&lt;b&gt;</p>');
   assert.equal(empreinteDeLAnnonce(null), empreinteDeLAnnonce(''));
@@ -166,7 +166,7 @@ test('rapatriement et mise à jour sur data/rows : l’annonce part telle que su
   const majee = construire(rowsMaj, 'mise-a-jour');
   assert.equal(chargerAnnonce(majee, ID).texte, 'Annonce **livrée** par la mise à jour.');
   const note = majee.prepare("SELECT groupe, entite, champ FROM note_version_ligne WHERE domaine = 'guide' AND entite LIKE '%rencontre%'").all().map((l) => ({ ...l }));
-  assert.deepEqual(note, [{ groupe: 'Découvrir', entite: `${SOUS_BIENVENUE.titre} › ${SOUS_BIENVENUE.rencontre.titre}`, champ: 'Annonce' }]);
+  assert.deepEqual(note, [{ groupe: 'Découvrir', entite: 'Accueil › Notre prochaine rencontre IRL', champ: 'Annonce' }], 'l’encart nommé à sa place, l’accueil');
   majee.close();
   // un lot figé qui ajoute du HTML brut à l'annonce : refusé avant tout rejeu
   assert.deepEqual(TEXTES_EN_MARKDOWN.annonce.colonne, 'texte');
@@ -176,14 +176,15 @@ test('rapatriement et mise à jour sur data/rows : l’annonce part telle que su
   assert.throws(() => verifierLot(sale), /annonce prochaine-rencontre-irl/);
 });
 
-// La page Liens est supprimée le 2026-10-22 (« Supprimer la page ») : l'encart est sous le texte de Bienvenue. Le service, l'API publique (description
-// des ressources, reprise dans /api/v1/openapi.json), leur doc et la CI ne la nomment plus au présent (relecture du 2026-10-22) ; seules restent les
-// mentions qui disent qu'elle est supprimée ou que son ancienne adresse mène à Bienvenue.
-test('encart sous Bienvenue : ni le service, ni l’API publique, ni leur doc, ni la CI ne situent plus l’annonce sur la page Liens', () => {
+// La page Liens est supprimée le 2026-10-22 (« Supprimer la page ») ; l'encart, passé sous le texte de Bienvenue, est sur l'accueil depuis le
+// 2026-10-23 (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »). Le service, l'API publique (description des ressources, reprise dans
+// /api/v1/openapi.json), leur doc et la CI ne situent l'annonce ni sur la page Liens (relecture du 2026-10-22) ni sous Bienvenue ; seules restent les
+// mentions qui disent qu'elle est supprimée ou que son ancienne adresse mène ailleurs, ou qui disent où l'encart était.
+test('encart sur l’accueil : ni le service, ni l’API publique, ni leur doc, ni la CI ne situent plus l’annonce sur la page Liens ni sous Bienvenue', () => {
   const annonces = RESSOURCES.find((r) => r.cle === 'annonces');
   assert.equal(annonces.table, 'annonce');
-  assert.ok(annonces.description.includes(`/decouvrir/, ancre #${SOUS_BIENVENUE.rencontre.id}`), annonces.description);
-  assert.ok(annonces.description.includes(`« ${SOUS_BIENVENUE.rencontre.annonce} »`));
+  assert.ok(annonces.description.includes(`sur l’accueil (/, ancre #${LIENS_ET_RENCONTRE.rencontre.id}`), annonces.description);
+  assert.ok(annonces.description.includes(`« ${LIENS_ET_RENCONTRE.rencontre.annonce} »`));
   const lire = (chemin) => readFileSync(join(RACINE, chemin), 'utf8');
   const dossier = (d) => readdirSync(join(RACINE, d)).filter((f) => /\.(?:mjs|ya?ml)$/.test(f)).map((f) => `${d}/${f}`);
   const fichiers = [...dossier('client/serveur'), ...dossier('client/src/lib/ressources'), 'client/src/lib/ressources.mjs', 'docs/serveur.md', 'docs/api.md',
@@ -192,6 +193,10 @@ test('encart sous Bienvenue : ni le service, ni l’API publique, ni leur doc, n
   for (const f of fichiers) {
     lire(f).split('\n').forEach((ligne, i) => {
       if (/page (?:« )?Liens|Liens \(encart|\/decouvrir\/liens\//.test(ligne) && !/supprimée|ancienne/.test(ligne)) restes.push(`${f}:${i + 1}`);
+      // l'encart ou l'annonce situés sous le texte de Bienvenue, sauf au passé : « sous le texte de Bienvenue jusqu'au 2026-10-23 » (docs/serveur.md),
+      // « puis sous le texte de Bienvenue »
+      if (/(?:encart|annonce|Tipeee)[^.]*sous (?:le texte de )?Bienvenue|Bienvenue \(encart/.test(ligne)
+        && !/sous le texte de Bienvenue jusqu['’]au 2026-10-23|puis sous le texte de Bienvenue/.test(ligne)) restes.push(`${f}:${i + 1}`);
     });
   }
   assert.deepEqual(restes, []);

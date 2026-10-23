@@ -39,7 +39,7 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 - Page : <https://fr.tipeee.com/maverickjdr> (donnée par le propriétaire avec son plan du 2026-10-16), écrite par le créateur du jeu.
 - Lue par l'API publique `https://api.tipeee.com/v2.0/projects/maverickjdr` (la page est rendue en JavaScript), champ
   `contentv2.translations.fr.html`.
-- **Ce qu'en tire le site : la partie « Bienvenue », copiée telle quelle** sous le texte de la page Bienvenue (`/decouvrir/`). Réponses du propriétaire
+- **Ce qu'en tire le site : la partie « Bienvenue », copiée telle quelle** sur l'accueil (`/` ; sous le texte de Bienvenue jusqu'au 2026-10-23). Réponses du propriétaire
   du 2026-10-22 : « autant en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », texte repris « La partie
   « Bienvenue » » (de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu'à la fin : ce qu'on y trouve et le chapeau virtuel), au moment « En direct
   par le serveur ». Ce choix tranche G36 (`docs/sql/a-valider.md` §6) et remplace la reformulation de l'ancienne page Liens (`lib/livres.mjs#LIENS`).

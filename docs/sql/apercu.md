@@ -28,7 +28,7 @@
 | `panneau_regles` | Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). | **id**, titre, page_id→page |
 | `panneau_regles_bloc` | Un bloc d'un panneau, dans l'ordre de lecture : du texte (tuile = 0), qui suit les colonnes du panneau, ou une tuile (tuile = 1 : encadrée, titre facultatif). | **panneau_id**→panneau_regles, **rang**, ordre, tuile, titre?, texte |
 | `composant_onglet` | Onglets de la page « Composants » (/ressources/composants/, migration 0057) : un onglet par tableau de la page. | **id**, titre, note?, ordre |
-| `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (/decouvrir/, components/guide/SousBienvenue.astro ; sur la page Liens | **id**, texte? |
+| `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sur l'accueil (/, components/accueil/LiensEtRencontre.astro, depuis le 2026-10-23 ; sur la page L | **id**, texte? |
 
 ## 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 

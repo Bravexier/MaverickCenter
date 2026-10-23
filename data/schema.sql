@@ -238,11 +238,11 @@ CREATE TABLE composant_onglet (
                                                        -- puisse échanger deux ordres dans un même lot (à égalité, l'id départage)
 ) STRICT;
 
--- Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (/decouvrir/,
--- components/guide/SousBienvenue.astro ; sur la page Liens jusqu'au 2026-10-22).
+-- Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sur l'accueil (/,
+-- components/accueil/LiensEtRencontre.astro, depuis le 2026-10-23 ; sur la page Liens jusqu'au 2026-10-22, puis sous le texte de Bienvenue).
 -- Demande du propriétaire du 2026-10-18 : « un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines
 -- conventions où Maverick sera présent » ; titre fixe et texte d'attente (« Aucune rencontre annoncée pour le moment. ») écrits par le site
--- (client/src/lib/livres.mjs#SOUS_BIENVENUE.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance
+-- (client/src/lib/livres.mjs#LIENS_ET_RENCONTRE.rencontre), l'annonce seule ici, modifiable sur le site de dev et livrée par la mise à jour. Pas de provenance
 -- (origine, source_ref : feuille de route, retirées à la 1.0).
 CREATE TABLE annonce (
   id    TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'annonce

@@ -1,7 +1,7 @@
-// Les annonces que le site place (table annonce, migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (demande du
-// propriétaire du 2026-10-18 : « Laisse également un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines
+// Les annonces que le site place (table annonce, migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sur l'accueil (demande du
+// propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » ; demande du 2026-10-18 : « Laisse également un encart « Notre prochaine rencontre IRL » pour faire la place à une annonce dédiée aux prochaines
 // conventions où Maverick sera présent » ; titre fixe, annonce modifiable sur le site de dev, texte d'attente quand elle est vide :
-// lib/livres.mjs#SOUS_BIENVENUE.rencontre). Le contenu de la zone de l'annonce est le même à la construction du site (components/guide/SousBienvenue.astro, le Markdown
+// lib/livres.mjs#LIENS_ET_RENCONTRE.rencontre). Le contenu de la zone de l'annonce est le même à la construction du site (components/accueil/LiensEtRencontre.astro, le Markdown
 // rendu par remark : lib/guide-rendu.ts) et dans le navigateur du site de dev (src/scripts/edition/annonces.mjs : une annonce modifiée depuis la
 // construction, son Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte) : son texte rendu, ou le texte d'attente ; la zone porte l'empreinte du
 // texte (`data-annonce-empreinte`), que la surcouche du site de dev compare pour ne refaire que ce qui a changé. Pur, sans dépendance navigateur (sauf

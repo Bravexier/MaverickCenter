@@ -10,7 +10,7 @@ import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
   ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
-  filDAriane, groupeDeLaPage, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, SOUS_BIENVENUE,
+  filDAriane, groupeDeLaPage, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
   PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
@@ -205,25 +205,30 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.deepEqual(ARTISANAT.pages, ['ressources/composants', 'ressources/alchimie', 'ressources/alchimie-primitive', 'ressources/alchimie-liste-ingredients', 'metiers/regles-des-metiers']);
   const existe = db.prepare('SELECT 1 FROM page WHERE id = ?');
   for (const id of ARTISANAT.pages.slice(1)) assert.ok(existe.get(id), `${id} : page absente`);
-  // sous le texte de Bienvenue (réponses du propriétaire du 2026-10-22 : « Bonne idée. », puis « Supprimer la page » Liens) : Discord et Tipeee, puis
-  // l'encart « Notre prochaine rencontre IRL »
-  assert.equal(SOUS_BIENVENUE.page, DECOUVRIR.accueil);
-  assert.equal(SOUS_BIENVENUE.page, 'guide/bienvenue');
-  assert.deepEqual(SOUS_BIENVENUE.liens.map((l) => [l.id, l.libelle, l.url]), [
+  // sur l'accueil (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » ; avant, sous le
+  // texte de Bienvenue, et d'abord sur la page Liens, supprimée le 2026-10-22) : Discord et Tipeee, puis l'encart « Notre prochaine rencontre IRL ».
+  // `page` : l'id de l'accueil pour le mode modification (noté au journal), qui n'est pas une page du wiki ; `titre` : celui de pages/index.astro, qui
+  // nomme l'encart dans la note de version (« Accueil › Notre prochaine rencontre IRL »)
+  assert.equal(LIENS_ET_RENCONTRE.page, 'accueil');
+  assert.equal(db.prepare('SELECT 1 FROM page WHERE id = ?').get(LIENS_ET_RENCONTRE.page), undefined, 'pas une page du wiki');
+  assert.equal(LIENS_ET_RENCONTRE.titre, 'Accueil');
+  const accueil = readFileSync(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
+  assert.ok(accueil.includes(`<Base title="${LIENS_ET_RENCONTRE.titre}" edition={LIENS_ET_RENCONTRE.page}>`), 'le titre de l’accueil, et son mode modification');
+  assert.deepEqual(LIENS_ET_RENCONTRE.liens.map((l) => [l.id, l.libelle, l.url]), [
     ['discord', 'Serveur Discord « L’univers de Maverick »', 'https://discord.gg/GMGBnjzfMk'],
     ['tipeee', 'Maverick JDR sur Tipeee', 'https://fr.tipeee.com/maverickjdr'],
   ]);
   // la présentation du Discord : une constante écrite à l'intégration de la refonte des pages ; celle de Tipeee n'est pas écrite ici, c'est le texte
   // de Tipeee repris en direct (« La partie « Bienvenue » », « En direct par le serveur ») : la reformulation d'avant a disparu
-  const [discord, tipeee] = SOUS_BIENVENUE.liens;
+  const [discord, tipeee] = LIENS_ET_RENCONTRE.liens;
   assert.equal(typeof discord.presentation, 'string');
   assert.ok(discord.presentation.length > 50);
   assert.equal(tipeee.presentation, undefined);
   assert.equal(tipeee.tipeee, true);
-  assert.deepEqual(SOUS_BIENVENUE.rencontre, {
+  assert.deepEqual(LIENS_ET_RENCONTRE.rencontre, {
     id: 'prochaine-rencontre', titre: 'Notre prochaine rencontre IRL', annonce: 'prochaine-rencontre-irl', vide: 'Aucune rencontre annoncée pour le moment.',
   });
-  assert.ok(db.prepare('SELECT 1 FROM annonce WHERE id = ?').get(SOUS_BIENVENUE.rencontre.annonce), 'l’annonce de l’encart est dans la base (migration 0068)');
+  assert.ok(db.prepare('SELECT 1 FROM annonce WHERE id = ?').get(LIENS_ET_RENCONTRE.rencontre.annonce), 'l’annonce de l’encart est dans la base (migration 0068)');
 });
 
 test('le menu s’accorde au plan : Découvrir (une entrée par page), Règles (Les bases, Artisanat, Règles avancées), Espace MJ (Guide du MJ)', () => {
@@ -231,7 +236,6 @@ test('le menu s’accorde au plan : Découvrir (une entrée par page), Règles (
   // plus d'entrée « Liens » (« Plus d'entrée Liens au menu : tout est sur Bienvenue. »)
   assert.deepEqual(rubrique('decouvrir').items.map((i) => i.path), PAR_OU_COMMENCER.map(cheminDePage));
   assert.deepEqual(rubrique('decouvrir').items.map((i) => i.label), ['Bienvenue', 'L’univers', 'Créer son personnage', 'Rejoindre une partie']);
-  assert.equal(rubrique('decouvrir').items[0].label, SOUS_BIENVENUE.titre, 'l’encart se nomme d’après l’entrée du menu (note de version)');
   const regles = rubrique('regles').items.map((i) => i.path);
   for (const chemin of [LES_BASES.chemin, ARTISANAT.chemin, REGLES_AVANCEES.chemin]) assert.ok(regles.includes(chemin), chemin);
   assert.deepEqual([rubrique('regles').items[0].label, rubrique('regles').items[0].path], [LES_BASES.titre, LES_BASES.chemin]);
@@ -267,13 +271,16 @@ test('les anciennes adresses mènent à la nouvelle adresse de chaque page (page
   assert.equal(adresseComplete(nouvelleAdresse('/decouvrir/le-jeu-de-role/', '/', renvois), '?a=1', '#lire-les-des'), '/decouvrir/?a=1#lire-les-des');
   const cible = nouvelleAdresse('/guide/choisir-sa-classe/', '/', renvois);
   assert.equal(adresseComplete(cible, '?a=1', '#une-ou-deux-classes--le-biclassage'), '/decouvrir/creer-son-personnage/?a=1#une-ou-deux-classes--le-biclassage');
-  // une page déplacée depuis le plan précédent : la page du MJ, qui était la dernière de Découvrir ; la page Liens, supprimée le 2026-10-22 (« L'ancienne
-  // adresse renverrait vers Bienvenue. ») : vers Bienvenue, l'ancre gardée (les mêmes ancres sous son texte)
-  assert.deepEqual(ADRESSES_DU_PLAN_PRECEDENT, { 'decouvrir/campagne-ou-scenario-one-shot/': 'guide/campagne-ou-scenario-one-shot', 'decouvrir/liens/': 'guide/bienvenue' });
+  // une page déplacée depuis le plan précédent : la page du MJ, qui était la dernière de Découvrir
+  assert.deepEqual(ADRESSES_DU_PLAN_PRECEDENT, { 'decouvrir/campagne-ou-scenario-one-shot/': 'guide/campagne-ou-scenario-one-shot' });
   assert.equal(nouvelleAdresse('/decouvrir/campagne-ou-scenario-one-shot/', '/', renvois), '/mj/campagne-ou-scenario-one-shot/');
-  assert.equal(nouvelleAdresse('/decouvrir/liens/', '/', renvois), '/decouvrir/');
-  assert.equal(nouvelleAdresse('/decouvrir/liens', '/', renvois), '/decouvrir/');
-  assert.equal(adresseComplete(nouvelleAdresse('/decouvrir/liens/', '/', renvois), '?a=1', '#prochaine-rencontre'), '/decouvrir/?a=1#prochaine-rencontre');
+  // la page Liens, supprimée le 2026-10-22, menait à Bienvenue ; ses blocs sont sur l'accueil depuis le 2026-10-23 et son ancienne adresse n'est plus
+  // renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable
+  for (const adresse of ['/decouvrir/liens/', '/decouvrir/liens', '/guide/liens/']) {
+    assert.equal(nouvelleAdresse(adresse, '/', renvois), null, `${adresse} : plus de renvoi`);
+  }
+  assert.equal(nouvelleAdresse('/MaverickCenter/decouvrir/liens/', '/MaverickCenter/', renvois), null, 'sous un sous-chemin non plus');
+  assert.ok(Object.keys(renvois).every((k) => !k.includes('liens')), 'aucun renvoi de la page Liens');
   // un renvoi ne masque jamais une adresse servie
   for (const id of ids) assert.equal(Object.hasOwn(renvois, cheminDePage(id)), false, `${cheminDePage(id)} : servie, pas renvoyée`);
   assert.equal(Object.hasOwn(renvois, LES_BASES.chemin), false, '/regles/ : le sommaire des Bases');

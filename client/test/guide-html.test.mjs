@@ -3,8 +3,9 @@
 // chaque page du guide est une page simple (fil d'Ariane vers sa rubrique ou son sommaire, titre, texte et blocs tirés de la base, mots-clés,
 // rétroliens ; plus de sources : réponse du propriétaire du 2026-10-22, « Plus de sources ailleurs que dans les archives. »), sans flèches, ni
 // pagination, ni glissement du doigt ; les pages de Découvrir et des Bases dans la couleur de leur groupe ; les sommaires des Bases, des Règles
-// avancées, du Guide du MJ et de l'Artisanat ; sous Bienvenue, Discord, Tipeee (le texte de l'instantané) et l'encart « Notre prochaine rencontre IRL »
-// (la page Liens est supprimée le 2026-10-22) ; plus rien sous /guide/, plus rien aux adresses des pages fusionnées.
+// avancées, du Guide du MJ et de l'Artisanat ; plus de Discord, de Tipeee ni d'encart « Notre prochaine rencontre IRL » sous Bienvenue (sur l'accueil
+// depuis le 2026-10-23 : test/accueil-html.test.mjs ; la page Liens est supprimée le 2026-10-22) ; plus rien sous /guide/, plus rien aux adresses des
+// pages fusionnées.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/guide-html.test.mjs
 import assert from 'node:assert/strict';
@@ -12,17 +13,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { chargerAnnonce } from '../src/lib/annonces.mjs';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
   ARTISANAT, DECOUVRIR, estDansDecouvrirOuLesBases, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
-  PAGES_ABSORBEES, pagesDeLaRubrique, partieDeLaPage, SOUS_BIENVENUE,
+  PAGES_ABSORBEES, pagesDeLaRubrique, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { CHEMIN_INSTANTANE, URL_PAGE } from '../src/lib/tipeee.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -33,7 +32,6 @@ const lire = (chemin) => {
 };
 const sansStyles = (main) => main.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '');
 const db = ouvrirBase({ sansExemples: false });
-const racine = trouverRacine();
 const pagesConstruites = db.prepare("SELECT id, titre, resume, corps_md, statut FROM page WHERE type = 'guide'").all()
   .filter((p) => existsSync(join(dist, cheminDePage(p.id), 'index.html')))
   .map((p) => ({ ...p, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
@@ -196,46 +194,17 @@ test('Découvrir : une page par entrée du menu, dans l’ordre ; « Rejoindre u
   for (const chemin of ['/decouvrir/', '/decouvrir/l-univers/', '/decouvrir/creer-son-personnage/', '/decouvrir/rejoindre-une-partie/']) {
     assert.ok(menu.includes(`href="${chemin}"`), `menu : ${chemin}`);
   }
-  // plus de page Liens (« Supprimer la page ») : ni au menu, ni construite ; son adresse mène à Bienvenue (page 404 : test/site-html.test.mjs)
+  // plus de page Liens (« Supprimer la page ») : ni au menu, ni construite ; son adresse n'est plus renvoyée (« supprimer ce lien » : test/site-html.test.mjs)
   assert.ok(!menu.includes('href="/decouvrir/liens/"'), 'menu : plus d’entrée Liens');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
 });
 
-test('Bienvenue (/decouvrir/) : sous son texte, le serveur Discord et la page Tipeee (le texte de l’instantané), puis l’encart « Notre prochaine rencontre IRL »', options, () => {
+test('Bienvenue (/decouvrir/) : plus de liens Discord et Tipeee ni d’encart sous son texte (sur l’accueil depuis le 2026-10-23 : test/accueil-html.test.mjs)', options, () => {
+  // « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » : la page garde son texte, ses mots-clés, ses rétroliens et son mode modification
   const { html, main } = lire('decouvrir');
-  const corps = sansStyles(main);
-  // après le texte de la page (le corps modifiable), avant les mots-clés et rétroliens : dans la page, dans la couleur de son groupe
-  const sous = corps.slice(corps.indexOf('<div class="bienvenue-liens">'));
-  assert.ok(corps.indexOf('<div class="guide-corps"') < corps.indexOf('<div class="bienvenue-liens">'), 'sous le texte');
-  assert.ok(corps.indexOf('<div class="bienvenue-liens">') < corps.indexOf('<section class="annonce"'), 'les liens, puis l’encart');
-  // chaque lien sous son titre (h2, au niveau de l'encart), aux ancres de l'ancienne page Liens
-  assert.deepEqual([...sous.matchAll(/<h2 class="bienvenue-liens__titre" id="lien-([a-z]+)-titre"><a class="bienvenue-liens__lien" href="([^"]+)" rel="noopener">([^<]+)<\/a><\/h2>/g)].map((m) => [m[1], m[2], m[3]]),
-    SOUS_BIENVENUE.liens.map((l) => [l.id, l.url, l.libelle]));
-  const element = (id) => sous.match(new RegExp(`<section class="bienvenue-liens__element" id="lien-${id}" aria-labelledby="lien-${id}-titre">([\\s\\S]*?)</section>`))?.[1] ?? '';
-  assert.match(element('discord'), /<div class="prose bienvenue-liens__presentation">/);
-  // Tipeee : les paragraphes de l'instantané livré avec le site (sources/tipeee/bienvenue.json), en texte seul, dans une citation que le script suit
-  const instantane = JSON.parse(readFileSync(join(racine, CHEMIN_INSTANTANE), 'utf8'));
-  const citation = element('tipeee').match(/<blockquote class="prose bienvenue-liens__presentation bienvenue-tipeee" cite="([^"]+)" data-tipeee data-tipeee-api="([^"]+)" data-tipeee-lu-le="([^"]+)">([\s\S]*?)<\/blockquote>/);
-  assert.ok(citation, 'la citation de Tipeee');
-  assert.deepEqual(citation.slice(1, 4), [URL_PAGE, '/api/tipeee/', instantane.lu_le]);
-  const paragraphes = [...citation[4].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1].replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-  assert.deepEqual(paragraphes, instantane.paragraphes);
-  assert.match(paragraphes[0], /^Bienvenue sur le Tipeee de MaverickJDR !/);
-  assert.doesNotMatch(citation[4], /<(?!\/?p>)/, 'rien que des paragraphes de texte');
-  assert.doesNotMatch(corps, /chapeau « virtuel » pour celles et ceux|MaverickJDR a sa page Tipeee/, 'plus la reformulation de l’ancienne page Liens');
-  // le script qui reprend le texte du service (src/scripts/tipeee.mjs), un module de page
-  assert.match(html, /<script type="module" src="[^"]+"><\/script>|<script type="module">/);
-  // l'encart : le titre fixe, l'annonce de la base ou le texte d'attente ; la zone modifiable sur le site de dev
-  assert.match(corps, /<section class="annonce" id="prochaine-rencontre" aria-labelledby="prochaine-rencontre-titre">\s*<h2 class="annonce__titre" id="prochaine-rencontre-titre">Notre prochaine rencontre IRL<\/h2>/);
-  const zone = corps.match(/<div class="prose annonce__texte"([^>]*)>([\s\S]*?)<\/div>\s*<\/section>/);
-  assert.ok(zone, 'la zone de l’annonce');
-  assert.match(zone[1], /data-annonce="prochaine-rencontre-irl"/);
-  assert.match(zone[1], /data-annonce-vide="Aucune rencontre annoncée pour le moment\."/);
-  const annonce = chargerAnnonce(db, SOUS_BIENVENUE.rencontre.annonce);
-  if (annonce.texte) assert.doesNotMatch(zone[2], /annonce__vide/);
-  else assert.equal(zone[2].trim(), '<p class="annonce__vide">Aucune rencontre annoncée pour le moment.</p>');
-  // le mode modification du site de dev se propose sur la page (components/edition/Edition.astro, hors de <main>) : le texte et l'annonce
-  assert.match(html, /<div data-edition data-api="\/api\/" data-page="guide\/bienvenue"/);
-  // sur les autres pages, rien de tout cela
-  for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.doesNotMatch(lire(cheminDePage(id)).main, /bienvenue-liens|data-tipeee|data-annonce/, id);
+  assert.match(main, /<div class="guide-corps"/);
+  assert.doesNotMatch(main, /accueil-liens|bienvenue-liens|data-tipeee|data-annonce|id="(?:lien-discord|lien-tipeee|prochaine-rencontre)"/);
+  assert.match(html, /<div data-edition data-api="\/api\/" data-page="guide\/bienvenue"/, 'le texte reste modifiable sur le site de dev');
+  // sur les autres pages de Découvrir non plus
+  for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.doesNotMatch(lire(cheminDePage(id)).main, /accueil-liens|data-tipeee|data-annonce/, id);
 });

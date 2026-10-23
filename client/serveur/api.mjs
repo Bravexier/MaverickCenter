@@ -15,7 +15,7 @@
 //                                   serveur/classeur.mjs, la seule route qui sort sur Internet vers une adresse que donne le visiteur ; l'autre sortie
 //                                   de la production est GET /api/tipeee/, à adresse fixe ; le site de dev joint aussi l'API GitHub, routes
 //                                   /api/mise-a-jour/) ; les deux instances, sans la base ; la réponse est une PROMESSE (service.mjs l'attend)
-//   GET  /api/tipeee/               { paragraphes, lu_le, origine } : la partie « Bienvenue » de Tipeee, en texte (page Bienvenue ; serveur/tipeee.mjs,
+//   GET  /api/tipeee/               { paragraphes, lu_le, origine } : la partie « Bienvenue » de Tipeee, en texte (l'accueil ; serveur/tipeee.mjs,
 //                                   relue par le service avec un cache, une sortie sur Internet à adresse fixe ; origine « tipeee » = lue il y a moins
 //                                   que la durée du cache, « repli » = le dernier texte connu ou l'instantané du site) ; les deux instances, sans la
 //                                   base ; une PROMESSE aussi

@@ -1,7 +1,7 @@
 // L'extension de l'éditeur pour les annonces (src/scripts/edition/annonces.mjs, migration 0068 ; demande du propriétaire du 2026-10-18 : l'encart « Notre
-// prochaine rencontre IRL » sous le texte de Bienvenue, titre fixe, « annonce modifiable sur le site de dev (mode modification) », « Aucune rencontre annoncée pour
+// prochaine rencontre IRL » sur l'accueil, titre fixe, « annonce modifiable sur le site de dev (mode modification) », « Aucune rencontre annoncée pour
 // le moment. » quand elle est vide), exécutée dans un faux navigateur (test/aide-faux-dom.mjs) avec un faux éditeur, sur une zone rendue comme au build
-// (components/guide/SousBienvenue.astro, lib/annonces.mjs ; Markdown : test/aide-rendu-du-site.mjs) : l'entrée en mode modification (zone modifiable, barre
+// (components/accueil/LiensEtRencontre.astro, lib/annonces.mjs ; Markdown : test/aide-rendu-du-site.mjs) : l'entrée en mode modification (zone modifiable, barre
 // d'outils ; vide, la zone s'ouvre vide), rien quand on ne retouche rien (le Markdown relu au départ fait foi, pas le texte de la base), une modification,
 // une annonce vidée (NULL), un conflit (409), l'abandon (le texte d'avant), la surcouche (`ligne` : texte changé → zone refaite, vidée → texte
 // d'attente) et la course entre la surcouche et l'entrée en mode modification. Reste hors de ces tests : la sélection et les commandes de mise en forme du
@@ -12,14 +12,14 @@ import { test } from 'node:test';
 import { contenuDeLAnnonce, empreinteDeLAnnonce } from '../src/lib/annonces.mjs';
 import { cleDeLigne } from '../src/lib/edition-modele.mjs';
 import { arbreDuDom, versMarkdown } from '../src/lib/markdown-edition.mjs';
-import { SOUS_BIENVENUE } from '../src/lib/livres.mjs';
+import { LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
 import { attendre, el, fauxDocument } from './aide-faux-dom.mjs';
 import { rendreCommeLaPage } from './aide-rendu-du-site.mjs';
 
-const ID = SOUS_BIENVENUE.rencontre.annonce;
-const VIDE = SOUS_BIENVENUE.rencontre.vide;
+const ID = LIENS_ET_RENCONTRE.rencontre.annonce;
+const VIDE = LIENS_ET_RENCONTRE.rencontre.vide;
 
-/** La zone de l'annonce telle que components/guide/SousBienvenue.astro l'écrit, son texte rendu comme au build. */
+/** La zone de l'annonce telle que components/accueil/LiensEtRencontre.astro l'écrit, son texte rendu comme au build. */
 async function zoneDeLaPage(texte) {
   const html = texte ? await rendreCommeLaPage(texte, []) : '';
   const zone = el('div', {
@@ -33,11 +33,11 @@ let numero = 0;
 /** La page (l'encart), un faux éditeur et l'extension chargée à neuf ; `texte` : celui de la page construite, `base` : celui de la base vivante. */
 async function monter({ texte = null, base = texte } = {}) {
   const zone = await zoneDeLaPage(texte);
-  const document = fauxDocument(el('main', {}, el('section', { class: 'annonce' }, el('h2', {}, SOUS_BIENVENUE.rencontre.titre), zone)));
+  const document = fauxDocument(el('main', {}, el('section', { class: 'annonce' }, el('h2', {}, LIENS_ET_RENCONTRE.rencontre.titre), zone)));
   Object.assign(globalThis, { document });
   const ed = {
     base: '/',
-    page: SOUS_BIENVENUE.page,
+    page: LIENS_ET_RENCONTRE.page,
     enEdition: false,
     lignes: new Map(),
     annonces: [],

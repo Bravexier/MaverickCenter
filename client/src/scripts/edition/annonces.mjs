@@ -1,10 +1,10 @@
-// Extension de l'éditeur : les annonces que le site place (table annonce, migration 0068), aujourd'hui l'encart « Notre prochaine rencontre IRL » sous
-// le texte de Bienvenue (components/guide/SousBienvenue.astro ; demande du propriétaire du 2026-10-18 : titre fixe, « annonce modifiable sur le site de dev (mode
-// modification) », « Aucune rencontre annoncée pour le moment. » quand elle est vide). Service : serveur/edition.mjs#ANNONCE. Active dès qu'une zone
-// `[data-annonce]` est dans la page.
+// Extension de l'éditeur : les annonces que le site place (table annonce, migration 0068), aujourd'hui l'encart « Notre prochaine rencontre IRL » sur
+// l'accueil (components/accueil/LiensEtRencontre.astro, depuis le 2026-10-23 ; demande du propriétaire du 2026-10-18 : titre fixe, « annonce
+// modifiable sur le site de dev (mode modification) », « Aucune rencontre annoncée pour le moment. » quand elle est vide). Service :
+// serveur/edition.mjs#ANNONCE. Active dès qu'une zone `[data-annonce]` est dans la page.
 //   - en mode modification : le texte de l'annonce se modifie en place (texte-en-place.mjs, la barre d'outils des panneaux de règles : Texte, Mise en
 //     page, Liens, Mots-clés ; HTML → Markdown par lib/markdown-edition.mjs#versMarkdown) ; une annonce vide s'ouvre vide (le texte d'attente en filigrane,
-//     styles/guide/bienvenue.css) ; elle n'est envoyée que si son Markdown relu diffère de celui relu à l'entrée (pas du texte de la base : apostrophes,
+//     styles/accueil/liens-et-rencontre.css) ; elle n'est envoyée que si son Markdown relu diffère de celui relu à l'entrée (pas du texte de la base : apostrophes,
 //     espaces) ; vidée, elle part vide (NULL dans la base : le texte d'attente revient) ;
 //   - quitter sans enregistrer : le texte d'avant revient ;
 //   - surcouche (le site construit est en retard sur le site de dev) : une ligne de l'annonce modifiée depuis la construction (lignes en attente, et celles

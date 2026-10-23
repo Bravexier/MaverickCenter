@@ -21,7 +21,7 @@ user-invocable: false
 - Crayon à cocher, bouton « Enregistrer » flottant : toutes les modifications de la page partent d'un bloc.
 - Ce qui se modifie, se crée et se supprime, page par page : `docs/serveur.md`, « Édition des règles (site de dev) » (tableau « Pages »). Une valeur « @i » désigne la ligne créée par l'opération i du même lot (`serveur/edition.mjs#reference` : spécialité et don d'un don, capacité commune d'une carte, famille d'une arme). Familles d'armes : création sans suppression (R159). Supprimer un don, une spécialité ou un métier qu'une fiche utilise l'en retire (R42, réponse `fiches` du lot).
 - Vocabulaire des mots-clés sur `/recherche/` (renommer, fusionner, supprimer, créer) : skill `zone-recherche`.
-- Éditeur en place (`edition/texte-en-place.mjs`, HTML → Markdown) : texte du guide, descriptions de la chronologie, blocs des panneaux de règles, annonce sous Bienvenue. Barre d'outils à gauche, à la hauteur de la zone du curseur (`hauteurDeLaBarre`, demande du propriétaire) ; plusieurs éditeurs sur une page : une seule barre, celle de l'éditeur du curseur, sinon la dernière qui l'a eu, sinon la première posée (`texte-en-place.mjs#choisirLaBarre`, `test/texte-en-place-barres.test.mjs`).
+- Éditeur en place (`edition/texte-en-place.mjs`, HTML → Markdown) : texte du guide, descriptions de la chronologie, blocs des panneaux de règles, annonce de l'accueil (page `accueil` au journal). Barre d'outils à gauche, à la hauteur de la zone du curseur (`hauteurDeLaBarre`, demande du propriétaire) ; plusieurs éditeurs sur une page : une seule barre, celle de l'éditeur du curseur, sinon la dernière qui l'a eu, sinon la première posée (`texte-en-place.mjs#choisirLaBarre`, `test/texte-en-place-barres.test.mjs`).
 - Surcouche : chaque page réaffiche les lignes modifiées depuis sa construction (`GET /api/edition/en-attente/`).
 
 ## Invariants
@@ -64,7 +64,7 @@ user-invocable: false
 
 ## Markdown sûr et aller-retour
 - Guide : `data-ed-morceau` = un morceau de texte visible du corps (`decouperCorps`).
-- Ni HTML brut ni lien non sûr ajouté au Markdown d'une page, d'un bloc de la chronologie, d'un panneau de règles ou de l'annonce sous Bienvenue (`serveur/edition.mjs#ANNONCE`). Contrôle par `lib/markdown-sur.mjs` : au service, au lot reçu, puis sur les textes après le rejeu de la mise à jour et du rapatriement (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`).
+- Ni HTML brut ni lien non sûr ajouté au Markdown d'une page, d'un bloc de la chronologie, d'un panneau de règles ou de l'annonce de l'accueil (`serveur/edition.mjs#ANNONCE`). Contrôle par `lib/markdown-sur.mjs` : au service, au lot reçu, puis sur les textes après le rejeu de la mise à jour et du rapatriement (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`).
 - Les liens du wiki portent `data-cible` (`wikilinks.mjs`), que l'éditeur réécrit en `[[cible|texte]]`.
 - La couleur d'une case s'écrit `{couleur:x}` (`markdown-couleurs.mjs`) ; le plugin est déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts`, qui doivent rester d'accord.
 

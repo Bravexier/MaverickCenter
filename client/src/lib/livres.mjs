@@ -5,8 +5,9 @@
 // affichée : elles ne se lisent que sur /archives/, réponse du propriétaire du 2026-10-22).
 //   - « Découvrir » (/decouvrir/, rubrique Découvrir du menu, faite pour être vue même des non-membres) : UNE page par entrée du menu (choix du
 //     propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/), L'univers, Créer son personnage (les six étapes sur une seule page), Rejoindre une
-//     partie. Les autres à /decouvrir/<slug>/. Sous le texte de Bienvenue, les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL »
-//     (SOUS_BIENVENUE ; la page « Liens » qui les portait est supprimée le 2026-10-22, son adresse mène à Bienvenue).
+//     partie. Les autres à /decouvrir/<slug>/. Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil
+//     (LIENS_ET_RENCONTRE ; sur la page « Liens » jusqu'au 2026-10-22, puis sous le texte de Bienvenue jusqu'au 2026-10-23 ; l'ancienne adresse de la
+//     page Liens n'est plus renvoyée nulle part).
 //   - « Les bases » (/regles/, rubrique Règles) : un sommaire en trois groupes (« Jouer », « Progresser », « Pour aller plus loin » : titre et résumé de
 //     chaque page, components/guide/Sommaire.astro, comme les Règles avancées) ; une page par sujet, à /regles/<slug>/.
 //   - Les « Règles avancées » (/regles/avancees/) et le « Guide du MJ » (/mj/) sont des sommaires ; leurs pages sont à /regles/avancees/<slug>/ et
@@ -21,7 +22,7 @@
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
 // terme, les non-membres ne verront que Découvrir et Règles.
 // Seuls des libellés de navigation sont écrits ici (titres de rubrique, de groupe, libellés des liens) : les textes des pages sont dans la base. Une
-// exception : la présentation du lien Discord sous Bienvenue (SOUS_BIENVENUE.liens[].presentation), un texte écrit ici, donc ni modifiable sur le site
+// exception : la présentation du lien Discord de l'accueil (LIENS_ET_RENCONTRE.liens[].presentation), un texte écrit ici, donc ni modifiable sur le site
 // de dev (un commit le change), ni cherché par la recherche, et emporté par la chaîne de l'édition du navigateur avec le reste du plan.
 // Les identifiants de page ne changent pas (« guide/le-tour-de-jeu ») : seules leurs adresses viennent d'ici (lib/metiers.mjs#adresseDePage, puis
 // cheminDePage, entryHref, pageHref, entryUrl, l'index de la recherche) ; les anciennes adresses /guide/… mènent aux nouvelles par la page 404.
@@ -138,10 +139,13 @@ export const ARTISANAT = gele({
 });
 
 /**
- * Sous le texte de Bienvenue (components/guide/SousBienvenue.astro ; réponse du propriétaire du 2026-10-22 à « L'encart IRL et les présentations
- * Discord / Tipeee sont sur la page Liens. Les voulez-vous plutôt sur Bienvenue ? » : « Bonne idée. », puis, pour la page Liens, « Supprimer la page »
- * : « Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne adresse renverrait vers Bienvenue. ») : les deux liens externes, chacun sous un
- * titre avec sa présentation, puis l'encart « Notre prochaine rencontre IRL » (`rencontre`).
+ * Sur l'accueil, sous la bienvenue et le carrousel, avant « Par où commencer ? » (components/accueil/LiensEtRencontre.astro, posé par pages/index.astro ;
+ * demandes du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. », puis « Sous la bienvenue et le
+ * carrousel ») : les deux liens externes, chacun sous un titre avec sa présentation,
+ * puis l'encart « Notre prochaine rencontre IRL » (`rencontre`). Avant : sur la page Liens, puis sous le texte de Bienvenue (réponse du propriétaire du
+ * 2026-10-22 à « L'encart IRL et les présentations Discord / Tipeee sont sur la page Liens. Les voulez-vous plutôt sur Bienvenue ? » : « Bonne idée. »,
+ * puis, pour la page Liens, « Supprimer la page » : « Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne adresse renverrait vers
+ * Bienvenue. »).
  *   - Le Discord : réponse du propriétaire du 2026-10-18 (« https://discord.gg/GMGBnjzfMk »), aussi cité par les sources de « Bienvenue » ; sa
  *     présentation (`presentation`, Markdown de quelques phrases ; demande du 2026-10-18 : « Étoffe un peu la présentation pour les liens Discord et
  *     Tipeee ») dit le texte d'accueil du propriétaire (« L'activité JDR se fait principalement sur le Discord officiel ») et docs/sources.md (« Les
@@ -154,12 +158,16 @@ export const ARTISANAT = gele({
  *   - L'encart : un titre fixe, l'annonce (table annonce, ligne `rencontre.annonce` : Markdown modifiable sur le site de dev, partie en production par la
  *     mise à jour) et le texte d'attente quand elle est vide (demande du propriétaire du 2026-10-18 : « Laisse également un encart « Notre prochaine
  *     rencontre IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent »).
- * `titre` : le libellé de la page dans le menu (lib/nav.mjs), qui nomme l'encart dans la note de version (lib/notes-de-version.mjs).
- * Les `id` (ancres « lien-discord », « lien-tipeee », « prochaine-rencontre ») sont ceux de l'ancienne page Liens : son adresse mène ici avec son ancre
- * (ADRESSES_DU_PLAN_PRECEDENT, page 404).
+ * `page` : l'id de l'accueil pour le mode modification du site de dev (noté au journal avec chaque enregistrement : components/edition/Edition.astro)
+ * et dans les avertissements des [[liens]] cassés ; ce n'est pas une page du wiki.
+ * `titre` : le titre de l'accueil (pages/index.astro, « Accueil », celui du fil d'Ariane), qui nomme l'encart dans la note de version
+ * (lib/notes-de-version.mjs : « Accueil › Notre prochaine rencontre IRL »).
+ * Les `id` (ancres « lien-discord », « lien-tipeee », « prochaine-rencontre ») sont ceux de l'ancienne page Liens, figés : les liens écrits dans
+ * Bienvenue et Rejoindre une partie y mènent (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse de la page Liens
+ * (/decouvrir/liens/) n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable.
  */
-export const SOUS_BIENVENUE = gele({
-  page: DECOUVRIR.accueil, titre: 'Bienvenue', liens: Object.freeze([
+export const LIENS_ET_RENCONTRE = gele({
+  page: 'accueil', titre: 'Accueil', liens: Object.freeze([
     gele({ id: 'discord', libelle: 'Serveur Discord « L’univers de Maverick »', url: 'https://discord.gg/GMGBnjzfMk', presentation:
       '« L’univers de Maverick » est le serveur Discord officiel du jeu : c’est là que se fait l’essentiel de l’activité de jeu de rôle. Plusieurs de ses salons donnent aussi les liens vers les documents de règles et de lore dont ce site est tiré.',
     }),
@@ -213,12 +221,11 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => `${cheminDe(PAGES
 /**
  * Les adresses du plan précédent (livres Découvrir et Les bases, 2026-10-18) qui ont changé, hors pages absorbées : adresse → page qui y est maintenant.
  * « « Campagne » ou « Scénario one shot » ? » était la dernière page de Découvrir ; elle est dans le Guide du MJ. (/regles/ reste une adresse : le
- * sommaire des Bases.) La page « Liens » (/decouvrir/liens/) est supprimée (réponse du propriétaire du 2026-10-22, « Supprimer la page » : « L'ancienne
- * adresse renverrait vers Bienvenue. ») : son contenu est sous le texte de Bienvenue (SOUS_BIENVENUE, mêmes ancres).
+ * sommaire des Bases.) La page « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, menait à Bienvenue jusqu'au 2026-10-23 ; elle n'est plus
+ * renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
  */
 export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({
   'decouvrir/campagne-ou-scenario-one-shot/': 'guide/campagne-ou-scenario-one-shot',
-  'decouvrir/liens/': 'guide/bienvenue',
 });
 
 const slugDe = (id) => id.slice(id.indexOf('/') + 1);
