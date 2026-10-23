@@ -728,6 +728,24 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   niveaux +1 à +N, AP, AM et crans écrits au niveau N, pour l'armure entière : R77 ; ses « Matériau » comptés sans prix, la source ne disant pas lequel
   des deux). Une armure particulière n'a que le prix de l'armure entière, et s'améliore aussi (R80). Les tableaux d'améliorations (armure, bouclier) n'ont plus de ligne TOTAL (demande du propriétaire, 2026-10-16, pour les
   armes : « La ligne "total" des amélioration est inutile »). Au bout du défilement du panneau, la molette fait défiler la page, comme pour les armes.
+- **Armures élémentaires** (décision R165 (2) à (4)) : **juste sous les deux tableaux de matériaux**, un double choix (boutons, `js-seul`) **« Élément »**
+  — les 14 magies de `armures.elementaires.magies`, dans l'ordre des colonnes de l'onglet « Pièces élémentaires » (Sang, Arcane, Corruption,
+  Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre), **jamais le Potentiel Illimité**, chacune dans la couleur de sa
+  magie (classe `couleur-magie-<clé>` posée par la page, `palette-css.mjs#classeDeMagie`) — et **« Poids »** — Vêtement, Léger, Intermédiaire, Lourd,
+  **jamais Familier** (les armures « Familier » restent dans la liste des armures particulières, inchangées). **Les deux choisis, les matériaux se
+  désélectionnent** et la fiche montre l'armure élémentaire `(poids, magie)` : son nom, son AP, son AM, ses effets écrits (`armure_elementaire_effet`),
+  sa **solidité** (4 de la constante `piece_elementaire.solidite_base`, plus le cran de la ligne de l'amélioration : 5 au +4 et au +5) et **aucun prix**
+  (tuile Coût « — inestimable », « inestimable » dans son infobulle). Le **tableau d'amélioration devient celui des armures élémentaires**
+  (`#ameliorations-armure-elementaire`, à la place de `#ameliorations-armure` : classe `est-elementaire` de la vue ; sans JavaScript, les deux se
+  suivent) : « Aucune » puis +1 à +5, quatre colonnes — le **coût de la ligne** tel qu'écrit, le **coût cumulé** (atteindre +N coûte les lignes +1 à +N :
+  au +2, « 2 gemmes communes + 2 gemmes raffinées » ; au +5, « 2 gemmes communes + 2 gemmes raffinées + 5 gemmes parfaites + 1 pièce élémentaire »),
+  l'**effet de la ligne**, sans cumul (au +5 : +10 AP/AM, +1 cran). Une fois l'élément choisi, chaque gemme est **nommée par la gemme de la magie**
+  (table `gemme`), avec la qualité écrite par la source : « 2 gemmes communes de Rubis », « 5 gemmes parfaites d’Améthyste » (forme choisie par
+  `tech-front` : le nom de la gemme en complément, sans accord à faire) ; la pièce du +5 s'écrit « 1 pièce élémentaire ». **Aucune conversion en RO**,
+  ni coût de transformation, ni métier. **Choisir de nouveau un matériau** (ou une armure de la liste) **vide le choix élément/poids**. Logique pure
+  (testée) dans `lib/armure-forge.mjs` : `ameliorationElementaire`, `coutElementaireEcrit`, `forgerArmureElementaire`, `choixDArmureApres` (le
+  basculement matériaux/élément). Les 56 armures sont rendues cachées (`[data-armures-elementaires]`), lues par le script. Adresse :
+  `?element-armure=<magie>&poids-armure=<poids>&amelioration-elementaire=<niveau>` (ex. `?element-armure=magie-du-feu&poids-armure=leger`).
 - **Boucliers** (demandes du propriétaire, 2026-10-16) : un tableau des **formes** (Bocle, Targe, Bouclier Rond, Écu, Pavois : classe, prix) et,
   **directement sous lui**, les **améliorations** (+1 à +5, **quatre colonnes** : Coût en RO, Matériaux — oui : 1 matériau de la matière, R76, acheté ou
   fourni —, AP supplémentaire — celui du niveau N —, Solidité — +1 cran ou non, **crans cumulés** — ; voir « Améliorations de bouclier » plus bas) ; à côté, le tableau des **matières** (fiche des matières pour boucliers). Une forme et une matière donnent le bouclier préfabriqué

@@ -5,6 +5,8 @@
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
 //   - une livraison refait la base vivante (serveur/base-vivante.mjs#transferer) : retirerLesManquants, APRÈS le rejeu du journal (un lot suivant peut
 //     créer ce qu'une fiche cite) et avant le contrôle des clés, noms lus dans l'ancienne base attachée (`ancienne`).
+// L'armure de la décision R165 (une armure et son « élément » d'avant, une armure « Familier », une armure élémentaire d'une magie absente, une armure
+// trop lourde) : retirerLesArmuresHorsRegle, à la reconstruction (après retirerLesManquants) et à l'enregistrement d'une fiche (serveur/fiches.mjs).
 // Puis noterLesRetraits écrit les notes, une seule fois par fiche. Un élément seulement modifié (renommé…) ne touche pas les fiches : elles n'en gardent
 // que l'identifiant, qui ne change jamais (migration 0006). Une race, une classe ou une magie disparue n'est pas retirée ici (non tranché : la
 // reconstruction reste bloquée), ni un don, une spécialité ou un sort dont la classe ou la magie a disparu (un sort d'une magie supprimée chez un
@@ -12,7 +14,10 @@
 // Les écritures dans les fiches se font en SQL direct, jamais par le rédacteur du journal (serveur/edition-journal.mjs#ouvrirLot, qui les refuse) : les
 // fiches ne vont ni au journal, ni dans data/rows. Elles restent dans la transaction de l'appelant (un lot refusé, une reconstruction bloquée les annulent).
 // Node seulement, sans dépendance : n'importe que le format des fiches (ni edition.mjs ni base-vivante.mjs, qui l'importent).
-import { ajouterAuxNotes, descriptionDuRetrait, ligneDeRetrait, ordreDesRetraits } from '../src/lib/fiche-format.mjs';
+import {
+  ajouterAuxNotes, armureTransformee, COLONNES_DE_L_ARMURE_DE_BASE, COLONNES_DE_L_ARMURE_ELEMENTAIRE, descriptionDuRetrait, ligneDeRetrait, ordreDesRetraits,
+  partiesEnTexte, POIDS_DES_ARMURES, POIDS_PORTABLE_MAX, TYPE_FAMILIER, valeurDuPoids,
+} from '../src/lib/fiche-format.mjs';
 
 /**
  * Les clés étrangères des fiches (section 13) vers les règles qu'un retrait concerne, et ce qu'on fait de la ligne qui cite : `vider` (la colonne passe à
@@ -265,6 +270,104 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
   // composants : l'objet reste sous son nom, sans lien au catalogue, avec une note (R60, OBJETS_AU_CATALOGUE)
   detacherLesManquantes(db, acc);
   return appliquer(db, aRetirer, acc);
+}
+
+/**
+ * Décision R165 (pièce élémentaire posée sur une armure) : l'armure d'une fiche qui ne suit pas les règles en est retirée, une ligne datée dans ses notes
+ * (descripteurs rangés dans `acc`, écrits par noterLesRetraits ; SQL direct dans `main`, comme les retraits de R42), dans cet ordre (celui de la migration
+ * 0080) :
+ *   1. une armure ET une armure élémentaire (une fiche d'avant : l'« élément » posé sur l'armure, R95) : « l'élément devient l'armure, avec l'amélioration
+ *      de l'élément » (R165 (8)) ; l'armure d'origine, son amélioration et la solidité de ses parties abîmées sont notées (armureTransformee), ses parties
+ *      supprimées : l'armure élémentaire repart à son maximum ;
+ *   2. une armure « Familier » (R165 (1) : « à mettre à part », jamais sur une fiche de personnage) ;
+ *   3. une armure élémentaire d'une magie que le personnage n'a pas, ni en innée ni en acquise (« il est nécessaire de posséder la magie », R165 (5) ;
+ *      une fiche sans magie innée ne l'a pas) ;
+ *   4. avec `poidsPortable` seulement, une armure trop lourde (R165 (7)) : son poids (POIDS_DES_ARMURES : armure.type, armure_elementaire.categorie)
+ *      dépasse le poids portable du personnage. `poidsPortable(db, id)` rend ce poids (0 à POIDS_PORTABLE_MAX ; au-delà, POIDS_PORTABLE_MAX) ou null
+ *      quand on ne sait pas le dire (rien n'est retiré). La reconstruction (serveur/base-vivante.mjs) et l'enregistrement (serveur/fiches.mjs) y passent
+ *      le calcul du moteur de la fiche lu dans la base (lib/poids-portable-db.mjs#poidsPortableDeLaBase) ; sans lui, l'étape n'est pas faite.
+ * Une armure retirée emporte son amélioration et ses parties. `personnage` : une seule fiche (l'enregistrement, serveur/fiches.mjs), sinon toutes (la
+ * reconstruction de la base vivante, après le rejeu : les règles sont alors celles d'aujourd'hui). Les noms se lisent dans `main`, puis dans l'ancienne
+ * base quand elle est attachée (`ancienne` : une armure d'origine que les nouvelles règles n'ont plus) ; à défaut, l'identifiant. Idempotente : une
+ * fiche conforme n'est pas touchée.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {Map} acc nouveauxRetraitsDeFiches()
+ * @param {{ personnage?: string | null, poidsPortable?: ((db: import('node:sqlite').DatabaseSync, id: string) => number | null) | null }} [options]
+ */
+export function retirerLesArmuresHorsRegle(db, acc = nouveauxRetraitsDeFiches(), { personnage = null, poidsPortable = null } = {}) {
+  const bases = db.prepare('PRAGMA database_list').all().map((b) => b.name).filter((b) => b === 'main' || b === 'ancienne');
+  const premier = (sql) => {
+    const requetes = bases.map((b) => db.prepare(sql.replaceAll('<base>', b)));
+    return (id) => {
+      for (const r of requetes) {
+        const l = r.get(id);
+        if (l) return Object.values(l)[0];
+      }
+      return null;
+    };
+  };
+  const noms = {
+    armure: premier('SELECT nom FROM <base>.armure WHERE id = ?'),
+    armureElementaire: premier('SELECT nom FROM <base>.armure_elementaire WHERE id = ?'),
+    emplacement: premier('SELECT nom FROM <base>.armure_emplacement WHERE id = ?'),
+    amelioration: premier('SELECT niveau FROM <base>.amelioration_equipement WHERE id = ?'),
+  };
+  // une base vivante d'avant (le service y retombe si la reconstruction échoue : serveur/fiches.mjs) peut ne pas avoir l'armure de la fiche (migration
+  // 0055) : rien à faire sans ses colonnes ; sans la table des parties, aucune partie
+  const colonnesDeLaFiche = db.prepare('PRAGMA main.table_info(personnage)').all().map((c) => c.name);
+  if (![...COLONNES_DE_L_ARMURE_DE_BASE, ...COLONNES_DE_L_ARMURE_ELEMENTAIRE].every((c) => colonnesDeLaFiche.includes(c))) return acc;
+  const avecParties = aLaTable(db, 'personnage_armure_partie');
+  const lireParties = avecParties ? db.prepare('SELECT emplacement_id, solidite FROM main.personnage_armure_partie WHERE personnage_id = ?') : null;
+  const parties = (id) => (lireParties ? lireParties.all(id).map((l) => ({ ...l })) : []);
+  const ou = personnage === null ? '' : ' AND p.id = ?';
+  const choisies = personnage === null ? [] : [personnage];
+  const retirer = (f, colonnes, descripteur) => {
+    db.prepare(`UPDATE main.personnage SET ${colonnes.map((c) => `"${c}" = NULL`).join(', ')} WHERE id = ?`).run(f.personnage);
+    if (avecParties) db.prepare('DELETE FROM main.personnage_armure_partie WHERE personnage_id = ?').run(f.personnage);
+    let e = acc.get(f.personnage);
+    if (!e) acc.set(f.personnage, (e = { personnage: f.personnage, nom: f.fiche, nature: f.nature, retraits: [] }));
+    e.retraits.push(descripteur);
+  };
+  // 1. l'armure et son « élément » : l'élément devient l'armure (les parties lues avant d'être supprimées)
+  for (const f of db.prepare(`SELECT ${champsDeFiche}, p.armure_id, p.armure_amelioration_id, p.armure_elementaire_id, p.armure_amelioration_elementaire_id
+    FROM main.personnage p WHERE p.armure_id IS NOT NULL AND p.armure_elementaire_id IS NOT NULL${ou} ORDER BY p.id`).all(...choisies)) {
+    retirer(f, COLONNES_DE_L_ARMURE_DE_BASE, armureTransformee({ ...f, armure_parties: parties(f.personnage) }, noms).retrait);
+  }
+  // 2. une armure « Familier »
+  for (const f of db.prepare(`SELECT ${champsDeFiche}, p.armure_id, p.armure_amelioration_id, a.nom AS armure FROM main.personnage p
+    JOIN main.armure a ON a.id = p.armure_id WHERE a.type = ?${ou} ORDER BY p.id`).all(TYPE_FAMILIER, ...choisies)) {
+    const d = { nature: 'armure_familier', id: f.armure_id, nom: f.armure, amelioration: noms.amelioration(f.armure_amelioration_id), parties: partiesEnTexte(parties(f.personnage), noms) };
+    retirer(f, COLONNES_DE_L_ARMURE_DE_BASE, d);
+  }
+  // 3. une armure élémentaire d'une magie que le personnage n'a pas (ni innée ni acquise)
+  for (const f of db.prepare(`SELECT ${champsDeFiche}, p.armure_elementaire_id AS id, p.armure_amelioration_elementaire_id AS amelioration_id, e.nom AS armure,
+      coalesce(m.nom, e.magie_id) AS magie
+    FROM main.personnage p JOIN main.armure_elementaire e ON e.id = p.armure_elementaire_id LEFT JOIN main.magie m ON m.id = e.magie_id
+    WHERE e.magie_id IS NOT p.magie_innee_id AND e.magie_id IS NOT p.magie_acquise_id${ou} ORDER BY p.id`).all(...choisies)) {
+    const d = { nature: 'armure_magie_absente', id: f.id, nom: f.armure, amelioration: noms.amelioration(f.amelioration_id), parties: partiesEnTexte(parties(f.personnage), noms), magie: f.magie };
+    retirer(f, COLONNES_DE_L_ARMURE_ELEMENTAIRE, d);
+  }
+  // 4. une armure trop lourde pour le poids portable (le calcul du moteur de la fiche, quand il est branché)
+  if (typeof poidsPortable === 'function') {
+    for (const f of db.prepare(`SELECT ${champsDeFiche}, p.armure_id, p.armure_amelioration_id, a.nom AS armure, a.type, p.armure_elementaire_id,
+        p.armure_amelioration_elementaire_id, e.nom AS elementaire, e.categorie
+      FROM main.personnage p LEFT JOIN main.armure a ON a.id = p.armure_id LEFT JOIN main.armure_elementaire e ON e.id = p.armure_elementaire_id
+      WHERE (p.armure_id IS NOT NULL OR p.armure_elementaire_id IS NOT NULL)${ou} ORDER BY p.id`).all(...choisies)) {
+      const lu = poidsPortable(db, f.personnage);
+      if (!Number.isInteger(lu)) continue;
+      const portable = Math.max(0, Math.min(POIDS_PORTABLE_MAX, lu));
+      const elementaire = f.armure_elementaire_id !== null;
+      const poids = valeurDuPoids(elementaire ? f.categorie : f.type);
+      if (poids === null || poids <= portable) continue;
+      const d = {
+        nature: 'armure_trop_lourde', id: elementaire ? f.armure_elementaire_id : f.armure_id, nom: elementaire ? f.elementaire : f.armure, elementaire,
+        amelioration: noms.amelioration(elementaire ? f.armure_amelioration_elementaire_id : f.armure_amelioration_id), parties: partiesEnTexte(parties(f.personnage), noms),
+        poids: POIDS_DES_ARMURES[poids], portable: POIDS_DES_ARMURES[portable],
+      };
+      retirer(f, elementaire ? COLONNES_DE_L_ARMURE_ELEMENTAIRE : COLONNES_DE_L_ARMURE_DE_BASE, d);
+    }
+  }
+  return acc;
 }
 
 /**

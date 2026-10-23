@@ -1,7 +1,13 @@
 // Moteur de la fiche de personnage (page /fiche/) : ce qui se CALCULE à partir des choix d'une fiche (format de lib/fiche-format.mjs) et des
-// règles de la base (/fiche/regles.json, lib/fiche-regles.mjs). Fonctions pures, sans dépendance : importé par le navigateur.
+// règles de la base (/fiche/regles.json, lib/fiche-regles.mjs). Fonctions pures, sans autre dépendance que le format des fiches (lib/fiche-format.mjs,
+// pur lui aussi : les poids d'armure et les descripteurs de retrait de la décision R165) : importé par le navigateur.
 // Chaque formule cite sa source ; aucune n'est déduite. Les contrôles qui font foi sont ceux de la base (v_personnage_controle, rendus par le
 // service à chaque enregistrement) : ici, les compteurs et les bornes affichés pendant la saisie, calculés de la même façon.
+
+import {
+  armureTransformee, COLONNES_DE_L_ARMURE_DE_BASE, COLONNES_DE_L_ARMURE_ELEMENTAIRE, deuxArmures, partiesEnTexte, POIDS_DES_ARMURES, POIDS_PORTABLE_MAX,
+  valeurDuPoids,
+} from './fiche-format.mjs';
 
 const constante = (regles, id) => {
   const v = regles.constantes[id];
@@ -367,8 +373,9 @@ export function entrainementsAEnregistrer(fiche) {
  * Les bonus d'acquis écrits dans les dons débloqués de la fiche (décision R104, réponse « Lus dans les dons » : lib/acquis-texte.mjs) — dons de classe
  * passifs (donsAcquis ; guide « Capacités/Dons » : « Passif : Don qui est toujours effectif », un don actif se déclare), dons de race de son ethnie et
  * la ligne de son ethnie dans le tableau de la race (donsDeRace : « Bonus compétence » du Drakos) — et dans l'effet de l'armure portée (« Les bonus de
- * race/classe/don/équipement vont dans la case Acquis », guide « Fiche de personnage : Compétences » ; une armure transformée par un élément a perdu ses
- * bonus d'origine : décision R99 ; une armure à cran uni tombée à 0 n'en donne plus aucun : décisions R157, R158, armureCassee, raison 'armure_cassee') :
+ * race/classe/don/équipement vont dans la case Acquis », guide « Fiche de personnage : Compétences » ; une armure de base seulement : l'armure élémentaire
+ * qu'une pièce élémentaire en a faite n'a plus rien d'elle, décisions R99, R165 (1), et ses effets n'écrivent aucun acquis ; une armure à cran uni tombée
+ * à 0 n'en donne plus aucun : décisions R157, R158, armureCassee, raison 'armure_cassee') :
  * { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
  * (« Son acquis max en Social est augmenté de +20 »), jets: Map(caracteristique_id → [{ nom, valeur }]) (« +5% à tout jet impliquant la Perception » :
  * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), artisanat: [{ nom, valeur }]
@@ -403,21 +410,20 @@ export function acquisDesDons(regles, fiche) {
   const competences = new Set(regles.competences.map((k) => k.id));
   const sansArtisanat = !trouver(regles.metiers ?? [], fiche.metier_id)?.artisanat;
   const race = donsDeRace(regles, fiche);
-  const armure = trouver(regles.armures ?? [], fiche.armure_id);
+  const portee = armureDeLaFiche(regles, fiche);
+  const armure = portee && !portee.elementaire ? portee.armure : null;
   const sources = [
     ...donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.type === 'passif').map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis, classe: c.classe }))),
     ...race.dons.map((d) => ({ id: d.id, nom: d.nom ?? d.etiquette ?? 'Don de race', acquis: d.acquis })),
     ...(race.tableau ? [{ id: sourceDuTableau(fiche), nom: race.tableau.titre ?? 'Selon l’ethnie', acquis: race.tableau.acquis }] : []),
-    ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, element: Boolean(fiche.armure_elementaire_id), cassee: armureCassee(regles, fiche) }] : []),
+    ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, cassee: armureCassee(regles, fiche) }] : []),
   ];
   for (const source of sources) {
     let rang = 0;
     for (const b of source.acquis ?? []) {
-      // décision R99 : l'armure transformée par un élément perd ses bonus d'origine
-      if (source.element) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'element', texte: b.texte ?? null });
       // décisions R157, R158 : une armure à cran de solidité uni tombée à 0 ne donne plus aucun de ses effets (« Le bonus ne marche plus tant que l'armure
       // n'est pas réparée ») — valeurs, choix, plafonds, jets, artisanat ; le choix enregistré reste (acquisChoixValables) et recompte une fois réparée
-      else if (source.cassee) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'armure_cassee', texte: b.texte ?? null });
+      if (source.cassee) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'armure_cassee', texte: b.texte ?? null });
       else if (b.plafond) {
         if (!plafonds.has(b.caracteristique_id)) plafonds.set(b.caracteristique_id, []);
         plafonds.get(b.caracteristique_id).push({ nom: source.nom, valeur: b.plafond });
@@ -1525,14 +1531,19 @@ export function presentationDuCompteurDeMaitrise(compteur, sources) {
  * choisie dans le tiroir (personnage_resistance_choix), comptée une fois choisie ; et sauf une magie au choix ou tirée (décision R137 : Ocultomancien
  * « Résilience », Anansi d'Arcane, sans l'Arcane ni la Corruption), la magie choisie de même, avec l'altération d'état de cette magie quand le don
  * l'écrit ; `aChoisir` : [{ source, rang, nom, crans, options (etat_id, ou magie_id quand `magie`), magie, alteration, choisi, fait }]. Les
- * accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
+ * accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54), et l'armure élémentaire portée (décisions R165, R166 : ses effets
+ * écrits, `regles.armures_elementaires[].resistances` — « +1 cran de résistance au Feu », l'Arcane et la Corruption tels qu'écrits, « immunité à la
+ * brûlure » —, comme un accessoire, origine « <nom> (armure élémentaire) » ; toujours, même avec des parties à 0 : R158 ne la vise pas, Q57 est ouverte),
+ * pas encore le reste de l'équipement (armure de base, bouclier).
  * Flagelleur (décision R163) : « Punis-moi ... » donne +1 cran à chaque altération de la liste de résistances de la magie innée, en plus des crans de
  * la magie ; « ... plus fort ! » retire, après tous les autres crans, les crans négatifs des altérations de sa liste de faiblesses (les positifs
- * restent, une ligne ramenée à 0 disparaît) ; pour un personnage du Potentiel Illimité, la magie tirée au D14 par le MJ (un choix de `aChoisir`,
- * `remplaceMagieInnee`, sans `crans`, parmi les 14 magies) tient lieu de magie innée pour ces deux dons seulement, rien tant qu'elle n'est pas choisie.
+ * restent, ceux de l'armure élémentaire compris, R166 ; une ligne ramenée à 0 disparaît) ; pour un personnage du Potentiel Illimité, la magie tirée au
+ * D14 par le MJ (un choix de `aChoisir`, `remplaceMagieInnee`, sans `crans`, parmi les 14 magies) tient lieu de magie innée pour ces deux dons
+ * seulement, rien tant qu'elle n'est pas choisie (elle n'ouvre aucune armure élémentaire : armuresProposees, R165).
  * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
  * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
- * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
+ * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie, les accessoires et l'armure élémentaire (un effet
+ * d'équipement, R166, même quand sa magie est la magie désactivée) restent. `desactivee` : cette magie
  * ({ id, nom }), null sinon. `options.avecLaPosture` (vrai par défaut, la page) : faux, la posture du moment est ignorée, aucune magie n'est
  * désactivée (l'export en tableur, qui écrit les valeurs de la fiche, pas celles de la posture : docs/character-generator.md, « Export »).
  * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], aChoisir, desactivee }
@@ -1611,6 +1622,10 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
     if (e.cible !== 'resistance' || !e.valeur) continue;
     compter({ type: trouver(regles.magies, e.cible_id) ? 'magie' : 'etat', id: e.cible_id, crans: e.valeur }, `${e.nom} (accessoire)`);
   }
+  // l'armure élémentaire portée (décisions R165, R166, « Le compter dans ce lot ») : ses crans s'additionnent comme ceux d'un accessoire, une immunité
+  // écrite prévaut ; jamais retirés par une partie à 0 (armureCassee n'est pas lue) ni par la Symbiose (effet d'équipement)
+  const elementaire = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+  if (elementaire) for (const e of elementaire.resistances?.effets ?? []) compter(e, `${elementaire.nom} (armure élémentaire)`);
 
   // « ... plus fort ! » (décision R163) : après tous les crans (magies, dons, accessoires maudits compris), une altération de la liste de faiblesses de la
   // magie innée (ou tirée) perd ses crans négatifs, quelle qu'en soit l'origine, et garde les positifs (« +1 et −2 donnent +1 ») ; une origine de plus,
@@ -2205,50 +2220,216 @@ export function armesValables(regles, fiche) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
+// Poids portable (décision R165 (6)) : « un enum numérique. 0=Vêtement 1= Léger 2=Intermédiaire 3=Lourd » (lib/fiche-format.mjs#POIDS_DES_ARMURES), qui
+// filtre la liste des armures de la fiche, de base comme élémentaires (armuresProposees) ; une armure plus lourde est retirée et notée (retraitsDeLArmureHorsListe).
+// Tout se lit dans les textes des règles, jamais par le nom ou l'identifiant d'une classe, d'un don, d'une race ou d'une magie.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Un texte des règles prêt à lire : minuscules, apostrophes droites, espaces simples (« Maîtrise  les Armures Intermédiaires »). */
+const texteALire = (t) => String(t ?? '').toLowerCase().replace(/[’‘]/g, '\'').replace(/\s+/g, ' ');
+
+/**
+ * Le poids qu'écrit le texte d'un don (décision R165 (6) : « relevé par les dons débloqués qui écrivent un poids … la valeur écrite ») : « Maîtrise les
+ * armures lourdes », « Peut porter une armure lourde », « peut porter les armures lourdes » → 3 ; « Maîtrise les 3 armures » (Templier) → 3 ; « Maîtrise
+ * les armures intermédiaires », « Peut porter une armure intermédiaire » → 2 ; de même « légère » → 1. Le plus lourd écrit ; null sans poids écrit.
+ * « L'armure lourde ne ralentit plus », « L'armure ne ralentit pas lors de cette action » parlent du malus, pas du poids : null.
+ */
+export function poidsEcritDuDon(texte) {
+  const t = texteALire(texte);
+  const lus = [];
+  if (/\bma[iî]trise les 3 armures\b/.test(t)) lus.push(3);
+  for (const [mot, valeur] of [['lourdes?', 3], ['interm[ée]diaires?', 2], ['l[ée]g[èe]res?', 1]]) {
+    if (new RegExp(`\\b(?:ma[iî]trise|peut porter) (?:une|les) armures? ${mot}(?![a-zàâäéèêëîïôöûüç])`).test(t)) lus.push(valeur);
+  }
+  return lus.length ? Math.max(...lus) : null;
+}
+
+/** Vrai si le don de race écrit la catégorie d'armure en plus du Nain (R165 (6) : « Peut porter une catégorie supérieure d'armure selon les classes »). */
+const categorieEnPlus = (texte) => /\bpeut porter une cat[ée]gorie sup[ée]rieure d'armure\b/.test(texteALire(texte));
+/** Le poids au plus qu'écrit une magie (R165 (6), Potentiel Illimité : « Impossible de porter des armures lourdes … même si la classe vous le permet ») ; null sinon. */
+const plafondEcrit = (texte) => (/\bimpossible de porter des armures lourdes\b/.test(texteALire(texte)) ? valeurDuPoids('Lourd') - 1 : null);
+
+/**
+ * Le poids portable à partir des textes (décision R165 (6)), dans cet ordre :
+ *   1. la base : le plus grand poids de la « Maîtrise Armures » des classes prises (`classes` : leurs `valeur_max`, classe_maitrise_armure.poids_max lu par
+ *      lib/fiche-format.mjs#valeurDuPoids) ; 0 sans armure écrite (Mage, Mage Vert, Ocultomancien, Flagelleur, Archimage : « la case ne nomme aucune armure ») ;
+ *   2. les dons débloqués qui écrivent un poids le relèvent à la valeur écrite (`dons` : leurs textes, poidsEcritDuDon) ;
+ *   3. +1 quand un don de la race l'écrit (`donsDeRace` : « Peut porter une catégorie supérieure d'armure selon les classes », Nain : « +1 dons compris ») ;
+ *      l'ethnie pas encore choisie (`donsDesEthnies` : les dons de chaque ethnie de la race, une liste par ethnie), +1 aussi quand chaque ethnie a un don
+ *      qui l'écrit (réponse du propriétaire : « Oui, tout Nain (Recommandé) » ; « Les trois ethnies l'écrivent, c'est donc un trait de toute la race.
+ *      Évite qu'une fiche de Nain en cours de remplissage perde et note son armure avant le choix de l'ethnie. ») ; un don de forme 'unique' est déjà
+ *      dans `donsDeRace` ;
+ *   4. au moins le poids qu'écrivent les avantages de la race (`avantages` : Lamia, « peut porter une armure légère même si la classe l'interdit » → 1) ;
+ *   5. au plus 3 (POIDS_PORTABLE_MAX : « Si un calcul dépasse lourd (3+) rester à 3 au max ») ;
+ *   6. au plus le poids que permet la magie innée (`explicationInnee` : Potentiel Illimité, « Impossible de porter des armures lourdes » → 2), en dernier.
+ * Chaque texte est un texte sans balise du glossaire (lib/mots-cles-balises.mjs#texteSansBalises), seul ou { nom, texte } (le nom pour le détail) ; une
+ * classe, une valeur seule ou { nom, valeur }. Rend { valeur (0 à 3), poids (son nom), etapes: [{ texte, valeur }] (ce qui a compté, pour l'infobulle) }.
+ * @param {{ classes?: Array<number | null | { nom?: string, valeur: number | null }>, dons?: Array<string | { nom?: string, texte: string }>,
+ *   donsDeRace?: Array<string | { nom?: string, texte: string }>, donsDesEthnies?: { nom?: string, ethnies: Array<Array<string | { texte: string }>> } | null,
+ *   avantages?: string | { nom?: string, texte: string } | null, explicationInnee?: string | { nom?: string, texte: string } | null }} sources
+ */
+export function poidsPortableDesTextes({ classes = [], dons = [], donsDeRace = [], donsDesEthnies = null, avantages = null, explicationInnee = null } = {}) {
+  const lu = (x, cle) => (x !== null && typeof x === 'object' ? { nom: x.nom ?? null, [cle]: x[cle] } : { nom: null, [cle]: x });
+  const mot = (v) => POIDS_DES_ARMURES[v];
+  const etapes = [];
+  let valeur = 0;
+  let base = null;
+  for (const c of classes.map((x) => lu(x, 'valeur'))) {
+    if (Number.isInteger(c.valeur) && (base === null || c.valeur > base.valeur)) base = c;
+  }
+  if (base) valeur = Math.max(0, base.valeur);
+  etapes.push({ texte: base ? `${base.nom ? `${base.nom} : ` : ''}${mot(valeur)} (Maîtrise Armures de la classe)` : 'Aucune armure dans la Maîtrise Armures des classes : Vêtement', valeur });
+  for (const d of dons.map((x) => lu(x, 'texte'))) {
+    const v = poidsEcritDuDon(d.texte);
+    if (v !== null && v > valeur) {
+      valeur = v;
+      etapes.push({ texte: `${d.nom ?? 'Don'} : ${mot(v)}`, valeur });
+    }
+  }
+  const nain = donsDeRace.map((x) => lu(x, 'texte')).find((d) => categorieEnPlus(d.texte));
+  const ethnies = donsDesEthnies?.ethnies ?? [];
+  const toutesLesEthnies = !nain && ethnies.length > 0 && ethnies.every((e) => e.some((x) => categorieEnPlus(lu(x, 'texte').texte)));
+  if (nain || toutesLesEthnies) {
+    valeur += 1;
+    const nom = nain ? nain.nom ?? 'Don de race' : `${donsDesEthnies.nom ?? 'Race'} (toutes les ethnies)`;
+    etapes.push({ texte: `${nom} : une catégorie supérieure (+1)`, valeur });
+  }
+  const av = avantages === null ? null : lu(avantages, 'texte');
+  const auMoins = av ? poidsEcritDuDon(av.texte) : null;
+  if (auMoins !== null && auMoins > valeur) {
+    valeur = auMoins;
+    etapes.push({ texte: `${av.nom ?? 'Race'} : au moins ${mot(auMoins)}`, valeur });
+  }
+  if (valeur > POIDS_PORTABLE_MAX) {
+    valeur = POIDS_PORTABLE_MAX;
+    etapes.push({ texte: `${mot(POIDS_PORTABLE_MAX)} au plus`, valeur });
+  }
+  const magie = explicationInnee === null ? null : lu(explicationInnee, 'texte');
+  const auPlus = magie ? plafondEcrit(magie.texte) : null;
+  if (auPlus !== null && valeur > auPlus) {
+    valeur = auPlus;
+    etapes.push({ texte: `${magie.nom ?? 'Magie innée'} : ${mot(auPlus)} au plus (pas d’armure lourde)`, valeur });
+  }
+  return { valeur, poids: mot(valeur), etapes };
+}
+
+/**
+ * Le poids portable de la fiche (décision R165 (6)) : poidsPortableDesTextes avec ses classes prises (niveau de classe ≥ 1, classesDe ;
+ * `regles.classes[].maitrise_armures[].valeur_max`), ses dons de classe débloqués (donsAcquis : `effet`), les dons de sa race et de son ethnie (donsDeRace :
+ * `texte`) ; l'ethnie pas encore choisie, les dons de chaque ethnie de la race (`regles.ethnies` de la race, dans leur ordre ; `regles.races[].dons` de
+ * cette ethnie) ; les avantages de sa race (`regles.races[].avantages`) et l'explication de sa magie innée (`regles.magies[].explication`) : la vraie
+ * magie innée (`fiche.magie_innee_id`), jamais la magie tirée d'un don du Flagelleur (R163) ; un Potentiel Illimité garde donc son plafond à 2.
+ * { valeur, poids, etapes }
+ */
+export function poidsPortableDe(regles, fiche) {
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const innee = trouver(regles.magies ?? [], fiche.magie_innee_id);
+  const donsDesEthnies = race && !fiche.ethnie_id
+    ? { nom: race.nom, ethnies: (regles.ethnies ?? []).filter((e) => e.race_id === race.id)
+      .map((e) => (race.dons ?? []).filter((d) => Boolean(d.ethnie_id) && d.ethnie_id === e.id).map((d) => d.texte)) }
+    : null;
+  return poidsPortableDesTextes({
+    donsDesEthnies,
+    classes: classesDe(regles, fiche).filter((c) => c.classe && c.niveau >= 1)
+      .flatMap((c) => (c.classe.maitrise_armures ?? []).map((m) => ({ nom: c.classe.nom, valeur: m.valeur_max }))),
+    dons: donsAcquis(regles, fiche).flatMap((c) => c.dons.map((d) => ({ nom: `${d.nom} (${c.classe.nom})`, texte: d.effet }))),
+    donsDeRace: race ? donsDeRace(regles, fiche).dons.map((d) => ({ nom: `${race.nom}${d.etiquette ? ` (${d.etiquette})` : ''}`, texte: d.texte })) : [],
+    avantages: race?.avantages ? { nom: race.nom, texte: race.avantages } : null,
+    explicationInnee: innee?.explication ? { nom: innee.nom, texte: innee.explication } : null,
+  });
+}
+
+/** Le poids portable de la fiche, de 0 (Vêtement) à 3 (Lourd) : poidsPortableDe(regles, fiche).valeur (décision R165 (6)). */
+export const poidsPortable = (regles, fiche) => poidsPortableDe(regles, fiche).valeur;
+
+/** Le poids d'une armure de base (armure.type) ou élémentaire (armure_elementaire.categorie), de 0 à 3 ; null pour une armure « Familier » (R165 (1)). */
+export const poidsDeLArmure = (a) => (a ? valeurDuPoids(a.type ?? a.categorie) : null);
+
+/**
+ * Les armures que la fiche propose, en une seule liste (décision R165 (5)) : { portable, base: [{ poids, valeur, armures }] (les armures de base dont le
+ * poids est au plus le poids portable, par poids, jamais une armure « Familier »), elementaires: [{ magie, armures }] (les armures élémentaires des
+ * magies innée et acquise du personnage, « posséder la magie », au plus le poids portable, par poids ; aucune pour une magie qui n'en a pas : le
+ * Potentiel Illimité) }. `portable` : celui de la fiche par défaut (poidsPortable). Les magies lues sont `fiche.magie_innee_id` et
+ * `fiche.magie_acquise_id`, jamais la magie tirée par le MJ qui tient lieu de magie innée pour un don du Flagelleur (décision R163,
+ * resistancesDe().aChoisir[].remplaceMagieInnee) : elle ne sert qu'au calcul du don, un Potentiel Illimité n'a toujours aucune armure élémentaire (R165 (5)).
+ */
+export function armuresProposees(regles, fiche, portable = poidsPortable(regles, fiche)) {
+  const permise = (a) => {
+    const p = poidsDeLArmure(a);
+    return p !== null && p <= portable;
+  };
+  const base = POIDS_DES_ARMURES.slice(0, portable + 1).map((poids, valeur) => ({
+    poids, valeur, armures: (regles.armures ?? []).filter((a) => permise(a) && poidsDeLArmure(a) === valeur),
+  })).filter((g) => g.armures.length);
+  const magies = [...new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean))].map((m) => trouver(regles.magies ?? [], m)).filter(Boolean);
+  const elementaires = magies.map((magie) => ({
+    magie, armures: (regles.armures_elementaires ?? []).filter((a) => a.magie_id === magie.id && permise(a)).sort((a, b) => poidsDeLArmure(a) - poidsDeLArmure(b)),
+  })).filter((g) => g.armures.length);
+  return { portable, base, elementaires };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
 // Armure portée (décision R95, migration 0055 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme
 // pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque partie est à réparer individuellement pour remonter (utilisation d'un kit
-// de réparation ou métier adapté + matériau) 2) L'amélioration est pour l'armure complète ») : une armure complète (fiche.armure_id), son amélioration,
-// son élément et l'amélioration de l'élément ; la solidité du moment de chacune de ses six parties (fiche.armure_parties : une ligne par partie
-// abîmée, { emplacement_id, solidite }), ou d'elle seule pour une armure à solidité unifiée (emplacement « armure-complete »). La réparation (kit,
-// métier, matériau) n'est pas calculée : la solidité se remonte au curseur.
+// de réparation ou métier adapté + matériau) 2) L'amélioration est pour l'armure complète ») : UNE armure, de base (fiche.armure_id et son amélioration
+// fiche.armure_amelioration_id, cible « armure ») OU élémentaire (décision R165 : l'armure transformée par une pièce élémentaire, fiche.armure_elementaire_id,
+// et son amélioration fiche.armure_amelioration_elementaire_id, cible « armure_elementaire », +1 à +5), jamais les deux (une fiche d'avant qui porte les
+// deux est convertie : lib/fiche-format.mjs#armureTransformee, retraitsDeLArmureHorsListe) ; la solidité du moment de chacune de ses six parties
+// (fiche.armure_parties : une ligne par partie abîmée, { emplacement_id, solidite }), ou d'elle seule pour une armure à solidité unifiée (emplacement
+// « armure-complete »). La réparation (kit, métier, matériau) n'est pas calculée : la solidité se remonte au curseur.
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /** L'emplacement de la solidité d'une armure à solidité unifiée (personnage_armure_partie, décision R95), aussi l'« armure complète » de la fiche auto. */
 export const ARMURE_ENTIERE = 'armure-complete';
 
 /**
- * Solidité maximale de chaque partie de l'armure de la fiche, en crans (décision R95) : la solidité de l'armure (`regles.armures[].solidite`, la même sur
- * chaque partie : la fiche auto la recopie sur les six pièces) et les crans de son amélioration, ceux écrits au niveau choisi (décision R77 : « +1 cran au
- * +4 et au +5 » ; `regles.ameliorations[].bonus_cran`, une amélioration d'armure seulement). L'élément et l'amélioration de l'élément ne sont pas comptés, comme
- * pour une arme (question Q12 de docs/sql/a-valider.md, étendue aux armures : décision R95). null sans armure.
+ * L'armure que porte la fiche : null sans armure ; sinon { armure (la ligne de regles.armures ou de regles.armures_elementaires), elementaire,
+ * amelioration (celle de sa cible seulement, ou null) }. Une fiche d'avant qui porte les deux (R95) : l'armure élémentaire, que la conversion garde (R165 (8)).
  */
-export function soliditeMaxDeLArmure(regles, fiche) {
-  const armure = trouver(regles.armures, fiche?.armure_id);
+function armureDeLaFiche(regles, fiche) {
+  const elementaire = trouver(regles.armures_elementaires ?? [], fiche?.armure_elementaire_id);
+  const armure = elementaire ?? trouver(regles.armures ?? [], fiche?.armure_id);
   if (!armure) return null;
-  const amelioration = trouver(regles.ameliorations, fiche.armure_amelioration_id);
-  return Math.max(0, entier(armure.solidite) + (amelioration?.cible === 'armure' ? entier(amelioration.bonus_cran) : 0));
+  const a = trouver(regles.ameliorations ?? [], elementaire ? fiche.armure_amelioration_elementaire_id : fiche.armure_amelioration_id);
+  return { armure, elementaire: Boolean(elementaire), amelioration: a?.cible === (elementaire ? 'armure_elementaire' : 'armure') ? a : null };
 }
 
-/** Les emplacements qui ont une solidité pour l'armure `armure` (décision R95) : l'armure entière si elle est à solidité unifiée, sinon les six parties. */
+/**
+ * Solidité maximale de chaque partie de l'armure de la fiche, en crans. Une armure de base (décision R95) : sa solidité (`regles.armures[].solidite`, la
+ * même sur chaque partie : la fiche auto la recopie sur les six pièces) et les crans de son amélioration, ceux écrits au niveau choisi (décision R77 :
+ * « +1 cran au +4 et au +5 » ; `regles.ameliorations[].bonus_cran`). Une armure élémentaire (décision R165 (3) : « Chaque pièce élémentaire possède 4 crans
+ * de solidité/durabilité », « 4 crans, +1 au +4 et au +5, sur les six parties ») : la constante `piece_elementaire.solidite_base` et les crans de son
+ * amélioration (tableau élémentaire). Une amélioration d'une autre cible ne compte pas. null sans armure.
+ */
+export function soliditeMaxDeLArmure(regles, fiche) {
+  const a = armureDeLaFiche(regles, fiche);
+  if (!a) return null;
+  const base = a.elementaire ? entier(constante(regles, 'piece_elementaire.solidite_base')) : entier(a.armure.solidite);
+  return Math.max(0, base + entier(a.amelioration?.bonus_cran));
+}
+
+/**
+ * Les emplacements qui ont une solidité pour l'armure `armure` (décision R95) : l'armure entière si elle est à solidité unifiée, sinon les six parties
+ * (toujours pour une armure élémentaire, R165 (3)).
+ */
 function emplacementsDeSolidite(regles, armure) {
   if (Number(armure?.solidite_uni) === 1) return (regles.emplacements_armure ?? []).filter((e) => e.id === ARMURE_ENTIERE);
   return (regles.emplacements_armure ?? []).filter((e) => e.id !== ARMURE_ENTIERE);
 }
 
 /**
- * Les parties de l'armure de la fiche, pour leurs curseurs (décision R95) : null sans armure ; sinon { armure, uni, max, detail: [{ nom, valeur }],
- * parties: [{ emplacement_id, nom, actuelle, cassee }] } — les six parties (casque, torse, bras, jambes), ou la seule armure entière (« Armure
- * entière ») pour une armure à solidité unifiée ; `actuelle` de 0 au maximum (sans ligne enregistrée : le maximum), `cassee` à 0 ; `detail` : la
- * solidité de l'armure et les crans de son amélioration.
+ * Les parties de l'armure de la fiche, pour leurs curseurs (décisions R95, R165 (3)) : null sans armure ; sinon { armure, elementaire, uni, max, detail:
+ * [{ nom, valeur }], parties: [{ emplacement_id, nom, actuelle, cassee }] } — les six parties (casque, torse, bras, jambes), ou la seule armure entière
+ * (« Armure entière ») pour une armure à solidité unifiée ; `actuelle` de 0 au maximum (sans ligne enregistrée : le maximum), `cassee` à 0 ; `detail` : la
+ * solidité de l'armure (celle d'une pièce élémentaire pour une armure élémentaire) et les crans de son amélioration.
  */
 export function partiesDeLArmure(regles, fiche) {
   const max = soliditeMaxDeLArmure(regles, fiche);
   if (max === null) return null;
-  const armure = trouver(regles.armures, fiche.armure_id);
+  const { armure, elementaire, amelioration } = armureDeLaFiche(regles, fiche);
   const uni = Number(armure.solidite_uni) === 1;
-  const amelioration = trouver(regles.ameliorations, fiche.armure_amelioration_id);
-  const detail = [{ nom: armure.nom, valeur: entier(armure.solidite) }];
-  if (amelioration?.cible === 'armure' && entier(amelioration.bonus_cran)) detail.push({ nom: `Amélioration niveau ${amelioration.niveau}`, valeur: entier(amelioration.bonus_cran) });
+  const detail = [{ nom: armure.nom, valeur: elementaire ? entier(constante(regles, 'piece_elementaire.solidite_base')) : entier(armure.solidite) }];
+  if (entier(amelioration?.bonus_cran)) detail.push({ nom: `Amélioration niveau ${amelioration.niveau}`, valeur: entier(amelioration.bonus_cran) });
   const lignes = fiche.armure_parties ?? [];
   const parties = emplacementsDeSolidite(regles, armure).map((e) => {
     const l = lignes.find((x) => x.emplacement_id === e.id);
@@ -2257,14 +2438,14 @@ export function partiesDeLArmure(regles, fiche) {
     const actuelle = enregistree === null ? max : Math.min(max, Math.max(0, enregistree));
     return { emplacement_id: e.id, nom: uni ? 'Armure entière' : e.nom, actuelle, cassee: actuelle === 0 };
   });
-  return { armure, uni, max, detail, parties };
+  return { armure, elementaire, uni, max, detail, parties };
 }
 
 /**
  * Vrai si l'armure de la fiche est cassée au sens des décisions R157 et R158 (« Cassée, l'armure ne donne plus aucun de ses effets, bonus comme malus,
  * jusqu'à sa réparation ») : une armure à cran de solidité uni (`regles.armures[].solidite_uni = 1`) dont la solidité du moment vaut 0
- * (partiesDeLArmure : `uni` et `parties[0].cassee`). Une armure élémentaire se juge sur l'armure portée (fiche.armure_id), dont elle prend la solidité
- * (R95). Une armure à six parties ne l'est jamais : seules ses parties à 0 perdent leur AP et leur AM (R108 : armureParPartie). Faux sans armure.
+ * (partiesDeLArmure : `uni` et `parties[0].cassee`). Une armure à six parties ne l'est jamais, une armure élémentaire non plus (R165 : six parties) :
+ * seules ses parties à 0 perdent leur AP et leur AM (R108 : armureParPartie). Faux sans armure.
  */
 export function armureCassee(regles, fiche) {
   const a = partiesDeLArmure(regles, fiche);
@@ -2280,7 +2461,7 @@ export function partiesValables(regles, fiche) {
   const max = soliditeMaxDeLArmure(regles, fiche);
   if (max === null) return [];
   const lignes = fiche.armure_parties ?? [];
-  return emplacementsDeSolidite(regles, trouver(regles.armures, fiche.armure_id)).flatMap((e) => {
+  return emplacementsDeSolidite(regles, armureDeLaFiche(regles, fiche).armure).flatMap((e) => {
     const v = lignes.find((x) => x.emplacement_id === e.id)?.solidite;
     if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return [];
     const crans = Math.max(0, Math.round(Number(v)));
@@ -2310,24 +2491,15 @@ export function partiesDuCorps(regles) {
 }
 
 /**
- * Ce que l'armure portée donne en AP et en AM (décision R98) : null sans armure ; sinon { element (l'armure élémentaire portée, ou null), ap, am, detail:
- * { ap: [{ nom, valeur }], am: [{ nom, valeur }] } } — l'armure et son amélioration au niveau choisi (R77) ; avec un élément, l'armure élémentaire et son
- * amélioration à la place (R99 : page « Pièces élémentaires », « Tous les bonus d'origine de l'arme ou de l'armure sont perdus, remplacés par les
- * nouvelles propriétés magiques apportées par la pièce »). Une valeur nulle n'est pas dans le détail.
+ * Ce que l'armure portée donne en AP et en AM (décision R98) : null sans armure ; sinon { armure, element (l'armure élémentaire portée, ou null), ap, am,
+ * detail: { ap: [{ nom, valeur }], am: [{ nom, valeur }] } } — l'armure et son amélioration au niveau choisi (R77) ; une armure élémentaire, la sienne et
+ * celle de son amélioration du tableau élémentaire (R99, R165 (2) : « effet de la ligne du niveau atteint »). Une valeur nulle n'est pas dans le détail.
  */
 function armurePortee(regles, fiche) {
-  const armure = trouver(regles.armures ?? [], fiche.armure_id);
-  if (!armure) return null;
-  const element = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
-  const amelioration = (cible, id) => {
-    const a = trouver(regles.ameliorations ?? [], id);
-    return a?.cible === cible ? a : null;
-  };
-  const porte = element
-    ? [[`Élément : ${element.nom}`, element], [null, amelioration('armure_elementaire', fiche.armure_amelioration_elementaire_id)]]
-    : [[armure.nom, armure], [null, amelioration('armure', fiche.armure_amelioration_id)]];
+  const a = armureDeLaFiche(regles, fiche);
+  if (!a) return null;
   const detail = { ap: [], am: [] };
-  for (const [nom, x] of porte) {
+  for (const [nom, x] of [[a.armure.nom, a.armure], [null, a.amelioration]]) {
     if (!x) continue;
     const libelle = nom ?? `Amélioration niveau ${x.niveau}`;
     const ap = entier(x.ap ?? x.bonus_ap);
@@ -2336,13 +2508,13 @@ function armurePortee(regles, fiche) {
     if (am) detail.am.push({ nom: libelle, valeur: am });
   }
   const somme = (lignes) => lignes.reduce((t, l) => t + l.valeur, 0);
-  return { armure, element: element ?? null, ap: somme(detail.ap), am: somme(detail.am), detail };
+  return { armure: a.armure, element: a.elementaire ? a.armure : null, ap: somme(detail.ap), am: somme(detail.am), detail };
 }
 
 /**
  * L'AP et l'AM de l'armure portée sur chacune des six parties du corps (décision R108 : « Les AP . AM de chaque partie sont donc soit à 0 soit à la
  * valeur de l'armure ») : null sans armure ; sinon [{ id, nom, cassee, ap, am }] dans l'ordre de partiesDuCorps — la valeur de l'armure portée
- * (armurePortee : l'armure et son amélioration, ou l'élément et la sienne, R99), ou 0 quand la partie est cassée (solidité 0, partiesDeLArmure). Une
+ * (armurePortee : l'armure et son amélioration, de base ou élémentaire), ou 0 quand la partie est cassée (solidité 0, partiesDeLArmure). Une
  * armure à solidité unifiée (R95 : « Si un cran de solidité est perdu, c'est TOUTE l'armure qui est abimée ») n'a qu'une solidité : à 0, ses six
  * parties sont cassées. Seule la part de l'armure : la base, les accessoires et la posture ne tombent jamais (« le reste demeure » : defenseDe).
  */
@@ -2357,23 +2529,96 @@ export function armureParPartie(regles, fiche) {
 }
 
 /**
- * Les colonnes de l'armure de la fiche après le choix de `champ` (armure_id, armure_amelioration_id, armure_elementaire_id,
- * armure_amelioration_elementaire_id) à `valeur` : { armure_id, armure_amelioration_id, armure_elementaire_id, armure_amelioration_elementaire_id,
- * armure_parties }. Une autre armure est neuve (ses parties à leur maximum : comme une autre arme, R74) ; sans armure, ni amélioration ni élément ; une
- * autre amélioration borne les parties abîmées au nouveau maximum (partiesValables).
+ * Les colonnes de l'armure de la fiche après le choix de `champ` à `valeur` : { armure_id, armure_amelioration_id, armure_elementaire_id,
+ * armure_amelioration_elementaire_id, armure_parties }. `champ` : « armure », la liste unique de la page (décision R165 (5) : l'identifiant d'une armure
+ * de base ou élémentaire, rangé dans sa colonne), « armure_id » ou « armure_elementaire_id » (l'une remplace l'autre : une fiche ne porte qu'une armure),
+ * « armure_amelioration_id » ou « armure_amelioration_elementaire_id » (l'amélioration de l'armure portée). Une autre armure est neuve (ses parties à leur
+ * maximum : comme une autre arme, R74) ; une armure de l'autre genre perd l'amélioration de l'ancienne (ses améliorations sont d'un autre tableau) ; sans
+ * armure, aucune amélioration ; une autre amélioration borne les parties abîmées au nouveau maximum (partiesValables).
  */
 export function armureApresChoix(regles, fiche, champ, valeur) {
   const v = valeur === '' || valeur === undefined ? null : valeur;
-  const apres = {
+  const avant = {
     armure_id: fiche.armure_id ?? null, armure_amelioration_id: fiche.armure_amelioration_id ?? null,
     armure_elementaire_id: fiche.armure_elementaire_id ?? null, armure_amelioration_elementaire_id: fiche.armure_amelioration_elementaire_id ?? null,
-    armure_parties: fiche.armure_parties ?? [],
-    [champ]: v,
   };
-  if (champ === 'armure_id' && v !== (fiche.armure_id ?? null)) apres.armure_parties = [];
-  if (!apres.armure_id) Object.assign(apres, { armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_parties: [] });
+  const apres = { ...avant, armure_parties: fiche.armure_parties ?? [] };
+  let colonne = champ;
+  if (champ === 'armure') colonne = v === null ? null : trouver(regles.armures_elementaires ?? [], v) ? 'armure_elementaire_id' : 'armure_id';
+  if (champ === 'armure' && v === null) Object.assign(apres, { armure_id: null, armure_elementaire_id: null });
+  else if (colonne === 'armure_id') Object.assign(apres, { armure_id: v, armure_elementaire_id: null, armure_amelioration_elementaire_id: null });
+  else if (colonne === 'armure_elementaire_id') Object.assign(apres, { armure_elementaire_id: v, armure_id: null, armure_amelioration_id: null });
+  else apres[colonne] = v;
+  if (apres.armure_id !== avant.armure_id || apres.armure_elementaire_id !== avant.armure_elementaire_id) apres.armure_parties = [];
+  if (!apres.armure_id) apres.armure_amelioration_id = null;
+  if (!apres.armure_elementaire_id) apres.armure_amelioration_elementaire_id = null;
   apres.armure_parties = partiesValables(regles, apres);
   return apres;
+}
+
+/**
+ * Les retraits de l'armure de la fiche (décision R165 (7), « Retirer et noter » ; R165 (8) pour une fiche d'avant), dans l'ordre du service
+ * (serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle) et de la migration 0080 :
+ *   1. une armure ET une armure élémentaire (l'« élément » de R95) : l'élément devient l'armure, avec son amélioration ; l'armure d'origine notée
+ *      (lib/fiche-format.mjs#armureTransformee), ses parties à leur maximum ;
+ *   2. une armure « Familier » (R165 (1) : jamais sur une fiche de personnage) ;
+ *   3. une armure élémentaire d'une magie que le personnage n'a pas, ni en innée ni en acquise ;
+ *   4. une armure plus lourde que le poids portable (`portable`, poidsPortable par défaut ; y compris quand il baisse : classe, don, race changés).
+ * Rend null quand l'armure est dans la liste (armuresProposees) ; sinon { colonnes (l'armure, son amélioration et ses parties après les retraits :
+ * armure_id, armure_amelioration_id, armure_elementaire_id, armure_amelioration_elementaire_id, armure_parties), retraits (les descripteurs des lignes de
+ * note, natures `armure_*` de lib/fiche-format.mjs#NATURES_DE_L_ARMURE : `ligneDeRetrait(d, instant)` en écrit le texte, le même que le service) }.
+ */
+export function retraitsDeLArmureHorsListe(regles, fiche, { portable = null } = {}) {
+  const nomDe = (liste, x) => trouver(liste ?? [], x)?.nom ?? null;
+  const noms = {
+    armure: (x) => nomDe(regles.armures, x), armureElementaire: (x) => nomDe(regles.armures_elementaires, x),
+    emplacement: (x) => nomDe(regles.emplacements_armure, x), amelioration: (x) => trouver(regles.ameliorations ?? [], x)?.niveau ?? null,
+  };
+  const colonnes = {
+    armure_id: fiche.armure_id ?? null, armure_amelioration_id: fiche.armure_amelioration_id ?? null, armure_elementaire_id: fiche.armure_elementaire_id ?? null,
+    armure_amelioration_elementaire_id: fiche.armure_amelioration_elementaire_id ?? null, armure_parties: fiche.armure_parties ?? [],
+  };
+  const retraits = [];
+  const retirer = (cols, d) => {
+    for (const c of cols) colonnes[c] = null;
+    retraits.push({ ...d, parties: partiesEnTexte(colonnes.armure_parties, noms) });
+    colonnes.armure_parties = [];
+  };
+  // 1. l'armure et son « élément » (une fiche d'avant)
+  if (deuxArmures(colonnes)) {
+    const t = armureTransformee(colonnes, noms);
+    Object.assign(colonnes, t.colonnes, { armure_parties: [] });
+    retraits.push(t.retrait);
+  }
+  const base = trouver(regles.armures ?? [], colonnes.armure_id);
+  const elementaire = trouver(regles.armures_elementaires ?? [], colonnes.armure_elementaire_id);
+  const niveau = (id) => noms.amelioration(id);
+  // 2. une armure « Familier »
+  if (base && poidsDeLArmure(base) === null) {
+    retirer(COLONNES_DE_L_ARMURE_DE_BASE, { nature: 'armure_familier', id: base.id, nom: base.nom, amelioration: niveau(colonnes.armure_amelioration_id) });
+  }
+  // 3. une armure élémentaire d'une magie que le personnage n'a pas
+  if (elementaire && ![fiche.magie_innee_id, fiche.magie_acquise_id].includes(elementaire.magie_id)) {
+    retirer(COLONNES_DE_L_ARMURE_ELEMENTAIRE, {
+      nature: 'armure_magie_absente', id: elementaire.id, nom: elementaire.nom, amelioration: niveau(colonnes.armure_amelioration_elementaire_id),
+      magie: nomDe(regles.magies, elementaire.magie_id) ?? elementaire.magie_id,
+    });
+  }
+  // 4. une armure trop lourde pour le poids portable
+  const portee = trouver(regles.armures_elementaires ?? [], colonnes.armure_elementaire_id) ?? trouver(regles.armures ?? [], colonnes.armure_id);
+  const poids = poidsDeLArmure(portee);
+  if (portee && poids !== null) {
+    const p = Number.isInteger(portable) ? Math.max(0, Math.min(POIDS_PORTABLE_MAX, portable)) : poidsPortable(regles, fiche);
+    if (poids > p) {
+      const estElementaire = portee === elementaire;
+      retirer(estElementaire ? COLONNES_DE_L_ARMURE_ELEMENTAIRE : COLONNES_DE_L_ARMURE_DE_BASE, {
+        nature: 'armure_trop_lourde', id: portee.id, nom: portee.nom, elementaire: estElementaire,
+        amelioration: niveau(estElementaire ? colonnes.armure_amelioration_elementaire_id : colonnes.armure_amelioration_id),
+        poids: POIDS_DES_ARMURES[poids], portable: POIDS_DES_ARMURES[p],
+      });
+    }
+  }
+  return retraits.length ? { colonnes, retraits } : null;
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2479,8 +2724,8 @@ export function typesDeDegats(regles) {
  * (l'armure élémentaire portée, ou null), partie ({ id, nom, cassee }), cassees (les parties cassées : [{ id, nom }]), bouclier ({ nom, ap, am, cassee }
  * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; null sans bouclier de la liste) }.
  * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier »), la
- * posture du moment (R100) et l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77) ; avec un élément, celles de l'armure
- * élémentaire et de son amélioration à la place (R99 : armurePortee) —, sur une partie cassée 0 (R108 : « Seul l'AP et l'AM de l'armure tombe à zéro.
+ * posture du moment (R100) et l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77), de base ou élémentaire (R99, R165 :
+ * armurePortee) —, sur une partie cassée 0 (R108 : « Seul l'AP et l'AM de l'armure tombe à zéro.
  * quand elle est cassée. le reste demeure » : armureParPartie). `armure` : la part de l'armure portée sur cette partie (que sa résistance aux dégâts
  * physiques double : degatsRecus). `detail` : [{ nom, valeur }].
  */
@@ -3053,8 +3298,7 @@ function viseLeSort(vises, sort, fiche, portee, estPrepare = false) {
 
 /**
  * Les bonus de sorts écrits qui valent pour ce personnage (décision R102) : ceux des dons de classe débloqués, des dons de race de son ethnie et de
- * l'armure élémentaire portée, chacun avec son nom ; ceux de l'armure élémentaire d'une armure cassée portent la raison 'armure_cassee' (décision
- * R158 : armureCassee). [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveau? }] — `niveau` :
+ * l'armure élémentaire portée (décision R165), chacun avec son nom. [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveau? }] — `niveau` :
  * celui d'une progression « base + pas × ⌊niveau ÷ niveaux⌋ » (décision R110) : le niveau de la classe pour un don de classe (« 3+x […] x = +2/6
  * niveaux »), sauf s'il écrit « niveaux globaux » ; le niveau global pour un don de race ou d'ethnie.
  */
@@ -3065,11 +3309,10 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
     for (const d of c.dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: `${d.nom} (${c.classe.nom})`, niveau: b.niveauGlobal ? global : c.niveau });
   }
   for (const d of donsDeRace(regles, fiche).dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: d.nom ?? d.etiquette ?? 'Don de race', niveau: global });
-  const element = fiche.armure_id ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
-  // décision R158 : « Cassée, l'armure ne donne plus aucun de ses effets » ; les effets de l'armure élémentaire portée sont ceux de l'armure (lecture
-  // de R158) : cassée (armureCassee), ses bonus ne comptent plus (sortDuMoment les range dans « non compté »)
-  const cassee = element ? armureCassee(regles, fiche) : false;
-  for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)`, ...(cassee ? { raison: 'armure_cassee' } : {}) });
+  // l'armure élémentaire portée (décision R165 : l'armure de la fiche) : ses bonus comptent (R102). Elle a six parties : R158 (armure à cran uni cassée) ne
+  // la vise pas, et tant que la question Q57 est ouverte, aucun effet n'est retiré pour une partie à 0
+  const element = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+  for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)` });
   return bonus;
 }
 

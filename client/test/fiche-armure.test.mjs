@@ -1,6 +1,6 @@
 // L'armure portée de la fiche (décision R95 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme
 // pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque partie est à réparer individuellement pour remonter » ; « L'amélioration
-// est pour l'armure complète ») : une armure complète, son amélioration, son élément et l'amélioration de l'élément ; la solidité du moment de chacune
+// est pour l'armure complète ») : une armure complète et son amélioration (l'armure élémentaire de la décision R165 : test/fiche-armure-elementaire.test.mjs) ; la solidité du moment de chacune
 // de ses six parties, ou de l'armure entière pour une armure à solidité unifiée. Le maximum d'une partie est la solidité de l'armure forgée de la page
 // « Équipement » (lib/armure-forge.mjs#forgerArmure : sa solidité et les crans de son amélioration, R77), que le moteur de la fiche ne peut pas importer
 // (le script de la page l'importe : deux scripts de page ne partagent jamais un module) : comparé ici sur TOUTES les armures × améliorations 0 à 5. Puis :
@@ -81,14 +81,14 @@ test('partiesValables, partiesApresReglage : une ligne par partie abîmée (0 à
   for (const v of [null, '', 'abc', undefined]) assert.deepEqual(partiesApresReglage(regles, f, 'torse', v), [], String(v));
 });
 
-test('armureApresChoix : une autre armure est neuve ; sans armure, ni amélioration ni élément ; une autre amélioration borne les parties abîmées', () => {
+test('armureApresChoix : une autre armure est neuve ; sans armure, aucune amélioration ; une autre amélioration borne les parties abîmées', () => {
   const abimee = fiche({ armure_amelioration_id: amelioration(4).id, armure_parties: [{ emplacement_id: 'torse', solidite: grille.solidite }, { emplacement_id: 'casque', solidite: 0 }] });
   // sans l'amélioration +4, le maximum perd un cran : le torse (à l'ancien maximum moins un) est désormais à son maximum, sans ligne ; le casque reste cassé
   assert.deepEqual(armureApresChoix(regles, abimee, 'armure_amelioration_id', null).armure_parties, [{ emplacement_id: 'casque', solidite: 0 }]);
   const autre = regles.armures.find((a) => a.id !== grille.id && Number(a.solidite_uni) !== 1);
   const changee = armureApresChoix(regles, abimee, 'armure_id', autre.id);
   assert.deepEqual([changee.armure_id, changee.armure_amelioration_id, changee.armure_parties], [autre.id, amelioration(4).id, []], 'l’amélioration reste, les parties sont neuves');
-  const retiree = armureApresChoix(regles, { ...abimee, armure_elementaire_id: regles.armures_elementaires[0].id }, 'armure_id', '');
+  const retiree = armureApresChoix(regles, { ...abimee, armure_elementaire_id: regles.armures_elementaires[0].id }, 'armure', '');
   assert.deepEqual(retiree, { armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_parties: [] });
   // la même armure choisie de nouveau : rien ne change
   assert.deepEqual(armureApresChoix(regles, abimee, 'armure_id', grille.id).armure_parties, partiesValables(regles, abimee));
@@ -107,12 +107,14 @@ const racine = dossierTemporaire('armure');
 test('aller-retour par le service : l’armure, son amélioration et la solidité de ses parties s’enregistrent et se relisent telles quelles', () => {
   const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);
   try {
-    const envoi = fiche({ armure_amelioration_id: amelioration(2).id, armure_elementaire_id: regles.armures_elementaires[0].id,
-      armure_parties: partiesApresReglage(regles, fiche(), 'torse', 0) });
+    // une armure de base et son amélioration (décision R165 : une fiche porte UNE armure ; l'armure élémentaire : test/fiche-armure-elementaire.test.mjs)
+    // une classe qui la porte (sans classe, un vêtement seulement : R165 (6), l'armure partirait, trop lourde)
+    const envoi = fiche({ armure_amelioration_id: amelioration(2).id, armure_parties: partiesApresReglage(regles, fiche(), 'torse', 0),
+      classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }] });
     const p = enregistrerFiche(vivante, envoi).personnage;
     const lue = lireFiche(vivante, p.id);
     assert.deepEqual([lue.armure_id, lue.armure_amelioration_id, lue.armure_elementaire_id, lue.armure_amelioration_elementaire_id],
-      [grille.id, amelioration(2).id, regles.armures_elementaires[0].id, null]);
+      [grille.id, amelioration(2).id, null, null]);
     assert.deepEqual(lue.armure_parties, [{ emplacement_id: 'torse', solidite: 0 }]);
     assert.deepEqual(partiesValables(regles, lue), lue.armure_parties, 'relue, elle est déjà valable');
     // une partie hors de la table : refusée par la base (pas le bouclier)

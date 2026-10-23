@@ -92,6 +92,28 @@ d'emblée), et chaque fiche qui avait des dés ou une arme choisie reçoit **une
 table et par celle de la colonne, une fois par reconstruction) : « Maîtrises d'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, ARC 2D8 ; arme
 choisie : Flétrisseur (Tueur) ÉPÉES » (familles dans l'ordre des bandeaux, dés écrits comme sur la page ; une partie absente est omise). La fiche est
 marquée modifiée et listée dans `base.retraits` de `/api/etat` ; la compétence d'un choix d'acquis reste (R152).
+**L'armure (décision R165, migration 0080)** : une fiche porte une armure de base (`armure_id`, `armure_amelioration_id`) **ou** une armure
+élémentaire (`armure_elementaire_id`, `armure_amelioration_elementaire_id`, +1 à +5), jamais les deux. À **chaque reconstruction**, après le rejeu et
+les retraits de R42 (`retirerLesArmuresHorsRegle` de `serveur/fiches-retraits.mjs`, idempotente), dans cet ordre : une fiche qui porte les deux (une
+fiche d'avant : l'« élément » posé sur l'armure, R95) garde l'élément pour armure, avec son amélioration, sans ligne de partie (à son maximum) ;
+l'armure d'origine, son amélioration et la solidité de ses parties abîmées sont notées (« l'armure « … » (amélioration +2, solidité Casque 1, Torse 0)
+est devenue l'armure élémentaire « … » (amélioration +3) de la fiche, remise à sa solidité maximum… ») ; puis une armure « Familier » et une armure
+élémentaire d'une magie ni innée ni acquise (une fiche sans magie innée ne l'a pas) sont retirées et notées ; enfin une armure plus lourde que le
+poids portable de la fiche (R165 (6), (7) : « … n'est plus portée : elle est trop lourde pour le personnage (Lourd, au plus Intermédiaire) »), pour
+**toutes les fiches, joueurs compris**. Le poids portable est le calcul du moteur de la fiche (`lib/fiche-moteur.mjs#poidsPortableDesTextes`, le même
+que la page) sur des entrées lues dans la base refaite par `lib/poids-portable-db.mjs` (`poidsPortableDeLaBase`, un seul lecteur par reconstruction :
+requêtes préparées une fois, vocabulaire des balises lu une fois) : la « Maîtrise Armures » (`classe_maitrise_armure`, objet `armure`) des classes de
+niveau de classe ≥ 1 (`v_personnage_niveau`), le texte des dons acquis (`v_personnage_don_acquis`), les dons de la race et de l'ethnie (`race_don` ;
+l'ethnie pas encore choisie, ceux de chaque ethnie de la race, table `ethnie` : « tout Nain », R165 (6)),
+les avantages de la race (`race_onglet`) et l'explication de la magie innée, sans balises du glossaire. Une fiche sans classe porte au plus un
+vêtement, comme sur la page. Une base qui n'a pas ce que lit le calcul (une base vivante d'avant, en repli : `COLONNES_LUES`) ne sait pas dire le
+poids : rien n'est retiré. Pourquoi pas les règles complètes de la page (`chargerReglesDeFiche`) : près d'un Mo lu en 0,2 à 0,8 s, et le site de dev
+modifie les règles dans la base même qu'il sert (un cache par base serait faux après une modification, un rechargement à chaque enregistrement trop
+lent) ; quelques requêtes par fiche lisent toujours les règles du moment (`test/serveur-poids-portable.test.mjs` compare les deux calculs sur toute
+la base). L'option `poidsPortable` de `preparerBaseVivante` (une fonction `(db, id) => 0 à 3 ou null`) remplace ce calcul, `null` le retire (tests).
+Les textes sont ceux de la migration 0080
+(`ligneDeRetrait`, natures `armure_transformee`, `armure_familier`, `armure_magie_absente`, `armure_trop_lourde` de `fiche-format.mjs`) ; la fiche est
+marquée modifiée et listée dans `base.retraits` de `/api/etat`.
 Des règles qui ont encore la table alors que le service la sait retirée
 (service et règles qui ne vont pas ensemble), ou une table retirée sans conversion, bloquent la reconstruction avec ce message. Une table retirée de la
 section 13 va donc dans `TABLES_RETIREES`, avec sa conversion. La base remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base
@@ -144,7 +166,14 @@ un texte `entrainement` (avant la migration 0062) devient des lignes de texte de
 (avant la migration 0066) donnent leur somme à `nm_mj` (décision R118 : les NM du MJ valent pour toute la fiche ; avec `nm_mj` et un `nm_cadeau`
 positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0076) et l'`arme_famille_id` d'un choix
 d'acquis sont retirées et notées en une ligne datée (R153, comme la base vivante ; aucun choix posé), et, envoyées avec `maitrise_choix` (une page
-d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. Rien de calculé n'y est
+d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. L'armure (décision R165) : la fiche enregistrée (l'envoi, avec les
+colonnes qu'il ne change pas) qui porte une armure **et** une armure élémentaire (l'« élément » d'une page d'avant) est **convertie** comme à la
+reconstruction, plutôt que refusée (c'est la forme d'avant elle-même, que R165 convertit, pas deux formes qu'on ne sait pas concilier) ; une armure
+« Familier », une armure élémentaire d'une magie absente et une armure trop lourde pour le poids portable de la fiche enregistrée (classe, niveau,
+dons, race, magie innée : un changement de classe qui le baisse retire l'armure ; le calcul de la reconstruction, `poidsPortableDeLaBase`, option
+`poidsPortable` d'`enregistrerFiche`) ne sont jamais enregistrées : retirées et notées, datées, dans la réponse (`retirerLesArmuresHorsRegle`, après
+l'écriture, dans la même transaction ; puis `noterLesRetraits`). La page `/fiche/` convertit de même une fiche
+importée qui porte les deux (`sansPartiesRetirees`, `armureTransformee`). Rien de calculé n'y est
 stocké. Les maîtrises d'armes sont des choix : `maitrise_choix`, une ligne par point à choisir d'une source (`source` : l'id du don, ou
 `<classe>#maitrise-arme:<rang>` pour une ligne de maîtrise de classe ; `rang` : le numéro du point ; `arme_famille_id`), les points et les dés de chaque
 famille se calculent (R148, R149 ; vue `v_personnage_maitrise_arme`). Les gains de niveau sont deux colonnes (`gains_sante`, `gains_chakra` : décision R73, migration 0045) ; la durabilité d'une arme est une
@@ -1125,7 +1154,9 @@ npm run dev         # dans un autre terminal : le site, qui transmet /api/ au se
 ```
 
 Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-api` (chaque route, chaque
-refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
+refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-armure-elementaire` et `serveur-poids-portable` (l'armure de R165 :
+textes contre la migration 0080, reconstruction et enregistrement ; le poids portable lu dans la base comparé au moteur de la fiche sur toute la
+base, l'armure trop lourde retirée à la reconstruction, joueurs compris, et à l'enregistrement, idempotence), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
 journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipeee : extraction du texte, réponse d'exemple, cache, une requête pour des appels simultanés, Tipeee injoignable, repère absent, réponse trop grosse, redémarrage, repli, route, livraison de l'instantané), `serveur-edition-conflits` (lots en conflit : diagnostic, choix 1, 2 et 3, nouveau lot, ancien marqué résolu, rejeu suivant sans conflit), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`

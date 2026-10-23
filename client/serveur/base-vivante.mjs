@@ -12,6 +12,9 @@
 // décision R73 ; personnage_armure, migration 0055, devient l'armure de la fiche, la pièce devenue l'armure complète et chaque autre pièce notées
 // dans la fiche, décision R95 ; personnage_bouclier_materiau, migration 0060, devient la matière du bouclier, chaque autre matériau noté, décision R96 ;
 // personnage_maitrise_arme, migration 0076, ses dés notés avec l'arme choisie de R119 en une ligne datée, aucun choix posé, décision R153),
+// l'armure d'une fiche d'avant la migration 0080 (une armure et son élément) devient l'armure élémentaire, et une armure « Familier » ou une armure
+// élémentaire d'une magie absente ou trop lourde pour le poids portable est retirée et notée (décision R165 : retirerLesArmuresHorsRegle de
+// serveur/fiches-retraits.mjs, à chaque reconstruction ; le poids, lib/poids-portable-db.mjs),
 // et les lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées (LIGNES_ECARTEES : un accessoire de la Ceinture ou
 // d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; jamais
 // perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
@@ -29,7 +32,8 @@ import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
-import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
+import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle, retirerLesManquants } from './fiches-retraits.mjs';
+import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 
 /** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql : définies dans src/lib/fiche-format.mjs (le journal en tire ses tables interdites). */
 export { TABLES_FICHES };
@@ -381,7 +385,7 @@ function verifierRegles(db) {
  * @param {string} instant ISO 8601 UTC à la seconde
  * @param {(type: string, o: { duree_ms?: number, detail?: object }) => void} [evenement] métriques : durée du rejeu et des retraits
  */
-function transferer(db, ancienne, instant, evenement = null) {
+function transferer(db, ancienne, instant, evenement = null, poidsPortable = undefined) {
   let rejeu = null;
   let fiches = [];
   const problemes = [];
@@ -436,6 +440,11 @@ function transferer(db, ancienne, instant, evenement = null) {
       if (!problemes.length) {
         const t0 = performance.now();
         retirerLesManquants(db, retraits);
+        // R165 : l'armure d'une fiche d'avant (armure + élément) devient l'armure élémentaire, puis une armure « Familier », une armure élémentaire d'une
+        // magie absente et une armure trop lourde (le poids portable de chaque fiche, joueurs compris, selon les règles rejouées : un seul lecteur
+        // pour toutes les fiches, lib/poids-portable-db.mjs) sont retirées, à chaque reconstruction (idempotent)
+        const portable = poidsPortable === undefined ? poidsPortableDeLaBase(db) : poidsPortable;
+        retirerLesArmuresHorsRegle(db, retraits, { poidsPortable: portable });
         fiches = noterLesRetraits(db, retraits, instant);
         // un compte, jamais les noms des fiches
         evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length } });
@@ -510,9 +519,12 @@ function archiver(dossier, chemin, instant) {
  * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
  * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
  * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte. `evenement` (facultatif) : les métriques du
- * service (durées du rejeu, des retraits des fiches et de l'archivage).
+ * service (durées du rejeu, des retraits des fiches et de l'archivage). Une armure trop lourde pour le poids portable d'une fiche (décision R165 (6),
+ * (7) : serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle, étape 4) est retirée et notée : le calcul du moteur de la fiche, lu dans la base
+ * refaite (lib/poids-portable-db.mjs#poidsPortableDeLaBase). `poidsPortable` (facultatif, (db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
+ * null : pas d'étape du poids.
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
@@ -534,7 +546,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
     const db = new DatabaseSync(neuve);
     try {
       verifierRegles(db);
-      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement));
+      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable));
       schema = db.prepare('PRAGMA user_version').get().user_version;
     } finally {
       db.close();

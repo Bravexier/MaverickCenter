@@ -221,7 +221,7 @@ test('fiche d’avant (décision R104) : le texte d’entraînement en lignes de
   assert.deepEqual(sansPartiesRetirees({ competences: [null, { competence_id: 'arc', naturel: 1, acquis: 0 }] }).competences, [null, { competence_id: 'arc', naturel: 1 }]);
 });
 
-test('acquis de la race, de l’armure et du plafond (décision R104) : la ligne de l’ethnie du tableau (Drakos), l’armure portée (sauf transformée : R99), le plafond relevé ; un don actif ne compte pas', () => {
+test('acquis de la race, de l’armure et du plafond (décision R104) : la ligne de l’ethnie du tableau (Drakos), l’armure de base portée (R165 : une armure élémentaire n’a plus rien d’elle), le plafond relevé ; un don actif ne compte pas', () => {
   // la ligne de l'ethnie du tableau de la race : « Bonus compétence » du Drakos
   const drakos = regles.races.find((x) => (x.dons_tableau?.lignes ?? []).some((l) => (l.acquis ?? []).some((b) => b.competence_id)));
   const ligne = drakos.dons_tableau.lignes.find((l) => (l.acquis ?? []).some((b) => b.competence_id));
@@ -239,11 +239,14 @@ test('acquis de la race, de l’armure et du plafond (décision R104) : la ligne
   assert.ok(competence(fa, va.competence_id, regles).donsDetail.some((d) => d.nom === `${armure.nom} (armure)`), armure.id);
   const choix = regles.armures.find((a) => (a.acquis ?? []).some((b) => b.choix));
   assert.ok(M.acquisDesDons(regles, fiche({ armure_id: choix.id })).choix.some((c) => c.source === choix.id && c.options.length === 2), choix.id);
-  // transformée par un élément (R99) : ses bonus d'origine sont perdus, listés
+  // décision R165 : une armure élémentaire est l'armure de la fiche (la raison « element » de R99 n'a plus d'objet) ; une fiche d'avant qui porte encore les
+  // deux (avant sa conversion) porte l'armure élémentaire : l'armure d'origine ne compte plus, et n'est pas listée
   const element = regles.armures_elementaires.find((x) => x.categorie === armure.type) ?? regles.armures_elementaires[0];
-  const transformee = M.acquisDesDons(regles, { ...fa, armure_elementaire_id: element.id });
-  assert.ok(!(transformee.parCompetence.get(va.competence_id) ?? []).some((d) => d.nom === `${armure.nom} (armure)`));
-  assert.ok(transformee.nonComptes.some((x) => x.raison === 'element' && x.nom === `${armure.nom} (armure)`));
+  for (const f of [{ ...fa, armure_id: null, armure_elementaire_id: element.id }, { ...fa, armure_elementaire_id: element.id }]) {
+    const transformee = M.acquisDesDons(regles, f);
+    assert.ok(!(transformee.parCompetence.get(va.competence_id) ?? []).some((d) => d.nom === `${armure.nom} (armure)`));
+    assert.ok(!transformee.nonComptes.some((x) => x.raison === 'element' || x.nom === `${armure.nom} (armure)`));
+  }
   // le plafond relevé d'une caractéristique (« Son acquis max en Social est augmenté de +20 ») : chaque compétence de la caractéristique
   const rp = { ...r, races: r.races.map((x) => (x.id !== 'races/humain' ? x : { ...x, dons: [{ id: 'races/humain#don:plafond', forme: 'unique', nom: 'Plafond', texte: '', acquis: [{ plafond: 20, caracteristique_id: 'social' }] }] })) };
   const social = regles.competences.filter((k) => k.caracteristique_id === 'social');
@@ -395,7 +398,9 @@ test('la page (src/scripts/fiche.mjs, lue comme un texte) : les lignes d’entra
   // « + Compétence » et « + Livre de sort » cherchent la compétence libre et le sort sans livre au moment du clic
   assert.match(corps, /onclick: \(\) => \{ const k = libre\(\);/);
   assert.match(corps, /onclick: \(\) => \{ const j = sansLivre\(\);/);
-  // les raisons que rend le lecteur (et la pièce élémentaire, R99) ont toutes un libellé dans la page
+  // les raisons que rend le lecteur (et l'armure à cran uni cassée, R158) ont toutes un libellé dans la page ; plus la raison « element » (R165 : une armure
+  // élémentaire est l'armure de la fiche, il n'y a plus d'armure d'origine)
   const raisons = script.slice(script.indexOf('const RAISONS_DE_L_ACQUIS = {'), script.indexOf('};', script.indexOf('const RAISONS_DE_L_ACQUIS = {')));
-  for (const r of [...RAISONS, 'element', 'sans_artisanat']) assert.match(raisons, new RegExp(`\\b${r}:`), r);
+  for (const r of [...RAISONS, 'armure_cassee', 'sans_artisanat']) assert.match(raisons, new RegExp(`\\b${r}:`), r);
+  assert.doesNotMatch(raisons, /\belement:/);
 });

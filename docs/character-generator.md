@@ -126,23 +126,49 @@ abandonne.
   peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base.
 - **Armure** (décision R95 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures
   spéciales, elle disposent de durabilité unifiée) » ; « L'amélioration est pour l'armure complète ») : **une armure complète** (une armure ne se fabrique
-  plus pièce par pièce, R93), son amélioration, son élément et l'amélioration de l'élément, pour l'armure entière (`personnage.armure_id`,
-  `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id` ; `armureApresChoix` : une autre armure est neuve, sans armure ni
-  amélioration ni élément). Dessous, un **curseur de solidité par partie** — casque, torse, bras gauche, bras droit, jambe gauche, jambe droite — de 0
+  plus pièce par pièce, R93), **de base ou élémentaire, jamais les deux** (décision R165 : une pièce élémentaire **transforme** l'armure), et son
+  amélioration, pour l'armure entière (`personnage.armure_id` et `armure_amelioration_id`, ou `armure_elementaire_id` et
+  `armure_amelioration_elementaire_id`). **Une seule liste** (R165 (5), `armuresProposees`) : les armures de base dont le poids est au plus le **poids
+  portable**, par poids, jamais une armure « Familier » ; puis les **armures élémentaires des magies innée et acquise**, au plus du poids portable, un
+  groupe par magie (« Armures élémentaires : Feu »), chaque option **sur la couleur de sa magie** (sa classe et `teinte-palette`, comme les sorts ; Safari
+  iOS ignore le fond d'une option : le nom de la magie est celui de son groupe ; fermée, la liste prend la couleur de l'armure élémentaire choisie) ; aucune
+  pour le Potentiel Illimité, qui n'en a pas (la magie tirée par le MJ pour un don du Flagelleur, R163, ne sert qu'au calcul du don : la liste lit
+  les vraies magies innée et acquise de la fiche, R165 (5)). Plus de choix « Élément ». L'amélioration suit le genre de l'armure : le tableau des armures, ou celui des
+  armures élémentaires (+1 à +5, R165 (2) ; la fiche note ce que le personnage possède, la perte des améliorations ne vaut qu'à la transformation)
+  (`armureApresChoix`, champ `armure` : une autre armure est neuve ; une armure de l'autre genre perd l'amélioration de l'ancienne). Sous la liste, le
+  **poids portable** (R165 (6), `poidsPortableDe`, son calcul en infobulle), une valeur de 0 (Vêtement) à 3 (Lourd), dans cet ordre : le plus grand poids de
+  la « Maîtrise Armures » des classes prises (`classes[].maitrise_armures`, 0 pour Mage, Mage Vert, Ocultomancien, Flagelleur et Archimage) ; relevé par
+  les dons débloqués qui écrivent un poids, lus dans leur texte (`poidsEcritDuDon` : « Maîtrise les armures lourdes », « Peut porter une armure
+  intermédiaire », « Maîtrise les 3 armures »… ; pas « L'armure lourde ne ralentit plus » : `test/fiche-armure-elementaire.test.mjs` épingle les 20 dons de la
+  base) ; +1 par le don des ethnies du Nain (« Peut porter une catégorie supérieure d'armure selon les classes », dons compris), et pour tout Nain,
+  l'ethnie choisie ou non (sans ethnie : +1 quand chaque ethnie de la race a un don qui l'écrit ; réponse du propriétaire « Oui, tout Nain ») ; au moins ce qu'écrivent
+  les avantages de la race (Lamia : Léger) ; 3 au plus ; 2 au plus pour un Potentiel Illimité inné (son explication, celle de la vraie magie innée,
+  jamais de la magie tirée d'un don du Flagelleur, R163), en dernier (`poidsPortableDesTextes`, la même lecture pour le service). **Une armure qui sort de la liste est retirée et notée, datée** (R165 (7), « Retirer et
+  noter » : `retraitsDeLArmureHorsListe`, au texte du service, `lib/fiche-format.mjs#ligneDeRetrait`) : trop lourde (y compris quand le poids baisse :
+  classe, spécialité, niveau, don, race changés), élémentaire d'une magie que le personnage n'a plus, « Familier ». Au chargement, aussitôt ; après un
+  changement, **une fois le choix arrêté** : tant que le geste reste dans son contrôle (l'XP tapée chiffre à chiffre, des dons à choisir parcourus aux
+  flèches, une classe retirée puis remplacée dans le même menu), l'armure reste dans un groupe « Hors de la liste (retirée une fois le choix arrêté) »,
+  et revenir au choix d'origine ne retire ni ne note rien ; elle est retirée quand un clic ou le focus quitte ce contrôle (hors du bloc de l'armure, où
+  en choisir une autre la remplace sans retrait), et avant chaque enregistrement, téléchargement ou export. Dessous, un **curseur de solidité par partie** — casque, torse, bras gauche, bras droit, jambe gauche, jambe droite — de 0
   (**« Cassée »**) au maximum de l'armure : sa solidité et les crans de son amélioration (R77 ; `soliditeMaxDeLArmure`, recopie de
-  `lib/armure-forge.mjs#forgerArmure`, que `test/fiche-armure.test.mjs` compare sur toutes les armures et améliorations ; l'élément et l'amélioration de l'élément
-  ne sont pas comptés : question Q12, étendue aux armures) ; une armure à **solidité
+  `lib/armure-forge.mjs#forgerArmure`, que `test/fiche-armure.test.mjs` compare sur toutes les armures et améliorations) ; une armure élémentaire a ses
+  **six parties, de 4 crans** (la constante `piece_elementaire.solidite_base`, jamais 4 en dur) **plus ceux de son amélioration** (5 au +4 et au +5 :
+  R165 (3)) ; une armure à **solidité
   unifiée** (`armure.solidite_uni`) n'a qu'un curseur, « Armure entière ». Chaque partie se répare individuellement (« utilisation d'un kit de réparation ou métier
   adapté + matériau ») : la fiche n'en calcule rien. Seules les parties abîmées sont gardées (`personnage_armure_partie`, `partiesValables` ; une autre
   amélioration borne les parties au nouveau maximum : `armureApresChoix`, par `partiesValables`). **Une partie cassée** (décision R108 : « Chacune des 6
   parties […] a sa propre solidité et son propre compte d'AP / AM en cas d'attaque précise à cet endroit. A 0 de solidité les AP et AM tombent à 0 ») :
-  l'AP et l'AM **de l'armure** y tombent à 0, ailleurs ils valent ceux de l'armure portée (l'armure et son amélioration, ou l'élément et la sienne : R99 ;
+  l'AP et l'AM **de l'armure** y tombent à 0, ailleurs ils valent ceux de l'armure portée (l'armure et son amélioration, de base ou élémentaire : R99, R165 ;
   `armureParPartie`) ; le reste de la défense demeure (voir « Défense et dégâts reçus ») ; une armure à solidité unifiée à 0 : ses six parties sont cassées.
   **Une armure à solidité unifiée à 0 ne donne plus aucun de ses effets** jusqu'à sa réparation (décisions R157, R158 : `armureCassee`) : ni son acquis,
-  ni les bonus de sorts de l'armure élémentaire portée, listés « non comptés » (raison `armure_cassee`, « armure cassée (R158) ») ; une armure à six
-  parties ne l'est jamais. Le malus de la catégorie *Lourd* reste (« Non, elle pèse toujours ») ; la fiche ne lit ni l'initiative, ni la vitesse, ni
-  les croix écrites dans l'effet d'une armure.
-  Cassée n'est pas détruite : le curseur remonte (réparation). Une fiche d'avant (une armure par emplacement) garde la première pièce
+  listé « non compté » (raison `armure_cassee`, « armure cassée (R158) ») ; une armure à six parties ne l'est jamais, une armure élémentaire non plus
+  (R165 : ses bonus de sorts comptent toujours, R102 ; tant que la question Q57 est ouverte, aucun de ses effets n'est retiré pour une partie à 0). Une
+  armure élémentaire n'a plus rien de l'armure d'origine (R99) : la raison `element` des acquis n'existe plus. Le malus de la catégorie *Lourd* reste
+  (« Non, elle pèse toujours ») ; la fiche ne lit ni l'initiative, ni la vitesse, ni les croix écrites dans l'effet d'une armure.
+  Cassée n'est pas détruite : le curseur remonte (réparation). Une fiche d'avant la décision R165 (une armure et son « élément ») : **l'élément devient
+  l'armure**, avec l'amélioration de l'élément, à sa solidité maximum ; l'armure d'origine, son amélioration et la solidité de ses parties sont notées,
+  datées (R165 (8) : `sansPartiesRetirees`, `armureTransformee` ; au chargement, à l'import d'un classeur, et par le service). Une fiche d'avant R95 (une
+  armure par emplacement) garde la première pièce
   dans l'ordre des emplacements, l'armure complète d'abord ; une pièce gardée qui devient l'armure complète (ni l'armure complète, ni la même armure sur
   les six parties) et chaque autre pièce deviennent une ligne datée de ses notes (base vivante, JSON reçu : `armureDesArmures`, `retraitsDeLArmure` ;
   import du tableur : une remarque et une ligne de `nonRepris`).
@@ -213,14 +239,24 @@ abandonne.
   autres », décision R124) **choisit** son cran : une liste sous le tableau (surlignée, et dans le tiroir des choix tant qu'elle n'est pas faite) propose les
   altérations des autres lignes du tableau « Écaille draconique », lues au build (`lib/fiche-regles.mjs`, `resistances.au_choix` de la ligne : Saignement à
   Peur, 13, jamais écrites à la main), et le cran choisi compte (`resistancesDe`, `aChoisir`, `resistanceApresChoix` ; table `personnage_resistance_choix`,
-  migration 0069 ; un choix d'une autre ethnie part à l'enregistrement : `resistanceChoixValables`). Pas encore : les objets.
+  migration 0069 ; un choix d'une autre ethnie part à l'enregistrement : `resistanceChoixValables`). Les accessoires portés (« Résistance X et Y »,
+  R54) et **l'armure élémentaire portée** (décisions R165, R166, « Le compter dans ce lot ») ajoutent leurs crans : ceux qu'écrivent ses effets
+  (`regles.armures_elementaires[].resistances`, lus par `lib/resistance-texte.mjs` avec l'option `immunites`, réservée aux armures élémentaires) — le
+  rang 1 de chacune, « +1 cran de résistance au Feu… », l'Arcane et la Corruption tels qu'écrits (la colonne Arcane donne +1 à la Corruption, la colonne
+  Corruption +1 à l'Arcane), et Vêtement Glace « +1 cran de résistance au Feu et immunité à la brûlure » (+1 au Feu, immunité à la Brûlure) ; rien des
+  bonus de sorts ni des effets sur les ennemis, temporaires ou situationnels ; l'amélioration n'en donne aucune. L'origine de l'infobulle : « <nom>
+  (armure élémentaire) ». Ils comptent toujours : parties à 0 comprises (R158 ne vise pas une armure élémentaire, Q57 ouverte) et quand sa magie est
+  celle que la Symbiose désactive (un effet d'équipement, comme les accessoires) ; pour le Flagelleur (R163), ce sont des crans positifs, que
+  « ... plus fort ! » garde et que « Punis-moi ... » complète (une immunité écrite prévaut toujours) ; `degatsRecus` et l'export en tableur suivent. Les immunités écrites
+  dans des dons (« Immunité au saignement », « Immunité à la paralysie ») restent non comptées (un lot à part). Pas encore : les autres objets (armure
+  de base, bouclier).
   Les résistances et faiblesses des combinaisons de deux magies (R85, vue `v_resistance_combinaison`) ne sont pas affichées : « Il seront dans leur onglet
   statistiques après qu'on ai finalisé toute la fiche de personnages. » ; pas dans la fiche : « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16) : la page
   Statistiques du site (E12, `feuille-de-route.md`).
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'**acquis** d'une compétence **se calcule** (décision R104) : l'entraînement, les dons débloqués (race, ethnie, classes) dont le
   texte écrit « +N% Compétence » sans ambiguïté (`lib/acquis-texte.mjs`, lu au build ; dons de classe passifs seulement, ligne de l'ethnie du tableau de
-  la race comprise : « Bonus compétence » du Drakos), l'armure portée (« +25% Stabilité » ; sauf transformée par un élément, R99, ou à cran uni et
+  la race comprise : « Bonus compétence » du Drakos), l'armure de base portée (« +25% Stabilité » ; une armure élémentaire n'a plus rien de l'armure d'origine, R99, R165 ; sauf à cran uni et
   cassée, R157 et R158 : dans « Bonus d'acquis non comptés », son choix gardé pour quand elle sera réparée), le métier (R33) et
   l'accessoire « Compétence X » (R54), dans cet ordre (un arbitrage),
   rognés à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41 ; « le plafond prévaut », R38) ; le nombre s'affiche
@@ -425,7 +461,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   à 0, comme la pastille d'une arme cassée, l'infobulle le dit et donne ses valeurs une fois réparé. Une forme et une matière que la liste n'écrit pas sont
   signalées (règle `bouclier_inconnu`).
 - **Défense et dégâts reçus** (décision R98), en tête du bloc Armure : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
-  classes magiques, accessoires, posture, armure portée et son amélioration ; avec un élément, l'armure élémentaire et son amélioration à la place : R99)
+  classes magiques, accessoires, posture, armure portée et son amélioration, de base ou élémentaire : R99, R165)
   **sur la partie touchée** (décision R108 : un choix « Partie touchée » parmi les six parties, avec une armure seulement, **le torse par défaut** — « Une
   attaque "non ciblée" touche par défaut le torse, sauf indication contraire du MJ » —, une partie cassée marquée « (cassée) » ; l'armure d'une partie
   cassée ne compte pas, « Seul l'AP et l'AM de l'armure tombe à zéro […] le reste demeure »), le détail en infobulle avec la partie touchée et les parties
@@ -474,8 +510,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
   chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
-  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté, ni celui
-  de l'armure élémentaire d'une armure à cran uni cassée (décision R158 : « non compté », raison `armure_cassee`, « armure cassée (R158) »). **Sorts
+  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté ; ceux de
+  l'armure élémentaire portée comptent toujours (décision R165 : six parties, jamais cassée au sens de R158). **Sorts
   grenades** (décision R114) : « Pardon ?!? » du Grenadier (niveau de classe 20, passif : « Les bombes et les sorts "grenades" font +11 dégâts. ») ajoute
   +11 aux sorts qui portent l'**étiquette** « Sort grenade » (`sort_mot_cle`, migration 0067 : les 14 sorts « Grenade… », `regles.sorts[].mots_cles` ;
   jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts fer**
@@ -609,8 +645,11 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 - **Écritures courtes** (pour que les cases que l'import relit tiennent d'ordinaire) : un accessoire, l'effet sur une ligne, « <libellé>[ = valeur][ →
   compétence ou famille choisie] » (« <propriété> : » devant seulement quand le libellé seul ne suffit pas : vide, comme « Attaque : », ou partagé par
   plusieurs propriétés, comme « MALÉDICTION »), « Maudit » sur sa ligne (un classeur d'avant R97 : son nom, son « Effet : <texte> » hors table, et les
-  « Accessoire Ceinture : … », « Accessoire Autre : … » de la note vont dans `nonRepris`) ; l'armure sur une ligne (AQ21, R95), « <armure> · amél. niv. N (effet) · élément <nom> · amél. élément niv. N (effet) », avec les
-  statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis sans l'effet des améliorations ; « Nom Armure » (AD22) : l'armure. Une case d'une seule rangée (description et
+  « Accessoire Ceinture : … », « Accessoire Autre : … » de la note vont dans `nonRepris`) ; l'armure sur une ligne (AQ21, R95, R165), « <armure> · amél. niv. N (effet) », de base ou élémentaire (son nom, son amélioration du tableau
+  élémentaire ; l'import la reconnaît à son nom), avec les statistiques du catalogue (AP, AM) quand la case les tient, sans elles sinon, puis sans l'effet
+  de l'amélioration ; « Nom Armure » (AD22) : l'armure, de base ou élémentaire. Un classeur d'avant R165 (« · élément <nom> · amél. élément niv. N »), comme
+  la fiche auto (l'élément écrit par sa magie), donne une fiche d'avant : la page la convertit comme la base vivante (l'élément devient l'armure, l'armure
+  d'origine et sa solidité notées, datées), puis retire et note une armure hors de la liste. Une case d'une seule rangée (description et
   colonnes d'un sort, dons de base, de race et du métier) écrit ses parties sur une ligne, séparées par « · ». L'import lit aussi l'ancienne
   écriture (« Caractéristique : Force » puis « → … » sur sa ligne ; « Torse : … · Amélioration : niv. 1 — … » ; parties sur plusieurs lignes) ; d'un
   classeur d'avant R95, une ligne par pièce, il garde la première dans l'ordre des emplacements (l'armure complète d'abord), les autres vont dans `nonRepris`.
@@ -852,7 +891,7 @@ pas, et la note datée est le seul signal.
   écrites, `maitrise_plafond` « famille = points / 4 », `maitrise_arme_exclue` sur ARME DE MONSTRES, R45 ; l'accessoire a pour source `accessoire:<emplacement>`), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
   plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), améliorations, valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations, valeur d'un
   accessoire ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
   Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.

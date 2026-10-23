@@ -11,6 +11,10 @@
 //   - Bouclier : une forme + une matière (décision R78) ; prix et défense ceux du bouclier préfabriqué, solidité celle de la matière ; une amélioration +N
 //     coûte les niveaux +1 à +N, donne l'AP écrit au niveau N et les crans de tous les niveaux +1 à +N (« cumulés », décision R76) ; ses matériaux (1 aux
 //     +2 et +4, R76) sont la matière du bouclier, achetée ou fournie.
+//   - Armure élémentaire (décision R165) : une armure transformée par une pièce élémentaire devient l'armure de sa magie et de son poids ; AP, AM et
+//     effets écrits, solidité de la pièce (« Chaque pièce élémentaire possède 4 crans », plus le cran de la ligne de son amélioration : 5 au +4 et au
+//     +5), **aucun prix** (« inestimable ») ; son amélioration +N coûte les lignes +1 à +N, en gemmes de la magie (qualité écrite : commune, raffinée,
+//     parfaite) et en pièce élémentaire, jamais en RO, et donne l'effet de la ligne N, sans cumul (au +5 : +10 AP/AM et +1 cran).
 // Les prix de la grille, des boucliers et des formes sont des RO (décision R79).
 // Module pur, sans import : seul le script de la page (src/scripts/armures.mjs) l'importe parmi les scripts de page (deux scripts de page ne partagent
 // jamais un module) ; lib/armures-db.mjs (build, et service, qui le livre) en tire le prix de chaque armure de la liste (prixDeLArmure).
@@ -177,4 +181,126 @@ export function forgerBouclier(bouclier, matiere, ameliorations, niveau = 0) {
       ro_total: fournis === null || (amelioration.materiaux && prixMatiere === null) ? null : fournis + amelioration.materiaux * (prixMatiere ?? 0),
     },
   };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Armures élémentaires (décision R165 (2), (3)) : le tableau « Armure » de l'onglet « Pièces élémentaires » (amelioration_equipement, cible
+// 'armure_elementaire' : +1 « 2 gemmes communes », +2 « 2 gemmes raffinées », +3 « 2 gemmes parfaites », +4 « 3 gemmes parfaites », +5 « 1 pièce
+// élémentaire ») ; « Chaque cout est cumulatif […] L'effet lui est celui de la ligne. Les gemmes à consommer sont les gemmes de la magie concernée. »
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les qualités de gemme qu'écrit la source (amelioration_equipement.cout_gemmes_qualite) : [singulier, pluriel], dans l'ordre du tableau. */
+export const QUALITES_DES_GEMMES = Object.freeze({ commune: ['commune', 'communes'], raffinee: ['raffinée', 'raffinées'], parfaite: ['parfaite', 'parfaites'] });
+
+/**
+ * Une amélioration +N d'armure élémentaire (décision R165 (2)) : le coût cumulé des lignes +1 à +N — `gemmes` : [{ qualite, nombre }] par qualité, dans
+ * l'ordre où le tableau les demande ; `pieces_elementaires` : leur somme — et l'effet de la ligne N seule (`bonus_ap`, `bonus_am`, `bonus_cran`), sans cumul.
+ * `ameliorations` : [{ niveau, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, bonus_ap, bonus_am, bonus_cran }] ; `niveau` : 0 (aucune) à 5.
+ */
+export function ameliorationElementaire(ameliorations, niveau) {
+  const faits = niveauxFaits(ameliorations, niveau);
+  const dernier = ameliorations.find((a) => a.niveau === niveau);
+  const gemmes = [];
+  for (const a of faits) {
+    if (!a.cout_gemmes) continue;
+    const qualite = a.cout_gemmes_qualite ?? null;
+    const deja = gemmes.find((g) => g.qualite === qualite);
+    if (deja) deja.nombre += a.cout_gemmes;
+    else gemmes.push({ qualite, nombre: a.cout_gemmes });
+  }
+  return {
+    niveau,
+    gemmes,
+    pieces_elementaires: faits.reduce((s, a) => s + (a.cout_pieces_elementaires ?? 0), 0),
+    bonus_ap: dernier?.bonus_ap ?? 0,
+    bonus_am: dernier?.bonus_am ?? 0,
+    bonus_cran: dernier?.bonus_cran ?? 0,
+  };
+}
+
+/** « de Rubis », « d’Ambre », « d’Émeraude » : le complément du nom d'une gemme (table gemme). */
+export const deLaGemme = (nom) => (/^[aeiouyàâäéèêëîïôöûü]/i.test(String(nom)) ? `d’${nom}` : `de ${nom}`);
+
+/**
+ * Un coût d'armure élémentaire écrit, une part par qualité de gemme puis la pièce élémentaire, comme la source (« 2 gemmes communes », « 1 pièce
+ * élémentaire »), chaque gemme nommée par celle de la magie quand elle est donnée (« 2 gemmes communes de Rubis ») : [texte]. Jamais de RO.
+ * @param {{ gemmes: { qualite: string | null, nombre: number }[], pieces_elementaires: number }} cout  ameliorationElementaire, ou une ligne
+ * @param {string | null} gemme  le nom de la gemme de la magie (table gemme), ou null
+ */
+export function coutElementaireEcrit(cout, gemme = null) {
+  const parts = cout.gemmes.filter((g) => g.nombre > 0).map((g) => {
+    const qualite = QUALITES_DES_GEMMES[g.qualite]?.[g.nombre > 1 ? 1 : 0];
+    return `${g.nombre} ${g.nombre > 1 ? 'gemmes' : 'gemme'}${qualite ? ` ${qualite}` : ''}${gemme ? ` ${deLaGemme(gemme)}` : ''}`;
+  });
+  const p = cout.pieces_elementaires ?? 0;
+  if (p > 0) parts.push(`${p} ${p > 1 ? 'pièces élémentaires' : 'pièce élémentaire'}`);
+  return parts;
+}
+
+/** Le coût d'une seule ligne du tableau élémentaire, sous la forme de ameliorationElementaire (pour coutElementaireEcrit). */
+export const coutDeLaLigneElementaire = (a) => ({
+  gemmes: a?.cout_gemmes ? [{ qualite: a.cout_gemmes_qualite ?? null, nombre: a.cout_gemmes }] : [],
+  pieces_elementaires: a?.cout_pieces_elementaires ?? 0,
+});
+
+/**
+ * L'armure élémentaire forgée (décision R165) : AP et AM écrits plus ceux de la ligne de son amélioration ; solidité = `soliditeBase` (constante
+ * 'piece_elementaire.solidite_base', 4) + le cran de la ligne (5 au +4 et au +5) ; coût : celui de l'amélioration seulement, en gemmes et en pièce
+ * élémentaire (`prix` toujours null : « inestimable »).
+ * @param {{ ap: number | null, am: number | null }} armure
+ * @param {{ niveau: number, cout_gemmes: number | null, cout_gemmes_qualite: string | null, cout_pieces_elementaires: number | null, bonus_ap: number | null, bonus_am: number | null, bonus_cran: number | null }[]} ameliorations
+ * @param {number} niveau amélioration choisie (0 : aucune)
+ * @param {number} soliditeBase
+ */
+export function forgerArmureElementaire(armure, ameliorations, niveau = 0, soliditeBase = 0) {
+  const amelioration = ameliorationElementaire(ameliorations, niveau);
+  const ap = { armure: armure.ap ?? 0, amelioration: amelioration.bonus_ap };
+  ap.total = ap.armure + ap.amelioration;
+  const am = { armure: armure.am ?? 0, amelioration: amelioration.bonus_am };
+  am.total = am.armure + am.amelioration;
+  const solidite = { base: soliditeBase ?? 0, amelioration: amelioration.bonus_cran };
+  solidite.total = solidite.base + solidite.amelioration;
+  return { ap, am, solidite, amelioration, cout: { prix: null, gemmes: amelioration.gemmes, pieces_elementaires: amelioration.pieces_elementaires } };
+}
+
+/** Vrai quand l'élément et le poids d'une armure élémentaire sont choisis tous les deux (décision R165 (4)). */
+export const estElementaire = (etat) => Boolean(etat?.element && etat?.poids);
+
+/**
+ * Le choix d'armure de la page après un clic (décision R165 (4)) — l'état : { m1, m2, particuliere, element, poids } (des valeurs comparées par
+ * identité : les lignes et les boutons de la page, ou des clés) ; le reste de l'état est gardé tel quel :
+ *   - { genre: 'element' | 'poids', valeur } : choisit (ou retire, s'il l'était) l'élément ou le poids ; les deux choisis, les matériaux et l'armure
+ *     particulière se désélectionnent (« on désélectionne les matériaux et affiche l'armure correspondante ») ;
+ *   - { genre: 'm1' | 'm2', valeur } : choisit (ou retire) un matériau ; choisir de nouveau un matériau vide le choix élément/poids ;
+ *   - { genre: 'particuliere', valeur } ou { genre: 'armure', m1, m2 } : une armure de la liste, qui vide aussi le choix élément/poids ;
+ *   - { genre: 'fermer' } : plus rien de choisi.
+ * Rend un nouvel état (l'ancien n'est pas modifié).
+ */
+export function choixDArmureApres(etat, choix) {
+  const e = { ...etat };
+  const sansElementaire = { element: null, poids: null };
+  switch (choix?.genre) {
+    case 'element':
+    case 'poids':
+      e[choix.genre] = e[choix.genre] === choix.valeur ? null : choix.valeur ?? null;
+      if (estElementaire(e)) Object.assign(e, { m1: null, m2: null, particuliere: null });
+      break;
+    case 'm1':
+    case 'm2':
+      Object.assign(e, { particuliere: null }, sansElementaire);
+      e[choix.genre] = e[choix.genre] === choix.valeur ? null : choix.valeur ?? null;
+      break;
+    case 'particuliere':
+      Object.assign(e, { particuliere: choix.valeur ?? null, m1: null, m2: null }, sansElementaire);
+      break;
+    case 'armure':
+      Object.assign(e, { particuliere: null, m1: choix.m1 ?? null, m2: choix.m2 ?? null }, sansElementaire);
+      break;
+    case 'fermer':
+      Object.assign(e, { m1: null, m2: null, particuliere: null }, sansElementaire);
+      break;
+    default:
+      break;
+  }
+  return e;
 }

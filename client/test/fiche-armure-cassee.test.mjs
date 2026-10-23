@@ -1,8 +1,8 @@
 // L'armure cassée de la fiche (décisions R157 et R158) : « Une armure à cran uni tombée à 0 perd son bonus de compétence tant qu'elle n'est pas réparée »
-// (R157) ; « Cassée, une armure à cran de solidité uni ne donne plus aucun de ses effets, bonus comme malus, jusqu'à sa réparation » (R158, avec un
-// élément : les effets de l'armure élémentaire portée, lecture de R158). Cassée : à cran uni (`regles.armures[].solidite_uni = 1`) et à 0
-// (lib/fiche-moteur.mjs#armureCassee). Une armure à six parties ne l'est jamais : seules ses parties à 0 perdent leur AP et leur AM (R108), même toutes à 0
-// avec un élément (question Q12). Les armures du cahier (Robe de mage, Armure montagne) sont prises par leur identifiant ; leurs bonus, leur solidité, ceux
+// (R157) ; « Cassée, une armure à cran de solidité uni ne donne plus aucun de ses effets, bonus comme malus, jusqu'à sa réparation » (R158). Cassée : à
+// cran uni (`regles.armures[].solidite_uni = 1`) et à 0 (lib/fiche-moteur.mjs#armureCassee). Une armure à six parties ne l'est jamais : seules ses parties
+// à 0 perdent leur AP et leur AM (R108), même toutes à 0 ; une armure élémentaire non plus (décision R165 : l'armure de la fiche, à six parties ; tant que
+// la question Q57 est ouverte, aucun de ses effets n'est retiré pour une partie à 0). Les armures du cahier (Robe de mage, Armure montagne) sont prises par leur identifiant ; leurs bonus, leur solidité, ceux
 // de l'armure élémentaire et les dégâts des sorts sont lus dans les règles de la page (l'état courant de la base), jamais figés ici.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -135,24 +135,25 @@ test('R158 : la résistance aux coups d’une armure à cran uni cassée ne comp
   assert.ok(cassee.etapes.some((e) => /cassée/.test(e.texte)));
 });
 
-test('R158 : l’armure élémentaire portée sur une armure à cran uni — ses bonus de sorts absents à 0 (« non compté », armure_cassee), présents au-dessus', () => {
-  const { sans, avec: attendu } = degatsDuSort();
-  const avec = (x) => fiche({ armure_id: montagne.id, armure_elementaire_id: element.id, ...x });
-  for (const [nom, x] of [['neuve', {}], ['à 1', uniA(1)]]) {
-    const m = M.sortDuMoment(regles, avec(x), sortVise, auNm(sortVise));
+test('R165 : l’armure élémentaire est l’armure de la fiche, à six parties — jamais cassée au sens de R158, même toutes à 0 ; ses bonus de sorts comptent (R102), une partie à 0 perd son AP et son AM (R108)', () => {
+  const { avec: attendu } = degatsDuSort();
+  const toutes = M.partiesDuCorps(regles).map((p) => ({ emplacement_id: p.id, solidite: 0 }));
+  for (const [nom, x] of [['neuve', {}], ['torse à 0', { armure_parties: [{ emplacement_id: 'torse', solidite: 0 }] }], ['toutes à 0', { armure_parties: toutes }]]) {
+    const fe = fiche({ armure_elementaire_id: element.id, ...x });
+    assert.equal(M.armureCassee(regles, fe), false, nom);
+    assert.equal(M.partiesDeLArmure(regles, fe).uni, false, nom);
+    const ecrits = M.bonusDeSortsDuPersonnage(regles, fe).filter((b) => b.nom === NOM_ELEMENT);
+    assert.equal(ecrits.length, element.sorts.length, nom);
+    assert.ok(ecrits.every((b) => !b.raison), nom);
+    const m = M.sortDuMoment(regles, fe, sortVise, auNm(sortVise));
     assert.equal(m.dsb.texte, attendu, nom);
-    assert.ok(m.dsb.detail.some((d) => d.nom === NOM_ELEMENT && d.valeur === bonusElement.valeur), nom);
-    assert.ok(!m.nonComptes.some((n) => n.raison === 'armure_cassee'), nom);
+    assert.ok(!m.nonComptes.some((n) => n.nom === NOM_ELEMENT), nom);
   }
-  const ecrits = M.bonusDeSortsDuPersonnage(regles, avec(uniA(0))).filter((b) => b.nom === NOM_ELEMENT);
-  assert.deepEqual(ecrits.map((b) => b.raison), element.sorts.map(() => 'armure_cassee'));
-  const m = M.sortDuMoment(regles, avec(uniA(0)), sortVise, auNm(sortVise));
-  assert.equal(m.dsb.texte, sans);
-  assert.ok(m.nonComptes.some((n) => n.nom === NOM_ELEMENT && n.valeur === bonusElement.valeur && n.raison === 'armure_cassee' && n.cible === 'dsb'));
-  assert.ok(m.nonComptes.filter((n) => n.nom === NOM_ELEMENT).every((n) => n.raison === 'armure_cassee'));
-  // les bonus d'acquis de l'armure d'origine restent perdus par l'élément (R99) : la raison element passe avant armure_cassee
-  const a = M.acquisDesDons(regles, avec(uniA(0)));
-  assert.deepEqual(a.nonComptes.filter((n) => n.nom === `${montagne.nom} (armure)`).map((n) => n.raison), montagne.acquis.map(() => 'element'));
+  // une armure élémentaire n'a pas d'emplacement « armure-complete » : une ligne de l'armure entière n'est pas gardée
+  assert.deepEqual(M.partiesValables(regles, fiche({ armure_elementaire_id: element.id, ...uniA(0) })), []);
+  const parties = M.armureParPartie(regles, fiche({ armure_elementaire_id: element.id, armure_parties: [{ emplacement_id: 'torse', solidite: 0 }] }));
+  assert.deepEqual(parties.filter((p) => p.cassee).map((p) => [p.id, p.ap, p.am]), [['torse', 0, 0]]);
+  assert.ok(parties.filter((p) => !p.cassee).every((p) => p.ap === entier(element.ap) && p.am === entier(element.am)));
 });
 
 test('R158 : une armure à six parties dont une est à 0 n’est pas cassée — acquis et bonus de sorts inchangés ; seule la partie perd son AP et son AM (R108)', () => {
@@ -163,36 +164,29 @@ test('R158 : une armure à six parties dont une est à 0 n’est pas cassée —
   assert.equal(M.armureCassee(r, f), false);
   assert.deepEqual(deLArmure(f, fixe.competence_id, sixParties.nom, r), [fixe.valeur]);
   assert.ok(!M.acquisDesDons(r, f).nonComptes.some((n) => n.nom === `${sixParties.nom} (armure)`));
-  const fe = fiche({ armure_id: sixParties.id, armure_elementaire_id: element.id, ...torse });
-  assert.equal(M.sortDuMoment(regles, fe, sortVise, auNm(sortVise)).dsb.texte, degatsDuSort().avec);
-  assert.ok(!M.bonusDeSortsDuPersonnage(regles, fe).some((b) => b.raison === 'armure_cassee'));
   const parties = M.armureParPartie(regles, f);
   assert.deepEqual(parties.filter((p) => p.cassee).map((p) => [p.id, p.ap, p.am]), [['torse', 0, 0]]);
   assert.ok(parties.filter((p) => !p.cassee).every((p) => p.ap === entier(sixParties.ap) && p.am === entier(sixParties.am)));
 });
 
-test('R158, Q12 : un élément sur une armure à six parties toutes à 0 garde ses bonus de sorts (seules les armures à cran uni sont cassées au sens de R158)', () => {
-  const toutes = M.partiesDuCorps(regles).map((p) => ({ emplacement_id: p.id, solidite: 0 }));
-  const fe = fiche({ armure_id: sixParties.id, armure_elementaire_id: element.id, armure_parties: toutes });
-  assert.ok(M.armureParPartie(regles, fe).every((p) => p.cassee && p.ap === 0 && p.am === 0), 'R108 : l’AP et l’AM tombent sur chaque partie');
-  assert.equal(M.armureCassee(regles, fe), false);
-  assert.ok(!M.bonusDeSortsDuPersonnage(regles, fe).some((b) => b.raison === 'armure_cassee'));
-  assert.equal(M.sortDuMoment(regles, fe, sortVise, auNm(sortVise)).dsb.texte, degatsDuSort().avec);
-});
-
-test('R99 : une armure élémentaire non cassée garde la raison element pour les acquis de l’armure d’origine (pas armure_cassee)', () => {
+test('R165 (8) : une fiche d’avant (Robe de mage et son « élément ») porte l’armure élémentaire — l’armure d’origine ne compte plus, sans raison « element » (R99 n’a plus d’armure d’origine à neutraliser)', () => {
   const autre = regles.armures_elementaires.find((e) => e.categorie !== montagne.type) ?? element;
-  for (const x of [{}, uniA(1)]) {
-    const a = M.acquisDesDons(regles, fiche({ armure_id: robe.id, armure_elementaire_id: autre.id, ...x }));
-    assert.deepEqual(a.nonComptes.filter((n) => n.nom === `${robe.nom} (armure)`).map((n) => n.raison), robe.acquis.map(() => 'element'));
+  for (const x of [{}, uniA(0)]) {
+    const f = fiche({ armure_id: robe.id, armure_elementaire_id: autre.id, ...x });
+    const a = M.acquisDesDons(regles, f);
+    assert.ok(!a.nonComptes.some((n) => n.nom === `${robe.nom} (armure)` || n.raison === 'element'));
+    assert.ok(!a.choix.some((c) => c.source === robe.id));
+    assert.equal(M.armureCassee(regles, f), false, 'l’armure portée est l’armure élémentaire, à six parties');
   }
 });
 
-test('la page (src/scripts/fiche.mjs, lue comme un texte) : la raison armure_cassee a son libellé « armure cassée (R158) » dans les acquis et dans les sorts', () => {
+test('la page (src/scripts/fiche.mjs, lue comme un texte) : la raison armure_cassee a son libellé « armure cassée (R158) » dans les acquis ; plus dans les sorts (R165 : l’armure élémentaire, seule à donner des bonus de sorts, n’est jamais cassée au sens de R158)', () => {
   const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
-  for (const nom of ['RAISONS_DE_L_ACQUIS', 'RAISONS_DES_SORTS']) {
+  const bloc = (nom) => {
     const debut = script.indexOf(`const ${nom} = {`);
     assert.ok(debut >= 0, nom);
-    assert.match(script.slice(debut, script.indexOf('};', debut)), /\barmure_cassee: 'armure cassée \(R158\)'/, nom);
-  }
+    return script.slice(debut, script.indexOf('};', debut));
+  };
+  assert.match(bloc('RAISONS_DE_L_ACQUIS'), /\barmure_cassee: 'armure cassée \(R158\)'/);
+  assert.doesNotMatch(bloc('RAISONS_DES_SORTS'), /\barmure_cassee:/);
 });

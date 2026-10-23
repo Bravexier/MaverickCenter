@@ -59,6 +59,29 @@ html.js body.ed-mode .armures-poids { display: block; }
 .armures-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armures-cote__fermer:hover { border-color: var(--pro); }
 
+/* Armure élémentaire (décision R165 (4)) : sous les deux tableaux de matériaux, le double choix « Élément » (chaque magie dans sa couleur : sa classe
+   de la palette, famille `magie`) et « Poids » (la couleur du type, Vêtement sans couleur) ; un choix pressé est cerclé, comme une matière choisie.
+   Une fois les deux choisis (`.est-elementaire` sur la vue, posée par le script), le tableau d'amélioration des armures élémentaires remplace celui des
+   armures ; sans JavaScript, les deux se suivent (pas de choix). */
+.pelem { display: grid; gap: 0.45rem; margin: 0.8rem 0 0.4rem; padding: 0.7rem 0.85rem; border: 1px solid var(--pro-line); border-radius: var(--radius-md); background: var(--pro-soft); }
+.pelem__titre { margin: 0; font-size: 1.05rem; }
+.pelem .armures-aide { margin: 0; font-size: var(--fs-md); }
+.pelem__groupe { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.pelem__nom { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); min-width: 4.5rem; }
+.pelem__choix { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 0.15rem 0.65rem; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--couleur, var(--surface)); color: var(--couleur-texte, var(--text)); border: 1px solid color-mix(in srgb, var(--couleur-texte, var(--text)) 18%, transparent); }
+.pelem__choix:hover { outline: 2px solid var(--pro-line); outline-offset: 1px; }
+.pelem__choix:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
+.pelem__choix[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--surface), 0 0 0 3px var(--pro); }
+.pelem__choix[aria-pressed="true"]::after { content: ' ✓'; }
+html.js .armures-vue:not(.est-elementaire) .armures-ameliorations--elementaire,
+html.js .armures-vue.est-elementaire .armures-ameliorations--base { display: none; }
+.pamelioration__cumul { font-variant-numeric: tabular-nums; }
+.pfiche__effets { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }
+/* le coût en gemmes d'une armure élémentaire améliorée : un texte, plus petit qu'un montant */
+.pfiche__tuile-texte { display: block; font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; }
+body.ed-mode .armures .pelem { display: none !important; }
+
 /* un écart relevé entre la grille et les matériaux (lib/armures-db.mjs), sous les deux tableaux de choix */
 .armures-ecart { margin: 0.45rem 0 0.5rem; font-size: var(--fs-md); color: var(--muted); }
 

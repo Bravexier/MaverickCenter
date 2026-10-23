@@ -10,6 +10,8 @@ import {
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
+import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle } from './fiches-retraits.mjs';
+import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 import { instant } from './instant.mjs';
 import { ErreurHttp, empreinteCourte } from './partage.mjs';
 
@@ -323,8 +325,15 @@ function verifierForme(db, entree, problemes) {
  * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Les choix de maîtrise
  * eux-mêmes ne sont refusés que par les contraintes de la base : un choix hors de sa source, une limite écrite ou le plafond dépassés sont signalés
  * par v_personnage_controle (R148 à R150), jamais refusés.
+ * L'armure (décision R165) : la fiche enregistrée (l'envoi, avec ce qu'il ne change pas) qui porte une armure ET une armure élémentaire, l'« élément »
+ * d'une page d'avant (R95), est convertie comme à la reconstruction de la base vivante (l'élément devient l'armure, avec son amélioration ; l'armure
+ * d'origine notée) plutôt que refusée : c'est la forme d'avant elle-même, que R165 (8) convertit, et non deux formes qu'on ne sait pas concilier
+ * (armuresAvecArmure). Une armure « Familier », une armure élémentaire d'une magie absente et une armure trop lourde pour le poids portable (R165 (6),
+ * (7) : le calcul du moteur de la fiche sur la fiche enregistrée, lib/poids-portable-db.mjs#poidsPortableDeLaBase) ne sont jamais enregistrées : retirées
+ * et notées, datées (serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle). `poidsPortable` ((db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
+ * null : pas d'étape du poids.
  */
-export function enregistrerFiche(db, recue, { id = null, maintenant = new Date() } = {}) {
+export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined } = {}) {
   const problemes = [];
   if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
     || maitrisesAvecChoix(recue)) {
@@ -338,8 +347,9 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
   const famille = db.prepare('SELECT nom, de_brut AS de, ordre FROM arme_famille WHERE id = ?');
   const don = db.prepare('SELECT k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id WHERE k.id = ?');
   const objet = (l) => (l ? { ...l } : null);
+  // (une armure et son « élément », avant la décision R165 : convertie après l'écriture, sur la fiche enregistrée, plus bas)
   const entree = sansPartiesRetirees(recue, {
-    instant: instant(maintenant), notes,
+    instant: instant(maintenant), notes, armureDouble: false,
     noms: {
       armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null,
       competence: nomDans('competence'), famille: (x) => objet(famille.get(x)), don: (x) => objet(don.get(x)),
@@ -420,6 +430,12 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
       }
     }
     if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
+    // décision R165 : jamais deux armures (l'élément d'une fiche d'avant devient l'armure), ni une armure « Familier », ni une armure élémentaire d'une
+    // magie que le personnage n'a pas, ni une armure trop lourde (le poids portable de la fiche enregistrée : classe, niveau, dons, race, magie innée
+    // de l'envoi) : retirées et notées, datées, dans la fiche enregistrée (envoi complet ou partiel, qui garde les colonnes absentes) ; la réponse
+    // rend la fiche et ses notes
+    const portable = poidsPortable === undefined ? poidsPortableDeLaBase(db) : poidsPortable;
+    noterLesRetraits(db, retirerLesArmuresHorsRegle(db, nouveauxRetraitsDeFiches(), { personnage: id, poidsPortable: portable }), t);
 
     const controles = controlesDe(db, id);
     try {

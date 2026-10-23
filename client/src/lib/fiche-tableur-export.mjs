@@ -170,8 +170,10 @@ export const LIGNES_D_ARME = Object.freeze({
 export const TYPES_DE_DON = Object.freeze({ passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' });
 
 /**
- * Les mots d'une ligne d'armure (AQ21) : « Armure Cuir/Peau · amél. niv. 1 (+2 AP/AM) · élément Garde coeur · amél. élément niv. 2 (+4 AP/AM) » ; un
- * classeur d'avant la décision R95 écrit une ligne par pièce, précédée de son emplacement (« Torse : … »).
+ * Les mots d'une ligne d'armure (AQ21) : « Armure Cuir/Peau · amél. niv. 1 (+2 AP/AM) », ou « Garde coeur · amél. niv. 2 (+4 AP/AM) » pour une armure
+ * élémentaire (décision R165). Un classeur d'avant la décision R165 ajoute l'élément de l'armure et son amélioration (« · élément Garde coeur · amél.
+ * élément niv. 2 (+4 AP/AM) » : relus, puis convertis comme la base vivante) ; un classeur d'avant la décision R95 écrit une ligne par pièce, précédée de
+ * son emplacement (« Torse : … »).
  */
 export const LIGNES_D_ARMURE = Object.freeze({ amelioration: 'amél.', element: 'élément', ameliorationElement: 'amél. élément' });
 
@@ -753,23 +755,23 @@ const sansStats = (t) => {
 const ameliorationDArmure = (a, effets) => (effets && !vide(a.effet) ? `niv. ${a.niveau} (${uneLigne(a.effet)})` : `niv. ${a.niveau}`);
 
 /**
- * La ligne de l'armure portée (AQ21 ; décision R95 : une armure complète, son amélioration, son élément et l'amélioration de l'élément) : « Armure
- * Cuir/Peau (AP 3) · amél. niv. 1 (+2 AP/AM) · élément Garde coeur (AP 7, AM 3) · amél. élément niv. 1 (+2 AP/AM) » ; [] sans armure. AP et AM sont ceux
- * du catalogue (aucun total : le site ne calcule pas l'armure portée) ; `stats` et `effets` à faux les retirent, ainsi que l'effet des améliorations,
- * pour que la case tienne (ce sont des textes du catalogue : l'import ne relit que les noms et les niveaux).
+ * La ligne de l'armure portée (AQ21 ; décisions R95, R165 : UNE armure, de base ou élémentaire, et son amélioration) : « Armure Cuir/Peau (AP 3) · amél.
+ * niv. 1 (+2 AP/AM) », ou pour une armure élémentaire, l'armure qu'une pièce élémentaire a transformée, son nom et son amélioration du tableau élémentaire :
+ * « Garde coeur (AP 7, AM 3) · amél. niv. 1 (+2 AP/AM) » (l'import la reconnaît à son nom) ; [] sans armure. Une fiche d'avant qui porte les deux (R95 :
+ * l'armure et son « élément ») écrit l'armure élémentaire, que la conversion garde (R165 (8)). AP et AM sont ceux du catalogue (aucun total : le site ne
+ * calcule pas l'armure portée) ; `stats` et `effets` à faux les retirent, ainsi que l'effet de l'amélioration, pour que la case tienne (ce sont des textes
+ * du catalogue : l'import ne relit que les noms et les niveaux).
  */
 export function lignesDArmure(regles, fiche, { stats = true, effets = true } = {}) {
-  if (vide(fiche.armure_id)) return [];
-  const armure = trouver(regles.armures ?? [], fiche.armure_id);
-  const parts = [`${armure?.nom ?? fiche.armure_id}${stats ? statsDArmure(armure) : ''}`];
-  const amelioration = trouver(regles.ameliorations ?? [], fiche.armure_amelioration_id);
-  if (amelioration) parts.push(`${LIGNES_D_ARMURE.amelioration} ${ameliorationDArmure(amelioration, effets)}`);
-  if (!vide(fiche.armure_elementaire_id)) {
-    const element = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
-    parts.push(`${LIGNES_D_ARMURE.element} ${element?.nom ?? fiche.armure_elementaire_id}${stats ? statsDArmure(element) : ''}`);
-  }
-  const ameliorationElement = trouver(regles.ameliorations ?? [], fiche.armure_amelioration_elementaire_id);
-  if (ameliorationElement) parts.push(`${LIGNES_D_ARMURE.ameliorationElement} ${ameliorationDArmure(ameliorationElement, effets)}`);
+  const elementaire = !vide(fiche.armure_elementaire_id);
+  if (vide(fiche.armure_id) && !elementaire) return [];
+  const [liste, id, ameliorationId, cible] = elementaire
+    ? [regles.armures_elementaires, fiche.armure_elementaire_id, fiche.armure_amelioration_elementaire_id, 'armure_elementaire']
+    : [regles.armures, fiche.armure_id, fiche.armure_amelioration_id, 'armure'];
+  const armure = trouver(liste ?? [], id);
+  const parts = [`${armure?.nom ?? id}${stats ? statsDArmure(armure) : ''}`];
+  const amelioration = trouver(regles.ameliorations ?? [], ameliorationId);
+  if (amelioration?.cible === cible) parts.push(`${LIGNES_D_ARMURE.amelioration} ${ameliorationDArmure(amelioration, effets)}`);
   return [parts.join(SEPARATEUR_D_ARMURE)];
 }
 
@@ -1029,8 +1031,9 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   // armure de base, armure portée, bouclier
   ecrire(O.armure.apBase, a.ap);
   ecrire(O.armure.amBase, a.am);
-  // « Nom Armure » : l'armure (relue quand AQ21 manque ; décision R95 : une seule armure complète)
-  if (!vide(f.armure_id)) ecrire(O.armure.nom, nomDe(regles.armures, f.armure_id), RELUE);
+  // « Nom Armure » : l'armure (relue quand AQ21 manque ; décision R95 : une seule armure complète ; R165 : de base ou élémentaire)
+  if (!vide(f.armure_elementaire_id)) ecrire(O.armure.nom, nomDe(regles.armures_elementaires, f.armure_elementaire_id), RELUE);
+  else if (!vide(f.armure_id)) ecrire(O.armure.nom, nomDe(regles.armures, f.armure_id), RELUE);
   // la solidité de chaque partie, dans la ligne « Sol. » de la grille (décision R95), relue
   for (const [emplacement, texte] of Object.entries(soliditesDesParties(regles, f))) {
     const colonne = O.armure.colonnes[emplacement];

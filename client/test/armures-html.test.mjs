@@ -13,7 +13,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ancreDArmure, ancreDeBouclier, chargerArmures, coutDeFabrication } from '../src/lib/armures-db.mjs';
 import { prixEnRo } from '../src/lib/arme-champs.mjs';
-import { classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { ameliorationElementaire, coutElementaireEcrit } from '../src/lib/armure-forge.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
@@ -226,6 +227,69 @@ test('plus de tableau MATÉRIAUX sous les deux onglets : chacun renvoie au table
   assert.ok(html.includes('.armures-renvoi {') && !/body\.ed-mode[^{]*armures-renvoi/.test(html), 'le renvoi n’est pas caché en mode modification');
   const composants = readFileSync(join(dist, 'ressources', 'composants', 'index.html'), 'utf8');
   assert.match(composants, /<section class="tableau comp-tableau composants-panneau(?: is-active)?" id="materiaux"/, 'l’ancre de l’onglet des matériaux de « Composants »');
+});
+
+test('R165 (4) : sous les deux tableaux de matériaux, le double choix « Élément » (14 magies dans l’ordre des colonnes de la source, jamais le Potentiel Illimité) et « Poids » (4 poids, jamais Familier)', options, () => {
+  const p = panneau('armures');
+  const debut = p.indexOf('<section class="pelem js-seul"');
+  assert.ok(debut > 0, 'le bloc des armures élémentaires');
+  // juste sous les deux tableaux de matériaux : après le second, avant la liste des armures
+  assert.ok(debut > p.indexOf('data-choix="m2"') && debut < p.indexOf('id="liste-des-armures"'));
+  assert.ok(!p.slice(p.indexOf('</table>', p.indexOf('data-choix="m2"')), debut).includes('<table'), 'rien entre le second tableau et le choix');
+  const bloc = p.slice(debut, p.indexOf('</section>', debut));
+  // l'ordre des colonnes de la source (onglet « Pièces élémentaires », ligne 92)
+  const ORDRE = ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre'];
+  const magies = [...bloc.matchAll(/<button type="button" class="pelem__choix pelem__choix--magie ([^"]+)" data-element="([^"]+)" data-magie="([^"]+)"(?: data-gemme="([^"]*)")? aria-pressed="false">([^<]+)<\/button>/g)]
+    .map((m) => ({ classe: m[1], cle: m[2], id: m[3], gemme: m[4] ?? null, nom: m[5] }));
+  assert.deepEqual(magies.map((m) => m.nom), ORDRE.map(echapper));
+  assert.deepEqual(magies.map((m) => m.id), armures.elementaires.magies.map((m) => m.id));
+  assert.ok(!magies.some((m) => /potentiel/i.test(m.id) || /Potentiel/.test(m.nom)), 'jamais le Potentiel Illimité');
+  for (const [i, m] of magies.entries()) {
+    assert.equal(m.classe, classeDeMagie(armures.elementaires.magies[i].nom), `${m.nom} : la classe de sa magie, jamais un style`);
+    assert.equal(m.gemme, armures.elementaires.magies[i].gemme?.nom ?? null, `${m.nom} : la gemme de sa magie (table gemme)`);
+    assert.ok(m.gemme, `${m.nom} : une gemme`);
+  }
+  const poids = [...bloc.matchAll(/data-poids-elementaire="([^"]+)" data-categorie="([^"]+)"/g)].map((m) => m[2]);
+  assert.deepEqual(poids, ['Vêtement', 'Léger', 'Intermédiaire', 'Lourd']);
+  assert.ok(!bloc.includes('Familier'), 'jamais Familier');
+  // les 56 armures, cachées (le script les lit), chacune son AP, son AM et ses effets écrits ; aucun prix
+  const cachees = bloc.slice(bloc.indexOf('<div hidden data-armures-elementaires'));
+  assert.match(cachees, new RegExp(`^<div hidden data-armures-elementaires data-solidite-base="${armures.elementaires.solidite_base}">`));
+  assert.equal(armures.elementaires.solidite_base, 4);
+  const lues = [...cachees.matchAll(/<div class="pelem-armure" data-magie="([^"]+)" data-categorie="([^"]+)" data-ap="(\d+)" data-am="(\d+)">/g)];
+  assert.equal(lues.length, 56);
+  for (const a of armures.elementaires.armures) {
+    const i = cachees.indexOf(`data-magie="${a.magie_id}" data-categorie="${a.categorie}" data-ap="${a.ap ?? 0}" data-am="${a.am ?? 0}"`);
+    assert.ok(i > 0, a.id);
+    const fiche = cachees.slice(i, cachees.indexOf('</ul>', i));
+    assert.ok(fiche.includes(`<span class="pelem-armure__nom">${echapper(a.nom)}</span>`), `${a.id} : son nom`);
+    assert.equal((fiche.match(/<li>/g) ?? []).length, a.effets.length, `${a.id} : ses effets`);
+  }
+  assert.ok(!/data-ro=|class="pprix"|\bRO\b/.test(bloc), 'aucun prix');
+});
+
+test('R165 (2) : le tableau d’amélioration des armures élémentaires — Aucune puis +1 à +5, le coût de la ligne, le coût cumulé, l’effet de la ligne ; aucun RO', options, () => {
+  const p = panneau('armures');
+  const debut = p.indexOf('id="ameliorations-armure-elementaire"');
+  assert.ok(debut > 0 && debut > p.indexOf('id="ameliorations-armure"'), 'à côté, après le tableau des armures');
+  const table = p.slice(debut, p.indexOf('</table>', debut));
+  assert.match(p.slice(p.lastIndexOf('<section', debut), debut), /armures-ameliorations armures-ameliorations--elementaire/);
+  assert.match(p.slice(p.lastIndexOf('<section', p.indexOf('id="ameliorations-armure"')), p.indexOf('id="ameliorations-armure"')), /armures-ameliorations armures-ameliorations--base/);
+  assert.ok(table.includes('<tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure_elementaire" data-niveau="0">'));
+  const lignes = armures.ameliorations.armure_elementaire;
+  assert.deepEqual(lignes.map((a) => a.niveau), [1, 2, 3, 4, 5]);
+  for (const a of lignes) {
+    const i = table.indexOf(`data-cible="armure_elementaire" data-niveau="${a.niveau}" data-gemmes=`);
+    assert.ok(i > 0, `+${a.niveau}`);
+    const ligne = table.slice(i, table.indexOf('</tr>', i));
+    assert.ok(ligne.includes(`data-ap="${a.bonus_ap}" data-am="${a.bonus_am}" data-cran="${a.bonus_cran ?? 0}"`), `+${a.niveau} : l’effet de la ligne`);
+    assert.ok(ligne.includes(`<td class="pamelioration__cout" data-cout-ligne>${echapper(a.cout_brut)}</td>`), `+${a.niveau} : le coût de la ligne, tel qu’écrit`);
+    const cumul = coutElementaireEcrit(ameliorationElementaire(lignes, a.niveau)).join(' + ');
+    assert.ok(ligne.includes(`<td class="pamelioration__cumul" data-cout-cumule>${echapper(cumul)}</td>`), `+${a.niveau} : le coût cumulé`);
+    assert.ok(ligne.includes(`<td class="pamelioration__effet">${echapper(a.effet_brut)}</td>`), `+${a.niveau} : l’effet écrit`);
+  }
+  assert.ok(table.includes('2 gemmes communes + 2 gemmes raffinées + 5 gemmes parfaites + 1 pièce élémentaire'), 'le cumul du +5');
+  assert.ok(!/\bRO\b|Ricken|pmontant|montant__part/.test(table), 'aucune conversion en RO');
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {

@@ -107,7 +107,7 @@ test('R113 : une valeur par tour reçoit les bonus fixes à chaque tour (dégât
   const lumiere = regles.armures_elementaires.find((e) => e.sorts?.some((b) => b.cible === 'soin' && b.valeur === 7));
   assert.ok(soin && lumiere, 'un soin par tour dans la base');
   const lu = M.lireDegatsDeSort(auNm(soin).dsb);
-  const m = M.sortDuMoment(regles, fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: lumiere.id }), soin, auNm(soin));
+  const m = M.sortDuMoment(regles, fiche({ armure_elementaire_id: lumiere.id }), soin, auNm(soin));
   assert.equal(m.dsb.texte, M.ecrireDegatsDeSort({ ...lu, fixe: lu.fixe + 7 }), auNm(soin).dsb);
   assert.match(m.dsb.texte, /(\/\s*tour|par tour)$/);
   assert.equal(M.ecrireDegatsDeSort({ ...M.lireDegatsDeSort('4d6 de soin/tour'), fixe: 7 }), '4d6 + 7 de soin/tour');
@@ -713,7 +713,7 @@ test('relectures (R101, R102) : protection chiffrée, coût 0, valeur par tour, 
   const lumiere = regles.armures_elementaires.find((e) => e.id.endsWith('intermediaire:lumiere'));
   const soin = regles.sorts.find((s) => s.types.includes('soin') && /^\d+d6 soin/.test(auNm(s).dsb));
   const n = M.lireDegatsDeSort(auNm(soin).dsb);
-  assert.equal(M.sortDuMoment(regles, fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: lumiere.id }), soin, auNm(soin)).dsb.texte, M.ecrireDegatsDeSort({ ...n, fixe: n.fixe + 7 }));
+  assert.equal(M.sortDuMoment(regles, fiche({ armure_elementaire_id: lumiere.id }), soin, auNm(soin)).dsb.texte, M.ecrireDegatsDeSort({ ...n, fixe: n.fixe + 7 }));
   const vent = regles.armures_elementaires.find((e) => e.id.endsWith('vetement:vent'));
   const fv = fiche({ armure_id: regles.armures[0].id, armure_elementaire_id: vent.id });
   const placement = regles.sorts.find((s) => s.magie_id === 'magies/magie-du-vent' && s.types.includes('placement') && /^\d+$/.test(auNm(s).portee));

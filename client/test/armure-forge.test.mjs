@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  ameliorationDArmure, ameliorationDeBouclier, forgerArmure, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, UNITES_PAR_MATERIAU,
+  ameliorationDArmure, ameliorationDeBouclier, ameliorationElementaire, choixDArmureApres, coutDeLaLigneElementaire, coutElementaireEcrit, deLaGemme,
+  estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, QUALITES_DES_GEMMES, UNITES_PAR_MATERIAU,
 } from '../src/lib/armure-forge.mjs';
 import { montantDecompose, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 
@@ -95,4 +96,80 @@ test('montants (décision R79 : les prix de la grille sont des RO) : la même d�
   assert.deepEqual(piecesDuMontant(0), [{ nombre: 0, abr: 'RO' }]);
   assert.equal(nombre(16710), '16 710');
   assert.equal(nombre(1.5), '1,5');
+});
+
+// Décision R165 (2), (3) : le tableau « Armure » de l'onglet « Pièces élémentaires » (+1 : 2 gemmes communes, +2 AP/AM ; +2 : 2 gemmes raffinées, +4 ;
+// +3 : 2 gemmes parfaites, +6 ; +4 : 3 gemmes parfaites, +8, +1 cran ; +5 : 1 pièce élémentaire, +10, +1 cran), écrit ici comme dans la décision.
+// [niveau, gemmes, qualité, pièces élémentaires, AP, AM, crans]
+const AMELIORATIONS_ELEMENTAIRES = [[1, 2, 'commune', null, 2, 2, null], [2, 2, 'raffinee', null, 4, 4, null], [3, 2, 'parfaite', null, 6, 6, null],
+  [4, 3, 'parfaite', null, 8, 8, 1], [5, null, null, 1, 10, 10, 1]]
+  .map(([niveau, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, bonus_ap, bonus_am, bonus_cran]) => ({
+    niveau, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, bonus_ap, bonus_am, bonus_cran, cout_ro: null, cout_materiaux: null,
+  }));
+// « Garde braise » (Léger, Feu : AP 5, AM 5) ; la gemme du Feu, le Rubis (table gemme)
+const GARDE_BRAISE = { ap: 5, am: 5 };
+const RUBIS = 'Rubis';
+
+test('R165 (2) : le coût cumulé d’une armure élémentaire — 0 → +2 : 2 gemmes communes + 2 raffinées ; +5 : 2 communes + 2 raffinées + 5 parfaites + 1 pièce élémentaire, en gemmes de la magie', () => {
+  assert.deepEqual(ameliorationElementaire(AMELIORATIONS_ELEMENTAIRES, 0), { niveau: 0, gemmes: [], pieces_elementaires: 0, bonus_ap: 0, bonus_am: 0, bonus_cran: 0 });
+  const plus2 = ameliorationElementaire(AMELIORATIONS_ELEMENTAIRES, 2);
+  assert.deepEqual(plus2.gemmes, [{ qualite: 'commune', nombre: 2 }, { qualite: 'raffinee', nombre: 2 }]);
+  assert.equal(plus2.pieces_elementaires, 0);
+  assert.deepEqual(coutElementaireEcrit(plus2, RUBIS), ['2 gemmes communes de Rubis', '2 gemmes raffinées de Rubis']);
+  // « 5 parfaites » au +5 = 2 (+3) + 3 (+4)
+  const plus5 = ameliorationElementaire(AMELIORATIONS_ELEMENTAIRES, 5);
+  assert.deepEqual(plus5.gemmes, [{ qualite: 'commune', nombre: 2 }, { qualite: 'raffinee', nombre: 2 }, { qualite: 'parfaite', nombre: 5 }]);
+  assert.equal(plus5.pieces_elementaires, 1);
+  assert.deepEqual(coutElementaireEcrit(plus5, RUBIS), ['2 gemmes communes de Rubis', '2 gemmes raffinées de Rubis', '5 gemmes parfaites de Rubis', '1 pièce élémentaire']);
+  // sans gemme nommée : les mots de la source ; la pièce du +5 « 1 pièce élémentaire », comme la source ; jamais de RO
+  assert.deepEqual(coutElementaireEcrit(coutDeLaLigneElementaire(AMELIORATIONS_ELEMENTAIRES[0])), ['2 gemmes communes']);
+  assert.deepEqual(coutElementaireEcrit(coutDeLaLigneElementaire(AMELIORATIONS_ELEMENTAIRES[4])), ['1 pièce élémentaire']);
+  assert.deepEqual(coutElementaireEcrit({ gemmes: [{ qualite: 'parfaite', nombre: 1 }], pieces_elementaires: 2 }, 'Ambre'), ['1 gemme parfaite d’Ambre', '2 pièces élémentaires']);
+  assert.ok(!coutElementaireEcrit(plus5, RUBIS).join(' ').match(/\bRO\b|Ricken/), 'aucune conversion en RO');
+  assert.deepEqual(Object.keys(QUALITES_DES_GEMMES), ['commune', 'raffinee', 'parfaite']);
+  assert.equal(deLaGemme('Émeraude'), 'd’Émeraude');
+  assert.equal(deLaGemme('Diamant rose'), 'de Diamant rose');
+});
+
+test('R165 (2), (3) : l’armure élémentaire forgée — effet de la ligne (sans cumul : au +5, +10 AP/AM et +1 cran), solidité 4 puis 5 au +4 et au +5, aucun prix', () => {
+  const attendus = [[0, 5, 5, 4], [1, 7, 7, 4], [2, 9, 9, 4], [3, 11, 11, 4], [4, 13, 13, 5], [5, 15, 15, 5]];
+  for (const [niveau, ap, am, solidite] of attendus) {
+    const f = forgerArmureElementaire(GARDE_BRAISE, AMELIORATIONS_ELEMENTAIRES, niveau, 4);
+    assert.deepEqual([f.ap.total, f.am.total, f.solidite.total], [ap, am, solidite], `+${niveau}`);
+    assert.equal(f.cout.prix, null, `+${niveau} : « inestimable »`);
+    assert.ok(!('total' in f.cout) && !('amelioration' in f.cout), 'aucun montant en RO');
+  }
+  const plus5 = forgerArmureElementaire(GARDE_BRAISE, AMELIORATIONS_ELEMENTAIRES, 5, 4);
+  assert.deepEqual([plus5.ap.amelioration, plus5.am.amelioration, plus5.solidite.amelioration], [10, 10, 1], 'la ligne +5 seule, pas 2 + 4 + 6 + 8 + 10');
+  assert.deepEqual(plus5.solidite, { base: 4, amelioration: 1, total: 5 });
+});
+
+test('R165 (4) : le choix de la page — élément et poids choisis, les matériaux se désélectionnent ; choisir de nouveau un matériau vide l’élément et le poids', () => {
+  const vide = { m1: null, m2: null, particuliere: null, element: null, poids: null, niveau: 2 };
+  let e = choixDArmureApres(vide, { genre: 'm1', valeur: 'cuir' });
+  e = choixDArmureApres(e, { genre: 'm2', valeur: 'peau' });
+  // un seul des deux : les matériaux restent
+  e = choixDArmureApres(e, { genre: 'element', valeur: 'feu' });
+  assert.deepEqual([e.m1, e.m2, e.element, e.poids, estElementaire(e)], ['cuir', 'peau', 'feu', null, false]);
+  // les deux : les matériaux se désélectionnent
+  e = choixDArmureApres(e, { genre: 'poids', valeur: 'leger' });
+  assert.deepEqual([e.m1, e.m2, e.particuliere, e.element, e.poids, estElementaire(e)], [null, null, null, 'feu', 'leger', true]);
+  assert.equal(e.niveau, 2, 'le reste de l’état est gardé');
+  // un autre élément remplace le premier ; recliquer le retire
+  assert.equal(choixDArmureApres(e, { genre: 'element', valeur: 'eau' }).element, 'eau');
+  assert.equal(choixDArmureApres(e, { genre: 'poids', valeur: 'leger' }).poids, null);
+  // revenir aux matériaux : le choix élément/poids se vide
+  const retour = choixDArmureApres(e, { genre: 'm1', valeur: 'cuir' });
+  assert.deepEqual([retour.m1, retour.element, retour.poids], ['cuir', null, null]);
+  // une armure de la liste (de la grille ou particulière) aussi
+  assert.deepEqual(Object.values(choixDArmureApres(e, { genre: 'armure', m1: 'cuir', m2: 'peau' })).slice(0, 5), ['cuir', 'peau', null, null, null]);
+  assert.deepEqual(Object.values(choixDArmureApres(e, { genre: 'particuliere', valeur: 'robe' })).slice(0, 5), [null, null, 'robe', null, null]);
+  assert.deepEqual(Object.values(choixDArmureApres(e, { genre: 'fermer' })).slice(0, 5), [null, null, null, null, null]);
+  assert.equal(e.element, 'feu', 'l’état d’avant n’est pas modifié');
+});
+
+test('R165 : les armures ordinaires et les boucliers ne changent pas (le tableau élémentaire n’a ni RO ni matériaux)', () => {
+  // une armure ordinaire ignore les colonnes des gemmes : son amélioration ne lit que RO et matériaux
+  assert.deepEqual(ameliorationDArmure(AMELIORATIONS_ELEMENTAIRES, 5), { niveau: 5, ro: 0, materiaux: 0, bonus_ap: 10, bonus_am: 10, bonus_cran: 1 });
+  assert.deepEqual(forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 2, { fabrication: FABRICATION, materiaux: [CUIR, PEAU] }).cout.total, 228);
 });

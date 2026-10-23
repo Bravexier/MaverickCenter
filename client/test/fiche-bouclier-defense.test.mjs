@@ -63,7 +63,7 @@ test('bouclierApresChoix : une autre forme ou matière est neuve ; sans forme, r
   assert.equal(M.bouclierApresChoix(regles, { ...f, bouclier_solidite: 2 }, 'bouclier_amelioration_id', ameliorationDuNiveau(1).id).bouclier_solidite, 2);
 });
 
-test('defenseDe (R98) : base, accessoires, armure portée et son amélioration ; un élément remplace l’armure d’origine (« Tous les bonus d’origine […] sont perdus ») ; le bouclier à part', () => {
+test('defenseDe (R98) : base, accessoires, armure portée et son amélioration ; une armure élémentaire et son amélioration du tableau élémentaire (R99, R165) ; le bouclier à part', () => {
   const armure = regles.armures.find((a) => a.ap >= 2 && a.am >= 1);
   const amelioration = regles.ameliorations.find((a) => a.cible === 'armure' && a.niveau === 3);
   const f = fiche({ armure_id: armure.id, armure_amelioration_id: amelioration.id });
@@ -75,9 +75,12 @@ test('defenseDe (R98) : base, accessoires, armure portée et son amélioration ;
   assert.equal(d.bouclier, null);
   const element = regles.armures_elementaires.find((e) => e.ap !== armure.ap);
   const ameliorationElement = regles.ameliorations.find((a) => a.cible === 'armure_elementaire' && a.niveau === 2);
-  const e = M.defenseDe(regles, { ...f, armure_elementaire_id: element.id, armure_amelioration_elementaire_id: ameliorationElement.id });
-  assert.equal(e.ap.total, base.ap + (element.ap ?? 0) + ameliorationElement.bonus_ap);
-  assert.equal(e.element.id, element.id);
+  // décision R165 : l'armure élémentaire est l'armure de la fiche (une fiche d'avant qui porte encore les deux : l'armure élémentaire, que la conversion garde)
+  for (const g of [{ ...f, armure_id: null, armure_amelioration_id: null }, f]) {
+    const e = M.defenseDe(regles, { ...g, armure_elementaire_id: element.id, armure_amelioration_elementaire_id: ameliorationElement.id });
+    assert.equal(e.ap.total, base.ap + (element.ap ?? 0) + ameliorationElement.bonus_ap);
+    assert.equal(e.element.id, element.id);
+  }
   const b = M.defenseDe(regles, { ...f, bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer' });
   assert.equal(b.ap.total, d.ap.total, 'le bouclier ne compte qu’en parade partielle');
   assert.ok(b.bouclier.ap > 0);
@@ -273,11 +276,11 @@ test('R108 : une partie cassée n’a pas la résistance ni la faiblesse de l’
   for (const p of M.partiesDuCorps(regles)) assert.equal(M.defenseDe(regles, cassee, undefined, { partie: p.id }).ap.armure, 0, p.id);
 });
 
-test('R108 avec un élément (R99) : chaque partie a la valeur de l’armure élémentaire et de son amélioration, ou 0 cassée', () => {
+test('R108 avec une armure élémentaire (R99, R165) : chaque partie a la valeur de l’armure élémentaire et de son amélioration, ou 0 cassée', () => {
   const armure = regles.armures.find((a) => a.ap >= 1 && Number(a.solidite_uni) !== 1 && a.solidite >= 1);
   const element = regles.armures_elementaires.find((e) => e.ap && e.am && e.ap !== armure.ap);
   const ameliorationElement = regles.ameliorations.find((a) => a.cible === 'armure_elementaire' && a.niveau === 2);
-  const f = fiche({ armure_id: armure.id, armure_elementaire_id: element.id, armure_amelioration_elementaire_id: ameliorationElement.id,
+  const f = fiche({ armure_elementaire_id: element.id, armure_amelioration_elementaire_id: ameliorationElement.id,
     armure_parties: [{ emplacement_id: 'torse', solidite: 0 }] });
   const ap = element.ap + ameliorationElement.bonus_ap;
   const am = element.am + ameliorationElement.bonus_am;
@@ -286,7 +289,11 @@ test('R108 avec un élément (R99) : chaque partie a la valeur de l’armure él
   const torse = M.defenseDe(regles, f);
   const bras = M.defenseDe(regles, f, undefined, { partie: 'bras-gauche' });
   assert.deepEqual([torse.element.id, torse.ap.armure, torse.am.armure, bras.ap.armure, bras.am.armure], [element.id, 0, 0, ap, am]);
-  assert.ok(bras.ap.detail.some((l) => l.nom === `Élément : ${element.nom}`) && !bras.ap.detail.some((l) => l.nom === armure.nom), 'l’élément remplace l’armure');
+  assert.ok(bras.ap.detail.some((l) => l.nom === element.nom) && bras.ap.detail.some((l) => l.nom === 'Amélioration niveau 2'));
+  // une fiche d'avant qui porte encore l'armure d'origine : seule l'armure élémentaire compte (R165 (8))
+  const avant = M.defenseDe(regles, { ...f, armure_id: armure.id }, undefined, { partie: 'bras-gauche' });
+  assert.deepEqual([avant.ap.armure, avant.am.armure], [ap, am]);
+  assert.ok(!avant.ap.detail.some((l) => l.nom === armure.nom), 'l’armure d’origine ne compte plus');
 });
 
 test('typesDeDegats : Estoc, Taille, Frappe, puis les quatorze magies (sans le Potentiel Illimité)', () => {
