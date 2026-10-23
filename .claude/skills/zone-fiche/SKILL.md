@@ -11,7 +11,7 @@ Avant de toucher un sujet, lire son skill :
 - skill `zone-fiche-tiroir` : choix à faire, tiroir « Choix », bulles et parcours au clavier ;
 - skill `zone-fiche-acquis` : acquis calculé (R104), entraînement, métier, fiche d'avant (`lib/fiche-format.mjs`) ;
 - skill `zone-fiche-sorts` : sorts, NM, coûts, sort préparé, invocations ;
-- skill `zone-fiche-equipement` : armes et maîtrises, sac, ceinture, accessoires ;
+- skill `zone-fiche-equipement` : armes (R167) et maîtrises, sac, ceinture, accessoires ;
 - skill `zone-fiche-armure` : armure (de base ou élémentaire, poids portable), bouclier, défense et dégâts reçus ;
 - skill `zone-fiche-situation` : postures, Mode Hyper, résistances.
 Autres : format d'une fiche, section 13, retraits R42, base vivante (skill `zone-fiches-base`, skill `zone-service`) ; tableur (skill `zone-fiche-tableur`) ; liste `/personnages/` (skill `zone-personnages-liste`).
