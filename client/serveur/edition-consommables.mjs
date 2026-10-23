@@ -15,6 +15,7 @@ import { corpsDeLaPotionApres, ErreurCorpsPotions, pageDeLaPotion } from '../src
 import { etatsDeLaPotion } from '../src/lib/potion-etats.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { lireLigne } from './edition-journal.mjs';
+import { corpsOuRefus } from './edition-corps.mjs';
 
 /** Le contexte du corps des pages de potions (lib/corps-potions.mjs#corpsDeLaPotionApres), lu dans la base. */
 export const contexteDuCorpsDesPotions = (db) => ({
@@ -50,13 +51,7 @@ export function domainesDesConsommables({ refus, ErreurEdition, synchroniser }) 
     const id = pageDeLaPotion(table, apres, contexte);
     const page = id ? lireLigne(ctx.db, 'page', { id }) : null;
     if (!page) return;
-    let corps;
-    try {
-      corps = corpsDeLaPotionApres(page.corps_md, table, avant, apres, contexte);
-    } catch (e) {
-      if (e instanceof ErreurCorpsPotions) throw new ErreurEdition(500, `Page ${id} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-      throw e;
-    }
+    const corps = corpsOuRefus(ErreurEdition, ErreurCorpsPotions, id, () => corpsDeLaPotionApres(page.corps_md, table, avant, apres, contexte));
     if (corps === page.corps_md) return;
     // ni HTML brut ni lien non sûr ajouté : le Markdown part tel quel dans la page construite, puis en production (lib/markdown-sur.mjs)
     const ajoutes = fragmentsAjoutes(page.corps_md, corps);

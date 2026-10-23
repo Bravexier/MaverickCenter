@@ -12,6 +12,7 @@ import {
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../src/lib/armure-champs.mjs';
 import { corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { corpsOuRefus } from './edition-corps.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { retirerDesFiches } from './fiches-retraits.mjs';
 
@@ -47,13 +48,7 @@ export function suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition) {
 export function suivreLeCorpsDesArmes(ctx, table, avant, apres, ErreurEdition) {
   const page = lireLigne(ctx.db, 'page', { id: PAGE_DES_ARMES });
   if (!page) return;
-  let corps;
-  try {
-    corps = corpsDesArmesApres(page.corps_md, table, avant, apres, contexteDuCorpsDesArmes(ctx.db));
-  } catch (e) {
-    if (e instanceof ErreurCorpsArmes) throw new ErreurEdition(500, `Page ${PAGE_DES_ARMES} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-    throw e;
-  }
+  const corps = corpsOuRefus(ErreurEdition, ErreurCorpsArmes, PAGE_DES_ARMES, () => corpsDesArmesApres(page.corps_md, table, avant, apres, contexteDuCorpsDesArmes(ctx.db)));
   if (corps !== page.corps_md) ctx.w.modifier('page', { id: PAGE_DES_ARMES }, { corps_md: corps });
 }
 

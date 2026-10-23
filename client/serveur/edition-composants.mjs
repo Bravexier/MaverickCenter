@@ -17,6 +17,7 @@ import { citationsDeRessource } from '../src/lib/composants-db.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
+import { corpsOuRefus } from './edition-corps.mjs';
 import { suivreLeCorpsDesArmes, suivreLeMateriauRenomme } from './edition-armes.mjs';
 import { detacherDesFiches } from './fiches-retraits.mjs';
 
@@ -48,13 +49,7 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     for (const id of pagesDuComposant(table, apres ?? avant)) {
       const page = lireLigne(ctx.db, 'page', { id });
       if (!page) continue;
-      let corps;
-      try {
-        corps = corpsDuComposantApres(id, page.corps_md, table, avant, apres, contexte);
-      } catch (e) {
-        if (e instanceof ErreurCorpsComposants) throw new ErreurEdition(500, `Page ${id} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-        throw e;
-      }
+      const corps = corpsOuRefus(ErreurEdition, ErreurCorpsComposants, id, () => corpsDuComposantApres(id, page.corps_md, table, avant, apres, contexte));
       if (corps === page.corps_md) continue;
       // ni HTML brut ni lien non sûr ajouté : le Markdown part tel quel dans la page construite, puis en production (lib/markdown-sur.mjs)
       const ajoutes = fragmentsAjoutes(page.corps_md, corps);
