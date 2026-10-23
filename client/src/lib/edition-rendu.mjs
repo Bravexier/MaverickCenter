@@ -6,8 +6,8 @@ import { dateCourte, libelleDeDate } from './chronologie.mjs';
 import { htmlDeLaPortee } from './chronologie-rendu.mjs';
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
-import { styleDeCouleur, couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
+import { classeDeCaracteristique } from './palette-css.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
@@ -101,7 +101,7 @@ const valeurDeCase = (champ, liste) => (valeur, _ligne, ctx = {}) => {
 const ATTRIBUTS_DE_LA_FICHE = { initiative: 'Initiative', vitesse: 'Vitesse', vitesse_nage: 'Vitesse de nage' };
 
 /**
- * Pastille d'une compétence que vise un bonus de métier, dans la couleur de sa caractéristique (lib/caracteristiques-postures.mjs), ou d'un attribut
+ * Pastille d'une compétence que vise un bonus de métier, dans la couleur de sa caractéristique (sa classe : lib/palette-css.mjs), ou d'un attribut
  * (initiative, vitesse, vitesse de nage : la cible telle qu'écrite en titre, « Vitesse au sol pour le sprint »).
  */
 function pastilleDeCible(option, ctx) {
@@ -112,7 +112,7 @@ function pastilleDeCible(option, ctx) {
   const competence = (ctx.competences ?? []).find((c) => typeof c === 'object' && c.id === option.competence_id);
   const carac = (ctx.caracteristiques ?? []).find((c) => c.id === competence?.caracteristique_id);
   const nom = competence?.nom ?? option.cible;
-  return `<span class="metier-cible" style="${styleDeCouleur(couleurDeCaracteristique(competence?.caracteristique_id))}" title="${echapperHtml(`Acquis de ${nom}${carac ? ` (${carac.nom})` : ''}`)}">${echapperHtml(nom)}</span>`;
+  return `<span class="metier-cible ${classeDeCaracteristique(competence?.caracteristique_id)}" title="${echapperHtml(`Acquis de ${nom}${carac ? ` (${carac.nom})` : ''}`)}">${echapperHtml(nom)}</span>`;
 }
 
 /**
@@ -140,7 +140,7 @@ function htmlDesBonus(lignes, ctx = {}, brut = '') {
 function htmlDeCaracteristique(id, ctx = {}) {
   if (!id) return '';
   const nom = (ctx.caracteristiques ?? []).find((c) => c.id === id)?.nom ?? id;
-  return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
+  return `<span class="metier-carac ${classeDeCaracteristique(id)}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
 }
 
 /**

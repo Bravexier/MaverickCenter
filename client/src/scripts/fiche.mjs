@@ -121,11 +121,12 @@ function attribut(e, nom, valeur) {
 }
 
 /**
- * La couleur d'une magie : les classes de la palette du site (lib/palette-css.mjs, posées sur chaque page ; regles.json en donne les noms, `classe` et
- * `classe_2`), jamais une couleur écrite. `teinteDeMagie(m)` : les classes d'un élément sur la couleur de la magie `m` (rien sans magie) ; `teinte-palette` fait
- * lire à l'élément --couleur et --couleur-texte de sa classe dans les variables de la fiche (--c, --c-texte, --texte-sur-c : styles/fiche/fiche.css).
+ * La couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture ou d'un alignement : les classes de la palette du site
+ * (lib/palette-css.mjs ; regles.json en donne les noms : `classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture et
+ * alignement), jamais une couleur écrite. `teinteDe(x)` : les classes d'un élément sur la couleur de `x` (rien sans `x`) ; `teinte-palette` fait lire à
+ * l'élément --couleur et --couleur-texte de sa classe dans les variables de la fiche (--c, --c-texte, --texte-sur-c : styles/fiche/fiche.css).
  */
-const teinteDeMagie = (m) => (m ? ['teinte-palette', m.classe] : []);
+const teinteDe = (x) => (x ? ['teinte-palette', x.classe] : []);
 
 /** Remplace les classes de la palette d'un élément (`couleur-…` et `teinte-palette`) par `classes`, sans toucher aux autres. */
 function poserTeinte(e, classes) {
@@ -198,12 +199,12 @@ const retirer = (cle, critere) => {
  * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
  * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
  */
-function pastille({ texte, couleur, texteSurCouleur, magie, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
+function pastille({ texte, couleur, texteSurCouleur, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
   const bouton = el('button', {
     type: 'button',
-    // une magie : les classes de sa couleur (teinte) ; sinon la couleur reçue
-    class: ['pastille', ...teinteDeMagie(magie)].join(' '),
-    style: magie ? null : `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
+    // une magie ou une compétence (`teinte`) : les classes de sa couleur ; sinon la couleur reçue (races, classes : leur lot reste à faire)
+    class: ['pastille', ...teinteDe(teinte)].join(' '),
+    style: teinte ? null : `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
     'aria-pressed': 'false',
     onclick: () => {
       if (bouton.hasAttribute('data-verrou')) return;
@@ -247,7 +248,7 @@ function afficherChoix(id, choix, vide = 'À choisir') {
   const faits = choix.filter(Boolean);
   cible.replaceChildren(...(faits.length
     ? faits.map((c) => el('span', {
-      class: ['choix__pastille', ...teinteDeMagie(c.magie)].join(' '), style: c.magie ? null : `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
+      class: ['choix__pastille', ...teinteDe(c.teinte)].join(' '), style: c.teinte ? null : `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
       dataset: { ...(c.refus ? { refus: '' } : {}), ...(c.verrou ? { verrou: '' } : {}) }, title: c.refus || c.verrou || null,
     }, c.nom, c.verrou ? el('small', { class: 'choix__verrou' }, ' · imposée') : null))
     : [el('span', { class: 'choix__vide' }, vide)]));
@@ -315,17 +316,16 @@ function construireAlignement() {
   const a = alignementDe(regles, fiche);
   const sortie = $('alignement-resultat');
   sortie.textContent = a.nom;
-  // la couleur de son titre dans le guide pour MJ (demande du propriétaire ; regles.alignements)
-  const teinte = regles.alignements?.[a.nom];
-  sortie.style.setProperty('--c', teinte?.couleur ?? '');
-  sortie.style.setProperty('--c-texte', teinte?.texte ?? '');
+  // la couleur de son titre dans le guide pour MJ (demande du propriétaire) : la classe de l'alignement (regles.alignements ; celle d'un alignement
+  // inconnu, regles.alignement_par_defaut), jamais un style
+  poserTeinte(sortie, teinteDe(regles.alignements?.[a.nom] ?? regles.alignement_par_defaut));
   sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
 }
 
 // ------------------------------------------------------------------ magies et dieux
 function construireMagies() {
   reconstruire($('magies-innees'), 'fixe', () => regles.magies.map((m) => pastille({
-    texte: m.nom, magie: m, choisie: () => fiche.magie_innee_id === m.id,
+    texte: m.nom, teinte: m, choisie: () => fiche.magie_innee_id === m.id,
     refus: () => (magiesInneesPermises(regles, fiche.race_id).has(m.id) ? null : 'magie que la race ne permet pas'),
     surClic: () => {
       fiche.magie_innee_id = fiche.magie_innee_id === m.id ? null : m.id;
@@ -343,16 +343,16 @@ function construireMagies() {
   $('bloc-carac-magie').toggleAttribute('data-a-choisir', aChoisir('carac_magie'));
   const acquiseChoisie = trouver(regles.magies, fiche.magie_acquise_id);
   afficherChoix('magie-innee', [innee && {
-    nom: innee.nom, magie: innee,
+    nom: innee.nom, teinte: innee,
     refus: magiesInneesPermises(regles, fiche.race_id).has(innee.id) ? null : 'magie que la race ne permet pas',
   }]);
   afficherChoix('magie-acquise', [acquiseChoisie && {
-    nom: acquiseChoisie.nom, magie: acquiseChoisie, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
+    nom: acquiseChoisie.nom, teinte: acquiseChoisie, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
   }], 'Aucune');
   reconstruire($('magies-acquises'), 'fixe', () => [
     pastille({ texte: 'Aucune', couleur: '#8a7a66', choisie: () => !fiche.magie_acquise_id, surClic: () => { fiche.magie_acquise_id = null; changer(); } }),
     ...regles.magies.map((m) => pastille({
-      texte: m.nom, magie: m, choisie: () => fiche.magie_acquise_id === m.id,
+      texte: m.nom, teinte: m, choisie: () => fiche.magie_acquise_id === m.id,
       refus: () => refusMagieAcquise(regles, fiche, m.id),
       surClic: () => {
         fiche.magie_acquise_id = fiche.magie_acquise_id === m.id ? null : m.id;
@@ -405,7 +405,7 @@ function construireResistances() {
     el('td', {}, p.cibles.length
       ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
         const magie = c.type === 'magie' ? trouver(regles.magies, c.id) : magieDeLEtat.get(c.id);
-        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDeMagie(magie)].join(' '), title: detail(c) }, c.nom);
+        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDe(magie)].join(' '), title: detail(c) }, c.nom);
       }))
       : el('span', { class: 'resistances__vide' }, '—')))));
   // la ligne sous le tableau : les résistances au choix, et la magie que la Symbiose désactive (décision R111 : ses résistances et faiblesses ne
@@ -527,13 +527,13 @@ function construireCaracteristiques() {
       bonus.textContent = plus.length ? `base ${c.base} ${plus.join(' ')}` : `de ${c.min} à ${c.max}`;
       bonus.title = c.accessoireBrut > c.accessoire ? `Accessoire : ${signe(c.accessoireBrut)}, rogné à ${Math.min(regles.constantes['accessoire.caracteristique_max'], c.max)} (« Ne peut dépasser 4 » ni les limites de la race)` : '';
     });
-    return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom', title: k.nom }, k.nom), valeur, bonus, base, croix);
+    return el('div', { class: ['carac', ...teinteDe(k)].join(' ') }, el('span', { class: 'carac__nom', title: k.nom }, k.nom), valeur, bonus, base, croix);
   }));
 
   const budgetC = budgetCompetences(regles, fiche);
   etatBudget($('budget-competences'), budgetC.total, budgetC.attendu, 'Points naturels');
-  // un tableau par caractéristique, dans sa couleur
-  reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', { class: 'competences__groupe', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` },
+  // un tableau par caractéristique, dans sa couleur (la classe de la caractéristique)
+  reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', { class: ['competences__groupe', ...teinteDe(k)].join(' ') },
     el('table', { class: 'fiche-table' },
       el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', {}, 'Naturel'), el('th', {}, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
       el('tbody', {}, regles.competences.filter((x) => x.caracteristique_id === k.id).map((comp) => {
@@ -613,7 +613,8 @@ function construireMetier() {
     const { metier, rangs } = bonusDuMetier(regles, fiche);
     if (!metier) return [];
     const competence = (id) => trouver(regles.competences, id);
-    const couleurDe = (id) => trouver(regles.caracteristiques, competence(id)?.caracteristique_id);
+    // la caractéristique d'une compétence (sa couleur : sa classe) ; celle d'une compétence inconnue : la classe par défaut de la famille
+    const caracDe = (id) => trouver(regles.caracteristiques, competence(id)?.caracteristique_id) ?? regles.caracteristique_par_defaut;
     const valeur = (b) => `${signe(entier(b.valeur))}${b.unite ?? ''}`;
     const ATTRIBUTS = { initiative: 'à l’initiative', vitesse: 'à la vitesse', vitesse_nage: 'à la vitesse de nage' };
     const nomDeCible = (o) => ATTRIBUTS[o.attribut] ?? competence(o.competence_id)?.nom ?? o.competence_id;
@@ -621,9 +622,8 @@ function construireMetier() {
       if (b.aChoisir) {
         const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierBonus(b.rang) } }, el('strong', {}, `${valeur(b)} au choix `),
           el('ul', { class: 'pastilles pastilles--etroites' }, b.options.filter((o) => o.competence_id).map((o) => {
-            const k = couleurDe(o.competence_id);
             return pastille({
-              texte: competence(o.competence_id)?.nom ?? o.competence_id, couleur: k?.couleur ?? '#8a7a66', texteSurCouleur: k?.texte,
+              texte: competence(o.competence_id)?.nom ?? o.competence_id, teinte: caracDe(o.competence_id),
               choisie: () => (fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang && c.competence_id === o.competence_id),
               surClic: () => {
                 const deja = (fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang && c.competence_id === o.competence_id);
@@ -768,11 +768,11 @@ function construireSorts() {
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
         const optionDeSort = (s) => {
           const m = couleurDe(s);
-          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDeMagie(m).join(' ') || null, title: m?.nom }, s.nom);
+          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDe(m).join(' ') || null, title: m?.nom }, s.nom);
         };
         const choisi = couleurDe(l.sort);
         const liste = el('select', {
-          class: teinteDeMagie(choisi).join(' ') || null, dataset: choisi ? { couleur: '' } : {},
+          class: teinteDe(choisi).join(' ') || null, dataset: choisi ? { couleur: '' } : {},
           title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
@@ -942,7 +942,7 @@ function carteDInvocation(c, npm) {
   const rubrique = (nom, ...contenu) => el('div', { class: 'invocation-carte__rubrique' }, el('dt', {}, nom), el('dd', {}, ...contenu));
   const caracs = el('span', { class: 'invocation-carte__caracs' }, FPVSIA.map((id, k) => {
     const carac = trouver(regles.caracteristiques, id);
-    return el('span', { class: 'invocation-carte__carac', style: carac ? `--c: ${carac.couleur}; --c-texte: ${carac.texte}` : null, title: carac?.nom },
+    return el('span', { class: ['invocation-carte__carac', ...teinteDe(carac ?? regles.caracteristique_par_defaut)].join(' '), title: carac?.nom },
       `${carac?.lettre ?? id[0].toUpperCase()} ${v.caracteristiques.valeurs[k] ?? '—'}`);
   }));
   const capacites = c.capacites.filter((x) => vautAuNpm(x.npm, npm));
@@ -1082,7 +1082,7 @@ function construireSortPrepare() {
     }, el('option', { value: '', class: 'option-vide' }, choix.length ? '— aucun —' : `— aucun sort ${don.types.includes('attaque') ? 'd’attaque ' : ''}de NPM ${don.niveaux.join(' ou ')} dans la fiche —`),
     choix.map((x) => {
       const m = couleurDe(x.sort);
-      return el('option', { value: x.sort.id, class: teinteDeMagie(m).join(' ') || null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
+      return el('option', { value: x.sort.id, class: teinteDe(m).join(' ') || null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
     }));
     const jet = el('input', {
       type: 'number', min: String(jetDuSortPrepare(regles).min), max: String(jetDuSortPrepare(regles).max), step: '1', inputmode: 'numeric', class: 'sort-prepare__jet',
@@ -1097,13 +1097,13 @@ function construireSortPrepare() {
       // la couleur de la magie du sort, celle de la posture (comme le tableau des sorts et les cases des postures), posées seulement quand elles changent
       const m = couleurDe(p?.sort);
       attribut(liste, 'data-couleur', Boolean(m));
-      poserTeinte(liste, teinteDeMagie(m));
+      poserTeinte(liste, teinteDe(m));
       jet.disabled = !p;
       if (document.activeElement !== jet) poser(jet, p?.jet ?? '');
       const texte = p ? (p.posture?.nom ?? 'aucune') : '—';
       if (posture.textContent !== texte) posture.textContent = texte;
       attribut(posture, 'data-couleur', Boolean(p?.posture));
-      attribut(posture, 'style', p?.posture ? `--c: ${p.posture.couleur}; --texte-sur-c: ${p.posture.texte}` : null);
+      poserTeinte(posture, teinteDe(p?.posture));
       infobulle(posture, p ? 'La posture du moment où le sort a été préparé : ses dégâts se calculent à elle, même si la posture change ensuite (décision R115)' : '');
       lacher.disabled = !p;
     });
@@ -1498,7 +1498,7 @@ function construirePostures() {
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
   reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
     const bouton = el('button', {
-      type: 'button', class: 'posture-carte', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false',
+      type: 'button', class: ['posture-carte', ...teinteDe(p)].join(' '), 'aria-pressed': 'false',
       onclick: () => {
         fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
         changer();

@@ -57,7 +57,7 @@ filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur a
 Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran plus étroit, voir « Petit écran » ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle,
 puis la **description** du monstre, repliée), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
-rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles dans la couleur de la
+rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, chacune de la classe de sa caractéristique, `couleur-caracteristique-<id>`, cibles des défenses en pastilles dans la couleur de la
 magie qui va avec quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (lieu de rencontre, complément, blocs qui suivent les cartes ; cachée quand il n'y en
 a pas) et le butin.

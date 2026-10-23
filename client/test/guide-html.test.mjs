@@ -16,6 +16,7 @@ import { chargerAnnonce } from '../src/lib/annonces.mjs';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
+import { cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
   ARTISANAT, couleurDeLaPage, DECOUVRIR, estDansDecouvrirOuLesBases, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
   PAGES_ABSORBEES, pagesDeLaRubrique, SOUS_BIENVENUE,
@@ -114,14 +115,17 @@ test('les tableaux viennent de la base : progression, postures, compétences, ma
   assert.match(niveaux, /460\s250/, 'XP du niveau 20 (espace fine insécable de toLocaleString)');
   const postures = lireBloc('postures');
   assert.equal((postures.match(/class="guide-posture__nom"/g) ?? []).length, 6);
-  // chacune dans sa couleur (demande du propriétaire, lib/caracteristiques-postures.mjs)
-  assert.deepEqual([...postures.matchAll(/class="guide-posture" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
-    ['#ff6666', '#99ff99', '#eeeeee', '#9999ff', '#ffff66', '#cc66ff'], 'Offensif, Défensif, Neutre, Focus, Vigilance, Symbiose');
+  // chacune dans sa couleur (demande du propriétaire, lib/caracteristiques-postures.mjs) : la classe de sa posture (lib/palette-css.mjs), émise par le
+  // bloc lui-même (famille d'une zone), jamais un style
+  assert.deepEqual([...postures.matchAll(/<section class="guide-posture (couleur-posture-[\w-]+)" aria-labelledby/g)].map((m) => m[1]),
+    ['offensif', 'defensif', 'neutre', 'focus', 'vigilance', 'symbiose'].map((p) => `couleur-posture-${p}`), 'Offensif, Défensif, Neutre, Focus, Vigilance, Symbiose');
+  assert.ok(postures.includes(`<style>${cssDesFamilles(['posture'])}</style>`), 'les classes des postures, émises par le bloc');
   const competences = lireBloc('competences');
-  assert.equal((competences.match(/class="guide-competences__groupe"/g) ?? []).length, 6);
-  assert.deepEqual([...competences.matchAll(/class="guide-competences__groupe" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
-    ['#ff6666', '#ff99ff', '#66ccff', '#ffcc00', '#dddddd', '#99ff66'], 'Force, Volonté, Intelligence, Perception, Social, Agilité');
-  assert.match(lireBloc('magie-bonus'), /<span class="guide-carac" style="--c: #dddddd; --c-texte: #171210">Social<\/span>/, '+1 en Social du Feu');
+  assert.equal((competences.match(/class="guide-competences__groupe /g) ?? []).length, 6);
+  assert.deepEqual([...competences.matchAll(/<section class="guide-competences__groupe (couleur-caracteristique-[\w-]+)" aria-labelledby/g)].map((m) => m[1]),
+    ['force', 'volonte', 'intelligence', 'perception', 'social', 'agilite'].map((c) => `couleur-caracteristique-${c}`), 'Force, Volonté, Intelligence, Perception, Social, Agilité');
+  assert.match(lireBloc('magie-bonus'), /<span class="guide-carac couleur-caracteristique-social">Social<\/span>/, '+1 en Social du Feu');
+  for (const html of [postures, competences]) assert.doesNotMatch(html, /class="guide-(?:posture|competences__groupe|carac)[^"]*" style=/, 'aucune couleur en style');
   const attributs = lireBloc('fil-rouge-attributs');
   assert.ok((attributs.match(/class="guide-fil-rouge__perso"/g) ?? []).length >= 4);
   assert.match(attributs, /20 de la race \+ 9 de la classe \+ 10 de la magie = 39/, 'santé du guerrier orios');

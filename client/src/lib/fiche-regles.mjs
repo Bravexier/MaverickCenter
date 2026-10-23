@@ -9,7 +9,7 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs).
 import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
-import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
+import { COULEURS_ALIGNEMENTS } from './caracteristiques-postures.mjs';
 import { effetDePosture } from './posture-texte.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
@@ -24,7 +24,7 @@ import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
-import { classeDeMagie, classeDeSecondeMagie } from './palette-css.mjs';
+import { classeDAlignement, classeDeCaracteristique, classeDeMagie, classeDePosture, classeDeSecondeMagie } from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -105,9 +105,12 @@ function reglesDeLaBase(db) {
            v.points_competences_cumul, v.niveaux_maitrise_cumul, v.points_attributs_cumul, v.de_attributs_min_cumul, v.de_attributs_max_cumul
     FROM niveau_global g JOIN v_niveau v ON v.niveau = g.niveau ORDER BY g.niveau`);
 
-  // couleur de la caractéristique, reprise par ses compétences (demande du propriétaire, lib/caracteristiques-postures.mjs)
+  // couleur de la caractéristique, reprise par ses compétences (demande du propriétaire, lib/caracteristiques-postures.mjs) : sa classe de la palette
+  // (lib/palette-css.mjs, posée sur chaque page), jamais un hex
   const caracteristiques = lignes(db, 'SELECT id, nom, lettre FROM caracteristique ORDER BY ordre')
-    .map((c) => ({ ...c, couleur: couleurDeCaracteristique(c.id), texte: texteSurCouleur(couleurDeCaracteristique(c.id)) }));
+    .map((c) => ({ ...c, classe: classeDeCaracteristique(c.id) }));
+  // celle d'une compétence dont la caractéristique est inconnue : la classe par défaut de la famille (COULEUR_NEUTRE)
+  const caracteristique_par_defaut = { classe: classeDeCaracteristique(null) };
   const competences = lignes(db, 'SELECT id, nom, caracteristique_id FROM competence ORDER BY ordre');
   // les bonus d'acquis écrits dans le texte d'un don (décision R104, réponse « Lus dans les dons » : lib/acquis-texte.mjs)
   const lireAcquis = lecteurDAcquis(competences);
@@ -417,7 +420,8 @@ function reglesDeLaBase(db) {
   const inconvenientsDePosture = parCle(lignesDePosture.filter((r) => r.inconvenient === 1), 'posture_id', (r) => r.rang);
   const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
     .map((p) => ({
-      id: p.id, nom: p.nom, couleur: couleurDePosture(p.id), texte: texteSurCouleur(couleurDePosture(p.id)), effets: effetsDePosture.get(p.id) ?? [],
+      // sa couleur : la classe de la posture (lib/palette-css.mjs ; famille d'une zone, émise par pages/fiche/index.astro), jamais un hex
+      id: p.id, nom: p.nom, classe: classeDePosture(p.id), effets: effetsDePosture.get(p.id) ?? [],
       inconvenients: inconvenientsDePosture.get(p.id) ?? [],
       // ce que chaque ligne change aux valeurs de la fiche (décision R100 : lib/posture-texte.mjs), au même rang que `effets` ; null = affichée seulement
       chiffres: (effetsDePosture.get(p.id) ?? []).map(effetDePosture),
@@ -578,12 +582,14 @@ function reglesDeLaBase(db) {
   }));
   const tableaux_de_sacrifice = [...tableauxDesSorts(db)].map(([sortId, t]) => ({ sort_id: sortId, invocation_id: t.invocationId, lignes: t.lignes }));
 
-  // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)
-  const alignements = Object.fromEntries(Object.entries(COULEURS_ALIGNEMENTS).map(([nom, couleur]) => [nom, { couleur, texte: texteSurCouleur(couleur) }]));
+  // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs) : sa
+  // classe de la palette (famille d'une zone, émise par pages/fiche/index.astro), par nom ; `alignement_par_defaut` : celle d'un alignement inconnu
+  const alignements = Object.fromEntries(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [nom, { classe: classeDAlignement(nom) }]));
+  const alignement_par_defaut = { classe: classeDAlignement(null) };
 
   return {
-    constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, invocations, tableaux_de_sacrifice, ...equipement,
+    constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, invocations, tableaux_de_sacrifice, ...equipement,
   };
 }
 

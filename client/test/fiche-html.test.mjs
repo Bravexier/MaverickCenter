@@ -84,7 +84,8 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.ok(!identite.includes('data-champ="xp"'), 'pas d’XP dans l’identité');
   assert.match(identite, /<input type="checkbox" id="bi-classe">/);
   assert.ok(!html.includes('id="modes"') && !html.includes('id="classe-imposee"'), 'plus de boutons « Une classe / Deux classes » ni de texte de classe imposée');
-  assert.match(identite, /<fieldset class="alignement">[\s\S]*?<output class="alignement__resultat" id="alignement-resultat" aria-live="polite">/);
+  // l'alignement, dans la couleur de la classe de son alignement (Neutre avant le script : lib/palette-css.mjs, famille émise par la page)
+  assert.match(identite, /<fieldset class="alignement">[\s\S]*?<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat" aria-live="polite">Neutre<\/output>/);
   // II. à portée de main
   const attributs = bloc('attributs');
   assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');

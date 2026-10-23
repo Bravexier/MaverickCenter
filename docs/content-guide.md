@@ -121,14 +121,27 @@ au site en se basant sur celle du classeur. Aucune couleur en dur. » ; « Privi
 site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas, créer une classe CSS avec la couleur du classeur. »
 
 - **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
-  dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs#cssDeLaPalette`), qui
-  n'écrit aucune couleur, et posée sur chaque page par `layouts/Base.astro` (environ 3,3 ko : 37 classes et les 16 de second rang des magies ;
-  version portable comprise ; plafond testé : 4 ko).
+  dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs`), qui n'écrit aucune
+  couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
+  toutes sauf Loyal Bon et Loyal Neutre, à peine éclaircis, testé). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
+  texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
+  texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
+  `lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS`.
+- **Où la feuille est émise** : les familles que beaucoup de pages posent (`FAMILLES_DE_CHAQUE_PAGE` : magies, attributs, caractéristiques,
+  affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
+  rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
+  (`FAMILLES_DES_ZONES` : postures, alignements) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent
+  (`cssDesFamilles`, `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro`, l'onglet Armes), comme les combinaisons des potions
+  (`cssDesPotions`). Chaque classe posée existe dans une feuille de sa page (testé sur le site construit).
 - **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
   `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption`, `barre4`),
-  `caracteristique` (`lib/caracteristiques-postures.mjs`, ids de la base), `affinite` (les dix affinités d'alchimie sans autre règle,
-  `lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES`, d'après le Doc « Alchimie » ; `chakra+sante` → `couleur-affinite-chakra-sante`). L'id est la clé du
-  module de la règle passée par `normalize` : il ne change pas quand le nom affiché change.
+  `caracteristique` (`lib/caracteristiques-postures.mjs`, ids de la base ; une compétence porte la classe de sa caractéristique), `affinite` (les dix
+  affinités d'alchimie sans autre règle, `lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES`, d'après le Doc « Alchimie » ; `chakra+sante` →
+  `couleur-affinite-chakra-sante`), `posture` (`COULEURS_POSTURES`, la fin de l'id de la base : `offensif`…) et `alignement` (`COULEURS_ALIGNEMENTS`,
+  `Loyal Bon` → `couleur-alignement-loyal-bon`). Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille
+  (`COULEUR_NEUTRE`, comme `couleurDeCaracteristique`) : un neutre a sa classe, jamais un hex de repli. L'id est la clé du module de la règle passée par
+  `normalize` : il ne change pas quand le nom affiché change.
 - **Choix du propriétaire** (2026-10-22, questions de cadrage) : « Module JS → classe » (la valeur reste dans le module de sa règle, une page ne pose
   que la classe) ; « Thème reste, Debug à part » (« Les variables du thème restent la règle du thème, toute copie ailleurs passe par elles ; la page
   Debug et l'impression ne changent pas. » : celles de `styles/global/base.css`) ; « Règle de calcul » (une couleur calculée part d'une classe du site, la nuance se calcule depuis elle, avec une classe
@@ -139,38 +152,49 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   l'exception est notée dans la règle des couleurs du site. ») : `#000`, `#fff`, `#000000` ou `#ffffff` comme argument d'un `color-mix(…)` (le liseré
   de la pastille d'une gemme, `color-mix(in srgb, var(--gemme) 65%, #000)`). Aucune autre couleur écrite ; `test/palette-css.test.mjs` tolère
   exactement cette exception.
-- **Deux magies sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`, une créature ou
-  une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`) : une classe ne pose qu'une `--couleur`. La première magie
-  est la classe de sa magie (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang** `.couleur-2-magie-<id>`
-  (`classeDeSecondeMagie`), qui ne pose que `--couleur-2`, de la même valeur. Un élément qui peut en avoir deux porte toujours les deux classes, la
-  seconde de la même magie quand il n'en a qu'une (`classesDeDeuxMagies(premiere, seconde)`) : il n'hérite jamais du second rang d'un parent. Sa
-  feuille lit `var(--couleur)` puis `var(--couleur-2)`.
+- **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
+  une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
+  pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
+  `.couleur-2-<famille>-<id>` (`classeDeSecondeMagie`, `classeDeSecondeCaracteristique`), qui ne pose que `--couleur-2`, de la même valeur. Un élément
+  qui peut en avoir deux porte toujours les deux classes, la seconde de la même couleur quand il n'en a qu'une (`classesDeDeuxMagies`,
+  `classesDeDeuxCaracteristiques`) : il n'hérite jamais du second rang d'un parent. Sa feuille lit `var(--couleur)` puis `var(--couleur-2)`.
 - **Ajouter une couleur** : l'écrire dans le module de sa règle (ou, sans règle, une couleur ajoutée d'après la source, dans le module de son domaine),
   et, si c'est une famille nouvelle, l'ajouter à `FAMILLES_DE_LA_PALETTE` ; la classe suit au build. Une page pose la classe
-  (`classeDeMagie`, `classeDAttribut`, `classeDeCaracteristique`, `classeDAffinite`) et sa feuille lit `var(--couleur)` / `var(--couleur-texte)`.
+  (`classeDeMagie`, `classeDAttribut`, `classeDeCaracteristique`, `classeDAffinite`, `classeDePosture`, `classeDAlignement`) et sa feuille lit
+  `var(--couleur)` / `var(--couleur-texte)` ; une famille que peu de pages posent s'ajoute à `FAMILLES_DES_ZONES` et sa page l'émet (`cssDesFamilles`).
 - **Où elle sert** :
   - les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas) ;
   - **toute couleur de magie** (lot des magies) : pages de magie (la page, les onglets du Potentiel Illimité, les créatures invoquées), carte et
     tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, blocs du guide (les 15 magies,
     ce que donne chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
-    infobulle, copie de l'encart), lignes de `/personnages/`, fiche de personnage (pastilles, résistances, sorts, créatures, Mode Hyper, cadres).
+    infobulle, copie de l'encart), lignes de `/personnages/`, fiche de personnage (pastilles, résistances, sorts, créatures, Mode Hyper, cadres) ;
+  - **les caractéristiques (et leurs compétences), les postures et les alignements** (lot 3) : blocs du guide (« +1 en … », cadres des compétences,
+    postures), cases des caractéristiques des cartes du bestiaire, compétence d'une arme et filtre de l'onglet Armes (R48), compétences et
+    caractéristiques des métiers (et leur éditeur), fiche de personnage (cartes des caractéristiques, tableaux des compétences, compétence au choix d'un
+    métier, caractéristiques d'une créature invoquée, cases des postures, posture du sort préparé, alignement).
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
-  `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie : skill `zone-fiche`), car un script de page n'importe pas
+  `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture et alignement : skill
+  `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Les autres couleurs (caractéristiques, postures, alignements, matériaux, résistances, catégories de classe, races, Mode Hyper…) posent encore leur
-  couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des magies (le texte blanc des bannières de
-  magie, de race et de classe ; les teintes des genres de sort, `.genre` de `styles/magie/sorts.css`, et des types de don ; l'ombre des infobulles ;
-  l'impression, qui ne change pas). Dans les pages de magie, les dérivées sombres de la bannière (`--hero-1`, `--hero-2`)
+  Les autres couleurs (matériaux, poids et types d'armure, paliers de résistance, catégories de classe, races et ethnies, parties du guide, niveaux des
+  accessoires, Mode Hyper et Mode Hyper 100 %, chronologie, livres…) posent encore leur couleur en style : elles passeront aux classes lot par lot,
+  comme les couleurs encore écrites des feuilles des lots faits (le texte blanc des bannières de magie, de race et de classe ; les teintes des genres de
+  sort, `.genre` de `styles/magie/sorts.css`, et des types de don ; l'ombre des infobulles ; dans la fiche, le texte blanc par défaut des pastilles
+  `.pastille` et `.choix__pastille`, qui ne sert plus qu'aux races, ethnies, classes et objets de départ, et les replis `#8a7a66` / `#6b5a45` de
+  `scripts/fiche.mjs` pour une race, une ethnie, la magie acquise « Aucune » et un objet de départ ; l'impression, qui ne change pas). Dans les pages de magie, les dérivées sombres de la bannière (`--hero-1`, `--hero-2`)
   mêlent la couleur au noir pur (`#000`, l'exception de mélange), plus au `#111` d'avant.
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
-  seconds rangs, feuilles qui lisent les propriétés des classes ; aucune couleur écrite — hex, fonction de couleur au moins un argument écrit, couleur
-  nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit `var(--couleur…)` ou `var(--mag…)`,
-  choisie d'après ce qu'elle lit ; poids borné),
+  seconds rangs, émission par page et par zone, feuilles qui lisent les propriétés des classes ; aucune couleur écrite — hex, fonction de couleur au
+  moins un argument écrit, couleur nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit
+  `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
+  `--texte-sur-c`), choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et le texte blanc par défaut des pastilles de la
+  fiche) ; le script de la fiche ne lit ni ne pose aucune de ces couleurs ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
-  (sur toute page, aucune couleur de magie en style, et chaque classe `couleur-…` posée existe) et les tests de chaque zone (`magies-html`,
-  `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`).
+  (sur toute page, aucune couleur de magie, de caractéristique, de posture ni d'alignement en style, et chaque classe `couleur-…` posée existe) et les
+  tests de chaque zone (`magies-html`, `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`, `guide-html`, `armes-html`,
+  `metiers-html`, `edition-rendu`, `fiche-regles`, `caracteristiques-postures`).
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
@@ -457,6 +481,8 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   (une clause qui en contredit une autre reste écrite).
 - **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
   (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception).
+  La pastille porte la classe de la première caractéristique et la classe de second rang de la seconde, ou de la même
+  (`classesDeDeuxCaracteristiques` : « Couleurs du site : la palette en classes ») ; l'onglet émet les classes de second rang des caractéristiques.
 - **Filtre par compétence** (« filtrer les armes par compétence arc / arbalète / légère et lourde ») : quatre boutons à bascule, Lourde, Légère, Arc,
   Arbalète, dans leur couleur (ils servent aussi de légende) ; une arme reste si l'UNE de ses compétences est choisie (« Arc / Arme Légère » sous Arc comme
   sous Légère), « Toutes » efface le choix, une famille sans arme affichée se cache, les comptes disent « N armes sur M » ; une arme ouverte qui disparaît
@@ -969,7 +995,9 @@ dev (un commit la change) ni cherchée par la recherche.
   recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
   couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
   #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66,
-  Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
+  Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. L'élément porte la classe de sa caractéristique ou de sa posture
+  (`couleur-caracteristique-<id>`, `couleur-posture-<id>` : « Couleurs du site : la palette en classes »), jamais un style ; le bloc `postures` émet
+  lui-même la feuille des postures. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
   le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
 - **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
   recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir

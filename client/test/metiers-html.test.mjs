@@ -31,10 +31,11 @@ test('un tableau des métiers de la base, aux cinq colonnes demandées, une ancr
 });
 
 test('bonus en pastilles de compétence (couleur de la caractéristique) ou d’initiative ; artisanat et caractéristiques à part ; objets de départ en liste', options, () => {
-  assert.ok((main.match(/class="metier-cible" style="--c: #/g) ?? []).length > 100, 'des compétences liées, chacune dans sa couleur');
+  assert.ok((main.match(/class="metier-cible couleur-caracteristique-(?!par-defaut)[\w-]+"/g) ?? []).length > 100, 'des compétences liées, chacune dans sa couleur (la classe de sa caractéristique)');
+  assert.doesNotMatch(main, /class="metier-(?:cible|carac)[^"]*" style=/, 'aucune couleur en style');
   assert.match(main, /class="metier-cible metier-cible--attribut"[^>]*>Initiative</);
   assert.match(main, /class="metier-bonus metier-bonus--texte"/, 'un bonus en texte libre reste écrit tel quel');
-  assert.ok((main.match(/class="metier-carac" style="--c: #/g) ?? []).length >= 2 * 24, 'deux caractéristiques par métier qui fabrique');
+  assert.ok((main.match(/class="metier-carac couleur-caracteristique-(?!par-defaut)[\w-]+"/g) ?? []).length >= 2 * 24, 'deux caractéristiques par métier qui fabrique');
   assert.match(main, /<ul class="metier-objets"><li>/);
   assert.match(main, /<li class="metier-objets__choix">/, 'un objet de départ à choisir');
   assert.doesNotMatch(main, /class="metier__test"/, 'plus de test entre crochets dans la cellule d’artisanat');

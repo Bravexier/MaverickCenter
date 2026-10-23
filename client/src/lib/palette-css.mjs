@@ -17,15 +17,24 @@
 //   - magie : sort-format.mjs#COULEURS_DES_MAGIES, id = le nom court normalisé de la magie (« feu », « espace-temps »), plus `par-defaut`
 //     (COULEUR_PAR_DEFAUT, la couleur d'une magie inconnue) ;
 //   - attribut : lib/attributs-couleurs.mjs (sante, barriere, chakra, corruption, barre4) ;
-//   - caracteristique : lib/caracteristiques-postures.mjs#COULEURS_CARACTERISTIQUES (id de la base : force, volonte…) ;
-//   - affinite : lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES, les dix affinités sans autre règle (d'après le Doc « Alchimie »).
+//   - caracteristique : lib/caracteristiques-postures.mjs#COULEURS_CARACTERISTIQUES (id de la base : force, volonte…), plus `par-defaut`
+//     (COULEUR_NEUTRE) ; une compétence porte la classe de sa caractéristique ;
+//   - affinite : lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES, les dix affinités sans autre règle (d'après le Doc « Alchimie ») ;
+//   - posture : lib/caracteristiques-postures.mjs#COULEURS_POSTURES (fin de l'id de la base : offensif…), plus `par-defaut` ;
+//   - alignement : lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS (« Loyal Bon » → loyal-bon), plus `par-defaut`.
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
-// affiché change. Toute la palette (cssDeLaPalette) est posée sur chaque page par layouts/Base.astro.
+// affiché change.
 //
-// Deux magies sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre deux magies) : la
-// première est la classe de sa magie (`--couleur`, `--couleur-texte`), la seconde sa classe de second rang `.couleur-2-magie-<id>`
-// (classeDeSecondeMagie), qui ne pose que `--couleur-2`. Un élément qui peut en avoir deux porte toujours les deux classes, la seconde de la même
-// magie quand il n'en a qu'une (classesDeDeuxMagies) : il n'hérite jamais du second rang d'un parent.
+// Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
+// caractéristiques, affinités) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
+// zone (FAMILLES_DES_ZONES : postures, alignements) et les seconds rangs des caractéristiques ne le sont que par le composant des pages qui les posent
+// (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche, l'onglet Armes), comme les combinaisons des potions (cssDesPotions).
+//
+// Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
+// deux magies, arme de deux compétences) : la première est la classe de sa couleur (`--couleur`, `--couleur-texte`), la seconde sa classe de second
+// rang `.couleur-2-<famille>-<id>` (classeDeSecondeMagie, classeDeSecondeCaracteristique), qui ne pose que `--couleur-2`. Un élément qui peut en avoir
+// deux porte toujours les deux classes, la seconde de la même couleur quand il n'en a qu'une (classesDeDeuxMagies, classesDeDeuxCaracteristiques) : il
+// n'hérite jamais du second rang d'un parent.
 //
 // Une potion (onglet Ceinture de la page Équipement) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
 // `--ligne-fond` et `--ligne-texte` (la ligne colorée du gabarit commun, styles/global/tableaux.css), calculés par lib/alchimie-couleurs.mjs#couleurDePotion
@@ -33,20 +42,40 @@
 // Sans dépendance (modules purs) : importé au build (layouts/Base.astro, composants et modules de rendu) et par les tests.
 import { COULEUR_PAR_DEFAUT, COULEURS_DES_MAGIES, cleDeMagieConnue, texteSurCouleur } from './sort-format.mjs';
 import { COULEURS_DES_ATTRIBUTS } from './attributs-couleurs.mjs';
-import { COULEURS_CARACTERISTIQUES } from './caracteristiques-postures.mjs';
-import { COULEURS_DES_AFFINITES, baseDAffinite } from './alchimie-couleurs.mjs';
+import { COULEUR_NEUTRE, COULEURS_ALIGNEMENTS, COULEURS_CARACTERISTIQUES, COULEURS_POSTURES, cleDePosture } from './caracteristiques-postures.mjs';
+import { COULEURS_DES_AFFINITES, baseDAffinite, lisible } from './alchimie-couleurs.mjs';
 import { normalize } from './text.mjs';
 
+/** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement : COULEUR_NEUTRE). */
+export const PAR_DEFAUT = 'par-defaut';
 /** L'id de la couleur d'une magie inconnue du site (sort-format.mjs#couleurDeMagie : COULEUR_PAR_DEFAUT). */
-export const MAGIE_PAR_DEFAUT = 'par-defaut';
+export const MAGIE_PAR_DEFAUT = PAR_DEFAUT;
 
 /** Les familles de la palette : pour chacune, ses couleurs (clé du module de la règle → « #rrggbb »), lues dans le module de sa règle. */
 export const FAMILLES_DE_LA_PALETTE = Object.freeze({
-  magie: Object.freeze({ ...COULEURS_DES_MAGIES, [MAGIE_PAR_DEFAUT]: COULEUR_PAR_DEFAUT }),
+  magie: Object.freeze({ ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT }),
   attribut: COULEURS_DES_ATTRIBUTS,
-  caracteristique: COULEURS_CARACTERISTIQUES,
+  caracteristique: Object.freeze({ ...COULEURS_CARACTERISTIQUES, [PAR_DEFAUT]: COULEUR_NEUTRE }),
   affinite: COULEURS_DES_AFFINITES,
+  posture: Object.freeze({ ...COULEURS_POSTURES, [PAR_DEFAUT]: COULEUR_NEUTRE }),
+  alignement: Object.freeze({ ...COULEURS_ALIGNEMENTS, [PAR_DEFAUT]: COULEUR_NEUTRE }),
 });
+
+/** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
+export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite']);
+/**
+ * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
+ * `alignement` (la fiche).
+ */
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement']);
+
+/**
+ * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) : inchangée quand son texte (texteSurCouleur) l'atteint
+ * déjà au contraste de 4,5:1, soit toutes sauf deux alignements, Loyal Bon et Loyal Neutre, à peine éclaircis (test/palette-css.test.mjs). Pour ces
+ * deux-là, réponse du propriétaire du 2026-10-23 : « Éclaircir (Recommandé) » (la question et l'option, qui écrivent les couleurs, sont citées telles
+ * quelles à lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS, où leur couleur de référence reste).
+ */
+const fondDeClasse = (couleur) => lisible(couleur);
 
 /** L'id d'une couleur dans le nom de sa classe : la clé du module de sa règle, normalisée (« chakra+sante » → « chakra-sante »). */
 export const idDeCouleur = (cle) => normalize(cle ?? '');
@@ -57,11 +86,16 @@ export function classeDeCouleur(famille, cle) {
   return couleurs && Object.hasOwn(couleurs, cle) ? `couleur-${famille}-${idDeCouleur(cle)}` : null;
 }
 
+/** La classe d'une couleur, ou celle de la couleur par défaut de sa famille (`par-defaut`) si la famille ne la connaît pas. */
+const classeOuParDefaut = (famille, cle) => classeDeCouleur(famille, cle) ?? classeDeCouleur(famille, PAR_DEFAUT);
+/** La classe de second rang d'une classe de la palette (« couleur-magie-eau » → « couleur-2-magie-eau » : `--couleur-2`). */
+const auSecondRang = (classe) => `couleur-2-${classe.slice('couleur-'.length)}`;
+
 /** La classe d'une magie, d'après son nom ou son nom court (« Feu », « espace-temps ») ; celle de la couleur par défaut pour une magie inconnue. */
-export const classeDeMagie = (nom) => classeDeCouleur('magie', cleDeMagieConnue(nom) ?? MAGIE_PAR_DEFAUT);
+export const classeDeMagie = (nom) => classeDeCouleur('magie', cleDeMagieConnue(nom) ?? PAR_DEFAUT);
 
 /** La classe de second rang d'une magie (« couleur-2-magie-eau » : `--couleur-2`), d'après son nom ; celle de la couleur par défaut si inconnue. */
-export const classeDeSecondeMagie = (nom) => `couleur-2-${classeDeMagie(nom).slice('couleur-'.length)}`;
+export const classeDeSecondeMagie = (nom) => auSecondRang(classeDeMagie(nom));
 
 /**
  * Les deux classes d'un élément à deux magies (dans l'ordre : l'innée puis l'acquise, la première puis la seconde magie d'une créature) : la classe de la
@@ -72,8 +106,24 @@ export const classesDeDeuxMagies = (premiere, seconde) => [classeDeMagie(premier
 /** La classe d'un attribut de la fiche (« sante »), ou null. */
 export const classeDAttribut = (cle) => classeDeCouleur('attribut', cle);
 
-/** La classe d'une caractéristique (id de la base : « force »), ou null. */
-export const classeDeCaracteristique = (id) => classeDeCouleur('caracteristique', id);
+/**
+ * La classe d'une caractéristique (id de la base : « force »), celle d'une compétence étant celle de sa caractéristique ; celle de la couleur par défaut
+ * (COULEUR_NEUTRE, comme caracteristiques-postures.mjs#couleurDeCaracteristique) pour un id inconnu ou absent.
+ */
+export const classeDeCaracteristique = (id) => classeOuParDefaut('caracteristique', id);
+
+/** La classe de second rang d'une caractéristique (« couleur-2-caracteristique-agilite » : `--couleur-2`) ; celle par défaut si inconnue. */
+export const classeDeSecondeCaracteristique = (id) => auSecondRang(classeDeCaracteristique(id));
+
+/** Les deux classes d'un élément à deux caractéristiques (une arme de deux compétences) : comme classesDeDeuxMagies. */
+export const classesDeDeuxCaracteristiques = (premiere, seconde) =>
+  [classeDeCaracteristique(premiere), classeDeSecondeCaracteristique(seconde ?? premiere)];
+
+/** La classe d'une posture, d'après son id dans la base (« guide/postures#posture:offensif ») ou sa clé ; celle par défaut si inconnue. */
+export const classeDePosture = (id) => classeOuParDefaut('posture', cleDePosture(id));
+
+/** La classe d'un alignement, d'après son nom (« Loyal Bon » → « couleur-alignement-loyal-bon ») ; celle par défaut si inconnu. */
+export const classeDAlignement = (nom) => classeOuParDefaut('alignement', nom);
 
 /**
  * La classe de la couleur d'une affinité d'alchimie (`affinite.id`) : celle de son attribut, de sa magie, ou celle que le site lui ajoute ; null si le
@@ -84,26 +134,40 @@ export function classeDAffinite(id) {
   return base ? classeDeCouleur(base.famille, base.cle) : null;
 }
 
-/** Toutes les couleurs de la palette : [{ famille, cle, classe, fond, texte }], famille après famille, dans l'ordre de leur module. */
-export function couleursDeLaPalette() {
-  return Object.entries(FAMILLES_DE_LA_PALETTE).flatMap(([famille, couleurs]) =>
-    Object.entries(couleurs).map(([cle, fond]) => ({ famille, cle, classe: classeDeCouleur(famille, cle), fond, texte: texteSurCouleur(fond) })));
+/**
+ * Les couleurs de la palette : [{ famille, cle, classe, fond, texte }], famille après famille, dans l'ordre de leur module ; toutes, ou celles des
+ * `familles` demandées.
+ */
+export function couleursDeLaPalette(familles = Object.keys(FAMILLES_DE_LA_PALETTE)) {
+  return familles.flatMap((famille) =>
+    Object.entries(FAMILLES_DE_LA_PALETTE[famille] ?? {}).map(([cle, couleur]) => {
+      const fond = fondDeClasse(couleur);
+      return { famille, cle, classe: classeDeCouleur(famille, cle), fond, texte: texteSurCouleur(fond) };
+    }));
 }
 
+/** Les classes de second rang d'une famille (« magie », « caracteristique ») : [{ cle, classe, fond }], dans l'ordre de la famille. */
+export const secondsRangs = (famille) =>
+  Object.entries(FAMILLES_DE_LA_PALETTE[famille] ?? {}).map(([cle, couleur]) => ({ cle, classe: auSecondRang(classeDeCouleur(famille, cle)), fond: fondDeClasse(couleur) }));
+
 /** Les classes de second rang des magies : [{ cle, classe, fond }], dans l'ordre de la famille `magie`. */
-export const secondsRangsDesMagies = () =>
-  Object.entries(FAMILLES_DE_LA_PALETTE.magie).map(([cle, fond]) => ({ cle, classe: classeDeSecondeMagie(cle), fond }));
+export const secondsRangsDesMagies = () => secondsRangs('magie');
+
+/** La feuille des familles demandées : une règle par couleur, `.couleur-<famille>-<id>{--couleur:…;--couleur-texte:…}`. */
+export const cssDesFamilles = (familles) => couleursDeLaPalette(familles).map((c) => `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`).join('');
+
+/** La feuille des classes de second rang d'une famille : une règle par couleur, `.couleur-2-<famille>-<id>{--couleur-2:…}`. */
+export const cssDesSecondsRangs = (famille) => secondsRangs(famille).map((c) => `.${c.classe}{--couleur-2:${c.fond}}`).join('');
 
 /**
- * La feuille de la palette (posée sur chaque page) : une règle par couleur, `.couleur-<famille>-<id>{--couleur:…;--couleur-texte:…}`, puis une par
- * classe de second rang, `.couleur-2-magie-<id>{--couleur-2:…}`.
+ * La feuille de la palette posée sur chaque page (layouts/Base.astro) : les familles de FAMILLES_DE_CHAQUE_PAGE, puis les classes de second rang des
+ * magies. Les familles d'une zone (FAMILLES_DES_ZONES) et les seconds rangs des caractéristiques n'y sont pas.
  */
-export const cssDeLaPalette = () =>
-  couleursDeLaPalette().map((c) => `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`).join('')
-  + secondsRangsDesMagies().map((c) => `.${c.classe}{--couleur-2:${c.fond}}`).join('');
+export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cssDesSecondsRangs('magie');
 
-/** Toutes les classes que la palette pose sur chaque page (couleurs et seconds rangs). */
-export const classesDeLaPalette = () => new Set([...couleursDeLaPalette(), ...secondsRangsDesMagies()].map((c) => c.classe));
+/** Les classes que la palette pose sur chaque page (familles de chaque page et seconds rangs des magies). */
+export const classesDeLaPalette = () =>
+  new Set([...couleursDeLaPalette(FAMILLES_DE_CHAQUE_PAGE), ...secondsRangsDesMagies()].map((c) => c.classe));
 
 /**
  * La classe de la combinaison d'une potion (`couleur` : lib/alchimie-couleurs.mjs#couleurDePotion) : sa base et son niveau,

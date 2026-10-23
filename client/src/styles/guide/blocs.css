@@ -90,10 +90,13 @@
 .guide-magie__dieu { padding-left: 0.6rem; color: var(--muted); font-size: var(--fs-md); }
 .guide-magie--ligne { padding: 0.1rem 0.6rem 0.1rem 0.4rem; border-width: 1px; font-size: var(--fs-lg); }
 
-/* Caractéristiques (et leurs compétences) et postures : chacune dans sa couleur (lib/caracteristiques-postures.mjs, demande du propriétaire), --c et
-   --c-texte posées sur l'élément ou son cadre par GuideBloc.astro. Couleurs claires : aplat au texte foncé, bordé de --text pour qu'un gris clair
-   (Social, Neutre) reste visible sur la feuille. */
+/* Caractéristiques (et leurs compétences) et postures : chacune dans sa couleur (lib/caracteristiques-postures.mjs, demande du propriétaire), par la
+   classe de la palette (`.couleur-caracteristique-<id>`, `.couleur-posture-<id>` : lib/palette-css.mjs) que GuideBloc.astro pose sur l'élément ou son
+   cadre ; --c et --c-texte en sont tirées, jamais d'un style. Couleurs claires : aplat au texte foncé, bordé de --text pour qu'un gris clair (Social,
+   Neutre) reste visible sur la feuille. */
 .guide-carac {
+  --c: var(--couleur);
+  --c-texte: var(--couleur-texte);
   display: inline-block;
   padding: 0 0.55rem;
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
@@ -112,7 +115,7 @@
   margin: 1rem 0 1.25rem;
 }
 .guide-competences__groupe {
-  --c: var(--guide);
+  --c: var(--couleur, var(--guide));
   padding: 0.6rem 0.9rem;
   border: 1px solid color-mix(in srgb, var(--c) 55%, var(--border));
   border-top: 4px solid var(--c);
@@ -140,7 +143,8 @@
   margin: 1rem 0 1.25rem;
 }
 .guide-posture {
-  --c: var(--guide);
+  --c: var(--couleur, var(--guide));
+  --c-texte: var(--couleur-texte, var(--text));
   border: 1px solid color-mix(in srgb, var(--c) 55%, var(--border));
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--c) 8%, var(--bg));
@@ -153,7 +157,7 @@
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 20%, var(--c));
   background: var(--c);
-  color: var(--c-texte, #fff);
+  color: var(--c-texte);
   font: inherit;
   font-weight: 700;
   text-align: left;

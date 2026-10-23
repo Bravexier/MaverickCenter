@@ -12,6 +12,7 @@ user-invocable: false
 - Filtres et tri dans l'adresse : `lib/metiers-tri.mjs`.
 - Tableau : `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` (inséré en `?raw`).
 - Cellules : rendus `metier-bonus`, `metier-artisanat`, `metier-carac`, `metier-equipement` de `lib/edition-rendu.mjs`.
+- Pastilles d'une compétence visée et d'une caractéristique de l'artisanat : la classe de la caractéristique (`couleur-caracteristique-<id>`, `par-defaut` si inconnue ; skill `ui-couleurs`), que `styles/metier/tableau.css` lit en `--couleur` / `--couleur-texte`, jamais un style.
 - Corps Markdown tenu d'accord : `lib/corps-metiers.mjs` (skill `zone-edition`).
 - `metiers.mjs` porte aussi des adresses d'autres zones (`adresseDePage`, `estServieASonId`, `pageSansAdresse`, `renvoisDuGuide`) : skill `site-wiki-liens`, skill `zone-equipement`, skill `zone-guide`.
 

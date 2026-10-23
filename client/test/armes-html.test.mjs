@@ -92,12 +92,30 @@ test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans
   const debut = main.indexOf('<div class="armes-filtre js-seul" role="group"');
   assert.ok(debut > 0, 'le filtre');
   const filtre = main.slice(debut, main.indexOf('</div>', debut));
-  const boutons = [...filtre.matchAll(/<button type="button" class="arme-comp armes-filtre__choix" data-competence="([^"]+)" aria-pressed="false" style="--c1: ([^;]+); --c2: [^"]*" title="([^"]+)">([^<]+)<\/button>/g)];
+  // la couleur : la classe de la caractéristique et celle de son second rang (lib/palette-css.mjs), jamais un style
+  const boutons = [...filtre.matchAll(/<button type="button" class="arme-comp armes-filtre__choix (couleur-caracteristique-[\w-]+) couleur-2-caracteristique-[\w-]+" data-competence="([^"]+)" aria-pressed="false" title="([^"]+)">([^<]+)<\/button>/g)]
+    .map(([tout, classe, id, titre, libelle]) => [tout, id, classe, titre, libelle]);
   assert.deepEqual(boutons.map((m) => m[1]), Object.keys(COMPETENCES_D_ARME));
   assert.deepEqual(boutons.map((m) => m[4]), ['Lourde', 'Légère', 'Arc', 'Arbalète']);
   const couleur = Object.fromEntries(boutons.map((m) => [m[4], m[2]]));
   assert.equal(couleur.Arc, couleur.Lourde, 'l’Arc a la couleur de la Force, comme l’Arme Lourde');
   assert.notEqual(couleur['Arbalète'], couleur.Lourde);
+  assert.deepEqual(couleur, { Lourde: 'couleur-caracteristique-force', Légère: 'couleur-caracteristique-agilite', Arc: 'couleur-caracteristique-force', Arbalète: 'couleur-caracteristique-perception' }, 'R48');
+  assert.doesNotMatch(main, /class="arme-comp[^"]*"[^>]*style=/, 'aucune couleur de compétence en style');
+  // chaque pastille : la classe de la première caractéristique et le second rang de la seconde (ou de la même), émis par l'onglet
+  const pastilles = [...main.matchAll(/<span class="arme-comp(?: arme-comp--deux)? (couleur-caracteristique-[\w-]+) (couleur-2-caracteristique-[\w-]+)"/g)];
+  assert.ok(pastilles.length > 0, 'des pastilles de compétence');
+  for (const m of pastilles) assert.ok(html.includes(`.${m[2]}{`), `${m[2]} : émise par la page`);
+  // une arme de deux compétences (R48) : le premier rang est la caractéristique de sa première compétence, le second celle de la seconde
+  // (invariant, quelles que soient les armes du site de dev), et au moins une arme a deux caractéristiques distinctes (le dégradé)
+  const caracDe = Object.fromEntries(boutons.map((m) => [m[1], m[2].replace('couleur-caracteristique-', '')]));
+  const deux = [...main.matchAll(/<span class="arme-comp arme-comp--deux couleur-caracteristique-([\w-]+) couleur-2-caracteristique-([\w-]+)" data-competences="([^"]+)"/g)];
+  assert.ok(deux.length > 0, 'des armes de deux compétences');
+  for (const [, premiere, seconde, competences] of deux) {
+    const [c1, c2] = competences.split(' ');
+    assert.deepEqual([premiere, seconde], [caracDe[c1], caracDe[c2]], competences);
+  }
+  assert.ok(deux.some(([, premiere, seconde]) => premiere !== seconde), 'au moins un second rang distinct du premier');
   assert.match(filtre, /data-armes-filtre-tout hidden>Toutes</);
   assert.ok(!main.includes('Précision'), 'plus de « Précision »');
   // chaque ligne porte ses compétences, toutes parmi celles du filtre (lib/armes-filtres.mjs les lit)

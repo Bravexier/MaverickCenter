@@ -515,3 +515,45 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
   const regles = JSON.parse(lire('fiche/regles.json'));
   assert.ok(regles.magies.every((m) => palette.has(m.classe) && palette.has(m.classe_2)), 'regles.json : des classes de la palette');
 });
+
+// Lot des caractéristiques (et de leurs compétences), des postures et des alignements (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur
+// toute page construite, aucune de ces couleurs en style ; chaque classe posée existe (contrôle commun ci-dessus : la palette de chaque page, ou une
+// feuille que la page émet, les familles d'une zone et les seconds rangs des caractéristiques compris).
+/** Les éléments que les pages posent sur la couleur d'une caractéristique, d'une compétence, d'une posture ou d'un alignement. */
+const ELEMENTS_DU_LOT_DES_CARACTERISTIQUES = new Set([
+  'guide-carac', 'guide-competences__groupe', 'guide-posture', 'bcarac', 'arme-comp', 'metier-cible', 'metier-carac', 'alignement__resultat',
+]);
+
+test('couleurs des caractéristiques, compétences, postures et alignements : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parZone = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--c-texte:|--texte-sur-c:|--c1:|--c2:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => /^couleur-(?:2-)?(?:caracteristique|posture|alignement)-/.test(c) || ELEMENTS_DU_LOT_DES_CARACTERISTIQUES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => /^couleur-(?:2-)?(?:caracteristique|posture|alignement)-/.test(x))) parZone.set(c, [...(parZone.get(c) ?? []), rel]);
+    }
+  }
+  // chaque zone du lot pose bien ses classes
+  const zones = {
+    'regles/les-postures/index.html': /<section class="guide-posture couleur-posture-offensif" aria-labelledby/,
+    'decouvrir/creer-son-personnage/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
+    'ressources/equipement/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
+    'bestiaire/index.html': /<span class="bcarac couleur-caracteristique-force" title="Force">/,
+    'fiche/index.html': /<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat"/,
+  };
+  for (const [rel, attendu] of Object.entries(zones)) assert.match(existsSync(join(dist, rel)) ? lire(rel) : '', attendu, rel);
+  assert.ok([...parZone.keys()].some((c) => c.startsWith('couleur-caracteristique-')) && parZone.has('couleur-posture-focus'), 'classes trouvées');
+  assert.ok(!parZone.has('couleur-caracteristique-par-defaut'), `aucune caractéristique inconnue : ${parZone.get('couleur-caracteristique-par-defaut')}`);
+  // la fiche pose ses classes au navigateur, d'après regles.json : des classes de la palette de chaque page (caractéristiques) ou de la feuille de la
+  // fiche (postures, alignements)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const palette = classesDeLaPalette();
+  const fiche = lire('fiche/index.html');
+  assert.ok([...regles.caracteristiques, regles.caracteristique_par_defaut].every((k) => palette.has(k.classe)), 'regles.json : caractéristiques');
+  for (const x of [...regles.postures, ...Object.values(regles.alignements), regles.alignement_par_defaut]) assert.ok(fiche.includes(`.${x.classe}{`), `${x.classe} : dans la feuille de la fiche`);
+});
