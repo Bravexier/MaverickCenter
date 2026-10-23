@@ -89,12 +89,20 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
 export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre']);
 
 /**
- * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) : inchangée quand son texte (texteSurCouleur) l'atteint
- * déjà au contraste de 4,5:1, soit toutes sauf deux alignements, Loyal Bon et Loyal Neutre, à peine éclaircis (test/palette-css.test.mjs). Pour ces
- * deux-là, réponse du propriétaire du 2026-10-23 : « Éclaircir (Recommandé) » (la question et l'option, qui écrivent les couleurs, sont citées telles
- * quelles à lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS, où leur couleur de référence reste).
+ * Les familles dont la couleur ne porte jamais de texte : `palier` (le trait de 3 px d'une ligne de résistance de la fiche). Le seuil de lisibilité de
+ * 4,5:1 vaut pour un texte : leur fond reste la couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des
+ * familles qui portent un texte).
  */
-const fondDeClasse = (couleur) => lisible(couleur);
+export const FAMILLES_SANS_TEXTE = Object.freeze(['palier']);
+
+/**
+ * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) quand sa famille porte un texte : inchangée quand son
+ * texte (texteSurCouleur) l'atteint déjà au contraste de 4,5:1, soit toutes sauf deux alignements, Loyal Bon et Loyal Neutre, à peine éclaircis
+ * (test/palette-css.test.mjs). Pour ces deux-là, réponse du propriétaire du 2026-10-23 : « Éclaircir (Recommandé) » (la question et l'option, qui
+ * écrivent les couleurs, sont citées telles quelles à lib/caracteristiques-postures.mjs#COULEURS_ALIGNEMENTS, où leur couleur de référence reste).
+ * Une famille sans texte (FAMILLES_SANS_TEXTE) garde la couleur de sa règle.
+ */
+const fondDeClasse = (famille, couleur) => (FAMILLES_SANS_TEXTE.includes(famille) ? couleur : lisible(couleur));
 
 /** L'id d'une couleur dans le nom de sa classe : la clé du module de sa règle, normalisée (« chakra+sante » → « chakra-sante »). */
 export const idDeCouleur = (cle) => normalize(cle ?? '');
@@ -181,14 +189,14 @@ export function classeDAffinite(id) {
 export function couleursDeLaPalette(familles = Object.keys(FAMILLES_DE_LA_PALETTE)) {
   return familles.flatMap((famille) =>
     Object.entries(FAMILLES_DE_LA_PALETTE[famille] ?? {}).map(([cle, couleur]) => {
-      const fond = fondDeClasse(couleur);
+      const fond = fondDeClasse(famille, couleur);
       return { famille, cle, classe: classeDeCouleur(famille, cle), fond, texte: texteSurCouleur(fond) };
     }));
 }
 
 /** Les classes de second rang d'une famille (« magie », « caracteristique ») : [{ cle, classe, fond }], dans l'ordre de la famille. */
 export const secondsRangs = (famille) =>
-  Object.entries(FAMILLES_DE_LA_PALETTE[famille] ?? {}).map(([cle, couleur]) => ({ cle, classe: auSecondRang(classeDeCouleur(famille, cle)), fond: fondDeClasse(couleur) }));
+  Object.entries(FAMILLES_DE_LA_PALETTE[famille] ?? {}).map(([cle, couleur]) => ({ cle, classe: auSecondRang(classeDeCouleur(famille, cle)), fond: fondDeClasse(famille, couleur) }));
 
 /** Les classes de second rang des magies : [{ cle, classe, fond }], dans l'ordre de la famille `magie`. */
 export const secondsRangsDesMagies = () => secondsRangs('magie');

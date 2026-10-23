@@ -590,7 +590,7 @@ test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper 
     'races/humain/index.html': ['couleur-race-pure'],
   };
   for (const [rel, attendues] of Object.entries(zones)) {
-    if (!existsSync(join(dist, rel))) continue;   // une page d'exemple absente d'un build sans exemples
+    assert.ok(existsSync(join(dist, rel)), `page construite : ${rel}`);
     assert.deepEqual([...new Set(parPage.get(rel))], attendues, rel);
   }
   // la fiche pose ses classes au navigateur, d'après regles.json : toutes dans la feuille de la fiche (familles d'une zone)

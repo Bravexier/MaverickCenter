@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement,
+  CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement,
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
   classeDePotion, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
@@ -131,14 +131,18 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
     [['#4e8794', '#171210'], ['#467fda', '#171210']], 'les fonds de l’option choisie, texte foncé');
   assert.deepEqual([COULEURS_ALIGNEMENTS['Loyal Bon'], COULEURS_ALIGNEMENTS['Loyal Neutre']], ['#45818e', '#3c78d8'], 'les couleurs de référence restent dans le code');
   const eclaircies = couleursDeLaPalette().filter((c) => c.fond !== FAMILLES_DE_LA_PALETTE[c.famille][c.cle]).map((c) => c.classe);
-  // … et, par la même règle (chaque classe atteint 4,5:1), la grande vulnérabilité (#e53935, le trait de son palier sur la fiche : 4,4:1 au mieux),
-  // à peine éclaircie ; la couleur de référence reste dans lib/fiche-couleurs.mjs
-  assert.deepEqual(eclaircies, ['couleur-alignement-loyal-bon', 'couleur-alignement-loyal-neutre', 'couleur-palier-grande-vulnerabilite']);
-  assert.equal(COULEURS_DES_PALIERS.grande_vulnerabilite, '#e53935', 'la couleur de référence');
+  assert.deepEqual(eclaircies, ['couleur-alignement-loyal-bon', 'couleur-alignement-loyal-neutre']);
+  // une famille dont la couleur ne porte pas de texte (le trait d'un palier de résistance) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte ;
+  // la grande vulnérabilité garde #e53935 (4,4:1 au mieux)
+  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier']);
+  assert.equal(couleursDeLaPalette(['palier']).find((c) => c.cle === 'grande_vulnerabilite').fond, '#e53935');
+  assert.ok(contraste('#e53935', texteSurCouleur('#e53935')) < CONTRASTE_MINIMAL, 'elle serait corrigée si elle portait un texte');
   for (const { famille, cle, classe, fond, texte } of couleursDeLaPalette()) {
-    assert.equal(fond, lisible(FAMILLES_DE_LA_PALETTE[famille][cle]), classe);
+    const sansTexte = FAMILLES_SANS_TEXTE.includes(famille);
+    assert.equal(fond, sansTexte ? FAMILLES_DE_LA_PALETTE[famille][cle] : lisible(FAMILLES_DE_LA_PALETTE[famille][cle]), classe);
     assert.equal(texte, texteSurCouleur(fond), classe);
     assert.deepEqual(feuille.get(classe), { '--couleur': fond, '--couleur-texte': texte }, classe);
+    if (sansTexte) continue;   // aucun texte posé dessus : rien à mesurer
     assert.ok(contraste(fond, texte) >= CONTRASTE_MINIMAL, `${classe} : ${fond} / ${texte} = ${contraste(fond, texte).toFixed(2)}`);
   }
   assert.deepEqual(feuille.get(classeDeMagie('Sang')), { '--couleur': couleurDeMagie('Sang'), '--couleur-texte': texteSurCouleur(couleurDeMagie('Sang')) });
@@ -530,13 +534,15 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * teinte d'une magie (`var(--mag…)`) ; dans les feuilles de FEUILLES_DES_VARIABLES_DE_LA_PALETTE, les variables qui en sont tirées (`var(--c)`,
  * `var(--c1)`, `var(--c2)`, `var(--c-texte)`, `var(--texte-sur-c)` : caractéristiques, compétences, postures, alignements, magies, races, classes,
  * Mode Hyper de la fiche et du guide) ; et, dans les feuilles des classes et des races, celles de leur catégorie ou de leur nature (`var(--cla…)`,
- * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; [{ fichier, selecteur, corps }], commentaires retirés.
+ * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; et partout, celles qui lisent un jeton de ce lot posé sur une bannière ou un aplat foncé
+ * (`var(--texte-sur-fonce)`, `var(--fond-banniere)` : un `color: #fff` remis là se verrait) ; [{ fichier, selecteur, corps }], commentaires retirés.
  */
 const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
   .flatMap((n) => [...lire(`src/styles/${n}`).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
-      || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps)))
+      || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
  * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
@@ -571,7 +577,8 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/classe/base.css .classe', 'src/styles/classe/liste.css .classes-groupe', 'src/styles/classe/dons.css .don__niveau',
     'src/styles/classe/dons.css .onglet', 'src/styles/classe/page.css .classe-hero', 'src/styles/classe/page.css .classe-specialite h3',
     'src/styles/race/base.css .race', 'src/styles/race/liste.css .races-groupe', 'src/styles/race/page.css .race-hero', 'src/styles/race/page.css .race-don',
-    'src/styles/race/relations.css .regards__bloc h4', "src/styles/fiche/fiche.css .resistances__table tr[class*='couleur-palier-']",
+    'src/styles/race/relations.css .regards__bloc h4', 'src/styles/classe/page.css .classe-hero__reperes a', 'src/styles/race/page.css .race-hero__classe a',
+    'src/styles/magie/page.css .magie-hero', 'src/styles/magie/base.css .magie, .magie-teinte', 'src/styles/classe/dons.css .specialite__titre', "src/styles/fiche/fiche.css .resistances__table tr[class*='couleur-palier-']",
     'src/styles/fiche/fiche.css .choix__pastille', "src/styles/fiche/fiche.css .pastille[aria-pressed='true']", 'src/styles/fiche/fiche.css .groupe-pastilles > h4',
     'src/styles/fiche/fiche.css .dons-classe > h4']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);

@@ -124,8 +124,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 - **Une classe par couleur des règles** : `.couleur-<famille>-<id>`, qui pose `--couleur` (le fond) et `--couleur-texte` (le texte le plus lisible
   dessus, `sort-format.mjs#texteSurCouleur`). Elle est fabriquée au build depuis le module de sa règle (`lib/palette-css.mjs`), qui n'écrit aucune
   couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
-  toutes sauf Loyal Bon, Loyal Neutre et le palier de grande vulnérabilité (`#e53935` → `#e6433f`, le trait de sa ligne sur la fiche), à peine
-  éclaircis, testé ; la couleur de référence du palier reste dans `lib/fiche-couleurs.mjs`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  toutes sauf Loyal Bon et Loyal Neutre, à peine éclaircis, testé). Une famille dont la couleur ne porte jamais de texte (`FAMILLES_SANS_TEXTE` :
+  `palier`, le trait de 3 px d'une ligne de résistance de la fiche) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande
+  vulnérabilité garde `#e53935`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
   d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
   texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
   texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
